@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Feature Ledger consistency checker. Zero dependencies (Node 20+).
+// Feature Ledger consistency checker. Uses the project's existing TypeScript parser.
 //
 // Usage:
 //   node scripts/ledger-check.mjs [--ledger docs/FEATURES.md] [--tests e2e,tests] [--report test-results/results.json]
@@ -15,6 +15,7 @@
 //   5. With --require-seeds: every `seed` item must be Verified or Bug (used to close Wave 0).
 import fs from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
 
 const args = process.argv.slice(2);
 const opt = (name, def) => {
@@ -92,39 +93,63 @@ const isBrowserTest = (file) =>
   file.split(path.sep)[0] === 'e2e' ||
   file.includes(`${path.sep}e2e${path.sep}`);
 
-// test( 'title' ...  |  it( ... | test.only( ... | test.skip( ... | test.fixme( ... | test.fail( ...
-const testRe =
-  /\b(?:test|it)(?:\.(only|skip|fixme|fail|slow))?\(\s*(['"`])((?:\[[A-Z][A-Z0-9]{1,3}-\d{3}\]\s*)+)/g;
 const idRe = /\[([A-Z][A-Z0-9]{1,3}-\d{3})\]/g;
+const prefixRe = /^(?:\[[A-Z][A-Z0-9]{1,3}-\d{3}\]\s*)+/;
+const guardProbeTitle = '[DEV-006] guard fails a test that logs console.error';
 const activeTests = new Map(); // id -> [{file, browser}]
 const failTests = new Map(); // id -> [{file}] browser tests declared test.fail
 let bannedOnly = 0;
 for (const file of [...new Set(testFiles)]) {
   const src = fs.readFileSync(file, 'utf8');
   const browser = isBrowserTest(file);
-  let m;
-  while ((m = testRe.exec(src))) {
-    const modifier = m[1];
-    const tagText = m[3];
-    if (modifier === 'only') bannedOnly++;
-    for (const idm of tagText.matchAll(idRe)) {
-      const id = idm[1];
-      if (!items.has(id)) {
-        err(`${file}: test references unknown ledger ID ${id}`);
-        continue;
+  // Parse declarations, not strings/comments containing example tests. Preserve
+  // skipped-suite context so a test inside describe.skip cannot prove an ID.
+  const source = ts.createSourceFile(file, src, ts.ScriptTarget.Latest, true);
+  const visit = (node, disabled = false) => {
+    if (ts.isCallExpression(node)) {
+      const name = node.expression.getText(source);
+      if (/^(test|it|describe)\.?(describe\.)?(only)$/.test(name)) bannedOnly++;
+      if (/^(test\.describe|describe)\.(skip|fixme)$/.test(name))
+        disabled = true;
+      const declaration = /^(test|it)(?:\.(only|skip|fixme|fail|slow))?$/.exec(
+        name,
+      );
+      if (declaration && node.arguments.length >= 2) {
+        const titleNode = node.arguments[0];
+        const title = ts.isStringLiteralLike(titleNode) ? titleNode.text : '';
+        const tagText = prefixRe.exec(title)?.[0] ?? '';
+        if (browser && !tagText)
+          err(
+            `${file}: every browser test title must start with a literal ledger ID`,
+          );
+        const modifier = disabled ? 'skip' : declaration[2];
+        for (const idm of tagText.matchAll(idRe)) {
+          const id = idm[1];
+          if (!items.has(id)) {
+            err(`${file}: test references unknown ledger ID ${id}`);
+            continue;
+          }
+          if (modifier === 'skip' || modifier === 'fixme') continue; // not a proof
+          const bucket = modifier === 'fail' ? failTests : activeTests;
+          if (modifier === 'fail' && !browser) {
+            err(
+              `${file}: test.fail is only allowed in browser (e2e) tests (${id})`,
+            );
+            continue;
+          }
+          if (!bucket.has(id)) bucket.set(id, []);
+          bucket
+            .get(id)
+            .push({ file, browser, guardProbe: title === guardProbeTitle });
+        }
+        // Test bodies may contain test.fail(condition, reason) annotations;
+        // they are not standalone proof declarations.
+        return;
       }
-      if (modifier === 'skip' || modifier === 'fixme') continue; // not a proof
-      const bucket = modifier === 'fail' ? failTests : activeTests;
-      if (modifier === 'fail' && !browser) {
-        err(
-          `${file}: test.fail is only allowed in browser (e2e) tests (${id})`,
-        );
-        continue;
-      }
-      if (!bucket.has(id)) bucket.set(id, []);
-      bucket.get(id).push({ file, browser });
     }
-  }
+    ts.forEachChild(node, (child) => visit(child, disabled));
+  };
+  visit(source);
 }
 if (bannedOnly) err(`test.only found in ${bannedOnly} place(s); remove it`);
 
@@ -143,7 +168,15 @@ for (const it of items.values()) {
       `${it.id} is Bug but also has passing-style tests; check that the bug is real`,
     );
   }
-  if (it.status === 'Verified' && failTests.has(it.id)) {
+  // W0 explicitly requires the negative guard self-test alongside a passing
+  // DEV-006 test. Only that exact infrastructure probe is exempt; product bug
+  // reproductions still prevent Verified, and the report must show it expected.
+  if (
+    it.status === 'Verified' &&
+    (failTests.get(it.id) ?? []).some(
+      (test) => !(it.id === 'DEV-006' && test.guardProbe),
+    )
+  ) {
     err(
       `${it.id} is Verified but still has a test.fail reproduction; convert it to a normal test`,
     );
@@ -174,10 +207,27 @@ if (reportPath) {
         const tests = spec.tests ?? [];
         const skipped =
           tests.length > 0 && tests.every((t) => t.status === 'skipped');
-        const ok = spec.ok === true && !skipped;
+        const ok =
+          spec.ok === true &&
+          !skipped &&
+          tests.length > 0 &&
+          tests.every((t) => t.status === 'expected');
+        const expectedFail =
+          ok &&
+          tests.every(
+            (t) =>
+              t.expectedStatus === 'failed' &&
+              t.results?.at(-1)?.status === 'failed',
+          );
         for (const id of ids) {
-          const r = results.get(id) ?? { passed: 0, failed: 0, skipped: 0 };
+          const r = results.get(id) ?? {
+            passed: 0,
+            failed: 0,
+            skipped: 0,
+            expectedFail: 0,
+          };
           if (skipped) r.skipped++;
+          else if (expectedFail) r.expectedFail++;
           else if (ok) r.passed++;
           else r.failed++;
           results.set(id, r);
@@ -200,6 +250,17 @@ if (reportPath) {
         else if (r.passed === 0)
           err(`${it.id} is Verified but all its tests were skipped`);
       }
+      if (it.status === 'Bug' && (!r || r.failed > 0 || r.expectedFail === 0))
+        err(
+          `${it.id} is Bug but the report has no successful expected-failure reproduction`,
+        );
+      if (
+        it.id === 'DEV-006' &&
+        it.status === 'Verified' &&
+        failTests.has(it.id) &&
+        !r?.expectedFail
+      )
+        err('DEV-006 guard probe did not fail as expected in the report');
     }
   }
 }

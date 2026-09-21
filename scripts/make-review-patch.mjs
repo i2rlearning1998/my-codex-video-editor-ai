@@ -18,6 +18,8 @@ if (!base) {
   process.exit(1);
 }
 const name = nameArg ?? head.replace(/[^\w.-]/g, '_');
+if (!/^[\w.-]+$/.test(name) || name === '.' || name === '..')
+  throw new Error('Patch name must be a simple filename');
 
 const excludes = [
   'package-lock.json',
@@ -27,6 +29,7 @@ const excludes = [
   'dist',
   'test-results',
   'playwright-report',
+  'e2e-results',
   'reports/*.patch',
   'reports/*.stat.txt',
 ].map((p) => `:(exclude)${p}`);
@@ -34,7 +37,16 @@ const excludes = [
 const git = (extra) =>
   execFileSync(
     'git',
-    ['diff', ...extra, `${base}..${head}`, '--', '.', ...excludes],
+    [
+      '-c',
+      `safe.directory=${process.cwd().replaceAll('\\', '/')}`,
+      'diff',
+      ...extra,
+      `${base}..${head}`,
+      '--',
+      '.',
+      ...excludes,
+    ],
     {
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
