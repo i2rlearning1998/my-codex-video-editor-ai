@@ -101,7 +101,7 @@ export async function createDebugReport(
       .map((error) => ({ ...error, stack: error.stack.slice(0, 5) })),
     project: JSON.parse(text) as unknown,
   };
-  if (bytes.byteLength > 200 * 1024) {
+  if (bytes.byteLength > 200_000) {
     const digest = await crypto.subtle.digest('SHA-256', bytes);
     report.project = {
       omitted: true,

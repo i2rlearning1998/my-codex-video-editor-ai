@@ -32,9 +32,13 @@ test.fail(
     );
     await page.goto('/');
     await openFixtureProject('nle-example.json');
-    const handle = (await page
-      .locator('[data-clip-id="clip-a"] .timeline-trim.right')
-      .boundingBox())!;
+    await page.bringToFront();
+    await page
+      .locator('.timeline-clip[data-clip-id="clip-a"]')
+      .click({ position: { x: 40, y: 10 } });
+    const trim = page.locator('[data-clip-id="clip-a"] .timeline-trim.right');
+    await trim.hover();
+    const handle = (await trim.boundingBox())!;
     await page.mouse.move(handle.x + 3, handle.y + 8);
     await page.mouse.down();
     await page.mouse.move(handle.x + 203, handle.y + 8, { steps: 12 });

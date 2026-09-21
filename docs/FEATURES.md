@@ -45,17 +45,17 @@ Makes every later 'done' claim provable. These items are the process itself.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| DEV-001 | P0 | W0 | Todo | Playwright e2e harness runs against the dev server in real Google Chrome or Edge (no browser download needed locally); `npm run e2e` passes |
-| DEV-002 | P0 | W0 | Todo | `npm run verify` runs check + e2e + ledger validation and is the only definition of green |
-| DEV-003 | P0 | W0 | Todo | Every e2e test title starts with its ledger ID in brackets; `npm run ledger` fails when a Verified item has no test or a test names an unknown ID |
-| DEV-004 | P0 | W0 | Todo | GitHub Actions workflow runs `npm run verify` on every push and pull request and uploads the Playwright report and traces |
-| DEV-005 | P0 | W0 | Todo | Read-only test hook (dev/test only) exposes project and session snapshots to e2e; it cannot mutate state and is absent from production builds |
-| DEV-006 | P0 | W0 | Todo | Global e2e guard fails any test that produces console errors, uncaught page errors or failed network requests |
-| DEV-007 | P0 | W0 | Todo | "Copy debug report" action copies JSON: build id, browser, viewport, active composition, selection, playhead, last 30 command labels, last 50 console errors, project JSON when under 200 KB |
+| DEV-001 | P0 | W0 | Verified | Playwright e2e harness runs against the dev server in real Google Chrome or Edge (no browser download needed locally); `npm run e2e` passes |
+| DEV-002 | P0 | W0 | Verified | `npm run verify` runs check + e2e + ledger validation and is the only definition of green |
+| DEV-003 | P0 | W0 | Verified | Every e2e test title starts with its ledger ID in brackets; `npm run ledger` fails when a Verified item has no test or a test names an unknown ID |
+| DEV-004 | P0 | W0 | Claimed | GitHub Actions workflow runs `npm run verify` on every push and pull request and uploads the Playwright report and traces |
+| DEV-005 | P0 | W0 | Verified | Read-only test hook (dev/test only) exposes project and session snapshots to e2e; it cannot mutate state and is absent from production builds |
+| DEV-006 | P0 | W0 | Verified | Global e2e guard fails any test that produces console errors, uncaught page errors or failed network requests |
+| DEV-007 | P0 | W0 | Verified | "Copy debug report" action copies JSON: build id, browser, viewport, active composition, selection, playhead, last 30 command labels, last 50 console errors, project JSON when under 200 KB |
 | DEV-008 | P0 | W4 | Todo | Media fixture pack committed under tests/fixtures/media with manifest, plus a media-populated project fixture generated through engine commands |
-| DEV-009 | P0 | W0 | Todo | AGENTS.md, README, ARCHITECTURE and CHANGELOG match T3 reality; obsolete restrictions are archived, not silently deleted |
-| DEV-010 | P0 | W0 | Todo | `npm run patch` creates a review patch excluding lockfile, media fixtures and specs |
-| DEV-011 | P0 | W0 | Todo | Report template and try-it script convention are documented in docs/PROCESS.md and used by reports/W0.md |
+| DEV-009 | P0 | W0 | Verified | AGENTS.md, README, ARCHITECTURE and CHANGELOG match T3 reality; obsolete restrictions are archived, not silently deleted |
+| DEV-010 | P0 | W0 | Verified | `npm run patch` creates a review patch excluding lockfile, media fixtures and specs |
+| DEV-011 | P0 | W0 | Verified | Report template and try-it script convention are documented in docs/PROCESS.md and used by reports/W0.md |
 | DEV-012 | P1 | W1 | Todo | Screenshot (visual snapshot) harness exists for layout regression; baselines are created from Wave 1 onward |
 
 ## APP: App shell, top bar and menus (Wave 1)

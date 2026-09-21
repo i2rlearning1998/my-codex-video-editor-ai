@@ -2,6 +2,14 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 0 lite — 2026-09-21
+
+- Integrated the Wave process, ledger, briefs, report template and archived Tier rules.
+- Added a real-Chrome Playwright harness, automatic error guard, six baseline proofs and three expected-failure bug reproductions. Product bugs remain unfixed.
+- Added a frozen development-only test hook, production hook-leak assertion, and bounded debug reports with clipboard/download support and Ctrl+Shift+D.
+- Added tested ledger/patch tooling and a GitHub Actions workflow (unrun without a remote). See `reports/W0.md` for actual verification and limitations.
+- Preserved schema 4, the engine, command bus, rendering, transform contracts and existing editing behavior. No other wave started.
+
 ## T3 — schema 4 baseline (captured 2026-09-19; individual change dates unrecorded)
 
 - Added canonical schema-4 Track→Clip ownership with multiple clips per track, stable layer/asset links, source in/out metadata, track state/order, exact clip timing, and an explicit consecutive 3→4 migration.

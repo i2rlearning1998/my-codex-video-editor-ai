@@ -1,6 +1,6 @@
 # AI-Native Video Editor
 
-T3 baseline (schema 4), with Wave 0 proof infrastructure in progress.
+T3 baseline (schema 4), with Wave 0 proof infrastructure. Six baseline behaviors now have real-browser proof; see the ledger for the exact verified scope.
 
 Scope and evidence now follow [AGENTS.md](AGENTS.md), the [process](docs/PROCESS.md), [Feature Ledger](docs/FEATURES.md), [decisions](docs/DECISIONS.md), and [current status](docs/STATUS.md). Historical Tier restrictions are obsolete. Known baseline bugs: locked-track deletion, right-trim overlap, and a missing favicon; Wave 0 records them without fixing them.
 
@@ -20,7 +20,18 @@ A browser-first TypeScript editor with one engine, one canonical scene graph, an
 
 ## Run locally
 
-Use Node.js 20 or later and npm 10 or later. Development was validated on Node 20.5.0; npm 10 was used to generate the lockfile after the host's npm 9 dependency resolver failed during an upgrade.
+Use Node.js 20.6 or later and npm 10 or later. Playwright's TypeScript ESM loader needs Node's `module.register`, introduced in 20.6; the host's Node 20.5 fails to load the test configuration. Wave 0 was validated using the already-installed bundled Node 24.19.0 and npm 10.9.9. The minimum 20.6 runtime was not independently tested. No system Node upgrade was made.
+
+On this Windows machine, use the existing bundled runtime for the current PowerShell session:
+
+```powershell
+$env:PATH = "$env:USERPROFILE/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin;$env:PATH"
+node --version
+npx --yes npm@10 ci
+npx --yes npm@10 run verify
+```
+
+If the default npm is still 9.x, use `npx --yes npm@10 run <script>` for the commands below. Local browser tests use installed Chrome, falling back to Edge when Chrome is absent; CI installs bundled Chromium. Browser reports, traces and screenshots are generated locally and ignored by Git.
 
 ```sh
 npm ci

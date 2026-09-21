@@ -1,4 +1,5 @@
 import { test, expect, allowError, hook } from './fixtures';
+import { writeFile } from 'node:fs/promises';
 
 test.beforeEach(async ({ page }) => {
   allowError(
@@ -22,6 +23,7 @@ test('[DEV-007] button copies a parseable debug report and shortcut also works',
     .click();
   await expect(page.locator('#status')).toHaveText('Debug report copied.');
   const text = await page.evaluate(() => navigator.clipboard.readText());
+  await writeFile(testInfo.outputPath('copied-debug-report.txt'), text, 'utf8');
   const report = JSON.parse(text);
   expect(report.schema).toBe('aive-debug-report/1');
   expect(report.project).toEqual((await hook(page)).project);
