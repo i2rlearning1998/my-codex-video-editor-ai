@@ -233,10 +233,10 @@ Everything the user does directly on the preview canvas.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| CV-001 | P0 | W2 | Claimed | Clicking a layer selects it; clicking empty canvas deselects |
+| CV-001 | P0 | W2 | Verified | Clicking a layer selects it; clicking empty canvas deselects |
 | CV-002 | P0 | W2 | Claimed | Shift or Ctrl click toggles a layer in the multi-selection |
 | CV-003 | P0 | W2 | Claimed | Marquee drag on empty canvas selects the layers it touches |
-| CV-004 | P0 | W2 | Claimed | Dragging a selected layer moves it and produces exactly one undo step |
+| CV-004 | P0 | W2 | Verified | Dragging a selected layer moves it and produces exactly one undo step |
 | CV-005 | P0 | W2 | Todo | Holding Shift while dragging constrains to the axis; Alt-drag duplicates |
 | CV-006 | P0 | W2 | Claimed | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
 | CV-007 | P0 | W2 | Claimed | Corner handle drag resizes proportionally; the opposite corner stays fixed |
@@ -316,11 +316,11 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-018 | P0 | W2 | Claimed | Trimming the left edge changes start and in-point and never goes past the source or into a neighbor |
 | TL-019 | P0 | W2 | Bug | Trimming the right edge changes duration and never goes past the source or into a neighbor |
 | TL-020 | P0 | W2 | Todo | Clips never overlap on the same track and never shrink below one frame |
-| TL-021 | P0 | W2 | Claimed | Split at the playhead (Split button and S key) cuts the selected clip into two at that time |
+| TL-021 | P0 | W2 | Verified | Split at the playhead (Split button and S key) cuts the selected clip into two at that time |
 | TL-022 | P0 | W2 | Todo | With no clip selected, Split cuts every unlocked clip under the playhead |
 | TL-023 | P0 | W2 | Claimed | Duplicate (Ctrl+D or button) creates an independent copy of the selected clip |
 | TL-024 | P0 | W2 | Todo | Alt-drag copies clips while dragging |
-| TL-025 | P0 | W2 | Claimed | Delete key removes the selected clips with one undo step |
+| TL-025 | P0 | W2 | Verified | Delete key removes the selected clips with one undo step |
 | TL-026 | P0 | W2 | Todo | Ripple delete removes clips and closes the gap |
 | TL-027 | P0 | W2 | Todo | Copy, cut and paste clips at the playhead onto the selected track |
 | TL-028 | P0 | W2 | Claimed | Snapping to playhead, clip edges, markers and grid with a visible snap line |
@@ -357,7 +357,7 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| PB-001 | P0 | W2 | Claimed | The Play button advances the playhead in real time and the Stop button stops it |
+| PB-001 | P0 | W2 | Verified | The Play button advances the playhead in real time and the Stop button stops it |
 | PB-002 | P0 | W2 | Claimed | Playback uses elapsed wall-clock time so speed is correct even when frames are dropped |
 | PB-003 | P0 | W2 | Todo | Step one frame backward and forward with buttons and arrow keys |
 | PB-004 | P0 | W2 | Todo | Jump to start, jump to end, previous and next cut |
@@ -402,7 +402,7 @@ The engine already has atomic transactions and history; this covers what the use
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| HIS-001 | P0 | W2 | Claimed | Undo and Redo buttons reverse and reapply the last action, including a full drag gesture as one step |
+| HIS-001 | P0 | W2 | Verified | Undo and Redo buttons reverse and reapply the last action, including a full drag gesture as one step |
 | HIS-002 | P0 | W2 | Claimed | Every user edit is undoable: canvas gestures, inspector edits, timeline edits |
 | HIS-003 | P0 | W2 | Todo | Undo and Redo buttons show correct enabled state and name the next action |
 | HIS-004 | P0 | W2 | Claimed | History is memory-bounded and never crashes on long sessions |
