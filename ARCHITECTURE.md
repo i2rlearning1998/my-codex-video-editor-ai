@@ -1,5 +1,7 @@
 # Architecture
 
+> Status note: historical Tier scope limits and next-milestone restrictions below are obsolete. The current baseline is T3, schema 4, with timeline editing and playback. Scope and approved decisions now live in [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). Frozen architecture contracts remain binding.
+
 ## Ownership and dependency direction
 
 ```text

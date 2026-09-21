@@ -1,6 +1,8 @@
 # Changelog
 
-## T3 - 2026-09-13
+> Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
+
+## T3 — schema 4 baseline (captured 2026-09-19; individual change dates unrecorded)
 
 - Added canonical schema-4 Track→Clip ownership with multiple clips per track, stable layer/asset links, source in/out metadata, track state/order, exact clip timing, and an explicit consecutive 3→4 migration.
 - Added command-driven track/clip create, delete, move, trim, enable, lock, mute and reorder operations. Timeline asset drops create linked clips, and render/Inspector/playback visibility resolves clip timing without a second state store.

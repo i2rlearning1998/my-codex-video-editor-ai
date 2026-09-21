@@ -1,6 +1,20 @@
 # AI-Native Video Editor
 
-Phase 1 — T3 — Responsive Timeline & Editing Workspace
+T3 baseline (schema 4), with Wave 0 proof infrastructure in progress.
+
+Scope and evidence now follow [AGENTS.md](AGENTS.md), the [process](docs/PROCESS.md), [Feature Ledger](docs/FEATURES.md), [decisions](docs/DECISIONS.md), and [current status](docs/STATUS.md). Historical Tier restrictions are obsolete. Known baseline bugs: locked-track deletion, right-trim overlap, and a missing favicon; Wave 0 records them without fixing them.
+
+## Proof commands
+
+| Command                                 | Purpose                                                             |
+| --------------------------------------- | ------------------------------------------------------------------- |
+| `npm run check`                         | Format check, typecheck, unit tests, build (legacy gate)            |
+| `npm run e2e`                           | Playwright tests in real Chrome or Edge                             |
+| `npm run e2e:headed`                    | Same with the browser visible                                       |
+| `npm run e2e:report`                    | Open the HTML report                                                |
+| `npm run ledger`                        | Validate the ledger against tests; `-- --summary` prints a table    |
+| `npm run patch -- <base> <head> <name>` | Write the review patch and stat to reports                          |
+| `npm run verify`                        | Check + e2e + production hook assertion + ledger; the complete gate |
 
 A browser-first TypeScript editor with one engine, one canonical scene graph, and one semantic command bus. The responsive workspace includes shared multi-selection, Canvas transforms, timeline editing, elapsed-time playback, markers, and basic keyframe authoring. Media remains a labeled placeholder; playback drives composition time and visibility.
 

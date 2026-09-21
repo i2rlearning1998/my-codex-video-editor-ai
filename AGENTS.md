@@ -23,7 +23,7 @@ When instructions conflict, the higher item wins. If a conflict is not resolved 
 7. `docs/specs/*` (vision and reference only; broader than the ledger; never a reason to build unlisted work).
 8. Chat messages.
 
-Obsolete and no longer binding (archived): "current approved scope is Tier 2.2.1", "timeline/playback not authorized", "inspector may edit only six fields", "libraries are presentation only", and any other Tier-era restriction. The ledger and the current brief define scope now.
+Obsolete and no longer binding (archived): the Tier 2.2.1 scope restriction, "timeline/playback not authorized", "inspector may edit only six fields", "libraries are presentation only", and any other Tier-era restriction. The ledger and the current brief define scope now.
 
 ## 2. Session protocol
 
