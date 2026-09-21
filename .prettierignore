@@ -2,3 +2,13 @@ node_modules/
 dist/
 coverage/
 package-lock.json
+
+docs/FEATURES.md
+docs/specs/
+docs/archive/
+docs/reference/
+reports/
+tests/fixtures/
+e2e-results/
+playwright-report/
+test-results/

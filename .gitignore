@@ -2,3 +2,11 @@ node_modules/
 dist/
 coverage/
 *.local
+
+playwright-report/
+test-results/
+e2e-results/
+reports/*.patch
+reports/*.stat.txt
+review.zip
+.env*
