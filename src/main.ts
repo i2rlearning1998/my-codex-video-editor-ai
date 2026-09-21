@@ -78,6 +78,13 @@ const shell = mountEditorShell(
   },
 );
 shell.message(initialMessage);
+let removeTestHook: (() => void) | undefined;
+let disposed = false;
+if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
+  void import('./dev/test-hook').then(({ installTestHook }) => {
+    if (!disposed) removeTestHook = installTestHook(engine, shell.session);
+  });
+}
 const autosave = store
   ? new Autosave(engine, store, {
       onSaved: () => shell.message('Saved locally.'),
@@ -93,6 +100,8 @@ const flush = () => {
 window.addEventListener('pagehide', flush);
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
+    disposed = true;
+    removeTestHook?.();
     flush();
     autosave?.dispose();
     shell.dispose();
