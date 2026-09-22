@@ -222,7 +222,11 @@ describe('canvas command interactions', () => {
       s.event('pointerdown', start);
       s.event('pointermove', [start[0] + 20, start[1]]);
       if (reason === 'escape')
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        s.root
+          .querySelector('canvas')!
+          .dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          );
       else if (reason === 'blur' || reason === 'resize')
         window.dispatchEvent(new Event(reason));
       else s.event(reason, start);

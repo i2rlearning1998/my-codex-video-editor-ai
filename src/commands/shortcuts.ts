@@ -38,7 +38,11 @@ export function bindShortcuts(
           event.stopImmediatePropagation();
           return;
         }
-        if (isTyping(document.activeElement)) return;
+        if (
+          isTyping(document.activeElement) ||
+          isTyping(event.target instanceof Element ? event.target : null)
+        )
+          return;
         context.session.select(null);
         event.preventDefault();
         event.stopImmediatePropagation();

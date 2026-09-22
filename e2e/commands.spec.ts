@@ -9,7 +9,10 @@ test('[KEY-002] fuzzy palette runs Undo and exposes shortcuts', async ({
   );
   await page.goto('/');
   await page.locator('[data-layer-id="example-headline"]').first().click();
-  const input = page.getByRole('spinbutton', { name: 'Position X', exact: true });
+  const input = page.getByRole('spinbutton', {
+    name: 'Position X',
+    exact: true,
+  });
   const before = await hook(page);
   await input.fill('321');
   await input.press('Enter');

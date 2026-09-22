@@ -91,6 +91,15 @@ test('[KEY-007] typing in inputs, textarea and contenteditable never runs editor
   page,
 }) => {
   await page.locator('[data-layer-id="example-headline"]').first().click();
+  const position = page.getByRole('spinbutton', {
+    name: 'Position X',
+    exact: true,
+  });
+  const original = await position.inputValue();
+  await position.fill('321');
+  await position.press('Escape');
+  await expect(position).toHaveValue(original);
+  expect((await hook(page)).history.canUndo).toBe(false);
   await page.locator('#save').click();
   await page.keyboard.press('Control+k');
   const before = await hook(page);

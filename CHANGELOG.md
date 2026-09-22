@@ -2,6 +2,13 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 1 Codex modules — 2026-09-22
+
+- Added English/Hindi translation runtime, locale formatting, persistent language choice and text-only shell wiring.
+- Added the command registry, fuzzy palette, global shortcuts with typing guards and a registry-backed shortcut sheet.
+- Added New Project validation and a temporary form for aspect/resolution/frame-rate presets, even custom dimensions and solid backgrounds; transparency deferred by owner.
+- Retained schema 4 and existing canvas/timeline editing, playback and persistence; temporary markup awaits Claude’s shell integration.
+
 ## Wave 0 lite — 2026-09-21
 
 - Integrated the Wave process, ledger, briefs, report template and archived Tier rules.
