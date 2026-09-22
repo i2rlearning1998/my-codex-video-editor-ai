@@ -332,6 +332,7 @@ export function mountTimeline(
   session: EditorSession,
   changed: () => void,
   report: (error: unknown) => void,
+  externalKeyboard = false,
 ) {
   root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-playback" role="group" aria-label="Playback"><button data-action="play" aria-label="Play or pause">▶</button><button data-action="stop" aria-label="Stop playback">■</button></div><div class="transport-group" role="group" aria-label="Clip actions"><button data-action="split">Split</button><button data-action="duplicate">Duplicate</button><button data-action="marker">+ Marker</button></div><div class="transport-composition" role="group" aria-label="Composition and time"><span data-composition-strip></span><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-zoom" role="group" aria-label="Timeline zoom"><button data-action="zoom-out" aria-label="Timeline zoom out">−</button><span data-zoom-label></span><button data-action="zoom-in" aria-label="Timeline zoom in">+</button></div></div><div class="timeline-scroll" tabindex="0" aria-label="Timeline tracks. Arrow keys move time; Shift moves ten frames; Home and End seek; Delete removes selection."><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
@@ -1226,7 +1227,7 @@ export function mountTimeline(
     pointercancel,
     lostpointercapture: pointercancel,
     click,
-    keydown,
+    ...(externalKeyboard ? {} : { keydown }),
     contextmenu,
     dragstart,
     dragleave,
@@ -1271,6 +1272,15 @@ export function mountTimeline(
   });
   render();
   return {
+    get active() {
+      return pointer !== null && pointer !== undefined;
+    },
+    handleKey: keydown,
+    closeMenu() {
+      if (menu.hidden) return false;
+      menu.hidden = true;
+      return true;
+    },
     controller,
     render,
     cancel,

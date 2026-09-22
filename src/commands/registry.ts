@@ -6,6 +6,8 @@ export interface CommandContext {
   engine: EditorEngine;
   session: EditorSession;
   save?: () => void;
+  openPalette?: () => void;
+  openShortcuts?: () => void;
   togglePlayback: () => void;
 }
 export interface RegisteredCommand {
@@ -28,6 +30,20 @@ const edit = (id: EditAction, shortcut: string): RegisteredCommand => ({
   run: ({ engine, session }) => performEdit(engine, session, id),
 });
 export const commands: readonly RegisteredCommand[] = Object.freeze([
+  {
+    id: 'palette',
+    labelKey: 'palette.title',
+    shortcut: 'Ctrl+K',
+    isEnabled: (context) => !!context.openPalette,
+    run: (context) => context.openPalette?.(),
+  },
+  {
+    id: 'shortcuts',
+    labelKey: 'shortcuts.title',
+    shortcut: 'Ctrl+/',
+    isEnabled: (context) => !!context.openShortcuts,
+    run: (context) => context.openShortcuts?.(),
+  },
   {
     id: 'undo',
     labelKey: 'command.undo',

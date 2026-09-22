@@ -73,5 +73,8 @@
   "command.play": "Play or pause",
   "palette.title": "Command palette",
   "palette.search": "Search commands",
-  "palette.empty": "No matching commands"
+  "palette.empty": "No matching commands",
+  "shortcuts.title": "Keyboard shortcuts",
+  "shortcuts.none": "No shortcut",
+  "action.close": "Close"
 }

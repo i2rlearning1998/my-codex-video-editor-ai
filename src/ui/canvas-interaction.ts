@@ -13,6 +13,7 @@ export function bindCanvasInteraction(
   viewport: () => Viewport,
   report: (error: unknown) => void,
   edit?: (action: 'delete' | 'duplicate') => void,
+  externalKeyboard = false,
 ) {
   let pointer: number | null = null;
   let marquee: {
@@ -285,9 +286,13 @@ export function bindCanvasInteraction(
     marquee?.box.remove();
     marquee = null;
   });
-  window.addEventListener('keydown', keydown, true);
+  if (!externalKeyboard) window.addEventListener('keydown', keydown, true);
   window.addEventListener('blur', cancel);
   return {
+    get active() {
+      return pointer !== null || interaction.active || marquee !== null;
+    },
+    handleKey: keydown,
     cancel,
     dispose() {
       cancel();

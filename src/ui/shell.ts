@@ -1,3 +1,5 @@
+import { bindShortcuts } from '../commands/shortcuts';
+import { mountShortcutSheet } from './shortcut-sheet';
 import { runCommand, type CommandContext } from '../commands/registry';
 import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay } from './temporary-overlay';
@@ -138,6 +140,7 @@ export function mountEditorShell(
     viewport,
     (error) => message(error instanceof Error ? error.message : String(error)),
     (action) => performEdit(engine, session, action),
+    true,
   );
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -358,6 +361,7 @@ export function mountEditorShell(
     session,
     () => safely(draw),
     (error) => message(error instanceof Error ? error.message : String(error)),
+    true,
   );
   const commandContext: CommandContext = {
     engine,
@@ -369,23 +373,32 @@ export function mountEditorShell(
   const palette = mountCommandPalette(commandContext, (error) =>
     message(String(error)),
   );
-  const paletteKey = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && closeTopOverlay()) {
-      event.preventDefault();
-      return;
-    }
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      event.key.toLowerCase() === 'k' &&
-      !(document.activeElement as HTMLElement | null)?.closest(
-        'input,textarea,[contenteditable="true"]',
+  const shortcutSheet = mountShortcutSheet();
+  commandContext.openPalette = palette.open;
+  commandContext.openShortcuts = shortcutSheet.open;
+  const disposeShortcuts = bindShortcuts(commandContext, {
+    cancelGesture: () => {
+      if (pointer.active) {
+        pointer.cancel();
+        return true;
+      }
+      if (timeline?.active) {
+        timeline.cancel();
+        return true;
+      }
+      return false;
+    },
+    closeOverlay: () => closeTopOverlay() || (timeline?.closeMenu() ?? false),
+    localKey: (event) => {
+      if (event.target === canvas) pointer.handleKey(event);
+      else if (
+        event.target instanceof Node &&
+        element('#timeline-foundation').contains(event.target)
       )
-    ) {
-      event.preventDefault();
-      palette.open();
-    }
-  };
-  document.addEventListener('keydown', paletteKey);
+        timeline?.handleKey(event);
+    },
+    report: (error) => message(String(error)),
+  });
   const unsubscribe = session.onChange(refresh);
   element<HTMLSelectElement>('#composition').onchange = (event) =>
     session.selectComposition((event.target as HTMLSelectElement).value);
@@ -593,19 +606,6 @@ export function mountEditorShell(
   canvas.addEventListener('dragover', assetOver);
   canvas.addEventListener('drop', assetDrop);
   element('#timeline-foundation').addEventListener('drop', assetDrop);
-  const workspaceKey = (event: KeyboardEvent) => {
-    if (
-      (event.target as HTMLElement).closest(
-        'input,textarea,select,#timeline-foundation',
-      )
-    )
-      return;
-    if (event.key === ' ') {
-      event.preventDefault();
-      element<HTMLButtonElement>('[data-action="play"]').click();
-    }
-  };
-  root.addEventListener('keydown', workspaceKey);
   const unsubscribeLanguage = subscribe(() => {
     translateStatic();
     refresh(true);
@@ -621,11 +621,11 @@ export function mountEditorShell(
     dispose: () => {
       if (disposed) return;
       disposed = true;
-      document.removeEventListener('keydown', paletteKey);
+      disposeShortcuts();
+      shortcutSheet.dispose();
       palette.dispose();
       unsubscribeLanguage();
       disposeWorkspace();
-      root.removeEventListener('keydown', workspaceKey);
       canvas.removeEventListener('dragover', assetOver);
       canvas.removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener('drop', assetDrop);

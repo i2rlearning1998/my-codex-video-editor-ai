@@ -25,6 +25,8 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       engine,
       session,
       save: vi.fn(),
+      openPalette: vi.fn(),
+      openShortcuts: vi.fn(),
       togglePlayback: () => session.setPlaying(!session.playing),
     };
     if (command.id === 'undo' || command.id === 'redo')
@@ -36,7 +38,11 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     }
     expect(command.isEnabled(context), command.id).toBe(true);
     expect(runCommand(command.id, context), command.id).toBe(true);
-    if (command.id === 'save') expect(context.save).toHaveBeenCalledOnce();
+    if (command.id === 'palette')
+      expect(context.openPalette).toHaveBeenCalledOnce();
+    else if (command.id === 'shortcuts')
+      expect(context.openShortcuts).toHaveBeenCalledOnce();
+    else if (command.id === 'save') expect(context.save).toHaveBeenCalledOnce();
     else if (command.id === 'play') expect(session.playing).toBe(true);
     else if (command.id === 'select-all')
       expect(session.selectedIds).toEqual(ids);
