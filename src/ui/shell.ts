@@ -1,3 +1,6 @@
+import { runCommand, type CommandContext } from '../commands/registry';
+import { mountCommandPalette } from './command-palette';
+import { closeTopOverlay } from './temporary-overlay';
 import {
   t,
   formatNumber,
@@ -356,16 +359,43 @@ export function mountEditorShell(
     () => safely(draw),
     (error) => message(error instanceof Error ? error.message : String(error)),
   );
+  const commandContext: CommandContext = {
+    engine,
+    session,
+    ...(actions.save ? { save: actions.save } : {}),
+    togglePlayback: () =>
+      element<HTMLButtonElement>('[data-action="play"]').click(),
+  };
+  const palette = mountCommandPalette(commandContext, (error) =>
+    message(String(error)),
+  );
+  const paletteKey = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && closeTopOverlay()) {
+      event.preventDefault();
+      return;
+    }
+    if (
+      (event.ctrlKey || event.metaKey) &&
+      event.key.toLowerCase() === 'k' &&
+      !(document.activeElement as HTMLElement | null)?.closest(
+        'input,textarea,[contenteditable="true"]',
+      )
+    ) {
+      event.preventDefault();
+      palette.open();
+    }
+  };
+  document.addEventListener('keydown', paletteKey);
   const unsubscribe = session.onChange(refresh);
   element<HTMLSelectElement>('#composition').onchange = (event) =>
     session.selectComposition((event.target as HTMLSelectElement).value);
   element<HTMLButtonElement>('#undo').onclick = () =>
     safely(() => {
-      engine.undo();
+      runCommand('undo', commandContext);
     });
   element<HTMLButtonElement>('#redo').onclick = () =>
     safely(() => {
-      engine.redo();
+      runCommand('redo', commandContext);
     });
   for (const [id, action] of [
     ['#save', actions.save],
@@ -591,6 +621,8 @@ export function mountEditorShell(
     dispose: () => {
       if (disposed) return;
       disposed = true;
+      document.removeEventListener('keydown', paletteKey);
+      palette.dispose();
       unsubscribeLanguage();
       disposeWorkspace();
       root.removeEventListener('keydown', workspaceKey);

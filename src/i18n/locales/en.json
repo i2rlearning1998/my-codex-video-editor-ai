@@ -60,5 +60,18 @@
   "selection.single": "Select one layer to edit transforms",
   "status.openFailed": "Open failed: {error}",
   "asset.locked": "{name} is locked",
-  "asset.incompatible": "{name} is not compatible with {track}"
+  "asset.incompatible": "{name} is not compatible with {track}",
+  "command.undo": "Undo",
+  "command.redo": "Redo",
+  "command.duplicate": "Duplicate",
+  "command.delete": "Delete",
+  "command.split": "Split",
+  "command.marker": "Add marker",
+  "command.group": "Group",
+  "command.toggle-enabled": "Toggle enabled",
+  "command.selectAll": "Select all",
+  "command.play": "Play or pause",
+  "palette.title": "Command palette",
+  "palette.search": "Search commands",
+  "palette.empty": "No matching commands"
 }

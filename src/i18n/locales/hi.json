@@ -60,5 +60,18 @@
   "selection.single": "रूपांतरण संपादित करने के लिए एक परत चुनें",
   "status.openFailed": "खोलना विफल: {error}",
   "asset.locked": "{name} लॉक है",
-  "asset.incompatible": "{name}, {track} के अनुकूल नहीं है"
+  "asset.incompatible": "{name}, {track} के अनुकूल नहीं है",
+  "command.undo": "पूर्ववत करें",
+  "command.redo": "फिर करें",
+  "command.duplicate": "प्रतिलिपि बनाएँ",
+  "command.delete": "हटाएँ",
+  "command.split": "विभाजित करें",
+  "command.marker": "मार्कर जोड़ें",
+  "command.group": "समूह बनाएँ",
+  "command.toggle-enabled": "सक्रियता बदलें",
+  "command.selectAll": "सभी चुनें",
+  "command.play": "चलाएँ या रोकें",
+  "palette.title": "कमांड सूची",
+  "palette.search": "कमांड खोजें",
+  "palette.empty": "कोई कमांड नहीं मिली"
 }
