@@ -1,4 +1,12 @@
 import {
+  t,
+  formatNumber,
+  getLanguage,
+  setLanguage,
+  subscribe,
+  bindDomTranslations,
+} from '../i18n';
+import {
   multiplyMatrices,
   invertMatrix,
   transformPoint,
@@ -39,15 +47,23 @@ export function mountEditorShell(
 ) {
   root.innerHTML = `
     <div class="editor-shell">
-      <header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true">N</span><strong>AI-Native</strong><span class="brand-divider"></span><span class="product-mode">Manual editor</span></div><div class="project-title"><span class="project-dot" aria-hidden="true"></span><span id="project-name"></span></div><div class="top-actions"><button id="example">Open example</button><label class="button">Open project<input id="import" type="file" accept="application/json,.json" /></label><button id="save">Save locally</button><button id="export" class="primary">Export JSON <span aria-hidden="true">↗</span></button></div></header>
-      <aside class="library panel" aria-label="Library"><div class="panel-heading"><h2>Library</h2><span class="panel-symbol" aria-hidden="true">⊞</span></div><nav class="library-nav" aria-label="Library categories">${['Assets', 'Media', 'Graphics', 'Text', 'Templates'].map((name, index) => `<button data-category="${name}" aria-pressed="${index === 0}"><span class="nav-icon" aria-hidden="true">${['▦', '▷', '◇', 'T', '▤'][index]}</span>${name}</button>`).join('')}</nav><div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">▧</div><h3 id="library-title">Your assets, in one place</h3><p id="library-description">Asset importing will arrive in a later milestone.</p><span class="quiet-tag">Coming later</span></div><div class="scene-heading"><h2>Scene</h2><span id="layer-count" class="count"></span></div><div id="scene-list" class="scene-list" aria-label="Scene layers"></div><div class="library-footer"><span class="local-dot"></span> Local workspace <span class="milestone">T3</span></div></aside>
-      <main class="preview-panel" aria-label="Composition preview"><div class="preview-toolbar"><div class="composition-picker"><span class="tab-mark" aria-hidden="true">▣</span><select id="composition" aria-label="Composition"></select></div><div class="canvas-zoom-controls"><button data-canvas-zoom="out" aria-label="Canvas zoom out">−</button><button data-canvas-zoom="fit">Fit</button><button data-canvas-zoom="in" aria-label="Canvas zoom in">+</button></div></div><div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="Composition canvas. Click to select; drag to move; use corners to scale, edges to resize, and the round handle to rotate around the center. Text side handles change box width. Shift resizes proportionally. Escape cancels. Use the Scene list and inspector for keyboard editing.">Composition preview. Select layers in the Scene list to inspect them.</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>An open space for your next idea.</h3><p>This composition has no layers. Open the example to explore the preview.</p></div></div><div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">No layer selected</span><span id="zoom">Fit</span></div><p class="render-warning" id="render-warning" role="status" hidden></p></main>
-      <aside class="inspector panel" aria-label="Inspector"><div class="panel-heading"><h2>Inspector</h2><span class="quiet-tag">Transform</span></div><div id="inspector-content"></div></aside>
-      <section class="timeline" aria-label="Timeline"><div class="timeline-header"><div class="timeline-label"><h2>Timeline</h2></div><div class="history-actions"><button id="undo" aria-label="Undo project command" title="Undo project command">↶</button><button id="redo" aria-label="Redo project command" title="Redo project command">↷</button></div></div><div id="timeline-foundation"></div></section>
-      <footer class="statusbar"><span id="status" role="status" aria-live="polite">Ready.</span><span>PHASE 1 <span class="status-separator">/</span> T3 <span class="status-separator">·</span> Timeline + playback</span></footer>
+      <header class="topbar"><div class="brand"><span class="brand-mark" aria-hidden="true">N</span><strong>${t('app.title')}</strong><span class="brand-divider"></span><span class="product-mode">${t('app.mode')}</span></div><div class="project-title"><span class="project-dot" aria-hidden="true"></span><span id="project-name"></span></div><div class="top-actions"><button id="example">${t('action.example')}</button><label class="button">${t('action.open')}<input id="import" type="file" accept="application/json,.json" /></label><button id="save">${t('action.save')}</button><button id="export" class="primary">${t('action.export')} <span aria-hidden="true">↗</span></button></div></header>
+      <aside class="library panel" aria-label="${t('library.title')}"><div class="panel-heading"><h2>${t('library.title')}</h2><span class="panel-symbol" aria-hidden="true">⊞</span></div><nav class="library-nav" aria-label="${t('library.categories')}">${['Assets', 'Media', 'Graphics', 'Text', 'Templates'].map((name, index) => `<button data-category="${name}" aria-pressed="${index === 0}"><span class="nav-icon" aria-hidden="true">${['▦', '▷', '◇', 'T', '▤'][index]}</span>${t('library.' + name.toLowerCase())}</button>`).join('')}</nav><div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">▧</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div><div class="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div><div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div><div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">T3</span></div></aside>
+      <main class="preview-panel" aria-label="${t('canvas.preview')}"><div class="preview-toolbar"><div class="composition-picker"><span class="tab-mark" aria-hidden="true">▣</span><select id="composition" aria-label="${t('canvas.composition')}"></select></div><div class="canvas-zoom-controls"><button data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}">−</button><button data-canvas-zoom="fit">${t('canvas.fit')}</button><button data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}">+</button></div></div><div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div></div><div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span></div><p class="render-warning" id="render-warning" role="status" hidden></p></main>
+      <aside class="inspector panel" aria-label="${t('inspector.title')}"><div class="panel-heading"><h2>${t('inspector.title')}</h2><span class="quiet-tag">${t('inspector.transform')}</span></div><div id="inspector-content"></div></aside>
+      <section class="timeline" aria-label="${t('timeline.title')}"><div class="timeline-header"><div class="timeline-label"><h2>${t('timeline.title')}</h2></div><div class="history-actions"><button id="undo" aria-label="${t('action.undo')}" title="${t('action.undo')}">↶</button><button id="redo" aria-label="${t('action.redo')}" title="${t('action.redo')}">↷</button></div></div><div id="timeline-foundation"></div></section>
+      <footer class="statusbar"><span id="status" role="status" aria-live="polite">${t('status.ready')}</span><span>${t('status.phase')} <span class="status-separator">/</span> T3 <span class="status-separator">·</span> ${t('status.timeline')}</span></footer>
     </div>`;
   const element = <T extends HTMLElement>(selector: string) =>
     root.querySelector<T>(selector)!;
+  // Temporary language control; Claude's shell will replace this markup.
+  const languageButton = document.createElement('button');
+  languageButton.id = 'language-toggle';
+  languageButton.textContent = t('language.toggle');
+  element('.top-actions').append(languageButton);
+  const translateStatic = bindDomTranslations(root);
+  languageButton.onclick = () =>
+    setLanguage(getLanguage() === 'en' ? 'hi' : 'en');
   const session = new EditorSession(engine, renderer.measureText);
   const canvas = element<HTMLCanvasElement>('#composition-canvas');
   const stage = element('#canvas-stage');
@@ -102,7 +118,9 @@ export function mountEditorShell(
       viewport(),
       session.selectedId,
     );
-    element('#zoom').textContent = `Fit · ${Math.round(report.zoom * 100)}%`;
+    element('#zoom').textContent = t('canvas.zoom', {
+      zoom: formatNumber(Math.round(report.zoom * 100)),
+    });
     const warning = element('#render-warning');
     warning.hidden = report.warnings.length === 0;
     warning.textContent = report.warnings.join(' ');
@@ -132,7 +150,7 @@ export function mountEditorShell(
       renderedSelection === identity
     ) {
       const current = root.querySelector('[data-field="Current time"]');
-      if (current) current.textContent = String(session.currentTime);
+      if (current) current.textContent = formatNumber(session.currentTime);
       const layer = session.selectedId
         ? locateLayer(source.composition.layers, session.selectedId)?.layer
         : null;
@@ -146,10 +164,12 @@ export function mountEditorShell(
             (frame) => frame.time === session.currentTime,
           );
           button.textContent = exists ? '◆' : '◇';
-          button.title = exists ? 'Remove keyframe' : 'Add keyframe';
+          button.title = t(exists ? 'keyframe.remove' : 'keyframe.add');
           button.setAttribute(
             'aria-label',
-            `${exists ? 'Remove' : 'Add'} ${button.dataset.fieldName} keyframe`,
+            t(exists ? 'keyframe.removeField' : 'keyframe.addField', {
+              field: button.dataset.fieldName ?? '',
+            }),
           );
         }
       draw();
@@ -168,17 +188,20 @@ export function mountEditorShell(
       }),
     );
     picker.value = source.composition.id;
-    element('#composition-summary').textContent =
-      `${source.composition.width} × ${source.composition.height}  ·  ${source.composition.fps} fps`;
+    element('#composition-summary').textContent = t('canvas.summary', {
+      width: formatNumber(source.composition.width),
+      height: formatNumber(source.composition.height),
+      fps: formatNumber(source.composition.fps),
+    });
     const selected = session.selectedId
       ? locateLayer(source.composition.layers, session.selectedId)
       : null;
     element('#selection-summary').textContent =
       session.selectedIds.length > 1
-        ? `${session.selectedIds.length} layers selected`
+        ? t('selection.count', { count: session.selectedIds.length })
         : selected
-          ? `${selected.layer.name} selected`
-          : 'No layer selected';
+          ? t('selection.one', { name: selected.layer.name })
+          : t('selection.none');
     const list = element('#scene-list');
     const focusedId =
       document.activeElement instanceof HTMLElement
@@ -220,14 +243,14 @@ export function mountEditorShell(
     if (!count) {
       const empty = document.createElement('p');
       empty.className = 'scene-empty';
-      empty.textContent = 'No layers in this composition.';
+      empty.textContent = t('scene.empty');
       list.append(empty);
     }
     if (focusedId)
       [...list.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.dataset.layerId === focusedId)
         ?.focus({ preventScroll: true });
-    element('#layer-count').textContent = String(count);
+    element('#layer-count').textContent = formatNumber(count);
     let assets = root.querySelector<HTMLElement>('.available-assets');
     if (!assets) {
       assets = document.createElement('div');
@@ -242,7 +265,7 @@ export function mountEditorShell(
           item.textContent = asset.name;
           item.draggable = true;
           item.dataset.assetId = asset.id;
-          item.title = `Drag ${asset.name} to the Canvas or an existing timeline track`;
+          item.title = t('asset.drag', { name: asset.name });
           item.ondragstart = (event) =>
             event.dataTransfer?.setData('application/x-editor-asset', asset.id);
           return item;
@@ -256,7 +279,7 @@ export function mountEditorShell(
       (field, value) => {
         safely(() => {
           if (session.selectedIds.length > 1)
-            throw new Error('Select one layer to edit transforms');
+            throw new Error(t('selection.single'));
           interaction.edit(field, value);
         });
         refresh(true);
@@ -364,32 +387,17 @@ export function mountEditorShell(
     try {
       await actions.importProject?.(file);
     } catch (error) {
-      message(`Open failed: ${String(error)}`);
+      message(t('status.openFailed', { error: String(error) }));
     } finally {
       input.value = '';
     }
   };
   const descriptions: Record<string, [string, string]> = {
-    Assets: [
-      'Your assets, in one place',
-      'Asset importing will arrive in a later milestone.',
-    ],
-    Media: [
-      'A home for your footage',
-      'Media browsing is reserved for a later milestone.',
-    ],
-    Graphics: [
-      'Give your story a shape',
-      'The graphics library is not available yet.',
-    ],
-    Text: [
-      'Words that make an impression',
-      'Text presets are reserved for a later milestone.',
-    ],
-    Templates: [
-      'A starting point for every idea',
-      'Templates are not available yet.',
-    ],
+    Assets: ['library.assetsTitle', 'library.assetsDescription'],
+    Media: ['library.mediaTitle', 'library.mediaDescription'],
+    Graphics: ['library.graphicsTitle', 'library.graphicsDescription'],
+    Text: ['library.textTitle', 'library.textDescription'],
+    Templates: ['library.templatesTitle', 'library.templatesDescription'],
   };
   for (const button of root.querySelectorAll<HTMLButtonElement>(
     '[data-category]',
@@ -398,8 +406,8 @@ export function mountEditorShell(
       for (const sibling of root.querySelectorAll('[data-category]'))
         sibling.setAttribute('aria-pressed', String(sibling === button));
       const [title, description] = descriptions[button.dataset.category!]!;
-      element('#library-title').textContent = title;
-      element('#library-description').textContent = description;
+      element('#library-title').textContent = t(title);
+      element('#library-description').textContent = t(description);
     };
   const resize = () =>
     safely(() => {
@@ -493,8 +501,11 @@ export function mountEditorShell(
         )
           throw new Error(
             requestedTrack.locked
-              ? `${requestedTrack.name} is locked`
-              : `${asset.name} is not compatible with ${requestedTrack.name}`,
+              ? t('asset.locked', { name: requestedTrack.name })
+              : t('asset.incompatible', {
+                  name: asset.name,
+                  track: requestedTrack.name,
+                }),
           );
         let destination = requestedTrack;
         destination ??= session.source.composition.tracks.find(
@@ -565,6 +576,13 @@ export function mountEditorShell(
     }
   };
   root.addEventListener('keydown', workspaceKey);
+  const unsubscribeLanguage = subscribe(() => {
+    translateStatic();
+    refresh(true);
+    root
+      .querySelector<HTMLButtonElement>('[data-category][aria-pressed="true"]')
+      ?.click();
+  });
   refresh();
   return {
     session,
@@ -573,6 +591,7 @@ export function mountEditorShell(
     dispose: () => {
       if (disposed) return;
       disposed = true;
+      unsubscribeLanguage();
       disposeWorkspace();
       root.removeEventListener('keydown', workspaceKey);
       canvas.removeEventListener('dragover', assetOver);

@@ -1,3 +1,4 @@
+import { t } from './i18n';
 import { EditorEngine, deserializeProject, serializeProject } from './core';
 import { Autosave, LocalProjectStore } from './persistence/local';
 import { createExampleProject } from './ui/example';
@@ -35,7 +36,7 @@ const shell = mountEditorShell(
       ? {
           save: () => {
             store!.save(engine.state);
-            shell.message('Saved locally.');
+            shell.message(t('status.saved'));
           },
         }
       : {}),
@@ -101,7 +102,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
 }
 const autosave = store
   ? new Autosave(engine, store, {
-      onSaved: () => shell.message('Saved locally.'),
+      onSaved: () => shell.message(t('status.saved')),
       onError: (error) =>
         shell.message(
           `Local save failed. Export JSON to keep your work. ${String(error)}`,
