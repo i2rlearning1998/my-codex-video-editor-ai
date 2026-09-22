@@ -7,6 +7,7 @@ export interface CommandContext {
   session: EditorSession;
   save?: () => void;
   openPalette?: () => void;
+  newProject?: () => void;
   openShortcuts?: () => void;
   togglePlayback: () => void;
 }
@@ -30,6 +31,13 @@ const edit = (id: EditAction, shortcut: string): RegisteredCommand => ({
   run: ({ engine, session }) => performEdit(engine, session, id),
 });
 export const commands: readonly RegisteredCommand[] = Object.freeze([
+  {
+    id: 'new-project',
+    labelKey: 'project.new',
+    shortcut: '',
+    isEnabled: (context) => !!context.newProject,
+    run: (context) => context.newProject?.(),
+  },
   {
     id: 'palette',
     labelKey: 'palette.title',

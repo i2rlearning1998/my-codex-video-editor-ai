@@ -26,6 +26,7 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       session,
       save: vi.fn(),
       openPalette: vi.fn(),
+      newProject: vi.fn(),
       openShortcuts: vi.fn(),
       togglePlayback: () => session.setPlaying(!session.playing),
     };
@@ -38,7 +39,9 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     }
     expect(command.isEnabled(context), command.id).toBe(true);
     expect(runCommand(command.id, context), command.id).toBe(true);
-    if (command.id === 'palette')
+    if (command.id === 'new-project')
+      expect(context.newProject).toHaveBeenCalledOnce();
+    else if (command.id === 'palette')
       expect(context.openPalette).toHaveBeenCalledOnce();
     else if (command.id === 'shortcuts')
       expect(context.openShortcuts).toHaveBeenCalledOnce();

@@ -24,7 +24,7 @@ test('[LOC-002][LOC-003][LOC-004] browser default, live language switch and pers
     ['hi-IN', 'hi'],
     ['fr-FR', 'en'],
   ]) {
-    const context = await browser.newContext({ locale });
+    const context = await browser.newContext({ locale: locale! });
     const localized = await context.newPage();
     const errors: string[] = [];
     localized.on('pageerror', (error) => errors.push(error.message));

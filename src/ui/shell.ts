@@ -1,3 +1,4 @@
+import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
 import { mountShortcutSheet } from './shortcut-sheet';
 import { runCommand, type CommandContext } from '../commands/registry';
@@ -374,6 +375,14 @@ export function mountEditorShell(
     message(String(error)),
   );
   const shortcutSheet = mountShortcutSheet();
+  const newProjectForm = mountNewProjectForm(engine, message);
+  commandContext.newProject = newProjectForm.open;
+  // Temporary entry point; Claude's shell will replace this markup.
+  const newProjectButton = document.createElement('button');
+  newProjectButton.id = 'new-project';
+  newProjectButton.textContent = t('project.new');
+  newProjectButton.onclick = () => runCommand('new-project', commandContext);
+  element('.top-actions').append(newProjectButton);
   commandContext.openPalette = palette.open;
   commandContext.openShortcuts = shortcutSheet.open;
   const disposeShortcuts = bindShortcuts(commandContext, {
@@ -608,6 +617,7 @@ export function mountEditorShell(
   element('#timeline-foundation').addEventListener('drop', assetDrop);
   const unsubscribeLanguage = subscribe(() => {
     translateStatic();
+    newProjectButton.textContent = t('project.new');
     refresh(true);
     root
       .querySelector<HTMLButtonElement>('[data-category][aria-pressed="true"]')
@@ -624,6 +634,7 @@ export function mountEditorShell(
       disposeShortcuts();
       shortcutSheet.dispose();
       palette.dispose();
+      newProjectForm.dispose();
       unsubscribeLanguage();
       disposeWorkspace();
       canvas.removeEventListener('dragover', assetOver);
