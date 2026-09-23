@@ -8,6 +8,7 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   clipTimeEffects,
+  findClip,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -28,8 +29,10 @@ import { mountWorkspace } from './workspace';
 import {
   contextActions,
   performEdit,
+  planLanding,
   selectedClips,
   setClipSpeed,
+  trackForNewClip,
   SPEED_PRESETS,
   type EditAction,
 } from './editing';
@@ -388,7 +391,7 @@ export function mountEditorShell(
     session,
     interaction,
     viewport,
-    (error) => message(error instanceof Error ? error.message : String(error)),
+    reportError,
     (action) => performEdit(engine, session, action),
     true,
     openCanvasMenu,
@@ -951,69 +954,79 @@ export function mountEditorShell(
           layer,
         },
       ];
-      if (event.currentTarget !== canvas) {
-        const type = asset.type === 'audio' ? 'audio' : 'video';
-        const requestedTrackId = (
-          event.target as HTMLElement
-        ).closest<HTMLElement>('[data-track-id]')?.dataset.trackId;
-        const requestedTrack = requestedTrackId
-          ? session.source.composition.tracks.find(
-              (item) => item.id === requestedTrackId,
-            )
-          : undefined;
-        if (
-          requestedTrack &&
-          (requestedTrack.type !== type || requestedTrack.locked)
-        )
-          throw new Error(
-            requestedTrack.locked
-              ? t('asset.locked', { name: requestedTrack.name })
-              : t('asset.incompatible', {
-                  name: asset.name,
-                  track: requestedTrack.name,
-                }),
-          );
-        let destination = requestedTrack;
-        destination ??= session.source.composition.tracks.find(
-          (item) => item.type === type && !item.locked,
+      // TL-001: every drop creates a clip. The canvas uses a free compatible
+      // track at the playhead (or a new one); a track row uses the insert rule.
+      const type = asset.type === 'audio' ? 'audio' : 'video';
+      const requestedTrackId =
+        event.currentTarget === canvas
+          ? undefined
+          : (event.target as HTMLElement).closest<HTMLElement>(
+              '[data-track-id]',
+            )?.dataset.trackId;
+      const requestedTrack = requestedTrackId
+        ? session.source.composition.tracks.find(
+            (item) => item.id === requestedTrackId,
+          )
+        : undefined;
+      if (
+        requestedTrack &&
+        (requestedTrack.type !== type || requestedTrack.locked)
+      )
+        throw new Error(
+          requestedTrack.locked
+            ? t('asset.locked', { name: requestedTrack.name })
+            : t('asset.incompatible', {
+                name: asset.name,
+                track: requestedTrack.name,
+              }),
         );
-        const trackId = destination?.id ?? crypto.randomUUID();
-        if (!destination)
-          commands.unshift({
-            type: 'CREATE_TRACK',
+      const target = requestedTrack
+        ? { trackId: requestedTrack.id, commands: [] as Command[] }
+        : trackForNewClip(
+            session.source.composition,
+            layer.type,
+            time,
+            time + duration,
+          );
+      commands.unshift(...target.commands);
+      const clip = {
+        id: crypto.randomUUID(),
+        name: asset.name,
+        layerId: layer.id,
+        assetId: asset.id,
+        startTime: time,
+        duration,
+        sourceIn: 0,
+        sourceOut: duration,
+        enabled: true,
+        speed: 1,
+        transitionMetadata: {},
+        effectMetadata: {},
+        metadata: {},
+      };
+      if (requestedTrack) {
+        const plan = planLanding(session.source.composition, [
+          { clip, trackId: requestedTrack.id, startTime: time },
+        ]);
+        clip.startTime = plan.placed.get(clip.id)!;
+        layer.startTime = clip.startTime;
+        plan.pushed.forEach(({ startTime }, clipId) =>
+          commands.push({
+            type: 'SET_CLIP_TIMING',
             compositionId,
-            track: {
-              id: trackId,
-              name: `${type === 'audio' ? 'Audio' : 'Video'} ${session.source.composition.tracks.filter((item) => item.type === type).length + 1}`,
-              type,
-              order: session.source.composition.tracks.length,
-              enabled: true,
-              locked: false,
-              muted: false,
-              clips: [],
-            },
-          });
-        commands.push({
-          type: 'CREATE_CLIP',
-          compositionId,
-          trackId,
-          clip: {
-            id: crypto.randomUUID(),
-            name: asset.name,
-            layerId: layer.id,
-            assetId: asset.id,
-            startTime: time,
-            duration,
-            sourceIn: 0,
-            sourceOut: duration,
-            enabled: true,
-            speed: 1,
-            transitionMetadata: {},
-            effectMetadata: {},
-            metadata: {},
-          },
-        });
+            clipId,
+            startTime,
+            duration: findClip(session.source.composition, clipId)!.clip
+              .duration,
+          }),
+        );
       }
+      commands.push({
+        type: 'CREATE_CLIP',
+        compositionId,
+        trackId: target.trackId,
+        clip,
+      });
       engine.commands.transaction(
         event.currentTarget === canvas
           ? 'Add asset layer'
@@ -1087,7 +1100,7 @@ export function mountEditorShell(
       )
         timeline?.handleKey(event);
     },
-    report: (error) => message(String(error)),
+    report: reportError,
   });
 
   // Language switcher (temporary location in the View menu; a dedicated control may move

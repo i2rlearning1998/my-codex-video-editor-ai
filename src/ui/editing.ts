@@ -5,10 +5,18 @@ import {
   clipTimeEffects,
   clipTrimBounds,
   effectiveLayerTiming,
+  findClip,
   findClipByLayer,
   frameToTime,
+  findFreeTrack,
+  nextTrackName,
+  planInsert,
   retimeClip,
   trackAcceptsLayer,
+  trackTypeForLayer,
+  type Clip,
+  type Composition,
+  type DeepReadonly,
   type ClipLocation,
   type Command,
   type EditorEngine,
@@ -60,6 +68,122 @@ export type EditAction =
   | 'speed'
   | 'reverse'
   | 'freeze';
+export interface ClipLanding {
+  /** Structural so new (not yet created) clips can be planned too. */
+  readonly clip: {
+    readonly id: string;
+    readonly startTime: number;
+    readonly duration: number;
+  };
+  readonly trackId: string;
+  readonly startTime: number;
+}
+/** TL-030 plan for clips landing on tracks: final starts, pushed clips, markers. */
+export function planLanding(
+  composition: DeepReadonly<Composition>,
+  landings: readonly ClipLanding[],
+) {
+  const moving = new Set(landings.map((item) => item.clip.id));
+  const placed = new Map<string, number>();
+  const pushed = new Map<string, { trackId: string; startTime: number }>();
+  const insertions: { trackId: string; time: number }[] = [];
+  for (const trackId of new Set(landings.map((item) => item.trackId))) {
+    const track = composition.tracks.find((item) => item.id === trackId);
+    if (!track) throw new Error('Unknown track');
+    const plan = planInsert(
+      track.clips.filter((clip) => !moving.has(clip.id)),
+      landings
+        .filter((item) => item.trackId === trackId)
+        .map((item) => ({
+          id: item.clip.id,
+          startTime: item.startTime,
+          duration: item.clip.duration,
+        })),
+    );
+    plan.placed.forEach((time, id) => placed.set(id, time));
+    plan.pushed.forEach((time, id) =>
+      pushed.set(id, { trackId, startTime: time }),
+    );
+    insertions.push(...plan.insertions.map((time) => ({ trackId, time })));
+  }
+  return { placed, pushed, insertions };
+}
+/** Commands that land clips (MOVE_CLIP + timing) and push later clips. */
+export function landingCommands(
+  composition: DeepReadonly<Composition>,
+  landings: readonly ClipLanding[],
+): Command[] {
+  const plan = planLanding(composition, landings);
+  const commands: Command[] = [];
+  for (const item of landings) {
+    const from = findClip(composition, item.clip.id)!;
+    if (from.track.id !== item.trackId)
+      commands.push({
+        type: 'MOVE_CLIP',
+        compositionId: composition.id,
+        clipId: item.clip.id,
+        trackId: item.trackId,
+      });
+    const startTime = plan.placed.get(item.clip.id)!;
+    if (startTime !== item.clip.startTime)
+      commands.push({
+        type: 'SET_CLIP_TIMING',
+        compositionId: composition.id,
+        clipId: item.clip.id,
+        startTime,
+        duration: item.clip.duration,
+      });
+  }
+  plan.pushed.forEach(({ startTime }, clipId) => {
+    const clip = findClip(composition, clipId)!.clip;
+    commands.push({
+      type: 'SET_CLIP_TIMING',
+      compositionId: composition.id,
+      clipId,
+      startTime,
+      duration: clip.duration,
+    });
+  });
+  return commands;
+}
+/** A free compatible track for [start, end), or commands creating a new one. */
+export function trackForNewClip(
+  composition: DeepReadonly<Composition>,
+  layerType: string,
+  startTime: number,
+  endTime: number,
+  excludedClipIds: readonly string[] = [],
+): { trackId: string; commands: Command[] } {
+  const free = findFreeTrack(
+    composition,
+    layerType,
+    startTime,
+    endTime,
+    excludedClipIds,
+  );
+  if (free) return { trackId: free.id, commands: [] };
+  const type = trackTypeForLayer(layerType);
+  const trackId = crypto.randomUUID();
+  return {
+    trackId,
+    commands: [
+      {
+        type: 'CREATE_TRACK',
+        compositionId: composition.id,
+        track: {
+          id: trackId,
+          name: nextTrackName(composition, type),
+          type,
+          order: composition.tracks.length,
+          enabled: true,
+          locked: false,
+          muted: false,
+          clips: [],
+        },
+      },
+    ],
+  };
+}
 /** Speed presets offered by the clip menus (the command accepts 0.1x to 8x). */
 export const SPEED_PRESETS = [0.25, 0.5, 1, 1.5, 2, 4] as const;
 /** Clip locations for the selection roots; empty unless every root is a clip. */
@@ -125,6 +249,12 @@ export function performEdit(
   const layers = selectionRoots(source, session.selectedIds),
     commands: Command[] = [],
     selected: string[] = [];
+  // Duplicates land right after their originals under the insert rule (TL-030).
+  const duplicates: {
+    original: DeepReadonly<Clip>;
+    copy: Clip;
+    trackId: string;
+  }[] = [];
   if (action === 'marker')
     commands.push({
       type: 'ADD_MARKER',
@@ -187,6 +317,23 @@ export function performEdit(
     }
   else if (action === 'group') {
     const groupId = crypto.randomUUID();
+    // TL-001: children fold their clip timing into the layer and the group gets
+    // one clip spanning them, so the group is the only clip on the timeline.
+    const childClips = layers.flatMap((layer) => {
+      const found = findClipByLayer(source.composition, layer.id);
+      return found ? [found] : [];
+    });
+    for (const { clip } of childClips)
+      commands.push(
+        { type: 'DELETE_CLIP', compositionId, clipId: clip.id },
+        {
+          type: 'SET_LAYER_TIMING',
+          compositionId,
+          layerId: clip.layerId,
+          startTime: clip.startTime,
+          duration: clip.duration,
+        },
+      );
     commands.push({
       type: 'GROUP',
       compositionId,
@@ -194,6 +341,45 @@ export function performEdit(
       groupId,
       name: 'Group',
     });
+    const topLevel = source.composition.layers.some(
+      (layer) => layer.id === layers[0]!.id,
+    );
+    if (topLevel) {
+      const timings = layers.map((layer) =>
+        effectiveLayerTiming(source.composition, layer),
+      );
+      const start = Math.min(...timings.map((item) => item.startTime));
+      const end = Math.max(
+        ...timings.map((item) => item.startTime + item.duration),
+      );
+      const target = trackForNewClip(
+        source.composition,
+        'group',
+        start,
+        end,
+        childClips.map(({ clip }) => clip.id),
+      );
+      commands.push(...target.commands, {
+        type: 'CREATE_CLIP',
+        compositionId,
+        trackId: target.trackId,
+        clip: {
+          id: crypto.randomUUID(),
+          name: 'Group',
+          layerId: groupId,
+          assetId: null,
+          startTime: start,
+          duration: end - start,
+          sourceIn: 0,
+          sourceOut: end - start,
+          enabled: true,
+          speed: 1,
+          transitionMetadata: {},
+          effectMetadata: {},
+          metadata: {},
+        },
+      });
+    }
     selected.push(groupId);
   } else
     for (const layer of layers) {
@@ -262,15 +448,87 @@ export function performEdit(
           clipCopy.sourceIn = second.sourceIn;
           clipCopy.sourceOut = second.sourceOut;
         }
-        commands.push({
-          type: 'CREATE_CLIP',
-          compositionId,
-          trackId: clipLocation.track.id,
-          clip: clipCopy,
-        });
+        if (action === 'duplicate')
+          duplicates.push({
+            original: clipLocation.clip,
+            copy: clipCopy,
+            trackId: clipLocation.track.id,
+          });
+        else
+          commands.push({
+            type: 'CREATE_CLIP',
+            compositionId,
+            trackId: clipLocation.track.id,
+            clip: clipCopy,
+          });
       }
       selected.push(copy.id);
     }
+  if (duplicates.length) {
+    // Sequentially per track: each copy lands at its original's (pushed) end.
+    const lanes = new Map<
+      string,
+      { id: string; startTime: number; duration: number }[]
+    >();
+    const final = new Map<string, number>();
+    for (const item of [...duplicates].sort(
+      (a, b) => a.original.startTime - b.original.startTime,
+    )) {
+      const track = source.composition.tracks.find(
+        (entry) => entry.id === item.trackId,
+      )!;
+      const lane =
+        lanes.get(item.trackId) ??
+        track.clips.map((clip) => ({
+          id: clip.id,
+          startTime: clip.startTime,
+          duration: clip.duration,
+        }));
+      lanes.set(item.trackId, lane);
+      const original = lane.find((clip) => clip.id === item.original.id)!;
+      const plan = planInsert(lane, [
+        {
+          id: item.copy.id,
+          startTime: original.startTime + original.duration,
+          duration: item.copy.duration,
+        },
+      ]);
+      for (const clip of lane)
+        if (plan.pushed.has(clip.id))
+          clip.startTime = plan.pushed.get(clip.id)!;
+      const at = plan.placed.get(item.copy.id)!;
+      lane.push({
+        id: item.copy.id,
+        startTime: at,
+        duration: item.copy.duration,
+      });
+      item.copy.startTime = at;
+    }
+    for (const [trackId, lane] of lanes)
+      for (const clip of lane) {
+        const current = source.composition.tracks
+          .find((entry) => entry.id === trackId)!
+          .clips.find((entry) => entry.id === clip.id);
+        if (current && current.startTime !== clip.startTime)
+          final.set(clip.id, clip.startTime);
+      }
+    final.forEach((startTime, clipId) =>
+      commands.push({
+        type: 'SET_CLIP_TIMING',
+        compositionId,
+        clipId,
+        startTime,
+        duration: findClip(source.composition, clipId)!.clip.duration,
+      }),
+    );
+    for (const item of duplicates)
+      commands.push({
+        type: 'CREATE_CLIP',
+        compositionId,
+        trackId: item.trackId,
+        clip: item.copy,
+      });
+  }
   if (commands.length)
     engine.commands.transaction(
       action === 'reverse'
@@ -326,11 +584,34 @@ export function nudgeClips(
   const source = session.source;
   const clips = selectedClips(source, session.selectedIds);
   if (!clips.length) throw new Error('Select a clip to move it');
-  const delta = Math.max(
-    frameToTime(frames, source.composition.fps),
-    -Math.min(...clips.map(({ clip }) => clip.startTime)),
-  );
-  if (delta === 0) return;
+  // Nudges stop at neighbouring clips instead of pushing them (TL-020).
+  const moving = new Set(clips.map(({ clip }) => clip.id));
+  let delta = frameToTime(frames, source.composition.fps);
+  for (const { clip, track } of clips) {
+    const end = clip.startTime + clip.duration;
+    const others = track.clips.filter((other) => !moving.has(other.id));
+    if (delta < 0)
+      delta = Math.max(
+        delta,
+        Math.max(
+          0,
+          ...others
+            .map((other) => other.startTime + other.duration)
+            .filter((otherEnd) => otherEnd <= clip.startTime + 1e-9),
+        ) - clip.startTime,
+      );
+    else
+      delta = Math.min(
+        delta,
+        Math.min(
+          Infinity,
+          ...others
+            .map((other) => other.startTime)
+            .filter((start) => start >= end - 1e-9),
+        ) - end,
+      );
+  }
+  if (Math.abs(delta) < 1e-9) return;
   engine.commands.transaction(
     'Move clip',
     clips.map(({ clip }) => ({
@@ -355,7 +636,7 @@ export function moveClipsToAdjacentTrack(
   const tracks = [...source.composition.tracks].sort(
     (a, b) => a.order - b.order,
   );
-  const commands: Command[] = clips.map(({ clip, track }) => {
+  const landings: ClipLanding[] = clips.map(({ clip, track }) => {
     const layer = locateLayer(source.composition.layers, clip.layerId)!.layer;
     let index = tracks.findIndex((item) => item.id === track.id) + direction;
     while (
@@ -371,14 +652,12 @@ export function moveClipsToAdjacentTrack(
           ? 'No compatible track above'
           : 'No compatible track below',
       );
-    return {
-      type: 'MOVE_CLIP',
-      compositionId: source.composition.id,
-      clipId: clip.id,
-      trackId: destination.id,
-    };
+    return { clip, trackId: destination.id, startTime: clip.startTime };
   });
-  engine.commands.transaction('Move clip', commands);
+  engine.commands.transaction(
+    'Move clip',
+    landingCommands(source.composition, landings),
+  );
 }
 /** Keyboard trim: move the selected clip's start or end to the playhead, clamped
  * to one frame, the neighbouring clips and the source media. */

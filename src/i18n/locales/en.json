@@ -183,5 +183,6 @@
   "track.unmute": "Unmute {name}",
   "timeline.trimStart": "Trim start",
   "timeline.trimEnd": "Trim end",
-  "timeline.keys": "Timeline tracks. Arrow keys move time; Shift moves ten frames; Up and Down jump to cuts; Alt+arrows move the selected clip; [ and ] trim to the playhead; Home and End seek; Delete removes selection."
+  "timeline.keys": "Timeline tracks. Arrow keys move time; Shift moves ten frames; Up and Down jump to cuts; Alt+arrows move the selected clip; [ and ] trim to the playhead; Home and End seek; Delete removes selection.",
+  "project.adopted": "{count} layers were placed on timeline tracks."
 }

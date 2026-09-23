@@ -24,6 +24,9 @@ import {
   nudgeClips,
   setClipSpeed,
   trimClipToPlayhead,
+  landingCommands,
+  planLanding,
+  type ClipLanding,
   SPEED_PRESETS,
   type EditAction,
 } from './editing';
@@ -67,7 +70,8 @@ export class TimelineInteraction {
   get preview(): TimingPreview | undefined {
     return this.#gesture?.value;
   }
-  get previews(): readonly TimingPreview[] {
+  /** Pointer-derived previews before the TL-030 insert rule adjusts them. */
+  get rawPreviews(): readonly TimingPreview[] {
     const gesture = this.#gesture;
     if (!gesture) return [];
     if (gesture.kind !== 'move') return [gesture.value];
@@ -77,6 +81,46 @@ export class TimelineInteraction {
       startTime: layer.startTime + delta,
       duration: layer.duration,
     }));
+  }
+  get previews(): readonly TimingPreview[] {
+    const plan = this.landingPlan;
+    return this.rawPreviews.map((preview) => {
+      const clip = findClipByLayer(
+        this.session.source.composition,
+        preview.layerId,
+      );
+      const placed = clip && plan?.placed.get(clip.clip.id);
+      return placed === undefined || placed === null
+        ? preview
+        : { ...preview, startTime: placed };
+    });
+  }
+  /** Clip landings of a move gesture (all moving layers must be clips). */
+  #landings(): ClipLanding[] | undefined {
+    const gesture = this.#gesture;
+    if (!gesture || gesture.kind !== 'move') return undefined;
+    const composition = this.session.source.composition;
+    const destination = gesture.destinationId?.startsWith('track:')
+      ? gesture.destinationId.slice(6)
+      : undefined;
+    const landings: ClipLanding[] = [];
+    for (const preview of this.rawPreviews) {
+      const found = findClipByLayer(composition, preview.layerId);
+      if (!found) return undefined;
+      landings.push({
+        clip: found.clip,
+        trackId: destination ?? found.track.id,
+        startTime: preview.startTime,
+      });
+    }
+    return landings;
+  }
+  /** TL-030 live plan: final starts, pushed clips and insertion markers. */
+  get landingPlan(): ReturnType<typeof planLanding> | undefined {
+    const landings = this.#landings();
+    return landings
+      ? planLanding(this.session.source.composition, landings)
+      : undefined;
   }
   get destinationId(): string | undefined {
     return this.#gesture?.destinationId;
@@ -220,9 +264,20 @@ export class TimelineInteraction {
   finish(): void {
     const gesture = this.#gesture;
     const previews = this.previews;
+    const landings = this.#landings();
     this.#gesture = null;
     if (!gesture) return;
     try {
+      if (landings) {
+        // Clip moves land under the insert rule in one step (TL-020/TL-030).
+        const commands = landingCommands(
+          this.session.source.composition,
+          landings,
+        );
+        if (commands.length)
+          this.engine.commands.transaction('Move clip', commands);
+        return;
+      }
       const commands: Command[] = previews.flatMap((preview) => {
         const layer =
           gesture.layers.find((item) => item.id === preview.layerId) ??
@@ -445,6 +500,7 @@ export function mountTimeline(
         : row;
     });
     const trackRows = nleTimelineRows(session.source, zoom);
+    const landing = controller.landingPlan;
     const playButton = root.querySelector<HTMLElement>('[data-action="play"]')!;
     const playIcon = session.playing ? 'pause' : 'play';
     if (playButton.dataset.icon !== playIcon) {
@@ -610,14 +666,30 @@ export function mountTimeline(
       track.dataset.trackId = row.track.id;
       track.style.width = `${width}px`;
       const crossTrack = controller.destinationId?.startsWith('track:');
+      // TL-030 preview: where the drop inserts and which clips it pushes.
+      for (const insertion of landing?.insertions ?? []) {
+        if (insertion.trackId !== row.track.id) continue;
+        const marker = document.createElement('div');
+        marker.className = 'timeline-insert';
+        marker.dataset.time = String(insertion.time);
+        marker.setAttribute('aria-hidden', 'true');
+        marker.style.left = `${timeToPixel(insertion.time, zoom)}px`;
+        track.append(marker);
+      }
       for (const entry of row.clips) {
         const moving = controller.previews.find(
           (item) => item.layerId === entry.layer.id,
         );
         // TL-058: across tracks the original stays put (dimmed); a ghost lands.
-        const preview = crossTrack ? undefined : moving;
+        const pushedTo = landing?.pushed.get(entry.clip.id)?.startTime;
+        const preview = crossTrack
+          ? undefined
+          : (moving ??
+            (pushedTo === undefined
+              ? undefined
+              : { startTime: pushedTo, duration: entry.clip.duration }));
         const clip = button(entry.clip.name, 'clip', entry.layer.id);
-        clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}`;
+        clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}${pushedTo === undefined ? '' : ' pushed'}${row.track.locked ? ' locked' : ''}`;
         clip.dataset.clipId = entry.clip.id;
         clip.dataset.trackId = row.track.id;
         clip.style.left = `${preview ? timeToPixel(preview.startTime, zoom) : entry.left}px`;

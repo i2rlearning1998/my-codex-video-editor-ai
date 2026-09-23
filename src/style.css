@@ -1565,3 +1565,34 @@ input[type='number'] {
 .timeline-scroll::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* TL-030: insertion point and clips pushed by a pending drop. */
+.timeline-insert {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  transform: translateX(-1px);
+  background: var(--color-warning);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 3;
+}
+.timeline-clip.pushed {
+  outline: 1px dashed var(--color-warning);
+  outline-offset: -1px;
+}
+/* TL-004: clips on a locked track look and feel locked. */
+.timeline-clip.locked {
+  cursor: not-allowed;
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0,
+    transparent 6px,
+    var(--color-border) 6px,
+    var(--color-border) 8px
+  );
+}
+.timeline-clip.locked .timeline-trim {
+  cursor: not-allowed;
+}
