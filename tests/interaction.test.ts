@@ -425,7 +425,7 @@ describe('inspector shares the canonical command path', () => {
     const s = setup();
     s.shell.session.select('child');
     const before = s.input(field).value;
-    expect(s.root.querySelectorAll('#inspector-content input')).toHaveLength(8);
+    expect(s.root.querySelectorAll('#inspector-content input')).toHaveLength(6);
     s.edit(field, value);
     expect(s.input(field).value).toBe(value);
     expect(s.render.mock.calls.at(-1)![1].composition).toBe(
