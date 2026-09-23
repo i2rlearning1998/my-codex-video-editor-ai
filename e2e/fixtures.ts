@@ -1,5 +1,6 @@
 import { test as base, expect, type Page } from '@playwright/test';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import type { Project } from '../src/core';
 
 export interface HookSnapshot {
@@ -71,12 +72,14 @@ export const test = base.extend<Fixtures>({
   ],
   openFixtureProject: async ({ page }, use) => {
     await use(async (name) => {
+      const file = path.resolve('tests/fixtures/projects', name);
+      const title = (
+        JSON.parse(readFileSync(file, 'utf8')) as { metadata: { name: string } }
+      ).metadata.name;
       await page.locator('#menu-trigger').click();
-      await page
-        .locator('#import')
-        .setInputFiles(path.resolve('tests/fixtures/projects', name));
+      await page.locator('#import').setInputFiles(file);
       await page.locator('.modal-dialog [data-role="confirm"]').click();
-      await expect(page.locator('#project-name')).toHaveText('NLE Fixture');
+      await expect(page.locator('#project-name')).toHaveText(title);
     });
   },
 });

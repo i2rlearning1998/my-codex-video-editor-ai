@@ -177,7 +177,7 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-009 | P0 | W1 | Claimed | Autosave keeps work across reload (recovery from unexpected close within the autosave window) |
 | PRJ-010 | P0 | W1 | Claimed | Corrupt or future-version saved data is quarantined with a message, never silently overwritten |
 | PRJ-011 | P0 | W1 | Todo | Composition (scene) duration is derived from content; empty composition falls back to 10 seconds |
-| PRJ-012 | P0 | W2 | Claimed | Multiple compositions (scenes): switch active composition |
+| PRJ-012 | P0 | W2 | Verified | Multiple compositions (scenes): switch active composition |
 | PRJ-013 | P0 | W2 | Todo | Scenes: add, rename, reorder, duplicate, delete |
 | PRJ-014 | P1 | W2 | Todo | Scene strip UI for switching and reordering scenes |
 | PRJ-015 | P0 | W4 | Todo | Projects persist in IndexedDB with media in OPFS; localStorage remains only for small settings |
@@ -244,7 +244,7 @@ Everything the user does directly on the preview canvas.
 | CV-008 | P0 | W2 | Bug | Edge handle drag resizes on one axis; Alt resizes from center |
 | CV-009 | P0 | W2 | Verified | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
-| CV-011 | P0 | W2 | Claimed | Text-width grips change text box width and reflow the text without changing font size |
+| CV-011 | P0 | W2 | Verified | Text-width grips change text box width and reflow the text without changing font size |
 | CV-012 | P1 | W2 | Todo | Live readout of size, angle or position while dragging |
 | CV-013 | P0 | W2 | Todo | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
@@ -255,7 +255,7 @@ Everything the user does directly on the preview canvas.
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
 | CV-020 | P0 | W2 | Todo | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
 | CV-021 | P0 | W2 | Todo | Right-click empty canvas opens a menu: Paste, Select all, toggle grid and guides |
-| CV-022 | P0 | W2 | Claimed | Clicking inside a group selects the group; double-click selects the child; Esc exits |
+| CV-022 | P0 | W2 | Bug | Clicking inside a group selects the group; double-click selects the child; Esc exits |
 | CV-023 | P1 | W2 | Todo | Double-click a group enters isolation mode |
 | CV-024 | P0 | W2 | Todo | Locked layers cannot be moved or resized from the canvas; hidden layers are neither drawn nor selectable |
 | CV-025 | P0 | W2 | Todo | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |
@@ -264,7 +264,7 @@ Everything the user does directly on the preview canvas.
 | CV-028 | P1 | W2 | Todo | Paste places at same position with small offset; pasting an image from the OS clipboard imports it |
 | CV-029 | P0 | W2 | Todo | Cursor changes correctly over move, resize (per handle angle) and rotate handles |
 | CV-030 | P0 | W2 | Todo | Selection outlines and handles keep constant on-screen thickness at any zoom |
-| CV-031 | P0 | W2 | Claimed | Layers are drawn only inside their active time range |
+| CV-031 | P0 | W2 | Verified | Layers are drawn only inside their active time range |
 | CV-032 | P1 | W2 | Todo | 100 layers can be dragged smoothly without dropped frames on the reference machine |
 | CV-033 | P1 | W2 | Todo | Preview quality setting Full, Half, Quarter |
 | CV-034 | P2 | W2 | Todo | Touch and pen input work with pointer events |
@@ -313,7 +313,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-014 | P0 | W2 | Verified | Horizontal scroll with wheel, Shift+wheel and trackpad; vertical scroll keeps headers aligned with rows |
 | TL-015 | P0 | W2 | Todo | Auto-scroll near the edges while dragging clips; option to follow the playhead during playback |
 | TL-016 | P0 | W2 | Verified | Clips can be moved by dragging within a track and across tracks, with one undo step per gesture |
-| TL-017 | P0 | W2 | Claimed | Multi-selected clips move together and keep their relative offsets across tracks |
+| TL-017 | P0 | W2 | Bug | Multi-selected clips move together and keep their relative offsets across tracks |
 | TL-018 | P0 | W2 | Verified | Trimming the left edge changes start and in-point and never goes past the source or into a neighbor |
 | TL-019 | P0 | W2 | Verified | Trimming the right edge changes duration and never goes past the source or into a neighbor |
 | TL-020 | P0 | W2 | Verified | Clips never overlap on the same track and never shrink below one frame |
@@ -323,12 +323,12 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-024 | P0 | W2 | Todo | Alt-drag copies clips while dragging |
 | TL-025 | P0 | W2 | Verified | Delete key removes the selected clips with one undo step |
 | TL-026 | P0 | W2 | Todo | Ripple delete removes clips and closes the gap |
-| TL-027 | P0 | W2 | Todo | Copy, cut and paste clips at the playhead onto the selected track |
+| TL-027 | P0 | W2 | Verified | Copy, cut and paste clips at the playhead onto the selected track |
 | TL-028 | P0 | W2 | Verified | Snapping to playhead, clip edges, markers and grid with a visible snap line |
 | TL-029 | P0 | W2 | Todo | Snap toggle (magnet) in the toolbar, on by default |
 | TL-030 | P0 | W2 | Verified | Insert versus overwrite rule for dropping or moving onto occupied space is explicit and shown to the user |
 | TL-031 | P1 | W2 | Todo | Ripple trim; slip, slide and roll edits |
-| TL-032 | P0 | W2 | Todo | Link video and its audio so they move and cut together; Unlink and Detach audio |
+| TL-032 | P0 | W2 | Verified | Link video and its audio so they move and cut together; Unlink and Detach audio |
 | TL-033 | P1 | W2 | Todo | Disable an individual clip without deleting it |
 | TL-034 | P2 | W2 | Todo | Clip color labels |
 | TL-035 | P0 | W2 | Verified | The Marker button adds a marker at the playhead |
@@ -386,8 +386,8 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | INS-001 | P0 | W2 | Todo | Properties panel content depends on selection: none (project settings), single layer by type, multiple layers (common properties), group |
-| INS-002 | P0 | W2 | Claimed | Editing Position X in the inspector moves the layer on the canvas and creates one undo step |
-| INS-003 | P0 | W2 | Claimed | Position Y, scale, rotation and opacity fields edit the layer and stay in sync with canvas gestures |
+| INS-002 | P0 | W2 | Verified | Editing Position X in the inspector moves the layer on the canvas and creates one undo step |
+| INS-003 | P0 | W2 | Verified | Position Y, scale, rotation and opacity fields edit the layer and stay in sync with canvas gestures |
 | INS-004 | P0 | W2 | Todo | Uniform scale with a lock toggle plus separate width and height |
 | INS-005 | P0 | W2 | Todo | Anchor point control |
 | INS-006 | P0 | W2 | Todo | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
@@ -410,9 +410,9 @@ The engine already has atomic transactions and history; this covers what the use
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | HIS-001 | P0 | W2 | Verified | Undo and Redo buttons reverse and reapply the last action, including a full drag gesture as one step |
-| HIS-002 | P0 | W2 | Claimed | Every user edit is undoable: canvas gestures, inspector edits, timeline edits |
+| HIS-002 | P0 | W2 | Verified | Every user edit is undoable: canvas gestures, inspector edits, timeline edits |
 | HIS-003 | P0 | W2 | Todo | Undo and Redo buttons show correct enabled state and name the next action |
-| HIS-004 | P0 | W2 | Claimed | History is memory-bounded and never crashes on long sessions |
+| HIS-004 | P0 | W2 | Verified | History is memory-bounded and never crashes on long sessions |
 | HIS-005 | P1 | W2 | Todo | History panel lists steps with labels and jumps to any step |
 | HIS-006 | P1 | W8 | Todo | Named checkpoints |
 | HIS-007 | P1 | W4 | Todo | Undoing media import removes the clip without deleting the imported asset (behavior is documented) |

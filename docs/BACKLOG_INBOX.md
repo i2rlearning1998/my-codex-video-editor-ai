@@ -21,3 +21,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-24 | W2-B TL-001 | Group children have no timeline rows; a future item could show them nested inside the group clip (expand/collapse).
   2026-09-24 | W2-B follow-up | Resolved: LYR-002 order is front-first (D-043); Inspector raw floats fixed (D-046); Media tab cards became ledger bug MED-035 (D-044).
   2026-09-24 | W2-B follow-up | CV-008 Alt-from-center needs an explicit owner decision to open TRANSFORM_INTERACTION_CONTRACT.md before anyone attempts it (D-045).
+  2026-09-24 | W2-C TL-027 | A pasted linked pair can shift apart when only one target track is occupied (the insert rule runs per track); consider landing linked groups as one block.
+  2026-09-24 | W2-C TL-032 | Trimming a linked clip trims only that clip; linked trimming is not built.

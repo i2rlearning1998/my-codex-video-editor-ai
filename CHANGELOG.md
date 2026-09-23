@@ -2,6 +2,12 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 continuation (W2-C) — 2026-09-24
+
+- Cut, copy and paste clips (Ctrl+X, Ctrl+C, Ctrl+V, the palette and both right-click menus). Paste lands at the playhead using the insert rule.
+- Link and unlink clips: linked clips move, nudge, split, delete and copy together and show a link badge. Detach audio creates a separate audio clip on an Audio track (not audible yet).
+- Proved 7 risky Claimed items in the browser. TL-017 (multi-track drag keeping track offsets) and CV-022 (group click and double-click) are now recorded as known bugs.
+
 ## Wave 2 continuation (W2-B) — 2026-09-24
 
 - One clip model: every layer is a clip on a track. The built-in example and older saves are converted when opened, and canvas drops, duplicates and groups always create clips. Legacy free-layer rows are gone.

@@ -1,6 +1,6 @@
-- Wave 2 continuation W2-B is on branch claude/wave-2-timeline-clips-mwy1f3 as a PR against main, awaiting owner review. W2-CLAUDE (PR #2) is merged.
-- Full verify passed in this sandbox: 301 unit + jsdom; Chromium 141.0.7390.37 (fallback): 54 normal passes + 3 expected failures (DEV-006 probe, CV-008 Alt, MED-035); hook assertion and ledger OK.
-- Ledger: 69 Verified, 20 Claimed, 404 Todo, 2 Bug: CV-008 (Alt from center, blocked on an owner decision about the frozen contract, D-045) and MED-035 (Media tab hides cards, pre-existing from Wave 1, D-044). TL-001, TL-004, TL-020 and TL-030 are Verified, plus 17 of the 18 proof-debt items; CV-008 became Bug.
-- Schema remains 4 (clip-first, D-039). Group children have no timeline rows. The insert-and-push rule applies to all landing paths (D-040).
-- Next per plan: TL-027 (cut, copy and paste) and TL-032 (link and detach audio), then the Group B risky Claimed items. The shell is still imperative DOM. See reports/W2-B.md.
-- Owner follow-ups applied in W2-B: the layer list is front-first (D-043) and the Inspector Timing values are display-rounded (D-046).
+- Wave 2 continuation W2-B + W2-C is on branch claude/wave-2-timeline-clips-mwy1f3 as PR #3 against main, awaiting owner review (W2-C is stacked on W2-B because it needs the insert rule).
+- Last full verify in this sandbox (W2-C): 305 unit + jsdom; 64 e2e passes + 5 expected failures; ledger 78 Verified / 11 Claimed / 402 Todo / 4 Bug. See reports/W2-C.md. The browser is Chromium 141 (fallback). GitHub Actions runs only when dispatched by hand (the first run passed).
+- W2-C: TL-027 and TL-032 are Verified; HIS-002, HIS-004, CV-031, INS-002, INS-003, PRJ-012 and CV-011 are Verified. TL-017 and CV-022 are now Bug, with reproductions.
+- Known bugs: CV-008 (Alt from center; needs an owner decision on the frozen contract, D-045), MED-035 (Media tab), TL-017 (multi-track drag offsets), CV-022 (group click and double-click).
+- Schema remains 4; link, detach, reverse and freeze state live in clip.metadata. Nothing is audible yet (no audio engine).
+- Next options: fix the four known bugs, or the roadmap's W3 (text and fonts). The shell is still imperative DOM.
