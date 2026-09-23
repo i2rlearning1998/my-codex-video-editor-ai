@@ -494,6 +494,9 @@ describe('timeline foundation', () => {
       expect(s.engine.state).toEqual(before);
       s.engine.redo();
       expect(s.engine.state).toEqual(after);
+      s.root
+        .querySelector<HTMLButtonElement>('[data-subtab="Timing"]')!
+        .click();
       expect(
         s.root.querySelector<HTMLInputElement>(
           '[data-field="Start time"] input',

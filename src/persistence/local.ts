@@ -75,6 +75,7 @@ export class LocalProjectStore {
 
 export interface AutosaveOptions {
   delayMs?: number;
+  onDirty?: () => void;
   onSaved?: () => void;
   onError?: (error: unknown) => void;
 }
@@ -95,6 +96,7 @@ export class Autosave {
       throw new Error('Invalid autosave delay');
     this.#unsubscribe = engine.on('state:changed', () => {
       this.#dirty = true;
+      this.options.onDirty?.();
       clearTimeout(this.#timer);
       this.#timer = setTimeout(() => {
         this.flush();

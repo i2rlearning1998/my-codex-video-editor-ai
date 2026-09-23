@@ -74,7 +74,20 @@ describe('editor shell integration', () => {
       'Timeline',
     ])
       expect(root.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
-    expect(root.querySelectorAll('[data-category]')).toHaveLength(5);
+    expect(
+      [...root.querySelectorAll<HTMLElement>('[data-category]')].map(
+        (button) => button.dataset.category,
+      ),
+    ).toEqual([
+      'Media',
+      'Graphics',
+      'Text',
+      'Templates',
+      'Audio',
+      'Elements',
+      'Transitions',
+      'Scene',
+    ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();
     expect(root.querySelector('.timeline canvas')).toBeNull();
     expect(root.querySelector('[data-derived-duration]')!.textContent).toBe(
@@ -112,13 +125,17 @@ describe('editor shell integration', () => {
       root.querySelector<HTMLInputElement>('[data-field="Position X"] input')!
         .value,
     ).toBe('10');
+    root.querySelector<HTMLButtonElement>('[data-subtab="Hierarchy"]')!.click();
     expect(root.querySelector('[data-field="Parent"]')!.textContent).toBe(
       'Parent group',
     );
-    expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('50');
     expect(root.querySelector('[data-field="Type"]')!.textContent).toBe(
       'shape',
     );
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
+    expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('50');
     expect(engine.state).toBe(before);
     expect(serializeProject(engine.state)).toBe(text);
     expect(engine.canUndo).toBe(false);
@@ -165,13 +182,20 @@ describe('editor shell integration', () => {
       root.querySelector<HTMLInputElement>('[data-field="Position X"] input')!
         .value,
     ).toBe('25');
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('90');
     engine.undo();
+    root.querySelector<HTMLButtonElement>('[data-subtab="Transform"]')!.click();
     expect(
       root.querySelector<HTMLInputElement>('[data-field="Position X"] input')!
         .value,
     ).toBe('10');
     engine.redo();
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('90');
     expect(shell.session.selectedId).toBe('child');
   });
@@ -198,6 +222,9 @@ describe('editor shell integration', () => {
     const before = engine.state;
     root.querySelector<HTMLButtonElement>('[data-layer-id="group"]')!.click();
     expect(shell.session.selectedId).toBe('group');
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('—');
     const picker = root.querySelector<HTMLSelectElement>('#composition')!;
     picker.value = 'second';
@@ -213,7 +240,7 @@ describe('editor shell integration', () => {
     const before = engine.state;
     root.querySelector<HTMLButtonElement>('[data-category="Media"]')!.click();
     expect(root.querySelector('#library-title')!.textContent).toBe(
-      'A home for your footage',
+      'Your assets, in one place',
     );
     root
       .querySelector('.timeline-track')!

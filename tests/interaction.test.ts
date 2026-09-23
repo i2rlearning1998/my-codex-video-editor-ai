@@ -222,7 +222,11 @@ describe('canvas command interactions', () => {
       s.event('pointerdown', start);
       s.event('pointermove', [start[0] + 20, start[1]]);
       if (reason === 'escape')
-        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        s.root
+          .querySelector('canvas')!
+          .dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+          );
       else if (reason === 'blur' || reason === 'resize')
         window.dispatchEvent(new Event(reason));
       else s.event(reason, start);
@@ -421,7 +425,7 @@ describe('inspector shares the canonical command path', () => {
     const s = setup();
     s.shell.session.select('child');
     const before = s.input(field).value;
-    expect(s.root.querySelectorAll('#inspector-content input')).toHaveLength(8);
+    expect(s.root.querySelectorAll('#inspector-content input')).toHaveLength(6);
     s.edit(field, value);
     expect(s.input(field).value).toBe(value);
     expect(s.render.mock.calls.at(-1)![1].composition).toBe(

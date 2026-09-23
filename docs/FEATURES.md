@@ -124,12 +124,12 @@ All UI text must be translatable from day one. Users add text in any language se
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| LOC-001 | P0 | W1 | Todo | Every user-visible UI string comes from a translation key; a test fails on hard-coded literals in UI code |
-| LOC-002 | P0 | W1 | Todo | Language switcher changes the UI language immediately without reload and persists the choice |
-| LOC-003 | P0 | W1 | Todo | English and Hindi UI ship at launch |
-| LOC-004 | P0 | W1 | Todo | Default language follows the browser language when supported, otherwise English |
-| LOC-005 | P0 | W1 | Todo | Missing translation falls back to English and logs a warning in dev |
-| LOC-006 | P0 | W1 | Todo | Numbers, dates, times and plurals use Intl APIs per locale |
+| LOC-001 | P0 | W1 | Verified | Every user-visible UI string comes from a translation key; a test fails on hard-coded literals in UI code |
+| LOC-002 | P0 | W1 | Verified | Language switcher changes the UI language immediately without reload and persists the choice |
+| LOC-003 | P0 | W1 | Verified | English and Hindi UI ship at launch |
+| LOC-004 | P0 | W1 | Verified | Default language follows the browser language when supported, otherwise English |
+| LOC-005 | P0 | W1 | Verified | Missing translation falls back to English and logs a warning in dev |
+| LOC-006 | P0 | W1 | Verified | Numbers, dates, times and plurals use Intl APIs per locale |
 | LOC-007 | P0 | W1 | Todo | UI font stack loads the correct script fonts for the active language |
 | LOC-008 | P1 | W1 | Todo | Pseudo-locale (longer accented strings) exists for layout testing; layouts survive 40 percent longer text |
 | LOC-009 | P1 | W1 | Todo | Adding a language needs one JSON file and one registry line; the process is documented |
@@ -143,15 +143,15 @@ Single registry of user commands. Shortcuts, menus, palette and context menus al
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| KEY-001 | P0 | W1 | Todo | Central command registry: each user action has an ID, translated label, shortcut, enabled predicate and handler that goes through the Command Bus |
-| KEY-002 | P0 | W1 | Todo | Command palette (Ctrl+K) with fuzzy search, shows shortcuts, runs the command, closes on Esc |
-| KEY-003 | P0 | W1 | Todo | Global Undo Ctrl+Z and Redo Ctrl+Shift+Z or Ctrl+Y work regardless of which panel has focus (not only the timeline) |
+| KEY-001 | P0 | W1 | Verified | Central command registry: each user action has an ID, translated label, shortcut, enabled predicate and handler that goes through the Command Bus |
+| KEY-002 | P0 | W1 | Verified | Command palette (Ctrl+K) with fuzzy search, shows shortcuts, runs the command, closes on Esc |
+| KEY-003 | P0 | W1 | Verified | Global Undo Ctrl+Z and Redo Ctrl+Shift+Z or Ctrl+Y work regardless of which panel has focus (not only the timeline) |
 | KEY-004 | P0 | W1 | Todo | Global Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+D, Delete or Backspace, Ctrl+A act on the current selection |
-| KEY-005 | P0 | W1 | Todo | Ctrl+S saves the project (and suppresses the browser save dialog) |
-| KEY-006 | P0 | W1 | Claimed | Space toggles play and pause everywhere except while typing |
-| KEY-007 | P0 | W1 | Todo | Shortcuts never fire while typing in inputs, text areas or contenteditable |
-| KEY-008 | P0 | W1 | Todo | Shortcut cheat sheet dialog (Ctrl+/ or ?) |
-| KEY-009 | P0 | W1 | Todo | Esc cancels the current gesture first, then closes the top popover, then deselects |
+| KEY-005 | P0 | W1 | Verified | Ctrl+S saves the project (and suppresses the browser save dialog) |
+| KEY-006 | P0 | W1 | Verified | Space toggles play and pause everywhere except while typing |
+| KEY-007 | P0 | W1 | Verified | Shortcuts never fire while typing in inputs, text areas or contenteditable |
+| KEY-008 | P0 | W1 | Verified | Shortcut cheat sheet dialog (Ctrl+/ or ?) |
+| KEY-009 | P0 | W1 | Verified | Esc cancels the current gesture first, then closes the top popover, then deselects |
 | KEY-010 | P0 | W1 | Todo | Ctrl+G groups and Ctrl+Shift+G ungroups the selection |
 | KEY-011 | P0 | W1 | Todo | Left and Right step one frame; Shift+Left and Shift+Right step one second; Home and End jump to start and end |
 | KEY-012 | P1 | W1 | Todo | J K L shuttle playback, I and O set in and out points |
@@ -166,12 +166,12 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| PRJ-001 | P0 | W1 | Todo | New project dialog: name, aspect ratio, resolution, frame rate, background |
-| PRJ-002 | P0 | W1 | Todo | Aspect ratio presets: 16:9, 9:16, 1:1, 4:5, 2:3, 21:9, 4:3 and custom |
-| PRJ-003 | P0 | W1 | Todo | Resolution presets per aspect ratio (720p, 1080p, 1440p, 4K equivalents) |
-| PRJ-004 | P0 | W1 | Todo | Custom width and height; enforced even numbers for H.264; sane min and max |
-| PRJ-005 | P0 | W1 | Todo | Frame rate options 24, 25, 30, 50, 60 |
-| PRJ-006 | P0 | W1 | Todo | Project background: solid color or transparent |
+| PRJ-001 | P0 | W1 | Verified | New project dialog: name, aspect ratio, resolution, frame rate, background |
+| PRJ-002 | P0 | W1 | Verified | Aspect ratio presets: 16:9, 9:16, 1:1, 4:5, 2:3, 21:9, 4:3 and custom |
+| PRJ-003 | P0 | W1 | Verified | Resolution presets per aspect ratio (720p, 1080p, 1440p, 4K equivalents) |
+| PRJ-004 | P0 | W1 | Verified | Custom width and height; enforced even numbers for H.264; sane min and max |
+| PRJ-005 | P0 | W1 | Verified | Frame rate options 24, 25, 30, 50, 60 |
+| PRJ-006 | P0 | W1 | Claimed | Project background: solid color or transparent |
 | PRJ-007 | P0 | W1 | Todo | Changing aspect ratio of an existing project keeps layers inside the canvas with a chosen behavior (keep position, scale to fit) |
 | PRJ-008 | P0 | W1 | Todo | Project settings dialog edits resolution, fps and background; changes are undoable |
 | PRJ-009 | P0 | W1 | Claimed | Autosave keeps work across reload (recovery from unexpected close within the autosave window) |
@@ -239,7 +239,7 @@ Everything the user does directly on the preview canvas.
 | CV-004 | P0 | W2 | Verified | Dragging a selected layer moves it and produces exactly one undo step |
 | CV-005 | P0 | W2 | Todo | Holding Shift while dragging constrains to the axis; Alt-drag duplicates |
 | CV-006 | P0 | W2 | Claimed | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
-| CV-007 | P0 | W2 | Claimed | Corner handle drag resizes proportionally; the opposite corner stays fixed |
+| CV-007 | P0 | W2 | Verified | Corner handle drag resizes proportionally; the opposite corner stays fixed |
 | CV-008 | P0 | W2 | Claimed | Edge handle drag resizes on one axis; Alt resizes from center |
 | CV-009 | P0 | W2 | Claimed | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
@@ -652,7 +652,7 @@ Offline frame-accurate render, never realtime capture.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| REL-001 | P0 | W1 | Bug | Loading the app and doing standard edits produces no console errors |
+| REL-001 | P0 | W1 | Verified | Loading the app and doing standard edits produces no console errors |
 | REL-002 | P0 | W9 | Todo | A UI error never loses the project: an error boundary offers recovery |
 | REL-003 | P0 | W9 | Todo | Heavy work (decode, encode, thumbnails, waveforms) runs in workers so the UI stays responsive |
 | REL-004 | P1 | W9 | Todo | Frame cache and render invalidation avoid re-rendering unchanged frames |

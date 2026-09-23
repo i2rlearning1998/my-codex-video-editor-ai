@@ -174,25 +174,27 @@ export function deriveRenderItems(source: RenderSource): {
           transformPoint(world.matrix, point);
         const fill = layer.properties.fill;
         const text = layer.properties.text;
+        const wrapped =
+          layer.type === 'text' &&
+          ((source.preview?.layerId === layer.id && source.preview.textBox) ||
+            (layer.properties.textWrap?.type === 'boolean' &&
+              layer.properties.textWrap.value))
+            ? textLayoutForWidth(layer, size.width, source.measureText)
+            : undefined;
+        // The stored height is a static field the user (or a drag) set; wrapped
+        // text can need more lines than that at the current width/font size, so
+        // never clip content the layout itself says it needs.
+        const effectiveSize = wrapped
+          ? { ...size, height: Math.max(size.height, wrapped.height) }
+          : size;
         items.push(
           Object.freeze({
-            ...(layer.type === 'text' &&
-            ((source.preview?.layerId === layer.id && source.preview.textBox) ||
-              (layer.properties.textWrap?.type === 'boolean' &&
-                layer.properties.textWrap.value))
-              ? {
-                  lines: textLayoutForWidth(
-                    layer,
-                    size.width,
-                    source.measureText,
-                  ).lines,
-                }
-              : {}),
+            ...(wrapped ? { lines: wrapped.lines } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
             matrix: world.matrix,
             opacity: world.opacity,
-            size,
+            size: effectiveSize,
             fill: fill?.type === 'color' ? fill.value : colors[layer.type],
             text:
               layer.type === 'text'

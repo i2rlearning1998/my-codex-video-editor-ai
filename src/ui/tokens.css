@@ -1,0 +1,82 @@
+/* Design tokens: single source of truth for color, spacing, radius, type, elevation.
+   Restyle by editing this file only — components must not hard-code raw values. */
+:root {
+  /* Color: dark navy surfaces, indigo accent (matches the approved target look) */
+  --color-bg-app: #0b1020;
+  --color-bg-panel: #111832;
+  --color-bg-raised: #18213f;
+  --color-bg-sunken: #0d1226;
+  --color-bg-hover: #1c2547;
+  --color-bg-active: #232c52;
+  --color-border: #262f56;
+  --color-border-strong: #34406f;
+  --color-text: #e8ebff;
+  --color-text-muted: #9aa4d6;
+  --color-text-faint: #6b74a3;
+  --color-accent: #7c5cff;
+  --color-accent-hover: #8f72ff;
+  --color-accent-text: #ffffff;
+  --color-accent-soft: rgba(124, 92, 255, 0.16);
+  --color-danger: #ff6b6b;
+  --color-danger-soft: rgba(255, 107, 107, 0.16);
+  --color-success: #34d399;
+  --color-warning: #fbbf24;
+  --color-canvas-bg: #f0eee7;
+  --color-focus-ring: #9db4ff;
+  --color-overlay-scrim: rgba(5, 7, 18, 0.6);
+
+  /* Spacing scale */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 20px;
+  --space-7: 24px;
+  --space-8: 32px;
+
+  /* Radius scale */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-pill: 999px;
+
+  /* Type scale */
+  --font-family:
+    'Segoe UI', system-ui, -apple-system, 'Noto Sans', 'Noto Sans Devanagari',
+    sans-serif;
+  --font-family-mono: 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-md: 13px;
+  --font-size-lg: 15px;
+  --font-size-xl: 18px;
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.45;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(2, 4, 12, 0.4);
+  --shadow-md: 0 4px 16px rgba(2, 4, 12, 0.45);
+  --shadow-lg: 0 12px 36px rgba(2, 4, 12, 0.55);
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-normal: 180ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout (read/written by src/ui/workspace.ts) */
+  --left-panel: 224px;
+  --right-panel: 258px;
+  --timeline-height: 230px;
+  --icon-rail-width: 64px;
+  --topbar-height: 52px;
+  --statusbar-height: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+  }
+}

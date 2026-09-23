@@ -25,6 +25,7 @@ import {
   type TimingGesture,
   type TimingPreview,
 } from './timeline-model';
+import { iconSvg } from './icons';
 
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
 
@@ -332,8 +333,9 @@ export function mountTimeline(
   session: EditorSession,
   changed: () => void,
   report: (error: unknown) => void,
+  externalKeyboard = false,
 ) {
-  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-playback" role="group" aria-label="Playback"><button data-action="play" aria-label="Play or pause">▶</button><button data-action="stop" aria-label="Stop playback">■</button></div><div class="transport-group" role="group" aria-label="Clip actions"><button data-action="split">Split</button><button data-action="duplicate">Duplicate</button><button data-action="marker">+ Marker</button></div><div class="transport-composition" role="group" aria-label="Composition and time"><span data-composition-strip></span><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-zoom" role="group" aria-label="Timeline zoom"><button data-action="zoom-out" aria-label="Timeline zoom out">−</button><span data-zoom-label></span><button data-action="zoom-in" aria-label="Timeline zoom in">+</button></div></div><div class="timeline-scroll" tabindex="0" aria-label="Timeline tracks. Arrow keys move time; Shift moves ten frames; Home and End seek; Delete removes selection."><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0" aria-label="Timeline tracks. Arrow keys move time; Shift moves ten frames; Home and End seek; Delete removes selection."><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
@@ -341,7 +343,8 @@ export function mountTimeline(
   const playback = new Playback(session);
   let menuId: string | null = null;
   let menuMarker: string | undefined;
-  let markerPreview: { id: string; time: number } | undefined;
+  let markerPreview: { id: string; time: number; origin: number } | undefined;
+  let selectedMarkerId: string | undefined;
   let reorderId: string | undefined;
   let marquee:
     | {
@@ -376,9 +379,15 @@ export function mountTimeline(
     render();
     changed();
   });
-  const button = (text: string, action: string, id?: string) => {
+  const button = (
+    text: string,
+    action: string,
+    id?: string,
+    isHtml = false,
+  ) => {
     const item = document.createElement('button');
-    item.textContent = text;
+    if (isHtml) item.innerHTML = text;
+    else item.textContent = text;
     item.dataset.action = action;
     if (id) item.dataset.id = id;
     return item;
@@ -401,9 +410,12 @@ export function mountTimeline(
         : row;
     });
     const trackRows = nleTimelineRows(session.source, zoom);
-    root.querySelector('[data-action="play"]')!.textContent = session.playing
-      ? '❚❚'
-      : '▶';
+    const playButton = root.querySelector<HTMLElement>('[data-action="play"]')!;
+    const playIcon = session.playing ? 'pause' : 'play';
+    if (playButton.dataset.icon !== playIcon) {
+      playButton.dataset.icon = playIcon;
+      playButton.innerHTML = iconSvg(playIcon, 16);
+    }
     const available = contextActions(
       session.source,
       session.selectedIds,
@@ -471,6 +483,10 @@ export function mountTimeline(
     }
     const rulerBar = document.createElement('div');
     rulerBar.className = 'timeline-ruler-bar';
+    rulerBar.style.setProperty(
+      '--track-height',
+      `${(trackRows.length + rows.length) * 34}px`,
+    );
     rulerBar.append(ruler);
     content.append(rulerBar);
     for (const [trackIndex, row] of trackRows.entries()) {
@@ -492,38 +508,51 @@ export function mountTimeline(
       label.className = 'track-name';
       label.textContent = `${row.track.type.toUpperCase()} · ${row.track.name}`;
       const enable = button(
-        row.track.enabled ? '◉' : '○',
+        iconSvg(row.track.enabled ? 'eye' : 'eyeOff', 14),
         'track-enable',
         row.track.id,
+        true,
       );
       enable.setAttribute(
         'aria-label',
         `${row.track.enabled ? 'Disable' : 'Enable'} ${row.track.name}`,
       );
+      enable.title = enable.getAttribute('aria-label')!;
       const lock = button(
-        row.track.locked ? '🔒' : '◇',
+        iconSvg(row.track.locked ? 'lock' : 'unlock', 14),
         'track-lock',
         row.track.id,
+        true,
       );
       lock.setAttribute(
         'aria-label',
         `${row.track.locked ? 'Unlock' : 'Lock'} ${row.track.name}`,
       );
+      lock.title = lock.getAttribute('aria-label')!;
       const mute = button(
-        row.track.muted ? 'M' : '◦',
+        iconSvg(row.track.muted ? 'mute' : 'speaker', 14),
         'track-mute',
         row.track.id,
+        true,
       );
       mute.setAttribute(
         'aria-label',
         `${row.track.muted ? 'Unmute' : 'Mute'} ${row.track.name}`,
       );
-      const up = button('↑', 'track-up', row.track.id);
-      const down = button('↓', 'track-down', row.track.id);
+      mute.title = mute.getAttribute('aria-label')!;
+      const up = button(iconSvg('arrowUp', 13), 'track-up', row.track.id, true);
+      const down = button(
+        iconSvg('arrowDown', 13),
+        'track-down',
+        row.track.id,
+        true,
+      );
       up.disabled = trackIndex === 0;
       down.disabled = trackIndex === trackRows.length - 1;
       up.setAttribute('aria-label', `Move ${row.track.name} track up`);
       down.setAttribute('aria-label', `Move ${row.track.name} track down`);
+      up.title = up.getAttribute('aria-label')!;
+      down.title = down.getAttribute('aria-label')!;
       header.append(label, enable, lock, mute, up, down);
       const track = document.createElement('div');
       track.className = 'timeline-track';
@@ -565,7 +594,12 @@ export function mountTimeline(
           ),
         ];
         for (const time of keyTimes) {
-          const diamond = button('◆', 'keyframe', entry.layer.id);
+          const diamond = button(
+            iconSvg('diamondFilled', 12),
+            'keyframe',
+            entry.layer.id,
+            true,
+          );
           diamond.className = 'timeline-keyframe';
           diamond.dataset.time = String(time);
           diamond.title = `Keyframe at ${formatTimelineTime(time)}s`;
@@ -592,20 +626,38 @@ export function mountTimeline(
       header.className = 'timeline-row-header';
       header.draggable = true;
       header.dataset.reorderId = row.layer.id;
-      const select = button(
-        `${row.layer.type === 'group' ? '▱' : row.layer.type === 'text' ? 'T' : '◇'} ${row.layer.name}`,
-        'select',
-        row.layer.id,
+      const select = document.createElement('button');
+      select.dataset.action = 'select';
+      select.dataset.id = row.layer.id;
+      const selectIcon = document.createElement('span');
+      selectIcon.className = 'layer-icon';
+      selectIcon.setAttribute('aria-hidden', 'true');
+      selectIcon.innerHTML = iconSvg(
+        row.layer.type === 'group'
+          ? 'group'
+          : row.layer.type === 'text'
+            ? 'text'
+            : row.layer.type === 'audio'
+              ? 'audio'
+              : row.layer.type === 'image'
+                ? 'image'
+                : row.layer.type === 'shape'
+                  ? 'elements'
+                  : 'media',
+        13,
       );
+      select.append(selectIcon, document.createTextNode(row.layer.name));
       select.style.paddingLeft = `${8 + row.depth * 12}px`;
       select.setAttribute(
         'aria-pressed',
         String(session.selectedIds.includes(row.layer.id)),
       );
-      const up = button('↑', 'up', row.layer.id),
-        down = button('↓', 'down', row.layer.id);
+      const up = button(iconSvg('arrowUp', 13), 'up', row.layer.id, true),
+        down = button(iconSvg('arrowDown', 13), 'down', row.layer.id, true);
       up.setAttribute('aria-label', `Move ${row.layer.name} row up`);
       down.setAttribute('aria-label', `Move ${row.layer.name} row down`);
+      up.title = up.getAttribute('aria-label')!;
+      down.title = down.getAttribute('aria-label')!;
       up.disabled = row.index === 0;
       down.disabled = !rows.some(
         (other) =>
@@ -645,7 +697,12 @@ export function mountTimeline(
         ),
       ];
       for (const time of times) {
-        const diamond = button('◆', 'keyframe', row.layer.id);
+        const diamond = button(
+          iconSvg('diamondFilled', 12),
+          'keyframe',
+          row.layer.id,
+          true,
+        );
         diamond.className = 'timeline-keyframe';
         diamond.dataset.time = String(time);
         diamond.title = `Keyframe at ${time}s`;
@@ -660,7 +717,12 @@ export function mountTimeline(
       empty.textContent = 'No layers in this composition.';
       content.append(empty);
     }
-    const playhead = button('▼', 'seek');
+    const playhead = button(
+      iconSvg('chevronDown', 12),
+      'seek',
+      undefined,
+      true,
+    );
     playhead.className = 'timeline-playhead';
     playhead.setAttribute('aria-label', 'Drag playhead');
     playhead.style.setProperty(
@@ -670,8 +732,16 @@ export function mountTimeline(
     playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
     rulerBar.append(playhead);
     for (const marker of composition.markers) {
-      const item = button('⚑', 'marker-handle', marker.id);
-      item.className = 'timeline-marker';
+      const item = button(
+        iconSvg('marker', 12),
+        'marker-handle',
+        marker.id,
+        true,
+      );
+      item.className =
+        marker.id === selectedMarkerId
+          ? 'timeline-marker timeline-marker--selected'
+          : 'timeline-marker';
       item.title = marker.label || 'Marker';
       item.style.left = `${headerWidth + timeToPixel(markerPreview?.id === marker.id ? markerPreview.time : marker.time, zoom)}px`;
       rulerBar.append(item);
@@ -712,6 +782,7 @@ export function mountTimeline(
     const originalIds = marquee?.originalIds;
     release();
     markerPreview = undefined;
+    selectedMarkerId = undefined;
     marquee = undefined;
     controller.cancel();
     render();
@@ -729,26 +800,32 @@ export function mountTimeline(
         session.timelineZoom,
       ),
     );
+  const stepFrame = (direction: -1 | 1, big = false) => {
+    session.setPlaying(false);
+    session.setCurrentTime(
+      session.currentTime +
+        frameToTime(direction * (big ? 10 : 1), session.source.composition.fps),
+    );
+  };
   const update = (event: PointerEvent) => {
     if (!pointer || pointer.id !== event.pointerId) return;
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY))
       throw new RangeError('Invalid pointer coordinate');
     if (pointer.kind === 'playhead') seek(event.clientX);
     else if (pointer.kind === 'marker') {
-      markerPreview!.time = Math.max(
-        0,
-        Math.min(
-          session.source.composition.duration,
-          pixelToTime(
-            event.clientX -
-              scroll.getBoundingClientRect().left +
-              scroll.scrollLeft -
-              headerWidth,
-            session.timelineZoom,
+      const deltaPixels = event.clientX - pointer.start;
+      if (Math.abs(deltaPixels) >= 3) pointer.moved = true;
+      if (pointer.moved) {
+        markerPreview!.time = Math.max(
+          0,
+          Math.min(
+            session.source.composition.duration,
+            markerPreview!.origin +
+              pixelToTime(deltaPixels, session.timelineZoom),
           ),
-        ),
-      );
-      render();
+        );
+        render();
+      }
     } else if (pointer.kind === 'marquee') {
       const bounds = scroll.getBoundingClientRect();
       const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
@@ -852,7 +929,10 @@ export function mountTimeline(
         const found = session.source.composition.markers.find(
           (item) => item.id === marker.dataset.id,
         )!;
-        markerPreview = { id: found.id, time: found.time };
+        markerPreview = { id: found.id, time: found.time, origin: found.time };
+      } else if (selectedMarkerId) {
+        selectedMarkerId = undefined;
+        render();
       }
       if (clip)
         controller.begin(
@@ -885,6 +965,7 @@ export function mountTimeline(
       if (event.pointerId !== pointer?.id) return;
       update(event);
       const kind = pointer?.kind;
+      const moved = pointer?.moved ?? false;
       release();
       if (kind === 'clip') controller.finish();
       if (kind === 'marker' && markerPreview) {
@@ -892,8 +973,9 @@ export function mountTimeline(
           (item) => item.id === markerPreview!.id,
         );
         const time = markerPreview.time;
+        const markerId = markerPreview.id;
         markerPreview = undefined;
-        if (marker && marker.time !== time)
+        if (moved && marker && marker.time !== time)
           engine.commands.transaction('Move marker', [
             {
               type: 'UPDATE_MARKER',
@@ -901,6 +983,8 @@ export function mountTimeline(
               marker: { ...marker, time },
             },
           ]);
+        // A click with no drag selects the marker (for keyboard delete) instead of moving it.
+        if (!moved) selectedMarkerId = markerId;
       }
       suppressClick = kind === 'marquee';
       marquee = undefined;
@@ -1000,6 +1084,12 @@ export function mountTimeline(
         case 'stop':
           playback.stop();
           break;
+        case 'frame-back':
+          stepFrame(-1);
+          break;
+        case 'frame-forward':
+          stepFrame(1);
+          break;
         case 'keyframe':
           session.setPlaying(false);
           session.setCurrentTime(Number(target.dataset.time));
@@ -1072,20 +1162,16 @@ export function mountTimeline(
         ].includes(event.key)
       ) {
         event.preventDefault();
-        if (event.key === 'Delete' || event.key === 'Backspace')
-          controller.deleteSelected();
-        else if (event.key === 'Home') session.setCurrentTime(0);
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+          if (selectedMarkerId) {
+            const markerId = selectedMarkerId;
+            selectedMarkerId = undefined;
+            performEdit(engine, session, 'delete-marker', markerId);
+          } else controller.deleteSelected();
+        } else if (event.key === 'Home') session.setCurrentTime(0);
         else if (event.key === 'End')
           session.setCurrentTime(session.source.composition.duration);
-        else
-          session.setCurrentTime(
-            session.currentTime +
-              frameToTime(
-                (event.key === 'ArrowLeft' ? -1 : 1) *
-                  (event.shiftKey ? 10 : 1),
-                session.source.composition.fps,
-              ),
-          );
+        else stepFrame(event.key === 'ArrowLeft' ? -1 : 1, event.shiftKey);
       }
     });
   const zoomAt = (value: number, clientX?: number) => {
@@ -1226,7 +1312,7 @@ export function mountTimeline(
     pointercancel,
     lostpointercapture: pointercancel,
     click,
-    keydown,
+    ...(externalKeyboard ? {} : { keydown }),
     contextmenu,
     dragstart,
     dragleave,
@@ -1259,6 +1345,7 @@ export function mountTimeline(
     ) {
       release();
       markerPreview = undefined;
+      selectedMarkerId = undefined;
       marquee = undefined;
     }
     observedProject = engine.state;
@@ -1271,6 +1358,15 @@ export function mountTimeline(
   });
   render();
   return {
+    get active() {
+      return pointer !== null && pointer !== undefined;
+    },
+    handleKey: keydown,
+    closeMenu() {
+      if (menu.hidden) return false;
+      menu.hidden = true;
+      return true;
+    },
     controller,
     render,
     cancel,

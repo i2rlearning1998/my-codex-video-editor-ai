@@ -1,12 +1,7 @@
-import { test, expect, allowError, hook, toScreen, artboard } from './fixtures';
+import { test, expect, hook, toScreen, artboard } from './fixtures';
 import type { Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  allowError(
-    page,
-    (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-    'REL-001 is reproduced separately; this exception isolates the six baseline interaction proofs from the known favicon error.',
-  );
   await page.goto('/');
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
