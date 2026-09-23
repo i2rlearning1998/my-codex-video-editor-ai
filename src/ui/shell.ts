@@ -479,8 +479,10 @@ export function mountEditorShell(
         : undefined;
     list.replaceChildren();
     let count = 0;
+    // Front-first (owner decision, LYR-002): the topmost layer is the first row;
+    // layers later in the array paint on top, so each sibling level is reversed.
     const appendLayers = (layers: readonly SceneLayer[], depth: number) => {
-      for (const layer of layers) {
+      for (const layer of [...layers].reverse()) {
         count++;
         const button = document.createElement('button');
         button.className = 'scene-row';

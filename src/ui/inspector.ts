@@ -82,10 +82,11 @@ export function renderInspector(
       ['Rotation', `${formatNumber(layer.transform.rotation.value)}°`],
       ['Opacity', formatNumber(layer.transform.opacity.value)],
     ],
+    // Display-rounded like Transform; committed values stay exact.
     Timing: [
-      ['Start time', String(effectiveTiming.startTime)],
-      ['Duration', String(effectiveTiming.duration)],
-      ['Current time', String(source.currentTime ?? 0)],
+      ['Start time', formatNumber(effectiveTiming.startTime)],
+      ['Duration', formatNumber(effectiveTiming.duration)],
+      ['Current time', formatNumber(source.currentTime ?? 0)],
     ],
     Dimensions: [
       ['Width', size ? String(size.width) : '—'],

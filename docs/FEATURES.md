@@ -29,7 +29,7 @@ This file is the **single definition of what the finished editor must do**. Ever
 | W1 | Shell v2, design system, i18n, commands, project dialogs | 60 | 21 | 4 |
 | W2 | Canvas, layers, timeline, playback, inspector interaction-complete | 111 | 20 | 5 |
 | W3 | Text, fonts and languages | 21 | 9 | 4 |
-| W4 | Media pipeline, storage, Pixabay, AV playback | 41 | 9 | 2 |
+| W4 | Media pipeline, storage, Pixabay, AV playback | 42 | 9 | 2 |
 | W5 | Animation, shapes and graphics, export v1 | 28 | 10 | 1 |
 | W6 | Effects, transitions, masks, color, speed and chroma key | 21 | 18 | 3 |
 | W7 | Audio engine | 9 | 7 | 2 |
@@ -37,7 +37,7 @@ This file is the **single definition of what the finished editor must do**. Ever
 | W9 | Hardening: export full, performance, accessibility, UI language packs | 4 | 23 | 5 |
 | W10 | AI integration (last) | 0 | 0 | 13 |
 
-**Total items: 494** (P0 306, P1 131, P2 57). Status now: see `npm run ledger` (after W2-CLAUDE: Verified 48, Claimed 38, Todo 407, Bug 1).
+**Total items: 495** (P0 307, P1 131, P2 57). Status now: see `npm run ledger` (after W2-CLAUDE: Verified 48, Claimed 38, Todo 407, Bug 1).
 
 ## DEV: Process, testing and tooling (Wave 0)
 
@@ -226,6 +226,7 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-032 | P1 | W4 | Todo | Stock filters (orientation, category, color) |
 | MED-033 | P2 | W4 | Todo | Stock favorites and recents |
 | MED-034 | P1 | W8 | Todo | Record screen, webcam and microphone (voiceover lives in AUD) |
+| MED-035 | P0 | W4 | Bug | The Media tab (Project Media) lists the project's registered media as draggable cards; today the cards appear only under other library categories because the Media tab hides the panel that holds them |
 
 ## CV: Canvas (Wave 2)
 

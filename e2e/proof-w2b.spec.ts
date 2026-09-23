@@ -414,17 +414,18 @@ test.describe('layers and inspector', () => {
     );
   });
 
-  test('[LYR-002] the layer list shows layers and groups in stacking order', async ({
+  test('[LYR-002] the layer list shows layers and groups in stacking order, topmost first', async ({
     page,
   }) => {
     const order: string[] = [];
+    // Front-first (owner decision): later layers paint on top, so each sibling
+    // level lists in reverse array order, children under their group.
     const visit = (layers: readonly any[]) =>
-      layers.forEach((item) => {
+      [...layers].reverse().forEach((item) => {
         order.push(item.id);
         visit(item.children);
       });
     visit((await hook(page)).project.compositions[0]!.layers);
-    // Back to front: the same order the canvas paints in.
     await expect(page.locator('#scene-list [data-layer-id]')).toHaveCount(
       order.length,
     );
@@ -435,6 +436,7 @@ test.describe('layers and inspector', () => {
           rows.map((row) => (row as HTMLElement).dataset.layerId),
         ),
     ).toEqual(order);
+    expect(order[0]).toBe('example-edition'); // painted last = frontmost
     const indent = async (id: string) =>
       parseFloat(
         await page
@@ -477,5 +479,24 @@ test.describe('layers and inspector', () => {
     await expect(
       page.getByRole('spinbutton', { name: 'Duration' }),
     ).toHaveValue('2');
+  });
+
+  test('[INS-010] regression: timing values are display-rounded after a frame nudge, stored exactly', async ({
+    page,
+    openFixtureProject,
+  }) => {
+    await openFixtureProject('nle-example.json');
+    await clipEl(page, 'clip-b').click({ position: { x: 30, y: 10 } });
+    await page.keyboard.press('Alt+ArrowLeft'); // one frame: 3 − 1/30 s
+    await page.locator('[data-subtab="Timing"]').click();
+    await expect(
+      page.getByRole('spinbutton', { name: 'Start time' }),
+    ).toHaveValue('2.967');
+    expect((await clip(page, 'clip-b')).startTime).toBe(3 - 1 / 30);
+    // Leaving the field untouched commits nothing, so the exact value survives.
+    await page.getByRole('spinbutton', { name: 'Start time' }).focus();
+    await page.keyboard.press('Tab');
+    expect((await clip(page, 'clip-b')).startTime).toBe(3 - 1 / 30);
+    expect((await hook(page)).history.labels).toEqual(['Move clip']);
   });
 });

@@ -19,3 +19,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-24 | W2-B | Asset cards appear under the default Scene/library view but not under the Media tab, which shows only the Import placeholder.
   2026-09-24 | W2-B | The Inspector Timing fields show raw floats after frame nudges (for example 3.0333333333), against the "no raw floating-point numbers in the UI" rule.
   2026-09-24 | W2-B TL-001 | Group children have no timeline rows; a future item could show them nested inside the group clip (expand/collapse).
+  2026-09-24 | W2-B follow-up | Resolved: LYR-002 order is front-first (D-043); Inspector raw floats fixed (D-046); Media tab cards became ledger bug MED-035 (D-044).
+  2026-09-24 | W2-B follow-up | CV-008 Alt-from-center needs an explicit owner decision to open TRANSFORM_INTERACTION_CONTRACT.md before anyone attempts it (D-045).

@@ -123,3 +123,11 @@ D-038 to D-042 in `docs/DECISIONS.md`:
 | CV-008 | | |
 | LYR-001 / LYR-002 | | |
 | INS-009 / INS-010 | | |
+
+## Addendum: owner follow-ups (2026-09-24)
+| Item | Result | Evidence |
+|---|---|---|
+| Layer list order | Changed to front-first: the topmost layer is the first row, and groups list front-first with children underneath (D-043) | `[LYR-002] the layer list shows layers and groups in stacking order, topmost first` |
+| Inspector raw decimals | Fixed: the Timing fields are display-rounded to 3 decimals, stored values stay exact, and an untouched field commits nothing (D-046) | `[INS-010] regression: timing values are display-rounded after a frame nudge, stored exactly`. It failed on the old code with `2.966666666666667`. |
+| Media tab without cards | **Pre-existing, not a TL-001 regression.** The hiding rule (`library-placeholder … hidden = isMedia \|\| isScene`) came in with Wave 1 commit `417bdaf` and is identical at `78c9652`, before any Wave 2 work. It is logged as a ledger Bug, MED-035 (P0, W4), with a reproduction; no fix yet (D-044). | `test.fail('[MED-035] the Media tab lists the project media cards')` in `e2e/known-bugs.spec.ts` |
+| CV-008 Alt from center | Left untouched. It needs an explicit owner decision to open the frozen transform-interaction contract (D-045). | Existing `test.fail('[CV-008] …')` |
