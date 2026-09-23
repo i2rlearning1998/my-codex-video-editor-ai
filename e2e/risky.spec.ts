@@ -303,17 +303,40 @@ test('[CV-011] text-width grips change the text box width and reflow without cha
   expect((await hook(page)).history.labels).toHaveLength(1);
 });
 
-test.fail(
-  '[CV-022] clicking inside a group selects the group; double-click selects the child; Esc exits',
-  async ({ page }) => {
-    // The lime front card sits inside the "Card arrangement" group.
-    const card = await toScreen(page, 960, 300);
-    await page.mouse.click(card.x, card.y);
-    expect((await hook(page)).session.selectedIds).toEqual(['example-cards']);
-    await page.mouse.dblclick(card.x, card.y);
-    const child = (await hook(page)).session.selectedIds[0];
-    expect(child).not.toBe('example-cards');
-    await page.keyboard.press('Escape');
-    expect((await hook(page)).session.selectedIds).toEqual(['example-cards']);
-  },
-);
+test('[CV-022] clicking inside a group selects the group; double-click selects the child; Esc exits', async ({
+  page,
+}, testInfo) => {
+  const selected = async () => (await hook(page)).session.selectedIds;
+  // The lime front card sits inside "Card arrangement" > "Front card".
+  const card = await toScreen(page, 960, 300);
+  await page.mouse.click(card.x, card.y);
+  expect(await selected()).toEqual(['example-cards']);
+  // Double-click enters one level at a time and selects the child under the pointer.
+  await page.mouse.dblclick(card.x, card.y);
+  expect(await selected()).toEqual(['example-front']);
+  await page.mouse.dblclick(card.x, card.y);
+  const leaf = (await selected())[0]!;
+  expect(['example-paper', 'example-card-title']).toContain(leaf);
+  await page.screenshot({ path: testInfo.outputPath('group-isolation.png') });
+  // Esc steps back out one level at a time, then clears the selection.
+  await page.keyboard.press('Escape');
+  expect(await selected()).toEqual(['example-front']);
+  await page.keyboard.press('Escape');
+  expect(await selected()).toEqual(['example-cards']);
+  await page.keyboard.press('Escape');
+  expect(await selected()).toEqual([]);
+  // A drag after a single click moves the whole group as one undo step.
+  const before = (await layer(page, 'example-cards')).transform.position.value;
+  await drag(page, card, 40, 0);
+  const after = (await layer(page, 'example-cards')).transform.position.value;
+  expect(after[0]).toBeGreaterThan(before[0]);
+  expect((await hook(page)).history.labels).toHaveLength(1);
+  // Clicking a layer outside the entered group leaves isolation.
+  await page.mouse.dblclick(card.x + 40, card.y);
+  expect(await selected()).toEqual(['example-front']);
+  const headline = await toScreen(page, 300, 250);
+  await page.mouse.click(headline.x, headline.y);
+  expect(await selected()).toEqual(['example-headline']);
+  await page.mouse.click(card.x + 40, card.y);
+  expect(await selected()).toEqual(['example-cards']);
+});

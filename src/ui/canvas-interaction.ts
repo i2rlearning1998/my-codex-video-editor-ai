@@ -5,6 +5,26 @@ import { hitHandle, selectionGeometry } from '../render/selection';
 import type { EditorSession } from './session';
 import type { TransformInteraction } from './transform-interaction';
 
+/**
+ * CV-022: map a picked leaf to the selectable layer. Outside any entered group
+ * that is its top-level ancestor; inside an entered group it is that group's
+ * child on the path. `inside` is false when the pick lies outside the group.
+ */
+export function resolvePick(
+  source: EditorSession['source'],
+  picked: string | null,
+  entered: string | null,
+): { id: string | null; inside: boolean } {
+  if (!picked) return { id: null, inside: false };
+  const item = deriveRenderItems(source).items.find(
+    (entry) => entry.id === picked,
+  );
+  const path = [...(item?.ancestors ?? []), picked];
+  const at = entered ? path.indexOf(entered) : -1;
+  return at >= 0 && at < path.length - 1
+    ? { id: path[at + 1]!, inside: true }
+    : { id: path[0]!, inside: false };
+}
 /** DOM pointer lifetime only; the controller resolves and commits semantic edits. */
 export function bindCanvasInteraction(
   canvas: HTMLCanvasElement,
@@ -17,6 +37,16 @@ export function bindCanvasInteraction(
   onContextMenu?: (point: Point2, layerId: string | null) => void,
 ) {
   let pointer: number | null = null;
+  // Clicking outside the entered group leaves isolation (CV-022).
+  const pick = (point: Point2) => {
+    const resolved = resolvePick(
+      session.source,
+      pickLayer(session.source, viewport(), point),
+      session.enteredGroupId,
+    );
+    if (!resolved.inside && session.enteredGroupId) session.enterGroup(null);
+    return resolved.id;
+  };
   let marquee: {
     start: Point2;
     ids: readonly string[];
@@ -77,7 +107,7 @@ export function bindCanvasInteraction(
               point,
             );
       if (handle === null) {
-        const picked = pickLayer(session.source, viewport(), point);
+        const picked = pick(point);
         const selected = session.selectedId
           ? locateLayer(session.source.composition.layers, session.selectedId)
           : null;
@@ -196,8 +226,12 @@ export function bindCanvasInteraction(
               Math.min(...ys) <= Math.max(a[1], end[1])
             );
           })
-          .map((item) => item.id);
-        const ids = [...marquee.ids, ...selected];
+          .map((item) =>
+            resolvePick(session.source, item.id, session.enteredGroupId),
+          )
+          .filter((resolved) => !session.enteredGroupId || resolved.inside)
+          .map((resolved) => resolved.id!);
+        const ids = [...new Set([...marquee.ids, ...selected])];
         marquee.box.remove();
         marquee = null;
         release();
@@ -220,9 +254,21 @@ export function bindCanvasInteraction(
         return;
       }
       session.select(
-        pickLayer(session.source, viewport(), screenPoint(event)),
+        pick(screenPoint(event)),
         event.shiftKey || event.ctrlKey || event.metaKey,
       );
+    });
+  // Double-click enters the group under the pointer and selects its child.
+  canvas.ondblclick = (event) =>
+    safely(() => {
+      const point = screenPoint(event);
+      const leaf = pickLayer(session.source, viewport(), point);
+      const current = resolvePick(session.source, leaf, session.enteredGroupId);
+      if (!current.id) return;
+      const found = locateLayer(session.source.composition.layers, current.id);
+      if (found?.layer.type !== 'group') return;
+      session.enterGroup(current.id);
+      session.select(resolvePick(session.source, leaf, current.id).id);
     });
   const keydown = (event: KeyboardEvent) => {
     if (event.target === canvas && event.key !== 'Escape') {
@@ -276,7 +322,7 @@ export function bindCanvasInteraction(
     safely(() => {
       event.preventDefault();
       const point = screenPoint(event);
-      const picked = pickLayer(session.source, viewport(), point);
+      const picked = pick(point);
       if (picked) {
         if (!session.selectedIds.includes(picked)) session.select(picked);
       } else session.select(null);

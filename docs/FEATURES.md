@@ -255,7 +255,7 @@ Everything the user does directly on the preview canvas.
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
 | CV-020 | P0 | W2 | Todo | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
 | CV-021 | P0 | W2 | Todo | Right-click empty canvas opens a menu: Paste, Select all, toggle grid and guides |
-| CV-022 | P0 | W2 | Bug | Clicking inside a group selects the group; double-click selects the child; Esc exits |
+| CV-022 | P0 | W2 | Verified | Clicking inside a group selects the group; double-click selects the child; Esc exits |
 | CV-023 | P1 | W2 | Todo | Double-click a group enters isolation mode |
 | CV-024 | P0 | W2 | Todo | Locked layers cannot be moved or resized from the canvas; hidden layers are neither drawn nor selectable |
 | CV-025 | P0 | W2 | Todo | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |

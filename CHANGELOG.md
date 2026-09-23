@@ -7,6 +7,7 @@
 - Cut, copy and paste clips (Ctrl+X, Ctrl+C, Ctrl+V, the palette and both right-click menus). Paste lands at the playhead using the insert rule.
 - Link and unlink clips: linked clips move, nudge, split, delete and copy together and show a link badge. Detach audio creates a separate audio clip on an Audio track (not audible yet).
 - Proved 7 risky Claimed items in the browser. TL-017 (multi-track drag keeping track offsets) and CV-022 (group click and double-click) are now recorded as known bugs.
+- CV-022 fixed (owner priority bump): a click inside a group selects the group; double-click enters it one level at a time and selects the child under the pointer; Esc steps out one level, then deselects; clicking outside leaves the group.
 
 ## Wave 2 continuation (W2-B) — 2026-09-24
 

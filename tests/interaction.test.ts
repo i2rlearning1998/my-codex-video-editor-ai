@@ -261,6 +261,9 @@ describe('canvas command interactions', () => {
   });
   it('converts child movement through a rotated, nonuniformly scaled parent', () => {
     const s = setup(true);
+    // CV-022: a canvas pick reaches the child only inside the entered group.
+    s.shell.session.enterGroup('group');
+    s.shell.session.select('child');
     const start = s.screen([40, 30]);
     s.event('pointerdown', start);
     s.event('pointerup', [start[0] - 15, start[1] + 30]);

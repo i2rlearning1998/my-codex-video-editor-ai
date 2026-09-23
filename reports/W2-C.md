@@ -22,7 +22,7 @@ Of the eight "risky" Claimed items, six were proven: HIS-002, HIS-004, CV-031, I
 | PRJ-012 | Verified | `[PRJ-012] switching the active composition shows its canvas and timeline and resets selection` (new fixture `two-scenes.json`) |
 | CV-011 | Verified | `[CV-011] text-width grips change the text box width and reflow without changing font size` |
 | TL-017 | **Bug** | The time part is proven by `[TL-017] multi-selected clips move together in time…`. The track part is reproduced by `test.fail('[TL-017] multi-selected clips dragged to another track keep their track offsets')`. |
-| CV-022 | **Bug** | `test.fail('[CV-022] clicking inside a group selects the group; …')`. It fails at the first step: a click selects the leaf layer. |
+| CV-022 | Verified (fixed after the first report, D-050) | `[CV-022] clicking inside a group selects the group; double-click selects the child; Esc exits` (was a `test.fail`) |
 
 - In-scope items Verified: 9 of 11. Bug: 2 (TL-017, CV-022), recorded and not fixed (D-049).
 
@@ -48,7 +48,13 @@ Of the eight "risky" Claimed items, six were proven: HIS-002, HIS-004, CV-031, I
 | 10 | Make five different edits (canvas drag, an inspector field, a timeline nudge, a marker, a lock), then press Undo until it greys out | Everything returns to how it was; Redo replays it all | HIS-002 | Y | — |
 | 11 | Menu → Open project → `two-scenes.json`; switch the composition picker to "Scene 2" | The pink card and its single clip show; the selection clears | PRJ-012 | Y | — |
 | 12 | Select clip-a and clip-c, then drag clip-a down one track | **Known bug:** both land on Video 2 instead of Video 2 and Video 3 | TL-017 | Y (expected failure) | — |
-| 13 | Click the lime card in the example | **Known bug:** an inner layer is selected, not "Card arrangement" | CV-022 | Y (expected failure) | — |
+| 13 | Click the lime card in the example; double-click it twice; press Esc three times | "Card arrangement" is selected; then "Front card", then an inner layer; Esc steps back out and finally deselects | CV-022 | Y | `…CV-022*/group-isolation.png` |
+
+## Addendum: CV-022 fix (owner priority bump)
+- The owner asked for CV-022 to be fixed on this branch. Click selects the group; double-click enters it; Esc exits one level; clicking outside exits (D-050).
+- Code: `src/ui/session.ts` (entered group, transient), `src/ui/canvas-interaction.ts` (`resolvePick`, double-click, marquee), `src/commands/shortcuts.ts` (Esc).
+- Tests: the e2e `test.fail` became a normal passing test, extended with a whole-group drag and exit-by-outside-click. Two jsdom tests were updated to the new behaviour.
+- Verify after the fix: exit 0; unit+jsdom 305 passed; e2e 69 passed = 65 normal + 4 expected failures (DEV-006 probe, CV-008, MED-035, TL-017), Chromium 141; ledger Verified 79 / Claimed 11 / Todo 402 / Bug 3.
 
 ## 5. Deviations from the brief
 - **Fixture loader:** `openFixtureProject` now waits for each fixture's own project name instead of a hard-coded "NLE Fixture", so it can open the new two-scene fixture.

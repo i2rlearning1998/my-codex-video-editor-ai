@@ -1,6 +1,6 @@
 - Wave 2 continuation W2-B + W2-C is on branch claude/wave-2-timeline-clips-mwy1f3 as PR #3 against main, awaiting owner review (W2-C is stacked on W2-B because it needs the insert rule).
-- Last full verify in this sandbox (W2-C): 305 unit + jsdom; 64 e2e passes + 5 expected failures; ledger 78 Verified / 11 Claimed / 402 Todo / 4 Bug. See reports/W2-C.md. The browser is Chromium 141 (fallback). GitHub Actions runs only when dispatched by hand (the first run passed).
-- W2-C: TL-027 and TL-032 are Verified; HIS-002, HIS-004, CV-031, INS-002, INS-003, PRJ-012 and CV-011 are Verified. TL-017 and CV-022 are now Bug, with reproductions.
-- Known bugs: CV-008 (Alt from center; needs an owner decision on the frozen contract, D-045), MED-035 (Media tab), TL-017 (multi-track drag offsets), CV-022 (group click and double-click).
+- Last full verify in this sandbox (W2-C): 305 unit + jsdom; 65 e2e passes + 4 expected failures; ledger 79 Verified / 11 Claimed / 402 Todo / 3 Bug (after the CV-022 fix). See reports/W2-C.md. The browser is Chromium 141 (fallback). GitHub Actions runs only when dispatched by hand (the first run passed).
+- W2-C: TL-027 and TL-032 are Verified; HIS-002, HIS-004, CV-031, INS-002, INS-003, PRJ-012 and CV-011 are Verified. TL-017 is Bug with a reproduction. CV-022 was fixed afterwards on owner request and is Verified (D-050).
+- Known bugs: CV-008 (Alt from center; needs an owner decision on the frozen contract, D-045), MED-035 (Media tab) and TL-017 (multi-track drag offsets).
 - Schema remains 4; link, detach, reverse and freeze state live in clip.metadata. Nothing is audible yet (no audio engine).
 - Next options: fix the four known bugs, or the roadmap's W3 (text and fonts). The shell is still imperative DOM.

@@ -9,6 +9,8 @@ export class EditorSession {
   #selection: readonly string[] = Object.freeze([]);
   /** Transient preview monitoring (TL-059): never saved, never history. */
   #solo: readonly string[] = Object.freeze([]);
+  /** CV-022 group isolation: canvas clicks resolve to this group's children. */
+  #enteredGroup: string | null = null;
   #playing = false;
   #canvasZoom = 1;
   #compositionId: string;
@@ -29,8 +31,15 @@ export class EditorSession {
         this.#compositionId = engine.state.compositions[0]!.id;
         this.#selection = Object.freeze([]);
         this.#solo = Object.freeze([]);
+        this.#enteredGroup = null;
         this.#currentTime = 0;
       }
+      if (
+        this.#enteredGroup &&
+        locateLayer(this.source.composition.layers, this.#enteredGroup)?.layer
+          .type !== 'group'
+      )
+        this.#enteredGroup = null;
       this.#solo = Object.freeze(
         this.#solo.filter((id) =>
           this.source.composition.tracks.some((track) => track.id === id),
@@ -98,6 +107,31 @@ export class EditorSession {
     );
     this.#notify();
   }
+  get enteredGroupId(): string | null {
+    return this.#enteredGroup;
+  }
+  /** Enter a group (double-click) or leave isolation with null. */
+  enterGroup(id: string | null): void {
+    if (
+      id !== null &&
+      locateLayer(this.source.composition.layers, id)?.layer.type !== 'group'
+    )
+      throw new Error('Only groups can be entered');
+    if (id === this.#enteredGroup) return;
+    this.#enteredGroup = id;
+    this.#notify();
+  }
+  /** Escape out of the entered group: select it and step up one level. */
+  exitGroup(): boolean {
+    const group = this.#enteredGroup;
+    if (!group) return false;
+    const found = locateLayer(this.source.composition.layers, group);
+    this.#enteredGroup =
+      found?.parent?.type === 'group' ? found.parent.id : null;
+    this.#selection = Object.freeze(found ? [group] : []);
+    this.#notify();
+    return true;
+  }
   get selectedIds(): readonly string[] {
     return this.#selection;
   }
@@ -144,6 +178,7 @@ export class EditorSession {
     this.#currentTime = 0;
     this.#selection = Object.freeze([]);
     this.#solo = Object.freeze([]);
+    this.#enteredGroup = null;
     this.#notify();
   }
   onChange(listener: () => void): () => void {

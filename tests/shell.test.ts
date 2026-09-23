@@ -109,7 +109,15 @@ describe('editor shell integration', () => {
     const text = serializeProject(before);
     const changed = vi.fn();
     engine.on('state:changed', changed);
+    // CV-022: a click selects the group; a double-click enters it and
+    // selects the child under the pointer.
     clickCanvas(root, 160, 100);
+    expect(shell.session.selectedId).toBe('group');
+    root
+      .querySelector('canvas')!
+      .dispatchEvent(
+        new MouseEvent('dblclick', { clientX: 160, clientY: 100 }),
+      );
     expect(shell.session.selectedId).toBe('child');
     expect(render.mock.calls.at(-1)![3]).toBe('child');
     expect(
