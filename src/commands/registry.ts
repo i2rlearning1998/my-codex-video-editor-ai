@@ -113,6 +113,12 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   edit('marker', 'M'),
   edit('group', 'Ctrl+G'),
   edit('toggle-enabled', ''),
+  edit('cut', 'Ctrl+X'),
+  edit('copy', 'Ctrl+C'),
+  edit('paste', 'Ctrl+V'),
+  edit('link', ''),
+  edit('unlink', ''),
+  edit('detach-audio', ''),
   edit('reverse', ''),
   edit('freeze', ''),
   {

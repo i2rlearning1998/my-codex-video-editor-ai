@@ -6,6 +6,7 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   clipTimeEffects,
+  clipLinkId,
   clipTrimBounds,
   retimeClip,
   trackAcceptsLayer,
@@ -20,6 +21,7 @@ import {
   performEdit,
   contextActions,
   jumpToCut,
+  withLinked,
   moveClipsToAdjacentTrack,
   nudgeClips,
   setClipSpeed,
@@ -45,6 +47,15 @@ import {
 } from './timeline-model';
 import { iconSvg } from './icons';
 
+/** TL-027/TL-032 menu actions labelled from the command catalog. */
+const CLIP_ACTIONS: readonly EditAction[] = [
+  'cut',
+  'copy',
+  'paste',
+  'link',
+  'unlink',
+  'detach-audio',
+];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
 
 export class TimelineInteraction {
@@ -59,6 +70,8 @@ export class TimelineInteraction {
     bounds?: TrimBounds;
     snap?: number;
     locked?: boolean;
+    /** Linked partners carried along in time only; they keep their tracks. */
+    followers?: ReadonlySet<string>;
   } | null = null;
   #unsubscribe: () => void;
   constructor(
@@ -110,7 +123,10 @@ export class TimelineInteraction {
       if (!found) return undefined;
       landings.push({
         clip: found.clip,
-        trackId: destination ?? found.track.id,
+        trackId:
+          destination && !this.#gesture?.followers?.has(preview.layerId)
+            ? destination
+            : found.track.id,
         startTime: preview.startTime,
       });
     }
@@ -154,9 +170,12 @@ export class TimelineInteraction {
       };
     };
     const layer = asTimedLayer(canonicalLayer);
+    // TL-032: a move carries linked partners along (in time, not across tracks).
     const layers = selectionRoots(
       this.session.source,
-      this.session.selectedIds,
+      kind === 'move'
+        ? withLinked(this.session.source, this.session.selectedIds)
+        : this.session.selectedIds,
     ).map(asTimedLayer);
     if (kind !== 'move' && layers.length > 1)
       throw new Error('Select one clip to trim');
@@ -171,7 +190,16 @@ export class TimelineInteraction {
             )?.duration,
           )
         : undefined;
+    const roots = new Set(
+      selectionRoots(this.session.source, this.session.selectedIds).map(
+        (item) => item.id,
+      ),
+    );
+    const followers = new Set(
+      layers.map((item) => item.id).filter((id) => !roots.has(id)),
+    );
     this.#gesture = {
+      ...(followers.size ? { followers } : {}),
       ...(bounds ? { bounds } : {}),
       ...(locked ? { locked } : {}),
       layer,
@@ -217,10 +245,15 @@ export class TimelineInteraction {
       }
       delete gesture.destinationId;
       if (gesture.kind === 'move' && destinationId) {
-        const clips = gesture.layers.map((layer) => ({
-          layer,
-          location: findClipByLayer(this.session.source.composition, layer.id),
-        }));
+        const clips = gesture.layers
+          .filter((layer) => !gesture.followers?.has(layer.id))
+          .map((layer) => ({
+            layer,
+            location: findClipByLayer(
+              this.session.source.composition,
+              layer.id,
+            ),
+          }));
         if (
           clips.every((item) => item.location) &&
           destinationId.startsWith('track:')
@@ -718,6 +751,8 @@ export function mountTimeline(
           badges.push(['reverse', iconSvg('reverse', 11), t('clip.reversed')]);
         if (effects.freezeFrame !== null)
           badges.push(['freeze', iconSvg('freeze', 11), t('clip.frozen')]);
+        if (clipLinkId(entry.clip))
+          badges.push(['link', iconSvg('link', 11), t('clip.linked')]);
         for (const [kind, content, label] of badges) {
           const badge = document.createElement('span');
           badge.className = 'clip-badge';
@@ -1312,6 +1347,12 @@ export function mountTimeline(
         case 'toggle-enabled':
         case 'reverse':
         case 'freeze':
+        case 'cut':
+        case 'copy':
+        case 'paste':
+        case 'link':
+        case 'unlink':
+        case 'detach-audio':
           performEdit(engine, session, target.dataset.action as EditAction);
           break;
       }
@@ -1537,6 +1578,8 @@ export function mountTimeline(
       ).map((action) => {
         if (action === 'speed')
           return menuItem(`${t('command.speed')} ›`, action);
+        if (CLIP_ACTIONS.includes(action))
+          return menuItem(t(`command.${action}`), action);
         if (action === 'reverse' || action === 'freeze') {
           const item = menuItem(
             t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),

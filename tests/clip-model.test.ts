@@ -138,3 +138,148 @@ describe('[TL-004] locked tracks', () => {
     expect(engine.canUndo).toBe(false);
   });
 });
+
+interface ClipRow {
+  id: string;
+  name: string;
+  trackId: string;
+  assetId: string | null;
+  startTime: number;
+  duration: number;
+  sourceIn: number;
+  sourceOut: number;
+  metadata: Record<string, unknown>;
+}
+describe('[TL-027][TL-032] clipboard, links and detach', () => {
+  const setup = async () => {
+    const { EditorSession } = await import('../src/ui/session');
+    const editing = await import('../src/ui/editing');
+    editing.clearClipboard();
+    const engine = new EditorEngine(adoptFreeLayers(fixture()).project);
+    const session = new EditorSession(engine);
+    // Plain rows: the deep readonly snapshot types are too deep for expect().
+    const clips = (): ClipRow[] =>
+      JSON.parse(
+        JSON.stringify(
+          engine.state.compositions[0]!.tracks.flatMap((track) =>
+            track.clips.map((clip) => ({ ...clip, trackId: track.id })),
+          ),
+        ),
+      );
+    return { engine, session, editing, clips };
+  };
+  it('pastes copies at the playhead with the insert rule, repeatedly', async () => {
+    const { engine, session, editing, clips } = await setup();
+    session.select('layer-a'); // clip-a 0..2 on Video 1
+    editing.performEdit(engine, session, 'copy');
+    expect(engine.canUndo).toBe(false);
+    session.setCurrentTime(2);
+    editing.performEdit(engine, session, 'paste');
+    const video1 = () =>
+      clips()
+        .filter((clip) => clip.trackId === 'video-1')
+        .map((clip) => [clip.startTime, clip.duration])
+        .sort((a, b) => a[0]! - b[0]!);
+    // The copy lands at 2 s on Video 1 and pushes clip-b (3..5) to 4 s.
+    expect(video1()).toEqual([
+      [0, 2],
+      [2, 2],
+      [4, 2],
+    ]);
+    editing.performEdit(engine, session, 'paste');
+    expect(video1()).toHaveLength(4);
+    expect(overlaps(engine.state as unknown as Project)).toEqual([]);
+    expect(engine.history.undo.map((step) => step.label)).toEqual([
+      'Paste',
+      'Paste',
+    ]);
+  });
+  it('cuts in one undo step and keeps the clipboard for a paste', async () => {
+    const { engine, session, editing, clips } = await setup();
+    session.select('layer-c');
+    editing.performEdit(engine, session, 'cut');
+    expect(clips().map((clip) => clip.id)).not.toContain('clip-c');
+    engine.undo();
+    expect(clips().map((clip) => clip.id)).toContain('clip-c');
+    engine.redo();
+    session.setCurrentTime(0);
+    editing.performEdit(engine, session, 'paste');
+    const pasted = clips().find((clip) => clip.name === 'clip-c')!;
+    expect([pasted.trackId, pasted.startTime, pasted.duration]).toEqual([
+      'video-2',
+      0,
+      3,
+    ]);
+  });
+  it('links clips so delete and split act on the whole group; unlink separates them', async () => {
+    const { engine, session, editing, clips } = await setup();
+    session.selectMany(['layer-a', 'layer-c']);
+    editing.performEdit(engine, session, 'link');
+    const link = (id: string) =>
+      (clips().find((clip) => clip.id === id)!.metadata as { linkId?: string })
+        .linkId;
+    expect(link('clip-a')).toBeDefined();
+    expect(link('clip-a')).toBe(link('clip-c'));
+    // Split at 1.5 s from clip-a alone splits clip-c too (it spans 1.5 s).
+    session.select('layer-a');
+    session.setCurrentTime(1.5);
+    editing.performEdit(engine, session, 'split');
+    const pieces = clips().filter((clip) => clip.startTime === 1.5);
+    expect(pieces).toHaveLength(2);
+    expect(link(pieces[0]!.id)).toBe(link(pieces[1]!.id));
+    expect(link(pieces[0]!.id)).not.toBe(link('clip-a'));
+    engine.undo();
+    // Delete from clip-a alone removes its partner.
+    session.select('layer-a');
+    editing.performEdit(engine, session, 'delete');
+    expect(clips().map((clip) => clip.id)).not.toContain('clip-c');
+    engine.undo();
+    session.select('layer-c');
+    editing.performEdit(engine, session, 'unlink');
+    expect(link('clip-a')).toBeUndefined();
+    expect(link('clip-c')).toBeUndefined();
+  });
+  it('detaches audio into an audio clip on an audio track with a derived audio asset', async () => {
+    const { engine, session, editing, clips } = await setup();
+    session.select('layer-b'); // clip-b 3..5, source 1..3 of asset-video
+    editing.performEdit(engine, session, 'detach-audio');
+    const state = engine.state;
+    const audio = clips().find((clip) => clip.name === 'clip-b audio')!;
+    const track = state.compositions[0]!.tracks.find(
+      (item) => item.id === audio.trackId,
+    )!;
+    expect(track.type).toBe('audio');
+    expect([
+      audio.startTime,
+      audio.duration,
+      audio.sourceIn,
+      audio.sourceOut,
+    ]).toEqual([3, 2, 1, 3]);
+    expect(audio.metadata).toEqual({ detachedFrom: 'clip-b' });
+    const asset = state.assets.find((item) => item.id === audio.assetId)!;
+    expect(asset).toMatchObject({
+      type: 'audio',
+      source: { kind: 'generated', reference: 'audio-of:asset-video' },
+      duration: 6,
+    });
+    expect(clips().find((clip) => clip.id === 'clip-b')!.metadata).toEqual({
+      audioDetached: true,
+    });
+    // Already detached: no second detach; another video clip reuses the asset.
+    expect(
+      editing.contextActions(session.source, ['layer-b'], 0),
+    ).not.toContain('detach-audio');
+    session.select('layer-a');
+    editing.performEdit(engine, session, 'detach-audio');
+    expect(
+      engine.state.assets.filter(
+        (item) => item.type === 'audio' && item.source.kind === 'generated',
+      ),
+    ).toHaveLength(1);
+    engine.undo();
+    engine.undo();
+    expect(engine.state.assets.map((item) => item.id)).toEqual(
+      fixture().assets.map((item) => item.id),
+    );
+  });
+});

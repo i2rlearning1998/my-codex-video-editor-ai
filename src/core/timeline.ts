@@ -365,3 +365,17 @@ export function planInsert(
   }
   return { placed, pushed, insertions };
 }
+
+/** TL-032 link group id stored in clip.metadata (schema 4); invalid values ignored. */
+export function clipLinkId(clip: { readonly metadata: object }): string | null {
+  const value = (clip.metadata as Readonly<Record<string, unknown>>).linkId;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+/** True once a video clip's own audio has been detached into a separate clip. */
+export function clipAudioDetached(clip: {
+  readonly metadata: object;
+}): boolean {
+  return (
+    (clip.metadata as Readonly<Record<string, unknown>>).audioDetached === true
+  );
+}

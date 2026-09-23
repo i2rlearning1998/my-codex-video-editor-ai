@@ -141,6 +141,23 @@ export const commandSchema = z.discriminatedUnion('type', [
       sourceTime: z.number().finite().nonnegative().nullable(),
     })
     .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_LINK'),
+      ...location,
+      clipId: idSchema,
+      /** Shared id of the link group, or null to unlink. */
+      linkId: idSchema.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_AUDIO_DETACHED'),
+      ...location,
+      clipId: idSchema,
+      detached: z.boolean(),
+    })
+    .strict(),
   z.object({ type: z.literal('ADD_MARKER'), ...location, marker }).strict(),
   z.object({ type: z.literal('UPDATE_MARKER'), ...location, marker }).strict(),
   z
@@ -420,6 +437,21 @@ export function applyCommand(project: Project, command: Command): void {
       )
         throw new Error('Freeze frame must lie inside the clip source range');
       else clip.metadata.freezeFrame = command.sourceTime;
+      return;
+    }
+    case 'SET_CLIP_LINK': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      // Absent means unlinked, so link/unlink round-trips restore the document.
+      if (command.linkId === null) delete clip.metadata.linkId;
+      else clip.metadata.linkId = command.linkId;
+      return;
+    }
+    case 'SET_CLIP_AUDIO_DETACHED': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      if (command.detached) clip.metadata.audioDetached = true;
+      else delete clip.metadata.audioDetached;
       return;
     }
     case 'ADD_MARKER':

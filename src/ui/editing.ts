@@ -5,6 +5,9 @@ import {
   clipTimeEffects,
   clipTrimBounds,
   effectiveLayerTiming,
+  clipAudioDetached,
+  clipLinkId,
+  createLayer,
   findClip,
   findClipByLayer,
   frameToTime,
@@ -17,6 +20,7 @@ import {
   type Clip,
   type Composition,
   type DeepReadonly,
+  type Track,
   type ClipLocation,
   type Command,
   type EditorEngine,
@@ -67,7 +71,55 @@ export type EditAction =
   | 'toggle-enabled'
   | 'speed'
   | 'reverse'
-  | 'freeze';
+  | 'freeze'
+  | 'cut'
+  | 'copy'
+  | 'paste'
+  | 'link'
+  | 'unlink'
+  | 'detach-audio';
+/** TL-027 in-app clipboard: transient snapshots, never saved, no history. */
+interface ClipboardItem {
+  readonly layer: SceneLayer;
+  readonly clip: Clip;
+  readonly trackId: string;
+  /** Seconds after the earliest copied clip. */
+  readonly offset: number;
+}
+let clipboard: readonly ClipboardItem[] = [];
+export const hasClipboard = (): boolean => clipboard.length > 0;
+export function clearClipboard(): void {
+  clipboard = [];
+}
+/** Selected layer ids plus the layers of clips linked to them (TL-032). */
+export function withLinked(
+  source: RenderSource,
+  ids: readonly string[],
+): string[] {
+  const links = new Set(
+    selectionRoots(source, ids).flatMap((layer) => {
+      const found = findClipByLayer(source.composition, layer.id);
+      const link = found ? clipLinkId(found.clip) : null;
+      return link ? [link] : [];
+    }),
+  );
+  if (!links.size) return [...ids];
+  const partners = source.composition.tracks.flatMap((track) =>
+    track.clips
+      .filter((clip) => links.has(clipLinkId(clip) ?? ''))
+      .map((clip) => clip.layerId),
+  );
+  return [...new Set([...ids, ...partners])];
+}
+const isDetachable = (source: RenderSource, clip: DeepReadonly<Clip>) => {
+  const layer = locateLayer(source.composition.layers, clip.layerId)?.layer;
+  const asset = source.assets.find((item) => item.id === clip.assetId);
+  return (
+    layer?.type === 'video' &&
+    asset?.type === 'video' &&
+    !clipAudioDetached(clip)
+  );
+};
 export interface ClipLanding {
   /** Structural so new (not yet created) clips can be planned too. */
   readonly clip: {
@@ -205,10 +257,19 @@ export function contextActions(
 ): EditAction[] {
   if (markerId) return ['delete-marker'];
   const layers = selectionRoots(source, ids);
-  if (!layers.length) return ['marker'];
+  if (!layers.length) return hasClipboard() ? ['marker', 'paste'] : ['marker'];
   const actions: EditAction[] = ['duplicate', 'delete'];
-  if (layers.every((layer) => findClipByLayer(source.composition, layer.id)))
-    actions.push('toggle-enabled', 'speed', 'reverse', 'freeze');
+  const clips = selectedClips(source, ids);
+  if (clips.length) {
+    actions.push('toggle-enabled', 'speed', 'reverse', 'freeze', 'cut', 'copy');
+    if (hasClipboard()) actions.push('paste');
+    const links = clips.map(({ clip }) => clipLinkId(clip));
+    if (clips.length > 1 && !(links[0] && links.every((l) => l === links[0])))
+      actions.push('link');
+    if (links.some(Boolean)) actions.push('unlink');
+    if (clips.every(({ clip }) => isDetachable(source, clip)))
+      actions.push('detach-audio');
+  }
   if (
     layers.every(
       (layer) =>
@@ -246,7 +307,34 @@ export function performEdit(
     ).includes(action)
   )
     throw new Error('Action unavailable for this selection or time');
-  const layers = selectionRoots(source, session.selectedIds),
+  if (
+    ['copy', 'cut', 'paste', 'link', 'unlink', 'detach-audio'].includes(action)
+  )
+    return clipAction(engine, session, action);
+  // TL-032: linked partners delete, split and duplicate together. A partner that
+  // does not span the playhead is left out of a split.
+  const expanded = ['delete', 'split', 'duplicate'].includes(action)
+    ? withLinked(source, session.selectedIds).filter((id) => {
+        if (action !== 'split' || session.selectedIds.includes(id)) return true;
+        const timing = effectiveLayerTiming(
+          source.composition,
+          locateLayer(source.composition.layers, id)!.layer,
+        );
+        return (
+          timing.startTime < session.currentTime &&
+          session.currentTime < timing.startTime + timing.duration
+        );
+      })
+    : session.selectedIds;
+  // New pieces of a linked group share a fresh link id (not the original's).
+  const relinked = new Map<string, string>();
+  const relink = (clip: Clip) => {
+    const link = clipLinkId(clip);
+    if (!link) return;
+    if (!relinked.has(link)) relinked.set(link, crypto.randomUUID());
+    clip.metadata.linkId = relinked.get(link)!;
+  };
+  const layers = selectionRoots(source, expanded),
     commands: Command[] = [],
     selected: string[] = [];
   // Duplicates land right after their originals under the insert rule (TL-030).
@@ -431,6 +519,7 @@ export function performEdit(
       if (clipLocation) {
         const clipCopy = clipSchema.parse(clipLocation.clip);
         clipCopy.id = crypto.randomUUID();
+        relink(clipCopy);
         clipCopy.layerId = copy.id;
         clipCopy.startTime =
           action === 'split' ? session.currentTime : timing.startTime;
@@ -582,7 +671,8 @@ export function nudgeClips(
 ): void {
   session.setPlaying(false);
   const source = session.source;
-  const clips = selectedClips(source, session.selectedIds);
+  // Linked partners nudge together (TL-032).
+  const clips = selectedClips(source, withLinked(source, session.selectedIds));
   if (!clips.length) throw new Error('Select a clip to move it');
   // Nudges stop at neighbouring clips instead of pushing them (TL-020).
   const moving = new Set(clips.map(({ clip }) => clip.id));
@@ -728,4 +818,276 @@ export function jumpToCut(session: EditorSession, direction: -1 | 1): void {
     session.setCurrentTime(
       direction > 0 ? Math.min(...cuts) : Math.max(...cuts),
     );
+}
+
+/** Land brand-new clips (paste, detach) under the insert rule; returns push commands. */
+function landNewClips(
+  composition: DeepReadonly<Composition>,
+  items: { clip: Clip; trackId: string }[],
+): Command[] {
+  const existing = items.filter((item) =>
+    composition.tracks.some((track) => track.id === item.trackId),
+  );
+  const commands: Command[] = [];
+  if (existing.length) {
+    const plan = planLanding(
+      composition,
+      existing.map((item) => ({
+        clip: item.clip,
+        trackId: item.trackId,
+        startTime: item.clip.startTime,
+      })),
+    );
+    for (const item of existing)
+      item.clip.startTime = plan.placed.get(item.clip.id)!;
+    plan.pushed.forEach(({ startTime }, clipId) =>
+      commands.push({
+        type: 'SET_CLIP_TIMING',
+        compositionId: composition.id,
+        clipId,
+        startTime,
+        duration: findClip(composition, clipId)!.clip.duration,
+      }),
+    );
+  }
+  // Tracks created in the same transaction start empty: only incoming clips meet.
+  const fresh = items.filter((item) => !existing.includes(item));
+  for (const trackId of new Set(fresh.map((item) => item.trackId))) {
+    const lane = fresh.filter((item) => item.trackId === trackId);
+    const plan = planInsert(
+      [],
+      lane.map((item) => ({
+        id: item.clip.id,
+        startTime: item.clip.startTime,
+        duration: item.clip.duration,
+      })),
+    );
+    for (const item of lane)
+      item.clip.startTime = plan.placed.get(item.clip.id)!;
+  }
+  return commands;
+}
+/** TL-027 clipboard and TL-032 link, unlink and detach audio. */
+function clipAction(
+  engine: EditorEngine,
+  session: EditorSession,
+  action: EditAction,
+): void {
+  const source = session.source,
+    composition = source.composition,
+    compositionId = composition.id;
+  const commands: Command[] = [];
+  if (action === 'copy' || action === 'cut') {
+    const ids = withLinked(source, session.selectedIds);
+    const clips = selectedClips(source, ids);
+    if (!clips.length) throw new Error('Select a clip to copy');
+    const start = Math.min(...clips.map(({ clip }) => clip.startTime));
+    const snapshot = clips.map(({ clip, track }) => ({
+      layer: layerSchema.parse(
+        locateLayer(composition.layers, clip.layerId)!.layer as unknown,
+      ) as unknown as SceneLayer,
+      clip: clipSchema.parse(clip as unknown),
+      trackId: track.id,
+      offset: clip.startTime - start,
+    }));
+    if (action === 'copy') {
+      clipboard = snapshot;
+      return;
+    }
+    for (const { clip } of clips)
+      commands.push({
+        type: 'DELETE_LAYER',
+        compositionId,
+        layerId: clip.layerId,
+      });
+    engine.commands.transaction('Cut', commands);
+    // Only a committed cut replaces the clipboard (a locked refusal keeps it).
+    clipboard = snapshot;
+    return;
+  }
+  if (action === 'paste') {
+    if (!clipboard.length) throw new Error('Nothing to paste');
+    const target = selectedClips(source, session.selectedIds)[0]?.track;
+    const singleTrack =
+      new Set(clipboard.map((item) => item.trackId)).size === 1;
+    const relinked = new Map<string, string>();
+    const created = new Map<string, string>();
+    const landings: { clip: Clip; trackId: string }[] = [];
+    const selected: string[] = [];
+    for (const item of clipboard) {
+      const layer = cloneLayer(item.layer);
+      layer.startTime = session.currentTime + item.offset;
+      const clip = clipSchema.parse(item.clip);
+      clip.id = crypto.randomUUID();
+      clip.layerId = layer.id;
+      clip.startTime = layer.startTime;
+      const link = clipLinkId(clip);
+      if (link) {
+        if (!relinked.has(link)) relinked.set(link, crypto.randomUUID());
+        clip.metadata.linkId = relinked.get(link)!;
+      }
+      const usable = (track: DeepReadonly<Track> | undefined) =>
+        track && !track.locked && trackAcceptsLayer(track.type, layer.type);
+      const original = composition.tracks.find(
+        (track) => track.id === item.trackId,
+      );
+      let trackId =
+        singleTrack && usable(target)
+          ? target!.id
+          : usable(original)
+            ? original!.id
+            : created.get(trackTypeForLayer(layer.type));
+      if (!trackId) {
+        const fresh = trackForNewClip(
+          composition,
+          layer.type,
+          clip.startTime,
+          clip.startTime + clip.duration,
+        );
+        trackId = fresh.trackId;
+        commands.push(...fresh.commands);
+        if (fresh.commands.length)
+          created.set(trackTypeForLayer(layer.type), trackId);
+      }
+      commands.push({
+        type: 'CREATE_LAYER',
+        compositionId,
+        parentId: null,
+        layer,
+      });
+      landings.push({ clip, trackId });
+      selected.push(layer.id);
+    }
+    commands.push(...landNewClips(composition, landings));
+    for (const { clip, trackId } of landings) {
+      const layer = commands.find(
+        (command) =>
+          command.type === 'CREATE_LAYER' && command.layer.id === clip.layerId,
+      ) as Extract<Command, { type: 'CREATE_LAYER' }>;
+      layer.layer.startTime = clip.startTime;
+      commands.push({ type: 'CREATE_CLIP', compositionId, trackId, clip });
+    }
+    engine.commands.transaction('Paste', commands);
+    session.selectMany(selected);
+    return;
+  }
+  const clips = selectedClips(source, session.selectedIds);
+  if (!clips.length) throw new Error('Select clips first');
+  if (action === 'link') {
+    const linkId = crypto.randomUUID();
+    for (const { clip } of clips)
+      commands.push({
+        type: 'SET_CLIP_LINK',
+        compositionId,
+        clipId: clip.id,
+        linkId,
+      });
+    engine.commands.transaction('Link clips', commands);
+    return;
+  }
+  if (action === 'unlink') {
+    const groups = new Set(
+      clips.map(({ clip }) => clipLinkId(clip)).filter(Boolean),
+    );
+    for (const track of composition.tracks)
+      for (const clip of track.clips)
+        if (groups.has(clipLinkId(clip)))
+          commands.push({
+            type: 'SET_CLIP_LINK',
+            compositionId,
+            clipId: clip.id,
+            linkId: null,
+          });
+    engine.commands.transaction('Unlink clips', commands);
+    return;
+  }
+  // detach-audio
+  const derived = new Map<string, string>();
+  const landings: { clip: Clip; trackId: string }[] = [];
+  let audioTrack: string | undefined;
+  for (const { clip } of clips) {
+    if (!isDetachable(source, clip))
+      throw new Error('Only video clips with their own audio can be detached');
+    const asset = source.assets.find((item) => item.id === clip.assetId)!;
+    const reference = `audio-of:${asset.id}`;
+    let assetId =
+      derived.get(asset.id) ??
+      source.assets.find(
+        (item) =>
+          item.source.kind === 'generated' &&
+          item.source.reference === reference,
+      )?.id;
+    if (!assetId) {
+      assetId = crypto.randomUUID();
+      derived.set(asset.id, assetId);
+      commands.push({
+        type: 'ADD_ASSET',
+        asset: {
+          id: assetId,
+          name: `${asset.name} (audio)`,
+          type: 'audio',
+          source: { kind: 'generated', reference },
+          metadata: { derivedFrom: asset.id },
+          ...(asset.duration === undefined ? {} : { duration: asset.duration }),
+        },
+      });
+    }
+    const layerName = locateLayer(composition.layers, clip.layerId)!.layer.name;
+    const layer = createLayer(
+      crypto.randomUUID(),
+      'audio',
+      `${layerName} audio`,
+      clip.duration,
+    );
+    layer.startTime = clip.startTime;
+    layer.assetId = assetId;
+    commands.push({
+      type: 'CREATE_LAYER',
+      compositionId,
+      parentId: null,
+      layer,
+    });
+    if (!audioTrack) {
+      const target = trackForNewClip(
+        composition,
+        'audio',
+        Math.min(...clips.map(({ clip: item }) => item.startTime)),
+        Math.max(
+          ...clips.map(({ clip: item }) => item.startTime + item.duration),
+        ),
+      );
+      audioTrack = target.trackId;
+      commands.push(...target.commands);
+    }
+    const metadata: Clip['metadata'] = { detachedFrom: clip.id };
+    if (clipTimeEffects(clip).reversed) metadata.reversed = true;
+    landings.push({
+      trackId: audioTrack,
+      clip: {
+        id: crypto.randomUUID(),
+        name: `${clip.name} audio`,
+        layerId: layer.id,
+        assetId,
+        startTime: clip.startTime,
+        duration: clip.duration,
+        sourceIn: clip.sourceIn,
+        sourceOut: clip.sourceOut,
+        enabled: true,
+        speed: clip.speed,
+        transitionMetadata: {},
+        effectMetadata: {},
+        metadata,
+      },
+    });
+    commands.push({
+      type: 'SET_CLIP_AUDIO_DETACHED',
+      compositionId,
+      clipId: clip.id,
+      detached: true,
+    });
+  }
+  commands.push(...landNewClips(composition, landings));
+  for (const { clip, trackId } of landings)
+    commands.push({ type: 'CREATE_CLIP', compositionId, trackId, clip });
+  engine.commands.transaction('Detach audio', commands);
 }

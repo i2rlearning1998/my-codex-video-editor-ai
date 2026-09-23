@@ -29,6 +29,7 @@ import { mountWorkspace } from './workspace';
 import {
   contextActions,
   performEdit,
+  hasClipboard,
   planLanding,
   selectedClips,
   setClipSpeed,
@@ -267,9 +268,6 @@ export function mountEditorShell(
     unregisterCanvasMenu = undefined;
   };
   const CANVAS_MENU_PLACEHOLDERS = [
-    'Cut',
-    'Copy',
-    'Paste',
     'Lock',
     'Hide',
     'Bring to front',
@@ -361,6 +359,22 @@ export function mountEditorShell(
               item.dataset.action = action;
               return item;
             }
+            if (
+              [
+                'cut',
+                'copy',
+                'paste',
+                'link',
+                'unlink',
+                'detach-audio',
+              ].includes(action)
+            ) {
+              const item = menuItem(t(`command.${action}`), () =>
+                performEdit(engine, session, action),
+              );
+              item.dataset.action = action;
+              return item;
+            }
             return menuItem(
               action === 'toggle-enabled'
                 ? 'Enable / disable'
@@ -368,7 +382,13 @@ export function mountEditorShell(
               () => performEdit(engine, session, action as EditAction),
             );
           })
-      : [];
+      : hasClipboard()
+        ? [
+            menuItem(t('command.paste'), () =>
+              performEdit(engine, session, 'paste'),
+            ),
+          ]
+        : [];
     for (const label of CANVAS_MENU_PLACEHOLDERS) items.push(menuItem(label));
     if (items.length > CANVAS_MENU_PLACEHOLDERS.length)
       items[items.length - CANVAS_MENU_PLACEHOLDERS.length]!.classList.add(

@@ -184,5 +184,12 @@
   "timeline.trimStart": "Trim start",
   "timeline.trimEnd": "Trim end",
   "timeline.keys": "Timeline tracks. Arrow keys move time; Shift moves ten frames; Up and Down jump to cuts; Alt+arrows move the selected clip; [ and ] trim to the playhead; Home and End seek; Delete removes selection.",
-  "project.adopted": "{count} layers were placed on timeline tracks."
+  "project.adopted": "{count} layers were placed on timeline tracks.",
+  "command.cut": "Cut",
+  "command.copy": "Copy",
+  "command.paste": "Paste",
+  "command.link": "Link clips",
+  "command.unlink": "Unlink clips",
+  "command.detach-audio": "Detach audio",
+  "clip.linked": "Linked"
 }

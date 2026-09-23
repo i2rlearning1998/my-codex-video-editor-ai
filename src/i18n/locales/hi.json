@@ -184,5 +184,12 @@
   "timeline.trimStart": "शुरुआत ट्रिम करें",
   "timeline.trimEnd": "अंत ट्रिम करें",
   "timeline.keys": "टाइमलाइन ट्रैक। तीर कुंजियाँ समय बदलती हैं; Shift दस फ़्रेम; ऊपर और नीचे कट पर जाते हैं; Alt+तीर चुनी क्लिप को हिलाते हैं; [ और ] प्लेहेड तक ट्रिम करते हैं; Home और End खोजते हैं; Delete चयन हटाता है।",
-  "project.adopted": "{count} लेयर टाइमलाइन ट्रैक पर रखी गईं।"
+  "project.adopted": "{count} लेयर टाइमलाइन ट्रैक पर रखी गईं।",
+  "command.cut": "काटें",
+  "command.copy": "कॉपी करें",
+  "command.paste": "चिपकाएँ",
+  "command.link": "क्लिप जोड़ें",
+  "command.unlink": "क्लिप अलग करें",
+  "command.detach-audio": "ऑडियो अलग करें",
+  "clip.linked": "जुड़ी हुई"
 }
