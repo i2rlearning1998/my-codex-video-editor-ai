@@ -115,6 +115,60 @@ export function timingCommands(
         },
       ];
 }
+/** Snap targets in composition time: bounds, playhead, markers and other clips'
+ * edges (clips and legacy rows whose layer id is excluded are skipped). */
+export function snapCandidates(
+  source: RenderSource,
+  zoom: number,
+  excludedIds: readonly string[] = [],
+  options: { playhead?: boolean; markerId?: string } = {},
+): number[] {
+  return [
+    0,
+    source.composition.duration,
+    ...(options.playhead === false || source.currentTime === undefined
+      ? []
+      : [source.currentTime]),
+    ...source.composition.markers
+      .filter((marker) => marker.id !== options.markerId)
+      .map((marker) => marker.time),
+    ...source.composition.tracks.flatMap((track) =>
+      track.clips
+        .filter((clip) => !excludedIds.includes(clip.layerId))
+        .flatMap((clip) => [clip.startTime, clip.startTime + clip.duration]),
+    ),
+    ...timelineRows(source, zoom)
+      .filter((row) => !excludedIds.includes(row.layer.id))
+      .flatMap((row) => [
+        row.layer.startTime,
+        row.layer.startTime + row.layer.duration,
+      ]),
+  ];
+}
+/** Nearest candidate within the CSS-pixel threshold (for playhead and marker drags). */
+export function snapTime(
+  time: number,
+  candidates: readonly number[],
+  zoom: number,
+  snapPixels = SNAP_THRESHOLD_PX,
+): { time: number; snapped: boolean } {
+  let best = time,
+    distance = pixelToTime(snapPixels, zoom),
+    snapped = false;
+  for (const candidate of candidates) {
+    const d = Math.abs(candidate - time);
+    if (d < distance || (!snapped && d === distance)) {
+      distance = d;
+      best = candidate;
+      snapped = true;
+    }
+  }
+  return { time: best, snapped };
+}
+export interface TrimBounds {
+  readonly minStart: number;
+  readonly maxEnd: number;
+}
 /** Frame grid first, then nearest boundary within the configurable CSS-pixel threshold.
  * Ties use candidate order: composition boundaries, then canonical depth-first rows. */
 export function calculateTiming(
@@ -125,73 +179,91 @@ export function calculateTiming(
   zoom: number,
   snapPixels = SNAP_THRESHOLD_PX,
   excludedIds: readonly string[] = [],
+  bounds?: TrimBounds,
 ): Timing {
+  return calculateSnappedTiming(
+    source,
+    layer,
+    kind,
+    deltaPixels,
+    zoom,
+    snapPixels,
+    excludedIds,
+    bounds,
+  ).timing;
+}
+/** As calculateTiming, also naming the candidate time the moving edge snapped to.
+ * Trim bounds (neighbours, source media) clamp after snapping; a clamped edge does
+ * not report a snap unless it landed exactly on a candidate. */
+export function calculateSnappedTiming(
+  source: RenderSource,
+  layer: SceneLayer,
+  kind: TimingGesture,
+  deltaPixels: number,
+  zoom: number,
+  snapPixels = SNAP_THRESHOLD_PX,
+  excludedIds: readonly string[] = [],
+  bounds?: TrimBounds,
+): { timing: Timing; snap?: number } {
   if (!Number.isFinite(snapPixels) || snapPixels < 0)
     throw new RangeError('Invalid snap threshold');
-  if (deltaPixels === 0)
-    return { startTime: layer.startTime, duration: layer.duration };
-  const { duration: limit, fps } = source.composition;
+  const unchanged = {
+    timing: { startTime: layer.startTime, duration: layer.duration },
+  };
+  if (deltaPixels === 0) return unchanged;
+  const { fps } = source.composition;
   const delta = frameToTime(
     timeToFrame(pixelToTime(deltaPixels, zoom), fps),
     fps,
   );
-  if (delta === 0)
-    return { startTime: layer.startTime, duration: layer.duration };
+  if (delta === 0) return unchanged;
   const end = layer.startTime + layer.duration;
   const minimum = Math.min(frameToTime(1, fps), layer.duration);
+  const minStart = Math.min(bounds?.minStart ?? 0, layer.startTime);
+  const maxEnd = Math.max(bounds?.maxEnd ?? Infinity, end);
   let value =
     kind === 'right'
       ? Math.max(end + delta, layer.startTime + minimum)
       : kind === 'left'
         ? Math.max(0, Math.min(end - minimum, layer.startTime + delta))
         : Math.max(0, layer.startTime + delta);
-  const candidates = [
-    0,
-    limit,
-    ...(source.currentTime === undefined ? [] : [source.currentTime]),
-    ...source.composition.markers.map((marker) => marker.time),
-    ...source.composition.tracks.flatMap((track) =>
-      track.clips
-        .filter((clip) => !excludedIds.includes(clip.layerId))
-        .flatMap((clip) => [clip.startTime, clip.startTime + clip.duration]),
-    ),
-    ...timelineRows(source, zoom)
-      .filter(
-        (row) =>
-          row.layer.id !== layer.id && !excludedIds.includes(row.layer.id),
-      )
-      .flatMap((row) => [
-        row.layer.startTime,
-        row.layer.startTime + row.layer.duration,
-      ]),
-  ];
+  const candidates = snapCandidates(source, zoom, [layer.id, ...excludedIds]);
   let distance = pixelToTime(snapPixels, zoom),
     snapped = value;
   let found = false;
+  let snapTarget: number | undefined;
   for (const candidate of candidates) {
     for (const target of kind === 'move'
       ? [candidate, candidate - layer.duration]
       : [candidate]) {
       const valid =
         kind === 'right'
-          ? target >= layer.startTime + minimum
+          ? target >= layer.startTime + minimum && target <= maxEnd
           : kind === 'left'
-            ? target >= 0 && target <= end - minimum
+            ? target >= minStart && target <= end - minimum
             : target >= 0;
       const d = Math.abs(target - value);
       if (valid && (d < distance || (!found && d === distance))) {
         distance = d;
         snapped = target;
+        snapTarget = candidate;
         found = true;
       }
     }
   }
   value = snapped;
-  if (value === (kind === 'right' ? end : layer.startTime))
-    return { startTime: layer.startTime, duration: layer.duration };
-  return kind === 'move'
-    ? { startTime: value, duration: layer.duration }
-    : kind === 'left'
-      ? { startTime: value, duration: end - value }
-      : { startTime: layer.startTime, duration: value - layer.startTime };
+  if (kind === 'right') value = Math.min(maxEnd, value);
+  if (kind === 'left') value = Math.max(minStart, value);
+  if (value === (kind === 'right' ? end : layer.startTime)) return unchanged;
+  const timing =
+    kind === 'move'
+      ? { startTime: value, duration: layer.duration }
+      : kind === 'left'
+        ? { startTime: value, duration: end - value }
+        : { startTime: layer.startTime, duration: value - layer.startTime };
+  const edges = [timing.startTime, timing.startTime + timing.duration];
+  return snapTarget !== undefined &&
+    edges.some((edge) => Math.abs(edge - snapTarget!) < 1e-9)
+    ? { timing, snap: snapTarget }
+    : { timing };
 }

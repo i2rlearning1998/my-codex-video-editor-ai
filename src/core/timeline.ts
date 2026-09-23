@@ -57,11 +57,18 @@ export interface ClipTimeEffects {
   readonly reversed: boolean;
   readonly freezeFrame: number | null;
 }
-export function clipTimeEffects(clip: DeepReadonly<Clip>): ClipTimeEffects {
+/** Structural clip shape for time maths; avoids deep DeepReadonly<JsonValue> expansion. */
+export interface TimedClip {
+  readonly startTime: number;
+  readonly duration: number;
+  readonly sourceIn: number;
+  readonly sourceOut: number;
+  readonly speed: number;
+  readonly metadata: object;
+}
+export function clipTimeEffects(clip: TimedClip): ClipTimeEffects {
   // Widened on purpose: DeepReadonly<JsonValue> is too deep for the checker here.
-  const metadata: Readonly<Record<string, unknown>> = (
-    clip as { readonly metadata: object }
-  ).metadata as Readonly<Record<string, unknown>>;
+  const metadata = clip.metadata as Readonly<Record<string, unknown>>;
   const freeze = metadata.freezeFrame;
   return {
     speed: clip.speed,
@@ -73,7 +80,7 @@ export function clipTimeEffects(clip: DeepReadonly<Clip>): ClipTimeEffects {
   };
 }
 /** Source-media time shown at composition `time` (clamped to the clip). */
-export function clipSourceTime(clip: DeepReadonly<Clip>, time: number): number {
+export function clipSourceTime(clip: TimedClip, time: number): number {
   const effects = clipTimeEffects(clip);
   if (effects.freezeFrame !== null) return effects.freezeFrame;
   const local =
@@ -95,7 +102,7 @@ export interface ClipTiming {
 /** New timing for a move or edge trim. The source edge that follows a timeline edge
  * depends on direction: a reversed clip's timeline start shows its source out-point. */
 export function retimeClip(
-  clip: DeepReadonly<Clip>,
+  clip: TimedClip,
   startTime: number,
   duration: number,
   edge: 'move' | 'left' | 'right',
@@ -145,4 +152,16 @@ export function clipTrimBounds(
     else maxEnd = Math.min(maxEnd, Math.max(other.startTime, end));
   }
   return { minStart, maxEnd };
+}
+
+/** Mirrors the project validator's track/layer compatibility rule. */
+export function trackAcceptsLayer(
+  trackType: Track['type'],
+  layerType: string,
+): boolean {
+  return trackType === 'object'
+    ? ['group', 'shape'].includes(layerType)
+    : trackType === 'video'
+      ? ['video', 'image'].includes(layerType)
+      : layerType === trackType;
 }

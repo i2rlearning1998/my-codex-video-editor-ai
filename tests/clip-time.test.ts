@@ -68,8 +68,8 @@ function project(): Project {
   ];
   return validateProject(value);
 }
-const clipOf = (engine: EditorEngine, id: string) =>
-  findClip(engine.state.compositions[0]!, id)!.clip;
+const clipOf = (engine: EditorEngine, id: string): Clip =>
+  findClip(engine.state.compositions[0]!, id)!.clip as unknown as Clip;
 
 describe('[VID-015][VID-016][VID-017] clip time effects', () => {
   it('maps composition time to source time for forward, reversed and frozen clips', () => {
@@ -113,7 +113,7 @@ describe('[VID-015][VID-016][VID-017] clip time effects', () => {
   });
 
   it('bounds trims by neighbours and source media, adjusted for speed and reverse', () => {
-    const composition = project().compositions[0]!;
+    const composition = new EditorEngine(project()).state.compositions[0]!;
     // clip-a: 0..2, source 1..3 of 6 s; clip-b starts at 3.
     expect(clipTrimBounds(composition, 'clip-a', 6)).toEqual({
       minStart: 0,
@@ -129,13 +129,16 @@ describe('[VID-015][VID-016][VID-017] clip time effects', () => {
       minStart: 0,
       maxEnd: 5,
     });
-    const fast = project().compositions[0]!;
-    fast.tracks[0]!.clips[0]!.speed = 2;
-    fast.tracks[0]!.clips[0]!.metadata = { reversed: true };
+    const reversedProject = project();
+    const reversedClip = reversedProject.compositions[0]!.tracks[0]!.clips[0]!;
+    reversedClip.speed = 2;
+    reversedClip.duration = 1;
+    reversedClip.metadata = { reversed: true };
+    const fast = new EditorEngine(reversedProject).state.compositions[0]!;
     // Reversed at 2x: extending the end consumes the source head (1 s / 2).
     expect(clipTrimBounds(fast, 'clip-a', 6, ['clip-b'])).toEqual({
       minStart: 0,
-      maxEnd: 2.5,
+      maxEnd: 1.5,
     });
   });
 
@@ -201,7 +204,9 @@ describe('[VID-015][VID-016][VID-017] clip time effects', () => {
     });
     const reloaded = deserializeProject(serializeProject(engine.state));
     expect(
-      findClip(reloaded.compositions[0]!, 'clip-a')!.clip.metadata,
+      reloaded.compositions[0]!.tracks[0]!.clips.find(
+        (item) => item.id === 'clip-a',
+      )!.metadata,
     ).toEqual({ reversed: true, freezeFrame: 2 });
     expect(() =>
       engine.commands.execute({

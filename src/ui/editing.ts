@@ -1,8 +1,15 @@
 import {
   layerSchema,
   clipSchema,
+  clipSourceTime,
+  clipTimeEffects,
+  clipTrimBounds,
   effectiveLayerTiming,
   findClipByLayer,
+  frameToTime,
+  retimeClip,
+  trackAcceptsLayer,
+  type ClipLocation,
   type Command,
   type EditorEngine,
   type Layer,
@@ -49,7 +56,23 @@ export type EditAction =
   | 'group'
   | 'marker'
   | 'delete-marker'
-  | 'toggle-enabled';
+  | 'toggle-enabled'
+  | 'speed'
+  | 'reverse'
+  | 'freeze';
+/** Speed presets offered by the clip menus (the command accepts 0.1x to 8x). */
+export const SPEED_PRESETS = [0.25, 0.5, 1, 1.5, 2, 4] as const;
+/** Clip locations for the selection roots; empty unless every root is a clip. */
+export function selectedClips(
+  source: RenderSource,
+  ids: readonly string[],
+): ClipLocation[] {
+  const layers = selectionRoots(source, ids);
+  const clips = layers.map((layer) =>
+    findClipByLayer(source.composition, layer.id),
+  );
+  return layers.length && clips.every(Boolean) ? (clips as ClipLocation[]) : [];
+}
 export function contextActions(
   source: RenderSource,
   ids: readonly string[],
@@ -61,7 +84,7 @@ export function contextActions(
   if (!layers.length) return ['marker'];
   const actions: EditAction[] = ['duplicate', 'delete'];
   if (layers.every((layer) => findClipByLayer(source.composition, layer.id)))
-    actions.push('toggle-enabled');
+    actions.push('toggle-enabled', 'speed', 'reverse', 'freeze');
   if (
     layers.every(
       (layer) =>
@@ -118,7 +141,41 @@ export function performEdit(
       compositionId,
       markerId: markerId!,
     });
-  else if (action === 'toggle-enabled')
+  else if (action === 'speed')
+    throw new Error('Choose a speed from the Speed menu');
+  else if (action === 'reverse' || action === 'freeze') {
+    const clips = selectedClips(source, session.selectedIds);
+    const allOn = clips.every(({ clip }) =>
+      action === 'reverse'
+        ? clipTimeEffects(clip).reversed
+        : clipTimeEffects(clip).freezeFrame !== null,
+    );
+    for (const { clip } of clips)
+      commands.push(
+        action === 'reverse'
+          ? {
+              type: 'SET_CLIP_REVERSED',
+              compositionId,
+              clipId: clip.id,
+              reversed: !allOn,
+            }
+          : {
+              type: 'SET_CLIP_FREEZE_FRAME',
+              compositionId,
+              clipId: clip.id,
+              // Hold the frame under the playhead, else the first shown frame.
+              sourceTime: allOn
+                ? null
+                : clipSourceTime(
+                    clip,
+                    session.currentTime >= clip.startTime &&
+                      session.currentTime < clip.startTime + clip.duration
+                      ? session.currentTime
+                      : clip.startTime,
+                  ),
+            },
+      );
+  } else if (action === 'toggle-enabled')
     for (const layer of layers) {
       const clip = findClipByLayer(source.composition, layer.id)!;
       commands.push({
@@ -162,13 +219,13 @@ export function performEdit(
                 type: 'SET_CLIP_TIMING',
                 compositionId,
                 clipId: clipLocation.clip.id,
-                startTime: timing.startTime,
-                duration: session.currentTime - timing.startTime,
-                sourceIn: clipLocation.clip.sourceIn,
-                sourceOut:
-                  clipLocation.clip.sourceIn +
-                  (session.currentTime - timing.startTime) *
-                    clipLocation.clip.speed,
+                // Right trim of the first piece; reverse-aware source edges.
+                ...retimeClip(
+                  clipLocation.clip,
+                  timing.startTime,
+                  session.currentTime - timing.startTime,
+                  'right',
+                ),
               }
             : {
                 type: 'SET_LAYER_TIMING',
@@ -195,10 +252,16 @@ export function performEdit(
           action === 'split'
             ? timing.startTime + timing.duration - session.currentTime
             : timing.duration;
-        if (action === 'split')
-          clipCopy.sourceIn =
-            clipLocation.clip.sourceIn +
-            (session.currentTime - timing.startTime) * clipLocation.clip.speed;
+        if (action === 'split') {
+          const second = retimeClip(
+            clipLocation.clip,
+            session.currentTime,
+            clipCopy.duration,
+            'left',
+          );
+          clipCopy.sourceIn = second.sourceIn;
+          clipCopy.sourceOut = second.sourceOut;
+        }
         commands.push({
           type: 'CREATE_CLIP',
           compositionId,
@@ -210,8 +273,180 @@ export function performEdit(
     }
   if (commands.length)
     engine.commands.transaction(
-      action[0]!.toUpperCase() + action.slice(1),
+      action === 'reverse'
+        ? 'Reverse clip'
+        : action === 'freeze'
+          ? 'Freeze frame'
+          : action[0]!.toUpperCase() + action.slice(1),
       commands,
     );
   if (selected.length) session.selectMany(selected);
+}
+export function setClipSpeed(
+  engine: EditorEngine,
+  session: EditorSession,
+  speed: number,
+): void {
+  session.setPlaying(false);
+  const clips = selectedClips(session.source, session.selectedIds);
+  if (!clips.length) throw new Error('Select a clip to change its speed');
+  const commands: Command[] = clips
+    .filter(({ clip }) => clip.speed !== speed)
+    .map(({ clip }) => ({
+      type: 'SET_CLIP_SPEED',
+      compositionId: session.source.composition.id,
+      clipId: clip.id,
+      speed,
+    }));
+  if (commands.length) engine.commands.transaction('Change speed', commands);
+}
+/** Next slower or faster preset from the first selected clip's speed. */
+export function stepClipSpeed(
+  engine: EditorEngine,
+  session: EditorSession,
+  direction: -1 | 1,
+): void {
+  const clip = selectedClips(session.source, session.selectedIds)[0]?.clip;
+  if (!clip) throw new Error('Select a clip to change its speed');
+  const next =
+    direction > 0
+      ? SPEED_PRESETS.find((value) => value > clip.speed + 1e-9)
+      : [...SPEED_PRESETS].reverse().find((value) => value < clip.speed - 1e-9);
+  if (next !== undefined) setClipSpeed(engine, session, next);
+}
+const assetDuration = (source: RenderSource, assetId: string | null) =>
+  source.assets.find((asset) => asset.id === assetId)?.duration;
+/** Keyboard move: shift selected clips by whole frames (one undo step). */
+export function nudgeClips(
+  engine: EditorEngine,
+  session: EditorSession,
+  frames: number,
+): void {
+  session.setPlaying(false);
+  const source = session.source;
+  const clips = selectedClips(source, session.selectedIds);
+  if (!clips.length) throw new Error('Select a clip to move it');
+  const delta = Math.max(
+    frameToTime(frames, source.composition.fps),
+    -Math.min(...clips.map(({ clip }) => clip.startTime)),
+  );
+  if (delta === 0) return;
+  engine.commands.transaction(
+    'Move clip',
+    clips.map(({ clip }) => ({
+      type: 'SET_CLIP_TIMING',
+      compositionId: source.composition.id,
+      clipId: clip.id,
+      startTime: clip.startTime + delta,
+      duration: clip.duration,
+    })),
+  );
+}
+/** Keyboard cross-track move to the nearest compatible, unlocked track. */
+export function moveClipsToAdjacentTrack(
+  engine: EditorEngine,
+  session: EditorSession,
+  direction: -1 | 1,
+): void {
+  session.setPlaying(false);
+  const source = session.source;
+  const clips = selectedClips(source, session.selectedIds);
+  if (!clips.length) throw new Error('Select a clip to move it');
+  const tracks = [...source.composition.tracks].sort(
+    (a, b) => a.order - b.order,
+  );
+  const commands: Command[] = clips.map(({ clip, track }) => {
+    const layer = locateLayer(source.composition.layers, clip.layerId)!.layer;
+    let index = tracks.findIndex((item) => item.id === track.id) + direction;
+    while (
+      tracks[index] &&
+      (tracks[index]!.locked ||
+        !trackAcceptsLayer(tracks[index]!.type, layer.type))
+    )
+      index += direction;
+    const destination = tracks[index];
+    if (!destination)
+      throw new Error(
+        direction < 0
+          ? 'No compatible track above'
+          : 'No compatible track below',
+      );
+    return {
+      type: 'MOVE_CLIP',
+      compositionId: source.composition.id,
+      clipId: clip.id,
+      trackId: destination.id,
+    };
+  });
+  engine.commands.transaction('Move clip', commands);
+}
+/** Keyboard trim: move the selected clip's start or end to the playhead, clamped
+ * to one frame, the neighbouring clips and the source media. */
+export function trimClipToPlayhead(
+  engine: EditorEngine,
+  session: EditorSession,
+  edge: 'left' | 'right',
+): void {
+  session.setPlaying(false);
+  const source = session.source;
+  const clips = selectedClips(source, session.selectedIds);
+  if (clips.length !== 1) throw new Error('Select one clip to trim');
+  const { clip } = clips[0]!;
+  const frame = Math.min(frameToTime(1, source.composition.fps), clip.duration);
+  const end = clip.startTime + clip.duration;
+  const bounds = clipTrimBounds(
+    source.composition,
+    clip.id,
+    assetDuration(source, clip.assetId),
+  );
+  const time = session.currentTime;
+  const timing =
+    edge === 'left'
+      ? (() => {
+          const start = Math.max(bounds.minStart, Math.min(end - frame, time));
+          return retimeClip(clip, start, end - start, 'left');
+        })()
+      : (() => {
+          const next = Math.min(
+            bounds.maxEnd,
+            Math.max(clip.startTime + frame, time),
+          );
+          return retimeClip(
+            clip,
+            clip.startTime,
+            next - clip.startTime,
+            'right',
+          );
+        })();
+  if (timing.startTime === clip.startTime && timing.duration === clip.duration)
+    return;
+  engine.commands.transaction('Trim clip', [
+    {
+      type: 'SET_CLIP_TIMING',
+      compositionId: source.composition.id,
+      clipId: clip.id,
+      ...timing,
+    },
+  ]);
+}
+/** Up/Down: move the playhead to the previous or next cut (clip edge or marker). */
+export function jumpToCut(session: EditorSession, direction: -1 | 1): void {
+  session.setPlaying(false);
+  const { composition } = session.source;
+  const time = session.currentTime;
+  const cuts = [
+    0,
+    composition.duration,
+    ...composition.markers.map((marker) => marker.time),
+    ...composition.tracks.flatMap((track) =>
+      track.clips.flatMap((clip) => [
+        clip.startTime,
+        clip.startTime + clip.duration,
+      ]),
+    ),
+  ].filter((cut) => (direction > 0 ? cut > time + 1e-9 : cut < time - 1e-9));
+  if (cuts.length)
+    session.setCurrentTime(
+      direction > 0 ? Math.min(...cuts) : Math.max(...cuts),
+    );
 }
