@@ -43,7 +43,7 @@ Clips can no longer overlap on a track. Dropping or moving onto occupied time in
 - Unit and jsdom: `Test Files 19 passed (19)`, `Tests 301 passed (301)` = 160 unit (7 new in `tests/clip-model.test.ts`) + 141 jsdom.
 - E2E: `55 passed (1.1m)` = 53 normal passes + 2 expected failures (the DEV-006 guard probe and the CV-008 Alt reproduction). Zero unexpected, flaky or skipped. Browser: Chromium 141.0.7390.37 (fallback, D-030).
 - Hook: `assert-no-test-hook: OK`. Ledger: `Ledger: 494 items | Verified 69 | Claimed 20 | Todo 404 | Bug 1` and `Ledger OK`.
-- CI: the GitHub Actions workflow has never run on this repository (see the PR #2 comment), so there is no CI result.
+- CI: the first GitHub Actions run ever was a manual (`workflow_dispatch`) run of Verify on `f74bc6b`: **success** in about 2½ minutes, on GitHub's Ubuntu runner with Playwright's Chromium. It is https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/35926723652. Automatic push and pull_request runs had never been created; see the CI section of the PR.
 
 ## 4. Try-it script for the owner (about 10 minutes)
 | # | Do this | Expect | ID | Claude ran it (Y/N) | Screenshot |
