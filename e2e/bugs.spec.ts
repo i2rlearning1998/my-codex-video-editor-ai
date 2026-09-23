@@ -1,13 +1,8 @@
-import { test, expect, allowError, hook } from './fixtures';
+import { test, expect, hook } from './fixtures';
 
 test.fail(
   '[TL-004] locking Video 1 prevents Delete from removing clip-a',
   async ({ page, openFixtureProject }) => {
-    allowError(
-      page,
-      (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-      'REL-001 is a separate known bug; isolate the locked-track Delete reproduction.',
-    );
     await page.goto('/');
     await openFixtureProject('nle-example.json');
     await page.locator('[data-action="track-lock"][data-id="video-1"]').click();
@@ -25,11 +20,6 @@ test.fail(
 test.fail(
   '[TL-019] right trim stops at the next clip instead of overlapping it',
   async ({ page, openFixtureProject }) => {
-    allowError(
-      page,
-      (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-      'REL-001 is a separate known bug; isolate the right-trim overlap reproduction.',
-    );
     await page.goto('/');
     await openFixtureProject('nle-example.json');
     await page.bringToFront();

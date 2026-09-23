@@ -1,12 +1,7 @@
-import { test, expect, allowError, hook } from './fixtures';
+import { menuAction, test, expect, hook } from './fixtures';
 test('[KEY-002] fuzzy palette runs Undo and exposes shortcuts', async ({
   page,
 }, testInfo) => {
-  allowError(
-    page,
-    (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-    'Known REL-001 is outside this brief.',
-  );
   await page.goto('/');
   await page.locator('[data-layer-id="example-headline"]').first().click();
   const input = page.getByRole('spinbutton', {
@@ -16,7 +11,7 @@ test('[KEY-002] fuzzy palette runs Undo and exposes shortcuts', async ({
   const before = await hook(page);
   await input.fill('321');
   await input.press('Enter');
-  await page.locator('#save').click();
+  await menuAction(page, '#save');
   await page.keyboard.press('Control+k');
   await expect(page.locator('#command-palette')).toBeVisible();
   await page.locator('#command-palette input').fill('udo');

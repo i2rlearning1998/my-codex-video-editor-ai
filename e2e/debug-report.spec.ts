@@ -1,12 +1,7 @@
-import { test, expect, allowError, hook } from './fixtures';
+import { test, expect, hook } from './fixtures';
 import { writeFile } from 'node:fs/promises';
 
 test.beforeEach(async ({ page }) => {
-  allowError(
-    page,
-    (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-    'REL-001 favicon 404 is recorded separately and remains unfixed in Wave 0.',
-  );
   await page.goto('/');
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))

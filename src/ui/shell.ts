@@ -60,7 +60,13 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Elements: 'elements',
   Transitions: 'transitions',
 };
-const RIGHT_SECTIONS = ['Properties', 'Effects', 'Color', 'Audio', 'Speed'] as const;
+const RIGHT_SECTIONS = [
+  'Properties',
+  'Effects',
+  'Color',
+  'Audio',
+  'Speed',
+] as const;
 const RIGHT_ICONS: Record<(typeof RIGHT_SECTIONS)[number], string> = {
   Properties: 'properties',
   Effects: 'effects',
@@ -189,8 +195,8 @@ export function mountEditorShell(
   };
   const viewport = () => {
     const view = fitViewport(
-      Math.max(1, stage.clientWidth),
-      Math.max(1, stage.clientHeight),
+      Math.max(1, canvas.clientWidth || stage.clientWidth),
+      Math.max(1, canvas.clientHeight || stage.clientHeight),
       session.source.composition,
       window.devicePixelRatio || 1,
     );
@@ -375,7 +381,7 @@ export function mountEditorShell(
     if (!count) {
       const empty = document.createElement('p');
       empty.className = 'scene-empty';
-      empty.textContent = 'No layers in this composition.';
+      empty.textContent = t('scene.empty');
       list.append(empty);
     }
     if (focusedId)
@@ -566,7 +572,8 @@ export function mountEditorShell(
     for (const item of root.querySelectorAll<HTMLButtonElement>(
       '.available-assets button',
     ))
-      item.hidden = query.length > 0 && !item.textContent!.toLowerCase().includes(query);
+      item.hidden =
+        query.length > 0 && !item.textContent!.toLowerCase().includes(query);
   };
 
   // Right panel: shared "section" state driven by both the tab row and the icon rail.
@@ -938,8 +945,7 @@ export function mountEditorShell(
   // it later). Re-applies every translated string that was only evaluated once at mount.
   const languageLabel = element('#language-toggle-label');
   const applyLanguage = () => {
-    languageLabel.textContent =
-      getLanguage() === 'en' ? 'हिन्दी' : 'English';
+    languageLabel.textContent = getLanguage() === 'en' ? 'हिन्दी' : 'English';
     document.title = t('app.title');
   };
   applyLanguage();

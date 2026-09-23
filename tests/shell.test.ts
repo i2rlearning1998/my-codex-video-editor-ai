@@ -74,7 +74,19 @@ describe('editor shell integration', () => {
       'Timeline',
     ])
       expect(root.querySelector(`[aria-label="${label}"]`)).not.toBeNull();
-    expect(root.querySelectorAll('[data-category]')).toHaveLength(5);
+    expect(
+      [...root.querySelectorAll<HTMLElement>('[data-category]')].map(
+        (button) => button.dataset.category,
+      ),
+    ).toEqual([
+      'Media',
+      'Graphics',
+      'Text',
+      'Templates',
+      'Audio',
+      'Elements',
+      'Transitions',
+    ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();
     expect(root.querySelector('.timeline canvas')).toBeNull();
     expect(root.querySelector('[data-derived-duration]')!.textContent).toBe(
@@ -213,7 +225,7 @@ describe('editor shell integration', () => {
     const before = engine.state;
     root.querySelector<HTMLButtonElement>('[data-category="Media"]')!.click();
     expect(root.querySelector('#library-title')!.textContent).toBe(
-      'A home for your footage',
+      'Your assets, in one place',
     );
     root
       .querySelector('.timeline-track')!

@@ -1,12 +1,7 @@
-import { test, expect, allowError, hook } from './fixtures';
+import { menuAction, test, expect, hook } from './fixtures';
 test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom size and create a portrait project with a solid background', async ({
   page,
 }, testInfo) => {
-  allowError(
-    page,
-    (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-    'Known REL-001 remains outside this brief.',
-  );
   await page.goto('/');
   await page.locator('[data-layer-id="example-headline"]').first().click();
   await page
@@ -16,8 +11,11 @@ test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom siz
     .getByRole('spinbutton', { name: 'Position X', exact: true })
     .press('Enter');
   expect((await hook(page)).history.canUndo).toBe(true);
-  await page.locator('#new-project').click();
-  await page.getByLabel('Name', { exact: true }).fill('Portrait lesson');
+  await menuAction(page, '#new-project');
+  await page
+    .locator('#new-project-form')
+    .getByLabel('Name', { exact: true })
+    .fill('Portrait lesson');
   await expect(page.locator('#new-project-aspect option')).toHaveText([
     '16:9',
     '9:16',
@@ -61,6 +59,27 @@ test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom siz
   await page
     .getByRole('button', { name: 'Create project', exact: true })
     .click();
+  const beforeConfirm = await hook(page);
+  const confirmation = page.locator('.modal-dialog');
+  await expect(confirmation).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(confirmation).toBeHidden();
+  await expect(page.locator('#new-project-name')).toHaveValue(
+    'Portrait lesson',
+  );
+  expect((await hook(page)).project).toEqual(beforeConfirm.project);
+  expect((await hook(page)).history).toEqual(beforeConfirm.history);
+  await page.locator('#new-project-form button[type="submit"]').click();
+  await confirmation.locator('[data-role="cancel"]').click();
+  await expect(page.locator('#new-project-name')).toHaveValue(
+    'Portrait lesson',
+  );
+  expect((await hook(page)).project).toEqual(beforeConfirm.project);
+  await page.locator('#new-project-form button[type="submit"]').click();
+  await page.screenshot({
+    path: testInfo.outputPath('new-project-confirm.png'),
+  });
+  await confirmation.locator('[data-role="confirm"]').click();
   await expect(page.locator('#new-project-form')).toBeHidden();
   const snapshot = await hook(page);
   expect(snapshot.project.metadata.name).toBe('Portrait lesson');
@@ -83,7 +102,7 @@ test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom siz
     playing: false,
     selectedIds: [],
   });
-  await page.locator('#save').click();
+  await menuAction(page, '#save');
   await page.reload();
   expect((await hook(page)).project).toEqual(snapshot.project);
   await page.screenshot({ path: testInfo.outputPath('new-project.png') });

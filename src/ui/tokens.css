@@ -43,7 +43,9 @@
   --radius-pill: 999px;
 
   /* Type scale */
-  --font-family: 'Segoe UI', system-ui, -apple-system, 'Noto Sans', 'Noto Sans Devanagari', sans-serif;
+  --font-family:
+    'Segoe UI', system-ui, -apple-system, 'Noto Sans', 'Noto Sans Devanagari',
+    sans-serif;
   --font-family-mono: 'Cascadia Code', 'Consolas', ui-monospace, monospace;
   --font-size-xs: 11px;
   --font-size-sm: 12px;

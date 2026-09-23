@@ -533,7 +533,12 @@ export function mountTimeline(
       );
       mute.title = mute.getAttribute('aria-label')!;
       const up = button(iconSvg('arrowUp', 13), 'track-up', row.track.id, true);
-      const down = button(iconSvg('arrowDown', 13), 'track-down', row.track.id, true);
+      const down = button(
+        iconSvg('arrowDown', 13),
+        'track-down',
+        row.track.id,
+        true,
+      );
       up.disabled = trackIndex === 0;
       down.disabled = trackIndex === trackRows.length - 1;
       up.setAttribute('aria-label', `Move ${row.track.name} track up`);
@@ -581,7 +586,12 @@ export function mountTimeline(
           ),
         ];
         for (const time of keyTimes) {
-          const diamond = button(iconSvg('diamondFilled', 12), 'keyframe', entry.layer.id, true);
+          const diamond = button(
+            iconSvg('diamondFilled', 12),
+            'keyframe',
+            entry.layer.id,
+            true,
+          );
           diamond.className = 'timeline-keyframe';
           diamond.dataset.time = String(time);
           diamond.title = `Keyframe at ${formatTimelineTime(time)}s`;
@@ -679,7 +689,12 @@ export function mountTimeline(
         ),
       ];
       for (const time of times) {
-        const diamond = button(iconSvg('diamondFilled', 12), 'keyframe', row.layer.id, true);
+        const diamond = button(
+          iconSvg('diamondFilled', 12),
+          'keyframe',
+          row.layer.id,
+          true,
+        );
         diamond.className = 'timeline-keyframe';
         diamond.dataset.time = String(time);
         diamond.title = `Keyframe at ${time}s`;
@@ -694,7 +709,12 @@ export function mountTimeline(
       empty.textContent = 'No layers in this composition.';
       content.append(empty);
     }
-    const playhead = button(iconSvg('chevronDown', 12), 'seek', undefined, true);
+    const playhead = button(
+      iconSvg('chevronDown', 12),
+      'seek',
+      undefined,
+      true,
+    );
     playhead.className = 'timeline-playhead';
     playhead.setAttribute('aria-label', 'Drag playhead');
     playhead.style.setProperty(
@@ -704,7 +724,12 @@ export function mountTimeline(
     playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
     rulerBar.append(playhead);
     for (const marker of composition.markers) {
-      const item = button(iconSvg('marker', 12), 'marker-handle', marker.id, true);
+      const item = button(
+        iconSvg('marker', 12),
+        'marker-handle',
+        marker.id,
+        true,
+      );
       item.className = 'timeline-marker';
       item.title = marker.label || 'Marker';
       item.style.left = `${headerWidth + timeToPixel(markerPreview?.id === marker.id ? markerPreview.time : marker.time, zoom)}px`;

@@ -148,7 +148,10 @@ export function renderInspector(
         button.className = 'keyframe-button';
         button.dataset.key = key;
         button.dataset.fieldName = name;
-        button.innerHTML = iconSvg(exists ? 'diamondFilled' : 'diamondOutline', 14);
+        button.innerHTML = iconSvg(
+          exists ? 'diamondFilled' : 'diamondOutline',
+          14,
+        );
         button.title = exists ? 'Remove keyframe' : 'Add keyframe';
         button.setAttribute(
           'aria-label',

@@ -11,13 +11,14 @@ import {
   type Resolution,
   type NewProjectInput,
 } from '../project/new-project';
+import { confirmDialog } from './components/modal';
 import { temporaryOverlay } from './temporary-overlay';
 
 export function mountNewProjectForm(
   engine: EditorEngine,
   report: (message: string) => void,
 ) {
-  // Intentionally unstyled temporary markup pending Claude's shell replacement.
+  // Standalone form styled by the combined Wave 1 shell.
   const overlay = temporaryOverlay('new-project-form', () => t('project.new'));
   const form = document.createElement('form');
   form.noValidate = true;
@@ -102,8 +103,11 @@ export function mountNewProjectForm(
   };
   controls.get('aspect')!.onchange = updateSize;
   controls.get('resolution')!.onchange = updateSize;
-  form.onsubmit = (event) => {
+  let submitting = false;
+  let disposed = false;
+  form.onsubmit = async (event) => {
     event.preventDefault();
+    if (submitting || disposed) return;
     const result = validateNewProject(
       Object.fromEntries(
         [...controls].map(([key, control]) => [key, control.value]),
@@ -120,13 +124,32 @@ export function mountNewProjectForm(
         ?.focus();
       return;
     }
-    if (!window.confirm(t('project.replace'))) return;
+    submitting = true;
+    // A native popover occupies the browser's top layer; close it so the app modal
+    // can receive focus and clicks. Reopen this same form on cancel, preserving values.
+    overlay.close();
     try {
+      const confirmed = await confirmDialog(t('project.replace'), {
+        titleText: t('project.new'),
+        confirmLabel: t('project.create'),
+        cancelLabel: t('action.cancel'),
+      });
+      if (disposed) return;
+      if (!confirmed) {
+        overlay.open();
+        submit.focus();
+        return;
+      }
       createProjectFromSettings(result.settings, engine);
       overlay.close();
       report(t('project.created'));
     } catch {
-      report(t('project.error.invalid'));
+      if (!disposed) {
+        overlay.open();
+        report(t('project.error.invalid'));
+      }
+    } finally {
+      submitting = false;
     }
   };
   const unsubscribe = subscribe(translate);
@@ -152,6 +175,7 @@ export function mountNewProjectForm(
       controls.get('name')!.focus();
     },
     dispose() {
+      disposed = true;
       unsubscribe();
       overlay.dispose();
     },

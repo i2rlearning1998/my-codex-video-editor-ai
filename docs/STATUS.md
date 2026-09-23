@@ -1,3 +1,5 @@
-- W1-CODEX: translation runtime, command registry/palette, global shortcuts and solid-color New Project implemented; verify passed (146 unit, 141 jsdom; Chrome 19 normal passes + 4 expected failures; ledger OK). PRJ-006 transparency deferred by owner; schema remains 4.
-- Palette, shortcut sheet, New Project form and language toggle are temporary unstyled markup; Claude owns the visual shell.
-- Next: owner/reviewer acceptance and Claude shell integration; no next wave started. TL-004, TL-019 and REL-001 remain outside this brief.
+- Wave 1 combined delivery is integrated on wave-1-combined, tagged w1, awaiting owner acceptance before merge to main.
+- Full verify passed: 146 unit + 141 jsdom; Chrome 153.0.8010.54: 21 normal passes + 3 expected failures; production hook assertion and ledger OK.
+- New Project uses the app confirmation. Cancel/Escape preserve settings; creation, fresh history and save/reload verified. New Project and CV-007 also checked interactively.
+- CV-007 and REL-001 are Verified. PRJ-006 remains Claimed: solid backgrounds verified, transparency deferred by owner; schema remains 4. TL-004 and TL-019 remain known bugs.
+- Supplied shell remains imperative DOM; React migration outstanding. No next wave started. See reports/W1.md and reports/W1-CLAUDE-DELIVERY.md.

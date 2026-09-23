@@ -1,3 +1,4 @@
+import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 import { EditorEngine, deserializeProject, serializeProject } from './core';
 import { Autosave, LocalProjectStore } from './persistence/local';
 import { createExampleProject } from './ui/example';
@@ -27,6 +28,7 @@ try {
 const engine = new EditorEngine(initialProject, {
   onListenerError: (error) => console.error('Editor observer failed', error),
 });
+const diagnostics = observeDiagnostics(engine);
 const shell = mountEditorShell(
   document.querySelector<HTMLDivElement>('#app')!,
   engine,
@@ -84,6 +86,25 @@ shell.setSaveStatus(
   store ? 'saved' : 'error',
   store ? undefined : t('status.localUnavailable'),
 );
+const removeDebugReport = installDebugReport(
+  engine,
+  shell.session,
+  diagnostics,
+  document.querySelector('.statusbar')!,
+  shell.message,
+);
+let removeTestHook: (() => void) | undefined;
+let disposed = false;
+if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
+  void import('./dev/test-hook').then(({ installTestHook }) => {
+    if (!disposed)
+      removeTestHook = installTestHook(
+        engine,
+        shell.session,
+        diagnostics.getErrors,
+      );
+  });
+}
 const autosave = store
   ? new Autosave(engine, store, {
       onDirty: () => shell.setSaveStatus('unsaved'),
@@ -103,6 +124,10 @@ const flush = () => {
 window.addEventListener('pagehide', flush);
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
+    disposed = true;
+    removeTestHook?.();
+    removeDebugReport();
+    diagnostics.dispose();
     flush();
     autosave?.dispose();
     shell.dispose();

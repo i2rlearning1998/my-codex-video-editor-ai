@@ -1,16 +1,11 @@
-import { test, expect, allowError } from './fixtures';
+import { test, expect } from './fixtures';
 
 test('[DEV-001] app loads in a real browser', async ({
   page,
   browser,
 }, testInfo) => {
-  allowError(
-    page,
-    (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-    'REL-001 is an unfixed baseline bug; its dedicated reproduction keeps the guard enabled without this exception.',
-  );
   await page.goto('/');
-  await expect(page).toHaveTitle(/AI-Native Video Editor/);
+  await expect(page).toHaveTitle(/AI-Native/);
   await expect(page.locator('canvas')).toBeVisible();
   testInfo.annotations.push({
     type: 'browser-version',

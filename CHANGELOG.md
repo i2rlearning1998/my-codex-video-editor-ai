@@ -2,6 +2,13 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 1 combined delivery — 2026-09-23
+
+- Integrated the owner's 26-file Claude delivery, retaining its shell and moving browser tests to the hamburger menu.
+- Restored diagnostics and the development-only read-only test hook; aligned canvas hit testing with its displayed size.
+- Replaced native New Project confirmation with the app dialog; Cancel and Escape retain entered settings.
+- Verified corner scaling, clean console loads, project creation and persistence; full verification passed with two known timeline bugs and the intentional error-guard probe remaining expected failures.
+
 ## Wave 1 Codex modules — 2026-09-22
 
 - Added English/Hindi translation runtime, locale formatting, persistent language choice and text-only shell wiring.

@@ -1,24 +1,19 @@
-import { test, expect, allowError } from './fixtures';
+import { menuAction, test, expect } from './fixtures';
 
 test('[LOC-002][LOC-003][LOC-004] browser default, live language switch and persisted choice', async ({
   page,
   browser,
 }, testInfo) => {
-  allowError(
-    page,
-    (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-    'Known REL-001 favicon bug is outside this brief.',
-  );
   await page.goto('/');
   await expect(page.locator('#save')).toHaveText('Save locally');
-  await page.locator('#language-toggle').click();
+  await menuAction(page, '#language-toggle');
   await expect(page.locator('#save')).toHaveText('स्थानीय रूप से सहेजें');
   await expect(page.locator('html')).toHaveAttribute('lang', 'hi');
   await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
   await page.reload();
   await expect(page.locator('#save')).toHaveText('स्थानीय रूप से सहेजें');
   await page.screenshot({ path: testInfo.outputPath('hindi.png') });
-  await page.locator('#language-toggle').click();
+  await menuAction(page, '#language-toggle');
   await expect(page.locator('#save')).toHaveText('Save locally');
   for (const [locale, expected] of [
     ['hi-IN', 'hi'],

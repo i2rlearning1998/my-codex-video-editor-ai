@@ -70,9 +70,11 @@ export const test = base.extend<Fixtures>({
   ],
   openFixtureProject: async ({ page }, use) => {
     await use(async (name) => {
+      await page.locator('#menu-trigger').click();
       await page
         .locator('#import')
         .setInputFiles(path.resolve('tests/fixtures/projects', name));
+      await page.locator('.modal-dialog [data-role="confirm"]').click();
       await expect(page.locator('#project-name')).toHaveText('NLE Fixture');
     });
   },
@@ -133,4 +135,10 @@ export async function artboard(page: Page) {
 export async function toScreen(page: Page, x: number, y: number) {
   const board = await artboard(page);
   return { x: board.x + x * board.scale, y: board.y + y * board.scale };
+}
+
+export async function menuAction(page: Page, id: string) {
+  if (!(await page.locator('#app-menu').isVisible()))
+    await page.locator('#menu-trigger').click();
+  await page.locator(id).click();
 }

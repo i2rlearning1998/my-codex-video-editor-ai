@@ -239,7 +239,7 @@ Everything the user does directly on the preview canvas.
 | CV-004 | P0 | W2 | Verified | Dragging a selected layer moves it and produces exactly one undo step |
 | CV-005 | P0 | W2 | Todo | Holding Shift while dragging constrains to the axis; Alt-drag duplicates |
 | CV-006 | P0 | W2 | Claimed | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
-| CV-007 | P0 | W2 | Claimed | Corner handle drag resizes proportionally; the opposite corner stays fixed |
+| CV-007 | P0 | W2 | Verified | Corner handle drag resizes proportionally; the opposite corner stays fixed |
 | CV-008 | P0 | W2 | Claimed | Edge handle drag resizes on one axis; Alt resizes from center |
 | CV-009 | P0 | W2 | Claimed | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
@@ -652,7 +652,7 @@ Offline frame-accurate render, never realtime capture.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| REL-001 | P0 | W1 | Bug | Loading the app and doing standard edits produces no console errors |
+| REL-001 | P0 | W1 | Verified | Loading the app and doing standard edits produces no console errors |
 | REL-002 | P0 | W9 | Todo | A UI error never loses the project: an error boundary offers recovery |
 | REL-003 | P0 | W9 | Todo | Heavy work (decode, encode, thumbnails, waveforms) runs in workers so the UI stays responsive |
 | REL-004 | P1 | W9 | Todo | Frame cache and render invalidation avoid re-rendering unchanged frames |

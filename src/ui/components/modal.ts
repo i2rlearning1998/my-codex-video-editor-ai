@@ -21,7 +21,9 @@ let openCount = 0;
 
 export function openModal(options: ModalOptions): ModalHandle {
   const trigger =
-    document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
   const dialog = document.createElement('div');
@@ -105,7 +107,12 @@ export function openModal(options: ModalOptions): ModalHandle {
 /** Promise-based confirm dialog, replacing window.confirm for consistent styling and testability. */
 export function confirmDialog(
   message: string,
-  options: { titleText?: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean } = {},
+  options: {
+    titleText?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    danger?: boolean;
+  } = {},
 ): Promise<boolean> {
   return new Promise((resolve) => {
     let settled = false;
@@ -123,13 +130,17 @@ export function confirmDialog(
         </div>`,
       onClose: () => settle(false),
     });
-    handle.root.querySelector('[data-role="cancel"]')!.addEventListener('click', () => {
-      settle(false);
-      handle.close();
-    });
-    handle.root.querySelector('[data-role="confirm"]')!.addEventListener('click', () => {
-      settle(true);
-      handle.close();
-    });
+    handle.root
+      .querySelector('[data-role="cancel"]')!
+      .addEventListener('click', () => {
+        settle(false);
+        handle.close();
+      });
+    handle.root
+      .querySelector('[data-role="confirm"]')!
+      .addEventListener('click', () => {
+        settle(true);
+        handle.close();
+      });
   });
 }

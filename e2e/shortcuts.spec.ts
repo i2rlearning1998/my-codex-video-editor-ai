@@ -1,11 +1,6 @@
-import { test, expect, allowError, hook, toScreen } from './fixtures';
+import { menuAction, test, expect, hook, toScreen } from './fixtures';
 import type { Page } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
-  allowError(
-    page,
-    (message) => message.includes('404') && message.endsWith('/favicon.ico'),
-    'Known REL-001 favicon bug remains outside this brief.',
-  );
   await page.goto('/');
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
@@ -33,7 +28,7 @@ test('[KEY-003] regression: Undo and both Redo shortcuts work on canvas and afte
   expect((await hook(page)).project).toEqual(before.project);
   await page.keyboard.press('Control+Shift+z');
   expect((await hook(page)).project).toEqual(moved);
-  await page.locator('#save').click();
+  await menuAction(page, '#save');
   await page.keyboard.press('Control+z');
   expect((await hook(page)).project).toEqual(before.project);
   await page.keyboard.press('Control+y');
@@ -63,7 +58,7 @@ test('[KEY-005] Ctrl+S prevents the browser default and saves the current projec
       true,
     );
   });
-  await page.locator('#save').click();
+  await menuAction(page, '#save');
   await page.keyboard.press('Control+s');
   await expect(page.locator('#status')).toHaveText('Saved locally.');
   await expect(page.locator('body')).toHaveAttribute(
@@ -78,7 +73,7 @@ test('[KEY-005] Ctrl+S prevents the browser default and saves the current projec
 test('[KEY-006] Space plays and pauses globally but never in a text input', async ({
   page,
 }) => {
-  await page.locator('#save').click();
+  await menuAction(page, '#save');
   await page.keyboard.press('Space');
   await expect.poll(async () => (await hook(page)).session.playing).toBe(true);
   await page.keyboard.press('Space');
@@ -100,7 +95,7 @@ test('[KEY-007] typing in inputs, textarea and contenteditable never runs editor
   await position.press('Escape');
   await expect(position).toHaveValue(original);
   expect((await hook(page)).history.canUndo).toBe(false);
-  await page.locator('#save').click();
+  await menuAction(page, '#save');
   await page.keyboard.press('Control+k');
   const before = await hook(page);
   await page.keyboard.type('s');
