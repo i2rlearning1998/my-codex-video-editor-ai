@@ -234,21 +234,21 @@ Everything the user does directly on the preview canvas.
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | CV-001 | P0 | W2 | Verified | Clicking a layer selects it; clicking empty canvas deselects |
-| CV-002 | P0 | W2 | Claimed | Shift or Ctrl click toggles a layer in the multi-selection |
-| CV-003 | P0 | W2 | Claimed | Marquee drag on empty canvas selects the layers it touches |
+| CV-002 | P0 | W2 | Verified | Shift or Ctrl click toggles a layer in the multi-selection |
+| CV-003 | P0 | W2 | Verified | Marquee drag on empty canvas selects the layers it touches |
 | CV-004 | P0 | W2 | Verified | Dragging a selected layer moves it and produces exactly one undo step |
 | CV-005 | P0 | W2 | Todo | Holding Shift while dragging constrains to the axis; Alt-drag duplicates |
-| CV-006 | P0 | W2 | Claimed | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
+| CV-006 | P0 | W2 | Verified | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
 | CV-007 | P0 | W2 | Verified | Corner handle drag resizes proportionally; the opposite corner stays fixed |
-| CV-008 | P0 | W2 | Claimed | Edge handle drag resizes on one axis; Alt resizes from center |
-| CV-009 | P0 | W2 | Claimed | Rotation handle rotates around the visual center |
+| CV-008 | P0 | W2 | Bug | Edge handle drag resizes on one axis; Alt resizes from center |
+| CV-009 | P0 | W2 | Verified | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
 | CV-011 | P0 | W2 | Claimed | Text-width grips change text box width and reflow the text without changing font size |
 | CV-012 | P1 | W2 | Todo | Live readout of size, angle or position while dragging |
 | CV-013 | P0 | W2 | Todo | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
 | CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
-| CV-016 | P0 | W2 | Claimed | Zoom controls: Fit, plus and minus change the canvas view scale |
+| CV-016 | P0 | W2 | Verified | Zoom controls: Fit, plus and minus change the canvas view scale |
 | CV-017 | P0 | W2 | Todo | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
 | CV-018 | P0 | W2 | Todo | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
@@ -274,8 +274,8 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| LYR-001 | P0 | W2 | Claimed | Clicking a layer in the list selects it on canvas and in the timeline; selecting elsewhere highlights it in the list |
-| LYR-002 | P0 | W2 | Claimed | Layer list shows layers and groups in stacking order |
+| LYR-001 | P0 | W2 | Verified | Clicking a layer in the list selects it on canvas and in the timeline; selecting elsewhere highlights it in the list |
+| LYR-002 | P0 | W2 | Verified | Layer list shows layers and groups in stacking order |
 | LYR-003 | P0 | W2 | Todo | Shift and Ctrl click multi-select in the list |
 | LYR-004 | P0 | W2 | Todo | Drag to reorder layers, into groups and out of groups |
 | LYR-005 | P0 | W2 | Todo | Rename by double-click or F2 |
@@ -296,41 +296,41 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| TL-001 | P0 | W2 | Todo | Timeline uses one row model: every layer appears as a clip on a track (no separate legacy layer rows) |
+| TL-001 | P0 | W2 | Verified | Timeline uses one row model: every layer appears as a clip on a track (no separate legacy layer rows) |
 | TL-002 | P0 | W2 | Todo | Add track (video, audio, text/graphics, overlay) from the + control and the track menu; dropping below the last track auto-creates a compatible track |
 | TL-003 | P0 | W2 | Todo | Track header shows drag handle, type icon, editable name, lock and eye (visibility); audio tracks also show mute and solo |
-| TL-004 | P0 | W2 | Bug | Locking a track blocks every edit path to its clips (drag, trim, split, delete, keyboard, ripple) with visible feedback |
+| TL-004 | P0 | W2 | Verified | Locking a track blocks every edit path to its clips (drag, trim, split, delete, keyboard, ripple) with visible feedback |
 | TL-005 | P0 | W2 | Todo | Reorder tracks by dragging the handle |
 | TL-006 | P0 | W2 | Todo | Delete a track warns when it contains clips; Duplicate track |
 | TL-007 | P1 | W2 | Todo | Track height presets (compact, normal, large) and drag to resize |
 | TL-008 | P0 | W2 | Todo | Ruler shows mm:ss (hh:mm:ss when long) with frame ticks at high zoom |
-| TL-009 | P0 | W2 | Claimed | Clicking or dragging the ruler moves the playhead; the canvas shows that time live |
+| TL-009 | P0 | W2 | Verified | Clicking or dragging the ruler moves the playhead; the canvas shows that time live |
 | TL-010 | P0 | W2 | Todo | Playhead line spans all tracks, has a draggable handle and snaps to clip edges and markers |
 | TL-011 | P0 | W2 | Todo | Timecode display is editable: click, type a time, Enter to jump |
-| TL-012 | P0 | W2 | Claimed | Timeline zoom-in and zoom-out buttons change the horizontal time scale |
+| TL-012 | P0 | W2 | Verified | Timeline zoom-in and zoom-out buttons change the horizontal time scale |
 | TL-013 | P0 | W2 | Todo | Timeline zoom slider, Fit-all, zoom to selection, and Ctrl+wheel zoom around the cursor |
-| TL-014 | P0 | W2 | Claimed | Horizontal scroll with wheel, Shift+wheel and trackpad; vertical scroll keeps headers aligned with rows |
+| TL-014 | P0 | W2 | Verified | Horizontal scroll with wheel, Shift+wheel and trackpad; vertical scroll keeps headers aligned with rows |
 | TL-015 | P0 | W2 | Todo | Auto-scroll near the edges while dragging clips; option to follow the playhead during playback |
-| TL-016 | P0 | W2 | Claimed | Clips can be moved by dragging within a track and across tracks, with one undo step per gesture |
+| TL-016 | P0 | W2 | Verified | Clips can be moved by dragging within a track and across tracks, with one undo step per gesture |
 | TL-017 | P0 | W2 | Claimed | Multi-selected clips move together and keep their relative offsets across tracks |
 | TL-018 | P0 | W2 | Verified | Trimming the left edge changes start and in-point and never goes past the source or into a neighbor |
 | TL-019 | P0 | W2 | Verified | Trimming the right edge changes duration and never goes past the source or into a neighbor |
-| TL-020 | P0 | W2 | Todo | Clips never overlap on the same track and never shrink below one frame |
+| TL-020 | P0 | W2 | Verified | Clips never overlap on the same track and never shrink below one frame |
 | TL-021 | P0 | W2 | Verified | Split at the playhead (Split button and S key) cuts the selected clip into two at that time |
 | TL-022 | P0 | W2 | Todo | With no clip selected, Split cuts every unlocked clip under the playhead |
-| TL-023 | P0 | W2 | Claimed | Duplicate (Ctrl+D or button) creates an independent copy of the selected clip |
+| TL-023 | P0 | W2 | Verified | Duplicate (Ctrl+D or button) creates an independent copy of the selected clip |
 | TL-024 | P0 | W2 | Todo | Alt-drag copies clips while dragging |
 | TL-025 | P0 | W2 | Verified | Delete key removes the selected clips with one undo step |
 | TL-026 | P0 | W2 | Todo | Ripple delete removes clips and closes the gap |
 | TL-027 | P0 | W2 | Todo | Copy, cut and paste clips at the playhead onto the selected track |
-| TL-028 | P0 | W2 | Claimed | Snapping to playhead, clip edges, markers and grid with a visible snap line |
+| TL-028 | P0 | W2 | Verified | Snapping to playhead, clip edges, markers and grid with a visible snap line |
 | TL-029 | P0 | W2 | Todo | Snap toggle (magnet) in the toolbar, on by default |
-| TL-030 | P0 | W2 | Todo | Insert versus overwrite rule for dropping or moving onto occupied space is explicit and shown to the user |
+| TL-030 | P0 | W2 | Verified | Insert versus overwrite rule for dropping or moving onto occupied space is explicit and shown to the user |
 | TL-031 | P1 | W2 | Todo | Ripple trim; slip, slide and roll edits |
 | TL-032 | P0 | W2 | Todo | Link video and its audio so they move and cut together; Unlink and Detach audio |
 | TL-033 | P1 | W2 | Todo | Disable an individual clip without deleting it |
 | TL-034 | P2 | W2 | Todo | Clip color labels |
-| TL-035 | P0 | W2 | Claimed | The Marker button adds a marker at the playhead |
+| TL-035 | P0 | W2 | Verified | The Marker button adds a marker at the playhead |
 | TL-036 | P0 | W2 | Todo | The M key adds a marker at the playhead |
 | TL-037 | P0 | W2 | Todo | Markers: rename, color, delete, jump to next or previous, list |
 | TL-038 | P1 | W2 | Todo | In and out range markers define a work area for preview and export |
@@ -364,7 +364,7 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | PB-001 | P0 | W2 | Verified | The Play button advances the playhead in real time and the Stop button stops it |
-| PB-002 | P0 | W2 | Claimed | Playback uses elapsed wall-clock time so speed is correct even when frames are dropped |
+| PB-002 | P0 | W2 | Verified | Playback uses elapsed wall-clock time so speed is correct even when frames are dropped |
 | PB-003 | P0 | W2 | Todo | Step one frame backward and forward with buttons and arrow keys |
 | PB-004 | P0 | W2 | Todo | Jump to start, jump to end, previous and next cut |
 | PB-005 | P0 | W2 | Todo | Timecode shows current and total time as mm:ss.ff; clean formatting everywhere (no raw floating-point numbers in the UI) |
@@ -392,8 +392,8 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | INS-006 | P0 | W2 | Todo | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
 | INS-007 | P0 | W2 | Todo | Sliders paired with numeric fields for opacity, rotation and scale |
 | INS-008 | P0 | W2 | Todo | Reset button per property |
-| INS-009 | P0 | W2 | Claimed | Keyframe diamond per animatable property toggles a keyframe |
-| INS-010 | P0 | W2 | Claimed | Timing section: start time and duration of the selected item |
+| INS-009 | P0 | W2 | Verified | Keyframe diamond per animatable property toggles a keyframe |
+| INS-010 | P0 | W2 | Verified | Timing section: start time and duration of the selected item |
 | INS-011 | P0 | W2 | Todo | Layer name is editable |
 | INS-012 | P0 | W2 | Todo | Multi-selection shows mixed values as a dash; editing applies to all in one undo step |
 | INS-013 | P0 | W2 | Todo | Values update live during playback and scrubbing |

@@ -183,7 +183,7 @@ test('[TL-019][TL-018] trims stop at the neighbouring clip and at the end of the
   expect(state('clip-b').sourceOut).toBe(6);
 });
 
-test('[TL-057] clip, playhead and marker drags snap with a visible guide line', async ({
+test('[TL-057][TL-028] clip, playhead and marker drags snap with a visible guide line', async ({
   page,
 }, testInfo) => {
   const guide = page.locator('.timeline-snap');
