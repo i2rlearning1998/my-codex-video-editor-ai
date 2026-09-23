@@ -58,6 +58,7 @@ export class TimelineInteraction {
     destinationId?: string;
     bounds?: TrimBounds;
     snap?: number;
+    locked?: boolean;
   } | null = null;
   #unsubscribe: () => void;
   constructor(
@@ -139,7 +140,8 @@ export class TimelineInteraction {
     )?.layer;
     if (!canonicalLayer) throw new Error('Unknown layer');
     const location = findClipByLayer(this.session.source.composition, id);
-    if (location?.track.locked) throw new Error('Track is locked');
+    // Selecting a locked clip is fine; only an actual drag is refused (TL-004).
+    const locked = !!location?.track.locked;
     const asTimedLayer = (layer: SceneLayer): SceneLayer => {
       const timing = effectiveLayerTiming(
         this.session.source.composition,
@@ -171,6 +173,7 @@ export class TimelineInteraction {
         : undefined;
     this.#gesture = {
       ...(bounds ? { bounds } : {}),
+      ...(locked ? { locked } : {}),
       layer,
       layers,
       kind,
@@ -186,6 +189,10 @@ export class TimelineInteraction {
   update(deltaPixels: number, destinationId?: string): void {
     const gesture = this.#gesture;
     if (!gesture) return;
+    if (gesture.locked) {
+      this.cancel();
+      throw new Error('Track is locked');
+    }
     try {
       const snapped = calculateSnappedTiming(
         this.session.source,
