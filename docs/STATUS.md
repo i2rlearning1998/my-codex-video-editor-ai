@@ -1,5 +1,5 @@
 - Wave 2 continuation W2-B is on branch claude/wave-2-timeline-clips-mwy1f3 as a PR against main, awaiting owner review. W2-CLAUDE (PR #2) is merged.
-- Full verify passed in this sandbox: 301 unit + jsdom; Chromium 141.0.7390.37 (fallback): 55 normal passes + 3 expected failures (DEV-006 probe, CV-008 Alt, MED-035); hook assertion and ledger OK.
+- Full verify passed in this sandbox: 301 unit + jsdom; Chromium 141.0.7390.37 (fallback): 54 normal passes + 3 expected failures (DEV-006 probe, CV-008 Alt, MED-035); hook assertion and ledger OK.
 - Ledger: 69 Verified, 20 Claimed, 404 Todo, 2 Bug: CV-008 (Alt from center, blocked on an owner decision about the frozen contract, D-045) and MED-035 (Media tab hides cards, pre-existing from Wave 1, D-044). TL-001, TL-004, TL-020 and TL-030 are Verified, plus 17 of the 18 proof-debt items; CV-008 became Bug.
 - Schema remains 4 (clip-first, D-039). Group children have no timeline rows. The insert-and-push rule applies to all landing paths (D-040).
 - Next per plan: TL-027 (cut, copy and paste) and TL-032 (link and detach audio), then the Group B risky Claimed items. The shell is still imperative DOM. See reports/W2-B.md.
