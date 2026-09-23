@@ -478,6 +478,15 @@ export function applyCommand(project: Project, command: Command): void {
         layer.children.forEach(collect);
       };
       collect(siblings[index]!);
+      // TL-004: a locked track protects its clips from every delete path.
+      if (
+        composition.tracks.some(
+          (track) =>
+            track.locked &&
+            track.clips.some((clip) => removed.has(clip.layerId)),
+        )
+      )
+        throw new Error('Track is locked');
       for (const track of composition.tracks) {
         track.clips = track.clips.filter((clip) => !removed.has(clip.layerId));
       }
