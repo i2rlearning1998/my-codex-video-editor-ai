@@ -119,3 +119,12 @@ D-030 to D-037 in `docs/DECISIONS.md`:
 | VID-015 | | |
 | VID-016 | | |
 | VID-017 | | |
+
+## Addendum: owner manual QA, round 1 (2026-09-23)
+| # | Finding | Verdict | Action |
+|---|---|---|---|
+| 1 | Clicking clip-a also highlighted clip-b | **Real bug, pre-existing CSS from Wave 1.** Selection data was correct; the rule `.timeline-row.selected .timeline-clip` coloured every clip in the selected clip's track. It was not a TL-056 hit-testing regression. | Highlight now follows each clip's own `aria-pressed`. New regression test `[TL-056] regression: clicking one clip highlights only that clip…`, confirmed to fail on the old CSS. |
+| 2 | Speed 0.5×/0.25× on clip-a seemed to do nothing | **Refusal works as designed**, but the message only appeared in the small bottom-left status line. | Refused or failed edits now also raise an error toast. The VID-015 test asserts the toast. |
+| 3 | Reverse and Freeze show no preview change | Expected: the preview effect needs media decoding (Wave 6). | Confirmed: the badges (2×, reverse and freeze icons) show on the clip. Covered by the VID-015/016/017 tests. |
+| 4 | "Footage 1080p", "Landscape photo", "Music 20s" rows below the tracks | **Not in the fixture.** A fresh load has 0 such rows. These are the fixture's media assets (left panel, Project Media). Dropping one on the **canvas** creates a free layer without a clip, which is the older layer model. That model still coexists with tracks by design until TL-001 ("every layer appears as a clip on a track", W2, Todo, not in this slice). Dropping an asset on a **track row** creates a proper clip. | No fixture change needed. The old-model rows keep the old menu, because Speed, Reverse and Freeze apply to clips only. |
+| 5 | Raw browser scrollbars on the Properties sub-tabs and the timeline | Cosmetic, fixed. | Thin themed scrollbars (token colours) on both. |

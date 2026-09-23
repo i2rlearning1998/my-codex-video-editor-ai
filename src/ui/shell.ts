@@ -190,15 +190,19 @@ export function mountEditorShell(
   const message = (text: string) => {
     element('#status').textContent = text;
   };
+  // Refused or failed edits must be noticed, not just logged in the status bar.
+  const reportError = (error: unknown) => {
+    const text = error instanceof Error ? error.message : String(error);
+    message(text);
+    showToast(text, 'error');
+  };
   const safely = (action: () => void | Promise<void>) => {
     try {
       const result = action();
       if (result && typeof (result as Promise<void>).then === 'function')
-        (result as Promise<void>).catch((error: unknown) => {
-          message(error instanceof Error ? error.message : String(error));
-        });
+        (result as Promise<void>).catch(reportError);
     } catch (error) {
-      message(error instanceof Error ? error.message : String(error));
+      reportError(error);
     }
   };
   const viewport = () => {
@@ -629,7 +633,7 @@ export function mountEditorShell(
     engine,
     session,
     () => safely(draw),
-    (error) => message(error instanceof Error ? error.message : String(error)),
+    reportError,
     true,
   );
   const unsubscribe = session.onChange(refresh);

@@ -136,6 +136,20 @@ test('[TL-056] clips show dedicated trim handles with a resize cursor and a grip
   expect((await clips(page))('clip-b').startTime).toBe(3);
 });
 
+test('[TL-056] regression: clicking one clip highlights only that clip, not its track neighbours', async ({
+  page,
+}) => {
+  const background = (id: string) =>
+    clipEl(page, id).evaluate((el) => getComputedStyle(el).backgroundColor);
+  const idle = await background('clip-b');
+  await selectClip(page, 'clip-a');
+  expect((await hook(page)).session.selectedIds).toEqual(['layer-a']);
+  await expect(clipEl(page, 'clip-a')).toHaveAttribute('aria-pressed', 'true');
+  await expect(clipEl(page, 'clip-b')).toHaveAttribute('aria-pressed', 'false');
+  expect(await background('clip-a')).not.toBe(idle);
+  expect(await background('clip-b')).toBe(idle);
+});
+
 test('[TL-019][TL-018] trims stop at the neighbouring clip and at the end of the source media', async ({
   page,
 }) => {
@@ -422,6 +436,10 @@ test('[VID-015] Speed from the timeline and canvas menus changes duration, shows
     .getByRole('menuitemradio', { name: '0.25×' })
     .click();
   await expect(page.locator('#status')).toContainText('Not enough room');
+  // The refusal must be visible, not only in the status bar.
+  await expect(
+    page.locator('.toast-error').filter({ hasText: 'Not enough room' }),
+  ).toBeVisible();
   expect((await hook(page)).project).toEqual(before);
 });
 
