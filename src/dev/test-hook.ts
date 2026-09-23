@@ -20,6 +20,7 @@ export function createTestHook(
         playing: session.playing,
         canvasZoom: session.canvasZoom,
         timelinePxPerSecond: session.timelineZoom,
+        soloTrackIds: session.soloTrackIds,
       }),
     getHistory: () =>
       snapshot({

@@ -27,7 +27,7 @@ This file is the **single definition of what the finished editor must do**. Ever
 |---|---|---:|---:|---:|
 | W0 | Process and testing harness | 10 | 0 | 0 |
 | W1 | Shell v2, design system, i18n, commands, project dialogs | 60 | 21 | 4 |
-| W2 | Canvas, layers, timeline, playback, inspector interaction-complete | 102 | 20 | 5 |
+| W2 | Canvas, layers, timeline, playback, inspector interaction-complete | 111 | 20 | 5 |
 | W3 | Text, fonts and languages | 21 | 9 | 4 |
 | W4 | Media pipeline, storage, Pixabay, AV playback | 41 | 9 | 2 |
 | W5 | Animation, shapes and graphics, export v1 | 28 | 10 | 1 |
@@ -37,7 +37,7 @@ This file is the **single definition of what the finished editor must do**. Ever
 | W9 | Hardening: export full, performance, accessibility, UI language packs | 4 | 23 | 5 |
 | W10 | AI integration (last) | 0 | 0 | 13 |
 
-**Total items: 485** (P0 297, P1 131, P2 57). Status now: Bug 3, Claimed 47, Todo 435.
+**Total items: 494** (P0 306, P1 131, P2 57). Status now: Bug 3, Claimed 47, Todo 435.
 
 ## DEV: Process, testing and tooling (Wave 0)
 
@@ -313,8 +313,8 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-015 | P0 | W2 | Todo | Auto-scroll near the edges while dragging clips; option to follow the playhead during playback |
 | TL-016 | P0 | W2 | Claimed | Clips can be moved by dragging within a track and across tracks, with one undo step per gesture |
 | TL-017 | P0 | W2 | Claimed | Multi-selected clips move together and keep their relative offsets across tracks |
-| TL-018 | P0 | W2 | Claimed | Trimming the left edge changes start and in-point and never goes past the source or into a neighbor |
-| TL-019 | P0 | W2 | Bug | Trimming the right edge changes duration and never goes past the source or into a neighbor |
+| TL-018 | P0 | W2 | Verified | Trimming the left edge changes start and in-point and never goes past the source or into a neighbor |
+| TL-019 | P0 | W2 | Verified | Trimming the right edge changes duration and never goes past the source or into a neighbor |
 | TL-020 | P0 | W2 | Todo | Clips never overlap on the same track and never shrink below one frame |
 | TL-021 | P0 | W2 | Verified | Split at the playhead (Split button and S key) cuts the selected clip into two at that time |
 | TL-022 | P0 | W2 | Todo | With no clip selected, Split cuts every unlocked clip under the playhead |
@@ -339,7 +339,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-041 | P0 | W2 | Todo | Right-click empty timeline area: Paste, Add track; right-click ruler: Add marker, Clear markers, Set in or out |
 | TL-042 | P0 | W2 | Todo | Toolbar: Split, Delete, Duplicate, Snap, zoom slider, and overflow menu, matching the target |
 | TL-043 | P0 | W2 | Todo | Empty timeline shows a helpful drop message |
-| TL-044 | P0 | W2 | Todo | Jump to previous or next cut (Up and Down keys) |
+| TL-044 | P0 | W2 | Verified | Jump to previous or next cut (Up and Down keys) |
 | TL-045 | P0 | W2 | Todo | Clip label truncates gracefully and never overlaps neighbors at any zoom |
 | TL-046 | P0 | W4 | Todo | Video clips show a filmstrip of thumbnails; image clips show their thumbnail |
 | TL-047 | P0 | W4 | Todo | Audio clips show waveforms that stay correct while trimming |
@@ -350,6 +350,12 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-052 | P1 | W8 | Todo | Compound clip (nested composition) shows a badge and can be entered |
 | TL-053 | P1 | W9 | Todo | 200 clips scroll and zoom smoothly (virtualized rows) on the reference machine |
 | TL-054 | P2 | W9 | Todo | Timeline scroll and zoom are remembered per composition |
+| TL-055 | P0 | W2 | Verified | Infinite timeline: the ruler and track area always extend past the content end and keep extending while the user scrolls or zooms out near the end (no fixed content-length ceiling); the playhead still stops at the content end |
+| TL-056 | P0 | W2 | Verified | Every clip has dedicated left and right trim handles with a hit area of at least 8 CSS pixels, a resize cursor and a visible grip on hover or selection; the clip body keeps the move cursor |
+| TL-057 | P0 | W2 | Verified | While moving or trimming a clip, dragging the playhead or dragging a marker, edges snap within 8 CSS pixels to clip edges, the playhead and markers, and a visible snap-guide line spans the ruler and all tracks at the snapped time |
+| TL-058 | P0 | W2 | Verified | Dragging a clip onto another compatible track shows a ghost of the clip at its landing track and time while the original stays dimmed in place; releasing commits exactly the ghost position in one undo step; Escape cancels |
+| TL-059 | P0 | W2 | Verified | Track header has Lock, Hide, Solo and Mute icon buttons with accessible names, tooltips and a distinct pressed state; Solo previews only soloed tracks (session-only, not saved, no history) |
+| TL-060 | P0 | W2 | Verified | Keyboard equivalents for timeline gestures, listed in the shortcut sheet: Alt+Left/Right nudge selected clips one frame (Shift for ten), Alt+Up/Down move them to the adjacent compatible track, [ and ] trim the selected clip start or end to the playhead |
 
 ## PB: Playback and transport
 
@@ -522,6 +528,9 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 | VID-012 | P0 | W6 | Todo | Freeze frame at the playhead |
 | VID-013 | P0 | W6 | Todo | Chroma key (green screen) with tolerance and edge softness |
 | VID-014 | P2 | W8 | Todo | Stabilization |
+| VID-015 | P0 | W2 | Verified | Clip speed 0.1x to 8x (menu presets 0.25x to 4x) is a non-destructive clip property set through an undoable command; the clip's timeline duration becomes source length divided by speed, a speed badge shows on the clip, and slowing a clip into its neighbor is refused; offered in the timeline clip and canvas context menus |
+| VID-016 | P0 | W2 | Verified | Reverse toggles a non-destructive clip property through an undoable command, keeps source range and duration, shows a badge, and trim and split respect reversed source time; offered in the timeline clip and canvas context menus |
+| VID-017 | P0 | W2 | Verified | Freeze frame toggles a non-destructive hold of one source frame (the frame under the playhead, else the first frame) for the whole clip duration through an undoable command, with a badge; offered in the timeline clip and canvas context menus |
 
 ## FX: Effects and filters (Wave 6)
 

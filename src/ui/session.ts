@@ -7,6 +7,8 @@ export class EditorSession {
   #currentTime = 0;
   #timelineZoom = 80;
   #selection: readonly string[] = Object.freeze([]);
+  /** Transient preview monitoring (TL-059): never saved, never history. */
+  #solo: readonly string[] = Object.freeze([]);
   #playing = false;
   #canvasZoom = 1;
   #compositionId: string;
@@ -26,8 +28,14 @@ export class EditorSession {
       ) {
         this.#compositionId = engine.state.compositions[0]!.id;
         this.#selection = Object.freeze([]);
+        this.#solo = Object.freeze([]);
         this.#currentTime = 0;
       }
+      this.#solo = Object.freeze(
+        this.#solo.filter((id) =>
+          this.source.composition.tracks.some((track) => track.id === id),
+        ),
+      );
       this.#selection = Object.freeze(
         this.#selection.filter((id) =>
           locateLayer(this.source.composition.layers, id),
@@ -72,9 +80,23 @@ export class EditorSession {
       assets: project.assets,
       currentTime: this.#currentTime,
       selectedIds: this.#selection,
+      ...(this.#solo.length ? { soloTrackIds: this.#solo } : {}),
       ...(this.measureText ? { measureText: this.measureText } : {}),
       background: project.settings.backgroundColor,
     };
+  }
+  get soloTrackIds(): readonly string[] {
+    return this.#solo;
+  }
+  toggleSolo(trackId: string): void {
+    if (!this.source.composition.tracks.some((track) => track.id === trackId))
+      throw new Error('Unknown track');
+    this.#solo = Object.freeze(
+      this.#solo.includes(trackId)
+        ? this.#solo.filter((id) => id !== trackId)
+        : [...this.#solo, trackId],
+    );
+    this.#notify();
   }
   get selectedIds(): readonly string[] {
     return this.#selection;
@@ -121,6 +143,7 @@ export class EditorSession {
     this.#compositionId = id;
     this.#currentTime = 0;
     this.#selection = Object.freeze([]);
+    this.#solo = Object.freeze([]);
     this.#notify();
   }
   onChange(listener: () => void): () => void {

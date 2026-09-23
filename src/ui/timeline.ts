@@ -5,23 +5,38 @@ import {
   timeToPixel,
   effectiveLayerTiming,
   findClipByLayer,
+  clipTimeEffects,
+  clipTrimBounds,
+  retimeClip,
+  trackAcceptsLayer,
   type EditorEngine,
   type Command,
 } from '../core';
+import { t, formatNumber } from '../i18n';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import type { EditorSession } from './session';
 import {
   selectionRoots,
   performEdit,
   contextActions,
+  jumpToCut,
+  moveClipsToAdjacentTrack,
+  nudgeClips,
+  setClipSpeed,
+  trimClipToPlayhead,
+  SPEED_PRESETS,
   type EditAction,
 } from './editing';
 import { Playback } from './playback';
 import {
-  calculateTiming,
+  calculateSnappedTiming,
   nleTimelineRows,
+  snapCandidates,
+  snapTime as nearestSnap,
+  type TrimBounds,
   timelineRows,
   timingCommands,
+  SNAP_THRESHOLD_PX,
   type TimingGesture,
   type TimingPreview,
 } from './timeline-model';
@@ -38,6 +53,8 @@ export class TimelineInteraction {
     zoom: number;
     value: TimingPreview;
     destinationId?: string;
+    bounds?: TrimBounds;
+    snap?: number;
   } | null = null;
   #unsubscribe: () => void;
   constructor(
@@ -64,31 +81,9 @@ export class TimelineInteraction {
   get destinationId(): string | undefined {
     return this.#gesture?.destinationId;
   }
+  /** Candidate time the moving edge is snapped to, for the visible guide. */
   get snapTime(): number | undefined {
-    const preview = this.preview;
-    if (!preview) return undefined;
-    const source = this.session.source;
-    return [
-      0,
-      source.composition.duration,
-      this.session.currentTime,
-      ...source.composition.markers.map((marker) => marker.time),
-      ...source.composition.tracks.flatMap((track) =>
-        track.clips
-          .filter((clip) => !this.session.selectedIds.includes(clip.layerId))
-          .flatMap((clip) => [clip.startTime, clip.startTime + clip.duration]),
-      ),
-      ...timelineRows(source, this.session.timelineZoom)
-        .filter((row) => !this.session.selectedIds.includes(row.layer.id))
-        .flatMap((row) => [
-          row.layer.startTime,
-          row.layer.startTime + row.layer.duration,
-        ]),
-    ].find(
-      (time) =>
-        Math.abs(time - preview.startTime) < 1e-9 ||
-        Math.abs(time - preview.startTime - preview.duration) < 1e-9,
-    );
+    return this.#gesture?.snap;
   }
   begin(id: string, kind: TimingGesture): void {
     this.cancel();
@@ -119,7 +114,19 @@ export class TimelineInteraction {
     ).map(asTimedLayer);
     if (kind !== 'move' && layers.length > 1)
       throw new Error('Select one clip to trim');
+    // Trims stop at neighbouring clips and at the source media (TL-018/TL-019).
+    const bounds =
+      kind !== 'move' && location
+        ? clipTrimBounds(
+            this.session.source.composition,
+            location.clip.id,
+            this.session.source.assets.find(
+              (asset) => asset.id === location.clip.assetId,
+            )?.duration,
+          )
+        : undefined;
     this.#gesture = {
+      ...(bounds ? { bounds } : {}),
       layer,
       layers,
       kind,
@@ -136,15 +143,19 @@ export class TimelineInteraction {
     const gesture = this.#gesture;
     if (!gesture) return;
     try {
-      let timing = calculateTiming(
+      const snapped = calculateSnappedTiming(
         this.session.source,
         gesture.layer,
         gesture.kind,
         deltaPixels,
         gesture.zoom,
-        8,
+        SNAP_THRESHOLD_PX,
         gesture.layers.map((layer) => layer.id),
+        gesture.bounds,
       );
+      let timing = snapped.timing;
+      if (snapped.snap === undefined) delete gesture.snap;
+      else gesture.snap = snapped.snap;
       if (gesture.kind === 'move') {
         const min = Math.min(...gesture.layers.map((layer) => layer.startTime));
         const delta = Math.max(
@@ -169,11 +180,7 @@ export class TimelineInteraction {
           );
           const compatible = destination
             ? clips.every(({ layer }) =>
-                destination.type === 'object'
-                  ? ['group', 'shape'].includes(layer.type)
-                  : destination.type === 'video'
-                    ? ['video', 'image'].includes(layer.type)
-                    : destination.type === layer.type,
+                trackAcceptsLayer(destination.type, layer.type),
               )
             : false;
           if (
@@ -233,18 +240,13 @@ export class TimelineInteraction {
                   type: 'SET_CLIP_TIMING' as const,
                   compositionId: gesture.compositionId,
                   clipId: clip.clip.id,
-                  startTime: preview.startTime,
-                  duration: preview.duration,
-                  sourceIn:
-                    gesture.kind === 'left'
-                      ? clip.clip.sourceIn +
-                        (preview.startTime - clip.clip.startTime) *
-                          clip.clip.speed
-                      : clip.clip.sourceIn,
-                  sourceOut:
-                    gesture.kind === 'right'
-                      ? clip.clip.sourceIn + preview.duration * clip.clip.speed
-                      : clip.clip.sourceOut,
+                  // Reverse-aware: a reversed clip's left edge shows its out-point.
+                  ...retimeClip(
+                    clip.clip,
+                    preview.startTime,
+                    preview.duration,
+                    gesture.kind,
+                  ),
                 },
               ]
           : timingCommands(gesture.compositionId, layer, preview);
@@ -335,11 +337,32 @@ export function mountTimeline(
   report: (error: unknown) => void,
   externalKeyboard = false,
 ) {
-  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0" aria-label="Timeline tracks. Arrow keys move time; Shift moves ten frames; Home and End seek; Delete removes selection."><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
+  scroll.setAttribute('aria-label', t('timeline.keys'));
   const headerWidth = 224;
+  /** Infinite timeline (TL-055): furthest time the user has scrolled to. Transient. */
+  let reach = 0;
+  let renderedSpan = 0;
+  /** Guide for playhead and marker drags; clip gestures use controller.snapTime. */
+  let pointerSnap: number | undefined;
+  const MAX_SPAN = 24 * 60 * 60;
+  const viewportPixels = () => Math.max(0, scroll.clientWidth - headerWidth);
+  // Content end, anything scrolled to or being dragged, plus one empty viewport.
+  const spanTime = () => {
+    const zoom = session.timelineZoom;
+    const previewEnd = Math.max(
+      0,
+      ...controller.previews.map((item) => item.startTime + item.duration),
+    );
+    return Math.min(
+      MAX_SPAN,
+      Math.max(session.source.composition.duration, reach, previewEnd) +
+        pixelToTime(viewportPixels(), zoom),
+    );
+  };
   const playback = new Playback(session);
   let menuId: string | null = null;
   let menuMarker: string | undefined;
@@ -392,6 +415,18 @@ export function mountTimeline(
     if (id) item.dataset.id = id;
     return item;
   };
+  // TL-056: dedicated handles; the visible grip is CSS (hover or selection).
+  const appendTrimHandles = (clip: HTMLElement) => {
+    for (const edge of ['left', 'right'] as const) {
+      const grip = document.createElement('span');
+      grip.className = `timeline-trim ${edge}`;
+      grip.dataset.trim = edge;
+      grip.title = t(
+        edge === 'left' ? 'timeline.trimStart' : 'timeline.trimEnd',
+      );
+      clip.append(grip);
+    }
+  };
   let renderedProject: unknown;
   let renderedIdentity = '';
   const render = () => {
@@ -441,10 +476,15 @@ export function mountTimeline(
       `${formatTimelineTime(composition.duration)}s content length`;
     root.querySelector('[data-zoom-label]')!.textContent =
       `${zoom.toFixed(0)} px/s`;
+    const span = spanTime();
+    const guideTime = controller.snapTime ?? pointerSnap;
     const identity = JSON.stringify([
       composition.id,
       session.selectedIds,
       zoom,
+      span,
+      guideTime,
+      session.soloTrackIds,
     ]);
     if (
       renderedProject === engine.state &&
@@ -462,7 +502,9 @@ export function mountTimeline(
     renderedIdentity =
       controller.preview || markerPreview || marquee ? '' : identity;
     content.replaceChildren();
-    const width = timeToPixel(composition.duration, zoom);
+    renderedSpan = span;
+    const width = timeToPixel(span, zoom);
+    content.dataset.span = String(span);
     content.style.width = `${headerWidth + width + 24}px`;
     const ruler = document.createElement('div');
     ruler.className = 'timeline-ruler';
@@ -473,9 +515,9 @@ export function mountTimeline(
     const step = Math.max(
       frameToTime(1, composition.fps),
       2 ** Math.ceil(Math.log2(70 / zoom)),
-      composition.duration / 1000,
+      span / 1000,
     );
-    for (let time = 0; time <= composition.duration; time += step) {
+    for (let time = 0; time <= span + 1e-9; time += step) {
       const label = document.createElement('span');
       label.textContent = `${Number(time.toFixed(3))}s`;
       label.style.left = `${timeToPixel(time, zoom)}px`;
@@ -506,40 +548,49 @@ export function mountTimeline(
       header.className = 'timeline-row-header timeline-track-header';
       const label = document.createElement('span');
       label.className = 'track-name';
-      label.textContent = `${row.track.type.toUpperCase()} · ${row.track.name}`;
-      const enable = button(
-        iconSvg(row.track.enabled ? 'eye' : 'eyeOff', 14),
-        'track-enable',
-        row.track.id,
-        true,
-      );
-      enable.setAttribute(
-        'aria-label',
-        `${row.track.enabled ? 'Disable' : 'Enable'} ${row.track.name}`,
-      );
-      enable.title = enable.getAttribute('aria-label')!;
-      const lock = button(
-        iconSvg(row.track.locked ? 'lock' : 'unlock', 14),
+      // Name only, so it stays readable beside four toggles; type in the tooltip.
+      label.textContent = row.track.name;
+      label.title = `${row.track.type.toUpperCase()} · ${row.track.name}`;
+      // TL-059: every toggle exposes its state through aria-pressed.
+      const toggle = (
+        action: string,
+        icon: string,
+        pressed: boolean,
+        label: string,
+      ) => {
+        const item = button(iconSvg(icon, 14), action, row.track.id, true);
+        item.classList.add('track-toggle');
+        item.setAttribute('aria-pressed', String(pressed));
+        item.setAttribute('aria-label', label);
+        item.title = label;
+        return item;
+      };
+      const name = { name: row.track.name };
+      const soloed = session.soloTrackIds.includes(row.track.id);
+      const lock = toggle(
         'track-lock',
-        row.track.id,
-        true,
+        row.track.locked ? 'lock' : 'unlock',
+        row.track.locked,
+        t(row.track.locked ? 'track.unlock' : 'track.lock', name),
       );
-      lock.setAttribute(
-        'aria-label',
-        `${row.track.locked ? 'Unlock' : 'Lock'} ${row.track.name}`,
+      const enable = toggle(
+        'track-enable',
+        row.track.enabled ? 'eye' : 'eyeOff',
+        !row.track.enabled,
+        t(row.track.enabled ? 'track.hide' : 'track.show', name),
       );
-      lock.title = lock.getAttribute('aria-label')!;
-      const mute = button(
-        iconSvg(row.track.muted ? 'mute' : 'speaker', 14),
+      const solo = toggle(
+        'track-solo',
+        'solo',
+        soloed,
+        t(soloed ? 'track.unsolo' : 'track.solo', name),
+      );
+      const mute = toggle(
         'track-mute',
-        row.track.id,
-        true,
+        row.track.muted ? 'mute' : 'speaker',
+        row.track.muted,
+        t(row.track.muted ? 'track.unmute' : 'track.mute', name),
       );
-      mute.setAttribute(
-        'aria-label',
-        `${row.track.muted ? 'Unmute' : 'Mute'} ${row.track.name}`,
-      );
-      mute.title = mute.getAttribute('aria-label')!;
       const up = button(iconSvg('arrowUp', 13), 'track-up', row.track.id, true);
       const down = button(
         iconSvg('arrowDown', 13),
@@ -553,17 +604,20 @@ export function mountTimeline(
       down.setAttribute('aria-label', `Move ${row.track.name} track down`);
       up.title = up.getAttribute('aria-label')!;
       down.title = down.getAttribute('aria-label')!;
-      header.append(label, enable, lock, mute, up, down);
+      header.append(label, lock, enable, solo, mute, up, down);
       const track = document.createElement('div');
       track.className = 'timeline-track';
       track.dataset.trackId = row.track.id;
       track.style.width = `${width}px`;
+      const crossTrack = controller.destinationId?.startsWith('track:');
       for (const entry of row.clips) {
-        const preview = controller.previews.find(
+        const moving = controller.previews.find(
           (item) => item.layerId === entry.layer.id,
         );
+        // TL-058: across tracks the original stays put (dimmed); a ghost lands.
+        const preview = crossTrack ? undefined : moving;
         const clip = button(entry.clip.name, 'clip', entry.layer.id);
-        clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}`;
+        clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}`;
         clip.dataset.clipId = entry.clip.id;
         clip.dataset.trackId = row.track.id;
         clip.style.left = `${preview ? timeToPixel(preview.startTime, zoom) : entry.left}px`;
@@ -573,13 +627,28 @@ export function mountTimeline(
           'aria-pressed',
           String(session.selectedIds.includes(entry.layer.id)),
         );
-        for (const edge of ['left', 'right'] as const) {
-          const grip = document.createElement('span');
-          grip.className = `timeline-trim ${edge}`;
-          grip.dataset.trim = edge;
-          grip.title = `Trim ${edge} edge`;
-          clip.append(grip);
+        const effects = clipTimeEffects(entry.clip);
+        const badges: [string, string, string][] = [];
+        if (effects.speed !== 1)
+          badges.push([
+            'speed',
+            t('clip.speedValue', { speed: formatNumber(effects.speed) }),
+            t('clip.speedBadge', { speed: formatNumber(effects.speed) }),
+          ]);
+        if (effects.reversed)
+          badges.push(['reverse', iconSvg('reverse', 11), t('clip.reversed')]);
+        if (effects.freezeFrame !== null)
+          badges.push(['freeze', iconSvg('freeze', 11), t('clip.frozen')]);
+        for (const [kind, content, label] of badges) {
+          const badge = document.createElement('span');
+          badge.className = 'clip-badge';
+          badge.dataset.badge = kind;
+          badge.innerHTML = content;
+          badge.title = label;
+          badge.setAttribute('aria-label', label);
+          clip.append(badge);
         }
+        appendTrimHandles(clip);
         track.append(clip);
         const keyTimes = [
           ...new Set(
@@ -607,6 +676,21 @@ export function mountTimeline(
           track.append(diamond);
         }
       }
+      if (crossTrack && controller.destinationId === `track:${row.track.id}`)
+        for (const item of controller.previews) {
+          const origin = trackRows
+            .flatMap((other) => other.clips)
+            .find((entry) => entry.layer.id === item.layerId);
+          if (!origin) continue;
+          const ghost = document.createElement('div');
+          ghost.className = 'timeline-clip-ghost';
+          ghost.dataset.ghostFor = origin.clip.id;
+          ghost.dataset.startTime = String(item.startTime);
+          ghost.textContent = origin.clip.name;
+          ghost.style.left = `${timeToPixel(item.startTime, zoom)}px`;
+          ghost.style.width = `${timeToPixel(item.duration, zoom)}px`;
+          track.append(ghost);
+        }
       line.append(header, track);
       content.append(line);
     }
@@ -676,13 +760,7 @@ export function mountTimeline(
         'aria-pressed',
         String(session.selectedIds.includes(row.layer.id)),
       );
-      for (const edge of ['left', 'right'] as const) {
-        const grip = document.createElement('span');
-        grip.className = `timeline-trim ${edge}`;
-        grip.dataset.trim = edge;
-        grip.title = `Trim ${edge} edge`;
-        clip.append(grip);
-      }
+      appendTrimHandles(clip);
       track.append(clip);
       const times = [
         ...new Set(
@@ -746,10 +824,14 @@ export function mountTimeline(
       item.style.left = `${headerWidth + timeToPixel(markerPreview?.id === marker.id ? markerPreview.time : marker.time, zoom)}px`;
       rulerBar.append(item);
     }
-    if (controller.snapTime !== undefined) {
+    if (guideTime !== undefined) {
+      // TL-057: one line over the ruler and every row at the snapped time.
       const guide = document.createElement('div');
       guide.className = 'timeline-snap';
-      guide.style.left = `${headerWidth + timeToPixel(controller.snapTime, zoom)}px`;
+      guide.dataset.time = String(guideTime);
+      guide.setAttribute('aria-hidden', 'true');
+      guide.style.left = `${headerWidth + timeToPixel(guideTime, zoom)}px`;
+      guide.style.height = `${28 + (trackRows.length + rows.length) * 34}px`;
       content.append(guide);
     }
     if (marquee) {
@@ -784,6 +866,7 @@ export function mountTimeline(
     markerPreview = undefined;
     selectedMarkerId = undefined;
     marquee = undefined;
+    pointerSnap = undefined;
     controller.cancel();
     render();
     if (originalIds) session.selectMany(originalIds);
@@ -811,19 +894,48 @@ export function mountTimeline(
     if (!pointer || pointer.id !== event.pointerId) return;
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY))
       throw new RangeError('Invalid pointer coordinate');
-    if (pointer.kind === 'playhead') seek(event.clientX);
-    else if (pointer.kind === 'marker') {
+    if (pointer.kind === 'playhead') {
+      if (Math.abs(event.clientX - pointer.start) >= 3) pointer.moved = true;
+      if (!pointer.moved) return;
+      // TL-057: a dragged playhead snaps to clip edges and markers.
+      const zoom = session.timelineZoom;
+      const raw = pixelToTime(
+        event.clientX -
+          scroll.getBoundingClientRect().left +
+          scroll.scrollLeft -
+          headerWidth,
+        zoom,
+      );
+      const snapped = nearestSnap(
+        raw,
+        snapCandidates(session.source, zoom, [], { playhead: false }),
+        zoom,
+      );
+      const next = snapped.snapped ? snapped.time : undefined;
+      const changed = next !== pointerSnap;
+      pointerSnap = next;
+      session.setCurrentTime(snapped.time);
+      if (changed) render();
+    } else if (pointer.kind === 'marker') {
       const deltaPixels = event.clientX - pointer.start;
       if (Math.abs(deltaPixels) >= 3) pointer.moved = true;
       if (pointer.moved) {
+        const zoom = session.timelineZoom;
+        const snapped = nearestSnap(
+          markerPreview!.origin + pixelToTime(deltaPixels, zoom),
+          snapCandidates(session.source, zoom, [], {
+            markerId: markerPreview!.id,
+          }),
+          zoom,
+        );
         markerPreview!.time = Math.max(
           0,
-          Math.min(
-            session.source.composition.duration,
-            markerPreview!.origin +
-              pixelToTime(deltaPixels, session.timelineZoom),
-          ),
+          Math.min(session.source.composition.duration, snapped.time),
         );
+        pointerSnap =
+          snapped.snapped && markerPreview!.time === snapped.time
+            ? snapped.time
+            : undefined;
         render();
       }
     } else if (pointer.kind === 'marquee') {
@@ -967,6 +1079,7 @@ export function mountTimeline(
       const kind = pointer?.kind;
       const moved = pointer?.moved ?? false;
       release();
+      pointerSnap = undefined;
       if (kind === 'clip') controller.finish();
       if (kind === 'marker' && markerPreview) {
         const marker = session.source.composition.markers.find(
@@ -1057,6 +1170,18 @@ export function mountTimeline(
             ]);
           break;
         }
+        case 'track-solo':
+          if (id) session.toggleSolo(id);
+          break;
+        case 'speed':
+          showSpeedMenu();
+          return;
+        case 'menu-back':
+          showMainMenu();
+          return;
+        case 'speed-preset':
+          setClipSpeed(engine, session, Number(target.dataset.speed));
+          break;
         case 'track-up':
         case 'track-down': {
           const tracks = [...session.source.composition.tracks].sort(
@@ -1106,6 +1231,8 @@ export function mountTimeline(
         case 'group':
         case 'delete':
         case 'toggle-enabled':
+        case 'reverse':
+        case 'freeze':
           performEdit(engine, session, target.dataset.action as EditAction);
           break;
       }
@@ -1120,6 +1247,51 @@ export function mountTimeline(
         return;
       }
       if (pointer) return;
+      // TL-060 / TL-044 keyboard equivalents (listed in the shortcut sheet).
+      if (
+        event.altKey &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)
+      ) {
+        event.preventDefault();
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight')
+          nudgeClips(
+            engine,
+            session,
+            (event.key === 'ArrowLeft' ? -1 : 1) * (event.shiftKey ? 10 : 1),
+          );
+        else
+          moveClipsToAdjacentTrack(
+            engine,
+            session,
+            event.key === 'ArrowUp' ? -1 : 1,
+          );
+        return;
+      }
+      if (
+        (event.key === '[' || event.key === ']') &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        trimClipToPlayhead(
+          engine,
+          session,
+          event.key === '[' ? 'left' : 'right',
+        );
+        return;
+      }
+      if (
+        (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
+        !event.ctrlKey &&
+        !event.metaKey
+      ) {
+        event.preventDefault();
+        jumpToCut(session, event.key === 'ArrowUp' ? -1 : 1);
+        return;
+      }
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault();
         if (event.shiftKey) engine.redo();
@@ -1265,6 +1437,81 @@ export function mountTimeline(
           },
         ]);
     });
+  const menuItem = (label: string, action: string, role = 'menuitem') => {
+    const item = button(label, action);
+    item.setAttribute('role', role);
+    return item;
+  };
+  const showMainMenu = () => {
+    const clips = selectionRoots(session.source, session.selectedIds).flatMap(
+      (layer) => {
+        const found = findClipByLayer(session.source.composition, layer.id);
+        return found ? [found.clip] : [];
+      },
+    );
+    menu.replaceChildren(
+      ...contextActions(
+        session.source,
+        session.selectedIds,
+        session.currentTime,
+        menuMarker,
+      ).map((action) => {
+        if (action === 'speed')
+          return menuItem(`${t('command.speed')} ›`, action);
+        if (action === 'reverse' || action === 'freeze') {
+          const item = menuItem(
+            t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),
+            action,
+            'menuitemcheckbox',
+          );
+          item.setAttribute(
+            'aria-checked',
+            String(
+              clips.length > 0 &&
+                clips.every((clip) =>
+                  action === 'reverse'
+                    ? clipTimeEffects(clip).reversed
+                    : clipTimeEffects(clip).freezeFrame !== null,
+                ),
+            ),
+          );
+          return item;
+        }
+        return menuItem(
+          action === 'marker'
+            ? 'Add marker'
+            : action === 'delete-marker'
+              ? 'Delete marker'
+              : action === 'toggle-enabled'
+                ? 'Enable / disable clip'
+                : action[0]!.toUpperCase() + action.slice(1),
+          action,
+        );
+      }),
+    );
+    menu.querySelector<HTMLButtonElement>('button')?.focus();
+  };
+  // VID-015: speed presets open in place of the main menu, with Back.
+  const showSpeedMenu = () => {
+    const current = selectionRoots(session.source, session.selectedIds)
+      .map((layer) => findClipByLayer(session.source.composition, layer.id))
+      .find(Boolean)?.clip.speed;
+    const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
+    menu.replaceChildren(
+      back,
+      ...SPEED_PRESETS.map((speed) => {
+        const item = menuItem(
+          t('clip.speedValue', { speed: formatNumber(speed) }),
+          'speed-preset',
+          'menuitemradio',
+        );
+        item.dataset.speed = String(speed);
+        item.setAttribute('aria-checked', String(current === speed));
+        return item;
+      }),
+    );
+    back.focus();
+  };
   const contextmenu = (event: MouseEvent) => {
     event.preventDefault();
     const target = (event.target as HTMLElement).closest<HTMLElement>(
@@ -1280,31 +1527,27 @@ export function mountTimeline(
       session.select(null);
       seek(event.clientX);
     }
-    menu.replaceChildren(
-      ...contextActions(
-        session.source,
-        session.selectedIds,
-        session.currentTime,
-        menuMarker,
-      ).map((action) => {
-        const item = button(
-          action === 'marker'
-            ? 'Add marker'
-            : action === 'delete-marker'
-              ? 'Delete marker'
-              : action === 'toggle-enabled'
-                ? 'Enable / disable clip'
-                : action[0]!.toUpperCase() + action.slice(1),
-          action,
-        );
-        item.setAttribute('role', 'menuitem');
-        return item;
-      }),
-    );
+    showMainMenu();
     menu.hidden = false;
     menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
-    menu.querySelector<HTMLButtonElement>('button')?.focus();
   };
+  // TL-055: scrolling within half a viewport of the end extends the timeline.
+  const onScroll = () =>
+    safely(() => {
+      const zoom = session.timelineZoom;
+      const visibleEnd = pixelToTime(
+        scroll.scrollLeft + viewportPixels(),
+        zoom,
+      );
+      if (
+        visibleEnd >=
+        renderedSpan - pixelToTime(viewportPixels(), zoom) / 2 - 1e-9
+      ) {
+        reach = Math.min(MAX_SPAN, Math.max(reach, visibleEnd));
+        if (spanTime() > renderedSpan + 1e-9) render();
+      }
+    });
+  scroll.addEventListener('scroll', onScroll);
   const listeners = {
     pointerdown,
     pointermove,
@@ -1379,6 +1622,7 @@ export function mountTimeline(
         root.removeEventListener(name, listener as EventListener);
       window.removeEventListener('blur', cancel);
       window.removeEventListener('resize', cancel);
+      scroll.removeEventListener('scroll', onScroll);
       root.replaceChildren();
     },
   };

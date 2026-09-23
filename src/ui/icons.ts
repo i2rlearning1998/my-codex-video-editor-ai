@@ -55,6 +55,9 @@ const PATHS: Record<string, string> = {
   group: 'M4 4h8v8H4z M8 8h8v8H8z',
   image:
     'M3 4h14v12H3z M6.5 8.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z M3 14l4.5-5 3 3.5L14 9l3 5',
+  solo: 'M4 13v-3a6 6 0 0112 0v3 M4 13h3v4H4z M13 13h3v4h-3z',
+  reverse: 'M15 7H5 M8 4L5 7l3 3 M5 13h10 M12 10l3 3-3 3',
+  freeze: 'M10 3v14 M3.9 6.5l12.2 7 M3.9 13.5l12.2-7',
   panelLeft: 'M3 4h14v12H3z M8 4v12',
   panelRight: 'M3 4h14v12H3z M12 4v12',
 };

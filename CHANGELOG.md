@@ -2,6 +2,14 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 (W2-CLAUDE) — 2026-09-23
+
+- Unblocked e2e in Linux sandboxes (Chromium fallback) and fixed an inspector blur re-render error that failed two browser tests.
+- Timeline: the timeline now extends while you scroll or zoom near the end; clips have dedicated trim handles with grips; clip, playhead and marker drags snap with a visible guide line; cross-track drags show a ghost at the landing position.
+- Trims now stop at neighbouring clips and at the source media edge (TL-019 fixed). The track header has Lock, Hide, Solo (session-only) and Mute toggles with pressed state.
+- Keyboard: Alt+arrows nudge a clip or move it across tracks; `[`/`]` trim to the playhead; Up/Down jump between cuts. All are listed in the shortcut sheet.
+- Clips: Speed (presets 0.25x to 4x), Reverse and Freeze frame from the timeline and canvas right-click menus. All three are non-destructive and undoable and show badges; schema stays 4.
+
 ## Wave 1 combined delivery — 2026-09-23
 
 - Integrated the owner's 26-file Claude delivery, retaining its shell and moving browser tests to the hamburger menu.

@@ -957,9 +957,13 @@ input[type='number'] {
   font-weight: 600;
 }
 .timeline-track-header button {
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-sm);
   text-align: center;
   color: var(--color-text-faint);
@@ -997,7 +1001,7 @@ input[type='number'] {
   font-size: var(--font-size-xs);
   color: var(--color-text);
 }
-.timeline-row.selected .timeline-clip {
+.timeline-clip[aria-pressed='true'] {
   background: var(--color-accent);
   color: var(--color-accent-text);
   box-shadow: inset 0 0 0 1px var(--color-accent-hover);
@@ -1007,12 +1011,25 @@ input[type='number'] {
   text-decoration: line-through;
 }
 .timeline-trim {
+  /* TL-056: 10 px hit area; the grip bar is drawn only on hover or selection. */
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 7px;
-  background: rgba(124, 92, 255, 0.35);
+  width: 10px;
+  background: transparent;
   cursor: ew-resize;
+  z-index: 1;
+}
+.timeline-trim::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 3px;
+  width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-hover);
+  opacity: 0;
 }
 .timeline-trim.left {
   left: 0;
@@ -1020,8 +1037,66 @@ input[type='number'] {
 .timeline-trim.right {
   right: 0;
 }
-.timeline-trim:hover {
-  background: var(--color-accent-hover);
+.timeline-clip:hover .timeline-trim::after,
+.timeline-clip[aria-pressed='true'] .timeline-trim::after {
+  opacity: 1;
+  background: var(--color-text);
+}
+.timeline-trim:hover::after {
+  background: var(--color-snap-guide) !important;
+}
+.timeline-clip.drag-origin {
+  opacity: 0.4;
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  outline: 1px dashed var(--color-text-faint);
+  outline-offset: -1px;
+}
+.timeline-clip-ghost {
+  position: absolute;
+  top: 3px;
+  height: 27px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-indent: var(--space-3);
+  line-height: 27px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text);
+  background: var(--color-ghost-soft);
+  border: 1px dashed var(--color-snap-guide);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+  z-index: 2;
+}
+.timeline-snap {
+  /* TL-057: snap guide spanning the ruler and every row. */
+  position: absolute;
+  top: 0;
+  width: 2px;
+  transform: translateX(-1px);
+  background: var(--color-snap-guide);
+  pointer-events: none;
+  z-index: 6;
+}
+.clip-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  text-indent: 0;
+  vertical-align: middle;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+}
+.timeline-track-header button.track-toggle[aria-pressed='true'] {
+  color: var(--color-accent-text);
+  background: var(--color-accent);
+}
+.timeline-track-header button[data-action='track-lock'][aria-pressed='true'] {
+  background: var(--color-danger);
 }
 .timeline-playhead {
   position: absolute;
@@ -1461,4 +1536,32 @@ input[type='number'] {
   .library {
     display: none;
   }
+}
+
+/* Themed thin scrollbars for horizontally scrolling strips and the timeline. */
+.inspector-subtabs,
+.timeline-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.inspector-subtabs::-webkit-scrollbar,
+.timeline-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.inspector-subtabs::-webkit-scrollbar-track,
+.timeline-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.inspector-subtabs::-webkit-scrollbar-thumb,
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+.inspector-subtabs::-webkit-scrollbar-thumb:hover,
+.timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
+}
+.timeline-scroll::-webkit-scrollbar-corner {
+  background: transparent;
 }

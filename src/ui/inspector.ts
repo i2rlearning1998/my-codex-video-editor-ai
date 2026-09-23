@@ -18,6 +18,8 @@ const SUB_TABS = ['Transform', 'Timing', 'Dimensions', 'Hierarchy'] as const;
  *  safer than threading extra state through every renderInspector call site. */
 let activeSubTab: (typeof SUB_TABS)[number] = 'Transform';
 let lastSelectedId: string | null = null;
+/** Bumped on every render so a render re-entered from a blur commit can stop. */
+let renderGeneration = 0;
 
 /** Inputs commit through the shell's semantic command boundary. */
 export function renderInspector(
@@ -31,6 +33,15 @@ export function renderInspector(
     remove: boolean,
   ) => void,
 ): void {
+  const generation = ++renderGeneration;
+  // Removing a focused input fires its blur-commit mid-replaceChildren in
+  // Chromium; blur first so that commit (and its nested render) completes, then
+  // drop this now-stale render instead of overwriting the newer one.
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && root.contains(focused)) {
+    focused.blur();
+    if (generation !== renderGeneration) return;
+  }
   root.replaceChildren();
   const found = selectedId
     ? locateLayer(source.composition.layers, selectedId)

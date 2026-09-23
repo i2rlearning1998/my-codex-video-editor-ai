@@ -12,6 +12,7 @@ export interface HookSnapshot {
     playing: boolean;
     canvasZoom: number;
     timelinePxPerSecond: number;
+    soloTrackIds: string[];
   };
   getHistory(): { canUndo: boolean; canRedo: boolean; labels: string[] };
   getConsoleErrors(): readonly unknown[];

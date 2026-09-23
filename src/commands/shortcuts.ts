@@ -53,7 +53,10 @@ export function bindShortcuts(
         isTyping(event.target instanceof Element ? event.target : null)
       )
         return;
-      const command = commands.find((item) => matches(event, item.shortcut));
+      // Timeline-scoped commands are dispatched by the focused timeline itself.
+      const command = commands.find(
+        (item) => !item.scope && matches(event, item.shortcut),
+      );
       if (command) {
         event.preventDefault();
         event.stopImmediatePropagation();

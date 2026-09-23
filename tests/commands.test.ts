@@ -16,8 +16,19 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     );
     const session = new EditorSession(engine);
     const ids = engine.state.compositions[0]!.layers.map((layer) => layer.id);
+    // Clip time/keyboard commands need a clip with room to act on: layer-b
+    // (3..5 on Video 1) can move earlier; layer-c (alone on Video 2) can slow
+    // down and move up. Other commands keep the first layer.
+    const layerFor: Record<string, string> = {
+      'speed-slower': 'layer-c',
+      'speed-normal': 'layer-c',
+      'clip-nudge-left': 'layer-b',
+      'clip-track-up': 'layer-c',
+    };
     session.selectMany(
-      command.id === 'group' ? ids.slice(0, 2) : ids.slice(0, 1),
+      command.id === 'group'
+        ? ids.slice(0, 2)
+        : [layerFor[command.id] ?? ids[0]!],
     );
     session.setCurrentTime(1);
     if (command.id === 'marker') session.select(null);
@@ -33,6 +44,7 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     if (command.id === 'undo' || command.id === 'redo')
       runCommand('duplicate', context);
     if (command.id === 'redo') engine.undo();
+    if (command.id === 'speed-normal') runCommand('speed-faster', context);
     for (const locale of ['en', 'hi'] as const) {
       setLanguage(locale);
       expect(t(command.labelKey)).not.toBe(command.labelKey);
@@ -50,6 +62,8 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'select-all')
       expect(session.selectedIds).toEqual(ids);
     else if (command.id === 'undo') expect(engine.canRedo).toBe(true);
+    else if (command.id === 'cut-previous') expect(session.currentTime).toBe(0);
+    else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);
     else expect(engine.canUndo, command.id).toBe(true);
     session.dispose();
   }

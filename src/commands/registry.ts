@@ -1,6 +1,17 @@
 import type { EditorEngine } from '../core';
 import type { EditorSession } from '../ui/session';
-import { contextActions, performEdit, type EditAction } from '../ui/editing';
+import {
+  contextActions,
+  jumpToCut,
+  moveClipsToAdjacentTrack,
+  nudgeClips,
+  performEdit,
+  selectedClips,
+  setClipSpeed,
+  stepClipSpeed,
+  trimClipToPlayhead,
+  type EditAction,
+} from '../ui/editing';
 
 export interface CommandContext {
   engine: EditorEngine;
@@ -17,7 +28,26 @@ export interface RegisteredCommand {
   shortcut: string;
   isEnabled: (context: CommandContext) => boolean;
   run: (context: CommandContext) => void;
+  /** 'timeline': dispatched by the focused timeline, not the global listener; the
+   * shortcut text is shown in the sheet and palette as the documented key. */
+  scope?: 'timeline';
 }
+const hasClips = ({ session }: CommandContext) =>
+  selectedClips(session.source, session.selectedIds).length > 0;
+const timeline = (
+  id: string,
+  labelKey: string,
+  shortcut: string,
+  run: (context: CommandContext) => void,
+  isEnabled: (context: CommandContext) => boolean = hasClips,
+): RegisteredCommand => ({
+  id,
+  labelKey,
+  shortcut,
+  scope: 'timeline',
+  isEnabled,
+  run,
+});
 const edit = (id: EditAction, shortcut: string): RegisteredCommand => ({
   id,
   labelKey: `command.${id}`,
@@ -83,6 +113,61 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   edit('marker', 'M'),
   edit('group', 'Ctrl+G'),
   edit('toggle-enabled', ''),
+  edit('reverse', ''),
+  edit('freeze', ''),
+  {
+    id: 'speed-slower',
+    labelKey: 'command.speedSlower',
+    shortcut: '',
+    isEnabled: hasClips,
+    run: ({ engine, session }) => stepClipSpeed(engine, session, -1),
+  },
+  {
+    id: 'speed-faster',
+    labelKey: 'command.speedFaster',
+    shortcut: '',
+    isEnabled: hasClips,
+    run: ({ engine, session }) => stepClipSpeed(engine, session, 1),
+  },
+  {
+    id: 'speed-normal',
+    labelKey: 'command.speedNormal',
+    shortcut: '',
+    isEnabled: hasClips,
+    run: ({ engine, session }) => setClipSpeed(engine, session, 1),
+  },
+  timeline('clip-nudge-left', 'command.nudgeLeft', 'Alt+←', (c) =>
+    nudgeClips(c.engine, c.session, -1),
+  ),
+  timeline('clip-nudge-right', 'command.nudgeRight', 'Alt+→', (c) =>
+    nudgeClips(c.engine, c.session, 1),
+  ),
+  timeline('clip-track-up', 'command.clipTrackUp', 'Alt+↑', (c) =>
+    moveClipsToAdjacentTrack(c.engine, c.session, -1),
+  ),
+  timeline('clip-track-down', 'command.clipTrackDown', 'Alt+↓', (c) =>
+    moveClipsToAdjacentTrack(c.engine, c.session, 1),
+  ),
+  timeline('trim-start', 'command.trimStart', '[', (c) =>
+    trimClipToPlayhead(c.engine, c.session, 'left'),
+  ),
+  timeline('trim-end', 'command.trimEnd', ']', (c) =>
+    trimClipToPlayhead(c.engine, c.session, 'right'),
+  ),
+  timeline(
+    'cut-previous',
+    'command.cutPrevious',
+    '↑',
+    (c) => jumpToCut(c.session, -1),
+    () => true,
+  ),
+  timeline(
+    'cut-next',
+    'command.cutNext',
+    '↓',
+    (c) => jumpToCut(c.session, 1),
+    () => true,
+  ),
   {
     id: 'select-all',
     labelKey: 'command.selectAll',

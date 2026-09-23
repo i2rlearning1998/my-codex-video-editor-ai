@@ -1,6 +1,7 @@
 import {
   activeAtTime,
   effectiveLayerTiming,
+  findClipByLayer,
   invertMatrix,
   transformPoint,
   worldTransform,
@@ -27,6 +28,8 @@ export interface RenderSource {
   readonly preview?: LayerPreview;
   readonly previews?: readonly LayerPreview[];
   readonly selectedIds?: readonly string[];
+  /** Session-only Solo: when present, clips on other tracks are not drawn. */
+  readonly soloTrackIds?: readonly string[];
   readonly timingPreviews?: readonly {
     readonly layerId: string;
     readonly startTime: number;
@@ -147,7 +150,14 @@ export function deriveRenderItems(source: RenderSource): {
         (source.timingPreview?.layerId === layer.id
           ? source.timingPreview
           : canonicalTiming);
+      const soloed =
+        !source.soloTrackIds?.length ||
+        !findClipByLayer(source.composition, layer.id) ||
+        source.soloTrackIds.includes(
+          findClipByLayer(source.composition, layer.id)!.track.id,
+        );
       if (
+        !soloed ||
         !canonicalTiming.enabled ||
         (source.currentTime !== undefined &&
           !activeAtTime(timing, source.currentTime))

@@ -12,6 +12,7 @@ import {
   trackSchema,
   type Project,
 } from './model';
+import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
 import {
   childrenOf,
   compositionById,
@@ -113,6 +114,31 @@ export const commandSchema = z.discriminatedUnion('type', [
       ...location,
       clipId: idSchema,
       enabled: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_SPEED'),
+      ...location,
+      clipId: idSchema,
+      speed: z.number().finite().min(MIN_CLIP_SPEED).max(MAX_CLIP_SPEED),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_REVERSED'),
+      ...location,
+      clipId: idSchema,
+      reversed: z.boolean(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_FREEZE_FRAME'),
+      ...location,
+      clipId: idSchema,
+      /** Source-media seconds to hold, or null to play normally. */
+      sourceTime: z.number().finite().nonnegative().nullable(),
     })
     .strict(),
   z.object({ type: z.literal('ADD_MARKER'), ...location, marker }).strict(),
@@ -350,6 +376,50 @@ export function applyCommand(project: Project, command: Command): void {
       const { track, clip } = requireClip(command.clipId);
       if (track.locked) throw new Error('Track is locked');
       clip.enabled = command.enabled;
+      return;
+    }
+    case 'SET_CLIP_SPEED': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      const oldEnd = clip.startTime + clip.duration;
+      const duration = (clip.sourceOut - clip.sourceIn) / command.speed;
+      const end = clip.startTime + duration;
+      if (!Number.isFinite(end) || duration <= 0)
+        throw new Error('Clip timing exceeds numerical limits');
+      // Only newly covered time is checked, so pre-existing overlaps stay loadable.
+      if (
+        track.clips.some(
+          (other) =>
+            other !== clip &&
+            other.startTime >= oldEnd - 1e-9 &&
+            other.startTime < end - 1e-9,
+        )
+      )
+        throw new Error(
+          'Not enough room: the slower clip would overlap the next clip',
+        );
+      clip.speed = command.speed;
+      clip.duration = duration;
+      return;
+    }
+    case 'SET_CLIP_REVERSED': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      // Absent means forward, so a toggle round-trip restores the original document.
+      if (command.reversed) clip.metadata.reversed = true;
+      else delete clip.metadata.reversed;
+      return;
+    }
+    case 'SET_CLIP_FREEZE_FRAME': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      if (command.sourceTime === null) delete clip.metadata.freezeFrame;
+      else if (
+        command.sourceTime < clip.sourceIn ||
+        command.sourceTime > clip.sourceOut
+      )
+        throw new Error('Freeze frame must lie inside the clip source range');
+      else clip.metadata.freezeFrame = command.sourceTime;
       return;
     }
     case 'ADD_MARKER':
