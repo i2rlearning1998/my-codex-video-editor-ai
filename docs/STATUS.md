@@ -1,5 +1,5 @@
-- Wave 1 combined delivery is integrated on wave-1-combined, tagged w1, awaiting owner acceptance before merge to main.
-- Full verify passed: 146 unit + 141 jsdom; Chrome 153.0.8010.54: 21 normal passes + 3 expected failures; production hook assertion and ledger OK.
-- New Project uses the app confirmation. Cancel/Escape preserve settings; creation, fresh history and save/reload verified. New Project and CV-007 also checked interactively.
-- CV-007 and REL-001 are Verified. PRJ-006 remains Claimed: solid backgrounds verified, transparency deferred by owner; schema remains 4. TL-004 and TL-019 remain known bugs.
-- Supplied shell remains imperative DOM; React migration outstanding. No next wave started. See reports/W1.md and reports/W1-CLAUDE-DELIVERY.md.
+- Wave 2 slice W2-CLAUDE is delivered on branch claude/wave-2-timeline-clips-mwy1f3 as a PR against main, awaiting owner review. Wave 1 (w1.2) is merged to main.
+- Full verify passed in this sandbox: 294 unit + jsdom; Chromium 141.0.7390.37 (fallback, no Chrome/Edge installed): 31 normal passes + 2 expected failures; hook assertion and ledger OK.
+- Verified: TL-018, TL-019 (bug fixed), TL-044, TL-055 to TL-060, VID-015 to VID-017. TL-004 remains a known bug; PRJ-006 remains Claimed.
+- Speed, reverse and freeze change clip timing and state only. Media decoding of these effects arrives with the media pipeline (VID-010 to VID-012, W6). Solo is session-only.
+- Schema remains 4, and no dependencies were added. The shell is still imperative DOM, with the React migration outstanding. No further wave was started. See reports/W2-CLAUDE.md.

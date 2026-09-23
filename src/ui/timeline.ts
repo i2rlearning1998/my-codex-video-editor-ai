@@ -548,7 +548,9 @@ export function mountTimeline(
       header.className = 'timeline-row-header timeline-track-header';
       const label = document.createElement('span');
       label.className = 'track-name';
-      label.textContent = `${row.track.type.toUpperCase()} · ${row.track.name}`;
+      // Name only, so it stays readable beside four toggles; type in the tooltip.
+      label.textContent = row.track.name;
+      label.title = `${row.track.type.toUpperCase()} · ${row.track.name}`;
       // TL-059: every toggle exposes its state through aria-pressed.
       const toggle = (
         action: string,

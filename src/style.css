@@ -957,9 +957,13 @@ input[type='number'] {
   font-weight: 600;
 }
 .timeline-track-header button {
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-sm);
   text-align: center;
   color: var(--color-text-faint);
