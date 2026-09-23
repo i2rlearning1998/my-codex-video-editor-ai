@@ -10,6 +10,7 @@ import {
   type EditorEngine,
   type AffineMatrix,
   type Command,
+  type Point2,
 } from '../core';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
@@ -23,7 +24,7 @@ import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
-import { performEdit } from './editing';
+import { contextActions, performEdit, type EditAction } from './editing';
 import { iconSvg } from './icons';
 import { openModal } from './components/modal';
 import { showToast } from './components/toast';
@@ -50,6 +51,7 @@ const RAIL_CATEGORIES = [
   'Audio',
   'Elements',
   'Transitions',
+  'Scene',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -59,10 +61,12 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Audio: 'audio',
   Elements: 'elements',
   Transitions: 'transitions',
+  Scene: 'group',
 };
 const RIGHT_SECTIONS = [
   'Properties',
   'Effects',
+  'Transitions',
   'Color',
   'Audio',
   'Speed',
@@ -70,6 +74,7 @@ const RIGHT_SECTIONS = [
 const RIGHT_ICONS: Record<(typeof RIGHT_SECTIONS)[number], string> = {
   Properties: 'properties',
   Effects: 'effects',
+  Transitions: 'transitions',
   Color: 'color',
   Audio: 'audio',
   Speed: 'speed',
@@ -129,7 +134,7 @@ export function mountEditorShell(
           <button type="button" id="about" role="menuitem">${iconSvg('info')}${t('menu.about')}</button>
         </div>
       </div>
-      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Media')).join('')}</nav>
+      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}</nav>
       <aside class="library panel" aria-label="${t('library.title')}">
         <div class="library-tabs" id="media-source-tabs">
           <button type="button" data-source="project" aria-pressed="true">${t('library.projectMedia')}</button>
@@ -141,7 +146,7 @@ export function mountEditorShell(
         </div>
         <div class="import-row"><button type="button" class="button primary" id="import-media" disabled title="${t('import.comingSoon')}">${iconSvg('export')}${t('library.import')}</button></div>
         <div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
-        <div class="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
+        <div class="scene-heading" id="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div>
         <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
       </aside>
@@ -154,16 +159,11 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div></div>
+        <div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" aria-label="${t('inspector.title')}">
-        <div class="inspector-tabs" role="tablist" aria-label="${t('inspector.title')}">
-          <button type="button" role="tab" data-section="Properties" aria-selected="true">${t('panel.properties')}</button>
-          <button type="button" role="tab" data-section="Effects" aria-selected="false">${t('panel.effects')}</button>
-          <button type="button" role="tab" data-section="Transitions" aria-selected="false">${t('panel.transitions')}</button>
-        </div>
         <div id="inspector-content"></div>
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
@@ -243,6 +243,72 @@ export function mountEditorShell(
   const interaction = new TransformInteraction(engine, session, () =>
     safely(draw),
   );
+  const canvasMenu = element('#canvas-context-menu');
+  let unregisterCanvasMenu: (() => void) | undefined;
+  const hideCanvasMenu = () => {
+    if (canvasMenu.hidden) return;
+    canvasMenu.hidden = true;
+    unregisterCanvasMenu?.();
+    unregisterCanvasMenu = undefined;
+  };
+  const CANVAS_MENU_PLACEHOLDERS = [
+    'Cut',
+    'Copy',
+    'Paste',
+    'Lock',
+    'Hide',
+    'Bring to front',
+    'Send to back',
+  ];
+  const menuItem = (
+    label: string,
+    onSelect?: () => void,
+  ): HTMLButtonElement => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.setAttribute('role', 'menuitem');
+    item.textContent = label;
+    if (onSelect)
+      item.onclick = () => {
+        hideCanvasMenu();
+        safely(onSelect);
+      };
+    else {
+      item.disabled = true;
+      item.title = t('library.later');
+    }
+    return item;
+  };
+  const openCanvasMenu = (point: Point2, layerId: string | null) => {
+    const items: HTMLButtonElement[] = layerId
+      ? contextActions(session.source, session.selectedIds, session.currentTime)
+          .filter((action) => action !== 'marker' && action !== 'delete-marker')
+          .map((action) =>
+            menuItem(
+              action === 'toggle-enabled'
+                ? 'Enable / disable'
+                : action[0]!.toUpperCase() + action.slice(1),
+              () => performEdit(engine, session, action as EditAction),
+            ),
+          )
+      : [];
+    for (const label of CANVAS_MENU_PLACEHOLDERS) items.push(menuItem(label));
+    if (items.length > CANVAS_MENU_PLACEHOLDERS.length)
+      items[items.length - CANVAS_MENU_PLACEHOLDERS.length]!.classList.add(
+        'canvas-context-menu-divider',
+      );
+    canvasMenu.replaceChildren(...items);
+    canvasMenu.hidden = false;
+    const bounds = stage.getBoundingClientRect();
+    canvasMenu.style.left = `${Math.max(0, Math.min(bounds.width - 170, point[0]))}px`;
+    canvasMenu.style.top = `${Math.max(0, Math.min(bounds.height - 40, point[1]))}px`;
+    unregisterCanvasMenu = registerExternalOverlay(hideCanvasMenu);
+    items[0]?.focus();
+  };
+  document.addEventListener('click', (event) => {
+    if (!canvasMenu.hidden && !canvasMenu.contains(event.target as Node))
+      hideCanvasMenu();
+  });
   const pointer = bindCanvasInteraction(
     canvas,
     session,
@@ -251,6 +317,7 @@ export function mountEditorShell(
     (error) => message(error instanceof Error ? error.message : String(error)),
     (action) => performEdit(engine, session, action),
     true,
+    openCanvasMenu,
   );
   const commandContext: CommandContext = {
     engine,
@@ -506,6 +573,14 @@ export function mountEditorShell(
     safely(() => {
       runCommand('redo', commandContext);
     });
+  const fullscreenButton = element<HTMLButtonElement>('#fullscreen-preview');
+  fullscreenButton.disabled = !document.fullscreenEnabled;
+  fullscreenButton.onclick = () =>
+    safely(() =>
+      document.fullscreenElement
+        ? document.exitFullscreen()
+        : stage.requestFullscreen(),
+    );
   for (const [id, action] of [
     ['#save', actions.save],
     ['#export', actions.exportProject],
@@ -545,7 +620,8 @@ export function mountEditorShell(
     element('.library-search'),
     element('.import-row'),
   ];
-  let activeCategory = 'Media';
+  const sceneOnly = [element('#scene-heading'), element('#scene-list')];
+  let activeCategory = 'Scene';
   const applyCategory = (category: string) => {
     for (const sibling of root.querySelectorAll('[data-category]'))
       sibling.setAttribute(
@@ -553,11 +629,15 @@ export function mountEditorShell(
         String(sibling.getAttribute('data-category') === category),
       );
     const isMedia = category === 'Media';
+    const isScene = category === 'Scene';
     for (const el of mediaOnly) el.hidden = !isMedia;
-    element('.library-placeholder').hidden = isMedia;
-    const [titleKey, descriptionKey] = descriptions[category]!;
-    element('#library-title').textContent = t(titleKey);
-    element('#library-description').textContent = t(descriptionKey);
+    for (const el of sceneOnly) el.hidden = !isScene;
+    element('.library-placeholder').hidden = isMedia || isScene;
+    if (!isScene) {
+      const [titleKey, descriptionKey] = descriptions[category]!;
+      element('#library-title').textContent = t(titleKey);
+      element('#library-description').textContent = t(descriptionKey);
+    }
   };
   for (const button of root.querySelectorAll<HTMLButtonElement>(
     '[data-category]',
@@ -589,14 +669,9 @@ export function mountEditorShell(
   const setRightSection = (name: string) => {
     activeSection = name;
     for (const el of root.querySelectorAll<HTMLElement>(
-      '.inspector-tabs [role=tab], .icon-rail-right button',
-    )) {
-      const active = el.dataset.section === name;
-      el.setAttribute(
-        el.getAttribute('role') === 'tab' ? 'aria-selected' : 'aria-pressed',
-        String(active),
-      );
-    }
+      '.icon-rail-right button',
+    ))
+      el.setAttribute('aria-pressed', String(el.dataset.section === name));
     const isProperties = name === 'Properties';
     element('#inspector-content').hidden = !isProperties;
     rightEmpty.hidden = isProperties;
@@ -611,7 +686,7 @@ export function mountEditorShell(
     }
   };
   for (const el of root.querySelectorAll<HTMLElement>(
-    '.inspector-tabs [role=tab], .icon-rail-right button',
+    '.icon-rail-right button',
   ))
     el.onclick = () => setRightSection(el.dataset.section!);
 

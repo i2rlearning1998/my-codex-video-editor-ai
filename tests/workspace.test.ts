@@ -537,6 +537,7 @@ describe('T3 editing workspace', () => {
     expect(root.querySelectorAll('.timeline-row.selected')).toHaveLength(2);
     expect(Object.is(s.engine.state, before)).toBe(true);
     select('a');
+    root.querySelector<HTMLButtonElement>('[data-subtab="Timing"]')!.click();
     const input = root.querySelector<HTMLInputElement>(
       '[data-field="Start time"] input',
     )!;
@@ -545,6 +546,7 @@ describe('T3 editing workspace', () => {
     input.dispatchEvent(new Event('blur'));
     expect(s.engine.history.undo).toHaveLength(1);
     expect(s.engine.state.compositions[0]!.layers[0]!.startTime).toBe(2);
+    root.querySelector<HTMLButtonElement>('[data-subtab="Transform"]')!.click();
     root
       .querySelector<HTMLButtonElement>('[aria-label="Add Opacity keyframe"]')!
       .click();

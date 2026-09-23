@@ -242,6 +242,7 @@ describe('canonical NLE tracks and clips', () => {
     expect(root.querySelectorAll('.timeline-row')).toHaveLength(2);
     shell.session.select('layer-b');
     shell.refresh();
+    root.querySelector<HTMLButtonElement>('[data-subtab="Timing"]')!.click();
     expect(
       root.querySelector<HTMLInputElement>('[data-field="Start time"] input')!
         .value,

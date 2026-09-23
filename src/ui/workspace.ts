@@ -13,12 +13,16 @@ export function mountWorkspace(
   let leftClosed = window.innerWidth < 900,
     rightClosed = window.innerWidth < 1100;
   const bar = shell.querySelector('.topbar')!;
-  const controls = document.createElement('div');
-  controls.className = 'workspace-controls';
-  controls.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-label="Toggle library" title="Toggle library">${iconSvg('panelLeft')}</button><button type="button" class="icon-button" data-panel="right" aria-label="Toggle inspector" title="Toggle inspector">${iconSvg('panelRight')}</button>`;
+  const leftToggle = document.createElement('div');
+  leftToggle.className = 'workspace-controls';
+  leftToggle.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-label="Toggle library" title="Toggle library">${iconSvg('panelLeft')}</button>`;
   (bar.querySelector('#menu-trigger') ?? bar.firstElementChild)!.after(
-    controls,
+    leftToggle,
   );
+  const rightToggle = document.createElement('div');
+  rightToggle.className = 'workspace-controls';
+  rightToggle.innerHTML = `<button type="button" class="icon-button" data-panel="right" aria-label="Toggle inspector" title="Toggle inspector">${iconSvg('panelRight')}</button>`;
+  (bar.querySelector('.top-actions') ?? bar).prepend(rightToggle);
   const paint = () => {
     shell.style.setProperty('--left-panel', `${leftClosed ? 0 : left}px`);
     shell.style.setProperty('--right-panel', `${rightClosed ? 0 : right}px`);
@@ -30,12 +34,16 @@ export function mountWorkspace(
     shell.classList.toggle('inspector-collapsed', rightClosed);
     resize();
   };
-  controls.onclick = (event) => {
-    const side = (event.target as HTMLElement).dataset.panel;
+  const togglePanel = (event: MouseEvent) => {
+    const side = (event.target as HTMLElement).closest<HTMLElement>(
+      '[data-panel]',
+    )?.dataset.panel;
     if (side === 'left') leftClosed = !leftClosed;
     if (side === 'right') rightClosed = !rightClosed;
     paint();
   };
+  leftToggle.onclick = togglePanel;
+  rightToggle.onclick = togglePanel;
   const disposers: (() => void)[] = [];
   for (const [selector, axis] of [
     ['.library', 'left'],
@@ -157,6 +165,7 @@ export function mountWorkspace(
   return () => {
     disposers.forEach((fn) => fn());
     window.removeEventListener('resize', onWindowResize);
-    controls.remove();
+    leftToggle.remove();
+    rightToggle.remove();
   };
 }

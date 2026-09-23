@@ -14,6 +14,7 @@ export function bindCanvasInteraction(
   report: (error: unknown) => void,
   edit?: (action: 'delete' | 'duplicate') => void,
   externalKeyboard = false,
+  onContextMenu?: (point: Point2, layerId: string | null) => void,
 ) {
   let pointer: number | null = null;
   let marquee: {
@@ -271,6 +272,16 @@ export function bindCanvasInteraction(
       canvas.style.cursor = 'default';
     }
   };
+  const contextmenu = (event: MouseEvent) =>
+    safely(() => {
+      event.preventDefault();
+      const point = screenPoint(event);
+      const picked = pickLayer(session.source, viewport(), point);
+      if (picked) {
+        if (!session.selectedIds.includes(picked)) session.select(picked);
+      } else session.select(null);
+      onContextMenu?.(point, picked);
+    });
   const listeners = {
     pointerleave,
     pointerdown,
@@ -278,6 +289,7 @@ export function bindCanvasInteraction(
     pointerup,
     pointercancel,
     lostpointercapture,
+    contextmenu,
   };
   for (const [type, listener] of Object.entries(listeners))
     canvas.addEventListener(type, listener as EventListener);

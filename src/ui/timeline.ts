@@ -335,7 +335,7 @@ export function mountTimeline(
   report: (error: unknown) => void,
   externalKeyboard = false,
 ) {
-  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-playback" role="group" aria-label="Playback"><button data-action="play" aria-label="Play or pause">${iconSvg('play', 16)}</button><button data-action="stop" aria-label="Stop playback">${iconSvg('stop', 16)}</button></div><div class="transport-group" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-composition" role="group" aria-label="Composition and time"><span data-composition-strip></span><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-zoom" role="group" aria-label="Timeline zoom"><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0" aria-label="Timeline tracks. Arrow keys move time; Shift moves ten frames; Home and End seek; Delete removes selection."><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0" aria-label="Timeline tracks. Arrow keys move time; Shift moves ten frames; Home and End seek; Delete removes selection."><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
@@ -343,7 +343,8 @@ export function mountTimeline(
   const playback = new Playback(session);
   let menuId: string | null = null;
   let menuMarker: string | undefined;
-  let markerPreview: { id: string; time: number } | undefined;
+  let markerPreview: { id: string; time: number; origin: number } | undefined;
+  let selectedMarkerId: string | undefined;
   let reorderId: string | undefined;
   let marquee:
     | {
@@ -409,9 +410,12 @@ export function mountTimeline(
         : row;
     });
     const trackRows = nleTimelineRows(session.source, zoom);
-    root.querySelector('[data-action="play"]')!.innerHTML = session.playing
-      ? iconSvg('pause', 16)
-      : iconSvg('play', 16);
+    const playButton = root.querySelector<HTMLElement>('[data-action="play"]')!;
+    const playIcon = session.playing ? 'pause' : 'play';
+    if (playButton.dataset.icon !== playIcon) {
+      playButton.dataset.icon = playIcon;
+      playButton.innerHTML = iconSvg(playIcon, 16);
+    }
     const available = contextActions(
       session.source,
       session.selectedIds,
@@ -479,6 +483,10 @@ export function mountTimeline(
     }
     const rulerBar = document.createElement('div');
     rulerBar.className = 'timeline-ruler-bar';
+    rulerBar.style.setProperty(
+      '--track-height',
+      `${(trackRows.length + rows.length) * 34}px`,
+    );
     rulerBar.append(ruler);
     content.append(rulerBar);
     for (const [trackIndex, row] of trackRows.entries()) {
@@ -730,7 +738,10 @@ export function mountTimeline(
         marker.id,
         true,
       );
-      item.className = 'timeline-marker';
+      item.className =
+        marker.id === selectedMarkerId
+          ? 'timeline-marker timeline-marker--selected'
+          : 'timeline-marker';
       item.title = marker.label || 'Marker';
       item.style.left = `${headerWidth + timeToPixel(markerPreview?.id === marker.id ? markerPreview.time : marker.time, zoom)}px`;
       rulerBar.append(item);
@@ -771,6 +782,7 @@ export function mountTimeline(
     const originalIds = marquee?.originalIds;
     release();
     markerPreview = undefined;
+    selectedMarkerId = undefined;
     marquee = undefined;
     controller.cancel();
     render();
@@ -788,26 +800,32 @@ export function mountTimeline(
         session.timelineZoom,
       ),
     );
+  const stepFrame = (direction: -1 | 1, big = false) => {
+    session.setPlaying(false);
+    session.setCurrentTime(
+      session.currentTime +
+        frameToTime(direction * (big ? 10 : 1), session.source.composition.fps),
+    );
+  };
   const update = (event: PointerEvent) => {
     if (!pointer || pointer.id !== event.pointerId) return;
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY))
       throw new RangeError('Invalid pointer coordinate');
     if (pointer.kind === 'playhead') seek(event.clientX);
     else if (pointer.kind === 'marker') {
-      markerPreview!.time = Math.max(
-        0,
-        Math.min(
-          session.source.composition.duration,
-          pixelToTime(
-            event.clientX -
-              scroll.getBoundingClientRect().left +
-              scroll.scrollLeft -
-              headerWidth,
-            session.timelineZoom,
+      const deltaPixels = event.clientX - pointer.start;
+      if (Math.abs(deltaPixels) >= 3) pointer.moved = true;
+      if (pointer.moved) {
+        markerPreview!.time = Math.max(
+          0,
+          Math.min(
+            session.source.composition.duration,
+            markerPreview!.origin +
+              pixelToTime(deltaPixels, session.timelineZoom),
           ),
-        ),
-      );
-      render();
+        );
+        render();
+      }
     } else if (pointer.kind === 'marquee') {
       const bounds = scroll.getBoundingClientRect();
       const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
@@ -911,7 +929,10 @@ export function mountTimeline(
         const found = session.source.composition.markers.find(
           (item) => item.id === marker.dataset.id,
         )!;
-        markerPreview = { id: found.id, time: found.time };
+        markerPreview = { id: found.id, time: found.time, origin: found.time };
+      } else if (selectedMarkerId) {
+        selectedMarkerId = undefined;
+        render();
       }
       if (clip)
         controller.begin(
@@ -944,6 +965,7 @@ export function mountTimeline(
       if (event.pointerId !== pointer?.id) return;
       update(event);
       const kind = pointer?.kind;
+      const moved = pointer?.moved ?? false;
       release();
       if (kind === 'clip') controller.finish();
       if (kind === 'marker' && markerPreview) {
@@ -951,8 +973,9 @@ export function mountTimeline(
           (item) => item.id === markerPreview!.id,
         );
         const time = markerPreview.time;
+        const markerId = markerPreview.id;
         markerPreview = undefined;
-        if (marker && marker.time !== time)
+        if (moved && marker && marker.time !== time)
           engine.commands.transaction('Move marker', [
             {
               type: 'UPDATE_MARKER',
@@ -960,6 +983,8 @@ export function mountTimeline(
               marker: { ...marker, time },
             },
           ]);
+        // A click with no drag selects the marker (for keyboard delete) instead of moving it.
+        if (!moved) selectedMarkerId = markerId;
       }
       suppressClick = kind === 'marquee';
       marquee = undefined;
@@ -1059,6 +1084,12 @@ export function mountTimeline(
         case 'stop':
           playback.stop();
           break;
+        case 'frame-back':
+          stepFrame(-1);
+          break;
+        case 'frame-forward':
+          stepFrame(1);
+          break;
         case 'keyframe':
           session.setPlaying(false);
           session.setCurrentTime(Number(target.dataset.time));
@@ -1131,20 +1162,16 @@ export function mountTimeline(
         ].includes(event.key)
       ) {
         event.preventDefault();
-        if (event.key === 'Delete' || event.key === 'Backspace')
-          controller.deleteSelected();
-        else if (event.key === 'Home') session.setCurrentTime(0);
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+          if (selectedMarkerId) {
+            const markerId = selectedMarkerId;
+            selectedMarkerId = undefined;
+            performEdit(engine, session, 'delete-marker', markerId);
+          } else controller.deleteSelected();
+        } else if (event.key === 'Home') session.setCurrentTime(0);
         else if (event.key === 'End')
           session.setCurrentTime(session.source.composition.duration);
-        else
-          session.setCurrentTime(
-            session.currentTime +
-              frameToTime(
-                (event.key === 'ArrowLeft' ? -1 : 1) *
-                  (event.shiftKey ? 10 : 1),
-                session.source.composition.fps,
-              ),
-          );
+        else stepFrame(event.key === 'ArrowLeft' ? -1 : 1, event.shiftKey);
       }
     });
   const zoomAt = (value: number, clientX?: number) => {
@@ -1318,6 +1345,7 @@ export function mountTimeline(
     ) {
       release();
       markerPreview = undefined;
+      selectedMarkerId = undefined;
       marquee = undefined;
     }
     observedProject = engine.state;

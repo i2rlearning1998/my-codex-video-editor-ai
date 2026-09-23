@@ -86,6 +86,7 @@ describe('editor shell integration', () => {
       'Audio',
       'Elements',
       'Transitions',
+      'Scene',
     ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();
     expect(root.querySelector('.timeline canvas')).toBeNull();
@@ -124,13 +125,17 @@ describe('editor shell integration', () => {
       root.querySelector<HTMLInputElement>('[data-field="Position X"] input')!
         .value,
     ).toBe('10');
+    root.querySelector<HTMLButtonElement>('[data-subtab="Hierarchy"]')!.click();
     expect(root.querySelector('[data-field="Parent"]')!.textContent).toBe(
       'Parent group',
     );
-    expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('50');
     expect(root.querySelector('[data-field="Type"]')!.textContent).toBe(
       'shape',
     );
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
+    expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('50');
     expect(engine.state).toBe(before);
     expect(serializeProject(engine.state)).toBe(text);
     expect(engine.canUndo).toBe(false);
@@ -177,13 +182,20 @@ describe('editor shell integration', () => {
       root.querySelector<HTMLInputElement>('[data-field="Position X"] input')!
         .value,
     ).toBe('25');
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('90');
     engine.undo();
+    root.querySelector<HTMLButtonElement>('[data-subtab="Transform"]')!.click();
     expect(
       root.querySelector<HTMLInputElement>('[data-field="Position X"] input')!
         .value,
     ).toBe('10');
     engine.redo();
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('90');
     expect(shell.session.selectedId).toBe('child');
   });
@@ -210,6 +222,9 @@ describe('editor shell integration', () => {
     const before = engine.state;
     root.querySelector<HTMLButtonElement>('[data-layer-id="group"]')!.click();
     expect(shell.session.selectedId).toBe('group');
+    root
+      .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
+      .click();
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('—');
     const picker = root.querySelector<HTMLSelectElement>('#composition')!;
     picker.value = 'second';
