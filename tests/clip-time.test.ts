@@ -259,3 +259,25 @@ describe('[VID-015][VID-016][VID-017] clip time effects', () => {
       expect(() => engine.commands.execute(command)).toThrow(/locked/);
   });
 });
+
+describe('[VID-016] split of a reversed clip', () => {
+  it('gives the first piece the source tail and the second piece the source head', async () => {
+    const { EditorSession } = await import('../src/ui/session');
+    const { performEdit } = await import('../src/ui/editing');
+    const value = project();
+    value.compositions[0]!.tracks[0]!.clips[0]!.metadata = { reversed: true };
+    const engine = new EditorEngine(value);
+    const session = new EditorSession(engine);
+    session.select('layer-a'); // clip-a 0..2, source 1..3, reversed
+    session.setCurrentTime(0.5);
+    performEdit(engine, session, 'split');
+    const pieces = engine.state.compositions[0]!.tracks[0]!.clips.filter(
+      (item) => item.startTime < 2,
+    ).map((item) => [item.startTime, item.sourceIn, item.sourceOut]);
+    expect(pieces).toEqual([
+      [0, 2.5, 3],
+      [0.5, 1, 2.5],
+    ]);
+    session.dispose();
+  });
+});
