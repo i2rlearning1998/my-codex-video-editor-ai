@@ -6,6 +6,18 @@ export function closeTopOverlay(): boolean {
   top.close();
   return true;
 }
+/** Lets an overlay built with a different mechanism (e.g. a backdrop-based modal)
+ * participate in the same Escape-to-close stack as popover-based overlays.
+ * Call the returned function when the overlay closes on its own (Enter, a button, etc.)
+ * so the stack stays accurate. */
+export function registerExternalOverlay(close: () => void): () => void {
+  const entry = { close };
+  stack.push(entry);
+  return () => {
+    const index = stack.indexOf(entry);
+    if (index >= 0) stack.splice(index, 1);
+  };
+}
 export function temporaryOverlay(id: string, label: () => string) {
   const element = document.createElement('div');
   element.id = id;

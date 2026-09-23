@@ -7,6 +7,7 @@ import {
   createLayer,
   idSchema,
   layerSchema,
+  nameSchema,
   propertySchema,
   trackSchema,
   type Project,
@@ -32,6 +33,12 @@ const marker = z
   })
   .strict();
 export const commandSchema = z.discriminatedUnion('type', [
+  z
+    .object({
+      type: z.literal('SET_PROJECT_NAME'),
+      name: nameSchema,
+    })
+    .strict(),
   z
     .object({
       type: z.literal('CREATE_TRACK'),
@@ -215,6 +222,9 @@ export function validateCommand(input: unknown): Command {
 
 export function applyCommand(project: Project, command: Command): void {
   switch (command.type) {
+    case 'SET_PROJECT_NAME':
+      project.metadata.name = command.name;
+      return;
     case 'CREATE_COMPOSITION':
       project.compositions.push(command.composition);
       return;

@@ -1,4 +1,5 @@
 import type { EditorSession } from './session';
+import { iconSvg } from './icons';
 
 /** Small transient panel sizing, not a docking or document-layout model. */
 export function mountWorkspace(
@@ -14,9 +15,10 @@ export function mountWorkspace(
   const bar = shell.querySelector('.topbar')!;
   const controls = document.createElement('div');
   controls.className = 'workspace-controls';
-  controls.innerHTML =
-    '<button data-panel="left" aria-label="Toggle library">☰</button><button data-panel="right" aria-label="Toggle inspector">◫</button>';
-  bar.prepend(controls);
+  controls.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-label="Toggle library" title="Toggle library">${iconSvg('panelLeft')}</button><button type="button" class="icon-button" data-panel="right" aria-label="Toggle inspector" title="Toggle inspector">${iconSvg('panelRight')}</button>`;
+  (bar.querySelector('#menu-trigger') ?? bar.firstElementChild)!.after(
+    controls,
+  );
   const paint = () => {
     shell.style.setProperty('--left-panel', `${leftClosed ? 0 : left}px`);
     shell.style.setProperty('--right-panel', `${rightClosed ? 0 : right}px`);

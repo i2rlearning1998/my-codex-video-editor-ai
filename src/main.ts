@@ -1,10 +1,10 @@
-import { t } from './i18n';
 import { EditorEngine, deserializeProject, serializeProject } from './core';
 import { Autosave, LocalProjectStore } from './persistence/local';
 import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
+import { confirmDialog } from './ui/components/modal';
+import { t } from './i18n';
 import './style.css';
-import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 
 let store: LocalProjectStore | undefined;
 let initialProject = createExampleProject();
@@ -27,7 +27,6 @@ try {
 const engine = new EditorEngine(initialProject, {
   onListenerError: (error) => console.error('Editor observer failed', error),
 });
-const diagnostics = observeDiagnostics(engine);
 const shell = mountEditorShell(
   document.querySelector<HTMLDivElement>('#app')!,
   engine,
@@ -37,6 +36,7 @@ const shell = mountEditorShell(
           save: () => {
             store!.save(engine.state);
             shell.message(t('status.saved'));
+            shell.setSaveStatus('saved');
           },
         }
       : {}),
@@ -51,62 +51,50 @@ const shell = mountEditorShell(
       link.download = 'project.json';
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      shell.message('Project JSON exported. Media files are not included.');
+      shell.message(t('status.exported'));
     },
     importProject: async (file) => {
-      if (file.size > 20_000_000)
-        throw new Error('Project exceeds the 20 MB development limit');
+      if (file.size > 20_000_000) throw new Error(t('status.sizeLimit'));
       const project = deserializeProject(await file.text());
       if (
-        window.confirm(
-          'Replace the open project? Export its JSON first if you need a separate copy.',
-        )
+        await confirmDialog(t('project.openConfirm'), {
+          titleText: t('project.openTitle'),
+          confirmLabel: t('project.openTitle'),
+        })
       ) {
         engine.load(project);
-        shell.message('Project opened. History starts fresh.');
+        shell.message(t('project.opened'));
       }
     },
-    openExample: () => {
+    openExample: async () => {
       if (
-        window.confirm(
-          'Open the example as a new document? Export your current project first if you need a separate copy.',
-        )
+        await confirmDialog(t('project.exampleConfirm'), {
+          titleText: t('project.exampleTitle'),
+          confirmLabel: t('project.exampleTitle'),
+        })
       ) {
         engine.load(createExampleProject());
-        shell.message(
-          'Example opened. Click any layer to inspect its canonical values.',
-        );
+        shell.message(t('project.exampleOpened'));
       }
     },
   },
 );
 shell.message(initialMessage);
-const removeDebugReport = installDebugReport(
-  engine,
-  shell.session,
-  diagnostics,
-  document.querySelector('.statusbar')!,
-  shell.message,
+shell.setSaveStatus(
+  store ? 'saved' : 'error',
+  store ? undefined : t('status.localUnavailable'),
 );
-let removeTestHook: (() => void) | undefined;
-let disposed = false;
-if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
-  void import('./dev/test-hook').then(({ installTestHook }) => {
-    if (!disposed)
-      removeTestHook = installTestHook(
-        engine,
-        shell.session,
-        diagnostics.getErrors,
-      );
-  });
-}
 const autosave = store
   ? new Autosave(engine, store, {
-      onSaved: () => shell.message(t('status.saved')),
-      onError: (error) =>
-        shell.message(
-          `Local save failed. Export JSON to keep your work. ${String(error)}`,
-        ),
+      onDirty: () => shell.setSaveStatus('unsaved'),
+      onSaved: () => {
+        shell.message(t('status.saved'));
+        shell.setSaveStatus('saved');
+      },
+      onError: (error) => {
+        shell.message(t('status.saveFailed', { error: String(error) }));
+        shell.setSaveStatus('error', t('status.saveError'));
+      },
     })
   : undefined;
 const flush = () => {
@@ -115,10 +103,6 @@ const flush = () => {
 window.addEventListener('pagehide', flush);
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
-    disposed = true;
-    removeTestHook?.();
-    removeDebugReport();
-    diagnostics.dispose();
     flush();
     autosave?.dispose();
     shell.dispose();

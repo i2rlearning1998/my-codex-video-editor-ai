@@ -22,7 +22,7 @@ export const idSchema = z
     (id) => !['__proto__', 'constructor', 'prototype'].includes(id),
     'Reserved identifier',
   );
-const nameSchema = z.string().trim().min(1).max(256);
+export const nameSchema = z.string().trim().min(1).max(256);
 const finite = z.number().finite();
 const positive = finite.positive();
 const vector = z.tuple([finite, finite]);

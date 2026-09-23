@@ -1,5 +1,6 @@
 import { effectiveLayerTiming } from '../core';
 import { layerSize, locateLayer, type RenderSource } from '../render/adapter';
+import { iconSvg } from './icons';
 
 import type { InspectorField } from './transform-commands';
 
@@ -147,7 +148,7 @@ export function renderInspector(
         button.className = 'keyframe-button';
         button.dataset.key = key;
         button.dataset.fieldName = name;
-        button.textContent = exists ? '◆' : '◇';
+        button.innerHTML = iconSvg(exists ? 'diamondFilled' : 'diamondOutline', 14);
         button.title = exists ? 'Remove keyframe' : 'Add keyframe';
         button.setAttribute(
           'aria-label',
