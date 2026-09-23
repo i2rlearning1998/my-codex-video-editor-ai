@@ -7,6 +7,7 @@ import {
   createLayer,
   effectiveLayerTiming,
   findClipByLayer,
+  clipTimeEffects,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -24,7 +25,14 @@ import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
-import { contextActions, performEdit, type EditAction } from './editing';
+import {
+  contextActions,
+  performEdit,
+  selectedClips,
+  setClipSpeed,
+  SPEED_PRESETS,
+  type EditAction,
+} from './editing';
 import { iconSvg } from './icons';
 import { openModal } from './components/modal';
 import { showToast } from './components/toast';
@@ -279,18 +287,80 @@ export function mountEditorShell(
     }
     return item;
   };
+  // VID-015: Speed presets replace the menu in place, with Back.
+  const showCanvasSpeedMenu = (reopen: () => void) => {
+    const current = selectedClips(session.source, session.selectedIds)[0]?.clip
+      .speed;
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.setAttribute('role', 'menuitem');
+    back.dataset.action = 'menu-back';
+    back.textContent = `‹ ${t('menu.back')}`;
+    back.onclick = (event) => {
+      event.stopPropagation();
+      reopen();
+    };
+    const presets = SPEED_PRESETS.map((speed) => {
+      const item = menuItem(
+        t('clip.speedValue', { speed: formatNumber(speed) }),
+        () => setClipSpeed(engine, session, speed),
+      );
+      item.setAttribute('role', 'menuitemradio');
+      item.dataset.speed = String(speed);
+      item.setAttribute('aria-checked', String(current === speed));
+      return item;
+    });
+    canvasMenu.replaceChildren(back, ...presets);
+    back.focus();
+  };
   const openCanvasMenu = (point: Point2, layerId: string | null) => {
+    const clips = selectedClips(session.source, session.selectedIds);
     const items: HTMLButtonElement[] = layerId
       ? contextActions(session.source, session.selectedIds, session.currentTime)
           .filter((action) => action !== 'marker' && action !== 'delete-marker')
-          .map((action) =>
-            menuItem(
+          .map((action) => {
+            if (action === 'speed') {
+              const item = document.createElement('button');
+              item.type = 'button';
+              item.setAttribute('role', 'menuitem');
+              item.dataset.action = 'speed';
+              item.textContent = `${t('command.speed')} ›`;
+              item.onclick = (event) => {
+                event.stopPropagation();
+                showCanvasSpeedMenu(() => {
+                  hideCanvasMenu();
+                  openCanvasMenu(point, layerId);
+                });
+              };
+              return item;
+            }
+            if (action === 'reverse' || action === 'freeze') {
+              const item = menuItem(
+                t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),
+                () => performEdit(engine, session, action),
+              );
+              item.setAttribute('role', 'menuitemcheckbox');
+              item.setAttribute(
+                'aria-checked',
+                String(
+                  clips.length > 0 &&
+                    clips.every(({ clip }) =>
+                      action === 'reverse'
+                        ? clipTimeEffects(clip).reversed
+                        : clipTimeEffects(clip).freezeFrame !== null,
+                    ),
+                ),
+              );
+              item.dataset.action = action;
+              return item;
+            }
+            return menuItem(
               action === 'toggle-enabled'
                 ? 'Enable / disable'
                 : action[0]!.toUpperCase() + action.slice(1),
               () => performEdit(engine, session, action as EditAction),
-            ),
-          )
+            );
+          })
       : [];
     for (const label of CANVAS_MENU_PLACEHOLDERS) items.push(menuItem(label));
     if (items.length > CANVAS_MENU_PLACEHOLDERS.length)

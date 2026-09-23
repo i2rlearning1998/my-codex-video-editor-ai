@@ -93,6 +93,7 @@ export async function createDebugReport(
       playing: session.playing,
       canvasZoom: session.canvasZoom,
       timelinePxPerSecond: session.timelineZoom,
+      soloTrackIds: [...session.soloTrackIds],
     },
     recentCommands: diagnostics.getCommands().slice(-30),
     recentErrors: diagnostics
