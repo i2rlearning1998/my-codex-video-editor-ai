@@ -2,6 +2,13 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 continuation (W2-B) — 2026-09-24
+
+- One clip model: every layer is a clip on a track. The built-in example and older saves are converted when opened, and canvas drops, duplicates and groups always create clips. Legacy free-layer rows are gone.
+- Locked tracks now also block Delete; locked clips look locked and refused edits show a toast.
+- Clips never overlap: moves, drops, duplicates and Alt+↑/↓ insert and push later clips right, with a live preview and an insertion marker. Alt+←/→ nudges stop at neighbours.
+- Proved 18 previously Claimed Wave 2 items with browser tests. Moved TL-003 and TL-005 back to Todo. CV-008's Alt-from-center resize is recorded as a known bug.
+
 ## Wave 2 (W2-CLAUDE) — 2026-09-23
 
 - Unblocked e2e in Linux sandboxes (Chromium fallback) and fixed an inspector blur re-render error that failed two browser tests.

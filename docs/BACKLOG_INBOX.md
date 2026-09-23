@@ -14,3 +14,8 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-23 | W2-CLAUDE | Moving a clip (mouse or Alt+Arrow) can still overlap a neighbour; needs the TL-020/TL-030 insert/overwrite rule.
   2026-09-23 | W2-CLAUDE | Most timeline.ts strings (toolbar, menu, aria labels) are still hard-coded English; the LOC-001 literal check does not cover src/ui/timeline.ts yet.
   2026-09-23 | W2-CLAUDE TL-057 test | A marker added at the playhead sits under the playhead handle and cannot be grabbed until the playhead moves; consider raising markers above the playhead handle or a marker hit area in the ruler.
+  2026-09-24 | W2-B LYR-002 | The layer list is back-to-front (paint order, first row = backmost). Many editors list front-first; owner to confirm, possible CHANGE.
+  2026-09-24 | W2-B CV-008 | Alt+edge (and likely Alt+corner) resize from center is not built; needs a transform-interaction contract review.
+  2026-09-24 | W2-B | Asset cards appear under the default Scene/library view but not under the Media tab, which shows only the Import placeholder.
+  2026-09-24 | W2-B | The Inspector Timing fields show raw floats after frame nudges (for example 3.0333333333), against the "no raw floating-point numbers in the UI" rule.
+  2026-09-24 | W2-B TL-001 | Group children have no timeline rows; a future item could show them nested inside the group clip (expand/collapse).

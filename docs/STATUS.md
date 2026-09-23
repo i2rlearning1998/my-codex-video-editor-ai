@@ -1,5 +1,5 @@
-- Wave 2 slice W2-CLAUDE is delivered on branch claude/wave-2-timeline-clips-mwy1f3 as a PR against main, awaiting owner review. Wave 1 (w1.2) is merged to main.
-- Full verify passed in this sandbox: 294 unit + jsdom; Chromium 141.0.7390.37 (fallback, no Chrome/Edge installed): 31 normal passes + 2 expected failures; hook assertion and ledger OK.
-- Verified: TL-018, TL-019 (bug fixed), TL-044, TL-055 to TL-060, VID-015 to VID-017. TL-004 remains a known bug; PRJ-006 remains Claimed.
-- Speed, reverse and freeze change clip timing and state only. Media decoding of these effects arrives with the media pipeline (VID-010 to VID-012, W6). Solo is session-only.
-- Schema remains 4, and no dependencies were added. The shell is still imperative DOM, with the React migration outstanding. No further wave was started. See reports/W2-CLAUDE.md.
+- Wave 2 continuation W2-B is on branch claude/wave-2-timeline-clips-mwy1f3 as a PR against main, awaiting owner review. W2-CLAUDE (PR #2) is merged.
+- Full verify passed in this sandbox: 301 unit + jsdom; Chromium 141.0.7390.37 (fallback): 53 normal passes + 2 expected failures (DEV-006 probe, CV-008 Alt); hook assertion and ledger OK.
+- Ledger: 69 Verified, 20 Claimed, 404 Todo, 1 Bug (CV-008 Alt from center). TL-001, TL-004, TL-020 and TL-030 are Verified, plus 17 of the 18 proof-debt items; CV-008 became Bug.
+- Schema remains 4 (clip-first, D-039). Group children have no timeline rows. The insert-and-push rule applies to all landing paths (D-040).
+- Next per plan: TL-027 (cut, copy and paste) and TL-032 (link and detach audio), then the Group B risky Claimed items. The shell is still imperative DOM. See reports/W2-B.md.
