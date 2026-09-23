@@ -37,7 +37,7 @@ This file is the **single definition of what the finished editor must do**. Ever
 | W9 | Hardening: export full, performance, accessibility, UI language packs | 4 | 23 | 5 |
 | W10 | AI integration (last) | 0 | 0 | 13 |
 
-**Total items: 494** (P0 306, P1 131, P2 57). Status now: Bug 3, Claimed 47, Todo 435.
+**Total items: 494** (P0 306, P1 131, P2 57). Status now: see `npm run ledger` (after W2-CLAUDE: Verified 48, Claimed 38, Todo 407, Bug 1).
 
 ## DEV: Process, testing and tooling (Wave 0)
 
@@ -298,9 +298,9 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 |---|---|---|---|---|
 | TL-001 | P0 | W2 | Todo | Timeline uses one row model: every layer appears as a clip on a track (no separate legacy layer rows) |
 | TL-002 | P0 | W2 | Todo | Add track (video, audio, text/graphics, overlay) from the + control and the track menu; dropping below the last track auto-creates a compatible track |
-| TL-003 | P0 | W2 | Claimed | Track header shows drag handle, type icon, editable name, lock and eye (visibility); audio tracks also show mute and solo |
+| TL-003 | P0 | W2 | Todo | Track header shows drag handle, type icon, editable name, lock and eye (visibility); audio tracks also show mute and solo |
 | TL-004 | P0 | W2 | Bug | Locking a track blocks every edit path to its clips (drag, trim, split, delete, keyboard, ripple) with visible feedback |
-| TL-005 | P0 | W2 | Claimed | Reorder tracks by dragging the handle |
+| TL-005 | P0 | W2 | Todo | Reorder tracks by dragging the handle |
 | TL-006 | P0 | W2 | Todo | Delete a track warns when it contains clips; Duplicate track |
 | TL-007 | P1 | W2 | Todo | Track height presets (compact, normal, large) and drag to resize |
 | TL-008 | P0 | W2 | Todo | Ruler shows mm:ss (hh:mm:ss when long) with frame ticks at high zoom |
