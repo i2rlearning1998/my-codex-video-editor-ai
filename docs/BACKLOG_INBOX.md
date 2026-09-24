@@ -28,3 +28,6 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-24 | W4-A MED | Files dropped on a timeline track or the canvas are imported only; they could also be placed at the drop point in one step.
   2026-09-24 | W4-A MED | Media cards have no "missing media" badge when a project references bytes this browser lacks (MED-020 Relink covers it).
   2026-09-24 | W4-A MED | The import queue is sequential; a second import while one runs is refused with a message rather than queued.
+  2026-09-24 | W4-B VID | Reversed clips play by seeking frame by frame, which can look choppy on long-GOP footage; a WebCodecs decoder (D-005) would make reverse smooth.
+  2026-09-24 | W4-B TL | The "No layers in this composition." line below the tracks shows even when every layer is a clip (legacy-row empty state).
+  2026-09-24 | W4-B MED | Animated GIFs draw as the browser's live animation, not in step with the timeline (VID-008).

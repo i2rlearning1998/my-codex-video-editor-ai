@@ -2,6 +2,14 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 4 part B (W4-B) — 2026-09-24
+
+- Imported video and images now draw on the canvas: scrubbing and frame steps show the exact source frame, and playback runs in real time (it drops frames rather than slowing down). A "Buffering…" note appears if a video cannot keep up.
+- Speed, Reverse and Freeze frame are now visible in the picture.
+- EXIF-rotated photos draw upright, and PNG and WebM transparency shows what is behind.
+- Timeline video clips show a filmstrip; image clips show their thumbnail.
+- Audio is still silent; it arrives in W4-C.
+
 ## Wave 4 part A (W4-A) — 2026-09-24
 
 - Import your own video, audio and image files with the Import button or by dropping files on the editor. A progress row shows each file, and Cancel stops the import cleanly.

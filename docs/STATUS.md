@@ -1,13 +1,14 @@
-- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) now carries W2-B, W2-C, the CV-022 and CV-008 fixes and W4-A. The owner reviews it in one batch. W4-B (video and images on the canvas and in playback) and W4-C (audio) follow on the same branch.
-- Last full verify in this sandbox (W4-A):
+- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) now carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A and W4-B. The owner reviews it in one batch. W4-C (audio) follows on the same branch.
+- Last full verify in this sandbox (W4-B):
   - 316 unit + jsdom tests.
-  - 78 e2e passes + 1 expected failure (the DEV-006 probe).
-  - Ledger: 93 Verified / 11 Claimed / 391 Todo / 0 Bug.
-  - See reports/W4-A.md. The browser is Chromium 141 (fallback), which cannot decode H.264 or AAC. GitHub Actions runs only when dispatched by hand.
+  - 88 e2e passes + 1 expected failure (the DEV-006 probe).
+  - Ledger: 103 Verified / 11 Claimed / 381 Todo / 0 Bug.
+  - See reports/W4-A.md and reports/W4-B.md. The browser is Chromium 141 (fallback), which cannot decode H.264 or AAC. GitHub Actions runs only when dispatched by hand.
 - W4-A:
   - Verified: DEV-008, MED-001, MED-002, MED-004, MED-006, MED-007, MED-009, MED-013, MED-014, MED-015, MED-018, MED-035 and TL-017.
   - MED-003 is Claimed until MP4, MOV and M4A are checked in Chrome.
   - Media bytes live in `src/media` (OPFS, with an IndexedDB fallback). The project stores `media/<fingerprint>` references only.
 - CV-022 is Verified (D-050). CV-008 is Verified under interaction contract revision 4 (D-051). There are no known product bugs in the ledger.
-- Imported media is not drawn or heard yet: layers draw as placeholders until W4-B. Speed, reverse, freeze and detached audio still have no visible or audible effect.
+- W4-B: imported video and images draw on the canvas. Scrubbing and stepping are frame-exact, and playback stays in real time with a buffering note. Speed, reverse and freeze are visible, and timeline clips show filmstrips. Verified: VID-001, VID-002, VID-005, VID-010 to VID-012, PB-009, MED-023, MED-024 and TL-046.
+- Nothing is audible yet (W4-C): videos are muted, and detached audio is silent.
 - Schema remains 4. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).

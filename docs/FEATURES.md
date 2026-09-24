@@ -214,8 +214,8 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-020 | P0 | W4 | Todo | Missing media shows a clear indicator and a Relink flow |
 | MED-021 | P0 | W4 | Todo | Variable-frame-rate video plays and seeks with correct timing (fixture: video_vfr_720p_no_audio.mp4) |
 | MED-022 | P0 | W4 | Todo | Rotation metadata is applied (fixture: video_rotation90_metadata_portrait_no_audio.mp4 displays upright portrait) |
-| MED-023 | P0 | W4 | Todo | Image EXIF orientation is applied (fixture: image_exif_orientation6_1600x1200.jpg) |
-| MED-024 | P0 | W4 | Todo | Alpha channel is preserved for PNG and alpha WebM (fixtures: image_alpha_logo_512.png, video_alpha_circle_vp9.webm) |
+| MED-023 | P0 | W4 | Verified | Image EXIF orientation is applied (fixture: image_exif_orientation6_1600x1200.jpg) |
+| MED-024 | P0 | W4 | Verified | Alpha channel is preserved for PNG and alpha WebM (fixtures: image_alpha_logo_512.png, video_alpha_circle_vp9.webm) |
 | MED-025 | P2 | W4 | Todo | Duplicate import detection by content hash |
 | MED-026 | P2 | W8 | Todo | Media folders and tags |
 | MED-027 | P1 | W9 | Todo | Proxy generation for heavy 4K media with automatic switch on export |
@@ -342,7 +342,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-043 | P0 | W2 | Todo | Empty timeline shows a helpful drop message |
 | TL-044 | P0 | W2 | Verified | Jump to previous or next cut (Up and Down keys) |
 | TL-045 | P0 | W2 | Todo | Clip label truncates gracefully and never overlaps neighbors at any zoom |
-| TL-046 | P0 | W4 | Todo | Video clips show a filmstrip of thumbnails; image clips show their thumbnail |
+| TL-046 | P0 | W4 | Verified | Video clips show a filmstrip of thumbnails; image clips show their thumbnail |
 | TL-047 | P0 | W4 | Todo | Audio clips show waveforms that stay correct while trimming |
 | TL-048 | P0 | W5 | Todo | Keyframe diamonds appear on clips; add, move, copy and delete keyframes directly on the timeline |
 | TL-049 | P0 | W5 | Todo | Fade in and fade out handles on clips for opacity and volume |
@@ -372,7 +372,7 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | PB-006 | P0 | W2 | Todo | Loop toggle and loop of the in-out range |
 | PB-007 | P1 | W2 | Todo | Preview playback speed selector 0.25x to 2x |
 | PB-008 | P0 | W2 | Todo | Time is one shared source: canvas, timeline, inspector and timecode always agree |
-| PB-009 | P0 | W4 | Todo | Video decoding keeps up with playback; frames drop rather than slow motion; a buffering indicator appears when needed |
+| PB-009 | P0 | W4 | Verified | Video decoding keeps up with playback; frames drop rather than slow motion; a buffering indicator appears when needed |
 | PB-010 | P0 | W4 | Todo | Audio plays in sync with video within one frame (fixture: video_av_sync_flash_beep_720p.mp4) |
 | PB-011 | P1 | W4 | Todo | Scrubbing the playhead plays short audio snippets |
 | PB-012 | P0 | W4 | Todo | 1080p 30 fps H.264 plays back with at least 95 percent of frames on the reference machine |
@@ -515,18 +515,18 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| VID-001 | P0 | W4 | Todo | Video clips can be trimmed and split with frame-exact seeking |
-| VID-002 | P0 | W4 | Todo | Picture-in-picture: clips on overlay tracks can be moved, scaled and rotated on the canvas |
+| VID-001 | P0 | W4 | Verified | Video clips can be trimmed and split with frame-exact seeking |
+| VID-002 | P0 | W4 | Verified | Picture-in-picture: clips on overlay tracks can be moved, scaled and rotated on the canvas |
 | VID-003 | P0 | W4 | Todo | Crop tool for image and video layers with aspect lock and handles |
 | VID-004 | P0 | W4 | Todo | Fit, Fill, Stretch and Custom modes handle media whose aspect differs from the canvas |
-| VID-005 | P0 | W4 | Todo | Default still image duration is 5 seconds and adjustable |
+| VID-005 | P0 | W4 | Verified | Default still image duration is 5 seconds and adjustable |
 | VID-006 | P0 | W4 | Todo | Detach audio from a video clip |
 | VID-007 | P1 | W4 | Todo | Fill mismatched aspect ratios with a blurred copy of the media |
 | VID-008 | P1 | W4 | Todo | GIF is treated as an animated clip |
 | VID-009 | P1 | W4 | Todo | Replace media keeps all edits on the clip |
-| VID-010 | P0 | W4 | Todo | Constant speed from 0.1x to 8x |
-| VID-011 | P1 | W4 | Todo | Reverse a clip |
-| VID-012 | P0 | W4 | Todo | Freeze frame at the playhead |
+| VID-010 | P0 | W4 | Verified | Constant speed from 0.1x to 8x |
+| VID-011 | P1 | W4 | Verified | Reverse a clip |
+| VID-012 | P0 | W4 | Verified | Freeze frame at the playhead |
 | VID-013 | P0 | W6 | Todo | Chroma key (green screen) with tolerance and edge softness |
 | VID-014 | P2 | W8 | Todo | Stabilization |
 | VID-015 | P0 | W2 | Verified | Clip speed 0.1x to 8x (menu presets 0.25x to 4x) is a non-destructive clip property set through an undoable command; the clip's timeline duration becomes source length divided by speed, a speed badge shows on the clip, and slowing a clip into its neighbor is refused; offered in the timeline clip and canvas context menus |
