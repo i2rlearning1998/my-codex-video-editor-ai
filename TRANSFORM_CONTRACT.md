@@ -104,3 +104,7 @@ The equation is a frozen requirement and tested mathematical identity (within fl
 The helpers take readonly values from the validated canonical tree and return frozen derived tuples/records. `worldTransform` finds the requested ancestor path and computes only that branch. Unknown layer IDs throw. Unvalidated/cyclic trees are outside its input contract and must pass existing project validation first.
 
 There is no second store, persisted matrix, parent index, scene cache, engine replacement, capability alteration, or UI feature. Engine mutations remain on the existing command/transaction/history path. No persistent field/default or serialized representation changes, so **schemaVersion remains 1 and no migration is necessary**. A regression test verifies schema-1 serialization and derived values survive a round trip. Future renderers must consume this contract; they must not redefine it.
+
+## Amendment note (2026-09-24)
+
+The owner-authorized CV-008 change (Alt resize-from-center) is an interaction rule. It is recorded in [TRANSFORM_INTERACTION_CONTRACT.md](TRANSFORM_INTERACTION_CONTRACT.md) revision 4. The spatial semantics in this document are unchanged: the local origin stays `(0,0)`, the matrix order stays `T * R * S`, and no field is added.

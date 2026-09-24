@@ -183,7 +183,7 @@ export class TransformInteraction {
     };
     return true;
   }
-  update(point: Point2, proportional = false): void {
+  update(point: Point2, proportional = false, fromCenter = false): void {
     const gesture = this.#gesture;
     if (!gesture) return;
     try {
@@ -246,6 +246,7 @@ export class TransformInteraction {
             current,
           ),
           typeof gesture.kind === 'number' || proportional,
+          fromCenter,
         );
       }
       if (gesture.members)

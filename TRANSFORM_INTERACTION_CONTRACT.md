@@ -1,4 +1,6 @@
-# Transform interaction contract - revision 3
+# Transform interaction contract - revision 4
+
+**Revision 4, 2026-09-24 (owner-authorized, additive).** It adds Alt resize-from-center (CV-008). It also records the group-level canvas picking that the owner-authorized CV-022 fix introduced (D-050). Nothing else changes: corner proportionality, edges, text width grips, rotation, history and cancellation are exactly as in revision 3. See D-051.
 
 **Tier 2.2.2, 2026-09-12.** This revision changes only corner scaling from freeform to proportional by default. Tier 2.2.1 visual-center rotation, generic edges, and text width grips remain unchanged. It does not change schema-1 spatial semantics in [TRANSFORM_CONTRACT.md](TRANSFORM_CONTRACT.md).
 
@@ -30,7 +32,7 @@ The immutable policy map is an explicit input extension point. Unknown types def
 
 Hit-test priority is: rotation, corner/generic edge resize, text width grips, drawable body, empty canvas. Hit radii are 12 CSS pixels for rotation and 10 for other handles, larger than their graphics. Within overlapping resize hit regions, corners use top-left, top-right, bottom-right, bottom-left order, then edges use top, right, bottom, left. Tiny views use this deterministic priority; the inspector is the accessible alternative when handles overlap.
 
-Body picking otherwise preserves reverse paint order and composition clipping. An already-selected group remains selected when its descendant body is dragged; choose a child in the Scene list to transform it individually. Empty/outside-composition body clicks clear selection. Selection and hover never issue commands or autosave.
+Body picking otherwise preserves reverse paint order and composition clipping. Since revision 4 (CV-022, D-050), a body pick resolves to its top-level ancestor, so clicking or dragging a group's descendant selects and moves the group. Double-click enters the picked group and selects its child under the pointer; while a group is entered, picks inside it resolve to its direct child. Esc leaves one level at a time, and a pick outside the entered group leaves it. The entered group is transient session state. The Scene list and timeline still select any layer directly. Empty/outside-composition body clicks clear selection. Selection and hover never issue commands or autosave.
 
 ## Move and resize
 
@@ -40,7 +42,9 @@ Corners resize in baseline rotated local axes with the opposite corner fixed in 
 
 Corner dragging always preserves the initial signed scale ratio for every type, including text: choose the candidate relative multiplier farthest from 1, X winning ties, and apply it to both baseline scales. This preserves existing aspect ratio even when baseline scales differ. Shift retains the same proportional behavior; it does not enable freeform scaling. Crossing the opposite corner permits zero/negative scale under the frozen contract. Collapsed results can be repaired in the inspector.
 
-Generic left/right edges change only scale X, and top/bottom only scale Y; they change the corresponding visual dimension while intrinsic width/height properties stay unchanged. The opposite edge remains fixed. Resolve along baseline rotated axes and ignore tangential movement. Shift does not affect edges. There are no snapping, skew, perspective, crop, or advanced constraints.
+Generic left/right edges change only scale X, and top/bottom only scale Y; they change the corresponding visual dimension while intrinsic width/height properties stay unchanged. The opposite edge remains fixed. Resolve along baseline rotated axes and ignore tangential movement. Shift does not affect edges.
+
+**Alt resizes from the center (revision 4, CV-008).** While Alt is held during a corner or generic-edge drag, the fixed point is the baseline bounds center instead of the opposite corner or edge. It is preserved in parent space by the same position compensation. The signed scale is resolved from the pointer-to-center vector along baseline rotated axes, so the dimension changes by twice the pointer travel. Corners keep the proportional rule above, and edges still change only their own axis. Alt is read on every pointer move, so pressing or releasing it mid-drag switches the fixed point from the next update. It does not apply to text width grips, rotation or body moves. The commit, no-op, cancel and history rules are unchanged. There are no snapping, skew, perspective, crop, or advanced constraints.
 
 ## Text width and editable layout
 

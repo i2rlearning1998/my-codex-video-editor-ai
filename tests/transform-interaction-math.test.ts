@@ -51,6 +51,52 @@ describe('pure interaction transform math', () => {
     );
     expect(result.scale.value).toEqual([4, -6]);
   });
+  it.each(['right', 'top', 0, 2] as const)(
+    '[CV-008] Alt from center keeps the rotated bounds center fixed (handle %s)',
+    (handle) => {
+      const initial = base();
+      const center = transformPoint(localTransformMatrix(initial), [30, 35]);
+      const result = resizeTransform(
+        initial,
+        bounds,
+        handle,
+        [center[0] + 70, center[1] - 55],
+        typeof handle === 'number',
+        true,
+      );
+      const after = transformPoint(localTransformMatrix(result), [30, 35]);
+      expect(after[0]).toBeCloseTo(center[0], 10);
+      expect(after[1]).toBeCloseTo(center[1], 10);
+      expect(result.rotation.value).toBe(35);
+      if (typeof handle === 'string')
+        // An edge still changes only its own axis.
+        expect(result.scale.value[handle === 'right' ? 1 : 0]).toBe(
+          initial.scale.value[handle === 'right' ? 1 : 0],
+        );
+      else
+        expect(result.scale.value[0] / result.scale.value[1]).toBeCloseTo(
+          2 / -3,
+          10,
+        );
+    },
+  );
+  it('[CV-008] Alt from center doubles the distance moved compared with the opposite edge', () => {
+    const initial = createLayer('a', 'shape', 'Shape').transform;
+    const box = { x: 0, y: 0, width: 100, height: 50 };
+    // Dragging the right edge 20 units right: +20 width normally, +40 from center.
+    const edge = resizeTransform(initial, box, 'right', [120, 25]);
+    const center = resizeTransform(
+      initial,
+      box,
+      'right',
+      [120, 25],
+      false,
+      true,
+    );
+    expect(edge.scale.value).toEqual([1.2, 1]);
+    expect(center.scale.value).toEqual([1.4, 1]);
+    expect(center.position.value).toEqual([-20, 0]);
+  });
   it('allows crossing the opposite corner through zero scale without inventing skew', () => {
     const initial = createLayer('a', 'shape', 'Shape').transform;
     expect(

@@ -324,20 +324,52 @@ test.describe('canvas', () => {
     expect((await hook(page)).history.labels).toHaveLength(1);
   });
 
-  test.fail(
-    '[CV-008] Alt+edge drag resizes from the center (not built)',
-    async ({ page }) => {
-      await page.locator('#scene-list [data-layer-id="example-badge"]').click();
-      const edge = await toScreen(page, 76 + 224, 456 + 24);
-      await page.keyboard.down('Alt');
-      await drag(page, edge, 40, 0);
-      await page.keyboard.up('Alt');
-      // From the center, the left edge must move left as the right edge moves right.
-      expect(
-        (await layer(page, 'example-badge')).transform.position.value[0],
-      ).toBeLessThan(76);
-    },
-  );
+  test('[CV-008] Alt+edge and Alt+corner drags resize from the center', async ({
+    page,
+  }, testInfo) => {
+    await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+    const before = await layer(page, 'example-badge');
+    const box = (item: any) => {
+      const [x, y] = item.transform.position.value;
+      const w = item.properties.width.value * item.transform.scale.value[0];
+      const h = item.properties.height.value * item.transform.scale.value[1];
+      return { cx: x + w / 2, cy: y + h / 2, w, h };
+    };
+    const start = box(before);
+    // Right edge with Alt: grows on both sides, the center and height stay.
+    const edge = await toScreen(page, 76 + 224, 456 + 24);
+    await page.keyboard.down('Alt');
+    await drag(page, edge, 40, 0);
+    await page.keyboard.up('Alt');
+    const wide = box(await layer(page, 'example-badge'));
+    expect(wide.w).toBeGreaterThan(start.w);
+    expect(wide.h).toBeCloseTo(start.h, 6);
+    expect(wide.cx).toBeCloseTo(start.cx, 6);
+    expect(wide.cy).toBeCloseTo(start.cy, 6);
+    expect(
+      (await layer(page, 'example-badge')).transform.position.value[0],
+    ).toBeLessThan(76);
+    await page.screenshot({ path: testInfo.outputPath('alt-center.png') });
+    // A plain edge drag still keeps the opposite edge (unchanged behaviour).
+    await page.locator('#undo').click();
+    await drag(page, edge, 40, 0);
+    expect(
+      (await layer(page, 'example-badge')).transform.position.value,
+    ).toEqual(before.transform.position.value);
+    await page.locator('#undo').click();
+    // Bottom-right corner with Alt: proportional, about the same center.
+    const corner = await toScreen(page, 76 + 224, 456 + 48);
+    await page.keyboard.down('Alt');
+    await drag(page, corner, 30, 30);
+    await page.keyboard.up('Alt');
+    const big = box(await layer(page, 'example-badge'));
+    expect(big.w / big.h).toBeCloseTo(start.w / start.h, 6);
+    expect(big.w).toBeGreaterThan(start.w);
+    expect(big.cx).toBeCloseTo(start.cx, 6);
+    expect(big.cy).toBeCloseTo(start.cy, 6);
+    // One gesture is one undo step.
+    expect((await hook(page)).history.labels).toHaveLength(1);
+  });
 
   test('[CV-009] the rotation handle rotates around the visual center', async ({
     page,

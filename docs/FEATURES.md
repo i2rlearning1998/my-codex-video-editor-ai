@@ -241,7 +241,7 @@ Everything the user does directly on the preview canvas.
 | CV-005 | P0 | W2 | Todo | Holding Shift while dragging constrains to the axis; Alt-drag duplicates |
 | CV-006 | P0 | W2 | Verified | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
 | CV-007 | P0 | W2 | Verified | Corner handle drag resizes proportionally; the opposite corner stays fixed |
-| CV-008 | P0 | W2 | Bug | Edge handle drag resizes on one axis; Alt resizes from center |
+| CV-008 | P0 | W2 | Verified | Edge handle drag resizes on one axis; Alt resizes from center |
 | CV-009 | P0 | W2 | Verified | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
 | CV-011 | P0 | W2 | Verified | Text-width grips change text box width and reflow the text without changing font size |

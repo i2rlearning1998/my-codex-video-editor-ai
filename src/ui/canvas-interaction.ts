@@ -173,7 +173,8 @@ export function bindCanvasInteraction(
       return;
     }
     if (Math.hypot(point[0] - start[0], point[1] - start[1]) >= 3) moved = true;
-    if (moved) interaction.update(compositionPoint(point), event.shiftKey);
+    if (moved)
+      interaction.update(compositionPoint(point), event.shiftKey, event.altKey);
   };
   const pointermove = (event: PointerEvent) =>
     safely(() => {
