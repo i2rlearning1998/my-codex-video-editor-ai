@@ -1,4 +1,5 @@
-- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) now carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A, W4-B and W4-C. The owner reviews it in one batch.
+- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A, W4-B and W4-C.
+- W5-A (export) is on `claude/wave-5-export`, PR #4, stacked on PR #3 (retarget to main after PR #3 merges). See reports/W5-A.md.
 - Last full verify in this sandbox (W4-C):
   - 319 unit + jsdom tests.
   - 95 e2e passes + 1 expected failure (the DEV-006 probe).
@@ -12,4 +13,5 @@
 - W4-B: imported video and images draw on the canvas. Scrubbing and stepping are frame-exact, and playback stays in real time with a buffering note. Speed, reverse and freeze are visible, and timeline clips show filmstrips. Verified: VID-001, VID-002, VID-005, VID-010 to VID-012, PB-009, MED-023, MED-024 and TL-046.
 - W4-C: audio plays through Web Audio, in sync with the picture (measured gaps of 13–21 ms). Mute and solo are audible, scrubbing plays snippets, and waveforms show in the Media tab and on the timeline. Verified: AUD-005, AUD-007, PB-010, PB-011, VID-006, MED-019 and TL-047.
 - Remaining W4 work: stock media (MED-028 to MED-033), MED-005, MED-008 to MED-012, MED-016, MED-017, MED-020 to MED-022, MED-025, PRJ-015 to PRJ-017, PB-012, VID-003, VID-004, VID-007 to VID-009, INS-016 and HIS-007.
+- W5-A: real video export (MP4 in Chrome and Edge, WebM fallback), frame-exact, with the audio mix, presets, progress and cancel, pre-flight and PNG frames. The CI job `export-mp4` proves MP4 in Chrome on Windows. New dependency: mediabunny 1.59.1 (MPL-2.0).
 - Schema remains 4. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).
