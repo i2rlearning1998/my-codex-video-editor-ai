@@ -246,7 +246,7 @@ Everything the user does directly on the preview canvas.
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
 | CV-011 | P0 | W2 | Verified | Text-width grips change text box width and reflow the text without changing font size |
 | CV-012 | P1 | W2 | Todo | Live readout of size, angle or position while dragging |
-| CV-013 | P0 | W2 | Todo | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
+| CV-013 | P0 | W2 | Verified | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
 | CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
 | CV-016 | P0 | W2 | Verified | Zoom controls: Fit, plus and minus change the canvas view scale |
@@ -258,7 +258,7 @@ Everything the user does directly on the preview canvas.
 | CV-022 | P0 | W2 | Verified | Clicking inside a group selects the group; double-click selects the child; Esc exits |
 | CV-023 | P1 | W2 | Todo | Double-click a group enters isolation mode |
 | CV-024 | P0 | W2 | Todo | Locked layers cannot be moved or resized from the canvas; hidden layers are neither drawn nor selectable |
-| CV-025 | P0 | W2 | Todo | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |
+| CV-025 | P0 | W2 | Verified | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |
 | CV-026 | P0 | W2 | Todo | Order commands: bring to front, forward, backward, to back |
 | CV-027 | P0 | W2 | Todo | Quick flip horizontal and vertical, rotate 90 degrees |
 | CV-028 | P1 | W2 | Todo | Paste places at same position with small offset; pasting an image from the OS clipboard imports it |

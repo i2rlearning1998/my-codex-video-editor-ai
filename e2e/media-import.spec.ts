@@ -180,7 +180,11 @@ test('[MED-003] every browser-decodable format imports; other files get a clear 
   expect(byName.get('image_animated_320x240.gif')!.type).toBe('image');
   expect(byName.get('audio_tone_440hz_3s.ogg')!.duration).toBeCloseTo(3, 1);
   // Not media, and media this browser cannot read: a message, no card, no bytes.
-  const before = await opfsKeys(page);
+  // Media bytes only: thumbnails and waveforms of the cards above are made one
+  // at a time in the background (D-059) and may still land during this step.
+  const bytes = async () =>
+    (await opfsKeys(page)).filter((key) => key.startsWith('media/'));
+  const before = await bytes();
   await importWithPicker(page, ['not_media.txt', 'corrupt_random_bytes.mp4']);
   await expect(
     page.locator('.toast', {
@@ -195,7 +199,7 @@ test('[MED-003] every browser-decodable format imports; other files get a clear 
     }),
   ).toBeVisible();
   await expect(cards(page)).toHaveCount(decodable.length);
-  expect(await opfsKeys(page)).toEqual(before);
+  expect(await bytes()).toEqual(before);
 });
 
 test('[MED-004] import shows progress and Cancel leaves nothing behind', async ({

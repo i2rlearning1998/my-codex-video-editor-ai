@@ -30,7 +30,9 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     session.selectMany(
       ['group', 'link', 'unlink'].includes(command.id)
         ? ids.slice(0, 2)
-        : [layerFor[command.id] ?? ids[0]!],
+        : command.id.startsWith('distribute-')
+          ? ids
+          : [layerFor[command.id] ?? ids[0]!],
     );
     session.setCurrentTime(1);
     if (command.id === 'marker') session.select(null);
@@ -68,6 +70,8 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'undo') expect(engine.canRedo).toBe(true);
     else if (command.id === 'cut-previous') expect(session.currentTime).toBe(0);
     else if (command.id === 'copy') expect(hasClipboard()).toBe(true);
+    else if (command.id === 'align-to-canvas')
+      expect(session.alignToCanvas).toBe(true);
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);
     else expect(engine.canUndo, command.id).toBe(true);
     session.dispose();

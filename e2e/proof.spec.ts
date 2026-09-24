@@ -21,11 +21,15 @@ async function drag(
   from: { x: number; y: number },
   dx: number,
   dy: number,
+  free = false,
 ) {
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
+  // CV-013: Ctrl held after the press (a Ctrl press toggles the selection) places freely.
+  if (free) await page.keyboard.down('Control');
   await page.mouse.move(from.x + dx, from.y + dy, { steps: 12 });
   await page.mouse.up();
+  if (free) await page.keyboard.up('Control');
 }
 async function headlinePosition(page: Page) {
   return (await hook(page)).project.compositions[0]!.layers.find(
@@ -65,7 +69,8 @@ test('[CV-004] known pixel drag moves by composition delta with one undo', async
   const point = await selectHeadline(page);
   const before = await headlinePosition(page);
   const scale = (await artboard(page)).scale;
-  await drag(page, point, 60, 40);
+  // Exact pointer delta: snapping (CV-013) is disabled with Ctrl.
+  await drag(page, point, 60, 40, true);
   const after = await headlinePosition(page);
   expect(after[0] - before[0]).toBeCloseTo(60 / scale, 0);
   expect(after[1] - before[1]).toBeCloseTo(40 / scale, 0);

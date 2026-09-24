@@ -1,6 +1,12 @@
 import type { EditorEngine } from '../core';
 import type { EditorSession } from '../ui/session';
 import {
+  ALIGN_EDGES,
+  alignSelection,
+  canDistribute,
+  distributeSelection,
+} from '../ui/align';
+import {
   contextActions,
   jumpToCut,
   moveClipsToAdjacentTrack,
@@ -121,6 +127,28 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   edit('detach-audio', ''),
   edit('reverse', ''),
   edit('freeze', ''),
+  // CV-025: align and distribute (palette, canvas Align submenu).
+  ...ALIGN_EDGES.map((edge): RegisteredCommand => ({
+    id: `align-${edge}`,
+    labelKey: `command.align${edge[0]!.toUpperCase()}${edge.slice(1)}`,
+    shortcut: '',
+    isEnabled: ({ session }) => session.selectedIds.length > 0,
+    run: ({ engine, session }) => alignSelection(engine, session, edge),
+  })),
+  ...(['horizontal', 'vertical'] as const).map((axis): RegisteredCommand => ({
+    id: `distribute-${axis}`,
+    labelKey: `command.distribute${axis[0]!.toUpperCase()}${axis.slice(1)}`,
+    shortcut: '',
+    isEnabled: ({ session }) => canDistribute(session),
+    run: ({ engine, session }) => distributeSelection(engine, session, axis),
+  })),
+  {
+    id: 'align-to-canvas',
+    labelKey: 'command.alignToCanvas',
+    shortcut: '',
+    isEnabled: () => true,
+    run: ({ session }) => session.setAlignToCanvas(!session.alignToCanvas),
+  },
   {
     id: 'speed-slower',
     labelKey: 'command.speedSlower',

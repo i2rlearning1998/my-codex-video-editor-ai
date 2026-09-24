@@ -246,5 +246,15 @@
   "export.progress": "{percent}% · frame {done} of {total} · about {left} left",
   "export.cancelled": "Export cancelled",
   "export.done": "Exported {name}",
-  "export.failed": "Export failed: {error}"
+  "export.failed": "Export failed: {error}",
+  "command.align": "Align",
+  "command.alignLeft": "Align left",
+  "command.alignCenter": "Align center",
+  "command.alignRight": "Align right",
+  "command.alignTop": "Align top",
+  "command.alignMiddle": "Align middle",
+  "command.alignBottom": "Align bottom",
+  "command.distributeHorizontal": "Distribute horizontally",
+  "command.distributeVertical": "Distribute vertically",
+  "command.alignToCanvas": "Relative to canvas"
 }

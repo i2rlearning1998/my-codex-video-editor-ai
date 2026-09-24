@@ -42,6 +42,12 @@ import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
 import {
+  ALIGN_EDGES,
+  alignSelection,
+  canDistribute,
+  distributeSelection,
+} from './align';
+import {
   contextActions,
   performEdit,
   hasClipboard,
@@ -334,6 +340,7 @@ export function mountEditorShell(
           ? { timingPreview: timeline.controller.preview }
           : {}),
         ...(interaction.preview ? { preview: interaction.preview } : {}),
+        ...(interaction.guides.length ? { guides: interaction.guides } : {}),
         ...(interaction.hoveredHandle !== null
           ? { hoveredHandle: interaction.hoveredHandle }
           : {}),
@@ -415,6 +422,54 @@ export function mountEditorShell(
     canvasMenu.replaceChildren(back, ...presets);
     back.focus();
   };
+  // CV-025: Align submenu, in place with Back like Speed.
+  const showCanvasAlignMenu = (reopen: () => void) => {
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.setAttribute('role', 'menuitem');
+    back.dataset.action = 'menu-back';
+    back.textContent = `‹ ${t('menu.back')}`;
+    back.onclick = (event) => {
+      event.stopPropagation();
+      reopen();
+    };
+    const aligns = ALIGN_EDGES.map((edge) => {
+      const item = menuItem(
+        t(`command.align${edge[0]!.toUpperCase()}${edge.slice(1)}`),
+        () => alignSelection(engine, session, edge),
+      );
+      item.dataset.action = `align-${edge}`;
+      return item;
+    });
+    const distributes = (['horizontal', 'vertical'] as const).map((axis) => {
+      const item = menuItem(
+        t(`command.distribute${axis[0]!.toUpperCase()}${axis.slice(1)}`),
+        canDistribute(session)
+          ? () => distributeSelection(engine, session, axis)
+          : undefined,
+      );
+      if (!canDistribute(session)) item.removeAttribute('title');
+      item.dataset.action = `distribute-${axis}`;
+      item.classList.add(
+        ...(axis === 'horizontal' ? ['canvas-context-menu-divider'] : []),
+      );
+      return item;
+    });
+    const relative = document.createElement('button');
+    relative.type = 'button';
+    relative.setAttribute('role', 'menuitemcheckbox');
+    relative.setAttribute('aria-checked', String(session.alignToCanvas));
+    relative.dataset.action = 'align-to-canvas';
+    relative.className = 'canvas-context-menu-divider';
+    relative.textContent = t('command.alignToCanvas');
+    relative.onclick = (event) => {
+      event.stopPropagation();
+      session.setAlignToCanvas(!session.alignToCanvas);
+      showCanvasAlignMenu(reopen);
+    };
+    canvasMenu.replaceChildren(back, ...aligns, ...distributes, relative);
+    back.focus();
+  };
   const openCanvasMenu = (point: Point2, layerId: string | null) => {
     const clips = selectedClips(session.source, session.selectedIds);
     const items: HTMLButtonElement[] = layerId
@@ -486,6 +541,21 @@ export function mountEditorShell(
             ),
           ]
         : [];
+    if (layerId) {
+      const align = document.createElement('button');
+      align.type = 'button';
+      align.setAttribute('role', 'menuitem');
+      align.dataset.action = 'align';
+      align.textContent = `${t('command.align')} ›`;
+      align.onclick = (event) => {
+        event.stopPropagation();
+        showCanvasAlignMenu(() => {
+          hideCanvasMenu();
+          openCanvasMenu(point, layerId);
+        });
+      };
+      items.push(align);
+    }
     for (const label of CANVAS_MENU_PLACEHOLDERS) items.push(menuItem(label));
     if (items.length > CANVAS_MENU_PLACEHOLDERS.length)
       items[items.length - CANVAS_MENU_PLACEHOLDERS.length]!.classList.add(
@@ -1291,6 +1361,8 @@ export function mountEditorShell(
       video: frames.debug,
       transport: timeline?.playback.clock ?? session.currentTime,
     }),
+    /** Dev/test-only: the active gesture's snap guides (CV-013). */
+    canvasDebug: () => ({ guides: interaction.guides }),
     message,
     refresh,
     setSaveStatus,

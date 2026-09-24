@@ -65,6 +65,11 @@ export interface RenderSource {
   readonly measureText?: TextMeasurer;
   readonly capabilities?: Readonly<Record<string, TransformCapabilities>>;
   readonly hoveredHandle?: string | number;
+  /** CV-013: transient snap guides of the active canvas gesture. */
+  readonly guides?: readonly {
+    readonly axis: 'x' | 'y';
+    readonly value: number;
+  }[];
   readonly frames?: FrameProvider;
   readonly playing?: boolean;
 }

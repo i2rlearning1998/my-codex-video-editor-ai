@@ -108,3 +108,5 @@ There is no second store, persisted matrix, parent index, scene cache, engine re
 ## Amendment note (2026-09-24)
 
 The owner-authorized CV-008 change (Alt resize-from-center) is an interaction rule. It is recorded in [TRANSFORM_INTERACTION_CONTRACT.md](TRANSFORM_INTERACTION_CONTRACT.md) revision 4. The spatial semantics in this document are unchanged: the local origin stays `(0,0)`, the matrix order stays `T * R * S`, and no field is added.
+
+Revision 5 of the interaction contract (snapping with smart guides, CV-013, and the W2-E draw mode) changes only the pointer an interaction receives. Alignment (CV-025) writes ordinary position values. The spatial semantics here are unchanged.
