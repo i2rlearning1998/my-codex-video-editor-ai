@@ -128,6 +128,8 @@ async function run(job: ExportJob): Promise<void> {
   const sourceAt = (time: number, frames?: FrameProvider): RenderSource => ({
     // ANI-003: the same evaluation as the preview.
     composition: compositionAt(job.composition, time),
+    // W5-C: animation presets, drawn exactly like the preview.
+    animate: true,
     assets: job.assets,
     background: job.background,
     currentTime: time,

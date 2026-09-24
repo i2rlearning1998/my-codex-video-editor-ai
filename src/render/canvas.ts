@@ -196,6 +196,12 @@ export function drawComposition(
       try {
         context.setTransform(...multiplyMatrices(view, item.matrix));
         context.globalAlpha = item.opacity;
+        // W5-C Wipe: only the revealed part of the box is drawn.
+        if (item.reveal !== undefined) {
+          context.beginPath();
+          context.rect(0, 0, item.size.width * item.reveal, item.size.height);
+          context.clip();
+        }
         // W4-B: decoded media replaces the placeholder once its frame is ready.
         const frame = item.media
           ? source.frames?.frame(item.media, source.playing ?? false)

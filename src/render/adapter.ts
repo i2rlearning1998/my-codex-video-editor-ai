@@ -19,6 +19,7 @@ import {
 import { layoutText, type TextMeasurer } from './text-layout';
 import type { TransformCapabilities } from './transform-capabilities';
 import { drawingOf, type DrawingPath } from './drawing';
+import { applyPresets } from './presets';
 
 export interface LayerPreview extends TransformPreview {
   readonly textBox?: { readonly width: number; readonly height: number };
@@ -68,6 +69,8 @@ export interface RenderSource {
   readonly hoveredHandle?: string | number;
   /** SHP-018: the freehand stroke being drawn (composition space). */
   readonly drawing?: DrawingPath & { readonly opacity: number };
+  /** W5-C: draw with the clips' animation presets (picking never sets this). */
+  readonly animate?: boolean;
   /** CV-013: transient snap guides of the active canvas gesture. */
   readonly guides?: readonly {
     readonly axis: 'x' | 'y';
@@ -95,6 +98,8 @@ export interface RenderItem {
   readonly media?: MediaFrameRequest;
   /** SHP-019: a freehand drawing's stroke in local coordinates. */
   readonly path?: DrawingPath;
+  /** W5-C Wipe: the visible fraction of the box, from the left. */
+  readonly reveal?: number;
 }
 const defaults = {
   image: [320, 180],
@@ -167,10 +172,22 @@ export function locateLayer(
 }
 
 /** A disposable projection per render/hit-test, never an editable canvas model or cache. */
-export function deriveRenderItems(source: RenderSource): {
+export function deriveRenderItems(input: RenderSource): {
   items: readonly RenderItem[];
   warnings: readonly string[];
 } {
+  // W5-C: drawing (not picking) applies the clips' animation presets.
+  const source: RenderSource = input.animate
+    ? {
+        ...input,
+        animate: false,
+        composition: applyPresets(
+          input.composition,
+          input.assets,
+          input.currentTime ?? 0,
+        ),
+      }
+    : input;
   const items: RenderItem[] = [],
     warnings: string[] = [];
   const visit = (
@@ -247,6 +264,14 @@ export function deriveRenderItems(source: RenderSource): {
             ...(wrapped ? { lines: wrapped.lines } : {}),
             ...(media ? { media } : {}),
             ...(drawing ? { path: drawing } : {}),
+            ...(numericProperty(layer, 'presetReveal') !== undefined
+              ? {
+                  reveal: Math.min(
+                    1,
+                    Math.max(0, numericProperty(layer, 'presetReveal')!),
+                  ),
+                }
+              : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
             matrix: world.matrix,
