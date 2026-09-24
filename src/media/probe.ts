@@ -90,7 +90,10 @@ async function loadElement(
     return image;
   }
   const element = document.createElement(kind);
-  element.preload = 'metadata';
+  // With 'metadata', Chromium cancels its own fetch once it has the header, which
+  // shows up as an aborted request; 'auto' lets the fetch finish (the browser still
+  // caps how much it buffers, so large files are not read whole).
+  element.preload = 'auto';
   element.muted = true;
   const loaded = waitFor(element, 'loadedmetadata', signal);
   element.src = url;
@@ -105,9 +108,34 @@ async function loadElement(
   return element;
 }
 
-function release(element: HTMLMediaElement | HTMLImageElement): void {
-  element.removeAttribute('src');
-  if ('load' in element) element.load();
+const settle = (element: HTMLMediaElement, event: string) =>
+  new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      element.removeEventListener(event, done);
+      element.removeEventListener('error', done);
+      resolve();
+    };
+    const timer = setTimeout(done, 3000);
+    element.addEventListener(event, done);
+    element.addEventListener('error', done);
+  });
+/**
+ * Frees the decoder. A media element keeps fetching after its metadata, so first
+ * let it decode its first frame and go idle (each wait at most 3 s): detaching the
+ * source mid-fetch would abort the request.
+ */
+async function release(
+  element: HTMLMediaElement | HTMLImageElement,
+): Promise<void> {
+  if (element instanceof HTMLMediaElement) {
+    if (element.readyState < HTMLMediaElement.HAVE_CURRENT_DATA)
+      await settle(element, 'loadeddata');
+    if (element.networkState === HTMLMediaElement.NETWORK_LOADING)
+      await settle(element, 'suspend');
+    element.removeAttribute('src');
+    element.load();
+  } else element.removeAttribute('src');
 }
 
 /** Reads size and duration; throws when this browser cannot decode the file. */
@@ -140,7 +168,7 @@ export async function probeMedia(
       }
       return { duration };
     } finally {
-      release(element);
+      await release(element);
     }
   } finally {
     URL.revokeObjectURL(url);
@@ -182,7 +210,7 @@ export async function makeThumbnail(
         canvas.toBlob(resolve, 'image/webp', 0.8),
       );
     } finally {
-      release(element);
+      await release(element);
     }
   } finally {
     URL.revokeObjectURL(url);

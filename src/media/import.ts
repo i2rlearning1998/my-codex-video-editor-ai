@@ -80,7 +80,17 @@ export async function importMediaFiles(
     try {
       const fingerprint = await mediaFingerprint(file);
       const id = assetIdFor(fingerprint);
+      key = mediaKey(fingerprint);
+      stored = await deps.store.has(key);
       if (deps.hasAsset(id)) {
+        // Already referenced: only restore the bytes if this browser lacks them
+        // (for example a project file opened on another machine).
+        if (!stored)
+          await deps.store.write(key, file, {
+            ...(deps.signal ? { signal: deps.signal } : {}),
+            onProgress: (written, total) => report(total ? written / total : 1),
+          });
+        stored = true;
         outcomes.push({
           fileName: file.name,
           status: 'duplicate',
@@ -89,15 +99,16 @@ export async function importMediaFiles(
         report(1);
         continue;
       }
-      key = mediaKey(fingerprint);
-      stored = await deps.store.has(key);
       if (!stored)
         await deps.store.write(key, file, {
           ...(deps.signal ? { signal: deps.signal } : {}),
           onProgress: (written, total) =>
             report(total ? (written / total) * 0.9 : 0.9),
         });
-      const stable = (await deps.store.read(key)) ?? file;
+      // Stored files can lose their MIME type (OPFS); SVG needs it to decode.
+      const read = (await deps.store.read(key)) ?? file;
+      const stable =
+        read.type || !file.type ? read : read.slice(0, read.size, file.type);
       let probe: MediaProbe;
       try {
         probe = await deps.probe(stable, kind, deps.signal);

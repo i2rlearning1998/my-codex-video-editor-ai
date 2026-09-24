@@ -21,6 +21,8 @@ import {
   type CompositionRenderer,
 } from '../render/canvas';
 import { renderInspector } from './inspector';
+import { mountMediaPanel } from './media-panel';
+import { openMediaStore, type MediaStore } from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
@@ -97,6 +99,8 @@ export interface ShellActions {
   exportProject?: () => void;
   importProject?: (file: File) => Promise<void>;
   openExample?: () => void | Promise<void>;
+  /** The media byte store (D-004); defaults to OPFS, then IndexedDB. */
+  mediaStore?: Promise<MediaStore | null>;
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -156,7 +160,8 @@ export function mountEditorShell(
           ${iconSvg('search')}
           <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
         </div>
-        <div class="import-row"><button type="button" class="button primary" id="import-media" disabled title="${t('import.comingSoon')}">${iconSvg('export')}${t('library.import')}</button></div>
+        <div class="import-row"><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
+        <div class="media-panel" id="media-panel" hidden></div>
         <div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="scene-heading" id="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div>
@@ -209,6 +214,13 @@ export function mountEditorShell(
       reportError(error);
     }
   };
+  const mediaPanel = mountMediaPanel({
+    container: element('#media-panel'),
+    engine,
+    session,
+    store: actions.mediaStore ?? openMediaStore(),
+    toast: (text, kind) => showToast(text, kind),
+  });
   const viewport = () => {
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
@@ -555,26 +567,7 @@ export function mountEditorShell(
         .find((button) => button.dataset.layerId === focusedId)
         ?.focus({ preventScroll: true });
     element('#layer-count').textContent = formatNumber(count);
-    let assets = root.querySelector<HTMLElement>('.available-assets');
-    if (!assets) {
-      assets = document.createElement('div');
-      assets.className = 'available-assets';
-      element('.library-placeholder').append(assets);
-    }
-    assets.replaceChildren(
-      ...source.assets
-        .filter((asset) => ['image', 'video', 'audio'].includes(asset.type))
-        .map((asset) => {
-          const item = document.createElement('button');
-          item.textContent = asset.name;
-          item.draggable = true;
-          item.dataset.assetId = asset.id;
-          item.title = t('asset.drag', { name: asset.name });
-          item.ondragstart = (event) =>
-            event.dataTransfer?.setData('application/x-editor-asset', asset.id);
-          return item;
-        }),
-    );
+    mediaPanel.render();
     element('#canvas-empty').hidden = count !== 0;
     renderInspector(
       element('#inspector-content'),
@@ -718,6 +711,7 @@ export function mountEditorShell(
     element('#media-source-tabs'),
     element('.library-search'),
     element('.import-row'),
+    element('#media-panel'),
   ];
   const sceneOnly = [element('#scene-heading'), element('#scene-list')];
   let activeCategory = 'Scene';
@@ -746,13 +740,21 @@ export function mountEditorShell(
       applyCategory(activeCategory);
     };
   const searchInput = element<HTMLInputElement>('#asset-search');
-  searchInput.oninput = () => {
-    const query = searchInput.value.trim().toLowerCase();
-    for (const item of root.querySelectorAll<HTMLButtonElement>(
-      '.available-assets button',
-    ))
-      item.hidden =
-        query.length > 0 && !item.textContent!.toLowerCase().includes(query);
+  searchInput.oninput = () => mediaPanel.filter(searchInput.value);
+  // MED-001/MED-002: the Import button and OS file drops both import into Project Media.
+  const importMedia = (files: readonly File[]) => {
+    if (!files.length) return;
+    activeCategory = 'Media';
+    applyCategory(activeCategory);
+    safely(() => mediaPanel.importFiles(files));
+  };
+  const mediaInput = element<HTMLInputElement>('#import-media-input');
+  element<HTMLButtonElement>('#import-media').onclick = () =>
+    mediaInput.click();
+  mediaInput.onchange = () => {
+    const files = [...(mediaInput.files ?? [])];
+    mediaInput.value = '';
+    importMedia(files);
   };
 
   // Right panel: shared "section" state driven by both the tab row and the icon rail.
@@ -893,12 +895,14 @@ export function mountEditorShell(
   window.addEventListener('dragover', (event) => {
     if (isFileDrag(event)) event.preventDefault();
   });
-  window.addEventListener('drop', (event) => {
+  const windowDrop = (event: DragEvent) => {
     if (!isFileDrag(event)) return;
     event.preventDefault();
     dragDepth = 0;
     dropOverlay.hidden = true;
-  });
+    importMedia([...(event.dataTransfer?.files ?? [])]);
+  };
+  window.addEventListener('drop', windowDrop);
 
   const resize = () =>
     safely(() => {
@@ -963,7 +967,17 @@ export function mountEditorShell(
             event.clientX - rect.left,
             event.clientY - rect.top,
           ]);
-          layer.transform.position = vector2(point[0], point[1]);
+          // MED-015: centred on the drop point at the media's own size, scaled
+          // down to fit inside the composition when it is larger.
+          const { width: w, height: h } = session.source.composition;
+          if (asset.width && asset.height) {
+            const fit = Math.min(1, w / asset.width, h / asset.height);
+            layer.transform.scale = vector2(fit, fit);
+            layer.transform.position = vector2(
+              point[0] - (asset.width * fit) / 2,
+              point[1] - (asset.height * fit) / 2,
+            );
+          } else layer.transform.position = vector2(point[0], point[1]);
         }
       }
       layer.assetId = id;
@@ -1159,6 +1173,8 @@ export function mountEditorShell(
       palette.dispose();
       newProjectForm.dispose();
       unsubscribeLanguage();
+      mediaPanel.dispose();
+      window.removeEventListener('drop', windowDrop);
       disposeWorkspace();
       canvas.removeEventListener('dragover', assetOver);
       canvas.removeEventListener('drop', assetDrop);

@@ -74,9 +74,8 @@ test('[TL-001] every layer is a clip on a track: example, canvas drops and group
   await page.screenshot({ path: testInfo.outputPath('example-as-clips.png') });
   // A media drop on the canvas becomes a clip on a free video track.
   await openFixtureProject('nle-example.json');
-  const asset = page
-    .locator('[draggable="true"]', { hasText: 'Footage 1080p' })
-    .first();
+  await page.locator('[data-category="Media"]').click();
+  const asset = page.locator('.media-card[data-name="Footage 1080p"]');
   const canvas = page.locator('canvas');
   const box = (await canvas.boundingBox())!;
   await asset.dragTo(canvas, {
