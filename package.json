@@ -21,6 +21,7 @@
     "verify": "npm run check && npm run e2e && node scripts/assert-no-test-hook.mjs && npm run ledger -- --report e2e-results/results.json"
   },
   "dependencies": {
+    "mediabunny": "1.59.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {

@@ -8,9 +8,7 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   clipTimeEffects,
-  clipAudioDetached,
   findClip,
-  type TimedClip,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -31,7 +29,7 @@ import {
   MediaPreviews,
   WaveformCache,
   openMediaStore,
-  soundSource,
+  listAudibleClips,
   type AudibleClip,
   type MediaStore,
   type PreviewAsset,
@@ -244,58 +242,12 @@ export function mountEditorShell(
     toast: (text, kind) => showToast(text, kind),
   });
   // W4-C: every clip that can sound, flattened from the canonical composition.
-  const audibleClips = (): AudibleClip[] => {
-    const assets = mediaAssets();
-    const solo = session.soloTrackIds;
-    const clips: AudibleClip[] = [];
-    // Structural view: the deep readonly clip types are too deep for the checker.
-    const tracks = session.source.composition.tracks as unknown as readonly {
-      readonly id: string;
-      readonly muted: boolean;
-      readonly clips: readonly (TimedClip & {
-        readonly id: string;
-        readonly layerId: string;
-        readonly assetId: string | null;
-        readonly enabled: boolean;
-      })[];
-    }[];
-    for (const track of tracks) {
-      if (track.muted || (solo.length && !solo.includes(track.id))) continue;
-      for (const clip of track.clips) {
-        const layer = locateLayer(
-          session.source.composition.layers,
-          clip.layerId,
-        )?.layer;
-        const asset = assets.find((item) => item.id === clip.assetId);
-        const effects = clipTimeEffects(clip);
-        if (
-          !clip.enabled ||
-          !layer ||
-          !asset ||
-          effects.freezeFrame !== null ||
-          !(
-            layer.type === 'audio' ||
-            (layer.type === 'video' && !clipAudioDetached(clip))
-          )
-        )
-          continue;
-        const source = soundSource(asset, assets);
-        if (!source) continue;
-        clips.push({
-          clipId: clip.id,
-          trackId: track.id,
-          sourceAssetId: source.id,
-          startTime: clip.startTime,
-          duration: clip.duration,
-          sourceIn: clip.sourceIn,
-          sourceOut: clip.sourceOut,
-          speed: clip.speed,
-          reversed: effects.reversed,
-        });
-      }
-    }
-    return clips;
-  };
+  const audibleClips = (): AudibleClip[] =>
+    listAudibleClips(
+      session.source.composition,
+      mediaAssets(),
+      session.soloTrackIds,
+    );
   // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
   let redrawQueued = false;
   const audio = new AudioEngine(decoder, () => {

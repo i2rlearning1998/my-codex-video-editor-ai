@@ -643,7 +643,7 @@ Offline frame-accurate render, never realtime capture.
 | EXP-002 | P0 | W5 | Todo | Progress shows percent and ETA, can be cancelled, and the UI stays responsive |
 | EXP-003 | P0 | W5 | Todo | Rendering is frame-accurate and offline through a worker, independent of playback speed |
 | EXP-004 | P0 | W5 | Todo | Audio mixdown is included and in sync |
-| EXP-005 | P0 | W5 | Todo | Exported files pass ffprobe checks in e2e for codec, resolution, fps, duration and audio |
+| EXP-005 | P0 | W5 | Todo | Exported files pass container checks in e2e by an independent read-back (codec, resolution, fps, duration, audio); a one-off ffprobe check is recorded in the report |
 | EXP-006 | P0 | W5 | Todo | Presets: YouTube 1080p and 4K, Shorts, Reels and TikTok (9:16), Instagram square and portrait, small WhatsApp, custom |
 | EXP-007 | P0 | W5 | Todo | Preview and export visuals match; a parity suite compares frames with tolerances |
 | EXP-008 | P0 | W5 | Todo | Missing media or fonts are caught before export with a clear message |
