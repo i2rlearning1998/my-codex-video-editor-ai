@@ -1,4 +1,4 @@
-import { test, expect, hook, toScreen, artboard } from './fixtures';
+import { test, expect, hook, toScreen, artboard, rulerBox } from './fixtures';
 import type { Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function seek(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   const zoom = (await hook(page)).session.timelinePxPerSecond;
   await page.mouse.click(box.x + seconds * zoom, box.y + 8);
   await expect

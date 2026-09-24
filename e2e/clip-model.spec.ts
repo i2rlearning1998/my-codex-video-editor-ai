@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, rulerBox } from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2, clip-b 3..5 · Video 2: clip-c 1..4 · Video 3: empty
@@ -34,7 +34,7 @@ async function selectClip(page: Page, id: string) {
   await expect(clipEl(page, id)).toHaveAttribute('aria-pressed', 'true');
 }
 async function seek(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   await page.mouse.click(box.x + seconds * 80, box.y + 8);
   await expect
     .poll(async () => (await hook(page)).session.time)
@@ -179,7 +179,7 @@ test('[TL-020][TL-030] a drop onto occupied time inserts, previews the push and 
   await expect(marker).toBeVisible();
   await expect(marker).toHaveAttribute('data-time', '2.5');
   await expect(clipEl(page, 'clip-b')).toHaveClass(/pushed/);
-  const ruler = (await page.locator('.timeline-ruler').boundingBox())!;
+  const ruler = await rulerBox(page);
   expect((await clipEl(page, 'clip-b').boundingBox())!.x - ruler.x).toBeCloseTo(
     4.5 * 80,
     0,

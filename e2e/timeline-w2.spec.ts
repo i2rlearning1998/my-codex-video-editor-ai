@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen } from './fixtures';
+import { test, expect, hook, toScreen, rulerBox } from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2 (source 0..2 of 6 s), clip-b 3..5 (source 1..3)
@@ -26,7 +26,7 @@ async function clips(page: Page) {
   return (id: string) => map.get(id)!;
 }
 async function seek(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   await page.mouse.click(box.x + seconds * 80, box.y + 8);
   await expect
     .poll(async () => (await hook(page)).session.time)
@@ -96,7 +96,7 @@ test('[TL-055] scrolling or zooming out near the end keeps extending the ruler; 
   await expect
     .poll(async () => (await hook(page)).session.timelinePxPerSecond)
     .toBeLessThan(30);
-  const ruler = (await page.locator('.timeline-ruler').boundingBox())!;
+  const ruler = await rulerBox(page);
   expect(ruler.x + ruler.width).toBeGreaterThanOrEqual(box.x + box.width - 1);
   // Clicking the ruler past the content end parks the playhead at the end.
   const zoom = (await hook(page)).session.timelinePxPerSecond;
@@ -255,7 +255,7 @@ test('[TL-058] a cross-track drag shows a ghost at the landing track and time, c
   await expect(ghost).toBeVisible();
   await expect(ghost).toHaveAttribute('data-start-time', '1.5');
   const ghostBox = (await ghost.boundingBox())!;
-  const ruler = (await page.locator('.timeline-ruler').boundingBox())!;
+  const ruler = await rulerBox(page);
   expect(ghostBox.x - ruler.x).toBeCloseTo(1.5 * 80, 0);
   // The original stays dimmed in its own track at its original time.
   await expect(

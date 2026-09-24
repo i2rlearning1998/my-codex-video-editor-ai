@@ -85,6 +85,7 @@ describe('editor shell integration', () => {
       'Templates',
       'Audio',
       'Elements',
+      'Draw',
       'Transitions',
       'Scene',
     ]);

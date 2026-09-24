@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, artboard } from './fixtures';
+import { test, expect, hook, toScreen, artboard, rulerBox } from './fixtures';
 
 // W2-B proof debt: Claimed Wave 2 items proven the way a user does them.
 // Example project (default load) and nle-example.json at 80 px/s, 30 fps.
@@ -26,7 +26,7 @@ async function layer(page: Page, id: string) {
   return visit((await hook(page)).project.compositions[0]!.layers);
 }
 async function rulerX(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   const zoom = (await hook(page)).session.timelinePxPerSecond;
   return { x: box.x + seconds * zoom, y: box.y + 8 };
 }

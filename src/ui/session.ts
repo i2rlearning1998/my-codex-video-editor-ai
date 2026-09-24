@@ -1,6 +1,20 @@
 import type { TextMeasurer } from '../render/text-layout';
 import { clampTime, type EditorEngine } from '../core';
 import { locateLayer, type RenderSource } from '../render/adapter';
+import {
+  BRUSH_DEFAULTS,
+  DEFAULT_DRAW_COLOR,
+  MAX_BRUSH,
+  MIN_BRUSH,
+  type Brush,
+} from '../render/drawing';
+
+/** SHP-018 brush settings; transient like the selection. */
+export interface DrawStyle {
+  readonly size: number;
+  readonly color: string;
+  readonly opacity: number;
+}
 
 /** Transient identifiers, time and zoom only; canonical objects resolve on every read. */
 export class EditorSession {
@@ -14,6 +28,12 @@ export class EditorSession {
   #playing = false;
   /** CV-025: align relative to the canvas instead of the selection. */
   #alignToCanvas = false;
+  /** SHP-018 draw mode: the active brush, or null when not drawing. */
+  #drawBrush: Brush | null = null;
+  #drawStyle: DrawStyle = {
+    ...BRUSH_DEFAULTS.pen,
+    color: DEFAULT_DRAW_COLOR,
+  };
   #canvasZoom = 1;
   #compositionId: string;
   #listeners = new Set<() => void>();
@@ -95,6 +115,31 @@ export class EditorSession {
       ...(this.measureText ? { measureText: this.measureText } : {}),
       background: project.settings.backgroundColor,
     };
+  }
+  get drawBrush(): Brush | null {
+    return this.#drawBrush;
+  }
+  get drawStyle(): DrawStyle {
+    return this.#drawStyle;
+  }
+  /** Entering draw mode applies the brush's default size and opacity. */
+  setDrawBrush(brush: Brush | null): void {
+    if (brush === this.#drawBrush) return;
+    this.#drawBrush = brush;
+    if (brush)
+      this.#drawStyle = { ...this.#drawStyle, ...BRUSH_DEFAULTS[brush] };
+    this.#notify();
+  }
+  setDrawStyle(style: Partial<DrawStyle>): void {
+    const next = { ...this.#drawStyle, ...style };
+    if (
+      !(next.size >= MIN_BRUSH && next.size <= MAX_BRUSH) ||
+      !(next.opacity >= 0 && next.opacity <= 1) ||
+      !/^#[0-9a-fA-F]{6}$/.test(next.color)
+    )
+      throw new RangeError('Invalid brush settings');
+    this.#drawStyle = Object.freeze(next);
+    this.#notify();
   }
   get alignToCanvas(): boolean {
     return this.#alignToCanvas;

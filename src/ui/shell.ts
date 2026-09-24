@@ -47,6 +47,15 @@ import {
   canDistribute,
   distributeSelection,
 } from './align';
+import { DrawTool } from './draw-tool';
+import { mountDrawPanel } from './draw-panel';
+import { mountContextToolbar } from './context-toolbar';
+import {
+  canCopyStyle,
+  copyStyle,
+  hasStyle,
+  pasteStyle,
+} from './style-clipboard';
 import {
   contextActions,
   performEdit,
@@ -83,6 +92,7 @@ const RAIL_CATEGORIES = [
   'Templates',
   'Audio',
   'Elements',
+  'Draw',
   'Transitions',
   'Scene',
 ] as const;
@@ -93,6 +103,7 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Templates: 'templates',
   Audio: 'audio',
   Elements: 'elements',
+  Draw: 'pen',
   Transitions: 'transitions',
   Scene: 'group',
 };
@@ -183,6 +194,7 @@ export function mountEditorShell(
         <div class="import-row"><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
         <div class="media-panel" id="media-panel" hidden></div>
         <div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
+        <div class="draw-panel" id="draw-panel" hidden></div>
         <div class="scene-heading" id="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div>
         <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
@@ -196,7 +208,7 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -341,6 +353,7 @@ export function mountEditorShell(
           : {}),
         ...(interaction.preview ? { preview: interaction.preview } : {}),
         ...(interaction.guides.length ? { guides: interaction.guides } : {}),
+        ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
         ...(interaction.hoveredHandle !== null
           ? { hoveredHandle: interaction.hoveredHandle }
           : {}),
@@ -362,6 +375,15 @@ export function mountEditorShell(
   };
   const interaction = new TransformInteraction(engine, session, () =>
     safely(draw),
+  );
+  const drawTool = new DrawTool(engine, session, () => safely(draw));
+  // CV-035: the selected layer's context toolbar above the canvas.
+  const contextToolbar = mountContextToolbar(
+    element('#context-toolbar'),
+    engine,
+    session,
+    (field, value) => interaction.edit(field, value),
+    reportError,
   );
   const canvasMenu = element('#canvas-context-menu');
   let unregisterCanvasMenu: (() => void) | undefined;
@@ -542,6 +564,19 @@ export function mountEditorShell(
           ]
         : [];
     if (layerId) {
+      // CV-039: Copy style / Paste style.
+      const copy = menuItem(t('command.copyStyle'), () => copyStyle(session));
+      copy.dataset.action = 'copy-style';
+      copy.disabled = !canCopyStyle(session);
+      const paste = menuItem(
+        t('command.pasteStyle'),
+        hasStyle() ? () => pasteStyle(engine, session) : undefined,
+      );
+      if (!hasStyle()) paste.removeAttribute('title');
+      paste.dataset.action = 'paste-style';
+      items.push(copy, paste);
+    }
+    if (layerId) {
       const align = document.createElement('button');
       align.type = 'button';
       align.setAttribute('role', 'menuitem');
@@ -582,6 +617,7 @@ export function mountEditorShell(
     (action) => performEdit(engine, session, action),
     true,
     openCanvasMenu,
+    drawTool,
   );
   const commandContext: CommandContext = {
     engine,
@@ -593,6 +629,8 @@ export function mountEditorShell(
   let renderedProject: unknown;
   let renderedSelection = '';
   const refresh = (force = false) => {
+    drawPanel.sync();
+    canvas.classList.toggle('drawing', session.drawBrush !== null);
     const source = session.source;
     const identity = JSON.stringify([
       source.composition.id,
@@ -634,6 +672,7 @@ export function mountEditorShell(
     }
     renderedProject = engine.state;
     renderedSelection = identity;
+    contextToolbar.render();
     element('#project-name').textContent = engine.state.metadata.name;
     const picker = element<HTMLSelectElement>('#composition');
     picker.replaceChildren(
@@ -907,6 +946,12 @@ export function mountEditorShell(
     element('#media-panel'),
   ];
   const sceneOnly = [element('#scene-heading'), element('#scene-list')];
+  // SHP-018: the Draw category; leaving it leaves draw mode.
+  const drawPanel = mountDrawPanel(
+    element('#draw-panel'),
+    session,
+    reportError,
+  );
   let activeCategory = 'Scene';
   const applyCategory = (category: string) => {
     for (const sibling of root.querySelectorAll('[data-category]'))
@@ -916,10 +961,13 @@ export function mountEditorShell(
       );
     const isMedia = category === 'Media';
     const isScene = category === 'Scene';
+    const isDraw = category === 'Draw';
     for (const el of mediaOnly) el.hidden = !isMedia;
     for (const el of sceneOnly) el.hidden = !isScene;
-    element('.library-placeholder').hidden = isMedia || isScene;
-    if (!isScene) {
+    element('#draw-panel').hidden = !isDraw;
+    if (!isDraw) session.setDrawBrush(null);
+    element('.library-placeholder').hidden = isMedia || isScene || isDraw;
+    if (!isScene && !isDraw) {
       const [titleKey, descriptionKey] = descriptions[category]!;
       element('#library-title').textContent = t(titleKey);
       element('#library-description').textContent = t(descriptionKey);
@@ -1318,11 +1366,25 @@ export function mountEditorShell(
         timeline.cancel();
         return true;
       }
+      // SHP-018: Esc with no stroke in progress leaves draw mode.
+      if (session.drawBrush) {
+        session.setDrawBrush(null);
+        return true;
+      }
       return false;
     },
     closeOverlay: () => closeTopOverlay() || (timeline?.closeMenu() ?? false),
     localKey: (event) => {
-      if (event.target === canvas) pointer.handleKey(event);
+      if (
+        session.drawBrush &&
+        event.key.toLowerCase() === 'v' &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        session.setDrawBrush(null);
+      } else if (event.target === canvas) pointer.handleKey(event);
       else if (
         event.target instanceof Node &&
         element('#timeline-foundation').contains(event.target)

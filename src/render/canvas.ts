@@ -11,6 +11,7 @@ import {
   type TextMeasurer,
 } from './text-layout';
 import { selectionGeometry } from './selection';
+import type { DrawingPath } from './drawing';
 import { deriveRenderItems, hitTest, type RenderSource } from './adapter';
 
 export interface Viewport {
@@ -133,6 +134,20 @@ export interface DrawOptions {
   readonly surround?: string;
 }
 
+function strokePath(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  path: DrawingPath,
+) {
+  context.strokeStyle = path.color;
+  context.lineWidth = path.width;
+  context.lineCap = path.cap;
+  context.lineJoin = path.cap === 'butt' ? 'miter' : 'round';
+  context.beginPath();
+  context.moveTo(...path.points[0]!);
+  for (const point of path.points.slice(1)) context.lineTo(...point);
+  context.stroke();
+}
+
 export function drawComposition(
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   source: RenderSource,
@@ -189,6 +204,11 @@ export function drawComposition(
           context.drawImage(frame, 0, 0, item.size.width, item.size.height);
           continue;
         }
+        // SHP-019: a drawing strokes its path; it has no box fill or clip.
+        if (item.path) {
+          strokePath(context, item.path);
+          continue;
+        }
         context.fillStyle = item.fill;
         if (item.kind !== 'text')
           context.fillRect(0, 0, item.size.width, item.size.height);
@@ -223,6 +243,12 @@ export function drawComposition(
       } finally {
         context.restore();
       }
+    }
+    // SHP-018: the stroke being drawn, in composition space.
+    if (source.drawing) {
+      context.setTransform(...view);
+      context.globalAlpha = source.drawing.opacity;
+      strokePath(context, source.drawing);
     }
   } finally {
     context.restore();
