@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export const jsonSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -26,8 +26,33 @@ export const nameSchema = z.string().trim().min(1).max(256);
 const finite = z.number().finite();
 const positive = finite.positive();
 const vector = z.tuple([finite, finite]);
+/**
+ * Schema 5 (ANI-002): the easing of the segment that starts at a keyframe.
+ * Absent means linear. Cubic x1 and x2 stay in [0, 1] so time is monotonic.
+ */
+export const easingSchema = z.union([
+  z.enum(['linear', 'ease-in', 'ease-out', 'ease-in-out', 'hold']),
+  z
+    .object({
+      type: z.literal('cubic'),
+      x1: finite.min(0).max(1),
+      y1: finite,
+      x2: finite.min(0).max(1),
+      y2: finite,
+    })
+    .strict(),
+]);
+export type Easing = z.infer<typeof easingSchema>;
 const frames = <T extends z.ZodTypeAny>(value: T) =>
-  z.array(z.object({ time: finite.nonnegative(), value }).strict());
+  z.array(
+    z
+      .object({
+        time: finite.nonnegative(),
+        value,
+        easing: easingSchema.optional(),
+      })
+      .strict(),
+  );
 const propertyBase = {
   animated: z.boolean(),
 

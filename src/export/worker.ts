@@ -25,7 +25,12 @@ import {
   canEncodeVideo,
   type VideoSample,
 } from 'mediabunny';
-import type { Asset, Composition, DeepReadonly } from '../core';
+import {
+  compositionAt,
+  type Asset,
+  type Composition,
+  type DeepReadonly,
+} from '../core';
 import {
   deriveRenderItems,
   type FrameProvider,
@@ -121,7 +126,8 @@ async function run(job: ExportJob): Promise<void> {
     return measure.measureText(text).width;
   };
   const sourceAt = (time: number, frames?: FrameProvider): RenderSource => ({
-    composition: job.composition,
+    // ANI-003: the same evaluation as the preview.
+    composition: compositionAt(job.composition, time),
     assets: job.assets,
     background: job.background,
     currentTime: time,

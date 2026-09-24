@@ -1,0 +1,384 @@
+{
+  "schemaVersion": 4,
+  "id": "be03312b-10dd-469c-98ac-00997b67f6df",
+  "metadata": {
+    "name": "V4 Keyframes",
+    "createdAt": "2026-09-20T19:31:47.016Z",
+    "updatedAt": "2026-09-20T19:31:47.016Z"
+  },
+  "settings": {
+    "backgroundColor": "#f0eee7",
+    "audioSampleRate": 48000
+  },
+  "compositions": [
+    {
+      "id": "46f0ce98-5945-45bd-9549-526f147c3383",
+      "name": "Main composition",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "duration": 5,
+      "layers": [
+        {
+          "id": "layer-a",
+          "name": "Intro",
+          "type": "video",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": true,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                100,
+                100
+              ],
+              "keyframes": [
+                {
+                  "time": 0,
+                  "value": [
+                    100,
+                    100
+                  ]
+                },
+                {
+                  "time": 2,
+                  "value": [
+                    500,
+                    300
+                  ]
+                }
+              ]
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": true,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": [
+                {
+                  "time": 0.5,
+                  "value": 0.2
+                },
+                {
+                  "time": 1.5,
+                  "value": 1
+                }
+              ]
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 400,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 225,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": true,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [
+                {
+                  "time": 0,
+                  "value": "#000000"
+                },
+                {
+                  "time": 2,
+                  "value": "#ffffff"
+                }
+              ],
+              "value": "#4a90d9"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": "asset-video",
+          "children": []
+        },
+        {
+          "id": "layer-b",
+          "name": "Main",
+          "type": "video",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                600,
+                100
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 400,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 225,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#d9904a"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": "asset-video",
+          "children": []
+        },
+        {
+          "id": "layer-c",
+          "name": "Photo",
+          "type": "image",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                300,
+                400
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 400,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 225,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#4ad990"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": "asset-image",
+          "children": []
+        }
+      ],
+      "tracks": [
+        {
+          "id": "video-1",
+          "name": "Video 1",
+          "type": "video",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "clip-a",
+              "name": "clip-a",
+              "layerId": "layer-a",
+              "assetId": "asset-video",
+              "startTime": 0,
+              "duration": 2,
+              "sourceIn": 0,
+              "sourceOut": 2,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            },
+            {
+              "id": "clip-b",
+              "name": "clip-b",
+              "layerId": "layer-b",
+              "assetId": "asset-video",
+              "startTime": 3,
+              "duration": 2,
+              "sourceIn": 1,
+              "sourceOut": 3,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "video-2",
+          "name": "Video 2",
+          "type": "video",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "clip-c",
+              "name": "clip-c",
+              "layerId": "layer-c",
+              "assetId": "asset-image",
+              "startTime": 1,
+              "duration": 3,
+              "sourceIn": 0,
+              "sourceOut": 3,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "video-3",
+          "name": "Video 3",
+          "type": "video",
+          "order": 2,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      ],
+      "markers": [],
+      "audioTracks": []
+    }
+  ],
+  "assets": [
+    {
+      "id": "asset-video",
+      "name": "Footage 1080p",
+      "type": "video",
+      "source": {
+        "kind": "local",
+        "reference": "video_1080p_landscape_30fps.mp4"
+      },
+      "metadata": {},
+      "duration": 6
+    },
+    {
+      "id": "asset-image",
+      "name": "Landscape photo",
+      "type": "image",
+      "source": {
+        "kind": "local",
+        "reference": "image_landscape_4000x3000.jpg"
+      },
+      "metadata": {},
+      "duration": 5
+    },
+    {
+      "id": "asset-audio",
+      "name": "Music 20s",
+      "type": "audio",
+      "source": {
+        "kind": "local",
+        "reference": "audio_music_like_20s.mp3"
+      },
+      "metadata": {},
+      "duration": 20
+    }
+  ]
+}

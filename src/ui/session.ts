@@ -1,5 +1,5 @@
 import type { TextMeasurer } from '../render/text-layout';
-import { clampTime, type EditorEngine } from '../core';
+import { clampTime, compositionAt, type EditorEngine } from '../core';
 import { locateLayer, type RenderSource } from '../render/adapter';
 import {
   BRUSH_DEFAULTS,
@@ -105,9 +105,11 @@ export class EditorSession {
   get source(): RenderSource {
     const project = this.engine.state;
     return {
-      composition: project.compositions.find(
-        (item) => item.id === this.#compositionId,
-      )!,
+      // W5-B: animated values evaluated at the playhead (same code as export).
+      composition: compositionAt(
+        project.compositions.find((item) => item.id === this.#compositionId)!,
+        this.#currentTime,
+      ),
       assets: project.assets,
       currentTime: this.#currentTime,
       selectedIds: this.#selection,
