@@ -11,12 +11,49 @@ const REQUIRE_H264 = process.env.REQUIRE_H264 === '1';
 const MEDIA = 'tests/fixtures/media';
 const CODE = 'video_frame_code_320x180_4s.webm';
 
+/**
+ * Test-side decoding of exported files. The whole file is buffered before use
+ * (preload 'auto' plus a wait on `buffered`), so no media request is still in flight
+ * when the test ends; an in-flight blob request would be aborted and trip the
+ * error guard (the same mechanism as D-056 in the app).
+ */
+async function installVideoLoader(page: Page) {
+  await page.addInitScript(() => {
+    (
+      window as unknown as {
+        __loadVideo(data: Uint8Array, type: string): Promise<HTMLVideoElement>;
+      }
+    ).__loadVideo = async (data, type) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.preload = 'auto';
+      video.src = URL.createObjectURL(new Blob([data], { type }));
+      await new Promise((resolve) => (video.onloadeddata = resolve));
+      const started = performance.now();
+      await new Promise<void>((resolve) => {
+        const check = () => {
+          const buffered = video.buffered;
+          if (
+            (buffered.length &&
+              buffered.end(buffered.length - 1) >= video.duration - 0.05) ||
+            performance.now() - started > 10_000
+          )
+            resolve();
+          else setTimeout(check, 20);
+        };
+        check();
+      });
+      return video;
+    };
+  });
+}
 async function openWithMedia(
   page: Page,
   project: string,
   files: string[],
   open: (name: string) => Promise<void>,
 ) {
+  await installVideoLoader(page);
   await page.goto('/');
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
@@ -99,10 +136,14 @@ async function exportedCodes(
       const binary = atob(base64);
       const data = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
-      const video = document.createElement('video');
-      video.muted = true;
-      video.src = URL.createObjectURL(new Blob([data], { type: mime }));
-      await new Promise((resolve) => (video.onloadeddata = resolve));
+      const video = await (
+        window as unknown as {
+          __loadVideo(
+            data: Uint8Array,
+            type: string,
+          ): Promise<HTMLVideoElement>;
+        }
+      ).__loadVideo(data, mime);
       const canvas = document.createElement('canvas');
       canvas.width = 1280;
       canvas.height = 720;
@@ -299,10 +340,14 @@ test.describe('frame code', () => {
         const binary = atob(base64);
         const data = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
-        const video = document.createElement('video');
-        video.muted = true;
-        video.src = URL.createObjectURL(new Blob([data], { type }));
-        await new Promise((resolve) => (video.onloadeddata = resolve));
+        const video = await (
+          window as unknown as {
+            __loadVideo(
+              data: Uint8Array,
+              type: string,
+            ): Promise<HTMLVideoElement>;
+          }
+        ).__loadVideo(data, type);
         await new Promise((resolve) => {
           video.onseeked = resolve;
           video.currentTime = 0.5 / 30;
@@ -368,12 +413,14 @@ test.describe('frame code', () => {
           context.drawImage(source, 0, 0, 1280, 720);
           return context.getImageData(0, 0, 1280, 720).data;
         };
-        const video = document.createElement('video');
-        video.muted = true;
-        video.src = URL.createObjectURL(
-          new Blob([decode(video64)], { type: mime }),
-        );
-        await new Promise((resolve) => (video.onloadeddata = resolve));
+        const video = await (
+          window as unknown as {
+            __loadVideo(
+              data: Uint8Array,
+              type: string,
+            ): Promise<HTMLVideoElement>;
+          }
+        ).__loadVideo(decode(video64), mime);
         await new Promise((resolve) => {
           video.onseeked = resolve;
           video.currentTime = 45.5 / 30;
@@ -451,10 +498,14 @@ test('[EXP-004] the audio mix is in the file and in sync with the picture', asyn
           if (Math.abs(samples[i]!) > 0.18) return i / rate;
         return null;
       };
-      const video = document.createElement('video');
-      video.muted = true;
-      video.src = URL.createObjectURL(new Blob([data], { type: mime }));
-      await new Promise((resolve) => (video.onloadeddata = resolve));
+      const video = await (
+        window as unknown as {
+          __loadVideo(
+            data: Uint8Array,
+            type: string,
+          ): Promise<HTMLVideoElement>;
+        }
+      ).__loadVideo(data, mime);
       const canvas = document.createElement('canvas');
       canvas.width = 64;
       canvas.height = 36;
