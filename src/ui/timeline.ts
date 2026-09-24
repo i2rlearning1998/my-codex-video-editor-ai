@@ -13,10 +13,18 @@ import {
   trackAcceptsLayer,
   type EditorEngine,
   type Command,
+  type Easing,
 } from '../core';
 import { t, formatNumber } from '../i18n';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import type { EditorSession } from './session';
+import { keyframeTimes } from './keyframes';
+import {
+  hasCopiedKeyframes,
+  moveSelectedKeyframes,
+  runKeyframeAction,
+  setSelectedEasing,
+} from './keyframe-edit';
 import {
   STRIP_FRAMES,
   WAVE_RATE,
@@ -632,9 +640,45 @@ export function mountTimeline(
       }
     | undefined;
   let suppressClick = false;
+  /** ANI-004: the frame-quantized offset of a keyframe drag in progress. */
+  let keyframeDrag: { delta: number } | undefined;
+  const isSelectedKeyframe = (layerId: string, time: number) =>
+    session.selectedKeyframes.some(
+      (item) => item.layerId === layerId && item.time === time,
+    );
+  /** One diamond per keyframe time of a layer (all animated properties). */
+  const appendKeyframes = (
+    track: HTMLElement,
+    layerId: string,
+    times: readonly number[],
+    zoom: number,
+  ) => {
+    for (const time of times) {
+      const selected = isSelectedKeyframe(layerId, time);
+      const shown =
+        selected && keyframeDrag
+          ? Math.max(0, time + keyframeDrag.delta)
+          : time;
+      const diamond = button(
+        iconSvg('diamondFilled', 12),
+        'keyframe',
+        layerId,
+        true,
+      );
+      diamond.className = `timeline-keyframe${selected ? ' selected' : ''}`;
+      diamond.dataset.time = String(time);
+      diamond.setAttribute('aria-pressed', String(selected));
+      diamond.title = t('timeline.keyframeAt', {
+        time: formatTimelineTime(time),
+      });
+      diamond.setAttribute('aria-label', diamond.title);
+      diamond.style.left = `${timeToPixel(shown, zoom)}px`;
+      track.append(diamond);
+    }
+  };
   let pointer: {
     id: number;
-    kind: 'clip' | 'playhead' | 'marker' | 'marquee';
+    kind: 'clip' | 'playhead' | 'marker' | 'marquee' | 'keyframe';
     start: number;
     startY: number;
     scrollY: number;
@@ -738,13 +782,15 @@ export function mountTimeline(
       span,
       guideTime,
       session.soloTrackIds,
+      session.selectedKeyframes,
     ]);
     if (
       renderedProject === engine.state &&
       renderedIdentity === identity &&
       !controller.preview &&
       !markerPreview &&
-      !marquee
+      !marquee &&
+      !keyframeDrag
     ) {
       const playhead = content.querySelector<HTMLElement>('.timeline-playhead');
       if (playhead)
@@ -753,7 +799,9 @@ export function mountTimeline(
     }
     renderedProject = engine.state;
     renderedIdentity =
-      controller.preview || markerPreview || marquee ? '' : identity;
+      controller.preview || markerPreview || marquee || keyframeDrag
+        ? ''
+        : identity;
     content.replaceChildren();
     renderedSpan = span;
     const width = timeToPixel(span, zoom);
@@ -925,31 +973,17 @@ export function mountTimeline(
         else appendFilmstrip(clip, entry.clip, zoom);
         appendTrimHandles(clip);
         track.append(clip);
-        const keyTimes = [
-          ...new Set(
-            Object.values(
-              entry.layer.transform as unknown as Record<
-                string,
-                { readonly keyframes: readonly { readonly time: number }[] }
-              >,
-            ).flatMap((property) =>
-              property.keyframes.map((frame) => frame.time),
-            ),
+        // Keyframes inside the clip's range (the clip carries them when moved).
+        appendKeyframes(
+          track,
+          entry.layer.id,
+          keyframeTimes(entry.layer).filter(
+            (time) =>
+              time >= entry.clip.startTime - 1e-9 &&
+              time <= entry.clip.startTime + entry.clip.duration + 1e-9,
           ),
-        ];
-        for (const time of keyTimes) {
-          const diamond = button(
-            iconSvg('diamondFilled', 12),
-            'keyframe',
-            entry.layer.id,
-            true,
-          );
-          diamond.className = 'timeline-keyframe';
-          diamond.dataset.time = String(time);
-          diamond.title = `Keyframe at ${formatTimelineTime(time)}s`;
-          diamond.style.left = `${timeToPixel(time, zoom)}px`;
-          track.append(diamond);
-        }
+          zoom,
+        );
       }
       if (crossTrack)
         for (const item of controller.previews) {
@@ -1038,31 +1072,7 @@ export function mountTimeline(
       );
       appendTrimHandles(clip);
       track.append(clip);
-      const times = [
-        ...new Set(
-          Object.values(
-            row.layer.transform as unknown as Record<
-              string,
-              { readonly keyframes: readonly { readonly time: number }[] }
-            >,
-          ).flatMap((property) =>
-            property.keyframes.map((frame) => frame.time),
-          ),
-        ),
-      ];
-      for (const time of times) {
-        const diamond = button(
-          iconSvg('diamondFilled', 12),
-          'keyframe',
-          row.layer.id,
-          true,
-        );
-        diamond.className = 'timeline-keyframe';
-        diamond.dataset.time = String(time);
-        diamond.title = `Keyframe at ${time}s`;
-        diamond.style.left = `${timeToPixel(time, zoom)}px`;
-        track.append(diamond);
-      }
+      appendKeyframes(track, row.layer.id, keyframeTimes(row.layer), zoom);
       line.append(header, track);
       content.append(line);
     }
@@ -1143,6 +1153,7 @@ export function mountTimeline(
     selectedMarkerId = undefined;
     marquee = undefined;
     pointerSnap = undefined;
+    keyframeDrag = undefined;
     controller.cancel();
     render();
     if (originalIds) session.selectMany(originalIds);
@@ -1170,6 +1181,18 @@ export function mountTimeline(
     if (!pointer || pointer.id !== event.pointerId) return;
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY))
       throw new RangeError('Invalid pointer coordinate');
+    if (pointer.kind === 'keyframe') {
+      const dx =
+        event.clientX - pointer.start + scroll.scrollLeft - pointer.scroll;
+      if (Math.abs(dx) >= 3) pointer.moved = true;
+      if (!pointer.moved) return;
+      const fps = session.source.composition.fps;
+      keyframeDrag = {
+        delta: Math.round(pixelToTime(dx, session.timelineZoom) * fps) / fps,
+      };
+      render();
+      return;
+    }
     if (pointer.kind === 'playhead') {
       if (Math.abs(event.clientX - pointer.start) >= 3) pointer.moved = true;
       if (!pointer.moved) return;
@@ -1284,6 +1307,37 @@ export function mountTimeline(
     safely(() => {
       if (pointer || event.button !== 0 || event.isPrimary === false) return;
       const target = event.target as HTMLElement;
+      // ANI-004: a diamond selects its keyframes and starts a drag.
+      const diamond = target.closest<HTMLElement>('[data-action="keyframe"]');
+      if (diamond) {
+        event.preventDefault();
+        session.setPlaying(false);
+        menu.hidden = true;
+        const item = {
+          layerId: diamond.dataset.id!,
+          time: Number(diamond.dataset.time),
+        };
+        const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+        if (additive) session.selectKeyframes([item], true);
+        else if (!isSelectedKeyframe(item.layerId, item.time)) {
+          if (!session.selectedIds.includes(item.layerId))
+            session.select(item.layerId);
+          session.selectKeyframes([item]);
+        }
+        pointer = {
+          id: event.pointerId,
+          kind: 'keyframe',
+          start: event.clientX,
+          startY: event.clientY,
+          scrollY: scroll.scrollTop,
+          scroll: scroll.scrollLeft,
+          originalTime: session.currentTime,
+          moved: false,
+        };
+        root.setPointerCapture(event.pointerId);
+        scroll.focus({ preventScroll: true });
+        return;
+      }
       const clip = target.closest<HTMLElement>('[data-action="clip"]');
       const ruler = target.closest('[data-action="seek"]');
       const marker = target.closest<HTMLElement>(
@@ -1357,6 +1411,11 @@ export function mountTimeline(
       release();
       pointerSnap = undefined;
       if (kind === 'clip') controller.finish();
+      if (kind === 'keyframe') {
+        const delta = keyframeDrag?.delta ?? 0;
+        keyframeDrag = undefined;
+        if (moved && delta !== 0) moveSelectedKeyframes(engine, session, delta);
+      }
       if (kind === 'marker' && markerPreview) {
         const marker = session.source.composition.markers.find(
           (item) => item.id === markerPreview!.id,
@@ -1375,7 +1434,7 @@ export function mountTimeline(
         // A click with no drag selects the marker (for keyboard delete) instead of moving it.
         if (!moved) selectedMarkerId = markerId;
       }
-      suppressClick = kind === 'marquee';
+      suppressClick = kind === 'marquee' || (kind === 'keyframe' && moved);
       marquee = undefined;
       render();
     });
@@ -1494,6 +1553,20 @@ export function mountTimeline(
         case 'keyframe':
           session.setPlaying(false);
           session.setCurrentTime(Number(target.dataset.time));
+          break;
+        case 'kf-easing':
+          setSelectedEasing(engine, session, target.dataset.easing as Easing);
+          break;
+        case 'kf-copy':
+        case 'kf-paste':
+        case 'kf-duplicate':
+        case 'kf-delete':
+          runKeyframeAction(
+            engine,
+            session,
+            target.dataset.action.slice(3) as
+              'copy' | 'paste' | 'duplicate' | 'delete',
+          );
           break;
         case 'delete-marker':
           performEdit(engine, session, 'delete-marker', menuMarker);
@@ -1724,6 +1797,32 @@ export function mountTimeline(
     item.setAttribute('role', role);
     return item;
   };
+  // ANI-002/ANI-004: easing presets and keyframe edits for the selection.
+  const showKeyframeMenu = () => {
+    const items: HTMLButtonElement[] = [];
+    for (const easing of [
+      'linear',
+      'ease-in',
+      'ease-out',
+      'ease-in-out',
+      'hold',
+    ] as const) {
+      const item = menuItem(
+        t(`easing.${easing}`),
+        'kf-easing',
+        'menuitemradio',
+      );
+      item.dataset.easing = easing;
+      items.push(item);
+    }
+    for (const action of ['copy', 'paste', 'duplicate', 'delete'] as const) {
+      const item = menuItem(t(`animation.${action}`), `kf-${action}`);
+      if (action === 'copy') item.classList.add('timeline-menu-divider');
+      if (action === 'paste') item.disabled = !hasCopiedKeyframes();
+      items.push(item);
+    }
+    menu.replaceChildren(...items);
+  };
   const showMainMenu = () => {
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
       (layer) => {
@@ -1798,6 +1897,24 @@ export function mountTimeline(
   };
   const contextmenu = (event: MouseEvent) => {
     event.preventDefault();
+    const diamond = (event.target as HTMLElement).closest<HTMLElement>(
+      '[data-action="keyframe"]',
+    );
+    if (diamond) {
+      const item = {
+        layerId: diamond.dataset.id!,
+        time: Number(diamond.dataset.time),
+      };
+      if (!isSelectedKeyframe(item.layerId, item.time)) {
+        if (!session.selectedIds.includes(item.layerId))
+          session.select(item.layerId);
+        session.selectKeyframes([item]);
+      }
+      showKeyframeMenu();
+      menu.hidden = false;
+      menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
+      return;
+    }
     const target = (event.target as HTMLElement).closest<HTMLElement>(
       '[data-id]',
     );

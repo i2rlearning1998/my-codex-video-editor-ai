@@ -350,11 +350,11 @@ describe('timeline foundation', () => {
       'project',
     );
     const loaded = store.load();
-    expect(loaded.project!.schemaVersion).toBe(4);
+    expect(loaded.project!.schemaVersion).toBe(5);
     expect(setItem).not.toHaveBeenCalled();
     store.save(loaded.project!);
     expect(values.get('project:backup')).toBe(original);
-    expect(JSON.parse(values.get('project')!).schemaVersion).toBe(4);
+    expect(JSON.parse(values.get('project')!).schemaVersion).toBe(5);
     values.set(
       'project',
       JSON.stringify({ ...legacyFixture, schemaVersion: 99 }),
@@ -689,7 +689,7 @@ describe('timeline foundation', () => {
   it('migrates nested schema-1 layers to full composition timing without losing content', () => {
     const original = JSON.stringify(legacyFixture);
     const migrated = deserializeProject(original);
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     const group = migrated.compositions[0]!.layers[0]!;
     expect([group.startTime, group.duration]).toEqual([0, 12]);
     expect([group.children[0]!.startTime, group.children[0]!.duration]).toEqual(

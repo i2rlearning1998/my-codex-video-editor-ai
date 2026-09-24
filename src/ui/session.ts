@@ -1,6 +1,7 @@
 import type { TextMeasurer } from '../render/text-layout';
-import { clampTime, type EditorEngine } from '../core';
+import { clampTime, compositionAt, type EditorEngine } from '../core';
 import { locateLayer, type RenderSource } from '../render/adapter';
+import { keyframeTimes } from './keyframes';
 import {
   BRUSH_DEFAULTS,
   DEFAULT_DRAW_COLOR,
@@ -9,6 +10,10 @@ import {
   type Brush,
 } from '../render/drawing';
 
+export interface SelectedKeyframe {
+  readonly layerId: string;
+  readonly time: number;
+}
 /** SHP-018 brush settings; transient like the selection. */
 export interface DrawStyle {
   readonly size: number;
@@ -28,6 +33,8 @@ export class EditorSession {
   #playing = false;
   /** CV-025: align relative to the canvas instead of the selection. */
   #alignToCanvas = false;
+  /** ANI-004: selected timeline keyframes (a layer and a time); transient. */
+  #keyframes: readonly SelectedKeyframe[] = Object.freeze([]);
   /** SHP-018 draw mode: the active brush, or null when not drawing. */
   #drawBrush: Brush | null = null;
   #drawStyle: DrawStyle = {
@@ -52,6 +59,7 @@ export class EditorSession {
       ) {
         this.#compositionId = engine.state.compositions[0]!.id;
         this.#selection = Object.freeze([]);
+        this.#keyframes = Object.freeze([]);
         this.#solo = Object.freeze([]);
         this.#enteredGroup = null;
         this.#currentTime = 0;
@@ -71,6 +79,15 @@ export class EditorSession {
         this.#selection.filter((id) =>
           locateLayer(this.source.composition.layers, id),
         ),
+      );
+      this.#keyframes = Object.freeze(
+        this.#keyframes.filter((item) => {
+          const layer = locateLayer(
+            this.source.composition.layers,
+            item.layerId,
+          )?.layer;
+          return !!layer && keyframeTimes(layer).includes(item.time);
+        }),
       );
       this.#playing = false;
       this.#currentTime = clampTime(
@@ -105,9 +122,11 @@ export class EditorSession {
   get source(): RenderSource {
     const project = this.engine.state;
     return {
-      composition: project.compositions.find(
-        (item) => item.id === this.#compositionId,
-      )!,
+      // W5-B: animated values evaluated at the playhead (same code as export).
+      composition: compositionAt(
+        project.compositions.find((item) => item.id === this.#compositionId)!,
+        this.#currentTime,
+      ),
       assets: project.assets,
       currentTime: this.#currentTime,
       selectedIds: this.#selection,
@@ -139,6 +158,23 @@ export class EditorSession {
     )
       throw new RangeError('Invalid brush settings');
     this.#drawStyle = Object.freeze(next);
+    this.#notify();
+  }
+  get selectedKeyframes(): readonly SelectedKeyframe[] {
+    return this.#keyframes;
+  }
+  /** Selects timeline keyframes; `add` toggles them into the current set. */
+  selectKeyframes(items: readonly SelectedKeyframe[], add = false): void {
+    let next = add ? [...this.#keyframes] : [];
+    for (const item of items) {
+      const at = next.findIndex(
+        (other) => other.layerId === item.layerId && other.time === item.time,
+      );
+      if (at >= 0 && add) next.splice(at, 1);
+      else if (at < 0) next.push(Object.freeze({ ...item }));
+    }
+    next = next.sort((a, b) => a.time - b.time);
+    this.#keyframes = Object.freeze(next);
     this.#notify();
   }
   get alignToCanvas(): boolean {
@@ -215,6 +251,11 @@ export class EditorSession {
     this.#notify();
   }
   select(id: string | null, toggle = false): void {
+    // Selecting layers clears the keyframe selection (ANI-004).
+    if (this.#keyframes.length) {
+      this.#keyframes = Object.freeze([]);
+      this.#notify();
+    }
     this.selectMany(
       id
         ? toggle
@@ -232,6 +273,7 @@ export class EditorSession {
     this.#compositionId = id;
     this.#currentTime = 0;
     this.#selection = Object.freeze([]);
+    this.#keyframes = Object.freeze([]);
     this.#solo = Object.freeze([]);
     this.#enteredGroup = null;
     this.#notify();

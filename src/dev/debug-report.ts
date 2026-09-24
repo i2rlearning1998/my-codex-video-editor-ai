@@ -94,6 +94,7 @@ export async function createDebugReport(
       canvasZoom: session.canvasZoom,
       timelinePxPerSecond: session.timelineZoom,
       soloTrackIds: [...session.soloTrackIds],
+      selectedKeyframes: session.selectedKeyframes.map((item) => ({ ...item })),
     },
     recentCommands: diagnostics.getCommands().slice(-30),
     recentErrors: diagnostics

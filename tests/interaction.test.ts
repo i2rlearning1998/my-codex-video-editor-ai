@@ -859,7 +859,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     const json = JSON.parse(JSON.stringify(s.engine.state));
     const loaded = new EditorEngine(json);
     const layer = loaded.state.compositions[0]!.layers[0]!;
-    expect(json.schemaVersion).toBe(4);
+    expect(json.schemaVersion).toBe(5);
     expect(layer.properties.width!.value).toBe(60);
     expect(
       JSON.parse(JSON.stringify(layer.properties.width)).constraints,

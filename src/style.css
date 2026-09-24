@@ -732,6 +732,85 @@ input[type='number'] {
   min-width: 0;
   width: 100%;
 }
+/* W5-B Inspector Animation section */
+.animation-panel {
+  padding: 0 var(--space-5) var(--space-5);
+}
+.animation-panel[hidden] {
+  display: none;
+}
+.animation-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-4) 0 var(--space-2);
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+}
+.animation-heading h4 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+.animation-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.animation-row span {
+  flex: 1;
+}
+.animation-button {
+  color: var(--color-text-muted);
+}
+.animation-button[aria-pressed='true'] {
+  color: var(--color-accent-hover);
+}
+.animation-selection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+  font-size: var(--font-size-sm);
+}
+.animation-selection p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.animation-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.animation-field span {
+  min-inline-size: 5em;
+  color: var(--color-text-muted);
+}
+.animation-field input,
+.animation-field select {
+  flex: 1;
+  min-inline-size: 0;
+}
+.animation-curve {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+}
+.animation-curve[hidden] {
+  display: none;
+}
+.animation-curve input {
+  min-inline-size: 0;
+}
+.animation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
 .keyframe-button {
   background: transparent;
   border-color: transparent;
@@ -1185,6 +1264,31 @@ input[type='number'] {
 }
 .nle-clip {
   isolation: isolate;
+}
+/* ANI-004 keyframe diamonds on the clip row (above the clip). */
+.timeline-keyframe {
+  position: absolute;
+  z-index: 2;
+  top: 9px;
+  inline-size: 16px;
+  block-size: 16px;
+  padding: 0;
+  margin-inline-start: -8px;
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 0;
+  cursor: grab;
+}
+.timeline-keyframe:hover {
+  color: var(--color-text);
+}
+.timeline-keyframe.selected {
+  color: var(--color-accent-hover);
+}
+.timeline-menu-divider {
+  border-top: 1px solid var(--color-border) !important;
 }
 .clip-filmstrip {
   position: absolute;

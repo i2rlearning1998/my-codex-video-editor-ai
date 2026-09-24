@@ -289,12 +289,12 @@ describe('T3 editing workspace', () => {
     ).toHaveLength(1);
     expect(
       deserializeProject(serializeProject(s.engine.state)).schemaVersion,
-    ).toBe(4);
+    ).toBe(5);
   });
   it('migrates schema 2 without changing existing timing/transforms', () => {
     const legacy = legacyFixture;
     const migrated = deserializeProject(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     expect(migrated.compositions).toEqual(
       legacy.compositions.map((composition) => ({
         ...composition,

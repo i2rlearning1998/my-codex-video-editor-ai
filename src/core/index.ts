@@ -7,3 +7,4 @@ export * from './serialization';
 export * from './transforms';
 export * from './time';
 export * from './timeline';
+export * from './animation';

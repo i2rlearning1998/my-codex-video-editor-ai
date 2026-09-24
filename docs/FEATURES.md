@@ -496,15 +496,15 @@ Preview and export must evaluate animation with the same code.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| ANI-001 | P0 | W5 | Todo | Every animatable property has a stopwatch: position, scale, rotation, opacity, anchor, color, text properties, effect parameters |
-| ANI-002 | P0 | W5 | Todo | Interpolation: linear, ease in, ease out, ease in-out, hold and custom cubic-bezier |
-| ANI-003 | P0 | W5 | Todo | Playback and export evaluate interpolated values; preview matches export |
-| ANI-004 | P0 | W5 | Todo | Keyframes can be moved, copied, pasted, duplicated and deleted, single and multiple, in inspector and timeline |
-| ANI-005 | P0 | W5 | Todo | Previous and next keyframe navigation; a marker shows when the playhead is on a keyframe |
-| ANI-006 | P0 | W5 | Todo | Auto-keyframe: when a property has a stopwatch on, changes at the playhead create keyframes |
+| ANI-001 | P0 | W5 | Verified | Every animatable property has a stopwatch: position, scale, rotation, opacity, color (text and shape fill, drawing stroke) and text size; anchor and effect parameters get one when those properties exist (ADV and FX waves) |
+| ANI-002 | P0 | W5 | Verified | Interpolation: linear, ease in, ease out, ease in-out, hold and custom cubic-bezier |
+| ANI-003 | P0 | W5 | Verified | Playback and export evaluate interpolated values; preview matches export |
+| ANI-004 | P0 | W5 | Verified | Keyframes can be moved, copied, pasted, duplicated and deleted, single and multiple, in inspector and timeline |
+| ANI-005 | P0 | W5 | Verified | Previous and next keyframe navigation; a marker shows when the playhead is on a keyframe |
+| ANI-006 | P0 | W5 | Verified | Auto-keyframe: when a property has a stopwatch on, changes at the playhead create keyframes |
 | ANI-007 | P0 | W5 | Todo | Animation presets: in (fade, slide, zoom, pop, wipe, typewriter), out, and loop (pulse, float, spin, wiggle) apply in one click with adjustable duration |
 | ANI-008 | P0 | W5 | Todo | Ken Burns pan and zoom in one click for images |
-| ANI-009 | P0 | W5 | Claimed | Child layers follow parent transforms and inherit opacity during animation |
+| ANI-009 | P0 | W5 | Verified | Child layers follow parent transforms and inherit opacity during animation |
 | ANI-010 | P0 | W5 | Todo | Easing preset library with visual previews |
 | ANI-011 | P1 | W5 | Todo | Motion path drawn on the canvas with bezier handles |
 | ANI-012 | P1 | W5 | Todo | Text animation per character, word or line with stagger |

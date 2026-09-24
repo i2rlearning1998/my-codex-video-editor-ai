@@ -13,6 +13,7 @@ import {
   type AffineMatrix,
   type Command,
   type Point2,
+  hasAnimation,
 } from '../core';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
@@ -50,6 +51,7 @@ import {
 import { DrawTool } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { mountContextToolbar } from './context-toolbar';
+import { mountAnimationPanel } from './animation-panel';
 import {
   canCopyStyle,
   copyStyle,
@@ -214,6 +216,7 @@ export function mountEditorShell(
       </main>
       <aside class="inspector panel" aria-label="${t('inspector.title')}">
         <div id="inspector-content"></div>
+        <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
@@ -377,6 +380,13 @@ export function mountEditorShell(
     safely(draw),
   );
   const drawTool = new DrawTool(engine, session, () => safely(draw));
+  // W5-B: the Inspector's Animation section (stopwatches and keyframes).
+  const animationPanel = mountAnimationPanel(
+    element('#animation-panel'),
+    engine,
+    session,
+    reportError,
+  );
   // CV-035: the selected layer's context toolbar above the canvas.
   const contextToolbar = mountContextToolbar(
     element('#context-toolbar'),
@@ -632,9 +642,18 @@ export function mountEditorShell(
     drawPanel.sync();
     canvas.classList.toggle('drawing', session.drawBrush !== null);
     const source = session.source;
+    // W5-B: an animated selection shows time-dependent values, so the Inspector
+    // and toolbar re-render when the playhead moves (not every frame of playback).
+    const animatedSelection =
+      !session.playing &&
+      session.selectedIds.some((id) => {
+        const found = locateLayer(source.composition.layers, id);
+        return !!found && hasAnimation(found.layer);
+      });
     const identity = JSON.stringify([
       source.composition.id,
       session.selectedIds,
+      animatedSelection ? session.currentTime : null,
     ]);
     if (
       !force &&
@@ -667,12 +686,16 @@ export function mountEditorShell(
             }),
           );
         }
+      // ANI-005: keyframe markers follow the playhead (not every frame while playing).
+      if (!session.playing && !element('#inspector-content').hidden)
+        animationPanel.render();
       draw();
       return;
     }
     renderedProject = engine.state;
     renderedSelection = identity;
     contextToolbar.render();
+    if (!element('#inspector-content').hidden) animationPanel.render();
     element('#project-name').textContent = engine.state.metadata.name;
     const picker = element<HTMLSelectElement>('#composition');
     picker.replaceChildren(
@@ -1016,6 +1039,8 @@ export function mountEditorShell(
       el.setAttribute('aria-pressed', String(el.dataset.section === name));
     const isProperties = name === 'Properties';
     element('#inspector-content').hidden = !isProperties;
+    element('#animation-panel').hidden = true;
+    if (isProperties) animationPanel.render();
     rightEmpty.hidden = isProperties;
     if (!isProperties) {
       const [titleKey, descriptionKey] = rightDescriptions[name] ?? ['', ''];

@@ -369,6 +369,8 @@ export class TransformInteraction {
               gesture.compositionId,
               member.layer,
               member.value,
+              undefined,
+              this.session.currentTime,
             ),
           )
         : buildTransformCommands(
@@ -376,6 +378,7 @@ export class TransformInteraction {
             gesture.layer,
             gesture.value,
             gesture.textBox,
+            this.session.currentTime,
           );
       if (commands.length)
         this.engine.commands.transaction(
@@ -414,6 +417,8 @@ export class TransformInteraction {
         value,
         selectionBounds(source, found.layer.id)?.bounds,
       ),
+      undefined,
+      this.session.currentTime,
     );
     if (commands.length)
       this.engine.commands.transaction(`Set ${field}`, commands);

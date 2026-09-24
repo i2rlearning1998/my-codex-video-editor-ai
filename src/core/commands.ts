@@ -10,7 +10,9 @@ import {
   nameSchema,
   propertySchema,
   trackSchema,
+  type Layer,
   type Project,
+  type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
 import {
@@ -361,6 +363,16 @@ export function applyCommand(project: Project, command: Command): void {
       if (track.locked) throw new Error('Track is locked');
       if (!Number.isFinite(command.startTime + command.duration))
         throw new Error('Clip timing exceeds numerical limits');
+      // W5-B: a pure move (same length and source range) carries the layer's keyframes.
+      if (
+        command.duration === clip.duration &&
+        command.startTime !== clip.startTime &&
+        (command.sourceIn === undefined || command.sourceIn === clip.sourceIn)
+      ) {
+        const found = findLayer(composition.layers, clip.layerId);
+        if (found)
+          shiftKeyframes(found.layer, command.startTime - clip.startTime);
+      }
       clip.startTime = command.startTime;
       clip.duration = command.duration;
       if (command.sourceIn !== undefined && command.sourceOut !== undefined) {
@@ -545,6 +557,11 @@ export function applyCommand(project: Project, command: Command): void {
       if (!Number.isFinite(command.startTime + command.duration))
         throw new Error('Layer timing exceeds numerical limits');
       const { layer } = requireLayer(composition, command.layerId);
+      if (
+        command.duration === layer.duration &&
+        command.startTime !== layer.startTime
+      )
+        shiftKeyframes(layer, command.startTime - layer.startTime);
       layer.startTime = command.startTime;
       layer.duration = command.duration;
       return;
@@ -608,4 +625,29 @@ export function applyCommand(project: Project, command: Command): void {
       return;
     }
   }
+}
+
+/**
+ * W5-B: moves every keyframe of one layer by `delta` seconds. Times below 0
+ * clamp to 0; when two land on the same time the later keyframe wins.
+ */
+function shiftKeyframes(layer: Layer, delta: number): void {
+  const shift = (property: Property): Property => {
+    if (!property.keyframes.length) return property;
+    const byTime = new Map<number, (typeof property.keyframes)[number]>();
+    for (const frame of property.keyframes) {
+      const time = Math.max(0, frame.time + delta);
+      byTime.set(time, { ...frame, time });
+    }
+    return {
+      ...property,
+      keyframes: [...byTime.values()].sort((a, b) => a.time - b.time),
+    } as Property;
+  };
+  layer.transform = Object.fromEntries(
+    Object.entries(layer.transform).map(([key, value]) => [key, shift(value)]),
+  ) as Layer['transform'];
+  layer.properties = Object.fromEntries(
+    Object.entries(layer.properties).map(([key, value]) => [key, shift(value)]),
+  );
 }

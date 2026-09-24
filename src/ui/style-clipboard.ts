@@ -63,17 +63,24 @@ export function pasteStyleCommands(
   style: CopiedStyle,
 ): Command[] {
   const compositionId = source.composition.id;
+  const time = source.currentTime;
   return selectionRoots(source, ids).flatMap((layer) => [
-    ...buildTransformCommands(compositionId, layer, {
-      ...(layer.transform as TransformValues),
-      opacity: { value: style.opacity },
-    }),
+    ...buildTransformCommands(
+      compositionId,
+      layer,
+      {
+        ...(layer.transform as TransformValues),
+        opacity: { value: style.opacity },
+      },
+      undefined,
+      time,
+    ),
     ...(style.color
-      ? [colorCommand(compositionId, layer, style.color)]
+      ? [colorCommand(compositionId, layer, style.color, time)]
       : []
     ).filter((command): command is Command => !!command),
     ...(style.fontSize !== undefined
-      ? [fontSizeCommand(compositionId, layer, style.fontSize)]
+      ? [fontSizeCommand(compositionId, layer, style.fontSize, time)]
       : []
     ).filter((command): command is Command => !!command),
     ...(style.strokeWidth !== undefined

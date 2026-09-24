@@ -27,6 +27,7 @@ import {
   buildTransformCommands,
   type InspectorField,
 } from './transform-commands';
+import { copyProperty, isAnimated, withValueAt } from './keyframes';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 /** A control not built yet: its label key, ledger item and wave. */
@@ -127,8 +128,12 @@ function withValue(
   key: string,
   value: number | string,
   type: 'number' | 'color' | 'string',
+  time?: number,
 ) {
   const original = layer.properties[key];
+  // ANI-006: an animated property gets a keyframe at the playhead.
+  if (original && original.type === type && isAnimated(original))
+    return withValueAt(original, value, time) as never;
   const base =
     original && original.type === type
       ? propertySchema.parse(original as unknown)
@@ -148,6 +153,7 @@ export function colorCommand(
   compositionId: string,
   layer: SceneLayer,
   value: string,
+  time?: number,
 ): Command | null {
   const key =
     toolbarKind(layer) === 'drawing'
@@ -162,13 +168,14 @@ export function colorCommand(
     compositionId,
     layer,
     key,
-    withValue(layer, key, value, 'color'),
+    withValue(layer, key, value, 'color', time),
   );
 }
 export function fontSizeCommand(
   compositionId: string,
   layer: SceneLayer,
   value: number,
+  time?: number,
 ): Command | null {
   if (layer.type !== 'text') return null;
   if (!(value >= 1 && value <= 4096))
@@ -179,7 +186,7 @@ export function fontSizeCommand(
     compositionId,
     layer,
     'fontSize',
-    withValue(layer, 'fontSize', value, 'number'),
+    withValue(layer, 'fontSize', value, 'number', time),
   );
 }
 /** Brush size keeps the stroke in place: the path and box are re-padded. */
@@ -200,11 +207,31 @@ export function brushSizeCommands(
   });
   const shift = transformPoint(matrix, [resized.shift, resized.shift]);
   const [x, y] = layer.transform.position.value;
+  // An animated position moves by the same offset at every keyframe.
+  const position = layer.transform.position;
+  const moved = isAnimated(position)
+    ? [
+        {
+          type: 'SET_PROPERTY',
+          compositionId,
+          layerId: layer.id,
+          target: { kind: 'transform', key: 'position' },
+          property: {
+            ...copyProperty(position),
+            value: [x - shift[0], y - shift[1]],
+            keyframes: position.keyframes.map((frame) => ({
+              ...frame,
+              value: [frame.value[0] - shift[0], frame.value[1] - shift[1]],
+            })),
+          },
+        } as Command,
+      ]
+    : buildTransformCommands(compositionId, layer, {
+        ...(layer.transform as TransformValues),
+        position: { value: [x - shift[0], y - shift[1]] },
+      });
   return [
-    ...buildTransformCommands(compositionId, layer, {
-      ...(layer.transform as TransformValues),
-      position: { value: [x - shift[0], y - shift[1]] },
-    }),
+    ...moved,
     setProperty(
       compositionId,
       layer,
@@ -403,10 +430,16 @@ export function mountContextToolbar(
               const factor = value / 100 / Math.abs(sx);
               run(
                 'Set scale',
-                buildTransformCommands(compositionId, layer, {
-                  ...(layer.transform as TransformValues),
-                  scale: { value: [sx * factor, sy * factor] },
-                }),
+                buildTransformCommands(
+                  compositionId,
+                  layer,
+                  {
+                    ...(layer.transform as TransformValues),
+                    scale: { value: [sx * factor, sy * factor] },
+                  },
+                  undefined,
+                  session.currentTime,
+                ),
               );
             },
             '%',
@@ -459,6 +492,8 @@ export function mountContextToolbar(
                         ],
                         axis,
                       ),
+                      undefined,
+                      session.currentTime,
                     ),
                   );
                 },
@@ -474,7 +509,12 @@ export function mountContextToolbar(
             round(size?.type === 'number' ? size.value : 32, 2),
             (value) =>
               run('Set text size', [
-                fontSizeCommand(compositionId, layer, value),
+                fontSizeCommand(
+                  compositionId,
+                  layer,
+                  value,
+                  session.currentTime,
+                ),
               ]),
           );
         }
@@ -485,7 +525,9 @@ export function mountContextToolbar(
             t(id === 'fill' ? 'toolbar.fill' : 'toolbar.color'),
             colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
             (value) =>
-              run('Set color', [colorCommand(compositionId, layer, value)]),
+              run('Set color', [
+                colorCommand(compositionId, layer, value, session.currentTime),
+              ]),
           );
         case 'brush':
           return field(

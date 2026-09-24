@@ -52,6 +52,18 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     if (command.id === 'speed-normal') runCommand('speed-faster', context);
     if (command.id === 'paste') runCommand('copy', context);
     if (command.id === 'unlink') runCommand('link', context);
+    if (command.id.startsWith('keyframe-')) {
+      // Keyframes at 0 and 2 on the selected layer; the playhead sits at 1.
+      for (const time of [0, 2])
+        engine.commands.execute({
+          type: 'SET_KEYFRAME',
+          compositionId: engine.state.compositions[0]!.id,
+          layerId: ids[0]!,
+          key: 'position',
+          time,
+        });
+      session.setCurrentTime(1);
+    }
     if (command.id === 'paste-style') {
       // Copy a half-opacity style from layer 2, undo that edit, paste on layer 1.
       session.select(ids[1]!);
@@ -95,6 +107,10 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'cut-previous') expect(session.currentTime).toBe(0);
     else if (command.id === 'copy') expect(hasClipboard()).toBe(true);
     else if (command.id === 'copy-style') expect(hasStyle()).toBe(true);
+    else if (command.id === 'keyframe-previous')
+      expect(session.currentTime).toBe(0);
+    else if (command.id === 'keyframe-next')
+      expect(session.currentTime).toBe(2);
     else if (command.id === 'align-to-canvas')
       expect(session.alignToCanvas).toBe(true);
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);

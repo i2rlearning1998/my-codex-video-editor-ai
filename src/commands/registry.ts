@@ -6,6 +6,9 @@ import {
   canDistribute,
   distributeSelection,
 } from '../ui/align';
+import { locateLayer } from '../render/adapter';
+import { jumpToKeyframe, runKeyframeAction } from '../ui/keyframe-edit';
+import { keyframeTimes } from '../ui/keyframes';
 import {
   canCopyStyle,
   copyStyle,
@@ -60,17 +63,27 @@ const timeline = (
   isEnabled,
   run,
 });
+/** ANI-004: with timeline keyframes selected, these edits act on them. */
+const KEYFRAME_EDITS: Partial<
+  Record<EditAction, 'copy' | 'paste' | 'duplicate' | 'delete'>
+> = { copy: 'copy', paste: 'paste', duplicate: 'duplicate', delete: 'delete' };
 const edit = (id: EditAction, shortcut: string): RegisteredCommand => ({
   id,
   labelKey: `command.${id}`,
   shortcut,
   isEnabled: ({ session }) =>
+    (!!KEYFRAME_EDITS[id] && session.selectedKeyframes.length > 0) ||
     contextActions(
       session.source,
       session.selectedIds,
       session.currentTime,
     ).includes(id),
-  run: ({ engine, session }) => performEdit(engine, session, id),
+  run: ({ engine, session }) => {
+    const keyframeAction = KEYFRAME_EDITS[id];
+    if (keyframeAction && session.selectedKeyframes.length)
+      runKeyframeAction(engine, session, keyframeAction);
+    else performEdit(engine, session, id);
+  },
 });
 export const commands: readonly RegisteredCommand[] = Object.freeze([
   {
@@ -147,6 +160,23 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     shortcut: '',
     isEnabled: ({ session }) => canDistribute(session),
     run: ({ engine, session }) => distributeSelection(engine, session, axis),
+  })),
+  // ANI-005: previous and next keyframe of the selected layer.
+  ...([-1, 1] as const).map((direction): RegisteredCommand => ({
+    id: direction < 0 ? 'keyframe-previous' : 'keyframe-next',
+    labelKey:
+      direction < 0 ? 'command.keyframePrevious' : 'command.keyframeNext',
+    shortcut: direction < 0 ? ',' : '.',
+    isEnabled: ({ session }) => {
+      const layer = session.selectedId
+        ? locateLayer(session.source.composition.layers, session.selectedId)
+            ?.layer
+        : undefined;
+      return !!layer && keyframeTimes(layer).length > 0;
+    },
+    run: ({ session }) => {
+      jumpToKeyframe(session, direction);
+    },
   })),
   // CV-039: Copy style / Paste style (palette and canvas menu).
   {

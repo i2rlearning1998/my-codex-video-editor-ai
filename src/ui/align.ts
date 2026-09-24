@@ -62,7 +62,13 @@ function moveBy(
     transformPoint(inverse, [0, 0]),
     transformPoint(inverse, delta),
   );
-  return buildTransformCommands(source.composition.id, layer, value);
+  return buildTransformCommands(
+    source.composition.id,
+    layer,
+    value,
+    undefined,
+    source.currentTime,
+  );
 }
 
 /** One layer aligns to the canvas; several align to their combined bounds unless `toCanvas`. */
