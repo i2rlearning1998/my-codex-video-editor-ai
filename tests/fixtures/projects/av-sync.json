@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 4,
+  "id": "av-sync-project",
+  "metadata": {
+    "name": "AV Sync Fixture",
+    "createdAt": "2026-09-24T00:00:00.000Z",
+    "updatedAt": "2026-09-24T00:00:00.000Z"
+  },
+  "settings": {
+    "backgroundColor": "#f0eee7",
+    "audioSampleRate": 48000
+  },
+  "compositions": [
+    {
+      "id": "av-main",
+      "name": "Main composition",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "duration": 4,
+      "layers": [
+        {
+          "id": "layer-av",
+          "name": "video_av_sync_flash_beep_720p.webm",
+          "type": "video",
+          "startTime": 0,
+          "duration": 4,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                0,
+                0
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "media-dfdf9403ab8f3219",
+          "children": []
+        },
+        {
+          "id": "layer-tone",
+          "name": "audio_tone_440hz_3s.wav",
+          "type": "audio",
+          "startTime": 0,
+          "duration": 3,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                0,
+                0
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "media-2498c3ee7cc43364",
+          "children": []
+        }
+      ],
+      "tracks": [
+        {
+          "id": "video-1",
+          "name": "Video 1",
+          "type": "video",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "clip-av",
+              "name": "video_av_sync_flash_beep_720p.webm",
+              "layerId": "layer-av",
+              "assetId": "media-dfdf9403ab8f3219",
+              "startTime": 0,
+              "duration": 4,
+              "sourceIn": 0,
+              "sourceOut": 4,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "audio-1",
+          "name": "Audio 1",
+          "type": "audio",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "clip-tone",
+              "name": "audio_tone_440hz_3s.wav",
+              "layerId": "layer-tone",
+              "assetId": "media-2498c3ee7cc43364",
+              "startTime": 0,
+              "duration": 3,
+              "sourceIn": 0,
+              "sourceOut": 3,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        }
+      ],
+      "markers": [],
+      "audioTracks": []
+    }
+  ],
+  "assets": [
+    {
+      "id": "media-dfdf9403ab8f3219",
+      "name": "video_av_sync_flash_beep_720p.webm",
+      "type": "video",
+      "source": {
+        "kind": "local",
+        "reference": "media/dfdf9403ab8f32196f87a6099c032be1"
+      },
+      "metadata": {
+        "mimeType": "video/webm",
+        "size": 28138,
+        "fileName": "video_av_sync_flash_beep_720p.webm",
+        "lastModified": 0,
+        "fingerprint": "dfdf9403ab8f32196f87a6099c032be1"
+      },
+      "width": 1280,
+      "height": 720,
+      "duration": 4
+    },
+    {
+      "id": "media-2498c3ee7cc43364",
+      "name": "audio_tone_440hz_3s.wav",
+      "type": "audio",
+      "source": {
+        "kind": "local",
+        "reference": "media/2498c3ee7cc43364d33c6ba5ba146e1a"
+      },
+      "metadata": {
+        "mimeType": "audio/wav",
+        "size": 132344,
+        "fileName": "audio_tone_440hz_3s.wav",
+        "lastModified": 0,
+        "fingerprint": "2498c3ee7cc43364d33c6ba5ba146e1a"
+      },
+      "duration": 3
+    }
+  ]
+}

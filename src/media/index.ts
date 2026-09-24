@@ -4,3 +4,4 @@ export * from './probe';
 export * from './import';
 export * from './previews';
 export * from './frames';
+export * from './audio';

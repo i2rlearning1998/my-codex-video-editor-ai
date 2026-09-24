@@ -6,6 +6,7 @@ import {
   type ImportOutcome,
   type MediaPreviews,
   type MediaStore,
+  type WaveformCache,
 } from '../media';
 import { formatDuration, formatNumber, t } from '../i18n';
 import { iconSvg } from './icons';
@@ -17,6 +18,9 @@ export interface MediaPanelOptions {
   session: EditorSession;
   store: Promise<MediaStore | null>;
   previews: MediaPreviews;
+  waveforms: WaveformCache;
+  /** Called after an import, so other media views can look for new bytes. */
+  imported?(): void;
   toast(text: string, kind: 'info' | 'success' | 'error'): void;
 }
 
@@ -69,7 +73,51 @@ export function mountMediaPanel(options: MediaPanelOptions) {
   });
 
   // MED-018: thumbnails come from the shared, store-cached preview service.
+  // MED-019: audio cards draw their waveform instead of a picture.
+  const setWaveform = (card: HTMLElement, asset: Asset) => {
+    const slot = card.querySelector<HTMLElement>('.media-thumb')!;
+    const wave = options.waveforms.waveform(asset);
+    if (card.dataset.waveform === wave.state) return;
+    card.dataset.waveform = wave.state;
+    card.dataset.thumbnail = 'none';
+    if (wave.state !== 'ready') {
+      slot.innerHTML = `${iconSvg('audio', 22)}${
+        wave.state === 'loading'
+          ? `<span class="media-thumb-loading" aria-hidden="true"></span>`
+          : ''
+      }`;
+      return;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.className = 'media-waveform';
+    canvas.width = 160;
+    canvas.height = 90;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-waveform')
+        .trim();
+      const peaks = wave.peaks;
+      for (let x = 0; x < canvas.width; x++) {
+        const from = Math.floor((x / canvas.width) * peaks.length);
+        const to = Math.max(
+          from + 1,
+          Math.floor(((x + 1) / canvas.width) * peaks.length),
+        );
+        let peak = 0;
+        for (let index = from; index < to; index++)
+          peak = Math.max(peak, peaks[index] ?? 0);
+        const height = Math.max(1, (peak / wave.max) * canvas.height * 0.8);
+        context.fillRect(x, (canvas.height - height) / 2, 1, height);
+      }
+    }
+    slot.replaceChildren(canvas);
+  };
   const setThumb = (card: HTMLElement, asset: Asset) => {
+    if (asset.type === 'audio') {
+      setWaveform(card, asset);
+      return;
+    }
     const slot = card.querySelector<HTMLElement>('.media-thumb')!;
     const thumb = options.previews.thumbnail(asset);
     if (card.dataset.thumbnail === thumb.state && thumb.state !== 'ready')
@@ -97,6 +145,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     }
   };
   const unsubscribePreviews = options.previews.onChange(updateThumbnails);
+  const unsubscribeWaveforms = options.waveforms.onChange(updateThumbnails);
 
   const badge = (asset: Asset) =>
     asset.type === 'image'
@@ -263,6 +312,8 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       find('#media-import').hidden = true;
       // Bytes may now exist for cards that had none: try their previews again.
       options.previews.retry();
+      options.waveforms.retry();
+      options.imported?.();
     }
   };
 
@@ -281,6 +332,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       disposed = true;
       controller?.abort();
       unsubscribePreviews();
+      unsubscribeWaveforms();
     },
   };
 }

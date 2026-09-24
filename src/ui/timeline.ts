@@ -17,7 +17,13 @@ import {
 import { t, formatNumber } from '../i18n';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import type { EditorSession } from './session';
-import { STRIP_FRAMES, type MediaPreviews, type PreviewAsset } from '../media';
+import {
+  STRIP_FRAMES,
+  WAVE_RATE,
+  type MediaPreviews,
+  type PreviewAsset,
+  type WaveformCache,
+} from '../media';
 import {
   selectionRoots,
   performEdit,
@@ -485,6 +491,7 @@ export function mountTimeline(
   report: (error: unknown) => void,
   externalKeyboard = false,
   previews?: MediaPreviews,
+  waveforms?: WaveformCache,
 ) {
   root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
@@ -542,11 +549,52 @@ export function mountTimeline(
     }
     element.prepend(strip);
   };
-  const unsubscribePreviews = previews?.onChange(() => {
-    // A filmstrip or thumbnail arrived: redraw even though the project is unchanged.
+  /** TL-047: the clip's visible source window, one column per pixel, behind the label. */
+  const appendWaveform = (
+    element: HTMLElement,
+    clip: Parameters<typeof clipSourceTime>[0] & {
+      readonly assetId: string | null;
+    },
+    zoom: number,
+  ) => {
+    if (!waveforms || !clip.assetId) return;
+    const asset = (
+      session.source.assets as unknown as readonly PreviewAsset[]
+    ).find((item) => item.id === clip.assetId);
+    const wave = asset ? waveforms.waveform(asset) : undefined;
+    if (wave?.state !== 'ready') return;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'clip-waveform';
+    canvas.setAttribute('aria-hidden', 'true');
+    canvas.width = Math.max(
+      1,
+      Math.min(8192, Math.round(timeToPixel(clip.duration, zoom))),
+    );
+    canvas.height = 27;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-waveform')
+        .trim();
+      for (let x = 0; x < canvas.width; x++) {
+        const source = clipSourceTime(
+          clip,
+          clip.startTime + pixelToTime(x + 0.5, zoom),
+        );
+        const peak = wave.peaks[Math.floor(source * WAVE_RATE)] ?? 0;
+        const height = Math.max(1, (peak / wave.max) * canvas.height);
+        context.fillRect(x, (canvas.height - height) / 2, 1, height);
+      }
+    }
+    element.prepend(canvas);
+  };
+  const redrawForMedia = () => {
+    // A filmstrip, thumbnail or waveform arrived: redraw though the project is unchanged.
     renderedProject = undefined;
     render();
-  });
+  };
+  const unsubscribePreviews = previews?.onChange(redrawForMedia);
+  const unsubscribeWaveforms = waveforms?.onChange(redrawForMedia);
   /** Infinite timeline (TL-055): furthest time the user has scrolled to. Transient. */
   let reach = 0;
   let renderedSpan = 0;
@@ -872,7 +920,9 @@ export function mountTimeline(
           badge.setAttribute('aria-label', label);
           clip.append(badge);
         }
-        appendFilmstrip(clip, entry.clip, zoom);
+        if (entry.layer.type === 'audio')
+          appendWaveform(clip, entry.clip, zoom);
+        else appendFilmstrip(clip, entry.clip, zoom);
         appendTrimHandles(clip);
         track.append(clip);
         const keyTimes = [
@@ -1845,6 +1895,7 @@ export function mountTimeline(
       return true;
     },
     controller,
+    playback,
     render,
     cancel,
     dispose: () => {
@@ -1853,6 +1904,7 @@ export function mountTimeline(
       controller.dispose();
       playback.dispose();
       unsubscribePreviews?.();
+      unsubscribeWaveforms?.();
       for (const [name, listener] of Object.entries(listeners))
         root.removeEventListener(name, listener as EventListener);
       window.removeEventListener('blur', cancel);

@@ -6,6 +6,7 @@ export function createTestHook(
   engine: EditorEngine,
   session: EditorSession,
   getErrors: () => readonly unknown[] = () => [],
+  getMedia: () => unknown = () => null,
 ) {
   const snapshot = <T>(value: T): T =>
     freeze(JSON.parse(JSON.stringify(value))) as T;
@@ -29,6 +30,8 @@ export function createTestHook(
         labels: engine.history.undo.slice(-30).map((step) => step.label),
       }),
     getConsoleErrors: () => snapshot(getErrors()),
+    /** W4-C: audio and video positions for the sync proof (a detached copy). */
+    getMedia: () => snapshot(getMedia()),
   });
 }
 
@@ -36,9 +39,10 @@ export function installTestHook(
   engine: EditorEngine,
   session: EditorSession,
   getErrors?: () => readonly unknown[],
+  getMedia?: () => unknown,
 ) {
   Object.defineProperty(window, '__AIVE__', {
-    value: createTestHook(engine, session, getErrors),
+    value: createTestHook(engine, session, getErrors, getMedia),
     configurable: true,
     writable: false,
   });

@@ -102,9 +102,10 @@ test('[MED-001][MED-007][MED-018] Import button adds video, audio and image card
   await expect(card(page, PNG).locator('.media-badge')).toHaveText('Image');
   await waitThumbnail(page, WEBM);
   await waitThumbnail(page, PNG);
-  // Audio has no picture: the card keeps its audio icon.
+  // Audio has no picture: the card shows its waveform (MED-019, W4-C).
   await expect(card(page, WAV)).toHaveAttribute('data-thumbnail', 'none');
-  await expect(card(page, WAV).locator('.media-thumb svg')).toBeVisible();
+  await expect(card(page, WAV)).toHaveAttribute('data-waveform', 'ready');
+  await expect(card(page, WAV).locator('canvas.media-waveform')).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('media-tab.png') });
   const imported = await assets(page);
   expect(

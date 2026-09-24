@@ -119,6 +119,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
         engine,
         shell.session,
         diagnostics.getErrors,
+        shell.mediaDebug,
       );
   });
 }

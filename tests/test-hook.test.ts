@@ -35,6 +35,7 @@ test('[DEV-005] hook snapshots are deeply frozen and cannot mutate engine or ses
   expect(Object.keys(hook).sort()).toEqual([
     'getConsoleErrors',
     'getHistory',
+    'getMedia',
     'getProject',
     'getSession',
     'version',

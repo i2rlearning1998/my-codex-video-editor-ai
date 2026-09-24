@@ -10,6 +10,9 @@ const SLOW_SEEK_MS = 250;
 /** Seek just inside the wanted frame so rounding never lands on its neighbour. */
 const NUDGE = 0.001;
 const MAX_DECODERS = 16;
+/** PB-010: steer playing videos toward the clock when they drift past half a frame. */
+const STEER_SECONDS = 1 / 60;
+const MAX_STEER = 0.2;
 
 interface VideoDecoder {
   element: HTMLVideoElement;
@@ -35,6 +38,8 @@ export class MediaFrames implements FrameProvider {
   #buffering = false;
   #disposed = false;
   #frame = 0;
+  /** Continuous clock minus the frame-quantised time being drawn (0 when paused). */
+  #clockOffset = 0;
 
   constructor(
     private readonly store: Promise<MediaStore | null>,
@@ -49,7 +54,8 @@ export class MediaFrames implements FrameProvider {
     return this.#buffering;
   }
 
-  beginFrame(): void {
+  beginFrame(clockOffset = 0): void {
+    this.#clockOffset = clockOffset;
     this.#frame++;
     this.#requested = new Set();
     this.#buffering = false;
@@ -67,11 +73,30 @@ export class MediaFrames implements FrameProvider {
       : this.#video(request, url, playing);
   }
 
+  /** Bytes may have arrived (an import): look again for media that had none. */
+  retry(): void {
+    for (const [assetId, url] of this.#urls)
+      if (url === null) this.#urls.delete(assetId);
+    for (const [assetId, image] of this.#images)
+      if (image === null) this.#images.delete(assetId);
+    this.changed();
+  }
+
   /** Pauses videos that are no longer drawn. */
   endFrame(): void {
     for (const [key, decoder] of this.#videos)
       if (!this.#requested.has(key) && !decoder.element.paused)
         decoder.element.pause();
+  }
+
+  /** Read-only snapshot for the dev/test hook (PB-010 sync proof). */
+  get debug() {
+    return [...this.#videos.entries()].map(([key, decoder]) => ({
+      key,
+      currentTime: decoder.element.currentTime,
+      playbackRate: decoder.element.playbackRate,
+      paused: decoder.element.paused,
+    }));
   }
 
   dispose(): void {
@@ -165,13 +190,24 @@ export class MediaFrames implements FrameProvider {
         request.speed >= 0.0625 &&
         request.speed <= 16;
       if (native) {
-        if (element.playbackRate !== request.speed)
-          element.playbackRate = request.speed;
+        const clockTarget = Math.min(
+          end,
+          target + this.#clockOffset * request.speed,
+        );
+        const drift = element.currentTime - clockTarget;
+        // Small drift is steered with the playback rate; large drift re-seeks.
+        const rate =
+          Math.abs(drift) > STEER_SECONDS
+            ? request.speed *
+              (1 - Math.max(-MAX_STEER, Math.min(MAX_STEER, drift * 4)))
+            : request.speed;
+        if (Math.abs(element.playbackRate - rate) > 1e-3)
+          element.playbackRate = rate;
         if (element.paused) {
-          this.#seek(decoder, target);
+          this.#seek(decoder, clockTarget);
           element.play().catch(() => undefined);
-        } else if (Math.abs(element.currentTime - target) > DRIFT_SECONDS)
-          this.#seek(decoder, target);
+        } else if (Math.abs(drift) > DRIFT_SECONDS)
+          this.#seek(decoder, clockTarget);
       } else {
         if (!element.paused) element.pause();
         if (

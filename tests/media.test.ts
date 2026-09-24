@@ -127,6 +127,31 @@ describe('[DEV-008] media fixture pack', () => {
         },
       ],
     });
+    // W4-C: the A/V sync clip (flash and beep at each whole second) on Video 1 from
+    // 0 to 4 s, and a 440 Hz tone on Audio 1 from 0 to 3 s.
+    await buildFixture({
+      file: 'tests/fixtures/projects/av-sync.json',
+      name: 'AV Sync Fixture',
+      id: 'av-sync-project',
+      background: '#f0eee7',
+      composition: { id: 'av-main', width: 1280, height: 720, duration: 10 },
+      media: [
+        [
+          'video_av_sync_flash_beep_720p.webm',
+          'video',
+          { width: 1280, height: 720, duration: 4 },
+        ],
+        ['audio_tone_440hz_3s.wav', 'audio', { duration: 3 }],
+      ],
+      tracks: [
+        ['video-1', 'Video 1', 'video'],
+        ['audio-1', 'Audio 1', 'audio'],
+      ],
+      clips: [
+        { asset: 0, track: 'video-1', start: 0, duration: 4, id: 'av' },
+        { asset: 1, track: 'audio-1', start: 0, duration: 3, id: 'tone' },
+      ],
+    });
   });
 });
 
@@ -366,5 +391,63 @@ describe('[MED-001][MED-003][MED-004][MED-006] import pipeline', () => {
     expect(await store.keys()).toEqual([
       engine.state.assets[0]!.source.reference,
     ]);
+  });
+});
+
+describe('[AUD-005][PB-010] audio scheduling maths', () => {
+  const clip = {
+    clipId: 'c',
+    trackId: 't',
+    sourceAssetId: 'a',
+    startTime: 2,
+    duration: 3,
+    sourceIn: 1,
+    sourceOut: 4,
+    speed: 1,
+    reversed: false,
+  };
+  it('starts later clips in the future and running clips at their offset', async () => {
+    const { clipSchedule } = await import('../src/media');
+    expect(clipSchedule(clip, 0, 10)).toEqual({
+      delay: 2,
+      offset: 1,
+      length: 3,
+    });
+    expect(clipSchedule(clip, 3.5, 10)).toEqual({
+      delay: 0,
+      offset: 2.5,
+      length: 1.5,
+    });
+    expect(clipSchedule(clip, 5, 10)).toBeNull();
+  });
+  it('reads reversed clips from a reversed buffer and scales by speed', async () => {
+    const { clipSchedule } = await import('../src/media');
+    // Reversed: at local 0 the source is 4 s, which is 10 - 4 = 6 s into the reversed copy.
+    expect(clipSchedule({ ...clip, reversed: true }, 2, 10)).toEqual({
+      delay: 0,
+      offset: 6,
+      length: 3,
+    });
+    // 2x: local 1 s reads source 1 + 2 = 3 s; 2 s of clip time = 4 s of source, capped by the buffer.
+    expect(
+      clipSchedule(
+        { ...clip, speed: 2, duration: 1.5, sourceOut: 4 },
+        2.5,
+        3.5,
+      ),
+    ).toEqual({ delay: 0, offset: 2, length: 1.5 });
+  });
+  it('waveform peaks keep the loudest sample per 10 ms across channels', async () => {
+    const { waveformPeaks } = await import('../src/media');
+    const left = new Float32Array(200).fill(0.1);
+    const right = new Float32Array(200);
+    right[150] = -1;
+    const peaks = waveformPeaks({
+      duration: 0.02,
+      sampleRate: 10_000,
+      numberOfChannels: 2,
+      getChannelData: (channel) => (channel ? right : left),
+    });
+    expect([...peaks]).toEqual([26, 255]);
   });
 });

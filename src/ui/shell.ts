@@ -8,7 +8,9 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   clipTimeEffects,
+  clipAudioDetached,
   findClip,
+  type TimedClip,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -23,9 +25,14 @@ import {
 import { renderInspector } from './inspector';
 import { mountMediaPanel } from './media-panel';
 import {
+  AudioDecoder,
+  AudioEngine,
   MediaFrames,
   MediaPreviews,
+  WaveformCache,
   openMediaStore,
+  soundSource,
+  type AudibleClip,
   type MediaStore,
   type PreviewAsset,
 } from '../media';
@@ -222,16 +229,78 @@ export function mountEditorShell(
   };
   const mediaStore = actions.mediaStore ?? openMediaStore();
   const previews = new MediaPreviews(mediaStore);
+  const mediaAssets = () =>
+    session.source.assets as unknown as readonly PreviewAsset[];
+  const decoder = new AudioDecoder(mediaStore, mediaAssets);
+  const waveforms = new WaveformCache(mediaStore, decoder, mediaAssets);
   const mediaPanel = mountMediaPanel({
     container: element('#media-panel'),
     engine,
     session,
     store: mediaStore,
     previews,
+    waveforms,
+    imported: () => frames.retry(),
     toast: (text, kind) => showToast(text, kind),
   });
+  // W4-C: every clip that can sound, flattened from the canonical composition.
+  const audibleClips = (): AudibleClip[] => {
+    const assets = mediaAssets();
+    const solo = session.soloTrackIds;
+    const clips: AudibleClip[] = [];
+    // Structural view: the deep readonly clip types are too deep for the checker.
+    const tracks = session.source.composition.tracks as unknown as readonly {
+      readonly id: string;
+      readonly muted: boolean;
+      readonly clips: readonly (TimedClip & {
+        readonly id: string;
+        readonly layerId: string;
+        readonly assetId: string | null;
+        readonly enabled: boolean;
+      })[];
+    }[];
+    for (const track of tracks) {
+      if (track.muted || (solo.length && !solo.includes(track.id))) continue;
+      for (const clip of track.clips) {
+        const layer = locateLayer(
+          session.source.composition.layers,
+          clip.layerId,
+        )?.layer;
+        const asset = assets.find((item) => item.id === clip.assetId);
+        const effects = clipTimeEffects(clip);
+        if (
+          !clip.enabled ||
+          !layer ||
+          !asset ||
+          effects.freezeFrame !== null ||
+          !(
+            layer.type === 'audio' ||
+            (layer.type === 'video' && !clipAudioDetached(clip))
+          )
+        )
+          continue;
+        const source = soundSource(asset, assets);
+        if (!source) continue;
+        clips.push({
+          clipId: clip.id,
+          trackId: track.id,
+          sourceAssetId: source.id,
+          startTime: clip.startTime,
+          duration: clip.duration,
+          sourceIn: clip.sourceIn,
+          sourceOut: clip.sourceOut,
+          speed: clip.speed,
+          reversed: effects.reversed,
+        });
+      }
+    }
+    return clips;
+  };
   // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
   let redrawQueued = false;
+  const audio = new AudioEngine(decoder, () => {
+    if (!disposed) safely(draw);
+  });
   const frames = new MediaFrames(
     mediaStore,
     () => session.source.assets as unknown as readonly PreviewAsset[],
@@ -263,9 +332,39 @@ export function mountEditorShell(
     return { ...view, matrix: multiplyMatrices(centered, view.matrix) };
   };
   let timeline: ReturnType<typeof mountTimeline> | undefined;
+  let lastAudio: {
+    time: number;
+    project: unknown;
+    composition: string;
+  } | null = null;
+  const syncAudio = () => {
+    const clock = timeline?.playback.clock ?? session.currentTime;
+    const clips = audibleClips();
+    audio.sync(session.playing, clock, clips);
+    // PB-011: a paused playhead that moved (and nothing else) plays a snippet.
+    if (
+      !session.playing &&
+      lastAudio &&
+      lastAudio.project === engine.state &&
+      lastAudio.composition === session.source.composition.id &&
+      lastAudio.time !== session.currentTime
+    )
+      audio.scrub(session.currentTime, clips);
+    lastAudio = {
+      time: session.currentTime,
+      project: engine.state,
+      composition: session.source.composition.id,
+    };
+  };
   const draw = () => {
     if (disposed) return;
-    frames.beginFrame();
+    syncAudio();
+    frames.beginFrame(
+      session.playing
+        ? (timeline?.playback.clock ?? session.currentTime) -
+            session.currentTime
+        : 0,
+    );
     const report = renderer.render(
       canvas,
       {
@@ -685,6 +784,7 @@ export function mountEditorShell(
     reportError,
     true,
     previews,
+    waveforms,
   );
   const unsubscribe = session.onChange(refresh);
   element<HTMLSelectElement>('#composition').onchange = (event) =>
@@ -1194,6 +1294,12 @@ export function mountEditorShell(
   refresh();
   return {
     session,
+    /** Dev/test-only read-only snapshot (the test hook's getMedia). */
+    mediaDebug: () => ({
+      audio: audio.debug,
+      video: frames.debug,
+      transport: timeline?.playback.clock ?? session.currentTime,
+    }),
     message,
     refresh,
     setSaveStatus,
@@ -1208,6 +1314,8 @@ export function mountEditorShell(
       mediaPanel.dispose();
       frames.dispose();
       previews.dispose();
+      audio.dispose();
+      waveforms.dispose();
       window.removeEventListener('drop', windowDrop);
       disposeWorkspace();
       canvas.removeEventListener('dragover', assetOver);
