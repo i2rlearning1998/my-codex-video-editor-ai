@@ -14,6 +14,12 @@
 - Align (left, center, right, top, middle, bottom) and Distribute (horizontal, vertical) in the canvas right-click menu and the command palette, relative to the selection or the canvas.
 - The interaction contract is now at revision 5 (owner-authorized).
 
+## Wave 5 part A (W5-A) — 2026-09-24
+
+- Real video export: the Export button opens a dialog with presets (YouTube 1080p/4K, Shorts/Reels/TikTok, Instagram, WhatsApp, custom), size, frame rate, quality, range and file name.
+- MP4 (H.264 + AAC) where the browser can encode it, otherwise WebM (VP9 + Opus) with an explanation. Frames are exact, the sound is mixed in and in sync, and the export matches the preview.
+- A progress bar with the time left and Cancel; missing media is caught before starting; Export frame (PNG). Project JSON export moved to the File menu.
+
 ## Wave 4 part C (W4-C) — 2026-09-24
 
 - Sound: audio files, the sound of video clips and detached audio play in step with the picture (measured within one frame).

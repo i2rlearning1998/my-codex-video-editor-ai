@@ -31,13 +31,17 @@ const chromiumFallback = [
   process.env.PLAYWRIGHT_BROWSERS_PATH &&
     path.join(process.env.PLAYWRIGHT_BROWSERS_PATH, 'chromium'),
 ].find((file): file is string => !!file && existsSync(file));
-const browser = process.env.CI
-  ? {}
-  : chromeInstalled
-    ? { channel: 'chrome' }
-    : edgeInstalled || !chromiumFallback
-      ? { channel: 'msedge' }
-      : { launchOptions: { executablePath: chromiumFallback } };
+// PLAYWRIGHT_CHANNEL (for example "chrome") picks an installed branded browser; the
+// W5-A export-mp4 CI job uses it because only branded Chrome encodes H.264 and AAC.
+const browser = process.env.PLAYWRIGHT_CHANNEL
+  ? { channel: process.env.PLAYWRIGHT_CHANNEL }
+  : process.env.CI
+    ? {}
+    : chromeInstalled
+      ? { channel: 'chrome' }
+      : edgeInstalled || !chromiumFallback
+        ? { channel: 'msedge' }
+        : { launchOptions: { executablePath: chromiumFallback } };
 
 export default defineConfig({
   testDir: 'e2e',

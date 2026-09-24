@@ -1902,3 +1902,61 @@ input[type='number'] {
 .buffering-indicator[hidden] {
   display: none;
 }
+
+.export-form {
+  display: grid;
+  gap: var(--space-4);
+  min-inline-size: 0;
+}
+.export-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.export-field {
+  display: grid;
+  min-inline-size: 0;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.export-field input,
+.export-field select {
+  inline-size: 100%;
+  min-inline-size: 0;
+  box-sizing: border-box;
+}
+.export-format {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.export-missing {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-size: var(--font-size-sm);
+}
+.export-missing[hidden],
+.export-progress[hidden] {
+  display: none;
+}
+.export-progress {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+.export-progress progress {
+  inline-size: 100%;
+  accent-color: var(--color-accent);
+}
+.export-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.export-actions #export-png {
+  margin-inline-end: auto;
+}

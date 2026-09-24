@@ -1,8 +1,9 @@
-- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) now carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A, W4-B, W4-C, W2-D and W2-E. The owner reviews it in one batch.
-- Last full verify in this sandbox (W2-E):
+- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A, W4-B, W4-C, W2-D and W2-E.
+- W5-A (export) is on `claude/wave-5-export`, PR #4, stacked on PR #3 (retarget to main after PR #3 merges). See reports/W5-A.md.
+- Last full verify in this sandbox (W2-E, on PR #3's branch):
   - 327 unit + jsdom tests.
   - 105 e2e passes + 1 expected failure (the DEV-006 probe).
-  - Ledger on this branch: 119 Verified / 11 Claimed / 372 Todo / 0 Bug.
+  - Ledger on PR #3's branch: 119 Verified / 11 Claimed / 372 Todo / 0 Bug.
   - See reports/W4-A.md, W4-B.md and W4-C.md. The browser is Chromium 141 (fallback), which cannot decode H.264 or AAC. GitHub Actions runs only when dispatched by hand.
 - W4-A:
   - Verified: DEV-008, MED-001, MED-002, MED-004, MED-006, MED-007, MED-009, MED-013, MED-014, MED-015, MED-018, MED-035 and TL-017.
@@ -12,8 +13,8 @@
 - W4-B: imported video and images draw on the canvas. Scrubbing and stepping are frame-exact, and playback stays in real time with a buffering note. Speed, reverse and freeze are visible, and timeline clips show filmstrips. Verified: VID-001, VID-002, VID-005, VID-010 to VID-012, PB-009, MED-023, MED-024 and TL-046.
 - W4-C: audio plays through Web Audio, in sync with the picture (measured gaps of 13–21 ms). Mute and solo are audible, scrubbing plays snippets, and waveforms show in the Media tab and on the timeline. Verified: AUD-005, AUD-007, PB-010, PB-011, VID-006, MED-019 and TL-047.
 - Remaining W4 work: stock media (MED-028 to MED-033), MED-005, MED-008 to MED-012, MED-016, MED-017, MED-020 to MED-022, MED-025, PRJ-015 to PRJ-017, PB-012, VID-003, VID-004, VID-007 to VID-009, INS-016 and HIS-007.
+- W5-A: real video export (MP4 in Chrome and Edge, WebM fallback), frame-exact, with the audio mix, presets, progress and cancel, pre-flight and PNG frames. The CI job `export-mp4` proves MP4 in Chrome on Windows. New dependency: mediabunny 1.59.1 (MPL-2.0).
 - W2-D: smart guides and snapping (CV-013) and align and distribute (CV-025) are Verified, under interaction contract revision 5 (D-066, D-067). See reports/W2-D.md.
 - W2-E: the context toolbar (CV-035 to CV-038), the Draw tool (SHP-018, SHP-019) and Copy style (CV-039) are Verified (D-068). Unbuilt toolbar controls are greyed out and name their wave. Add link is in the backlog. See reports/W2-E.md.
-- W5-A (export) is on `claude/wave-5-export`, PR #4, stacked on PR #3. Its decisions are D-062 to D-065, so W2-D numbers start at D-066.
 - **Known sandbox-only flake: PB-010** (audio/picture sync). In full e2e runs in the Linux sandbox it sometimes measures one sample at 37–49 ms against its 33 ms limit. It passes on CI and when run alone. It was investigated in W2-D with no root cause found (reports/W2-D.md, section 3). By owner decision (2026-09-24), it is not re-investigated when it resurfaces in the sandbox; a failure on CI would still be treated as real.
 - Schema remains 4. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).

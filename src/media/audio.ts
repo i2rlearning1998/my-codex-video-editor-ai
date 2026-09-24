@@ -1,3 +1,5 @@
+import { clipAudioDetached, clipTimeEffects } from '../core';
+import { locateLayer } from '../render/adapter';
 import { assetFingerprint, mediaKey } from './import';
 import type { PreviewAsset } from './previews';
 import type { MediaStore } from './store';
@@ -44,6 +46,21 @@ export function clipSchedule(
   const offset = clip.reversed ? bufferDuration - sourceStart : sourceStart;
   if (length <= 1e-6 || offset < 0 || offset >= bufferDuration) return null;
   return { delay, offset, length: Math.min(length, bufferDuration - offset) };
+}
+
+/** A reversed copy, for reversed clips (read with `clipSchedule` offsets). */
+export function reverseAudioBuffer(buffer: AudioBuffer): AudioBuffer {
+  const reversed = new AudioBuffer({
+    length: buffer.length,
+    numberOfChannels: buffer.numberOfChannels,
+    sampleRate: buffer.sampleRate,
+  });
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++)
+    reversed.copyToChannel(
+      buffer.getChannelData(channel).slice().reverse(),
+      channel,
+    );
+  return reversed;
 }
 
 /** Peak bytes (0..255) at WAVE_RATE per second, the max over all channels. */
@@ -401,16 +418,7 @@ export class AudioEngine {
   #reverse(buffer: AudioBuffer): AudioBuffer {
     let reversed = this.#reversed.get(buffer);
     if (!reversed) {
-      reversed = new AudioBuffer({
-        length: buffer.length,
-        numberOfChannels: buffer.numberOfChannels,
-        sampleRate: buffer.sampleRate,
-      });
-      for (let channel = 0; channel < buffer.numberOfChannels; channel++)
-        reversed.copyToChannel(
-          buffer.getChannelData(channel).slice().reverse(),
-          channel,
-        );
+      reversed = reverseAudioBuffer(buffer);
       this.#reversed.set(buffer, reversed);
     }
     return reversed;
@@ -430,4 +438,77 @@ export class AudioEngine {
     this.#anchor = null;
     this.#signature = '';
   }
+}
+
+/** The composition fields `listAudibleClips` reads (structural: shallow types). */
+interface AudibleComposition {
+  readonly layers: readonly unknown[];
+  readonly tracks: readonly {
+    readonly id: string;
+    readonly muted: boolean;
+    readonly clips: readonly {
+      readonly id: string;
+      readonly layerId: string;
+      readonly assetId: string | null;
+      readonly enabled: boolean;
+      readonly startTime: number;
+      readonly duration: number;
+      readonly sourceIn: number;
+      readonly sourceOut: number;
+      readonly speed: number;
+      readonly metadata: object;
+    }[];
+  }[];
+}
+
+/**
+ * Every clip that can sound (D-061), for playback and for the export mixdown:
+ * audio-track clips and video clips whose audio is not detached, enabled, on
+ * unmuted tracks (and soloed ones when any track is soloed). Frozen clips are silent.
+ */
+export function listAudibleClips(
+  composition: unknown,
+  assets: readonly PreviewAsset[],
+  soloTrackIds: readonly string[] = [],
+): AudibleClip[] {
+  const view = composition as AudibleComposition;
+  const layers = view.layers as Parameters<typeof locateLayer>[0];
+  const clips: AudibleClip[] = [];
+  for (const track of view.tracks) {
+    if (
+      track.muted ||
+      (soloTrackIds.length && !soloTrackIds.includes(track.id))
+    )
+      continue;
+    for (const clip of track.clips) {
+      const layer = locateLayer(layers, clip.layerId)?.layer;
+      const asset = assets.find((item) => item.id === clip.assetId);
+      const effects = clipTimeEffects(clip);
+      if (
+        !clip.enabled ||
+        !layer ||
+        !asset ||
+        effects.freezeFrame !== null ||
+        !(
+          layer.type === 'audio' ||
+          (layer.type === 'video' && !clipAudioDetached(clip))
+        )
+      )
+        continue;
+      const source = soundSource(asset, assets);
+      if (!source) continue;
+      clips.push({
+        clipId: clip.id,
+        trackId: track.id,
+        sourceAssetId: source.id,
+        startTime: clip.startTime,
+        duration: clip.duration,
+        sourceIn: clip.sourceIn,
+        sourceOut: clip.sourceOut,
+        speed: clip.speed,
+        reversed: effects.reversed,
+      });
+    }
+  }
+  return clips;
 }

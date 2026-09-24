@@ -8,9 +8,7 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   clipTimeEffects,
-  clipAudioDetached,
   findClip,
-  type TimedClip,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -24,6 +22,8 @@ import {
 } from '../render/canvas';
 import { renderInspector } from './inspector';
 import { mountMediaPanel } from './media-panel';
+import { openExportDialog } from './export-dialog';
+import { drawComposition } from '../render/canvas';
 import {
   AudioDecoder,
   AudioEngine,
@@ -31,7 +31,7 @@ import {
   MediaPreviews,
   WaveformCache,
   openMediaStore,
-  soundSource,
+  listAudibleClips,
   type AudibleClip,
   type MediaStore,
   type PreviewAsset,
@@ -168,6 +168,7 @@ export function mountEditorShell(
           <button type="button" id="example" role="menuitem">${iconSvg('open')}${t('action.example')}</button>
           <label class="button" role="menuitem" id="open-project-label">${iconSvg('open')}${t('action.open')}<input id="import" type="file" accept="application/json,.json" /></label>
           <button type="button" id="save" role="menuitem">${iconSvg('save')}${t('action.save')}</button>
+          <button type="button" id="export-json" role="menuitem">${iconSvg('export')}${t('action.exportJson')}</button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
@@ -262,58 +263,12 @@ export function mountEditorShell(
     toast: (text, kind) => showToast(text, kind),
   });
   // W4-C: every clip that can sound, flattened from the canonical composition.
-  const audibleClips = (): AudibleClip[] => {
-    const assets = mediaAssets();
-    const solo = session.soloTrackIds;
-    const clips: AudibleClip[] = [];
-    // Structural view: the deep readonly clip types are too deep for the checker.
-    const tracks = session.source.composition.tracks as unknown as readonly {
-      readonly id: string;
-      readonly muted: boolean;
-      readonly clips: readonly (TimedClip & {
-        readonly id: string;
-        readonly layerId: string;
-        readonly assetId: string | null;
-        readonly enabled: boolean;
-      })[];
-    }[];
-    for (const track of tracks) {
-      if (track.muted || (solo.length && !solo.includes(track.id))) continue;
-      for (const clip of track.clips) {
-        const layer = locateLayer(
-          session.source.composition.layers,
-          clip.layerId,
-        )?.layer;
-        const asset = assets.find((item) => item.id === clip.assetId);
-        const effects = clipTimeEffects(clip);
-        if (
-          !clip.enabled ||
-          !layer ||
-          !asset ||
-          effects.freezeFrame !== null ||
-          !(
-            layer.type === 'audio' ||
-            (layer.type === 'video' && !clipAudioDetached(clip))
-          )
-        )
-          continue;
-        const source = soundSource(asset, assets);
-        if (!source) continue;
-        clips.push({
-          clipId: clip.id,
-          trackId: track.id,
-          sourceAssetId: source.id,
-          startTime: clip.startTime,
-          duration: clip.duration,
-          sourceIn: clip.sourceIn,
-          sourceOut: clip.sourceOut,
-          speed: clip.speed,
-          reversed: effects.reversed,
-        });
-      }
-    }
-    return clips;
-  };
+  const audibleClips = (): AudibleClip[] =>
+    listAudibleClips(
+      session.source.composition,
+      mediaAssets(),
+      session.soloTrackIds,
+    );
   // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
   let redrawQueued = false;
   const audio = new AudioEngine(decoder, () => {
@@ -914,9 +869,45 @@ export function mountEditorShell(
         ? document.exitFullscreen()
         : stage.requestFullscreen(),
     );
+  // APP-015 / W5-A: the primary Export button opens the Export dialog.
+  const renderFrame = () => {
+    const { width, height } = session.source.composition;
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = width;
+    frameCanvas.height = height;
+    const context = frameCanvas.getContext('2d');
+    if (!context) return Promise.reject(new Error('Canvas 2D is unavailable'));
+    drawComposition(
+      context,
+      { ...session.source, frames, playing: false },
+      { width, height, pixelRatio: 1, matrix: [1, 0, 0, 1, 0, 0] },
+      null,
+      { overlays: false },
+    );
+    return new Promise<Blob>((resolve, reject) =>
+      frameCanvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('PNG failed'))),
+        'image/png',
+      ),
+    );
+  };
+  const openExport = () => {
+    session.setPlaying(false);
+    openExportDialog({
+      composition: session.source.composition,
+      assets: session.source.assets,
+      background: session.source.background,
+      projectName: engine.state.metadata.name,
+      store: mediaStore,
+      decoder,
+      renderFrame,
+      toast: (text, kind) => showToast(text, kind),
+    });
+  };
+  element<HTMLButtonElement>('#export').onclick = () => safely(openExport);
   for (const [id, action] of [
     ['#save', actions.save],
-    ['#export', actions.exportProject],
+    ['#export-json', actions.exportProject],
     ['#example', actions.openExample],
   ] as const) {
     const button = element<HTMLButtonElement>(id);

@@ -68,7 +68,7 @@ Top bar and main menu. Target look: hamburger, brand, project name, save status,
 | APP-002 | P0 | W1 | Todo | Hamburger menu opens a main menu with File, Edit, View and Help groups; closes on Esc and outside click |
 | APP-003 | P0 | W1 | Todo | File > New project opens the New Project dialog (see PRJ) |
 | APP-004 | P0 | W1 | Claimed | File > Open project loads a project JSON file and replaces the session after validation; invalid files show a clear error and change nothing |
-| APP-005 | P0 | W1 | Claimed | File > Save project to file downloads the project as JSON |
+| APP-005 | P0 | W1 | Verified | File > Save project to file downloads the project as JSON |
 | APP-006 | P1 | W1 | Todo | File > Open recent lists recently opened local projects |
 | APP-007 | P1 | W1 | Todo | File > Delete local project asks for confirmation and removes it |
 | APP-008 | P2 | W1 | Todo | File > Duplicate project |
@@ -78,7 +78,7 @@ Top bar and main menu. Target look: hamburger, brand, project name, save status,
 | APP-012 | P0 | W1 | Todo | Project name is shown in the top bar; clicking edits it inline; Enter commits, Esc cancels; rename is undoable |
 | APP-013 | P0 | W1 | Todo | Save status indicator shows Saving, Saved, Unsaved changes or Error (with retry) |
 | APP-014 | P0 | W1 | Todo | Undo and Redo buttons live in the top bar, show disabled state, and their tooltip names the action to be undone or redone |
-| APP-015 | P0 | W1 | Todo | Export button (primary) opens the Export dialog (see EXP) |
+| APP-015 | P0 | W1 | Verified | Export button (primary) opens the Export dialog (see EXP) |
 | APP-016 | P1 | W1 | Todo | Theme toggle switches dark and light without reload and persists |
 | APP-017 | P1 | W1 | Todo | Browser tab title reflects project name and unsaved state |
 | APP-018 | P1 | W1 | Todo | Closing the tab while an autosave is pending shows a warning |
@@ -646,15 +646,15 @@ Offline frame-accurate render, never realtime capture.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| EXP-001 | P0 | W5 | Todo | Export dialog: format MP4 H.264 and AAC, resolution and frame rate, quality preset, range, file name |
-| EXP-002 | P0 | W5 | Todo | Progress shows percent and ETA, can be cancelled, and the UI stays responsive |
-| EXP-003 | P0 | W5 | Todo | Rendering is frame-accurate and offline through a worker, independent of playback speed |
-| EXP-004 | P0 | W5 | Todo | Audio mixdown is included and in sync |
-| EXP-005 | P0 | W5 | Todo | Exported files pass ffprobe checks in e2e for codec, resolution, fps, duration and audio |
-| EXP-006 | P0 | W5 | Todo | Presets: YouTube 1080p and 4K, Shorts, Reels and TikTok (9:16), Instagram square and portrait, small WhatsApp, custom |
-| EXP-007 | P0 | W5 | Todo | Preview and export visuals match; a parity suite compares frames with tolerances |
-| EXP-008 | P0 | W5 | Todo | Missing media or fonts are caught before export with a clear message |
-| EXP-009 | P0 | W5 | Todo | Export the current frame as PNG |
+| EXP-001 | P0 | W5 | Verified | Export dialog: format MP4 H.264 and AAC, resolution and frame rate, quality preset, range, file name |
+| EXP-002 | P0 | W5 | Verified | Progress shows percent and ETA, can be cancelled, and the UI stays responsive |
+| EXP-003 | P0 | W5 | Verified | Rendering is frame-accurate and offline through a worker, independent of playback speed |
+| EXP-004 | P0 | W5 | Verified | Audio mixdown is included and in sync |
+| EXP-005 | P0 | W5 | Verified | Exported files pass container checks in e2e by an independent read-back (codec, resolution, fps, duration, audio); a one-off ffprobe check is recorded in the report |
+| EXP-006 | P0 | W5 | Verified | Presets: YouTube 1080p and 4K, Shorts, Reels and TikTok (9:16), Instagram square and portrait, small WhatsApp, custom |
+| EXP-007 | P0 | W5 | Verified | Preview and export visuals match; a parity suite compares frames with tolerances |
+| EXP-008 | P0 | W5 | Verified | Missing media or fonts are caught before export with a clear message |
+| EXP-009 | P0 | W5 | Verified | Export the current frame as PNG |
 | EXP-010 | P0 | W9 | Todo | Long exports (30 minutes) stay within memory limits by streaming to disk |
 | EXP-011 | P1 | W9 | Todo | WebCodecs hardware encode with a documented software fallback |
 | EXP-012 | P1 | W9 | Todo | WebM (VP9 or AV1) export |

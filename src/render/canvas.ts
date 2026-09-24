@@ -127,6 +127,13 @@ export class Canvas2DRenderer implements CompositionRenderer {
   }
 }
 
+export interface DrawOptions {
+  /** Selection handles and the composition border (false for export, W5-A). */
+  readonly overlays?: boolean;
+  /** Fill for the area outside the composition (letterbox); cleared when absent. */
+  readonly surround?: string;
+}
+
 function strokePath(
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   path: DrawingPath,
@@ -142,10 +149,11 @@ function strokePath(
 }
 
 export function drawComposition(
-  context: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   source: RenderSource,
   viewport: Viewport,
   selectedId: string | null,
+  options: DrawOptions = {},
 ): RenderReport {
   const pixels: AffineMatrix = [
     viewport.pixelRatio,
@@ -165,6 +173,15 @@ export function drawComposition(
     viewport.width * viewport.pixelRatio,
     viewport.height * viewport.pixelRatio,
   );
+  if (options.surround) {
+    context.fillStyle = options.surround;
+    context.fillRect(
+      0,
+      0,
+      viewport.width * viewport.pixelRatio,
+      viewport.height * viewport.pixelRatio,
+    );
+  }
   context.save();
   try {
     context.setTransform(...view);
@@ -236,6 +253,8 @@ export function drawComposition(
   } finally {
     context.restore();
   }
+  if (options.overlays === false)
+    return { warnings: errors, zoom: viewport.matrix[0] };
   context.setTransform(...view);
   context.globalAlpha = 1;
   context.strokeStyle = '#666975';

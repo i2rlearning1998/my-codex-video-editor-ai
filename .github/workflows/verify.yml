@@ -28,3 +28,28 @@ jobs:
             playwright-report/
             test-results/
             e2e-results/
+  # W5-A: the export tests in real Google Chrome, where H.264 + AAC encoding exists.
+  # REQUIRE_H264 makes them fail unless the exported files are MP4 (H.264 + AAC).
+  # Windows, because Chrome's AAC encoder comes from the operating system.
+  export-mp4:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright test e2e/export.spec.ts
+        env:
+          CI: 'true'
+          REQUIRE_H264: '1'
+          PLAYWRIGHT_CHANNEL: chrome
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: export-mp4-proof
+          path: |
+            playwright-report/
+            test-results/
+            e2e-results/
