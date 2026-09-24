@@ -210,7 +210,7 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-016 | P0 | W4 | Todo | Double-click an asset adds it at the playhead |
 | MED-017 | P0 | W4 | Todo | Asset details show resolution, fps, duration, codec, size, audio channels |
 | MED-018 | P0 | W4 | Verified | Thumbnails and poster frames are generated asynchronously and cached |
-| MED-019 | P0 | W4 | Todo | Audio waveforms are generated asynchronously and cached |
+| MED-019 | P0 | W4 | Verified | Audio waveforms are generated asynchronously and cached |
 | MED-020 | P0 | W4 | Todo | Missing media shows a clear indicator and a Relink flow |
 | MED-021 | P0 | W4 | Todo | Variable-frame-rate video plays and seeks with correct timing (fixture: video_vfr_720p_no_audio.mp4) |
 | MED-022 | P0 | W4 | Todo | Rotation metadata is applied (fixture: video_rotation90_metadata_portrait_no_audio.mp4 displays upright portrait) |
@@ -343,7 +343,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-044 | P0 | W2 | Verified | Jump to previous or next cut (Up and Down keys) |
 | TL-045 | P0 | W2 | Todo | Clip label truncates gracefully and never overlaps neighbors at any zoom |
 | TL-046 | P0 | W4 | Verified | Video clips show a filmstrip of thumbnails; image clips show their thumbnail |
-| TL-047 | P0 | W4 | Todo | Audio clips show waveforms that stay correct while trimming |
+| TL-047 | P0 | W4 | Verified | Audio clips show waveforms that stay correct while trimming |
 | TL-048 | P0 | W5 | Todo | Keyframe diamonds appear on clips; add, move, copy and delete keyframes directly on the timeline |
 | TL-049 | P0 | W5 | Todo | Fade in and fade out handles on clips for opacity and volume |
 | TL-050 | P1 | W5 | Todo | Envelope line (opacity or volume) is drawn on the clip and editable |
@@ -373,8 +373,8 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | PB-007 | P1 | W2 | Todo | Preview playback speed selector 0.25x to 2x |
 | PB-008 | P0 | W2 | Todo | Time is one shared source: canvas, timeline, inspector and timecode always agree |
 | PB-009 | P0 | W4 | Verified | Video decoding keeps up with playback; frames drop rather than slow motion; a buffering indicator appears when needed |
-| PB-010 | P0 | W4 | Todo | Audio plays in sync with video within one frame (fixture: video_av_sync_flash_beep_720p.mp4) |
-| PB-011 | P1 | W4 | Todo | Scrubbing the playhead plays short audio snippets |
+| PB-010 | P0 | W4 | Verified | Audio plays in sync with video within one frame (fixture: video_av_sync_flash_beep_720p.mp4) |
+| PB-011 | P1 | W4 | Verified | Scrubbing the playhead plays short audio snippets |
 | PB-012 | P0 | W4 | Todo | 1080p 30 fps H.264 plays back with at least 95 percent of frames on the reference machine |
 | PB-013 | P1 | W7 | Todo | Master volume and mute with a level meter |
 | PB-014 | P1 | W2 | Todo | Fullscreen playback with minimal controls |
@@ -520,7 +520,7 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 | VID-003 | P0 | W4 | Todo | Crop tool for image and video layers with aspect lock and handles |
 | VID-004 | P0 | W4 | Todo | Fit, Fill, Stretch and Custom modes handle media whose aspect differs from the canvas |
 | VID-005 | P0 | W4 | Verified | Default still image duration is 5 seconds and adjustable |
-| VID-006 | P0 | W4 | Todo | Detach audio from a video clip |
+| VID-006 | P0 | W4 | Verified | Detach audio from a video clip |
 | VID-007 | P1 | W4 | Todo | Fill mismatched aspect ratios with a blurred copy of the media |
 | VID-008 | P1 | W4 | Todo | GIF is treated as an animated clip |
 | VID-009 | P1 | W4 | Todo | Replace media keeps all edits on the clip |
@@ -605,9 +605,9 @@ Real audio engine. Currently mute is only metadata.
 | AUD-002 | P0 | W7 | Todo | Clip volume in dB, keyframeable; clip mute; master volume |
 | AUD-003 | P0 | W7 | Todo | Fade in and fade out handles |
 | AUD-004 | P0 | W7 | Todo | Detach or extract audio from video into an audio track |
-| AUD-005 | P0 | W7 | Todo | Audio plays during preview and scrubbing and stays in sync |
+| AUD-005 | P0 | W4 | Verified | Audio plays during preview and scrubbing and stays in sync |
 | AUD-006 | P0 | W7 | Todo | Peak meters on master and per track |
-| AUD-007 | P0 | W7 | Todo | Track mute and solo work audibly |
+| AUD-007 | P0 | W4 | Verified | Track mute and solo work audibly |
 | AUD-008 | P0 | W7 | Todo | Voiceover recording from the microphone with countdown and level monitor onto a new audio track |
 | AUD-009 | P1 | W7 | Todo | Pan left and right |
 | AUD-010 | P1 | W7 | Todo | Speed change with pitch preservation |

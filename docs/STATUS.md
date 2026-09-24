@@ -1,14 +1,15 @@
-- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) now carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A and W4-B. The owner reviews it in one batch. W4-C (audio) follows on the same branch.
-- Last full verify in this sandbox (W4-B):
-  - 316 unit + jsdom tests.
-  - 88 e2e passes + 1 expected failure (the DEV-006 probe).
-  - Ledger: 103 Verified / 11 Claimed / 381 Todo / 0 Bug.
-  - See reports/W4-A.md and reports/W4-B.md. The browser is Chromium 141 (fallback), which cannot decode H.264 or AAC. GitHub Actions runs only when dispatched by hand.
+- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) now carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A, W4-B and W4-C. The owner reviews it in one batch.
+- Last full verify in this sandbox (W4-C):
+  - 319 unit + jsdom tests.
+  - 95 e2e passes + 1 expected failure (the DEV-006 probe).
+  - Ledger: 110 Verified / 11 Claimed / 374 Todo / 0 Bug.
+  - See reports/W4-A.md, W4-B.md and W4-C.md. The browser is Chromium 141 (fallback), which cannot decode H.264 or AAC. GitHub Actions runs only when dispatched by hand.
 - W4-A:
   - Verified: DEV-008, MED-001, MED-002, MED-004, MED-006, MED-007, MED-009, MED-013, MED-014, MED-015, MED-018, MED-035 and TL-017.
   - MED-003 is Claimed until MP4, MOV and M4A are checked in Chrome.
   - Media bytes live in `src/media` (OPFS, with an IndexedDB fallback). The project stores `media/<fingerprint>` references only.
 - CV-022 is Verified (D-050). CV-008 is Verified under interaction contract revision 4 (D-051). There are no known product bugs in the ledger.
 - W4-B: imported video and images draw on the canvas. Scrubbing and stepping are frame-exact, and playback stays in real time with a buffering note. Speed, reverse and freeze are visible, and timeline clips show filmstrips. Verified: VID-001, VID-002, VID-005, VID-010 to VID-012, PB-009, MED-023, MED-024 and TL-046.
-- Nothing is audible yet (W4-C): videos are muted, and detached audio is silent.
+- W4-C: audio plays through Web Audio, in sync with the picture (measured gaps of 13–21 ms). Mute and solo are audible, scrubbing plays snippets, and waveforms show in the Media tab and on the timeline. Verified: AUD-005, AUD-007, PB-010, PB-011, VID-006, MED-019 and TL-047.
+- Remaining W4 work: stock media (MED-028 to MED-033), MED-005, MED-008 to MED-012, MED-016, MED-017, MED-020 to MED-022, MED-025, PRJ-015 to PRJ-017, PB-012, VID-003, VID-004, VID-007 to VID-009, INS-016 and HIS-007.
 - Schema remains 4. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).

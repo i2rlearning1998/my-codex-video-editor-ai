@@ -2,6 +2,12 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 4 part C (W4-C) — 2026-09-24
+
+- Sound: audio files, the sound of video clips and detached audio play in step with the picture (measured within one frame).
+- Track Mute and Solo are audible, and scrubbing a paused playhead plays a short blip.
+- Audio clips show waveforms on the timeline that follow trims; audio cards show waveforms in the Media tab.
+
 ## Wave 4 part B (W4-B) — 2026-09-24
 
 - Imported video and images now draw on the canvas: scrubbing and frame steps show the exact source frame, and playback runs in real time (it drops frames rather than slowing down). A "Buffering…" note appears if a video cannot keep up.

@@ -31,3 +31,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-24 | W4-B VID | Reversed clips play by seeking frame by frame, which can look choppy on long-GOP footage; a WebCodecs decoder (D-005) would make reverse smooth.
   2026-09-24 | W4-B TL | The "No layers in this composition." line below the tracks shows even when every layer is a clip (legacy-row empty state).
   2026-09-24 | W4-B MED | Animated GIFs draw as the browser's live animation, not in step with the timeline (VID-008).
+  2026-09-24 | W4-C AUD | Audio is decoded whole into memory (files over 512 MB are silent); long recordings need streaming decode.
+  2026-09-24 | W4-C AUD | Track mute is a project edit, so it pauses playback; consider applying mute live without stopping (like solo).
