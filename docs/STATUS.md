@@ -1,5 +1,6 @@
 - Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A, W4-B, W4-C, W2-D and W2-E.
 - W5-A (export) is on `claude/wave-5-export`, PR #4, stacked on PR #3 (retarget to main after PR #3 merges). See reports/W5-A.md.
+- Last full verify on PR #5's branch (W5-B): 340 unit + jsdom tests, 118 e2e passes + 1 expected failure, ledger 137 Verified / 9 Claimed / 356 Todo.
 - Last full verify in this sandbox (W2-E, on PR #3's branch):
   - 327 unit + jsdom tests.
   - 105 e2e passes + 1 expected failure (the DEV-006 probe).
@@ -17,4 +18,5 @@
 - W2-D: smart guides and snapping (CV-013) and align and distribute (CV-025) are Verified, under interaction contract revision 5 (D-066, D-067). See reports/W2-D.md.
 - W2-E: the context toolbar (CV-035 to CV-038), the Draw tool (SHP-018, SHP-019) and Copy style (CV-039) are Verified (D-068). Unbuilt toolbar controls are greyed out and name their wave. Add link is in the backlog. See reports/W2-E.md.
 - **Known sandbox-only flake: PB-010** (audio/picture sync). In full e2e runs in the Linux sandbox it sometimes measures one sample at 37–49 ms against its 33 ms limit. It passes on CI and when run alone. It was investigated in W2-D with no root cause found (reports/W2-D.md, section 3). By owner decision (2026-09-24), it is not re-investigated when it resurfaces in the sandbox; a failure on CI would still be treated as real.
-- Schema remains 4. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).
+- W5-B (keyframe animation) is on `claude/wave-5-animation`, PR #5, stacked on PR #4. Verified: ANI-001 to ANI-006 and ANI-009 (D-069, D-070). **Schema is now 5** on this branch (keyframe easing). See reports/W5-B.md. W5-C (animation presets, fades, Ken Burns, easing library) is next.
+- Schema is 4 on PR #3 and PR #4, and 5 from PR #5 on. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).

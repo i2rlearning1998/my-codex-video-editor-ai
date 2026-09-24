@@ -2,6 +2,14 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 5 part B (W5-B) — 2026-09-24
+
+- Keyframe animation: a stopwatch per property (position, scale, rotation, opacity, color, text size). With it on, any edit at the playhead records a keyframe.
+- Easing: linear, ease in, ease out, ease in and out, hold, or a custom curve, set from the keyframe menu or the Inspector.
+- Keyframes on the timeline can be selected, dragged, copied, pasted, duplicated and deleted, and moved from the Inspector. Previous and next keyframe buttons (and the `,` and `.` keys) jump the playhead.
+- Playback, scrubbing and export show exactly the same animation. Moving a clip moves its animation with it.
+- Project files are now schema 5; older files open unchanged.
+
 ## Wave 2 part E (W2-E) — 2026-09-24
 
 - Context toolbar: selecting a text, image, video, shape or drawing shows its main controls floating above the canvas (position, scale, rotate, flip, opacity; text size and color; fill; brush size). Controls that are not built yet are greyed out and say which wave builds them.

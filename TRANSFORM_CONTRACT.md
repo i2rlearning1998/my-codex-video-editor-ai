@@ -110,3 +110,7 @@ There is no second store, persisted matrix, parent index, scene cache, engine re
 The owner-authorized CV-008 change (Alt resize-from-center) is an interaction rule. It is recorded in [TRANSFORM_INTERACTION_CONTRACT.md](TRANSFORM_INTERACTION_CONTRACT.md) revision 4. The spatial semantics in this document are unchanged: the local origin stays `(0,0)`, the matrix order stays `T * R * S`, and no field is added.
 
 Revision 5 of the interaction contract (snapping with smart guides, CV-013, and the W2-E draw mode) changes only the pointer an interaction receives. Alignment (CV-025) writes ordinary position values. The spatial semantics here are unchanged.
+
+## Animation evaluation (W5-B, schema 5)
+
+An animated property (`animated: true` with keyframes) has a value at every composition time, interpolated from its keyframes with each segment's easing (`src/core/animation.ts`); before the first and after the last keyframe it holds that keyframe's value. Every consumer that draws, picks or edits a layer at a time uses these evaluated values, and the spatial rules above then apply unchanged: the same local origin, matrix order, inherited opacity and stored base-value semantics. Stored `value` fields are not a time-independent truth for animated properties. This note is additive and does not change any rule above.
