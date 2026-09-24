@@ -23,3 +23,8 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-24 | W2-B follow-up | CV-008 Alt-from-center needs an explicit owner decision to open TRANSFORM_INTERACTION_CONTRACT.md before anyone attempts it (D-045).
   2026-09-24 | W2-C TL-027 | A pasted linked pair can shift apart when only one target track is occupied (the insert rule runs per track); consider landing linked groups as one block.
   2026-09-24 | W2-C TL-032 | Trimming a linked clip trims only that clip; linked trimming is not built.
+  2026-09-24 | W4-A follow-up | Resolved: CV-008 is built under interaction contract revision 4 (D-051); CV-022, TL-017 and MED-035 are fixed.
+  2026-09-24 | W4-A MED | Unused media bytes stay in OPFS or IndexedDB after undo or opening another project; add garbage collection once asset delete (MED-011) exists.
+  2026-09-24 | W4-A MED | Files dropped on a timeline track or the canvas are imported only; they could also be placed at the drop point in one step.
+  2026-09-24 | W4-A MED | Media cards have no "missing media" badge when a project references bytes this browser lacks (MED-020 Relink covers it).
+  2026-09-24 | W4-A MED | The import queue is sequential; a second import while one runs is refused with a message rather than queued.

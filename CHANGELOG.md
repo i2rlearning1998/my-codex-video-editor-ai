@@ -2,6 +2,15 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 4 part A (W4-A) — 2026-09-24
+
+- Import your own video, audio and image files with the Import button or by dropping files on the editor. A progress row shows each file, and Cancel stops the import cleanly.
+- Imported media is stored in the browser (OPFS, or IndexedDB when OPFS is unavailable) and survives a reload. The project keeps only references.
+- The Media tab now lists the project's media as cards with thumbnails, names and duration or type badges, with empty and error states and name search (MED-035 fixed).
+- Drag a card to a track to create a clip at the drop time, or onto the canvas to centre a layer on the drop point at the media's own size.
+- TL-017 fixed: dragging several clips to another track keeps their track offsets.
+- Media fixture pack (1.6 MB) with a manifest and a generator script.
+
 ## Wave 2 continuation (W2-C) — 2026-09-24
 
 - Cut, copy and paste clips (Ctrl+X, Ctrl+C, Ctrl+V, the palette and both right-click menus). Paste lands at the playhead using the insert rule.

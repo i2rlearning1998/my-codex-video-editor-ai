@@ -2,6 +2,7 @@
 
 Wave: 4, part A of three (W4-A import and storage, W4-B video and image on the canvas and in playback, W4-C audio). Base: PR #3 head `a965116` (W2-B, W2-C and the CV-022/CV-008 fixes, unmerged). End tag: `w4-a` (created at merge).
 Branch: `claude/wave-2-timeline-clips-mwy1f3`, continuing PR #3.
+
 - The owner asked to keep working on the same branch and PR.
 - This session may push only to that branch.
 - W4-A also depends on unmerged W2 code (the TL-017 fix sits in the W2 timeline). A separate branch would therefore be stacked on this one anyway.
@@ -13,6 +14,7 @@ Authority: `AGENTS.md`, then this brief, then `docs/FEATURES.md`.
 The owner can bring their own video, audio and image files into a project, using the Import button or by dropping files on the app. Each file shows up as a card in the Media tab, with a thumbnail, its name and its duration or type. The files are kept in the browser's own storage, so they are still there after a reload, and the project file keeps only references.
 
 Cards can be dragged to the timeline or the canvas. Two known bugs in the same area are fixed:
+
 - **MED-035:** the Media tab does not show the media cards.
 - **TL-017:** dragging several clips to another track collapses them onto one track.
 
@@ -49,22 +51,26 @@ None. Every ID already exists.
 ## 5. Contracts, schema and dependencies
 
 **Schema stays 4.** The existing asset record already has what is needed:
+
 - `source.kind: 'local'` with `reference: 'media/<fingerprint>'`
 - `width`, `height` and `duration`
 - JSON-safe metadata: `mimeType`, `size`, `fileName`, `lastModified`, `fingerprint`
 
 **Media bytes and thumbnails** live in a new `src/media` module, outside `src/core`, as D-004 requires.
+
 - It uses OPFS, with IndexedDB as the fallback.
 - It never uses project JSON or localStorage.
 
 **No new dependencies.**
 
 **Fixture tooling:**
+
 - The fixture files are generated once with a static ffmpeg binary taken from the `imageio-ffmpeg` wheel.
 - That binary is a scratch tool. It is not a project dependency and is not committed.
 - The generator script is committed so the pack can be rebuilt.
 
 **MED-003 note:**
+
 - The sandbox's Chromium 141 cannot decode H.264 or AAC; `canPlayType` returns an empty string for them.
 - So MP4, MOV and M4A imports can only be proven in the owner's Chrome.
 - The browser test proves WebM (VP9 and Opus), MP3, WAV, OGG, PNG, JPG, WebP, GIF and SVG, plus the clear message for an unsupported or corrupt file.
@@ -73,6 +79,7 @@ None. Every ID already exists.
 ## 6. Design notes
 
 **Import pipeline (per file, one at a time)**
+
 1. Classify by MIME type, falling back to the extension. Anything that isn't video, audio or image is refused with a message naming the file.
 2. Compute a fingerprint: SHA-256 of the byte size and three 1 MiB samples (start, middle and end), shown as 32 hex characters. The name and MIME type are not part of it. The whole file is never read into memory. The asset id is `media-<first 16 hex characters>`.
 3. **Duplicates:** if the project already has that asset, it is selected in the Media tab and the owner is told it's already in the project. No second copy is made.
@@ -90,11 +97,13 @@ None. Every ID already exists.
    - Audio: no thumbnail; the card shows an audio icon. Waveforms are MED-019.
 
 **Progress and cancel (MED-004)**
+
 - An import row at the top of the Media tab shows the file name, a percentage and a Cancel button.
 - Cancel stops the current file, deletes its partial bytes and skips the rest of the batch.
 - Files that finished before the cancel stay imported, because each file is its own undo step.
 
 **Media tab (MED-035, MED-007, MED-009)**
+
 - The card grid lives in its own container, which is shown only on the Media tab. Other tabs no longer show the cards.
 - Each card shows:
   - its thumbnail;
@@ -108,21 +117,25 @@ None. Every ID already exists.
 - **Search** filters cards by name, as you type.
 
 **OS drop (MED-002)**
+
 - Files dropped anywhere on the app are imported, and the Media tab opens.
 - The existing drop overlay stays.
 
 **Using imported media (MED-013 to MED-015)**
+
 - Dropping a card on a track creates a clip at the drop time, using the insert rule. It uses the asset's duration, or 5 s for images.
 - Dropping a card on the canvas creates a layer centred on the drop point. Images and videos get their own size, scaled down to fit inside the composition if they are larger.
 - A locked or incompatible track refuses the drop with a toast.
 
 **TL-017 (D-054)**
+
 - A cross-track drag of several clips moves every dragged clip by the same number of tracks in display order.
 - If any clip's target track would be missing, locked or incompatible, no clip changes track; they still move in time.
 - Linked followers keep their own tracks (D-048).
 - A ghost is shown on each clip's own target track.
 
 **Other**
+
 - All UI text uses translation keys (English and Hindi), and every icon-only control has a label.
 - The UI follows the existing imperative DOM shell (see D-053).
 
@@ -161,6 +174,7 @@ None. Every ID already exists.
 ## 10. Stop rules
 
 Stop and report if any of these happens:
+
 - the import needs a schema change or a new runtime dependency;
 - OPFS and IndexedDB both fail in the sandbox browser;
 - a frozen contract would need to change.

@@ -52,7 +52,7 @@ Makes every later 'done' claim provable. These items are the process itself.
 | DEV-005 | P0 | W0 | Verified | Read-only test hook (dev/test only) exposes project and session snapshots to e2e; it cannot mutate state and is absent from production builds |
 | DEV-006 | P0 | W0 | Verified | Global e2e guard fails any test that produces console errors, uncaught page errors or failed network requests |
 | DEV-007 | P0 | W0 | Verified | "Copy debug report" action copies JSON: build id, browser, viewport, active composition, selection, playhead, last 30 command labels, last 50 console errors, project JSON when under 200 KB |
-| DEV-008 | P0 | W4 | Todo | Media fixture pack committed under tests/fixtures/media with manifest, plus a media-populated project fixture generated through engine commands |
+| DEV-008 | P0 | W4 | Verified | Media fixture pack committed under tests/fixtures/media with manifest, plus a media-populated project fixture generated through engine commands |
 | DEV-009 | P0 | W0 | Verified | AGENTS.md, README, ARCHITECTURE and CHANGELOG match T3 reality; obsolete restrictions are archived, not silently deleted |
 | DEV-010 | P0 | W0 | Verified | `npm run patch` creates a review patch excluding lockfile, media fixtures and specs |
 | DEV-011 | P0 | W0 | Verified | Report template and try-it script convention are documented in docs/PROCESS.md and used by reports/W0.md |
@@ -192,24 +192,24 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| MED-001 | P0 | W4 | Todo | Import button opens the file picker for video, audio and image files |
-| MED-002 | P0 | W4 | Todo | Drag files from the OS onto the app or the media panel to import |
-| MED-003 | P0 | W4 | Todo | Supported: MP4 H.264, WebM VP9, MOV where the browser can decode, MP3, WAV, M4A, OGG, PNG, JPG, WebP, GIF, SVG; unsupported files get a clear message, never a crash |
-| MED-004 | P0 | W4 | Todo | Import shows progress and can be cancelled |
+| MED-001 | P0 | W4 | Verified | Import button opens the file picker for video, audio and image files |
+| MED-002 | P0 | W4 | Verified | Drag files from the OS onto the app or the media panel to import |
+| MED-003 | P0 | W4 | Claimed | Supported: MP4 H.264, WebM VP9, MOV where the browser can decode, MP3, WAV, M4A, OGG, PNG, JPG, WebP, GIF, SVG; unsupported files get a clear message, never a crash |
+| MED-004 | P0 | W4 | Verified | Import shows progress and can be cancelled |
 | MED-005 | P0 | W4 | Todo | Multi-GB files are streamed from OPFS or Blob storage, never fully loaded into memory |
-| MED-006 | P0 | W4 | Todo | Imported media survives reload; project stores references only, never media bytes |
-| MED-007 | P0 | W4 | Todo | Project Media grid shows thumbnail, name, duration or type badge |
+| MED-006 | P0 | W4 | Verified | Imported media survives reload; project stores references only, never media bytes |
+| MED-007 | P0 | W4 | Verified | Project Media grid shows thumbnail, name, duration or type badge |
 | MED-008 | P1 | W4 | Todo | List and grid view, sort by name, date, type, duration; filter by type |
-| MED-009 | P0 | W4 | Todo | Search box filters media by name |
+| MED-009 | P0 | W4 | Verified | Search box filters media by name |
 | MED-010 | P1 | W4 | Todo | Rename an asset |
 | MED-011 | P0 | W4 | Todo | Delete an asset warns when it is used by N clips and offers cancel |
 | MED-012 | P1 | W4 | Todo | Hover-scrub preview on video thumbnails |
-| MED-013 | P0 | W4 | Todo | Drag an asset onto a timeline track creates a clip at the drop position |
-| MED-014 | P0 | W4 | Claimed | Drag an already-registered asset onto a compatible track creates a clip; a locked or incompatible track rejects it with feedback |
-| MED-015 | P0 | W4 | Todo | Drag an asset onto the canvas creates a layer at the drop point |
+| MED-013 | P0 | W4 | Verified | Drag an asset onto a timeline track creates a clip at the drop position |
+| MED-014 | P0 | W4 | Verified | Drag an already-registered asset onto a compatible track creates a clip; a locked or incompatible track rejects it with feedback |
+| MED-015 | P0 | W4 | Verified | Drag an asset onto the canvas creates a layer at the drop point |
 | MED-016 | P0 | W4 | Todo | Double-click an asset adds it at the playhead |
 | MED-017 | P0 | W4 | Todo | Asset details show resolution, fps, duration, codec, size, audio channels |
-| MED-018 | P0 | W4 | Todo | Thumbnails and poster frames are generated asynchronously and cached |
+| MED-018 | P0 | W4 | Verified | Thumbnails and poster frames are generated asynchronously and cached |
 | MED-019 | P0 | W4 | Todo | Audio waveforms are generated asynchronously and cached |
 | MED-020 | P0 | W4 | Todo | Missing media shows a clear indicator and a Relink flow |
 | MED-021 | P0 | W4 | Todo | Variable-frame-rate video plays and seeks with correct timing (fixture: video_vfr_720p_no_audio.mp4) |
@@ -226,7 +226,7 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-032 | P1 | W4 | Todo | Stock filters (orientation, category, color) |
 | MED-033 | P2 | W4 | Todo | Stock favorites and recents |
 | MED-034 | P1 | W8 | Todo | Record screen, webcam and microphone (voiceover lives in AUD) |
-| MED-035 | P0 | W4 | Bug | The Media tab (Project Media) lists the project's registered media as draggable cards; today the cards appear only under other library categories because the Media tab hides the panel that holds them |
+| MED-035 | P0 | W4 | Verified | The Media tab (Project Media) lists the project's registered media as draggable cards; today the cards appear only under other library categories because the Media tab hides the panel that holds them |
 
 ## CV: Canvas (Wave 2)
 
@@ -313,7 +313,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-014 | P0 | W2 | Verified | Horizontal scroll with wheel, Shift+wheel and trackpad; vertical scroll keeps headers aligned with rows |
 | TL-015 | P0 | W2 | Todo | Auto-scroll near the edges while dragging clips; option to follow the playhead during playback |
 | TL-016 | P0 | W2 | Verified | Clips can be moved by dragging within a track and across tracks, with one undo step per gesture |
-| TL-017 | P0 | W2 | Bug | Multi-selected clips move together and keep their relative offsets across tracks |
+| TL-017 | P0 | W2 | Verified | Multi-selected clips move together and keep their relative offsets across tracks |
 | TL-018 | P0 | W2 | Verified | Trimming the left edge changes start and in-point and never goes past the source or into a neighbor |
 | TL-019 | P0 | W2 | Verified | Trimming the right edge changes duration and never goes past the source or into a neighbor |
 | TL-020 | P0 | W2 | Verified | Clips never overlap on the same track and never shrink below one frame |

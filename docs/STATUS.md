@@ -1,6 +1,13 @@
-- Wave 2 continuation W2-B + W2-C is on branch claude/wave-2-timeline-clips-mwy1f3 as PR #3 against main, awaiting owner review (W2-C is stacked on W2-B because it needs the insert rule).
-- Last full verify in this sandbox (W2-C): 305 unit + jsdom; 65 e2e passes + 4 expected failures; ledger 79 Verified / 11 Claimed / 402 Todo / 3 Bug (after the CV-022 fix). See reports/W2-C.md. The browser is Chromium 141 (fallback). GitHub Actions runs only when dispatched by hand (the first run passed).
-- W2-C: TL-027 and TL-032 are Verified; HIS-002, HIS-004, CV-031, INS-002, INS-003, PRJ-012 and CV-011 are Verified. TL-017 is Bug with a reproduction. CV-022 was fixed afterwards on owner request and is Verified (D-050).
-- CV-008 is Verified after an owner-authorized amendment to the interaction contract (revision 4, D-051). Known bugs: MED-035 (Media tab) and TL-017 (multi-track drag offsets), both planned for W4-A.
-- Schema remains 4; link, detach, reverse and freeze state live in clip.metadata. Nothing is audible yet (no audio engine).
-- Next options: fix the four known bugs, or the roadmap's W3 (text and fonts). The shell is still imperative DOM.
+- Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) now carries W2-B, W2-C, the CV-022 and CV-008 fixes and W4-A. The owner reviews it in one batch. W4-B (video and images on the canvas and in playback) and W4-C (audio) follow on the same branch.
+- Last full verify in this sandbox (W4-A):
+  - 316 unit + jsdom tests.
+  - 78 e2e passes + 1 expected failure (the DEV-006 probe).
+  - Ledger: 93 Verified / 11 Claimed / 391 Todo / 0 Bug.
+  - See reports/W4-A.md. The browser is Chromium 141 (fallback), which cannot decode H.264 or AAC. GitHub Actions runs only when dispatched by hand.
+- W4-A:
+  - Verified: DEV-008, MED-001, MED-002, MED-004, MED-006, MED-007, MED-009, MED-013, MED-014, MED-015, MED-018, MED-035 and TL-017.
+  - MED-003 is Claimed until MP4, MOV and M4A are checked in Chrome.
+  - Media bytes live in `src/media` (OPFS, with an IndexedDB fallback). The project stores `media/<fingerprint>` references only.
+- CV-022 is Verified (D-050). CV-008 is Verified under interaction contract revision 4 (D-051). There are no known product bugs in the ledger.
+- Imported media is not drawn or heard yet: layers draw as placeholders until W4-B. Speed, reverse, freeze and detached audio still have no visible or audible effect.
+- Schema remains 4. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).
