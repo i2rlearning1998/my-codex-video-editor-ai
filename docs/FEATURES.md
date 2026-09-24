@@ -268,6 +268,11 @@ Everything the user does directly on the preview canvas.
 | CV-032 | P1 | W2 | Todo | 100 layers can be dragged smoothly without dropped frames on the reference machine |
 | CV-033 | P1 | W2 | Todo | Preview quality setting Full, Half, Quarter |
 | CV-034 | P2 | W2 | Todo | Touch and pen input work with pointer events |
+| CV-035 | P0 | W2 | Verified | A context toolbar above the canvas appears for one selected text, image, video, shape or drawing layer, with controls for that type; it hides for no selection, groups, audio layers and multi-selections |
+| CV-036 | P0 | W2 | Verified | Image and video toolbar: Position X and Y, Scale, Rotate, Flip horizontal and vertical, and Opacity edit the layer as one undo step each; Crop, Blend, Animate and Replace show disabled with a tooltip naming the wave that builds them |
+| CV-037 | P0 | W2 | Verified | Text toolbar: Size and Color edit the layer as one undo step each; Font, Weight, Align, Spacing, Effects and Animate show disabled with a tooltip naming their wave |
+| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill edits the layer; Stroke, Width, Corners, Boolean and Animate show disabled with a tooltip naming their wave. A drawing's toolbar edits its Color, Brush size and Opacity |
+| CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -482,6 +487,8 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-015 | P2 | W5 | Todo | Freehand pen and boolean shape operations |
 | SHP-016 | P2 | W8 | Todo | Data charts (bar, line, pie) from typed or pasted data |
 | SHP-017 | P2 | W8 | Todo | Lottie import |
+| SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker and Highlighter with brush size, color and opacity; choosing a brush puts the canvas in draw mode, and Esc, V or another category leaves it |
+| SHP-019 | P0 | W2 | Verified | Each freehand stroke becomes one undoable shape layer with a clip at the playhead; it can be selected, moved, resized, saved and reloaded, and draws the same in preview and export |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 
