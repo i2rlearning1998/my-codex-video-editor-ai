@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen } from './fixtures';
+import { test, expect, hook, toScreen, rulerBox } from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
 test.beforeEach(async ({ page }) => {
@@ -67,7 +67,7 @@ async function drag(
   await page.mouse.up();
 }
 async function seek(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   const zoom = (await hook(page)).session.timelinePxPerSecond;
   await page.mouse.click(box.x + seconds * zoom, box.y + 8);
   await expect

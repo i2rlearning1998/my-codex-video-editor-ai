@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
+import { test, expect, hook, artboard, rulerBox } from './fixtures';
 
 // W4-B: decoded video and images on the canvas and in playback.
 // frame-code.json: 1280x720 composition at 30 fps, background #f0eee7. Video 1 holds
@@ -76,7 +76,7 @@ async function readCode(page: Page, t: Transform = FULL) {
 const expected = (k: number) => k - 15;
 
 async function seek(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   await page.mouse.click(box.x + seconds * 80, box.y + 8);
   await expect
     .poll(async () => (await hook(page)).session.time)

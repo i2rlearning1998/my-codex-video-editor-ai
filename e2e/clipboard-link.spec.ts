@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen } from './fixtures';
+import { test, expect, hook, toScreen, rulerBox } from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2, clip-b 3..5 (asset-video) · Video 2: clip-c 1..4 · Video 3: empty
@@ -57,7 +57,7 @@ async function select(page: Page, id: string, add = false) {
   });
 }
 async function seek(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   await page.mouse.click(box.x + seconds * 80, box.y + 8);
   await expect
     .poll(async () => (await hook(page)).session.time)

@@ -146,3 +146,17 @@ export async function menuAction(page: Page, id: string) {
     await page.locator('#menu-trigger').click();
   await page.locator(id).click();
 }
+
+/**
+ * The timeline ruler's box. The timeline re-renders by replacing its elements,
+ * so a single boundingBox() can land on a detached ruler and return null; wait
+ * for the attached one (its position does not change between renders).
+ */
+export async function rulerBox(page: Page) {
+  const ruler = page.locator('.timeline-ruler');
+  let box: Awaited<ReturnType<typeof ruler.boundingBox>> = null;
+  await expect
+    .poll(async () => (box = await ruler.boundingBox()))
+    .not.toBeNull();
+  return box!;
+}

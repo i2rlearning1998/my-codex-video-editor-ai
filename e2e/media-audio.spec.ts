@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, rulerBox } from './fixtures';
 
 // W4-C: audio playback, sync, mute and solo, scrub snippets and waveforms.
 // av-sync.json: Video 1 holds clip-av (0..4 s) of video_av_sync_flash_beep_720p.webm,
@@ -39,7 +39,7 @@ const sourceIds = async (page: Page) =>
   (await media(page)).audio.sources.map((source) => source.clipId).sort();
 const play = (page: Page) => page.locator('[data-action="play"]').click();
 async function seek(page: Page, seconds: number) {
-  const box = (await page.locator('.timeline-ruler').boundingBox())!;
+  const box = await rulerBox(page);
   await page.mouse.click(box.x + seconds * 80, box.y + 8);
   await expect
     .poll(async () => (await hook(page)).session.time)
