@@ -22,6 +22,8 @@ import {
 } from '../render/canvas';
 import { renderInspector } from './inspector';
 import { mountMediaPanel } from './media-panel';
+import { openExportDialog } from './export-dialog';
+import { drawComposition } from '../render/canvas';
 import {
   AudioDecoder,
   AudioEngine,
@@ -149,6 +151,7 @@ export function mountEditorShell(
           <button type="button" id="example" role="menuitem">${iconSvg('open')}${t('action.example')}</button>
           <label class="button" role="menuitem" id="open-project-label">${iconSvg('open')}${t('action.open')}<input id="import" type="file" accept="application/json,.json" /></label>
           <button type="button" id="save" role="menuitem">${iconSvg('save')}${t('action.save')}</button>
+          <button type="button" id="export-json" role="menuitem">${iconSvg('export')}${t('action.exportJson')}</button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
@@ -757,9 +760,45 @@ export function mountEditorShell(
         ? document.exitFullscreen()
         : stage.requestFullscreen(),
     );
+  // APP-015 / W5-A: the primary Export button opens the Export dialog.
+  const renderFrame = () => {
+    const { width, height } = session.source.composition;
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = width;
+    frameCanvas.height = height;
+    const context = frameCanvas.getContext('2d');
+    if (!context) return Promise.reject(new Error('Canvas 2D is unavailable'));
+    drawComposition(
+      context,
+      { ...session.source, frames, playing: false },
+      { width, height, pixelRatio: 1, matrix: [1, 0, 0, 1, 0, 0] },
+      null,
+      { overlays: false },
+    );
+    return new Promise<Blob>((resolve, reject) =>
+      frameCanvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('PNG failed'))),
+        'image/png',
+      ),
+    );
+  };
+  const openExport = () => {
+    session.setPlaying(false);
+    openExportDialog({
+      composition: session.source.composition,
+      assets: session.source.assets,
+      background: session.source.background,
+      projectName: engine.state.metadata.name,
+      store: mediaStore,
+      decoder,
+      renderFrame,
+      toast: (text, kind) => showToast(text, kind),
+    });
+  };
+  element<HTMLButtonElement>('#export').onclick = () => safely(openExport);
   for (const [id, action] of [
     ['#save', actions.save],
-    ['#export', actions.exportProject],
+    ['#export-json', actions.exportProject],
     ['#example', actions.openExample],
   ] as const) {
     const button = element<HTMLButtonElement>(id);

@@ -48,6 +48,21 @@ export function clipSchedule(
   return { delay, offset, length: Math.min(length, bufferDuration - offset) };
 }
 
+/** A reversed copy, for reversed clips (read with `clipSchedule` offsets). */
+export function reverseAudioBuffer(buffer: AudioBuffer): AudioBuffer {
+  const reversed = new AudioBuffer({
+    length: buffer.length,
+    numberOfChannels: buffer.numberOfChannels,
+    sampleRate: buffer.sampleRate,
+  });
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++)
+    reversed.copyToChannel(
+      buffer.getChannelData(channel).slice().reverse(),
+      channel,
+    );
+  return reversed;
+}
+
 /** Peak bytes (0..255) at WAVE_RATE per second, the max over all channels. */
 export function waveformPeaks(buffer: {
   duration: number;
@@ -403,16 +418,7 @@ export class AudioEngine {
   #reverse(buffer: AudioBuffer): AudioBuffer {
     let reversed = this.#reversed.get(buffer);
     if (!reversed) {
-      reversed = new AudioBuffer({
-        length: buffer.length,
-        numberOfChannels: buffer.numberOfChannels,
-        sampleRate: buffer.sampleRate,
-      });
-      for (let channel = 0; channel < buffer.numberOfChannels; channel++)
-        reversed.copyToChannel(
-          buffer.getChannelData(channel).slice().reverse(),
-          channel,
-        );
+      reversed = reverseAudioBuffer(buffer);
       this.#reversed.set(buffer, reversed);
     }
     return reversed;
