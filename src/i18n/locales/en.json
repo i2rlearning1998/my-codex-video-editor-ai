@@ -215,5 +215,15 @@
   "media.noMatchesTitle": "No matching media",
   "media.noMatchesDescription": "No media name contains your search. Clear the search to see everything.",
   "media.importButton": "Import video, audio or image files",
-  "canvas.buffering": "Buffering…"
+  "canvas.buffering": "Buffering…",
+  "command.align": "Align",
+  "command.alignLeft": "Align left",
+  "command.alignCenter": "Align center",
+  "command.alignRight": "Align right",
+  "command.alignTop": "Align top",
+  "command.alignMiddle": "Align middle",
+  "command.alignBottom": "Align bottom",
+  "command.distributeHorizontal": "Distribute horizontally",
+  "command.distributeVertical": "Distribute vertically",
+  "command.alignToCanvas": "Relative to canvas"
 }

@@ -12,6 +12,8 @@ export class EditorSession {
   /** CV-022 group isolation: canvas clicks resolve to this group's children. */
   #enteredGroup: string | null = null;
   #playing = false;
+  /** CV-025: align relative to the canvas instead of the selection. */
+  #alignToCanvas = false;
   #canvasZoom = 1;
   #compositionId: string;
   #listeners = new Set<() => void>();
@@ -93,6 +95,14 @@ export class EditorSession {
       ...(this.measureText ? { measureText: this.measureText } : {}),
       background: project.settings.backgroundColor,
     };
+  }
+  get alignToCanvas(): boolean {
+    return this.#alignToCanvas;
+  }
+  setAlignToCanvas(value: boolean): void {
+    if (value === this.#alignToCanvas) return;
+    this.#alignToCanvas = value;
+    this.#notify();
   }
   get soloTrackIds(): readonly string[] {
     return this.#solo;

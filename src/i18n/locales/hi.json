@@ -215,5 +215,15 @@
   "media.noMatchesTitle": "कोई मिलता-जुलता मीडिया नहीं",
   "media.noMatchesDescription": "किसी मीडिया के नाम में आपकी खोज नहीं है। सब कुछ देखने के लिए खोज साफ़ करें।",
   "media.importButton": "वीडियो, ऑडियो या छवि फ़ाइलें इम्पोर्ट करें",
-  "canvas.buffering": "बफ़र हो रहा है…"
+  "canvas.buffering": "बफ़र हो रहा है…",
+  "command.align": "संरेखित करें",
+  "command.alignLeft": "बाएँ संरेखित करें",
+  "command.alignCenter": "बीच में संरेखित करें (क्षैतिज)",
+  "command.alignRight": "दाएँ संरेखित करें",
+  "command.alignTop": "ऊपर संरेखित करें",
+  "command.alignMiddle": "बीच में संरेखित करें (लंबवत)",
+  "command.alignBottom": "नीचे संरेखित करें",
+  "command.distributeHorizontal": "क्षैतिज रूप से समान दूरी दें",
+  "command.distributeVertical": "लंबवत रूप से समान दूरी दें",
+  "command.alignToCanvas": "कैनवास के सापेक्ष"
 }

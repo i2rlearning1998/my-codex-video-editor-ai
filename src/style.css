@@ -1384,6 +1384,15 @@ input[type='number'] {
   padding-top: calc(var(--space-2) + var(--space-2));
   border-top: 1px solid var(--color-border);
 }
+.canvas-context-menu button[data-action='align-to-canvas']::before {
+  content: '';
+  display: inline-block;
+  inline-size: 1.2em;
+}
+.canvas-context-menu
+  button[data-action='align-to-canvas'][aria-checked='true']::before {
+  content: '✓';
+}
 
 /* ===== Status bar ===== */
 .statusbar {
