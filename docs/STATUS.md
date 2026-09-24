@@ -4,7 +4,6 @@
   - 327 unit + jsdom tests.
   - 105 e2e passes + 1 expected failure (the DEV-006 probe).
   - Ledger on PR #3's branch: 119 Verified / 11 Claimed / 372 Todo / 0 Bug.
-  - PB-010 failed intermittently in full sandbox runs during W2-D (see reports/W2-D.md, section 3).
   - See reports/W4-A.md, W4-B.md and W4-C.md. The browser is Chromium 141 (fallback), which cannot decode H.264 or AAC. GitHub Actions runs only when dispatched by hand.
 - W4-A:
   - Verified: DEV-008, MED-001, MED-002, MED-004, MED-006, MED-007, MED-009, MED-013, MED-014, MED-015, MED-018, MED-035 and TL-017.
@@ -17,4 +16,5 @@
 - W5-A: real video export (MP4 in Chrome and Edge, WebM fallback), frame-exact, with the audio mix, presets, progress and cancel, pre-flight and PNG frames. The CI job `export-mp4` proves MP4 in Chrome on Windows. New dependency: mediabunny 1.59.1 (MPL-2.0).
 - W2-D: smart guides and snapping (CV-013) and align and distribute (CV-025) are Verified, under interaction contract revision 5 (D-066, D-067). See reports/W2-D.md.
 - W2-E: the context toolbar (CV-035 to CV-038), the Draw tool (SHP-018, SHP-019) and Copy style (CV-039) are Verified (D-068). Unbuilt toolbar controls are greyed out and name their wave. Add link is in the backlog. See reports/W2-E.md.
+- **Known sandbox-only flake: PB-010** (audio/picture sync). In full e2e runs in the Linux sandbox it sometimes measures one sample at 37–49 ms against its 33 ms limit. It passes on CI and when run alone. It was investigated in W2-D with no root cause found (reports/W2-D.md, section 3). By owner decision (2026-09-24), it is not re-investigated when it resurfaces in the sandbox; a failure on CI would still be treated as real.
 - Schema remains 4. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).
