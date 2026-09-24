@@ -2,6 +2,12 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 part D (W2-D) — 2026-09-24
+
+- Smart guides: dragging or resizing a layer snaps to the canvas edges and center, the safe margins, and other layers' edges and centers, and pink guide lines show the match. Hold Ctrl to place freely.
+- Align (left, center, right, top, middle, bottom) and Distribute (horizontal, vertical) in the canvas right-click menu and the command palette, relative to the selection or the canvas.
+- The interaction contract is now at revision 5 (owner-authorized).
+
 ## Wave 4 part C (W4-C) — 2026-09-24
 
 - Sound: audio files, the sound of video clips and detached audio play in step with the picture (measured within one frame).
