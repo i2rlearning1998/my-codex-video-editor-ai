@@ -1,9 +1,10 @@
 import { test, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { EditorEngine, deserializeProject } from '../src/core';
+import { EditorEngine, deserializeProject, type Command } from '../src/core';
 import { EditorSession } from '../src/ui/session';
 import { commands, runCommand } from '../src/commands/registry';
 import { clearClipboard, hasClipboard } from '../src/ui/editing';
+import { hasStyle } from '../src/ui/style-clipboard';
 import { t, setLanguage } from '../src/i18n';
 test('[KEY-001] every registered action has translated labels, enablement and an executable handler', () => {
   expect(new Set(commands.map((command) => command.id)).size).toBe(
@@ -51,6 +52,29 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     if (command.id === 'speed-normal') runCommand('speed-faster', context);
     if (command.id === 'paste') runCommand('copy', context);
     if (command.id === 'unlink') runCommand('link', context);
+    if (command.id === 'paste-style') {
+      // Copy a half-opacity style from layer 2, undo that edit, paste on layer 1.
+      session.select(ids[1]!);
+      engine.commands.transaction('Setup', [
+        {
+          type: 'SET_PROPERTY',
+          compositionId: engine.state.compositions[0]!.id,
+          layerId: ids[1]!,
+          target: { kind: 'transform', key: 'opacity' },
+          property: {
+            ...(JSON.parse(
+              JSON.stringify(
+                engine.state.compositions[0]!.layers[1]!.transform.opacity,
+              ),
+            ) as object),
+            value: 0.5,
+          },
+        } as unknown as Command,
+      ]);
+      runCommand('copy-style', context);
+      engine.undo();
+      session.select(ids[0]!);
+    }
     for (const locale of ['en', 'hi'] as const) {
       setLanguage(locale);
       expect(t(command.labelKey)).not.toBe(command.labelKey);
@@ -70,6 +94,7 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'undo') expect(engine.canRedo).toBe(true);
     else if (command.id === 'cut-previous') expect(session.currentTime).toBe(0);
     else if (command.id === 'copy') expect(hasClipboard()).toBe(true);
+    else if (command.id === 'copy-style') expect(hasStyle()).toBe(true);
     else if (command.id === 'align-to-canvas')
       expect(session.alignToCanvas).toBe(true);
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);

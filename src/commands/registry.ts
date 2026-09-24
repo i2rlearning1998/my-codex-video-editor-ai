@@ -7,6 +7,12 @@ import {
   distributeSelection,
 } from '../ui/align';
 import {
+  canCopyStyle,
+  copyStyle,
+  hasStyle,
+  pasteStyle,
+} from '../ui/style-clipboard';
+import {
   contextActions,
   jumpToCut,
   moveClipsToAdjacentTrack,
@@ -142,6 +148,21 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     isEnabled: ({ session }) => canDistribute(session),
     run: ({ engine, session }) => distributeSelection(engine, session, axis),
   })),
+  // CV-039: Copy style / Paste style (palette and canvas menu).
+  {
+    id: 'copy-style',
+    labelKey: 'command.copyStyle',
+    shortcut: '',
+    isEnabled: ({ session }) => canCopyStyle(session),
+    run: ({ session }) => copyStyle(session),
+  },
+  {
+    id: 'paste-style',
+    labelKey: 'command.pasteStyle',
+    shortcut: '',
+    isEnabled: ({ session }) => hasStyle() && session.selectedIds.length > 0,
+    run: ({ engine, session }) => pasteStyle(engine, session),
+  },
   {
     id: 'align-to-canvas',
     labelKey: 'command.alignToCanvas',

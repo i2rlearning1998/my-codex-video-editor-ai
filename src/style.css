@@ -756,6 +756,76 @@ input[type='number'] {
   border-bottom: 1px solid var(--color-border);
   gap: var(--space-4);
 }
+/* CV-035 context toolbar: floats over the top of the canvas stage, so showing
+   or hiding it never moves the canvas under the pointer. */
+.context-toolbar {
+  position: absolute;
+  z-index: 5;
+  inset-block-start: var(--space-2);
+  inset-inline: var(--space-4);
+  inline-size: fit-content;
+  max-inline-size: calc(100% - 2 * var(--space-4));
+  margin-inline: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-xs);
+}
+.context-toolbar[hidden] {
+  display: none;
+}
+.toolbar-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+}
+.toolbar-field input[type='number'] {
+  inline-size: 4.5em;
+  padding: var(--space-1);
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+.toolbar-field input[type='color'] {
+  inline-size: 2em;
+  block-size: 1.6em;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: none;
+}
+.toolbar-group {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+.toolbar-button:hover:not([aria-disabled='true']) {
+  background: var(--color-bg-hover);
+}
+.toolbar-button[aria-disabled='true'] {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
 .composition-picker {
   display: flex;
   align-items: center;
@@ -1392,6 +1462,72 @@ input[type='number'] {
 .canvas-context-menu
   button[data-action='align-to-canvas'][aria-checked='true']::before {
   content: '✓';
+}
+
+/* SHP-018 Draw panel */
+.draw-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+}
+.draw-panel[hidden] {
+  display: none;
+}
+.draw-title {
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+.draw-hint {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  margin: 0;
+}
+.draw-brushes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+.draw-brushes button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  color: var(--color-text);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+.draw-brushes button[aria-checked='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.draw-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+.draw-field span {
+  min-inline-size: 4em;
+}
+.draw-field input[type='range'] {
+  flex: 1;
+  min-inline-size: 0;
+}
+.draw-field input[type='number'] {
+  inline-size: 5em;
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+#composition-canvas.drawing {
+  cursor: crosshair;
 }
 
 /* ===== Status bar ===== */
