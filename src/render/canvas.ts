@@ -215,6 +215,28 @@ export function drawComposition(
   context.strokeStyle = '#666975';
   context.lineWidth = 1 / viewport.matrix[0];
   context.strokeRect(0, 0, source.composition.width, source.composition.height);
+  // CV-013: snap guides across the composition, 1 CSS px at any zoom.
+  if (source.guides?.length) {
+    context.setTransform(...pixels);
+    context.strokeStyle = '#ff4fa3';
+    context.lineWidth = 1;
+    context.beginPath();
+    for (const guide of source.guides) {
+      const from = transformPoint(
+        viewport.matrix,
+        guide.axis === 'x' ? [guide.value, 0] : [0, guide.value],
+      );
+      const to = transformPoint(
+        viewport.matrix,
+        guide.axis === 'x'
+          ? [guide.value, source.composition.height]
+          : [source.composition.width, guide.value],
+      );
+      context.moveTo(...from);
+      context.lineTo(...to);
+    }
+    context.stroke();
+  }
   for (const id of source.selectedIds ?? []) {
     if (id === selectedId) continue;
     const box = selectionGeometry(source, id, viewport.matrix);

@@ -4,6 +4,7 @@ import { deriveRenderItems, locateLayer } from '../render/adapter';
 import { hitHandle, selectionGeometry } from '../render/selection';
 import type { EditorSession } from './session';
 import type { TransformInteraction } from './transform-interaction';
+import { SNAP_PIXELS } from './snapping';
 
 /**
  * CV-022: map a picked leaf to the selectable layer. Outside any entered group
@@ -173,8 +174,18 @@ export function bindCanvasInteraction(
       return;
     }
     if (Math.hypot(point[0] - start[0], point[1] - start[1]) >= 3) moved = true;
-    if (moved)
-      interaction.update(compositionPoint(point), event.shiftKey, event.altKey);
+    if (moved) {
+      // CV-013: snap within 6 CSS px at any zoom; Ctrl or Cmd places freely.
+      const [a, b] = viewport().matrix;
+      interaction.update(
+        compositionPoint(point),
+        event.shiftKey,
+        event.altKey,
+        event.ctrlKey || event.metaKey
+          ? undefined
+          : SNAP_PIXELS / Math.hypot(a, b),
+      );
+    }
   };
   const pointermove = (event: PointerEvent) =>
     safely(() => {

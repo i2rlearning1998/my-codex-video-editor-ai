@@ -33,6 +33,7 @@ test('[DEV-005] hook snapshots are deeply frozen and cannot mutate engine or ses
   expect(errors[0]!.message).toBe('probe');
   expect(project).not.toBe(engine.state);
   expect(Object.keys(hook).sort()).toEqual([
+    'getCanvas',
     'getConsoleErrors',
     'getHistory',
     'getMedia',

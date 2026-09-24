@@ -7,6 +7,7 @@ export function createTestHook(
   session: EditorSession,
   getErrors: () => readonly unknown[] = () => [],
   getMedia: () => unknown = () => null,
+  getCanvas: () => unknown = () => null,
 ) {
   const snapshot = <T>(value: T): T =>
     freeze(JSON.parse(JSON.stringify(value))) as T;
@@ -32,6 +33,8 @@ export function createTestHook(
     getConsoleErrors: () => snapshot(getErrors()),
     /** W4-C: audio and video positions for the sync proof (a detached copy). */
     getMedia: () => snapshot(getMedia()),
+    /** CV-013: the active canvas gesture's snap guides (a detached copy). */
+    getCanvas: () => snapshot(getCanvas()),
   });
 }
 
@@ -40,9 +43,10 @@ export function installTestHook(
   session: EditorSession,
   getErrors?: () => readonly unknown[],
   getMedia?: () => unknown,
+  getCanvas?: () => unknown,
 ) {
   Object.defineProperty(window, '__AIVE__', {
-    value: createTestHook(engine, session, getErrors, getMedia),
+    value: createTestHook(engine, session, getErrors, getMedia, getCanvas),
     configurable: true,
     writable: false,
   });

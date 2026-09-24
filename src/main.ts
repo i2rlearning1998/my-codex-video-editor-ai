@@ -120,6 +120,7 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
         shell.session,
         diagnostics.getErrors,
         shell.mediaDebug,
+        shell.canvasDebug,
       );
   });
 }
