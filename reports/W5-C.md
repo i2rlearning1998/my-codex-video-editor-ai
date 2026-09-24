@@ -63,7 +63,7 @@ This completes the animation part of Wave 5. Shapes (W5-D) are not started.
 
 - **Handles during a preset.** Selection handles show the resting position while a preset moves the layer, which is deliberate (D-072). Clicking the moving picture during a slide may therefore miss it.
 - **Typewriter** reveals characters without per-character motion (that is ANI-012). Wipe is left-to-right only.
-- **Group children** have no clip, so presets apply to top-level layers only; the Animate button is disabled for children.
+- **Group children** have no clip, so presets apply to top-level layers only; clicking Animate on a child does nothing (the button is not greyed out yet; noted in the backlog).
 - **Presets are not keyframes,** so they cannot be edited point by point.
 - **Not tested:**
   - Ken Burns on a real photo (the sandbox test uses the fixture's image placeholder; the maths is shared);
