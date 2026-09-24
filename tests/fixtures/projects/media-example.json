@@ -68,7 +68,7 @@
           "children": []
         },
         {
-          "id": "layer-media-be79c81e1dacc1c9",
+          "id": "layer-media-0d2dbf17c7d6f5e7",
           "name": "image_gradient_1920x1080.png",
           "type": "image",
           "startTime": 2,
@@ -112,7 +112,7 @@
           "properties": {},
           "effects": [],
           "masks": [],
-          "assetId": "media-be79c81e1dacc1c9",
+          "assetId": "media-0d2dbf17c7d6f5e7",
           "children": []
         },
         {
@@ -190,10 +190,10 @@
               "metadata": {}
             },
             {
-              "id": "clip-media-be79c81e1dacc1c9",
+              "id": "clip-media-0d2dbf17c7d6f5e7",
               "name": "image_gradient_1920x1080.png",
-              "layerId": "layer-media-be79c81e1dacc1c9",
-              "assetId": "media-be79c81e1dacc1c9",
+              "layerId": "layer-media-0d2dbf17c7d6f5e7",
+              "assetId": "media-0d2dbf17c7d6f5e7",
               "startTime": 2,
               "duration": 5,
               "sourceIn": 0,
@@ -275,19 +275,19 @@
       "duration": 3
     },
     {
-      "id": "media-be79c81e1dacc1c9",
+      "id": "media-0d2dbf17c7d6f5e7",
       "name": "image_gradient_1920x1080.png",
       "type": "image",
       "source": {
         "kind": "local",
-        "reference": "media/be79c81e1dacc1c9863cfb6f283beb5a"
+        "reference": "media/0d2dbf17c7d6f5e754587aa97a0ba77f"
       },
       "metadata": {
         "mimeType": "image/png",
-        "size": 90853,
+        "size": 44748,
         "fileName": "image_gradient_1920x1080.png",
         "lastModified": 0,
-        "fingerprint": "be79c81e1dacc1c9863cfb6f283beb5a"
+        "fingerprint": "0d2dbf17c7d6f5e754587aa97a0ba77f"
       },
       "width": 1920,
       "height": 1080

@@ -45,14 +45,14 @@
     },
     {
       "file": "image_exif_orientation6_1600x1200.jpg",
-      "bytes": 66527,
-      "sha256": "50a0826dcb846aebb00a762929bc288969c108fd9a2094bb74031cd01819f0bf",
-      "description": "JPEG stored 1600x1200 with EXIF Orientation 6: shows 1200x1600 portrait"
+      "bytes": 12135,
+      "sha256": "45300920b2cb34a5e4f0a17fedd6b2e5cdb01a03b0e0490f43b19de9e601c0a1",
+      "description": "JPEG stored 1600x1200 (red top-left block on blue) with EXIF Orientation 6: shows 1200x1600 portrait with the red block top-right"
     },
     {
       "file": "image_gradient_1920x1080.png",
-      "bytes": 90853,
-      "sha256": "75b8dfa72ca751ee6cba00979f76a0c6054b8bb1dc65b07a601bcdc8a751abed",
+      "bytes": 44748,
+      "sha256": "85e069778382c827ae66f9c859f346c87dfb7a75e2e558be4855e1241791c0da",
       "description": "PNG 1920x1080 opaque gradient"
     },
     {
@@ -96,6 +96,12 @@
       "bytes": 28138,
       "sha256": "8485743ea98839ba03e88a4a735a3a52ff1326f21d02ed5e457ed2342c2c4f2d",
       "description": "Same A/V sync pattern as the MP4, VP9/Opus, decodable in Chromium"
+    },
+    {
+      "file": "video_frame_code_320x180_4s.webm",
+      "bytes": 5234,
+      "sha256": "333accdda731456c36df8dd3686f1733e5785f1e6f4d4f95feafa267a2351009",
+      "description": "WebM VP9 320x180 30 fps 4 s: frame number in binary as seven white blocks (bit 0 leftmost, 40 px each) plus a grey block"
     },
     {
       "file": "video_rotation90_metadata_portrait_no_audio.mp4",

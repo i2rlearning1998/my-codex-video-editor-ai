@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 4,
+  "id": "frame-code-project",
+  "metadata": {
+    "name": "Frame Code Fixture",
+    "createdAt": "2026-09-24T00:00:00.000Z",
+    "updatedAt": "2026-09-24T00:00:00.000Z"
+  },
+  "settings": {
+    "backgroundColor": "#101219",
+    "audioSampleRate": 48000
+  },
+  "compositions": [
+    {
+      "id": "code-main",
+      "name": "Main composition",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "duration": 4,
+      "layers": [
+        {
+          "id": "layer-code",
+          "name": "video_frame_code_320x180_4s.webm",
+          "type": "video",
+          "startTime": 1,
+          "duration": 3,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                0,
+                0
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                4,
+                4
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "media-3ba4f562cfdbf392",
+          "children": []
+        }
+      ],
+      "tracks": [
+        {
+          "id": "video-1",
+          "name": "Video 1",
+          "type": "video",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "clip-code",
+              "name": "video_frame_code_320x180_4s.webm",
+              "layerId": "layer-code",
+              "assetId": "media-3ba4f562cfdbf392",
+              "startTime": 1,
+              "duration": 3,
+              "sourceIn": 0.5,
+              "sourceOut": 3.5,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "video-2",
+          "name": "Video 2",
+          "type": "video",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      ],
+      "markers": [],
+      "audioTracks": []
+    }
+  ],
+  "assets": [
+    {
+      "id": "media-3ba4f562cfdbf392",
+      "name": "video_frame_code_320x180_4s.webm",
+      "type": "video",
+      "source": {
+        "kind": "local",
+        "reference": "media/3ba4f562cfdbf392ca247f70b7f70caf"
+      },
+      "metadata": {
+        "mimeType": "video/webm",
+        "size": 5234,
+        "fileName": "video_frame_code_320x180_4s.webm",
+        "lastModified": 0,
+        "fingerprint": "3ba4f562cfdbf392ca247f70b7f70caf"
+      },
+      "width": 320,
+      "height": 180,
+      "duration": 4
+    }
+  ]
+}

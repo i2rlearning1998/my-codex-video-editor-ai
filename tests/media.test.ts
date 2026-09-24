@@ -60,30 +60,104 @@ describe('[DEV-008] media fixture pack', () => {
     expect(total).toBeLessThan(5 * 1024 * 1024);
   });
 
-  it('rebuilds the media project fixture through engine commands', async () => {
-    // A fixed clock keeps metadata.updatedAt stable across rebuilds.
-    vi.useFakeTimers({
-      toFake: ['Date'],
-      now: new Date('2026-09-24T00:00:00Z'),
+  it('rebuilds the media project fixtures through engine commands', async () => {
+    await buildFixture({
+      file: PROJECT,
+      name: 'Media Fixture',
+      id: 'media-fixture-project',
+      composition: {
+        id: 'media-main',
+        width: 1920,
+        height: 1080,
+        duration: 10,
+      },
+      media: [
+        [
+          'video_testsrc_720p_2s_vp9_opus.webm',
+          'video',
+          { width: 1280, height: 720, duration: 2 },
+        ],
+        ['audio_tone_440hz_3s.wav', 'audio', { duration: 3 }],
+        [
+          'image_gradient_1920x1080.png',
+          'image',
+          { width: 1920, height: 1080 },
+        ],
+        ['image_testsrc_1200x800.jpg', 'image', { width: 1200, height: 800 }],
+      ],
+      tracks: [
+        ['video-1', 'Video 1', 'video'],
+        ['audio-1', 'Audio 1', 'audio'],
+      ],
+      clips: [
+        { asset: 0, track: 'video-1', start: 0, duration: 2, fit: true },
+        { asset: 2, track: 'video-1', start: 2, duration: 5, fit: true },
+        { asset: 1, track: 'audio-1', start: 0, duration: 3 },
+      ],
     });
-    const project = createProject('Media Fixture', '2026-09-24T00:00:00.000Z');
-    project.id = 'media-fixture-project';
+    // W4-B: the frame-code video fills a 1280x720 frame (scale 4) from 1 s to 4 s,
+    // showing source 0.5..3.5 s; Video 2 is an empty overlay track.
+    await buildFixture({
+      file: 'tests/fixtures/projects/frame-code.json',
+      name: 'Frame Code Fixture',
+      id: 'frame-code-project',
+      composition: { id: 'code-main', width: 1280, height: 720, duration: 10 },
+      media: [
+        [
+          'video_frame_code_320x180_4s.webm',
+          'video',
+          { width: 320, height: 180, duration: 4 },
+        ],
+      ],
+      tracks: [
+        ['video-1', 'Video 1', 'video'],
+        ['video-2', 'Video 2', 'video'],
+      ],
+      clips: [
+        {
+          asset: 0,
+          track: 'video-1',
+          start: 1,
+          duration: 3,
+          sourceIn: 0.5,
+          scale: 4,
+          id: 'code',
+        },
+      ],
+    });
+  });
+});
+
+interface FixturePlan {
+  file: string;
+  name: string;
+  id: string;
+  composition: { id: string; width: number; height: number; duration: number };
+  media: [string, MediaKind, Partial<Asset>][];
+  tracks: [string, string, 'video' | 'audio'][];
+  clips: {
+    asset: number;
+    track: string;
+    start: number;
+    duration: number;
+    sourceIn?: number;
+    fit?: boolean;
+    scale?: number;
+    id?: string;
+  }[];
+}
+async function buildFixture(plan: FixturePlan) {
+  // A fixed clock keeps metadata.updatedAt stable across rebuilds.
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-24T00:00:00Z') });
+  try {
+    const project = createProject(plan.name, '2026-09-24T00:00:00.000Z');
+    project.id = plan.id;
     project.compositions = [
-      createComposition({ id: 'media-main', name: 'Main composition' }),
+      createComposition({ ...plan.composition, name: 'Main composition' }),
     ];
     const engine = new EditorEngine(project);
-    const media: [string, MediaKind, Partial<Asset>][] = [
-      [
-        'video_testsrc_720p_2s_vp9_opus.webm',
-        'video',
-        { width: 1280, height: 720, duration: 2 },
-      ],
-      ['audio_tone_440hz_3s.wav', 'audio', { duration: 3 }],
-      ['image_gradient_1920x1080.png', 'image', { width: 1920, height: 1080 }],
-      ['image_testsrc_1200x800.jpg', 'image', { width: 1200, height: 800 }],
-    ];
     const assets: Asset[] = [];
-    for (const [name, type, probe] of media) {
+    for (const [name, type, probe] of plan.media) {
       const file = fixtureFile(name);
       const fingerprint = await mediaFingerprint(file);
       assets.push({
@@ -105,67 +179,58 @@ describe('[DEV-008] media fixture pack', () => {
       engine.commands.transaction('Import media', [
         { type: 'ADD_ASSET', asset },
       ]);
-    const compositionId = 'media-main';
-    const commands: Command[] = [];
-    const track = (
-      id: string,
-      name: string,
-      type: 'video' | 'audio',
-      order: number,
-    ) =>
-      commands.push({
-        type: 'CREATE_TRACK',
-        compositionId,
-        track: {
-          id,
-          name,
-          type,
-          order,
-          enabled: true,
-          locked: false,
-          muted: false,
-          clips: [],
-        },
-      });
-    track('video-1', 'Video 1', 'video', 0);
-    track('audio-1', 'Audio 1', 'audio', 1);
-    const place = (
-      asset: Asset,
-      trackId: string,
-      startTime: number,
-      duration: number,
-    ) => {
+    const compositionId = plan.composition.id;
+    const commands: Command[] = plan.tracks.map(([id, name, type], order) => ({
+      type: 'CREATE_TRACK',
+      compositionId,
+      track: {
+        id,
+        name,
+        type,
+        order,
+        enabled: true,
+        locked: false,
+        muted: false,
+        clips: [],
+      },
+    }));
+    const { width: W, height: H } = plan.composition;
+    for (const item of plan.clips) {
+      const asset = assets[item.asset]!;
+      const key = item.id ?? asset.id;
       const layer = createLayer(
-        `layer-${asset.id}`,
+        `layer-${key}`,
         asset.type as 'video',
         asset.name,
-        duration,
+        item.duration,
       );
-      layer.startTime = startTime;
+      layer.startTime = item.start;
       layer.assetId = asset.id;
-      if (asset.width && asset.height) {
-        const scale = Math.min(1, 1920 / asset.width, 1080 / asset.height);
+      if (asset.width && asset.height && (item.fit || item.scale)) {
+        const scale =
+          item.scale ?? Math.min(1, W / asset.width, H / asset.height);
         layer.transform.scale = vector2(scale, scale);
         layer.transform.position = vector2(
-          (1920 - asset.width * scale) / 2,
-          (1080 - asset.height * scale) / 2,
+          (W - asset.width * scale) / 2,
+          (H - asset.height * scale) / 2,
         );
       }
+      const sourceIn = item.sourceIn ?? 0;
       commands.push(
         { type: 'CREATE_LAYER', compositionId, parentId: null, layer },
         {
           type: 'CREATE_CLIP',
           compositionId,
-          trackId,
+          trackId: item.track,
           clip: {
-            id: `clip-${asset.id}`,
+            id: `clip-${key}`,
             name: asset.name,
             layerId: layer.id,
             assetId: asset.id,
-            startTime,
-            duration,
-            sourceIn: 0,
-            sourceOut: duration,
+            startTime: item.start,
+            duration: item.duration,
+            sourceIn,
+            sourceOut: sourceIn + item.duration,
             enabled: true,
             speed: 1,
             transitionMetadata: {},
@@ -174,22 +239,20 @@ describe('[DEV-008] media fixture pack', () => {
           },
         },
       );
-    };
-    place(assets[0]!, 'video-1', 0, 2);
-    place(assets[2]!, 'video-1', 2, 5);
-    place(assets[1]!, 'audio-1', 0, 3);
+    }
     engine.commands.transaction('Build media fixture', commands);
     const text = `${serializeProject(engine.state)}\n`;
-    vi.useRealTimers();
-    if (process.env.UPDATE_FIXTURES) writeFileSync(PROJECT, text);
-    expect(text).toBe(readFileSync(PROJECT, 'utf8'));
+    if (process.env.UPDATE_FIXTURES) writeFileSync(plan.file, text);
+    expect(text).toBe(readFileSync(plan.file, 'utf8'));
     // References only: no media bytes or data URIs in the project JSON.
     expect(text).not.toMatch(/data:|base64/);
     expect(assets.map(assetFingerprint)).toEqual(
       assets.map((asset) => asset.metadata.fingerprint),
     );
-  });
-});
+  } finally {
+    vi.useRealTimers();
+  }
+}
 
 describe('[MED-001][MED-003][MED-004][MED-006] import pipeline', () => {
   const probe = async (blob: Blob, kind: MediaKind) => {

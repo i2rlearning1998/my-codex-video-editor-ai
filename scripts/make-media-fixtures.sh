@@ -47,6 +47,16 @@ sync_a="sine=frequency=1000:sample_rate=48000:duration=4,volume='if(lt(mod(t\,1)
   -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 100k -deadline good -cpu-used 4 -auto-alt-ref 0 \
   "${flags[@]}" video_alpha_circle_vp9.webm
 
+# Frame code: 4 s at 30 fps, 320x180. Blocks 0-6 (40 px wide each, from the left)
+# are white when that bit of the frame number is set; block 7 is always grey.
+code="color=c=black:size=320x180:rate=30:duration=4"
+for b in 0 1 2 3 4 5 6; do
+  code="$code,drawbox=x=$((b * 40)):y=40:w=40:h=100:color=white:t=fill:enable='gte(mod(n\\,$((2 ** (b + 1))))\\,$((2 ** b)))'"
+done
+code="$code,drawbox=x=280:y=40:w=40:h=100:color=gray:t=fill"
+"$FF" "${q[@]}" -f lavfi -i "$code" -c:v libvpx-vp9 -crf 20 -b:v 0 -deadline good \
+  -cpu-used 4 -g 30 "${flags[@]}" video_frame_code_320x180_4s.webm
+
 # Audio: a 3 s 440 Hz tone in each container.
 tone=(-f lavfi -i "sine=frequency=440:sample_rate=22050:duration=3")
 "$FF" "${q[@]}" "${tone[@]}" -ac 1 -c:a pcm_s16le "${flags[@]}" audio_tone_440hz_3s.wav
@@ -55,7 +65,7 @@ tone=(-f lavfi -i "sine=frequency=440:sample_rate=22050:duration=3")
 "$FF" "${q[@]}" "${tone[@]}" -ac 1 -c:a aac -b:a 64k "${flags[@]}" audio_tone_440hz_3s.m4a
 
 # Images.
-"$FF" "${q[@]}" -f lavfi -i "gradients=size=1920x1080:c0=0x3040a0:c1=0xe0a030:duration=1:speed=0" \
+"$FF" "${q[@]}" -f lavfi -i "gradients=size=1920x1080:c0=0x3040a0:c1=0xe0a030:duration=1:speed=0:seed=7" \
   -frames:v 1 "${flags[@]}" image_gradient_1920x1080.png
 "$FF" "${q[@]}" -f lavfi -i "testsrc2=size=1200x800:rate=1" -frames:v 1 -q:v 5 \
   "${flags[@]}" image_testsrc_1200x800.jpg
@@ -67,8 +77,10 @@ tone=(-f lavfi -i "sine=frequency=440:sample_rate=22050:duration=3")
 "$FF" "${q[@]}" -f lavfi -i "color=c=0x4f46e5:size=512x512,format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(hypot(X-256,Y-256),200),255,0)'" \
   -frames:v 1 "${flags[@]}" image_alpha_logo_512.png
 # EXIF orientation 6: stored 1600x1200 landscape, displayed 1200x1600 portrait.
-"$FF" "${q[@]}" -f lavfi -i "testsrc2=size=1600x1200:rate=1" -frames:v 1 -q:v 8 \
-  "${flags[@]}" exif_tmp.jpg
+# Stored pixels: a red block in the top-left corner on blue, so the displayed
+# (rotated 90 degrees clockwise) image has its red block in the top-right corner.
+"$FF" "${q[@]}" -f lavfi -i "color=c=blue:size=1600x1200:rate=1,drawbox=x=0:y=0:w=400:h=300:color=red:t=fill" \
+  -frames:v 1 -q:v 4 "${flags[@]}" exif_tmp.jpg
 python3 - <<'PY'
 import struct
 data = open('exif_tmp.jpg', 'rb').read()
@@ -108,7 +120,8 @@ notes = {
   'image_testsrc_800x600.webp': 'WebP 800x600 test pattern',
   'image_animated_320x240.gif': 'Animated GIF 320x240, 10 frames, loops',
   'image_alpha_logo_512.png': 'PNG RGBA 512x512: indigo disc on transparency',
-  'image_exif_orientation6_1600x1200.jpg': 'JPEG stored 1600x1200 with EXIF Orientation 6: shows 1200x1600 portrait',
+  'image_exif_orientation6_1600x1200.jpg': 'JPEG stored 1600x1200 (red top-left block on blue) with EXIF Orientation 6: shows 1200x1600 portrait with the red block top-right',
+  'video_frame_code_320x180_4s.webm': 'WebM VP9 320x180 30 fps 4 s: frame number in binary as seven white blocks (bit 0 leftmost, 40 px each) plus a grey block',
   'image_vector_logo.svg': 'SVG 400x300 logo',
   'corrupt_random_bytes.mp4': 'Negative case: 4 KiB of random bytes with a .mp4 name',
   'not_media.txt': 'Negative case: plain text',

@@ -524,9 +524,9 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 | VID-007 | P1 | W4 | Todo | Fill mismatched aspect ratios with a blurred copy of the media |
 | VID-008 | P1 | W4 | Todo | GIF is treated as an animated clip |
 | VID-009 | P1 | W4 | Todo | Replace media keeps all edits on the clip |
-| VID-010 | P0 | W6 | Todo | Constant speed from 0.1x to 8x |
-| VID-011 | P1 | W6 | Todo | Reverse a clip |
-| VID-012 | P0 | W6 | Todo | Freeze frame at the playhead |
+| VID-010 | P0 | W4 | Todo | Constant speed from 0.1x to 8x |
+| VID-011 | P1 | W4 | Todo | Reverse a clip |
+| VID-012 | P0 | W4 | Todo | Freeze frame at the playhead |
 | VID-013 | P0 | W6 | Todo | Chroma key (green screen) with tolerance and edge softness |
 | VID-014 | P2 | W8 | Todo | Stabilization |
 | VID-015 | P0 | W2 | Verified | Clip speed 0.1x to 8x (menu presets 0.25x to 4x) is a non-destructive clip property set through an undoable command; the clip's timeline duration becomes source length divided by speed, a speed badge shows on the clip, and slowing a clip into its neighbor is refused; offered in the timeline clip and canvas context menus |
