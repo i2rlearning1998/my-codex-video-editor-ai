@@ -14,6 +14,7 @@ export interface HookSnapshot {
     canvasZoom: number;
     timelinePxPerSecond: number;
     soloTrackIds: string[];
+    selectedKeyframes: { layerId: string; time: number }[];
   };
   getHistory(): { canUndo: boolean; canRedo: boolean; labels: string[] };
   getConsoleErrors(): readonly unknown[];

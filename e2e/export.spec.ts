@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Page, TestInfo } from '@playwright/test';
 import { ALL_FORMATS, BufferSource, Input } from 'mediabunny';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, rulerBox } from './fixtures';
 
 // W5-A: export v1. The sandbox Chromium has no H.264/AAC encoder, so exports here are
 // WebM (VP9 + Opus). The CI "export-mp4" job sets REQUIRE_H264=1 and runs the same
@@ -573,4 +573,103 @@ test('[APP-005] project JSON export moved to the File menu and still downloads t
   await page.locator('#export-json').click();
   const download = await downloading;
   expect(download.suggestedFilename()).toBe('project.json');
+});
+
+test('[ANI-003] an exported animated frame matches the preview at the same time', async ({
+  page,
+}, testInfo) => {
+  await installVideoLoader(page);
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  const seek = async (seconds: number) => {
+    const box = await rulerBox(page);
+    await page.mouse.click(box.x + seconds * 80, box.y + 8);
+    await expect
+      .poll(async () => (await hook(page)).session.time)
+      .toBeCloseTo(seconds, 2);
+  };
+  // The badge (x 76, 224 wide) moves to x 276 between 0 s and 2 s.
+  await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  await seek(0);
+  await page
+    .locator(
+      '#animation-panel [data-property="position"] [data-action="stopwatch"]',
+    )
+    .click();
+  await seek(2);
+  const x = page.locator('#inspector-content input[aria-label="Position X"]');
+  await x.fill('276');
+  await x.press('Enter');
+  await seek(1);
+  await openExport(page);
+  await dialog(page).locator('#export-end').fill('2');
+  await dialog(page).locator('#export-end').press('Tab');
+  const saving = page.waitForEvent('download');
+  await dialog(page).locator('#export-png').click();
+  const pngFile = testInfo.outputPath('preview-1s.png');
+  await (await saving).saveAs(pngFile);
+  const { bytes } = await runExport(page, testInfo);
+  const result = await page.evaluate(
+    async ({ video64, png64, mime }) => {
+      const decode = (base64: string) =>
+        Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      const draw = (source: CanvasImageSource) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280;
+        canvas.height = 720;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(source, 0, 0, 1280, 720);
+        return context.getImageData(0, 0, 1280, 720).data;
+      };
+      const video = await (
+        window as unknown as {
+          __loadVideo(
+            data: Uint8Array,
+            type: string,
+          ): Promise<HTMLVideoElement>;
+        }
+      ).__loadVideo(decode(video64), mime);
+      const frameAt = async (time: number) => {
+        await new Promise((resolve) => {
+          video.onseeked = resolve;
+          video.currentTime = time;
+        });
+        return draw(video);
+      };
+      const first = await frameAt(0.5 / 30);
+      const middle = await frameAt(30.5 / 30);
+      const preview = draw(
+        await createImageBitmap(
+          new Blob([decode(png64)], { type: 'image/png' }),
+        ),
+      );
+      let total = 0;
+      for (let i = 0; i < middle.length; i += 4)
+        for (let c = 0; c < 3; c++)
+          total += Math.abs(middle[i + c]! - preview[i + c]!);
+      // x 360, y 480: background at 0 s, the moving badge at 1 s.
+      const at = (data: Uint8ClampedArray) => {
+        const i = (480 * 1280 + 360) * 4;
+        return [data[i]!, data[i + 1]!, data[i + 2]!];
+      };
+      return {
+        mean: total / ((middle.length / 4) * 3),
+        first: at(first),
+        middle: at(middle),
+      };
+    },
+    {
+      video64: bytes.toString('base64'),
+      png64: readFileSync(pngFile).toString('base64'),
+      mime: expectedCodecs(container()).type,
+    },
+  );
+  // Same drawing and evaluation code: only lossy encoding differs.
+  expect(result.mean).toBeLessThan(4);
+  // The animation is really in the file: the badge reached x 360 by 1 s.
+  expect(Math.abs(result.middle[2]! - 0xed)).toBeLessThan(20);
+  expect(Math.abs(result.first[2]! - 0xe7)).toBeLessThan(20);
+  expect(result.middle[0]! - result.first[0]!).toBeLessThan(-15);
 });

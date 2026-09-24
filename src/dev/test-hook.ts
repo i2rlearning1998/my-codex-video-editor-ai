@@ -23,6 +23,8 @@ export function createTestHook(
         canvasZoom: session.canvasZoom,
         timelinePxPerSecond: session.timelineZoom,
         soloTrackIds: session.soloTrackIds,
+        /** W5-B: the selected timeline keyframes. */
+        selectedKeyframes: session.selectedKeyframes,
       }),
     getHistory: () =>
       snapshot({

@@ -46,6 +46,7 @@ const PATHS: Record<string, string> = {
   close: 'M5 5l10 10 M15 5L5 15',
   chevronDown: 'M5 8l5 5 5-5',
   chevronRight: 'M8 5l5 5-5 5',
+  chevronLeft: 'M12 5l-5 5 5 5',
   check: 'M4 10l4 4 8-8',
   search: 'M9 4a5 5 0 100 10 5 5 0 000-10z M13 13l4 4',
   info: 'M10 6.2v.1 M9 9h1.2v5H9 M10 17a7 7 0 100-14 7 7 0 000 14z',
