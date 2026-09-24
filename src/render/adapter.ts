@@ -1,5 +1,7 @@
 import {
   activeAtTime,
+  clipSourceTime,
+  clipTimeEffects,
   effectiveLayerTiming,
   findClipByLayer,
   invertMatrix,
@@ -21,6 +23,25 @@ export interface LayerPreview extends TransformPreview {
   readonly textBox?: { readonly width: number; readonly height: number };
 }
 export type SceneLayer = DeepReadonly<Layer>;
+/** What an image or video layer shows at the current time (W4-B). */
+export interface MediaFrameRequest {
+  /** Stable per-layer key: each layer gets its own decoder. */
+  readonly key: string;
+  readonly assetId: string;
+  readonly kind: 'image' | 'video';
+  /** Source-media seconds, after speed, reverse and freeze (clipSourceTime). */
+  readonly sourceTime: number;
+  readonly speed: number;
+  readonly reversed: boolean;
+  readonly frozen: boolean;
+}
+/**
+ * Injected, read-only frame lookup. The renderer asks and draws; decoding and
+ * seeking live behind this interface (src/media/frames.ts), never in the renderer.
+ */
+export interface FrameProvider {
+  frame(request: MediaFrameRequest, playing: boolean): CanvasImageSource | null;
+}
 export interface RenderSource {
   readonly composition: DeepReadonly<Composition>;
   readonly assets: readonly DeepReadonly<Asset>[];
@@ -44,6 +65,8 @@ export interface RenderSource {
   readonly measureText?: TextMeasurer;
   readonly capabilities?: Readonly<Record<string, TransformCapabilities>>;
   readonly hoveredHandle?: string | number;
+  readonly frames?: FrameProvider;
+  readonly playing?: boolean;
 }
 export interface LayerSize {
   readonly width: number;
@@ -61,6 +84,7 @@ export interface RenderItem {
   readonly fontSize: number;
   readonly lines?: readonly string[];
   readonly kind: 'rectangle' | 'text' | 'placeholder';
+  readonly media?: MediaFrameRequest;
 }
 const defaults = {
   image: [320, 180],
@@ -197,9 +221,14 @@ export function deriveRenderItems(source: RenderSource): {
         const effectiveSize = wrapped
           ? { ...size, height: Math.max(size.height, wrapped.height) }
           : size;
+        const media =
+          (layer.type === 'image' || layer.type === 'video') && layer.assetId
+            ? mediaRequest(source, layer, layer.type, layer.assetId)
+            : undefined;
         items.push(
           Object.freeze({
             ...(wrapped ? { lines: wrapped.lines } : {}),
+            ...(media ? { media } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
             matrix: world.matrix,
@@ -230,6 +259,36 @@ export function deriveRenderItems(source: RenderSource): {
   };
   visit(source.composition.layers, []);
   return { items: Object.freeze(items), warnings: Object.freeze(warnings) };
+}
+
+function mediaRequest(
+  source: RenderSource,
+  layer: SceneLayer,
+  kind: 'image' | 'video',
+  assetId: string,
+): MediaFrameRequest {
+  const time = source.currentTime ?? 0;
+  const found = findClipByLayer(source.composition, layer.id);
+  if (!found)
+    return Object.freeze({
+      key: layer.id,
+      assetId,
+      kind,
+      sourceTime: Math.max(0, time - layer.startTime),
+      speed: 1,
+      reversed: false,
+      frozen: false,
+    });
+  const effects = clipTimeEffects(found.clip);
+  return Object.freeze({
+    key: layer.id,
+    assetId,
+    kind,
+    sourceTime: clipSourceTime(found.clip, time),
+    speed: effects.speed,
+    reversed: effects.reversed,
+    frozen: effects.freezeFrame !== null,
+  });
 }
 
 export function hitTest(source: RenderSource, point: Point2): string | null {

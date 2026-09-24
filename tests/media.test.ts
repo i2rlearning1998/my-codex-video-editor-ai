@@ -101,6 +101,8 @@ describe('[DEV-008] media fixture pack', () => {
       file: 'tests/fixtures/projects/frame-code.json',
       name: 'Frame Code Fixture',
       id: 'frame-code-project',
+      // The e2e artboard helper finds the composition by this background colour.
+      background: '#f0eee7',
       composition: { id: 'code-main', width: 1280, height: 720, duration: 10 },
       media: [
         [
@@ -130,6 +132,7 @@ describe('[DEV-008] media fixture pack', () => {
 
 interface FixturePlan {
   file: string;
+  background?: string;
   name: string;
   id: string;
   composition: { id: string; width: number; height: number; duration: number };
@@ -152,6 +155,7 @@ async function buildFixture(plan: FixturePlan) {
   try {
     const project = createProject(plan.name, '2026-09-24T00:00:00.000Z');
     project.id = plan.id;
+    if (plan.background) project.settings.backgroundColor = plan.background;
     project.compositions = [
       createComposition({ ...plan.composition, name: 'Main composition' }),
     ];

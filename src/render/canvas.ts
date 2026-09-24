@@ -164,6 +164,14 @@ export function drawComposition(
       try {
         context.setTransform(...multiplyMatrices(view, item.matrix));
         context.globalAlpha = item.opacity;
+        // W4-B: decoded media replaces the placeholder once its frame is ready.
+        const frame = item.media
+          ? source.frames?.frame(item.media, source.playing ?? false)
+          : null;
+        if (frame) {
+          context.drawImage(frame, 0, 0, item.size.width, item.size.height);
+          continue;
+        }
         context.fillStyle = item.fill;
         if (item.kind !== 'text')
           context.fillRect(0, 0, item.size.width, item.size.height);

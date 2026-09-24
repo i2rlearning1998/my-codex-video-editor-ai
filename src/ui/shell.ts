@@ -22,7 +22,13 @@ import {
 } from '../render/canvas';
 import { renderInspector } from './inspector';
 import { mountMediaPanel } from './media-panel';
-import { openMediaStore, type MediaStore } from '../media';
+import {
+  MediaFrames,
+  MediaPreviews,
+  openMediaStore,
+  type MediaStore,
+  type PreviewAsset,
+} from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
@@ -176,7 +182,7 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -214,13 +220,30 @@ export function mountEditorShell(
       reportError(error);
     }
   };
+  const mediaStore = actions.mediaStore ?? openMediaStore();
+  const previews = new MediaPreviews(mediaStore);
   const mediaPanel = mountMediaPanel({
     container: element('#media-panel'),
     engine,
     session,
-    store: actions.mediaStore ?? openMediaStore(),
+    store: mediaStore,
+    previews,
     toast: (text, kind) => showToast(text, kind),
   });
+  // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
+  let redrawQueued = false;
+  const frames = new MediaFrames(
+    mediaStore,
+    () => session.source.assets as unknown as readonly PreviewAsset[],
+    () => {
+      if (redrawQueued || disposed) return;
+      redrawQueued = true;
+      requestAnimationFrame(() => {
+        redrawQueued = false;
+        safely(draw);
+      });
+    },
+  );
   const viewport = () => {
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
@@ -242,10 +265,13 @@ export function mountEditorShell(
   let timeline: ReturnType<typeof mountTimeline> | undefined;
   const draw = () => {
     if (disposed) return;
+    frames.beginFrame();
     const report = renderer.render(
       canvas,
       {
         ...session.source,
+        frames,
+        playing: session.playing,
         ...(timeline?.controller.previews.length
           ? { timingPreviews: timeline.controller.previews }
           : {}),
@@ -260,6 +286,11 @@ export function mountEditorShell(
       },
       viewport(),
       session.selectedId,
+    );
+    frames.endFrame();
+    // PB-009: a visible video without a current frame during playback.
+    element('#buffering-indicator').hidden = !(
+      session.playing && frames.buffering
     );
     element('#zoom').textContent = t('canvas.zoom', {
       zoom: formatNumber(Math.round(report.zoom * 100)),
@@ -653,6 +684,7 @@ export function mountEditorShell(
     () => safely(draw),
     reportError,
     true,
+    previews,
   );
   const unsubscribe = session.onChange(refresh);
   element<HTMLSelectElement>('#composition').onchange = (event) =>
@@ -1174,6 +1206,8 @@ export function mountEditorShell(
       newProjectForm.dispose();
       unsubscribeLanguage();
       mediaPanel.dispose();
+      frames.dispose();
+      previews.dispose();
       window.removeEventListener('drop', windowDrop);
       disposeWorkspace();
       canvas.removeEventListener('dragover', assetOver);

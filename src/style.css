@@ -1113,6 +1113,26 @@ input[type='number'] {
   font-size: var(--font-size-xs);
   color: var(--color-text);
 }
+.nle-clip {
+  isolation: isolate;
+}
+.clip-filmstrip {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  display: flex;
+  overflow: hidden;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.clip-filmstrip-tile {
+  flex: none;
+  width: 48px;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
 .timeline-clip[aria-pressed='true'] {
   background: var(--color-accent);
   color: var(--color-accent-text);
@@ -1707,4 +1727,20 @@ input[type='number'] {
 }
 .timeline-clip.locked .timeline-trim {
   cursor: not-allowed;
+}
+
+.buffering-indicator {
+  position: absolute;
+  top: var(--space-5);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-overlay-scrim);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  pointer-events: none;
+}
+.buffering-indicator[hidden] {
+  display: none;
 }

@@ -6,6 +6,7 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   clipTimeEffects,
+  clipSourceTime,
   clipLinkId,
   clipTrimBounds,
   retimeClip,
@@ -16,6 +17,7 @@ import {
 import { t, formatNumber } from '../i18n';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import type { EditorSession } from './session';
+import { STRIP_FRAMES, type MediaPreviews, type PreviewAsset } from '../media';
 import {
   selectionRoots,
   performEdit,
@@ -482,6 +484,7 @@ export function mountTimeline(
   changed: () => void,
   report: (error: unknown) => void,
   externalKeyboard = false,
+  previews?: MediaPreviews,
 ) {
   root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
@@ -489,6 +492,61 @@ export function mountTimeline(
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
   scroll.setAttribute('aria-label', t('timeline.keys'));
   const headerWidth = 224;
+  /** TL-046: filmstrip tiles (video) or a repeated thumbnail (image) behind the label. */
+  const TILE_WIDTH = 48;
+  const appendFilmstrip = (
+    element: HTMLElement,
+    clip: Parameters<typeof clipSourceTime>[0] & {
+      readonly assetId: string | null;
+    },
+    zoom: number,
+  ) => {
+    if (!previews || !clip.assetId) return;
+    const asset = (
+      session.source.assets as unknown as readonly PreviewAsset[]
+    ).find((item) => item.id === clip.assetId);
+    if (!asset || (asset.type !== 'video' && asset.type !== 'image')) return;
+    const preview =
+      asset.type === 'video'
+        ? previews.strip(asset)
+        : previews.thumbnail(asset);
+    if (preview.state !== 'ready') return;
+    const strip = document.createElement('div');
+    strip.className = 'clip-filmstrip';
+    strip.dataset.kind = asset.type;
+    strip.setAttribute('aria-hidden', 'true');
+    const count = Math.min(
+      400,
+      Math.max(1, Math.ceil(timeToPixel(clip.duration, zoom) / TILE_WIDTH)),
+    );
+    for (let index = 0; index < count; index++) {
+      const tile = document.createElement('span');
+      tile.className = 'clip-filmstrip-tile';
+      tile.style.backgroundImage = `url("${preview.url}")`;
+      if (asset.type === 'video' && asset.duration) {
+        const time = clip.startTime + pixelToTime(index * TILE_WIDTH, zoom);
+        const frame = Math.max(
+          0,
+          Math.min(
+            STRIP_FRAMES - 1,
+            Math.floor(
+              (clipSourceTime(clip, time) / asset.duration) * STRIP_FRAMES,
+            ),
+          ),
+        );
+        tile.dataset.frame = String(frame);
+        tile.style.backgroundSize = `${STRIP_FRAMES * TILE_WIDTH}px 100%`;
+        tile.style.backgroundPosition = `${-frame * TILE_WIDTH}px 0`;
+      }
+      strip.append(tile);
+    }
+    element.prepend(strip);
+  };
+  const unsubscribePreviews = previews?.onChange(() => {
+    // A filmstrip or thumbnail arrived: redraw even though the project is unchanged.
+    renderedProject = undefined;
+    render();
+  });
   /** Infinite timeline (TL-055): furthest time the user has scrolled to. Transient. */
   let reach = 0;
   let renderedSpan = 0;
@@ -814,6 +872,7 @@ export function mountTimeline(
           badge.setAttribute('aria-label', label);
           clip.append(badge);
         }
+        appendFilmstrip(clip, entry.clip, zoom);
         appendTrimHandles(clip);
         track.append(clip);
         const keyTimes = [
@@ -1793,6 +1852,7 @@ export function mountTimeline(
       unsubscribe();
       controller.dispose();
       playback.dispose();
+      unsubscribePreviews?.();
       for (const [name, listener] of Object.entries(listeners))
         root.removeEventListener(name, listener as EventListener);
       window.removeEventListener('blur', cancel);

@@ -1,14 +1,10 @@
 import type { EditorEngine } from '../core';
 import {
-  assetFingerprint,
   importMediaFiles,
   isAbort,
-  makeThumbnail,
-  mediaKey,
   probeMedia,
-  thumbnailKey,
   type ImportOutcome,
-  type MediaKind,
+  type MediaPreviews,
   type MediaStore,
 } from '../media';
 import { formatDuration, formatNumber, t } from '../i18n';
@@ -20,6 +16,7 @@ export interface MediaPanelOptions {
   engine: EditorEngine;
   session: EditorSession;
   store: Promise<MediaStore | null>;
+  previews: MediaPreviews;
   toast(text: string, kind: 'info' | 'success' | 'error'): void;
 }
 
@@ -32,9 +29,6 @@ interface Asset {
   readonly duration?: number | undefined;
   readonly metadata: { readonly mimeType?: unknown };
 }
-
-type Thumbnail =
-  { state: 'loading' } | { state: 'ready'; url: string } | { state: 'none' };
 
 const KIND_ICON: Record<string, string> = {
   video: 'media',
@@ -63,12 +57,10 @@ export function mountMediaPanel(options: MediaPanelOptions) {
   const find = <T extends HTMLElement>(selector: string) =>
     container.querySelector<T>(selector)!;
   const grid = find('#media-grid');
-  const thumbnails = new Map<string, Thumbnail>();
   let storeState: 'opening' | 'ready' | 'unavailable' = 'opening';
   let query = '';
   let controller: AbortController | null = null;
   let disposed = false;
-  let thumbnailQueue = Promise.resolve();
 
   const store = options.store.then((value) => {
     storeState = value ? 'ready' : 'unavailable';
@@ -76,70 +68,35 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     return value;
   });
 
+  // MED-018: thumbnails come from the shared, store-cached preview service.
   const setThumb = (card: HTMLElement, asset: Asset) => {
     const slot = card.querySelector<HTMLElement>('.media-thumb')!;
-    const thumb = thumbnails.get(asset.id);
-    card.dataset.thumbnail = thumb?.state ?? 'none';
-    if (thumb?.state === 'ready') {
+    const thumb = options.previews.thumbnail(asset);
+    if (card.dataset.thumbnail === thumb.state && thumb.state !== 'ready')
+      return;
+    card.dataset.thumbnail = thumb.state;
+    if (thumb.state === 'ready') {
+      if (slot.querySelector('img')?.getAttribute('src') === thumb.url) return;
       const image = document.createElement('img');
       image.src = thumb.url;
       image.alt = '';
       slot.replaceChildren(image);
     } else
       slot.innerHTML = `${iconSvg(KIND_ICON[asset.type] ?? 'media', 22)}${
-        thumb?.state === 'loading'
+        thumb.state === 'loading'
           ? `<span class="media-thumb-loading" aria-hidden="true"></span>`
           : ''
       }`;
   };
-  const updateCard = (asset: Asset) => {
-    const card = grid.querySelector<HTMLElement>(
-      `[data-asset-id="${CSS.escape(asset.id)}"]`,
-    );
-    if (card) setThumb(card, asset);
-  };
-  // MED-018: thumbnails are made in the background, one at a time, and cached in
-  // the media store so a reload reads them back instead of decoding again.
-  const requestThumbnail = (asset: Asset) => {
-    if (thumbnails.has(asset.id)) return;
-    const fingerprint = assetFingerprint(asset);
-    if (!fingerprint || asset.type === 'audio') {
-      thumbnails.set(asset.id, { state: 'none' });
-      return;
+  const updateThumbnails = () => {
+    for (const card of grid.querySelectorAll<HTMLElement>('.media-card')) {
+      const asset = (session.source.assets as unknown as readonly Asset[]).find(
+        (item) => item.id === card.dataset.assetId,
+      );
+      if (asset) setThumb(card, asset);
     }
-    thumbnails.set(asset.id, { state: 'loading' });
-    thumbnailQueue = thumbnailQueue.then(async () => {
-      let result: Thumbnail = { state: 'none' };
-      try {
-        const media = await store;
-        if (media && !disposed) {
-          let blob = await media.read(thumbnailKey(fingerprint));
-          if (!blob) {
-            const stored = await media.read(mediaKey(fingerprint));
-            const source =
-              stored &&
-              !stored.type &&
-              typeof asset.metadata.mimeType === 'string'
-                ? stored.slice(0, stored.size, asset.metadata.mimeType)
-                : stored;
-            blob = source
-              ? await makeThumbnail(source, asset.type as MediaKind)
-              : null;
-            if (blob) await media.write(thumbnailKey(fingerprint), blob);
-          }
-          if (blob) result = { state: 'ready', url: URL.createObjectURL(blob) };
-        }
-      } catch {
-        // A thumbnail is optional: the card keeps its type icon.
-      }
-      if (disposed) {
-        if (result.state === 'ready') URL.revokeObjectURL(result.url);
-        return;
-      }
-      thumbnails.set(asset.id, result);
-      updateCard(asset);
-    });
   };
+  const unsubscribePreviews = options.previews.onChange(updateThumbnails);
 
   const badge = (asset: Asset) =>
     asset.type === 'image'
@@ -158,7 +115,6 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     ).filter(listed);
     grid.replaceChildren(
       ...assets.map((asset) => {
-        requestThumbnail(asset);
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'media-card';
@@ -305,10 +261,8 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     } finally {
       controller = null;
       find('#media-import').hidden = true;
-      // Bytes may now exist for cards that had none: try their thumbnails again.
-      for (const [id, thumb] of thumbnails)
-        if (thumb.state === 'none') thumbnails.delete(id);
-      render();
+      // Bytes may now exist for cards that had none: try their previews again.
+      options.previews.retry();
     }
   };
 
@@ -326,9 +280,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     dispose() {
       disposed = true;
       controller?.abort();
-      for (const thumb of thumbnails.values())
-        if (thumb.state === 'ready') URL.revokeObjectURL(thumb.url);
-      thumbnails.clear();
+      unsubscribePreviews();
     },
   };
 }

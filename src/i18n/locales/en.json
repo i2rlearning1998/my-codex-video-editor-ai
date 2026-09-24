@@ -214,5 +214,6 @@
   "media.emptyDescription": "Click Import or drop video, audio and image files anywhere on the editor.",
   "media.noMatchesTitle": "No matching media",
   "media.noMatchesDescription": "No media name contains your search. Clear the search to see everything.",
-  "media.importButton": "Import video, audio or image files"
+  "media.importButton": "Import video, audio or image files",
+  "canvas.buffering": "Buffering…"
 }

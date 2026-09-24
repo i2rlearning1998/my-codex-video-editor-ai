@@ -216,3 +216,51 @@ export async function makeThumbnail(
     URL.revokeObjectURL(url);
   }
 }
+
+export const STRIP_FRAMES = 12;
+export const STRIP_TILE = { width: 96, height: 54 } as const;
+/** Source time of sprite frame `index` in a filmstrip of a `duration`-second video. */
+export const stripFrameTime = (index: number, duration: number) =>
+  ((index + 0.5) * duration) / STRIP_FRAMES;
+
+/**
+ * TL-046: a WebP sprite of STRIP_FRAMES frames spread evenly over the video, each
+ * letterboxed into a 96x54 tile, left to right.
+ */
+export async function makeFilmstrip(blob: Blob): Promise<Blob | null> {
+  const url = URL.createObjectURL(blob);
+  try {
+    const video = (await loadElement('video', url)) as HTMLVideoElement;
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = STRIP_TILE.width * STRIP_FRAMES;
+      canvas.height = STRIP_TILE.height;
+      const context = canvas.getContext('2d')!;
+      const scale = Math.min(
+        STRIP_TILE.width / video.videoWidth,
+        STRIP_TILE.height / video.videoHeight,
+      );
+      const width = video.videoWidth * scale,
+        height = video.videoHeight * scale;
+      for (let index = 0; index < STRIP_FRAMES; index++) {
+        const seeked = waitFor(video, 'seeked');
+        video.currentTime = stripFrameTime(index, video.duration);
+        await seeked;
+        context.drawImage(
+          video,
+          index * STRIP_TILE.width + (STRIP_TILE.width - width) / 2,
+          (STRIP_TILE.height - height) / 2,
+          width,
+          height,
+        );
+      }
+      return await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/webp', 0.8),
+      );
+    } finally {
+      await release(video);
+    }
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
