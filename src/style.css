@@ -835,6 +835,133 @@ input[type='number'] {
   border-bottom: 1px solid var(--color-border);
   gap: var(--space-4);
 }
+/* W5-C Animate panel: floats under the context toolbar. */
+.animate-panel {
+  position: absolute;
+  z-index: 6;
+  inset-block-start: calc(var(--space-2) + 44px);
+  inset-inline: var(--space-4);
+  inline-size: min(420px, calc(100% - 2 * var(--space-4)));
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-xs);
+}
+.animate-panel[hidden] {
+  display: none;
+}
+.animate-tabs {
+  display: flex;
+  gap: var(--space-1);
+}
+.animate-tabs button {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.animate-tabs button[aria-selected='true'] {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.animate-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+}
+.animate-card {
+  padding: var(--space-2);
+  color: var(--color-text);
+  background: var(--color-bg-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+.animate-card[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.animate-card:disabled {
+  color: var(--color-text-faint);
+}
+.animate-slider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text-muted);
+}
+.animate-slider input[type='range'] {
+  flex: 1;
+  min-inline-size: 0;
+}
+.animate-slider input[type='number'] {
+  inline-size: 4.5em;
+}
+/* ANI-010 easing library */
+.easing-library {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: var(--space-1);
+}
+.easing-preset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  color: var(--color-text-muted);
+  background: var(--color-bg-sunken);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+.easing-preset[aria-pressed='true'] {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+.easing-grid {
+  fill: none;
+  stroke: var(--color-border-strong);
+}
+.easing-curve {
+  fill: none;
+  stroke: var(--color-accent-hover);
+  stroke-width: 2;
+}
+.easing-track {
+  position: relative;
+  inline-size: 40px;
+  block-size: 4px;
+  background: var(--color-border);
+  border-radius: var(--radius-pill);
+}
+.easing-dot {
+  position: absolute;
+  inset-block-start: -2px;
+  inset-inline-start: 0;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent-hover);
+}
+.easing-preset:hover .easing-dot,
+.easing-preset:focus-visible .easing-dot {
+  animation: easing-preview 1.2s var(--easing) infinite alternate;
+}
+@keyframes easing-preview {
+  to {
+    inset-inline-start: 32px;
+  }
+}
 /* CV-035 context toolbar: floats over the top of the canvas stage, so showing
    or hiding it never moves the canvas under the pointer. */
 .context-toolbar {

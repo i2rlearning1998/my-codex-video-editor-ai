@@ -58,6 +58,7 @@ const PATHS: Record<string, string> = {
     'M3 4h14v12H3z M6.5 8.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z M3 14l4.5-5 3 3.5L14 9l3 5',
   flipH: 'M10 3v14 M8 6L3 14h5z M12 6l5 8h-5z',
   flipV: 'M3 10h14 M6 8l8-5v5z M6 12l8 5v-5z',
+  animate: 'M3 14c3 0 3-8 7-8s4 8 7 8 M3 17h14',
   pen: 'M4 16l1-4 8-8 3 3-8 8z M11.5 5.5l3 3 M4 16l4-1',
   brush: 'M13 3l4 4-6 6-4-4z M7 9l-2 2c-1.5 1.5-1 4-3 5 3 1 6 0 7-2l2-2',
   highlighter: 'M12 3l5 5-7 7-5-5z M5 10l-2 5 2 2 5-2 M3 17h14',
