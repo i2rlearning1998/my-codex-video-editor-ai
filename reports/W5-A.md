@@ -49,6 +49,13 @@ AV Sync Fixture.webm   Duration: 00:00:04.02 · Video: vp9, 1280x720, 30 fps · 
 Frame Code Fixture.webm (Shorts, 1 s range)   Duration: 00:00:01.00 · Video: vp9, 1080x1920, 30 fps · frame= 30
 ```
 
+**CI on the final commit `e6dab64`:** both workflow runs are green ([35961746711](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/35961746711) and [35961749987](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/35961749987)). Each ran two jobs:
+
+- `verify`, the full `npm run verify` on Linux headless Chromium;
+- `export-mp4`, the export tests in Chrome on Windows with MP4 required.
+
+Earlier commits had failed `verify` on Linux with a `blob:` URL `net::ERR_ABORTED` in the EXP-007 test. The cause was the test's in-page decoder abandoning a half-loaded exported file. The test now buffers the whole file before decoding it (commit `e6dab64`); the product code did not change.
+
 **CI `export-mp4` job:** passed; see section 11.
 
 ## 4. Try-it script (about 10 minutes, in Chrome)
