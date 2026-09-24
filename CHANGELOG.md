@@ -2,6 +2,12 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 part E (W2-E) — 2026-09-24
+
+- Context toolbar: selecting a text, image, video, shape or drawing shows its main controls floating above the canvas (position, scale, rotate, flip, opacity; text size and color; fill; brush size). Controls that are not built yet are greyed out and say which wave builds them.
+- Draw: a new Draw category in the left rail with Pen, Marker and Highlighter, brush size, color and opacity. Each stroke becomes its own layer and clip, and can be moved, resized, restyled, saved and exported.
+- Copy style and Paste style in the canvas right-click menu and the palette.
+
 ## Wave 2 part D (W2-D) — 2026-09-24
 
 - Smart guides: dragging or resizing a layer snaps to the canvas edges and center, the safe margins, and other layers' edges and centers, and pink guide lines show the match. Hold Ctrl to place freely.
