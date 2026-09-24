@@ -114,23 +114,73 @@ export class TimelineInteraction {
     const gesture = this.#gesture;
     if (!gesture || gesture.kind !== 'move') return undefined;
     const composition = this.session.source.composition;
-    const destination = gesture.destinationId?.startsWith('track:')
-      ? gesture.destinationId.slice(6)
-      : undefined;
+    const moves = this.trackMoves;
     const landings: ClipLanding[] = [];
     for (const preview of this.rawPreviews) {
       const found = findClipByLayer(composition, preview.layerId);
       if (!found) return undefined;
       landings.push({
         clip: found.clip,
-        trackId:
-          destination && !this.#gesture?.followers?.has(preview.layerId)
-            ? destination
-            : found.track.id,
+        trackId: moves.get(preview.layerId) ?? found.track.id,
         startTime: preview.startTime,
       });
     }
     return landings;
+  }
+  /**
+   * TL-017: a cross-track move shifts every dragged clip by the same number of
+   * tracks (in display order), so their track offsets are kept. Linked followers
+   * keep their own tracks.
+   */
+  get trackMoves(): ReadonlyMap<string, string> {
+    const gesture = this.#gesture;
+    const destination = gesture?.destinationId?.startsWith('track:')
+      ? gesture.destinationId.slice(6)
+      : undefined;
+    if (!gesture || !destination) return new Map();
+    return (
+      this.#planTrackMoves(
+        gesture.layer,
+        gesture.layers,
+        destination,
+        gesture.followers,
+      ) ?? new Map()
+    );
+  }
+  #planTrackMoves(
+    anchor: SceneLayer,
+    layers: readonly SceneLayer[],
+    destinationTrackId: string,
+    followers: ReadonlySet<string> | undefined,
+  ): Map<string, string> | undefined {
+    const composition = this.session.source.composition;
+    const tracks = [...composition.tracks].sort((a, b) => a.order - b.order);
+    const from = findClipByLayer(composition, anchor.id);
+    const anchorIndex = tracks.findIndex(
+      (track) => track.id === from?.track.id,
+    );
+    const shift =
+      tracks.findIndex((track) => track.id === destinationTrackId) -
+      anchorIndex;
+    if (anchorIndex < 0 || shift === 0) return undefined;
+    const moves = new Map<string, string>();
+    for (const layer of layers) {
+      if (followers?.has(layer.id)) continue;
+      const found = findClipByLayer(composition, layer.id);
+      if (!found) return undefined;
+      const target =
+        tracks[
+          tracks.findIndex((track) => track.id === found.track.id) + shift
+        ];
+      if (
+        !target ||
+        target.locked ||
+        !trackAcceptsLayer(target.type, layer.type)
+      )
+        return undefined;
+      moves.set(layer.id, target.id);
+    }
+    return moves;
   }
   /** TL-030 live plan: final starts, pushed clips and insertion markers. */
   get landingPlan(): ReturnType<typeof planLanding> | undefined {
@@ -258,20 +308,14 @@ export class TimelineInteraction {
           clips.every((item) => item.location) &&
           destinationId.startsWith('track:')
         ) {
-          const trackId = destinationId.slice(6);
-          const destination = this.session.source.composition.tracks.find(
-            (track) => track.id === trackId,
-          );
-          const compatible = destination
-            ? clips.every(({ layer }) =>
-                trackAcceptsLayer(destination.type, layer.type),
-              )
-            : false;
+          // Every dragged clip must have an unlocked, compatible target track.
           if (
-            destination &&
-            compatible &&
-            !destination.locked &&
-            clips.some((item) => item.location!.track.id !== destination.id)
+            this.#planTrackMoves(
+              gesture.layer,
+              gesture.layers,
+              destinationId.slice(6),
+              gesture.followers,
+            )
           )
             gesture.destinationId = destinationId;
         } else if (
@@ -350,21 +394,28 @@ export class TimelineInteraction {
         const destinationTrackId = gesture.destinationId.startsWith('track:')
           ? gesture.destinationId.slice(6)
           : undefined;
-        if (destinationTrackId)
-          for (const layer of gesture.layers) {
+        if (destinationTrackId) {
+          const moves =
+            this.#planTrackMoves(
+              gesture.layer,
+              gesture.layers,
+              destinationTrackId,
+              gesture.followers,
+            ) ?? new Map<string, string>();
+          for (const [layerId, trackId] of moves) {
             const clip = findClipByLayer(
               this.session.source.composition,
-              layer.id,
+              layerId,
             );
-            if (clip && clip.track.id !== destinationTrackId)
+            if (clip && clip.track.id !== trackId)
               commands.push({
                 type: 'MOVE_CLIP',
                 compositionId: gesture.compositionId,
                 clipId: clip.clip.id,
-                trackId: destinationTrackId,
+                trackId,
               });
           }
-        else {
+        } else {
           const rows = timelineRows(this.session.source, gesture.zoom);
           const to = rows.find(
             (row) => row.layer.id === gesture.destinationId,
@@ -627,6 +678,7 @@ export function mountTimeline(
     );
     rulerBar.append(ruler);
     content.append(rulerBar);
+    const trackMoves = controller.trackMoves;
     for (const [trackIndex, row] of trackRows.entries()) {
       const line = document.createElement('div');
       line.className = 'timeline-row timeline-nle-row';
@@ -634,7 +686,7 @@ export function mountTimeline(
       line.dataset.trackId = row.track.id;
       line.classList.toggle(
         'drop-target',
-        controller.destinationId === `track:${row.track.id}`,
+        [...trackMoves.values()].includes(row.track.id),
       );
       line.classList.toggle(
         'selected',
@@ -790,8 +842,9 @@ export function mountTimeline(
           track.append(diamond);
         }
       }
-      if (crossTrack && controller.destinationId === `track:${row.track.id}`)
+      if (crossTrack)
         for (const item of controller.previews) {
+          if (trackMoves.get(item.layerId) !== row.track.id) continue;
           const origin = trackRows
             .flatMap((other) => other.clips)
             .find((entry) => entry.layer.id === item.layerId);

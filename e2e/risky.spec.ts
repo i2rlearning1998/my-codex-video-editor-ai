@@ -181,21 +181,43 @@ test.describe('NLE fixture', () => {
     expect((await hook(page)).history.labels).toEqual(['Move clip']);
   });
 
-  test.fail(
-    '[TL-017] multi-selected clips dragged to another track keep their track offsets',
-    async ({ page }) => {
+  test('[TL-017] multi-selected clips dragged to another track keep their track offsets', async ({
+    page,
+  }, testInfo) => {
+    const selectBoth = async () => {
+      await page.keyboard.press('Escape');
       await clipEl(page, 'clip-a').click({ position: { x: 30, y: 10 } });
       await clipEl(page, 'clip-c').click({
         position: { x: 30, y: 10 },
         modifiers: ['Shift'],
       });
-      const a = (await clipEl(page, 'clip-a').boundingBox())!;
-      // Drag clip-a (Video 1) down one track: clip-c (Video 2) should go to Video 3.
-      await drag(page, { x: a.x + 30, y: a.y + 10 }, 0, 34);
-      expect((await clipRow(page, 'clip-a')).trackId).toBe('video-2');
-      expect((await clipRow(page, 'clip-c')).trackId).toBe('video-3');
-    },
-  );
+      expect((await hook(page)).session.selectedIds).toHaveLength(2);
+    };
+    await selectBoth();
+    const a = (await clipEl(page, 'clip-a').boundingBox())!;
+    // Drag clip-a (Video 1) down one track while holding: both ghosts show.
+    await page.mouse.move(a.x + 30, a.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(a.x + 30, a.y + 10 + 34, { steps: 8 });
+    await expect(page.locator('.timeline-clip-ghost')).toHaveCount(2);
+    await expect(
+      page.locator('[data-track-id="video-3"] .timeline-clip-ghost'),
+    ).toHaveCount(1);
+    await page.screenshot({ path: testInfo.outputPath('two-ghosts.png') });
+    await page.mouse.up();
+    // clip-c (Video 2) goes to Video 3: the one-track offset is kept.
+    expect((await clipRow(page, 'clip-a')).trackId).toBe('video-2');
+    expect((await clipRow(page, 'clip-c')).trackId).toBe('video-3');
+    expect((await hook(page)).history.labels).toEqual(['Move clip']);
+    await page.locator('#undo').click();
+    expect((await clipRow(page, 'clip-a')).trackId).toBe('video-1');
+    expect((await clipRow(page, 'clip-c')).trackId).toBe('video-2');
+    // Two tracks down would push clip-c past the last track: no track change.
+    await selectBoth();
+    await drag(page, { x: a.x + 30, y: a.y + 10 }, 0, 68);
+    expect((await clipRow(page, 'clip-a')).trackId).toBe('video-1');
+    expect((await clipRow(page, 'clip-c')).trackId).toBe('video-2');
+  });
 
   test('[CV-031] layers are drawn only inside their active time range', async ({
     page,
