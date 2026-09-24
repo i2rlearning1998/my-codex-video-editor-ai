@@ -8,3 +8,4 @@ export * from './transforms';
 export * from './time';
 export * from './timeline';
 export * from './animation';
+export * from './clip-animation';

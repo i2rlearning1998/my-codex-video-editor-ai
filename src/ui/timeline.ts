@@ -13,6 +13,7 @@ import {
   trackAcceptsLayer,
   type EditorEngine,
   type Command,
+  clipAnimation,
   type Easing,
 } from '../core';
 import { t, formatNumber } from '../i18n';
@@ -959,6 +960,13 @@ export function mountTimeline(
           badges.push(['freeze', iconSvg('freeze', 11), t('clip.frozen')]);
         if (clipLinkId(entry.clip))
           badges.push(['link', iconSvg('link', 11), t('clip.linked')]);
+        // W5-C: the clip has animation presets.
+        if (Object.keys(clipAnimation(entry.clip)).length)
+          badges.push([
+            'animation',
+            iconSvg('animate', 11),
+            t('clip.animated'),
+          ]);
         for (const [kind, content, label] of badges) {
           const badge = document.createElement('span');
           badge.className = 'clip-badge';

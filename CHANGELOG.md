@@ -2,6 +2,16 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 5 part C (W5-C) — 2026-09-24
+
+- One-click animation presets from the toolbar's new **Animate** button:
+  - In and Out: fade, slide, zoom, pop, wipe, typewriter;
+  - Loop: pulse, float, spin, wiggle;
+  - adjustable durations and speeds.
+- Presets follow the clip when it is moved or trimmed, and appear identically in the exported video.
+- Ken Burns (pan and zoom) for image clips.
+- An easing library of named curves with previews, for keyframes.
+
 ## Wave 5 part B (W5-B) — 2026-09-24
 
 - Keyframe animation: a stopwatch per property (position, scale, rotation, opacity, color, text size). With it on, any edit at the playhead records a keyframe.

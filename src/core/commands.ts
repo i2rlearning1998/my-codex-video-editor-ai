@@ -15,6 +15,7 @@ import {
   type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
+import { clipAnimation, clipAnimationSlots } from './clip-animation';
 import {
   childrenOf,
   compositionById,
@@ -150,6 +151,16 @@ export const commandSchema = z.discriminatedUnion('type', [
       clipId: idSchema,
       /** Shared id of the link group, or null to unlink. */
       linkId: idSchema.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_ANIMATION'),
+      ...location,
+      clipId: idSchema,
+      slot: z.enum(['in', 'out', 'loop', 'kenBurns']),
+      /** The slot's preset, or null to remove it (W5-C). */
+      value: z.unknown(),
     })
     .strict(),
   z
@@ -457,6 +468,23 @@ export function applyCommand(project: Project, command: Command): void {
       // Absent means unlinked, so link/unlink round-trips restore the document.
       if (command.linkId === null) delete clip.metadata.linkId;
       else clip.metadata.linkId = command.linkId;
+      return;
+    }
+    case 'SET_CLIP_ANIMATION': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      if (
+        command.value !== null &&
+        !clipAnimationSlots[command.slot].safeParse(command.value).success
+      )
+        throw new Error('Invalid animation preset');
+      const current = { ...clipAnimation(clip) } as Record<string, unknown>;
+      if (command.value === null) delete current[command.slot];
+      else current[command.slot] = structuredClone(command.value);
+      // Absent means no presets, so a set/remove round trip restores the document.
+      if (Object.keys(current).length)
+        clip.metadata.animation = current as never;
+      else delete clip.metadata.animation;
       return;
     }
     case 'SET_CLIP_AUDIO_DETACHED': {

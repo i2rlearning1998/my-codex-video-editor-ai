@@ -673,3 +673,83 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
   expect(Math.abs(result.first[2]! - 0xe7)).toBeLessThan(20);
   expect(result.middle[0]! - result.first[0]!).toBeLessThan(-15);
 });
+
+test('[ANI-007] an exported frame with an animation preset matches the preview', async ({
+  page,
+}, testInfo) => {
+  await installVideoLoader(page);
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  // Fade the badge in over 1 s, then compare 0.5 s in the file and the preview.
+  await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  await page.locator('#context-toolbar [data-control="animate"]').click();
+  await page.locator('#animate-panel [data-preset="fade"]').click();
+  await page.locator('#animate-duration').fill('1');
+  await page.locator('#animate-duration').press('Enter');
+  await page.keyboard.press('Escape');
+  const box = await rulerBox(page);
+  await page.mouse.click(box.x + 0.5 * 80, box.y + 8);
+  await expect
+    .poll(async () => (await hook(page)).session.time)
+    .toBeCloseTo(0.5, 2);
+  await openExport(page);
+  await dialog(page).locator('#export-end').fill('1');
+  await dialog(page).locator('#export-end').press('Tab');
+  const saving = page.waitForEvent('download');
+  await dialog(page).locator('#export-png').click();
+  const pngFile = testInfo.outputPath('preview-fade.png');
+  await (await saving).saveAs(pngFile);
+  const { bytes } = await runExport(page, testInfo);
+  const result = await page.evaluate(
+    async ({ video64, png64, mime }) => {
+      const decode = (base64: string) =>
+        Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
+      const draw = (source: CanvasImageSource) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1280;
+        canvas.height = 720;
+        const context = canvas.getContext('2d')!;
+        context.drawImage(source, 0, 0, 1280, 720);
+        return context.getImageData(0, 0, 1280, 720).data;
+      };
+      const video = await (
+        window as unknown as {
+          __loadVideo(
+            data: Uint8Array,
+            type: string,
+          ): Promise<HTMLVideoElement>;
+        }
+      ).__loadVideo(decode(video64), mime);
+      await new Promise((resolve) => {
+        video.onseeked = resolve;
+        video.currentTime = 15.5 / 30;
+      });
+      const exported = draw(video);
+      const preview = draw(
+        await createImageBitmap(
+          new Blob([decode(png64)], { type: 'image/png' }),
+        ),
+      );
+      let total = 0;
+      for (let i = 0; i < exported.length; i += 4)
+        for (let c = 0; c < 3; c++)
+          total += Math.abs(exported[i + c]! - preview[i + c]!);
+      const i = (462 * 1280 + 200) * 4;
+      return {
+        mean: total / ((exported.length / 4) * 3),
+        badge: [exported[i]!, exported[i + 1]!, exported[i + 2]!],
+      };
+    },
+    {
+      video64: bytes.toString('base64'),
+      png64: readFileSync(pngFile).toString('base64'),
+      mime: expectedCodecs(container()).type,
+    },
+  );
+  expect(result.mean).toBeLessThan(4);
+  // Half-faded: neither the paper (0xf0) nor the solid badge red (0xcb).
+  expect(result.badge[0]).toBeGreaterThan(0xcb + 5);
+  expect(result.badge[0]).toBeLessThan(0xf0 - 5);
+});

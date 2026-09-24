@@ -35,7 +35,6 @@ type Later = readonly [label: string, id: string, wave: number];
 const LATER: Record<string, Later> = {
   crop: ['toolbar.crop', 'VID-003', 4],
   blend: ['toolbar.blend', 'MSK-001', 6],
-  animate: ['toolbar.animate', 'ANI-001', 5],
   replace: ['toolbar.replace', 'VID-009', 4],
   font: ['toolbar.font', 'TXT-006', 3],
   weight: ['toolbar.weight', 'TXT-010', 3],
@@ -268,6 +267,8 @@ export function mountContextToolbar(
   session: EditorSession,
   edit: (field: InspectorField, value: number) => void,
   report: (error: unknown) => void,
+  /** W5-C: opens the Animate presets panel. */
+  animate?: () => void,
 ) {
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('toolbar.label'));
@@ -412,6 +413,14 @@ export function mountContextToolbar(
       if (LATER[id] && !(kind === 'drawing' && id === 'width'))
         return later(id);
       switch (id) {
+        case 'animate': {
+          const item = button(id, t('toolbar.animate'), 'animate', () =>
+            animate?.(),
+          );
+          item.disabled = !animate;
+          item.setAttribute('aria-haspopup', 'dialog');
+          return item;
+        }
         case 'x':
         case 'y':
           return field(

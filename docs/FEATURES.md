@@ -269,9 +269,9 @@ Everything the user does directly on the preview canvas.
 | CV-033 | P1 | W2 | Todo | Preview quality setting Full, Half, Quarter |
 | CV-034 | P2 | W2 | Todo | Touch and pen input work with pointer events |
 | CV-035 | P0 | W2 | Verified | A context toolbar above the canvas appears for one selected text, image, video, shape or drawing layer, with controls for that type; it hides for no selection, groups, audio layers and multi-selections |
-| CV-036 | P0 | W2 | Verified | Image and video toolbar: Position X and Y, Scale, Rotate, Flip horizontal and vertical, and Opacity edit the layer as one undo step each; Crop, Blend, Animate and Replace show disabled with a tooltip naming the wave that builds them |
-| CV-037 | P0 | W2 | Verified | Text toolbar: Size and Color edit the layer as one undo step each; Font, Weight, Align, Spacing, Effects and Animate show disabled with a tooltip naming their wave |
-| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill edits the layer; Stroke, Width, Corners, Boolean and Animate show disabled with a tooltip naming their wave. A drawing's toolbar edits its Color, Brush size and Opacity |
+| CV-036 | P0 | W2 | Verified | Image and video toolbar: Position X and Y, Scale, Rotate, Flip horizontal and vertical, and Opacity edit the layer as one undo step each; Crop, Blend and Replace show disabled with a tooltip naming the wave that builds them; Animate opens the animation presets |
+| CV-037 | P0 | W2 | Verified | Text toolbar: Size and Color edit the layer as one undo step each; Font, Weight, Align, Spacing and Effects show disabled with a tooltip naming their wave; Animate opens the animation presets |
+| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill edits the layer; Stroke, Width, Corners and Boolean show disabled with a tooltip naming their wave; Animate opens the animation presets. A drawing's toolbar edits its Color, Brush size and Opacity |
 | CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
 
 ## LYR: Layers panel (Wave 2)
@@ -502,10 +502,10 @@ Preview and export must evaluate animation with the same code.
 | ANI-004 | P0 | W5 | Verified | Keyframes can be moved, copied, pasted, duplicated and deleted, single and multiple, in inspector and timeline |
 | ANI-005 | P0 | W5 | Verified | Previous and next keyframe navigation; a marker shows when the playhead is on a keyframe |
 | ANI-006 | P0 | W5 | Verified | Auto-keyframe: when a property has a stopwatch on, changes at the playhead create keyframes |
-| ANI-007 | P0 | W5 | Todo | Animation presets: in (fade, slide, zoom, pop, wipe, typewriter), out, and loop (pulse, float, spin, wiggle) apply in one click with adjustable duration |
-| ANI-008 | P0 | W5 | Todo | Ken Burns pan and zoom in one click for images |
+| ANI-007 | P0 | W5 | Verified | Animation presets: in (fade, slide, zoom, pop, wipe, typewriter), out, and loop (pulse, float, spin, wiggle) apply in one click with adjustable duration |
+| ANI-008 | P0 | W5 | Verified | Ken Burns pan and zoom in one click for images |
 | ANI-009 | P0 | W5 | Verified | Child layers follow parent transforms and inherit opacity during animation |
-| ANI-010 | P0 | W5 | Todo | Easing preset library with visual previews |
+| ANI-010 | P0 | W5 | Verified | Easing preset library with visual previews |
 | ANI-011 | P1 | W5 | Todo | Motion path drawn on the canvas with bezier handles |
 | ANI-012 | P1 | W5 | Todo | Text animation per character, word or line with stagger |
 | ANI-013 | P1 | W8 | Todo | Graph editor: value and speed curves, bezier handles per property |

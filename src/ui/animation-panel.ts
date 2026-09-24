@@ -5,6 +5,7 @@ import type { EditorEngine, Easing } from '../core';
 import { formatNumber, t } from '../i18n';
 import { locateLayer } from '../render/adapter';
 import { iconSvg } from './icons';
+import { easingLibrary } from './easing-library';
 import {
   adjacentKeyframe,
   hasCopiedKeyframes,
@@ -317,7 +318,14 @@ export function mountAnimationPanel(
         safely(() => runKeyframeAction(engine, session, action));
       actions.append(item);
     }
-    box.append(summary, timeField, easingField, curve, actions);
+    // ANI-010: named curves with previews, one click each.
+    const library = easingLibrary(current, (easing) =>
+      safely(() => {
+        custom = false;
+        setSelectedEasing(engine, session, easing);
+      }),
+    );
+    box.append(summary, timeField, easingField, curve, library, actions);
     return box;
   };
   /** The easing shared by the selected keyframes' first property, if any. */

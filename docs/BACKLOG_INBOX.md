@@ -35,3 +35,4 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-24 | W4-C AUD | Track mute is a project edit, so it pauses playback; consider applying mute live without stopping (like solo).
   2026-09-24 | W2-E CV | Add link (right-click): attach a URL to a layer. Dropped from W2-E by the owner; revisit when a web or PDF export exists (D-068).
   2026-09-24 | W2-E CV | Context toolbar rows for groups, multi-selections and audio layers, and the "None" row (Select, Pan, Zoom, Grid, Guides, Snap), from UX spec 4.1.
+  2026-09-24 | W5-C ANI | Grey out the toolbar's Animate button for group children (they have no clip, so presets cannot apply); today clicking it does nothing.

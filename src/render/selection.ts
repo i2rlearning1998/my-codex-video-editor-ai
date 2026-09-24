@@ -42,7 +42,8 @@ export function selectionBounds(
       };
     const inverse = invertMatrix(matrix);
     if (!inverse) return null;
-    const points = deriveRenderItems(source)
+    // Bounds are the resting geometry: animation presets never move handles (D-072).
+    const points = deriveRenderItems({ ...source, animate: false })
       .items.filter((item) => item.ancestors.includes(id))
       .flatMap((item) =>
         boundsCorners({ x: 0, y: 0, ...item.size }).map((point) =>
