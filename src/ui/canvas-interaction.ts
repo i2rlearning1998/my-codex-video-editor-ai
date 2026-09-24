@@ -5,6 +5,7 @@ import { hitHandle, selectionGeometry } from '../render/selection';
 import type { EditorSession } from './session';
 import type { TransformInteraction } from './transform-interaction';
 import { SNAP_PIXELS } from './snapping';
+import type { DrawTool } from './draw-tool';
 
 /**
  * CV-022: map a picked leaf to the selectable layer. Outside any entered group
@@ -36,8 +37,11 @@ export function bindCanvasInteraction(
   edit?: (action: 'delete' | 'duplicate') => void,
   externalKeyboard = false,
   onContextMenu?: (point: Point2, layerId: string | null) => void,
+  draw?: DrawTool,
 ) {
   let pointer: number | null = null;
+  // SHP-018: in draw mode the canvas draws instead of picking (revision 5).
+  const drawing = () => !!draw && session.drawBrush !== null;
   // Clicking outside the entered group leaves isolation (CV-022).
   const pick = (point: Point2) => {
     const resolved = resolvePick(
@@ -65,6 +69,7 @@ export function bindCanvasInteraction(
   };
   const cancel = () => {
     release();
+    draw?.cancel();
     interaction.cancel();
     marquee?.box.remove();
     marquee = null;
@@ -98,6 +103,18 @@ export function bindCanvasInteraction(
         return;
       session.setPlaying(false);
       const point = screenPoint(event);
+      if (drawing()) {
+        const at = compositionPoint(point);
+        const { width, height } = session.source.composition;
+        suppressClick = true;
+        if (at[0] < 0 || at[1] < 0 || at[0] > width || at[1] > height) return;
+        draw!.begin(at);
+        pointer = event.pointerId;
+        canvas.setPointerCapture(pointer);
+        canvas.focus({ preventScroll: true });
+        event.preventDefault();
+        return;
+      }
       const handle =
         session.selectedIds.length > 1
           ? null
@@ -163,6 +180,10 @@ export function bindCanvasInteraction(
     });
   const update = (event: PointerEvent) => {
     const point = screenPoint(event);
+    if (draw?.active) {
+      draw.add(compositionPoint(point));
+      return;
+    }
     if (marquee) {
       const rect = canvas.getBoundingClientRect();
       Object.assign(marquee.box.style, {
@@ -190,6 +211,11 @@ export function bindCanvasInteraction(
   const pointermove = (event: PointerEvent) =>
     safely(() => {
       if (pointer === null) {
+        if (drawing()) {
+          interaction.hover(null);
+          canvas.style.cursor = 'crosshair';
+          return;
+        }
         const point = screenPoint(event);
         const handle =
           session.selectedIds.length > 1
@@ -218,6 +244,11 @@ export function bindCanvasInteraction(
     safely(() => {
       if (event.pointerId !== pointer) return;
       update(event);
+      if (draw?.active) {
+        release();
+        draw.finish();
+        return;
+      }
       if (marquee) {
         const end = screenPoint(event),
           a = marquee.start;
@@ -261,6 +292,7 @@ export function bindCanvasInteraction(
   };
   canvas.onclick = (event) =>
     safely(() => {
+      if (drawing()) return;
       if (suppressClick) {
         suppressClick = false;
         return;
@@ -273,6 +305,7 @@ export function bindCanvasInteraction(
   // Double-click enters the group under the pointer and selects its child.
   canvas.ondblclick = (event) =>
     safely(() => {
+      if (drawing()) return;
       const point = screenPoint(event);
       const leaf = pickLayer(session.source, viewport(), point);
       const current = resolvePick(session.source, leaf, session.enteredGroupId);
@@ -333,6 +366,7 @@ export function bindCanvasInteraction(
   const contextmenu = (event: MouseEvent) =>
     safely(() => {
       event.preventDefault();
+      if (drawing()) return;
       const point = screenPoint(event);
       const picked = pick(point);
       if (picked) {
@@ -353,6 +387,7 @@ export function bindCanvasInteraction(
     canvas.addEventListener(type, listener as EventListener);
   const unsubscribe = session.onChange(() => {
     release();
+    draw?.cancel();
     marquee?.box.remove();
     marquee = null;
   });
@@ -360,7 +395,12 @@ export function bindCanvasInteraction(
   window.addEventListener('blur', cancel);
   return {
     get active() {
-      return pointer !== null || interaction.active || marquee !== null;
+      return (
+        pointer !== null ||
+        interaction.active ||
+        marquee !== null ||
+        !!draw?.active
+      );
     },
     handleKey: keydown,
     cancel,

@@ -18,6 +18,7 @@ import {
 
 import { layoutText, type TextMeasurer } from './text-layout';
 import type { TransformCapabilities } from './transform-capabilities';
+import { drawingOf, type DrawingPath } from './drawing';
 
 export interface LayerPreview extends TransformPreview {
   readonly textBox?: { readonly width: number; readonly height: number };
@@ -65,6 +66,8 @@ export interface RenderSource {
   readonly measureText?: TextMeasurer;
   readonly capabilities?: Readonly<Record<string, TransformCapabilities>>;
   readonly hoveredHandle?: string | number;
+  /** SHP-018: the freehand stroke being drawn (composition space). */
+  readonly drawing?: DrawingPath & { readonly opacity: number };
   /** CV-013: transient snap guides of the active canvas gesture. */
   readonly guides?: readonly {
     readonly axis: 'x' | 'y';
@@ -88,8 +91,10 @@ export interface RenderItem {
   readonly text: string;
   readonly fontSize: number;
   readonly lines?: readonly string[];
-  readonly kind: 'rectangle' | 'text' | 'placeholder';
+  readonly kind: 'rectangle' | 'text' | 'placeholder' | 'path';
   readonly media?: MediaFrameRequest;
+  /** SHP-019: a freehand drawing's stroke in local coordinates. */
+  readonly path?: DrawingPath;
 }
 const defaults = {
   image: [320, 180],
@@ -226,6 +231,13 @@ export function deriveRenderItems(source: RenderSource): {
         const effectiveSize = wrapped
           ? { ...size, height: Math.max(size.height, wrapped.height) }
           : size;
+        const drawing = drawingOf(layer);
+        if (drawing === 'invalid') {
+          warnings.push(
+            `Cannot draw ${layer.name}: its drawing data is invalid.`,
+          );
+          continue;
+        }
         const media =
           (layer.type === 'image' || layer.type === 'video') && layer.assetId
             ? mediaRequest(source, layer, layer.type, layer.assetId)
@@ -234,6 +246,7 @@ export function deriveRenderItems(source: RenderSource): {
           Object.freeze({
             ...(wrapped ? { lines: wrapped.lines } : {}),
             ...(media ? { media } : {}),
+            ...(drawing ? { path: drawing } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
             matrix: world.matrix,
@@ -247,8 +260,9 @@ export function deriveRenderItems(source: RenderSource): {
                   : layer.name
                 : `${layer.type.toUpperCase()} / ${layer.name}`,
             fontSize: Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
-            kind:
-              layer.type === 'shape'
+            kind: drawing
+              ? 'path'
+              : layer.type === 'shape'
                 ? 'rectangle'
                 : layer.type === 'text'
                   ? 'text'
