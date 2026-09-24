@@ -1,4 +1,4 @@
-import { menuAction, test, expect, hook, toScreen } from './fixtures';
+import { menuAction, test, expect, hook, toScreen, rulerBox } from './fixtures';
 import type { Page } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 async function selectAndDrag(page: Page, release = true) {
-  const ruler = (await page.locator('.timeline-ruler').boundingBox())!;
+  const ruler = await rulerBox(page);
   await page.mouse.click(ruler.x + 120, ruler.y + 8);
   const point = await toScreen(page, 300, 250);
   await page.mouse.click(point.x, point.y);

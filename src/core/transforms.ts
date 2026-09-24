@@ -360,18 +360,24 @@ export function moveTransform(
   finite(...value);
   return { ...base, position: { value } };
 }
-/** Keep the opposite corner fixed in parent space; scale in the layer's rotated axes. */
+/**
+ * Keep the opposite corner (or, from center, the bounds center) fixed in parent space;
+ * scale in the layer's rotated axes.
+ */
 export function resizeTransform(
   base: TransformValues,
   bounds: TransformBounds,
   corner: ResizeHandle,
   current: Point2,
   proportional = false,
+  fromCenter = false,
 ): TransformValues {
   finite(...current);
   if (bounds.width <= 0 || bounds.height <= 0)
     throw new RangeError('Cannot resize empty bounds');
-  const fixed = handlePoint(bounds, oppositeHandle(corner)),
+  const fixed = fromCenter
+      ? boundsCenter(bounds)
+      : handlePoint(bounds, oppositeHandle(corner)),
     moving = handlePoint(bounds, corner);
   const fixedParent = transformPoint(localTransformMatrix(base), fixed);
   const rotationOnly: TransformValues = {

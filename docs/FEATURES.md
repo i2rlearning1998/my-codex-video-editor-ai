@@ -29,7 +29,7 @@ This file is the **single definition of what the finished editor must do**. Ever
 | W1 | Shell v2, design system, i18n, commands, project dialogs | 60 | 21 | 4 |
 | W2 | Canvas, layers, timeline, playback, inspector interaction-complete | 111 | 20 | 5 |
 | W3 | Text, fonts and languages | 21 | 9 | 4 |
-| W4 | Media pipeline, storage, Pixabay, AV playback | 41 | 9 | 2 |
+| W4 | Media pipeline, storage, Pixabay, AV playback | 42 | 9 | 2 |
 | W5 | Animation, shapes and graphics, export v1 | 28 | 10 | 1 |
 | W6 | Effects, transitions, masks, color, speed and chroma key | 21 | 18 | 3 |
 | W7 | Audio engine | 9 | 7 | 2 |
@@ -37,7 +37,7 @@ This file is the **single definition of what the finished editor must do**. Ever
 | W9 | Hardening: export full, performance, accessibility, UI language packs | 4 | 23 | 5 |
 | W10 | AI integration (last) | 0 | 0 | 13 |
 
-**Total items: 494** (P0 306, P1 131, P2 57). Status now: Bug 3, Claimed 47, Todo 435.
+**Total items: 495** (P0 307, P1 131, P2 57). Status now: see `npm run ledger` (after W2-CLAUDE: Verified 48, Claimed 38, Todo 407, Bug 1).
 
 ## DEV: Process, testing and tooling (Wave 0)
 
@@ -52,7 +52,7 @@ Makes every later 'done' claim provable. These items are the process itself.
 | DEV-005 | P0 | W0 | Verified | Read-only test hook (dev/test only) exposes project and session snapshots to e2e; it cannot mutate state and is absent from production builds |
 | DEV-006 | P0 | W0 | Verified | Global e2e guard fails any test that produces console errors, uncaught page errors or failed network requests |
 | DEV-007 | P0 | W0 | Verified | "Copy debug report" action copies JSON: build id, browser, viewport, active composition, selection, playhead, last 30 command labels, last 50 console errors, project JSON when under 200 KB |
-| DEV-008 | P0 | W4 | Todo | Media fixture pack committed under tests/fixtures/media with manifest, plus a media-populated project fixture generated through engine commands |
+| DEV-008 | P0 | W4 | Verified | Media fixture pack committed under tests/fixtures/media with manifest, plus a media-populated project fixture generated through engine commands |
 | DEV-009 | P0 | W0 | Verified | AGENTS.md, README, ARCHITECTURE and CHANGELOG match T3 reality; obsolete restrictions are archived, not silently deleted |
 | DEV-010 | P0 | W0 | Verified | `npm run patch` creates a review patch excluding lockfile, media fixtures and specs |
 | DEV-011 | P0 | W0 | Verified | Report template and try-it script convention are documented in docs/PROCESS.md and used by reports/W0.md |
@@ -177,7 +177,7 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-009 | P0 | W1 | Claimed | Autosave keeps work across reload (recovery from unexpected close within the autosave window) |
 | PRJ-010 | P0 | W1 | Claimed | Corrupt or future-version saved data is quarantined with a message, never silently overwritten |
 | PRJ-011 | P0 | W1 | Todo | Composition (scene) duration is derived from content; empty composition falls back to 10 seconds |
-| PRJ-012 | P0 | W2 | Claimed | Multiple compositions (scenes): switch active composition |
+| PRJ-012 | P0 | W2 | Verified | Multiple compositions (scenes): switch active composition |
 | PRJ-013 | P0 | W2 | Todo | Scenes: add, rename, reorder, duplicate, delete |
 | PRJ-014 | P1 | W2 | Todo | Scene strip UI for switching and reordering scenes |
 | PRJ-015 | P0 | W4 | Todo | Projects persist in IndexedDB with media in OPFS; localStorage remains only for small settings |
@@ -192,30 +192,30 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| MED-001 | P0 | W4 | Todo | Import button opens the file picker for video, audio and image files |
-| MED-002 | P0 | W4 | Todo | Drag files from the OS onto the app or the media panel to import |
-| MED-003 | P0 | W4 | Todo | Supported: MP4 H.264, WebM VP9, MOV where the browser can decode, MP3, WAV, M4A, OGG, PNG, JPG, WebP, GIF, SVG; unsupported files get a clear message, never a crash |
-| MED-004 | P0 | W4 | Todo | Import shows progress and can be cancelled |
+| MED-001 | P0 | W4 | Verified | Import button opens the file picker for video, audio and image files |
+| MED-002 | P0 | W4 | Verified | Drag files from the OS onto the app or the media panel to import |
+| MED-003 | P0 | W4 | Claimed | Supported: MP4 H.264, WebM VP9, MOV where the browser can decode, MP3, WAV, M4A, OGG, PNG, JPG, WebP, GIF, SVG; unsupported files get a clear message, never a crash |
+| MED-004 | P0 | W4 | Verified | Import shows progress and can be cancelled |
 | MED-005 | P0 | W4 | Todo | Multi-GB files are streamed from OPFS or Blob storage, never fully loaded into memory |
-| MED-006 | P0 | W4 | Todo | Imported media survives reload; project stores references only, never media bytes |
-| MED-007 | P0 | W4 | Todo | Project Media grid shows thumbnail, name, duration or type badge |
+| MED-006 | P0 | W4 | Verified | Imported media survives reload; project stores references only, never media bytes |
+| MED-007 | P0 | W4 | Verified | Project Media grid shows thumbnail, name, duration or type badge |
 | MED-008 | P1 | W4 | Todo | List and grid view, sort by name, date, type, duration; filter by type |
-| MED-009 | P0 | W4 | Todo | Search box filters media by name |
+| MED-009 | P0 | W4 | Verified | Search box filters media by name |
 | MED-010 | P1 | W4 | Todo | Rename an asset |
 | MED-011 | P0 | W4 | Todo | Delete an asset warns when it is used by N clips and offers cancel |
 | MED-012 | P1 | W4 | Todo | Hover-scrub preview on video thumbnails |
-| MED-013 | P0 | W4 | Todo | Drag an asset onto a timeline track creates a clip at the drop position |
-| MED-014 | P0 | W4 | Claimed | Drag an already-registered asset onto a compatible track creates a clip; a locked or incompatible track rejects it with feedback |
-| MED-015 | P0 | W4 | Todo | Drag an asset onto the canvas creates a layer at the drop point |
+| MED-013 | P0 | W4 | Verified | Drag an asset onto a timeline track creates a clip at the drop position |
+| MED-014 | P0 | W4 | Verified | Drag an already-registered asset onto a compatible track creates a clip; a locked or incompatible track rejects it with feedback |
+| MED-015 | P0 | W4 | Verified | Drag an asset onto the canvas creates a layer at the drop point |
 | MED-016 | P0 | W4 | Todo | Double-click an asset adds it at the playhead |
 | MED-017 | P0 | W4 | Todo | Asset details show resolution, fps, duration, codec, size, audio channels |
-| MED-018 | P0 | W4 | Todo | Thumbnails and poster frames are generated asynchronously and cached |
-| MED-019 | P0 | W4 | Todo | Audio waveforms are generated asynchronously and cached |
+| MED-018 | P0 | W4 | Verified | Thumbnails and poster frames are generated asynchronously and cached |
+| MED-019 | P0 | W4 | Verified | Audio waveforms are generated asynchronously and cached |
 | MED-020 | P0 | W4 | Todo | Missing media shows a clear indicator and a Relink flow |
 | MED-021 | P0 | W4 | Todo | Variable-frame-rate video plays and seeks with correct timing (fixture: video_vfr_720p_no_audio.mp4) |
 | MED-022 | P0 | W4 | Todo | Rotation metadata is applied (fixture: video_rotation90_metadata_portrait_no_audio.mp4 displays upright portrait) |
-| MED-023 | P0 | W4 | Todo | Image EXIF orientation is applied (fixture: image_exif_orientation6_1600x1200.jpg) |
-| MED-024 | P0 | W4 | Todo | Alpha channel is preserved for PNG and alpha WebM (fixtures: image_alpha_logo_512.png, video_alpha_circle_vp9.webm) |
+| MED-023 | P0 | W4 | Verified | Image EXIF orientation is applied (fixture: image_exif_orientation6_1600x1200.jpg) |
+| MED-024 | P0 | W4 | Verified | Alpha channel is preserved for PNG and alpha WebM (fixtures: image_alpha_logo_512.png, video_alpha_circle_vp9.webm) |
 | MED-025 | P2 | W4 | Todo | Duplicate import detection by content hash |
 | MED-026 | P2 | W8 | Todo | Media folders and tags |
 | MED-027 | P1 | W9 | Todo | Proxy generation for heavy 4K media with automatic switch on export |
@@ -226,6 +226,7 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-032 | P1 | W4 | Todo | Stock filters (orientation, category, color) |
 | MED-033 | P2 | W4 | Todo | Stock favorites and recents |
 | MED-034 | P1 | W8 | Todo | Record screen, webcam and microphone (voiceover lives in AUD) |
+| MED-035 | P0 | W4 | Verified | The Media tab (Project Media) lists the project's registered media as draggable cards; today the cards appear only under other library categories because the Media tab hides the panel that holds them |
 
 ## CV: Canvas (Wave 2)
 
@@ -234,39 +235,44 @@ Everything the user does directly on the preview canvas.
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | CV-001 | P0 | W2 | Verified | Clicking a layer selects it; clicking empty canvas deselects |
-| CV-002 | P0 | W2 | Claimed | Shift or Ctrl click toggles a layer in the multi-selection |
-| CV-003 | P0 | W2 | Claimed | Marquee drag on empty canvas selects the layers it touches |
+| CV-002 | P0 | W2 | Verified | Shift or Ctrl click toggles a layer in the multi-selection |
+| CV-003 | P0 | W2 | Verified | Marquee drag on empty canvas selects the layers it touches |
 | CV-004 | P0 | W2 | Verified | Dragging a selected layer moves it and produces exactly one undo step |
 | CV-005 | P0 | W2 | Todo | Holding Shift while dragging constrains to the axis; Alt-drag duplicates |
-| CV-006 | P0 | W2 | Claimed | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
+| CV-006 | P0 | W2 | Verified | Arrow keys nudge selection by 1 px, Shift+Arrow by 10 px |
 | CV-007 | P0 | W2 | Verified | Corner handle drag resizes proportionally; the opposite corner stays fixed |
-| CV-008 | P0 | W2 | Claimed | Edge handle drag resizes on one axis; Alt resizes from center |
-| CV-009 | P0 | W2 | Claimed | Rotation handle rotates around the visual center |
+| CV-008 | P0 | W2 | Verified | Edge handle drag resizes on one axis; Alt resizes from center |
+| CV-009 | P0 | W2 | Verified | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
-| CV-011 | P0 | W2 | Claimed | Text-width grips change text box width and reflow the text without changing font size |
+| CV-011 | P0 | W2 | Verified | Text-width grips change text box width and reflow the text without changing font size |
 | CV-012 | P1 | W2 | Todo | Live readout of size, angle or position while dragging |
-| CV-013 | P0 | W2 | Todo | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
+| CV-013 | P0 | W2 | Verified | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
 | CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
-| CV-016 | P0 | W2 | Claimed | Zoom controls: Fit, plus and minus change the canvas view scale |
+| CV-016 | P0 | W2 | Verified | Zoom controls: Fit, plus and minus change the canvas view scale |
 | CV-017 | P0 | W2 | Todo | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
 | CV-018 | P0 | W2 | Todo | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
 | CV-020 | P0 | W2 | Todo | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
 | CV-021 | P0 | W2 | Todo | Right-click empty canvas opens a menu: Paste, Select all, toggle grid and guides |
-| CV-022 | P0 | W2 | Claimed | Clicking inside a group selects the group; double-click selects the child; Esc exits |
+| CV-022 | P0 | W2 | Verified | Clicking inside a group selects the group; double-click selects the child; Esc exits |
 | CV-023 | P1 | W2 | Todo | Double-click a group enters isolation mode |
 | CV-024 | P0 | W2 | Todo | Locked layers cannot be moved or resized from the canvas; hidden layers are neither drawn nor selectable |
-| CV-025 | P0 | W2 | Todo | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |
+| CV-025 | P0 | W2 | Verified | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |
 | CV-026 | P0 | W2 | Todo | Order commands: bring to front, forward, backward, to back |
 | CV-027 | P0 | W2 | Todo | Quick flip horizontal and vertical, rotate 90 degrees |
 | CV-028 | P1 | W2 | Todo | Paste places at same position with small offset; pasting an image from the OS clipboard imports it |
 | CV-029 | P0 | W2 | Todo | Cursor changes correctly over move, resize (per handle angle) and rotate handles |
 | CV-030 | P0 | W2 | Todo | Selection outlines and handles keep constant on-screen thickness at any zoom |
-| CV-031 | P0 | W2 | Claimed | Layers are drawn only inside their active time range |
+| CV-031 | P0 | W2 | Verified | Layers are drawn only inside their active time range |
 | CV-032 | P1 | W2 | Todo | 100 layers can be dragged smoothly without dropped frames on the reference machine |
 | CV-033 | P1 | W2 | Todo | Preview quality setting Full, Half, Quarter |
 | CV-034 | P2 | W2 | Todo | Touch and pen input work with pointer events |
+| CV-035 | P0 | W2 | Verified | A context toolbar above the canvas appears for one selected text, image, video, shape or drawing layer, with controls for that type; it hides for no selection, groups, audio layers and multi-selections |
+| CV-036 | P0 | W2 | Verified | Image and video toolbar: Position X and Y, Scale, Rotate, Flip horizontal and vertical, and Opacity edit the layer as one undo step each; Crop, Blend, Animate and Replace show disabled with a tooltip naming the wave that builds them |
+| CV-037 | P0 | W2 | Verified | Text toolbar: Size and Color edit the layer as one undo step each; Font, Weight, Align, Spacing, Effects and Animate show disabled with a tooltip naming their wave |
+| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill edits the layer; Stroke, Width, Corners, Boolean and Animate show disabled with a tooltip naming their wave. A drawing's toolbar edits its Color, Brush size and Opacity |
+| CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -274,8 +280,8 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| LYR-001 | P0 | W2 | Claimed | Clicking a layer in the list selects it on canvas and in the timeline; selecting elsewhere highlights it in the list |
-| LYR-002 | P0 | W2 | Claimed | Layer list shows layers and groups in stacking order |
+| LYR-001 | P0 | W2 | Verified | Clicking a layer in the list selects it on canvas and in the timeline; selecting elsewhere highlights it in the list |
+| LYR-002 | P0 | W2 | Verified | Layer list shows layers and groups in stacking order |
 | LYR-003 | P0 | W2 | Todo | Shift and Ctrl click multi-select in the list |
 | LYR-004 | P0 | W2 | Todo | Drag to reorder layers, into groups and out of groups |
 | LYR-005 | P0 | W2 | Todo | Rename by double-click or F2 |
@@ -296,41 +302,41 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| TL-001 | P0 | W2 | Todo | Timeline uses one row model: every layer appears as a clip on a track (no separate legacy layer rows) |
+| TL-001 | P0 | W2 | Verified | Timeline uses one row model: every layer appears as a clip on a track (no separate legacy layer rows) |
 | TL-002 | P0 | W2 | Todo | Add track (video, audio, text/graphics, overlay) from the + control and the track menu; dropping below the last track auto-creates a compatible track |
-| TL-003 | P0 | W2 | Claimed | Track header shows drag handle, type icon, editable name, lock and eye (visibility); audio tracks also show mute and solo |
-| TL-004 | P0 | W2 | Bug | Locking a track blocks every edit path to its clips (drag, trim, split, delete, keyboard, ripple) with visible feedback |
-| TL-005 | P0 | W2 | Claimed | Reorder tracks by dragging the handle |
+| TL-003 | P0 | W2 | Todo | Track header shows drag handle, type icon, editable name, lock and eye (visibility); audio tracks also show mute and solo |
+| TL-004 | P0 | W2 | Verified | Locking a track blocks every edit path to its clips (drag, trim, split, delete, keyboard, ripple) with visible feedback |
+| TL-005 | P0 | W2 | Todo | Reorder tracks by dragging the handle |
 | TL-006 | P0 | W2 | Todo | Delete a track warns when it contains clips; Duplicate track |
 | TL-007 | P1 | W2 | Todo | Track height presets (compact, normal, large) and drag to resize |
 | TL-008 | P0 | W2 | Todo | Ruler shows mm:ss (hh:mm:ss when long) with frame ticks at high zoom |
-| TL-009 | P0 | W2 | Claimed | Clicking or dragging the ruler moves the playhead; the canvas shows that time live |
+| TL-009 | P0 | W2 | Verified | Clicking or dragging the ruler moves the playhead; the canvas shows that time live |
 | TL-010 | P0 | W2 | Todo | Playhead line spans all tracks, has a draggable handle and snaps to clip edges and markers |
 | TL-011 | P0 | W2 | Todo | Timecode display is editable: click, type a time, Enter to jump |
-| TL-012 | P0 | W2 | Claimed | Timeline zoom-in and zoom-out buttons change the horizontal time scale |
+| TL-012 | P0 | W2 | Verified | Timeline zoom-in and zoom-out buttons change the horizontal time scale |
 | TL-013 | P0 | W2 | Todo | Timeline zoom slider, Fit-all, zoom to selection, and Ctrl+wheel zoom around the cursor |
-| TL-014 | P0 | W2 | Claimed | Horizontal scroll with wheel, Shift+wheel and trackpad; vertical scroll keeps headers aligned with rows |
+| TL-014 | P0 | W2 | Verified | Horizontal scroll with wheel, Shift+wheel and trackpad; vertical scroll keeps headers aligned with rows |
 | TL-015 | P0 | W2 | Todo | Auto-scroll near the edges while dragging clips; option to follow the playhead during playback |
-| TL-016 | P0 | W2 | Claimed | Clips can be moved by dragging within a track and across tracks, with one undo step per gesture |
-| TL-017 | P0 | W2 | Claimed | Multi-selected clips move together and keep their relative offsets across tracks |
+| TL-016 | P0 | W2 | Verified | Clips can be moved by dragging within a track and across tracks, with one undo step per gesture |
+| TL-017 | P0 | W2 | Verified | Multi-selected clips move together and keep their relative offsets across tracks |
 | TL-018 | P0 | W2 | Verified | Trimming the left edge changes start and in-point and never goes past the source or into a neighbor |
 | TL-019 | P0 | W2 | Verified | Trimming the right edge changes duration and never goes past the source or into a neighbor |
-| TL-020 | P0 | W2 | Todo | Clips never overlap on the same track and never shrink below one frame |
+| TL-020 | P0 | W2 | Verified | Clips never overlap on the same track and never shrink below one frame |
 | TL-021 | P0 | W2 | Verified | Split at the playhead (Split button and S key) cuts the selected clip into two at that time |
 | TL-022 | P0 | W2 | Todo | With no clip selected, Split cuts every unlocked clip under the playhead |
-| TL-023 | P0 | W2 | Claimed | Duplicate (Ctrl+D or button) creates an independent copy of the selected clip |
+| TL-023 | P0 | W2 | Verified | Duplicate (Ctrl+D or button) creates an independent copy of the selected clip |
 | TL-024 | P0 | W2 | Todo | Alt-drag copies clips while dragging |
 | TL-025 | P0 | W2 | Verified | Delete key removes the selected clips with one undo step |
 | TL-026 | P0 | W2 | Todo | Ripple delete removes clips and closes the gap |
-| TL-027 | P0 | W2 | Todo | Copy, cut and paste clips at the playhead onto the selected track |
-| TL-028 | P0 | W2 | Claimed | Snapping to playhead, clip edges, markers and grid with a visible snap line |
+| TL-027 | P0 | W2 | Verified | Copy, cut and paste clips at the playhead onto the selected track |
+| TL-028 | P0 | W2 | Verified | Snapping to playhead, clip edges, markers and grid with a visible snap line |
 | TL-029 | P0 | W2 | Todo | Snap toggle (magnet) in the toolbar, on by default |
-| TL-030 | P0 | W2 | Todo | Insert versus overwrite rule for dropping or moving onto occupied space is explicit and shown to the user |
+| TL-030 | P0 | W2 | Verified | Insert versus overwrite rule for dropping or moving onto occupied space is explicit and shown to the user |
 | TL-031 | P1 | W2 | Todo | Ripple trim; slip, slide and roll edits |
-| TL-032 | P0 | W2 | Todo | Link video and its audio so they move and cut together; Unlink and Detach audio |
+| TL-032 | P0 | W2 | Verified | Link video and its audio so they move and cut together; Unlink and Detach audio |
 | TL-033 | P1 | W2 | Todo | Disable an individual clip without deleting it |
 | TL-034 | P2 | W2 | Todo | Clip color labels |
-| TL-035 | P0 | W2 | Claimed | The Marker button adds a marker at the playhead |
+| TL-035 | P0 | W2 | Verified | The Marker button adds a marker at the playhead |
 | TL-036 | P0 | W2 | Todo | The M key adds a marker at the playhead |
 | TL-037 | P0 | W2 | Todo | Markers: rename, color, delete, jump to next or previous, list |
 | TL-038 | P1 | W2 | Todo | In and out range markers define a work area for preview and export |
@@ -341,8 +347,8 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-043 | P0 | W2 | Todo | Empty timeline shows a helpful drop message |
 | TL-044 | P0 | W2 | Verified | Jump to previous or next cut (Up and Down keys) |
 | TL-045 | P0 | W2 | Todo | Clip label truncates gracefully and never overlaps neighbors at any zoom |
-| TL-046 | P0 | W4 | Todo | Video clips show a filmstrip of thumbnails; image clips show their thumbnail |
-| TL-047 | P0 | W4 | Todo | Audio clips show waveforms that stay correct while trimming |
+| TL-046 | P0 | W4 | Verified | Video clips show a filmstrip of thumbnails; image clips show their thumbnail |
+| TL-047 | P0 | W4 | Verified | Audio clips show waveforms that stay correct while trimming |
 | TL-048 | P0 | W5 | Todo | Keyframe diamonds appear on clips; add, move, copy and delete keyframes directly on the timeline |
 | TL-049 | P0 | W5 | Todo | Fade in and fade out handles on clips for opacity and volume |
 | TL-050 | P1 | W5 | Todo | Envelope line (opacity or volume) is drawn on the clip and editable |
@@ -364,16 +370,16 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | PB-001 | P0 | W2 | Verified | The Play button advances the playhead in real time and the Stop button stops it |
-| PB-002 | P0 | W2 | Claimed | Playback uses elapsed wall-clock time so speed is correct even when frames are dropped |
+| PB-002 | P0 | W2 | Verified | Playback uses elapsed wall-clock time so speed is correct even when frames are dropped |
 | PB-003 | P0 | W2 | Todo | Step one frame backward and forward with buttons and arrow keys |
 | PB-004 | P0 | W2 | Todo | Jump to start, jump to end, previous and next cut |
 | PB-005 | P0 | W2 | Todo | Timecode shows current and total time as mm:ss.ff; clean formatting everywhere (no raw floating-point numbers in the UI) |
 | PB-006 | P0 | W2 | Todo | Loop toggle and loop of the in-out range |
 | PB-007 | P1 | W2 | Todo | Preview playback speed selector 0.25x to 2x |
 | PB-008 | P0 | W2 | Todo | Time is one shared source: canvas, timeline, inspector and timecode always agree |
-| PB-009 | P0 | W4 | Todo | Video decoding keeps up with playback; frames drop rather than slow motion; a buffering indicator appears when needed |
-| PB-010 | P0 | W4 | Todo | Audio plays in sync with video within one frame (fixture: video_av_sync_flash_beep_720p.mp4) |
-| PB-011 | P1 | W4 | Todo | Scrubbing the playhead plays short audio snippets |
+| PB-009 | P0 | W4 | Verified | Video decoding keeps up with playback; frames drop rather than slow motion; a buffering indicator appears when needed |
+| PB-010 | P0 | W4 | Verified | Audio plays in sync with video within one frame (fixture: video_av_sync_flash_beep_720p.mp4) |
+| PB-011 | P1 | W4 | Verified | Scrubbing the playhead plays short audio snippets |
 | PB-012 | P0 | W4 | Todo | 1080p 30 fps H.264 plays back with at least 95 percent of frames on the reference machine |
 | PB-013 | P1 | W7 | Todo | Master volume and mute with a level meter |
 | PB-014 | P1 | W2 | Todo | Fullscreen playback with minimal controls |
@@ -385,15 +391,15 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | INS-001 | P0 | W2 | Todo | Properties panel content depends on selection: none (project settings), single layer by type, multiple layers (common properties), group |
-| INS-002 | P0 | W2 | Claimed | Editing Position X in the inspector moves the layer on the canvas and creates one undo step |
-| INS-003 | P0 | W2 | Claimed | Position Y, scale, rotation and opacity fields edit the layer and stay in sync with canvas gestures |
+| INS-002 | P0 | W2 | Verified | Editing Position X in the inspector moves the layer on the canvas and creates one undo step |
+| INS-003 | P0 | W2 | Verified | Position Y, scale, rotation and opacity fields edit the layer and stay in sync with canvas gestures |
 | INS-004 | P0 | W2 | Todo | Uniform scale with a lock toggle plus separate width and height |
 | INS-005 | P0 | W2 | Todo | Anchor point control |
 | INS-006 | P0 | W2 | Todo | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
 | INS-007 | P0 | W2 | Todo | Sliders paired with numeric fields for opacity, rotation and scale |
 | INS-008 | P0 | W2 | Todo | Reset button per property |
-| INS-009 | P0 | W2 | Claimed | Keyframe diamond per animatable property toggles a keyframe |
-| INS-010 | P0 | W2 | Claimed | Timing section: start time and duration of the selected item |
+| INS-009 | P0 | W2 | Verified | Keyframe diamond per animatable property toggles a keyframe |
+| INS-010 | P0 | W2 | Verified | Timing section: start time and duration of the selected item |
 | INS-011 | P0 | W2 | Todo | Layer name is editable |
 | INS-012 | P0 | W2 | Todo | Multi-selection shows mixed values as a dash; editing applies to all in one undo step |
 | INS-013 | P0 | W2 | Todo | Values update live during playback and scrubbing |
@@ -409,9 +415,9 @@ The engine already has atomic transactions and history; this covers what the use
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | HIS-001 | P0 | W2 | Verified | Undo and Redo buttons reverse and reapply the last action, including a full drag gesture as one step |
-| HIS-002 | P0 | W2 | Claimed | Every user edit is undoable: canvas gestures, inspector edits, timeline edits |
+| HIS-002 | P0 | W2 | Verified | Every user edit is undoable: canvas gestures, inspector edits, timeline edits |
 | HIS-003 | P0 | W2 | Todo | Undo and Redo buttons show correct enabled state and name the next action |
-| HIS-004 | P0 | W2 | Claimed | History is memory-bounded and never crashes on long sessions |
+| HIS-004 | P0 | W2 | Verified | History is memory-bounded and never crashes on long sessions |
 | HIS-005 | P1 | W2 | Todo | History panel lists steps with labels and jumps to any step |
 | HIS-006 | P1 | W8 | Todo | Named checkpoints |
 | HIS-007 | P1 | W4 | Todo | Undoing media import removes the clip without deleting the imported asset (behavior is documented) |
@@ -481,6 +487,8 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-015 | P2 | W5 | Todo | Freehand pen and boolean shape operations |
 | SHP-016 | P2 | W8 | Todo | Data charts (bar, line, pie) from typed or pasted data |
 | SHP-017 | P2 | W8 | Todo | Lottie import |
+| SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker and Highlighter with brush size, color and opacity; choosing a brush puts the canvas in draw mode, and Esc, V or another category leaves it |
+| SHP-019 | P0 | W2 | Verified | Each freehand stroke becomes one undoable shape layer with a clip at the playhead; it can be selected, moved, resized, saved and reloaded, and draws the same in preview and export |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 
@@ -514,18 +522,18 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| VID-001 | P0 | W4 | Todo | Video clips can be trimmed and split with frame-exact seeking |
-| VID-002 | P0 | W4 | Todo | Picture-in-picture: clips on overlay tracks can be moved, scaled and rotated on the canvas |
+| VID-001 | P0 | W4 | Verified | Video clips can be trimmed and split with frame-exact seeking |
+| VID-002 | P0 | W4 | Verified | Picture-in-picture: clips on overlay tracks can be moved, scaled and rotated on the canvas |
 | VID-003 | P0 | W4 | Todo | Crop tool for image and video layers with aspect lock and handles |
 | VID-004 | P0 | W4 | Todo | Fit, Fill, Stretch and Custom modes handle media whose aspect differs from the canvas |
-| VID-005 | P0 | W4 | Todo | Default still image duration is 5 seconds and adjustable |
-| VID-006 | P0 | W4 | Todo | Detach audio from a video clip |
+| VID-005 | P0 | W4 | Verified | Default still image duration is 5 seconds and adjustable |
+| VID-006 | P0 | W4 | Verified | Detach audio from a video clip |
 | VID-007 | P1 | W4 | Todo | Fill mismatched aspect ratios with a blurred copy of the media |
 | VID-008 | P1 | W4 | Todo | GIF is treated as an animated clip |
 | VID-009 | P1 | W4 | Todo | Replace media keeps all edits on the clip |
-| VID-010 | P0 | W6 | Todo | Constant speed from 0.1x to 8x |
-| VID-011 | P1 | W6 | Todo | Reverse a clip |
-| VID-012 | P0 | W6 | Todo | Freeze frame at the playhead |
+| VID-010 | P0 | W4 | Verified | Constant speed from 0.1x to 8x |
+| VID-011 | P1 | W4 | Verified | Reverse a clip |
+| VID-012 | P0 | W4 | Verified | Freeze frame at the playhead |
 | VID-013 | P0 | W6 | Todo | Chroma key (green screen) with tolerance and edge softness |
 | VID-014 | P2 | W8 | Todo | Stabilization |
 | VID-015 | P0 | W2 | Verified | Clip speed 0.1x to 8x (menu presets 0.25x to 4x) is a non-destructive clip property set through an undoable command; the clip's timeline duration becomes source length divided by speed, a speed badge shows on the clip, and slowing a clip into its neighbor is refused; offered in the timeline clip and canvas context menus |
@@ -604,9 +612,9 @@ Real audio engine. Currently mute is only metadata.
 | AUD-002 | P0 | W7 | Todo | Clip volume in dB, keyframeable; clip mute; master volume |
 | AUD-003 | P0 | W7 | Todo | Fade in and fade out handles |
 | AUD-004 | P0 | W7 | Todo | Detach or extract audio from video into an audio track |
-| AUD-005 | P0 | W7 | Todo | Audio plays during preview and scrubbing and stays in sync |
+| AUD-005 | P0 | W4 | Verified | Audio plays during preview and scrubbing and stays in sync |
 | AUD-006 | P0 | W7 | Todo | Peak meters on master and per track |
-| AUD-007 | P0 | W7 | Todo | Track mute and solo work audibly |
+| AUD-007 | P0 | W4 | Verified | Track mute and solo work audibly |
 | AUD-008 | P0 | W7 | Todo | Voiceover recording from the microphone with countdown and level monitor onto a new audio track |
 | AUD-009 | P1 | W7 | Todo | Pan left and right |
 | AUD-010 | P1 | W7 | Todo | Speed change with pitch preservation |

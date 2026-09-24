@@ -11,6 +11,7 @@ import {
   type TextMeasurer,
 } from './text-layout';
 import { selectionGeometry } from './selection';
+import type { DrawingPath } from './drawing';
 import { deriveRenderItems, hitTest, type RenderSource } from './adapter';
 
 export interface Viewport {
@@ -126,6 +127,20 @@ export class Canvas2DRenderer implements CompositionRenderer {
   }
 }
 
+function strokePath(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  path: DrawingPath,
+) {
+  context.strokeStyle = path.color;
+  context.lineWidth = path.width;
+  context.lineCap = path.cap;
+  context.lineJoin = path.cap === 'butt' ? 'miter' : 'round';
+  context.beginPath();
+  context.moveTo(...path.points[0]!);
+  for (const point of path.points.slice(1)) context.lineTo(...point);
+  context.stroke();
+}
+
 export function drawComposition(
   context: CanvasRenderingContext2D,
   source: RenderSource,
@@ -164,6 +179,19 @@ export function drawComposition(
       try {
         context.setTransform(...multiplyMatrices(view, item.matrix));
         context.globalAlpha = item.opacity;
+        // W4-B: decoded media replaces the placeholder once its frame is ready.
+        const frame = item.media
+          ? source.frames?.frame(item.media, source.playing ?? false)
+          : null;
+        if (frame) {
+          context.drawImage(frame, 0, 0, item.size.width, item.size.height);
+          continue;
+        }
+        // SHP-019: a drawing strokes its path; it has no box fill or clip.
+        if (item.path) {
+          strokePath(context, item.path);
+          continue;
+        }
         context.fillStyle = item.fill;
         if (item.kind !== 'text')
           context.fillRect(0, 0, item.size.width, item.size.height);
@@ -199,6 +227,12 @@ export function drawComposition(
         context.restore();
       }
     }
+    // SHP-018: the stroke being drawn, in composition space.
+    if (source.drawing) {
+      context.setTransform(...view);
+      context.globalAlpha = source.drawing.opacity;
+      strokePath(context, source.drawing);
+    }
   } finally {
     context.restore();
   }
@@ -207,6 +241,28 @@ export function drawComposition(
   context.strokeStyle = '#666975';
   context.lineWidth = 1 / viewport.matrix[0];
   context.strokeRect(0, 0, source.composition.width, source.composition.height);
+  // CV-013: snap guides across the composition, 1 CSS px at any zoom.
+  if (source.guides?.length) {
+    context.setTransform(...pixels);
+    context.strokeStyle = '#ff4fa3';
+    context.lineWidth = 1;
+    context.beginPath();
+    for (const guide of source.guides) {
+      const from = transformPoint(
+        viewport.matrix,
+        guide.axis === 'x' ? [guide.value, 0] : [0, guide.value],
+      );
+      const to = transformPoint(
+        viewport.matrix,
+        guide.axis === 'x'
+          ? [guide.value, source.composition.height]
+          : [source.composition.width, guide.value],
+      );
+      context.moveTo(...from);
+      context.lineTo(...to);
+    }
+    context.stroke();
+  }
   for (const id of source.selectedIds ?? []) {
     if (id === selectedId) continue;
     const box = selectionGeometry(source, id, viewport.matrix);

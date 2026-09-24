@@ -29,7 +29,7 @@ test('[LOC-001] shell and standalone modules use translation keys for visible li
             .map((name) => `${dir}/${name}`)
         : [],
     ),
-    ...['command-palette', 'shortcut-sheet', 'new-project-form']
+    ...['command-palette', 'shortcut-sheet', 'new-project-form', 'media-panel']
       .map((name) => `src/ui/${name}.ts`)
       .filter(existsSync),
   ];

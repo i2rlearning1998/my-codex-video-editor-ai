@@ -1,4 +1,12 @@
-import type { Clip, Composition, DeepReadonly, Track } from './model';
+import {
+  validateProject,
+  type Clip,
+  type Composition,
+  type DeepReadonly,
+  type Layer,
+  type Project,
+  type Track,
+} from './model';
 
 export interface ClipLocation {
   readonly clip: DeepReadonly<Clip>;
@@ -164,4 +172,210 @@ export function trackAcceptsLayer(
     : trackType === 'video'
       ? ['video', 'image'].includes(layerType)
       : layerType === trackType;
+}
+
+/** TL-001: the track type that holds clips of a layer type. */
+export function trackTypeForLayer(layerType: string): Track['type'] {
+  return layerType === 'text'
+    ? 'text'
+    : layerType === 'audio'
+      ? 'audio'
+      : layerType === 'video' || layerType === 'image'
+        ? 'video'
+        : 'object';
+}
+const TRACK_LABELS: Record<Track['type'], string> = {
+  video: 'Video',
+  audio: 'Audio',
+  text: 'Text',
+  object: 'Graphics',
+};
+/** Default name for the next track of a type ("Text 2"); names are document data. */
+export function nextTrackName(
+  composition: { readonly tracks: readonly { readonly type: string }[] },
+  type: Track['type'],
+): string {
+  return `${TRACK_LABELS[type]} ${composition.tracks.filter((track) => track.type === type).length + 1}`;
+}
+const EPSILON = 1e-9;
+/** Structural track shape for placement helpers (works on drafts and snapshots). */
+interface LaneTrack {
+  readonly id: string;
+  readonly order: number;
+  readonly locked: boolean;
+  readonly type: Track['type'];
+  readonly clips: readonly ClipSpan[];
+}
+/** First unlocked track accepting `layerType` whose clips leave [start, end) free. */
+export function findFreeTrack<T extends LaneTrack>(
+  composition: { readonly tracks: readonly T[] },
+  layerType: string,
+  startTime: number,
+  endTime: number,
+  excludedClipIds: readonly string[] = [],
+): T | undefined {
+  return [...composition.tracks]
+    .sort((a, b) => a.order - b.order)
+    .find(
+      (track) =>
+        !track.locked &&
+        trackAcceptsLayer(track.type, layerType) &&
+        track.clips.every(
+          (clip) =>
+            excludedClipIds.includes(clip.id) ||
+            clip.startTime + clip.duration <= startTime + EPSILON ||
+            clip.startTime >= endTime - EPSILON,
+        ),
+    );
+}
+/**
+ * TL-001 one-time open conversion (schema stays 4): every top-level layer without
+ * a clip gets one, keeping its timing, on a free compatible track or a new one.
+ * Clips on nested layers are removed and their timing folded into the layer, so
+ * group children live inside their group's clip. Returns a validated copy.
+ */
+export function adoptFreeLayers(
+  // Structural `object`: DeepReadonly<Project> is too deep for the checker here.
+  input: object,
+  newId: () => string = () => crypto.randomUUID(),
+): { project: Project; adopted: number } {
+  const project = structuredClone(input) as Project;
+  let adopted = 0;
+  for (const composition of project.compositions) {
+    const topLevel = new Set(composition.layers.map((layer) => layer.id));
+    const byId = new Map<string, Layer>();
+    const collect = (layers: Layer[]) =>
+      layers.forEach((layer) => {
+        byId.set(layer.id, layer);
+        collect(layer.children);
+      });
+    collect(composition.layers);
+    for (const track of composition.tracks)
+      track.clips = track.clips.filter((clip) => {
+        if (topLevel.has(clip.layerId)) return true;
+        const layer = byId.get(clip.layerId);
+        if (layer) {
+          layer.startTime = clip.startTime;
+          layer.duration = clip.duration;
+          adopted++;
+        }
+        return false;
+      });
+    const linked = new Set(
+      composition.tracks.flatMap((track) =>
+        track.clips.map((clip) => clip.layerId),
+      ),
+    );
+    for (const layer of composition.layers) {
+      if (linked.has(layer.id)) continue;
+      const end = layer.startTime + layer.duration;
+      let track = findFreeTrack(composition, layer.type, layer.startTime, end);
+      if (!track) {
+        const type = trackTypeForLayer(layer.type);
+        track = {
+          id: newId(),
+          name: nextTrackName(composition, type),
+          type,
+          order: composition.tracks.length,
+          enabled: true,
+          locked: false,
+          muted: false,
+          clips: [],
+        };
+        composition.tracks.push(track);
+      }
+      const sourceDuration = project.assets.find(
+        (asset) => asset.id === layer.assetId,
+      )?.duration;
+      track.clips.push({
+        id: newId(),
+        name: layer.name,
+        layerId: layer.id,
+        assetId: layer.assetId,
+        startTime: layer.startTime,
+        duration: layer.duration,
+        sourceIn: 0,
+        sourceOut:
+          sourceDuration && sourceDuration > 0
+            ? Math.min(layer.duration, sourceDuration)
+            : layer.duration,
+        enabled: true,
+        speed: 1,
+        transitionMetadata: {},
+        effectMetadata: {},
+        metadata: {},
+      });
+      track.clips.sort((a, b) => a.startTime - b.startTime);
+      adopted++;
+    }
+  }
+  return { project: validateProject(project), adopted };
+}
+export interface ClipSpan {
+  readonly id: string;
+  readonly startTime: number;
+  readonly duration: number;
+}
+/**
+ * TL-030 insert rule. `incoming` clips land on a track holding `fixed` clips. A
+ * landing point strictly inside a fixed clip moves to that clip's nearer edge
+ * (nothing is split); fixed clips at or after the landing point shift right just
+ * enough to make room, keeping their spacing. Returns new starts by clip id for
+ * incoming (`placed`) and shifted fixed clips (`pushed`), plus insertion points.
+ */
+export function planInsert(
+  fixed: readonly ClipSpan[],
+  incoming: readonly ClipSpan[],
+): {
+  placed: Map<string, number>;
+  pushed: Map<string, number>;
+  insertions: number[];
+} {
+  const lane = fixed.map((clip) => ({ ...clip, moved: false }));
+  const placed = new Map<string, number>();
+  const pushed = new Map<string, number>();
+  const insertions: number[] = [];
+  for (const item of [...incoming].sort((a, b) => a.startTime - b.startTime)) {
+    let at = item.startTime;
+    const inside = lane.find(
+      (clip) =>
+        clip.startTime < at - EPSILON &&
+        at < clip.startTime + clip.duration - EPSILON,
+    );
+    // Incoming clips keep their relative order, so they always land after one another.
+    if (inside)
+      at =
+        !inside.moved &&
+        at - inside.startTime <= inside.startTime + inside.duration - at
+          ? inside.startTime
+          : inside.startTime + inside.duration;
+    const later = lane.filter((clip) => clip.startTime >= at - EPSILON);
+    const room = Math.min(Infinity, ...later.map((clip) => clip.startTime));
+    const shift = Math.max(0, at + item.duration - room);
+    if (shift > EPSILON) {
+      insertions.push(at);
+      for (const clip of later) {
+        clip.startTime += shift;
+        if (clip.moved) placed.set(clip.id, clip.startTime);
+        else pushed.set(clip.id, clip.startTime);
+      }
+    }
+    placed.set(item.id, at);
+    lane.push({ ...item, startTime: at, moved: true });
+  }
+  return { placed, pushed, insertions };
+}
+
+/** TL-032 link group id stored in clip.metadata (schema 4); invalid values ignored. */
+export function clipLinkId(clip: { readonly metadata: object }): string | null {
+  const value = (clip.metadata as Readonly<Record<string, unknown>>).linkId;
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+/** True once a video clip's own audio has been detached into a separate clip. */
+export function clipAudioDetached(clip: {
+  readonly metadata: object;
+}): boolean {
+  return (
+    (clip.metadata as Readonly<Record<string, unknown>>).audioDetached === true
+  );
 }

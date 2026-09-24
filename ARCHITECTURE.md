@@ -38,6 +38,14 @@ Hit testing uses the inverse fit matrix and guarded inverse world matrices from 
 
 Library category buttons switch explanatory content and expose existing asset references for drag/drop. The timeline has a fixed transport, sticky ruler/header surfaces, disposable track/layer projections, a shared playhead, and captured-pointer interactions. The undo/redo buttons remain global project-history actions. The example document is created detached with existing factories, validated, then opened by the sole engine; opening it replaces a document explicitly rather than applying hidden edits to the current one.
 
+### Media store and import (W4-A)
+
+Media bytes and thumbnails live in `src/media`, outside `src/core` (D-004, D-052). `MediaStore` is a small interface with three implementations: OPFS (the default, with streamed writes through a swap file), IndexedDB (used when OPFS is missing) and in-memory (for tests). Keys are `media/<fingerprint>` for the bytes and `thumbs/<fingerprint>` for the cached WebP poster.
+
+The fingerprint is SHA-256 of the byte size and three 1 MiB samples, so a file is never read whole. The asset id is `media-<first 16 hex characters>`, and the asset's `source` is `{ kind: 'local', reference: 'media/<fingerprint>' }`.
+
+`importMediaFiles` works through the files one at a time: classify, fingerprint, store, probe with a browser media element, then one `ADD_ASSET` transaction ("Import media") per file. Undo removes only the reference; the bytes stay. `src/ui/media-panel.ts` renders Project Media from the canonical assets, with thumbnails made in the background and cached in the store. It keeps no copy of project state. Schema 4 is unchanged.
+
 ### Composition viewport fit
 
 `fitViewport` is a derived, transient view calculation. Its scale is the minimum of available-width/composition-width, available-height/composition-height, and 1. The final 1 is an upper cap: small compositions are not enlarged, and large compositions scale below 100%. Translation remains `(viewportSize - scaledCompositionSize) / 2` on each axis, so wide/tall compositions stay centered without distortion.

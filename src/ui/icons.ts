@@ -55,9 +55,15 @@ const PATHS: Record<string, string> = {
   group: 'M4 4h8v8H4z M8 8h8v8H8z',
   image:
     'M3 4h14v12H3z M6.5 8.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z M3 14l4.5-5 3 3.5L14 9l3 5',
+  flipH: 'M10 3v14 M8 6L3 14h5z M12 6l5 8h-5z',
+  flipV: 'M3 10h14 M6 8l8-5v5z M6 12l8 5v-5z',
+  pen: 'M4 16l1-4 8-8 3 3-8 8z M11.5 5.5l3 3 M4 16l4-1',
+  brush: 'M13 3l4 4-6 6-4-4z M7 9l-2 2c-1.5 1.5-1 4-3 5 3 1 6 0 7-2l2-2',
+  highlighter: 'M12 3l5 5-7 7-5-5z M5 10l-2 5 2 2 5-2 M3 17h14',
   solo: 'M4 13v-3a6 6 0 0112 0v3 M4 13h3v4H4z M13 13h3v4h-3z',
   reverse: 'M15 7H5 M8 4L5 7l3 3 M5 13h10 M12 10l3 3-3 3',
   freeze: 'M10 3v14 M3.9 6.5l12.2 7 M3.9 13.5l12.2-7',
+  link: 'M8.5 11.5a3 3 0 004.2 0l2.6-2.6a3 3 0 00-4.2-4.2l-1 1 M11.5 8.5a3 3 0 00-4.2 0l-2.6 2.6a3 3 0 004.2 4.2l1-1',
   panelLeft: 'M3 4h14v12H3z M8 4v12',
   panelRight: 'M3 4h14v12H3z M12 4v12',
 };

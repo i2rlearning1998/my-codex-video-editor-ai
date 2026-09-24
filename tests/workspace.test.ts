@@ -394,7 +394,9 @@ describe('T3 editing workspace', () => {
     const composition = s.engine.state.compositions[0]!;
     const clips = composition.tracks[0]!.clips;
     expect(clips).toHaveLength(3);
-    expect(clips.map((clip) => clip.startTime)).toEqual([2, 3, 6]);
+    // TL-030 insert rule: the drop at 3 s lands inside the first clip (2..4),
+    // moves to its nearer edge (2 s, ties go to the start) and pushes it to 4 s.
+    expect(clips.map((clip) => clip.startTime)).toEqual([4, 2, 6]);
     expect(new Set(clips.map((clip) => clip.id))).toHaveProperty('size', 3);
     expect(new Set(clips.map((clip) => clip.layerId))).toHaveProperty(
       'size',
@@ -402,13 +404,13 @@ describe('T3 editing workspace', () => {
     );
     expect(clips[0]).toMatchObject({
       layerId: added.id,
-      startTime: 2,
+      startTime: 4,
       sourceIn: 0,
       sourceOut: 2,
     });
     expect(clips[1]).toMatchObject({
       layerId: secondLayer.id,
-      startTime: 3,
+      startTime: 2,
       sourceIn: 0,
       sourceOut: 2,
     });

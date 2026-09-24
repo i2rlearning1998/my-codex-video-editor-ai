@@ -1,0 +1,314 @@
+{
+  "schemaVersion": 4,
+  "id": "media-fixture-project",
+  "metadata": {
+    "name": "Media Fixture",
+    "createdAt": "2026-09-24T00:00:00.000Z",
+    "updatedAt": "2026-09-24T00:00:00.000Z"
+  },
+  "settings": {
+    "backgroundColor": "#101219",
+    "audioSampleRate": 48000
+  },
+  "compositions": [
+    {
+      "id": "media-main",
+      "name": "Main composition",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "duration": 7,
+      "layers": [
+        {
+          "id": "layer-media-36bca395291051be",
+          "name": "video_testsrc_720p_2s_vp9_opus.webm",
+          "type": "video",
+          "startTime": 0,
+          "duration": 2,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                320,
+                180
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "media-36bca395291051be",
+          "children": []
+        },
+        {
+          "id": "layer-media-0d2dbf17c7d6f5e7",
+          "name": "image_gradient_1920x1080.png",
+          "type": "image",
+          "startTime": 2,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                0,
+                0
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "media-0d2dbf17c7d6f5e7",
+          "children": []
+        },
+        {
+          "id": "layer-media-2498c3ee7cc43364",
+          "name": "audio_tone_440hz_3s.wav",
+          "type": "audio",
+          "startTime": 0,
+          "duration": 3,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                0,
+                0
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "media-2498c3ee7cc43364",
+          "children": []
+        }
+      ],
+      "tracks": [
+        {
+          "id": "video-1",
+          "name": "Video 1",
+          "type": "video",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "clip-media-36bca395291051be",
+              "name": "video_testsrc_720p_2s_vp9_opus.webm",
+              "layerId": "layer-media-36bca395291051be",
+              "assetId": "media-36bca395291051be",
+              "startTime": 0,
+              "duration": 2,
+              "sourceIn": 0,
+              "sourceOut": 2,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            },
+            {
+              "id": "clip-media-0d2dbf17c7d6f5e7",
+              "name": "image_gradient_1920x1080.png",
+              "layerId": "layer-media-0d2dbf17c7d6f5e7",
+              "assetId": "media-0d2dbf17c7d6f5e7",
+              "startTime": 2,
+              "duration": 5,
+              "sourceIn": 0,
+              "sourceOut": 5,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "audio-1",
+          "name": "Audio 1",
+          "type": "audio",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "clip-media-2498c3ee7cc43364",
+              "name": "audio_tone_440hz_3s.wav",
+              "layerId": "layer-media-2498c3ee7cc43364",
+              "assetId": "media-2498c3ee7cc43364",
+              "startTime": 0,
+              "duration": 3,
+              "sourceIn": 0,
+              "sourceOut": 3,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        }
+      ],
+      "markers": [],
+      "audioTracks": []
+    }
+  ],
+  "assets": [
+    {
+      "id": "media-36bca395291051be",
+      "name": "video_testsrc_720p_2s_vp9_opus.webm",
+      "type": "video",
+      "source": {
+        "kind": "local",
+        "reference": "media/36bca395291051be3476a7b8694b6325"
+      },
+      "metadata": {
+        "mimeType": "video/webm",
+        "size": 85172,
+        "fileName": "video_testsrc_720p_2s_vp9_opus.webm",
+        "lastModified": 0,
+        "fingerprint": "36bca395291051be3476a7b8694b6325"
+      },
+      "width": 1280,
+      "height": 720,
+      "duration": 2
+    },
+    {
+      "id": "media-2498c3ee7cc43364",
+      "name": "audio_tone_440hz_3s.wav",
+      "type": "audio",
+      "source": {
+        "kind": "local",
+        "reference": "media/2498c3ee7cc43364d33c6ba5ba146e1a"
+      },
+      "metadata": {
+        "mimeType": "audio/wav",
+        "size": 132344,
+        "fileName": "audio_tone_440hz_3s.wav",
+        "lastModified": 0,
+        "fingerprint": "2498c3ee7cc43364d33c6ba5ba146e1a"
+      },
+      "duration": 3
+    },
+    {
+      "id": "media-0d2dbf17c7d6f5e7",
+      "name": "image_gradient_1920x1080.png",
+      "type": "image",
+      "source": {
+        "kind": "local",
+        "reference": "media/0d2dbf17c7d6f5e754587aa97a0ba77f"
+      },
+      "metadata": {
+        "mimeType": "image/png",
+        "size": 44748,
+        "fileName": "image_gradient_1920x1080.png",
+        "lastModified": 0,
+        "fingerprint": "0d2dbf17c7d6f5e754587aa97a0ba77f"
+      },
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "media-bdc94a8f34411975",
+      "name": "image_testsrc_1200x800.jpg",
+      "type": "image",
+      "source": {
+        "kind": "local",
+        "reference": "media/bdc94a8f344119758fa5ffc971d97572"
+      },
+      "metadata": {
+        "mimeType": "image/jpeg",
+        "size": 47484,
+        "fileName": "image_testsrc_1200x800.jpg",
+        "lastModified": 0,
+        "fingerprint": "bdc94a8f344119758fa5ffc971d97572"
+      },
+      "width": 1200,
+      "height": 800
+    }
+  ]
+}

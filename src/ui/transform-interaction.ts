@@ -28,6 +28,15 @@ import { selectionBounds, type TransformHandle } from '../render/selection';
 import type { EditorSession } from './session';
 import { selectionRoots } from './editing';
 import {
+  snapTargets,
+  solveSnap,
+  unionBox,
+  worldBox,
+  type Box,
+  type SnapGuide,
+  type SnapTargets,
+} from './snapping';
+import {
   buildTransformCommands,
   inspectorTransform,
   type InspectorField,
@@ -52,6 +61,9 @@ interface Gesture {
   pivot: Point2;
   textBox?: { width: number; height: number };
   value: TransformValues;
+  /** CV-013: fixed at gesture start (revision 5). */
+  targets: SnapTargets;
+  guides: readonly SnapGuide[];
 }
 export class TransformInteraction {
   #gesture: Gesture | null = null;
@@ -91,6 +103,10 @@ export class TransformInteraction {
           ...(gesture.textBox ? { textBox: gesture.textBox } : {}),
         }
       : undefined;
+  }
+  /** CV-013: transient guide lines of the active gesture. */
+  get guides(): readonly SnapGuide[] {
+    return this.#gesture?.guides ?? [];
   }
   get previews(): readonly LayerPreview[] | undefined {
     return this.#gesture?.members?.map((member) => ({
@@ -180,21 +196,31 @@ export class TransformInteraction {
         boundsCenter(selected.bounds),
       ),
       value: found.layer.transform,
+      targets: snapTargets(
+        source,
+        members ? members.map((member) => member.layer.id) : [found.layer.id],
+        this.session.enteredGroupId,
+      ),
+      guides: [],
     };
     return true;
   }
-  update(point: Point2, proportional = false): void {
+  /**
+   * `snap` is the CV-013 tolerance in composition units; omit it (keyboard nudges,
+   * Ctrl held) to place exactly at the pointer.
+   */
+  update(
+    point: Point2,
+    proportional = false,
+    fromCenter = false,
+    snap?: number,
+  ): void {
     const gesture = this.#gesture;
     if (!gesture) return;
     try {
-      const current = transformPoint(gesture.inverseParent, point);
-      if (gesture.kind === 'move')
-        gesture.value = moveTransform(
-          gesture.layer.transform,
-          gesture.start,
-          current,
-        );
-      else if (gesture.kind === 'rotate') {
+      let current: Point2;
+      if (gesture.kind === 'rotate') {
+        current = transformPoint(gesture.inverseParent, point);
         gesture.angle += rotationDelta(
           gesture.pivot,
           gesture.previous,
@@ -207,54 +233,24 @@ export class TransformInteraction {
           gesture.bounds,
           value,
         );
-      } else if (
-        gesture.kind === 'text-left' ||
-        gesture.kind === 'text-right'
-      ) {
-        const result = resizeTextWidth(
-          gesture.layer.transform,
-          gesture.bounds.width,
-          gesture.kind === 'text-left' ? 'left' : 'right',
-          gesture.start,
-          current,
+        gesture.guides = [];
+      } else if (snap !== undefined) {
+        const snapped = solveSnap(
+          (candidate) => {
+            this.#apply(gesture, candidate, proportional, fromCenter);
+            return this.#box(gesture);
+          },
+          point,
+          gesture.targets,
+          snap,
+          gesture.kind === 'move' ? 'move' : 'resize',
         );
-        if (
-          Math.abs(result.width - gesture.bounds.width) <=
-          1e-10 * Math.max(1, gesture.bounds.width)
-        ) {
-          gesture.value = gesture.layer.transform;
-          delete gesture.textBox;
-        } else {
-          const layout = textLayoutForWidth(
-            gesture.layer,
-            result.width,
-            this.session.source.measureText,
-          );
-          gesture.value = result.transform;
-          gesture.textBox = { width: result.width, height: layout.height };
-        }
+        current = transformPoint(gesture.inverseParent, snapped.point);
+        gesture.guides = snapped.guides;
       } else {
-        gesture.value = resizeTransform(
-          gesture.layer.transform,
-          gesture.bounds,
-          gesture.kind,
-          resizePointer(
-            gesture.layer.transform,
-            gesture.bounds,
-            gesture.kind,
-            gesture.start,
-            current,
-          ),
-          typeof gesture.kind === 'number' || proportional,
-        );
+        current = this.#apply(gesture, point, proportional, fromCenter);
+        gesture.guides = [];
       }
-      if (gesture.members)
-        for (const member of gesture.members)
-          member.value = moveTransform(
-            member.layer.transform,
-            member.start,
-            transformPoint(member.inverse, point),
-          );
       gesture.previous = current;
       // Exact return to the start is an intentional no-op, not a floating-point edit.
       if (
@@ -270,6 +266,97 @@ export class TransformInteraction {
       this.cancel();
       throw error;
     }
+  }
+  /** Previews a move or resize for one pointer; returns the parent-space pointer. */
+  #apply(
+    gesture: Gesture,
+    point: Point2,
+    proportional: boolean,
+    fromCenter: boolean,
+  ): Point2 {
+    const current = transformPoint(gesture.inverseParent, point);
+    if (gesture.kind === 'move')
+      gesture.value = moveTransform(
+        gesture.layer.transform,
+        gesture.start,
+        current,
+      );
+    else if (gesture.kind === 'text-left' || gesture.kind === 'text-right') {
+      const result = resizeTextWidth(
+        gesture.layer.transform,
+        gesture.bounds.width,
+        gesture.kind === 'text-left' ? 'left' : 'right',
+        gesture.start,
+        current,
+      );
+      if (
+        Math.abs(result.width - gesture.bounds.width) <=
+        1e-10 * Math.max(1, gesture.bounds.width)
+      ) {
+        gesture.value = gesture.layer.transform;
+        delete gesture.textBox;
+      } else {
+        const layout = textLayoutForWidth(
+          gesture.layer,
+          result.width,
+          this.session.source.measureText,
+        );
+        gesture.value = result.transform;
+        gesture.textBox = { width: result.width, height: layout.height };
+      }
+    } else if (gesture.kind !== 'rotate')
+      gesture.value = resizeTransform(
+        gesture.layer.transform,
+        gesture.bounds,
+        gesture.kind,
+        resizePointer(
+          gesture.layer.transform,
+          gesture.bounds,
+          gesture.kind,
+          gesture.start,
+          current,
+        ),
+        typeof gesture.kind === 'number' || proportional,
+        fromCenter,
+      );
+    if (gesture.members)
+      for (const member of gesture.members)
+        member.value = moveTransform(
+          member.layer.transform,
+          member.start,
+          transformPoint(member.inverse, point),
+        );
+    return current;
+  }
+  /** World bounds of the previewed selection. */
+  #box(gesture: Gesture): Box | null {
+    const source = this.session.source;
+    if (gesture.members)
+      return unionBox(
+        gesture.members.map((member) =>
+          worldBox(
+            {
+              ...source,
+              previews: gesture.members!.map((item) => ({
+                layerId: item.layer.id,
+                transform: item.value,
+              })),
+            },
+            member.layer.id,
+          ),
+        ),
+      );
+    return worldBox(
+      {
+        ...source,
+        preview: {
+          layerId: gesture.layer.id,
+          transform: gesture.value,
+          ...(gesture.textBox ? { textBox: gesture.textBox } : {}),
+        },
+      },
+      gesture.layer.id,
+    );
   }
   finish(): void {
     const gesture = this.#gesture;

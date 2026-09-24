@@ -1,5 +1,7 @@
 import {
   activeAtTime,
+  clipSourceTime,
+  clipTimeEffects,
   effectiveLayerTiming,
   findClipByLayer,
   invertMatrix,
@@ -16,11 +18,31 @@ import {
 
 import { layoutText, type TextMeasurer } from './text-layout';
 import type { TransformCapabilities } from './transform-capabilities';
+import { drawingOf, type DrawingPath } from './drawing';
 
 export interface LayerPreview extends TransformPreview {
   readonly textBox?: { readonly width: number; readonly height: number };
 }
 export type SceneLayer = DeepReadonly<Layer>;
+/** What an image or video layer shows at the current time (W4-B). */
+export interface MediaFrameRequest {
+  /** Stable per-layer key: each layer gets its own decoder. */
+  readonly key: string;
+  readonly assetId: string;
+  readonly kind: 'image' | 'video';
+  /** Source-media seconds, after speed, reverse and freeze (clipSourceTime). */
+  readonly sourceTime: number;
+  readonly speed: number;
+  readonly reversed: boolean;
+  readonly frozen: boolean;
+}
+/**
+ * Injected, read-only frame lookup. The renderer asks and draws; decoding and
+ * seeking live behind this interface (src/media/frames.ts), never in the renderer.
+ */
+export interface FrameProvider {
+  frame(request: MediaFrameRequest, playing: boolean): CanvasImageSource | null;
+}
 export interface RenderSource {
   readonly composition: DeepReadonly<Composition>;
   readonly assets: readonly DeepReadonly<Asset>[];
@@ -44,6 +66,15 @@ export interface RenderSource {
   readonly measureText?: TextMeasurer;
   readonly capabilities?: Readonly<Record<string, TransformCapabilities>>;
   readonly hoveredHandle?: string | number;
+  /** SHP-018: the freehand stroke being drawn (composition space). */
+  readonly drawing?: DrawingPath & { readonly opacity: number };
+  /** CV-013: transient snap guides of the active canvas gesture. */
+  readonly guides?: readonly {
+    readonly axis: 'x' | 'y';
+    readonly value: number;
+  }[];
+  readonly frames?: FrameProvider;
+  readonly playing?: boolean;
 }
 export interface LayerSize {
   readonly width: number;
@@ -60,7 +91,10 @@ export interface RenderItem {
   readonly text: string;
   readonly fontSize: number;
   readonly lines?: readonly string[];
-  readonly kind: 'rectangle' | 'text' | 'placeholder';
+  readonly kind: 'rectangle' | 'text' | 'placeholder' | 'path';
+  readonly media?: MediaFrameRequest;
+  /** SHP-019: a freehand drawing's stroke in local coordinates. */
+  readonly path?: DrawingPath;
 }
 const defaults = {
   image: [320, 180],
@@ -197,9 +231,22 @@ export function deriveRenderItems(source: RenderSource): {
         const effectiveSize = wrapped
           ? { ...size, height: Math.max(size.height, wrapped.height) }
           : size;
+        const drawing = drawingOf(layer);
+        if (drawing === 'invalid') {
+          warnings.push(
+            `Cannot draw ${layer.name}: its drawing data is invalid.`,
+          );
+          continue;
+        }
+        const media =
+          (layer.type === 'image' || layer.type === 'video') && layer.assetId
+            ? mediaRequest(source, layer, layer.type, layer.assetId)
+            : undefined;
         items.push(
           Object.freeze({
             ...(wrapped ? { lines: wrapped.lines } : {}),
+            ...(media ? { media } : {}),
+            ...(drawing ? { path: drawing } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
             matrix: world.matrix,
@@ -213,8 +260,9 @@ export function deriveRenderItems(source: RenderSource): {
                   : layer.name
                 : `${layer.type.toUpperCase()} / ${layer.name}`,
             fontSize: Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
-            kind:
-              layer.type === 'shape'
+            kind: drawing
+              ? 'path'
+              : layer.type === 'shape'
                 ? 'rectangle'
                 : layer.type === 'text'
                   ? 'text'
@@ -230,6 +278,36 @@ export function deriveRenderItems(source: RenderSource): {
   };
   visit(source.composition.layers, []);
   return { items: Object.freeze(items), warnings: Object.freeze(warnings) };
+}
+
+function mediaRequest(
+  source: RenderSource,
+  layer: SceneLayer,
+  kind: 'image' | 'video',
+  assetId: string,
+): MediaFrameRequest {
+  const time = source.currentTime ?? 0;
+  const found = findClipByLayer(source.composition, layer.id);
+  if (!found)
+    return Object.freeze({
+      key: layer.id,
+      assetId,
+      kind,
+      sourceTime: Math.max(0, time - layer.startTime),
+      speed: 1,
+      reversed: false,
+      frozen: false,
+    });
+  const effects = clipTimeEffects(found.clip);
+  return Object.freeze({
+    key: layer.id,
+    assetId,
+    kind,
+    sourceTime: clipSourceTime(found.clip, time),
+    speed: effects.speed,
+    reversed: effects.reversed,
+    frozen: effects.freezeFrame !== null,
+  });
 }
 
 export function hitTest(source: RenderSource, point: Point2): string | null {

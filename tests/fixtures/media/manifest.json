@@ -1,0 +1,137 @@
+{
+  "generator": "scripts/make-media-fixtures.sh (ffmpeg 7.0.2 static)",
+  "files": [
+    {
+      "file": "audio_tone_440hz_3s.m4a",
+      "bytes": 24045,
+      "sha256": "b0fd1eed5619a3aeee78e42bc9216ae576c97c179d955d72fc5ebdf124204b83",
+      "description": "M4A AAC mono 3 s 440 Hz (needs Chrome/Edge)"
+    },
+    {
+      "file": "audio_tone_440hz_3s.mp3",
+      "bytes": 24678,
+      "sha256": "87c494965ebfcf38705be48cea7f69d599be6af4b30f4df05440a381044e3d7e",
+      "description": "MP3 64 kb/s mono 3 s 440 Hz"
+    },
+    {
+      "file": "audio_tone_440hz_3s.ogg",
+      "bytes": 6915,
+      "sha256": "0758b5f825d2dc46fdd4ee990c8aca49bcf0c2f89d1d8c6722b6665612128dd9",
+      "description": "Ogg Vorbis mono 3 s 440 Hz"
+    },
+    {
+      "file": "audio_tone_440hz_3s.wav",
+      "bytes": 132344,
+      "sha256": "13058d5218ecec11c0152ed6e185adfd6f428b389844efb9de322e7a8c09a561",
+      "description": "WAV PCM 16-bit mono 22.05 kHz 3 s 440 Hz"
+    },
+    {
+      "file": "corrupt_random_bytes.mp4",
+      "bytes": 4096,
+      "sha256": "8b36d7b61aa5599260a6576703f0d1ee7d9d4fd95cc23ab71326cfa74818cc40",
+      "description": "Negative case: 4 KiB of random bytes with a .mp4 name"
+    },
+    {
+      "file": "image_alpha_logo_512.png",
+      "bytes": 5179,
+      "sha256": "d062dcc7673b6b47b368c616e24a533a02710fb81588e28f9ec128b5bf8d89b4",
+      "description": "PNG RGBA 512x512: indigo disc on transparency"
+    },
+    {
+      "file": "image_animated_320x240.gif",
+      "bytes": 51938,
+      "sha256": "bf5eac3496e4aba5373037ccf71e60125067e2003cdc7ef15efa65498f6cbe44",
+      "description": "Animated GIF 320x240, 10 frames, loops"
+    },
+    {
+      "file": "image_exif_orientation6_1600x1200.jpg",
+      "bytes": 12135,
+      "sha256": "45300920b2cb34a5e4f0a17fedd6b2e5cdb01a03b0e0490f43b19de9e601c0a1",
+      "description": "JPEG stored 1600x1200 (red top-left block on blue) with EXIF Orientation 6: shows 1200x1600 portrait with the red block top-right"
+    },
+    {
+      "file": "image_gradient_1920x1080.png",
+      "bytes": 44748,
+      "sha256": "85e069778382c827ae66f9c859f346c87dfb7a75e2e558be4855e1241791c0da",
+      "description": "PNG 1920x1080 opaque gradient"
+    },
+    {
+      "file": "image_testsrc_1200x800.jpg",
+      "bytes": 47484,
+      "sha256": "614f0c3ad33c09e98edd8f1780ad62979db37fde2c7e31475854b240d98b4d0a",
+      "description": "JPEG 1200x800 test pattern"
+    },
+    {
+      "file": "image_testsrc_800x600.webp",
+      "bytes": 13332,
+      "sha256": "b68399b9e2167bfa71e30c2435ee86914a98f5157400e05a4938fe9ea188003b",
+      "description": "WebP 800x600 test pattern"
+    },
+    {
+      "file": "image_vector_logo.svg",
+      "bytes": 253,
+      "sha256": "dbdbee3121b203a652f996ad87a631e028e0e360b7a4261a1645a3a8e3266772",
+      "description": "SVG 400x300 logo"
+    },
+    {
+      "file": "not_media.txt",
+      "bytes": 38,
+      "sha256": "97bd551934c54b6c0b684cfcd17a65f368b03a5a2175db5d3a9ea9275a3c298e",
+      "description": "Negative case: plain text"
+    },
+    {
+      "file": "video_alpha_circle_vp9.webm",
+      "bytes": 8208,
+      "sha256": "1964c8f2c46d1f714739c5908eaa95244bcc51ef7f31b9cd89f72d92117f463a",
+      "description": "WebM VP9 with alpha 320x320 2 s: red circle on transparency"
+    },
+    {
+      "file": "video_av_sync_flash_beep_720p.mp4",
+      "bytes": 18943,
+      "sha256": "dd6c4f85a574e425ab9e87072a7542efe2dd9c0a9d6803c84f70d56e645600cb",
+      "description": "MP4 H.264/AAC 1280x720 4 s: white flash and 1 kHz beep for 0.1 s at each whole second"
+    },
+    {
+      "file": "video_av_sync_flash_beep_720p.webm",
+      "bytes": 28138,
+      "sha256": "8485743ea98839ba03e88a4a735a3a52ff1326f21d02ed5e457ed2342c2c4f2d",
+      "description": "Same A/V sync pattern as the MP4, VP9/Opus, decodable in Chromium"
+    },
+    {
+      "file": "video_frame_code_320x180_4s.webm",
+      "bytes": 5234,
+      "sha256": "333accdda731456c36df8dd3686f1733e5785f1e6f4d4f95feafa267a2351009",
+      "description": "WebM VP9 320x180 30 fps 4 s: frame number in binary as seven white blocks (bit 0 leftmost, 40 px each) plus a grey block"
+    },
+    {
+      "file": "video_rotation90_metadata_portrait_no_audio.mp4",
+      "bytes": 82817,
+      "sha256": "5aa7fcb979d8a5d01b09b53fe4f1f185efade3ae55769401a22f86dad207c5f5",
+      "description": "MP4 H.264 stored 640x360 with 90 degree display rotation: shows 360x640 portrait"
+    },
+    {
+      "file": "video_testsrc_1080p_2s_h264_aac.mp4",
+      "bytes": 499480,
+      "sha256": "db9491d8fc99127410f48776b77b79a14614835778ff11cbf16f746a8667993a",
+      "description": "MP4 H.264 High 1920x1080 30 fps 2 s with AAC tone (needs Chrome/Edge; not decodable in open-source Chromium)"
+    },
+    {
+      "file": "video_testsrc_360p_2s_h264.mov",
+      "bytes": 78969,
+      "sha256": "72b3a3a2840fc7b4fbaaffed460f29d06eb71cb5c25460b8bd5a16d1e09d1422",
+      "description": "QuickTime MOV H.264 640x360 25 fps 2 s, no audio (needs Chrome/Edge)"
+    },
+    {
+      "file": "video_testsrc_720p_2s_vp9_opus.webm",
+      "bytes": 85172,
+      "sha256": "cc86b6f0ef2eacce88a83ed3d6e8facb1e61c2aa96298bf03a2d49fcb962cf0e",
+      "description": "WebM VP9 1280x720 30 fps 2 s with Opus 440 Hz tone"
+    },
+    {
+      "file": "video_vfr_720p_no_audio.mp4",
+      "bytes": 264315,
+      "sha256": "f7de268888e94b39541f007bed9727d35835100a08cde6449e3b35c3e23c1d27",
+      "description": "MP4 H.264 1280x720 variable frame rate: 30 fps for 0-1 s, 10 fps for 1-4 s, no audio"
+    }
+  ]
+}
