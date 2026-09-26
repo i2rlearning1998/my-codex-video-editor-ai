@@ -368,5 +368,16 @@
   "easing.preset.slow-end": "धीमा अंत",
   "easing.preset.anticipate": "पीछे खिंचाव",
   "easing.preset.overshoot": "आगे निकलना",
-  "clip.animated": "एनिमेशन प्रीसेट"
+  "clip.animated": "एनिमेशन प्रीसेट",
+  "command.toggleEnabled": "सक्षम / अक्षम करें",
+  "command.ungroup": "समूह हटाएँ",
+  "command.arrange": "लेयर",
+  "command.bringToFront": "सबसे आगे लाएँ",
+  "command.bringForward": "आगे लाएँ",
+  "command.sendBackward": "पीछे भेजें",
+  "command.sendToBack": "सबसे पीछे भेजें",
+  "command.lock": "लॉक करें",
+  "command.hide": "छिपाएँ",
+  "selectionActions.label": "चयन क्रियाएँ",
+  "selectionActions.more": "अधिक क्रियाएँ"
 }

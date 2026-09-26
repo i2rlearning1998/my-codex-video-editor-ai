@@ -36,3 +36,6 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-24 | W2-E CV | Add link (right-click): attach a URL to a layer. Dropped from W2-E by the owner; revisit when a web or PDF export exists (D-068).
   2026-09-24 | W2-E CV | Context toolbar rows for groups, multi-selections and audio layers, and the "None" row (Select, Pan, Zoom, Grid, Guides, Snap), from UX spec 4.1.
   2026-09-24 | W5-C ANI | Grey out the toolbar's Animate button for group children (they have no clip, so presets cannot apply); today clicking it does nothing.
+  2026-09-26 | W2-F1 CV | The timeline menu uses the shared capability rules but still renders its own buttons; move it onto the shared menu renderer (context-menu.ts) with the timeline clip context.
+  2026-09-26 | W2-F1 CV | The spec's cluster items Refresh (reset) and Comment are not built; Lock waits for CV-024.
+  2026-09-26 | W2-F1 CV | Front and back layer order have no shortcut (the global matcher takes no Alt chords, and Shift changes the bracket key on most layouts).

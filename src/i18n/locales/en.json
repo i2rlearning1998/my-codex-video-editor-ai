@@ -368,5 +368,16 @@
   "easing.preset.slow-end": "Slow end",
   "easing.preset.anticipate": "Anticipate",
   "easing.preset.overshoot": "Overshoot",
-  "clip.animated": "Animation presets"
+  "clip.animated": "Animation presets",
+  "command.toggleEnabled": "Enable / disable",
+  "command.ungroup": "Ungroup",
+  "command.arrange": "Layer",
+  "command.bringToFront": "Bring to front",
+  "command.bringForward": "Bring forward",
+  "command.sendBackward": "Send backward",
+  "command.sendToBack": "Send to back",
+  "command.lock": "Lock",
+  "command.hide": "Hide",
+  "selectionActions.label": "Selection actions",
+  "selectionActions.more": "More actions"
 }

@@ -986,6 +986,41 @@ input[type='number'] {
 .context-toolbar[hidden] {
   display: none;
 }
+/* CV-040 selection action cluster: a small pill above the selection box. */
+.selection-actions {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-lg);
+}
+.selection-actions[hidden] {
+  display: none;
+}
+.selection-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 28px;
+  block-size: 28px;
+  padding: 0;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.selection-action:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+.selection-action:disabled {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
 .toolbar-field {
   display: inline-flex;
   align-items: center;
@@ -1675,6 +1710,12 @@ input[type='number'] {
 }
 .canvas-context-menu button:hover:not(:disabled) {
   background: var(--color-bg-hover);
+}
+.canvas-context-menu button kbd {
+  float: inline-end;
+  color: var(--color-text-faint);
+  font-family: inherit;
+  font-size: var(--font-size-xs);
 }
 .canvas-context-menu button:disabled {
   color: var(--color-text-faint);

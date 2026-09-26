@@ -259,7 +259,7 @@ Everything the user does directly on the preview canvas.
 | CV-023 | P1 | W2 | Todo | Double-click a group enters isolation mode |
 | CV-024 | P0 | W2 | Todo | Locked layers cannot be moved or resized from the canvas; hidden layers are neither drawn nor selectable |
 | CV-025 | P0 | W2 | Verified | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |
-| CV-026 | P0 | W2 | Todo | Order commands: bring to front, forward, backward, to back |
+| CV-026 | P0 | W2 | Verified | Order commands: bring to front, forward, backward, to back |
 | CV-027 | P0 | W2 | Todo | Quick flip horizontal and vertical, rotate 90 degrees |
 | CV-028 | P1 | W2 | Todo | Paste places at same position with small offset; pasting an image from the OS clipboard imports it |
 | CV-029 | P0 | W2 | Todo | Cursor changes correctly over move, resize (per handle angle) and rotate handles |
@@ -273,6 +273,9 @@ Everything the user does directly on the preview canvas.
 | CV-037 | P0 | W2 | Verified | Text toolbar: Size and Color edit the layer as one undo step each; Font, Weight, Align, Spacing and Effects show disabled with a tooltip naming their wave; Animate opens the animation presets |
 | CV-038 | P0 | W2 | Verified | Shape toolbar: Fill edits the layer; Stroke, Width, Corners and Boolean show disabled with a tooltip naming their wave; Animate opens the animation presets. A drawing's toolbar edits its Color, Brush size and Opacity |
 | CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
+| CV-040 | P0 | W2 | Verified | A selection shows a small action cluster above its box with Group (for two or more sibling layers) or Ungroup (for groups), Duplicate, Delete and More (the right-click menu); with two or more layers selected, one dashed box surrounds the whole selection and each layer keeps its own outline. Menu and cluster actions are offered only when every selected item supports them |
+| CV-041 | P0 | W2 | Todo | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
+| CV-042 | P0 | W2 | Todo | A Position panel opens from the context toolbar with an Arrange tab (align, distribute and layer order as buttons) and a Layers tab (the composition's layers as a flat list, drag to reorder, groups shown with a folder icon) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -291,7 +294,7 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 | LYR-009 | P1 | W2 | Todo | Thumbnails per layer |
 | LYR-010 | P1 | W2 | Todo | Search and filter layers |
 | LYR-011 | P0 | W2 | Todo | Right-click menu: Duplicate, Delete, Group, Ungroup, Rename, Lock, Hide, Copy, Paste, Select same type |
-| LYR-012 | P0 | W2 | Todo | Group and Ungroup available from UI and shortcut |
+| LYR-012 | P0 | W2 | Verified | Group and Ungroup available from UI and shortcut |
 | LYR-013 | P1 | W2 | Todo | Arrow-key navigation in the list |
 | LYR-014 | P2 | W2 | Todo | Solo (isolate) a layer |
 | LYR-015 | P2 | W2 | Todo | Layer color labels |
@@ -489,6 +492,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-017 | P2 | W8 | Todo | Lottie import |
 | SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker and Highlighter with brush size, color and opacity; choosing a brush puts the canvas in draw mode, and Esc, V or another category leaves it |
 | SHP-019 | P0 | W2 | Verified | Each freehand stroke becomes one undoable shape layer with a clip at the playhead; it can be selected, moved, resized, saved and reloaded, and draws the same in preview and export |
+| SHP-020 | P0 | W2 | Todo | The Draw panel has an Eraser that removes whole freehand strokes it touches, as one undo step per drag; size, color and opacity controls are shared across Pen, Marker and Highlighter |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 

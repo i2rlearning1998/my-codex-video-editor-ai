@@ -19,11 +19,14 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     const session = new EditorSession(engine);
     const ids = engine.state.compositions[0]!.layers.map((layer) => layer.id);
     // Clip time/keyboard commands need a clip with room to act on: layer-b
-    // (3..5 on Video 1) can move earlier; layer-c (alone on Video 2) can slow
-    // down and move up. Other commands keep the first layer.
+    // (video, 3..5 on Video 1) can move earlier and slow down; layer-c (alone
+    // on Video 2) can move up. Layer order needs a layer that is not already at
+    // the bottom. Other commands keep the first layer.
     const layerFor: Record<string, string> = {
-      'speed-slower': 'layer-c',
-      'speed-normal': 'layer-c',
+      'speed-slower': 'layer-b',
+      'speed-normal': 'layer-b',
+      'arrange-backward': 'layer-b',
+      'arrange-back': 'layer-b',
       'clip-nudge-left': 'layer-b',
       'clip-track-up': 'layer-c',
     };
@@ -52,6 +55,10 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     if (command.id === 'speed-normal') runCommand('speed-faster', context);
     if (command.id === 'paste') runCommand('copy', context);
     if (command.id === 'unlink') runCommand('link', context);
+    if (command.id === 'ungroup') {
+      session.selectMany(ids.slice(0, 2));
+      runCommand('group', context);
+    }
     if (command.id.startsWith('keyframe-')) {
       // Keyframes at 0 and 2 on the selected layer; the playhead sits at 1.
       for (const time of [0, 2])

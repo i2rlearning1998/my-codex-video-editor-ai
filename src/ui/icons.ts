@@ -54,6 +54,10 @@ const PATHS: Record<string, string> = {
   diamondFilled: 'M10 3l6 7-6 7-6-7z',
   diamondOutline: 'M10 4.6L15 10l-5 5.4L5 10z',
   group: 'M4 4h8v8H4z M8 8h8v8H8z',
+  ungroup: 'M3 3h6v6H3z M11 11h6v6h-6z',
+  groupSelection:
+    'M2 5V2h3 M15 2h3v3 M18 15v3h-3 M5 18H2v-3 M6 6h5v5H6z M9 9h5v5H9z',
+  more: 'M4.5 10h1 M9.5 10h1 M14.5 10h1',
   image:
     'M3 4h14v12H3z M6.5 8.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z M3 14l4.5-5 3 3.5L14 9l3 5',
   flipH: 'M10 3v14 M8 6L3 14h5z M12 6l5 8h-5z',

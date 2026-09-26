@@ -426,6 +426,40 @@ test.describe('NLE fixture', () => {
     expect(y! + (1080 * sy!) / 2).toBeCloseTo(360, -0.5);
     expect((await hook(page)).history.labels.at(-1)).toBe('Add asset layer');
   });
+
+  test('[MED-015] a card dropped on the canvas refers to the stored media even when the drag also carries file data', async ({
+    page,
+  }) => {
+    await importWithPicker(page, [PNG]);
+    await waitThumbnail(page, PNG);
+    const before = await opfsKeys(page);
+    const asset = (await assets(page))[0]!;
+    // Leave the Media tab: a file import would switch back to it.
+    await page.locator('[data-category="Text"]').first().click();
+    const transfer = await page.evaluateHandle(
+      ({ id, name }) => {
+        const data = new DataTransfer();
+        data.setData('application/x-editor-asset', id);
+        data.items.add(new File([new Uint8Array([137, 80, 78, 71])], name));
+        return data;
+      },
+      { id: asset.id, name: PNG },
+    );
+    const canvas = page.locator('canvas');
+    await canvas.dispatchEvent('dragenter', { dataTransfer: transfer });
+    await expect(page.locator('#drop-overlay')).toBeHidden();
+    await canvas.dispatchEvent('dragover', { dataTransfer: transfer });
+    await canvas.dispatchEvent('drop', { dataTransfer: transfer });
+    await expect
+      .poll(async () => (await hook(page)).history.labels)
+      .toEqual(['Import media', 'Add asset layer']);
+    // No import started: the Media tab did not reopen, no asset or bytes were added.
+    await expect(
+      page.locator('[data-category="Text"]').first(),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect((await assets(page)).map((item) => item.id)).toEqual([asset.id]);
+    expect(await opfsKeys(page)).toEqual(before);
+  });
 });
 
 test('[DEV-008] the media fixture project resolves its references once its files are imported', async ({
