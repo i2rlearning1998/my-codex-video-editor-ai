@@ -2,6 +2,12 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 part F3 (W2-F3) — 2026-09-26
+
+- A new **Position** button, on the toolbar and on the action bar of a multi-selection, opens a panel with two tabs:
+  - **Arrange**: layer order, align and distribute as buttons, plus Relative to canvas.
+  - **Layers**: every layer as a flat list, frontmost first, each with a type icon (groups show a folder and their item count). Click to select, Shift+click to add, and drag a row to change the stacking order.
+
 ## Wave 2 part F2 (W2-F2) — 2026-09-26
 
 - The dashed box around several selected objects now has handles: corners resize them all together (Alt from the center), side handles stretch them when they are all straight and none is text, and the round handle rotates them all about the box center. Each drag is one undo step.
