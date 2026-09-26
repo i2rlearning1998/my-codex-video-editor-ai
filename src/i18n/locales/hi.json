@@ -259,7 +259,7 @@
   "command.alignToCanvas": "कैनवास के सापेक्ष",
   "library.draw": "ड्रॉ",
   "draw.title": "ड्रॉ",
-  "draw.hint": "ब्रश चुनें, फिर कैनवास पर खींचें। ड्रॉ करना रोकने के लिए Esc या V दबाएँ।",
+  "draw.hint": "ब्रश चुनें, फिर कैनवास पर खींचें। इरेज़र जिन स्ट्रोक को छूता है उन्हें पूरा हटा देता है। ड्रॉ करना रोकने के लिए Esc या V दबाएँ।",
   "draw.brush": "ब्रश",
   "draw.pen": "पेन",
   "draw.marker": "मार्कर",
@@ -388,5 +388,6 @@
   "position.distribute": "समान दूरी",
   "position.empty": "इस कंपोज़िशन में कोई लेयर नहीं है।",
   "position.groupCount_one": "{count} आइटम",
-  "position.groupCount_other": "{count} आइटम"
+  "position.groupCount_other": "{count} आइटम",
+  "draw.eraser": "इरेज़र"
 }

@@ -7,7 +7,7 @@ import {
   DEFAULT_DRAW_COLOR,
   MAX_BRUSH,
   MIN_BRUSH,
-  type Brush,
+  type DrawMode,
 } from '../render/drawing';
 
 export interface SelectedKeyframe {
@@ -35,8 +35,10 @@ export class EditorSession {
   #alignToCanvas = false;
   /** ANI-004: selected timeline keyframes (a layer and a time); transient. */
   #keyframes: readonly SelectedKeyframe[] = Object.freeze([]);
-  /** SHP-018 draw mode: the active brush, or null when not drawing. */
-  #drawBrush: Brush | null = null;
+  /** SHP-018 draw mode: the active brush or eraser, or null when not drawing. */
+  #drawBrush: DrawMode | null = null;
+  /** SHP-020: set once the user changes size or opacity; then they persist. */
+  #drawStyleChanged = false;
   #drawStyle: DrawStyle = {
     ...BRUSH_DEFAULTS.pen,
     color: DEFAULT_DRAW_COLOR,
@@ -135,17 +137,21 @@ export class EditorSession {
       background: project.settings.backgroundColor,
     };
   }
-  get drawBrush(): Brush | null {
+  get drawBrush(): DrawMode | null {
     return this.#drawBrush;
   }
   get drawStyle(): DrawStyle {
     return this.#drawStyle;
   }
-  /** Entering draw mode applies the brush's default size and opacity. */
-  setDrawBrush(brush: Brush | null): void {
+  /**
+   * Choosing a brush applies its default size and opacity until the user
+   * changes either; from then on the settings are shared by every brush
+   * (SHP-020). The eraser keeps the settings and uses the size.
+   */
+  setDrawBrush(brush: DrawMode | null): void {
     if (brush === this.#drawBrush) return;
     this.#drawBrush = brush;
-    if (brush)
+    if (brush && brush !== 'eraser' && !this.#drawStyleChanged)
       this.#drawStyle = { ...this.#drawStyle, ...BRUSH_DEFAULTS[brush] };
     this.#notify();
   }
@@ -157,6 +163,11 @@ export class EditorSession {
       !/^#[0-9a-fA-F]{6}$/.test(next.color)
     )
       throw new RangeError('Invalid brush settings');
+    if (
+      next.size !== this.#drawStyle.size ||
+      next.opacity !== this.#drawStyle.opacity
+    )
+      this.#drawStyleChanged = true;
     this.#drawStyle = Object.freeze(next);
     this.#notify();
   }
