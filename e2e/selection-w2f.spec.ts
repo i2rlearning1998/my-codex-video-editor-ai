@@ -96,7 +96,8 @@ test.describe('default example', () => {
       .poll(() => selectedIds(page))
       .toEqual(['example-badge', 'example-subtitle']);
     await expect.poll(() => countColor(page, edge, DASH)).toBeGreaterThan(5);
-    // The cluster sits above the box and offers Group, Duplicate, Delete, More.
+    // The cluster sits above the box and offers Group, Duplicate, Delete,
+    // Position and More.
     await expect(cluster(page)).toBeVisible();
     await expect(
       cluster(page).locator('[data-action="group"]'),
@@ -106,7 +107,13 @@ test.describe('default example', () => {
       .evaluateAll((items) =>
         items.map((item) => (item as HTMLElement).dataset.action),
       );
-    expect(buttons).toEqual(['group', 'duplicate', 'delete', 'more']);
+    expect(buttons).toEqual([
+      'group',
+      'duplicate',
+      'delete',
+      'position',
+      'more',
+    ]);
     const box = (await cluster(page).boundingBox())!;
     const top = await toScreen(page, 76, 456);
     expect(box.y + box.height).toBeLessThan(top.y);
