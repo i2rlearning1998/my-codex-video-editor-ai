@@ -492,7 +492,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-017 | P2 | W8 | Todo | Lottie import |
 | SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker and Highlighter with brush size, color and opacity; choosing a brush puts the canvas in draw mode, and Esc, V or another category leaves it |
 | SHP-019 | P0 | W2 | Verified | Each freehand stroke becomes one undoable shape layer with a clip at the playhead; it can be selected, moved, resized, saved and reloaded, and draws the same in preview and export |
-| SHP-020 | P0 | W2 | Todo | The Draw panel has an Eraser that removes whole freehand strokes it touches, as one undo step per drag; size, color and opacity controls are shared across Pen, Marker and Highlighter |
+| SHP-020 | P0 | W2 | Verified | The Draw panel has an Eraser that removes whole freehand strokes it touches, as one undo step per drag; size, color and opacity controls are shared across Pen, Marker and Highlighter |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 

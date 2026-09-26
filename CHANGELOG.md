@@ -2,6 +2,11 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 part F4 (W2-F4) — 2026-09-26
+
+- The Draw panel has an **Eraser**. Drag it over freehand strokes to remove each one it touches; Undo brings them all back in one step. It never erases text, shapes, images or videos.
+- Size, color and opacity are now one set shared by Pen, Marker and Highlighter. Each brush starts with its own default size and opacity until you change them.
+
 ## Wave 2 part F3 (W2-F3) — 2026-09-26
 
 - A new **Position** button, on the toolbar and on the action bar of a multi-selection, opens a panel with two tabs:
