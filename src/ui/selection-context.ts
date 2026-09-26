@@ -15,6 +15,7 @@ import {
   type RenderSource,
   type SceneLayer,
 } from '../render/adapter';
+import { isClosedKind, shapeOf } from '../render/shapes';
 
 /** What one selected item supports. Menus offer an action only when every item has it. */
 export type Capability =
@@ -23,6 +24,7 @@ export type Capability =
   | 'time-effects' // speed, reverse, freeze frame: video and audio clips only
   | 'detach-audio' // a video clip whose audio is still attached
   | 'group' // is a group, so it can be ungrouped
+  | 'closed-shape' // a rectangle, ellipse or combined shape: boolean operations
   | 'transform'; // can be moved, resized and rotated on the canvas
 
 export interface SelectionItem {
@@ -62,6 +64,8 @@ export function capabilitiesOf(
   const capabilities = new Set<Capability>(['edit', 'transform']);
   if (layer.type === 'audio') capabilities.delete('transform');
   if (layer.type === 'group') capabilities.add('group');
+  const shape = shapeOf(layer);
+  if (shape && isClosedKind(shape.kind)) capabilities.add('closed-shape');
   if (clip) {
     capabilities.add('clip');
     if (TIMED_MEDIA.has(layer.type)) capabilities.add('time-effects');

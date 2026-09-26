@@ -2,6 +2,7 @@
 // (selection-context.ts) and rendered by the shared menu (context-menu.ts).
 // CV-020 layout: edit actions, clip actions, Group/Ungroup, Layer and Align
 // submenus, then Copy style and Paste style.
+import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
 import { clipTimeEffects, type EditorEngine } from '../core';
 import { formatNumber, t } from '../i18n';
 import {
@@ -181,6 +182,21 @@ export function canvasMenuEntries(
         },
       ],
     },
+    // SHP-015: two or more closed shapes combine into one.
+    ...(canCombine(source, session.selectedIds)
+      ? [
+          {
+            id: 'combine',
+            label: t('command.combine'),
+            submenu: () =>
+              BOOLEAN_OPS.map((op) => ({
+                id: `combine-${op}`,
+                label: t(`command.${op}`),
+                run: () => combineShapes(engine, session, op),
+              })),
+          },
+        ]
+      : []),
     {
       id: 'copy-style',
       label: t('command.copyStyle'),

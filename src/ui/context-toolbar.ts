@@ -23,6 +23,13 @@ import {
 import { selectionBounds } from '../render/selection';
 import { layoutParagraphs } from '../render/text-layout';
 import {
+  STROKE_CAPS,
+  STROKE_DASHES,
+  STROKE_JOINS,
+  shapeOf,
+} from '../render/shapes';
+import { shapeStyleCommand, type ShapeKey } from './shapes';
+import {
   FONT_WEIGHTS,
   SYSTEM_FONTS,
   TEXT_ALIGNS,
@@ -46,10 +53,6 @@ const LATER: Record<string, Later> = {
   blend: ['toolbar.blend', 'MSK-001', 6],
   replace: ['toolbar.replace', 'VID-009', 4],
   effects: ['toolbar.effects', 'TXT-019', 3],
-  stroke: ['toolbar.stroke', 'SHP-005', 5],
-  width: ['toolbar.strokeWidth', 'SHP-005', 5],
-  corners: ['toolbar.corners', 'SHP-006', 5],
-  boolean: ['toolbar.boolean', 'SHP-015', 5],
 };
 /** The spec's control order per type; strings name live controls or LATER keys. */
 const LAYOUT: Record<ToolbarKind, readonly string[]> = {
@@ -80,8 +83,11 @@ const LAYOUT: Record<ToolbarKind, readonly string[]> = {
   ],
   shape: [
     'fill',
+    'fill-opacity',
+    'no-fill',
     'stroke',
     'width',
+    'stroke-style',
     'corners',
     'boolean',
     'animate',
@@ -375,6 +381,8 @@ export function mountContextToolbar(
   };
   /** W2-F5: the Spacing row stays open across re-renders. */
   let spacingOpen = false;
+  /** W5-D: so does the shape Stroke style row. */
+  let strokeOpen = false;
   const run = (label: string, commands: (Command | null)[]) => {
     const list = commands.filter((command): command is Command => !!command);
     if (list.length) engine.commands.transaction(label, list);
@@ -534,9 +542,11 @@ export function mountContextToolbar(
         : '#000000';
     };
     const drawing = drawingOf(layer);
+    const shape = shapeOf(layer);
+    const shapeCommand = (key: ShapeKey, value: number | string | boolean) =>
+      shapeStyleCommand(compositionId, layer, key, value);
     const controls = LAYOUT[kind].map((id) => {
-      if (LATER[id] && !(kind === 'drawing' && id === 'width'))
-        return later(id);
+      if (LATER[id]) return later(id);
       switch (id) {
         case 'animate': {
           const item = button(id, t('toolbar.animate'), 'animate', () =>
@@ -643,6 +653,91 @@ export function mountContextToolbar(
             );
           return group;
         }
+        case 'fill-opacity': {
+          const item = field(
+            id,
+            t('toolbar.fillOpacity'),
+            percent(shape?.fillOpacity ?? 1),
+            (value) =>
+              run('Set fill opacity', [
+                shapeCommand('fillOpacity', value / 100),
+              ]),
+            '%',
+          );
+          item.querySelector('input')!.disabled = !shape?.fill;
+          return item;
+        }
+        case 'no-fill': {
+          const none = !!shape && !shape.fill;
+          const item = button(id, t('toolbar.noFill'), 'noFill', () =>
+            run(none ? 'Show fill' : 'Remove fill', [
+              shapeCommand('fillEnabled', none),
+            ]),
+          );
+          item.setAttribute('aria-pressed', String(none));
+          item.disabled =
+            !shape || shape.kind === 'line' || shape.kind === 'arrow';
+          return item;
+        }
+        case 'stroke':
+          return colorField(
+            id,
+            t('toolbar.stroke'),
+            shape?.stroke ?? colorOf('stroke'),
+            (value) => {
+              // A stroke color on a shape with no stroke also gives it a width.
+              run('Set stroke', [
+                shapeCommand('stroke', value),
+                shape && !shape.strokeWidth
+                  ? shapeCommand('strokeWidth', 4)
+                  : null,
+              ]);
+            },
+          );
+        case 'width':
+          return field(
+            id,
+            t('toolbar.strokeWidth'),
+            round(shape?.strokeWidth ?? 0, 2),
+            (value) =>
+              run('Set stroke width', [shapeCommand('strokeWidth', value)]),
+          );
+        case 'stroke-style': {
+          const item = button(
+            id,
+            t('toolbar.strokeStyle'),
+            'strokeStyle',
+            () => {
+              strokeOpen = !strokeOpen;
+              render();
+            },
+          );
+          item.setAttribute('aria-expanded', String(strokeOpen));
+          return item;
+        }
+        case 'corners': {
+          const item = field(
+            id,
+            t('toolbar.corners'),
+            round(shape?.radius ?? 0, 2),
+            (value) =>
+              run('Set corner radius', [shapeCommand('cornerRadius', value)]),
+          );
+          item.querySelector('input')!.disabled = shape?.kind !== 'rectangle';
+          return item;
+        }
+        case 'boolean': {
+          // SHP-015 works on two or more shapes, so it lives in the canvas
+          // menu's Combine shapes submenu; this button says how to reach it.
+          const item = button(id, t('toolbar.boolean'), 'combine');
+          item.setAttribute('aria-disabled', 'true');
+          item.title = t('shape.combineHint');
+          item.setAttribute(
+            'aria-label',
+            `${t('toolbar.boolean')}: ${t('shape.combineHint')}`,
+          );
+          return item;
+        }
         case 'font':
           return select(
             id,
@@ -730,8 +825,8 @@ export function mountContextToolbar(
           );
         }
         case 'color':
-        case 'fill':
-          return colorField(
+        case 'fill': {
+          const item = colorField(
             id,
             t(id === 'fill' ? 'toolbar.fill' : 'toolbar.color'),
             colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
@@ -740,6 +835,11 @@ export function mountContextToolbar(
                 colorCommand(compositionId, layer, value, session.currentTime),
               ]),
           );
+          // Lines and arrows have no fill; their color is the stroke.
+          if (shape && (shape.kind === 'line' || shape.kind === 'arrow'))
+            item.querySelector('input')!.disabled = true;
+          return item;
+        }
         case 'brush':
           return field(
             id,
@@ -757,7 +857,7 @@ export function mountContextToolbar(
     // W2-F5 Spacing row (TXT-016, TXT-017): line height, letter and
     // paragraph spacing, and text case, below the toolbar's controls.
     const style = kind === 'text' ? textStyleOf(layer) : null;
-    const row =
+    const row: HTMLElement[] =
       style && spacingOpen
         ? [
             (() => {
@@ -841,6 +941,39 @@ export function mountContextToolbar(
             })(),
           ]
         : [];
+    // W5-D Stroke style row (SHP-005): dash, caps and joins.
+    if (shape && strokeOpen) {
+      const wrap = document.createElement('div');
+      wrap.className = 'toolbar-row';
+      wrap.setAttribute('role', 'group');
+      wrap.setAttribute('aria-label', t('toolbar.strokeStyle'));
+      wrap.append(
+        select(
+          'dash',
+          t('toolbar.dash'),
+          STROKE_DASHES.map((dash) => [dash, t(`shape.dash.${dash}`)] as const),
+          shape.dash,
+          (value) =>
+            run('Set stroke dash', [shapeCommand('strokeDash', value)]),
+        ),
+        select(
+          'cap',
+          t('toolbar.cap'),
+          STROKE_CAPS.map((cap) => [cap, t(`shape.cap.${cap}`)] as const),
+          shape.cap,
+          (value) => run('Set stroke caps', [shapeCommand('strokeCap', value)]),
+        ),
+        select(
+          'join',
+          t('toolbar.join'),
+          STROKE_JOINS.map((join) => [join, t(`shape.join.${join}`)] as const),
+          shape.join,
+          (value) =>
+            run('Set stroke joins', [shapeCommand('strokeJoin', value)]),
+        ),
+      );
+      row.push(wrap);
+    }
     bar.replaceChildren(...controls, ...row);
   };
   render();
