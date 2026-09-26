@@ -41,7 +41,7 @@ import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
-import { DrawTool } from './draw-tool';
+import { DrawTool, withoutLayers } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { mountContextToolbar } from './context-toolbar';
 import { mountAnimationPanel } from './animation-panel';
@@ -329,6 +329,15 @@ export function mountEditorShell(
       canvas,
       {
         ...session.source,
+        // SHP-020: strokes the eraser touched vanish until release commits them.
+        ...(drawTool.erased.size
+          ? {
+              composition: withoutLayers(
+                session.source.composition,
+                drawTool.erased,
+              ),
+            }
+          : {}),
         frames,
         playing: session.playing,
         animate: true,
@@ -494,6 +503,7 @@ export function mountEditorShell(
   const refresh = (force = false) => {
     drawPanel.sync();
     canvas.classList.toggle('drawing', session.drawBrush !== null);
+    canvas.classList.toggle('erasing', session.drawBrush === 'eraser');
     const source = session.source;
     // W5-B: an animated selection shows time-dependent values, so the Inspector
     // and toolbar re-render when the playhead moves (not every frame of playback).

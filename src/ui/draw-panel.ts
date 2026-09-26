@@ -1,7 +1,8 @@
 // SHP-018 Draw panel: brush choice, size, color and opacity. It only changes
 // transient session state; strokes are committed by the canvas Draw tool.
+// SHP-020 adds the Eraser; the settings are one set shared by every brush.
 import { formatNumber, t } from '../i18n';
-import { BRUSHES, MAX_BRUSH, MIN_BRUSH } from '../render/drawing';
+import { DRAW_MODES, MAX_BRUSH, MIN_BRUSH } from '../render/drawing';
 import { iconSvg } from './icons';
 import type { EditorSession } from './session';
 
@@ -14,7 +15,7 @@ export function mountDrawPanel(
     <h3 class="draw-title">${t('draw.title')}</h3>
     <p class="draw-hint">${t('draw.hint')}</p>
     <div class="draw-brushes" role="radiogroup" aria-label="${t('draw.brush')}">
-      ${BRUSHES.map(
+      ${DRAW_MODES.map(
         (brush) =>
           `<button type="button" role="radio" data-brush="${brush}" aria-checked="false" title="${t(`draw.${brush}`)}">${iconSvg(brush === 'marker' ? 'brush' : brush)}<span>${t(`draw.${brush}`)}</span></button>`,
       ).join('')}
@@ -50,7 +51,9 @@ export function mountDrawPanel(
   ))
     button.onclick = () =>
       safely(() =>
-        session.setDrawBrush(button.dataset.brush as (typeof BRUSHES)[number]),
+        session.setDrawBrush(
+          button.dataset.brush as (typeof DRAW_MODES)[number],
+        ),
       );
   const setSize = (value: string) =>
     safely(() =>
@@ -80,6 +83,11 @@ export function mountDrawPanel(
     if (document.activeElement !== size) size.value = String(style.size);
     if (document.activeElement !== sizeValue)
       sizeValue.value = String(style.size);
+    // SHP-020: the eraser uses the shared size; color and opacity wait for
+    // the next brush.
+    const erasing = session.drawBrush === 'eraser';
+    color.disabled = erasing;
+    opacity.disabled = erasing;
     color.value = style.color;
     opacity.value = String(Math.round(style.opacity * 100));
     find('draw-opacity-value').textContent = t('draw.percent', {

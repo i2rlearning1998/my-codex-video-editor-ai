@@ -6,6 +6,9 @@ import type { SceneLayer } from './adapter';
 
 export const BRUSHES = ['pen', 'marker', 'highlighter'] as const;
 export type Brush = (typeof BRUSHES)[number];
+/** SHP-020: the Draw panel's tools: the three brushes and the Eraser. */
+export const DRAW_MODES = [...BRUSHES, 'eraser'] as const;
+export type DrawMode = (typeof DRAW_MODES)[number];
 export const BRUSH_DEFAULTS: Readonly<
   Record<Brush, { size: number; opacity: number }>
 > = {

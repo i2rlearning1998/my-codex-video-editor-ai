@@ -259,7 +259,7 @@
   "command.alignToCanvas": "Relative to canvas",
   "library.draw": "Draw",
   "draw.title": "Draw",
-  "draw.hint": "Pick a brush, then drag on the canvas. Esc or V stops drawing.",
+  "draw.hint": "Pick a brush, then drag on the canvas. The Eraser removes whole strokes it touches. Esc or V stops drawing.",
   "draw.brush": "Brush",
   "draw.pen": "Pen",
   "draw.marker": "Marker",
@@ -388,5 +388,6 @@
   "position.distribute": "Distribute",
   "position.empty": "No layers in this composition.",
   "position.groupCount_one": "{count} item",
-  "position.groupCount_other": "{count} items"
+  "position.groupCount_other": "{count} items",
+  "draw.eraser": "Eraser"
 }
