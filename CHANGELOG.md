@@ -2,6 +2,14 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 part F1 (W2-F1) — 2026-09-26
+
+- Selecting several objects now shows one dashed box around them, each object's own outline, and a small action bar above them with Group, Duplicate, Delete and More.
+- Right-click menus offer only what the whole selection supports: Speed, Reverse and Freeze frame appear for video and audio clips only, never when an image, shape or text is selected.
+- Ungroup, from the right-click menu, the action bar or Ctrl+Shift+G. Groups that were moved or rotated ungroup without anything moving on the canvas.
+- Layer order: Bring to front, Bring forward, Send backward and Send to back in a new Layer submenu and the command palette, with Ctrl+] and Ctrl+[.
+- Dropping a media card on the canvas can never import the file a second time.
+
 ## Wave 5 part C (W5-C) — 2026-09-24
 
 - One-click animation presets from the toolbar's new **Animate** button:
