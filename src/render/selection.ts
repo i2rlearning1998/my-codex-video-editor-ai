@@ -1,5 +1,7 @@
 import {
+  IDENTITY_MATRIX,
   boundsCorners,
+  decomposeMatrix,
   invertMatrix,
   multiplyMatrices,
   rotationHandlePoint,
@@ -19,6 +21,7 @@ import {
   layerSize,
   locateLayer,
   type RenderSource,
+  type SceneLayer,
 } from './adapter';
 import { transformCapabilities } from './transform-capabilities';
 
@@ -154,17 +157,18 @@ export function selectionGeometry(
   }
 }
 /**
- * W2-F1 (CV-040): the outer box of a multi-selection, axis-aligned in view
- * space around every selected item's own box. Null for fewer than two items.
+ * CV-040/CV-041: the frame of a multi-selection as four world corners
+ * (top-left, top-right, bottom-right, bottom-left). It is the axis-aligned
+ * bounds of every selected item, or the frame being resized or rotated.
  */
-export function multiSelectionBox(
+export function multiSelectionFrame(
   source: RenderSource,
-  view: AffineMatrix,
-): { corners: readonly Point2[]; center: Point2 } | null {
+): readonly Point2[] | null {
   const ids = source.selectedIds ?? [];
   if (ids.length < 2) return null;
+  if (source.selectionFrame) return source.selectionFrame;
   const points = ids.flatMap(
-    (id) => selectionGeometry(source, id, view)?.corners ?? [],
+    (id) => selectionGeometry(source, id, IDENTITY_MATRIX)?.corners ?? [],
   );
   if (!points.length) return null;
   const xs = points.map((point) => point[0]),
@@ -173,15 +177,152 @@ export function multiSelectionBox(
     top = Math.min(...ys),
     right = Math.max(...xs),
     bottom = Math.max(...ys);
-  return {
-    corners: [
-      [left, top],
-      [right, top],
-      [right, bottom],
-      [left, bottom],
-    ],
-    center: [(left + right) / 2, (top + bottom) / 2],
-  };
+  return [
+    [left, top],
+    [right, top],
+    [right, bottom],
+    [left, bottom],
+  ];
+}
+
+/**
+ * CV-041 (revision 6): stretching a multi-selection along one axis is only
+ * offered when every selected layer can keep the stretch without a skew,
+ * i.e. when each one is straight (axis-aligned) in the composition.
+ */
+export function multiSelectionStretchable(source: RenderSource): boolean {
+  const ids = source.selectedIds ?? [];
+  // Stretching text would distort its glyphs; text uses its own width grips.
+  const hasText = (layer: SceneLayer): boolean =>
+    layer.type === 'text' || layer.children.some(hasText);
+  return ids.every((id) => {
+    const found = locateLayer(source.composition.layers, id);
+    if (!found || hasText(found.layer)) return false;
+    try {
+      const world = worldTransform(
+        source.composition,
+        id,
+        source.previews ?? source.preview,
+      ).matrix;
+      const parent = found.parent
+        ? worldTransform(
+            source.composition,
+            found.parent.id,
+            source.previews ?? source.preview,
+          ).matrix
+        : IDENTITY_MATRIX;
+      const inverse = invertMatrix(parent);
+      if (!inverse) return false;
+      return (
+        [
+          [2, 0, 0, 1, 0, 0],
+          [1, 0, 0, 2, 0, 0],
+        ] as const
+      ).every(
+        (stretch) =>
+          decomposeMatrix(
+            multiplyMatrices(inverse, multiplyMatrices(stretch, world)),
+          ) !== null,
+      );
+    } catch {
+      return false;
+    }
+  });
+}
+
+export type MultiHandle = Corner | Edge | 'rotate';
+
+/** CV-040/CV-041: the multi-selection box in view space, with its handles. */
+export function multiSelectionGeometry(
+  source: RenderSource,
+  view: AffineMatrix,
+) {
+  const frame = multiSelectionFrame(source);
+  if (!frame) return null;
+  try {
+    const corners = frame.map((point) => transformPoint(view, point));
+    const mid = (a: Point2, b: Point2): Point2 => [
+      (a[0] + b[0]) / 2,
+      (a[1] + b[1]) / 2,
+    ];
+    const center = mid(corners[0]!, corners[2]!);
+    const top = mid(corners[0]!, corners[1]!);
+    const along = (a: Point2, b: Point2): [number, number] => {
+      const length = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      return [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
+    };
+    const [ux, uy] = along(corners[0]!, corners[1]!),
+      [vx, vy] = along(corners[0]!, corners[3]!);
+    const orientation: AffineMatrix = [ux, uy, vx, vy, 0, 0];
+    const rotation = rotationHandlePoint(top, corners[1]!, center, 34);
+    const handles: SelectionHandle[] = [];
+    const add = (
+      id: MultiHandle,
+      point: Point2,
+      kind: 'corner' | 'edge' | 'rotate',
+    ) =>
+      handles.push({
+        id,
+        point,
+        kind,
+        matrix: selectionHandleMatrix(orientation, point),
+        radius: kind === 'rotate' ? 12 : 10,
+        cursor:
+          kind === 'rotate'
+            ? 'grab'
+            : ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'][
+                resizeCursorAxis(center, point)
+              ]!,
+      });
+    const sized =
+      Math.hypot(
+        corners[1]![0] - corners[0]![0],
+        corners[1]![1] - corners[0]![1],
+      ) > 0 &&
+      Math.hypot(
+        corners[3]![0] - corners[0]![0],
+        corners[3]![1] - corners[0]![1],
+      ) > 0;
+    if (sized) {
+      add('rotate', rotation, 'rotate');
+      corners.forEach((point, index) => add(index as Corner, point, 'corner'));
+      if (!source.selectionFrame && multiSelectionStretchable(source)) {
+        add('top', top, 'edge');
+        add('right', mid(corners[1]!, corners[2]!), 'edge');
+        add('bottom', mid(corners[2]!, corners[3]!), 'edge');
+        add('left', mid(corners[3]!, corners[0]!), 'edge');
+      }
+    }
+    return { frame, corners, center, top, rotation, handles };
+  } catch {
+    return null;
+  }
+}
+
+export function hitMultiHandle(
+  source: RenderSource,
+  view: AffineMatrix,
+  point: Point2,
+): MultiHandle | null {
+  if (!point.every(Number.isFinite)) return null;
+  return (
+    (multiSelectionGeometry(source, view)?.handles.find(
+      (handle) =>
+        Math.hypot(point[0] - handle.point[0], point[1] - handle.point[1]) <=
+        handle.radius,
+    )?.id as MultiHandle | undefined) ?? null
+  );
+}
+
+/** W2-F1 (CV-040): the outer box of a multi-selection in view space. */
+export function multiSelectionBox(
+  source: RenderSource,
+  view: AffineMatrix,
+): { corners: readonly Point2[]; center: Point2 } | null {
+  const geometry = multiSelectionGeometry(source, view);
+  return geometry
+    ? { corners: geometry.corners, center: geometry.center }
+    : null;
 }
 export type TransformHandle =
   Corner | Edge | 'rotate' | 'text-left' | 'text-right';

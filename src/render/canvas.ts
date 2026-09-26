@@ -10,7 +10,11 @@ import {
   fallbackTextMeasure,
   type TextMeasurer,
 } from './text-layout';
-import { multiSelectionBox, selectionGeometry } from './selection';
+import {
+  multiSelectionGeometry,
+  selectionGeometry,
+  type SelectionHandle,
+} from './selection';
 import type { DrawingPath } from './drawing';
 import { deriveRenderItems, hitTest, type RenderSource } from './adapter';
 
@@ -302,43 +306,8 @@ export function drawComposition(
     context.closePath();
     context.stroke();
   }
-  // CV-040: one dashed box around the whole multi-selection.
-  const outer = multiSelectionBox(source, viewport.matrix);
-  if (outer) {
-    context.setTransform(...pixels);
-    context.globalAlpha = 1;
-    context.strokeStyle = '#8b6cff';
-    context.lineWidth = 1.5;
-    context.setLineDash([6, 4]);
-    context.beginPath();
-    context.moveTo(...outer.corners[0]!);
-    outer.corners.slice(1).forEach((point) => context.lineTo(...point));
-    context.closePath();
-    context.stroke();
-    context.setLineDash([]);
-  }
-  const geometry = selectionGeometry(source, selectedId, viewport.matrix);
-  if (geometry) {
-    context.setTransform(...pixels);
-    context.globalAlpha = 1;
-    context.strokeStyle = '#b7a2ff';
-    context.fillStyle = '#ffffff';
-    context.lineWidth = 1.5;
-    context.beginPath();
-    context.moveTo(...geometry.corners[0]!);
-    geometry.corners.slice(1).forEach((point) => context.lineTo(...point));
-    context.closePath();
-    if (
-      (source.selectedIds?.length ?? 1) === 1 &&
-      geometry.handles.some((handle) => handle.id === 'rotate')
-    ) {
-      context.moveTo(...geometry.top);
-      context.lineTo(...geometry.rotation);
-    }
-    context.stroke();
-    for (const handle of (source.selectedIds?.length ?? 1) > 1
-      ? []
-      : geometry.handles) {
+  const drawHandles = (handles: readonly SelectionHandle[]) => {
+    for (const handle of handles) {
       const [x, y] = handle.point;
       context.fillStyle =
         source.hoveredHandle === handle.id ? '#b7a2ff' : '#ffffff';
@@ -361,6 +330,49 @@ export function drawComposition(
         context.strokeRect(-width / 2, -height / 2, width, height);
       }
     }
+  };
+  const multi = (source.selectedIds?.length ?? 1) > 1;
+  const geometry = selectionGeometry(source, selectedId, viewport.matrix);
+  if (geometry) {
+    context.setTransform(...pixels);
+    context.globalAlpha = 1;
+    context.strokeStyle = '#b7a2ff';
+    context.fillStyle = '#ffffff';
+    context.lineWidth = 1.5;
+    context.beginPath();
+    context.moveTo(...geometry.corners[0]!);
+    geometry.corners.slice(1).forEach((point) => context.lineTo(...point));
+    context.closePath();
+    if (!multi && geometry.handles.some((handle) => handle.id === 'rotate')) {
+      context.moveTo(...geometry.top);
+      context.lineTo(...geometry.rotation);
+    }
+    context.stroke();
+    if (!multi) drawHandles(geometry.handles);
+  }
+  // CV-040/CV-041: one dashed box around the whole multi-selection, with its
+  // own corner, edge and rotate handles.
+  const outer = multiSelectionGeometry(source, viewport.matrix);
+  if (outer) {
+    context.setTransform(...pixels);
+    context.globalAlpha = 1;
+    context.strokeStyle = '#8b6cff';
+    context.fillStyle = '#ffffff';
+    context.lineWidth = 1.5;
+    context.setLineDash([6, 4]);
+    context.beginPath();
+    context.moveTo(...outer.corners[0]!);
+    outer.corners.slice(1).forEach((point) => context.lineTo(...point));
+    context.closePath();
+    context.stroke();
+    context.setLineDash([]);
+    if (outer.handles.some((handle) => handle.id === 'rotate')) {
+      context.beginPath();
+      context.moveTo(...outer.top);
+      context.lineTo(...outer.rotation);
+      context.stroke();
+    }
+    drawHandles(outer.handles);
   }
   return { warnings: errors, zoom: viewport.matrix[0] };
 }
