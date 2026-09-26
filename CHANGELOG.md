@@ -2,6 +2,11 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 part F2 (W2-F2) — 2026-09-26
+
+- The dashed box around several selected objects now has handles: corners resize them all together (Alt from the center), side handles stretch them when they are all straight and none is text, and the round handle rotates them all about the box center. Each drag is one undo step.
+- Fixed: dragging a corner of a wide or tall object made it grow faster than the pointer moved. The corner now follows the pointer.
+
 ## Wave 2 part F1 (W2-F1) — 2026-09-26
 
 - Selecting several objects now shows one dashed box around them, each object's own outline, and a small action bar above them with Group, Duplicate, Delete and More.
