@@ -18,6 +18,7 @@ import {
   type SelectionHandle,
 } from './selection';
 import type { DrawingPath } from './drawing';
+import { drawShape } from './shapes';
 import {
   deriveRenderItems,
   hitTest,
@@ -287,6 +288,11 @@ export function drawComposition(
         // SHP-019: a drawing strokes its path; it has no box fill or clip.
         if (item.path) {
           strokePath(context, item.path);
+          continue;
+        }
+        // W5-D: shapes draw their own fill and stroke, unclipped.
+        if (item.shape) {
+          drawShape(context, item.shape, item.size.width, item.size.height);
           continue;
         }
         context.fillStyle = item.fill;
