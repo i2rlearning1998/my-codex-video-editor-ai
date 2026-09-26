@@ -89,7 +89,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   expect(await page.locator('canvas').boundingBox()).toEqual(canvasBefore);
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'text');
   // The spec's text controls, in order.
-  await expect(toolbar(page).locator('[data-control]')).toHaveCount(8);
+  await expect(toolbar(page).locator('[data-control]')).toHaveCount(9);
   await expect(control(page, 'font')).toHaveAttribute('aria-disabled', 'true');
   await expect(control(page, 'font')).toHaveAttribute(
     'title',

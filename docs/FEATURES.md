@@ -275,7 +275,7 @@ Everything the user does directly on the preview canvas.
 | CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
 | CV-040 | P0 | W2 | Verified | A selection shows a small action cluster above its box with Group (for two or more sibling layers) or Ungroup (for groups), Duplicate, Delete and More (the right-click menu); with two or more layers selected, one dashed box surrounds the whole selection and each layer keeps its own outline. Menu and cluster actions are offered only when every selected item supports them |
 | CV-041 | P0 | W2 | Verified | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
-| CV-042 | P0 | W2 | Todo | A Position panel opens from the context toolbar with an Arrange tab (align, distribute and layer order as buttons) and a Layers tab (the composition's layers as a flat list, drag to reorder, groups shown with a folder icon) |
+| CV-042 | P0 | W2 | Verified | A Position panel opens from the context toolbar with an Arrange tab (align, distribute and layer order as buttons) and a Layers tab (the composition's layers as a flat list, drag to reorder, groups shown with a folder icon) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -290,7 +290,7 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 | LYR-005 | P0 | W2 | Todo | Rename by double-click or F2 |
 | LYR-006 | P0 | W2 | Todo | Visibility (eye) and lock toggles per layer |
 | LYR-007 | P0 | W2 | Todo | Expand and collapse groups |
-| LYR-008 | P0 | W2 | Todo | Type icons for text, shape, image, video, audio, group |
+| LYR-008 | P0 | W2 | Verified | Type icons for text, shape, image, video, audio, group |
 | LYR-009 | P1 | W2 | Todo | Thumbnails per layer |
 | LYR-010 | P1 | W2 | Todo | Search and filter layers |
 | LYR-011 | P0 | W2 | Todo | Right-click menu: Duplicate, Delete, Group, Ungroup, Rename, Lock, Hide, Copy, Paste, Select same type |

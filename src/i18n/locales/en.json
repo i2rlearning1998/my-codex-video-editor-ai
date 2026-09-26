@@ -379,5 +379,14 @@
   "command.lock": "Lock",
   "command.hide": "Hide",
   "selectionActions.label": "Selection actions",
-  "selectionActions.more": "More actions"
+  "selectionActions.more": "More actions",
+  "toolbar.position": "Position",
+  "position.title": "Position",
+  "position.arrange": "Arrange",
+  "position.layers": "Layers",
+  "position.order": "Layer order",
+  "position.distribute": "Distribute",
+  "position.empty": "No layers in this composition.",
+  "position.groupCount_one": "{count} item",
+  "position.groupCount_other": "{count} items"
 }
