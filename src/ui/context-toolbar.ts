@@ -59,6 +59,7 @@ const LAYOUT: Record<ToolbarKind, readonly string[]> = {
     'blend',
     'animate',
     'replace',
+    'position',
   ],
   text: [
     'font',
@@ -69,9 +70,18 @@ const LAYOUT: Record<ToolbarKind, readonly string[]> = {
     'spacing',
     'effects',
     'animate',
+    'position',
   ],
-  shape: ['fill', 'stroke', 'width', 'corners', 'boolean', 'animate'],
-  drawing: ['color', 'brush', 'opacity', 'animate'],
+  shape: [
+    'fill',
+    'stroke',
+    'width',
+    'corners',
+    'boolean',
+    'animate',
+    'position',
+  ],
+  drawing: ['color', 'brush', 'opacity', 'animate', 'position'],
 };
 
 export function toolbarKind(layer: SceneLayer | null): ToolbarKind | null {
@@ -269,6 +279,8 @@ export function mountContextToolbar(
   report: (error: unknown) => void,
   /** W5-C: opens the Animate presets panel. */
   animate?: () => void,
+  /** W2-F3: toggles the Position panel (CV-042). */
+  position?: () => void,
 ) {
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('toolbar.label'));
@@ -418,6 +430,14 @@ export function mountContextToolbar(
             animate?.(),
           );
           item.disabled = !animate;
+          item.setAttribute('aria-haspopup', 'dialog');
+          return item;
+        }
+        case 'position': {
+          const item = button(id, t('toolbar.position'), 'layers', () =>
+            position?.(),
+          );
+          item.disabled = !position;
           item.setAttribute('aria-haspopup', 'dialog');
           return item;
         }

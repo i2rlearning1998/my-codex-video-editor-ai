@@ -56,6 +56,8 @@ export function mountSelectionActions(
   session: EditorSession,
   options: {
     openMenu: (point: Point2) => void;
+    /** W2-F3: toggles the Position panel. */
+    position?: () => void;
     report: (error: unknown) => void;
   },
 ) {
@@ -111,6 +113,14 @@ export function mountSelectionActions(
             safely(() => performEdit(engine, session, action));
         return [item];
       });
+      const position = options.position;
+      const arrange = position
+        ? [button('position', 'layers', t('toolbar.position'))]
+        : [];
+      if (arrange[0] && position) {
+        arrange[0].setAttribute('aria-haspopup', 'dialog');
+        arrange[0].onclick = () => safely(position);
+      }
       const more = button('more', 'more', t('selectionActions.more'));
       more.setAttribute('aria-haspopup', 'menu');
       more.onclick = (event) => {
@@ -122,7 +132,7 @@ export function mountSelectionActions(
           bounds.bottom - (origin?.top ?? 0) + 4,
         ]);
       };
-      cluster.replaceChildren(...items, more);
+      cluster.replaceChildren(...items, ...arrange, more);
     }
     cluster.hidden = false;
     // Above the box's top-right corner, clear of the corner handle; beside a

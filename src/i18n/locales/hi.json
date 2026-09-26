@@ -379,5 +379,14 @@
   "command.lock": "लॉक करें",
   "command.hide": "छिपाएँ",
   "selectionActions.label": "चयन क्रियाएँ",
-  "selectionActions.more": "अधिक क्रियाएँ"
+  "selectionActions.more": "अधिक क्रियाएँ",
+  "toolbar.position": "स्थिति",
+  "position.title": "स्थिति",
+  "position.arrange": "व्यवस्थित करें",
+  "position.layers": "लेयर",
+  "position.order": "लेयर क्रम",
+  "position.distribute": "समान दूरी",
+  "position.empty": "इस कंपोज़िशन में कोई लेयर नहीं है।",
+  "position.groupCount_one": "{count} आइटम",
+  "position.groupCount_other": "{count} आइटम"
 }

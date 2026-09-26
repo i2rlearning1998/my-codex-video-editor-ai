@@ -46,6 +46,7 @@ import { mountDrawPanel } from './draw-panel';
 import { mountContextToolbar } from './context-toolbar';
 import { mountAnimationPanel } from './animation-panel';
 import { mountAnimatePanel } from './animate-panel';
+import { mountPositionPanel } from './position-panel';
 import { canvasMenuEntries } from './canvas-menu';
 import { createMenu } from './context-menu';
 import { mountSelectionActions } from './selection-actions';
@@ -192,7 +193,7 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><div class="animate-panel" id="animate-panel" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><div class="animate-panel" id="animate-panel" hidden></div><div class="animate-panel position-panel" id="position-panel" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -381,6 +382,15 @@ export function mountEditorShell(
     reportError,
     registerExternalOverlay,
   );
+  // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
+  // selection action cluster.
+  const positionPanel = mountPositionPanel(
+    element('#position-panel'),
+    engine,
+    session,
+    reportError,
+    registerExternalOverlay,
+  );
   // CV-035: the selected layer's context toolbar above the canvas.
   const contextToolbar = mountContextToolbar(
     element('#context-toolbar'),
@@ -389,6 +399,7 @@ export function mountEditorShell(
     (field, value) => interaction.edit(field, value),
     reportError,
     () => animatePanel.toggle(),
+    () => positionPanel.toggle(),
   );
   const canvasMenu = element('#canvas-context-menu');
   // W2-F1: the canvas menu is built from the selection's capabilities and
@@ -425,6 +436,7 @@ export function mountEditorShell(
     session,
     {
       openMenu: (point) => openCanvasMenu(point, session.selectedId),
+      position: () => positionPanel.toggle(),
       report: reportError,
     },
   );
@@ -1307,6 +1319,7 @@ export function mountEditorShell(
       newProjectForm.dispose();
       unsubscribeLanguage();
       mediaPanel.dispose();
+      positionPanel.dispose();
       frames.dispose();
       previews.dispose();
       audio.dispose();
