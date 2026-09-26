@@ -14,7 +14,11 @@ import {
   flipTransform,
   toolbarKind,
 } from '../src/ui/context-toolbar';
-import { strokeCommands } from '../src/ui/draw-tool';
+import {
+  erasableStrokes,
+  strokeCommands,
+  strokesTouched,
+} from '../src/ui/draw-tool';
 import { EditorSession } from '../src/ui/session';
 import { pasteStyleCommands, styleOf } from '../src/ui/style-clipboard';
 
@@ -165,4 +169,45 @@ test('[CV-039] paste style applies only what each target can take', () => {
   engine.commands.transaction('Paste style', commands);
   expect(find(session, 'layer-a').transform.opacity.value).toBe(0.4);
   expect(find(session, 'layer-a').properties.fill!.value).toBe('#4a90d9');
+});
+
+test('[SHP-020] the eraser touches a stroke within its radius plus half the stroke width, sampling fast moves', () => {
+  const { engine, session } = setup();
+  session.setDrawStyle({ size: 10, opacity: 1, color: '#123456' });
+  engine.commands.transaction(
+    'Draw',
+    strokeCommands(
+      session.source,
+      [
+        [600, 650],
+        [700, 650],
+      ],
+      'pen',
+      session.drawStyle,
+      session.currentTime,
+    ),
+  );
+  const strokes = erasableStrokes(session.source);
+  expect(strokes).toHaveLength(1);
+  const id = strokes[0]!.id;
+  // Radius 5 + half width 5 = 10 units from the line.
+  expect(strokesTouched(strokes, [650, 660], [650, 660], 10)).toEqual([id]);
+  expect(strokesTouched(strokes, [650, 661], [650, 661], 10)).toEqual([]);
+  // A fast move that jumps over the line still touches it.
+  expect(strokesTouched(strokes, [650, 600], [650, 700], 2)).toEqual([id]);
+  // Past the end of the line only the end cap counts.
+  expect(strokesTouched(strokes, [712, 650], [712, 650], 2)).toEqual([]);
+});
+
+test('[SHP-020] brush defaults apply until the user changes size or opacity; then all brushes share them', () => {
+  const { session } = setup();
+  session.setDrawBrush('highlighter');
+  expect(session.drawStyle.opacity).toBe(0.4);
+  session.setDrawBrush('pen');
+  expect(session.drawStyle.size).toBe(4);
+  session.setDrawStyle({ size: 30 });
+  session.setDrawBrush('highlighter');
+  expect(session.drawStyle).toMatchObject({ size: 30, opacity: 1 });
+  session.setDrawBrush('eraser');
+  expect(session.drawStyle.size).toBe(30);
 });
