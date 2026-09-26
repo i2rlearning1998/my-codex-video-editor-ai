@@ -8,15 +8,22 @@ import {
 import {
   TEXT_FONT,
   fallbackTextMeasure,
+  lineOffsets,
   type TextMeasurer,
 } from './text-layout';
+import { DEFAULT_TEXT_STYLE, measureWithContext, textFont } from './text-style';
 import {
   multiSelectionGeometry,
   selectionGeometry,
   type SelectionHandle,
 } from './selection';
 import type { DrawingPath } from './drawing';
-import { deriveRenderItems, hitTest, type RenderSource } from './adapter';
+import {
+  deriveRenderItems,
+  hitTest,
+  type RenderItem,
+  type RenderSource,
+} from './adapter';
 
 export interface Viewport {
   readonly width: number;
@@ -95,15 +102,78 @@ export function pickLayer(
   }
 }
 
+/**
+ * W2-F5: draws a text item's laid-out lines with its font, alignment, letter
+ * spacing, line height and paragraph spacing. Justified lines spread their
+ * word gaps; a paragraph's last line stays left-aligned.
+ */
+function drawText(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  item: RenderItem,
+) {
+  const layout = item.textLayout!;
+  const style = item.textStyle ?? DEFAULT_TEXT_STYLE;
+  const width = item.size.width;
+  const measure = (text: string) =>
+    measureWithContext(context, text, item.fontSize, style);
+  context.font = textFont(style, item.fontSize);
+  context.textBaseline = 'top';
+  context.fillStyle = item.fill;
+  const offsets = lineOffsets(layout);
+  const visible = Math.min(1000, layout.lines.length);
+  for (let index = 0; index < visible; index++) {
+    const line = layout.lines[index]!;
+    const y = offsets[index]!;
+    if (y > item.size.height) break;
+    const words = line
+      .split(/(\s+)/u)
+      .filter((part) => part && !/^\s+$/u.test(part));
+    if (
+      style.align === 'justify' &&
+      !layout.paragraphEnds[index] &&
+      words.length > 1
+    ) {
+      const used = words.reduce((sum, word) => sum + measure(word), 0);
+      const gap = (width - used) / (words.length - 1);
+      let x = 0;
+      for (const word of words) {
+        fillSpaced(context, word, x, y, style.letterSpacing);
+        x += measure(word) + gap;
+      }
+      continue;
+    }
+    const lineWidth = measure(line);
+    const x =
+      style.align === 'center'
+        ? (width - lineWidth) / 2
+        : style.align === 'right'
+          ? width - lineWidth
+          : 0;
+    fillSpaced(context, line, x, y, style.letterSpacing);
+  }
+}
+
+/** Fills text with letter spacing (Canvas `letterSpacing`, Chrome 99+). */
+function fillSpaced(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  spacing: number,
+) {
+  context.letterSpacing = `${spacing}px`;
+  context.fillText(text, x, y);
+  context.letterSpacing = '0px';
+}
+
 /** Replaceable Canvas 2D boundary. No engine, subscriptions, commands, or retained scene data. */
 export class Canvas2DRenderer implements CompositionRenderer {
   #metrics: CanvasRenderingContext2D | null | undefined;
-  readonly measureText: TextMeasurer = (text, fontSize) => {
+  readonly measureText: TextMeasurer = (text, fontSize, style) => {
     if (this.#metrics === undefined)
       this.#metrics = document.createElement('canvas').getContext('2d');
-    if (!this.#metrics) return fallbackTextMeasure(text, fontSize);
-    this.#metrics.font = TEXT_FONT(fontSize);
-    return this.#metrics.measureText(text).width;
+    if (!this.#metrics) return fallbackTextMeasure(text, fontSize, style);
+    return measureWithContext(this.#metrics, text, fontSize, style);
   };
   render(
     canvas: HTMLCanvasElement,
@@ -225,7 +295,9 @@ export function drawComposition(
         context.beginPath();
         context.rect(0, 0, item.size.width, item.size.height);
         context.clip();
-        if (item.kind !== 'rectangle') {
+        if (item.kind === 'text' && item.textLayout) {
+          drawText(context, item);
+        } else if (item.kind !== 'rectangle') {
           context.textBaseline = 'top';
           context.font =
             item.kind === 'text'

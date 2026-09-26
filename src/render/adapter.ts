@@ -16,7 +16,13 @@ import {
   type TransformPreview,
 } from '../core';
 
-import { layoutText, type TextMeasurer } from './text-layout';
+import {
+  layoutParagraphs,
+  layoutText,
+  type TextLayout,
+  type TextMeasurer,
+} from './text-layout';
+import { textStyleOf, type TextStyle } from './text-style';
 import type { TransformCapabilities } from './transform-capabilities';
 import { drawingOf, type DrawingPath } from './drawing';
 import { applyPresets } from './presets';
@@ -99,6 +105,9 @@ export interface RenderItem {
   readonly text: string;
   readonly fontSize: number;
   readonly lines?: readonly string[];
+  /** W2-F5: a text layer's style and its laid-out lines. */
+  readonly textStyle?: TextStyle;
+  readonly textLayout?: TextLayout;
   readonly kind: 'rectangle' | 'text' | 'placeholder' | 'path';
   readonly media?: MediaFrameRequest;
   /** SHP-019: a freehand drawing's stroke in local coordinates. */
@@ -247,6 +256,16 @@ export function deriveRenderItems(input: RenderSource): {
               layer.properties.textWrap.value))
             ? textLayoutForWidth(layer, size.width, source.measureText)
             : undefined;
+        // W2-F5: every text layer is laid out with its style.
+        const textLayout =
+          layer.type === 'text'
+            ? (wrapped ??
+              layoutParagraphs(
+                text?.type === 'string' ? text.value : layer.name,
+                Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
+                textStyleOf(layer),
+              ))
+            : undefined;
         // The stored height is a static field the user (or a drag) set; wrapped
         // text can need more lines than that at the current width/font size, so
         // never clip content the layout itself says it needs.
@@ -267,6 +286,9 @@ export function deriveRenderItems(input: RenderSource): {
         items.push(
           Object.freeze({
             ...(wrapped ? { lines: wrapped.lines } : {}),
+            ...(textLayout
+              ? { textStyle: textStyleOf(layer), textLayout }
+              : {}),
             ...(media ? { media } : {}),
             ...(drawing ? { path: drawing } : {}),
             ...(numericProperty(layer, 'presetReveal') !== undefined
@@ -377,5 +399,6 @@ export function textLayoutForWidth(
     width,
     Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
     measure,
+    textStyleOf(layer),
   );
 }
