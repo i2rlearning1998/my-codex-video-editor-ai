@@ -7,7 +7,6 @@ import {
   createLayer,
   effectiveLayerTiming,
   findClipByLayer,
-  clipTimeEffects,
   findClip,
   type EditorEngine,
   type AffineMatrix,
@@ -42,34 +41,16 @@ import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
-import {
-  ALIGN_EDGES,
-  alignSelection,
-  canDistribute,
-  distributeSelection,
-} from './align';
 import { DrawTool } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { mountContextToolbar } from './context-toolbar';
 import { mountAnimationPanel } from './animation-panel';
 import { mountAnimatePanel } from './animate-panel';
-import {
-  canCopyStyle,
-  copyStyle,
-  hasStyle,
-  pasteStyle,
-} from './style-clipboard';
-import {
-  contextActions,
-  performEdit,
-  hasClipboard,
-  planLanding,
-  selectedClips,
-  setClipSpeed,
-  trackForNewClip,
-  SPEED_PRESETS,
-  type EditAction,
-} from './editing';
+import { canvasMenuEntries } from './canvas-menu';
+import { createMenu } from './context-menu';
+import { mountSelectionActions } from './selection-actions';
+import { multiSelectionBox, selectionGeometry } from '../render/selection';
+import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
 import { openModal } from './components/modal';
 import { showToast } from './components/toast';
@@ -211,7 +192,7 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><div class="animate-panel" id="animate-panel" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><div class="animate-panel" id="animate-panel" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -333,6 +314,7 @@ export function mountEditorShell(
       composition: session.source.composition.id,
     };
   };
+  let selectionActions: ReturnType<typeof mountSelectionActions> | undefined;
   const draw = () => {
     if (disposed) return;
     syncAudio();
@@ -367,6 +349,7 @@ export function mountEditorShell(
       session.selectedId,
     );
     frames.endFrame();
+    updateSelectionActions();
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
       session.playing && frames.buffering
@@ -407,228 +390,74 @@ export function mountEditorShell(
     () => animatePanel.toggle(),
   );
   const canvasMenu = element('#canvas-context-menu');
+  // W2-F1: the canvas menu is built from the selection's capabilities and
+  // rendered by the shared menu (context-menu.ts).
   let unregisterCanvasMenu: (() => void) | undefined;
-  const hideCanvasMenu = () => {
-    if (canvasMenu.hidden) return;
-    canvasMenu.hidden = true;
-    unregisterCanvasMenu?.();
-    unregisterCanvasMenu = undefined;
-  };
-  const CANVAS_MENU_PLACEHOLDERS = [
-    'Lock',
-    'Hide',
-    'Bring to front',
-    'Send to back',
-  ];
-  const menuItem = (
-    label: string,
-    onSelect?: () => void,
-  ): HTMLButtonElement => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.setAttribute('role', 'menuitem');
-    item.textContent = label;
-    if (onSelect)
-      item.onclick = () => {
-        hideCanvasMenu();
-        safely(onSelect);
-      };
-    else {
-      item.disabled = true;
-      item.title = t('library.later');
-    }
-    return item;
-  };
-  // VID-015: Speed presets replace the menu in place, with Back.
-  const showCanvasSpeedMenu = (reopen: () => void) => {
-    const current = selectedClips(session.source, session.selectedIds)[0]?.clip
-      .speed;
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.setAttribute('role', 'menuitem');
-    back.dataset.action = 'menu-back';
-    back.textContent = `‹ ${t('menu.back')}`;
-    back.onclick = (event) => {
-      event.stopPropagation();
-      reopen();
-    };
-    const presets = SPEED_PRESETS.map((speed) => {
-      const item = menuItem(
-        t('clip.speedValue', { speed: formatNumber(speed) }),
-        () => setClipSpeed(engine, session, speed),
-      );
-      item.setAttribute('role', 'menuitemradio');
-      item.dataset.speed = String(speed);
-      item.setAttribute('aria-checked', String(current === speed));
-      return item;
-    });
-    canvasMenu.replaceChildren(back, ...presets);
-    back.focus();
-  };
-  // CV-025: Align submenu, in place with Back like Speed.
-  const showCanvasAlignMenu = (reopen: () => void) => {
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.setAttribute('role', 'menuitem');
-    back.dataset.action = 'menu-back';
-    back.textContent = `‹ ${t('menu.back')}`;
-    back.onclick = (event) => {
-      event.stopPropagation();
-      reopen();
-    };
-    const aligns = ALIGN_EDGES.map((edge) => {
-      const item = menuItem(
-        t(`command.align${edge[0]!.toUpperCase()}${edge.slice(1)}`),
-        () => alignSelection(engine, session, edge),
-      );
-      item.dataset.action = `align-${edge}`;
-      return item;
-    });
-    const distributes = (['horizontal', 'vertical'] as const).map((axis) => {
-      const item = menuItem(
-        t(`command.distribute${axis[0]!.toUpperCase()}${axis.slice(1)}`),
-        canDistribute(session)
-          ? () => distributeSelection(engine, session, axis)
-          : undefined,
-      );
-      if (!canDistribute(session)) item.removeAttribute('title');
-      item.dataset.action = `distribute-${axis}`;
-      item.classList.add(
-        ...(axis === 'horizontal' ? ['canvas-context-menu-divider'] : []),
-      );
-      return item;
-    });
-    const relative = document.createElement('button');
-    relative.type = 'button';
-    relative.setAttribute('role', 'menuitemcheckbox');
-    relative.setAttribute('aria-checked', String(session.alignToCanvas));
-    relative.dataset.action = 'align-to-canvas';
-    relative.className = 'canvas-context-menu-divider';
-    relative.textContent = t('command.alignToCanvas');
-    relative.onclick = (event) => {
-      event.stopPropagation();
-      session.setAlignToCanvas(!session.alignToCanvas);
-      showCanvasAlignMenu(reopen);
-    };
-    canvasMenu.replaceChildren(back, ...aligns, ...distributes, relative);
-    back.focus();
-  };
+  const canvasMenuController = createMenu(canvasMenu, {
+    report: reportError,
+    onClose: () => {
+      unregisterCanvasMenu?.();
+      unregisterCanvasMenu = undefined;
+    },
+  });
+  const hideCanvasMenu = () => canvasMenuController.close();
   const openCanvasMenu = (point: Point2, layerId: string | null) => {
-    const clips = selectedClips(session.source, session.selectedIds);
-    const items: HTMLButtonElement[] = layerId
-      ? contextActions(session.source, session.selectedIds, session.currentTime)
-          .filter((action) => action !== 'marker' && action !== 'delete-marker')
-          .map((action) => {
-            if (action === 'speed') {
-              const item = document.createElement('button');
-              item.type = 'button';
-              item.setAttribute('role', 'menuitem');
-              item.dataset.action = 'speed';
-              item.textContent = `${t('command.speed')} ›`;
-              item.onclick = (event) => {
-                event.stopPropagation();
-                showCanvasSpeedMenu(() => {
-                  hideCanvasMenu();
-                  openCanvasMenu(point, layerId);
-                });
-              };
-              return item;
-            }
-            if (action === 'reverse' || action === 'freeze') {
-              const item = menuItem(
-                t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),
-                () => performEdit(engine, session, action),
-              );
-              item.setAttribute('role', 'menuitemcheckbox');
-              item.setAttribute(
-                'aria-checked',
-                String(
-                  clips.length > 0 &&
-                    clips.every(({ clip }) =>
-                      action === 'reverse'
-                        ? clipTimeEffects(clip).reversed
-                        : clipTimeEffects(clip).freezeFrame !== null,
-                    ),
-                ),
-              );
-              item.dataset.action = action;
-              return item;
-            }
-            if (
-              [
-                'cut',
-                'copy',
-                'paste',
-                'link',
-                'unlink',
-                'detach-audio',
-              ].includes(action)
-            ) {
-              const item = menuItem(t(`command.${action}`), () =>
-                performEdit(engine, session, action),
-              );
-              item.dataset.action = action;
-              return item;
-            }
-            return menuItem(
-              action === 'toggle-enabled'
-                ? 'Enable / disable'
-                : action[0]!.toUpperCase() + action.slice(1),
-              () => performEdit(engine, session, action as EditAction),
-            );
-          })
-      : hasClipboard()
-        ? [
-            menuItem(t('command.paste'), () =>
-              performEdit(engine, session, 'paste'),
-            ),
-          ]
-        : [];
-    if (layerId) {
-      // CV-039: Copy style / Paste style.
-      const copy = menuItem(t('command.copyStyle'), () => copyStyle(session));
-      copy.dataset.action = 'copy-style';
-      copy.disabled = !canCopyStyle(session);
-      const paste = menuItem(
-        t('command.pasteStyle'),
-        hasStyle() ? () => pasteStyle(engine, session) : undefined,
-      );
-      if (!hasStyle()) paste.removeAttribute('title');
-      paste.dataset.action = 'paste-style';
-      items.push(copy, paste);
-    }
-    if (layerId) {
-      const align = document.createElement('button');
-      align.type = 'button';
-      align.setAttribute('role', 'menuitem');
-      align.dataset.action = 'align';
-      align.textContent = `${t('command.align')} ›`;
-      align.onclick = (event) => {
-        event.stopPropagation();
-        showCanvasAlignMenu(() => {
-          hideCanvasMenu();
-          openCanvasMenu(point, layerId);
-        });
-      };
-      items.push(align);
-    }
-    for (const label of CANVAS_MENU_PLACEHOLDERS) items.push(menuItem(label));
-    if (items.length > CANVAS_MENU_PLACEHOLDERS.length)
-      items[items.length - CANVAS_MENU_PLACEHOLDERS.length]!.classList.add(
-        'canvas-context-menu-divider',
-      );
-    canvasMenu.replaceChildren(...items);
-    canvasMenu.hidden = false;
+    const entries = canvasMenuEntries(engine, session, !!layerId);
+    canvasMenuController.open(() =>
+      canvasMenuEntries(engine, session, !!layerId),
+    );
+    if (!entries.length) canvasMenuController.close();
     const bounds = stage.getBoundingClientRect();
     canvasMenu.style.left = `${Math.max(0, Math.min(bounds.width - 170, point[0]))}px`;
     canvasMenu.style.top = `${Math.max(0, Math.min(bounds.height - 40, point[1]))}px`;
-    unregisterCanvasMenu = registerExternalOverlay(hideCanvasMenu);
-    items[0]?.focus();
+    unregisterCanvasMenu ??= registerExternalOverlay(hideCanvasMenu);
   };
   document.addEventListener('click', (event) => {
     if (!canvasMenu.hidden && !canvasMenu.contains(event.target as Node))
       hideCanvasMenu();
   });
+  // CV-040: the action cluster follows the selection box, and hides while
+  // dragging, drawing or playing so it never covers the object being edited.
+  selectionActions = mountSelectionActions(
+    element('#selection-actions'),
+    engine,
+    session,
+    {
+      openMenu: (point) => openCanvasMenu(point, session.selectedId),
+      report: reportError,
+    },
+  );
+  function updateSelectionActions() {
+    if (!selectionActions) return;
+    if (
+      session.playing ||
+      drawTool.active ||
+      interaction.active ||
+      !session.selectedIds.length
+    )
+      return selectionActions.update(null, stage.getBoundingClientRect());
+    const source = {
+      ...session.source,
+      ...(interaction.previews ? { previews: interaction.previews } : {}),
+    };
+    const view = viewport().matrix;
+    const corners =
+      multiSelectionBox(source, view)?.corners ??
+      selectionGeometry(source, session.selectedId, view)?.corners;
+    if (!corners?.length)
+      return selectionActions.update(null, stage.getBoundingClientRect());
+    const xs = corners.map((point) => point[0] + canvas.offsetLeft),
+      ys = corners.map((point) => point[1] + canvas.offsetTop);
+    selectionActions.update(
+      {
+        left: Math.min(...xs),
+        top: Math.min(...ys),
+        right: Math.max(...xs),
+        bottom: Math.max(...ys),
+      },
+      stage.getBoundingClientRect(),
+    );
+  }
   const pointer = bindCanvasInteraction(
     canvas,
     session,
@@ -1158,8 +987,12 @@ export function mountEditorShell(
   // internal application/x-editor-asset drag, which uses its own mime type and targets).
   const dropOverlay = element('#drop-overlay');
   let dragDepth = 0;
+  // A Project Media card dragged onto the canvas or timeline is a reference to
+  // an asset already stored, never a new file, even if the browser also
+  // attaches file data to the drag (MED-015 regression).
   const isFileDrag = (event: DragEvent) =>
-    !!event.dataTransfer?.types.includes('Files');
+    !!event.dataTransfer?.types.includes('Files') &&
+    !event.dataTransfer.types.includes('application/x-editor-asset');
   window.addEventListener('dragenter', (event) => {
     if (!isFileDrag(event)) return;
     dragDepth++;

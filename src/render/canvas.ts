@@ -10,7 +10,7 @@ import {
   fallbackTextMeasure,
   type TextMeasurer,
 } from './text-layout';
-import { selectionGeometry } from './selection';
+import { multiSelectionBox, selectionGeometry } from './selection';
 import type { DrawingPath } from './drawing';
 import { deriveRenderItems, hitTest, type RenderSource } from './adapter';
 
@@ -301,6 +301,21 @@ export function drawComposition(
     box.corners.slice(1).forEach((point) => context.lineTo(...point));
     context.closePath();
     context.stroke();
+  }
+  // CV-040: one dashed box around the whole multi-selection.
+  const outer = multiSelectionBox(source, viewport.matrix);
+  if (outer) {
+    context.setTransform(...pixels);
+    context.globalAlpha = 1;
+    context.strokeStyle = '#8b6cff';
+    context.lineWidth = 1.5;
+    context.setLineDash([6, 4]);
+    context.beginPath();
+    context.moveTo(...outer.corners[0]!);
+    outer.corners.slice(1).forEach((point) => context.lineTo(...point));
+    context.closePath();
+    context.stroke();
+    context.setLineDash([]);
   }
   const geometry = selectionGeometry(source, selectedId, viewport.matrix);
   if (geometry) {

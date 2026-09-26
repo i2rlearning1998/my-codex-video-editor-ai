@@ -153,6 +153,36 @@ export function selectionGeometry(
     return null;
   }
 }
+/**
+ * W2-F1 (CV-040): the outer box of a multi-selection, axis-aligned in view
+ * space around every selected item's own box. Null for fewer than two items.
+ */
+export function multiSelectionBox(
+  source: RenderSource,
+  view: AffineMatrix,
+): { corners: readonly Point2[]; center: Point2 } | null {
+  const ids = source.selectedIds ?? [];
+  if (ids.length < 2) return null;
+  const points = ids.flatMap(
+    (id) => selectionGeometry(source, id, view)?.corners ?? [],
+  );
+  if (!points.length) return null;
+  const xs = points.map((point) => point[0]),
+    ys = points.map((point) => point[1]);
+  const left = Math.min(...xs),
+    top = Math.min(...ys),
+    right = Math.max(...xs),
+    bottom = Math.max(...ys);
+  return {
+    corners: [
+      [left, top],
+      [right, top],
+      [right, bottom],
+      [left, bottom],
+    ],
+    center: [(left + right) / 2, (top + bottom) / 2],
+  };
+}
 export type TransformHandle =
   Corner | Edge | 'rotate' | 'text-left' | 'text-right';
 export interface SelectionHandle {
