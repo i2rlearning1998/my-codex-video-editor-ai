@@ -114,12 +114,13 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
     'Set text size',
     'Set color',
   ]);
-  // A shape: Fill edits; Stroke is not built yet.
+  // A shape: Fill edits; W5-D made Stroke live, and Boolean says how to reach it.
   await select(page, 'example-badge');
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'shape');
-  await expect(control(page, 'stroke')).toHaveAttribute(
+  await expect(page.locator('#toolbar-stroke')).toBeEnabled();
+  await expect(control(page, 'boolean')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 5 (SHP-005)',
+    'Select two or more shapes, then right-click and choose Combine shapes.',
   );
   await page.locator('#toolbar-fill').fill('#00aa00');
   await expect

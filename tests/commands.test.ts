@@ -5,6 +5,7 @@ import { EditorSession } from '../src/ui/session';
 import { commands, runCommand } from '../src/commands/registry';
 import { clearClipboard, hasClipboard } from '../src/ui/editing';
 import { hasStyle } from '../src/ui/style-clipboard';
+import { addShape } from '../src/ui/shapes';
 import { t, setLanguage } from '../src/i18n';
 test('[KEY-001] every registered action has translated labels, enablement and an executable handler', () => {
   expect(new Set(commands.map((command) => command.id)).size).toBe(
@@ -58,6 +59,14 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     if (command.id === 'ungroup') {
       session.selectMany(ids.slice(0, 2));
       runCommand('group', context);
+    }
+    if (command.id.startsWith('combine-')) {
+      // Two overlapping shapes, both centered on the canvas.
+      const added = (['rectangle', 'ellipse'] as const).map((preset) => {
+        addShape(engine, session, preset);
+        return session.selectedId!;
+      });
+      session.selectMany(added);
     }
     if (command.id.startsWith('keyframe-')) {
       // Keyframes at 0 and 2 on the selected layer; the playhead sits at 1.
