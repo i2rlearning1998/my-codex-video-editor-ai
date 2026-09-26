@@ -356,8 +356,9 @@ describe('canvas command interactions', () => {
       s.shell.session.select('child');
       const corner = s.geometry().corners[2]!;
       s.event('pointerdown', corner);
-      s.event('pointermove', [corner[0] + 50, corner[1] + 15], { shiftKey });
-      s.event('pointerup', [corner[0] + 50, corner[1] + 15], { shiftKey });
+      // On the diagonal of the 100x60 box, so the corner lands on the pointer.
+      s.event('pointermove', [corner[0] + 50, corner[1] + 30], { shiftKey });
+      s.event('pointerup', [corner[0] + 50, corner[1] + 30], { shiftKey });
       expect(s.current().transform.scale.value).toEqual([1.5, 1.5]);
       expect(s.current().transform.position.value).toEqual([30, 40]);
       expect(s.current().properties.width!.value).toBe(100);
@@ -670,7 +671,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     const before = s.current().properties;
     const start = s.geometry().corners[2]!;
     s.event('pointerdown', start);
-    s.event('pointerup', [start[0] + 50, start[1] + 10]);
+    s.event('pointerup', [start[0] + 50, start[1] + 30]);
     expect(s.current().transform.scale.value).toEqual([1.5, 1.5]);
     expect(s.current().properties).toEqual(before);
     expect(s.engine.history.undo).toHaveLength(1);
@@ -968,6 +969,21 @@ describe('Tier 2.2.1 professional interaction contract', () => {
 });
 
 describe('Tier 2.2.2 uniform corner scaling', () => {
+  it('[CV-007] revision 6: an off-diagonal pointer is projected onto the corner diagonal, so a wide layer never outgrows the pointer', () => {
+    const s = setup();
+    s.shell.session.select('child');
+    const start = s.geometry().corners[2]!;
+    // 100x60 box: candidates were 1.5 on X and 1.1 on Y; the old rule took 1.5.
+    s.event('pointerdown', start);
+    s.event('pointerup', s.screen([150, 66]));
+    const expected = (150 * 100 + 66 * 60) / (100 * 100 + 60 * 60);
+    expect(s.current().transform.scale.value[0]).toBeCloseTo(expected, 10);
+    expect(s.current().transform.scale.value[1]).toBeCloseTo(expected, 10);
+    // The dragged corner is the pointer's projection onto the diagonal.
+    const corner = s.geometry().corners[2]!;
+    const origin = s.geometry().corners[0]!;
+    expect(corner[0] - origin[0]).toBeCloseTo(100 * expected, 6);
+  });
   it.each([
     { name: 'top-left', corner: 0, nested: false, rotation: 0, sx: 1 },
     { name: 'top-right', corner: 1, nested: false, rotation: 0, sx: 1 },
@@ -997,8 +1013,8 @@ describe('Tier 2.2.2 uniform corner scaling', () => {
       const start = overlay.corners[corner]!;
       const x = corner === 1 || corner === 2 ? 100 : 0;
       const y = corner >= 2 ? 60 : 0;
-      // Deliberately unequal candidate multipliers: 1.5 on X, 1.1 on Y.
-      const end = s.screen([x + (x ? 50 : -50), y + (y ? 6 : -6)]);
+      // A pointer on the diagonal: the corner follows it exactly (revision 6).
+      const end = s.screen([x + (x ? 50 : -50), y + (y ? 30 : -30)]);
       s.event('pointerdown', start);
       s.event('pointerup', end);
       expect(s.current().transform.scale.value[0]).toBeCloseTo(sx * 1.5, 10);
@@ -1019,7 +1035,7 @@ describe('Tier 2.2.2 uniform corner scaling', () => {
     const properties = s.current().properties;
     for (let i = 1; i <= 3; i++) {
       const start = s.geometry().corners[2]!;
-      const end = s.screen([150, 66]);
+      const end = s.screen([150, 90]);
       s.event('pointerdown', start);
       s.event('pointerup', end);
       expect(s.current().transform.scale.value[0]).toBeCloseTo(1.5 ** i, 10);

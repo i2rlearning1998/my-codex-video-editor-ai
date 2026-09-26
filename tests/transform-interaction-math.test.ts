@@ -40,16 +40,28 @@ describe('pure interaction transform math', () => {
       expect(initial.scale.value).toEqual([2, -3]);
     },
   );
-  it('proportional resize preserves signed scale ratio with deterministic dominant-axis selection', () => {
+  it('[CV-007] proportional resize preserves the signed scale ratio and projects the pointer onto the diagonal (revision 6)', () => {
     const initial = { ...base(), rotation: { value: 0 } };
-    const result = resizeTransform(
+    // The fixed corner sits at the position (20, 30); the diagonal is
+    // (100 * 2, 50 * -3) = (200, -150) in parent units.
+    const onDiagonal = resizeTransform(
+      initial,
+      { x: 0, y: 0, width: 100, height: 50 },
+      2,
+      [20 + 400, 30 - 300],
+      true,
+    );
+    expect(onDiagonal.scale.value).toEqual([4, -6]);
+    const off = resizeTransform(
       initial,
       { x: 0, y: 0, width: 100, height: 50 },
       2,
       [420, -195],
       true,
     );
-    expect(result.scale.value).toEqual([4, -6]);
+    const ratio = (400 * 200 + 225 * 150) / (200 * 200 + 150 * 150);
+    expect(off.scale.value[0]).toBeCloseTo(2 * ratio, 12);
+    expect(off.scale.value[1]).toBeCloseTo(-3 * ratio, 12);
   });
   it.each(['right', 'top', 0, 2] as const)(
     '[CV-008] Alt from center keeps the rotated bounds center fixed (handle %s)',
