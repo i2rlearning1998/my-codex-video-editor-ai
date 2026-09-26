@@ -271,7 +271,7 @@ Everything the user does directly on the preview canvas.
 | CV-035 | P0 | W2 | Verified | A context toolbar above the canvas appears for one selected text, image, video, shape or drawing layer, with controls for that type; it hides for no selection, groups, audio layers and multi-selections |
 | CV-036 | P0 | W2 | Verified | Image and video toolbar: Position X and Y, Scale, Rotate, Flip horizontal and vertical, and Opacity edit the layer as one undo step each; Crop, Blend and Replace show disabled with a tooltip naming the wave that builds them; Animate opens the animation presets |
 | CV-037 | P0 | W2 | Verified | Text toolbar: Font (system fonts until the W3 font picker), Size, Weight, Italic, Color, Align and Spacing (line height, letter and paragraph spacing, case) edit the layer as one undo step each; Effects shows disabled with a tooltip naming its wave; Animate opens the animation presets |
-| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill edits the layer; Stroke, Width, Corners and Boolean show disabled with a tooltip naming their wave; Animate opens the animation presets. A drawing's toolbar edits its Color, Brush size and Opacity |
+| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill, Fill opacity, No fill, Stroke, Width, Stroke style (dash, caps, joins) and Corners edit the layer as one undo step each; Boolean explains that shapes combine from the canvas menu; Animate opens the animation presets. A drawing's toolbar edits its Color, Brush size and Opacity |
 | CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
 | CV-040 | P0 | W2 | Verified | A selection shows a small action cluster above its box with Group (for two or more sibling layers) or Ungroup (for groups), Duplicate, Delete and More (the right-click menu); with two or more layers selected, one dashed box surrounds the whole selection and each layer keeps its own outline. Menu and cluster actions are offered only when every selected item supports them |
 | CV-041 | P0 | W2 | Verified | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
@@ -473,12 +473,12 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| SHP-001 | P0 | W5 | Todo | Shape tools: rectangle, rounded rectangle, ellipse, line, arrow |
+| SHP-001 | P0 | W5 | Verified | Shape tools: rectangle, rounded rectangle, ellipse, line, arrow |
 | SHP-002 | P1 | W5 | Todo | More shapes: triangle, polygon, star, heart and similar |
-| SHP-003 | P0 | W5 | Todo | Fill: solid color with opacity, none |
+| SHP-003 | P0 | W5 | Verified | Fill: solid color with opacity, none |
 | SHP-004 | P1 | W5 | Todo | Fill: linear and radial gradient |
-| SHP-005 | P0 | W5 | Todo | Stroke: color, width, dash style, caps and joins |
-| SHP-006 | P0 | W5 | Todo | Corner radius control on rectangles |
+| SHP-005 | P0 | W5 | Verified | Stroke: color, width, dash style, caps and joins |
+| SHP-006 | P0 | W5 | Verified | Corner radius control on rectangles |
 | SHP-007 | P1 | W5 | Todo | Drop shadow and blur on shapes |
 | SHP-008 | P1 | W5 | Todo | SVG import as an editable vector layer |
 | SHP-009 | P0 | W5 | Todo | Elements panel: shapes, lines, frames, arrows, emoji and stickers, open-license icons |
@@ -487,7 +487,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-012 | P1 | W5 | Todo | Animated GIF, APNG and WebP stickers |
 | SHP-013 | P0 | W5 | Todo | Backgrounds: solid color and gradient background layers |
 | SHP-014 | P1 | W5 | Todo | Logo or watermark quick-add with corner placement presets |
-| SHP-015 | P2 | W5 | Todo | Freehand pen and boolean shape operations |
+| SHP-015 | P2 | W5 | Verified | Freehand pen and boolean shape operations |
 | SHP-016 | P2 | W8 | Todo | Data charts (bar, line, pie) from typed or pasted data |
 | SHP-017 | P2 | W8 | Todo | Lottie import |
 | SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker and Highlighter with brush size, color and opacity; choosing a brush puts the canvas in draw mode, and Esc, V or another category leaves it |

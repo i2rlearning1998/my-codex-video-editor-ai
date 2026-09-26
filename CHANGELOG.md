@@ -2,6 +2,16 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 5 part D (W5-D) — 2026-09-26
+
+- The **Elements** category adds shapes: rectangle, rounded rectangle, ellipse, line and arrow.
+- The shape toolbar now edits:
+  - **Fill**, **Fill opacity** and **No fill**;
+  - **Stroke** color and **Width**;
+  - **Stroke style** (dashed or dotted, flat, round or square caps, sharp, round or bevel joins);
+  - **Corners** (the radius of a rectangle's corners).
+- Select two or more shapes, right-click and choose **Combine shapes** to Union, Subtract, Intersect or Exclude them into one shape. Undo brings the originals back.
+
 ## Wave 2 part F5 (W2-F5) — 2026-09-26
 
 - The text toolbar is now live:
