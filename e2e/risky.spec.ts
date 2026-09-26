@@ -91,7 +91,7 @@ test('[HIS-002] canvas, inspector and timeline edits all undo back to the start 
   await drag(page, badge, 40, 20);
   // Inspector edit.
   await setField(page, 'Rotation (degrees)', '10');
-  // Timeline edits: nudge, trim, marker, track lock and speed.
+  // Timeline edits: nudge, trim, marker, track lock and clip enable.
   await page
     .locator('.timeline-clip[data-id="example-kicker"]')
     .click({ position: { x: 30, y: 10 } });
@@ -111,13 +111,11 @@ test('[HIS-002] canvas, inspector and timeline edits all undo back to the start 
     button: 'right',
     position: { x: 30, y: 10 },
   });
+  // Speed is for video and audio clips only (D-073); a text clip can be
+  // disabled from the same menu as one timeline step.
   await page
     .locator('.timeline-menu')
-    .getByRole('menuitem', { name: 'Speed ›' })
-    .click();
-  await page
-    .locator('.timeline-menu')
-    .getByRole('menuitemradio', { name: '2×' })
+    .getByRole('menuitem', { name: 'Enable / disable clip' })
     .click();
   const final = (await hook(page)).project;
   const steps = (await hook(page)).history.labels.length;

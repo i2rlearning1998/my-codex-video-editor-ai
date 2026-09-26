@@ -7,6 +7,9 @@ import {
   distributeSelection,
 } from '../ui/align';
 import { locateLayer } from '../render/adapter';
+import { ARRANGE_ACTIONS, arrangeSelection, canArrange } from '../ui/arrange';
+import { describeSelection } from '../ui/selection-context';
+import { ARRANGE_KEYS, ARRANGE_SHORTCUTS } from '../ui/canvas-menu';
 import { jumpToKeyframe, runKeyframeAction } from '../ui/keyframe-edit';
 import { keyframeTimes } from '../ui/keyframes';
 import {
@@ -49,6 +52,9 @@ export interface RegisteredCommand {
 }
 const hasClips = ({ session }: CommandContext) =>
   selectedClips(session.source, session.selectedIds).length > 0;
+/** Speed, reverse and freeze apply to video and audio clips only (D-073). */
+const hasTimedClips = ({ session }: CommandContext) =>
+  describeSelection(session.source, session.selectedIds).every('time-effects');
 const timeline = (
   id: string,
   labelKey: string,
@@ -137,6 +143,15 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   edit('split', 'S'),
   edit('marker', 'M'),
   edit('group', 'Ctrl+G'),
+  edit('ungroup', 'Ctrl+Shift+G'),
+  // CV-026: layer order (palette, canvas Layer submenu).
+  ...ARRANGE_ACTIONS.map((action): RegisteredCommand => ({
+    id: `arrange-${action}`,
+    labelKey: ARRANGE_KEYS[action],
+    shortcut: ARRANGE_SHORTCUTS[action],
+    isEnabled: ({ session }) => canArrange(session, action),
+    run: ({ engine, session }) => arrangeSelection(engine, session, action),
+  })),
   edit('toggle-enabled', ''),
   edit('cut', 'Ctrl+X'),
   edit('copy', 'Ctrl+C'),
@@ -204,21 +219,21 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     id: 'speed-slower',
     labelKey: 'command.speedSlower',
     shortcut: '',
-    isEnabled: hasClips,
+    isEnabled: hasTimedClips,
     run: ({ engine, session }) => stepClipSpeed(engine, session, -1),
   },
   {
     id: 'speed-faster',
     labelKey: 'command.speedFaster',
     shortcut: '',
-    isEnabled: hasClips,
+    isEnabled: hasTimedClips,
     run: ({ engine, session }) => stepClipSpeed(engine, session, 1),
   },
   {
     id: 'speed-normal',
     labelKey: 'command.speedNormal',
     shortcut: '',
-    isEnabled: hasClips,
+    isEnabled: hasTimedClips,
     run: ({ engine, session }) => setClipSpeed(engine, session, 1),
   },
   timeline('clip-nudge-left', 'command.nudgeLeft', 'Alt+←', (c) =>

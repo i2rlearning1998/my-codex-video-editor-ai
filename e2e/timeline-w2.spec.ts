@@ -389,10 +389,13 @@ async function canvasMenu(page: Page, x: number, y: number) {
   await expect(page.locator('#canvas-context-menu')).toBeVisible();
 }
 
+// D-073: speed, reverse and freeze apply to video and audio clips, so these
+// proofs use the video clip-b (3..5 on Video 1, source 1..3 of 6 s). Its layer
+// is drawn at 600,100 on the canvas.
 test('[VID-015] Speed from the timeline and canvas menus changes duration, shows a badge, refuses overlaps and round-trips undo/redo', async ({
   page,
 }, testInfo) => {
-  await timelineMenu(page, 'clip-c');
+  await timelineMenu(page, 'clip-b');
   await page
     .locator('.timeline-menu')
     .getByRole('menuitem', { name: 'Speed ›' })
@@ -401,29 +404,27 @@ test('[VID-015] Speed from the timeline and canvas menus changes duration, shows
     .locator('.timeline-menu')
     .getByRole('menuitemradio', { name: '2×' })
     .click();
-  let c = (await clips(page))('clip-c');
-  expect([c.speed, c.duration, c.sourceIn, c.sourceOut]).toEqual([
-    2, 1.5, 0, 3,
-  ]);
-  const badge = clipEl(page, 'clip-c').locator('[data-badge="speed"]');
+  let b = (await clips(page))('clip-b');
+  expect([b.speed, b.duration, b.sourceIn, b.sourceOut]).toEqual([2, 1, 1, 3]);
+  const badge = clipEl(page, 'clip-b').locator('[data-badge="speed"]');
   await expect(badge).toHaveText('2×');
   await page.screenshot({ path: testInfo.outputPath('speed-badge.png') });
   await page.locator('#undo').click();
-  c = (await clips(page))('clip-c');
-  expect([c.speed, c.duration]).toEqual([1, 3]);
+  b = (await clips(page))('clip-b');
+  expect([b.speed, b.duration]).toEqual([1, 2]);
   await expect(badge).toHaveCount(0);
   await page.locator('#redo').click();
-  expect((await clips(page))('clip-c').speed).toBe(2);
-  // Canvas menu on layer-c at 1.5 s: 0.5x doubles the source length.
-  await seek(page, 1.5);
-  await canvasMenu(page, 500, 500);
+  expect((await clips(page))('clip-b').speed).toBe(2);
+  // Canvas menu on layer-b at 3.5 s: 0.5x doubles the source length.
+  await seek(page, 3.5);
+  await canvasMenu(page, 800, 200);
   const menu = page.locator('#canvas-context-menu');
   await menu.getByRole('menuitem', { name: 'Speed ›' }).click();
   await menu.getByRole('menuitemradio', { name: '0.5×' }).click();
-  c = (await clips(page))('clip-c');
-  expect([c.speed, c.duration]).toEqual([0.5, 6]);
+  b = (await clips(page))('clip-b');
+  expect([b.speed, b.duration]).toEqual([0.5, 4]);
   await page.locator('#undo').click();
-  expect((await clips(page))('clip-c').speed).toBe(2);
+  expect((await clips(page))('clip-b').speed).toBe(2);
   // Slowing clip-a into clip-b is refused and changes nothing.
   const before = (await hook(page)).project;
   await timelineMenu(page, 'clip-a');
@@ -446,18 +447,18 @@ test('[VID-015] Speed from the timeline and canvas menus changes duration, shows
 test('[VID-016] Reverse toggles from the timeline and canvas menus with a badge and undo/redo', async ({
   page,
 }) => {
-  await timelineMenu(page, 'clip-c');
+  await timelineMenu(page, 'clip-b');
   await page
     .locator('.timeline-menu')
     .getByRole('menuitemcheckbox', { name: 'Reverse' })
     .click();
-  let c = (await clips(page))('clip-c');
-  expect(c.metadata).toEqual({ reversed: true });
-  expect([c.sourceIn, c.sourceOut, c.duration]).toEqual([0, 3, 3]);
+  let b = (await clips(page))('clip-b');
+  expect(b.metadata).toEqual({ reversed: true });
+  expect([b.sourceIn, b.sourceOut, b.duration]).toEqual([1, 3, 2]);
   await expect(
-    clipEl(page, 'clip-c').locator('[data-badge="reverse"]'),
+    clipEl(page, 'clip-b').locator('[data-badge="reverse"]'),
   ).toBeVisible();
-  await timelineMenu(page, 'clip-c');
+  await timelineMenu(page, 'clip-b');
   await expect(
     page
       .locator('.timeline-menu')
@@ -465,49 +466,49 @@ test('[VID-016] Reverse toggles from the timeline and canvas menus with a badge 
   ).toHaveAttribute('aria-checked', 'true');
   await page.keyboard.press('Escape');
   await page.locator('#undo').click();
-  expect((await clips(page))('clip-c').metadata).toEqual({});
+  expect((await clips(page))('clip-b').metadata).toEqual({});
   await page.locator('#redo').click();
-  expect((await clips(page))('clip-c').metadata).toEqual({ reversed: true });
+  expect((await clips(page))('clip-b').metadata).toEqual({ reversed: true });
   // Canvas menu toggles it back off.
-  await seek(page, 1.5);
-  await canvasMenu(page, 500, 500);
+  await seek(page, 3.5);
+  await canvasMenu(page, 800, 200);
   await page
     .locator('#canvas-context-menu')
     .getByRole('menuitemcheckbox', { name: 'Reverse' })
     .click();
-  expect((await clips(page))('clip-c').metadata).toEqual({});
+  expect((await clips(page))('clip-b').metadata).toEqual({});
   await page.locator('#undo').click();
-  expect((await clips(page))('clip-c').metadata).toEqual({ reversed: true });
+  expect((await clips(page))('clip-b').metadata).toEqual({ reversed: true });
 });
 
 test('[VID-017] Freeze frame holds the frame under the playhead from both menus with a badge and undo/redo', async ({
   page,
 }) => {
-  await seek(page, 2);
-  await timelineMenu(page, 'clip-c');
+  await seek(page, 4);
+  await timelineMenu(page, 'clip-b');
   await page
     .locator('.timeline-menu')
     .getByRole('menuitemcheckbox', { name: 'Freeze frame' })
     .click();
-  // clip-c starts at 1 with source in 0, so 2 s shows source 1 s.
-  expect((await clips(page))('clip-c').metadata).toEqual({ freezeFrame: 1 });
+  // clip-b starts at 3 with source in 1, so 4 s shows source 2 s.
+  expect((await clips(page))('clip-b').metadata).toEqual({ freezeFrame: 2 });
   await expect(
-    clipEl(page, 'clip-c').locator('[data-badge="freeze"]'),
+    clipEl(page, 'clip-b').locator('[data-badge="freeze"]'),
   ).toBeVisible();
   await page.locator('#undo').click();
-  expect((await clips(page))('clip-c').metadata).toEqual({});
+  expect((await clips(page))('clip-b').metadata).toEqual({});
   await expect(
-    clipEl(page, 'clip-c').locator('[data-badge="freeze"]'),
+    clipEl(page, 'clip-b').locator('[data-badge="freeze"]'),
   ).toHaveCount(0);
   await page.locator('#redo').click();
-  expect((await clips(page))('clip-c').metadata).toEqual({ freezeFrame: 1 });
+  expect((await clips(page))('clip-b').metadata).toEqual({ freezeFrame: 2 });
   await page.locator('#undo').click();
-  await canvasMenu(page, 500, 500);
+  await canvasMenu(page, 800, 200);
   await page
     .locator('#canvas-context-menu')
     .getByRole('menuitemcheckbox', { name: 'Freeze frame' })
     .click();
-  expect((await clips(page))('clip-c').metadata).toEqual({ freezeFrame: 1 });
+  expect((await clips(page))('clip-b').metadata).toEqual({ freezeFrame: 2 });
   await page.locator('#undo').click();
-  expect((await clips(page))('clip-c').metadata).toEqual({});
+  expect((await clips(page))('clip-b').metadata).toEqual({});
 });

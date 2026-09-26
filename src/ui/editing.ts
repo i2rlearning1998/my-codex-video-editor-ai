@@ -5,7 +5,6 @@ import {
   clipTimeEffects,
   clipTrimBounds,
   effectiveLayerTiming,
-  clipAudioDetached,
   clipLinkId,
   createLayer,
   findClip,
@@ -33,22 +32,9 @@ import {
 } from '../render/adapter';
 import type { EditorSession } from './session';
 
-/** Top-level selection roots prevent double-moving/deleting a selected descendant. */
-export function selectionRoots(
-  source: RenderSource,
-  ids: readonly string[],
-): SceneLayer[] {
-  const selected = new Set(ids),
-    result: SceneLayer[] = [];
-  const visit = (layers: readonly SceneLayer[]) => {
-    for (const layer of layers) {
-      if (selected.has(layer.id)) result.push(layer);
-      else visit(layer.children);
-    }
-  };
-  visit(source.composition.layers);
-  return result;
-}
+import { describeSelection, selectionRoots } from './selection-context';
+import { ungroupBlocker, ungroupCommands } from './ungroup';
+export { selectionRoots };
 export function cloneLayer(
   layer: SceneLayer,
   id = () => crypto.randomUUID(),
@@ -77,7 +63,8 @@ export type EditAction =
   | 'paste'
   | 'link'
   | 'unlink'
-  | 'detach-audio';
+  | 'detach-audio'
+  | 'ungroup';
 /** TL-027 in-app clipboard: transient snapshots, never saved, no history. */
 interface ClipboardItem {
   readonly layer: SceneLayer;
@@ -111,15 +98,6 @@ export function withLinked(
   );
   return [...new Set([...ids, ...partners])];
 }
-const isDetachable = (source: RenderSource, clip: DeepReadonly<Clip>) => {
-  const layer = locateLayer(source.composition.layers, clip.layerId)?.layer;
-  const asset = source.assets.find((item) => item.id === clip.assetId);
-  return (
-    layer?.type === 'video' &&
-    asset?.type === 'video' &&
-    !clipAudioDetached(clip)
-  );
-};
 export interface ClipLanding {
   /** Structural so new (not yet created) clips can be planned too. */
   readonly clip: {
@@ -259,16 +237,21 @@ export function contextActions(
   const layers = selectionRoots(source, ids);
   if (!layers.length) return hasClipboard() ? ['marker', 'paste'] : ['marker'];
   const actions: EditAction[] = ['duplicate', 'delete'];
+  // W2-F1: an action is offered only when every selected item supports it, so
+  // clip-only actions never reach a selection that mixes in images or shapes.
+  const selection = describeSelection(source, ids);
   const clips = selectedClips(source, ids);
-  if (clips.length) {
-    actions.push('toggle-enabled', 'speed', 'reverse', 'freeze', 'cut', 'copy');
+  if (selection.every('clip')) {
+    actions.push('toggle-enabled');
+    if (selection.every('time-effects'))
+      actions.push('speed', 'reverse', 'freeze');
+    actions.push('cut', 'copy');
     if (hasClipboard()) actions.push('paste');
     const links = clips.map(({ clip }) => clipLinkId(clip));
     if (clips.length > 1 && !(links[0] && links.every((l) => l === links[0])))
       actions.push('link');
     if (links.some(Boolean)) actions.push('unlink');
-    if (clips.every(({ clip }) => isDetachable(source, clip)))
-      actions.push('detach-audio');
+    if (selection.every('detach-audio')) actions.push('detach-audio');
   }
   if (
     layers.every(
@@ -287,6 +270,8 @@ export function contextActions(
   );
   if (layers.length > 1 && parents.every((parent) => parent === parents[0]))
     actions.push('group');
+  if (selection.every('group') && !ungroupBlocker(source, ids))
+    actions.push('ungroup');
   return actions;
 }
 export function performEdit(
@@ -311,6 +296,12 @@ export function performEdit(
     ['copy', 'cut', 'paste', 'link', 'unlink', 'detach-audio'].includes(action)
   )
     return clipAction(engine, session, action);
+  if (action === 'ungroup') {
+    const plan = ungroupCommands(source, session.selectedIds);
+    engine.commands.transaction('Ungroup', plan.commands);
+    session.selectMany(plan.selected);
+    return;
+  }
   // TL-032: linked partners delete, split and duplicate together. A partner that
   // does not span the playhead is left out of a split.
   const expanded = ['delete', 'split', 'duplicate'].includes(action)
@@ -637,6 +628,12 @@ export function setClipSpeed(
   session.setPlaying(false);
   const clips = selectedClips(session.source, session.selectedIds);
   if (!clips.length) throw new Error('Select a clip to change its speed');
+  if (
+    !describeSelection(session.source, session.selectedIds).every(
+      'time-effects',
+    )
+  )
+    throw new Error('Speed applies to video and audio clips only');
   const commands: Command[] = clips
     .filter(({ clip }) => clip.speed !== speed)
     .map(({ clip }) => ({
@@ -1006,7 +1003,7 @@ function clipAction(
   const landings: { clip: Clip; trackId: string }[] = [];
   let audioTrack: string | undefined;
   for (const { clip } of clips) {
-    if (!isDetachable(source, clip))
+    if (!describeSelection(source, [clip.layerId]).every('detach-audio'))
       throw new Error('Only video clips with their own audio can be detached');
     const asset = source.assets.find((item) => item.id === clip.assetId)!;
     const reference = `audio-of:${asset.id}`;
