@@ -1,4 +1,6 @@
-# Transform interaction contract - revision 5
+# Transform interaction contract - revision 6
+
+**Revision 6, 2026-09-26 (owner-authorized with W2-F).** Two changes. (1) The proportional corner multiplier is now the pointer's projection onto the corner diagonal instead of "the candidate farthest from 1": the dragged corner follows the pointer, and a wide or tall layer no longer grows faster than the pointer moves (spec bug 5, CV-007). (2) A multi-selection has its own box with corner, edge and rotate handles, which resize or rotate every selected layer together (CV-041). Everything else in revision 5 is unchanged. See D-077 and the section "Multi-selection box (revision 6)".
 
 **Revision 5, 2026-09-24 (owner-authorized, additive).** It adds snapping with smart guides for body moves, corner and edge resizes and text width grips (CV-013). It also adds a canvas draw mode for the W2-E Draw tool. Rotation, history, cancellation, no-op rules and every other revision 4 rule are unchanged. See D-066 and the section "Snapping and smart guides (revision 5)".
 
@@ -42,7 +44,7 @@ Movement adds parent-space pointer delta to baseline local position. It never re
 
 Corners resize in baseline rotated local axes with the opposite corner fixed in parent/world space. Resolve signed scales by inverse rotation of the pointer-to-fixed-corner vector, then compensate position so the fixed corner stays fixed. The initial pointer-to-handle grab offset is retained. Rotation, nonuniform/negative scale, nested parents, and nonzero group-local bounds are supported without shear decomposition.
 
-Corner dragging always preserves the initial signed scale ratio for every type, including text: choose the candidate relative multiplier farthest from 1, X winning ties, and apply it to both baseline scales. This preserves existing aspect ratio even when baseline scales differ. Shift retains the same proportional behavior; it does not enable freeform scaling. Crossing the opposite corner permits zero/negative scale under the frozen contract. Collapsed results can be repaired in the inspector.
+Corner dragging always preserves the initial signed scale ratio for every type, including text. Since revision 6 the multiplier is the projection of the pointer-to-fixed-point vector onto the baseline corner diagonal (both measured in parent units along the baseline rotated axes): `m = (d · v) / (v · v)`, where `v` is the fixed-point-to-corner vector at the baseline scales. It is applied to both baseline scales, so the dragged corner lands on the pointer's projection onto the diagonal. (Revisions up to 5 chose the candidate relative multiplier farthest from 1, which made wide or tall layers outgrow a diagonal drag.) This preserves existing aspect ratio even when baseline scales differ. Shift retains the same proportional behavior; it does not enable freeform scaling. Crossing the opposite corner permits zero/negative scale under the frozen contract. Collapsed results can be repaired in the inspector.
 
 Generic left/right edges change only scale X, and top/bottom only scale Y; they change the corresponding visual dimension while intrinsic width/height properties stay unchanged. The opposite edge remains fixed. Resolve along baseline rotated axes and ignore tangential movement. Shift does not affect edges.
 
@@ -110,3 +112,14 @@ While the Draw tool is active, the canvas is in draw mode:
 - Esc, the V key or leaving the Draw tool exits draw mode. Esc during a stroke first cancels that stroke.
 
 Draw mode never edits existing layers, and picking, hit-test priority and transforms are exactly as above when it is off.
+
+## Multi-selection box (revision 6)
+
+With two or more layers selected, the selection is drawn as one dashed box: the axis-aligned composition bounds of every selected layer at the current time. Each layer also keeps its own outline. The box has handles in the same style and hit priority as a single box: rotate, then corners, then edges.
+
+- **Corners** scale every selected root uniformly. The fixed point is the opposite corner of the box, or its center while Alt is held. The multiplier is the pointer's projection onto the box diagonal, exactly as for one layer. Crossing the fixed point permits zero or negative multipliers.
+- **Edges** scale along one composition axis from the opposite edge (or the center with Alt). They are offered only when every selected layer is straight in the composition and none is or contains text, because any other layer could not keep a one-axis stretch without a skew.
+- **Rotate** turns every selected root about the box center by the pointer's accumulated clockwise angle.
+- **Application.** Each gesture is a world transform `A`. For each selected root with parent world matrix `P` and local matrix `L`, the new local matrix is `P⁻¹ · A · P · L`, decomposed back into position, rotation and scale. The decomposition keeps the sign of the baseline scale X and the rotation nearest to the baseline value. Stored opacity, keyframes and other properties are unchanged. A result that would need a skew (a root inside a non-uniformly scaled group, for rotation or stretching) cancels the gesture with a message.
+- **Preview and history.** While the gesture runs, the box is drawn transformed by `A` and the layers are previewed. Pointer-up commits once, as one undo step ("Resize layers" or "Rotate layers"). Cancel, no-op and history rules are exactly as for one layer.
+- **Snapping** applies to multi-selection body moves only, as in revision 5; resizing and rotating the box do not snap.

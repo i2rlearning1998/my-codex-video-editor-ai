@@ -111,6 +111,8 @@ The owner-authorized CV-008 change (Alt resize-from-center) is an interaction ru
 
 Revision 5 of the interaction contract (snapping with smart guides, CV-013, and the W2-E draw mode) changes only the pointer an interaction receives. Alignment (CV-025) writes ordinary position values. The spatial semantics here are unchanged.
 
+Revision 6 of the interaction contract (the projected corner multiplier and the multi-selection box, CV-007 and CV-041) writes ordinary position, rotation and scale values; a multi-selection transform decomposes `P⁻¹ · A · P · L` into those values and refuses anything that would need a skew. The spatial semantics here are unchanged.
+
 ## Animation evaluation (W5-B, schema 5)
 
 An animated property (`animated: true` with keyframes) has a value at every composition time, interpolated from its keyframes with each segment's easing (`src/core/animation.ts`); before the first and after the last keyframe it holds that keyframe's value. Every consumer that draws, picks or edits a layer at a time uses these evaluated values, and the spatial rules above then apply unchanged: the same local origin, matrix order, inherited opacity and stored base-value semantics. Stored `value` fields are not a time-independent truth for animated properties. This note is additive and does not change any rule above.
