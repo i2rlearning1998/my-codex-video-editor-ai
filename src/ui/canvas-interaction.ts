@@ -1,7 +1,13 @@
 import { invertMatrix, transformPoint, type Point2 } from '../core';
 import { pickLayer, type Viewport } from '../render/canvas';
 import { deriveRenderItems, locateLayer } from '../render/adapter';
-import { hitHandle, selectionGeometry } from '../render/selection';
+import {
+  hitHandle,
+  hitMultiHandle,
+  multiSelectionGeometry,
+  selectionGeometry,
+  type TransformHandle,
+} from '../render/selection';
 import type { EditorSession } from './session';
 import type { TransformInteraction } from './transform-interaction';
 import { SNAP_PIXELS } from './snapping';
@@ -40,6 +46,16 @@ export function bindCanvasInteraction(
   draw?: DrawTool,
 ) {
   let pointer: number | null = null;
+  // CV-041: a multi-selection has its own box and handles (revision 6).
+  const handleAt = (point: Point2): TransformHandle | null =>
+    session.selectedIds.length > 1
+      ? hitMultiHandle(session.source, viewport().matrix, point)
+      : hitHandle(session.source, session.selectedId, viewport().matrix, point);
+  const handleCursor = (handle: TransformHandle) =>
+    (session.selectedIds.length > 1
+      ? multiSelectionGeometry(session.source, viewport().matrix)
+      : selectionGeometry(session.source, session.selectedId, viewport().matrix)
+    )?.handles.find((item) => item.id === handle)?.cursor;
   // SHP-018: in draw mode the canvas draws instead of picking (revision 5).
   const drawing = () => !!draw && session.drawBrush !== null;
   // Clicking outside the entered group leaves isolation (CV-022).
@@ -115,15 +131,7 @@ export function bindCanvasInteraction(
         event.preventDefault();
         return;
       }
-      const handle =
-        session.selectedIds.length > 1
-          ? null
-          : hitHandle(
-              session.source,
-              session.selectedId,
-              viewport().matrix,
-              point,
-            );
+      const handle = handleAt(point);
       if (handle === null) {
         const picked = pick(point);
         const selected = session.selectedId
@@ -169,12 +177,7 @@ export function bindCanvasInteraction(
           ? 'grabbing'
           : handle === null
             ? 'move'
-            : (selectionGeometry(
-                session.source,
-                session.selectedId,
-                viewport().matrix,
-              )?.handles.find((item) => item.id === handle)?.cursor ??
-              'default');
+            : (handleCursor(handle) ?? 'default');
       canvas.focus({ preventScroll: true });
       event.preventDefault();
     });
@@ -217,22 +220,10 @@ export function bindCanvasInteraction(
           return;
         }
         const point = screenPoint(event);
-        const handle =
-          session.selectedIds.length > 1
-            ? null
-            : hitHandle(
-                session.source,
-                session.selectedId,
-                viewport().matrix,
-                point,
-              );
+        const handle = handleAt(point);
         interaction.hover(handle);
         canvas.style.cursor =
-          selectionGeometry(
-            session.source,
-            session.selectedId,
-            viewport().matrix,
-          )?.handles.find((item) => item.id === handle)?.cursor ??
+          (handle === null ? undefined : handleCursor(handle)) ??
           (pickLayer(session.source, viewport(), point) ? 'move' : 'default');
         return;
       }

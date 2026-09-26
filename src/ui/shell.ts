@@ -340,6 +340,7 @@ export function mountEditorShell(
           : {}),
         ...(interaction.preview ? { preview: interaction.preview } : {}),
         ...(interaction.guides.length ? { guides: interaction.guides } : {}),
+        ...(interaction.frame ? { selectionFrame: interaction.frame } : {}),
         ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
         ...(interaction.hoveredHandle !== null
           ? { hoveredHandle: interaction.hoveredHandle }

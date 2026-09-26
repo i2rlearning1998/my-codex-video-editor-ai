@@ -71,6 +71,11 @@ export interface RenderSource {
   readonly drawing?: DrawingPath & { readonly opacity: number };
   /** W5-C: draw with the clips' animation presets (picking never sets this). */
   readonly animate?: boolean;
+  /**
+   * CV-041: the multi-selection frame (four world corners) while it is being
+   * resized or rotated; otherwise the frame is the selection's bounds.
+   */
+  readonly selectionFrame?: readonly Point2[];
   /** CV-013: transient snap guides of the active canvas gesture. */
   readonly guides?: readonly {
     readonly axis: 'x' | 'y';

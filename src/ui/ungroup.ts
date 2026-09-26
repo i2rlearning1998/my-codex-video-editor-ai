@@ -4,6 +4,7 @@
 // in the same transaction, when the result can be stored exactly (D-074).
 import {
   createLayer,
+  decomposeMatrix,
   findClipByLayer,
   findFreeTrack,
   localTransformMatrix,
@@ -37,22 +38,15 @@ export function bakeTransform(
   group: TransformValues,
   child: TransformValues,
 ): TransformValues | null {
-  const [a, b, c, d, e, f] = multiplyMatrices(
-    localTransformMatrix(group),
-    localTransformMatrix(child),
+  const parts = decomposeMatrix(
+    multiplyMatrices(localTransformMatrix(group), localTransformMatrix(child)),
+    { rotation: child.rotation.value, scaleX: child.scale.value[0] },
   );
-  const sx = Math.hypot(a, b),
-    column = Math.hypot(c, d);
-  if (sx === 0 || column === 0) return null;
-  // T * R * S only has orthogonal columns; anything else would need a skew.
-  if (Math.abs(a * c + b * d) > 1e-9 * sx * column) return null;
-  const sy = (a * d - b * c) / sx;
-  let rotation = (Math.atan2(b, a) * 180) / Math.PI;
-  if (rotation <= -180) rotation += 360;
+  if (!parts) return null;
   return {
-    position: { value: [clean(e), clean(f)] },
-    rotation: { value: clean(rotation) },
-    scale: { value: [clean(sx), clean(sy)] },
+    position: { value: [clean(parts.position[0]), clean(parts.position[1])] },
+    rotation: { value: clean(parts.rotation) },
+    scale: { value: [clean(parts.scale[0]), clean(parts.scale[1])] },
     opacity: {
       value: clean(group.opacity.value * child.opacity.value),
     },
