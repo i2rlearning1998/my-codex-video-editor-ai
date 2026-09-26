@@ -43,6 +43,7 @@ import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
 import { DrawTool, withoutLayers } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
+import { addShape, mountShapesPanel } from './shapes';
 import { mountContextToolbar } from './context-toolbar';
 import { mountAnimationPanel } from './animation-panel';
 import { mountAnimatePanel } from './animate-panel';
@@ -180,6 +181,7 @@ export function mountEditorShell(
         <div class="media-panel" id="media-panel" hidden></div>
         <div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" hidden></div>
+        <div class="draw-panel shapes-panel" id="shapes-panel" hidden></div>
         <div class="scene-heading" id="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div>
         <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
@@ -838,6 +840,10 @@ export function mountEditorShell(
     session,
     reportError,
   );
+  // SHP-001: the Elements category offers shapes; a click adds one.
+  mountShapesPanel(element('#shapes-panel'), (preset) =>
+    safely(() => addShape(engine, session, preset)),
+  );
   let activeCategory = 'Scene';
   const applyCategory = (category: string) => {
     for (const sibling of root.querySelectorAll('[data-category]'))
@@ -848,12 +854,15 @@ export function mountEditorShell(
     const isMedia = category === 'Media';
     const isScene = category === 'Scene';
     const isDraw = category === 'Draw';
+    const isElements = category === 'Elements';
     for (const el of mediaOnly) el.hidden = !isMedia;
     for (const el of sceneOnly) el.hidden = !isScene;
     element('#draw-panel').hidden = !isDraw;
+    element('#shapes-panel').hidden = !isElements;
     if (!isDraw) session.setDrawBrush(null);
-    element('.library-placeholder').hidden = isMedia || isScene || isDraw;
-    if (!isScene && !isDraw) {
+    element('.library-placeholder').hidden =
+      isMedia || isScene || isDraw || isElements;
+    if (!isScene && !isDraw && !isElements) {
       const [titleKey, descriptionKey] = descriptions[category]!;
       element('#library-title').textContent = t(titleKey);
       element('#library-description').textContent = t(descriptionKey);

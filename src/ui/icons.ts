@@ -70,6 +70,16 @@ const PATHS: Record<string, string> = {
   italic: 'M9 4h6 M5 16h6 M12 4L8 16',
   spacing:
     'M4 4v12 M16 4v12 M7 10h6 M7 10l2-2 M7 10l2 2 M13 10l-2-2 M13 10l-2 2',
+  'shape-rectangle': 'M3 5h14v10H3z',
+  'shape-rounded':
+    'M6 5h8a3 3 0 013 3v4a3 3 0 01-3 3H6a3 3 0 01-3-3V8a3 3 0 013-3z',
+  'shape-ellipse': 'M10 4a7 6 0 100 12 7 6 0 000-12z',
+  'shape-line': 'M3 10h14',
+  'shape-arrow': 'M3 10h13 M12 6l4 4-4 4',
+  noFill: 'M4 4h12v12H4z M4 16L16 4',
+  strokeStyle:
+    'M3 6h14 M3 10h3 M8 10h3 M13 10h4 M3 14h1 M6 14h1 M9 14h1 M12 14h1 M15 14h1',
+  combine: 'M3 3h9v9H3z M8 8h9v9H8z',
   highlighter: 'M12 3l5 5-7 7-5-5z M5 10l-2 5 2 2 5-2 M3 17h14',
   solo: 'M4 13v-3a6 6 0 0112 0v3 M4 13h3v4H4z M13 13h3v4h-3z',
   reverse: 'M15 7H5 M8 4L5 7l3 3 M5 13h10 M12 10l3 3-3 3',

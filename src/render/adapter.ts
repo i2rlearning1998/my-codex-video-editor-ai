@@ -23,6 +23,7 @@ import {
   type TextMeasurer,
 } from './text-layout';
 import { textStyleOf, type TextStyle } from './text-style';
+import { shapeOf, type ShapeStyle } from './shapes';
 import type { TransformCapabilities } from './transform-capabilities';
 import { drawingOf, type DrawingPath } from './drawing';
 import { applyPresets } from './presets';
@@ -108,6 +109,8 @@ export interface RenderItem {
   /** W2-F5: a text layer's style and its laid-out lines. */
   readonly textStyle?: TextStyle;
   readonly textLayout?: TextLayout;
+  /** W5-D: a shape layer's kind, fill, stroke and corner radius. */
+  readonly shape?: ShapeStyle;
   readonly kind: 'rectangle' | 'text' | 'placeholder' | 'path';
   readonly media?: MediaFrameRequest;
   /** SHP-019: a freehand drawing's stroke in local coordinates. */
@@ -288,6 +291,9 @@ export function deriveRenderItems(input: RenderSource): {
             ...(wrapped ? { lines: wrapped.lines } : {}),
             ...(textLayout
               ? { textStyle: textStyleOf(layer), textLayout }
+              : {}),
+            ...(layer.type === 'shape' && !drawing
+              ? { shape: shapeOf(layer)! }
               : {}),
             ...(media ? { media } : {}),
             ...(drawing ? { path: drawing } : {}),

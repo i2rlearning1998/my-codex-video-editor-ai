@@ -8,6 +8,7 @@ import {
 } from '../ui/align';
 import { locateLayer } from '../render/adapter';
 import { ARRANGE_ACTIONS, arrangeSelection, canArrange } from '../ui/arrange';
+import { BOOLEAN_OPS, canCombine, combineShapes } from '../ui/shapes';
 import { describeSelection } from '../ui/selection-context';
 import { ARRANGE_KEYS, ARRANGE_SHORTCUTS } from '../ui/canvas-menu';
 import { jumpToKeyframe, runKeyframeAction } from '../ui/keyframe-edit';
@@ -151,6 +152,14 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     shortcut: ARRANGE_SHORTCUTS[action],
     isEnabled: ({ session }) => canArrange(session, action),
     run: ({ engine, session }) => arrangeSelection(engine, session, action),
+  })),
+  // SHP-015: boolean shape operations (palette, canvas Combine submenu).
+  ...BOOLEAN_OPS.map((op): RegisteredCommand => ({
+    id: `combine-${op}`,
+    labelKey: `command.${op}`,
+    shortcut: '',
+    isEnabled: ({ session }) => canCombine(session.source, session.selectedIds),
+    run: ({ engine, session }) => combineShapes(engine, session, op),
   })),
   edit('toggle-enabled', ''),
   edit('cut', 'Ctrl+X'),

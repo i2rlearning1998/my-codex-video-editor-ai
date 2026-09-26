@@ -1895,6 +1895,10 @@ input[type='number'] {
 #composition-canvas.drawing {
   cursor: crosshair;
 }
+/* W5-D: five shape presets in the Elements panel. */
+.shape-presets {
+  grid-template-columns: repeat(3, 1fr);
+}
 #composition-canvas.erasing {
   cursor: cell;
 }
