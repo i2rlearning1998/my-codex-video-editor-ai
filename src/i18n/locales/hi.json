@@ -389,5 +389,22 @@
   "position.empty": "इस कंपोज़िशन में कोई लेयर नहीं है।",
   "position.groupCount_one": "{count} आइटम",
   "position.groupCount_other": "{count} आइटम",
-  "draw.eraser": "इरेज़र"
+  "draw.eraser": "इरेज़र",
+  "toolbar.italic": "इटैलिक",
+  "toolbar.lineHeight": "पंक्ति ऊँचाई",
+  "toolbar.letterSpacing": "अक्षर दूरी",
+  "toolbar.paragraphSpacing": "अनुच्छेद दूरी",
+  "toolbar.textCase": "केस",
+  "toolbar.textStyleRange": "यह टेक्स्ट सेटिंग सीमा से बाहर है।",
+  "text.weight400": "सामान्य",
+  "text.weight600": "सेमीबोल्ड",
+  "text.weight700": "बोल्ड",
+  "text.align.left": "बाएँ",
+  "text.align.center": "बीच में",
+  "text.align.right": "दाएँ",
+  "text.align.justify": "दोनों ओर",
+  "text.case.none": "जैसा लिखा",
+  "text.case.upper": "UPPERCASE",
+  "text.case.lower": "lowercase",
+  "text.case.title": "Title Case"
 }

@@ -67,6 +67,9 @@ const PATHS: Record<string, string> = {
   pen: 'M4 16l1-4 8-8 3 3-8 8z M11.5 5.5l3 3 M4 16l4-1',
   brush: 'M13 3l4 4-6 6-4-4z M7 9l-2 2c-1.5 1.5-1 4-3 5 3 1 6 0 7-2l2-2',
   eraser: 'M8 16l-4-4 8-8 6 6-6 6z M6 10l6 6 M8 16h9',
+  italic: 'M9 4h6 M5 16h6 M12 4L8 16',
+  spacing:
+    'M4 4v12 M16 4v12 M7 10h6 M7 10l2-2 M7 10l2 2 M13 10l-2-2 M13 10l-2 2',
   highlighter: 'M12 3l5 5-7 7-5-5z M5 10l-2 5 2 2 5-2 M3 17h14',
   solo: 'M4 13v-3a6 6 0 0112 0v3 M4 13h3v4H4z M13 13h3v4h-3z',
   reverse: 'M15 7H5 M8 4L5 7l3 3 M5 13h10 M12 10l3 3-3 3',

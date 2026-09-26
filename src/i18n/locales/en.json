@@ -389,5 +389,22 @@
   "position.empty": "No layers in this composition.",
   "position.groupCount_one": "{count} item",
   "position.groupCount_other": "{count} items",
-  "draw.eraser": "Eraser"
+  "draw.eraser": "Eraser",
+  "toolbar.italic": "Italic",
+  "toolbar.lineHeight": "Line height",
+  "toolbar.letterSpacing": "Letter spacing",
+  "toolbar.paragraphSpacing": "Paragraph spacing",
+  "toolbar.textCase": "Case",
+  "toolbar.textStyleRange": "That text setting is out of range.",
+  "text.weight400": "Regular",
+  "text.weight600": "Semibold",
+  "text.weight700": "Bold",
+  "text.align.left": "Left",
+  "text.align.center": "Center",
+  "text.align.right": "Right",
+  "text.align.justify": "Justify",
+  "text.case.none": "As typed",
+  "text.case.upper": "UPPERCASE",
+  "text.case.lower": "lowercase",
+  "text.case.title": "Title Case"
 }

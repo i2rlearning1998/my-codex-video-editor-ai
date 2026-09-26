@@ -1115,6 +1115,29 @@ input[type='number'] {
   border-radius: var(--radius-sm);
   background: none;
 }
+.toolbar-field select {
+  padding: var(--space-1);
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+}
+/* W2-F5: the text Spacing row wraps under the toolbar's controls. */
+.toolbar-row {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--color-border);
+}
+.toolbar-button[aria-pressed='true'],
+.toolbar-button[aria-expanded='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
 .toolbar-group {
   display: inline-flex;
   gap: var(--space-1);
