@@ -21,6 +21,15 @@ import {
   resizeBrush,
 } from '../render/drawing';
 import { selectionBounds } from '../render/selection';
+import { layoutParagraphs } from '../render/text-layout';
+import {
+  FONT_WEIGHTS,
+  SYSTEM_FONTS,
+  TEXT_ALIGNS,
+  TEXT_CASES,
+  TEXT_LIMITS,
+  textStyleOf,
+} from '../render/text-style';
 import { iconSvg } from './icons';
 import type { EditorSession } from './session';
 import {
@@ -36,10 +45,6 @@ const LATER: Record<string, Later> = {
   crop: ['toolbar.crop', 'VID-003', 4],
   blend: ['toolbar.blend', 'MSK-001', 6],
   replace: ['toolbar.replace', 'VID-009', 4],
-  font: ['toolbar.font', 'TXT-006', 3],
-  weight: ['toolbar.weight', 'TXT-010', 3],
-  align: ['toolbar.textAlign', 'TXT-014', 3],
-  spacing: ['toolbar.spacing', 'TXT-016', 3],
   effects: ['toolbar.effects', 'TXT-019', 3],
   stroke: ['toolbar.stroke', 'SHP-005', 5],
   width: ['toolbar.strokeWidth', 'SHP-005', 5],
@@ -65,6 +70,7 @@ const LAYOUT: Record<ToolbarKind, readonly string[]> = {
     'font',
     'size',
     'weight',
+    'italic',
     'color',
     'align',
     'spacing',
@@ -198,6 +204,82 @@ export function fontSizeCommand(
     withValue(layer, 'fontSize', value, 'number', time),
   );
 }
+/** W2-F5: the text style properties the toolbar edits, with their checks. */
+const TEXT_STYLE_KEYS = {
+  fontFamily: (value: unknown) => SYSTEM_FONTS.some(([name]) => name === value),
+  fontWeight: (value: unknown) =>
+    (FONT_WEIGHTS as readonly unknown[]).includes(value),
+  fontStyle: (value: unknown) => value === 'italic' || value === 'normal',
+  textAlign: (value: unknown) =>
+    (TEXT_ALIGNS as readonly unknown[]).includes(value),
+  textCase: (value: unknown) =>
+    (TEXT_CASES as readonly unknown[]).includes(value),
+  lineHeight: (value: unknown) =>
+    typeof value === 'number' &&
+    value >= TEXT_LIMITS.lineHeight[0] &&
+    value <= TEXT_LIMITS.lineHeight[1],
+  letterSpacing: (value: unknown) =>
+    typeof value === 'number' &&
+    value >= TEXT_LIMITS.letterSpacing[0] &&
+    value <= TEXT_LIMITS.letterSpacing[1],
+  paragraphSpacing: (value: unknown) =>
+    typeof value === 'number' &&
+    value >= TEXT_LIMITS.paragraphSpacing[0] &&
+    value <= TEXT_LIMITS.paragraphSpacing[1],
+} as const;
+export type TextStyleKey = keyof typeof TEXT_STYLE_KEYS;
+/**
+ * One text style property, or [] when it already has that value. An
+ * unwrapped box that the new line height or paragraph spacing overflows
+ * grows to fit in the same step, so the selection box matches the text.
+ */
+export function textStyleCommands(
+  compositionId: string,
+  layer: SceneLayer,
+  key: TextStyleKey,
+  value: number | string,
+): Command[] {
+  if (layer.type !== 'text') return [];
+  if (!TEXT_STYLE_KEYS[key](value))
+    throw new RangeError(t('toolbar.textStyleRange'));
+  const current = layer.properties[key];
+  if (current && current.value === value) return [];
+  const property = withValue(
+    layer,
+    key,
+    value,
+    typeof value === 'number' ? 'number' : 'string',
+  );
+  const commands = [setProperty(compositionId, layer, key, property)];
+  const wrap = layer.properties.textWrap;
+  const height = layer.properties.height;
+  if (
+    !(wrap?.type === 'boolean' && wrap.value) &&
+    height?.type === 'number' &&
+    !isAnimated(height)
+  ) {
+    const text = layer.properties.text;
+    const size = layer.properties.fontSize;
+    const needed = layoutParagraphs(
+      text?.type === 'string' ? text.value : layer.name,
+      Math.min(size?.type === 'number' ? size.value : 32, 4096),
+      textStyleOf({
+        ...layer,
+        properties: { ...layer.properties, [key]: property },
+      }),
+    ).height;
+    if (needed > height.value)
+      commands.push(
+        setProperty(
+          compositionId,
+          layer,
+          'height',
+          withValue(layer, 'height', Math.ceil(needed), 'number'),
+        ),
+      );
+  }
+  return commands;
+}
 /** Brush size keeps the stroke in place: the path and box are re-padded. */
 export function brushSizeCommands(
   compositionId: string,
@@ -291,6 +373,8 @@ export function mountContextToolbar(
           null)
       : null;
   };
+  /** W2-F5: the Spacing row stays open across re-renders. */
+  let spacingOpen = false;
   const run = (label: string, commands: (Command | null)[]) => {
     const list = commands.filter((command): command is Command => !!command);
     if (list.length) engine.commands.transaction(label, list);
@@ -309,6 +393,7 @@ export function mountContextToolbar(
     value: string,
     commit: (value: number) => void,
     suffix = '',
+    step = '',
   ) => {
     const wrap = document.createElement('label');
     wrap.className = 'toolbar-field';
@@ -320,6 +405,7 @@ export function mountContextToolbar(
     input.id = `toolbar-${id}`;
     input.dataset.control = id;
     input.value = value;
+    if (step) input.step = step;
     input.setAttribute('aria-label', label);
     input.onchange = () =>
       safely(() => {
@@ -357,6 +443,33 @@ export function mountContextToolbar(
     input.dataset.control = id;
     input.value = value;
     input.setAttribute('aria-label', label);
+    input.onchange = () => safely(() => commit(input.value));
+    wrap.append(text, input);
+    return wrap;
+  };
+  const select = (
+    id: string,
+    label: string,
+    options: readonly (readonly [value: string, text: string])[],
+    value: string,
+    commit: (value: string) => void,
+  ) => {
+    const wrap = document.createElement('label');
+    wrap.className = 'toolbar-field';
+    wrap.title = label;
+    const text = document.createElement('span');
+    text.textContent = label;
+    const input = document.createElement('select');
+    input.id = `toolbar-${id}`;
+    input.dataset.control = id;
+    input.setAttribute('aria-label', label);
+    for (const [optionValue, optionText] of options) {
+      const option = document.createElement('option');
+      option.value = optionValue;
+      option.textContent = optionText;
+      input.append(option);
+    }
+    input.value = value;
     input.onchange = () => safely(() => commit(input.value));
     wrap.append(text, input);
     return wrap;
@@ -530,6 +643,75 @@ export function mountContextToolbar(
             );
           return group;
         }
+        case 'font':
+          return select(
+            id,
+            t('toolbar.font'),
+            SYSTEM_FONTS.map(([name]) => [name, name] as const),
+            textStyleOf(layer).family,
+            (value) =>
+              run(
+                'Set font',
+                textStyleCommands(compositionId, layer, 'fontFamily', value),
+              ),
+          );
+        case 'weight':
+          return select(
+            id,
+            t('toolbar.weight'),
+            FONT_WEIGHTS.map(
+              (weight) => [String(weight), t(`text.weight${weight}`)] as const,
+            ),
+            String(textStyleOf(layer).weight),
+            (value) =>
+              run(
+                'Set font weight',
+                textStyleCommands(
+                  compositionId,
+                  layer,
+                  'fontWeight',
+                  Number(value),
+                ),
+              ),
+          );
+        case 'italic': {
+          const italic = textStyleOf(layer).italic;
+          const item = button(id, t('toolbar.italic'), 'italic', () =>
+            run(
+              'Set italic',
+              textStyleCommands(
+                compositionId,
+                layer,
+                'fontStyle',
+                italic ? 'normal' : 'italic',
+              ),
+            ),
+          );
+          item.setAttribute('aria-pressed', String(italic));
+          return item;
+        }
+        case 'align':
+          return select(
+            id,
+            t('toolbar.textAlign'),
+            TEXT_ALIGNS.map(
+              (align) => [align, t(`text.align.${align}`)] as const,
+            ),
+            textStyleOf(layer).align,
+            (value) =>
+              run(
+                'Set text alignment',
+                textStyleCommands(compositionId, layer, 'textAlign', value),
+              ),
+          );
+        case 'spacing': {
+          const item = button(id, t('toolbar.spacing'), 'spacing', () => {
+            spacingOpen = !spacingOpen;
+            render();
+          });
+          item.setAttribute('aria-expanded', String(spacingOpen));
+          return item;
+        }
         case 'size': {
           const size = layer.properties.fontSize;
           return field(
@@ -572,7 +754,94 @@ export function mountContextToolbar(
       }
       throw new Error(`Unknown toolbar control ${id}`);
     });
-    bar.replaceChildren(...controls);
+    // W2-F5 Spacing row (TXT-016, TXT-017): line height, letter and
+    // paragraph spacing, and text case, below the toolbar's controls.
+    const style = kind === 'text' ? textStyleOf(layer) : null;
+    const row =
+      style && spacingOpen
+        ? [
+            (() => {
+              const wrap = document.createElement('div');
+              wrap.className = 'toolbar-row';
+              wrap.setAttribute('role', 'group');
+              wrap.setAttribute('aria-label', t('toolbar.spacing'));
+              wrap.append(
+                field(
+                  'line-height',
+                  t('toolbar.lineHeight'),
+                  round(style.lineHeight, 2),
+                  (value) =>
+                    run(
+                      'Set line height',
+                      textStyleCommands(
+                        compositionId,
+                        layer,
+                        'lineHeight',
+                        value,
+                      ),
+                    ),
+                  '×',
+                  '0.1',
+                ),
+                field(
+                  'letter-spacing',
+                  t('toolbar.letterSpacing'),
+                  round(style.letterSpacing, 2),
+                  (value) =>
+                    run(
+                      'Set letter spacing',
+                      textStyleCommands(
+                        compositionId,
+                        layer,
+                        'letterSpacing',
+                        value,
+                      ),
+                    ),
+                  '',
+                  'any',
+                ),
+                field(
+                  'paragraph-spacing',
+                  t('toolbar.paragraphSpacing'),
+                  round(style.paragraphSpacing, 2),
+                  (value) =>
+                    run(
+                      'Set paragraph spacing',
+                      textStyleCommands(
+                        compositionId,
+                        layer,
+                        'paragraphSpacing',
+                        value,
+                      ),
+                    ),
+                  '',
+                  'any',
+                ),
+                select(
+                  'case',
+                  t('toolbar.textCase'),
+                  TEXT_CASES.map(
+                    (textCase) =>
+                      [textCase, t(`text.case.${textCase}`)] as const,
+                  ),
+                  style.textCase,
+                  (value) =>
+                    run(
+                      'Set text case',
+                      textStyleCommands(
+                        compositionId,
+                        layer,
+                        'textCase',
+                        value,
+                      ),
+                    ),
+                ),
+              );
+              return wrap;
+            })(),
+          ]
+        : [];
+    bar.replaceChildren(...controls, ...row);
   };
   render();
   return { render };

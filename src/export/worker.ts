@@ -38,7 +38,8 @@ import {
   type RenderSource,
 } from '../render/adapter';
 import { drawComposition } from '../render/canvas';
-import { TEXT_FONT } from '../render/text-layout';
+import { measureWithContext } from '../render/text-style';
+import type { TextMeasurer } from '../render/text-layout';
 import { fitMatrix, frameTimes, type ExportSettings } from './settings';
 
 export interface ExportJob {
@@ -121,10 +122,8 @@ async function run(job: ExportJob): Promise<void> {
   const canvas = new OffscreenCanvas(settings.width, settings.height);
   const context = canvas.getContext('2d')!;
   const measure = new OffscreenCanvas(1, 1).getContext('2d')!;
-  const measureText = (text: string, fontSize: number) => {
-    measure.font = TEXT_FONT(fontSize);
-    return measure.measureText(text).width;
-  };
+  const measureText: TextMeasurer = (text, fontSize, style) =>
+    measureWithContext(measure, text, fontSize, style);
   const sourceAt = (time: number, frames?: FrameProvider): RenderSource => ({
     // ANI-003: the same evaluation as the preview.
     composition: compositionAt(job.composition, time),

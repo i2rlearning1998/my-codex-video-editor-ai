@@ -2,6 +2,15 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 2 part F5 (W2-F5) — 2026-09-26
+
+- The text toolbar is now live:
+  - **Font:** seven system fonts; the full font picker comes in Wave 3.
+  - **Weight:** Regular, Semibold or Bold, plus **Italic**.
+  - **Align:** left, center, right or justified.
+  - **Spacing:** line height, letter spacing, paragraph spacing, and **Case** (UPPERCASE, lowercase or Title Case). Case changes only how the text looks; the typed text is kept.
+- Each change is one undo step. When a bigger line height or paragraph spacing needs more room, the text box grows to fit.
+
 ## Wave 2 part F4 (W2-F4) — 2026-09-26
 
 - The Draw panel has an **Eraser**. Drag it over freehand strokes to remove each one it touches; Undo brings them all back in one step. It never erases text, shapes, images or videos.

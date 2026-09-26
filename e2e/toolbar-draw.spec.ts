@@ -89,11 +89,15 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   expect(await page.locator('canvas').boundingBox()).toEqual(canvasBefore);
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'text');
   // The spec's text controls, in order.
-  await expect(toolbar(page).locator('[data-control]')).toHaveCount(9);
-  await expect(control(page, 'font')).toHaveAttribute('aria-disabled', 'true');
-  await expect(control(page, 'font')).toHaveAttribute(
+  await expect(toolbar(page).locator('[data-control]')).toHaveCount(10);
+  // W2-F5 made Font, Weight, Align and Spacing live; Effects is still later.
+  await expect(control(page, 'effects')).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  await expect(control(page, 'effects')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 3 (TXT-006)',
+    'Not built yet: planned for Wave 3 (TXT-019)',
   );
   await page.screenshot({ path: testInfo.outputPath('text-toolbar.png') });
   await commit(page, 'size', '60');

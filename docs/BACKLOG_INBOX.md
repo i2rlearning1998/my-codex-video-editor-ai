@@ -39,3 +39,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-26 | W2-F1 CV | The timeline menu uses the shared capability rules but still renders its own buttons; move it onto the shared menu renderer (context-menu.ts) with the timeline clip context.
   2026-09-26 | W2-F1 CV | The spec's cluster items Refresh (reset) and Comment are not built; Lock waits for CV-024.
   2026-09-26 | W2-F1 CV | Front and back layer order have no shortcut (the global matcher takes no Alt chords, and Shift changes the bracket key on most layouts).
+  2026-09-26 | W2-F5 TXT | Copy style (CV-039) copies only size and color from text; it could also carry the W2-F5 font, weight, italic, alignment, spacing and case.
+  2026-09-26 | W2-F5 TXT | Letter spacing or a wider font can push unwrapped text past its box's right edge, where it is clipped (as a large font size already is); consider growing the width like the height.

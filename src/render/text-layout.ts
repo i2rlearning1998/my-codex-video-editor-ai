@@ -1,13 +1,58 @@
-export type TextMeasurer = (text: string, fontSize: number) => number;
+import {
+  applyCase,
+  DEFAULT_TEXT_STYLE,
+  textFont,
+  type TextStyle,
+} from './text-style';
+
+/** A line's width at a size; `style` defaults to DEFAULT_TEXT_STYLE. */
+export type TextMeasurer = (
+  text: string,
+  fontSize: number,
+  style?: TextStyle,
+) => number;
 export const TEXT_FONT = (fontSize: number) =>
-  `600 ${fontSize}px Arial, sans-serif`;
+  textFont(DEFAULT_TEXT_STYLE, fontSize);
 /** Deterministic metrics for headless ports. The browser supplies actual Canvas font measurements. */
-export const fallbackTextMeasure: TextMeasurer = (text, size) =>
-  Array.from(text).length * size * 0.6;
+export const fallbackTextMeasure: TextMeasurer = (text, size, style) =>
+  Array.from(text).length * (size * 0.6 + (style?.letterSpacing ?? 0));
 export interface TextLayout {
   readonly lines: readonly string[];
   readonly height: number;
   readonly lineHeight: number;
+  /** TXT-016: whether each line ends a paragraph (paragraph spacing follows). */
+  readonly paragraphEnds: readonly boolean[];
+  readonly paragraphSpacing: number;
+}
+/** The y offset of every line: line height plus spacing after paragraphs. */
+export function lineOffsets(layout: TextLayout): number[] {
+  let y = 0;
+  return layout.lines.map((_, index) => {
+    const at = y;
+    y +=
+      layout.lineHeight +
+      (layout.paragraphEnds[index] ? layout.paragraphSpacing : 0);
+    return at;
+  });
+}
+/** Unwrapped text: one line per paragraph. */
+export function layoutParagraphs(
+  text: string,
+  fontSize: number,
+  style: TextStyle = DEFAULT_TEXT_STYLE,
+  maxLines = 1000,
+): TextLayout {
+  const lines = applyCase(text, style.textCase).split('\n', maxLines);
+  const lineHeight = fontSize * style.lineHeight;
+  return Object.freeze({
+    lines: Object.freeze(lines),
+    lineHeight,
+    height:
+      lines.length * lineHeight +
+      Math.max(0, lines.length - 1) * style.paragraphSpacing,
+    paragraphEnds: Object.freeze(lines.map(() => true)),
+    paragraphSpacing: style.paragraphSpacing,
+  });
 }
 /** Greedy word wrapping with explicit newlines and code-point splitting of overlong words. */
 export function layoutText(
@@ -15,6 +60,7 @@ export function layoutText(
   width: number,
   fontSize: number,
   measure: TextMeasurer = fallbackTextMeasure,
+  style: TextStyle = DEFAULT_TEXT_STYLE,
 ): TextLayout {
   if (![width, fontSize].every(Number.isFinite) || width <= 0 || fontSize <= 0)
     throw new RangeError('Invalid text layout dimensions');
@@ -23,8 +69,9 @@ export function layoutText(
       'Text width layout supports at most 100,000 characters',
     );
   const lines: string[] = [];
+  const ends: boolean[] = [];
   const fits = (value: string) => {
-    const result = measure(value, fontSize);
+    const result = measure(value, fontSize, style);
     if (!Number.isFinite(result) || result < 0)
       throw new RangeError('Invalid text metrics');
     return result <= width;
@@ -33,8 +80,11 @@ export function layoutText(
     if (lines.length >= 10000)
       throw new RangeError('Text layout exceeds 10,000 lines');
     lines.push(line);
+    ends.push(false);
   };
-  for (const paragraph of text.replace(/\r\n?/g, '\n').split('\n')) {
+  for (const paragraph of applyCase(text, style.textCase)
+    .replace(/\r\n?/g, '\n')
+    .split('\n')) {
     let line = '';
     for (const token of paragraph.match(/\s+|\S+/gu) ?? []) {
       if (/^\s+$/u.test(token)) {
@@ -66,9 +116,21 @@ export function layoutText(
       }
     }
     push(line.trimEnd());
+    ends[ends.length - 1] = true;
   }
-  const lineHeight = fontSize * 1.2,
-    height = Math.max(lineHeight, lines.length * lineHeight);
+  const lineHeight = fontSize * style.lineHeight,
+    paragraphs = ends.filter(Boolean).length,
+    height = Math.max(
+      lineHeight,
+      lines.length * lineHeight +
+        Math.max(0, paragraphs - 1) * style.paragraphSpacing,
+    );
   if (!Number.isFinite(height)) throw new RangeError('Text layout overflow');
-  return Object.freeze({ lines: Object.freeze(lines), lineHeight, height });
+  return Object.freeze({
+    lines: Object.freeze(lines),
+    lineHeight,
+    height,
+    paragraphEnds: Object.freeze(ends),
+    paragraphSpacing: style.paragraphSpacing,
+  });
 }
