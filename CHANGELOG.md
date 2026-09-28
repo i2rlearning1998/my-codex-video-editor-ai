@@ -214,3 +214,9 @@ Initial Phase 1 / Tier 1 foundation in an empty repository.
 - Documented architecture, future development rules, limitations, and the recommended next milestone.
 
 Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infrastructure remain outside this release.
+
+## W7-CODEX part A — 2026-09-28 (unmerged)
+
+- Added isolated Sound panel, undoable clip gain/mute, volume keys, pan and fades.
+- Shared graph now serves preview, scrub and export with explicit stereo downmix.
+- Added command/math tests and browser UI/sample-comparison specs; browser proof pending CI.

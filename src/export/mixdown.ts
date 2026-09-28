@@ -1,5 +1,5 @@
+import { scheduleAudioClip } from '../audio/graph';
 import {
-  clipSchedule,
   reverseAudioBuffer,
   type AudibleClip,
   type AudioDecoder,
@@ -24,13 +24,18 @@ export async function mixdown(
     const decoded = await decoder.decode(clip.sourceAssetId);
     if (!(decoded instanceof AudioBuffer)) continue;
     const buffer = clip.reversed ? reverseAudioBuffer(decoded) : decoded;
-    const plan = clipSchedule(clip, start, buffer.duration);
-    if (!plan || plan.delay >= end - start) continue;
-    const node = context.createBufferSource();
-    node.buffer = buffer;
-    node.playbackRate.value = clip.speed;
-    node.connect(context.destination);
-    node.start(plan.delay, plan.offset, plan.length);
+    if (clip.startTime >= end) continue;
+    const result = scheduleAudioClip(
+      context,
+      context.destination,
+      clip,
+      buffer,
+      start,
+      0,
+      0,
+      end - Math.max(start, clip.startTime),
+    );
+    if (!result) continue;
     scheduled++;
   }
   if (!scheduled) return null;

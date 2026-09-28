@@ -735,3 +735,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | AI-011 | P2 | W10 | Todo | AI noise reduction and audio cleanup |
 | AI-012 | P2 | W10 | Todo | AI generated templates and layouts from a prompt |
 | AI-013 | P2 | W10 | Todo | AI provider abstraction with a backend proxy; API keys never in the browser |
+
+## W7-CODEX append-only progress — W7-A (2026-09-28)
+
+Existing rows above are preserved. Scoped implementation claims (pending browser measurements): AUD-002 clip gain/mute/volume keys **Claimed** (master volume absent); AUD-003 fade lengths/playback **Claimed** (handles excluded by brief); AUD-009 pan **Claimed**; AUD-017 native mono/quad/5.1 speaker downmix **Claimed**; AUD-015 shared preview/export graph **Claimed**. No duplicate or shifted IDs.
