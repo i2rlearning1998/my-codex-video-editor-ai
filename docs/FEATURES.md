@@ -500,9 +500,12 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-015 | P2 | W5 | Verified | Freehand pen and boolean shape operations |
 | SHP-016 | P2 | W8 | Todo | Data charts (bar, line, pie) from typed or pasted data |
 | SHP-017 | P2 | W8 | Todo | Lottie import |
-| SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker and Highlighter with brush size, color and opacity; choosing a brush puts the canvas in draw mode, and Esc, V or another category leaves it |
+| SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker, Highlighter, Glow pen and Eraser; each brush keeps its own size, colour and opacity (1 to 100, each with a number field, slider and presets; colour from the design's colours, the picker or the eyedropper); choosing a tool puts the canvas in draw mode, and Esc, V or another category leaves it |
 | SHP-019 | P0 | W2 | Verified | Each freehand stroke becomes one undoable shape layer with a clip at the playhead; it can be selected, moved, resized, saved and reloaded, and draws the same in preview and export |
-| SHP-020 | P0 | W2 | Verified | The Draw panel has an Eraser that removes whole freehand strokes it touches, as one undo step per drag; size, color and opacity controls are shared across Pen, Marker and Highlighter |
+| SHP-020 | P0 | W2 | Verified | The Eraser removes the ink it passes over: strokes it crosses are cut into parts (still one layer each) and strokes it covers are removed, as one undo step per drag |
+| SHP-021 | P0 | W2 | Verified | The brushes draw differently: Pen a solid round line, Marker a softer rim, Highlighter flat (chisel) ends and translucent over what is under it, Glow pen a bright core with a halo |
+| SHP-022 | P0 | W2 | Verified | Strokes are smoothed; holding Shift draws a straight line; a circle the size of the brush follows the pointer while drawing |
+| SHP-023 | P1 | W2 | Todo | Shape assist: a roughly drawn line, rectangle or ellipse can become the clean shape |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 

@@ -17,7 +17,7 @@ import {
   MAX_BRUSH,
   MIN_BRUSH,
   drawingOf,
-  formatPath,
+  formatStrokes,
   resizeBrush,
 } from '../render/drawing';
 import { selectionBounds } from '../render/selection';
@@ -55,6 +55,7 @@ import { copyProperty, isAnimated, withValueAt } from './keyframes';
 import { createGeometryControls } from './geometry-fields';
 import type { GeometryField } from './geometry';
 import { sceneLengthCommands } from './scene-length';
+import { documentColors } from './palette';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 /** A control not built yet: its label key, ledger item and wave. */
@@ -311,43 +312,15 @@ export function brushSizeCommands(
   if (!(value >= MIN_BRUSH && value <= MAX_BRUSH))
     throw new RangeError(t('toolbar.brushRange'));
   if (value === drawing.width) return [];
-  const resized = resizeBrush(drawing.points, drawing.width, value);
-  const matrix = localTransformMatrix({
-    ...(layer.transform as TransformValues),
-    position: { value: [0, 0] },
-  });
-  const shift = transformPoint(matrix, [resized.shift, resized.shift]);
-  const [x, y] = layer.transform.position.value;
-  // An animated position moves by the same offset at every keyframe.
-  const position = layer.transform.position;
-  const moved = isAnimated(position)
-    ? [
-        {
-          type: 'SET_PROPERTY',
-          compositionId,
-          layerId: layer.id,
-          target: { kind: 'transform', key: 'position' },
-          property: {
-            ...copyProperty(position),
-            value: [x - shift[0], y - shift[1]],
-            keyframes: position.keyframes.map((frame) => ({
-              ...frame,
-              value: [frame.value[0] - shift[0], frame.value[1] - shift[1]],
-            })),
-          },
-        } as Command,
-      ]
-    : buildTransformCommands(compositionId, layer, {
-        ...(layer.transform as TransformValues),
-        position: { value: [x - shift[0], y - shift[1]] },
-      });
+  const resized = resizeBrush(drawing.strokes, drawing.width, value);
   return [
-    ...moved,
-    setProperty(
+    ...drawingPathCommands(
       compositionId,
       layer,
-      'path',
-      withValue(layer, 'path', formatPath(resized.points), 'string'),
+      resized.strokes,
+      [resized.shift, resized.shift],
+      resized.width,
+      resized.height,
     ),
     setProperty(
       compositionId,
@@ -355,17 +328,73 @@ export function brushSizeCommands(
       'strokeWidth',
       withValue(layer, 'strokeWidth', value, 'number'),
     ),
+  ];
+}
+/**
+ * A drawing's new local strokes and box. The points were moved by `shift`
+ * (local units), so the layer moves back by the same amount in its parent
+ * (every keyframe too) and the ink stays where it was on the canvas. Used by
+ * the brush size and by the area eraser (G4).
+ */
+export function drawingPathCommands(
+  compositionId: string,
+  layer: SceneLayer,
+  strokes: readonly (readonly Point2[])[],
+  shiftBy: Point2,
+  width: number,
+  height: number,
+): Command[] {
+  const matrix = localTransformMatrix({
+    ...(layer.transform as TransformValues),
+    position: { value: [0, 0] },
+  });
+  const shift = transformPoint(matrix, shiftBy);
+  const [x, y] = layer.transform.position.value;
+  // An animated position moves by the same offset at every keyframe.
+  const position = layer.transform.position;
+  const moved =
+    shift[0] === 0 && shift[1] === 0
+      ? []
+      : isAnimated(position)
+        ? [
+            {
+              type: 'SET_PROPERTY',
+              compositionId,
+              layerId: layer.id,
+              target: { kind: 'transform', key: 'position' },
+              property: {
+                ...copyProperty(position),
+                value: [x - shift[0], y - shift[1]],
+                keyframes: position.keyframes.map((frame) => ({
+                  ...frame,
+                  value: [frame.value[0] - shift[0], frame.value[1] - shift[1]],
+                })),
+              },
+            } as Command,
+          ]
+        : buildTransformCommands(compositionId, layer, {
+            ...(layer.transform as TransformValues),
+            position: { value: [x - shift[0], y - shift[1]] },
+          });
+  return [
+    ...moved,
+    setProperty(
+      compositionId,
+      layer,
+      'path',
+      withValue(layer, 'path', formatStrokes(strokes), 'string'),
+    ),
     setProperty(
       compositionId,
       layer,
       'width',
-      withValue(layer, 'width', resized.width, 'number'),
+      withValue(layer, 'width', width, 'number'),
     ),
     setProperty(
       compositionId,
       layer,
       'height',
-      withValue(layer, 'height', resized.height, 'number'),
+      withValue(layer, 'height', height, 'number'),
     ),
   ];
 }
@@ -443,19 +472,8 @@ export function mountContextToolbar(
       onInvalid: (message) => report(new RangeError(message)),
     });
   /** Every colour used in the composition, for the picker's design row. */
-  const designColors = () => {
-    const colors: string[] = [];
-    const visit = (layers: readonly SceneLayer[]) => {
-      for (const layer of layers) {
-        for (const property of Object.values(layer.properties))
-          if (property?.type === 'color')
-            colors.push(property.value.slice(0, 7).toLowerCase());
-        visit(layer.children);
-      }
-    };
-    visit(session.source.composition.layers);
-    return colors;
-  };
+  /** Every colour used in the composition, for the picker's design row. */
+  const designColors = () => documentColors(session.source.composition);
   const colorField = (
     id: string,
     label: string,

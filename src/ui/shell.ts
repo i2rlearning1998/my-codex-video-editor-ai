@@ -45,7 +45,7 @@ import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
-import { DrawTool, withoutLayers } from './draw-tool';
+import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape, mountShapesPanel } from './shapes';
 import { mountContextToolbar } from './context-toolbar';
@@ -204,7 +204,7 @@ export function mountEditorShell(
             <button type="button" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -302,6 +302,25 @@ export function mountEditorShell(
     return { ...view, matrix: multiplyMatrices(centered, view.matrix) };
   };
   const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
+  // G4: a circle the size of the brush (or eraser) follows the pointer.
+  const brushCursor = element('#brush-cursor');
+  const moveBrushCursor = (event: PointerEvent) => {
+    const brush = session.drawBrush;
+    brushCursor.hidden = !brush;
+    if (!brush) return;
+    const box = stage.getBoundingClientRect();
+    const size = Math.max(4, session.drawStyle.size * canvasView.scale);
+    Object.assign(brushCursor.style, {
+      width: `${size}px`,
+      height: `${size}px`,
+      left: `${event.clientX - box.left - size / 2}px`,
+      top: `${event.clientY - box.top - size / 2}px`,
+    });
+    brushCursor.classList.toggle('erasing', brush === 'eraser');
+  };
+  canvas.addEventListener('pointermove', moveBrushCursor);
+  canvas.addEventListener('pointerdown', moveBrushCursor);
+  canvas.addEventListener('pointerleave', () => (brushCursor.hidden = true));
   const canvasView = mountCanvasView(
     stage,
     canvas,
@@ -366,10 +385,10 @@ export function mountEditorShell(
     );
     const drawn = {
       ...session.source,
-      // SHP-020: strokes the eraser touched vanish until release commits them.
+      // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
         ? {
-            composition: withoutLayers(
+            composition: withErasedPaths(
               session.source.composition,
               drawTool.erased,
             ),

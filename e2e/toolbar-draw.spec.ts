@@ -206,7 +206,7 @@ test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and cl
     'aria-checked',
     'true',
   );
-  await page.locator('#draw-color').fill('#0055ff');
+  await pickColor(page, 'draw-color', '#0055ff');
   const before = layers((await hook(page)).project).length;
   await stroke(page, [
     [900, 200],
@@ -231,8 +231,9 @@ test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and cl
   expect(b).toBeGreaterThan(200);
   expect(g).toBeLessThan(120);
   await page.screenshot({ path: testInfo.outputPath('marker-stroke.png') });
-  // Still drawing: a click does not select anything.
-  const at = await toScreen(page, 1000, 260);
+  // Still drawing: a click does not select anything. (G4 smoothing rounds
+  // the corner at 1000,260, so click inside the stroke's box.)
+  const at = await toScreen(page, 1000, 240);
   await page.mouse.click(at.x, at.y);
   expect((await hook(page)).session.selectedIds).toEqual([]);
   // Esc leaves draw mode; now a click selects the drawing.
@@ -333,15 +334,15 @@ test('[CV-039] Copy style from text and Paste style onto a shape and a text in o
   );
 });
 
-test('[SHP-020] the Eraser removes the whole strokes it touches in one undo step; size, color and opacity are shared by the brushes', async ({
+test('[SHP-020][SHP-018] the Eraser removes the ink it passes over (strokes are cut, not deleted) in one undo step; each brush keeps its own settings', async ({
   page,
 }, testInfo) => {
   await page.locator('[data-category="Draw"]').click();
   await page.locator('[data-brush="pen"]').click();
-  const size = page.locator('#draw-size-value');
+  const size = page.locator('#draw-size');
   await size.fill('10');
   await size.press('Enter');
-  await page.locator('#draw-color').fill('#0055ff');
+  await pickColor(page, 'draw-color', '#0055ff');
   const blank = await pixel(page, 1100, 60);
   const before = layers((await hook(page)).project).length;
   const lines = [60, 250, 650];
@@ -354,11 +355,20 @@ test('[SHP-020] the Eraser removes the whole strokes it touches in one undo step
     (item) => item.id,
   );
   expect(await pixel(page, 1100, 60)).not.toEqual(blank);
-  // Shared settings: the Marker keeps the size and color set for the Pen.
+  // G4: each brush keeps its own settings: the Marker still has its own.
   await page.locator('[data-brush="marker"]').click();
+  await expect(size).toHaveValue('12');
+  await expect(page.locator('#draw-color')).toHaveAttribute(
+    'data-value',
+    '#ff4fa3',
+  );
+  await page.locator('[data-brush="pen"]').click();
   await expect(size).toHaveValue('10');
-  await expect(page.locator('#draw-color')).toHaveValue('#0055ff');
-  // The Eraser uses the size; color and opacity do not apply to it.
+  await expect(page.locator('#draw-color')).toHaveAttribute(
+    'data-value',
+    '#0055ff',
+  );
+  // The Eraser has a size only; colour and opacity do not apply to it.
   await page.locator('[data-brush="eraser"]').click();
   await expect(page.locator('[data-brush="eraser"]')).toHaveAttribute(
     'aria-checked',
@@ -366,40 +376,41 @@ test('[SHP-020] the Eraser removes the whole strokes it touches in one undo step
   );
   await expect(page.locator('#draw-color')).toBeDisabled();
   await expect(page.locator('#draw-opacity')).toBeDisabled();
-  await expect(size).toHaveValue('10');
+  await expect(size).toHaveValue('24');
   // A vertical drag across the first two strokes (and the example's cards).
   const from = await toScreen(page, 1100, 20);
   const to = await toScreen(page, 1100, 400);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 12 });
-  // Touched strokes vanish at once, but nothing is committed before release.
+  // The ink under the eraser vanishes at once; nothing is committed yet.
   await expect.poll(() => pixel(page, 1100, 60)).toEqual(blank);
+  expect(await pixel(page, 1000, 60)).not.toEqual(blank);
   expect((await hook(page)).history.labels.at(-1)).toBe('Draw');
   await page.screenshot({ path: testInfo.outputPath('erasing.png') });
   await page.mouse.up();
-  const after = (await hook(page)).project.compositions[0]!.layers.map(
-    (item) => item.id,
-  );
-  expect(after).not.toContain(ids[0]);
-  expect(after).not.toContain(ids[1]);
-  expect(after).toContain(ids[2]);
-  // Only freehand strokes are erased: the example's own layers remain.
-  expect(layers((await hook(page)).project)).toHaveLength(before + 1);
-  const history = (await hook(page)).history.labels;
-  expect(history.slice(-2)).toEqual(['Draw', 'Erase']);
-  // The clips went with the layers.
-  const clips = (await hook(page)).project.compositions[0]!.tracks.flatMap(
-    (track) => track.clips,
-  );
-  expect(clips.some((clip) => clip.layerId === ids[0])).toBe(false);
-  // One undo brings both strokes back.
+  // By area: both strokes remain, each cut in two; the ink either side stays.
+  const project = (await hook(page)).project;
+  expect(layers(project)).toHaveLength(before + 3);
+  for (const id of ids.slice(0, 2)) {
+    const cut = project.compositions[0]!.layers.find(
+      (item) => item.id === id,
+    )! as any;
+    expect(cut.properties.path.value.split(';')).toHaveLength(2);
+  }
+  expect(await pixel(page, 1100, 60)).toEqual(blank);
+  expect(await pixel(page, 1000, 60)).not.toEqual(blank);
+  expect(await pixel(page, 1140, 60)).not.toEqual(blank);
+  expect(await pixel(page, 1100, 650)).not.toEqual(blank);
+  // Only freehand ink is erased: the example's own layers are unchanged.
+  expect((await hook(page)).history.labels.slice(-2)).toEqual([
+    'Draw',
+    'Erase',
+  ]);
+  // One undo brings the whole strokes back.
   await page.keyboard.press('Control+z');
-  const restored = (await hook(page)).project.compositions[0]!.layers.map(
-    (item) => item.id,
-  );
-  expect(restored).toEqual(expect.arrayContaining(ids));
-  // A drag that touches nothing adds no history (redo stays available).
+  expect(await pixel(page, 1100, 60)).not.toEqual(blank);
+  // A drag over no ink adds no history (redo stays available).
   const undoable = (await hook(page)).history.labels.length;
   await stroke(page, [
     [40, 700],

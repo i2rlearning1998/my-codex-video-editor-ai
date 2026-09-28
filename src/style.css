@@ -1850,8 +1850,18 @@ input[type='number'] {
 }
 .draw-brushes {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* G4: five tools wrap into rows instead of overflowing the panel. */
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: var(--space-2);
+}
+.draw-brushes button {
+  min-width: 0;
+}
+.draw-brushes button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .draw-brushes button {
   display: flex;
@@ -2782,4 +2792,21 @@ button.color-swatch:hover {
 }
 .canvas-zoom-controls [aria-pressed='true'] {
   color: var(--color-accent);
+}
+
+/* G4: the brush-size cursor while drawing. */
+.brush-cursor {
+  position: absolute;
+  border: 1px solid var(--color-text);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-bg-sunken);
+  pointer-events: none;
+  z-index: 3;
+}
+.brush-cursor.erasing {
+  border-style: dashed;
+}
+.draw-settings {
+  display: grid;
+  gap: var(--space-2);
 }

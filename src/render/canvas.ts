@@ -18,7 +18,7 @@ import {
   selectionGeometry,
   type SelectionHandle,
 } from './selection';
-import type { DrawingPath } from './drawing';
+import { brushCap, type DrawingPath } from './drawing';
 import { drawShape } from './shapes';
 import {
   deriveRenderItems,
@@ -212,18 +212,60 @@ export interface DrawOptions {
   readonly surround?: string;
 }
 
+/**
+ * G4: each brush draws differently. Pen: a round, solid line. Marker: a
+ * round line with a softer, lighter rim. Highlighter: a flat-ended (chisel)
+ * line that multiplies with what is under it, so text stays readable. Glow
+ * pen: a bright core with a halo of its colour.
+ */
 function strokePath(
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   path: DrawingPath,
 ) {
-  context.strokeStyle = path.color;
-  context.lineWidth = path.width;
-  context.lineCap = path.cap;
-  context.lineJoin = path.cap === 'butt' ? 'miter' : 'round';
-  context.beginPath();
-  context.moveTo(...path.points[0]!);
-  for (const point of path.points.slice(1)) context.lineTo(...point);
-  context.stroke();
+  const trace = () => {
+    context.beginPath();
+    for (const stroke of path.strokes) {
+      context.moveTo(...stroke[0]!);
+      for (const point of stroke.slice(1)) context.lineTo(...point);
+    }
+  };
+  const line = (width: number, color: string) => {
+    context.lineWidth = width;
+    context.strokeStyle = color;
+    trace();
+    context.stroke();
+  };
+  context.lineCap = brushCap(path.brush);
+  context.lineJoin = path.brush === 'highlighter' ? 'miter' : 'round';
+  const alpha = context.globalAlpha;
+  switch (path.brush) {
+    case 'marker':
+      context.globalAlpha = alpha * 0.55;
+      line(path.width, path.color);
+      context.globalAlpha = alpha;
+      line(path.width * 0.7, path.color);
+      return;
+    case 'highlighter':
+      context.globalCompositeOperation = 'multiply';
+      line(path.width, path.color);
+      context.globalCompositeOperation = 'source-over';
+      return;
+    case 'glow': {
+      // shadowBlur is in device pixels: scale it with the current transform.
+      const { a, b } = context.getTransform();
+      context.shadowColor = path.color;
+      context.shadowBlur = path.width * 1.5 * Math.hypot(a, b);
+      line(path.width, path.color);
+      context.shadowBlur = 0;
+      context.shadowColor = 'transparent';
+      context.globalAlpha = alpha * 0.85;
+      line(path.width * 0.4, '#ffffff');
+      context.globalAlpha = alpha;
+      return;
+    }
+    default:
+      line(path.width, path.color);
+  }
 }
 
 export function drawComposition(

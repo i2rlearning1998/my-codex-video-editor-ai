@@ -259,7 +259,7 @@
   "command.alignToCanvas": "Relative to canvas",
   "library.draw": "Draw",
   "draw.title": "Draw",
-  "draw.hint": "Pick a brush, then drag on the canvas. The Eraser removes whole strokes it touches. Esc or V stops drawing.",
+  "draw.hint": "Pick a brush, then drag on the canvas; hold Shift for a straight line. The Eraser removes the ink it passes over. Esc or V stops drawing.",
   "draw.brush": "Brush",
   "draw.pen": "Pen",
   "draw.marker": "Marker",
@@ -474,5 +474,6 @@
   "scene.lengthRange": "A scene is at least one frame long.",
   "scene.lengthEmpty": "This scene is empty; add a layer to set its length.",
   "scene.lengthCutsClip": "\"{name}\" starts at {time} s; move or delete it before making the scene shorter.",
-  "command.zoomFill": "Zoom to fill"
+  "command.zoomFill": "Zoom to fill",
+  "draw.glow": "Glow pen"
 }

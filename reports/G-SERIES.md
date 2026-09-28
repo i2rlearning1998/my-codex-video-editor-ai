@@ -129,3 +129,44 @@ _Completed at the end of the series._
 - Background applies to all scenes. A per-scene background and scene Notes need a new composition field (schema 6), so they were not built (STOP rule; backlog).
 - CV-017 stays Claimed: Fit, 100% and Fill are not in one dropdown.
 - The view is not remembered across reloads (transient, like selection).
+
+## Part G4: Draw rebuilt
+
+### What changed
+
+- **Five tools (SHP-018, SHP-021, D-111):** Pen, Marker, Highlighter, Glow pen and Eraser. Each brush draws differently:
+  - Pen: a solid round line;
+  - Marker: a softer, lighter rim around a solid core;
+  - Highlighter: flat (chisel) ends, translucent, multiplying with what is under it so text stays readable;
+  - Glow pen: a bright white core with a halo of its colour.
+  - Every stroke records its brush, and preview and export draw it the same way.
+- **Own settings per brush (SHP-018, D-111).** Each brush keeps its own size, colour and opacity; this replaces the shared settings of D-079.
+  - Size and opacity run 1 to 100, each with a number field, slider and presets.
+  - Colour comes from the design's colours, the full picker or the eyedropper.
+  - The Eraser has only a size.
+- **Drawing aids (SHP-022):** smoothed strokes; Shift for a straight line from the start point; a circle the size of the brush follows the pointer.
+- **Area eraser (SHP-020, D-111).** It removes only the ink it passes over:
+  - a stroke it crosses is cut into parts, which stay one layer with one clip;
+  - a stroke it covers completely is deleted;
+  - the ink either side stays where it was, and each drag is one undo step.
+- **Strokes stay ordinary layers:** selectable, movable and resizable from their corners (G2).
+
+### Try it (G4)
+
+| #   | Do this                                                                             | Expect                                                                         | ID      |
+| --- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------- |
+| 1   | Open Draw; draw one line each with Pen, Marker, Highlighter and Glow pen            | Four clearly different looks: solid, soft rim, flat translucent, glowing       | SHP-021 |
+| 2   | Draw the Highlighter across some text                                               | The text stays readable under it                                               | SHP-021 |
+| 3   | Pick the Marker, set Size 20 and Opacity 60, then pick the Pen                      | The Pen still has its own size and opacity; back to Marker: 20 and 60 again    | SHP-018 |
+| 4   | Open the colour, click a colour listed under "In this design"                       | The brush takes that colour                                                    | SHP-018 |
+| 5   | Hover the canvas with a brush                                                       | A circle the size of the brush follows the pointer                             | SHP-022 |
+| 6   | Hold Shift and draw a zigzag                                                        | A straight line from where you started to where you let go                     | SHP-022 |
+| 7   | Pick the Eraser and drag across the middle of a stroke                              | Only the part under the eraser disappears; the two ends stay; Ctrl+Z restores  | SHP-020 |
+| 8   | Press V, click a stroke and drag its corner                                         | It is selected and grows evenly                                                | SHP-019 |
+
+### Known gaps (G4)
+
+- Shape assist (turning a rough line, rectangle or ellipse into a clean shape) is not built: SHP-023 stays Todo.
+- The eraser works on the stroke's centre line (plus a quarter of its width), so a sliver of a very wide stroke can remain at the eraser's edge.
+- The Glow pen's halo and the Marker's rim reach slightly past the layer's box, like a line's round caps.
+- In one full e2e run in the sandbox, the frame-exact export test (EXP-001) read one exported frame as the previous one; the whole export spec passed on a re-run (9 of 9). The test's video has no drawings, so G4 does not touch it. It is recorded here as a possible sandbox load flake, to watch in CI.

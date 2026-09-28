@@ -221,7 +221,7 @@ export function bindCanvasInteraction(
   const update = (event: PointerEvent) => {
     const point = screenPoint(event);
     if (draw?.active) {
-      draw.add(compositionPoint(point));
+      draw.add(compositionPoint(point), event.shiftKey);
       return;
     }
     if (marquee) {

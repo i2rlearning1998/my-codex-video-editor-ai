@@ -41,12 +41,19 @@ export class EditorSession {
   #keyframes: readonly SelectedKeyframe[] = Object.freeze([]);
   /** SHP-018 draw mode: the active brush or eraser, or null when not drawing. */
   #drawBrush: DrawMode | null = null;
-  /** SHP-020: set once the user changes size or opacity; then they persist. */
-  #drawStyleChanged = false;
-  #drawStyle: DrawStyle = {
-    ...BRUSH_DEFAULTS.pen,
-    color: DEFAULT_DRAW_COLOR,
+  /**
+   * G4: every brush (and the eraser) keeps its own size, colour and opacity;
+   * the eraser uses only its size. Transient like the selection.
+   */
+  #drawStyles: Record<DrawMode, DrawStyle> = {
+    pen: { ...BRUSH_DEFAULTS.pen },
+    marker: { ...BRUSH_DEFAULTS.marker },
+    highlighter: { ...BRUSH_DEFAULTS.highlighter },
+    glow: { ...BRUSH_DEFAULTS.glow },
+    eraser: { size: 24, opacity: 1, color: DEFAULT_DRAW_COLOR },
   };
+  /** The brush the panel shows while the Draw tool is off. */
+  #lastBrush: DrawMode = 'pen';
   #canvasZoom = 1;
   /** G3: the canvas pan in CSS pixels (transient, never saved). */
   #canvasPan: readonly [number, number] = [0, 0];
@@ -147,34 +154,29 @@ export class EditorSession {
     return this.#drawBrush;
   }
   get drawStyle(): DrawStyle {
-    return this.#drawStyle;
+    return this.#drawStyles[this.#drawBrush ?? this.#lastBrush];
   }
-  /**
-   * Choosing a brush applies its default size and opacity until the user
-   * changes either; from then on the settings are shared by every brush
-   * (SHP-020). The eraser keeps the settings and uses the size.
-   */
+  /** G4: each brush keeps its own settings (no sharing between brushes). */
   setDrawBrush(brush: DrawMode | null): void {
     if (brush === this.#drawBrush) return;
     this.#drawBrush = brush;
-    if (brush && brush !== 'eraser' && !this.#drawStyleChanged)
-      this.#drawStyle = { ...this.#drawStyle, ...BRUSH_DEFAULTS[brush] };
+    if (brush) this.#lastBrush = brush;
     this.#notify();
   }
+  /** Changes the current brush's size, colour or opacity. */
   setDrawStyle(style: Partial<DrawStyle>): void {
-    const next = { ...this.#drawStyle, ...style };
+    const mode = this.#drawBrush ?? this.#lastBrush;
+    const next = { ...this.#drawStyles[mode], ...style };
     if (
       !(next.size >= MIN_BRUSH && next.size <= MAX_BRUSH) ||
       !(next.opacity >= 0 && next.opacity <= 1) ||
       !/^#[0-9a-fA-F]{6}$/.test(next.color)
     )
       throw new RangeError('Invalid brush settings');
-    if (
-      next.size !== this.#drawStyle.size ||
-      next.opacity !== this.#drawStyle.opacity
-    )
-      this.#drawStyleChanged = true;
-    this.#drawStyle = Object.freeze(next);
+    this.#drawStyles = {
+      ...this.#drawStyles,
+      [mode]: Object.freeze(next),
+    };
     this.#notify();
   }
   get selectedKeyframes(): readonly SelectedKeyframe[] {
