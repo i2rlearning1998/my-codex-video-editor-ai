@@ -4,7 +4,99 @@ Branch `claude/g-series`, draft PR #13 to `main`. This report is written part by
 
 ## 1. Summary
 
-_Completed at the end of the series._
+- **Controls and panels (G1).** Every number, list and colour in the toolbar and Inspector now uses one set of Canva-style controls. Deep panels open on the left with Back, and right-click submenus open on hover.
+- **Size and position (G2).** The Inspector, toolbar and Position panel show X, Y, W and H of what is drawn, and the values follow a drag live. Text, pictures and brush strokes are never stretched. The "2 selected" click bug is fixed.
+- **Canvas view (G3).**
+  - The canvas pans and zooms the way Canva and Figma do.
+  - A marquee outlines what it will select, and layers outside the page stay visible and selectable.
+  - With nothing selected, a scene bar sets the background and the scene length.
+- **Draw (G4).** Pen, Marker, Highlighter, Glow pen and Eraser each draw differently and keep their own settings. The Eraser removes only the ink it passes over.
+- **Scenes (G5).** Scenes live on a board: add, reorder, rename, delete, move layers between them. Playback and export run through all scenes.
+- **Not built:**
+  - a per-scene background and scene notes (they need a schema change);
+  - shape assist (SHP-023);
+  - transitions (Wave 6).
+
+## 2. Scope and results
+
+| Part | Ledger IDs                                                                                                  | Result                                                  | Evidence                                                                                                                     |
+| ---- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| G1   | LAY-002, LAY-018, LAY-024, LAY-027 to LAY-030, INS-006, INS-007, SHP-005, CV-043                            | Verified                                                | `e2e/ui-foundation.spec.ts`, updated specs                                                                                   |
+| G1   | LAY-022, LAY-023                                                                                            | Claimed (RGB/HSL/alpha entry; toggles not one module)   | `e2e/ui-foundation.spec.ts`                                                                                                  |
+| G2   | CV-044, CV-045, INS-004, LYR-012, MED-015 (strengthened), CV-036, CV-041, CV-042 (updated)                  | Verified                                                | `e2e/transform-g2.spec.ts`, `e2e/ungroup-g2.spec.ts`, `tests/geometry.test.ts`                                               |
+| G2   | CV-012                                                                                                      | Claimed (readout in panels, not on the canvas)          | `e2e/transform-g2.spec.ts`                                                                                                   |
+| G3   | CV-003, CV-016, CV-018, CV-046, CV-047, CV-048                                                              | Verified                                                | `e2e/viewport-g3.spec.ts`, `tests/scenes.test.ts`                                                                            |
+| G3   | CV-017                                                                                                      | Claimed (Fit, 100% and Fill are not one dropdown)       | `e2e/viewport-g3.spec.ts`                                                                                                    |
+| G4   | SHP-018, SHP-019, SHP-020, SHP-021, SHP-022                                                                 | Verified                                                | `e2e/draw-g4.spec.ts`, `e2e/toolbar-draw.spec.ts`, `tests/drawing.test.ts`                                                   |
+| G4   | SHP-023 (shape assist, stretch goal)                                                                        | Not done                                                | Todo in the ledger                                                                                                           |
+| G5   | PRJ-013, PRJ-014, PRJ-020, PRJ-021, PRJ-022, EXP-019                                                        | Verified                                                | `e2e/scenes-g5.spec.ts`, `tests/scenes.test.ts`                                                                              |
+| G3   | Per-scene background, scene Notes                                                                           | Not done (STOP: schema change)                          | Backlog, D-109                                                                                                               |
+
+- Not done, with reason:
+  - a per-scene background and scene Notes: schema 5 has no composition field for them (STOP rule);
+  - shape assist: a stretch goal, left for later (SHP-023 Todo).
+
+## 3. Checks
+
+- `npm run verify`: exit code 0 (final run, after G5).
+- Format: all files pass Prettier. Typecheck: clean. Build: `index` 482.50 kB (146.87 kB gzip), export `worker` 536.62 kB, CSS 54.73 kB.
+- Unit and jsdom tests: 373 passed in 31 files.
+- E2E: 178 passed plus the expected DEV-006 guard probe, in the sandbox Chromium 141.0.7390.37 (no Chrome or Edge in the sandbox, D-030). Node 22.22.2.
+- Ledger: `Ledger OK`, 524 items: 180 Verified, 14 Claimed, 330 Todo.
+- CI: see section 10.
+
+## 5. Deviations from the brief
+
+- **Background (G3.3).** It is stored in the project, not the composition: schema 5 has no composition background field, and a schema change is a STOP condition. It applies to every scene. Notes were skipped for the same reason.
+- **Scene Duration (G3.3).** It works by retiming clips, because the validator derives a composition's duration from its content (D-109).
+- **Line W (G2.1).** A line's W is its length; round caps reach past it, as in Figma. Fitting the caps inside would have made square caps look identical to flat ones.
+- **The board (G5).** It is a scrolling row of cards, not a free zoomable canvas.
+- **Template scenes (G5).** They use the one built-in layout; the template library is Wave 8.
+
+## 6. Decisions made
+
+D-100 to D-112 in `docs/DECISIONS.md`. D-111 supersedes D-079 (shared brush settings).
+
+## 7. Not tested, known gaps, risks
+
+- Every step of the try-it scripts below is covered by a Playwright test in the sandbox Chromium. Nothing was run by hand in Chrome or Edge on Windows. MP4 export in Chrome is proven only by the existing CI job `export-mp4`.
+- The trackpad pinch is proven through Ctrl+wheel (Chromium reports a pinch that way); a real trackpad was not used.
+- The eyedropper exists only where the browser has the EyeDropper API; the test does not use it.
+- In one full e2e run the frame-exact export test (EXP-001) read one frame as the previous one; it passed on its re-run and in the final verify. Watch it in CI.
+- Each part below lists its own known gaps.
+
+## 8. Architecture and contract impact
+
+- **Schema:** unchanged (5).
+- **New dependencies:** none.
+- **Contracts:** `TRANSFORM_INTERACTION_CONTRACT.md` revision 7 (pre-authorised): handles per type, the size and position fields, live values, and the click rule. `TRANSFORM_CONTRACT.md` has a pointer note only.
+- **New core commands (additive):** `SET_PROJECT_BACKGROUND`, `SET_COMPOSITION`, `MOVE_COMPOSITION`, `DELETE_COMPOSITION`.
+- **New modules:**
+  - `ui/components/*` (number field, select, colour picker, popover);
+  - `ui/side-panel.ts`, `ui/geometry*.ts`, `ui/canvas-view.ts`, `ui/scene-length.ts`, `ui/scenes.ts`, `ui/scene-board.ts`;
+  - `export/join.ts`.
+- **Data inside existing properties:** a drawing's `path` may hold several sub-strokes separated by `;`, and `brush` may be `glow` (D-111).
+
+## 9. Ledger and backlog
+
+- **Rows added (LCR):**
+  - CV-043 to CV-048;
+  - LAY-027 to LAY-030;
+  - SHP-021 to SHP-023;
+  - PRJ-020 to PRJ-022;
+  - EXP-019;
+  - ANI-020.
+- **Reworded:** SHP-018 and SHP-020 (owner's G4 brief).
+- **Status changes:**
+  - to Verified: LAY-002, LAY-018, LAY-024, INS-004, INS-006, INS-007, CV-018, PRJ-013, PRJ-014;
+  - to Claimed: LAY-022, LAY-023, CV-012, CV-017.
+- **Backlog:** lines for native controls still in dialogs, the per-scene background and notes, the zoom dropdown, and the board's gaps.
+
+## 10. Git
+
+- Branch `claude/g-series`, draft PR #13 to `main` (marked ready after this report). Not merged.
+- Review patch: `reports/G-SERIES.patch` and `reports/G-SERIES.stat.txt` (`origin/main..HEAD`).
+- Commits: see `git log --oneline origin/main..HEAD`. The G1 to G5 feature commits are listed in the PR.
 
 ## Part G1: UI foundation
 
@@ -212,3 +304,33 @@ _Completed at the end of the series._
 - A per-scene background needs a schema change (see G3).
 - Moving a linked clip to another scene drops its link.
 
+## Owner tick-list (owner fills this in and sends it to Claude)
+
+| ID | OK / BUG / MISSING / CHANGE | One sentence |
+| --- | --- | --- |
+| LAY-002 | | |
+| INS-006 | | |
+| LAY-018 | | |
+| LAY-022 | | |
+| LAY-030 | | |
+| LAY-028 | | |
+| SHP-005 | | |
+| CV-044 | | |
+| CV-045 | | |
+| INS-004 | | |
+| LYR-012 | | |
+| MED-015 | | |
+| CV-046 | | |
+| CV-018 | | |
+| CV-017 | | |
+| CV-047 | | |
+| CV-048 | | |
+| SHP-018 | | |
+| SHP-020 | | |
+| SHP-021 | | |
+| SHP-022 | | |
+| PRJ-013 | | |
+| PRJ-020 | | |
+| PRJ-021 | | |
+| PRJ-022 | | |
+| EXP-019 | | |

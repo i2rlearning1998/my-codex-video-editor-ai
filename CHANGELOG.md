@@ -2,6 +2,17 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## G-series (G1 to G5) — 2026-09-28
+
+- **Controls:** one set of Canva-style number fields, lists and colour pickers. Deep panels open on the left with Back, and right-click submenus open on hover.
+- **Size and position:** the Inspector, the toolbar and the Position panel show X, Y, W and H of what is drawn, with a ratio lock, and follow a drag live.
+- **Handles:** groups, drawings and text never stretch; lines lengthen from their ends.
+- **Selection:** a click on one of several selected layers selects just that one.
+- **Canvas:** pan with Space, the middle button, the hand tool or scrolling; zoom toward the pointer, with a zoom % field, Fit and 100%. The marquee shows what it will select, and layers outside the page stay visible and selectable.
+- **Scene bar:** with nothing selected, it sets the background and the scene's length.
+- **Draw:** Pen, Marker, Highlighter, Glow pen and Eraser, each with its own size, colour and opacity; smoothing and Shift for straight lines. The Eraser removes only the ink it passes over.
+- **Scenes board:** add, reorder, rename, delete and open scenes; drag a layer onto another scene. Playback and export run through all scenes.
+
 ## Wave 5 part D (W5-D) — 2026-09-26
 
 - The **Elements** category adds shapes: rectangle, rounded rectangle, ellipse, line and arrow.
