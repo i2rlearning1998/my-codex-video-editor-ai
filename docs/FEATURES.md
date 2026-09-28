@@ -739,3 +739,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 ## W7-CODEX append-only progress — W7-A (2026-09-28)
 
 Existing rows above are preserved. Scoped implementation claims (pending browser measurements): AUD-002 clip gain/mute/volume keys **Claimed** (master volume absent); AUD-003 fade lengths/playback **Claimed** (handles excluded by brief); AUD-009 pan **Claimed**; AUD-017 native mono/quad/5.1 speaker downmix **Claimed**; AUD-015 shared preview/export graph **Claimed**. No duplicate or shifted IDs.
+
+### W7-B checkpoint (2026-09-28)
+
+AUD-011 **Claimed**: three-band EQ, native compressor and gated K-weighted LUFS analysis/normalization implemented. Calibration and gating have numerical unit tests; graph frequency response, compressor attenuation, target LUFS and processing parity have browser specs awaiting CI. This is not certified BS.1770 compliance. Original ledger rows remain unchanged.

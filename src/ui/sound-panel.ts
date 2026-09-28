@@ -1,5 +1,7 @@
+import type { PreviewAsset } from '../media/previews';
 import type { EditorEngine } from '../core';
-import type { AudioDecoder } from '../media/audio';
+import { listAudibleClips, type AudioDecoder } from '../media/audio';
+import { normalizeClip } from '../audio/normalize';
 import {
   readAudioSettings,
   registerAudioCommands,
@@ -14,7 +16,7 @@ export function mountSoundPanel(
   root: HTMLElement,
   engine: EditorEngine,
   session: EditorSession,
-  _decoder: AudioDecoder,
+  decoder: AudioDecoder,
 ) {
   registerAudioCommands(engine);
   const container = document.createElement('section');
@@ -59,7 +61,12 @@ export function mountSoundPanel(
     const fields = document.createElement('fieldset');
     fields.disabled = target.track.locked;
     container.append(fields, status);
-    const save = (value: AudioSettings | null) => {
+    const save = (
+      value: AudioSettings | null,
+      preserveNormalization = false,
+    ) => {
+      if (value && !preserveNormalization)
+        value = { ...value, normalization: null };
       try {
         setClipAudio(
           engine,
@@ -128,6 +135,90 @@ export function mountSoundPanel(
       });
     });
     button('clearKeys', () => save({ ...settings, volumeKeys: [] }));
+    const numeric = (
+      key: string,
+      value: number,
+      min: number,
+      max: number,
+      step: number,
+      change: (value: number) => void,
+    ) => {
+      const label = document.createElement('label');
+      label.textContent = t(key);
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = String(min);
+      input.max = String(max);
+      input.step = String(step);
+      input.value = String(value);
+      input.setAttribute('aria-label', t(key));
+      input.onchange = () => change(input.valueAsNumber);
+      label.append(input);
+      fields.append(label, document.createElement('br'));
+      return input;
+    };
+    for (const band of ['low', 'mid', 'high'] as const)
+      numeric(band, settings.eq[band], -18, 18, 0.5, (v) =>
+        save({ ...settings, eq: { ...settings.eq, [band]: v } }),
+      );
+    const compressorLabel = document.createElement('label');
+    compressorLabel.textContent = t('compressor');
+    const compressor = document.createElement('input');
+    compressor.type = 'checkbox';
+    compressor.checked = settings.compressor.enabled;
+    compressor.setAttribute('aria-label', t('compressor'));
+    compressor.onchange = () =>
+      save({
+        ...settings,
+        compressor: { ...settings.compressor, enabled: compressor.checked },
+      });
+    compressorLabel.append(compressor);
+    fields.append(compressorLabel);
+    for (const [key, min, max, step] of [
+      ['threshold', -60, 0, 1],
+      ['ratio', 1, 20, 0.5],
+      ['attack', 0, 1, 0.001],
+      ['release', 0.01, 1, 0.01],
+    ] as const)
+      numeric(key, settings.compressor[key], min, max, step, (v) =>
+        save({ ...settings, compressor: { ...settings.compressor, [key]: v } }),
+      );
+    let targetLufs = settings.normalization?.targetLufs ?? -16;
+    numeric('target', targetLufs, -36, -5, 1, (v) => {
+      targetLufs = v;
+    });
+    button('normalize', () => {
+      void (async () => {
+        const original = engine.state;
+        const clip = listAudibleClips(
+          target.composition,
+          session.source.assets as unknown as readonly PreviewAsset[],
+        ).find((c) => c.clipId === target.clip.id);
+        if (!clip) {
+          status.textContent = t('empty');
+          return;
+        }
+        fields.disabled = true;
+        status.textContent = t('measuring');
+        try {
+          const next = await normalizeClip(clip, decoder, targetLufs);
+          if (engine.state !== original) throw new Error(t('stale'));
+          save(next, true);
+        } catch (error) {
+          status.textContent = t('error', { error: String(error) });
+        } finally {
+          fields.disabled = target.track.locked;
+        }
+      })();
+    });
+    if (settings.normalization) {
+      const n = settings.normalization;
+      status.textContent =
+        t('normalized', {
+          lufs: Math.round(n.measuredLufs * 10) / 10,
+          gain: Math.round(n.gainDb * 10) / 10,
+        }) + (n.limited ? ' ' + t('limited') : '');
+    }
     button('reset', () => save(null));
     const count = document.createElement('p');
     count.textContent = t('keys', { count: settings.volumeKeys.length });

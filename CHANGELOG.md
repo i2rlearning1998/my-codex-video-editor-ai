@@ -220,3 +220,9 @@ Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infra
 - Added isolated Sound panel, undoable clip gain/mute, volume keys, pan and fades.
 - Shared graph now serves preview, scrub and export with explicit stereo downmix.
 - Added command/math tests and browser UI/sample-comparison specs; browser proof pending CI.
+
+## W7-CODEX part B — 2026-09-28 (unmerged)
+
+- Added three-band EQ, compressor controls and BS.1770-style stereo loudness measurement.
+- Added target LUFS normalization with sample-peak headroom and stale-result protection.
+- Added calibration/gating tests and browser processing/panel/parity specs.

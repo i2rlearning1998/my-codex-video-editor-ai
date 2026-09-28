@@ -96,3 +96,6 @@ test('[AUD-003][AUD-002] fades scale to clip length and keyframe dB interpolate 
     defaultAudioSettings(),
   );
 });
+
+// Absolute calibration independent of the implementation: 997 Hz mono at -20 dBFS
+// peak has -23.01 LKFS; two identical full-level channels add 3.01 dB.

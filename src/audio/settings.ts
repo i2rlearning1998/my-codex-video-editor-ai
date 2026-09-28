@@ -5,6 +5,35 @@ import { compositionById, requireLayer } from '../core/scene';
 const db = z.number().finite().min(-96).max(24);
 export const audioSettingsSchema = z
   .object({
+    eq: z
+      .object({
+        low: z.number().finite().min(-18).max(18).default(0),
+        mid: z.number().finite().min(-18).max(18).default(0),
+        high: z.number().finite().min(-18).max(18).default(0),
+      })
+      .strict()
+      .default({}),
+    compressor: z
+      .object({
+        enabled: z.boolean().default(false),
+        threshold: z.number().finite().min(-60).max(0).default(-24),
+        ratio: z.number().finite().min(1).max(20).default(4),
+        attack: z.number().finite().min(0).max(1).default(0.003),
+        release: z.number().finite().min(0.01).max(1).default(0.25),
+      })
+      .strict()
+      .default({}),
+    normalization: z
+      .object({
+        gainDb: z.number().finite().min(-96).max(24),
+        measuredLufs: z.number().finite(),
+        targetLufs: z.number().finite().min(-36).max(-5),
+        limited: z.boolean(),
+        signature: z.string().max(65536),
+      })
+      .strict()
+      .nullable()
+      .default(null),
     gainDb: db.default(0),
     pan: z.number().finite().min(-1).max(1).default(0),
     fadeIn: z.number().finite().min(0).max(86400).default(0),
@@ -119,4 +148,25 @@ export function clipGainAt(
     fadeOut ? (duration - local) / fadeOut : 1,
   );
   return dbToGain(volumeDbAt(settings, local)) * Math.max(0, fade);
+}
+
+export function normalizationSignature(
+  clip: {
+    duration: number;
+    sourceIn: number;
+    sourceOut: number;
+    speed: number;
+    reversed: boolean;
+  },
+  audio: AudioSettings,
+): string {
+  const { normalization: _normalization, ...processing } = audio;
+  return JSON.stringify([
+    clip.duration,
+    clip.sourceIn,
+    clip.sourceOut,
+    clip.speed,
+    clip.reversed,
+    processing,
+  ]);
 }

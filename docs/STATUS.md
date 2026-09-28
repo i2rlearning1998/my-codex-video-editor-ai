@@ -31,3 +31,7 @@
 ## W7-CODEX checkpoint A — 2026-09-28
 
 `codex/w7-audio` branches from current main `9598be8`. Shared audio graph, validated per-clip metadata commands, volume automation, pan/fades/downmix and isolated Sound panel implemented. Local browser launch is unavailable; numerical browser proofs await GitHub CI. W7-B and C pending. Resume from `briefs/W7-CODEX.md`.
+
+## W7-CODEX checkpoint B — 2026-09-28
+
+On PR #14: EQ, compressor and one-shot target LUFS normalization, shared preview/export graph and isolated controls. Analysis is limited to five-minute clips, refuses silence and reports peak-limited targets. Local typecheck and unit suite run; browser tests await CI. See D-204–D-206 and the progress brief.

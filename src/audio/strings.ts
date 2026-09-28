@@ -1,5 +1,21 @@
 import { getLanguage, translate } from '../i18n';
 const en: Record<string, string> = {
+  low: 'Low EQ (dB, 200 Hz)',
+  mid: 'Mid EQ (dB, 1 kHz)',
+  high: 'High EQ (dB, 4 kHz)',
+  compressor: 'Compressor',
+  threshold: 'Threshold (dB)',
+  ratio: 'Ratio',
+  attack: 'Attack (seconds)',
+  release: 'Release (seconds)',
+  target: 'Target LUFS',
+  normalize: 'Measure and normalize',
+  measuring: 'Measuring audio…',
+  normalized:
+    'Measured {lufs} LUFS; adjustment {gain} dB. Re-measure after edits.',
+  limited:
+    'Target limited by sample peaks or gain limit; no true-peak limiter.',
+  stale: 'Project changed during analysis. Please try again.',
   title: 'Sound',
   empty: 'Select one audio or video clip.',
   gainDb: 'Gain (dB)',
@@ -16,6 +32,21 @@ const en: Record<string, string> = {
   error: 'Audio setting failed: {error}',
 };
 const hi: Record<string, string> = {
+  low: 'लो EQ (dB, 200 Hz)',
+  mid: 'मिड EQ (dB, 1 kHz)',
+  high: 'हाई EQ (dB, 4 kHz)',
+  compressor: 'कम्प्रेसर',
+  threshold: 'थ्रेशोल्ड (dB)',
+  ratio: 'अनुपात',
+  attack: 'अटैक (सेकंड)',
+  release: 'रिलीज़ (सेकंड)',
+  target: 'लक्ष्य LUFS',
+  normalize: 'मापें और नॉर्मलाइज़ करें',
+  measuring: 'ऑडियो मापा जा रहा है…',
+  normalized: 'मापा {lufs} LUFS; बदलाव {gain} dB। संपादन के बाद फिर मापें।',
+  limited:
+    'सैंपल पीक या गेन सीमा के कारण लक्ष्य सीमित है; ट्रू-पीक लिमिटर नहीं है।',
+  stale: 'विश्लेषण के दौरान प्रोजेक्ट बदला। फिर कोशिश करें।',
   title: 'ध्वनि',
   empty: 'एक ऑडियो या वीडियो क्लिप चुनें।',
   gainDb: 'गेन (dB)',
