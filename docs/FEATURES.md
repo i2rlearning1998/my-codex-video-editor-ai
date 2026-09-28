@@ -92,7 +92,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | LAY-001 | P0 | W1 | Todo | Layout matches the approved target: left icon rail with panel, central canvas, right panel with tabs and icon rail, bottom timeline |
-| LAY-002 | P0 | W1 | Todo | Left rail has Media, Graphics, Text, Templates, Audio, Elements, Transitions; each switches the left panel content |
+| LAY-002 | P0 | W1 | Verified | Left rail has Media, Graphics, Text, Templates, Audio, Elements, Transitions; each switches the left panel content |
 | LAY-003 | P0 | W1 | Claimed | Left panel can be collapsed and expanded |
 | LAY-004 | P0 | W1 | Claimed | Panel dividers (left, right, timeline) are draggable with min and max sizes |
 | LAY-005 | P1 | W1 | Todo | Panel sizes and collapsed state persist across reloads |
@@ -108,15 +108,19 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-015 | P0 | W1 | Todo | Every icon-only button has an accessible name and a tooltip that includes its shortcut |
 | LAY-016 | P0 | W1 | Todo | Toast notification component (info, success, warning, error) with auto-dismiss and manual dismiss |
 | LAY-017 | P0 | W1 | Todo | Modal dialog component traps focus, closes on Esc and returns focus to the trigger |
-| LAY-018 | P0 | W1 | Todo | Dropdown, popover and menu components share one implementation with keyboard navigation |
+| LAY-018 | P0 | W1 | Verified | Dropdown, popover and menu components share one implementation with keyboard navigation |
 | LAY-019 | P0 | W1 | Todo | Every panel has designed loading, empty and error states |
 | LAY-020 | P0 | W1 | Todo | Design tokens (color, spacing, radius, type scale, elevation) live in one place; a theme swap needs no component edits |
 | LAY-021 | P0 | W1 | Todo | One consistent line-icon set replaces all unicode glyph icons |
-| LAY-022 | P0 | W1 | Todo | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
-| LAY-023 | P0 | W1 | Todo | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
-| LAY-024 | P0 | W1 | Todo | Focus rings are visible on every interactive element |
+| LAY-022 | P0 | W1 | Claimed | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
+| LAY-023 | P0 | W1 | Claimed | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
+| LAY-024 | P0 | W1 | Verified | Focus rings are visible on every interactive element |
 | LAY-025 | P1 | W1 | Todo | Crisp rendering on high-DPI displays for icons, canvas overlays and timeline |
 | LAY-026 | P0 | W1 | Todo | Drop overlay appears when files are dragged over the app and explains what will happen |
+| LAY-027 | P1 | W1 | Verified | Scrollbars are thin and themed everywhere; in side panels they appear on hover |
+| LAY-028 | P0 | W1 | Verified | Deep panels (Position, Animate, Colour, Stroke style) open in the left side panel with a Back button and never cover the canvas; quick choices open as popovers anchored under the toolbar without pushing the layout |
+| LAY-029 | P0 | W1 | Verified | Every clickable element has hover, pressed and keyboard-focus states |
+| LAY-030 | P0 | W1 | Verified | Menus: submenus open on hover after a short delay and stay open on a diagonal move toward them; arrow keys, Enter and Esc work at every level; menus reposition to fit and show no scrollbar in normal use |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -276,6 +280,7 @@ Everything the user does directly on the preview canvas.
 | CV-040 | P0 | W2 | Verified | A selection shows a small action cluster above its box with Group (for two or more sibling layers) or Ungroup (for groups), Duplicate, Delete and More (the right-click menu); with two or more layers selected, one dashed box surrounds the whole selection and each layer keeps its own outline. Menu and cluster actions are offered only when every selected item supports them |
 | CV-041 | P0 | W2 | Verified | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
 | CV-042 | P0 | W2 | Verified | A Position panel opens from the context toolbar with an Arrange tab (align, distribute and layer order as buttons) and a Layers tab (the composition's layers as a flat list, drag to reorder, groups shown with a folder icon) |
+| CV-043 | P0 | W2 | Verified | The canvas right-click menu offers no timeline-only items (Link clips, Enable/disable clip); Copy style and Paste style are always visible without scrolling |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -398,8 +403,8 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | INS-003 | P0 | W2 | Verified | Position Y, scale, rotation and opacity fields edit the layer and stay in sync with canvas gestures |
 | INS-004 | P0 | W2 | Todo | Uniform scale with a lock toggle plus separate width and height |
 | INS-005 | P0 | W2 | Todo | Anchor point control |
-| INS-006 | P0 | W2 | Todo | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
-| INS-007 | P0 | W2 | Todo | Sliders paired with numeric fields for opacity, rotation and scale |
+| INS-006 | P0 | W2 | Verified | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
+| INS-007 | P0 | W2 | Verified | Sliders paired with numeric fields for opacity, rotation and scale |
 | INS-008 | P0 | W2 | Todo | Reset button per property |
 | INS-009 | P0 | W2 | Verified | Keyframe diamond per animatable property toggles a keyframe |
 | INS-010 | P0 | W2 | Verified | Timing section: start time and duration of the selected item |

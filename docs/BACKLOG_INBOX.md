@@ -41,3 +41,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-26 | W2-F1 CV | Front and back layer order have no shortcut (the global matcher takes no Alt chords, and Shift changes the bracket key on most layouts).
   2026-09-26 | W2-F5 TXT | Copy style (CV-039) copies only size and color from text; it could also carry the W2-F5 font, weight, italic, alignment, spacing and case.
   2026-09-26 | W2-F5 TXT | Letter spacing or a wider font can push unwrapped text past its box's right edge, where it is clipped (as a large font size already is); consider growing the width like the height.
+  2026-09-28 | G1 LAY | The export dialog, New project form, composition picker and keyframe easing select still use native inputs and selects; move them to the shared NumberField, Select and colour picker.
+  2026-09-28 | G1 LAY | LAY-022: add RGB, HSL and alpha entry to the colour picker. LAY-023: fold segmented controls, toggles, tabs and tooltips into the shared control spec.
