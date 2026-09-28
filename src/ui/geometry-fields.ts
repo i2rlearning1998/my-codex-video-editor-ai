@@ -127,6 +127,17 @@ export function syncGeometryFields(
 ): void {
   const geometry = selectionGeometry(source);
   if (!geometry) return;
+  // The stored values of the layer being dragged (Position, Scale, Rotation).
+  const preview = source.preview;
+  if (preview && source.selectedIds?.length === 1) {
+    const { position, scale, rotation } = preview.transform;
+    syncNumberField(root, 'inspector-position-x', position.value[0]);
+    syncNumberField(root, 'inspector-position-y', position.value[1]);
+    syncNumberField(root, 'inspector-scale-x', scale.value[0]);
+    syncNumberField(root, 'inspector-scale-y', scale.value[1]);
+    syncNumberField(root, 'inspector-rotation', rotation.value);
+    syncNumberField(root, 'toolbar-rotate', rotation.value);
+  }
   for (const prefix of PREFIXES) {
     syncNumberField(root, `${prefix}-x`, geometry.x);
     syncNumberField(root, `${prefix}-y`, geometry.y);

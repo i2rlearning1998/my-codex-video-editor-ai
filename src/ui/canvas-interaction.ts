@@ -76,6 +76,11 @@ export function bindCanvasInteraction(
   let start: Point2 = [0, 0];
   let moved = false;
   let suppressClick = false;
+  /**
+   * G2.4: a click (no drag) on one member of a multi-selection selects just
+   * that member; a drag still moves them all (like Canva and Figma).
+   */
+  let collapseTo: string | null = null;
   const release = () => {
     const id = pointer;
     pointer = null;
@@ -165,7 +170,11 @@ export function bindCanvasInteraction(
         }
         if (!insideGroup && !session.selectedIds.includes(picked))
           session.select(picked);
-      }
+        collapseTo =
+          session.selectedIds.length > 1 && session.selectedIds.includes(picked)
+            ? picked
+            : null;
+      } else collapseTo = null;
       suppressClick = true;
       if (!interaction.begin(handle ?? 'move', compositionPoint(point))) return;
       pointer = event.pointerId;
@@ -274,6 +283,8 @@ export function bindCanvasInteraction(
       }
       release();
       interaction.finish();
+      if (!moved && collapseTo) session.select(collapseTo);
+      collapseTo = null;
     });
   const pointercancel = (event: PointerEvent) => {
     if (event.pointerId === pointer) cancel();

@@ -1,4 +1,6 @@
-# Transform interaction contract - revision 6
+# Transform interaction contract - revision 7
+
+**Revision 7, 2026-09-28 (owner-authorized with the G-series, G2).** Handles now depend on what a layer shows, so nothing is ever stretched out of shape: groups and freehand drawings resize from their corners only, lines and arrows lengthen from their two ends only, and a multi-selection box offers side handles only when every selected layer is a plain shape. The Inspector, the media toolbar and the Position panel show X, Y, W and H of the drawn box (section "Size and position fields (revision 7)"), and they follow a drag live. A click (no drag) on one member of a multi-selection selects just that member. Everything else in revision 6 is unchanged. See D-105 to D-107.
 
 **Revision 6, 2026-09-26 (owner-authorized with W2-F).** Two changes. (1) The proportional corner multiplier is now the pointer's projection onto the corner diagonal instead of "the candidate farthest from 1": the dragged corner follows the pointer, and a wide or tall layer no longer grows faster than the pointer moves (spec bug 5, CV-007). (2) A multi-selection has its own box with corner, edge and rotate handles, which resize or rotate every selected layer together (CV-041). Everything else in revision 5 is unchanged. See D-077 and the section "Multi-selection box (revision 6)".
 
@@ -26,11 +28,15 @@ The rotation disc has radius 8 CSS pixels and a rotation glyph. A connector runs
 
 ## Type capabilities and picking
 
-| Type                                   | Body move | Center rotation | Corners            | Generic edges | Text width grips |
-| -------------------------------------- | --------- | --------------- | ------------------ | ------------- | ---------------- |
-| Text                                   | Yes       | Yes             | Whole-object scale | No            | Left/right       |
-| Shape, image, video, audio placeholder | Yes       | Yes             | Scale              | Four          | No               |
-| Group with drawable bounds             | Yes       | Yes             | Scale              | Four          | No               |
+| Type (revision 7)                                  | Body move | Center rotation | Corners            | Generic edges             | Text width grips |
+| -------------------------------------------------- | --------- | --------------- | ------------------ | ------------------------- | ---------------- |
+| Text                                               | Yes       | Yes             | Whole-object scale | No                        | Left/right       |
+| Shape (rectangle, ellipse, combined), image, video | Yes       | Yes             | Scale              | Four                      | No               |
+| Line and arrow                                     | Yes       | Yes             | No                 | Left/right (the two ends) | No               |
+| Freehand drawing                                   | Yes       | Yes             | Scale              | No                        | No               |
+| Group with drawable bounds                         | Yes       | Yes             | Scale              | No                        | No               |
+
+Revision 7: corner scaling is always proportional, so text glyphs, pictures inside a group and brush strokes keep their shape; one-axis stretching is kept only where it cannot distort content (plain shapes, pictures on their own, and the length of a line). A line's W is its length from end to end; round and square caps reach half the stroke width past each end, as in Figma.
 
 The immutable policy map is an explicit input extension point. Unknown types default to no interactions; future consumers can supply policy definitions. This does not implement plugin loading, new document types, future crop, or another engine capability registry. Geometry must also be safely invertible for active handles. Collapsed geometry remains selectable through the Scene list and repairable through inspector scale values.
 
@@ -76,7 +82,7 @@ Updates produce one transient numeric transform and optional text-box preview. T
 
 Escape, pointercancel, lost capture, window blur, viewport resize, selection/composition/document changes, external engine mutations, disposal, invalid coordinates, or arithmetic/layout errors discard the preview and release capture. Cancel produces no committed state event, history, or autosave. No delayed commit or time-based history merging exists.
 
-Inspector edits only X/Y, scale X/Y, rotation, and opacity. Rotation uses the same visual-center compensation and canonical angle as Canvas. Enter/change commits once; Escape resets input. Invalid/empty values and opacity outside `[0,1]` reject and refresh canonical values. During Canvas preview the inspector displays committed values; after release, undo, and redo both surfaces reflect the same engine snapshot.
+Revision 7: see "Size and position fields" for X, Y, W and H, which lead the Inspector. The stored-value rows below keep their revision 6 behaviour. The Inspector's stored-value rows edit X/Y (the anchor position), scale X/Y, rotation, and opacity. Rotation uses the same visual-center compensation and canonical angle as Canvas. Enter/change commits once; Escape resets input. Invalid/empty values and opacity outside `[0,1]` reject and refresh canonical values. Since revision 7, during Canvas preview the fields display the previewed values (nothing is committed until release); after release, undo, and redo both surfaces reflect the same engine snapshot.
 
 ## Compatibility and stop boundary
 
@@ -123,3 +129,11 @@ With two or more layers selected, the selection is drawn as one dashed box: the 
 - **Application.** Each gesture is a world transform `A`. For each selected root with parent world matrix `P` and local matrix `L`, the new local matrix is `P⁻¹ · A · P · L`, decomposed back into position, rotation and scale. The decomposition keeps the sign of the baseline scale X and the rotation nearest to the baseline value. Stored opacity, keyframes and other properties are unchanged. A result that would need a skew (a root inside a non-uniformly scaled group, for rotation or stretching) cancels the gesture with a message.
 - **Preview and history.** While the gesture runs, the box is drawn transformed by `A` and the layers are previewed. Pointer-up commits once, as one undo step ("Resize layers" or "Rotate layers"). Cancel, no-op and history rules are exactly as for one layer.
 - **Snapping** applies to multi-selection body moves only, as in revision 5; resizing and rotating the box do not snap.
+
+## Size and position fields (revision 7)
+
+- **Definition.** For one layer, W and H are the width and height of its drawn box (the selection box in the layer's own axes, times the world scale along each axis), and X and Y are that box's center minus half of W and H. An unrotated layer's X and Y are therefore its top-left corner. For a multi-selection they describe the dashed box. Values are composition pixels shown to one decimal.
+- **Surfaces.** The Inspector (first rows of Transform), the image and video toolbar, and the Position panel's Arrange tab show the same fields from one module, so they always agree.
+- **Edits.** X or Y moves the layer so the box lands there. W or H scales the layer (uniformly while the ratio lock is on, which is the default) and keeps X and Y. A text box's W changes its width and the text rewraps; its H follows the text and is read-only. Groups and freehand drawings always keep their ratio. For a multi-selection, X and Y move every selected layer together; W and H are read-only (the box's handles resize it). Each edit is one undo step: "Set X", "Set Y", "Set width", "Set height" or "Move layers". A non-number is refused with a message; W and H below 1 are clamped.
+- **Live values.** While a handle or body drag previews, the fields show the previewed values; the release commits once, as before.
+- **Clicks in a multi-selection.** Pointer-down on a member of a multi-selection starts a move of every member; if the pointer is released without moving (a click), only that member stays selected.

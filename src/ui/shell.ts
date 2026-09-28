@@ -331,41 +331,44 @@ export function mountEditorShell(
             session.currentTime
         : 0,
     );
+    const drawn = {
+      ...session.source,
+      // SHP-020: strokes the eraser touched vanish until release commits them.
+      ...(drawTool.erased.size
+        ? {
+            composition: withoutLayers(
+              session.source.composition,
+              drawTool.erased,
+            ),
+          }
+        : {}),
+      frames,
+      playing: session.playing,
+      animate: true,
+      ...(timeline?.controller.previews.length
+        ? { timingPreviews: timeline.controller.previews }
+        : {}),
+      ...(interaction.previews ? { previews: interaction.previews } : {}),
+      ...(timeline?.controller.preview
+        ? { timingPreview: timeline.controller.preview }
+        : {}),
+      ...(interaction.preview ? { preview: interaction.preview } : {}),
+      ...(interaction.guides.length ? { guides: interaction.guides } : {}),
+      ...(interaction.frame ? { selectionFrame: interaction.frame } : {}),
+      ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
+      ...(interaction.hoveredHandle !== null
+        ? { hoveredHandle: interaction.hoveredHandle }
+        : {}),
+    };
     const report = renderer.render(
       canvas,
-      {
-        ...session.source,
-        // SHP-020: strokes the eraser touched vanish until release commits them.
-        ...(drawTool.erased.size
-          ? {
-              composition: withoutLayers(
-                session.source.composition,
-                drawTool.erased,
-              ),
-            }
-          : {}),
-        frames,
-        playing: session.playing,
-        animate: true,
-        ...(timeline?.controller.previews.length
-          ? { timingPreviews: timeline.controller.previews }
-          : {}),
-        ...(interaction.previews ? { previews: interaction.previews } : {}),
-        ...(timeline?.controller.preview
-          ? { timingPreview: timeline.controller.preview }
-          : {}),
-        ...(interaction.preview ? { preview: interaction.preview } : {}),
-        ...(interaction.guides.length ? { guides: interaction.guides } : {}),
-        ...(interaction.frame ? { selectionFrame: interaction.frame } : {}),
-        ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
-        ...(interaction.hoveredHandle !== null
-          ? { hoveredHandle: interaction.hoveredHandle }
-          : {}),
-      },
+      drawn,
       viewport(),
       session.selectedId,
     );
     frames.endFrame();
+    // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
+    if (!session.playing) syncGeometryFields(root, drawn);
     updateSelectionActions();
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
@@ -568,8 +571,6 @@ export function mountEditorShell(
       // ANI-005: keyframe markers follow the playhead (not every frame while playing).
       if (!session.playing && !element('#inspector-content').hidden)
         animationPanel.render();
-      // G2.1: X, Y, W and H follow a handle drag live.
-      if (!session.playing) syncGeometryFields(root, source);
       draw();
       return;
     }

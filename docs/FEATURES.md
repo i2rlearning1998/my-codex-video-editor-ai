@@ -249,7 +249,7 @@ Everything the user does directly on the preview canvas.
 | CV-009 | P0 | W2 | Verified | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
 | CV-011 | P0 | W2 | Verified | Text-width grips change text box width and reflow the text without changing font size |
-| CV-012 | P1 | W2 | Todo | Live readout of size, angle or position while dragging |
+| CV-012 | P1 | W2 | Claimed | Live readout of size, angle or position while dragging |
 | CV-013 | P0 | W2 | Verified | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
 | CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
@@ -281,6 +281,8 @@ Everything the user does directly on the preview canvas.
 | CV-041 | P0 | W2 | Verified | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
 | CV-042 | P0 | W2 | Verified | A Position panel opens from the context toolbar with an Arrange tab (align, distribute and layer order as buttons) and a Layers tab (the composition's layers as a flat list, drag to reorder, groups shown with a folder icon) |
 | CV-043 | P0 | W2 | Verified | The canvas right-click menu offers no timeline-only items (Link clips, Enable/disable clip); Copy style and Paste style are always visible without scrolling |
+| CV-044 | P0 | W2 | Verified | The Inspector, the image and video toolbar and the Position panel show X, Y, W and H of the drawn box in px, with a ratio lock; the values match what is drawn for text, shapes, lines, drawings, groups, images, videos and a multi-selection, before and after a handle drag, and follow the drag live |
+| CV-045 | P0 | W2 | Verified | Handles depend on the layer: groups and drawings resize from their corners only, text from its corners plus its width grips, lines and arrows lengthen from their two ends, and a multi-selection box has side handles only when every layer is a plain shape; glyphs, pictures and brush strokes are never stretched |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -401,7 +403,7 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | INS-001 | P0 | W2 | Todo | Properties panel content depends on selection: none (project settings), single layer by type, multiple layers (common properties), group |
 | INS-002 | P0 | W2 | Verified | Editing Position X in the inspector moves the layer on the canvas and creates one undo step |
 | INS-003 | P0 | W2 | Verified | Position Y, scale, rotation and opacity fields edit the layer and stay in sync with canvas gestures |
-| INS-004 | P0 | W2 | Todo | Uniform scale with a lock toggle plus separate width and height |
+| INS-004 | P0 | W2 | Verified | Uniform scale with a lock toggle plus separate width and height |
 | INS-005 | P0 | W2 | Todo | Anchor point control |
 | INS-006 | P0 | W2 | Verified | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
 | INS-007 | P0 | W2 | Verified | Sliders paired with numeric fields for opacity, rotation and scale |

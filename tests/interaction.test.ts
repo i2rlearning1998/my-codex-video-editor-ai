@@ -183,7 +183,8 @@ describe('canvas command interactions', () => {
       s.event('pointermove', [start[0] + i, start[1] + i / 2]);
     expect(s.engine.state).toBe(before);
     expect(changed).not.toHaveBeenCalled();
-    expect(s.input('Position X').value).toBe('30');
+    // Revision 7: the fields follow the preview live; nothing is committed.
+    expect(s.input('Position X').value).toBe('60');
     const preview = s.render.mock.calls.at(-1)![1];
     expect(preview.composition).toBe(before.compositions[0]);
     expect(deriveRenderItems(preview).items[0]!.matrix[4]).toBe(60);
