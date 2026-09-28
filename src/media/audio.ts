@@ -396,7 +396,10 @@ export class AudioEngine {
 
   #ensureContext(): AudioContext {
     if (!this.#context) {
-      this.#context = new AudioContext({ latencyHint: 'interactive' });
+      this.#context = new AudioContext({
+        latencyHint: 'interactive',
+        sampleRate: DECODE_RATE,
+      });
       this.#master = this.#context.createGain();
       this.#analyser = this.#context.createAnalyser();
       this.#master.connect(this.#analyser);

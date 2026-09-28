@@ -44,7 +44,13 @@ Error: browserType.launch: Chromium distribution 'msedge' is not found at /opt/m
 - C: `npm run typecheck` exit 0; `Test Files 31 passed (31)`, `Tests 364 passed (364)`.
 - Each part attempted `npx playwright test e2e/audio-w7.spec.ts --max-failures=1`; launch blocked as above. No browser test is claimed as a local pass.
 - Browser specs: six W7 tests in `e2e/audio-w7.spec.ts`; real UI actions mutate the editor, read-only hook checks state, numerical tests render audio graphs without mutating the editor.
-- Final full verify / build / hook / ledger and the one CI inspection: pending below at checkpoint C.
+- Final local `npm run verify`: exit 1 at browser launch; format/typecheck/unit/build passed. Browser tests could not run; the runner's misleading pass tally for unexecuted tests is not counted as browser proof.
+- Final unit/jsdom: `Test Files 31 passed (31)`, `Tests 364 passed (364)`.
+- Build: `worker-DEzyN7-_.js 534.97 kB`; `index-CK5dVxxh.js 446.65 kB | gzip: 135.46 kB`; `built in 2.33s`.
+- Separately: `assert-no-test-hook: OK (no __AIVE__ in production build)`.
+- `npm run ledger -- --summary`: `Ledger: 506 items | Verified 155 | Claimed 10 | Todo 341`, `Ledger OK`. W7 Todo-row warnings are expected because existing rows are append-only.
+- Append-only audit: FEATURES, STATUS and CHANGELOG each retain their exact original byte prefix. Only existing UI file touched is shell.ts (six mount/visibility/disposal lines); no dependencies/model-version edits.
+- CI: one branch-run inspection pending; no CI success asserted yet.
 
 ## 4. Owner try-it scripts
 

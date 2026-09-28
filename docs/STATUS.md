@@ -39,3 +39,7 @@ On PR #14: EQ, compressor and one-shot target LUFS normalization, shared preview
 ## W7-CODEX checkpoint C — 2026-09-28
 
 PR #14 now includes explicit Speech/Music roles and shared detector-driven duck envelopes. W7-A/B/C implementation checkpoints are done except AUD-010, safely deferred under the brief. No pitch-preservation claim. Final verify/CI review and report remain. Existing row statuses stay unchanged under append-only instructions; W7 scoped claims are appended to FEATURES.
+
+### W7 final local gate — 2026-09-28
+
+364 unit/jsdom tests, typecheck, formatting and production build pass; hook assertion and ledger pass separately. Full verify exits 1 because the browser executable is unavailable. Six W7 e2e specs await the single CI inspection. Preview context now requests 48 kHz like export (D-210). Report: `reports/W7-CODEX.md`.

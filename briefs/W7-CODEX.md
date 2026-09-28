@@ -6,12 +6,12 @@ Branch: `codex/w7-audio`.
 
 ## Progress checkpoint
 
-| Part   | Status                                                                    | Last commit                                                 |
-| ------ | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| W7-A   | Implemented; local typecheck/unit proof; browser measurements awaiting CI | `d0adf15641fac9e85c4ac0b87912a791929aafdb` (PR #14)         |
-| W7-B   | Implemented; typecheck and 362 unit tests passed; e2e awaits CI           | `8b757a16f6a2ffe6ab7d7206fb30ee3cda79f79b`                  |
-| W7-C   | Ducking implemented; 364 unit tests passed; AUD-010 deferred D-208        | This checkpoint commit (`git log -1 -- briefs/W7-CODEX.md`) |
-| Finish | Pending: full verification, report, mark same PR ready                    | —                                                           |
+| Part   | Status                                                                           | Last commit                                                 |
+| ------ | -------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| W7-A   | Implemented; local typecheck/unit proof; browser measurements awaiting CI        | `d0adf15641fac9e85c4ac0b87912a791929aafdb` (PR #14)         |
+| W7-B   | Implemented; typecheck and 362 unit tests passed; e2e awaits CI                  | `8b757a16f6a2ffe6ab7d7206fb30ee3cda79f79b`                  |
+| W7-C   | Ducking implemented; 364 unit tests passed; AUD-010 deferred D-208               | `1df744c735f052c34dbb3a323977d2bb73fb0ab5`                  |
+| Finish | Local verify reaches browser launch block; report written; CI inspection pending | This checkpoint commit (`git log -1 -- briefs/W7-CODEX.md`) |
 
 ## In scope
 
