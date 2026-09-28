@@ -95,7 +95,7 @@ D-100 to D-112 in `docs/DECISIONS.md`. D-111 supersedes D-079 (shared brush sett
 ## 10. Git
 
 - Branch `claude/g-series`, draft PR #13 to `main` (marked ready after this report). Not merged.
-- Review patch: `reports/G-SERIES.patch` and `reports/G-SERIES.stat.txt` (`origin/main..HEAD`).
+- Review patch: run `npm run patch -- origin/main HEAD G-SERIES`. It writes `reports/G-SERIES.patch` and `reports/G-SERIES.stat.txt`, which are git-ignored, so they are generated locally and not committed.
 - Commits: see `git log --oneline origin/main..HEAD`. The G1 to G5 feature commits are listed in the PR.
 
 ## Part G1: UI foundation
