@@ -27,3 +27,23 @@
 - W2-F5 is on `claude/wave-2f5-text-styling`, stacked on W2-F4: the text toolbar sets the font (system fonts), weight, italic, alignment (including justify), line height, letter and paragraph spacing, and case. Verified: TXT-014, TXT-016, TXT-017 and CV-037 (reworded). TXT-010 is Claimed (no per-font weights or variable axes). The font picker stays in W3 (D-080). See reports/W2-F5.md.
 - W5-D is on `claude/wave-5d-shapes`, stacked on W2-F5: the Elements category adds rectangles, rounded rectangles, ellipses, lines and arrows; the shape toolbar edits fill (with opacity or none), stroke (color, width, dash, caps, joins) and corner radius; two or more shapes combine by Union, Subtract, Intersect or Exclude. Verified: SHP-001, SHP-003, SHP-005, SHP-006, SHP-015 and CV-038 (reworded). New dependency: polygon-clipping 0.15.7 (MIT, D-081). See reports/W5-D.md.
 - Schema is 4 on PR #3 and PR #4, and 5 from PR #5 on. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).
+
+## W7-CODEX checkpoint A — 2026-09-28
+
+`codex/w7-audio` branches from current main `9598be8`. Shared audio graph, validated per-clip metadata commands, volume automation, pan/fades/downmix and isolated Sound panel implemented. Local browser launch is unavailable; numerical browser proofs await GitHub CI. W7-B and C pending. Resume from `briefs/W7-CODEX.md`.
+
+## W7-CODEX checkpoint B — 2026-09-28
+
+On PR #14: EQ, compressor and one-shot target LUFS normalization, shared preview/export graph and isolated controls. Analysis is limited to five-minute clips, refuses silence and reports peak-limited targets. Local typecheck and unit suite run; browser tests await CI. See D-204–D-206 and the progress brief.
+
+## W7-CODEX checkpoint C — 2026-09-28
+
+PR #14 now includes explicit Speech/Music roles and shared detector-driven duck envelopes. W7-A/B/C implementation checkpoints are done except AUD-010, safely deferred under the brief. No pitch-preservation claim. Final verify/CI review and report remain. Existing row statuses stay unchanged under append-only instructions; W7 scoped claims are appended to FEATURES.
+
+### W7 final local gate — 2026-09-28
+
+364 unit/jsdom tests, typecheck, formatting and production build pass; hook assertion and ledger pass separately. Full verify exits 1 because the browser executable is unavailable. Six W7 e2e specs await the single CI inspection. Preview context now requests 48 kHz like export (D-210). Report: `reports/W7-CODEX.md`.
+
+### W7 ready for owner testing — 2026-09-28
+
+PR #14, `codex/w7-audio`: full CI `npm run verify` passes on code `7c27998`; 364 unit/jsdom tests, 149 normal browser tests plus one existing expected-failure guard, all six W7 specs first-attempt passes. Windows Chrome MP4 export job also passes. Evidence: https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/36448182874 . Final follow-up commit is documentation-only. PR is ready for owner testing, never merged. AUD-010 deferred; partial/unmeasured boundaries remain Claimed in the W7 report. No recurring or scheduled check.

@@ -214,3 +214,26 @@ Initial Phase 1 / Tier 1 foundation in an empty repository.
 - Documented architecture, future development rules, limitations, and the recommended next milestone.
 
 Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infrastructure remain outside this release.
+
+## W7-CODEX part A — 2026-09-28 (unmerged)
+
+- Added isolated Sound panel, undoable clip gain/mute, volume keys, pan and fades.
+- Shared graph now serves preview, scrub and export with explicit stereo downmix.
+- Added command/math tests and browser UI/sample-comparison specs; browser proof pending CI.
+
+## W7-CODEX part B — 2026-09-28 (unmerged)
+
+- Added three-band EQ, compressor controls and BS.1770-style stereo loudness measurement.
+- Added target LUFS normalization with sample-peak headroom and stale-result protection.
+- Added calibration/gating tests and browser processing/panel/parity specs.
+
+## W7-CODEX part C — 2026-09-28 (unmerged)
+
+- Added Speech/Music roles and automatic music ducking driven by speech PCM levels.
+- Added detector timing/mute/reverse tests and browser waveform/export parity specs.
+- Deferred pitch-preserving time stretch; existing speed continues to shift pitch.
+
+### W7 verification and handoff — 2026-09-28
+
+- Full CI verify and Windows MP4 export pass on code commit `7c27998`; all six W7 browser specs pass.
+- PR #14 prepared for owner testing with 8 listening steps per part and explicit deferred/partial items.

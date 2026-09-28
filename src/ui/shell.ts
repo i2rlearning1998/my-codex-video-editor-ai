@@ -1,3 +1,4 @@
+import { mountSoundPanel } from './sound-panel';
 import {
   multiplyMatrices,
   invertMatrix,
@@ -240,6 +241,7 @@ export function mountEditorShell(
     session.source.assets as unknown as readonly PreviewAsset[];
   const decoder = new AudioDecoder(mediaStore, mediaAssets);
   const waveforms = new WaveformCache(mediaStore, decoder, mediaAssets);
+  const soundPanel = mountSoundPanel(root, engine, session, decoder);
   const mediaPanel = mountMediaPanel({
     container: element('#media-panel'),
     engine,
@@ -851,6 +853,7 @@ export function mountEditorShell(
         'aria-pressed',
         String(sibling.getAttribute('data-category') === category),
       );
+    soundPanel.setVisible(category === 'Audio');
     const isMedia = category === 'Media';
     const isScene = category === 'Scene';
     const isDraw = category === 'Draw';
@@ -861,7 +864,7 @@ export function mountEditorShell(
     element('#shapes-panel').hidden = !isElements;
     if (!isDraw) session.setDrawBrush(null);
     element('.library-placeholder').hidden =
-      isMedia || isScene || isDraw || isElements;
+      isMedia || isScene || isDraw || isElements || category === 'Audio';
     if (!isScene && !isDraw && !isElements) {
       const [titleKey, descriptionKey] = descriptions[category]!;
       element('#library-title').textContent = t(titleKey);
@@ -1338,6 +1341,7 @@ export function mountEditorShell(
       newProjectForm.dispose();
       unsubscribeLanguage();
       mediaPanel.dispose();
+      soundPanel.dispose();
       positionPanel.dispose();
       frames.dispose();
       previews.dispose();
