@@ -451,5 +451,13 @@
   "color.eyedropper": "स्क्रीन से रंग चुनें",
   "color.recent": "हाल के रंग",
   "color.document": "इस डिज़ाइन के रंग",
-  "color.defaults": "डिफ़ॉल्ट रंग"
+  "color.defaults": "डिफ़ॉल्ट रंग",
+  "geometry.title": "आकार और स्थिति",
+  "geometry.x": "X",
+  "geometry.y": "Y",
+  "geometry.width": "चौड़ाई",
+  "geometry.height": "ऊँचाई",
+  "geometry.lock": "अनुपात लॉक करें",
+  "geometry.lockForced": "समूह और ड्रॉइंग हमेशा अपना अनुपात रखते हैं",
+  "geometry.values": "ट्रांसफ़ॉर्म मान"
 }

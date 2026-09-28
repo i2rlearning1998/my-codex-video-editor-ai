@@ -40,8 +40,14 @@ test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom siz
     '60',
   ]);
   await page.getByLabel('Aspect ratio', { exact: true }).selectOption('custom');
-  await page.getByLabel('Width', { exact: true }).fill('17');
-  await page.getByLabel('Height', { exact: true }).fill('8000');
+  await page
+    .getByRole('dialog', { name: 'New project' })
+    .getByLabel('Width', { exact: true })
+    .fill('17');
+  await page
+    .getByRole('dialog', { name: 'New project' })
+    .getByLabel('Height', { exact: true })
+    .fill('8000');
   await page
     .getByRole('button', { name: 'Create project', exact: true })
     .click();

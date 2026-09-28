@@ -291,11 +291,13 @@ describe('Canvas 2D renderer boundary', () => {
       viewport,
       'g',
     );
-    // Composition and child retain inherited opacity; eight resize handles are opaque; the separate rotation disc uses fill().
+    // Composition and child retain inherited opacity; a group's four corner
+    // handles are opaque (G2.2: groups have no side handles); the separate
+    // rotation disc uses fill().
     expect(records.map((item) => item.alpha)).toEqual([
       1,
       0.25,
-      ...Array<number>(8).fill(1),
+      ...Array<number>(4).fill(1),
     ]);
     expect(context.stroke).toHaveBeenCalledTimes(2);
   });

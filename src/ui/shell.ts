@@ -21,6 +21,8 @@ import {
   type CompositionRenderer,
 } from '../render/canvas';
 import { renderInspector } from './inspector';
+import { syncGeometryFields } from './geometry-fields';
+import { isGeometryField } from './geometry';
 import { mountMediaPanel } from './media-panel';
 import { openExportDialog } from './export-dialog';
 import { drawComposition } from '../render/canvas';
@@ -406,13 +408,17 @@ export function mountEditorShell(
     engine,
     session,
     reportError,
+    (field, value) => interaction.geometry(field, value),
   );
   // CV-035: the selected layer's context toolbar above the canvas.
   const contextToolbar = mountContextToolbar(
     element('#context-toolbar'),
     engine,
     session,
-    (field, value) => interaction.edit(field, value),
+    (field, value) =>
+      isGeometryField(field)
+        ? interaction.geometry(field, value)
+        : interaction.edit(field, value),
     reportError,
     () => animatePanel.toggle(),
     () => positionPanel.toggle(),
@@ -562,6 +568,8 @@ export function mountEditorShell(
       // ANI-005: keyframe markers follow the playhead (not every frame while playing).
       if (!session.playing && !element('#inspector-content').hidden)
         animationPanel.render();
+      // G2.1: X, Y, W and H follow a handle drag live.
+      if (!session.playing) syncGeometryFields(root, source);
       draw();
       return;
     }
@@ -729,6 +737,10 @@ export function mountEditorShell(
               ],
             );
         });
+        refresh(true);
+      },
+      (field, value) => {
+        safely(() => interaction.geometry(field, value));
         refresh(true);
       },
     );

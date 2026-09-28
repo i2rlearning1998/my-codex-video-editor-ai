@@ -25,7 +25,7 @@ import {
   type LayerPreview,
   type SceneLayer,
 } from '../render/adapter';
-import { transformCapabilities } from '../render/transform-capabilities';
+import { layerTransformCapabilities } from '../render/transform-capabilities';
 import {
   multiSelectionFrame,
   multiSelectionStretchable,
@@ -49,6 +49,19 @@ import {
   inspectorTransform,
   type InspectorField,
 } from './transform-commands';
+import {
+  geometryEdit,
+  multiMoveEdits,
+  type GeometryEdit,
+  type GeometryField,
+} from './geometry';
+
+const GEOMETRY_LABELS: Record<GeometryField, string> = {
+  X: 'Set X',
+  Y: 'Set Y',
+  W: 'Set width',
+  H: 'Set height',
+};
 
 export type GestureKind = 'move' | TransformHandle;
 interface Gesture {
@@ -230,8 +243,8 @@ export class TransformInteraction {
     if (!found || !point.every(Number.isFinite)) return false;
     if (this.session.selectedIds.length > 1 && kind !== 'move')
       return this.#beginMulti(kind, point);
-    const capabilities = transformCapabilities(
-      found.layer.type,
+    const capabilities = layerTransformCapabilities(
+      found.layer,
       source.capabilities,
     );
     const textWidth = kind === 'text-left' || kind === 'text-right';
@@ -244,7 +257,11 @@ export class TransformInteraction {
             ? capabilities.corners
             : textWidth
               ? capabilities.textWidth
-              : capabilities.edges)
+              : capabilities.edges &&
+                (!capabilities.edgeSides ||
+                  capabilities.edgeSides.includes(
+                    kind as (typeof capabilities.edgeSides)[number],
+                  )))
     )
       return false;
     if (textWidth)
@@ -645,6 +662,35 @@ export class TransformInteraction {
     );
     if (commands.length)
       this.engine.commands.transaction(`Set ${field}`, commands);
+  }
+  /** G2.1: X, Y, W or H from the Inspector, toolbar or Position panel. */
+  geometry(field: GeometryField, value: number): void {
+    this.cancel();
+    const source = this.session.source;
+    const ids = this.session.selectedIds;
+    const multi = ids.length > 1;
+    if (multi && (field === 'W' || field === 'H')) return;
+    const edits = multi
+      ? multiMoveEdits(source, field as 'X' | 'Y', value)
+      : ids[0]
+        ? [geometryEdit(source, ids[0], field, value)].filter(
+            (edit): edit is GeometryEdit => !!edit,
+          )
+        : [];
+    const commands = edits.flatMap((edit) =>
+      buildTransformCommands(
+        source.composition.id,
+        edit.layer,
+        edit.transform,
+        edit.textBox,
+        this.session.currentTime,
+      ),
+    );
+    if (commands.length)
+      this.engine.commands.transaction(
+        multi ? 'Move layers' : GEOMETRY_LABELS[field],
+        commands,
+      );
   }
   dispose(): void {
     this.cancel();

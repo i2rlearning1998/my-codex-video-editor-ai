@@ -451,5 +451,13 @@
   "color.eyedropper": "Pick a colour from the screen",
   "color.recent": "Recent colours",
   "color.document": "Colours in this design",
-  "color.defaults": "Default colours"
+  "color.defaults": "Default colours",
+  "geometry.title": "Size and position",
+  "geometry.x": "X",
+  "geometry.y": "Y",
+  "geometry.width": "Width",
+  "geometry.height": "Height",
+  "geometry.lock": "Lock aspect ratio",
+  "geometry.lockForced": "Groups and drawings always keep their aspect ratio",
+  "geometry.values": "Transform values"
 }

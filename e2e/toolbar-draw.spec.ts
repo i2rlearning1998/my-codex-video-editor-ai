@@ -137,7 +137,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   await expect(toolbar(page)).toBeHidden();
 });
 
-test('[CV-036] image and video toolbar: position, scale, rotate, opacity and flip, one undo each; Crop names its wave', async ({
+test('[CV-036] image and video toolbar: X, Y, width and height, rotate, opacity and flip, one undo each; Crop names its wave', async ({
   page,
   openFixtureProject,
 }, testInfo) => {
@@ -156,10 +156,20 @@ test('[CV-036] image and video toolbar: position, scale, rotate, opacity and fli
   expect((await layer(page, 'layer-a')).transform.position.value).toEqual([
     150, 100,
   ]);
-  await commit(page, 'scale', '50');
+  // G2.1: W is the drawn width; with the ratio locked the height follows,
+  // and the top-left (X, Y) stays put.
+  await expect(page.locator('#toolbar-lock-ratio')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await commit(page, 'w', '200');
   expect((await layer(page, 'layer-a')).transform.scale.value).toEqual([
     0.5, 0.5,
   ]);
+  expect((await layer(page, 'layer-a')).transform.position.value).toEqual([
+    150, 100,
+  ]);
+  await expect(page.locator('#toolbar-h')).toHaveValue('112.5');
   await commit(page, 'opacity', '40');
   expect((await layer(page, 'layer-a')).transform.opacity.value).toBe(0.4);
   await commit(page, 'rotate', '90');
@@ -178,8 +188,8 @@ test('[CV-036] image and video toolbar: position, scale, rotate, opacity and fli
   expect(center(flipped)[0]).toBeCloseTo(before[0]!, 9);
   expect(center(flipped)[1]).toBeCloseTo(before[1]!, 9);
   expect((await hook(page)).history.labels).toEqual([
-    'Set Position X',
-    'Set scale',
+    'Set X',
+    'Set width',
     'Set Opacity',
     'Flip horizontal',
   ]);

@@ -7,6 +7,9 @@ import {
 } from './components/number-field';
 
 import type { InspectorField } from './transform-commands';
+import { createGeometryRow } from './geometry-fields';
+import type { GeometryField } from './geometry';
+import { t } from '../i18n';
 
 /** Transform math is exact and unrounded by design (see TRANSFORM_CONTRACT.md);
  *  this only rounds what the inspector *displays*, so a drag doesn't surface
@@ -36,6 +39,8 @@ export function renderInspector(
     key: 'position' | 'scale' | 'rotation' | 'opacity',
     remove: boolean,
   ) => void,
+  /** G2.1: X, Y, W and H of what is drawn (the main fields). */
+  geometry?: (field: GeometryField, value: number) => void,
 ): void {
   const generation = ++renderGeneration;
   // Removing a focused input fires its blur-commit mid-replaceChildren in
@@ -117,13 +122,43 @@ export function renderInspector(
     tab.textContent = name;
     tab.onclick = () => {
       activeSubTab = name;
-      renderInspector(root, source, selectedId, commit, timing, keyframe);
+      renderInspector(
+        root,
+        source,
+        selectedId,
+        commit,
+        timing,
+        keyframe,
+        geometry,
+      );
     };
     tabs.append(tab);
   }
   root.append(tabs);
   const title = activeSubTab;
   const fields = sections[title];
+  if (title === 'Transform' && geometry) {
+    const row = createGeometryRow('inspector', source, geometry, () =>
+      renderInspector(
+        root,
+        source,
+        selectedId,
+        commit,
+        timing,
+        keyframe,
+        geometry,
+      ),
+    );
+    if (row) {
+      row.classList.add('inspector-geometry');
+      root.append(row);
+      // The stored values (anchor position, scale) are secondary.
+      const values = document.createElement('h4');
+      values.className = 'inspector-subheading';
+      values.textContent = t('geometry.values');
+      root.append(values);
+    }
+  }
   {
     const section = document.createElement('section');
     section.className = 'inspector-section';

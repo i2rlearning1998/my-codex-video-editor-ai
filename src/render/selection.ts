@@ -23,7 +23,8 @@ import {
   type RenderSource,
   type SceneLayer,
 } from './adapter';
-import { transformCapabilities } from './transform-capabilities';
+import { layerTransformCapabilities } from './transform-capabilities';
+import { drawingOf } from './drawing';
 
 export function selectionBounds(
   source: RenderSource,
@@ -95,7 +96,7 @@ export function selectionGeometry(
       (corners[0]![1] + corners[1]![1]) / 2,
     ];
     const layer = locateLayer(source.composition.layers, id)!.layer;
-    const capabilities = transformCapabilities(layer.type, source.capabilities);
+    const capabilities = layerTransformCapabilities(layer, source.capabilities);
     const interactive =
       !!invertMatrix(selected.matrix) &&
       selected.bounds.width > 0 &&
@@ -127,7 +128,8 @@ export function selectionGeometry(
           add(index as Corner, point, 'corner'),
         );
       if (capabilities.edges)
-        for (const edge of ['top', 'right', 'bottom', 'left'] as const)
+        for (const edge of capabilities.edgeSides ??
+          (['top', 'right', 'bottom', 'left'] as const))
           add(
             edge,
             transformPoint(matrix, handlePoint(selected.bounds, edge)),
@@ -192,12 +194,15 @@ export function multiSelectionFrame(
  */
 export function multiSelectionStretchable(source: RenderSource): boolean {
   const ids = source.selectedIds ?? [];
-  // Stretching text would distort its glyphs; text uses its own width grips.
-  const hasText = (layer: SceneLayer): boolean =>
-    layer.type === 'text' || layer.children.some(hasText);
+  // G2.2: stretching would distort glyphs, pictures and brush strokes, so the
+  // box's side handles show only when every selected layer is a plain shape.
+  const stretchesBadly = (layer: SceneLayer): boolean =>
+    layer.type !== 'shape' ||
+    !!drawingOf(layer) ||
+    layer.children.some(stretchesBadly);
   return ids.every((id) => {
     const found = locateLayer(source.composition.layers, id);
-    if (!found || hasText(found.layer)) return false;
+    if (!found || stretchesBadly(found.layer)) return false;
     try {
       const world = worldTransform(
         source.composition,

@@ -72,8 +72,14 @@ test('[CV-042] the toolbar Position button opens Arrange (order, align, distribu
   ).toBeDisabled();
   // Layers: front-first, groups show a folder icon and their item count.
   await panel(page).locator('[data-tab="layers"]').click();
-  const rows = panel(page).locator('[data-layer-id]');
+  const rows = panel(page).locator('[data-layer-id][data-depth="0"]');
   await expect(rows).toHaveCount(7);
+  // G2.4: a group's children are listed under it, one level deeper.
+  const cards = panel(page).locator('[data-layer-id="example-cards"]');
+  await expect(cards.locator('xpath=following-sibling::*[1]')).toHaveAttribute(
+    'data-depth',
+    '1',
+  );
   await expect(rows.first()).toHaveAttribute(
     'data-layer-id',
     'example-edition',

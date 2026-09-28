@@ -50,6 +50,17 @@ export function restoreFieldFocus(root: ParentNode): void {
   }
 }
 
+/** G2: shows a new value in a field unless the user is editing it. */
+export function syncNumberField(
+  root: ParentNode,
+  id: string,
+  value: number,
+): void {
+  root
+    .querySelector(`[id="${id}"]`)
+    ?.dispatchEvent(new CustomEvent('number-field-sync', { detail: value }));
+}
+
 const SCRUB_THRESHOLD = 3;
 /** Composition units (or unit steps) per CSS pixel of drag. */
 const SCRUB_RATE = 0.5;
@@ -100,6 +111,17 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
     input.setAttribute('aria-valuenow', show(value));
   };
   setShown(committed);
+  // G2: the owner shows a live value (a drag on the canvas) without a rebuild.
+  input.addEventListener('number-field-sync', (event) => {
+    const value = (event as CustomEvent<number>).detail;
+    if (
+      document.activeElement === input ||
+      wrap.classList.contains('scrubbing')
+    )
+      return;
+    committed = value;
+    setShown(value);
+  });
   wrap.append(label, input);
   if (options.unit) {
     const unit = document.createElement('span');

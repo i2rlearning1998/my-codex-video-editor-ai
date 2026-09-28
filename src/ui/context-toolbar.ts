@@ -52,6 +52,8 @@ import {
   type InspectorField,
 } from './transform-commands';
 import { copyProperty, isAnimated, withValueAt } from './keyframes';
+import { createGeometryControls } from './geometry-fields';
+import type { GeometryField } from './geometry';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 /** A control not built yet: its label key, ledger item and wave. */
@@ -67,7 +69,9 @@ const LAYOUT: Record<ToolbarKind, readonly string[]> = {
   media: [
     'x',
     'y',
-    'scale',
+    'w',
+    'lock',
+    'h',
     'rotate',
     'crop',
     'flip',
@@ -371,7 +375,7 @@ export function mountContextToolbar(
   bar: HTMLElement,
   engine: EditorEngine,
   session: EditorSession,
-  edit: (field: InspectorField, value: number) => void,
+  edit: (field: InspectorField | GeometryField, value: number) => void,
   report: (error: unknown) => void,
   /** W5-C: opens the Animate presets panel. */
   animate?: () => void,
@@ -678,7 +682,6 @@ export function mountContextToolbar(
       return;
     }
     const compositionId = session.source.composition.id;
-    const [sx, sy] = layer.transform.scale.value;
     const opacity = layer.transform.opacity.value;
     const colorOf = (key: string) => {
       const property = layer.properties[key];
@@ -690,6 +693,13 @@ export function mountContextToolbar(
     const shape = shapeOf(layer);
     const shapeCommand = (key: ShapeKey, value: number | string | boolean) =>
       shapeStyleCommand(compositionId, selected() ?? layer, key, value);
+    const geometry = createGeometryControls(
+      'toolbar',
+      session.source,
+      (field, value) => safely(() => edit(field, value)),
+      () => render(),
+      true,
+    );
     const controls = LAYOUT[kind].map((id) => {
       if (LATER[id]) return later(id);
       switch (id) {
@@ -709,40 +719,13 @@ export function mountContextToolbar(
           item.setAttribute('aria-haspopup', 'dialog');
           return item;
         }
+        // G2.1: X, Y, W and H of what is drawn, shared with the Inspector.
         case 'x':
         case 'y':
-          return field(
-            id,
-            t(id === 'x' ? 'toolbar.x' : 'toolbar.y'),
-            round(layer.transform.position.value[id === 'x' ? 0 : 1]),
-            (value) => edit(id === 'x' ? 'Position X' : 'Position Y', value),
-          );
-        case 'scale':
-          return field(
-            id,
-            t('toolbar.scale'),
-            round(Math.abs(sx) * 100, 1),
-            (value) => {
-              if (!(value > 0)) throw new RangeError(t('toolbar.scaleRange'));
-              const factor = value / 100 / Math.abs(sx);
-              run(
-                'Set scale',
-                buildTransformCommands(
-                  compositionId,
-                  layer,
-                  {
-                    ...(layer.transform as TransformValues),
-                    scale: { value: [sx * factor, sy * factor] },
-                  },
-                  undefined,
-                  session.currentTime,
-                ),
-              );
-            },
-            '%',
-            '',
-            { min: 1, max: 10000, presets: [25, 50, 100, 150, 200] },
-          );
+        case 'w':
+        case 'h':
+        case 'lock':
+          return geometry![id];
         case 'rotate':
           return field(
             id,

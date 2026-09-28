@@ -2737,3 +2737,33 @@ button.color-swatch:hover {
 .canvas-context-menu button:focus-visible {
   background: var(--color-bg-hover);
 }
+
+/* G2.1: X, Y, W, H and the ratio lock (Inspector, toolbar, Position panel). */
+.geometry-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  align-items: center;
+}
+.geometry-fields .geometry-lock {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.inspector-geometry {
+  margin-block: var(--space-2);
+}
+.inspector-subheading {
+  margin: var(--space-3) 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.geometry-lock[aria-pressed='true'] {
+  color: var(--color-accent);
+}
+/* G2.4: a group's children sit under it in the Layers tab. */
+.position-layer[data-depth]:not([data-depth='0']) {
+  margin-inline-start: calc(var(--depth, 0) * var(--space-4));
+  cursor: pointer;
+}
