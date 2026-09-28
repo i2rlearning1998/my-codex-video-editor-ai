@@ -148,6 +148,7 @@ test.describe('default example', () => {
     await expect(menu(page)).toBeVisible();
     await expect(menu(page).locator('[data-action="group"]')).toBeVisible();
     await page.keyboard.press('Escape');
+    await expect(menu(page)).toBeHidden();
     // The cluster hides with no selection.
     await page.keyboard.press('Escape');
     await expect(cluster(page)).toBeHidden();
