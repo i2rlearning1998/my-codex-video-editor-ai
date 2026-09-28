@@ -182,13 +182,16 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-010 | P0 | W1 | Claimed | Corrupt or future-version saved data is quarantined with a message, never silently overwritten |
 | PRJ-011 | P0 | W1 | Todo | Composition (scene) duration is derived from content; empty composition falls back to 10 seconds |
 | PRJ-012 | P0 | W2 | Verified | Multiple compositions (scenes): switch active composition |
-| PRJ-013 | P0 | W2 | Todo | Scenes: add, rename, reorder, duplicate, delete |
-| PRJ-014 | P1 | W2 | Todo | Scene strip UI for switching and reordering scenes |
+| PRJ-013 | P0 | W2 | Verified | Scenes: add, rename, reorder, duplicate, delete |
+| PRJ-014 | P1 | W2 | Verified | Scene strip UI for switching and reordering scenes |
 | PRJ-015 | P0 | W4 | Todo | Projects persist in IndexedDB with media in OPFS; localStorage remains only for small settings |
 | PRJ-016 | P0 | W4 | Todo | Home screen lists projects with thumbnail, last edited; open, rename, duplicate, delete |
 | PRJ-017 | P0 | W4 | Todo | Crash recovery dialog offers to restore the last autosave and shows its time |
 | PRJ-018 | P1 | W8 | Todo | Named version snapshots with restore |
 | PRJ-019 | P1 | W9 | Todo | Project package export and import including media (single file) |
+| PRJ-020 | P0 | W2 | Verified | A scene board shows every scene in one row in playback order with a poster, name and length and a transition chip between scenes (transitions are Wave 6); double-click opens a scene and the timeline then shows that scene only |
+| PRJ-021 | P0 | W2 | Verified | Dragging a layer onto another scene on the board moves it there with its clip (Alt copies it), one undo step |
+| PRJ-022 | P0 | W2 | Verified | Playback runs through the scenes in order |
 
 ## MED: Media library and stock (Wave 4)
 
@@ -682,6 +685,7 @@ Offline frame-accurate render, never realtime capture.
 | EXP-016 | P1 | W9 | Todo | Export SRT subtitles and cover frame |
 | EXP-017 | P2 | W9 | Todo | Export queue in the background |
 | EXP-018 | P2 | W9 | Todo | PNG sequence export |
+| EXP-019 | P0 | W5 | Verified | Export joins every scene one after another, with an option to export the current scene only |
 
 ## REL: Performance, reliability and platform (Wave 9 unless noted)
 

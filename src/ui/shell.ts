@@ -23,6 +23,7 @@ import {
 import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
 import { mountCanvasView } from './canvas-view';
+import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
 import { createNumberField, syncNumberField } from './components/number-field';
 import { isGeometryField } from './geometry';
 import { mountMediaPanel } from './media-panel';
@@ -194,7 +195,7 @@ export function mountEditorShell(
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
         <div class="preview-toolbar">
-          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select></div>
+          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select><button type="button" class="button" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('templates', 15)}${t('scene.board')}</button></div>
           <div class="canvas-zoom-controls">
             <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')}">${iconSvg('hand')}</button>
             <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut')}</button>
@@ -483,6 +484,15 @@ export function mountEditorShell(
     () => positionPanel.toggle(),
     sidePanels,
   );
+  // G5: the scene board over the canvas.
+  const sceneBoard = mountSceneBoard(
+    stage,
+    element<HTMLButtonElement>('#scene-board-toggle'),
+    engine,
+    session,
+    reportError,
+    registerExternalOverlay,
+  );
   const canvasMenu = element('#canvas-context-menu');
   // W2-F1: the canvas menu is built from the selection's capabilities and
   // rendered by the shared menu (context-menu.ts).
@@ -676,6 +686,15 @@ export function mountEditorShell(
         button.className = 'scene-row';
         button.dataset.layerId = layer.id;
         button.style.paddingLeft = `${14 + depth * 14}px`;
+        // G5: a top-level layer can be dragged onto a scene on the board.
+        if (depth === 0) {
+          button.draggable = true;
+          button.ondragstart = (event) => {
+            event.dataTransfer?.setData(LAYER_DRAG_TYPE, layer.id);
+            if (event.dataTransfer)
+              event.dataTransfer.effectAllowed = 'copyMove';
+          };
+        }
         button.setAttribute(
           'aria-pressed',
           String(session.selectedIds.includes(layer.id)),
@@ -861,6 +880,7 @@ export function mountEditorShell(
     session.setPlaying(false);
     openExportDialog({
       composition: session.source.composition,
+      scenes: engine.state.compositions,
       assets: session.source.assets,
       background: session.source.background,
       projectName: engine.state.metadata.name,
@@ -1420,6 +1440,7 @@ export function mountEditorShell(
       palette.dispose();
       newProjectForm.dispose();
       unsubscribeLanguage();
+      sceneBoard.dispose();
       mediaPanel.dispose();
       positionPanel.dispose();
       frames.dispose();

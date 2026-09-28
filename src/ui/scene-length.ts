@@ -59,5 +59,42 @@ export function sceneLengthCommands(
       ...retimeClip(clip, clip.startTime, next - clip.startTime, 'right'),
     });
   }
+  // Layers without a clip of their own (children inside a group) have their
+  // own times, which also make the scene's length: they follow the same rule.
+  const linked = new Set(
+    composition.tracks.flatMap((track) =>
+      track.clips.map((clip) => clip.layerId),
+    ),
+  );
+  const visit = (layers: RenderSource['composition']['layers']) => {
+    for (const layer of layers) {
+      if (!linked.has(layer.id)) {
+        const layerEnd = layer.startTime + layer.duration;
+        let next: number | null = null;
+        if (length > end) {
+          if (Math.abs(layerEnd - end) < frame / 2) next = length;
+        } else if (layerEnd > length + 1e-9) {
+          if (layer.startTime >= length - frame / 2)
+            throw new Error(
+              t('scene.lengthCutsClip', {
+                name: layer.name,
+                time: formatNumber(Math.round(layer.startTime * 100) / 100),
+              }),
+            );
+          next = length;
+        }
+        if (next !== null && Math.abs(next - layerEnd) > 1e-9)
+          commands.push({
+            type: 'SET_LAYER_TIMING',
+            compositionId: composition.id,
+            layerId: layer.id,
+            startTime: layer.startTime,
+            duration: next - layer.startTime,
+          });
+      }
+      visit(layer.children);
+    }
+  };
+  visit(composition.layers);
   return commands;
 }

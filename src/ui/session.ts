@@ -300,6 +300,12 @@ export class EditorSession {
         : [],
     );
   }
+  /** G5: the scene after this one in playback order, if any. */
+  get nextCompositionId(): string | null {
+    const all = this.engine.state.compositions;
+    const index = all.findIndex((item) => item.id === this.#compositionId);
+    return all[index + 1]?.id ?? null;
+  }
   selectComposition(id: string): void {
     if (!this.engine.state.compositions.some((item) => item.id === id))
       throw new Error('Unknown composition');

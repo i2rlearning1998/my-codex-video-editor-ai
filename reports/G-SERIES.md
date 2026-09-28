@@ -170,3 +170,45 @@ _Completed at the end of the series._
 - The eraser works on the stroke's centre line (plus a quarter of its width), so a sliver of a very wide stroke can remain at the eraser's edge.
 - The Glow pen's halo and the Marker's rim reach slightly past the layer's box, like a line's round caps.
 - In one full e2e run in the sandbox, the frame-exact export test (EXP-001) read one exported frame as the previous one; the whole export spec passed on a re-run (9 of 9). The test's video has no drawings, so G4 does not touch it. It is recorded here as a possible sandbox load flake, to watch in CI.
+
+## Part G5: scenes board
+
+### What changed
+
+- **Scenes board (PRJ-014, PRJ-020, D-112).** A **Scenes** button above the canvas opens a board: every scene in one row, in playback order.
+  - Each card shows a poster (the scene at its start), its name and its length.
+  - A transition chip sits between scenes; it is disabled and names Wave 6.
+  - Double-click (or Enter) opens a scene, and the timeline then shows that scene only. Esc closes the board.
+- **Managing scenes (PRJ-013), one undo step each:**
+  - drag cards to reorder;
+  - Rename, Duplicate and Delete on each card;
+  - "+" adds a blank scene, a copy of this scene, or the example layout, right after the current scene.
+- **Moving layers (PRJ-021).** Drag a layer from the Scene list (or the Position panel's Layers tab) onto a scene card and it moves there with its clip, at the same time. Hold Alt to copy it instead.
+- **Playback (PRJ-022).** At the end of a scene, playback continues into the next one.
+- **Export (EXP-019).**
+  - By default the export joins all scenes one after another; "This scene only" exports the open scene.
+  - Scenes of different sizes can only be exported one at a time.
+- **Fix (CV-048).** Scene length now also retimes layers inside groups; before, a group's children kept the scene at its old length.
+
+### Try it (G5)
+
+| #   | Do this                                                                        | Expect                                                                         | ID      |
+| --- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | ------- |
+| 1   | Click **Scenes** above the canvas                                              | One card with a poster, name and length                                        | PRJ-020 |
+| 2   | Click "+", choose "Duplicate this scene"                                       | A second card; it opens; a grey transition chip sits between the cards         | PRJ-013 |
+| 3   | Open Scenes again, click "+", choose "From a layout"                           | A third scene with the example design                                          | PRJ-013 |
+| 4   | Drag the last card onto the first                                              | It moves to the front; Ctrl+Z puts it back                                     | PRJ-013 |
+| 5   | Rename a scene with its pencil button, then delete one with the bin            | The name changes; the scene goes; Ctrl+Z restores it                           | PRJ-013 |
+| 6   | Drag a layer from the Scene list onto another scene's card; then hold Alt      | It moves to that scene; with Alt a copy is made and the original stays         | PRJ-021 |
+| 7   | Double-click a card                                                            | That scene opens; the timeline shows only its clips                            | PRJ-020 |
+| 8   | Seek near the end of the first scene and press Play                            | Playback carries on into the next scene                                        | PRJ-022 |
+| 9   | Export                                                                         | "Scenes: All scenes" is chosen; the end time is the total of all scenes        | EXP-019 |
+
+### Known gaps (G5)
+
+- Scenes that are not open show video and images as placeholders on the board until their media has been shown once.
+- The board is a scrolling row of cards, not a zoomable canvas. Zooming out from the canvas does not open it; the Scenes button does.
+- Transitions between scenes are not built (Wave 6).
+- A per-scene background needs a schema change (see G3).
+- Moving a linked clip to another scene drops its link.
+

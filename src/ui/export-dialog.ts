@@ -19,9 +19,12 @@ import {
 import type { AudioDecoder, MediaStore } from '../media';
 import { formatDuration, formatNumber, t } from '../i18n';
 import { openModal } from './components/modal';
+import { joinScenes } from '../export/join';
 
 export interface ExportDialogOptions {
   composition: DeepReadonly<Composition>;
+  /** G5: every scene in playback order; with more than one, All is offered. */
+  scenes?: readonly DeepReadonly<Composition>[];
   assets: readonly DeepReadonly<Asset>[];
   background: string;
   projectName: string;
@@ -36,7 +39,16 @@ const field = (id: string, label: string, control: string) =>
   `<label class="export-field" for="${id}"><span>${label}</span>${control}</label>`;
 
 export function openExportDialog(options: ExportDialogOptions) {
-  const { composition } = options;
+  // G5: all scenes joined end to end (the default), or this scene only.
+  const scenes = options.scenes ?? [options.composition];
+  let joined: DeepReadonly<Composition> | null = null;
+  let joinError = '';
+  try {
+    joined = scenes.length > 1 ? joinScenes(scenes) : null;
+  } catch (error) {
+    joinError = error instanceof Error ? error.message : String(error);
+  }
+  let composition = joined ?? options.composition;
   let settings: ExportSettings = defaultSettings(
     composition,
     options.projectName,
@@ -49,6 +61,16 @@ export function openExportDialog(options: ExportDialogOptions) {
     bodyBuilder: (body) => {
       body.innerHTML = `
         <form class="export-form" id="export-form">
+          ${
+            scenes.length > 1
+              ? field(
+                  'export-scenes',
+                  t('export.scenes'),
+                  `<select id="export-scenes"><option value="all"${joined ? '' : ' disabled'}>${t('export.scenes.all', { count: formatNumber(scenes.length) })}</option><option value="current">${t('export.scenes.current')}</option></select>`,
+                )
+              : ''
+          }
+          <p class="export-format" id="export-scenes-note" role="note"${joinError ? '' : ' hidden'}>${joinError}</p>
           ${field(
             'export-preset',
             t('export.preset'),
@@ -194,6 +216,21 @@ export function openExportDialog(options: ExportDialogOptions) {
         inputs.preset.value = 'custom';
       changed();
     };
+  const scope = root.querySelector<HTMLSelectElement>('#export-scenes');
+  if (scope) {
+    scope.value = joined ? 'all' : 'current';
+    scope.onchange = () => {
+      composition =
+        scope.value === 'all' && joined ? joined : options.composition;
+      settings = {
+        ...defaultSettings(composition, options.projectName),
+        fileName: settings.fileName,
+      };
+      show();
+      describeFormat();
+      void checkMissing();
+    };
+  }
   inputs.name.oninput = () => {
     settings = { ...settings, fileName: inputs.name.value };
   };
@@ -203,6 +240,7 @@ export function openExportDialog(options: ExportDialogOptions) {
   const cancelButton = find<HTMLButtonElement>('export-cancel');
   const setRunning = (running: boolean) => {
     for (const input of Object.values(inputs)) input.disabled = running;
+    if (scope) scope.disabled = running;
     startButton.disabled = running;
     cancelButton.hidden = !running;
     progress.hidden = !running;

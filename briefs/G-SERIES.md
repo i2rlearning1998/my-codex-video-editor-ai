@@ -24,12 +24,12 @@ Resume rule: when the owner says "continue", read this file and pick up at the f
 | G2   | Transform correctness                                                       | done   | see `git log` (G2 commits)                      |
 | G3   | Viewport and canvas                                                         | done   | see `git log` (G3 commits)                      |
 | G4   | Draw rebuilt                                                                | done   | see `git log` (G4 commit)                       |
-| G5   | Scenes board                                                                | todo   |                                                 |
+| G5   | Scenes board                                                                | done   | see `git log` (G5 commit)                       |
 | End  | Full verify, report, PR ready                                               | todo   |                                                 |
 
 ## Decisions (D-100 onward)
 
-D-100 shared controls; D-101 left side panels; D-102 menus; D-103 rail categories; D-104 Inspector units and clamping; D-105 size and position fields; D-106 handles per type (contract r7); D-107 Ungroup verified, click in a multi-selection; D-108 canvas view; D-109 scene bar; D-110 scene commands; D-111 Draw rebuilt (supersedes D-079).
+D-100 shared controls; D-101 left side panels; D-102 menus; D-103 rail categories; D-104 Inspector units and clamping; D-105 size and position fields; D-106 handles per type (contract r7); D-107 Ungroup verified, click in a multi-selection; D-108 canvas view; D-109 scene bar; D-110 scene commands; D-111 Draw rebuilt (supersedes D-079); D-112 scenes board.
 
 ## Resume notes
 
@@ -37,4 +37,5 @@ D-100 shared controls; D-101 left side panels; D-102 menus; D-103 rail categorie
 - G2 done: full e2e 165 passed plus DEV-006; report sections G1 and G2 written in `reports/G-SERIES.md`.
 - G3 done (report section written).
 - G4 done: 369 unit tests; full e2e 172 passed plus DEV-006. One run had EXP-001 read one exported frame as the previous one; it passed on a re-run (9 of 9, sandbox load; recorded in the report). D-105 to D-107 were missing from DECISIONS (an earlier write never ran) and are added now.
-- Next: G5 (scenes board).
+- G5 done: 5 e2e and 8 unit scene tests pass.
+- Next: the finish (full verify, STATUS, CHANGELOG, report summary, PR ready, CI checked once).

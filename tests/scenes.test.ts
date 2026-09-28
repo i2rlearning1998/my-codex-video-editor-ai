@@ -7,6 +7,15 @@ import {
 } from '../src/core';
 import { EditorSession } from '../src/ui/session';
 import { sceneLengthCommands } from '../src/ui/scene-length';
+import { joinScenes } from '../src/export/join';
+import {
+  cloneScene,
+  duplicateScene,
+  moveLayerToScene,
+  templateScene,
+} from '../src/ui/scenes';
+import { adoptFreeLayers } from '../src/core';
+import { createExampleProject } from '../src/ui/example';
 
 const nle = () =>
   new EditorEngine(
@@ -89,6 +98,101 @@ describe('[CV-048] scene commands and scene length (G3, G5)', () => {
     expect(() => sceneLengthCommands(session.source, 2)).toThrow(/starts at 3/);
     expect(() => sceneLengthCommands(session.source, 0)).toThrow(RangeError);
     expect(sceneLengthCommands(session.source, 3.5)).toEqual([]);
+    session.dispose();
+  });
+});
+
+describe('[PRJ-013][PRJ-021][EXP-019] scenes on a board (G5)', () => {
+  it('joins scenes end to end: times, keyframes and markers move, ids stay unique', () => {
+    const engine = nle();
+    const first = engine.state.compositions[0]!;
+    const copy = cloneScene(first, 'Two');
+    const joined = joinScenes([first, copy as never]);
+    expect(joined.duration).toBeCloseTo(first.duration * 2, 9);
+    const clips = joined.tracks.flatMap((track) => track.clips);
+    expect(clips).toHaveLength(first.tracks.flatMap((t) => t.clips).length * 2);
+    expect(new Set(clips.map((clip) => clip.id)).size).toBe(clips.length);
+    const shifted = clips.filter((clip) => clip.id.startsWith('scene2-'));
+    const original = first.tracks.flatMap((track) => track.clips);
+    expect(shifted.map((clip) => clip.startTime)).toEqual(
+      original.map((clip) => clip.startTime + first.duration),
+    );
+    // A single scene is exported as it is; mixed sizes are refused.
+    expect(joinScenes([first])).toBe(first);
+    expect(() => joinScenes([first, { ...copy, width: 640 } as never])).toThrow(
+      /different sizes/,
+    );
+  });
+  it('clones a scene with new ids for its layers, tracks and clips', () => {
+    const engine = nle();
+    const first = engine.state.compositions[0]!;
+    const copy = cloneScene(first, 'Copy');
+    const ids = (scene: typeof first | typeof copy) => [
+      scene.id,
+      ...scene.layers.map((layer) => layer.id),
+      ...scene.tracks.map((track) => track.id),
+      ...scene.tracks.flatMap((track) => track.clips.map((clip) => clip.id)),
+    ];
+    for (const id of ids(copy)) expect(ids(first)).not.toContain(id);
+    // Clips still point at their (renamed) layers.
+    for (const clip of copy.tracks.flatMap((track) => track.clips))
+      expect(copy.layers.some((layer) => layer.id === clip.layerId)).toBe(true);
+    engine.commands.transaction(
+      'Duplicate scene',
+      duplicateScene(engine.state, first.id).commands,
+    );
+    expect(engine.state.compositions).toHaveLength(2);
+    engine.commands.transaction(
+      'Add scene',
+      templateScene(engine.state, first.id).commands,
+    );
+    expect(engine.state.compositions[1]!.name).toBe('Example layout');
+  });
+  it('moves a layer and its clip to another scene, or copies it with new ids', () => {
+    const engine = nle();
+    const first = engine.state.compositions[0]!.id;
+    const added = duplicateScene(engine.state, first);
+    engine.commands.transaction('Duplicate scene', added.commands);
+    engine.commands.transaction(
+      'Move to scene',
+      moveLayerToScene(engine.state, first, 'layer-c', added.id, false),
+    );
+    const [from, to] = engine.state.compositions;
+    expect(from!.layers.some((layer) => layer.id === 'layer-c')).toBe(false);
+    expect(to!.layers.some((layer) => layer.id === 'layer-c')).toBe(true);
+    expect(
+      to!.tracks
+        .flatMap((track) => track.clips)
+        .filter((clip) => clip.layerId === 'layer-c'),
+    ).toHaveLength(1);
+    engine.commands.transaction(
+      'Copy to scene',
+      moveLayerToScene(engine.state, first, 'layer-a', added.id, true),
+    );
+    expect(
+      engine.state.compositions[0]!.layers.some(
+        (layer) => layer.id === 'layer-a',
+      ),
+    ).toBe(true);
+    expect(() =>
+      moveLayerToScene(engine.state, first, 'missing', added.id, false),
+    ).toThrow();
+  });
+  it('[CV-048] a scene length also retimes the layers inside groups', () => {
+    const engine = new EditorEngine(
+      adoptFreeLayers(createExampleProject()).project,
+    );
+    const session = new EditorSession(engine);
+    engine.commands.transaction(
+      'Set scene length',
+      sceneLengthCommands(session.source, 1),
+    );
+    expect(engine.state.compositions[0]!.duration).toBeCloseTo(1, 9);
+    engine.commands.transaction(
+      'Set scene length',
+      sceneLengthCommands(session.source, 4),
+    );
+    expect(engine.state.compositions[0]!.duration).toBeCloseTo(4, 9);
     session.dispose();
   });
 });

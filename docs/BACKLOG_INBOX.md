@@ -45,3 +45,6 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-28 | G1 LAY | LAY-022: add RGB, HSL and alpha entry to the colour picker. LAY-023: fold segmented controls, toggles, tabs and tooltips into the shared control spec.
 - G3: a per-scene background colour and scene Notes need a composition field (schema 6); today Background applies to every scene (D-109).
 - G3: CV-017 asks for one zoom dropdown holding Fit, Fill, the percentages and 100%; today Fit and 100% are buttons, Fill is in the palette.
+- G5: posters of scenes that are not open draw video and image layers as placeholders until their media has been shown once.
+- G5: the board is a scrolling row, not a zoomable canvas; a zoom-out gesture from the canvas into the board is not built.
+- G5: moving a linked clip to another scene drops its link (D-112).
