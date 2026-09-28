@@ -40,8 +40,8 @@ Branch `claude/g-series`, draft PR #13 to `main`. This report is written part by
 
 - `npm run verify`: exit code 0 (final run, after G5).
 - Format: all files pass Prettier. Typecheck: clean. Build: `index` 482.50 kB (146.87 kB gzip), export `worker` 536.62 kB, CSS 54.73 kB.
-- Unit and jsdom tests: 373 passed in 31 files.
-- E2E: 178 passed plus the expected DEV-006 guard probe, in the sandbox Chromium 141.0.7390.37 (no Chrome or Edge in the sandbox, D-030). Node 22.22.2.
+- Unit and jsdom tests: 374 passed in 32 files.
+- E2E: 179 passed plus the expected DEV-006 guard probe, in the sandbox Chromium 141.0.7390.37 (no Chrome or Edge in the sandbox, D-030). Node 22.22.2.
 - Ledger: `Ledger OK`, 524 items: 180 Verified, 14 Claimed, 330 Todo.
 - CI: see section 10.
 
@@ -55,7 +55,7 @@ Branch `claude/g-series`, draft PR #13 to `main`. This report is written part by
 
 ## 6. Decisions made
 
-D-100 to D-112 in `docs/DECISIONS.md`. D-111 supersedes D-079 (shared brush settings).
+D-100 to D-113 in `docs/DECISIONS.md`. D-111 supersedes D-079 (shared brush settings).
 
 ## 7. Not tested, known gaps, risks
 
@@ -63,6 +63,10 @@ D-100 to D-112 in `docs/DECISIONS.md`. D-111 supersedes D-079 (shared brush sett
 - The trackpad pinch is proven through Ctrl+wheel (Chromium reports a pinch that way); a real trackpad was not used.
 - The eyedropper exists only where the browser has the EyeDropper API; the test does not use it.
 - In one full e2e run the frame-exact export test (EXP-001) read one frame as the previous one; it passed on its re-run and in the final verify. Watch it in CI.
+- CI showed a flake on some G-series runs: KEY-002, KEY-006 and CV-040 failed on one run and passed on the other run of the same commit.
+  - Cause (from G1): the shortcut dispatcher ignored keys aimed at a menu, and a menu that has just closed keeps focus until the next frame. A shortcut pressed in that moment was lost, and a quick user could hit it too.
+  - Fixed: keys are now ignored only while the menu is still shown (D-113).
+  - A regression test sends the key in the same task as the menu click and fails on the old code.
 - Each part below lists its own known gaps.
 
 ## 8. Architecture and contract impact

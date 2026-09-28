@@ -158,3 +158,36 @@ test('[KEY-009] Escape cancels a drag, then closes a palette, then deselects', a
   expect((await hook(page)).session.selectedIds).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath('escape.png') });
 });
+
+test('[KEY-002][KEY-006] regression: a shortcut pressed as a menu closes still runs', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await page.locator('#menu-trigger').click();
+  await expect(page.locator('#app-menu')).toBeVisible();
+  // The browser moves focus out of a menu that closes only on the next
+  // frame, so the key is sent in the same task as the click (the only way to
+  // hit that moment every time; a user can hit it by typing quickly). Before
+  // the fix, keys aimed at the closed menu were ignored (CI flake).
+  const focused = await page.evaluate(() => {
+    const save = document.querySelector<HTMLButtonElement>('#save')!;
+    save.focus();
+    save.click();
+    const target = document.activeElement!;
+    target.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'k',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    return target.id;
+  });
+  expect(focused).toBe('save');
+  await expect(page.locator('#app-menu')).toBeHidden();
+  await expect(page.locator('#command-palette')).toBeVisible();
+});

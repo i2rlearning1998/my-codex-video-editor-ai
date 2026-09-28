@@ -1,6 +1,6 @@
 - **G-series (G1 to G5)** is on `claude/g-series`, draft PR #13 to `main`, not merged; see reports/G-SERIES.md.
   - It adds shared controls and left side panels, size and position fields that match what is drawn, handles per type (contract revision 7), pan and zoom, a scene bar, the rebuilt Draw tools, and a scenes board with playback and export through all scenes.
-  - Last full verify: 373 unit and jsdom tests; 178 e2e passes plus the DEV-006 probe; ledger 180 Verified, 14 Claimed, 330 Todo. Schema is still 5.
+  - Last full verify: 374 unit and jsdom tests; 179 e2e passes plus the DEV-006 probe; ledger 180 Verified, 14 Claimed, 330 Todo. Schema is still 5.
 - Branch `claude/wave-2-timeline-clips-mwy1f3` (PR #3 against main, unmerged) carries W2-B, W2-C, the CV-022 and CV-008 fixes, W4-A, W4-B, W4-C, W2-D and W2-E.
 - W5-A (export) is on `claude/wave-5-export`, PR #4, stacked on PR #3 (retarget to main after PR #3 merges). See reports/W5-A.md.
 - Last full verify on PR #6's branch (W5-C): 343 unit + jsdom tests, 123 e2e passes + 1 expected failure, ledger 140 Verified / 9 Claimed / 353 Todo.

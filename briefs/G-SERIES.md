@@ -25,7 +25,7 @@ Resume rule: when the owner says "continue", read this file and pick up at the f
 | G3   | Viewport and canvas                                                         | done   | see `git log` (G3 commits)                              |
 | G4   | Draw rebuilt                                                                | done   | see `git log` (G4 commit)                               |
 | G5   | Scenes board                                                                | done   | see `git log` (G5 commit)                               |
-| End  | Full verify, report, PR ready                                               | done   | verify green: 373 unit, 178 e2e + DEV-006; PR #13 ready |
+| End  | Full verify, report, PR ready                                               | done   | verify green: 374 unit, 179 e2e + DEV-006; PR #13 ready |
 
 ## Decisions (D-100 onward)
 
