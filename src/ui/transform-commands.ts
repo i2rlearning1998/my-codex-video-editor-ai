@@ -7,6 +7,7 @@ import {
   type TransformValues,
 } from '../core';
 import type { SceneLayer } from '../render/adapter';
+import { withValueAt } from './keyframes';
 
 export type InspectorField =
   'Position X' | 'Position Y' | 'Scale X' | 'Scale Y' | 'Rotation' | 'Opacity';
@@ -46,6 +47,8 @@ export function buildTransformCommands(
   layer: SceneLayer,
   target: TransformValues,
   textBox?: { readonly width: number; readonly height: number },
+  /** W5-B: the playhead; animated properties get a keyframe there (ANI-006). */
+  time?: number,
 ): Command[] {
   const commands: Command[] = [];
   for (const key of ['position', 'scale', 'rotation', 'opacity'] as const) {
@@ -54,14 +57,13 @@ export function buildTransformCommands(
       JSON.stringify(target[key].value)
     )
       continue;
-    const property = propertySchema.parse(layer.transform[key] as unknown);
     // All types are retained; runtime command/project validation remains authoritative.
     commands.push({
       type: 'SET_PROPERTY',
       compositionId,
       layerId: layer.id,
       target: { kind: 'transform', key },
-      property: { ...property, value: structuredClone(target[key].value) },
+      property: withValueAt(layer.transform[key], target[key].value, time),
     } as Command);
   }
   if (textBox) {

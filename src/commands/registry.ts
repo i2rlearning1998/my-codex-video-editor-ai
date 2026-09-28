@@ -1,6 +1,25 @@
 import type { EditorEngine } from '../core';
 import type { EditorSession } from '../ui/session';
 import {
+  ALIGN_EDGES,
+  alignSelection,
+  canDistribute,
+  distributeSelection,
+} from '../ui/align';
+import { locateLayer } from '../render/adapter';
+import { ARRANGE_ACTIONS, arrangeSelection, canArrange } from '../ui/arrange';
+import { BOOLEAN_OPS, canCombine, combineShapes } from '../ui/shapes';
+import { describeSelection } from '../ui/selection-context';
+import { ARRANGE_KEYS, ARRANGE_SHORTCUTS } from '../ui/canvas-menu';
+import { jumpToKeyframe, runKeyframeAction } from '../ui/keyframe-edit';
+import { keyframeTimes } from '../ui/keyframes';
+import {
+  canCopyStyle,
+  copyStyle,
+  hasStyle,
+  pasteStyle,
+} from '../ui/style-clipboard';
+import {
   contextActions,
   jumpToCut,
   moveClipsToAdjacentTrack,
@@ -34,6 +53,9 @@ export interface RegisteredCommand {
 }
 const hasClips = ({ session }: CommandContext) =>
   selectedClips(session.source, session.selectedIds).length > 0;
+/** Speed, reverse and freeze apply to video and audio clips only (D-073). */
+const hasTimedClips = ({ session }: CommandContext) =>
+  describeSelection(session.source, session.selectedIds).every('time-effects');
 const timeline = (
   id: string,
   labelKey: string,
@@ -48,17 +70,27 @@ const timeline = (
   isEnabled,
   run,
 });
+/** ANI-004: with timeline keyframes selected, these edits act on them. */
+const KEYFRAME_EDITS: Partial<
+  Record<EditAction, 'copy' | 'paste' | 'duplicate' | 'delete'>
+> = { copy: 'copy', paste: 'paste', duplicate: 'duplicate', delete: 'delete' };
 const edit = (id: EditAction, shortcut: string): RegisteredCommand => ({
   id,
   labelKey: `command.${id}`,
   shortcut,
   isEnabled: ({ session }) =>
+    (!!KEYFRAME_EDITS[id] && session.selectedKeyframes.length > 0) ||
     contextActions(
       session.source,
       session.selectedIds,
       session.currentTime,
     ).includes(id),
-  run: ({ engine, session }) => performEdit(engine, session, id),
+  run: ({ engine, session }) => {
+    const keyframeAction = KEYFRAME_EDITS[id];
+    if (keyframeAction && session.selectedKeyframes.length)
+      runKeyframeAction(engine, session, keyframeAction);
+    else performEdit(engine, session, id);
+  },
 });
 export const commands: readonly RegisteredCommand[] = Object.freeze([
   {
@@ -112,28 +144,105 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   edit('split', 'S'),
   edit('marker', 'M'),
   edit('group', 'Ctrl+G'),
+  edit('ungroup', 'Ctrl+Shift+G'),
+  // CV-026: layer order (palette, canvas Layer submenu).
+  ...ARRANGE_ACTIONS.map((action): RegisteredCommand => ({
+    id: `arrange-${action}`,
+    labelKey: ARRANGE_KEYS[action],
+    shortcut: ARRANGE_SHORTCUTS[action],
+    isEnabled: ({ session }) => canArrange(session, action),
+    run: ({ engine, session }) => arrangeSelection(engine, session, action),
+  })),
+  // SHP-015: boolean shape operations (palette, canvas Combine submenu).
+  ...BOOLEAN_OPS.map((op): RegisteredCommand => ({
+    id: `combine-${op}`,
+    labelKey: `command.${op}`,
+    shortcut: '',
+    isEnabled: ({ session }) => canCombine(session.source, session.selectedIds),
+    run: ({ engine, session }) => combineShapes(engine, session, op),
+  })),
   edit('toggle-enabled', ''),
+  edit('cut', 'Ctrl+X'),
+  edit('copy', 'Ctrl+C'),
+  edit('paste', 'Ctrl+V'),
+  edit('link', ''),
+  edit('unlink', ''),
+  edit('detach-audio', ''),
   edit('reverse', ''),
   edit('freeze', ''),
+  // CV-025: align and distribute (palette, canvas Align submenu).
+  ...ALIGN_EDGES.map((edge): RegisteredCommand => ({
+    id: `align-${edge}`,
+    labelKey: `command.align${edge[0]!.toUpperCase()}${edge.slice(1)}`,
+    shortcut: '',
+    isEnabled: ({ session }) => session.selectedIds.length > 0,
+    run: ({ engine, session }) => alignSelection(engine, session, edge),
+  })),
+  ...(['horizontal', 'vertical'] as const).map((axis): RegisteredCommand => ({
+    id: `distribute-${axis}`,
+    labelKey: `command.distribute${axis[0]!.toUpperCase()}${axis.slice(1)}`,
+    shortcut: '',
+    isEnabled: ({ session }) => canDistribute(session),
+    run: ({ engine, session }) => distributeSelection(engine, session, axis),
+  })),
+  // ANI-005: previous and next keyframe of the selected layer.
+  ...([-1, 1] as const).map((direction): RegisteredCommand => ({
+    id: direction < 0 ? 'keyframe-previous' : 'keyframe-next',
+    labelKey:
+      direction < 0 ? 'command.keyframePrevious' : 'command.keyframeNext',
+    shortcut: direction < 0 ? ',' : '.',
+    isEnabled: ({ session }) => {
+      const layer = session.selectedId
+        ? locateLayer(session.source.composition.layers, session.selectedId)
+            ?.layer
+        : undefined;
+      return !!layer && keyframeTimes(layer).length > 0;
+    },
+    run: ({ session }) => {
+      jumpToKeyframe(session, direction);
+    },
+  })),
+  // CV-039: Copy style / Paste style (palette and canvas menu).
+  {
+    id: 'copy-style',
+    labelKey: 'command.copyStyle',
+    shortcut: '',
+    isEnabled: ({ session }) => canCopyStyle(session),
+    run: ({ session }) => copyStyle(session),
+  },
+  {
+    id: 'paste-style',
+    labelKey: 'command.pasteStyle',
+    shortcut: '',
+    isEnabled: ({ session }) => hasStyle() && session.selectedIds.length > 0,
+    run: ({ engine, session }) => pasteStyle(engine, session),
+  },
+  {
+    id: 'align-to-canvas',
+    labelKey: 'command.alignToCanvas',
+    shortcut: '',
+    isEnabled: () => true,
+    run: ({ session }) => session.setAlignToCanvas(!session.alignToCanvas),
+  },
   {
     id: 'speed-slower',
     labelKey: 'command.speedSlower',
     shortcut: '',
-    isEnabled: hasClips,
+    isEnabled: hasTimedClips,
     run: ({ engine, session }) => stepClipSpeed(engine, session, -1),
   },
   {
     id: 'speed-faster',
     labelKey: 'command.speedFaster',
     shortcut: '',
-    isEnabled: hasClips,
+    isEnabled: hasTimedClips,
     run: ({ engine, session }) => stepClipSpeed(engine, session, 1),
   },
   {
     id: 'speed-normal',
     labelKey: 'command.speedNormal',
     shortcut: '',
-    isEnabled: hasClips,
+    isEnabled: hasTimedClips,
     run: ({ engine, session }) => setClipSpeed(engine, session, 1),
   },
   timeline('clip-nudge-left', 'command.nudgeLeft', 'Alt+←', (c) =>

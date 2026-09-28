@@ -7,11 +7,12 @@ import {
   createLayer,
   effectiveLayerTiming,
   findClipByLayer,
-  clipTimeEffects,
+  findClip,
   type EditorEngine,
   type AffineMatrix,
   type Command,
   type Point2,
+  hasAnimation,
 } from '../core';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
@@ -20,19 +21,38 @@ import {
   type CompositionRenderer,
 } from '../render/canvas';
 import { renderInspector } from './inspector';
+import { mountMediaPanel } from './media-panel';
+import { openExportDialog } from './export-dialog';
+import { drawComposition } from '../render/canvas';
+import {
+  AudioDecoder,
+  AudioEngine,
+  MediaFrames,
+  MediaPreviews,
+  WaveformCache,
+  openMediaStore,
+  listAudibleClips,
+  type AudibleClip,
+  type MediaStore,
+  type PreviewAsset,
+} from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
-import {
-  contextActions,
-  performEdit,
-  selectedClips,
-  setClipSpeed,
-  SPEED_PRESETS,
-  type EditAction,
-} from './editing';
+import { DrawTool, withoutLayers } from './draw-tool';
+import { mountDrawPanel } from './draw-panel';
+import { addShape, mountShapesPanel } from './shapes';
+import { mountContextToolbar } from './context-toolbar';
+import { mountAnimationPanel } from './animation-panel';
+import { mountAnimatePanel } from './animate-panel';
+import { mountPositionPanel } from './position-panel';
+import { canvasMenuEntries } from './canvas-menu';
+import { createMenu } from './context-menu';
+import { mountSelectionActions } from './selection-actions';
+import { multiSelectionBox, selectionGeometry } from '../render/selection';
+import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
 import { openModal } from './components/modal';
 import { showToast } from './components/toast';
@@ -58,6 +78,7 @@ const RAIL_CATEGORIES = [
   'Templates',
   'Audio',
   'Elements',
+  'Draw',
   'Transitions',
   'Scene',
 ] as const;
@@ -68,6 +89,7 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Templates: 'templates',
   Audio: 'audio',
   Elements: 'elements',
+  Draw: 'pen',
   Transitions: 'transitions',
   Scene: 'group',
 };
@@ -93,6 +115,8 @@ export interface ShellActions {
   exportProject?: () => void;
   importProject?: (file: File) => Promise<void>;
   openExample?: () => void | Promise<void>;
+  /** The media byte store (D-004); defaults to OPFS, then IndexedDB. */
+  mediaStore?: Promise<MediaStore | null>;
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -130,6 +154,7 @@ export function mountEditorShell(
           <button type="button" id="example" role="menuitem">${iconSvg('open')}${t('action.example')}</button>
           <label class="button" role="menuitem" id="open-project-label">${iconSvg('open')}${t('action.open')}<input id="import" type="file" accept="application/json,.json" /></label>
           <button type="button" id="save" role="menuitem">${iconSvg('save')}${t('action.save')}</button>
+          <button type="button" id="export-json" role="menuitem">${iconSvg('export')}${t('action.exportJson')}</button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
@@ -152,8 +177,11 @@ export function mountEditorShell(
           ${iconSvg('search')}
           <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
         </div>
-        <div class="import-row"><button type="button" class="button primary" id="import-media" disabled title="${t('import.comingSoon')}">${iconSvg('export')}${t('library.import')}</button></div>
+        <div class="import-row"><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
+        <div class="media-panel" id="media-panel" hidden></div>
         <div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
+        <div class="draw-panel" id="draw-panel" hidden></div>
+        <div class="draw-panel shapes-panel" id="shapes-panel" hidden></div>
         <div class="scene-heading" id="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div>
         <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
@@ -167,12 +195,13 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><div class="animate-panel" id="animate-panel" hidden></div><div class="animate-panel position-panel" id="position-panel" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" aria-label="${t('inspector.title')}">
         <div id="inspector-content"></div>
+        <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
@@ -205,6 +234,46 @@ export function mountEditorShell(
       reportError(error);
     }
   };
+  const mediaStore = actions.mediaStore ?? openMediaStore();
+  const previews = new MediaPreviews(mediaStore);
+  const mediaAssets = () =>
+    session.source.assets as unknown as readonly PreviewAsset[];
+  const decoder = new AudioDecoder(mediaStore, mediaAssets);
+  const waveforms = new WaveformCache(mediaStore, decoder, mediaAssets);
+  const mediaPanel = mountMediaPanel({
+    container: element('#media-panel'),
+    engine,
+    session,
+    store: mediaStore,
+    previews,
+    waveforms,
+    imported: () => frames.retry(),
+    toast: (text, kind) => showToast(text, kind),
+  });
+  // W4-C: every clip that can sound, flattened from the canonical composition.
+  const audibleClips = (): AudibleClip[] =>
+    listAudibleClips(
+      session.source.composition,
+      mediaAssets(),
+      session.soloTrackIds,
+    );
+  // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
+  let redrawQueued = false;
+  const audio = new AudioEngine(decoder, () => {
+    if (!disposed) safely(draw);
+  });
+  const frames = new MediaFrames(
+    mediaStore,
+    () => session.source.assets as unknown as readonly PreviewAsset[],
+    () => {
+      if (redrawQueued || disposed) return;
+      redrawQueued = true;
+      requestAnimationFrame(() => {
+        redrawQueued = false;
+        safely(draw);
+      });
+    },
+  );
   const viewport = () => {
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
@@ -224,12 +293,56 @@ export function mountEditorShell(
     return { ...view, matrix: multiplyMatrices(centered, view.matrix) };
   };
   let timeline: ReturnType<typeof mountTimeline> | undefined;
+  let lastAudio: {
+    time: number;
+    project: unknown;
+    composition: string;
+  } | null = null;
+  const syncAudio = () => {
+    const clock = timeline?.playback.clock ?? session.currentTime;
+    const clips = audibleClips();
+    audio.sync(session.playing, clock, clips);
+    // PB-011: a paused playhead that moved (and nothing else) plays a snippet.
+    if (
+      !session.playing &&
+      lastAudio &&
+      lastAudio.project === engine.state &&
+      lastAudio.composition === session.source.composition.id &&
+      lastAudio.time !== session.currentTime
+    )
+      audio.scrub(session.currentTime, clips);
+    lastAudio = {
+      time: session.currentTime,
+      project: engine.state,
+      composition: session.source.composition.id,
+    };
+  };
+  let selectionActions: ReturnType<typeof mountSelectionActions> | undefined;
   const draw = () => {
     if (disposed) return;
+    syncAudio();
+    frames.beginFrame(
+      session.playing
+        ? (timeline?.playback.clock ?? session.currentTime) -
+            session.currentTime
+        : 0,
+    );
     const report = renderer.render(
       canvas,
       {
         ...session.source,
+        // SHP-020: strokes the eraser touched vanish until release commits them.
+        ...(drawTool.erased.size
+          ? {
+              composition: withoutLayers(
+                session.source.composition,
+                drawTool.erased,
+              ),
+            }
+          : {}),
+        frames,
+        playing: session.playing,
+        animate: true,
         ...(timeline?.controller.previews.length
           ? { timingPreviews: timeline.controller.previews }
           : {}),
@@ -238,12 +351,21 @@ export function mountEditorShell(
           ? { timingPreview: timeline.controller.preview }
           : {}),
         ...(interaction.preview ? { preview: interaction.preview } : {}),
+        ...(interaction.guides.length ? { guides: interaction.guides } : {}),
+        ...(interaction.frame ? { selectionFrame: interaction.frame } : {}),
+        ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
         ...(interaction.hoveredHandle !== null
           ? { hoveredHandle: interaction.hoveredHandle }
           : {}),
       },
       viewport(),
       session.selectedId,
+    );
+    frames.endFrame();
+    updateSelectionActions();
+    // PB-009: a visible video without a current frame during playback.
+    element('#buffering-indicator').hidden = !(
+      session.playing && frames.buffering
     );
     element('#zoom').textContent = t('canvas.zoom', {
       zoom: formatNumber(Math.round(report.zoom * 100)),
@@ -255,143 +377,121 @@ export function mountEditorShell(
   const interaction = new TransformInteraction(engine, session, () =>
     safely(draw),
   );
+  const drawTool = new DrawTool(engine, session, () => safely(draw));
+  // W5-B: the Inspector's Animation section (stopwatches and keyframes).
+  const animationPanel = mountAnimationPanel(
+    element('#animation-panel'),
+    engine,
+    session,
+    reportError,
+  );
+  // W5-C: animation presets, opened from the toolbar's Animate button.
+  const animatePanel = mountAnimatePanel(
+    element('#animate-panel'),
+    engine,
+    session,
+    reportError,
+    registerExternalOverlay,
+  );
+  // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
+  // selection action cluster.
+  const positionPanel = mountPositionPanel(
+    element('#position-panel'),
+    engine,
+    session,
+    reportError,
+    registerExternalOverlay,
+  );
+  // CV-035: the selected layer's context toolbar above the canvas.
+  const contextToolbar = mountContextToolbar(
+    element('#context-toolbar'),
+    engine,
+    session,
+    (field, value) => interaction.edit(field, value),
+    reportError,
+    () => animatePanel.toggle(),
+    () => positionPanel.toggle(),
+  );
   const canvasMenu = element('#canvas-context-menu');
+  // W2-F1: the canvas menu is built from the selection's capabilities and
+  // rendered by the shared menu (context-menu.ts).
   let unregisterCanvasMenu: (() => void) | undefined;
-  const hideCanvasMenu = () => {
-    if (canvasMenu.hidden) return;
-    canvasMenu.hidden = true;
-    unregisterCanvasMenu?.();
-    unregisterCanvasMenu = undefined;
-  };
-  const CANVAS_MENU_PLACEHOLDERS = [
-    'Cut',
-    'Copy',
-    'Paste',
-    'Lock',
-    'Hide',
-    'Bring to front',
-    'Send to back',
-  ];
-  const menuItem = (
-    label: string,
-    onSelect?: () => void,
-  ): HTMLButtonElement => {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.setAttribute('role', 'menuitem');
-    item.textContent = label;
-    if (onSelect)
-      item.onclick = () => {
-        hideCanvasMenu();
-        safely(onSelect);
-      };
-    else {
-      item.disabled = true;
-      item.title = t('library.later');
-    }
-    return item;
-  };
-  // VID-015: Speed presets replace the menu in place, with Back.
-  const showCanvasSpeedMenu = (reopen: () => void) => {
-    const current = selectedClips(session.source, session.selectedIds)[0]?.clip
-      .speed;
-    const back = document.createElement('button');
-    back.type = 'button';
-    back.setAttribute('role', 'menuitem');
-    back.dataset.action = 'menu-back';
-    back.textContent = `‹ ${t('menu.back')}`;
-    back.onclick = (event) => {
-      event.stopPropagation();
-      reopen();
-    };
-    const presets = SPEED_PRESETS.map((speed) => {
-      const item = menuItem(
-        t('clip.speedValue', { speed: formatNumber(speed) }),
-        () => setClipSpeed(engine, session, speed),
-      );
-      item.setAttribute('role', 'menuitemradio');
-      item.dataset.speed = String(speed);
-      item.setAttribute('aria-checked', String(current === speed));
-      return item;
-    });
-    canvasMenu.replaceChildren(back, ...presets);
-    back.focus();
-  };
+  const canvasMenuController = createMenu(canvasMenu, {
+    report: reportError,
+    onClose: () => {
+      unregisterCanvasMenu?.();
+      unregisterCanvasMenu = undefined;
+    },
+  });
+  const hideCanvasMenu = () => canvasMenuController.close();
   const openCanvasMenu = (point: Point2, layerId: string | null) => {
-    const clips = selectedClips(session.source, session.selectedIds);
-    const items: HTMLButtonElement[] = layerId
-      ? contextActions(session.source, session.selectedIds, session.currentTime)
-          .filter((action) => action !== 'marker' && action !== 'delete-marker')
-          .map((action) => {
-            if (action === 'speed') {
-              const item = document.createElement('button');
-              item.type = 'button';
-              item.setAttribute('role', 'menuitem');
-              item.dataset.action = 'speed';
-              item.textContent = `${t('command.speed')} ›`;
-              item.onclick = (event) => {
-                event.stopPropagation();
-                showCanvasSpeedMenu(() => {
-                  hideCanvasMenu();
-                  openCanvasMenu(point, layerId);
-                });
-              };
-              return item;
-            }
-            if (action === 'reverse' || action === 'freeze') {
-              const item = menuItem(
-                t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),
-                () => performEdit(engine, session, action),
-              );
-              item.setAttribute('role', 'menuitemcheckbox');
-              item.setAttribute(
-                'aria-checked',
-                String(
-                  clips.length > 0 &&
-                    clips.every(({ clip }) =>
-                      action === 'reverse'
-                        ? clipTimeEffects(clip).reversed
-                        : clipTimeEffects(clip).freezeFrame !== null,
-                    ),
-                ),
-              );
-              item.dataset.action = action;
-              return item;
-            }
-            return menuItem(
-              action === 'toggle-enabled'
-                ? 'Enable / disable'
-                : action[0]!.toUpperCase() + action.slice(1),
-              () => performEdit(engine, session, action as EditAction),
-            );
-          })
-      : [];
-    for (const label of CANVAS_MENU_PLACEHOLDERS) items.push(menuItem(label));
-    if (items.length > CANVAS_MENU_PLACEHOLDERS.length)
-      items[items.length - CANVAS_MENU_PLACEHOLDERS.length]!.classList.add(
-        'canvas-context-menu-divider',
-      );
-    canvasMenu.replaceChildren(...items);
-    canvasMenu.hidden = false;
+    const entries = canvasMenuEntries(engine, session, !!layerId);
+    canvasMenuController.open(() =>
+      canvasMenuEntries(engine, session, !!layerId),
+    );
+    if (!entries.length) canvasMenuController.close();
     const bounds = stage.getBoundingClientRect();
     canvasMenu.style.left = `${Math.max(0, Math.min(bounds.width - 170, point[0]))}px`;
     canvasMenu.style.top = `${Math.max(0, Math.min(bounds.height - 40, point[1]))}px`;
-    unregisterCanvasMenu = registerExternalOverlay(hideCanvasMenu);
-    items[0]?.focus();
+    unregisterCanvasMenu ??= registerExternalOverlay(hideCanvasMenu);
   };
   document.addEventListener('click', (event) => {
     if (!canvasMenu.hidden && !canvasMenu.contains(event.target as Node))
       hideCanvasMenu();
   });
+  // CV-040: the action cluster follows the selection box, and hides while
+  // dragging, drawing or playing so it never covers the object being edited.
+  selectionActions = mountSelectionActions(
+    element('#selection-actions'),
+    engine,
+    session,
+    {
+      openMenu: (point) => openCanvasMenu(point, session.selectedId),
+      position: () => positionPanel.toggle(),
+      report: reportError,
+    },
+  );
+  function updateSelectionActions() {
+    if (!selectionActions) return;
+    if (
+      session.playing ||
+      drawTool.active ||
+      interaction.active ||
+      !session.selectedIds.length
+    )
+      return selectionActions.update(null, stage.getBoundingClientRect());
+    const source = {
+      ...session.source,
+      ...(interaction.previews ? { previews: interaction.previews } : {}),
+    };
+    const view = viewport().matrix;
+    const corners =
+      multiSelectionBox(source, view)?.corners ??
+      selectionGeometry(source, session.selectedId, view)?.corners;
+    if (!corners?.length)
+      return selectionActions.update(null, stage.getBoundingClientRect());
+    const xs = corners.map((point) => point[0] + canvas.offsetLeft),
+      ys = corners.map((point) => point[1] + canvas.offsetTop);
+    selectionActions.update(
+      {
+        left: Math.min(...xs),
+        top: Math.min(...ys),
+        right: Math.max(...xs),
+        bottom: Math.max(...ys),
+      },
+      stage.getBoundingClientRect(),
+    );
+  }
   const pointer = bindCanvasInteraction(
     canvas,
     session,
     interaction,
     viewport,
-    (error) => message(error instanceof Error ? error.message : String(error)),
+    reportError,
     (action) => performEdit(engine, session, action),
     true,
     openCanvasMenu,
+    drawTool,
   );
   const commandContext: CommandContext = {
     engine,
@@ -403,10 +503,22 @@ export function mountEditorShell(
   let renderedProject: unknown;
   let renderedSelection = '';
   const refresh = (force = false) => {
+    drawPanel.sync();
+    canvas.classList.toggle('drawing', session.drawBrush !== null);
+    canvas.classList.toggle('erasing', session.drawBrush === 'eraser');
     const source = session.source;
+    // W5-B: an animated selection shows time-dependent values, so the Inspector
+    // and toolbar re-render when the playhead moves (not every frame of playback).
+    const animatedSelection =
+      !session.playing &&
+      session.selectedIds.some((id) => {
+        const found = locateLayer(source.composition.layers, id);
+        return !!found && hasAnimation(found.layer);
+      });
     const identity = JSON.stringify([
       source.composition.id,
       session.selectedIds,
+      animatedSelection ? session.currentTime : null,
     ]);
     if (
       !force &&
@@ -439,11 +551,16 @@ export function mountEditorShell(
             }),
           );
         }
+      // ANI-005: keyframe markers follow the playhead (not every frame while playing).
+      if (!session.playing && !element('#inspector-content').hidden)
+        animationPanel.render();
       draw();
       return;
     }
     renderedProject = engine.state;
     renderedSelection = identity;
+    contextToolbar.render();
+    if (!element('#inspector-content').hidden) animationPanel.render();
     element('#project-name').textContent = engine.state.metadata.name;
     const picker = element<HTMLSelectElement>('#composition');
     picker.replaceChildren(
@@ -476,8 +593,10 @@ export function mountEditorShell(
         : undefined;
     list.replaceChildren();
     let count = 0;
+    // Front-first (owner decision, LYR-002): the topmost layer is the first row;
+    // layers later in the array paint on top, so each sibling level is reversed.
     const appendLayers = (layers: readonly SceneLayer[], depth: number) => {
-      for (const layer of layers) {
+      for (const layer of [...layers].reverse()) {
         count++;
         const button = document.createElement('button');
         button.className = 'scene-row';
@@ -530,26 +649,7 @@ export function mountEditorShell(
         .find((button) => button.dataset.layerId === focusedId)
         ?.focus({ preventScroll: true });
     element('#layer-count').textContent = formatNumber(count);
-    let assets = root.querySelector<HTMLElement>('.available-assets');
-    if (!assets) {
-      assets = document.createElement('div');
-      assets.className = 'available-assets';
-      element('.library-placeholder').append(assets);
-    }
-    assets.replaceChildren(
-      ...source.assets
-        .filter((asset) => ['image', 'video', 'audio'].includes(asset.type))
-        .map((asset) => {
-          const item = document.createElement('button');
-          item.textContent = asset.name;
-          item.draggable = true;
-          item.dataset.assetId = asset.id;
-          item.title = t('asset.drag', { name: asset.name });
-          item.ondragstart = (event) =>
-            event.dataTransfer?.setData('application/x-editor-asset', asset.id);
-          return item;
-        }),
-    );
+    mediaPanel.render();
     element('#canvas-empty').hidden = count !== 0;
     renderInspector(
       element('#inspector-content'),
@@ -635,6 +735,8 @@ export function mountEditorShell(
     () => safely(draw),
     reportError,
     true,
+    previews,
+    waveforms,
   );
   const unsubscribe = session.onChange(refresh);
   element<HTMLSelectElement>('#composition').onchange = (event) =>
@@ -655,9 +757,45 @@ export function mountEditorShell(
         ? document.exitFullscreen()
         : stage.requestFullscreen(),
     );
+  // APP-015 / W5-A: the primary Export button opens the Export dialog.
+  const renderFrame = () => {
+    const { width, height } = session.source.composition;
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = width;
+    frameCanvas.height = height;
+    const context = frameCanvas.getContext('2d');
+    if (!context) return Promise.reject(new Error('Canvas 2D is unavailable'));
+    drawComposition(
+      context,
+      { ...session.source, frames, playing: false, animate: true },
+      { width, height, pixelRatio: 1, matrix: [1, 0, 0, 1, 0, 0] },
+      null,
+      { overlays: false },
+    );
+    return new Promise<Blob>((resolve, reject) =>
+      frameCanvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error('PNG failed'))),
+        'image/png',
+      ),
+    );
+  };
+  const openExport = () => {
+    session.setPlaying(false);
+    openExportDialog({
+      composition: session.source.composition,
+      assets: session.source.assets,
+      background: session.source.background,
+      projectName: engine.state.metadata.name,
+      store: mediaStore,
+      decoder,
+      renderFrame,
+      toast: (text, kind) => showToast(text, kind),
+    });
+  };
+  element<HTMLButtonElement>('#export').onclick = () => safely(openExport);
   for (const [id, action] of [
     ['#save', actions.save],
-    ['#export', actions.exportProject],
+    ['#export-json', actions.exportProject],
     ['#example', actions.openExample],
   ] as const) {
     const button = element<HTMLButtonElement>(id);
@@ -693,8 +831,19 @@ export function mountEditorShell(
     element('#media-source-tabs'),
     element('.library-search'),
     element('.import-row'),
+    element('#media-panel'),
   ];
   const sceneOnly = [element('#scene-heading'), element('#scene-list')];
+  // SHP-018: the Draw category; leaving it leaves draw mode.
+  const drawPanel = mountDrawPanel(
+    element('#draw-panel'),
+    session,
+    reportError,
+  );
+  // SHP-001: the Elements category offers shapes; a click adds one.
+  mountShapesPanel(element('#shapes-panel'), (preset) =>
+    safely(() => addShape(engine, session, preset)),
+  );
   let activeCategory = 'Scene';
   const applyCategory = (category: string) => {
     for (const sibling of root.querySelectorAll('[data-category]'))
@@ -704,10 +853,16 @@ export function mountEditorShell(
       );
     const isMedia = category === 'Media';
     const isScene = category === 'Scene';
+    const isDraw = category === 'Draw';
+    const isElements = category === 'Elements';
     for (const el of mediaOnly) el.hidden = !isMedia;
     for (const el of sceneOnly) el.hidden = !isScene;
-    element('.library-placeholder').hidden = isMedia || isScene;
-    if (!isScene) {
+    element('#draw-panel').hidden = !isDraw;
+    element('#shapes-panel').hidden = !isElements;
+    if (!isDraw) session.setDrawBrush(null);
+    element('.library-placeholder').hidden =
+      isMedia || isScene || isDraw || isElements;
+    if (!isScene && !isDraw && !isElements) {
       const [titleKey, descriptionKey] = descriptions[category]!;
       element('#library-title').textContent = t(titleKey);
       element('#library-description').textContent = t(descriptionKey);
@@ -721,13 +876,21 @@ export function mountEditorShell(
       applyCategory(activeCategory);
     };
   const searchInput = element<HTMLInputElement>('#asset-search');
-  searchInput.oninput = () => {
-    const query = searchInput.value.trim().toLowerCase();
-    for (const item of root.querySelectorAll<HTMLButtonElement>(
-      '.available-assets button',
-    ))
-      item.hidden =
-        query.length > 0 && !item.textContent!.toLowerCase().includes(query);
+  searchInput.oninput = () => mediaPanel.filter(searchInput.value);
+  // MED-001/MED-002: the Import button and OS file drops both import into Project Media.
+  const importMedia = (files: readonly File[]) => {
+    if (!files.length) return;
+    activeCategory = 'Media';
+    applyCategory(activeCategory);
+    safely(() => mediaPanel.importFiles(files));
+  };
+  const mediaInput = element<HTMLInputElement>('#import-media-input');
+  element<HTMLButtonElement>('#import-media').onclick = () =>
+    mediaInput.click();
+  mediaInput.onchange = () => {
+    const files = [...(mediaInput.files ?? [])];
+    mediaInput.value = '';
+    importMedia(files);
   };
 
   // Right panel: shared "section" state driven by both the tab row and the icon rail.
@@ -748,6 +911,8 @@ export function mountEditorShell(
       el.setAttribute('aria-pressed', String(el.dataset.section === name));
     const isProperties = name === 'Properties';
     element('#inspector-content').hidden = !isProperties;
+    element('#animation-panel').hidden = true;
+    if (isProperties) animationPanel.render();
     rightEmpty.hidden = isProperties;
     if (!isProperties) {
       const [titleKey, descriptionKey] = rightDescriptions[name] ?? ['', ''];
@@ -854,8 +1019,12 @@ export function mountEditorShell(
   // internal application/x-editor-asset drag, which uses its own mime type and targets).
   const dropOverlay = element('#drop-overlay');
   let dragDepth = 0;
+  // A Project Media card dragged onto the canvas or timeline is a reference to
+  // an asset already stored, never a new file, even if the browser also
+  // attaches file data to the drag (MED-015 regression).
   const isFileDrag = (event: DragEvent) =>
-    !!event.dataTransfer?.types.includes('Files');
+    !!event.dataTransfer?.types.includes('Files') &&
+    !event.dataTransfer.types.includes('application/x-editor-asset');
   window.addEventListener('dragenter', (event) => {
     if (!isFileDrag(event)) return;
     dragDepth++;
@@ -868,12 +1037,14 @@ export function mountEditorShell(
   window.addEventListener('dragover', (event) => {
     if (isFileDrag(event)) event.preventDefault();
   });
-  window.addEventListener('drop', (event) => {
+  const windowDrop = (event: DragEvent) => {
     if (!isFileDrag(event)) return;
     event.preventDefault();
     dragDepth = 0;
     dropOverlay.hidden = true;
-  });
+    importMedia([...(event.dataTransfer?.files ?? [])]);
+  };
+  window.addEventListener('drop', windowDrop);
 
   const resize = () =>
     safely(() => {
@@ -938,7 +1109,17 @@ export function mountEditorShell(
             event.clientX - rect.left,
             event.clientY - rect.top,
           ]);
-          layer.transform.position = vector2(point[0], point[1]);
+          // MED-015: centred on the drop point at the media's own size, scaled
+          // down to fit inside the composition when it is larger.
+          const { width: w, height: h } = session.source.composition;
+          if (asset.width && asset.height) {
+            const fit = Math.min(1, w / asset.width, h / asset.height);
+            layer.transform.scale = vector2(fit, fit);
+            layer.transform.position = vector2(
+              point[0] - (asset.width * fit) / 2,
+              point[1] - (asset.height * fit) / 2,
+            );
+          } else layer.transform.position = vector2(point[0], point[1]);
         }
       }
       layer.assetId = id;
@@ -951,69 +1132,79 @@ export function mountEditorShell(
           layer,
         },
       ];
-      if (event.currentTarget !== canvas) {
-        const type = asset.type === 'audio' ? 'audio' : 'video';
-        const requestedTrackId = (
-          event.target as HTMLElement
-        ).closest<HTMLElement>('[data-track-id]')?.dataset.trackId;
-        const requestedTrack = requestedTrackId
-          ? session.source.composition.tracks.find(
-              (item) => item.id === requestedTrackId,
-            )
-          : undefined;
-        if (
-          requestedTrack &&
-          (requestedTrack.type !== type || requestedTrack.locked)
-        )
-          throw new Error(
-            requestedTrack.locked
-              ? t('asset.locked', { name: requestedTrack.name })
-              : t('asset.incompatible', {
-                  name: asset.name,
-                  track: requestedTrack.name,
-                }),
-          );
-        let destination = requestedTrack;
-        destination ??= session.source.composition.tracks.find(
-          (item) => item.type === type && !item.locked,
+      // TL-001: every drop creates a clip. The canvas uses a free compatible
+      // track at the playhead (or a new one); a track row uses the insert rule.
+      const type = asset.type === 'audio' ? 'audio' : 'video';
+      const requestedTrackId =
+        event.currentTarget === canvas
+          ? undefined
+          : (event.target as HTMLElement).closest<HTMLElement>(
+              '[data-track-id]',
+            )?.dataset.trackId;
+      const requestedTrack = requestedTrackId
+        ? session.source.composition.tracks.find(
+            (item) => item.id === requestedTrackId,
+          )
+        : undefined;
+      if (
+        requestedTrack &&
+        (requestedTrack.type !== type || requestedTrack.locked)
+      )
+        throw new Error(
+          requestedTrack.locked
+            ? t('asset.locked', { name: requestedTrack.name })
+            : t('asset.incompatible', {
+                name: asset.name,
+                track: requestedTrack.name,
+              }),
         );
-        const trackId = destination?.id ?? crypto.randomUUID();
-        if (!destination)
-          commands.unshift({
-            type: 'CREATE_TRACK',
+      const target = requestedTrack
+        ? { trackId: requestedTrack.id, commands: [] as Command[] }
+        : trackForNewClip(
+            session.source.composition,
+            layer.type,
+            time,
+            time + duration,
+          );
+      commands.unshift(...target.commands);
+      const clip = {
+        id: crypto.randomUUID(),
+        name: asset.name,
+        layerId: layer.id,
+        assetId: asset.id,
+        startTime: time,
+        duration,
+        sourceIn: 0,
+        sourceOut: duration,
+        enabled: true,
+        speed: 1,
+        transitionMetadata: {},
+        effectMetadata: {},
+        metadata: {},
+      };
+      if (requestedTrack) {
+        const plan = planLanding(session.source.composition, [
+          { clip, trackId: requestedTrack.id, startTime: time },
+        ]);
+        clip.startTime = plan.placed.get(clip.id)!;
+        layer.startTime = clip.startTime;
+        plan.pushed.forEach(({ startTime }, clipId) =>
+          commands.push({
+            type: 'SET_CLIP_TIMING',
             compositionId,
-            track: {
-              id: trackId,
-              name: `${type === 'audio' ? 'Audio' : 'Video'} ${session.source.composition.tracks.filter((item) => item.type === type).length + 1}`,
-              type,
-              order: session.source.composition.tracks.length,
-              enabled: true,
-              locked: false,
-              muted: false,
-              clips: [],
-            },
-          });
-        commands.push({
-          type: 'CREATE_CLIP',
-          compositionId,
-          trackId,
-          clip: {
-            id: crypto.randomUUID(),
-            name: asset.name,
-            layerId: layer.id,
-            assetId: asset.id,
-            startTime: time,
-            duration,
-            sourceIn: 0,
-            sourceOut: duration,
-            enabled: true,
-            speed: 1,
-            transitionMetadata: {},
-            effectMetadata: {},
-            metadata: {},
-          },
-        });
+            clipId,
+            startTime,
+            duration: findClip(session.source.composition, clipId)!.clip
+              .duration,
+          }),
+        );
       }
+      commands.push({
+        type: 'CREATE_CLIP',
+        compositionId,
+        trackId: target.trackId,
+        clip,
+      });
       engine.commands.transaction(
         event.currentTarget === canvas
           ? 'Add asset layer'
@@ -1076,18 +1267,32 @@ export function mountEditorShell(
         timeline.cancel();
         return true;
       }
+      // SHP-018: Esc with no stroke in progress leaves draw mode.
+      if (session.drawBrush) {
+        session.setDrawBrush(null);
+        return true;
+      }
       return false;
     },
     closeOverlay: () => closeTopOverlay() || (timeline?.closeMenu() ?? false),
     localKey: (event) => {
-      if (event.target === canvas) pointer.handleKey(event);
+      if (
+        session.drawBrush &&
+        event.key.toLowerCase() === 'v' &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey
+      ) {
+        event.preventDefault();
+        session.setDrawBrush(null);
+      } else if (event.target === canvas) pointer.handleKey(event);
       else if (
         event.target instanceof Node &&
         element('#timeline-foundation').contains(event.target)
       )
         timeline?.handleKey(event);
     },
-    report: (error) => message(String(error)),
+    report: reportError,
   });
 
   // Language switcher (temporary location in the View menu; a dedicated control may move
@@ -1113,6 +1318,14 @@ export function mountEditorShell(
   refresh();
   return {
     session,
+    /** Dev/test-only read-only snapshot (the test hook's getMedia). */
+    mediaDebug: () => ({
+      audio: audio.debug,
+      video: frames.debug,
+      transport: timeline?.playback.clock ?? session.currentTime,
+    }),
+    /** Dev/test-only: the active gesture's snap guides (CV-013). */
+    canvasDebug: () => ({ guides: interaction.guides }),
     message,
     refresh,
     setSaveStatus,
@@ -1124,6 +1337,13 @@ export function mountEditorShell(
       palette.dispose();
       newProjectForm.dispose();
       unsubscribeLanguage();
+      mediaPanel.dispose();
+      positionPanel.dispose();
+      frames.dispose();
+      previews.dispose();
+      audio.dispose();
+      waveforms.dispose();
+      window.removeEventListener('drop', windowDrop);
       disposeWorkspace();
       canvas.removeEventListener('dragover', assetOver);
       canvas.removeEventListener('drop', assetDrop);

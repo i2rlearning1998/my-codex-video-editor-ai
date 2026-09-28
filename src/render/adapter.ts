@@ -1,5 +1,7 @@
 import {
   activeAtTime,
+  clipSourceTime,
+  clipTimeEffects,
   effectiveLayerTiming,
   findClipByLayer,
   invertMatrix,
@@ -14,13 +16,41 @@ import {
   type TransformPreview,
 } from '../core';
 
-import { layoutText, type TextMeasurer } from './text-layout';
+import {
+  layoutParagraphs,
+  layoutText,
+  type TextLayout,
+  type TextMeasurer,
+} from './text-layout';
+import { textStyleOf, type TextStyle } from './text-style';
+import { shapeOf, type ShapeStyle } from './shapes';
 import type { TransformCapabilities } from './transform-capabilities';
+import { drawingOf, type DrawingPath } from './drawing';
+import { applyPresets } from './presets';
 
 export interface LayerPreview extends TransformPreview {
   readonly textBox?: { readonly width: number; readonly height: number };
 }
 export type SceneLayer = DeepReadonly<Layer>;
+/** What an image or video layer shows at the current time (W4-B). */
+export interface MediaFrameRequest {
+  /** Stable per-layer key: each layer gets its own decoder. */
+  readonly key: string;
+  readonly assetId: string;
+  readonly kind: 'image' | 'video';
+  /** Source-media seconds, after speed, reverse and freeze (clipSourceTime). */
+  readonly sourceTime: number;
+  readonly speed: number;
+  readonly reversed: boolean;
+  readonly frozen: boolean;
+}
+/**
+ * Injected, read-only frame lookup. The renderer asks and draws; decoding and
+ * seeking live behind this interface (src/media/frames.ts), never in the renderer.
+ */
+export interface FrameProvider {
+  frame(request: MediaFrameRequest, playing: boolean): CanvasImageSource | null;
+}
 export interface RenderSource {
   readonly composition: DeepReadonly<Composition>;
   readonly assets: readonly DeepReadonly<Asset>[];
@@ -44,6 +74,22 @@ export interface RenderSource {
   readonly measureText?: TextMeasurer;
   readonly capabilities?: Readonly<Record<string, TransformCapabilities>>;
   readonly hoveredHandle?: string | number;
+  /** SHP-018: the freehand stroke being drawn (composition space). */
+  readonly drawing?: DrawingPath & { readonly opacity: number };
+  /** W5-C: draw with the clips' animation presets (picking never sets this). */
+  readonly animate?: boolean;
+  /**
+   * CV-041: the multi-selection frame (four world corners) while it is being
+   * resized or rotated; otherwise the frame is the selection's bounds.
+   */
+  readonly selectionFrame?: readonly Point2[];
+  /** CV-013: transient snap guides of the active canvas gesture. */
+  readonly guides?: readonly {
+    readonly axis: 'x' | 'y';
+    readonly value: number;
+  }[];
+  readonly frames?: FrameProvider;
+  readonly playing?: boolean;
 }
 export interface LayerSize {
   readonly width: number;
@@ -60,7 +106,17 @@ export interface RenderItem {
   readonly text: string;
   readonly fontSize: number;
   readonly lines?: readonly string[];
-  readonly kind: 'rectangle' | 'text' | 'placeholder';
+  /** W2-F5: a text layer's style and its laid-out lines. */
+  readonly textStyle?: TextStyle;
+  readonly textLayout?: TextLayout;
+  /** W5-D: a shape layer's kind, fill, stroke and corner radius. */
+  readonly shape?: ShapeStyle;
+  readonly kind: 'rectangle' | 'text' | 'placeholder' | 'path';
+  readonly media?: MediaFrameRequest;
+  /** SHP-019: a freehand drawing's stroke in local coordinates. */
+  readonly path?: DrawingPath;
+  /** W5-C Wipe: the visible fraction of the box, from the left. */
+  readonly reveal?: number;
 }
 const defaults = {
   image: [320, 180],
@@ -133,10 +189,22 @@ export function locateLayer(
 }
 
 /** A disposable projection per render/hit-test, never an editable canvas model or cache. */
-export function deriveRenderItems(source: RenderSource): {
+export function deriveRenderItems(input: RenderSource): {
   items: readonly RenderItem[];
   warnings: readonly string[];
 } {
+  // W5-C: drawing (not picking) applies the clips' animation presets.
+  const source: RenderSource = input.animate
+    ? {
+        ...input,
+        animate: false,
+        composition: applyPresets(
+          input.composition,
+          input.assets,
+          input.currentTime ?? 0,
+        ),
+      }
+    : input;
   const items: RenderItem[] = [],
     warnings: string[] = [];
   const visit = (
@@ -191,15 +259,52 @@ export function deriveRenderItems(source: RenderSource): {
               layer.properties.textWrap.value))
             ? textLayoutForWidth(layer, size.width, source.measureText)
             : undefined;
+        // W2-F5: every text layer is laid out with its style.
+        const textLayout =
+          layer.type === 'text'
+            ? (wrapped ??
+              layoutParagraphs(
+                text?.type === 'string' ? text.value : layer.name,
+                Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
+                textStyleOf(layer),
+              ))
+            : undefined;
         // The stored height is a static field the user (or a drag) set; wrapped
         // text can need more lines than that at the current width/font size, so
         // never clip content the layout itself says it needs.
         const effectiveSize = wrapped
           ? { ...size, height: Math.max(size.height, wrapped.height) }
           : size;
+        const drawing = drawingOf(layer);
+        if (drawing === 'invalid') {
+          warnings.push(
+            `Cannot draw ${layer.name}: its drawing data is invalid.`,
+          );
+          continue;
+        }
+        const media =
+          (layer.type === 'image' || layer.type === 'video') && layer.assetId
+            ? mediaRequest(source, layer, layer.type, layer.assetId)
+            : undefined;
         items.push(
           Object.freeze({
             ...(wrapped ? { lines: wrapped.lines } : {}),
+            ...(textLayout
+              ? { textStyle: textStyleOf(layer), textLayout }
+              : {}),
+            ...(layer.type === 'shape' && !drawing
+              ? { shape: shapeOf(layer)! }
+              : {}),
+            ...(media ? { media } : {}),
+            ...(drawing ? { path: drawing } : {}),
+            ...(numericProperty(layer, 'presetReveal') !== undefined
+              ? {
+                  reveal: Math.min(
+                    1,
+                    Math.max(0, numericProperty(layer, 'presetReveal')!),
+                  ),
+                }
+              : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
             matrix: world.matrix,
@@ -213,8 +318,9 @@ export function deriveRenderItems(source: RenderSource): {
                   : layer.name
                 : `${layer.type.toUpperCase()} / ${layer.name}`,
             fontSize: Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
-            kind:
-              layer.type === 'shape'
+            kind: drawing
+              ? 'path'
+              : layer.type === 'shape'
                 ? 'rectangle'
                 : layer.type === 'text'
                   ? 'text'
@@ -230,6 +336,36 @@ export function deriveRenderItems(source: RenderSource): {
   };
   visit(source.composition.layers, []);
   return { items: Object.freeze(items), warnings: Object.freeze(warnings) };
+}
+
+function mediaRequest(
+  source: RenderSource,
+  layer: SceneLayer,
+  kind: 'image' | 'video',
+  assetId: string,
+): MediaFrameRequest {
+  const time = source.currentTime ?? 0;
+  const found = findClipByLayer(source.composition, layer.id);
+  if (!found)
+    return Object.freeze({
+      key: layer.id,
+      assetId,
+      kind,
+      sourceTime: Math.max(0, time - layer.startTime),
+      speed: 1,
+      reversed: false,
+      frozen: false,
+    });
+  const effects = clipTimeEffects(found.clip);
+  return Object.freeze({
+    key: layer.id,
+    assetId,
+    kind,
+    sourceTime: clipSourceTime(found.clip, time),
+    speed: effects.speed,
+    reversed: effects.reversed,
+    frozen: effects.freezeFrame !== null,
+  });
 }
 
 export function hitTest(source: RenderSource, point: Point2): string | null {
@@ -269,5 +405,6 @@ export function textLayoutForWidth(
     width,
     Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
     measure,
+    textStyleOf(layer),
   );
 }

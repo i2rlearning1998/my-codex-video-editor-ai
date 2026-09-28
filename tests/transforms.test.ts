@@ -214,7 +214,7 @@ describe('world transforms derived from the canonical tree', () => {
     worldTransform(engine.state.compositions[0]!, 'root');
     expect(serializeProject(engine.state)).toBe(before);
     const loaded = deserializeProject(before);
-    expect(loaded.schemaVersion).toBe(4);
+    expect(loaded.schemaVersion).toBe(5);
     expect(worldTransform(loaded.compositions[0]!, 'root')).toEqual(
       worldTransform(engine.state.compositions[0]!, 'root'),
     );

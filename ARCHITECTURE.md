@@ -38,6 +38,14 @@ Hit testing uses the inverse fit matrix and guarded inverse world matrices from 
 
 Library category buttons switch explanatory content and expose existing asset references for drag/drop. The timeline has a fixed transport, sticky ruler/header surfaces, disposable track/layer projections, a shared playhead, and captured-pointer interactions. The undo/redo buttons remain global project-history actions. The example document is created detached with existing factories, validated, then opened by the sole engine; opening it replaces a document explicitly rather than applying hidden edits to the current one.
 
+### Media store and import (W4-A)
+
+Media bytes and thumbnails live in `src/media`, outside `src/core` (D-004, D-052). `MediaStore` is a small interface with three implementations: OPFS (the default, with streamed writes through a swap file), IndexedDB (used when OPFS is missing) and in-memory (for tests). Keys are `media/<fingerprint>` for the bytes and `thumbs/<fingerprint>` for the cached WebP poster.
+
+The fingerprint is SHA-256 of the byte size and three 1 MiB samples, so a file is never read whole. The asset id is `media-<first 16 hex characters>`, and the asset's `source` is `{ kind: 'local', reference: 'media/<fingerprint>' }`.
+
+`importMediaFiles` works through the files one at a time: classify, fingerprint, store, probe with a browser media element, then one `ADD_ASSET` transaction ("Import media") per file. Undo removes only the reference; the bytes stay. `src/ui/media-panel.ts` renders Project Media from the canonical assets, with thumbnails made in the background and cached in the store. It keeps no copy of project state. Schema 4 is unchanged.
+
 ### Composition viewport fit
 
 `fitViewport` is a derived, transient view calculation. Its scale is the minimum of available-width/composition-width, available-height/composition-height, and 1. The final 1 is an upper cap: small compositions are not enlarged, and large compositions scale below 100%. Translation remains `(viewportSize - scaledCompositionSize) / 2` on each axis, so wide/tall compositions stay centered without distortion.
@@ -61,7 +69,7 @@ Schema version 4 contains project metadata, settings, compositions, the asset re
 - Each composition also owns ordered NLE tracks. Tracks own clips by containment; a clip's track association is derived from that containment. Clips reference canonical layer IDs instead of duplicating spatial/content properties.
 - Transform semantics are frozen in [TRANSFORM_CONTRACT.md](TRANSFORM_CONTRACT.md): top-left composition origin, X right/Y down, fixed local anchor `(0, 0)`, clockwise degrees, local `T * R * S`, and world `W_parent * L`. Opacity is inherited multiplicatively per drawable. `src/core/transforms.ts` provides pure readonly affine calculations, without rendering or persisted derived state.
 - Custom properties are keyed typed records: number, string, boolean, vector2, or hexadecimal color. An existing property's type cannot change via `SET_PROPERTY`.
-- `animated` indicates authored keyframes. Schema 3 keyframes have property-typed values and strictly increasing composition-time positions; interpolation is not implemented. Effects, masks, and audio tracks remain empty arrays. `constraints` holds reserved JSON declarations without enforcement. Future implementations require explicit contracts and, when document shape changes, migrations.
+- `animated` indicates authored keyframes. Schema 3 keyframes have property-typed values and strictly increasing composition-time positions; interpolation is implemented since schema 5 (W5-B, D-070) in `src/core/animation.ts`. Effects, masks, and audio tracks remain empty arrays. `constraints` holds reserved JSON declarations without enforcement. Future implementations require explicit contracts and, when document shape changes, migrations.
 - Assets have stable IDs, type, source reference, metadata, and optional dimensions/duration. `generated` is an allowed source kind for future compatibility, without generation behavior. Layer asset references must resolve and match the layer's media type. Source references are inert strings; this tier does not fetch them.
 
 ## Commands and transactions
@@ -104,7 +112,7 @@ Capabilities are trusted in-process code. Handlers and schemas must be synchrono
 
 ## Versioning and migrations
 
-`SCHEMA_VERSION` is 4. Migrations register consecutive `from → from + 1` transforms: 1→2 adds layer timing, 2→3 preserves documents while typed keyframes become supported, and 3→4 adds empty composition track arrays without guessing clip ownership. The runner clones its input, verifies every version advance, and validates the resulting current document. Missing migrations, invalid output, and future versions are rejected. There is no invented version-0 production migration because no legacy project format exists; tests register a fixture migration to exercise the mechanism.
+`SCHEMA_VERSION` is 5. Migrations register consecutive `from → from + 1` transforms: 1→2 adds layer timing, 2→3 preserves documents while typed keyframes become supported, 3→4 adds empty composition track arrays without guessing clip ownership, and 4→5 only bumps the version (keyframes gain an optional `easing`; absent means linear, D-069). The runner clones its input, verifies every version advance, and validates the resulting current document. Missing migrations, invalid output, and future versions are rejected. There is no invented version-0 production migration because no legacy project format exists; tests register a fixture migration to exercise the mechanism.
 
 When changing the persistent shape, increment the schema version, implement each required migration, and add fixtures. Never drop unknown fields to simulate forward compatibility. Preserve files from newer versions and open them with an editor that supports their schema.
 

@@ -2,6 +2,123 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## Wave 5 part D (W5-D) — 2026-09-26
+
+- The **Elements** category adds shapes: rectangle, rounded rectangle, ellipse, line and arrow.
+- The shape toolbar now edits:
+  - **Fill**, **Fill opacity** and **No fill**;
+  - **Stroke** color and **Width**;
+  - **Stroke style** (dashed or dotted, flat, round or square caps, sharp, round or bevel joins);
+  - **Corners** (the radius of a rectangle's corners).
+- Select two or more shapes, right-click and choose **Combine shapes** to Union, Subtract, Intersect or Exclude them into one shape. Undo brings the originals back.
+
+## Wave 2 part F5 (W2-F5) — 2026-09-26
+
+- The text toolbar is now live:
+  - **Font:** seven system fonts; the full font picker comes in Wave 3.
+  - **Weight:** Regular, Semibold or Bold, plus **Italic**.
+  - **Align:** left, center, right or justified.
+  - **Spacing:** line height, letter spacing, paragraph spacing, and **Case** (UPPERCASE, lowercase or Title Case). Case changes only how the text looks; the typed text is kept.
+- Each change is one undo step. When a bigger line height or paragraph spacing needs more room, the text box grows to fit.
+
+## Wave 2 part F4 (W2-F4) — 2026-09-26
+
+- The Draw panel has an **Eraser**. Drag it over freehand strokes to remove each one it touches; Undo brings them all back in one step. It never erases text, shapes, images or videos.
+- Size, color and opacity are now one set shared by Pen, Marker and Highlighter. Each brush starts with its own default size and opacity until you change them.
+
+## Wave 2 part F3 (W2-F3) — 2026-09-26
+
+- A new **Position** button, on the toolbar and on the action bar of a multi-selection, opens a panel with two tabs:
+  - **Arrange**: layer order, align and distribute as buttons, plus Relative to canvas.
+  - **Layers**: every layer as a flat list, frontmost first, each with a type icon (groups show a folder and their item count). Click to select, Shift+click to add, and drag a row to change the stacking order.
+
+## Wave 2 part F2 (W2-F2) — 2026-09-26
+
+- The dashed box around several selected objects now has handles: corners resize them all together (Alt from the center), side handles stretch them when they are all straight and none is text, and the round handle rotates them all about the box center. Each drag is one undo step.
+- Fixed: dragging a corner of a wide or tall object made it grow faster than the pointer moved. The corner now follows the pointer.
+
+## Wave 2 part F1 (W2-F1) — 2026-09-26
+
+- Selecting several objects now shows one dashed box around them, each object's own outline, and a small action bar above them with Group, Duplicate, Delete and More.
+- Right-click menus offer only what the whole selection supports: Speed, Reverse and Freeze frame appear for video and audio clips only, never when an image, shape or text is selected.
+- Ungroup, from the right-click menu, the action bar or Ctrl+Shift+G. Groups that were moved or rotated ungroup without anything moving on the canvas.
+- Layer order: Bring to front, Bring forward, Send backward and Send to back in a new Layer submenu and the command palette, with Ctrl+] and Ctrl+[.
+- Dropping a media card on the canvas can never import the file a second time.
+
+## Wave 5 part C (W5-C) — 2026-09-24
+
+- One-click animation presets from the toolbar's new **Animate** button:
+  - In and Out: fade, slide, zoom, pop, wipe, typewriter;
+  - Loop: pulse, float, spin, wiggle;
+  - adjustable durations and speeds.
+- Presets follow the clip when it is moved or trimmed, and appear identically in the exported video.
+- Ken Burns (pan and zoom) for image clips.
+- An easing library of named curves with previews, for keyframes.
+
+## Wave 5 part B (W5-B) — 2026-09-24
+
+- Keyframe animation: a stopwatch per property (position, scale, rotation, opacity, color, text size). With it on, any edit at the playhead records a keyframe.
+- Easing: linear, ease in, ease out, ease in and out, hold, or a custom curve, set from the keyframe menu or the Inspector.
+- Keyframes on the timeline can be selected, dragged, copied, pasted, duplicated and deleted, and moved from the Inspector. Previous and next keyframe buttons (and the `,` and `.` keys) jump the playhead.
+- Playback, scrubbing and export show exactly the same animation. Moving a clip moves its animation with it.
+- Project files are now schema 5; older files open unchanged.
+
+## Wave 2 part E (W2-E) — 2026-09-24
+
+- Context toolbar: selecting a text, image, video, shape or drawing shows its main controls floating above the canvas (position, scale, rotate, flip, opacity; text size and color; fill; brush size). Controls that are not built yet are greyed out and say which wave builds them.
+- Draw: a new Draw category in the left rail with Pen, Marker and Highlighter, brush size, color and opacity. Each stroke becomes its own layer and clip, and can be moved, resized, restyled, saved and exported.
+- Copy style and Paste style in the canvas right-click menu and the palette.
+
+## Wave 2 part D (W2-D) — 2026-09-24
+
+- Smart guides: dragging or resizing a layer snaps to the canvas edges and center, the safe margins, and other layers' edges and centers, and pink guide lines show the match. Hold Ctrl to place freely.
+- Align (left, center, right, top, middle, bottom) and Distribute (horizontal, vertical) in the canvas right-click menu and the command palette, relative to the selection or the canvas.
+- The interaction contract is now at revision 5 (owner-authorized).
+
+## Wave 5 part A (W5-A) — 2026-09-24
+
+- Real video export: the Export button opens a dialog with presets (YouTube 1080p/4K, Shorts/Reels/TikTok, Instagram, WhatsApp, custom), size, frame rate, quality, range and file name.
+- MP4 (H.264 + AAC) where the browser can encode it, otherwise WebM (VP9 + Opus) with an explanation. Frames are exact, the sound is mixed in and in sync, and the export matches the preview.
+- A progress bar with the time left and Cancel; missing media is caught before starting; Export frame (PNG). Project JSON export moved to the File menu.
+
+## Wave 4 part C (W4-C) — 2026-09-24
+
+- Sound: audio files, the sound of video clips and detached audio play in step with the picture (measured within one frame).
+- Track Mute and Solo are audible, and scrubbing a paused playhead plays a short blip.
+- Audio clips show waveforms on the timeline that follow trims; audio cards show waveforms in the Media tab.
+
+## Wave 4 part B (W4-B) — 2026-09-24
+
+- Imported video and images now draw on the canvas: scrubbing and frame steps show the exact source frame, and playback runs in real time (it drops frames rather than slowing down). A "Buffering…" note appears if a video cannot keep up.
+- Speed, Reverse and Freeze frame are now visible in the picture.
+- EXIF-rotated photos draw upright, and PNG and WebM transparency shows what is behind.
+- Timeline video clips show a filmstrip; image clips show their thumbnail.
+- Audio is still silent; it arrives in W4-C.
+
+## Wave 4 part A (W4-A) — 2026-09-24
+
+- Import your own video, audio and image files with the Import button or by dropping files on the editor. A progress row shows each file, and Cancel stops the import cleanly.
+- Imported media is stored in the browser (OPFS, or IndexedDB when OPFS is unavailable) and survives a reload. The project keeps only references.
+- The Media tab now lists the project's media as cards with thumbnails, names and duration or type badges, with empty and error states and name search (MED-035 fixed).
+- Drag a card to a track to create a clip at the drop time, or onto the canvas to centre a layer on the drop point at the media's own size.
+- TL-017 fixed: dragging several clips to another track keeps their track offsets.
+- Media fixture pack (1.6 MB) with a manifest and a generator script.
+
+## Wave 2 continuation (W2-C) — 2026-09-24
+
+- Cut, copy and paste clips (Ctrl+X, Ctrl+C, Ctrl+V, the palette and both right-click menus). Paste lands at the playhead using the insert rule.
+- Link and unlink clips: linked clips move, nudge, split, delete and copy together and show a link badge. Detach audio creates a separate audio clip on an Audio track (not audible yet).
+- Proved 7 risky Claimed items in the browser. TL-017 (multi-track drag keeping track offsets) and CV-022 (group click and double-click) are now recorded as known bugs.
+- CV-008: holding Alt while dragging a corner or edge handle resizes from the center (transform-interaction contract revision 4).
+- CV-022 fixed (owner priority bump): a click inside a group selects the group; double-click enters it one level at a time and selects the child under the pointer; Esc steps out one level, then deselects; clicking outside leaves the group.
+
+## Wave 2 continuation (W2-B) — 2026-09-24
+
+- One clip model: every layer is a clip on a track. The built-in example and older saves are converted when opened, and canvas drops, duplicates and groups always create clips. Legacy free-layer rows are gone.
+- Locked tracks now also block Delete; locked clips look locked and refused edits show a toast.
+- Clips never overlap: moves, drops, duplicates and Alt+↑/↓ insert and push later clips right, with a live preview and an insertion marker. Alt+←/→ nudges stop at neighbours.
+- Proved 18 previously Claimed Wave 2 items with browser tests. Moved TL-003 and TL-005 back to Todo. CV-008's Alt-from-center resize is recorded as a known bug.
+
 ## Wave 2 (W2-CLAUDE) — 2026-09-23
 
 - Unblocked e2e in Linux sandboxes (Chromium fallback) and fixed an inspector blur re-render error that failed two browser tests.

@@ -1,8 +1,11 @@
 import { test, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { EditorEngine, deserializeProject } from '../src/core';
+import { EditorEngine, deserializeProject, type Command } from '../src/core';
 import { EditorSession } from '../src/ui/session';
 import { commands, runCommand } from '../src/commands/registry';
+import { clearClipboard, hasClipboard } from '../src/ui/editing';
+import { hasStyle } from '../src/ui/style-clipboard';
+import { addShape } from '../src/ui/shapes';
 import { t, setLanguage } from '../src/i18n';
 test('[KEY-001] every registered action has translated labels, enablement and an executable handler', () => {
   expect(new Set(commands.map((command) => command.id)).size).toBe(
@@ -17,18 +20,24 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     const session = new EditorSession(engine);
     const ids = engine.state.compositions[0]!.layers.map((layer) => layer.id);
     // Clip time/keyboard commands need a clip with room to act on: layer-b
-    // (3..5 on Video 1) can move earlier; layer-c (alone on Video 2) can slow
-    // down and move up. Other commands keep the first layer.
+    // (video, 3..5 on Video 1) can move earlier and slow down; layer-c (alone
+    // on Video 2) can move up. Layer order needs a layer that is not already at
+    // the bottom. Other commands keep the first layer.
     const layerFor: Record<string, string> = {
-      'speed-slower': 'layer-c',
-      'speed-normal': 'layer-c',
+      'speed-slower': 'layer-b',
+      'speed-normal': 'layer-b',
+      'arrange-backward': 'layer-b',
+      'arrange-back': 'layer-b',
       'clip-nudge-left': 'layer-b',
       'clip-track-up': 'layer-c',
     };
+    clearClipboard();
     session.selectMany(
-      command.id === 'group'
+      ['group', 'link', 'unlink'].includes(command.id)
         ? ids.slice(0, 2)
-        : [layerFor[command.id] ?? ids[0]!],
+        : command.id.startsWith('distribute-')
+          ? ids
+          : [layerFor[command.id] ?? ids[0]!],
     );
     session.setCurrentTime(1);
     if (command.id === 'marker') session.select(null);
@@ -45,6 +54,55 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       runCommand('duplicate', context);
     if (command.id === 'redo') engine.undo();
     if (command.id === 'speed-normal') runCommand('speed-faster', context);
+    if (command.id === 'paste') runCommand('copy', context);
+    if (command.id === 'unlink') runCommand('link', context);
+    if (command.id === 'ungroup') {
+      session.selectMany(ids.slice(0, 2));
+      runCommand('group', context);
+    }
+    if (command.id.startsWith('combine-')) {
+      // Two overlapping shapes, both centered on the canvas.
+      const added = (['rectangle', 'ellipse'] as const).map((preset) => {
+        addShape(engine, session, preset);
+        return session.selectedId!;
+      });
+      session.selectMany(added);
+    }
+    if (command.id.startsWith('keyframe-')) {
+      // Keyframes at 0 and 2 on the selected layer; the playhead sits at 1.
+      for (const time of [0, 2])
+        engine.commands.execute({
+          type: 'SET_KEYFRAME',
+          compositionId: engine.state.compositions[0]!.id,
+          layerId: ids[0]!,
+          key: 'position',
+          time,
+        });
+      session.setCurrentTime(1);
+    }
+    if (command.id === 'paste-style') {
+      // Copy a half-opacity style from layer 2, undo that edit, paste on layer 1.
+      session.select(ids[1]!);
+      engine.commands.transaction('Setup', [
+        {
+          type: 'SET_PROPERTY',
+          compositionId: engine.state.compositions[0]!.id,
+          layerId: ids[1]!,
+          target: { kind: 'transform', key: 'opacity' },
+          property: {
+            ...(JSON.parse(
+              JSON.stringify(
+                engine.state.compositions[0]!.layers[1]!.transform.opacity,
+              ),
+            ) as object),
+            value: 0.5,
+          },
+        } as unknown as Command,
+      ]);
+      runCommand('copy-style', context);
+      engine.undo();
+      session.select(ids[0]!);
+    }
     for (const locale of ['en', 'hi'] as const) {
       setLanguage(locale);
       expect(t(command.labelKey)).not.toBe(command.labelKey);
@@ -63,6 +121,14 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       expect(session.selectedIds).toEqual(ids);
     else if (command.id === 'undo') expect(engine.canRedo).toBe(true);
     else if (command.id === 'cut-previous') expect(session.currentTime).toBe(0);
+    else if (command.id === 'copy') expect(hasClipboard()).toBe(true);
+    else if (command.id === 'copy-style') expect(hasStyle()).toBe(true);
+    else if (command.id === 'keyframe-previous')
+      expect(session.currentTime).toBe(0);
+    else if (command.id === 'keyframe-next')
+      expect(session.currentTime).toBe(2);
+    else if (command.id === 'align-to-canvas')
+      expect(session.alignToCanvas).toBe(true);
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);
     else expect(engine.canUndo, command.id).toBe(true);
     session.dispose();

@@ -104,3 +104,15 @@ The equation is a frozen requirement and tested mathematical identity (within fl
 The helpers take readonly values from the validated canonical tree and return frozen derived tuples/records. `worldTransform` finds the requested ancestor path and computes only that branch. Unknown layer IDs throw. Unvalidated/cyclic trees are outside its input contract and must pass existing project validation first.
 
 There is no second store, persisted matrix, parent index, scene cache, engine replacement, capability alteration, or UI feature. Engine mutations remain on the existing command/transaction/history path. No persistent field/default or serialized representation changes, so **schemaVersion remains 1 and no migration is necessary**. A regression test verifies schema-1 serialization and derived values survive a round trip. Future renderers must consume this contract; they must not redefine it.
+
+## Amendment note (2026-09-24)
+
+The owner-authorized CV-008 change (Alt resize-from-center) is an interaction rule. It is recorded in [TRANSFORM_INTERACTION_CONTRACT.md](TRANSFORM_INTERACTION_CONTRACT.md) revision 4. The spatial semantics in this document are unchanged: the local origin stays `(0,0)`, the matrix order stays `T * R * S`, and no field is added.
+
+Revision 5 of the interaction contract (snapping with smart guides, CV-013, and the W2-E draw mode) changes only the pointer an interaction receives. Alignment (CV-025) writes ordinary position values. The spatial semantics here are unchanged.
+
+Revision 6 of the interaction contract (the projected corner multiplier and the multi-selection box, CV-007 and CV-041) writes ordinary position, rotation and scale values; a multi-selection transform decomposes `P⁻¹ · A · P · L` into those values and refuses anything that would need a skew. The spatial semantics here are unchanged.
+
+## Animation evaluation (W5-B, schema 5)
+
+An animated property (`animated: true` with keyframes) has a value at every composition time, interpolated from its keyframes with each segment's easing (`src/core/animation.ts`); before the first and after the last keyframe it holds that keyframe's value. Every consumer that draws, picks or edits a layer at a time uses these evaluated values, and the spatial rules above then apply unchanged: the same local origin, matrix order, inherited opacity and stored base-value semantics. Stored `value` fields are not a time-independent truth for animated properties. This note is additive and does not change any rule above.

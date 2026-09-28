@@ -45,6 +45,14 @@ export class Playback {
     );
     if (this.session.playing) this.#request = this.request(this.#tick);
   };
+  /** Continuous transport time while playing (the session time is frame-quantised). */
+  get clock(): number {
+    if (!this.session.playing) return this.session.currentTime;
+    return Math.min(
+      this.session.source.composition.duration,
+      this.#time + Math.max(0, this.now() - this.#origin) / 1000,
+    );
+  }
   pause(): void {
     this.session.setPlaying(false);
   }

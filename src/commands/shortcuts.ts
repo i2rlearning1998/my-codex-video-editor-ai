@@ -43,7 +43,8 @@ export function bindShortcuts(
           isTyping(event.target instanceof Element ? event.target : null)
         )
           return;
-        context.session.select(null);
+        // Esc first steps out of an entered group (CV-022), then deselects.
+        if (!context.session.exitGroup()) context.session.select(null);
         event.preventDefault();
         event.stopImmediatePropagation();
         return;

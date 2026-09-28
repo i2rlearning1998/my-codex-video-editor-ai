@@ -1,5 +1,10 @@
 import { observeDiagnostics, installDebugReport } from './dev/debug-report';
-import { EditorEngine, deserializeProject, serializeProject } from './core';
+import {
+  EditorEngine,
+  adoptFreeLayers,
+  deserializeProject,
+  serializeProject,
+} from './core';
 import { Autosave, LocalProjectStore } from './persistence/local';
 import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
@@ -8,17 +13,29 @@ import { t } from './i18n';
 import './style.css';
 
 let store: LocalProjectStore | undefined;
-let initialProject = createExampleProject();
+// TL-001: documents open with every top-level layer as a clip on a track.
+const openable = (project: unknown) => {
+  const { project: adopted, adopted: count } = adoptFreeLayers(
+    project as object,
+  );
+  return {
+    project: adopted,
+    note: count ? ` ${t('project.adopted', { count })}` : '',
+  };
+};
+let initialProject = openable(createExampleProject()).project;
 let initialMessage =
   'Example project · All artwork is part of the canonical scene.';
 try {
   store = new LocalProjectStore(window.localStorage);
   const loaded = store.load();
   if (loaded.project) {
-    initialProject = loaded.project;
-    initialMessage = loaded.recovered
-      ? `Recovered the last good backup. ${loaded.warning ?? ''}`
-      : 'Project loaded from this browser.';
+    const opened = openable(loaded.project);
+    initialProject = opened.project;
+    initialMessage =
+      (loaded.recovered
+        ? `Recovered the last good backup. ${loaded.warning ?? ''}`
+        : 'Project loaded from this browser.') + opened.note;
   }
 } catch (error) {
   store = undefined;
@@ -57,15 +74,15 @@ const shell = mountEditorShell(
     },
     importProject: async (file) => {
       if (file.size > 20_000_000) throw new Error(t('status.sizeLimit'));
-      const project = deserializeProject(await file.text());
+      const opened = openable(deserializeProject(await file.text()));
       if (
         await confirmDialog(t('project.openConfirm'), {
           titleText: t('project.openTitle'),
           confirmLabel: t('project.openTitle'),
         })
       ) {
-        engine.load(project);
-        shell.message(t('project.opened'));
+        engine.load(opened.project);
+        shell.message(t('project.opened') + opened.note);
       }
     },
     openExample: async () => {
@@ -75,7 +92,7 @@ const shell = mountEditorShell(
           confirmLabel: t('project.exampleTitle'),
         })
       ) {
-        engine.load(createExampleProject());
+        engine.load(openable(createExampleProject()).project);
         shell.message(t('project.exampleOpened'));
       }
     },
@@ -102,6 +119,8 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
         engine,
         shell.session,
         diagnostics.getErrors,
+        shell.mediaDebug,
+        shell.canvasDebug,
       );
   });
 }

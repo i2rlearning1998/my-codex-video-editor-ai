@@ -34,6 +34,15 @@ function versionOf(document: unknown): number {
 export class MigrationRegistry {
   #migrations = new Map<number, Migration>();
   constructor() {
+    // Schema 5 adds only the optional keyframe easing; absent means linear.
+    this.register({
+      from: 4,
+      to: 5,
+      migrate: (input) => ({
+        ...(structuredClone(input) as object),
+        schemaVersion: 5,
+      }),
+    });
     this.register({
       from: 3,
       to: 4,

@@ -91,7 +91,7 @@ test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom siz
     tracks: [],
   });
   expect(snapshot.project.settings.backgroundColor).toBe('#abcdef');
-  expect(snapshot.project.schemaVersion).toBe(4);
+  expect(snapshot.project.schemaVersion).toBe(5);
   expect(snapshot.history).toEqual({
     canUndo: false,
     canRedo: false,

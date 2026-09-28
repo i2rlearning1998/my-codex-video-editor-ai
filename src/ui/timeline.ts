@@ -6,24 +6,46 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   clipTimeEffects,
+  clipSourceTime,
+  clipLinkId,
   clipTrimBounds,
   retimeClip,
   trackAcceptsLayer,
   type EditorEngine,
   type Command,
+  clipAnimation,
+  type Easing,
 } from '../core';
 import { t, formatNumber } from '../i18n';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import type { EditorSession } from './session';
+import { keyframeTimes } from './keyframes';
+import {
+  hasCopiedKeyframes,
+  moveSelectedKeyframes,
+  runKeyframeAction,
+  setSelectedEasing,
+} from './keyframe-edit';
+import {
+  STRIP_FRAMES,
+  WAVE_RATE,
+  type MediaPreviews,
+  type PreviewAsset,
+  type WaveformCache,
+} from '../media';
 import {
   selectionRoots,
   performEdit,
   contextActions,
   jumpToCut,
+  withLinked,
   moveClipsToAdjacentTrack,
   nudgeClips,
   setClipSpeed,
   trimClipToPlayhead,
+  landingCommands,
+  planLanding,
+  type ClipLanding,
   SPEED_PRESETS,
   type EditAction,
 } from './editing';
@@ -42,6 +64,15 @@ import {
 } from './timeline-model';
 import { iconSvg } from './icons';
 
+/** TL-027/TL-032 menu actions labelled from the command catalog. */
+const CLIP_ACTIONS: readonly EditAction[] = [
+  'cut',
+  'copy',
+  'paste',
+  'link',
+  'unlink',
+  'detach-audio',
+];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
 
 export class TimelineInteraction {
@@ -55,6 +86,9 @@ export class TimelineInteraction {
     destinationId?: string;
     bounds?: TrimBounds;
     snap?: number;
+    locked?: boolean;
+    /** Linked partners carried along in time only; they keep their tracks. */
+    followers?: ReadonlySet<string>;
   } | null = null;
   #unsubscribe: () => void;
   constructor(
@@ -67,7 +101,8 @@ export class TimelineInteraction {
   get preview(): TimingPreview | undefined {
     return this.#gesture?.value;
   }
-  get previews(): readonly TimingPreview[] {
+  /** Pointer-derived previews before the TL-030 insert rule adjusts them. */
+  get rawPreviews(): readonly TimingPreview[] {
     const gesture = this.#gesture;
     if (!gesture) return [];
     if (gesture.kind !== 'move') return [gesture.value];
@@ -77,6 +112,99 @@ export class TimelineInteraction {
       startTime: layer.startTime + delta,
       duration: layer.duration,
     }));
+  }
+  get previews(): readonly TimingPreview[] {
+    const plan = this.landingPlan;
+    return this.rawPreviews.map((preview) => {
+      const clip = findClipByLayer(
+        this.session.source.composition,
+        preview.layerId,
+      );
+      const placed = clip && plan?.placed.get(clip.clip.id);
+      return placed === undefined || placed === null
+        ? preview
+        : { ...preview, startTime: placed };
+    });
+  }
+  /** Clip landings of a move gesture (all moving layers must be clips). */
+  #landings(): ClipLanding[] | undefined {
+    const gesture = this.#gesture;
+    if (!gesture || gesture.kind !== 'move') return undefined;
+    const composition = this.session.source.composition;
+    const moves = this.trackMoves;
+    const landings: ClipLanding[] = [];
+    for (const preview of this.rawPreviews) {
+      const found = findClipByLayer(composition, preview.layerId);
+      if (!found) return undefined;
+      landings.push({
+        clip: found.clip,
+        trackId: moves.get(preview.layerId) ?? found.track.id,
+        startTime: preview.startTime,
+      });
+    }
+    return landings;
+  }
+  /**
+   * TL-017: a cross-track move shifts every dragged clip by the same number of
+   * tracks (in display order), so their track offsets are kept. Linked followers
+   * keep their own tracks.
+   */
+  get trackMoves(): ReadonlyMap<string, string> {
+    const gesture = this.#gesture;
+    const destination = gesture?.destinationId?.startsWith('track:')
+      ? gesture.destinationId.slice(6)
+      : undefined;
+    if (!gesture || !destination) return new Map();
+    return (
+      this.#planTrackMoves(
+        gesture.layer,
+        gesture.layers,
+        destination,
+        gesture.followers,
+      ) ?? new Map()
+    );
+  }
+  #planTrackMoves(
+    anchor: SceneLayer,
+    layers: readonly SceneLayer[],
+    destinationTrackId: string,
+    followers: ReadonlySet<string> | undefined,
+  ): Map<string, string> | undefined {
+    const composition = this.session.source.composition;
+    const tracks = [...composition.tracks].sort((a, b) => a.order - b.order);
+    const from = findClipByLayer(composition, anchor.id);
+    const anchorIndex = tracks.findIndex(
+      (track) => track.id === from?.track.id,
+    );
+    const shift =
+      tracks.findIndex((track) => track.id === destinationTrackId) -
+      anchorIndex;
+    if (anchorIndex < 0 || shift === 0) return undefined;
+    const moves = new Map<string, string>();
+    for (const layer of layers) {
+      if (followers?.has(layer.id)) continue;
+      const found = findClipByLayer(composition, layer.id);
+      if (!found) return undefined;
+      const target =
+        tracks[
+          tracks.findIndex((track) => track.id === found.track.id) + shift
+        ];
+      if (
+        !target ||
+        target.locked ||
+        !trackAcceptsLayer(target.type, layer.type)
+      )
+        return undefined;
+      moves.set(layer.id, target.id);
+    }
+    return moves;
+  }
+  /** TL-030 live plan: final starts, pushed clips and insertion markers. */
+  get landingPlan(): ReturnType<typeof planLanding> | undefined {
+    const landings = this.#landings();
+    return landings
+      ? planLanding(this.session.source.composition, landings)
+      : undefined;
   }
   get destinationId(): string | undefined {
     return this.#gesture?.destinationId;
@@ -95,7 +223,8 @@ export class TimelineInteraction {
     )?.layer;
     if (!canonicalLayer) throw new Error('Unknown layer');
     const location = findClipByLayer(this.session.source.composition, id);
-    if (location?.track.locked) throw new Error('Track is locked');
+    // Selecting a locked clip is fine; only an actual drag is refused (TL-004).
+    const locked = !!location?.track.locked;
     const asTimedLayer = (layer: SceneLayer): SceneLayer => {
       const timing = effectiveLayerTiming(
         this.session.source.composition,
@@ -108,9 +237,12 @@ export class TimelineInteraction {
       };
     };
     const layer = asTimedLayer(canonicalLayer);
+    // TL-032: a move carries linked partners along (in time, not across tracks).
     const layers = selectionRoots(
       this.session.source,
-      this.session.selectedIds,
+      kind === 'move'
+        ? withLinked(this.session.source, this.session.selectedIds)
+        : this.session.selectedIds,
     ).map(asTimedLayer);
     if (kind !== 'move' && layers.length > 1)
       throw new Error('Select one clip to trim');
@@ -125,8 +257,18 @@ export class TimelineInteraction {
             )?.duration,
           )
         : undefined;
+    const roots = new Set(
+      selectionRoots(this.session.source, this.session.selectedIds).map(
+        (item) => item.id,
+      ),
+    );
+    const followers = new Set(
+      layers.map((item) => item.id).filter((id) => !roots.has(id)),
+    );
     this.#gesture = {
+      ...(followers.size ? { followers } : {}),
       ...(bounds ? { bounds } : {}),
+      ...(locked ? { locked } : {}),
       layer,
       layers,
       kind,
@@ -142,6 +284,10 @@ export class TimelineInteraction {
   update(deltaPixels: number, destinationId?: string): void {
     const gesture = this.#gesture;
     if (!gesture) return;
+    if (gesture.locked) {
+      this.cancel();
+      throw new Error('Track is locked');
+    }
     try {
       const snapped = calculateSnappedTiming(
         this.session.source,
@@ -166,28 +312,27 @@ export class TimelineInteraction {
       }
       delete gesture.destinationId;
       if (gesture.kind === 'move' && destinationId) {
-        const clips = gesture.layers.map((layer) => ({
-          layer,
-          location: findClipByLayer(this.session.source.composition, layer.id),
-        }));
+        const clips = gesture.layers
+          .filter((layer) => !gesture.followers?.has(layer.id))
+          .map((layer) => ({
+            layer,
+            location: findClipByLayer(
+              this.session.source.composition,
+              layer.id,
+            ),
+          }));
         if (
           clips.every((item) => item.location) &&
           destinationId.startsWith('track:')
         ) {
-          const trackId = destinationId.slice(6);
-          const destination = this.session.source.composition.tracks.find(
-            (track) => track.id === trackId,
-          );
-          const compatible = destination
-            ? clips.every(({ layer }) =>
-                trackAcceptsLayer(destination.type, layer.type),
-              )
-            : false;
+          // Every dragged clip must have an unlocked, compatible target track.
           if (
-            destination &&
-            compatible &&
-            !destination.locked &&
-            clips.some((item) => item.location!.track.id !== destination.id)
+            this.#planTrackMoves(
+              gesture.layer,
+              gesture.layers,
+              destinationId.slice(6),
+              gesture.followers,
+            )
           )
             gesture.destinationId = destinationId;
         } else if (
@@ -220,9 +365,20 @@ export class TimelineInteraction {
   finish(): void {
     const gesture = this.#gesture;
     const previews = this.previews;
+    const landings = this.#landings();
     this.#gesture = null;
     if (!gesture) return;
     try {
+      if (landings) {
+        // Clip moves land under the insert rule in one step (TL-020/TL-030).
+        const commands = landingCommands(
+          this.session.source.composition,
+          landings,
+        );
+        if (commands.length)
+          this.engine.commands.transaction('Move clip', commands);
+        return;
+      }
       const commands: Command[] = previews.flatMap((preview) => {
         const layer =
           gesture.layers.find((item) => item.id === preview.layerId) ??
@@ -255,21 +411,28 @@ export class TimelineInteraction {
         const destinationTrackId = gesture.destinationId.startsWith('track:')
           ? gesture.destinationId.slice(6)
           : undefined;
-        if (destinationTrackId)
-          for (const layer of gesture.layers) {
+        if (destinationTrackId) {
+          const moves =
+            this.#planTrackMoves(
+              gesture.layer,
+              gesture.layers,
+              destinationTrackId,
+              gesture.followers,
+            ) ?? new Map<string, string>();
+          for (const [layerId, trackId] of moves) {
             const clip = findClipByLayer(
               this.session.source.composition,
-              layer.id,
+              layerId,
             );
-            if (clip && clip.track.id !== destinationTrackId)
+            if (clip && clip.track.id !== trackId)
               commands.push({
                 type: 'MOVE_CLIP',
                 compositionId: gesture.compositionId,
                 clipId: clip.clip.id,
-                trackId: destinationTrackId,
+                trackId,
               });
           }
-        else {
+        } else {
           const rows = timelineRows(this.session.source, gesture.zoom);
           const to = rows.find(
             (row) => row.layer.id === gesture.destinationId,
@@ -336,6 +499,8 @@ export function mountTimeline(
   changed: () => void,
   report: (error: unknown) => void,
   externalKeyboard = false,
+  previews?: MediaPreviews,
+  waveforms?: WaveformCache,
 ) {
   root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
@@ -343,6 +508,102 @@ export function mountTimeline(
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
   scroll.setAttribute('aria-label', t('timeline.keys'));
   const headerWidth = 224;
+  /** TL-046: filmstrip tiles (video) or a repeated thumbnail (image) behind the label. */
+  const TILE_WIDTH = 48;
+  const appendFilmstrip = (
+    element: HTMLElement,
+    clip: Parameters<typeof clipSourceTime>[0] & {
+      readonly assetId: string | null;
+    },
+    zoom: number,
+  ) => {
+    if (!previews || !clip.assetId) return;
+    const asset = (
+      session.source.assets as unknown as readonly PreviewAsset[]
+    ).find((item) => item.id === clip.assetId);
+    if (!asset || (asset.type !== 'video' && asset.type !== 'image')) return;
+    const preview =
+      asset.type === 'video'
+        ? previews.strip(asset)
+        : previews.thumbnail(asset);
+    if (preview.state !== 'ready') return;
+    const strip = document.createElement('div');
+    strip.className = 'clip-filmstrip';
+    strip.dataset.kind = asset.type;
+    strip.setAttribute('aria-hidden', 'true');
+    const count = Math.min(
+      400,
+      Math.max(1, Math.ceil(timeToPixel(clip.duration, zoom) / TILE_WIDTH)),
+    );
+    for (let index = 0; index < count; index++) {
+      const tile = document.createElement('span');
+      tile.className = 'clip-filmstrip-tile';
+      tile.style.backgroundImage = `url("${preview.url}")`;
+      if (asset.type === 'video' && asset.duration) {
+        const time = clip.startTime + pixelToTime(index * TILE_WIDTH, zoom);
+        const frame = Math.max(
+          0,
+          Math.min(
+            STRIP_FRAMES - 1,
+            Math.floor(
+              (clipSourceTime(clip, time) / asset.duration) * STRIP_FRAMES,
+            ),
+          ),
+        );
+        tile.dataset.frame = String(frame);
+        tile.style.backgroundSize = `${STRIP_FRAMES * TILE_WIDTH}px 100%`;
+        tile.style.backgroundPosition = `${-frame * TILE_WIDTH}px 0`;
+      }
+      strip.append(tile);
+    }
+    element.prepend(strip);
+  };
+  /** TL-047: the clip's visible source window, one column per pixel, behind the label. */
+  const appendWaveform = (
+    element: HTMLElement,
+    clip: Parameters<typeof clipSourceTime>[0] & {
+      readonly assetId: string | null;
+    },
+    zoom: number,
+  ) => {
+    if (!waveforms || !clip.assetId) return;
+    const asset = (
+      session.source.assets as unknown as readonly PreviewAsset[]
+    ).find((item) => item.id === clip.assetId);
+    const wave = asset ? waveforms.waveform(asset) : undefined;
+    if (wave?.state !== 'ready') return;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'clip-waveform';
+    canvas.setAttribute('aria-hidden', 'true');
+    canvas.width = Math.max(
+      1,
+      Math.min(8192, Math.round(timeToPixel(clip.duration, zoom))),
+    );
+    canvas.height = 27;
+    const context = canvas.getContext('2d');
+    if (context) {
+      context.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--color-waveform')
+        .trim();
+      for (let x = 0; x < canvas.width; x++) {
+        const source = clipSourceTime(
+          clip,
+          clip.startTime + pixelToTime(x + 0.5, zoom),
+        );
+        const peak = wave.peaks[Math.floor(source * WAVE_RATE)] ?? 0;
+        const height = Math.max(1, (peak / wave.max) * canvas.height);
+        context.fillRect(x, (canvas.height - height) / 2, 1, height);
+      }
+    }
+    element.prepend(canvas);
+  };
+  const redrawForMedia = () => {
+    // A filmstrip, thumbnail or waveform arrived: redraw though the project is unchanged.
+    renderedProject = undefined;
+    render();
+  };
+  const unsubscribePreviews = previews?.onChange(redrawForMedia);
+  const unsubscribeWaveforms = waveforms?.onChange(redrawForMedia);
   /** Infinite timeline (TL-055): furthest time the user has scrolled to. Transient. */
   let reach = 0;
   let renderedSpan = 0;
@@ -380,9 +641,45 @@ export function mountTimeline(
       }
     | undefined;
   let suppressClick = false;
+  /** ANI-004: the frame-quantized offset of a keyframe drag in progress. */
+  let keyframeDrag: { delta: number } | undefined;
+  const isSelectedKeyframe = (layerId: string, time: number) =>
+    session.selectedKeyframes.some(
+      (item) => item.layerId === layerId && item.time === time,
+    );
+  /** One diamond per keyframe time of a layer (all animated properties). */
+  const appendKeyframes = (
+    track: HTMLElement,
+    layerId: string,
+    times: readonly number[],
+    zoom: number,
+  ) => {
+    for (const time of times) {
+      const selected = isSelectedKeyframe(layerId, time);
+      const shown =
+        selected && keyframeDrag
+          ? Math.max(0, time + keyframeDrag.delta)
+          : time;
+      const diamond = button(
+        iconSvg('diamondFilled', 12),
+        'keyframe',
+        layerId,
+        true,
+      );
+      diamond.className = `timeline-keyframe${selected ? ' selected' : ''}`;
+      diamond.dataset.time = String(time);
+      diamond.setAttribute('aria-pressed', String(selected));
+      diamond.title = t('timeline.keyframeAt', {
+        time: formatTimelineTime(time),
+      });
+      diamond.setAttribute('aria-label', diamond.title);
+      diamond.style.left = `${timeToPixel(shown, zoom)}px`;
+      track.append(diamond);
+    }
+  };
   let pointer: {
     id: number;
-    kind: 'clip' | 'playhead' | 'marker' | 'marquee';
+    kind: 'clip' | 'playhead' | 'marker' | 'marquee' | 'keyframe';
     start: number;
     startY: number;
     scrollY: number;
@@ -445,6 +742,7 @@ export function mountTimeline(
         : row;
     });
     const trackRows = nleTimelineRows(session.source, zoom);
+    const landing = controller.landingPlan;
     const playButton = root.querySelector<HTMLElement>('[data-action="play"]')!;
     const playIcon = session.playing ? 'pause' : 'play';
     if (playButton.dataset.icon !== playIcon) {
@@ -485,13 +783,15 @@ export function mountTimeline(
       span,
       guideTime,
       session.soloTrackIds,
+      session.selectedKeyframes,
     ]);
     if (
       renderedProject === engine.state &&
       renderedIdentity === identity &&
       !controller.preview &&
       !markerPreview &&
-      !marquee
+      !marquee &&
+      !keyframeDrag
     ) {
       const playhead = content.querySelector<HTMLElement>('.timeline-playhead');
       if (playhead)
@@ -500,7 +800,9 @@ export function mountTimeline(
     }
     renderedProject = engine.state;
     renderedIdentity =
-      controller.preview || markerPreview || marquee ? '' : identity;
+      controller.preview || markerPreview || marquee || keyframeDrag
+        ? ''
+        : identity;
     content.replaceChildren();
     renderedSpan = span;
     const width = timeToPixel(span, zoom);
@@ -531,6 +833,7 @@ export function mountTimeline(
     );
     rulerBar.append(ruler);
     content.append(rulerBar);
+    const trackMoves = controller.trackMoves;
     for (const [trackIndex, row] of trackRows.entries()) {
       const line = document.createElement('div');
       line.className = 'timeline-row timeline-nle-row';
@@ -538,7 +841,7 @@ export function mountTimeline(
       line.dataset.trackId = row.track.id;
       line.classList.toggle(
         'drop-target',
-        controller.destinationId === `track:${row.track.id}`,
+        [...trackMoves.values()].includes(row.track.id),
       );
       line.classList.toggle(
         'selected',
@@ -610,14 +913,30 @@ export function mountTimeline(
       track.dataset.trackId = row.track.id;
       track.style.width = `${width}px`;
       const crossTrack = controller.destinationId?.startsWith('track:');
+      // TL-030 preview: where the drop inserts and which clips it pushes.
+      for (const insertion of landing?.insertions ?? []) {
+        if (insertion.trackId !== row.track.id) continue;
+        const marker = document.createElement('div');
+        marker.className = 'timeline-insert';
+        marker.dataset.time = String(insertion.time);
+        marker.setAttribute('aria-hidden', 'true');
+        marker.style.left = `${timeToPixel(insertion.time, zoom)}px`;
+        track.append(marker);
+      }
       for (const entry of row.clips) {
         const moving = controller.previews.find(
           (item) => item.layerId === entry.layer.id,
         );
         // TL-058: across tracks the original stays put (dimmed); a ghost lands.
-        const preview = crossTrack ? undefined : moving;
+        const pushedTo = landing?.pushed.get(entry.clip.id)?.startTime;
+        const preview = crossTrack
+          ? undefined
+          : (moving ??
+            (pushedTo === undefined
+              ? undefined
+              : { startTime: pushedTo, duration: entry.clip.duration }));
         const clip = button(entry.clip.name, 'clip', entry.layer.id);
-        clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}`;
+        clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}${pushedTo === undefined ? '' : ' pushed'}${row.track.locked ? ' locked' : ''}`;
         clip.dataset.clipId = entry.clip.id;
         clip.dataset.trackId = row.track.id;
         clip.style.left = `${preview ? timeToPixel(preview.startTime, zoom) : entry.left}px`;
@@ -639,6 +958,15 @@ export function mountTimeline(
           badges.push(['reverse', iconSvg('reverse', 11), t('clip.reversed')]);
         if (effects.freezeFrame !== null)
           badges.push(['freeze', iconSvg('freeze', 11), t('clip.frozen')]);
+        if (clipLinkId(entry.clip))
+          badges.push(['link', iconSvg('link', 11), t('clip.linked')]);
+        // W5-C: the clip has animation presets.
+        if (Object.keys(clipAnimation(entry.clip)).length)
+          badges.push([
+            'animation',
+            iconSvg('animate', 11),
+            t('clip.animated'),
+          ]);
         for (const [kind, content, label] of badges) {
           const badge = document.createElement('span');
           badge.className = 'clip-badge';
@@ -648,36 +976,26 @@ export function mountTimeline(
           badge.setAttribute('aria-label', label);
           clip.append(badge);
         }
+        if (entry.layer.type === 'audio')
+          appendWaveform(clip, entry.clip, zoom);
+        else appendFilmstrip(clip, entry.clip, zoom);
         appendTrimHandles(clip);
         track.append(clip);
-        const keyTimes = [
-          ...new Set(
-            Object.values(
-              entry.layer.transform as unknown as Record<
-                string,
-                { readonly keyframes: readonly { readonly time: number }[] }
-              >,
-            ).flatMap((property) =>
-              property.keyframes.map((frame) => frame.time),
-            ),
+        // Keyframes inside the clip's range (the clip carries them when moved).
+        appendKeyframes(
+          track,
+          entry.layer.id,
+          keyframeTimes(entry.layer).filter(
+            (time) =>
+              time >= entry.clip.startTime - 1e-9 &&
+              time <= entry.clip.startTime + entry.clip.duration + 1e-9,
           ),
-        ];
-        for (const time of keyTimes) {
-          const diamond = button(
-            iconSvg('diamondFilled', 12),
-            'keyframe',
-            entry.layer.id,
-            true,
-          );
-          diamond.className = 'timeline-keyframe';
-          diamond.dataset.time = String(time);
-          diamond.title = `Keyframe at ${formatTimelineTime(time)}s`;
-          diamond.style.left = `${timeToPixel(time, zoom)}px`;
-          track.append(diamond);
-        }
+          zoom,
+        );
       }
-      if (crossTrack && controller.destinationId === `track:${row.track.id}`)
+      if (crossTrack)
         for (const item of controller.previews) {
+          if (trackMoves.get(item.layerId) !== row.track.id) continue;
           const origin = trackRows
             .flatMap((other) => other.clips)
             .find((entry) => entry.layer.id === item.layerId);
@@ -762,31 +1080,7 @@ export function mountTimeline(
       );
       appendTrimHandles(clip);
       track.append(clip);
-      const times = [
-        ...new Set(
-          Object.values(
-            row.layer.transform as unknown as Record<
-              string,
-              { readonly keyframes: readonly { readonly time: number }[] }
-            >,
-          ).flatMap((property) =>
-            property.keyframes.map((frame) => frame.time),
-          ),
-        ),
-      ];
-      for (const time of times) {
-        const diamond = button(
-          iconSvg('diamondFilled', 12),
-          'keyframe',
-          row.layer.id,
-          true,
-        );
-        diamond.className = 'timeline-keyframe';
-        diamond.dataset.time = String(time);
-        diamond.title = `Keyframe at ${time}s`;
-        diamond.style.left = `${timeToPixel(time, zoom)}px`;
-        track.append(diamond);
-      }
+      appendKeyframes(track, row.layer.id, keyframeTimes(row.layer), zoom);
       line.append(header, track);
       content.append(line);
     }
@@ -867,6 +1161,7 @@ export function mountTimeline(
     selectedMarkerId = undefined;
     marquee = undefined;
     pointerSnap = undefined;
+    keyframeDrag = undefined;
     controller.cancel();
     render();
     if (originalIds) session.selectMany(originalIds);
@@ -894,6 +1189,18 @@ export function mountTimeline(
     if (!pointer || pointer.id !== event.pointerId) return;
     if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY))
       throw new RangeError('Invalid pointer coordinate');
+    if (pointer.kind === 'keyframe') {
+      const dx =
+        event.clientX - pointer.start + scroll.scrollLeft - pointer.scroll;
+      if (Math.abs(dx) >= 3) pointer.moved = true;
+      if (!pointer.moved) return;
+      const fps = session.source.composition.fps;
+      keyframeDrag = {
+        delta: Math.round(pixelToTime(dx, session.timelineZoom) * fps) / fps,
+      };
+      render();
+      return;
+    }
     if (pointer.kind === 'playhead') {
       if (Math.abs(event.clientX - pointer.start) >= 3) pointer.moved = true;
       if (!pointer.moved) return;
@@ -1008,6 +1315,37 @@ export function mountTimeline(
     safely(() => {
       if (pointer || event.button !== 0 || event.isPrimary === false) return;
       const target = event.target as HTMLElement;
+      // ANI-004: a diamond selects its keyframes and starts a drag.
+      const diamond = target.closest<HTMLElement>('[data-action="keyframe"]');
+      if (diamond) {
+        event.preventDefault();
+        session.setPlaying(false);
+        menu.hidden = true;
+        const item = {
+          layerId: diamond.dataset.id!,
+          time: Number(diamond.dataset.time),
+        };
+        const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+        if (additive) session.selectKeyframes([item], true);
+        else if (!isSelectedKeyframe(item.layerId, item.time)) {
+          if (!session.selectedIds.includes(item.layerId))
+            session.select(item.layerId);
+          session.selectKeyframes([item]);
+        }
+        pointer = {
+          id: event.pointerId,
+          kind: 'keyframe',
+          start: event.clientX,
+          startY: event.clientY,
+          scrollY: scroll.scrollTop,
+          scroll: scroll.scrollLeft,
+          originalTime: session.currentTime,
+          moved: false,
+        };
+        root.setPointerCapture(event.pointerId);
+        scroll.focus({ preventScroll: true });
+        return;
+      }
       const clip = target.closest<HTMLElement>('[data-action="clip"]');
       const ruler = target.closest('[data-action="seek"]');
       const marker = target.closest<HTMLElement>(
@@ -1081,6 +1419,11 @@ export function mountTimeline(
       release();
       pointerSnap = undefined;
       if (kind === 'clip') controller.finish();
+      if (kind === 'keyframe') {
+        const delta = keyframeDrag?.delta ?? 0;
+        keyframeDrag = undefined;
+        if (moved && delta !== 0) moveSelectedKeyframes(engine, session, delta);
+      }
       if (kind === 'marker' && markerPreview) {
         const marker = session.source.composition.markers.find(
           (item) => item.id === markerPreview!.id,
@@ -1099,7 +1442,7 @@ export function mountTimeline(
         // A click with no drag selects the marker (for keyboard delete) instead of moving it.
         if (!moved) selectedMarkerId = markerId;
       }
-      suppressClick = kind === 'marquee';
+      suppressClick = kind === 'marquee' || (kind === 'keyframe' && moved);
       marquee = undefined;
       render();
     });
@@ -1219,6 +1562,20 @@ export function mountTimeline(
           session.setPlaying(false);
           session.setCurrentTime(Number(target.dataset.time));
           break;
+        case 'kf-easing':
+          setSelectedEasing(engine, session, target.dataset.easing as Easing);
+          break;
+        case 'kf-copy':
+        case 'kf-paste':
+        case 'kf-duplicate':
+        case 'kf-delete':
+          runKeyframeAction(
+            engine,
+            session,
+            target.dataset.action.slice(3) as
+              'copy' | 'paste' | 'duplicate' | 'delete',
+          );
+          break;
         case 'delete-marker':
           performEdit(engine, session, 'delete-marker', menuMarker);
           break;
@@ -1233,6 +1590,12 @@ export function mountTimeline(
         case 'toggle-enabled':
         case 'reverse':
         case 'freeze':
+        case 'cut':
+        case 'copy':
+        case 'paste':
+        case 'link':
+        case 'unlink':
+        case 'detach-audio':
           performEdit(engine, session, target.dataset.action as EditAction);
           break;
       }
@@ -1442,6 +1805,32 @@ export function mountTimeline(
     item.setAttribute('role', role);
     return item;
   };
+  // ANI-002/ANI-004: easing presets and keyframe edits for the selection.
+  const showKeyframeMenu = () => {
+    const items: HTMLButtonElement[] = [];
+    for (const easing of [
+      'linear',
+      'ease-in',
+      'ease-out',
+      'ease-in-out',
+      'hold',
+    ] as const) {
+      const item = menuItem(
+        t(`easing.${easing}`),
+        'kf-easing',
+        'menuitemradio',
+      );
+      item.dataset.easing = easing;
+      items.push(item);
+    }
+    for (const action of ['copy', 'paste', 'duplicate', 'delete'] as const) {
+      const item = menuItem(t(`animation.${action}`), `kf-${action}`);
+      if (action === 'copy') item.classList.add('timeline-menu-divider');
+      if (action === 'paste') item.disabled = !hasCopiedKeyframes();
+      items.push(item);
+    }
+    menu.replaceChildren(...items);
+  };
   const showMainMenu = () => {
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
       (layer) => {
@@ -1458,6 +1847,8 @@ export function mountTimeline(
       ).map((action) => {
         if (action === 'speed')
           return menuItem(`${t('command.speed')} ›`, action);
+        if (CLIP_ACTIONS.includes(action))
+          return menuItem(t(`command.${action}`), action);
         if (action === 'reverse' || action === 'freeze') {
           const item = menuItem(
             t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),
@@ -1514,6 +1905,24 @@ export function mountTimeline(
   };
   const contextmenu = (event: MouseEvent) => {
     event.preventDefault();
+    const diamond = (event.target as HTMLElement).closest<HTMLElement>(
+      '[data-action="keyframe"]',
+    );
+    if (diamond) {
+      const item = {
+        layerId: diamond.dataset.id!,
+        time: Number(diamond.dataset.time),
+      };
+      if (!isSelectedKeyframe(item.layerId, item.time)) {
+        if (!session.selectedIds.includes(item.layerId))
+          session.select(item.layerId);
+        session.selectKeyframes([item]);
+      }
+      showKeyframeMenu();
+      menu.hidden = false;
+      menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
+      return;
+    }
     const target = (event.target as HTMLElement).closest<HTMLElement>(
       '[data-id]',
     );
@@ -1611,6 +2020,7 @@ export function mountTimeline(
       return true;
     },
     controller,
+    playback,
     render,
     cancel,
     dispose: () => {
@@ -1618,6 +2028,8 @@ export function mountTimeline(
       unsubscribe();
       controller.dispose();
       playback.dispose();
+      unsubscribePreviews?.();
+      unsubscribeWaveforms?.();
       for (const [name, listener] of Object.entries(listeners))
         root.removeEventListener(name, listener as EventListener);
       window.removeEventListener('blur', cancel);

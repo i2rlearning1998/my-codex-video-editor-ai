@@ -8,10 +8,23 @@ import {
 import {
   TEXT_FONT,
   fallbackTextMeasure,
+  lineOffsets,
   type TextMeasurer,
 } from './text-layout';
-import { selectionGeometry } from './selection';
-import { deriveRenderItems, hitTest, type RenderSource } from './adapter';
+import { DEFAULT_TEXT_STYLE, measureWithContext, textFont } from './text-style';
+import {
+  multiSelectionGeometry,
+  selectionGeometry,
+  type SelectionHandle,
+} from './selection';
+import type { DrawingPath } from './drawing';
+import { drawShape } from './shapes';
+import {
+  deriveRenderItems,
+  hitTest,
+  type RenderItem,
+  type RenderSource,
+} from './adapter';
 
 export interface Viewport {
   readonly width: number;
@@ -90,15 +103,78 @@ export function pickLayer(
   }
 }
 
+/**
+ * W2-F5: draws a text item's laid-out lines with its font, alignment, letter
+ * spacing, line height and paragraph spacing. Justified lines spread their
+ * word gaps; a paragraph's last line stays left-aligned.
+ */
+function drawText(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  item: RenderItem,
+) {
+  const layout = item.textLayout!;
+  const style = item.textStyle ?? DEFAULT_TEXT_STYLE;
+  const width = item.size.width;
+  const measure = (text: string) =>
+    measureWithContext(context, text, item.fontSize, style);
+  context.font = textFont(style, item.fontSize);
+  context.textBaseline = 'top';
+  context.fillStyle = item.fill;
+  const offsets = lineOffsets(layout);
+  const visible = Math.min(1000, layout.lines.length);
+  for (let index = 0; index < visible; index++) {
+    const line = layout.lines[index]!;
+    const y = offsets[index]!;
+    if (y > item.size.height) break;
+    const words = line
+      .split(/(\s+)/u)
+      .filter((part) => part && !/^\s+$/u.test(part));
+    if (
+      style.align === 'justify' &&
+      !layout.paragraphEnds[index] &&
+      words.length > 1
+    ) {
+      const used = words.reduce((sum, word) => sum + measure(word), 0);
+      const gap = (width - used) / (words.length - 1);
+      let x = 0;
+      for (const word of words) {
+        fillSpaced(context, word, x, y, style.letterSpacing);
+        x += measure(word) + gap;
+      }
+      continue;
+    }
+    const lineWidth = measure(line);
+    const x =
+      style.align === 'center'
+        ? (width - lineWidth) / 2
+        : style.align === 'right'
+          ? width - lineWidth
+          : 0;
+    fillSpaced(context, line, x, y, style.letterSpacing);
+  }
+}
+
+/** Fills text with letter spacing (Canvas `letterSpacing`, Chrome 99+). */
+function fillSpaced(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  spacing: number,
+) {
+  context.letterSpacing = `${spacing}px`;
+  context.fillText(text, x, y);
+  context.letterSpacing = '0px';
+}
+
 /** Replaceable Canvas 2D boundary. No engine, subscriptions, commands, or retained scene data. */
 export class Canvas2DRenderer implements CompositionRenderer {
   #metrics: CanvasRenderingContext2D | null | undefined;
-  readonly measureText: TextMeasurer = (text, fontSize) => {
+  readonly measureText: TextMeasurer = (text, fontSize, style) => {
     if (this.#metrics === undefined)
       this.#metrics = document.createElement('canvas').getContext('2d');
-    if (!this.#metrics) return fallbackTextMeasure(text, fontSize);
-    this.#metrics.font = TEXT_FONT(fontSize);
-    return this.#metrics.measureText(text).width;
+    if (!this.#metrics) return fallbackTextMeasure(text, fontSize, style);
+    return measureWithContext(this.#metrics, text, fontSize, style);
   };
   render(
     canvas: HTMLCanvasElement,
@@ -126,11 +202,33 @@ export class Canvas2DRenderer implements CompositionRenderer {
   }
 }
 
+export interface DrawOptions {
+  /** Selection handles and the composition border (false for export, W5-A). */
+  readonly overlays?: boolean;
+  /** Fill for the area outside the composition (letterbox); cleared when absent. */
+  readonly surround?: string;
+}
+
+function strokePath(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  path: DrawingPath,
+) {
+  context.strokeStyle = path.color;
+  context.lineWidth = path.width;
+  context.lineCap = path.cap;
+  context.lineJoin = path.cap === 'butt' ? 'miter' : 'round';
+  context.beginPath();
+  context.moveTo(...path.points[0]!);
+  for (const point of path.points.slice(1)) context.lineTo(...point);
+  context.stroke();
+}
+
 export function drawComposition(
-  context: CanvasRenderingContext2D,
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   source: RenderSource,
   viewport: Viewport,
   selectedId: string | null,
+  options: DrawOptions = {},
 ): RenderReport {
   const pixels: AffineMatrix = [
     viewport.pixelRatio,
@@ -150,6 +248,15 @@ export function drawComposition(
     viewport.width * viewport.pixelRatio,
     viewport.height * viewport.pixelRatio,
   );
+  if (options.surround) {
+    context.fillStyle = options.surround;
+    context.fillRect(
+      0,
+      0,
+      viewport.width * viewport.pixelRatio,
+      viewport.height * viewport.pixelRatio,
+    );
+  }
   context.save();
   try {
     context.setTransform(...view);
@@ -164,13 +271,39 @@ export function drawComposition(
       try {
         context.setTransform(...multiplyMatrices(view, item.matrix));
         context.globalAlpha = item.opacity;
+        // W5-C Wipe: only the revealed part of the box is drawn.
+        if (item.reveal !== undefined) {
+          context.beginPath();
+          context.rect(0, 0, item.size.width * item.reveal, item.size.height);
+          context.clip();
+        }
+        // W4-B: decoded media replaces the placeholder once its frame is ready.
+        const frame = item.media
+          ? source.frames?.frame(item.media, source.playing ?? false)
+          : null;
+        if (frame) {
+          context.drawImage(frame, 0, 0, item.size.width, item.size.height);
+          continue;
+        }
+        // SHP-019: a drawing strokes its path; it has no box fill or clip.
+        if (item.path) {
+          strokePath(context, item.path);
+          continue;
+        }
+        // W5-D: shapes draw their own fill and stroke, unclipped.
+        if (item.shape) {
+          drawShape(context, item.shape, item.size.width, item.size.height);
+          continue;
+        }
         context.fillStyle = item.fill;
         if (item.kind !== 'text')
           context.fillRect(0, 0, item.size.width, item.size.height);
         context.beginPath();
         context.rect(0, 0, item.size.width, item.size.height);
         context.clip();
-        if (item.kind !== 'rectangle') {
+        if (item.kind === 'text' && item.textLayout) {
+          drawText(context, item);
+        } else if (item.kind !== 'rectangle') {
           context.textBaseline = 'top';
           context.font =
             item.kind === 'text'
@@ -199,14 +332,44 @@ export function drawComposition(
         context.restore();
       }
     }
+    // SHP-018: the stroke being drawn, in composition space.
+    if (source.drawing) {
+      context.setTransform(...view);
+      context.globalAlpha = source.drawing.opacity;
+      strokePath(context, source.drawing);
+    }
   } finally {
     context.restore();
   }
+  if (options.overlays === false)
+    return { warnings: errors, zoom: viewport.matrix[0] };
   context.setTransform(...view);
   context.globalAlpha = 1;
   context.strokeStyle = '#666975';
   context.lineWidth = 1 / viewport.matrix[0];
   context.strokeRect(0, 0, source.composition.width, source.composition.height);
+  // CV-013: snap guides across the composition, 1 CSS px at any zoom.
+  if (source.guides?.length) {
+    context.setTransform(...pixels);
+    context.strokeStyle = '#ff4fa3';
+    context.lineWidth = 1;
+    context.beginPath();
+    for (const guide of source.guides) {
+      const from = transformPoint(
+        viewport.matrix,
+        guide.axis === 'x' ? [guide.value, 0] : [0, guide.value],
+      );
+      const to = transformPoint(
+        viewport.matrix,
+        guide.axis === 'x'
+          ? [guide.value, source.composition.height]
+          : [source.composition.width, guide.value],
+      );
+      context.moveTo(...from);
+      context.lineTo(...to);
+    }
+    context.stroke();
+  }
   for (const id of source.selectedIds ?? []) {
     if (id === selectedId) continue;
     const box = selectionGeometry(source, id, viewport.matrix);
@@ -221,28 +384,8 @@ export function drawComposition(
     context.closePath();
     context.stroke();
   }
-  const geometry = selectionGeometry(source, selectedId, viewport.matrix);
-  if (geometry) {
-    context.setTransform(...pixels);
-    context.globalAlpha = 1;
-    context.strokeStyle = '#b7a2ff';
-    context.fillStyle = '#ffffff';
-    context.lineWidth = 1.5;
-    context.beginPath();
-    context.moveTo(...geometry.corners[0]!);
-    geometry.corners.slice(1).forEach((point) => context.lineTo(...point));
-    context.closePath();
-    if (
-      (source.selectedIds?.length ?? 1) === 1 &&
-      geometry.handles.some((handle) => handle.id === 'rotate')
-    ) {
-      context.moveTo(...geometry.top);
-      context.lineTo(...geometry.rotation);
-    }
-    context.stroke();
-    for (const handle of (source.selectedIds?.length ?? 1) > 1
-      ? []
-      : geometry.handles) {
+  const drawHandles = (handles: readonly SelectionHandle[]) => {
+    for (const handle of handles) {
       const [x, y] = handle.point;
       context.fillStyle =
         source.hoveredHandle === handle.id ? '#b7a2ff' : '#ffffff';
@@ -265,6 +408,49 @@ export function drawComposition(
         context.strokeRect(-width / 2, -height / 2, width, height);
       }
     }
+  };
+  const multi = (source.selectedIds?.length ?? 1) > 1;
+  const geometry = selectionGeometry(source, selectedId, viewport.matrix);
+  if (geometry) {
+    context.setTransform(...pixels);
+    context.globalAlpha = 1;
+    context.strokeStyle = '#b7a2ff';
+    context.fillStyle = '#ffffff';
+    context.lineWidth = 1.5;
+    context.beginPath();
+    context.moveTo(...geometry.corners[0]!);
+    geometry.corners.slice(1).forEach((point) => context.lineTo(...point));
+    context.closePath();
+    if (!multi && geometry.handles.some((handle) => handle.id === 'rotate')) {
+      context.moveTo(...geometry.top);
+      context.lineTo(...geometry.rotation);
+    }
+    context.stroke();
+    if (!multi) drawHandles(geometry.handles);
+  }
+  // CV-040/CV-041: one dashed box around the whole multi-selection, with its
+  // own corner, edge and rotate handles.
+  const outer = multiSelectionGeometry(source, viewport.matrix);
+  if (outer) {
+    context.setTransform(...pixels);
+    context.globalAlpha = 1;
+    context.strokeStyle = '#8b6cff';
+    context.fillStyle = '#ffffff';
+    context.lineWidth = 1.5;
+    context.setLineDash([6, 4]);
+    context.beginPath();
+    context.moveTo(...outer.corners[0]!);
+    outer.corners.slice(1).forEach((point) => context.lineTo(...point));
+    context.closePath();
+    context.stroke();
+    context.setLineDash([]);
+    if (outer.handles.some((handle) => handle.id === 'rotate')) {
+      context.beginPath();
+      context.moveTo(...outer.top);
+      context.lineTo(...outer.rotation);
+      context.stroke();
+    }
+    drawHandles(outer.handles);
   }
   return { warnings: errors, zoom: viewport.matrix[0] };
 }

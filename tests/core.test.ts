@@ -50,7 +50,7 @@ const asset: Asset = {
 describe('models and project validation', () => {
   it('creates a versioned project and valid composition', () => {
     const project = createProject('Example', '2026-01-01T00:00:00.000Z');
-    expect(project.schemaVersion).toBe(4);
+    expect(project.schemaVersion).toBe(5);
     expect(project.metadata.name).toBe('Example');
     expect(project.compositions[0]).toMatchObject({
       width: 1920,
@@ -494,7 +494,7 @@ describe('serialization and migrations', () => {
       to: 1,
       migrate: (document) => ({ ...(document as object), schemaVersion: 1 }),
     });
-    expect(registry.run(legacy).schemaVersion).toBe(4);
+    expect(registry.run(legacy).schemaVersion).toBe(5);
     expect(legacy.schemaVersion).toBe(0);
     expect(() =>
       registry.register({ from: 0, to: 1, migrate: (value) => value }),

@@ -94,7 +94,7 @@ describe('canonical NLE tracks and clips', () => {
     legacy.schemaVersion = 3;
     delete legacy.compositions[0].tracks;
     const migrated = deserializeProject(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     expect(migrated.compositions[0]!.tracks).toEqual([]);
   });
 

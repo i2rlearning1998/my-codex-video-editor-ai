@@ -10,9 +10,12 @@ import {
   nameSchema,
   propertySchema,
   trackSchema,
+  type Layer,
   type Project,
+  type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
+import { clipAnimation, clipAnimationSlots } from './clip-animation';
 import {
   childrenOf,
   compositionById,
@@ -139,6 +142,33 @@ export const commandSchema = z.discriminatedUnion('type', [
       clipId: idSchema,
       /** Source-media seconds to hold, or null to play normally. */
       sourceTime: z.number().finite().nonnegative().nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_LINK'),
+      ...location,
+      clipId: idSchema,
+      /** Shared id of the link group, or null to unlink. */
+      linkId: idSchema.nullable(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_ANIMATION'),
+      ...location,
+      clipId: idSchema,
+      slot: z.enum(['in', 'out', 'loop', 'kenBurns']),
+      /** The slot's preset, or null to remove it (W5-C). */
+      value: z.unknown(),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal('SET_CLIP_AUDIO_DETACHED'),
+      ...location,
+      clipId: idSchema,
+      detached: z.boolean(),
     })
     .strict(),
   z.object({ type: z.literal('ADD_MARKER'), ...location, marker }).strict(),
@@ -344,6 +374,16 @@ export function applyCommand(project: Project, command: Command): void {
       if (track.locked) throw new Error('Track is locked');
       if (!Number.isFinite(command.startTime + command.duration))
         throw new Error('Clip timing exceeds numerical limits');
+      // W5-B: a pure move (same length and source range) carries the layer's keyframes.
+      if (
+        command.duration === clip.duration &&
+        command.startTime !== clip.startTime &&
+        (command.sourceIn === undefined || command.sourceIn === clip.sourceIn)
+      ) {
+        const found = findLayer(composition.layers, clip.layerId);
+        if (found)
+          shiftKeyframes(found.layer, command.startTime - clip.startTime);
+      }
       clip.startTime = command.startTime;
       clip.duration = command.duration;
       if (command.sourceIn !== undefined && command.sourceOut !== undefined) {
@@ -422,6 +462,38 @@ export function applyCommand(project: Project, command: Command): void {
       else clip.metadata.freezeFrame = command.sourceTime;
       return;
     }
+    case 'SET_CLIP_LINK': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      // Absent means unlinked, so link/unlink round-trips restore the document.
+      if (command.linkId === null) delete clip.metadata.linkId;
+      else clip.metadata.linkId = command.linkId;
+      return;
+    }
+    case 'SET_CLIP_ANIMATION': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      if (
+        command.value !== null &&
+        !clipAnimationSlots[command.slot].safeParse(command.value).success
+      )
+        throw new Error('Invalid animation preset');
+      const current = { ...clipAnimation(clip) } as Record<string, unknown>;
+      if (command.value === null) delete current[command.slot];
+      else current[command.slot] = structuredClone(command.value);
+      // Absent means no presets, so a set/remove round trip restores the document.
+      if (Object.keys(current).length)
+        clip.metadata.animation = current as never;
+      else delete clip.metadata.animation;
+      return;
+    }
+    case 'SET_CLIP_AUDIO_DETACHED': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      if (command.detached) clip.metadata.audioDetached = true;
+      else delete clip.metadata.audioDetached;
+      return;
+    }
     case 'ADD_MARKER':
       if (command.marker.time > composition.duration)
         throw new Error('Marker exceeds composition');
@@ -478,6 +550,15 @@ export function applyCommand(project: Project, command: Command): void {
         layer.children.forEach(collect);
       };
       collect(siblings[index]!);
+      // TL-004: a locked track protects its clips from every delete path.
+      if (
+        composition.tracks.some(
+          (track) =>
+            track.locked &&
+            track.clips.some((clip) => removed.has(clip.layerId)),
+        )
+      )
+        throw new Error('Track is locked');
       for (const track of composition.tracks) {
         track.clips = track.clips.filter((clip) => !removed.has(clip.layerId));
       }
@@ -504,6 +585,11 @@ export function applyCommand(project: Project, command: Command): void {
       if (!Number.isFinite(command.startTime + command.duration))
         throw new Error('Layer timing exceeds numerical limits');
       const { layer } = requireLayer(composition, command.layerId);
+      if (
+        command.duration === layer.duration &&
+        command.startTime !== layer.startTime
+      )
+        shiftKeyframes(layer, command.startTime - layer.startTime);
       layer.startTime = command.startTime;
       layer.duration = command.duration;
       return;
@@ -567,4 +653,29 @@ export function applyCommand(project: Project, command: Command): void {
       return;
     }
   }
+}
+
+/**
+ * W5-B: moves every keyframe of one layer by `delta` seconds. Times below 0
+ * clamp to 0; when two land on the same time the later keyframe wins.
+ */
+function shiftKeyframes(layer: Layer, delta: number): void {
+  const shift = (property: Property): Property => {
+    if (!property.keyframes.length) return property;
+    const byTime = new Map<number, (typeof property.keyframes)[number]>();
+    for (const frame of property.keyframes) {
+      const time = Math.max(0, frame.time + delta);
+      byTime.set(time, { ...frame, time });
+    }
+    return {
+      ...property,
+      keyframes: [...byTime.values()].sort((a, b) => a.time - b.time),
+    } as Property;
+  };
+  layer.transform = Object.fromEntries(
+    Object.entries(layer.transform).map(([key, value]) => [key, shift(value)]),
+  ) as Layer['transform'];
+  layer.properties = Object.fromEntries(
+    Object.entries(layer.properties).map(([key, value]) => [key, shift(value)]),
+  );
 }

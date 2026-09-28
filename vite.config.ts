@@ -26,5 +26,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version),
     __GIT_COMMIT__: JSON.stringify(gitCommit),
   },
+  // The export worker imports mediabunny; pre-bundling it at startup avoids the dev
+  // server reloading the page when it first discovers the dependency (W5-A).
+  optimizeDeps: { include: ['mediabunny'] },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 });

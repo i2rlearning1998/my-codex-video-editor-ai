@@ -360,18 +360,24 @@ export function moveTransform(
   finite(...value);
   return { ...base, position: { value } };
 }
-/** Keep the opposite corner fixed in parent space; scale in the layer's rotated axes. */
+/**
+ * Keep the opposite corner (or, from center, the bounds center) fixed in parent space;
+ * scale in the layer's rotated axes.
+ */
 export function resizeTransform(
   base: TransformValues,
   bounds: TransformBounds,
   corner: ResizeHandle,
   current: Point2,
   proportional = false,
+  fromCenter = false,
 ): TransformValues {
   finite(...current);
   if (bounds.width <= 0 || bounds.height <= 0)
     throw new RangeError('Cannot resize empty bounds');
-  const fixed = handlePoint(bounds, oppositeHandle(corner)),
+  const fixed = fromCenter
+      ? boundsCenter(bounds)
+      : handlePoint(bounds, oppositeHandle(corner)),
     moving = handlePoint(bounds, corner);
   const fixedParent = transformPoint(localTransformMatrix(base), fixed);
   const rotationOnly: TransformValues = {
@@ -395,9 +401,11 @@ export function resizeTransform(
   if (proportional && typeof corner === 'number') {
     if (base.scale.value[0] === 0 || base.scale.value[1] === 0)
       throw new RangeError('Cannot proportionally resize a collapsed scale');
-    const rx = sx / base.scale.value[0],
-      ry = sy / base.scale.value[1];
-    const ratio = Math.abs(rx - 1) >= Math.abs(ry - 1) ? rx : ry;
+    // Revision 6: project the pointer onto the corner's baseline diagonal, so
+    // the dragged corner follows the pointer instead of running ahead of it.
+    const vx = (moving[0] - fixed[0]) * base.scale.value[0],
+      vy = (moving[1] - fixed[1]) * base.scale.value[1];
+    const ratio = (delta[0] * vx + delta[1] * vy) / (vx * vx + vy * vy);
     sx = base.scale.value[0] * ratio;
     sy = base.scale.value[1] * ratio;
   }
@@ -421,6 +429,34 @@ export function resizeTransform(
   ];
   finite(...position);
   return { ...base, position: { value: position }, scale: { value: [sx, sy] } };
+}
+/**
+ * Revision 6: the position, rotation and scale whose local matrix is `matrix`,
+ * or null when it would need a skew (non-orthogonal columns). `hint` picks the
+ * representation closest to an existing transform: the same sign of scale X
+ * and the rotation nearest to its value, so an unchanged layer keeps its
+ * stored numbers.
+ */
+export function decomposeMatrix(
+  matrix: AffineMatrix,
+  hint?: { rotation: number; scaleX: number },
+): { position: Point2; rotation: number; scale: Point2 } | null {
+  finite(...matrix);
+  const [a, b, c, d, e, f] = matrix;
+  let sx = Math.hypot(a, b);
+  const column = Math.hypot(c, d);
+  if (!(sx > 0) || !(column > 0)) return null;
+  if (Math.abs(a * c + b * d) > 1e-9 * sx * column) return null;
+  let rotation = (Math.atan2(b, a) * 180) / Math.PI;
+  if (hint && hint.scaleX < 0) {
+    sx = -sx;
+    rotation += 180;
+  }
+  const sy = (a * d - b * c) / sx;
+  const target = hint?.rotation ?? 0;
+  rotation += Math.round((target - rotation) / 360) * 360;
+  finite(sx, sy, rotation);
+  return { position: [e, f], rotation, scale: [sx, sy] };
 }
 /** Clockwise incremental angle in parent coordinates; shortest signed arc in [-180,180]. */
 export function rotationDelta(
