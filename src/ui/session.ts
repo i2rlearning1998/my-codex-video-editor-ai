@@ -22,6 +22,10 @@ export interface DrawStyle {
 }
 
 /** Transient identifiers, time and zoom only; canonical objects resolve on every read. */
+/** G3: canvas zoom limits, relative to Fit. */
+export const MIN_CANVAS_ZOOM = 0.1;
+export const MAX_CANVAS_ZOOM = 16;
+
 export class EditorSession {
   #currentTime = 0;
   #timelineZoom = 80;
@@ -44,6 +48,8 @@ export class EditorSession {
     color: DEFAULT_DRAW_COLOR,
   };
   #canvasZoom = 1;
+  /** G3: the canvas pan in CSS pixels (transient, never saved). */
+  #canvasPan: readonly [number, number] = [0, 0];
   #compositionId: string;
   #listeners = new Set<() => void>();
   #unsubscribe: () => void;
@@ -249,8 +255,23 @@ export class EditorSession {
     return this.#canvasZoom;
   }
   setCanvasZoom(value: number): void {
-    if (!Number.isFinite(value)) throw new RangeError('Invalid Canvas zoom');
-    this.#canvasZoom = Math.max(0.25, Math.min(4, value));
+    this.setCanvasView(value, this.#canvasPan);
+  }
+  get canvasPan(): readonly [number, number] {
+    return this.#canvasPan;
+  }
+  /** G3: zoom (relative to Fit, 0.1 to 16) and pan together, one change. */
+  setCanvasView(zoom: number, pan: readonly [number, number]): void {
+    if (!Number.isFinite(zoom) || !pan.every(Number.isFinite))
+      throw new RangeError('Invalid Canvas view');
+    this.#canvasZoom = Math.max(
+      MIN_CANVAS_ZOOM,
+      Math.min(MAX_CANVAS_ZOOM, zoom),
+    );
+    this.#canvasPan = Object.freeze([pan[0], pan[1]]) as readonly [
+      number,
+      number,
+    ];
     this.#notify();
   }
   selectMany(ids: readonly string[]): void {

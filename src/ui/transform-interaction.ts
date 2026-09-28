@@ -186,6 +186,16 @@ export class TransformInteraction {
       this.changed();
     }
   }
+  #highlight: readonly string[] = [];
+  /** G3: the layers a marquee in progress would select (outlined live). */
+  get highlight(): readonly string[] {
+    return this.#highlight;
+  }
+  setHighlight(ids: readonly string[]): void {
+    if (JSON.stringify(ids) === JSON.stringify(this.#highlight)) return;
+    this.#highlight = Object.freeze([...ids]);
+    this.changed();
+  }
   #unsubscribe: () => void;
   constructor(
     private readonly engine: EditorEngine,

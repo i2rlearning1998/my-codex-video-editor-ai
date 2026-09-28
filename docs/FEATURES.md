@@ -254,8 +254,8 @@ Everything the user does directly on the preview canvas.
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
 | CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
 | CV-016 | P0 | W2 | Verified | Zoom controls: Fit, plus and minus change the canvas view scale |
-| CV-017 | P0 | W2 | Todo | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
-| CV-018 | P0 | W2 | Todo | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
+| CV-017 | P0 | W2 | Claimed | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
+| CV-018 | P0 | W2 | Verified | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
 | CV-020 | P0 | W2 | Todo | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
 | CV-021 | P0 | W2 | Todo | Right-click empty canvas opens a menu: Paste, Select all, toggle grid and guides |
@@ -283,6 +283,9 @@ Everything the user does directly on the preview canvas.
 | CV-043 | P0 | W2 | Verified | The canvas right-click menu offers no timeline-only items (Link clips, Enable/disable clip); Copy style and Paste style are always visible without scrolling |
 | CV-044 | P0 | W2 | Verified | The Inspector, the image and video toolbar and the Position panel show X, Y, W and H of the drawn box in px, with a ratio lock; the values match what is drawn for text, shapes, lines, drawings, groups, images, videos and a multi-selection, before and after a handle drag, and follow the drag live |
 | CV-045 | P0 | W2 | Verified | Handles depend on the layer: groups and drawings resize from their corners only, text from its corners plus its width grips, lines and arrows lengthen from their two ends, and a multi-selection box has side handles only when every layer is a plain shape; glyphs, pictures and brush strokes are never stretched |
+| CV-046 | P0 | W2 | Verified | While a marquee is dragged, the layers it will select are outlined live, before release |
+| CV-047 | P0 | W2 | Verified | A hand tool (H) and Shift+wheel also pan; Fit resets the pan; layers outside the artboard show faintly and stay selectable |
+| CV-048 | P0 | W2 | Verified | With nothing selected the toolbar is a scene bar: background colour, scene length (retimes the clips at the end, one undo step) and Animate (disabled, names its wave) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -526,6 +529,7 @@ Preview and export must evaluate animation with the same code.
 | ANI-017 | P2 | W8 | Todo | Copy and paste keyframes between layers |
 | ANI-018 | P2 | W8 | Todo | Path trim (draw-on) animation |
 | ANI-019 | P2 | W8 | Todo | Particle emitters |
+| ANI-020 | P1 | W8 | Todo | Scene (page) animation: one preset animates every layer of a scene |
 
 ## VID: Video and image clip operations
 

@@ -2767,3 +2767,19 @@ button.color-swatch:hover {
   margin-inline-start: calc(var(--depth, 0) * var(--space-4));
   cursor: pointer;
 }
+
+/* G3: the hand tool and Space-drag pan the view. */
+.canvas-stage.panning-ready canvas {
+  cursor: grab !important;
+}
+.canvas-stage.panning canvas {
+  cursor: grabbing !important;
+}
+.canvas-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.canvas-zoom-controls [aria-pressed='true'] {
+  color: var(--color-accent);
+}

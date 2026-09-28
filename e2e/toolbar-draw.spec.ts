@@ -82,7 +82,8 @@ test.beforeEach(async ({ page }) => {
 test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and Color, shape Fill, disabled controls name their wave', async ({
   page,
 }, testInfo) => {
-  await expect(toolbar(page)).toBeHidden();
+  // G3.3: with nothing selected, the toolbar is the scene bar.
+  await expect(toolbar(page)).toHaveAttribute('data-kind', 'scene');
   const canvasBefore = await page.locator('canvas').boundingBox();
   await select(page, 'example-headline');
   await expect(toolbar(page)).toBeVisible();

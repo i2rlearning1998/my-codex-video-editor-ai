@@ -88,3 +88,44 @@ _Completed at the end of the series._
 - Text and shape toolbars do not show X, Y, W and H; they reach them through the Position button (as in Canva).
 - For a layer inside a non-uniformly scaled, rotated group, W and H are measured along the layer's own axes; the drawn shape may be skewed.
 - Layers tab rows for group children can be selected but not dragged (LYR-004 is still Todo).
+
+## Part G3: viewport and canvas
+
+### What changed
+
+- **Marquee (CV-003, CV-046).** A drag from empty space, inside or outside the artboard, outlines the layers it will select while it grows; release selects them.
+- **Pan (CV-018, CV-047, D-108).** Pan with:
+  - Space-drag, the middle button, or the new hand tool (H, beside the zoom buttons);
+  - wheel or trackpad scroll, with Shift+wheel for sideways.
+  - Space without a drag still plays and pauses.
+- **Zoom (CV-016, CV-017, D-108).** The view zooms:
+  - toward the pointer with Ctrl+wheel (or a trackpad pinch);
+  - around the view's centre with the buttons, the new % field (100 = actual pixels; presets 25 to 400), the 100% button and Ctrl+= / Ctrl+- / Ctrl+1;
+  - Fit (Ctrl+0) also resets the pan, and "Zoom to fill" is in the palette.
+- **Outside the artboard (CV-047).** Parts of layers outside the artboard are drawn at 30% in the editor (never in export) and can be clicked.
+- **Scene bar (CV-048, D-109).** With nothing selected, the toolbar shows:
+  - the scene's name;
+  - Background (applies to every scene, see known gaps);
+  - Scene length: longer extends the clips that end with the scene, shorter trims clips past the new end, one undo step, and a length that would cut a clip away is refused with a message;
+  - Animate, disabled and naming Wave 8 (ANI-020).
+- **New commands (D-110).** Four small scene commands (background, rename, reorder, delete), with no schema change.
+
+### Try it (G3)
+
+| #   | Do this                                                                  | Expect                                                                         | ID             |
+| --- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------ | -------------- |
+| 1   | Drag from the grey area left of the page across the badge and subtitle   | Both get an outline while you drag; releasing selects them                     | CV-046         |
+| 2   | Hold Space and drag on the canvas                                        | The page moves with the pointer; nothing is selected or moved                  | CV-018         |
+| 3   | Tap Space once over the canvas                                           | Playback starts; tap again to pause                                            | KEY-006        |
+| 4   | Hold Ctrl and scroll up with the pointer over the headline               | The view zooms in and the headline stays under the pointer                     | CV-017         |
+| 5   | Type 100 in the zoom % field                                             | Actual size; then press Ctrl+0 to fit again (pan resets)                       | CV-017         |
+| 6   | Click the hand icon and drag the headline                                | The view pans; the headline does not move. Press H to leave                    | CV-047         |
+| 7   | Set the badge's X to -240, zoom out twice, click the faded badge         | It shows faintly outside the page and becomes selected                         | CV-047         |
+| 8   | Click empty canvas                                                       | The toolbar shows the scene name, Background, Scene length and a grey Animate  | CV-048         |
+| 9   | Change Background, then Scene length to a larger number                  | The page colour changes; the timeline gets longer; Ctrl+Z undoes each          | CV-048         |
+
+### Known gaps (G3)
+
+- Background applies to all scenes. A per-scene background and scene Notes need a new composition field (schema 6), so they were not built (STOP rule; backlog).
+- CV-017 stays Claimed: Fit, 100% and Fill are not in one dropdown.
+- The view is not remembered across reloads (transient, like selection).

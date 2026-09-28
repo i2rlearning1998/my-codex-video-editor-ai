@@ -54,6 +54,7 @@ import {
 import { copyProperty, isAnimated, withValueAt } from './keyframes';
 import { createGeometryControls } from './geometry-fields';
 import type { GeometryField } from './geometry';
+import { sceneLengthCommands } from './scene-length';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 /** A control not built yet: its label key, ledger item and wave. */
@@ -63,6 +64,7 @@ const LATER: Record<string, Later> = {
   blend: ['toolbar.blend', 'MSK-001', 6],
   replace: ['toolbar.replace', 'VID-009', 4],
   effects: ['toolbar.effects', 'TXT-019', 3],
+  'scene-animate': ['toolbar.animate', 'ANI-020', 8],
 };
 /** The spec's control order per type; strings name live controls or LATER keys. */
 const LAYOUT: Record<ToolbarKind, readonly string[]> = {
@@ -553,7 +555,8 @@ export function mountContextToolbar(
       const trigger = bar.querySelector<HTMLElement>(
         `#toolbar-${colourFor.control}`,
       );
-      if (!layer || layer.id !== colourFor.layerId || !trigger) panels.close();
+      // The scene bar's background has no layer (layerId '').
+      if ((layer?.id ?? '') !== colourFor.layerId || !trigger) panels.close();
       else trigger.click();
     }
   };
@@ -664,6 +667,41 @@ export function mountContextToolbar(
   };
   // D-031 pattern: a focused field commits on blur, which re-renders; blur it
   // first and drop this render if that commit already re-rendered.
+  /**
+   * G3.3: the scene bar: the background (shared by every scene in schema 5),
+   * the scene's length and scene animation (not built yet).
+   */
+  const renderScene = () => {
+    const source = session.source;
+    bar.hidden = false;
+    bar.dataset.kind = 'scene';
+    const name = document.createElement('span');
+    name.className = 'toolbar-scene-name';
+    name.textContent = source.composition.name;
+    bar.replaceChildren(
+      name,
+      colorField(
+        'background',
+        t('scene.background'),
+        source.background,
+        (color) =>
+          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+      ),
+      field(
+        'scene-length',
+        t('scene.length'),
+        round(source.composition.duration, 2),
+        (value) =>
+          run('Set scene length', sceneLengthCommands(session.source, value)),
+        's',
+        '0.1',
+        { min: 0.1, max: 3600 },
+      ),
+      later('scene-animate'),
+    );
+    restoreFieldFocus(bar);
+    refreshAttached(null);
+  };
   let renders = 0;
   const render = () => {
     const active = document.activeElement;
@@ -674,6 +712,11 @@ export function mountContextToolbar(
     }
     renders++;
     const layer = selected();
+    // G3.3: with nothing selected, the toolbar is the scene bar.
+    if (!layer && session.selectedIds.length === 0) {
+      renderScene();
+      return;
+    }
     const kind = toolbarKind(layer);
     bar.hidden = !kind;
     bar.dataset.kind = kind ?? '';

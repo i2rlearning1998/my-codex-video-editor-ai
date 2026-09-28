@@ -1,4 +1,5 @@
 import {
+  boundsCorners,
   invertMatrix,
   multiplyMatrices,
   transformPoint,
@@ -202,6 +203,8 @@ export class Canvas2DRenderer implements CompositionRenderer {
   }
 }
 
+/** G3: the opacity of layer parts outside the composition in the editor. */
+const OUTSIDE_FADE = 0.3;
 export interface DrawOptions {
   /** Selection handles and the composition border (false for export, W5-A). */
   readonly overlays?: boolean;
@@ -257,20 +260,13 @@ export function drawComposition(
       viewport.height * viewport.pixelRatio,
     );
   }
-  context.save();
-  try {
-    context.setTransform(...view);
-    context.globalAlpha = 1;
-    context.fillStyle = source.background;
-    context.fillRect(0, 0, source.composition.width, source.composition.height);
-    context.beginPath();
-    context.rect(0, 0, source.composition.width, source.composition.height);
-    context.clip();
+  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
     for (const item of items) {
+      if (only && !only(item)) continue;
       context.save();
       try {
         context.setTransform(...multiplyMatrices(view, item.matrix));
-        context.globalAlpha = item.opacity;
+        context.globalAlpha = item.opacity * fade;
         // W5-C Wipe: only the revealed part of the box is drawn.
         if (item.reveal !== undefined) {
           context.beginPath();
@@ -332,6 +328,34 @@ export function drawComposition(
         context.restore();
       }
     }
+  };
+  // G3: in the editor (not export), what lies outside the composition shows
+  // faintly, so it can be seen and selected; the artboard then covers it.
+  if (options.overlays !== false && !source.playing) {
+    context.save();
+    try {
+      context.setTransform(...view);
+      const { width, height } = source.composition;
+      drawItems(OUTSIDE_FADE, (item) =>
+        boundsCorners({ x: 0, y: 0, ...item.size }).some((corner) => {
+          const [x, y] = transformPoint(item.matrix, corner);
+          return x < 0 || y < 0 || x > width || y > height;
+        }),
+      );
+    } finally {
+      context.restore();
+    }
+  }
+  context.save();
+  try {
+    context.setTransform(...view);
+    context.globalAlpha = 1;
+    context.fillStyle = source.background;
+    context.fillRect(0, 0, source.composition.width, source.composition.height);
+    context.beginPath();
+    context.rect(0, 0, source.composition.width, source.composition.height);
+    context.clip();
+    drawItems(1);
     // SHP-018: the stroke being drawn, in composition space.
     if (source.drawing) {
       context.setTransform(...view);
@@ -370,7 +394,10 @@ export function drawComposition(
     }
     context.stroke();
   }
-  for (const id of source.selectedIds ?? []) {
+  for (const id of [
+    ...(source.selectedIds ?? []),
+    ...(source.highlightIds ?? []),
+  ]) {
     if (id === selectedId) continue;
     const box = selectionGeometry(source, id, viewport.matrix);
     if (!box) continue;

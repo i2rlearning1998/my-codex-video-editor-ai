@@ -459,5 +459,20 @@
   "geometry.height": "Height",
   "geometry.lock": "Lock aspect ratio",
   "geometry.lockForced": "Groups and drawings always keep their aspect ratio",
-  "geometry.values": "Transform values"
+  "geometry.values": "Transform values",
+  "canvas.hand": "Hand tool: drag to pan (H)",
+  "canvas.actualSize": "100%",
+  "canvas.actualSizeTip": "Zoom to 100% (Ctrl+1)",
+  "canvas.zoomPercent": "Canvas zoom",
+  "command.zoomIn": "Zoom in",
+  "command.zoomOut": "Zoom out",
+  "command.zoomFit": "Zoom to fit",
+  "command.zoomActual": "Zoom to 100%",
+  "command.handTool": "Hand tool",
+  "scene.background": "Background (all scenes)",
+  "scene.length": "Scene length",
+  "scene.lengthRange": "A scene is at least one frame long.",
+  "scene.lengthEmpty": "This scene is empty; add a layer to set its length.",
+  "scene.lengthCutsClip": "\"{name}\" starts at {time} s; move or delete it before making the scene shorter.",
+  "command.zoomFill": "Zoom to fill"
 }

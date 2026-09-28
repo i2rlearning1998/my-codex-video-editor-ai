@@ -459,5 +459,20 @@
   "geometry.height": "ऊँचाई",
   "geometry.lock": "अनुपात लॉक करें",
   "geometry.lockForced": "समूह और ड्रॉइंग हमेशा अपना अनुपात रखते हैं",
-  "geometry.values": "ट्रांसफ़ॉर्म मान"
+  "geometry.values": "ट्रांसफ़ॉर्म मान",
+  "canvas.hand": "हैंड टूल: खिसकाने के लिए खींचें (H)",
+  "canvas.actualSize": "100%",
+  "canvas.actualSizeTip": "100% पर ज़ूम करें (Ctrl+1)",
+  "canvas.zoomPercent": "कैनवास ज़ूम",
+  "command.zoomIn": "ज़ूम इन",
+  "command.zoomOut": "ज़ूम आउट",
+  "command.zoomFit": "फ़िट करने के लिए ज़ूम",
+  "command.zoomActual": "100% पर ज़ूम",
+  "command.handTool": "हैंड टूल",
+  "scene.background": "पृष्ठभूमि (सभी दृश्य)",
+  "scene.length": "दृश्य की अवधि",
+  "scene.lengthRange": "एक दृश्य कम से कम एक फ़्रेम लंबा होता है।",
+  "scene.lengthEmpty": "यह दृश्य खाली है; इसकी अवधि तय करने के लिए एक लेयर जोड़ें।",
+  "scene.lengthCutsClip": "\"{name}\" {time} s पर शुरू होता है; दृश्य छोटा करने से पहले इसे खिसकाएँ या हटाएँ।",
+  "command.zoomFill": "भरने के लिए ज़ूम"
 }

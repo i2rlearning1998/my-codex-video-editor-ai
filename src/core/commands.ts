@@ -43,6 +43,32 @@ export const commandSchema = z.discriminatedUnion('type', [
       name: nameSchema,
     })
     .strict(),
+  // G3: the scene bar's background. Schema 5 has one background for the
+  // whole project, so every scene shares it.
+  z
+    .object({
+      type: z.literal('SET_PROJECT_BACKGROUND'),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    })
+    .strict(),
+  // G5: a composition's (scene's) name. Its duration is derived from its
+  // content by the validator, so it is not set directly.
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION'),
+      ...location,
+      name: nameSchema,
+    })
+    .strict(),
+  // G5: scenes play in array order; this moves one to a new index.
+  z
+    .object({
+      type: z.literal('MOVE_COMPOSITION'),
+      ...location,
+      index: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z.object({ type: z.literal('DELETE_COMPOSITION'), ...location }).strict(),
   z
     .object({
       type: z.literal('CREATE_TRACK'),
@@ -281,6 +307,34 @@ export function applyCommand(project: Project, command: Command): void {
     case 'SET_PROJECT_NAME':
       project.metadata.name = command.name;
       return;
+    case 'SET_PROJECT_BACKGROUND':
+      project.settings.backgroundColor = command.color;
+      return;
+    case 'SET_COMPOSITION': {
+      compositionById(project, command.compositionId).name = command.name;
+      return;
+    }
+    case 'MOVE_COMPOSITION': {
+      const from = project.compositions.findIndex(
+        (item) => item.id === command.compositionId,
+      );
+      if (from < 0) throw new Error('Unknown composition');
+      if (command.index >= project.compositions.length)
+        throw new Error('Composition index is out of range');
+      const [moved] = project.compositions.splice(from, 1);
+      project.compositions.splice(command.index, 0, moved!);
+      return;
+    }
+    case 'DELETE_COMPOSITION': {
+      const index = project.compositions.findIndex(
+        (item) => item.id === command.compositionId,
+      );
+      if (index < 0) throw new Error('Unknown composition');
+      if (project.compositions.length === 1)
+        throw new Error('A project keeps at least one scene');
+      project.compositions.splice(index, 1);
+      return;
+    }
     case 'CREATE_COMPOSITION':
       project.compositions.push(command.composition);
       return;

@@ -43,3 +43,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
   2026-09-26 | W2-F5 TXT | Letter spacing or a wider font can push unwrapped text past its box's right edge, where it is clipped (as a large font size already is); consider growing the width like the height.
   2026-09-28 | G1 LAY | The export dialog, New project form, composition picker and keyframe easing select still use native inputs and selects; move them to the shared NumberField, Select and colour picker.
   2026-09-28 | G1 LAY | LAY-022: add RGB, HSL and alpha entry to the colour picker. LAY-023: fold segmented controls, toggles, tabs and tooltips into the shared control spec.
+- G3: a per-scene background colour and scene Notes need a composition field (schema 6); today Background applies to every scene (D-109).
+- G3: CV-017 asks for one zoom dropdown holding Fit, Fill, the percentages and 100%; today Fit and 100% are buttons, Fill is in the palette.

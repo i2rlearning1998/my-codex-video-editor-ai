@@ -22,6 +22,8 @@ import {
 } from '../render/canvas';
 import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
+import { mountCanvasView } from './canvas-view';
+import { createNumberField, syncNumberField } from './components/number-field';
 import { isGeometryField } from './geometry';
 import { mountMediaPanel } from './media-panel';
 import { openExportDialog } from './export-dialog';
@@ -194,9 +196,12 @@ export function mountEditorShell(
         <div class="preview-toolbar">
           <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select></div>
           <div class="canvas-zoom-controls">
-            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')}">${iconSvg('zoomOut')}</button>
-            <button type="button" data-canvas-zoom="fit" title="${t('canvas.fit')}">${iconSvg('fit')}${t('canvas.fit')}</button>
-            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
+            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')}">${iconSvg('hand')}</button>
+            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut')}</button>
+            <span id="canvas-zoom-field"></span>
+            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn')}</button>
+            <button type="button" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit')}${t('canvas.fit')}</button>
+            <button type="button" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
           </div>
         </div>
         <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
@@ -278,24 +283,52 @@ export function mountEditorShell(
       });
     },
   );
-  const viewport = () => {
+  // G3: Fit, then the zoom about the view's center, then the pan.
+  const viewportFor = (z: number, pan: readonly [number, number]) => {
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
       Math.max(1, canvas.clientHeight || stage.clientHeight),
       session.source.composition,
       window.devicePixelRatio || 1,
     );
-    const z = session.canvasZoom;
     const centered: AffineMatrix = [
       z,
       0,
       0,
       z,
-      (view.width * (1 - z)) / 2,
-      (view.height * (1 - z)) / 2,
+      (view.width * (1 - z)) / 2 + pan[0],
+      (view.height * (1 - z)) / 2 + pan[1],
     ];
     return { ...view, matrix: multiplyMatrices(centered, view.matrix) };
   };
+  const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
+  const canvasView = mountCanvasView(
+    stage,
+    canvas,
+    session,
+    viewportFor,
+    () => element<HTMLButtonElement>('[data-action="play"]').click(),
+    () =>
+      element('[data-canvas-tool="hand"]').setAttribute(
+        'aria-pressed',
+        String(canvasView.hand),
+      ),
+  );
+  // G3: the effective zoom as a number field (100% = actual pixels).
+  element('#canvas-zoom-field').replaceWith(
+    createNumberField({
+      id: 'canvas-zoom-percent',
+      label: t('canvas.zoomPercent'),
+      value: 100,
+      unit: '%',
+      decimals: 0,
+      compact: true,
+      min: 5,
+      max: 800,
+      presets: [25, 50, 100, 200, 400],
+      onCommit: (value) => safely(() => canvasView.zoomToScale(value / 100)),
+    }),
+  );
   let timeline: ReturnType<typeof mountTimeline> | undefined;
   let lastAudio: {
     time: number;
@@ -354,6 +387,9 @@ export function mountEditorShell(
         : {}),
       ...(interaction.preview ? { preview: interaction.preview } : {}),
       ...(interaction.guides.length ? { guides: interaction.guides } : {}),
+      ...(interaction.highlight.length
+        ? { highlightIds: interaction.highlight }
+        : {}),
       ...(interaction.frame ? { selectionFrame: interaction.frame } : {}),
       ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
       ...(interaction.hoveredHandle !== null
@@ -367,6 +403,7 @@ export function mountEditorShell(
       session.selectedId,
     );
     frames.endFrame();
+    syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
     // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
     if (!session.playing) syncGeometryFields(root, drawn);
     updateSelectionActions();
@@ -513,6 +550,7 @@ export function mountEditorShell(
   const commandContext: CommandContext = {
     engine,
     session,
+    view: canvasView,
     ...(actions.save ? { save: actions.save } : {}),
     togglePlayback: () =>
       element<HTMLButtonElement>('[data-action="play"]').click(),
@@ -1083,12 +1121,14 @@ export function mountEditorShell(
     '[data-canvas-zoom]',
   ))
     button.onclick = () =>
-      session.setCanvasZoom(
-        button.dataset.canvasZoom === 'fit'
-          ? 1
-          : session.canvasZoom *
-              (button.dataset.canvasZoom === 'in' ? 1.25 : 0.8),
-      );
+      safely(() => {
+        const action = button.dataset.canvasZoom;
+        if (action === 'fit') canvasView.fit();
+        else if (action === 'actual') canvasView.actualSize();
+        else canvasView.zoomBy(action === 'in' ? 1.25 : 0.8);
+      });
+  element<HTMLButtonElement>('[data-canvas-tool="hand"]').onclick = () =>
+    canvasView.toggleHand();
   const assetDrop = (event: DragEvent) =>
     safely(() => {
       const id = event.dataTransfer?.getData('application/x-editor-asset');
@@ -1344,7 +1384,12 @@ export function mountEditorShell(
       transport: timeline?.playback.clock ?? session.currentTime,
     }),
     /** Dev/test-only: the active gesture's snap guides (CV-013). */
-    canvasDebug: () => ({ guides: interaction.guides }),
+    canvasDebug: () => ({
+      guides: interaction.guides,
+      // G3: composition to canvas CSS pixels, for proofs of pan and zoom.
+      view: viewport().matrix,
+      hand: canvasView.hand,
+    }),
     message,
     refresh,
     setSaveStatus,
