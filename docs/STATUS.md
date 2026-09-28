@@ -43,3 +43,7 @@ PR #14 now includes explicit Speech/Music roles and shared detector-driven duck 
 ### W7 final local gate — 2026-09-28
 
 364 unit/jsdom tests, typecheck, formatting and production build pass; hook assertion and ledger pass separately. Full verify exits 1 because the browser executable is unavailable. Six W7 e2e specs await the single CI inspection. Preview context now requests 48 kHz like export (D-210). Report: `reports/W7-CODEX.md`.
+
+### W7 ready for owner testing — 2026-09-28
+
+PR #14, `codex/w7-audio`: full CI `npm run verify` passes on code `7c27998`; 364 unit/jsdom tests, 149 normal browser tests plus one existing expected-failure guard, all six W7 specs first-attempt passes. Windows Chrome MP4 export job also passes. Evidence: https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/36448182874 . Final follow-up commit is documentation-only. PR is ready for owner testing, never merged. AUD-010 deferred; partial/unmeasured boundaries remain Claimed in the W7 report. No recurring or scheduled check.

@@ -747,3 +747,7 @@ AUD-011 **Claimed**: three-band EQ, native compressor and gated K-weighted LUFS 
 ### W7-C checkpoint (2026-09-28)
 
 AUD-012 **Claimed**: algorithmic ducking with explicit Speech/Music roles, source-aware RMS detection and attack/hold/release; browser waveform/parity proof pending. AUD-010 **not built / deferred** by the brief's quality/complexity allowance (D-208); speed continues to change pitch. No existing row or ID changed.
+
+### W7 final measurement evidence — 2026-09-28
+
+Full CI verify passed on `7c27998` (run 36448182874): all six W7 browser specs passed first attempt. Within the tested/limited W7 scope, AUD-009 pan, AUD-011 EQ/compressor/normalization and AUD-012 ducking have measured browser proof (Verified scope). AUD-002 and AUD-003 remain partial/Claimed against their full row wording; AUD-017 retains Claimed for general layouts beyond the measured 5.1 case; AUD-015 has measured graph/export parity but retains Claimed for unrestricted preview equivalence (solo/continuation/device-output boundaries in report). AUD-010 remains deferred. Existing table rows remain unchanged under the append-only instruction. See `reports/W7-CODEX.md` for exact tests and tolerances.

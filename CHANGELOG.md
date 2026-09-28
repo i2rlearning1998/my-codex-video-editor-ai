@@ -232,3 +232,8 @@ Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infra
 - Added Speech/Music roles and automatic music ducking driven by speech PCM levels.
 - Added detector timing/mute/reverse tests and browser waveform/export parity specs.
 - Deferred pitch-preserving time stretch; existing speed continues to shift pitch.
+
+### W7 verification and handoff — 2026-09-28
+
+- Full CI verify and Windows MP4 export pass on code commit `7c27998`; all six W7 browser specs pass.
+- PR #14 prepared for owner testing with 8 listening steps per part and explicit deferred/partial items.
