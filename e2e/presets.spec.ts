@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { choose as chooseOption, sidePanel } from './controls';
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced) over the
 // artboard (#f0eee7); text "example-headline" (fill #272b29, size 78). Clips run
@@ -73,9 +74,11 @@ async function select(page: Page, id: string) {
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([id]);
 }
-const panel = (page: Page) => page.locator('#animate-panel');
+const panel = (page: Page) => sidePanel(page, 'animate');
 async function openAnimate(page: Page) {
-  await page.locator('#context-toolbar [data-control="animate"]').click();
+  // G1.5: the side panel stays open while working; the button toggles it.
+  if (!(await panel(page).isVisible()))
+    await page.locator('#context-toolbar [data-control="animate"]').click();
   await expect(panel(page)).toBeVisible();
 }
 async function choose(page: Page, tab: string, preset: string) {
@@ -148,7 +151,7 @@ test('[ANI-007] slide out, pulse loop and typewriter, and presets follow a trimm
   await select(page, 'example-badge');
   await openAnimate(page);
   await choose(page, 'out', 'slide');
-  await page.locator('#animate-direction').selectOption('up');
+  await chooseOption(page, 'animate-direction', 'up');
   // Near the end the badge has left its resting place moving up.
   await seek(page, 9.9);
   expect(near(await pixel(page, 200, 495), PAPER, 10)).toBe(true);

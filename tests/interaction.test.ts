@@ -429,7 +429,8 @@ describe('inspector shares the canonical command path', () => {
     ['Scale X', '-2'],
     ['Scale Y', '0'],
     ['Rotation', '450'],
-    ['Opacity', '0.25'],
+    // G1: the Inspector shows opacity as 0-100 %.
+    ['Opacity', '25'],
   ])('commits %s, refreshes canvas, and follows undo/redo', (field, value) => {
     const s = setup();
     s.shell.session.select('child');
@@ -452,8 +453,7 @@ describe('inspector shares the canonical command path', () => {
   it.each([
     ['Position X', ''],
     ['Rotation', 'Infinity'],
-    ['Opacity', '-0.1'],
-    ['Opacity', '1.01'],
+    ['Opacity', 'abc'],
   ])('rejects invalid %s=%s without changing history', (field, value) => {
     const s = setup();
     s.shell.session.select('child');

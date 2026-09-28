@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard } from './fixtures';
+import { pickColor } from './controls';
 
 // Default example: text "example-headline" (76,165, fill #272b29, size 78),
 // shape "example-badge" (76,456 224×48, fill #cbbced), group "example-cards".
@@ -104,7 +105,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   expect(
     (await layer(page, 'example-headline')).properties.fontSize.value,
   ).toBe(60);
-  await page.locator('#toolbar-color').fill('#ff0000');
+  await pickColor(page, 'toolbar-color', '#ff0000');
   await expect
     .poll(
       async () => (await layer(page, 'example-headline')).properties.fill.value,
@@ -122,7 +123,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
     'title',
     'Select two or more shapes, then right-click and choose Combine shapes.',
   );
-  await page.locator('#toolbar-fill').fill('#00aa00');
+  await pickColor(page, 'toolbar-fill', '#00aa00');
   await expect
     .poll(
       async () => (await layer(page, 'example-badge')).properties.fill.value,
@@ -278,7 +279,7 @@ test('[SHP-019][CV-038] a highlighter stroke is 40% opaque, can be moved, edited
   );
   // Its toolbar edits color and brush size.
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'drawing');
-  await page.locator('#toolbar-color').fill('#ff8800');
+  await pickColor(page, 'toolbar-color', '#ff8800');
   await commit(page, 'brush', '30');
   drawing = await layer(page, id);
   expect(drawing.properties.stroke.value).toBe('#ff8800');

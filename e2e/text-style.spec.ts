@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard } from './fixtures';
+import { choose } from './controls';
 
 // W2-F5 text styling from the context toolbar. Default example:
 // headline 76,165 730x230 "Make room\nfor your ideas." (size 78, #272b29);
@@ -99,9 +100,7 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
 }, testInfo) => {
   await select(page, 'example-subtitle');
   // Font, Size, Weight, Italic, Color, Align, Spacing, Effects, Animate, Position.
-  await expect(
-    page.locator('#context-toolbar > [data-control], #context-toolbar > label'),
-  ).toHaveCount(10);
+  await expect(page.locator('#context-toolbar [data-control]')).toHaveCount(10);
   for (const id of ['font', 'weight', 'italic', 'align', 'spacing'])
     await expect(control(page, id)).toBeEnabled();
   await expect(control(page, 'effects')).toHaveAttribute(
@@ -110,13 +109,13 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
   );
   const left = await ink(page, SUBTITLE);
   expect(left.left).toBeLessThan(80);
-  await page.locator('#toolbar-align').selectOption('right');
+  await choose(page, 'toolbar-align', 'right');
   expect(await lastLabel(page)).toBe('Set text alignment');
   const right = await ink(page, SUBTITLE);
   expect(right.right).toBeGreaterThan(750);
   expect(right.right).toBeLessThanOrEqual(757);
   expect(right.left - left.left).toBeCloseTo(right.right - left.right, -1);
-  await page.locator('#toolbar-align').selectOption('center');
+  await choose(page, 'toolbar-align', 'center');
   const center = await ink(page, SUBTITLE);
   expect((center.left + center.right) / 2).toBeCloseTo(76 + 680 / 2, -1);
   // Justify stretches every wrapped line but a paragraph's last. Narrow the
@@ -126,11 +125,14 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
   await page.mouse.down();
   await page.mouse.move(x + 456 * scale, y + 605 * scale, { steps: 6 });
   await page.mouse.up();
-  await page.locator('#toolbar-align').selectOption('left');
+  await choose(page, 'toolbar-align', 'left');
   const firstLine: [number, number, number, number] = [60, 565, 560, 597];
   const ragged = await ink(page, firstLine);
-  await page.locator('#toolbar-align').selectOption('justify');
-  await expect(page.locator('#toolbar-align')).toHaveValue('justify');
+  await choose(page, 'toolbar-align', 'justify');
+  await expect(page.locator('#toolbar-align')).toHaveAttribute(
+    'data-value',
+    'justify',
+  );
   const justified = await ink(page, firstLine);
   expect(justified.left).toBeCloseTo(ragged.left, 0);
   expect(justified.right).toBeGreaterThan(ragged.right + 4);
@@ -159,7 +161,7 @@ test('[TXT-016] line height, letter spacing and paragraph spacing change the lay
   const taller = await ink(page, HEADLINE);
   expect(taller.top).toBeCloseTo(before.top, 0);
   expect(taller.bottom - before.bottom).toBeCloseTo(62.4, -1);
-  // The row stays open after the commit re-renders the toolbar.
+  // The popover stays open after the commit re-renders the toolbar.
   await expect(page.locator('#toolbar-paragraph-spacing')).toBeVisible();
   // Paragraph spacing 40: "for your ideas." is a second paragraph.
   await commit(page, 'paragraph-spacing', '40');
@@ -169,6 +171,7 @@ test('[TXT-016] line height, letter spacing and paragraph spacing change the lay
   // Letter spacing 5 on the subtitle: 38 characters grow by about 37 × 5.
   await select(page, 'example-subtitle');
   const plain = await ink(page, SUBTITLE);
+  await control(page, 'spacing').click();
   await commit(page, 'letter-spacing', '5');
   expect(await lastLabel(page)).toBe('Set letter spacing');
   const wide = await ink(page, SUBTITLE);
@@ -176,13 +179,15 @@ test('[TXT-016] line height, letter spacing and paragraph spacing change the lay
     185,
     -1,
   );
-  // Out-of-range values are refused and change nothing.
-  const labels = (await hook(page)).history.labels.length;
+  // G1: an out-of-range value is clamped to the limit (5×) with a message.
   await commit(page, 'line-height', '9');
   await expect(
     page.locator('.toast-error', { hasText: 'out of range' }),
   ).toBeVisible();
-  expect((await hook(page)).history.labels).toHaveLength(labels);
+  await expect(page.locator('#toolbar-line-height')).toHaveValue('5');
+  expect(
+    (await layer(page, 'example-subtitle')).properties.lineHeight.value,
+  ).toBe(5);
 });
 
 test('[TXT-017] text case shows UPPER, lower and Title case without changing the typed text', async ({
@@ -191,7 +196,7 @@ test('[TXT-017] text case shows UPPER, lower and Title case without changing the
   await select(page, 'example-subtitle');
   await control(page, 'spacing').click();
   const typed = await ink(page, SUBTITLE);
-  await page.locator('#toolbar-case').selectOption('upper');
+  await choose(page, 'toolbar-case', 'upper');
   expect(await lastLabel(page)).toBe('Set text case');
   const upper = await ink(page, SUBTITLE);
   expect(upper.right - upper.left).toBeGreaterThan(
@@ -203,7 +208,7 @@ test('[TXT-017] text case shows UPPER, lower and Title case without changing the
   );
   expect(subtitle.properties.textCase.value).toBe('upper');
   // Title case capitalises each word's first letter only.
-  await page.locator('#toolbar-case').selectOption('title');
+  await choose(page, 'toolbar-case', 'title');
   const title = await ink(page, SUBTITLE);
   expect(title.right - title.left).toBeGreaterThan(typed.right - typed.left);
   expect(title.right - title.left).toBeLessThan(upper.right - upper.left);
@@ -211,7 +216,8 @@ test('[TXT-017] text case shows UPPER, lower and Title case without changing the
   await select(page, 'example-kicker');
   const kicker: [number, number, number, number] = [60, 66, 700, 112];
   const caps = await ink(page, kicker);
-  await page.locator('#toolbar-case').selectOption('lower');
+  await control(page, 'spacing').click();
+  await choose(page, 'toolbar-case', 'lower');
   const lower = await ink(page, kicker);
   expect(lower.right - lower.left).toBeLessThan(caps.right - caps.left);
 });
@@ -221,7 +227,7 @@ test('[TXT-010] the toolbar changes the font, the weight and italic, one undo st
 }) => {
   await select(page, 'example-subtitle');
   const arial = await ink(page, SUBTITLE);
-  await page.locator('#toolbar-font').selectOption('Courier New');
+  await choose(page, 'toolbar-font', 'Courier New');
   expect(await lastLabel(page)).toBe('Set font');
   const courier = await ink(page, SUBTITLE);
   // Monospace at 24 px: 38 characters of about 14.4 units each.
@@ -230,10 +236,10 @@ test('[TXT-010] the toolbar changes the font, the weight and italic, one undo st
     -1,
   );
   await page.keyboard.press('Control+z');
-  await page.locator('#toolbar-weight').selectOption('400');
+  await choose(page, 'toolbar-weight', '400');
   expect(await lastLabel(page)).toBe('Set font weight');
   const regular = await ink(page, SUBTITLE);
-  await page.locator('#toolbar-weight').selectOption('700');
+  await choose(page, 'toolbar-weight', '700');
   const bold = await ink(page, SUBTITLE);
   expect(bold.count).toBeGreaterThan(regular.count * 1.1);
   await control(page, 'italic').click();
