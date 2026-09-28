@@ -6,12 +6,12 @@ Branch: `codex/w7-audio`.
 
 ## Progress checkpoint
 
-| Part   | Status                                                                    | Last commit                                         |
-| ------ | ------------------------------------------------------------------------- | --------------------------------------------------- |
-| W7-A   | Implemented; local typecheck/unit proof; browser measurements awaiting CI | `d0adf15641fac9e85c4ac0b87912a791929aafdb` (PR #14) |
-| W7-B   | Pending: 3-band EQ, compressor, gated K-weighted LUFS normalization       | —                                                   |
-| W7-C   | Pending: speech-driven music ducking; assess pitch preservation           | —                                                   |
-| Finish | Pending: full verification, report, mark same PR ready                    | —                                                   |
+| Part   | Status                                                                    | Last commit                                                 |
+| ------ | ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| W7-A   | Implemented; local typecheck/unit proof; browser measurements awaiting CI | `d0adf15641fac9e85c4ac0b87912a791929aafdb` (PR #14)         |
+| W7-B   | Implemented; typecheck and 362 unit tests passed; e2e awaits CI           | `8b757a16f6a2ffe6ab7d7206fb30ee3cda79f79b`                  |
+| W7-C   | Ducking implemented; 364 unit tests passed; AUD-010 deferred D-208        | This checkpoint commit (`git log -1 -- briefs/W7-CODEX.md`) |
+| Finish | Pending: full verification, report, mark same PR ready                    | —                                                           |
 
 ## In scope
 

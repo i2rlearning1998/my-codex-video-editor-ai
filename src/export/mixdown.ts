@@ -1,3 +1,4 @@
+import { prepareDucking } from '../audio/ducking';
 import { scheduleAudioClip } from '../audio/graph';
 import {
   reverseAudioBuffer,
@@ -20,9 +21,14 @@ export async function mixdown(
   const length = Math.max(1, Math.round((end - start) * MIX_RATE));
   const context = new OfflineAudioContext(2, length, MIX_RATE);
   let scheduled = 0;
-  for (const clip of clips) {
-    const decoded = await decoder.decode(clip.sourceAssetId);
-    if (!(decoded instanceof AudioBuffer)) continue;
+  const buffers = new Map<string, AudioBuffer>();
+  for (const id of new Set(clips.map((clip) => clip.sourceAssetId))) {
+    const decoded = await decoder.decode(id);
+    if (decoded instanceof AudioBuffer) buffers.set(id, decoded);
+  }
+  for (const clip of prepareDucking(clips, buffers)) {
+    const decoded = buffers.get(clip.sourceAssetId);
+    if (!decoded) continue;
     const buffer = clip.reversed ? reverseAudioBuffer(decoded) : decoded;
     if (clip.startTime >= end) continue;
     const result = scheduleAudioClip(

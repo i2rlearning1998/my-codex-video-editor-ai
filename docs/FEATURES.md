@@ -743,3 +743,7 @@ Existing rows above are preserved. Scoped implementation claims (pending browser
 ### W7-B checkpoint (2026-09-28)
 
 AUD-011 **Claimed**: three-band EQ, native compressor and gated K-weighted LUFS analysis/normalization implemented. Calibration and gating have numerical unit tests; graph frequency response, compressor attenuation, target LUFS and processing parity have browser specs awaiting CI. This is not certified BS.1770 compliance. Original ledger rows remain unchanged.
+
+### W7-C checkpoint (2026-09-28)
+
+AUD-012 **Claimed**: algorithmic ducking with explicit Speech/Music roles, source-aware RMS detection and attack/hold/release; browser waveform/parity proof pending. AUD-010 **not built / deferred** by the brief's quality/complexity allowance (D-208); speed continues to change pitch. No existing row or ID changed.

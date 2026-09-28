@@ -1,3 +1,4 @@
+import { duckGainAt } from './ducking';
 import { clipSchedule, type AudibleClip } from '../media/audio';
 import {
   clipGainAt,
@@ -84,12 +85,16 @@ export function scheduleAudioClip(
   for (let elapsed = 0; elapsed < duration; elapsed += chunkLength) {
     const seconds = Math.min(chunkLength, duration - elapsed);
     const curve = new Float32Array(Math.max(2, Math.ceil(seconds * 200) + 1));
-    for (let i = 0; i < curve.length; i++)
-      curve[i] = clipGainAt(
-        settings,
-        local + elapsed + (seconds * i) / (curve.length - 1),
-        clip.duration,
-      );
+    for (let i = 0; i < curve.length; i++) {
+      const localTime = local + elapsed + (seconds * i) / (curve.length - 1);
+      curve[i] =
+        duckGainAt(clip.duckEnvelope, localTime) *
+        clipGainAt(
+          settings,
+          local + elapsed + (seconds * i) / (curve.length - 1),
+          clip.duration,
+        );
+    }
     gain.gain.setValueCurveAtTime(curve, start + elapsed, seconds);
   }
   let disposed = false;

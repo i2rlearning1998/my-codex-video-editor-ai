@@ -35,3 +35,7 @@
 ## W7-CODEX checkpoint B — 2026-09-28
 
 On PR #14: EQ, compressor and one-shot target LUFS normalization, shared preview/export graph and isolated controls. Analysis is limited to five-minute clips, refuses silence and reports peak-limited targets. Local typecheck and unit suite run; browser tests await CI. See D-204–D-206 and the progress brief.
+
+## W7-CODEX checkpoint C — 2026-09-28
+
+PR #14 now includes explicit Speech/Music roles and shared detector-driven duck envelopes. W7-A/B/C implementation checkpoints are done except AUD-010, safely deferred under the brief. No pitch-preservation claim. Final verify/CI review and report remain. Existing row statuses stay unchanged under append-only instructions; W7 scoped claims are appended to FEATURES.

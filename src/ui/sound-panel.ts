@@ -219,6 +219,45 @@ export function mountSoundPanel(
           gain: Math.round(n.gainDb * 10) / 10,
         }) + (n.limited ? ' ' + t('limited') : '');
     }
+    const roleLabel = document.createElement('label');
+    roleLabel.textContent = t('role');
+    const role = document.createElement('select');
+    role.setAttribute('aria-label', t('role'));
+    for (const value of ['none', 'speech', 'music'] as const) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = t(value);
+      role.append(option);
+    }
+    role.value = settings.role;
+    role.onchange = () =>
+      save({ ...settings, role: role.value as AudioSettings['role'] });
+    roleLabel.append(role);
+    fields.append(roleLabel);
+    const duckLabel = document.createElement('label');
+    duckLabel.textContent = t('duck');
+    const duck = document.createElement('input');
+    duck.type = 'checkbox';
+    duck.checked = settings.duck.enabled;
+    duck.setAttribute('aria-label', t('duck'));
+    duck.disabled = settings.role !== 'music';
+    duck.onchange = () =>
+      save({ ...settings, duck: { ...settings.duck, enabled: duck.checked } });
+    duckLabel.append(duck);
+    fields.append(duckLabel);
+    for (const [key, label, min, max, step] of [
+      ['thresholdDb', 'thresholdDb', -60, -6, 1],
+      ['reductionDb', 'reductionDb', -36, 0, 1],
+      ['attack', 'duckAttack', 0.01, 2, 0.01],
+      ['hold', 'hold', 0, 2, 0.01],
+      ['release', 'duckRelease', 0.01, 5, 0.01],
+    ] as const)
+      numeric(label, settings.duck[key], min, max, step, (v) =>
+        save({ ...settings, duck: { ...settings.duck, [key]: v } }),
+      );
+    const help = document.createElement('p');
+    help.textContent = t('duckHelp');
+    fields.append(help);
     button('reset', () => save(null));
     const count = document.createElement('p');
     count.textContent = t('keys', { count: settings.volumeKeys.length });

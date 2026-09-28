@@ -226,3 +226,9 @@ Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infra
 - Added three-band EQ, compressor controls and BS.1770-style stereo loudness measurement.
 - Added target LUFS normalization with sample-peak headroom and stale-result protection.
 - Added calibration/gating tests and browser processing/panel/parity specs.
+
+## W7-CODEX part C — 2026-09-28 (unmerged)
+
+- Added Speech/Music roles and automatic music ducking driven by speech PCM levels.
+- Added detector timing/mute/reverse tests and browser waveform/export parity specs.
+- Deferred pitch-preserving time stretch; existing speed continues to shift pitch.

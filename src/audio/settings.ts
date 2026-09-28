@@ -34,6 +34,18 @@ export const audioSettingsSchema = z
       .strict()
       .nullable()
       .default(null),
+    role: z.enum(['none', 'speech', 'music']).default('none'),
+    duck: z
+      .object({
+        enabled: z.boolean().default(false),
+        thresholdDb: z.number().finite().min(-60).max(-6).default(-36),
+        reductionDb: z.number().finite().min(-36).max(0).default(-12),
+        attack: z.number().finite().min(0.01).max(2).default(0.05),
+        hold: z.number().finite().min(0).max(2).default(0.15),
+        release: z.number().finite().min(0.01).max(5).default(0.3),
+      })
+      .strict()
+      .default({}),
     gainDb: db.default(0),
     pan: z.number().finite().min(-1).max(1).default(0),
     fadeIn: z.number().finite().min(0).max(86400).default(0),
@@ -91,6 +103,8 @@ export function registerAudioCommands(engine: EditorEngine): void {
           const { layer } = requireLayer(composition, clip.layerId);
           if (layer.type !== 'audio' && layer.type !== 'video')
             throw new Error('Clip has no audio');
+          if (input.settings?.duck.enabled && clip.duration > 300)
+            throw new Error('Ducking is limited to five-minute music clips');
           if (input.settings === null) delete clip.metadata.audio;
           else clip.metadata.audio = input.settings as unknown as JsonValue;
           return null;

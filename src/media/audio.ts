@@ -1,3 +1,4 @@
+import { prepareDucking, type DuckEnvelope } from '../audio/ducking';
 import { readAudioSettings, type AudioSettings } from '../audio/settings';
 import { scheduleAudioClip } from '../audio/graph';
 import { clipAudioDetached, clipTimeEffects } from '../core';
@@ -26,6 +27,7 @@ export interface AudibleClip {
   readonly speed: number;
   readonly reversed: boolean;
   readonly audio?: AudioSettings;
+  readonly duckEnvelope?: DuckEnvelope;
 }
 
 /**
@@ -247,6 +249,8 @@ export class AudioEngine {
   /** Transport `clock` was scheduled at context time `context`; heard `latency` later. */
   #anchor: { clock: number; context: number; latency: number } | null = null;
   #signature = '';
+  #duckSignature = '';
+  #duckClips: AudibleClip[] = [];
   #snippets = 0;
   #lastSnippet: AudioDebug['lastSnippet'] = null;
   #lastSnippetAt = -Infinity;
@@ -286,7 +290,7 @@ export class AudioEngine {
     const latency = context.baseLatency + (context.outputLatency || 0);
     const start = context.currentTime;
     this.#anchor = { clock, context: start, latency };
-    clips.forEach((clip, index) => {
+    this.#prepare(clips).forEach((clip, index) => {
       const buffer = buffers[index];
       if (!buffer) return;
       const source = clip.reversed ? this.#reverse(buffer) : buffer;
@@ -320,7 +324,8 @@ export class AudioEngine {
       this.#trailing = setTimeout(() => this.scrub(time, clips), wait);
       return;
     }
-    const under = clips.filter(
+    for (const clip of clips) this.#buffer(clip.sourceAssetId);
+    const under = this.#prepare(clips).filter(
       (clip) => time >= clip.startTime && time < clip.startTime + clip.duration,
     );
     if (!under.length) return;
@@ -425,6 +430,20 @@ export class AudioEngine {
       this.#reversed.set(buffer, reversed);
     }
     return reversed;
+  }
+
+  #prepare(clips: readonly AudibleClip[]): AudibleClip[] {
+    const buffers = new Map<string, AudioBuffer>();
+    for (const clip of clips) {
+      const buffer = this.#ready.get(clip.sourceAssetId);
+      if (buffer) buffers.set(clip.sourceAssetId, buffer);
+    }
+    const signature = JSON.stringify([clips, [...buffers.keys()]]);
+    if (signature !== this.#duckSignature) {
+      this.#duckSignature = signature;
+      this.#duckClips = prepareDucking(clips, buffers);
+    }
+    return this.#duckClips;
   }
 
   #stopAll(): void {

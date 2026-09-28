@@ -26,6 +26,7 @@ test('[AUD-002][AUD-003][AUD-009] Sound panel stores audio controls, undoes, rel
   };
   await fill('Gain (dB)', '-12');
   await fill('Pan (-1 left, +1 right)', '-1');
+  await panel.getByRole('heading').click();
   await page.keyboard.press('Control+z');
   await expect(
     panel.getByRole('spinbutton', {
@@ -304,13 +305,153 @@ test('[AUD-011] Sound controls persist EQ compression and an undoable normalizat
   const settings = async () =>
     (await hook(page)).project.compositions[0]!.tracks[1]!.clips[0]!.metadata
       .audio;
-  await expect
-    .poll(settings)
-    .toMatchObject({
-      eq: { low: 3 },
-      compressor: { enabled: true },
-      normalization: { targetLufs: -16 },
-    });
+  await expect.poll(settings).toMatchObject({
+    eq: { low: 3 },
+    compressor: { enabled: true },
+    normalization: { targetLufs: -16 },
+  });
+  await panel.getByRole('heading').click();
   await page.keyboard.press('Control+z');
   await expect.poll(settings).toMatchObject({ normalization: null });
+});
+
+test('[AUD-012][AUD-015] measured speech-driven ducking and seeking match export waveform', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const d = '/src/audio/ducking.ts',
+      g = '/src/audio/graph.ts',
+      s = '/src/audio/settings.ts',
+      m = '/src/export/mixdown.ts';
+    const { prepareDucking } = await import(d),
+      { scheduleAudioClip } = await import(g),
+      { defaultAudioSettings } = await import(s),
+      { mixdown } = await import(m);
+    const rate = 48000,
+      length = rate * 3,
+      music = new AudioBuffer({
+        length,
+        numberOfChannels: 1,
+        sampleRate: rate,
+      }),
+      speech = new AudioBuffer({
+        length,
+        numberOfChannels: 1,
+        sampleRate: rate,
+      });
+    for (let i = 0; i < length; i++) {
+      music.getChannelData(0)[i] =
+        0.1 * Math.sin((2 * Math.PI * 440 * i) / rate);
+      speech.getChannelData(0)[i] =
+        i >= rate && i < rate * 2
+          ? 0.2 * Math.sin((2 * Math.PI * 997 * i) / rate)
+          : 0;
+    }
+    const audio = defaultAudioSettings(),
+      base = {
+        trackId: 'x',
+        startTime: 0,
+        duration: 3,
+        sourceIn: 0,
+        sourceOut: 3,
+        speed: 1,
+        reversed: false,
+      };
+    const clips = [
+      {
+        ...base,
+        clipId: 'music',
+        sourceAssetId: 'music',
+        audio: {
+          ...audio,
+          pan: -1,
+          role: 'music',
+          duck: { ...audio.duck, enabled: true },
+        },
+      },
+      {
+        ...base,
+        clipId: 'speech',
+        sourceAssetId: 'speech',
+        audio: { ...audio, pan: 1, role: 'speech' },
+      },
+    ];
+    const buffers = new Map([
+        ['music', music],
+        ['speech', speech],
+      ]),
+      prepared = prepareDucking(clips, buffers),
+      context = new OfflineAudioContext(2, length, rate);
+    for (const clip of prepared)
+      scheduleAudioClip(
+        context,
+        context.destination,
+        clip,
+        buffers.get(clip.sourceAssetId),
+        0,
+        0,
+      );
+    const rendered = await context.startRendering(),
+      decoder = { decode: async (id: string) => buffers.get(id) },
+      exported = await mixdown(clips, decoder, 0, 3);
+    const left = rendered.getChannelData(0),
+      rms = (from: number, to: number) =>
+        Math.sqrt(
+          left.slice(from * rate, to * rate).reduce((s, v) => s + v * v, 0) /
+            ((to - from) * rate),
+        );
+    let max = 0;
+    for (let c = 0; c < 2; c++)
+      for (let i = 0; i < length; i++)
+        max = Math.max(
+          max,
+          Math.abs(rendered.getChannelData(c)[i]! - exported.channels[c][i]!),
+        );
+    const seek = await mixdown(clips, decoder, 1.3, 1.8);
+    let seekError = 0;
+    for (let i = 0; i < seek.channels[0].length; i++)
+      seekError = Math.max(
+        seekError,
+        Math.abs(seek.channels[0][i] - left[Math.round(1.3 * rate) + i]!),
+      );
+    return {
+      duckDb: 20 * Math.log10(rms(1.3, 1.8) / rms(0.3, 0.8)),
+      released: rms(2.6, 2.9) / rms(0.3, 0.8),
+      max,
+      seekError,
+    };
+  });
+  expect(result.duckDb).toBeCloseTo(-12, 1);
+  expect(result.released).toBeCloseTo(1, 2);
+  expect(result.max).toBeLessThan(1e-6);
+  expect(result.seekError).toBeLessThan(1e-5);
+});
+
+test('[AUD-012] Sound role and duck controls commit through history', async ({
+  page,
+  openFixtureProject,
+}) => {
+  await page.goto('/');
+  await openFixtureProject('av-sync.json');
+  await page
+    .locator('.timeline-clip[data-clip-id="clip-tone"]')
+    .click({ position: { x: 30, y: 10 } });
+  await page.locator('[data-category="Audio"]').click();
+  const panel = page.locator('#sound-panel');
+  await panel
+    .getByRole('combobox', { name: 'Audio role', exact: true })
+    .selectOption('music');
+  await panel
+    .getByRole('checkbox', { name: 'Duck music under speech', exact: true })
+    .check();
+  const settings = async () =>
+    (await hook(page)).project.compositions[0]!.tracks[1]!.clips[0]!.metadata
+      .audio;
+  await expect
+    .poll(settings)
+    .toMatchObject({ role: 'music', duck: { enabled: true } });
+  await panel.getByRole('heading').click();
+  await page.keyboard.press('Control+z');
+  await expect.poll(settings).toMatchObject({ duck: { enabled: false } });
 });
