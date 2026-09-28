@@ -48,6 +48,7 @@ import { mountContextToolbar } from './context-toolbar';
 import { mountAnimationPanel } from './animation-panel';
 import { mountAnimatePanel } from './animate-panel';
 import { mountPositionPanel } from './position-panel';
+import { createSidePanels } from './side-panel';
 import { canvasMenuEntries } from './canvas-menu';
 import { createMenu } from './context-menu';
 import { mountSelectionActions } from './selection-actions';
@@ -184,6 +185,7 @@ export function mountEditorShell(
         <div class="draw-panel shapes-panel" id="shapes-panel" data-rail-panel="Elements" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
+        <div id="side-panel-host"></div>
         <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
@@ -195,7 +197,7 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><div class="animate-panel" id="animate-panel" hidden></div><div class="animate-panel position-panel" id="position-panel" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -386,21 +388,24 @@ export function mountEditorShell(
     reportError,
   );
   // W5-C: animation presets, opened from the toolbar's Animate button.
+  // G1.5: deep panels open in the left side panel, never over the canvas.
+  const sidePanels = createSidePanels(
+    element('#side-panel-host'),
+    registerExternalOverlay,
+  );
   const animatePanel = mountAnimatePanel(
-    element('#animate-panel'),
+    sidePanels.register('animate', () => t('animate.title')),
     engine,
     session,
     reportError,
-    registerExternalOverlay,
   );
   // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
   // selection action cluster.
   const positionPanel = mountPositionPanel(
-    element('#position-panel'),
+    sidePanels.register('position', () => t('position.title')),
     engine,
     session,
     reportError,
-    registerExternalOverlay,
   );
   // CV-035: the selected layer's context toolbar above the canvas.
   const contextToolbar = mountContextToolbar(
@@ -411,6 +416,7 @@ export function mountEditorShell(
     reportError,
     () => animatePanel.toggle(),
     () => positionPanel.toggle(),
+    sidePanels,
   );
   const canvasMenu = element('#canvas-context-menu');
   // W2-F1: the canvas menu is built from the selection's capabilities and
@@ -433,6 +439,8 @@ export function mountEditorShell(
     const bounds = stage.getBoundingClientRect();
     canvasMenu.style.left = `${Math.max(0, Math.min(bounds.width - 170, point[0]))}px`;
     canvasMenu.style.top = `${Math.max(0, Math.min(bounds.height - 40, point[1]))}px`;
+    // G1.3: flip or shift so the whole menu shows without a scrollbar.
+    canvasMenuController.fit();
     unregisterCanvasMenu ??= registerExternalOverlay(hideCanvasMenu);
   };
   document.addEventListener('click', (event) => {
@@ -870,6 +878,7 @@ export function mountEditorShell(
   ))
     button.onclick = () => {
       activeCategory = button.dataset.category!;
+      sidePanels.close();
       applyCategory(activeCategory);
     };
   const searchInput = element<HTMLInputElement>('#asset-search');

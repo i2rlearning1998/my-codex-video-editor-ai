@@ -80,6 +80,7 @@ const PATHS: Record<string, string> = {
   strokeStyle:
     'M3 6h14 M3 10h3 M8 10h3 M13 10h4 M3 14h1 M6 14h1 M9 14h1 M12 14h1 M15 14h1',
   combine: 'M3 3h9v9H3z M8 8h9v9H8z',
+  eyedropper: 'M13 3l4 4-2 2-4-4z M11 5l-7 7v4h4l7-7 M4 16l-1 1',
   highlighter: 'M12 3l5 5-7 7-5-5z M5 10l-2 5 2 2 5-2 M3 17h14',
   solo: 'M4 13v-3a6 6 0 0112 0v3 M4 13h3v4H4z M13 13h3v4h-3z',
   reverse: 'M15 7H5 M8 4L5 7l3 3 M5 13h10 M12 10l3 3-3 3',

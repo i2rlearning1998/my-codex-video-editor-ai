@@ -441,5 +441,15 @@
   "command.union": "संयोजन",
   "command.subtract": "घटाएँ",
   "command.intersect": "प्रतिच्छेदन",
-  "command.exclude": "अपवर्जन"
+  "command.exclude": "अपवर्जन",
+  "sidePanel.back": "वापस",
+  "field.clamped": "यह मान सीमा से बाहर है, इसलिए निकटतम अनुमत मान लिया गया।",
+  "field.more": "{label} के और विकल्प",
+  "color.saturation": "संतृप्ति और चमक",
+  "color.hue": "रंगत",
+  "color.hex": "हेक्स रंग",
+  "color.eyedropper": "स्क्रीन से रंग चुनें",
+  "color.recent": "हाल के रंग",
+  "color.document": "इस डिज़ाइन के रंग",
+  "color.defaults": "डिफ़ॉल्ट रंग"
 }

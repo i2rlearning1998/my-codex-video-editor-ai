@@ -1781,10 +1781,9 @@ input[type='number'] {
 .canvas-context-menu {
   position: absolute;
   z-index: 6;
-  width: 170px;
-  max-height: min(320px, calc(100% - 16px));
+  width: 190px;
   overflow-y: auto;
-  padding: var(--space-2);
+  padding: var(--space-1);
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
@@ -2335,4 +2334,406 @@ input[type='number'] {
 }
 .export-actions #export-png {
   margin-inline-end: auto;
+}
+
+/* ===== G1 foundation: shared controls, popovers, side panel, states ===== */
+
+/* G1.4: pressed states for every button, focus on custom controls. */
+button:active:not(:disabled),
+.button:active {
+  background: var(--color-bg-active);
+  transform: translateY(0.5px);
+}
+[role='option']:focus-visible,
+[role='slider']:focus-visible,
+[role='spinbutton']:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 1px;
+}
+
+/* G1.4: themed thin scrollbars everywhere; side panels show them on hover. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-pill);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-faint);
+}
+.library,
+.library *,
+.inspector,
+.inspector * {
+  scrollbar-color: transparent transparent;
+}
+.library:hover,
+.library:hover *,
+.inspector:hover,
+.inspector:hover * {
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.library ::-webkit-scrollbar-thumb,
+.inspector ::-webkit-scrollbar-thumb,
+.library::-webkit-scrollbar-thumb,
+.inspector::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+.library:hover ::-webkit-scrollbar-thumb,
+.inspector:hover ::-webkit-scrollbar-thumb,
+.library:hover::-webkit-scrollbar-thumb,
+.inspector:hover::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+}
+
+/* Anchored popover (selects, presets, colour, quick choices). */
+.popover {
+  position: fixed;
+  z-index: 50;
+  min-inline-size: 160px;
+  max-inline-size: min(320px, calc(100vw - 16px));
+  max-block-size: calc(100vh - 16px);
+  overflow: auto;
+  padding: var(--space-2);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--font-size-sm);
+}
+.toolbar-popover-body,
+.side-panel-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-inline-size: 220px;
+}
+
+/* NumberField (INS-006). */
+.number-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+.number-field-label {
+  cursor: ew-resize;
+  user-select: none;
+  white-space: nowrap;
+}
+.number-field.compact .number-field-label {
+  padding-inline-end: var(--space-1);
+}
+.number-field-input {
+  inline-size: 4.5em;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: ew-resize;
+}
+.number-field-input:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+.number-field-input:focus {
+  cursor: text;
+  border-color: var(--color-accent);
+}
+.number-field-input:disabled,
+.number-field-input:disabled + .number-field-unit {
+  opacity: 0.4;
+  cursor: default;
+}
+.number-field.scrubbing .number-field-input {
+  border-color: var(--color-accent);
+}
+.number-field-unit {
+  color: var(--color-text-faint);
+}
+button.number-field-more {
+  padding: 2px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+.number-field-popover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.number-field-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.number-field-presets button {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+/* Slider with readout (INS-007). */
+.slider-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  --slider-fill: 50%;
+}
+.slider-field input[type='range'],
+.color-hue {
+  flex: 1;
+  min-inline-size: 120px;
+  block-size: 4px;
+  appearance: none;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to right,
+    var(--color-accent) var(--slider-fill),
+    var(--color-border-strong) var(--slider-fill)
+  );
+  cursor: pointer;
+}
+.slider-field input[type='range']::-webkit-slider-thumb,
+.color-hue::-webkit-slider-thumb {
+  appearance: none;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 50%;
+  background: var(--color-text);
+  border: 2px solid var(--color-bg-raised);
+  box-shadow: var(--shadow-sm);
+}
+.slider-readout {
+  min-inline-size: 3.5em;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/* Custom Select (LAY-018). */
+.select-field,
+.color-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+button.select-trigger {
+  gap: var(--space-2);
+  justify-content: space-between;
+  min-inline-size: 6em;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-sunken);
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+}
+.select-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-inline-size: 12em;
+}
+.select-popover {
+  padding: var(--space-1);
+}
+.select-option {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  outline: none;
+}
+.select-option:hover,
+.select-option:focus {
+  background: var(--color-bg-hover);
+}
+.select-option[aria-selected='true'] {
+  color: var(--color-accent-hover);
+  background: var(--color-accent-soft);
+}
+.select-option[aria-disabled='true'] {
+  color: var(--color-text-faint);
+  cursor: default;
+}
+
+/* Colour field and picker (LAY-022). */
+button.color-swatch-trigger {
+  inline-size: 26px;
+  block-size: 22px;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--swatch);
+  border: 1px solid var(--color-border-strong);
+}
+button.color-swatch-trigger.none,
+.color-none svg {
+  background: repeating-linear-gradient(
+    135deg,
+    transparent 0 5px,
+    var(--color-danger-soft) 5px 7px
+  );
+}
+.color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  inline-size: 232px;
+}
+.color-square {
+  position: relative;
+  block-size: 140px;
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(to top, #000, transparent),
+    linear-gradient(to right, #fff, var(--hue));
+  cursor: crosshair;
+  touch-action: none;
+}
+.color-knob {
+  position: absolute;
+  inline-size: 12px;
+  block-size: 12px;
+  margin: -6px 0 0 -6px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 40%);
+  pointer-events: none;
+}
+.color-hue {
+  background: linear-gradient(
+    to right,
+    #f00,
+    #ff0,
+    #0f0,
+    #0ff,
+    #00f,
+    #f0f,
+    #f00
+  );
+}
+.color-hex-row {
+  display: flex;
+  gap: var(--space-2);
+}
+.color-hex {
+  flex: 1;
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-bg-sunken);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+}
+.color-hex[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+.color-row h4 {
+  margin: 0 0 var(--space-1);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--space-1);
+}
+button.color-swatch {
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--swatch);
+  border: 1px solid var(--color-border-strong);
+}
+button.color-swatch:hover {
+  background: var(--swatch);
+  transform: scale(1.1);
+}
+
+/* G1.5: deep panels in the left side panel. */
+.library.deep-open [data-rail-panel] {
+  display: none !important;
+}
+.deep-panel[hidden] {
+  display: none;
+}
+.deep-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-block-size: 0;
+  overflow: auto;
+}
+.deep-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.deep-panel-header h2 {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+.deep-panel-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+}
+.deep-panel-body .color-picker {
+  inline-size: auto;
+}
+.side-panel-host {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 0;
+}
+.side-panel-host[data-open] {
+  flex: 1;
+}
+.deep-panel {
+  padding: var(--space-4) var(--space-5);
+}
+
+/* G1.3: menu flyouts open beside their parent item, never scroll in normal use. */
+.menu-flyout {
+  position: fixed;
+  z-index: 60;
+  width: 200px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.canvas-context-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  min-block-size: 28px;
+}
+.canvas-context-menu .menu-label {
+  flex: 1;
+}
+.canvas-context-menu button.menu-parent::after {
+  content: '›';
+  color: var(--color-text-muted);
+}
+.canvas-context-menu button[aria-expanded='true'],
+.canvas-context-menu button:focus-visible {
+  background: var(--color-bg-hover);
 }

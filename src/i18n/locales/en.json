@@ -441,5 +441,15 @@
   "command.union": "Union",
   "command.subtract": "Subtract",
   "command.intersect": "Intersect",
-  "command.exclude": "Exclude"
+  "command.exclude": "Exclude",
+  "sidePanel.back": "Back",
+  "field.clamped": "That value is out of range, so the nearest allowed value was used.",
+  "field.more": "More options for {label}",
+  "color.saturation": "Saturation and brightness",
+  "color.hue": "Hue",
+  "color.hex": "Hex colour",
+  "color.eyedropper": "Pick a colour from the screen",
+  "color.recent": "Recent colours",
+  "color.document": "Colours in this design",
+  "color.defaults": "Default colours"
 }

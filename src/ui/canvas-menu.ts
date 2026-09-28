@@ -59,6 +59,18 @@ export const ARRANGE_SHORTCUTS = {
   back: '',
 } as const;
 
+/**
+ * G1.3 (CV-043): actions about the clip on the timeline, not the object on
+ * the canvas. They stay in the timeline's clip menu.
+ */
+const TIMELINE_ONLY: ReadonlySet<EditAction> = new Set([
+  'marker',
+  'delete-marker',
+  'toggle-enabled',
+  'link',
+  'unlink',
+]);
+
 /** Entries for a right-click on the canvas: `layer` false means empty canvas. */
 export function canvasMenuEntries(
   engine: EditorEngine,
@@ -80,7 +92,7 @@ export function canvasMenuEntries(
     source,
     session.selectedIds,
     session.currentTime,
-  ).filter((action) => action !== 'marker' && action !== 'delete-marker');
+  ).filter((action) => !TIMELINE_ONLY.has(action));
   const clips = selectedClips(source, session.selectedIds);
   const entries: MenuEntry[] = [];
   const edit = (action: EditAction) =>

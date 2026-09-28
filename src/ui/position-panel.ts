@@ -16,6 +16,7 @@ import { ARRANGE_ACTIONS, arrangeSelection, canArrange } from './arrange';
 import { ARRANGE_KEYS } from './canvas-menu';
 import { iconSvg } from './icons';
 import type { EditorSession } from './session';
+import type { DeepPanelHandle } from './side-panel';
 
 type Tab = 'arrange' | 'layers';
 
@@ -34,16 +35,14 @@ export const layerIcon = (layer: SceneLayer) =>
             : 'media';
 
 export function mountPositionPanel(
-  panel: HTMLElement,
+  handle: DeepPanelHandle,
   engine: EditorEngine,
   session: EditorSession,
   report: (error: unknown) => void,
-  registerOverlay: (close: () => void) => () => void,
 ) {
-  panel.setAttribute('role', 'dialog');
-  panel.setAttribute('aria-label', t('position.title'));
+  // G1.5: rendered in the left side panel, which owns the header and Back.
+  const panel = handle.body;
   let tab: Tab = 'arrange';
-  let unregister: (() => void) | undefined;
   let dragged: string | null = null;
   const safely = (action: () => void) => {
     try {
@@ -224,7 +223,7 @@ export function mountPositionPanel(
     return [list];
   };
   const render = () => {
-    if (panel.hidden) return;
+    if (!handle.isOpen) return;
     const tabs = document.createElement('div');
     tabs.className = 'animate-tabs';
     tabs.setAttribute('role', 'tablist');
@@ -243,40 +242,23 @@ export function mountPositionPanel(
     }
     panel.replaceChildren(tabs, ...(tab === 'arrange' ? arrange() : layers()));
   };
-  const close = () => {
-    if (panel.hidden) return;
-    panel.hidden = true;
-    unregister?.();
-    unregister = undefined;
-  };
+  const close = () => handle.close();
   const open = () => {
-    panel.hidden = false;
-    unregister ??= registerOverlay(close);
+    handle.open();
     render();
     panel.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
   };
-  const outside = (event: PointerEvent) => {
-    const element = event.target as HTMLElement;
-    if (
-      !panel.hidden &&
-      !panel.contains(element) &&
-      !element.closest('[data-control="position"], [data-action="position"]')
-    )
-      close();
-  };
-  document.addEventListener('pointerdown', outside);
   const unsubscribe = session.onChange(render);
   return {
     open,
     close,
-    toggle: () => (panel.hidden ? open() : close()),
+    toggle: () => (handle.isOpen ? close() : open()),
     render,
     get isOpen() {
-      return !panel.hidden;
+      return handle.isOpen;
     },
     dispose: () => {
       unsubscribe();
-      document.removeEventListener('pointerdown', outside);
       close();
     },
   };

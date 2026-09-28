@@ -38,6 +38,14 @@ import {
   textStyleOf,
 } from '../render/text-style';
 import { iconSvg } from './icons';
+import { createColorField } from './components/color-picker';
+import {
+  createNumberField,
+  restoreFieldFocus,
+} from './components/number-field';
+import { createSelect } from './components/select';
+import { openPopover, type PopoverHandle } from './components/popover';
+import type { SidePanels } from './side-panel';
 import type { EditorSession } from './session';
 import {
   buildTransformCommands,
@@ -369,6 +377,8 @@ export function mountContextToolbar(
   animate?: () => void,
   /** W2-F3: toggles the Position panel (CV-042). */
   position?: () => void,
+  /** G1.5: the left side panel hosting Colour and Stroke style. */
+  panels?: SidePanels,
 ) {
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('toolbar.label'));
@@ -379,10 +389,10 @@ export function mountContextToolbar(
           null)
       : null;
   };
-  /** W2-F5: the Spacing row stays open across re-renders. */
-  let spacingOpen = false;
-  /** W5-D: so does the shape Stroke style row. */
-  let strokeOpen = false;
+  /** G1.5: the Spacing popover stays open across re-renders. */
+  let spacingPopover: PopoverHandle | null = null;
+  /** The layer and control the side panel's colour picker edits. */
+  let colourFor: { layerId: string; control: string } | null = null;
   const run = (label: string, commands: (Command | null)[]) => {
     const list = commands.filter((command): command is Command => !!command);
     if (list.length) engine.commands.transaction(label, list);
@@ -395,6 +405,8 @@ export function mountContextToolbar(
       render();
     }
   };
+  // G1: the toolbar's fields are the shared NumberField, Select and colour
+  // picker, keyed by `toolbar-${id}` and data-control like before.
   const field = (
     id: string,
     label: string,
@@ -402,86 +414,93 @@ export function mountContextToolbar(
     commit: (value: number) => void,
     suffix = '',
     step = '',
-  ) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'toolbar-field';
-    wrap.title = label;
-    const text = document.createElement('span');
-    text.textContent = label;
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.id = `toolbar-${id}`;
-    input.dataset.control = id;
-    input.value = value;
-    if (step) input.step = step;
-    input.setAttribute('aria-label', label);
-    input.onchange = () =>
-      safely(() => {
-        const number = Number(input.value);
-        if (input.value.trim() === '' || !Number.isFinite(number))
-          throw new RangeError(t('toolbar.number'));
-        commit(number);
-      });
-    input.onkeydown = (event) => {
-      if (event.key === 'Enter') input.blur();
+    limits: {
+      min?: number;
+      max?: number;
+      slider?: boolean;
+      presets?: readonly number[];
+      decimals?: number;
+    } = {},
+  ) =>
+    createNumberField({
+      id: `toolbar-${id}`,
+      label,
+      value: Number(value),
+      ...(suffix ? { unit: suffix } : {}),
+      ...(step && step !== 'any' ? { step: Number(step) } : {}),
+      ...(step === 'any' || Number(step) < 1 ? { decimals: 2 } : {}),
+      ...limits,
+      className: 'toolbar-field',
+      compact: true,
+      data: { control: id },
+      onCommit: (next) => safely(() => commit(next)),
+      onInvalid: (message) => report(new RangeError(message)),
+    });
+  /** Every colour used in the composition, for the picker's design row. */
+  const designColors = () => {
+    const colors: string[] = [];
+    const visit = (layers: readonly SceneLayer[]) => {
+      for (const layer of layers) {
+        for (const property of Object.values(layer.properties))
+          if (property?.type === 'color')
+            colors.push(property.value.slice(0, 7).toLowerCase());
+        visit(layer.children);
+      }
     };
-    wrap.append(text, input);
-    if (suffix) {
-      const unit = document.createElement('span');
-      unit.className = 'toolbar-unit';
-      unit.textContent = suffix;
-      wrap.append(unit);
-    }
-    return wrap;
+    visit(session.source.composition.layers);
+    return colors;
   };
   const colorField = (
     id: string,
     label: string,
-    value: string,
+    value: string | null,
     commit: (value: string) => void,
-  ) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'toolbar-field';
-    wrap.title = label;
-    const text = document.createElement('span');
-    text.textContent = label;
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.id = `toolbar-${id}`;
-    input.dataset.control = id;
-    input.value = value;
-    input.setAttribute('aria-label', label);
-    input.onchange = () => safely(() => commit(input.value));
-    wrap.append(text, input);
-    return wrap;
-  };
+    none?: () => void,
+  ) =>
+    createColorField({
+      id: `toolbar-${id}`,
+      label,
+      value,
+      compact: true,
+      data: { control: id },
+      documentColors: designColors,
+      ...(panels
+        ? {
+            host: (build: () => HTMLElement) => {
+              const opening = panels.openId !== 'colour';
+              colourFor = { layerId: session.selectedId ?? '', control: id };
+              panels.show('colour', label, build);
+              if (opening)
+                document
+                  .querySelector<HTMLInputElement>('#color-picker-hex')
+                  ?.focus();
+            },
+          }
+        : {}),
+      ...(none ? { allowNone: true, onNone: () => safely(none) } : {}),
+      onCommit: (next) => safely(() => commit(next)),
+    });
   const select = (
     id: string,
     label: string,
     options: readonly (readonly [value: string, text: string])[],
     value: string,
     commit: (value: string) => void,
-  ) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'toolbar-field';
-    wrap.title = label;
-    const text = document.createElement('span');
-    text.textContent = label;
-    const input = document.createElement('select');
-    input.id = `toolbar-${id}`;
-    input.dataset.control = id;
-    input.setAttribute('aria-label', label);
-    for (const [optionValue, optionText] of options) {
-      const option = document.createElement('option');
-      option.value = optionValue;
-      option.textContent = optionText;
-      input.append(option);
-    }
-    input.value = value;
-    input.onchange = () => safely(() => commit(input.value));
-    wrap.append(text, input);
-    return wrap;
-  };
+    fonts = false,
+  ) =>
+    createSelect({
+      id: `toolbar-${id}`,
+      label,
+      value,
+      compact: true,
+      data: { control: id },
+      options: options.map(([option, text]) => ({
+        value: option,
+        label: text,
+        ...(fonts ? { font: `"${option}"` } : {}),
+      })),
+      onChange: (next) => safely(() => commit(next)),
+    });
   const button = (
     id: string,
     label: string,
@@ -512,6 +531,132 @@ export function mountContextToolbar(
       `${t(label)}: ${t('toolbar.later', { wave: String(wave), id: ledger })}`,
     );
     return item;
+  };
+  /** Keeps the Spacing popover and the side panels in step with the toolbar. */
+  const refreshAttached = (layer: SceneLayer | null) => {
+    if (spacingPopover) {
+      const content = spacingContent();
+      const anchor = bar.querySelector<HTMLElement>('[data-control="spacing"]');
+      if (!content || !anchor) spacingPopover.close();
+      else {
+        spacingPopover.retarget(anchor);
+        spacingPopover.element.replaceChildren(content);
+        restoreFieldFocus(spacingPopover.element);
+      }
+    }
+    if (panels?.openId === 'stroke-style') panels.refresh();
+    if (panels?.openId === 'colour' && colourFor) {
+      const trigger = bar.querySelector<HTMLElement>(
+        `#toolbar-${colourFor.control}`,
+      );
+      if (!layer || layer.id !== colourFor.layerId || !trigger) panels.close();
+      else trigger.click();
+    }
+  };
+  /** G1.5 quick choice: line height, letter and paragraph spacing, case. */
+  const spacingContent = () => {
+    const layer = selected();
+    if (!layer || layer.type !== 'text') return null;
+    const style = textStyleOf(layer);
+    const compositionId = session.source.composition.id;
+    const wrap = document.createElement('div');
+    wrap.className = 'toolbar-popover-body';
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', t('toolbar.spacing'));
+    const styleRun = (
+      label: string,
+      key: TextStyleKey,
+      value: number | string,
+    ) =>
+      run(
+        label,
+        textStyleCommands(compositionId, selected() ?? layer, key, value),
+      );
+    wrap.append(
+      field(
+        'line-height',
+        t('toolbar.lineHeight'),
+        round(style.lineHeight, 2),
+        (value) => styleRun('Set line height', 'lineHeight', value),
+        '×',
+        '0.1',
+        { min: 0.5, max: 5, slider: true, decimals: 2 },
+      ),
+      field(
+        'letter-spacing',
+        t('toolbar.letterSpacing'),
+        round(style.letterSpacing, 2),
+        (value) => styleRun('Set letter spacing', 'letterSpacing', value),
+        'px',
+        '',
+        { min: -50, max: 200, slider: true },
+      ),
+      field(
+        'paragraph-spacing',
+        t('toolbar.paragraphSpacing'),
+        round(style.paragraphSpacing, 2),
+        (value) => styleRun('Set paragraph spacing', 'paragraphSpacing', value),
+        'px',
+        '',
+        { min: 0, max: 500, slider: true },
+      ),
+      select(
+        'case',
+        t('toolbar.textCase'),
+        TEXT_CASES.map(
+          (textCase) => [textCase, t(`text.case.${textCase}`)] as const,
+        ),
+        style.textCase,
+        (value) => styleRun('Set text case', 'textCase', value),
+      ),
+    );
+    return wrap;
+  };
+  /** G1.5 deep panel: the shape's stroke colour, width, dash, caps and joins. */
+  const strokeContent = () => {
+    const layer = selected();
+    const shape = layer ? shapeOf(layer) : null;
+    if (!layer || !shape) return null;
+    const compositionId = session.source.composition.id;
+    const shapeRun = (label: string, key: ShapeKey, value: number | string) =>
+      run(label, [
+        shapeStyleCommand(compositionId, selected() ?? layer, key, value),
+      ]);
+    const wrap = document.createElement('div');
+    wrap.className = 'side-panel-form';
+    wrap.append(
+      field(
+        'panel-stroke-width',
+        t('toolbar.strokeWidth'),
+        round(shape.strokeWidth, 2),
+        (value) => shapeRun('Set stroke width', 'strokeWidth', value),
+        'px',
+        '',
+        { min: 0, max: 200, slider: true, presets: [0, 1, 2, 4, 8, 16] },
+      ),
+      select(
+        'dash',
+        t('toolbar.dash'),
+        STROKE_DASHES.map((dash) => [dash, t(`shape.dash.${dash}`)] as const),
+        shape.dash,
+        (value) => shapeRun('Set stroke dash', 'strokeDash', value),
+      ),
+      select(
+        'cap',
+        t('toolbar.cap'),
+        STROKE_CAPS.map((cap) => [cap, t(`shape.cap.${cap}`)] as const),
+        shape.cap,
+        (value) => shapeRun('Set stroke caps', 'strokeCap', value),
+      ),
+      select(
+        'join',
+        t('toolbar.join'),
+        STROKE_JOINS.map((join) => [join, t(`shape.join.${join}`)] as const),
+        shape.join,
+        (value) => shapeRun('Set stroke joins', 'strokeJoin', value),
+      ),
+    );
+    return wrap;
   };
   // D-031 pattern: a focused field commits on blur, which re-renders; blur it
   // first and drop this render if that commit already re-rendered.
@@ -544,7 +689,7 @@ export function mountContextToolbar(
     const drawing = drawingOf(layer);
     const shape = shapeOf(layer);
     const shapeCommand = (key: ShapeKey, value: number | string | boolean) =>
-      shapeStyleCommand(compositionId, layer, key, value);
+      shapeStyleCommand(compositionId, selected() ?? layer, key, value);
     const controls = LAYOUT[kind].map((id) => {
       if (LATER[id]) return later(id);
       switch (id) {
@@ -595,6 +740,8 @@ export function mountContextToolbar(
               );
             },
             '%',
+            '',
+            { min: 1, max: 10000, presets: [25, 50, 100, 150, 200] },
           );
         case 'rotate':
           return field(
@@ -603,6 +750,8 @@ export function mountContextToolbar(
             round(layer.transform.rotation.value, 2),
             (value) => edit('Rotation', value),
             '°',
+            '',
+            { min: -360, max: 360, slider: true, presets: [0, 45, 90, 180] },
           );
         case 'opacity':
           return field(
@@ -615,6 +764,8 @@ export function mountContextToolbar(
               edit('Opacity', value / 100);
             },
             '%',
+            '',
+            { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
           );
         case 'flip': {
           const group = document.createElement('div');
@@ -663,6 +814,8 @@ export function mountContextToolbar(
                 shapeCommand('fillOpacity', value / 100),
               ]),
             '%',
+            '',
+            { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
           );
           item.querySelector('input')!.disabled = !shape?.fill;
           return item;
@@ -701,18 +854,30 @@ export function mountContextToolbar(
             round(shape?.strokeWidth ?? 0, 2),
             (value) =>
               run('Set stroke width', [shapeCommand('strokeWidth', value)]),
+            'px',
+            '',
+            { min: 0, max: 200, slider: true, presets: [0, 1, 2, 4, 8, 16] },
           );
         case 'stroke-style': {
           const item = button(
             id,
             t('toolbar.strokeStyle'),
             'strokeStyle',
-            () => {
-              strokeOpen = !strokeOpen;
-              render();
-            },
+            () =>
+              panels?.openId === 'stroke-style'
+                ? panels.close()
+                : panels?.show(
+                    'stroke-style',
+                    t('toolbar.strokeStyle'),
+                    strokeContent,
+                  ),
           );
-          item.setAttribute('aria-expanded', String(strokeOpen));
+          item.disabled = !panels;
+          item.setAttribute('aria-haspopup', 'dialog');
+          item.setAttribute(
+            'aria-expanded',
+            String(panels?.openId === 'stroke-style'),
+          );
           return item;
         }
         case 'corners': {
@@ -801,10 +966,19 @@ export function mountContextToolbar(
           );
         case 'spacing': {
           const item = button(id, t('toolbar.spacing'), 'spacing', () => {
-            spacingOpen = !spacingOpen;
-            render();
+            if (spacingPopover) return spacingPopover.close();
+            const content = spacingContent();
+            if (!content) return;
+            spacingPopover = openPopover(item, content, {
+              label: t('toolbar.spacing'),
+              className: 'toolbar-popover',
+              onClose: () => {
+                spacingPopover = null;
+              },
+            });
           });
-          item.setAttribute('aria-expanded', String(spacingOpen));
+          item.setAttribute('aria-haspopup', 'dialog');
+          item.setAttribute('aria-expanded', String(!!spacingPopover));
           return item;
         }
         case 'size': {
@@ -832,12 +1006,17 @@ export function mountContextToolbar(
             colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
             (value) =>
               run('Set color', [
-                colorCommand(compositionId, layer, value, session.currentTime),
+                colorCommand(
+                  compositionId,
+                  selected() ?? layer,
+                  value,
+                  session.currentTime,
+                ),
               ]),
           );
           // Lines and arrows have no fill; their color is the stroke.
           if (shape && (shape.kind === 'line' || shape.kind === 'arrow'))
-            item.querySelector('input')!.disabled = true;
+            item.querySelector('button')!.disabled = true;
           return item;
         }
         case 'brush':
@@ -854,127 +1033,9 @@ export function mountContextToolbar(
       }
       throw new Error(`Unknown toolbar control ${id}`);
     });
-    // W2-F5 Spacing row (TXT-016, TXT-017): line height, letter and
-    // paragraph spacing, and text case, below the toolbar's controls.
-    const style = kind === 'text' ? textStyleOf(layer) : null;
-    const row: HTMLElement[] =
-      style && spacingOpen
-        ? [
-            (() => {
-              const wrap = document.createElement('div');
-              wrap.className = 'toolbar-row';
-              wrap.setAttribute('role', 'group');
-              wrap.setAttribute('aria-label', t('toolbar.spacing'));
-              wrap.append(
-                field(
-                  'line-height',
-                  t('toolbar.lineHeight'),
-                  round(style.lineHeight, 2),
-                  (value) =>
-                    run(
-                      'Set line height',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'lineHeight',
-                        value,
-                      ),
-                    ),
-                  '×',
-                  '0.1',
-                ),
-                field(
-                  'letter-spacing',
-                  t('toolbar.letterSpacing'),
-                  round(style.letterSpacing, 2),
-                  (value) =>
-                    run(
-                      'Set letter spacing',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'letterSpacing',
-                        value,
-                      ),
-                    ),
-                  '',
-                  'any',
-                ),
-                field(
-                  'paragraph-spacing',
-                  t('toolbar.paragraphSpacing'),
-                  round(style.paragraphSpacing, 2),
-                  (value) =>
-                    run(
-                      'Set paragraph spacing',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'paragraphSpacing',
-                        value,
-                      ),
-                    ),
-                  '',
-                  'any',
-                ),
-                select(
-                  'case',
-                  t('toolbar.textCase'),
-                  TEXT_CASES.map(
-                    (textCase) =>
-                      [textCase, t(`text.case.${textCase}`)] as const,
-                  ),
-                  style.textCase,
-                  (value) =>
-                    run(
-                      'Set text case',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'textCase',
-                        value,
-                      ),
-                    ),
-                ),
-              );
-              return wrap;
-            })(),
-          ]
-        : [];
-    // W5-D Stroke style row (SHP-005): dash, caps and joins.
-    if (shape && strokeOpen) {
-      const wrap = document.createElement('div');
-      wrap.className = 'toolbar-row';
-      wrap.setAttribute('role', 'group');
-      wrap.setAttribute('aria-label', t('toolbar.strokeStyle'));
-      wrap.append(
-        select(
-          'dash',
-          t('toolbar.dash'),
-          STROKE_DASHES.map((dash) => [dash, t(`shape.dash.${dash}`)] as const),
-          shape.dash,
-          (value) =>
-            run('Set stroke dash', [shapeCommand('strokeDash', value)]),
-        ),
-        select(
-          'cap',
-          t('toolbar.cap'),
-          STROKE_CAPS.map((cap) => [cap, t(`shape.cap.${cap}`)] as const),
-          shape.cap,
-          (value) => run('Set stroke caps', [shapeCommand('strokeCap', value)]),
-        ),
-        select(
-          'join',
-          t('toolbar.join'),
-          STROKE_JOINS.map((join) => [join, t(`shape.join.${join}`)] as const),
-          shape.join,
-          (value) =>
-            run('Set stroke joins', [shapeCommand('strokeJoin', value)]),
-        ),
-      );
-      row.push(wrap);
-    }
-    bar.replaceChildren(...controls, ...row);
+    bar.replaceChildren(...controls);
+    restoreFieldFocus(bar);
+    refreshAttached(layer);
   };
   render();
   return { render };
