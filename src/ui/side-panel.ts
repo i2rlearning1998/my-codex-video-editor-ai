@@ -152,9 +152,13 @@ export function createSidePanels(
       closeBuilt();
       let panelFrame = builtFrames.get(id);
       if (!panelFrame) {
-        panelFrame = frame(id, () => built?.title ?? title, () => {
-          if (built?.id === id) closeBuilt();
-        });
+        panelFrame = frame(
+          id,
+          () => built?.title ?? title,
+          () => {
+            if (built?.id === id) closeBuilt();
+          },
+        );
         builtFrames.set(id, panelFrame);
         // Closes this panel only if it is the one showing.
         closers.set(id, () => {

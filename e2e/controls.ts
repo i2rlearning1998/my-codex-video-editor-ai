@@ -27,3 +27,10 @@ export async function pickColor(page: Page, id: string, hex: string) {
 /** The side panel (G1.5) by id: position, animate, colour, stroke-style. */
 export const sidePanel = (page: Page, id: string) =>
   page.locator(`[data-deep-panel="${id}"]`);
+
+/** Opens a toolbar button's side panel unless it is already open. */
+export async function openPanel(page: Page, control: string, id: string) {
+  if (!(await sidePanel(page, id).isVisible()))
+    await page.locator(`#context-toolbar [data-control="${control}"]`).click();
+  await expect(sidePanel(page, id)).toBeVisible();
+}

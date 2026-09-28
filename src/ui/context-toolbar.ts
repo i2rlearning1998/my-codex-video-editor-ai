@@ -914,6 +914,7 @@ export function mountContextToolbar(
                 'Set font',
                 textStyleCommands(compositionId, layer, 'fontFamily', value),
               ),
+            true,
           );
         case 'weight':
           return select(
@@ -1003,7 +1004,10 @@ export function mountContextToolbar(
           const item = colorField(
             id,
             t(id === 'fill' ? 'toolbar.fill' : 'toolbar.color'),
-            colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
+            // A shape with No fill shows the empty swatch.
+            shape && !shape.fill && id === 'fill'
+              ? null
+              : colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
             (value) =>
               run('Set color', [
                 colorCommand(
@@ -1012,7 +1016,14 @@ export function mountContextToolbar(
                   value,
                   session.currentTime,
                 ),
+                // Picking a colour for a shape with No fill turns fill back on.
+                shape && !shape.fill && id === 'fill'
+                  ? shapeCommand('fillEnabled', true)
+                  : null,
               ]),
+            id === 'fill' && shape
+              ? () => run('Remove fill', [shapeCommand('fillEnabled', false)])
+              : undefined,
           );
           // Lines and arrows have no fill; their color is the stroke.
           if (shape && (shape.kind === 'line' || shape.kind === 'arrow'))

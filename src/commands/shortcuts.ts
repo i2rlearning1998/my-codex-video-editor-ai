@@ -30,6 +30,13 @@ export function bindShortcuts(
 ): () => void {
   const keydown = (event: KeyboardEvent) => {
     if (event.isComposing || event.defaultPrevented) return;
+    // G1: menus, listboxes and popovers handle their own keys (arrows,
+    // Enter, Escape) while they have focus.
+    if (
+      event.target instanceof Element &&
+      event.target.closest('[role="menu"],[role="listbox"],.popover')
+    )
+      return;
     try {
       // Escape must still dismiss a palette while its search input owns focus.
       if (event.key === 'Escape') {

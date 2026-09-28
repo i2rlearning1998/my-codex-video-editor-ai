@@ -44,8 +44,7 @@ export function restoreFieldFocus(root: ParentNode): void {
   const input = root.querySelector<HTMLInputElement>(
     `#${CSS.escape(refocusId)}`,
   );
-  refocusId = null;
-  if (input && !input.disabled) {
+  if (input && !input.disabled && document.activeElement !== input) {
     input.focus();
     input.select();
   }
@@ -145,7 +144,12 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
       const direction = event.key === 'ArrowUp' ? 1 : -1;
       const base = Number(input.value);
       const from = Number.isFinite(base) ? base : committed;
+      // The owner may re-render more than once for this commit; keep the
+      // field focused through all of them, then forget it.
       refocusId = input.id;
+      window.setTimeout(() => {
+        if (refocusId === input.id) refocusId = null;
+      });
       commit(from + direction * step * (event.shiftKey ? 10 : 1));
     }
   };
