@@ -169,21 +169,21 @@ export function mountEditorShell(
       </div>
       <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}</nav>
       <aside class="library panel" aria-label="${t('library.title')}">
-        <div class="library-tabs" id="media-source-tabs">
+        <div class="library-tabs" id="media-source-tabs" data-rail-panel="Media" hidden>
           <button type="button" data-source="project" aria-pressed="true">${t('library.projectMedia')}</button>
           <button type="button" data-source="stock" aria-pressed="false">${t('library.stock')}</button>
         </div>
-        <div class="library-search">
+        <div class="library-search" data-rail-panel="Media" hidden>
           ${iconSvg('search')}
           <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
         </div>
-        <div class="import-row"><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
-        <div class="media-panel" id="media-panel" hidden></div>
-        <div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
-        <div class="draw-panel" id="draw-panel" hidden></div>
-        <div class="draw-panel shapes-panel" id="shapes-panel" hidden></div>
-        <div class="scene-heading" id="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
-        <div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div>
+        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
+        <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
+        <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
+        <div class="draw-panel" id="draw-panel" data-rail-panel="Draw" hidden></div>
+        <div class="draw-panel shapes-panel" id="shapes-panel" data-rail-panel="Elements" hidden></div>
+        <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
+        <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
@@ -827,13 +827,13 @@ export function mountEditorShell(
     Elements: ['library.elementsTitle', 'library.elementsDescription'],
     Transitions: ['library.transitionsTitle', 'library.transitionsDescription'],
   };
-  const mediaOnly = [
-    element('#media-source-tabs'),
-    element('.library-search'),
-    element('.import-row'),
-    element('#media-panel'),
+  // G1.7: every rail category shows only its own panels. The markup tags each
+  // panel with data-rail-panel; this is the one place that decides visibility,
+  // applied on first load and after every switch.
+  const railPanels = [
+    ...root.querySelectorAll<HTMLElement>('[data-rail-panel]'),
   ];
-  const sceneOnly = [element('#scene-heading'), element('#scene-list')];
+  const OWN_PANELS = new Set(['Media', 'Scene', 'Draw', 'Elements']);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
     element('#draw-panel'),
@@ -851,23 +851,20 @@ export function mountEditorShell(
         'aria-pressed',
         String(sibling.getAttribute('data-category') === category),
       );
-    const isMedia = category === 'Media';
-    const isScene = category === 'Scene';
-    const isDraw = category === 'Draw';
-    const isElements = category === 'Elements';
-    for (const el of mediaOnly) el.hidden = !isMedia;
-    for (const el of sceneOnly) el.hidden = !isScene;
-    element('#draw-panel').hidden = !isDraw;
-    element('#shapes-panel').hidden = !isElements;
-    if (!isDraw) session.setDrawBrush(null);
-    element('.library-placeholder').hidden =
-      isMedia || isScene || isDraw || isElements;
-    if (!isScene && !isDraw && !isElements) {
+    const shown = OWN_PANELS.has(category) ? category : 'placeholder';
+    for (const panel of railPanels)
+      panel.hidden = panel.dataset.railPanel !== shown;
+    root
+      .querySelector('.library')
+      ?.setAttribute('data-active-category', category);
+    if (category !== 'Draw') session.setDrawBrush(null);
+    if (shown === 'placeholder') {
       const [titleKey, descriptionKey] = descriptions[category]!;
       element('#library-title').textContent = t(titleKey);
       element('#library-description').textContent = t(descriptionKey);
     }
   };
+  applyCategory(activeCategory);
   for (const button of root.querySelectorAll<HTMLButtonElement>(
     '[data-category]',
   ))
