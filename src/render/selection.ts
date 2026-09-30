@@ -31,7 +31,8 @@ export function selectionBounds(
   id: string,
 ): { bounds: TransformBounds; matrix: AffineMatrix } | null {
   const found = locateLayer(source.composition.layers, id);
-  if (!found) return null;
+  // H1.3: audio has no box to select, resize or measure.
+  if (!found || found.layer.type === 'audio') return null;
   try {
     const matrix = worldTransform(
       source.composition,

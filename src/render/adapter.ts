@@ -237,6 +237,9 @@ export function deriveRenderItems(input: RenderSource): {
         visit(layer.children, [...ancestors, layer.id]);
         continue;
       }
+      // H1.3: sound has no picture. Audio layers are never drawn, picked,
+      // outlined or snapped to; they live as clips on audio tracks.
+      if (layer.type === 'audio') continue;
       try {
         const world = worldTransform(
           source.composition,
