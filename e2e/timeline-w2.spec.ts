@@ -398,7 +398,7 @@ test('[VID-015] Speed from the timeline and canvas menus changes duration, shows
   await timelineMenu(page, 'clip-b');
   await page
     .locator('.timeline-menu')
-    .getByRole('menuitem', { name: 'Speed ›' })
+    .getByRole('menuitem', { name: 'Speed' })
     .click();
   await page
     .locator('.timeline-menu')
@@ -419,7 +419,7 @@ test('[VID-015] Speed from the timeline and canvas menus changes duration, shows
   await seek(page, 3.5);
   await canvasMenu(page, 800, 200);
   const menu = page.locator('#canvas-context-menu');
-  await menu.getByRole('menuitem', { name: 'Speed ›' }).click();
+  await menu.getByRole('menuitem', { name: 'Speed' }).click();
   await menu.getByRole('menuitemradio', { name: '0.5×' }).click();
   b = (await clips(page))('clip-b');
   expect([b.speed, b.duration]).toEqual([0.5, 4]);
@@ -430,7 +430,7 @@ test('[VID-015] Speed from the timeline and canvas menus changes duration, shows
   await timelineMenu(page, 'clip-a');
   await page
     .locator('.timeline-menu')
-    .getByRole('menuitem', { name: 'Speed ›' })
+    .getByRole('menuitem', { name: 'Speed' })
     .click();
   await page
     .locator('.timeline-menu')

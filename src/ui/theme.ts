@@ -9,7 +9,10 @@ const listeners = new Set<() => void>();
 
 export function themePreference(): ThemePreference {
   try {
-    const saved = localStorage.getItem(THEME_KEY);
+    const saved =
+      typeof localStorage === 'undefined'
+        ? null
+        : localStorage.getItem(THEME_KEY);
     if (saved === 'dark' || saved === 'light' || saved === 'system')
       return saved;
   } catch {
@@ -26,9 +29,11 @@ export function resolveTheme(preference = themePreference()): Theme {
   return systemQuery()?.matches ? 'light' : 'dark';
 }
 export const currentTheme = (): Theme =>
+  typeof document !== 'undefined' &&
   document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
 
 function apply(): void {
+  if (typeof document === 'undefined') return;
   const theme = resolveTheme();
   const root = document.documentElement;
   root.dataset.theme = theme;
@@ -41,7 +46,8 @@ function apply(): void {
 
 export function setThemePreference(preference: ThemePreference): void {
   try {
-    localStorage.setItem(THEME_KEY, preference);
+    if (typeof localStorage !== 'undefined')
+      localStorage.setItem(THEME_KEY, preference);
   } catch {
     /* The choice still applies for this session. */
   }

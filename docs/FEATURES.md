@@ -93,24 +93,24 @@ Layout of the target UI plus the reusable component set every later feature uses
 |---|---|---|---|---|
 | LAY-001 | P0 | W1 | Todo | Layout matches the approved target: left icon rail with panel, central canvas, right panel with tabs and icon rail, bottom timeline |
 | LAY-002 | P0 | W1 | Verified | Left rail has Media, Graphics, Text, Templates, Audio, Elements, Transitions; each switches the left panel content |
-| LAY-003 | P0 | W1 | Claimed | Left panel can be collapsed and expanded |
-| LAY-004 | P0 | W1 | Claimed | Panel dividers (left, right, timeline) are draggable with min and max sizes |
+| LAY-003 | P0 | W1 | Verified | Left panel can be collapsed and expanded |
+| LAY-004 | P0 | W1 | Verified | Panel dividers (left, right, timeline) are draggable with min and max sizes |
 | LAY-005 | P1 | W1 | Todo | Panel sizes and collapsed state persist across reloads |
 | LAY-006 | P2 | W1 | Todo | Double-click a divider to reset its size |
 | LAY-007 | P0 | W1 | Todo | Right panel has tabs Properties, Effects, Transitions and an icon rail Properties, Effects, Color, Audio, Speed; selection persists while switching |
-| LAY-008 | P0 | W1 | Todo | Right panel can be collapsed and expanded |
+| LAY-008 | P0 | W1 | Verified | Right panel can be collapsed and expanded |
 | LAY-009 | P1 | W1 | Todo | Timeline height is resizable and can be maximized and restored |
 | LAY-010 | P1 | W1 | Todo | Preview can go fullscreen and exit with Esc |
 | LAY-011 | P2 | W1 | Todo | Layout presets (Edit, Timeline focus, Preview focus) |
 | LAY-012 | P1 | W1 | Todo | View mode switch Beginner, Creator, Advanced changes only which tools are visible, never the engine or project data |
-| LAY-013 | P1 | W1 | Todo | Responsive: 1440+ full layout, 1024 to 1439 collapses right panel, 768 to 1023 tablet layout, below 768 review-only mode |
-| LAY-014 | P0 | W1 | Todo | No horizontal page scroll and no clipped controls at 1280x720 and 1920x1080 |
-| LAY-015 | P0 | W1 | Todo | Every icon-only button has an accessible name and a tooltip that includes its shortcut |
-| LAY-016 | P0 | W1 | Todo | Toast notification component (info, success, warning, error) with auto-dismiss and manual dismiss |
+| LAY-013 | P1 | W1 | Verified | Responsive (owner H2): 1440 px and wider docks both panels; 1024 to 1439 docks the left panel and opens the right one as an overlay drawer beside its icon rail; 768 to 1023 opens both as drawers over a scrim with 40 px touch targets; below 768 one panel at a time opens as a bottom sheet and the timeline toolbar is simpler |
+| LAY-014 | P0 | W1 | Verified | No horizontal page scroll and no overlapping or clipped top-bar controls at 1920x1080, 1440x900, 1366x768, 1280x720, 1024x768, 820x1180 and 390x844, in both themes |
+| LAY-015 | P0 | W1 | Verified | Every icon-only button has an accessible name and a tooltip that includes its shortcut |
+| LAY-016 | P0 | W1 | Verified | Toast notification component (info, success, warning, error) with auto-dismiss and manual dismiss |
 | LAY-017 | P0 | W1 | Todo | Modal dialog component traps focus, closes on Esc and returns focus to the trigger |
 | LAY-018 | P0 | W1 | Verified | Dropdown, popover and menu components share one implementation with keyboard navigation |
 | LAY-019 | P0 | W1 | Todo | Every panel has designed loading, empty and error states |
-| LAY-020 | P0 | W1 | Todo | Design tokens (color, spacing, radius, type scale, elevation) live in one place; a theme swap needs no component edits |
+| LAY-020 | P0 | W1 | Verified | Design tokens (color, spacing, radius, type scale, elevation) live in one place; a theme swap needs no component edits |
 | LAY-021 | P0 | W1 | Todo | One consistent line-icon set replaces all unicode glyph icons |
 | LAY-022 | P0 | W1 | Claimed | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
 | LAY-023 | P0 | W1 | Claimed | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
@@ -122,6 +122,9 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-029 | P0 | W1 | Verified | Every clickable element has hover, pressed and keyboard-focus states |
 | LAY-030 | P0 | W1 | Verified | Menus: submenus open on hover after a short delay and stay open on a diagonal move toward them; arrow keys, Enter and Esc work at every level; menus reposition to fit and show no scrollbar in normal use |
 | LAY-031 | P0 | W1 | Verified | Side panels have one open state: a rail category opens its panel, the active category collapses it, another swaps it; the top-bar toggles show and change the same state, on the left and on the right |
+| LAY-032 | P0 | W1 | Verified | Themes: dark (default) and light from semantic tokens; dark, light or system from the top bar, the menu and the palette; kept in the browser (not the project) and applied before first paint; the artboard is never themed; text, secondary text and accent on panels reach 4.5:1 |
+| LAY-033 | P0 | W1 | Verified | Motion tokens (120, 180, 240 and 320 ms with enter and exit easings); side panels open and close in 150 to 300 ms without reflowing their content; reduced motion makes it about 0 |
+| LAY-034 | P1 | W1 | Verified | A window under 800 px tall shows six rail categories and a More menu for the rest |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 

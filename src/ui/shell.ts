@@ -18,6 +18,7 @@ import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
   Canvas2DRenderer,
   fitViewport,
+  EDITOR_FIT,
   type CompositionRenderer,
 } from '../render/canvas';
 import { renderInspector } from './inspector';
@@ -64,6 +65,7 @@ import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
 import { openModal } from './components/modal';
+import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
@@ -71,6 +73,7 @@ import { mountShortcutSheet } from './shortcut-sheet';
 import { runCommand, type CommandContext } from '../commands/registry';
 import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
+import { cycleThemePreference, onThemeChange, themePreference } from './theme';
 import {
   t,
   formatNumber,
@@ -80,16 +83,18 @@ import {
   bindDomTranslations,
 } from '../i18n';
 
+// H2: the order a user reaches for them; below 800 px of height the rail
+// shows the first six and a More button for the rest.
 const RAIL_CATEGORIES = [
-  'Media',
-  'Graphics',
-  'Text',
   'Templates',
-  'Audio',
   'Elements',
+  'Text',
+  'Media',
   'Draw',
-  'Transitions',
   'Scene',
+  'Graphics',
+  'Audio',
+  'Transitions',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -100,7 +105,7 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Elements: 'elements',
   Draw: 'pen',
   Transitions: 'transitions',
-  Scene: 'group',
+  Scene: 'layers',
 };
 const RIGHT_SECTIONS = [
   'Properties',
@@ -142,18 +147,27 @@ export function mountEditorShell(
   root.innerHTML = `
     <div class="editor-shell">
       <header class="topbar">
-        <button type="button" id="menu-trigger" class="icon-button menu-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" aria-label="${t('menu.main')}" title="${t('menu.main')}">${iconSvg('menu')}</button>
-        <div class="brand"><span class="brand-mark" aria-hidden="true">N</span><strong>${t('app.title')}</strong><span class="brand-divider"></span><span class="product-mode">${t('app.mode')}</span></div>
-        <div class="project-title">
-          <span class="project-dot" id="save-status-dot" aria-hidden="true"></span>
-          <span id="project-name" tabindex="0" role="button" aria-label="${t('project.renameLabel')}"></span>
-          <input type="text" id="project-name-input" class="project-name-field" aria-label="${t('project.name')}" hidden />
-          <span class="save-status" id="save-status-text"></span>
+        <div class="topbar-start">
+          <button type="button" id="menu-trigger" class="icon-button menu-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" aria-label="${t('menu.main')}" title="${t('menu.main')}">${iconSvg('menu')}</button>
+          <span class="brand-mark" aria-hidden="true">N</span>
+          <div class="project-title">
+            <span class="project-dot" id="save-status-dot" aria-hidden="true"></span>
+            <span id="project-name" tabindex="0" role="button" aria-label="${t('project.renameLabel')}"></span>
+            <input type="text" id="project-name-input" class="project-name-field" aria-label="${t('project.name')}" hidden />
+            <span class="save-status" id="save-status-text"></span>
+          </div>
         </div>
-        <div class="top-actions">
-          <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')}">${iconSvg('undo')}</button>
-          <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')}">${iconSvg('redo')}</button>
-          <button type="button" id="export" class="primary">${iconSvg('export')}${t('action.export')}</button>
+        <div class="segmented mode-switch" id="mode-switch" role="radiogroup" aria-label="${t('mode.label')}">
+          <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
+          <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
+          <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
+        </div>
+        <div class="topbar-end top-actions">
+          <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
+          <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
+          <span class="topbar-divider" aria-hidden="true"></span>
+          <button type="button" id="theme-toggle" class="icon-button" aria-label="${t('theme.label')}" title="${t('theme.label')}">${iconSvg('themeDark')}</button>
+          <button type="button" id="export" class="primary">${iconSvg('export')}<span class="export-label">${t('action.export')}</span></button>
         </div>
       </header>
       <div class="app-menu" id="app-menu" role="menu" hidden>
@@ -168,7 +182,8 @@ export function mountEditorShell(
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
-          <button type="button" id="language-toggle" role="menuitem">${iconSvg('properties')}<span id="language-toggle-label"></span></button>
+          <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
+          <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.help')}">
           <div class="app-menu-label">${t('menu.help')}</div>
@@ -176,7 +191,7 @@ export function mountEditorShell(
           <button type="button" id="about" role="menuitem">${iconSvg('info')}${t('menu.about')}</button>
         </div>
       </div>
-      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}</nav>
+      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
       <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
         <div class="library-tabs" id="media-source-tabs" data-rail-panel="Media" hidden>
           <button type="button" data-source="project" aria-pressed="true">${t('library.projectMedia')}</button>
@@ -194,22 +209,22 @@ export function mountEditorShell(
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
-        <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="preview-toolbar">
-          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select><button type="button" class="button" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('templates', 15)}${t('scene.board')}</button></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="preview-toolbar" id="canvas-footer">
+          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 16)}<span>${t('scene.board')}</span></button></div>
+          <div class="preview-summary"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom" class="sr-only">${t('canvas.fit')}</span></div>
           <div class="canvas-zoom-controls">
-            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')}">${iconSvg('hand')}</button>
+            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')} (H)">${iconSvg('hand')}</button>
             <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut')}</button>
             <span id="canvas-zoom-field"></span>
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn')}</button>
-            <button type="button" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit')}${t('canvas.fit')}</button>
-            <button type="button" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
+            <button type="button" class="button sm ghost" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit', 16)}<span>${t('canvas.fit')}</span></button>
+            <button type="button" class="button sm ghost" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
+            <button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
-        <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
@@ -219,7 +234,8 @@ export function mountEditorShell(
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
       <section class="timeline" aria-label="${t('timeline.title')}"><div class="timeline-header"><div class="timeline-label"><h2>${t('timeline.title')}</h2></div></div><div id="timeline-foundation"></div></section>
-      <footer class="statusbar"><span id="status" role="status" aria-live="polite">${t('status.ready')}</span><span>${t('app.wave')} <span class="status-separator">·</span> ${t('app.shellStatus')}</span></footer>
+      <footer class="statusbar sr-only"><span id="status" role="status" aria-live="polite">${t('status.ready')}</span></footer>
+      <div class="drawer-scrim" id="drawer-scrim" hidden></div>
       <div class="drop-overlay" id="drop-overlay" hidden>${t('drop.overlay')}</div>
     </div>`;
 
@@ -294,6 +310,7 @@ export function mountEditorShell(
       Math.max(1, canvas.clientHeight || stage.clientHeight),
       session.source.composition,
       window.devicePixelRatio || 1,
+      EDITOR_FIT,
     );
     const at = (pan: readonly [number, number]): AffineMatrix =>
       multiplyMatrices(
@@ -341,6 +358,20 @@ export function mountEditorShell(
     chipPointer = [event.clientX - box.left, event.clientY - box.top];
   });
   const canvasChip = element('#canvas-chip');
+  // H2: the artboard's soft shadow is a themed element behind the canvas (the
+  // canvas is transparent outside the artboard), so no pixel of the canvas
+  // outside the artboard is painted by it.
+  const artboardShadow = element('#artboard-shadow');
+  const placeArtboardShadow = () => {
+    const [a, , , d, e, f] = viewport().matrix;
+    const { width, height } = session.source.composition;
+    Object.assign(artboardShadow.style, {
+      left: `${canvas.offsetLeft + e}px`,
+      top: `${canvas.offsetTop + f}px`,
+      width: `${a * width}px`,
+      height: `${d * height}px`,
+    });
+  };
   const updateChip = (source: typeof session.source) => {
     const chip = interaction.chip;
     const geometry = chip?.kind === 'size' ? selectionGeometryOf(source) : null;
@@ -464,6 +495,7 @@ export function mountEditorShell(
     // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
     if (!session.playing) syncGeometryFields(root, drawn);
     updateChip(drawn);
+    placeArtboardShadow();
     updateSelectionActions();
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
@@ -1013,6 +1045,17 @@ export function mountEditorShell(
   };
   const applyCategory = (category: string) => {
     syncRails();
+    const hidden = root.querySelector<HTMLElement>(
+      `#rail-left [data-category="${category}"]`,
+    );
+    root
+      .querySelector('#rail-more')
+      ?.setAttribute(
+        'aria-pressed',
+        String(
+          !!hidden && hidden.offsetParent === null && !!workspace?.leftOpen,
+        ),
+      );
     const shown = OWN_PANELS.has(category) ? category : 'placeholder';
     for (const panel of railPanels)
       panel.hidden = panel.dataset.railPanel !== shown;
@@ -1043,6 +1086,40 @@ export function mountEditorShell(
       applyCategory(activeCategory);
       workspace?.setOpen('left', true);
     };
+  // H2: on a short window the rail shows six categories; More lists the rest.
+  const moreButton = element<HTMLButtonElement>('#rail-more');
+  let morePopover: PopoverHandle | null = null;
+  moreButton.onclick = () => {
+    if (morePopover) return morePopover.close();
+    const menu = document.createElement('div');
+    menu.className = 'rail-more-menu';
+    menu.setAttribute('role', 'menu');
+    for (const button of root.querySelectorAll<HTMLButtonElement>(
+      '#rail-left [data-category]',
+    )) {
+      if (button.offsetParent !== null) continue;
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'menuitem');
+      item.dataset.moreCategory = button.dataset.category!;
+      item.setAttribute(
+        'aria-pressed',
+        button.getAttribute('aria-pressed') ?? 'false',
+      );
+      item.innerHTML = button.innerHTML;
+      item.onclick = () => {
+        morePopover?.close();
+        button.click();
+      };
+      menu.append(item);
+    }
+    morePopover = openPopover(moreButton, menu, {
+      label: t('library.more'),
+      onClose: () => {
+        morePopover = null;
+      },
+    });
+  };
   const searchInput = element<HTMLInputElement>('#asset-search');
   searchInput.oninput = () => mediaPanel.filter(searchInput.value);
   // MED-001/MED-002: the Import button and OS file drops both import into Project Media.
@@ -1479,10 +1556,42 @@ export function mountEditorShell(
   element<HTMLButtonElement>('#language-toggle').onclick = () => {
     setLanguage(getLanguage() === 'en' ? 'hi' : 'en');
   };
+  // H2: the theme (dark, light or system), from the top bar, the menu and
+  // the palette; a UI preference, never project data.
+  const themeButton = element<HTMLButtonElement>('#theme-toggle');
+  const applyThemeControls = () => {
+    const preference = themePreference();
+    const order = ['dark', 'light', 'system'] as const;
+    const next = order[(order.indexOf(preference) + 1) % order.length]!;
+    const name = t(`theme.${preference}`);
+    themeButton.innerHTML = iconSvg(
+      preference === 'dark'
+        ? 'themeDark'
+        : preference === 'light'
+          ? 'themeLight'
+          : 'themeSystem',
+    );
+    themeButton.title = t('theme.toggleTip', {
+      name,
+      next: t(`theme.${next}`),
+    });
+    themeButton.dataset.theme = preference;
+    element('#theme-menu-label').textContent = t('theme.menu', { name });
+  };
+  themeButton.onclick = () => cycleThemePreference();
+  element<HTMLButtonElement>('#theme-menu').onclick = () =>
+    cycleThemePreference();
+  const unsubscribeTheme = onThemeChange(() => {
+    applyThemeControls();
+    // The canvas overlays and stage follow the theme.
+    safely(draw);
+  });
+  applyThemeControls();
   const translateStatic = bindDomTranslations(root);
   const unsubscribeLanguage = subscribe(() => {
     translateStatic();
     applyLanguage();
+    applyThemeControls();
     applyCategory(activeCategory);
     setRightSection(activeSection);
     refresh(true);
@@ -1541,6 +1650,7 @@ export function mountEditorShell(
       palette.dispose();
       newProjectForm.dispose();
       unsubscribeLanguage();
+      unsubscribeTheme();
       sceneBoard.dispose();
       mediaPanel.dispose();
       positionPanel.dispose();

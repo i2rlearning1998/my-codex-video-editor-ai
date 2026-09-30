@@ -91,3 +91,60 @@ Every fix below has a Playwright test in the sandbox Chromium that fails on the 
 
 - Rotated objects no longer snap while being resized (they still snap while being moved).
 - The pinch gesture is proven through Ctrl+wheel (that is how Chromium reports it); no real trackpad was used.
+
+## Part H2: design system, shell, responsive
+
+### What changed
+
+- **Tokens and themes (LAY-020, LAY-032, D-119).**
+  - `src/ui/tokens.css` holds the owner's colours for dark and light, spacing, radius, type, three shadows, a z-index scale and motion.
+  - Every older token name now points at the new semantic ones, so the whole app follows the theme with no component edits.
+  - Dark is the default. The theme button in the top bar, "Theme" in the View menu and "Switch theme" in the palette cycle dark, light and system.
+  - The choice is kept in the browser (not in the project) and applied before the first paint, so there is no flash. The artboard never changes colour.
+  - Text, secondary text and accent text reach 4.5:1 on every surface in both themes (unit test). The pure accent #7c5cff is 3.96:1 on the dark panel, so accent-coloured text uses a lighter shade.
+- **Shell (LAY-003, LAY-004, LAY-008, LAY-013, LAY-034, D-120).**
+  - Top bar (48 px): menu, panel toggles, project name and save status on the left; the Editor | 2D Animation | 3D Animation switch in the centre (3D disabled; the switch itself comes alive in H4); undo, redo, theme and Export on the right.
+  - Left rail 64 px with a 3 px accent bar on the active category. The left panel is 320 px (drag 260 to 420), the right panel 280 px (drag 240 to 360) beside a 44 px icon rail, and the timeline 280 px (drag 160 px to 60% of the height).
+  - The canvas has a reserved row for the floating toolbar, so showing the toolbar never moves the page, and a footer with the scene picker, Scenes, the summary and the zoom controls.
+  - Fit uses the whole stage minus 24 px. The artboard sits on the stage colour with a soft, themed shadow.
+  - Panels open and close in 240 ms, and about 0 ms with reduced motion. Their content does not reflow while they move, and the canvas refits at most once per frame.
+- **Responsive (LAY-013, LAY-014).**
+  - 1024 to 1439: the right panel opens as a drawer over the stage.
+  - 768 to 1023: both panels are drawers over a dimmed stage, and buttons are at least 40 px.
+  - Under 768: one panel at a time slides up as a bottom sheet, and the timeline toolbar keeps only the transport.
+  - Under 800 px tall, the rail shows six categories and a More button.
+  - Checked at 1920×1080, 1440×900, 1366×768, 1280×720, 1024×768, 820×1180 and 390×844 in both themes: no horizontal scrollbar, no overlapping or clipped top-bar controls.
+- **Components (LAY-015, LAY-016, D-121).**
+  - Buttons have three sizes (28, 32, 40) and primary, secondary, ghost and danger styles. There are also a segmented control, switch, tabs, cards (they lift on hover), skeletons and empty states.
+  - Menus have rounded corners, 32 px rows, an icon column and the shortcut on the right; they animate in. Submenus open after 120 ms and stay 200 ms. Disabled items show their reason on hover.
+  - Styled tooltips appear after 500 ms, then instantly on the next control, and show the shortcut.
+  - Toasts can carry an action button.
+  - Controls that name a later wave read "Planned: Wave N (ID)".
+  - Icons share one 24-unit grid with a 1.75 stroke.
+- **Fixes found on the way.**
+  - A background save no longer overwrites the last status message. The old race could hide a refusal message (VID-015).
+  - A drag along one axis no longer changes the other axis by a rounding error: core `moveTransform` adds the pointer delta as one step (unit test fails on the old code).
+  - The canvas no longer draws a focus frame around the whole stage after a click; the frame shows only after keyboard navigation.
+- **Moved:** "Copy debug report" is in the menu's Help group. The status bar is now a hidden live region, because the save state is in the top bar. The e2e default window is 1600×1000.
+
+### Try it (H2)
+
+| # | Do this | Expect | ID |
+| --- | --- | --- | --- |
+| 1 | Open the app | Dark theme; a slim top bar with Editor / 2D Animation / 3D Animation in the middle; the page sits on a darker stage with a soft shadow | LAY-032 |
+| 2 | Click the moon button in the top bar twice, then once more | Light; then System (follows your computer); then Dark again | LAY-032 |
+| 3 | Pick Light and reload | The app opens light straight away, with no dark flash | LAY-032 |
+| 4 | Click the highlighted rail category | The left panel slides shut in about a quarter second; click again to open | LAY-033 |
+| 5 | Drag the edge between the left panel and the canvas far right | It stops at 420 px wide | LAY-004 |
+| 6 | Hover the zoom buttons | A dark tooltip with the shortcut after about half a second; the next one appears at once | LAY-015 |
+| 7 | Right-click the headline, hover Align | Rounded menu with icons column and shortcuts; the submenu opens quickly | LAY-030 |
+| 8 | Make the window about 1200 px wide, click a right-rail icon | The properties panel slides in over the canvas | LAY-013 |
+| 9 | Make the window about 900 px wide, click a rail category | The panel opens over a dimmed canvas; click the dim area to close | LAY-013 |
+| 10 | Make the window short (under 800 px tall) | The rail shows six categories and More; More lists the rest | LAY-034 |
+
+### Known gaps (H2)
+
+- The export dialog, the New project form and the palette keep their structure; they only have the new colours, radius and animation (the export dialog is reworked in H3).
+- The phone layout is usable, but the timeline keeps its 224 px track-header column (a structural timeline change is out of scope), so on a 390 px phone the tracks scroll sideways.
+- The context toolbar still has the G-series controls with labels; on narrower stages it scrolls. H3 turns it into the compact Canva row.
+- Bundled UI font: the system font stack is used until the text series.

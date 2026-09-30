@@ -1,3 +1,4 @@
+import { pictureOf, type PictureStyle } from './picture';
 import {
   activeAtTime,
   clipSourceTime,
@@ -117,6 +118,8 @@ export interface RenderItem {
   readonly media?: MediaFrameRequest;
   /** SHP-019: a freehand drawing's stroke in local coordinates. */
   readonly path?: DrawingPath;
+  /** H3: a picture's crop, rounded corners and border. */
+  readonly picture?: PictureStyle;
   /** W5-C Wipe: the visible fraction of the box, from the left. */
   readonly reveal?: number;
 }
@@ -301,6 +304,7 @@ export function deriveRenderItems(input: RenderSource): {
               ? { shape: shapeOf(layer)! }
               : {}),
             ...(media ? { media } : {}),
+            ...(pictureOf(layer) ? { picture: pictureOf(layer)! } : {}),
             ...(drawing ? { path: drawing } : {}),
             ...(numericProperty(layer, 'presetReveal') !== undefined
               ? {

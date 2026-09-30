@@ -1,4 +1,5 @@
 import type { EditorEngine } from '../core';
+import { cycleThemePreference } from '../ui/theme';
 import type { EditorSession } from '../ui/session';
 import type { CanvasView } from '../ui/canvas-view';
 import {
@@ -116,6 +117,16 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     shortcut: 'Ctrl+/',
     isEnabled: (context) => !!context.openShortcuts,
     run: (context) => context.openShortcuts?.(),
+  },
+  {
+    // H2: dark → light → system, the same as the top bar's theme button.
+    id: 'theme',
+    labelKey: 'command.theme',
+    shortcut: '',
+    isEnabled: () => true,
+    run: () => {
+      cycleThemePreference();
+    },
   },
   {
     id: 'undo',

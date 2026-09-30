@@ -133,9 +133,11 @@ test('[SHP-001] the Elements panel adds a rectangle, rounded rectangle, ellipse,
   await page.keyboard.press('Control+z');
   // Arrow: the head at the right end is wider than the 6-unit shaft.
   await add(page, 'arrow');
+  // The head spans x 742 to 760 around the axis at y 360; (746, 357) is 3
+  // units inside it, where the 6-unit shaft would not reach.
   const [shaft, arrowHead] = await clean(page, [
     [600, 352],
-    [750, 355],
+    [746, 357],
   ]);
   expect(shaft).toEqual(beside);
   expect(close(arrowHead!, INK, 30)).toBe(true);

@@ -17,7 +17,7 @@ import {
   locateLayer,
   type RenderSource,
 } from '../src/render/adapter';
-import { fitViewport, type Viewport } from '../src/render/canvas';
+import { fitViewport, EDITOR_FIT, type Viewport } from '../src/render/canvas';
 import { layoutText } from '../src/render/text-layout';
 import {
   DEFAULT_TRANSFORM_CAPABILITIES,
@@ -34,7 +34,8 @@ afterEach(() => {
 function setup(
   nested: boolean | number = false,
   ratio = 1,
-  size = [480, 280],
+  // H2: 24 px per side around the 400 × 200 composition fits at exactly 100%.
+  size = [448, 248],
   type: 'shape' | 'text' = 'shape',
 ) {
   const project = createProject();
@@ -129,7 +130,7 @@ function setup(
   };
   const source = () => shell.session.source;
   const view = () =>
-    fitViewport(size[0]!, size[1]!, source().composition, ratio);
+    fitViewport(size[0]!, size[1]!, source().composition, ratio, EDITOR_FIT);
   const screen = (local: Point2): Point2 =>
     transformPoint(
       view().matrix,
@@ -494,7 +495,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
   it.each(['shape', 'text'] as const)(
     'derives the %s handle capabilities and a dedicated outside rotation handle',
     (type) => {
-      const s = setup(false, 1, [480, 280], type);
+      const s = setup(false, 1, [448, 248], type);
       s.shell.session.select('child');
       const overlay = s.geometry();
       expect(
@@ -617,7 +618,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
   it.each(['left', 'right'] as const)(
     'text %s width control reflows and preserves scale/font and opposite top corner',
     (side) => {
-      const s = setup(false, 1, [480, 280], 'text');
+      const s = setup(false, 1, [448, 248], 'text');
       s.shell.session.select('child');
       const before = s.engine.state;
       const overlay = s.geometry();
@@ -650,7 +651,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     },
   );
   it('text width uses inverse local and parent transforms, including reflection', () => {
-    const s = setup(true, 1, [480, 280], 'text');
+    const s = setup(true, 1, [448, 248], 'text');
     s.shell.session.select('child');
     s.edit('Scale X', '-2');
     s.edit('Rotation', '30');
@@ -670,7 +671,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     expect(s.geometry().corners[1]![1]).toBeCloseTo(before.corners[1]![1]);
   });
   it('text corners scale the whole object without changing box width, height, or font size', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
     const before = s.current().properties;
     const start = s.geometry().corners[2]!;
@@ -686,7 +687,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
       const s = setup(
         false,
         1,
-        [480, 280],
+        [448, 248],
         id === 'text-right' ? 'text' : 'shape',
       );
       s.shell.session.select('child');
@@ -710,7 +711,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
       const s = setup(
         false,
         1,
-        [480, 280],
+        [448, 248],
         id === 'text-right' ? 'text' : 'shape',
       );
       s.shell.session.select('child');
@@ -724,7 +725,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     },
   );
   it('vertical-only text width movement does not enable wrapping or create an edit', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
     const before = s.engine.state;
     const start = s
@@ -737,7 +738,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
   it.each([1, 2, 4])(
     'keeps handle hit regions, hover feedback, and width edits logical at DPR %s',
     (ratio) => {
-      const s = setup(false, ratio, [480, 280], 'text');
+      const s = setup(false, ratio, [448, 248], 'text');
       s.shell.session.select('child');
       const handle = s
         .geometry()
@@ -845,7 +846,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     expect(s.engine.canUndo).toBe(false);
   });
   it('retains width property metadata and persists editable text with the current schema', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     const property = number(100);
     property.constraints = [{ reserved: 'width metadata' }];
     s.engine.commands.execute({
@@ -875,7 +876,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     expect(layer.properties.textWrap!.value).toBe(true);
   });
   it('rejects incompatible text properties without partial writes or history', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     s.engine.commands.execute({
       type: 'SET_PROPERTY',
       compositionId: s.compositionId,
@@ -904,7 +905,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     );
   });
   it('clamps text width at one local unit and keeps font and scale intact', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
     const start = s
       .geometry()
@@ -917,7 +918,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     expect(s.engine.history.undo).toHaveLength(1);
   });
   it('rejects invalid text-width coordinates and discards an already reflowed preview', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
     const before = s.engine.state;
     const start = s
@@ -951,7 +952,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     expect(s.engine.state).toBe(before);
   });
   it('rolls back all text-box commands on invalid layout results and preserves redo', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
     s.edit('Position X', '60');
     s.engine.undo();
@@ -1034,7 +1035,7 @@ describe('Tier 2.2.2 uniform corner scaling', () => {
     },
   );
   it('preserves text glyph proportions across repeated normal corner drags', () => {
-    const s = setup(false, 1, [480, 280], 'text');
+    const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
     const properties = s.current().properties;
     for (let i = 1; i <= 3; i++) {

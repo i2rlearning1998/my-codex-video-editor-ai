@@ -506,3 +506,20 @@ describe('command semantics frozen before rendering', () => {
     // Contract verification only: no decomposition or transformed-UNGROUP command is introduced.
   });
 });
+
+describe('H2 move precision', () => {
+  it('[CV-013] a move along one axis keeps the other axis exactly', async () => {
+    const { moveTransform } = await import('../src/core');
+    const base = {
+      position: { value: [100, 100] as [number, number] },
+      rotation: { value: 0 },
+      scale: { value: [1, 1] as [number, number] },
+      opacity: { value: 1 },
+    };
+    // 100 + 211.0521... - 211.0521... is not 100 in floating point.
+    const y = 211.46775; // a composition y from a 0.659375 canvas scale
+    expect(100 + y - y).not.toBe(100);
+    const moved = moveTransform(base as never, [10, y], [60, y]);
+    expect(moved.position.value).toEqual([150, 100]);
+  });
+});

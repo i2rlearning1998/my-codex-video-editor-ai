@@ -1,5 +1,5 @@
 /** Minimal inline-SVG line-icon set. No external icon library dependency (offline build).
- *  Each icon is 20x20, stroke-based, inherits currentColor. Usage: element.innerHTML = icon('menu'). */
+ *  One style: a 24-unit grid, 1.75 stroke, round caps, inherits currentColor. Usage: element.innerHTML = icon('menu'). */
 const PATHS: Record<string, string> = {
   menu: 'M3 5h14M3 10h14M3 15h14',
   media: 'M3 4h14v12H3z M6 8l3 2-3 2z M11 6h4 M11 9h4 M11 12h4',
@@ -89,13 +89,58 @@ const PATHS: Record<string, string> = {
   freeze: 'M10 3v14 M3.9 6.5l12.2 7 M3.9 13.5l12.2-7',
   link: 'M8.5 11.5a3 3 0 004.2 0l2.6-2.6a3 3 0 00-4.2-4.2l-1 1 M11.5 8.5a3 3 0 00-4.2 0l-2.6 2.6a3 3 0 004.2 4.2l1-1',
   panelLeft: 'M3 4h14v12H3z M8 4v12',
+  // H2 additions (same 20-unit drawing inside the 24 grid).
+  themeDark: 'M16 12.5A7 7 0 017.5 4a7 7 0 108.5 8.5z',
+  themeLight:
+    'M10 7a3 3 0 100 6 3 3 0 000-6z M10 2v2 M10 16v2 M2 10h2 M16 10h2 M4.3 4.3l1.4 1.4 M14.3 14.3l1.4 1.4 M4.3 15.7l1.4-1.4 M14.3 5.7l1.4-1.4',
+  themeSystem: 'M3 4h14v10H3z M7 17h6 M10 14v3',
+  language:
+    'M10 3a7 7 0 100 14 7 7 0 000-14z M3 10h14 M10 3c2 2 3 4.5 3 7s-1 5-3 7 M10 3c-2 2-3 4.5-3 7s1 5 3 7',
+  scenes: 'M2 6h7v8H2z M11 6h7v8h-7z M5 3h10 M5 17h10',
+  crop: 'M6 2v12h12 M2 6h12v12',
+  border: 'M3 3h14v14H3z M6 6h8v8H6z',
+  corners: 'M3 16V9a6 6 0 016-6h7',
+  bold: 'M6 4h5a3 3 0 010 6H6z M6 10h6a3 3 0 010 6H6z',
+  underline: 'M6 3v6a4 4 0 008 0V3 M4 17h12',
+  strike:
+    'M4 10h12 M13.5 6.5C13 5 11.7 4 10 4 7.8 4 6.5 5.2 6.5 6.6c0 1 .6 1.8 1.8 2.4 M6.5 13.5c.5 1.5 1.8 2.5 3.5 2.5 2.2 0 3.5-1.2 3.5-2.6 0-.6-.2-1.1-.5-1.5',
+  uppercase: 'M2 15l3.5-10L9 15 M3.2 12h4.6 M11 15l3-8 3 8 M12 12.5h4',
+  alignLeft: 'M3 4h14 M3 8h9 M3 12h14 M3 16h9',
+  alignCenter: 'M3 4h14 M5.5 8h9 M3 12h14 M5.5 16h9',
+  alignRight: 'M3 4h14 M8 8h9 M3 12h14 M8 16h9',
+  alignJustify: 'M3 4h14 M3 8h14 M3 12h14 M3 16h14',
+  list: 'M8 5h9 M8 10h9 M8 15h9 M3.5 5h.1 M3.5 10h.1 M3.5 15h.1',
+  replace: 'M4 7h10l-3-3 M16 13H6l3 3',
+  magic:
+    'M4 16L14 6 M12 4l.5-1.5 M16 8l1.5-.5 M15 3.5l1-1 M9 3l.3 1 M17 11l-1 .3',
+  comment: 'M4 4h12v9H9l-4 3v-3H4z',
+  download: 'M10 3v10 M6 9l4 4 4-4 M4 16h12',
+  transparency:
+    'M4 4h12v12H4z M4 8h4v4H4z M8 4h4v4H8z M12 8h4v4h-4z M8 12h4v4H8z',
+  edit: 'M4 16l1-4 8-8 3 3-8 8z M4 16h12',
+  timing: 'M10 5a6 6 0 100 12 6 6 0 000-12z M10 8v3.5l2 1.5 M8 2h4',
+  signature: 'M3 14c2-4 3-9 5-9s-1 9 1 9 2-4 3-4 1 3 2 3 2-1 3-2 M3 17h14',
+  gradient: 'M3 3h14v14H3z M3 3l14 14',
+  cube: 'M10 2l7 4v8l-7 4-7-4V6z M3 6l7 4 7-4 M10 10v8',
+  keyframe: 'M10 4l5 6-5 6-5-6z',
+  plus: 'M10 4v12 M4 10h12',
+  minus: 'M4 10h12',
+  audioFile: 'M5 3h7l3 3v11H5z M9 14V9l3-1v4 M9 14a1 1 0 11-2 0 1 1 0 012 0z',
+  captions: 'M3 5h14v10H3z M6 10.5h3 M11 10.5h3 M6 13h8',
+  adjust: 'M4 6h6 M14 6h2 M4 14h2 M10 14h6 M12 4v4 M8 12v4',
+  back: 'M12 5l-5 5 5 5',
+  upload: 'M10 13V3 M6 7l4-4 4 4 M4 16h12',
   panelRight: 'M3 4h14v12H3z M12 4v12',
 };
 
+/**
+ * H2: every icon is drawn on one 24-unit grid with a 1.75 stroke. The paths
+ * are authored in the central 20 units (2 units of padding each side).
+ */
 export function iconSvg(name: keyof typeof PATHS | string, size = 18): string {
   const d = PATHS[name];
   if (!d) return '';
-  return `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d
+  return `<svg class="icon" width="${size}" height="${size}" viewBox="-2 -2 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d
     .split(' M')
     .map((seg, i) => `<path d="${i === 0 ? seg : 'M' + seg}" />`)
     .join('')}</svg>`;

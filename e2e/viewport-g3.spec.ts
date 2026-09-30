@@ -300,7 +300,7 @@ test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: back
   // Animate is not built for scenes yet and says which wave builds it.
   await expect(bar.locator('[data-control="scene-animate"]')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 8 (ANI-020)',
+    'Planned: Wave 8 (ANI-020)',
   );
   // Background: one undo step, applied to the project (every scene).
   await pickColor(page, 'toolbar-background', '#223344');

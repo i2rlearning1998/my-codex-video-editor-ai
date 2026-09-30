@@ -13,6 +13,8 @@ test('[DEV-007] button copies a parseable debug report and shortcut also works',
   context,
 }, testInfo) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  // H2: the button lives in the main menu's Help group.
+  await page.locator('#menu-trigger').click();
   await page
     .getByRole('button', { name: 'Copy debug report', exact: true })
     .click();
@@ -23,7 +25,7 @@ test('[DEV-007] button copies a parseable debug report and shortcut also works',
   expect(report.schema).toBe('aive-debug-report/1');
   expect(report.project).toEqual((await hook(page)).project);
   expect(report.editor).toEqual((await hook(page)).session);
-  expect(report.env.viewport).toEqual({ width: 1440, height: 1000 });
+  expect(report.env.viewport).toEqual({ width: 1600, height: 1000 });
   await page.screenshot({ path: testInfo.outputPath('debug-report.png') });
   await page.keyboard.press('Control+Shift+d');
   await expect
@@ -45,6 +47,7 @@ test('[DEV-007] clipboard rejection downloads the same JSON report', async ({
     });
   });
   const downloadPromise = page.waitForEvent('download');
+  await page.locator('#menu-trigger').click();
   await page
     .getByRole('button', { name: 'Copy debug report', exact: true })
     .click();

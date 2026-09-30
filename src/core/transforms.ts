@@ -353,9 +353,11 @@ export function moveTransform(
   current: Point2,
 ): TransformValues {
   finite(...start, ...current);
+  // The pointer delta first: an axis the pointer did not move along keeps
+  // its stored value exactly (base + current - start can round).
   const value: Point2 = [
-    base.position.value[0] + current[0] - start[0],
-    base.position.value[1] + current[1] - start[1],
+    base.position.value[0] + (current[0] - start[0]),
+    base.position.value[1] + (current[1] - start[1]),
   ];
   finite(...value);
   return { ...base, position: { value } };

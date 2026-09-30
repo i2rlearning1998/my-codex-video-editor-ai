@@ -1,3 +1,4 @@
+import { drawPicture } from './picture';
 import {
   boundsCorners,
   invertMatrix,
@@ -47,13 +48,22 @@ export interface CompositionRenderer {
   ): RenderReport;
 }
 
+/** H2: how the editor fits the artboard (24 px per side, may enlarge). */
+export const EDITOR_FIT = Object.freeze({ padding: 24, upscale: true });
 /** View-only fit transform; project coordinates and device-pixel coordinates stay distinct. */
 export function fitViewport(
   width: number,
   height: number,
   composition: RenderSource['composition'],
   pixelRatio = 1,
+  /**
+   * H2: the editor fits with `padding` CSS px per side and may enlarge a
+   * small composition to use the whole free area. The defaults (40 px, never
+   * above 100%) are the earlier behaviour.
+   */
+  options: { padding?: number; upscale?: boolean } = {},
 ): Viewport {
+  const padding = options.padding ?? 40;
   if (
     ![width, height, composition.width, composition.height, pixelRatio].every(
       Number.isFinite,
@@ -65,14 +75,14 @@ export function fitViewport(
     composition.height <= 0
   )
     throw new RangeError('Invalid viewport');
-  // Prefer 40px per side. When that cannot fit, retain up to one logical
-  // pixel of content, never more than the actual viewport dimension.
-  const availableWidth = Math.min(width, Math.max(1, width - 80));
-  const availableHeight = Math.min(height, Math.max(1, height - 80));
+  // Prefer `padding` px per side. When that cannot fit, retain up to one
+  // logical pixel of content, never more than the actual viewport dimension.
+  const availableWidth = Math.min(width, Math.max(1, width - 2 * padding));
+  const availableHeight = Math.min(height, Math.max(1, height - 2 * padding));
   const zoom = Math.min(
     availableWidth / composition.width,
     availableHeight / composition.height,
-    1,
+    options.upscale ? Infinity : 1,
   );
   // Extremely small ratios can underflow to zero; never return a collapsed fit.
   if (!Number.isFinite(zoom) || zoom <= 0)
@@ -320,7 +330,29 @@ export function drawComposition(
           ? source.frames?.frame(item.media, source.playing ?? false)
           : null;
         if (frame) {
-          context.drawImage(frame, 0, 0, item.size.width, item.size.height);
+          if (item.picture)
+            drawPicture(
+              context,
+              item.picture,
+              frame,
+              item.size.width,
+              item.size.height,
+              item.fill,
+            );
+          else
+            context.drawImage(frame, 0, 0, item.size.width, item.size.height);
+          continue;
+        }
+        // H3: a placeholder with rounded corners or a border keeps them.
+        if (item.picture && (item.picture.radius > 0 || item.picture.border)) {
+          drawPicture(
+            context,
+            item.picture,
+            null,
+            item.size.width,
+            item.size.height,
+            item.fill,
+          );
           continue;
         }
         // SHP-019: a drawing strokes its path; it has no box fill or clip.
@@ -409,11 +441,6 @@ export function drawComposition(
   }
   if (options.overlays === false)
     return { warnings: errors, zoom: viewport.matrix[0] };
-  context.setTransform(...view);
-  context.globalAlpha = 1;
-  context.strokeStyle = '#666975';
-  context.lineWidth = 1 / viewport.matrix[0];
-  context.strokeRect(0, 0, source.composition.width, source.composition.height);
   // CV-013: snap guides across the composition, 1 CSS px at any zoom.
   if (source.guides?.length) {
     context.setTransform(...pixels);

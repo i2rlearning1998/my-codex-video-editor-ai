@@ -99,7 +99,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   );
   await expect(control(page, 'effects')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 3 (TXT-019)',
+    'Planned: Wave 3 (TXT-019)',
   );
   await page.screenshot({ path: testInfo.outputPath('text-toolbar.png') });
   await commit(page, 'size', '60');
@@ -147,7 +147,7 @@ test('[CV-036] image and video toolbar: X, Y, width and height, rotate, opacity 
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'media');
   await expect(control(page, 'crop')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 4 (VID-003)',
+    'Planned: Wave 4 (VID-003)',
   );
   await expect(control(page, 'replace')).toHaveAttribute(
     'aria-disabled',

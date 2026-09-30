@@ -142,6 +142,8 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'align-to-canvas')
       expect(session.alignToCanvas).toBe(true);
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);
+    // H2: the theme is a UI preference, never project history.
+    else if (command.id === 'theme') expect(engine.canUndo).toBe(false);
     else if (command.id.startsWith('zoom-') || command.id === 'hand-tool') {
       // View commands call the view and leave the project and history alone.
       const calls = Object.values(context.view)

@@ -7,6 +7,8 @@
 // viewport (flipping up or left) and only scrolls when the viewport is truly
 // too small.
 
+import { iconSvg } from './icons';
+
 export interface MenuEntry {
   /** Stable id, rendered as data-action. */
   readonly id: string;
@@ -24,6 +26,8 @@ export interface MenuEntry {
   /** Draws a divider above the entry. */
   readonly divider?: boolean;
   readonly shortcut?: string;
+  /** H2: a 16 px icon in the menu's icon column. */
+  readonly icon?: string;
   /** Extra data-* attributes. */
   readonly data?: Readonly<Record<string, string>>;
 }
@@ -36,9 +40,9 @@ export interface MenuController {
   readonly isOpen: boolean;
 }
 
-/** Hover delay before a flyout opens, and the grace before it closes. */
-export const SUBMENU_OPEN_DELAY = 150;
-const SUBMENU_CLOSE_GRACE = 300;
+/** Hover delay before a flyout opens, and the grace before it closes (H2). */
+export const SUBMENU_OPEN_DELAY = 120;
+const SUBMENU_CLOSE_GRACE = 200;
 
 export function createMenu(
   container: HTMLElement,
@@ -82,7 +86,9 @@ export function createMenu(
     ...list.querySelectorAll<HTMLButtonElement>(':scope > button'),
   ];
   const focusStep = (list: HTMLElement, step: number) => {
-    const items = buttons(list).filter((item) => !item.disabled);
+    const items = buttons(list).filter(
+      (item) => !item.disabled && item.getAttribute('aria-disabled') !== 'true',
+    );
     const at = items.indexOf(document.activeElement as HTMLButtonElement);
     items[(at + step + items.length) % items.length]?.focus();
   };
@@ -142,10 +148,14 @@ export function createMenu(
       item.dataset.label = entry.label;
       for (const [key, value] of Object.entries(entry.data ?? {}))
         item.dataset[key] = value;
+      const icon = document.createElement('span');
+      icon.className = 'menu-icon';
+      icon.setAttribute('aria-hidden', 'true');
+      if (entry.icon) icon.innerHTML = iconSvg(entry.icon, 16);
       const label = document.createElement('span');
       label.className = 'menu-label';
       label.textContent = entry.label;
-      item.append(label);
+      item.append(icon, label);
       if (entry.shortcut) {
         const shortcut = document.createElement('kbd');
         shortcut.textContent = entry.shortcut;
@@ -201,7 +211,9 @@ export function createMenu(
             safely(run);
           };
         } else {
-          item.disabled = true;
+          // H2: disabled items stay hoverable so their reason shows as a
+          // tooltip ("Planned: ..."); aria-disabled keeps them inert.
+          item.setAttribute('aria-disabled', 'true');
           if (entry.reason) item.title = entry.reason;
         }
       }
@@ -257,7 +269,9 @@ export function createMenu(
       container.hidden = false;
       fill(container, entries, 0);
       container
-        .querySelector<HTMLButtonElement>(':scope > button:not(:disabled)')
+        .querySelector<HTMLButtonElement>(
+          ':scope > button:not(:disabled):not([aria-disabled="true"])',
+        )
         ?.focus();
     },
     close,

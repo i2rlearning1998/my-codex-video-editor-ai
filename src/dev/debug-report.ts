@@ -116,6 +116,8 @@ export async function createDebugReport(
   return report;
 }
 
+import { iconSvg } from '../ui/icons';
+
 export function installDebugReport(
   engine: EditorEngine,
   session: EditorSession,
@@ -125,7 +127,9 @@ export function installDebugReport(
 ) {
   const button = document.createElement('button');
   button.textContent = 'Copy debug report';
-  button.title = 'Copy debug report (Ctrl+Shift+D)';
+  button.type = 'button';
+  button.innerHTML = `${iconSvg('info')}<span>Copy debug report</span><span class="shortcut-hint">Ctrl+Shift+D</span>`;
+  button.setAttribute('aria-label', 'Copy debug report');
   statusbar.append(button);
   const copy = async () => {
     try {

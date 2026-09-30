@@ -8,9 +8,10 @@ const FIRST_DELAY = 500;
 const WARM_FOR = 400;
 
 export function splitShortcut(title: string): { label: string; keys: string } {
-  const match = /^(.*\S)\s+\(([^()]*(?:Ctrl|Alt|Shift|Cmd|⌘|Space|Esc|Del|Enter|[A-Z0-9,.\/\[\]=+-])[^()]*)\)$/.exec(
-    title,
-  );
+  const match =
+    /^(.*\S)\s+\(([^()]*(?:Ctrl|Alt|Shift|Cmd|⌘|Space|Esc|Del|Enter|[A-Z0-9,.\/\[\]=+-])[^()]*)\)$/.exec(
+      title,
+    );
   return match && match[2]!.length <= 16
     ? { label: match[1]!, keys: match[2]! }
     : { label: title, keys: '' };

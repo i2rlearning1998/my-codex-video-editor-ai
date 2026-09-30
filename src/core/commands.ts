@@ -60,6 +60,16 @@ export const commandSchema = z.discriminatedUnion('type', [
       name: nameSchema,
     })
     .strict(),
+  // H3: a scene's canvas size (16 to 7680 px each side). Moving its layers
+  // so they stay centred is the caller's job, in the same transaction.
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION_SIZE'),
+      ...location,
+      width: z.number().int().min(16).max(7680),
+      height: z.number().int().min(16).max(7680),
+    })
+    .strict(),
   // G5: scenes play in array order; this moves one to a new index.
   z
     .object({
@@ -233,6 +243,15 @@ export const commandSchema = z.discriminatedUnion('type', [
       duration: z.number().finite().positive(),
     })
     .strict(),
+  // H3: Replace swaps the picture or footage behind a layer (and its clip).
+  z
+    .object({
+      type: z.literal('SET_LAYER_ASSET'),
+      ...location,
+      layerId: idSchema,
+      assetId: idSchema,
+    })
+    .strict(),
   z
     .object({
       type: z.literal('CREATE_COMPOSITION'),
@@ -312,6 +331,12 @@ export function applyCommand(project: Project, command: Command): void {
       return;
     case 'SET_COMPOSITION': {
       compositionById(project, command.compositionId).name = command.name;
+      return;
+    }
+    case 'SET_COMPOSITION_SIZE': {
+      const composition = compositionById(project, command.compositionId);
+      composition.width = command.width;
+      composition.height = command.height;
       return;
     }
     case 'MOVE_COMPOSITION': {
@@ -646,6 +671,18 @@ export function applyCommand(project: Project, command: Command): void {
         shiftKeyframes(layer, command.startTime - layer.startTime);
       layer.startTime = command.startTime;
       layer.duration = command.duration;
+      return;
+    }
+    case 'SET_LAYER_ASSET': {
+      const { layer } = requireLayer(composition, command.layerId);
+      const asset = project.assets.find((item) => item.id === command.assetId);
+      if (!asset) throw new Error('Unknown asset');
+      if (asset.type !== layer.type)
+        throw new Error(`A ${layer.type} layer can only show a ${layer.type}`);
+      layer.assetId = asset.id;
+      for (const track of composition.tracks)
+        for (const clip of track.clips)
+          if (clip.layerId === layer.id) clip.assetId = asset.id;
       return;
     }
     case 'SET_PROPERTY': {

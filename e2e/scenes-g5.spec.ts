@@ -61,7 +61,7 @@ test('[PRJ-014][PRJ-020] the board shows every scene in playback order with a po
   await expect(board(page).locator('.scene-transition')).toHaveCount(1);
   await expect(board(page).locator('.scene-transition')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 6 (TR-001)',
+    'Planned: Wave 6 (TR-001)',
   );
   await page.screenshot({ path: testInfo.outputPath('board.png') });
   // Double-click opens scene 2; the timeline shows only its clips.

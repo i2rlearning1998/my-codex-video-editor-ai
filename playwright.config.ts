@@ -57,7 +57,9 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     ...browser,
-    viewport: { width: 1440, height: 1000 },
+    // H2: wide enough for the desktop layout (docked left and right panels)
+    // with the canvas at least as large as before the H2 shell.
+    viewport: { width: 1600, height: 1000 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

@@ -10,7 +10,27 @@ import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
 import { confirmDialog } from './ui/components/modal';
 import { t } from './i18n';
+import { initTheme } from './ui/theme';
+import { mountTooltips } from './ui/components/tooltip';
 import './style.css';
+
+initTheme();
+mountTooltips();
+// H2: the canvas shows its focus ring only after keyboard navigation (a click
+// focuses it for shortcuts, which should not frame the whole stage).
+document.addEventListener(
+  'keydown',
+  (event) => {
+    if (event.key === 'Tab')
+      document.documentElement.classList.add('keyboard-nav');
+  },
+  true,
+);
+document.addEventListener(
+  'pointerdown',
+  () => document.documentElement.classList.remove('keyboard-nav'),
+  true,
+);
 
 let store: LocalProjectStore | undefined;
 // TL-001: documents open with every top-level layer as a clip on a track.
@@ -107,7 +127,8 @@ const removeDebugReport = installDebugReport(
   engine,
   shell.session,
   diagnostics,
-  document.querySelector('.statusbar')!,
+  // H2: the Help group of the main menu.
+  document.querySelector('#app-menu .app-menu-group:last-child')!,
   shell.message,
 );
 let removeTestHook: (() => void) | undefined;
@@ -127,10 +148,9 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') {
 const autosave = store
   ? new Autosave(engine, store, {
       onDirty: () => shell.setSaveStatus('unsaved'),
-      onSaved: () => {
-        shell.message(t('status.saved'));
-        shell.setSaveStatus('saved');
-      },
+      // H2: the top bar shows the save state; a background save does not
+      // replace the last message (a refusal must stay readable).
+      onSaved: () => shell.setSaveStatus('saved'),
       onError: (error) => {
         shell.message(t('status.saveFailed', { error: String(error) }));
         shell.setSaveStatus('error', t('status.saveError'));
