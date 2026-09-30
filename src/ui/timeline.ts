@@ -654,6 +654,8 @@ export function mountTimeline(
     times: readonly number[],
     zoom: number,
   ) => {
+    // H4: keyframes are shown and edited in 2D Animation only.
+    if (session.mode !== 'animation2d') return;
     for (const time of times) {
       const selected = isSelectedKeyframe(layerId, time);
       const shown =

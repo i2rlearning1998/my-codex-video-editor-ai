@@ -55,8 +55,16 @@ import { mountDrawPanel } from './draw-panel';
 import { addShape, mountShapesPanel } from './shapes';
 import { mountContextToolbar } from './context-toolbar';
 import { CropTool } from './crop-tool';
+import { AnimatedInEditorError } from './editor-mode';
 import { escapeTopPopover } from './components/popover';
 import { mountToolPanels } from './tool-panels';
+import {
+  RIGHT_ICONS,
+  RIGHT_SECTIONS,
+  mountRightPanel,
+  sectionsFor,
+  type RightSection,
+} from './right-panel';
 import { applyCanvasSize } from './canvas-size';
 import {
   ALT_TEXT_LIMIT,
@@ -120,23 +128,6 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Transitions: 'transitions',
   Scene: 'layers',
 };
-const RIGHT_SECTIONS = [
-  'Properties',
-  'Effects',
-  'Transitions',
-  'Color',
-  'Audio',
-  'Speed',
-] as const;
-const RIGHT_ICONS: Record<(typeof RIGHT_SECTIONS)[number], string> = {
-  Properties: 'properties',
-  Effects: 'effects',
-  Transitions: 'transitions',
-  Color: 'color',
-  Audio: 'audio',
-  Speed: 'speed',
-};
-
 export interface ShellActions {
   save?: () => void;
   exportProject?: () => void;
@@ -158,7 +149,7 @@ export function mountEditorShell(
   const rightRailButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-section="${name}" aria-pressed="${pressed}" title="${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}</span></button>`;
   root.innerHTML = `
-    <div class="editor-shell">
+    <div class="editor-shell" data-editor-mode="editor">
       <header class="topbar">
         <div class="topbar-start">
           <button type="button" id="menu-trigger" class="icon-button menu-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" aria-label="${t('menu.main')}" title="${t('menu.main')}">${iconSvg('menu')}</button>
@@ -243,6 +234,7 @@ export function mountEditorShell(
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
+        <div id="right-section" hidden></div>
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
@@ -265,7 +257,13 @@ export function mountEditorShell(
   const reportError = (error: unknown) => {
     const text = error instanceof Error ? error.message : String(error);
     message(text);
-    showToast(text, 'error');
+    // H4: an animated property offers to open 2D Animation.
+    if (error instanceof AnimatedInEditorError)
+      showToast(text, 'info', 6000, {
+        label: t('mode.open2d'),
+        run: () => session.setMode('animation2d'),
+      });
+    else showToast(text, 'error');
   };
   const safely = (action: () => void | Promise<void>) => {
     try {
@@ -569,6 +567,14 @@ export function mountEditorShell(
     engine,
     session,
     reportError,
+  );
+  // H4: the right panel's sections other than Properties.
+  const rightPanel = mountRightPanel(
+    element('#right-section'),
+    engine,
+    session,
+    reportError,
+    { animate: () => animatePanel.toggle() },
   );
   // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
   // selection action cluster.
@@ -908,6 +914,7 @@ export function mountEditorShell(
       source.composition.id,
       session.selectedIds,
       session.canvasSelected,
+      session.mode,
       animatedSelection ? session.currentTime : null,
     ]);
     if (
@@ -1099,29 +1106,32 @@ export function mountEditorShell(
         });
         refresh(true);
       },
-      (key, _remove) => {
-        safely(() => {
-          session.setPlaying(false);
-          const remove =
-            selected?.layer.transform[key].keyframes.some(
-              (frame) => frame.time === session.currentTime,
-            ) ?? false;
-          if (selected)
-            engine.commands.transaction(
-              remove ? 'Remove keyframe' : 'Add keyframe',
-              [
-                {
-                  type: remove ? 'REMOVE_KEYFRAME' : 'SET_KEYFRAME',
-                  compositionId: source.composition.id,
-                  layerId: selected.layer.id,
-                  key,
-                  time: session.currentTime,
-                },
-              ],
-            );
-        });
-        refresh(true);
-      },
+      // H4: keyframe diamonds belong to 2D Animation.
+      session.mode !== 'animation2d'
+        ? undefined
+        : (key, _remove) => {
+            safely(() => {
+              session.setPlaying(false);
+              const remove =
+                selected?.layer.transform[key].keyframes.some(
+                  (frame) => frame.time === session.currentTime,
+                ) ?? false;
+              if (selected)
+                engine.commands.transaction(
+                  remove ? 'Remove keyframe' : 'Add keyframe',
+                  [
+                    {
+                      type: remove ? 'REMOVE_KEYFRAME' : 'SET_KEYFRAME',
+                      compositionId: source.composition.id,
+                      layerId: selected.layer.id,
+                      key,
+                      time: session.currentTime,
+                    },
+                  ],
+                );
+            });
+            refresh(true);
+          },
       (field, value) => {
         safely(() => interaction.geometry(field, value));
         refresh(true);
@@ -1141,6 +1151,35 @@ export function mountEditorShell(
     previews,
     waveforms,
   );
+  // H4: Editor | 2D Animation (3D is planned). The switch crossfades the
+  // panels and the timeline in 320 ms and keeps the selection.
+  const shellRoot = element('.editor-shell');
+  const modeButtons = root.querySelectorAll<HTMLButtonElement>(
+    '#mode-switch [data-mode]',
+  );
+  let shownMode = session.mode;
+  const syncMode = () => {
+    const mode = session.mode;
+    for (const button of modeButtons)
+      button.setAttribute('aria-checked', String(button.dataset.mode === mode));
+    if (mode === shownMode) return;
+    shownMode = mode;
+    shellRoot.dataset.editorMode = mode;
+    shellRoot.classList.remove('mode-fade');
+    void shellRoot.offsetWidth;
+    shellRoot.classList.add('mode-fade');
+    message(t(mode === 'editor' ? 'mode.nowEditor' : 'mode.now2d'));
+  };
+  shellRoot.addEventListener('animationend', (event) => {
+    if ((event as AnimationEvent).animationName === 'mode-fade')
+      shellRoot.classList.remove('mode-fade');
+  });
+  for (const button of modeButtons)
+    button.onclick = () => {
+      if (button.getAttribute('aria-disabled') === 'true') return;
+      session.setMode(button.dataset.mode as 'editor' | 'animation2d');
+    };
+  session.onChange(syncMode);
   const unsubscribe = session.onChange(refresh);
   element<HTMLSelectElement>('#composition').onchange = (event) =>
     session.selectComposition((event.target as HTMLSelectElement).value);
@@ -1370,31 +1409,32 @@ export function mountEditorShell(
 
   // Right panel: shared "section" state driven by both the tab row and the icon rail.
   const rightEmpty = element('#right-panel-empty');
-  const rightDescriptions: Record<string, [string, string]> = {
-    Effects: ['panel.effectsTitle', 'panel.effectsDescription'],
-    Transitions: ['panel.transitionsTitle', 'panel.transitionsDescription'],
-    Color: ['panel.colorTitle', 'panel.colorDescription'],
-    Audio: ['panel.audioTitle', 'panel.audioDescription'],
-    Speed: ['panel.speedTitle', 'panel.speedDescription'],
-  };
+
   const setRightSection = (name: string) => {
     activeSection = name;
     syncRails();
     const isProperties = name === 'Properties';
     element('#inspector-content').hidden = !isProperties;
-    element('#animation-panel').hidden = true;
+    element('#animation-panel').hidden = !isProperties;
     if (isProperties) animationPanel.render();
-    rightEmpty.hidden = isProperties;
-    if (!isProperties) {
-      const [titleKey, descriptionKey] = rightDescriptions[name] ?? ['', ''];
-      element('#right-panel-empty-title').textContent = titleKey
-        ? t(titleKey)
-        : '';
-      element('#right-panel-empty-description').textContent = descriptionKey
-        ? t(descriptionKey)
-        : '';
-    }
+    rightEmpty.hidden = true;
+    element('#right-section').hidden = isProperties;
+    if (!isProperties) rightPanel.render(name as RightSection);
   };
+  /** H4: the rail lists the sections that fit the selection (Clipchamp). */
+  const syncRightRail = () => {
+    const shown = sectionsFor(session);
+    for (const el of root.querySelectorAll<HTMLElement>(
+      '.icon-rail-right button',
+    ))
+      el.hidden = !shown.includes(el.dataset.section as RightSection);
+    if (!shown.includes(activeSection as RightSection))
+      setRightSection('Properties');
+    else if (activeSection !== 'Properties')
+      rightPanel.render(activeSection as RightSection);
+  };
+  session.onChange(syncRightRail);
+  syncRightRail();
   for (const el of root.querySelectorAll<HTMLElement>(
     '.icon-rail-right button',
   ))

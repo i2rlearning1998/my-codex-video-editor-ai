@@ -159,6 +159,12 @@ export function createMenu(
       if (entry.shortcut) {
         const shortcut = document.createElement('kbd');
         shortcut.textContent = entry.shortcut;
+        // The name stays the label; the keys are announced as shortcuts.
+        shortcut.setAttribute('aria-hidden', 'true');
+        item.setAttribute(
+          'aria-keyshortcuts',
+          entry.shortcut.replace(/Ctrl/g, 'Control'),
+        );
         item.append(shortcut);
       }
       if (entry.checked !== undefined)

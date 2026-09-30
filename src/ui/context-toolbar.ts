@@ -65,6 +65,7 @@ import { describeSelection, selectionRoots } from './selection-context';
 import { contextActions, performEdit } from './editing';
 import { ungroupBlocker } from './ungroup';
 import { selectionLocked, setLocked } from './layer-actions';
+import { guardCommands } from './editor-mode';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 export function toolbarKind(layer: SceneLayer | null): ToolbarKind | null {
@@ -425,6 +426,8 @@ export function mountContextToolbar(
   let colourFor: { layerId: string; control: string } | null = null;
   const run = (label: string, commands: (Command | null)[]) => {
     const list = commands.filter((command): command is Command => !!command);
+    // H4: keyframes are edited in 2D Animation only.
+    guardCommands(session, list);
     if (list.length) engine.commands.transaction(label, list);
   };
   const safely = (action: () => void) => {

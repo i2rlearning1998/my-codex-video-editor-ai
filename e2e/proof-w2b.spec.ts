@@ -1,5 +1,13 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, artboard, rulerBox } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  toScreen,
+  artboard,
+  rulerBox,
+  mode2d,
+} from './fixtures';
 
 // W2-B proof debt: Claimed Wave 2 items proven the way a user does them.
 // Example project (default load) and nle-example.json at 80 px/s, 30 fps.
@@ -478,6 +486,7 @@ test.describe('layers and inspector', () => {
   test('[INS-009] the keyframe diamond toggles a keyframe for its property', async ({
     page,
   }) => {
+    await mode2d(page);
     await page
       .locator('#scene-list [data-layer-id="example-headline"]')
       .click();

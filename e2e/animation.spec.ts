@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, artboard, rulerBox, mode2d } from './fixtures';
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced), text
 // "example-headline"; composition 1280×720 at 30 fps, 10 s long.
@@ -82,6 +82,8 @@ test.beforeEach(async ({ page }) => {
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
+  // H4: keyframes live in 2D Animation mode.
+  await mode2d(page);
 });
 
 test('[ANI-001][ANI-006] stopwatches record keyframes; edits at the playhead add keyframes; stopwatch off keeps the shown value', async ({

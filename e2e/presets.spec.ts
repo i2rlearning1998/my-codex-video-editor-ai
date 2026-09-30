@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, artboard, rulerBox, mode2d } from './fixtures';
 import { choose as chooseOption, sidePanel } from './controls';
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced) over the
@@ -226,6 +226,7 @@ test('[ANI-008] Ken Burns slowly zooms and pans an image clip', async ({
 test('[ANI-010] the easing library previews named curves and applies one to the selected keyframes', async ({
   page,
 }, testInfo) => {
+  await mode2d(page);
   await select(page, 'example-badge');
   await seek(page, 0);
   await page

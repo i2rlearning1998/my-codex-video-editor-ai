@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Page, TestInfo } from '@playwright/test';
 import { ALL_FORMATS, BufferSource, Input } from 'mediabunny';
-import { test, expect, hook, rulerBox, showCategory } from './fixtures';
+import { test, expect, hook, rulerBox, showCategory, mode2d } from './fixtures';
 
 // W5-A: export v1. The sandbox Chromium has no H.264/AAC encoder, so exports here are
 // WebM (VP9 + Opus). The CI "export-mp4" job sets REQUIRE_H264=1 and runs the same
@@ -319,7 +319,7 @@ test.describe('frame code', () => {
     // No size or platform presets in the dialog any more.
     await expect(dialog(page).locator('#export-preset')).toHaveCount(0);
     await expect(dialog(page).locator('#export-width')).toHaveCount(0);
-    await page.keyboard.press('Escape');
+    await dialog(page).locator('.modal-close').click();
     await expect(dialog(page)).toHaveCount(0);
     // A 9:16 canvas (Canvas size) exports 720 × 1280 at 720p.
     await page.locator('#context-toolbar [data-control="canvas-size"]').click();
@@ -557,6 +557,7 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
       .toBeCloseTo(seconds, 2);
   };
   // The badge (x 76, 224 wide) moves to x 276 between 0 s and 2 s.
+  await mode2d(page);
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
   await seek(0);
   await page

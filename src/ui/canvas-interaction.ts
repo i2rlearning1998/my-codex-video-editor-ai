@@ -13,6 +13,7 @@ import type { TransformInteraction } from './transform-interaction';
 import { SNAP_PIXELS } from './snapping';
 import type { DrawTool } from './draw-tool';
 import type { CropTool } from './crop-tool';
+import { guardAnimated } from './editor-mode';
 
 /**
  * CV-022: map a picked leaf to the selectable layer. Outside any entered group
@@ -89,6 +90,8 @@ export function bindCanvasInteraction(
 ) {
   let pointer: number | null = null;
   let cropping = false;
+  /** H4: what the current drag changes, for the Editor-mode guard. */
+  let dragKind: TransformHandle | 'move' = 'move';
   // CV-041: a multi-selection has its own box and handles (revision 6).
   const handleAt = (point: Point2): TransformHandle | null =>
     session.selectedIds.length > 1
@@ -238,6 +241,7 @@ export function bindCanvasInteraction(
       } else collapseTo = null;
       suppressClick = true;
       if (!interaction.begin(handle ?? 'move', compositionPoint(point))) return;
+      dragKind = handle ?? 'move';
       pointer = event.pointerId;
       start = point;
       moved = false;
@@ -292,7 +296,28 @@ export function bindCanvasInteraction(
       interaction.setHighlight(marqueeIds(point));
       return;
     }
-    if (Math.hypot(point[0] - start[0], point[1] - start[1]) >= 3) moved = true;
+    if (!moved && Math.hypot(point[0] - start[0], point[1] - start[1]) >= 3) {
+      // H4: in Editor mode an animated layer is changed in 2D Animation.
+      try {
+        guardAnimated(
+          session,
+          session.selectedIds,
+          dragKind === 'move'
+            ? ['position']
+            : dragKind === 'rotate'
+              ? ['rotation']
+              : ['scale', 'width', 'height', 'position'],
+        );
+      } catch (error) {
+        interaction.cancel();
+        if (pointer !== null && canvas.hasPointerCapture(pointer))
+          canvas.releasePointerCapture(pointer);
+        pointer = null;
+        report(error);
+        return;
+      }
+      moved = true;
+    }
     if (moved) {
       // CV-013: snap within 6 CSS px at any zoom; Ctrl or Cmd places freely.
       const [a, b] = viewport().matrix;
@@ -466,6 +491,7 @@ export function bindCanvasInteraction(
         event.preventDefault();
         const step = event.shiftKey ? 10 : 1;
         safely(() => {
+          guardAnimated(session, session.selectedIds, ['position']);
           if (interaction.begin('move', [0, 0])) {
             interaction.update([
               event.key === 'ArrowLeft'

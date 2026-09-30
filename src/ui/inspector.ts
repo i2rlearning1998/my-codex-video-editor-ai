@@ -21,10 +21,20 @@ function formatNumber(value: number): string {
 }
 
 const SUB_TABS = ['Transform', 'Timing', 'Dimensions', 'Hierarchy'] as const;
-/** One inspector panel exists at a time, so a module-level tab is simpler and
- *  safer than threading extra state through every renderInspector call site. */
-let activeSubTab: (typeof SUB_TABS)[number] = 'Transform';
-let lastSelectedId: string | null = null;
+type SubTab = (typeof SUB_TABS)[number];
+/**
+ * H4: the old sub-tabs are stacked sections (Clipchamp). Position and size,
+ * Timing and Details (dimensions, then the layer's place in the tree). A
+ * section header opens its section and scrolls to it; the chevron folds it.
+ * One inspector exists at a time, so the folded state is module-level.
+ */
+const GROUPS: readonly (readonly [key: string, tabs: readonly SubTab[]])[] = [
+  ['inspector.position', ['Transform']],
+  ['inspector.timing', ['Timing']],
+  ['inspector.details', ['Dimensions', 'Hierarchy']],
+];
+const folded = new Set<string>();
+let revealTab: SubTab | null = null;
 /** Bumped on every render so a render re-entered from a blur commit can stop. */
 let renderGeneration = 0;
 
@@ -56,7 +66,6 @@ export function renderInspector(
     ? locateLayer(source.composition.layers, selectedId)
     : null;
   if (!found) {
-    lastSelectedId = null;
     const empty = document.createElement('div');
     empty.className = 'inspector-empty';
     empty.innerHTML =
@@ -65,10 +74,6 @@ export function renderInspector(
     return;
   }
   const { layer, parent } = found;
-  if (selectedId !== lastSelectedId) {
-    lastSelectedId = selectedId;
-    activeSubTab = 'Transform';
-  }
   const effectiveTiming = effectiveLayerTiming(source.composition, layer);
   const heading = document.createElement('h3');
   heading.className = 'selected-name';
@@ -109,182 +114,213 @@ export function renderInspector(
       ['Layer ID', layer.id],
     ],
   };
-  const tabs = document.createElement('div');
-  tabs.className = 'inspector-subtabs';
-  tabs.setAttribute('role', 'tablist');
-  tabs.setAttribute('aria-label', 'Property group');
-  for (const name of SUB_TABS) {
-    const tab = document.createElement('button');
-    tab.type = 'button';
-    tab.setAttribute('role', 'tab');
-    tab.setAttribute('aria-selected', String(name === activeSubTab));
-    tab.dataset.subtab = name;
-    tab.textContent = name;
-    tab.onclick = () => {
-      activeSubTab = name;
-      renderInspector(
-        root,
-        source,
-        selectedId,
-        commit,
-        timing,
-        keyframe,
-        geometry,
-      );
-    };
-    tabs.append(tab);
-  }
-  root.append(tabs);
-  const title = activeSubTab;
-  const fields = sections[title];
-  if (title === 'Transform' && geometry) {
-    const row = createGeometryRow('inspector', source, geometry, () =>
-      renderInspector(
-        root,
-        source,
-        selectedId,
-        commit,
-        timing,
-        keyframe,
-        geometry,
-      ),
+  const rerender = () =>
+    renderInspector(
+      root,
+      source,
+      selectedId,
+      commit,
+      timing,
+      keyframe,
+      geometry,
     );
-    if (row) {
-      row.classList.add('inspector-geometry');
-      root.append(row);
-      // The stored values (anchor position, scale) are secondary.
-      const values = document.createElement('h4');
-      values.className = 'inspector-subheading';
-      values.textContent = t('geometry.values');
-      root.append(values);
+  for (const [groupKey, groupTabs] of GROUPS) {
+    const group = document.createElement('section');
+    group.className = 'inspector-group';
+    group.dataset.group = groupKey;
+    const header = document.createElement('div');
+    header.className = 'inspector-group-header';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'inspector-group-title';
+    open.dataset.subtab = groupTabs[0]!;
+    open.textContent = t(groupKey);
+    const fold = document.createElement('button');
+    fold.type = 'button';
+    fold.className = 'icon-button inspector-group-fold';
+    fold.dataset.fold = groupKey;
+    const isFolded = folded.has(groupKey);
+    fold.setAttribute('aria-expanded', String(!isFolded));
+    fold.setAttribute('aria-label', t('inspector.fold', { name: t(groupKey) }));
+    fold.innerHTML = iconSvg(isFolded ? 'chevronRight' : 'chevronDown', 14);
+    fold.onclick = () => {
+      if (folded.has(groupKey)) folded.delete(groupKey);
+      else folded.add(groupKey);
+      rerender();
+    };
+    open.onclick = () => {
+      folded.delete(groupKey);
+      revealTab = groupTabs[0]!;
+      rerender();
+    };
+    header.append(open, fold);
+    group.append(header);
+    root.append(group);
+    const body = document.createElement('div');
+    body.className = 'inspector-group-body';
+    body.hidden = isFolded;
+    group.append(body);
+    for (const title of groupTabs) {
+      const fields = sections[title];
+      if (title === 'Hierarchy') {
+        const sub = document.createElement('button');
+        sub.type = 'button';
+        sub.className = 'inspector-subheading inspector-subheading-button';
+        sub.dataset.subtab = 'Hierarchy';
+        sub.textContent = t('inspector.layer');
+        sub.onclick = open.onclick;
+        body.append(sub);
+      }
+      if (title === 'Transform' && geometry) {
+        const row = createGeometryRow('inspector', source, geometry, rerender);
+        if (row) {
+          row.classList.add('inspector-geometry');
+          body.append(row);
+          // The stored values (anchor position, scale) are secondary.
+          const values = document.createElement('h4');
+          values.className = 'inspector-subheading';
+          values.textContent = t('geometry.values');
+          body.append(values);
+        }
+      }
+      {
+        const section = document.createElement('section');
+        section.className = 'inspector-section';
+        const list = document.createElement('dl');
+        for (const [name, value] of fields) {
+          const dt = document.createElement('dt'),
+            dd = document.createElement('dd');
+          dt.textContent = name;
+          dd.textContent = value;
+          dd.dataset.field = name;
+          if (title === 'Transform' && commit) {
+            // G1: the shared NumberField. Opacity shows 0-100 %, rotation in
+            // degrees, position in px; the committed values keep their units.
+            const t = layer.transform;
+            const spec: Record<
+              string,
+              {
+                value: number;
+                unit: string;
+                scale?: number;
+                min?: number;
+                max?: number;
+              }
+            > = {
+              'Position X': { value: t.position.value[0], unit: 'px' },
+              'Position Y': { value: t.position.value[1], unit: 'px' },
+              'Scale X': { value: t.scale.value[0], unit: '×' },
+              'Scale Y': { value: t.scale.value[1], unit: '×' },
+              Rotation: { value: t.rotation.value, unit: '°' },
+              Opacity: {
+                value: t.opacity.value * 100,
+                unit: '%',
+                scale: 100,
+                min: 0,
+                max: 100,
+              },
+            };
+            const item = spec[name]!;
+            const numberField = createNumberField({
+              id: `inspector-${name.toLowerCase().replace(/\s+/g, '-')}`,
+              label: name === 'Rotation' ? 'Rotation (degrees)' : name,
+              value: item.value,
+              unit: item.unit,
+              decimals: 3,
+              step: name.startsWith('Scale') ? 0.01 : 1,
+              ...(item.min !== undefined ? { min: item.min } : {}),
+              ...(item.max !== undefined ? { max: item.max } : {}),
+              ...(name === 'Opacity'
+                ? { slider: true, presets: [0, 25, 50, 75, 100] }
+                : {}),
+              ...(name === 'Rotation'
+                ? { presets: [0, 45, 90, 180, -90] }
+                : {}),
+              onCommit: (next) =>
+                commit(name as InspectorField, next / (item.scale ?? 1)),
+              // A non-number goes to the command boundary, which explains it.
+              onInvalid: (_message, kind) => {
+                if (kind === 'invalid') commit(name as InspectorField, NaN);
+              },
+            });
+            // The row's label scrubs the value too.
+            const scrubLabel = numberField.querySelector<HTMLElement>(
+              '.number-field-label',
+            )!;
+            scrubLabel.textContent = name;
+            dt.replaceChildren(scrubLabel);
+            dd.replaceChildren(numberField);
+          }
+          if (
+            title === 'Transform' &&
+            keyframe &&
+            (source.selectedIds?.length ?? 1) === 1
+          ) {
+            const key = name.startsWith('Position')
+              ? 'position'
+              : name.startsWith('Scale')
+                ? 'scale'
+                : name === 'Rotation'
+                  ? 'rotation'
+                  : 'opacity';
+            const exists = layer.transform[key].keyframes.some(
+              (frame) => frame.time === (source.currentTime ?? 0),
+            );
+            const button = document.createElement('button');
+            button.className = 'keyframe-button';
+            button.dataset.key = key;
+            button.dataset.fieldName = name;
+            button.innerHTML = iconSvg(
+              exists ? 'diamondFilled' : 'diamondOutline',
+              14,
+            );
+            button.title = exists ? 'Remove keyframe' : 'Add keyframe';
+            button.setAttribute(
+              'aria-label',
+              `${exists ? 'Remove' : 'Add'} ${name} keyframe`,
+            );
+            button.onclick = () => keyframe(key, exists);
+            dd.append(button);
+          }
+          if (
+            title === 'Timing' &&
+            name !== 'Current time' &&
+            timing &&
+            (source.selectedIds?.length ?? 1) === 1
+          ) {
+            const numberField = createNumberField({
+              id: `inspector-${name.toLowerCase().replace(/\s+/g, '-')}`,
+              label: name,
+              value: Number(value),
+              unit: 's',
+              decimals: 3,
+              step: 0.1,
+              onCommit: (next) =>
+                timing(name as 'Start time' | 'Duration', next),
+              onInvalid: (_message, kind) => {
+                if (kind === 'invalid')
+                  timing(name as 'Start time' | 'Duration', NaN);
+              },
+            });
+            const scrubLabel = numberField.querySelector<HTMLElement>(
+              '.number-field-label',
+            )!;
+            dt.replaceChildren(scrubLabel);
+            dd.replaceChildren(numberField);
+          }
+          list.append(dt, dd);
+        }
+        section.append(list);
+        body.append(section);
+      }
     }
   }
-  {
-    const section = document.createElement('section');
-    section.className = 'inspector-section';
-    const list = document.createElement('dl');
-    for (const [name, value] of fields) {
-      const dt = document.createElement('dt'),
-        dd = document.createElement('dd');
-      dt.textContent = name;
-      dd.textContent = value;
-      dd.dataset.field = name;
-      if (title === 'Transform' && commit) {
-        // G1: the shared NumberField. Opacity shows 0-100 %, rotation in
-        // degrees, position in px; the committed values keep their units.
-        const t = layer.transform;
-        const spec: Record<
-          string,
-          {
-            value: number;
-            unit: string;
-            scale?: number;
-            min?: number;
-            max?: number;
-          }
-        > = {
-          'Position X': { value: t.position.value[0], unit: 'px' },
-          'Position Y': { value: t.position.value[1], unit: 'px' },
-          'Scale X': { value: t.scale.value[0], unit: '×' },
-          'Scale Y': { value: t.scale.value[1], unit: '×' },
-          Rotation: { value: t.rotation.value, unit: '°' },
-          Opacity: {
-            value: t.opacity.value * 100,
-            unit: '%',
-            scale: 100,
-            min: 0,
-            max: 100,
-          },
-        };
-        const item = spec[name]!;
-        const numberField = createNumberField({
-          id: `inspector-${name.toLowerCase().replace(/\s+/g, '-')}`,
-          label: name === 'Rotation' ? 'Rotation (degrees)' : name,
-          value: item.value,
-          unit: item.unit,
-          decimals: 3,
-          step: name.startsWith('Scale') ? 0.01 : 1,
-          ...(item.min !== undefined ? { min: item.min } : {}),
-          ...(item.max !== undefined ? { max: item.max } : {}),
-          ...(name === 'Opacity'
-            ? { slider: true, presets: [0, 25, 50, 75, 100] }
-            : {}),
-          ...(name === 'Rotation' ? { presets: [0, 45, 90, 180, -90] } : {}),
-          onCommit: (next) =>
-            commit(name as InspectorField, next / (item.scale ?? 1)),
-          // A non-number goes to the command boundary, which explains it.
-          onInvalid: (_message, kind) => {
-            if (kind === 'invalid') commit(name as InspectorField, NaN);
-          },
-        });
-        // The row's label scrubs the value too.
-        const scrubLabel = numberField.querySelector<HTMLElement>(
-          '.number-field-label',
-        )!;
-        scrubLabel.textContent = name;
-        dt.replaceChildren(scrubLabel);
-        dd.replaceChildren(numberField);
-      }
-      if (
-        title === 'Transform' &&
-        keyframe &&
-        (source.selectedIds?.length ?? 1) === 1
-      ) {
-        const key = name.startsWith('Position')
-          ? 'position'
-          : name.startsWith('Scale')
-            ? 'scale'
-            : name === 'Rotation'
-              ? 'rotation'
-              : 'opacity';
-        const exists = layer.transform[key].keyframes.some(
-          (frame) => frame.time === (source.currentTime ?? 0),
-        );
-        const button = document.createElement('button');
-        button.className = 'keyframe-button';
-        button.dataset.key = key;
-        button.dataset.fieldName = name;
-        button.innerHTML = iconSvg(
-          exists ? 'diamondFilled' : 'diamondOutline',
-          14,
-        );
-        button.title = exists ? 'Remove keyframe' : 'Add keyframe';
-        button.setAttribute(
-          'aria-label',
-          `${exists ? 'Remove' : 'Add'} ${name} keyframe`,
-        );
-        button.onclick = () => keyframe(key, exists);
-        dd.append(button);
-      }
-      if (
-        title === 'Timing' &&
-        name !== 'Current time' &&
-        timing &&
-        (source.selectedIds?.length ?? 1) === 1
-      ) {
-        const numberField = createNumberField({
-          id: `inspector-${name.toLowerCase().replace(/\s+/g, '-')}`,
-          label: name,
-          value: Number(value),
-          unit: 's',
-          decimals: 3,
-          step: 0.1,
-          onCommit: (next) => timing(name as 'Start time' | 'Duration', next),
-          onInvalid: (_message, kind) => {
-            if (kind === 'invalid')
-              timing(name as 'Start time' | 'Duration', NaN);
-          },
-        });
-        const scrubLabel = numberField.querySelector<HTMLElement>(
-          '.number-field-label',
-        )!;
-        dt.replaceChildren(scrubLabel);
-        dd.replaceChildren(numberField);
-      }
-      list.append(dt, dd);
-    }
-    section.append(list);
-    root.append(section);
+  if (revealTab) {
+    const target = root.querySelector<HTMLElement>(
+      `[data-subtab="${revealTab}"]`,
+    );
+    revealTab = null;
+    target?.scrollIntoView?.({ block: 'nearest' });
   }
   restoreFieldFocus(root);
 }

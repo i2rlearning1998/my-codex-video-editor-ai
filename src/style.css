@@ -4390,3 +4390,88 @@ button.color-swatch-trigger {
 .export-more .export-row + .export-row {
   margin-block-start: var(--space-2);
 }
+
+/* H4: Editor and 2D Animation. Keyframe tools show in 2D Animation only; the
+   switch crossfades the panels, the stage and the timeline. */
+.editor-shell[data-editor-mode='editor'] #animation-panel {
+  display: none !important;
+}
+.editor-shell.mode-fade .inspector,
+.editor-shell.mode-fade .timeline,
+.editor-shell.mode-fade .canvas-stage {
+  animation: mode-fade var(--motion-slow) var(--ease-enter);
+}
+@keyframes mode-fade {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* H4: the Inspector's stacked sections and the right panel's sections. */
+.inspector-group {
+  border-block-start: 1px solid var(--border-subtle);
+  padding-block: var(--space-2);
+}
+.inspector-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.inspector-group-title {
+  flex: 1;
+  justify-content: flex-start;
+  min-block-size: 28px;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text);
+  font-size: var(--font-small);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.inspector-group-title:hover {
+  color: var(--accent-text);
+}
+.inspector-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block-start: var(--space-1);
+}
+.inspector-subheading-button {
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+}
+.right-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.right-section-header h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-panel-title);
+}
+.right-section-header p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-small);
+}
+.right-speed {
+  flex-wrap: wrap;
+}
+.switch-row {
+  justify-content: flex-start;
+  gap: var(--space-2);
+  background: transparent;
+}
+.switch-row[aria-checked='true'] {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}

@@ -26,6 +26,7 @@ import {
   type SceneLayer,
 } from '../render/adapter';
 import { t } from '../i18n';
+import { guardCommands } from './editor-mode';
 import {
   isLocked,
   layerTransformCapabilities,
@@ -728,6 +729,8 @@ export class TransformInteraction {
       undefined,
       this.session.currentTime,
     );
+    // H4: keyframes are edited in 2D Animation only.
+    guardCommands(this.session, commands);
     if (commands.length)
       this.engine.commands.transaction(`Set ${field}`, commands);
   }
@@ -755,6 +758,7 @@ export class TransformInteraction {
         this.session.currentTime,
       ),
     );
+    guardCommands(this.session, commands);
     if (commands.length)
       this.engine.commands.transaction(
         multi ? 'Move layers' : GEOMETRY_LABELS[field],

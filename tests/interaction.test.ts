@@ -437,10 +437,13 @@ describe('inspector shares the canonical command path', () => {
     const s = setup();
     s.shell.session.select('child');
     const before = s.input(field).value;
-    // G2.1: X, Y, W and H come first, then the six stored values.
-    expect(s.root.querySelectorAll('#inspector-content input')).toHaveLength(
-      10,
-    );
+    // G2.1: X, Y, W and H come first, then the six stored values (H4: in
+    // the Position and size section, above Timing and Details).
+    expect(
+      s.root.querySelectorAll(
+        '#inspector-content [data-group="inspector.position"] input',
+      ),
+    ).toHaveLength(10);
     s.edit(field, value);
     expect(s.input(field).value).toBe(value);
     expect(s.render.mock.calls.at(-1)![1].composition).toBe(

@@ -172,3 +172,9 @@ export async function showCategory(page: Page, name: string) {
     await button.click();
   await expect(button).toHaveAttribute('aria-pressed', 'true');
 }
+/** H4: keyframes are shown and edited in 2D Animation mode. */
+export async function mode2d(page: Page) {
+  const button = page.locator('#mode-switch [data-mode="animation2d"]');
+  await button.click();
+  await expect(button).toHaveAttribute('aria-checked', 'true');
+}

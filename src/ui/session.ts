@@ -26,6 +26,9 @@ export interface DrawStyle {
 export const MIN_CANVAS_ZOOM = 0.1;
 export const MAX_CANVAS_ZOOM = 16;
 
+/** H4: the editor's modes; 3D Animation is planned (ADV-002). */
+export type EditorMode = 'editor' | 'animation2d';
+
 export class EditorSession {
   #currentTime = 0;
   #timelineZoom = 80;
@@ -37,6 +40,8 @@ export class EditorSession {
   #playing = false;
   /** CV-025: align relative to the canvas instead of the selection. */
   #alignToCanvas = false;
+  /** H4: Editor or 2D Animation (transient UI state, like selection). */
+  #mode: EditorMode = 'editor';
   /** ANI-004: selected timeline keyframes (a layer and a time); transient. */
   #keyframes: readonly SelectedKeyframe[] = Object.freeze([]);
   /** SHP-018 draw mode: the active brush or eraser, or null when not drawing. */
@@ -209,6 +214,14 @@ export class EditorSession {
     }
     next = next.sort((a, b) => a.time - b.time);
     this.#keyframes = Object.freeze(next);
+    this.#notify();
+  }
+  get mode(): EditorMode {
+    return this.#mode;
+  }
+  setMode(mode: EditorMode): void {
+    if (mode === this.#mode) return;
+    this.#mode = mode;
     this.#notify();
   }
   get alignToCanvas(): boolean {
