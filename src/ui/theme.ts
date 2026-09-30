@@ -30,7 +30,9 @@ export function resolveTheme(preference = themePreference()): Theme {
 }
 export const currentTheme = (): Theme =>
   typeof document !== 'undefined' &&
-  document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  document.documentElement.dataset.theme === 'light'
+    ? 'light'
+    : 'dark';
 
 function apply(): void {
   if (typeof document === 'undefined') return;
