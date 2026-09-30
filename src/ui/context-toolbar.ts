@@ -17,7 +17,7 @@ import {
   MAX_BRUSH,
   MIN_BRUSH,
   drawingOf,
-  formatPath,
+  formatStrokes,
   resizeBrush,
 } from '../render/drawing';
 import { selectionBounds } from '../render/selection';
@@ -38,12 +38,24 @@ import {
   textStyleOf,
 } from '../render/text-style';
 import { iconSvg } from './icons';
+import { createColorField } from './components/color-picker';
+import {
+  createNumberField,
+  restoreFieldFocus,
+} from './components/number-field';
+import { createSelect } from './components/select';
+import { openPopover, type PopoverHandle } from './components/popover';
+import type { SidePanels } from './side-panel';
 import type { EditorSession } from './session';
 import {
   buildTransformCommands,
   type InspectorField,
 } from './transform-commands';
 import { copyProperty, isAnimated, withValueAt } from './keyframes';
+import { createGeometryControls } from './geometry-fields';
+import type { GeometryField } from './geometry';
+import { sceneLengthCommands } from './scene-length';
+import { documentColors } from './palette';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 /** A control not built yet: its label key, ledger item and wave. */
@@ -53,13 +65,16 @@ const LATER: Record<string, Later> = {
   blend: ['toolbar.blend', 'MSK-001', 6],
   replace: ['toolbar.replace', 'VID-009', 4],
   effects: ['toolbar.effects', 'TXT-019', 3],
+  'scene-animate': ['toolbar.animate', 'ANI-020', 8],
 };
 /** The spec's control order per type; strings name live controls or LATER keys. */
 const LAYOUT: Record<ToolbarKind, readonly string[]> = {
   media: [
     'x',
     'y',
-    'scale',
+    'w',
+    'lock',
+    'h',
     'rotate',
     'crop',
     'flip',
@@ -297,43 +312,15 @@ export function brushSizeCommands(
   if (!(value >= MIN_BRUSH && value <= MAX_BRUSH))
     throw new RangeError(t('toolbar.brushRange'));
   if (value === drawing.width) return [];
-  const resized = resizeBrush(drawing.points, drawing.width, value);
-  const matrix = localTransformMatrix({
-    ...(layer.transform as TransformValues),
-    position: { value: [0, 0] },
-  });
-  const shift = transformPoint(matrix, [resized.shift, resized.shift]);
-  const [x, y] = layer.transform.position.value;
-  // An animated position moves by the same offset at every keyframe.
-  const position = layer.transform.position;
-  const moved = isAnimated(position)
-    ? [
-        {
-          type: 'SET_PROPERTY',
-          compositionId,
-          layerId: layer.id,
-          target: { kind: 'transform', key: 'position' },
-          property: {
-            ...copyProperty(position),
-            value: [x - shift[0], y - shift[1]],
-            keyframes: position.keyframes.map((frame) => ({
-              ...frame,
-              value: [frame.value[0] - shift[0], frame.value[1] - shift[1]],
-            })),
-          },
-        } as Command,
-      ]
-    : buildTransformCommands(compositionId, layer, {
-        ...(layer.transform as TransformValues),
-        position: { value: [x - shift[0], y - shift[1]] },
-      });
+  const resized = resizeBrush(drawing.strokes, drawing.width, value);
   return [
-    ...moved,
-    setProperty(
+    ...drawingPathCommands(
       compositionId,
       layer,
-      'path',
-      withValue(layer, 'path', formatPath(resized.points), 'string'),
+      resized.strokes,
+      [resized.shift, resized.shift],
+      resized.width,
+      resized.height,
     ),
     setProperty(
       compositionId,
@@ -341,17 +328,73 @@ export function brushSizeCommands(
       'strokeWidth',
       withValue(layer, 'strokeWidth', value, 'number'),
     ),
+  ];
+}
+/**
+ * A drawing's new local strokes and box. The points were moved by `shift`
+ * (local units), so the layer moves back by the same amount in its parent
+ * (every keyframe too) and the ink stays where it was on the canvas. Used by
+ * the brush size and by the area eraser (G4).
+ */
+export function drawingPathCommands(
+  compositionId: string,
+  layer: SceneLayer,
+  strokes: readonly (readonly Point2[])[],
+  shiftBy: Point2,
+  width: number,
+  height: number,
+): Command[] {
+  const matrix = localTransformMatrix({
+    ...(layer.transform as TransformValues),
+    position: { value: [0, 0] },
+  });
+  const shift = transformPoint(matrix, shiftBy);
+  const [x, y] = layer.transform.position.value;
+  // An animated position moves by the same offset at every keyframe.
+  const position = layer.transform.position;
+  const moved =
+    shift[0] === 0 && shift[1] === 0
+      ? []
+      : isAnimated(position)
+        ? [
+            {
+              type: 'SET_PROPERTY',
+              compositionId,
+              layerId: layer.id,
+              target: { kind: 'transform', key: 'position' },
+              property: {
+                ...copyProperty(position),
+                value: [x - shift[0], y - shift[1]],
+                keyframes: position.keyframes.map((frame) => ({
+                  ...frame,
+                  value: [frame.value[0] - shift[0], frame.value[1] - shift[1]],
+                })),
+              },
+            } as Command,
+          ]
+        : buildTransformCommands(compositionId, layer, {
+            ...(layer.transform as TransformValues),
+            position: { value: [x - shift[0], y - shift[1]] },
+          });
+  return [
+    ...moved,
+    setProperty(
+      compositionId,
+      layer,
+      'path',
+      withValue(layer, 'path', formatStrokes(strokes), 'string'),
+    ),
     setProperty(
       compositionId,
       layer,
       'width',
-      withValue(layer, 'width', resized.width, 'number'),
+      withValue(layer, 'width', width, 'number'),
     ),
     setProperty(
       compositionId,
       layer,
       'height',
-      withValue(layer, 'height', resized.height, 'number'),
+      withValue(layer, 'height', height, 'number'),
     ),
   ];
 }
@@ -363,12 +406,14 @@ export function mountContextToolbar(
   bar: HTMLElement,
   engine: EditorEngine,
   session: EditorSession,
-  edit: (field: InspectorField, value: number) => void,
+  edit: (field: InspectorField | GeometryField, value: number) => void,
   report: (error: unknown) => void,
   /** W5-C: opens the Animate presets panel. */
   animate?: () => void,
   /** W2-F3: toggles the Position panel (CV-042). */
   position?: () => void,
+  /** G1.5: the left side panel hosting Colour and Stroke style. */
+  panels?: SidePanels,
 ) {
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('toolbar.label'));
@@ -379,10 +424,10 @@ export function mountContextToolbar(
           null)
       : null;
   };
-  /** W2-F5: the Spacing row stays open across re-renders. */
-  let spacingOpen = false;
-  /** W5-D: so does the shape Stroke style row. */
-  let strokeOpen = false;
+  /** G1.5: the Spacing popover stays open across re-renders. */
+  let spacingPopover: PopoverHandle | null = null;
+  /** The layer and control the side panel's colour picker edits. */
+  let colourFor: { layerId: string; control: string } | null = null;
   const run = (label: string, commands: (Command | null)[]) => {
     const list = commands.filter((command): command is Command => !!command);
     if (list.length) engine.commands.transaction(label, list);
@@ -395,6 +440,8 @@ export function mountContextToolbar(
       render();
     }
   };
+  // G1: the toolbar's fields are the shared NumberField, Select and colour
+  // picker, keyed by `toolbar-${id}` and data-control like before.
   const field = (
     id: string,
     label: string,
@@ -402,86 +449,82 @@ export function mountContextToolbar(
     commit: (value: number) => void,
     suffix = '',
     step = '',
-  ) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'toolbar-field';
-    wrap.title = label;
-    const text = document.createElement('span');
-    text.textContent = label;
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.id = `toolbar-${id}`;
-    input.dataset.control = id;
-    input.value = value;
-    if (step) input.step = step;
-    input.setAttribute('aria-label', label);
-    input.onchange = () =>
-      safely(() => {
-        const number = Number(input.value);
-        if (input.value.trim() === '' || !Number.isFinite(number))
-          throw new RangeError(t('toolbar.number'));
-        commit(number);
-      });
-    input.onkeydown = (event) => {
-      if (event.key === 'Enter') input.blur();
-    };
-    wrap.append(text, input);
-    if (suffix) {
-      const unit = document.createElement('span');
-      unit.className = 'toolbar-unit';
-      unit.textContent = suffix;
-      wrap.append(unit);
-    }
-    return wrap;
-  };
+    limits: {
+      min?: number;
+      max?: number;
+      slider?: boolean;
+      presets?: readonly number[];
+      decimals?: number;
+    } = {},
+  ) =>
+    createNumberField({
+      id: `toolbar-${id}`,
+      label,
+      value: Number(value),
+      ...(suffix ? { unit: suffix } : {}),
+      ...(step && step !== 'any' ? { step: Number(step) } : {}),
+      ...(step === 'any' || Number(step) < 1 ? { decimals: 2 } : {}),
+      ...limits,
+      className: 'toolbar-field',
+      compact: true,
+      data: { control: id },
+      onCommit: (next) => safely(() => commit(next)),
+      onInvalid: (message) => report(new RangeError(message)),
+    });
+  /** Every colour used in the composition, for the picker's design row. */
+  /** Every colour used in the composition, for the picker's design row. */
+  const designColors = () => documentColors(session.source.composition);
   const colorField = (
     id: string,
     label: string,
-    value: string,
+    value: string | null,
     commit: (value: string) => void,
-  ) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'toolbar-field';
-    wrap.title = label;
-    const text = document.createElement('span');
-    text.textContent = label;
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.id = `toolbar-${id}`;
-    input.dataset.control = id;
-    input.value = value;
-    input.setAttribute('aria-label', label);
-    input.onchange = () => safely(() => commit(input.value));
-    wrap.append(text, input);
-    return wrap;
-  };
+    none?: () => void,
+  ) =>
+    createColorField({
+      id: `toolbar-${id}`,
+      label,
+      value,
+      compact: true,
+      data: { control: id },
+      documentColors: designColors,
+      ...(panels
+        ? {
+            host: (build: () => HTMLElement) => {
+              const opening = panels.openId !== 'colour';
+              colourFor = { layerId: session.selectedId ?? '', control: id };
+              panels.show('colour', label, build);
+              if (opening)
+                document
+                  .querySelector<HTMLInputElement>('#color-picker-hex')
+                  ?.focus();
+            },
+          }
+        : {}),
+      ...(none ? { allowNone: true, onNone: () => safely(none) } : {}),
+      onCommit: (next) => safely(() => commit(next)),
+    });
   const select = (
     id: string,
     label: string,
     options: readonly (readonly [value: string, text: string])[],
     value: string,
     commit: (value: string) => void,
-  ) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'toolbar-field';
-    wrap.title = label;
-    const text = document.createElement('span');
-    text.textContent = label;
-    const input = document.createElement('select');
-    input.id = `toolbar-${id}`;
-    input.dataset.control = id;
-    input.setAttribute('aria-label', label);
-    for (const [optionValue, optionText] of options) {
-      const option = document.createElement('option');
-      option.value = optionValue;
-      option.textContent = optionText;
-      input.append(option);
-    }
-    input.value = value;
-    input.onchange = () => safely(() => commit(input.value));
-    wrap.append(text, input);
-    return wrap;
-  };
+    fonts = false,
+  ) =>
+    createSelect({
+      id: `toolbar-${id}`,
+      label,
+      value,
+      compact: true,
+      data: { control: id },
+      options: options.map(([option, text]) => ({
+        value: option,
+        label: text,
+        ...(fonts ? { font: `"${option}"` } : {}),
+      })),
+      onChange: (next) => safely(() => commit(next)),
+    });
   const button = (
     id: string,
     label: string,
@@ -513,8 +556,170 @@ export function mountContextToolbar(
     );
     return item;
   };
+  /** Keeps the Spacing popover and the side panels in step with the toolbar. */
+  const refreshAttached = (layer: SceneLayer | null) => {
+    if (spacingPopover) {
+      const content = spacingContent();
+      const anchor = bar.querySelector<HTMLElement>('[data-control="spacing"]');
+      if (!content || !anchor) spacingPopover.close();
+      else {
+        spacingPopover.retarget(anchor);
+        spacingPopover.element.replaceChildren(content);
+        restoreFieldFocus(spacingPopover.element);
+      }
+    }
+    if (panels?.openId === 'stroke-style') panels.refresh();
+    if (panels?.openId === 'colour' && colourFor) {
+      const trigger = bar.querySelector<HTMLElement>(
+        `#toolbar-${colourFor.control}`,
+      );
+      // The scene bar's background has no layer (layerId '').
+      if ((layer?.id ?? '') !== colourFor.layerId || !trigger) panels.close();
+      else trigger.click();
+    }
+  };
+  /** G1.5 quick choice: line height, letter and paragraph spacing, case. */
+  const spacingContent = () => {
+    const layer = selected();
+    if (!layer || layer.type !== 'text') return null;
+    const style = textStyleOf(layer);
+    const compositionId = session.source.composition.id;
+    const wrap = document.createElement('div');
+    wrap.className = 'toolbar-popover-body';
+    wrap.setAttribute('role', 'group');
+    wrap.setAttribute('aria-label', t('toolbar.spacing'));
+    const styleRun = (
+      label: string,
+      key: TextStyleKey,
+      value: number | string,
+    ) =>
+      run(
+        label,
+        textStyleCommands(compositionId, selected() ?? layer, key, value),
+      );
+    wrap.append(
+      field(
+        'line-height',
+        t('toolbar.lineHeight'),
+        round(style.lineHeight, 2),
+        (value) => styleRun('Set line height', 'lineHeight', value),
+        '×',
+        '0.1',
+        { min: 0.5, max: 5, slider: true, decimals: 2 },
+      ),
+      field(
+        'letter-spacing',
+        t('toolbar.letterSpacing'),
+        round(style.letterSpacing, 2),
+        (value) => styleRun('Set letter spacing', 'letterSpacing', value),
+        'px',
+        '',
+        { min: -50, max: 200, slider: true },
+      ),
+      field(
+        'paragraph-spacing',
+        t('toolbar.paragraphSpacing'),
+        round(style.paragraphSpacing, 2),
+        (value) => styleRun('Set paragraph spacing', 'paragraphSpacing', value),
+        'px',
+        '',
+        { min: 0, max: 500, slider: true },
+      ),
+      select(
+        'case',
+        t('toolbar.textCase'),
+        TEXT_CASES.map(
+          (textCase) => [textCase, t(`text.case.${textCase}`)] as const,
+        ),
+        style.textCase,
+        (value) => styleRun('Set text case', 'textCase', value),
+      ),
+    );
+    return wrap;
+  };
+  /** G1.5 deep panel: the shape's stroke colour, width, dash, caps and joins. */
+  const strokeContent = () => {
+    const layer = selected();
+    const shape = layer ? shapeOf(layer) : null;
+    if (!layer || !shape) return null;
+    const compositionId = session.source.composition.id;
+    const shapeRun = (label: string, key: ShapeKey, value: number | string) =>
+      run(label, [
+        shapeStyleCommand(compositionId, selected() ?? layer, key, value),
+      ]);
+    const wrap = document.createElement('div');
+    wrap.className = 'side-panel-form';
+    wrap.append(
+      field(
+        'panel-stroke-width',
+        t('toolbar.strokeWidth'),
+        round(shape.strokeWidth, 2),
+        (value) => shapeRun('Set stroke width', 'strokeWidth', value),
+        'px',
+        '',
+        { min: 0, max: 200, slider: true, presets: [0, 1, 2, 4, 8, 16] },
+      ),
+      select(
+        'dash',
+        t('toolbar.dash'),
+        STROKE_DASHES.map((dash) => [dash, t(`shape.dash.${dash}`)] as const),
+        shape.dash,
+        (value) => shapeRun('Set stroke dash', 'strokeDash', value),
+      ),
+      select(
+        'cap',
+        t('toolbar.cap'),
+        STROKE_CAPS.map((cap) => [cap, t(`shape.cap.${cap}`)] as const),
+        shape.cap,
+        (value) => shapeRun('Set stroke caps', 'strokeCap', value),
+      ),
+      select(
+        'join',
+        t('toolbar.join'),
+        STROKE_JOINS.map((join) => [join, t(`shape.join.${join}`)] as const),
+        shape.join,
+        (value) => shapeRun('Set stroke joins', 'strokeJoin', value),
+      ),
+    );
+    return wrap;
+  };
   // D-031 pattern: a focused field commits on blur, which re-renders; blur it
   // first and drop this render if that commit already re-rendered.
+  /**
+   * G3.3: the scene bar: the background (shared by every scene in schema 5),
+   * the scene's length and scene animation (not built yet).
+   */
+  const renderScene = () => {
+    const source = session.source;
+    bar.hidden = false;
+    bar.dataset.kind = 'scene';
+    const name = document.createElement('span');
+    name.className = 'toolbar-scene-name';
+    name.textContent = source.composition.name;
+    bar.replaceChildren(
+      name,
+      colorField(
+        'background',
+        t('scene.background'),
+        source.background,
+        (color) =>
+          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+      ),
+      field(
+        'scene-length',
+        t('scene.length'),
+        round(source.composition.duration, 2),
+        (value) =>
+          run('Set scene length', sceneLengthCommands(session.source, value)),
+        's',
+        '0.1',
+        { min: 0.1, max: 3600 },
+      ),
+      later('scene-animate'),
+    );
+    restoreFieldFocus(bar);
+    refreshAttached(null);
+  };
   let renders = 0;
   const render = () => {
     const active = document.activeElement;
@@ -525,6 +730,11 @@ export function mountContextToolbar(
     }
     renders++;
     const layer = selected();
+    // G3.3: with nothing selected, the toolbar is the scene bar.
+    if (!layer && session.selectedIds.length === 0) {
+      renderScene();
+      return;
+    }
     const kind = toolbarKind(layer);
     bar.hidden = !kind;
     bar.dataset.kind = kind ?? '';
@@ -533,7 +743,6 @@ export function mountContextToolbar(
       return;
     }
     const compositionId = session.source.composition.id;
-    const [sx, sy] = layer.transform.scale.value;
     const opacity = layer.transform.opacity.value;
     const colorOf = (key: string) => {
       const property = layer.properties[key];
@@ -544,7 +753,14 @@ export function mountContextToolbar(
     const drawing = drawingOf(layer);
     const shape = shapeOf(layer);
     const shapeCommand = (key: ShapeKey, value: number | string | boolean) =>
-      shapeStyleCommand(compositionId, layer, key, value);
+      shapeStyleCommand(compositionId, selected() ?? layer, key, value);
+    const geometry = createGeometryControls(
+      'toolbar',
+      session.source,
+      (field, value) => safely(() => edit(field, value)),
+      () => render(),
+      true,
+    );
     const controls = LAYOUT[kind].map((id) => {
       if (LATER[id]) return later(id);
       switch (id) {
@@ -564,38 +780,13 @@ export function mountContextToolbar(
           item.setAttribute('aria-haspopup', 'dialog');
           return item;
         }
+        // G2.1: X, Y, W and H of what is drawn, shared with the Inspector.
         case 'x':
         case 'y':
-          return field(
-            id,
-            t(id === 'x' ? 'toolbar.x' : 'toolbar.y'),
-            round(layer.transform.position.value[id === 'x' ? 0 : 1]),
-            (value) => edit(id === 'x' ? 'Position X' : 'Position Y', value),
-          );
-        case 'scale':
-          return field(
-            id,
-            t('toolbar.scale'),
-            round(Math.abs(sx) * 100, 1),
-            (value) => {
-              if (!(value > 0)) throw new RangeError(t('toolbar.scaleRange'));
-              const factor = value / 100 / Math.abs(sx);
-              run(
-                'Set scale',
-                buildTransformCommands(
-                  compositionId,
-                  layer,
-                  {
-                    ...(layer.transform as TransformValues),
-                    scale: { value: [sx * factor, sy * factor] },
-                  },
-                  undefined,
-                  session.currentTime,
-                ),
-              );
-            },
-            '%',
-          );
+        case 'w':
+        case 'h':
+        case 'lock':
+          return geometry![id];
         case 'rotate':
           return field(
             id,
@@ -603,6 +794,8 @@ export function mountContextToolbar(
             round(layer.transform.rotation.value, 2),
             (value) => edit('Rotation', value),
             '°',
+            '',
+            { min: -360, max: 360, slider: true, presets: [0, 45, 90, 180] },
           );
         case 'opacity':
           return field(
@@ -615,6 +808,8 @@ export function mountContextToolbar(
               edit('Opacity', value / 100);
             },
             '%',
+            '',
+            { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
           );
         case 'flip': {
           const group = document.createElement('div');
@@ -663,6 +858,8 @@ export function mountContextToolbar(
                 shapeCommand('fillOpacity', value / 100),
               ]),
             '%',
+            '',
+            { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
           );
           item.querySelector('input')!.disabled = !shape?.fill;
           return item;
@@ -701,18 +898,30 @@ export function mountContextToolbar(
             round(shape?.strokeWidth ?? 0, 2),
             (value) =>
               run('Set stroke width', [shapeCommand('strokeWidth', value)]),
+            'px',
+            '',
+            { min: 0, max: 200, slider: true, presets: [0, 1, 2, 4, 8, 16] },
           );
         case 'stroke-style': {
           const item = button(
             id,
             t('toolbar.strokeStyle'),
             'strokeStyle',
-            () => {
-              strokeOpen = !strokeOpen;
-              render();
-            },
+            () =>
+              panels?.openId === 'stroke-style'
+                ? panels.close()
+                : panels?.show(
+                    'stroke-style',
+                    t('toolbar.strokeStyle'),
+                    strokeContent,
+                  ),
           );
-          item.setAttribute('aria-expanded', String(strokeOpen));
+          item.disabled = !panels;
+          item.setAttribute('aria-haspopup', 'dialog');
+          item.setAttribute(
+            'aria-expanded',
+            String(panels?.openId === 'stroke-style'),
+          );
           return item;
         }
         case 'corners': {
@@ -749,6 +958,7 @@ export function mountContextToolbar(
                 'Set font',
                 textStyleCommands(compositionId, layer, 'fontFamily', value),
               ),
+            true,
           );
         case 'weight':
           return select(
@@ -801,10 +1011,19 @@ export function mountContextToolbar(
           );
         case 'spacing': {
           const item = button(id, t('toolbar.spacing'), 'spacing', () => {
-            spacingOpen = !spacingOpen;
-            render();
+            if (spacingPopover) return spacingPopover.close();
+            const content = spacingContent();
+            if (!content) return;
+            spacingPopover = openPopover(item, content, {
+              label: t('toolbar.spacing'),
+              className: 'toolbar-popover',
+              onClose: () => {
+                spacingPopover = null;
+              },
+            });
           });
-          item.setAttribute('aria-expanded', String(spacingOpen));
+          item.setAttribute('aria-haspopup', 'dialog');
+          item.setAttribute('aria-expanded', String(!!spacingPopover));
           return item;
         }
         case 'size': {
@@ -829,15 +1048,30 @@ export function mountContextToolbar(
           const item = colorField(
             id,
             t(id === 'fill' ? 'toolbar.fill' : 'toolbar.color'),
-            colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
+            // A shape with No fill shows the empty swatch.
+            shape && !shape.fill && id === 'fill'
+              ? null
+              : colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
             (value) =>
               run('Set color', [
-                colorCommand(compositionId, layer, value, session.currentTime),
+                colorCommand(
+                  compositionId,
+                  selected() ?? layer,
+                  value,
+                  session.currentTime,
+                ),
+                // Picking a colour for a shape with No fill turns fill back on.
+                shape && !shape.fill && id === 'fill'
+                  ? shapeCommand('fillEnabled', true)
+                  : null,
               ]),
+            id === 'fill' && shape
+              ? () => run('Remove fill', [shapeCommand('fillEnabled', false)])
+              : undefined,
           );
           // Lines and arrows have no fill; their color is the stroke.
           if (shape && (shape.kind === 'line' || shape.kind === 'arrow'))
-            item.querySelector('input')!.disabled = true;
+            item.querySelector('button')!.disabled = true;
           return item;
         }
         case 'brush':
@@ -854,127 +1088,9 @@ export function mountContextToolbar(
       }
       throw new Error(`Unknown toolbar control ${id}`);
     });
-    // W2-F5 Spacing row (TXT-016, TXT-017): line height, letter and
-    // paragraph spacing, and text case, below the toolbar's controls.
-    const style = kind === 'text' ? textStyleOf(layer) : null;
-    const row: HTMLElement[] =
-      style && spacingOpen
-        ? [
-            (() => {
-              const wrap = document.createElement('div');
-              wrap.className = 'toolbar-row';
-              wrap.setAttribute('role', 'group');
-              wrap.setAttribute('aria-label', t('toolbar.spacing'));
-              wrap.append(
-                field(
-                  'line-height',
-                  t('toolbar.lineHeight'),
-                  round(style.lineHeight, 2),
-                  (value) =>
-                    run(
-                      'Set line height',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'lineHeight',
-                        value,
-                      ),
-                    ),
-                  '×',
-                  '0.1',
-                ),
-                field(
-                  'letter-spacing',
-                  t('toolbar.letterSpacing'),
-                  round(style.letterSpacing, 2),
-                  (value) =>
-                    run(
-                      'Set letter spacing',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'letterSpacing',
-                        value,
-                      ),
-                    ),
-                  '',
-                  'any',
-                ),
-                field(
-                  'paragraph-spacing',
-                  t('toolbar.paragraphSpacing'),
-                  round(style.paragraphSpacing, 2),
-                  (value) =>
-                    run(
-                      'Set paragraph spacing',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'paragraphSpacing',
-                        value,
-                      ),
-                    ),
-                  '',
-                  'any',
-                ),
-                select(
-                  'case',
-                  t('toolbar.textCase'),
-                  TEXT_CASES.map(
-                    (textCase) =>
-                      [textCase, t(`text.case.${textCase}`)] as const,
-                  ),
-                  style.textCase,
-                  (value) =>
-                    run(
-                      'Set text case',
-                      textStyleCommands(
-                        compositionId,
-                        layer,
-                        'textCase',
-                        value,
-                      ),
-                    ),
-                ),
-              );
-              return wrap;
-            })(),
-          ]
-        : [];
-    // W5-D Stroke style row (SHP-005): dash, caps and joins.
-    if (shape && strokeOpen) {
-      const wrap = document.createElement('div');
-      wrap.className = 'toolbar-row';
-      wrap.setAttribute('role', 'group');
-      wrap.setAttribute('aria-label', t('toolbar.strokeStyle'));
-      wrap.append(
-        select(
-          'dash',
-          t('toolbar.dash'),
-          STROKE_DASHES.map((dash) => [dash, t(`shape.dash.${dash}`)] as const),
-          shape.dash,
-          (value) =>
-            run('Set stroke dash', [shapeCommand('strokeDash', value)]),
-        ),
-        select(
-          'cap',
-          t('toolbar.cap'),
-          STROKE_CAPS.map((cap) => [cap, t(`shape.cap.${cap}`)] as const),
-          shape.cap,
-          (value) => run('Set stroke caps', [shapeCommand('strokeCap', value)]),
-        ),
-        select(
-          'join',
-          t('toolbar.join'),
-          STROKE_JOINS.map((join) => [join, t(`shape.join.${join}`)] as const),
-          shape.join,
-          (value) =>
-            run('Set stroke joins', [shapeCommand('strokeJoin', value)]),
-        ),
-      );
-      row.push(wrap);
-    }
-    bar.replaceChildren(...controls, ...row);
+    bar.replaceChildren(...controls);
+    restoreFieldFocus(bar);
+    refreshAttached(layer);
   };
   render();
   return { render };

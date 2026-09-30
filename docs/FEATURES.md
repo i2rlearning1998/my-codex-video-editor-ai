@@ -92,7 +92,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | LAY-001 | P0 | W1 | Todo | Layout matches the approved target: left icon rail with panel, central canvas, right panel with tabs and icon rail, bottom timeline |
-| LAY-002 | P0 | W1 | Todo | Left rail has Media, Graphics, Text, Templates, Audio, Elements, Transitions; each switches the left panel content |
+| LAY-002 | P0 | W1 | Verified | Left rail has Media, Graphics, Text, Templates, Audio, Elements, Transitions; each switches the left panel content |
 | LAY-003 | P0 | W1 | Claimed | Left panel can be collapsed and expanded |
 | LAY-004 | P0 | W1 | Claimed | Panel dividers (left, right, timeline) are draggable with min and max sizes |
 | LAY-005 | P1 | W1 | Todo | Panel sizes and collapsed state persist across reloads |
@@ -108,15 +108,19 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-015 | P0 | W1 | Todo | Every icon-only button has an accessible name and a tooltip that includes its shortcut |
 | LAY-016 | P0 | W1 | Todo | Toast notification component (info, success, warning, error) with auto-dismiss and manual dismiss |
 | LAY-017 | P0 | W1 | Todo | Modal dialog component traps focus, closes on Esc and returns focus to the trigger |
-| LAY-018 | P0 | W1 | Todo | Dropdown, popover and menu components share one implementation with keyboard navigation |
+| LAY-018 | P0 | W1 | Verified | Dropdown, popover and menu components share one implementation with keyboard navigation |
 | LAY-019 | P0 | W1 | Todo | Every panel has designed loading, empty and error states |
 | LAY-020 | P0 | W1 | Todo | Design tokens (color, spacing, radius, type scale, elevation) live in one place; a theme swap needs no component edits |
 | LAY-021 | P0 | W1 | Todo | One consistent line-icon set replaces all unicode glyph icons |
-| LAY-022 | P0 | W1 | Todo | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
-| LAY-023 | P0 | W1 | Todo | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
-| LAY-024 | P0 | W1 | Todo | Focus rings are visible on every interactive element |
+| LAY-022 | P0 | W1 | Claimed | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
+| LAY-023 | P0 | W1 | Claimed | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
+| LAY-024 | P0 | W1 | Verified | Focus rings are visible on every interactive element |
 | LAY-025 | P1 | W1 | Todo | Crisp rendering on high-DPI displays for icons, canvas overlays and timeline |
 | LAY-026 | P0 | W1 | Todo | Drop overlay appears when files are dragged over the app and explains what will happen |
+| LAY-027 | P1 | W1 | Verified | Scrollbars are thin and themed everywhere; in side panels they appear on hover |
+| LAY-028 | P0 | W1 | Verified | Deep panels (Position, Animate, Colour, Stroke style) open in the left side panel with a Back button and never cover the canvas; quick choices open as popovers anchored under the toolbar without pushing the layout |
+| LAY-029 | P0 | W1 | Verified | Every clickable element has hover, pressed and keyboard-focus states |
+| LAY-030 | P0 | W1 | Verified | Menus: submenus open on hover after a short delay and stay open on a diagonal move toward them; arrow keys, Enter and Esc work at every level; menus reposition to fit and show no scrollbar in normal use |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -178,13 +182,16 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-010 | P0 | W1 | Claimed | Corrupt or future-version saved data is quarantined with a message, never silently overwritten |
 | PRJ-011 | P0 | W1 | Todo | Composition (scene) duration is derived from content; empty composition falls back to 10 seconds |
 | PRJ-012 | P0 | W2 | Verified | Multiple compositions (scenes): switch active composition |
-| PRJ-013 | P0 | W2 | Todo | Scenes: add, rename, reorder, duplicate, delete |
-| PRJ-014 | P1 | W2 | Todo | Scene strip UI for switching and reordering scenes |
+| PRJ-013 | P0 | W2 | Verified | Scenes: add, rename, reorder, duplicate, delete |
+| PRJ-014 | P1 | W2 | Verified | Scene strip UI for switching and reordering scenes |
 | PRJ-015 | P0 | W4 | Todo | Projects persist in IndexedDB with media in OPFS; localStorage remains only for small settings |
 | PRJ-016 | P0 | W4 | Todo | Home screen lists projects with thumbnail, last edited; open, rename, duplicate, delete |
 | PRJ-017 | P0 | W4 | Todo | Crash recovery dialog offers to restore the last autosave and shows its time |
 | PRJ-018 | P1 | W8 | Todo | Named version snapshots with restore |
 | PRJ-019 | P1 | W9 | Todo | Project package export and import including media (single file) |
+| PRJ-020 | P0 | W2 | Verified | A scene board shows every scene in one row in playback order with a poster, name and length and a transition chip between scenes (transitions are Wave 6); double-click opens a scene and the timeline then shows that scene only |
+| PRJ-021 | P0 | W2 | Verified | Dragging a layer onto another scene on the board moves it there with its clip (Alt copies it), one undo step |
+| PRJ-022 | P0 | W2 | Verified | Playback runs through the scenes in order |
 
 ## MED: Media library and stock (Wave 4)
 
@@ -245,13 +252,13 @@ Everything the user does directly on the preview canvas.
 | CV-009 | P0 | W2 | Verified | Rotation handle rotates around the visual center |
 | CV-010 | P0 | W2 | Todo | Shift while rotating snaps to 15 degree steps |
 | CV-011 | P0 | W2 | Verified | Text-width grips change text box width and reflow the text without changing font size |
-| CV-012 | P1 | W2 | Todo | Live readout of size, angle or position while dragging |
+| CV-012 | P1 | W2 | Claimed | Live readout of size, angle or position while dragging |
 | CV-013 | P0 | W2 | Verified | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
 | CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
 | CV-016 | P0 | W2 | Verified | Zoom controls: Fit, plus and minus change the canvas view scale |
-| CV-017 | P0 | W2 | Todo | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
-| CV-018 | P0 | W2 | Todo | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
+| CV-017 | P0 | W2 | Claimed | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
+| CV-018 | P0 | W2 | Verified | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
 | CV-020 | P0 | W2 | Todo | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
 | CV-021 | P0 | W2 | Todo | Right-click empty canvas opens a menu: Paste, Select all, toggle grid and guides |
@@ -276,6 +283,12 @@ Everything the user does directly on the preview canvas.
 | CV-040 | P0 | W2 | Verified | A selection shows a small action cluster above its box with Group (for two or more sibling layers) or Ungroup (for groups), Duplicate, Delete and More (the right-click menu); with two or more layers selected, one dashed box surrounds the whole selection and each layer keeps its own outline. Menu and cluster actions are offered only when every selected item supports them |
 | CV-041 | P0 | W2 | Verified | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
 | CV-042 | P0 | W2 | Verified | A Position panel opens from the context toolbar with an Arrange tab (align, distribute and layer order as buttons) and a Layers tab (the composition's layers as a flat list, drag to reorder, groups shown with a folder icon) |
+| CV-043 | P0 | W2 | Verified | The canvas right-click menu offers no timeline-only items (Link clips, Enable/disable clip); Copy style and Paste style are always visible without scrolling |
+| CV-044 | P0 | W2 | Verified | The Inspector, the image and video toolbar and the Position panel show X, Y, W and H of the drawn box in px, with a ratio lock; the values match what is drawn for text, shapes, lines, drawings, groups, images, videos and a multi-selection, before and after a handle drag, and follow the drag live |
+| CV-045 | P0 | W2 | Verified | Handles depend on the layer: groups and drawings resize from their corners only, text from its corners plus its width grips, lines and arrows lengthen from their two ends, and a multi-selection box has side handles only when every layer is a plain shape; glyphs, pictures and brush strokes are never stretched |
+| CV-046 | P0 | W2 | Verified | While a marquee is dragged, the layers it will select are outlined live, before release |
+| CV-047 | P0 | W2 | Verified | A hand tool (H) and Shift+wheel also pan; Fit resets the pan; layers outside the artboard show faintly and stay selectable |
+| CV-048 | P0 | W2 | Verified | With nothing selected the toolbar is a scene bar: background colour, scene length (retimes the clips at the end, one undo step) and Animate (disabled, names its wave) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -396,10 +409,10 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | INS-001 | P0 | W2 | Todo | Properties panel content depends on selection: none (project settings), single layer by type, multiple layers (common properties), group |
 | INS-002 | P0 | W2 | Verified | Editing Position X in the inspector moves the layer on the canvas and creates one undo step |
 | INS-003 | P0 | W2 | Verified | Position Y, scale, rotation and opacity fields edit the layer and stay in sync with canvas gestures |
-| INS-004 | P0 | W2 | Todo | Uniform scale with a lock toggle plus separate width and height |
+| INS-004 | P0 | W2 | Verified | Uniform scale with a lock toggle plus separate width and height |
 | INS-005 | P0 | W2 | Todo | Anchor point control |
-| INS-006 | P0 | W2 | Todo | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
-| INS-007 | P0 | W2 | Todo | Sliders paired with numeric fields for opacity, rotation and scale |
+| INS-006 | P0 | W2 | Verified | Numeric inputs: scrub by dragging the label, arrow keys step, Shift steps by 10, invalid input reverts, Enter commits, Esc cancels |
+| INS-007 | P0 | W2 | Verified | Sliders paired with numeric fields for opacity, rotation and scale |
 | INS-008 | P0 | W2 | Todo | Reset button per property |
 | INS-009 | P0 | W2 | Verified | Keyframe diamond per animatable property toggles a keyframe |
 | INS-010 | P0 | W2 | Verified | Timing section: start time and duration of the selected item |
@@ -490,9 +503,12 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-015 | P2 | W5 | Verified | Freehand pen and boolean shape operations |
 | SHP-016 | P2 | W8 | Todo | Data charts (bar, line, pie) from typed or pasted data |
 | SHP-017 | P2 | W8 | Todo | Lottie import |
-| SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker and Highlighter with brush size, color and opacity; choosing a brush puts the canvas in draw mode, and Esc, V or another category leaves it |
+| SHP-018 | P0 | W2 | Verified | A Draw category in the left rail offers Pen, Marker, Highlighter, Glow pen and Eraser; each brush keeps its own size, colour and opacity (1 to 100, each with a number field, slider and presets; colour from the design's colours, the picker or the eyedropper); choosing a tool puts the canvas in draw mode, and Esc, V or another category leaves it |
 | SHP-019 | P0 | W2 | Verified | Each freehand stroke becomes one undoable shape layer with a clip at the playhead; it can be selected, moved, resized, saved and reloaded, and draws the same in preview and export |
-| SHP-020 | P0 | W2 | Verified | The Draw panel has an Eraser that removes whole freehand strokes it touches, as one undo step per drag; size, color and opacity controls are shared across Pen, Marker and Highlighter |
+| SHP-020 | P0 | W2 | Verified | The Eraser removes the ink it passes over: strokes it crosses are cut into parts (still one layer each) and strokes it covers are removed, as one undo step per drag |
+| SHP-021 | P0 | W2 | Verified | The brushes draw differently: Pen a solid round line, Marker a softer rim, Highlighter flat (chisel) ends and translucent over what is under it, Glow pen a bright core with a halo |
+| SHP-022 | P0 | W2 | Verified | Strokes are smoothed; holding Shift draws a straight line; a circle the size of the brush follows the pointer while drawing |
+| SHP-023 | P1 | W2 | Todo | Shape assist: a roughly drawn line, rectangle or ellipse can become the clean shape |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 
@@ -519,6 +535,7 @@ Preview and export must evaluate animation with the same code.
 | ANI-017 | P2 | W8 | Todo | Copy and paste keyframes between layers |
 | ANI-018 | P2 | W8 | Todo | Path trim (draw-on) animation |
 | ANI-019 | P2 | W8 | Todo | Particle emitters |
+| ANI-020 | P1 | W8 | Todo | Scene (page) animation: one preset animates every layer of a scene |
 
 ## VID: Video and image clip operations
 
@@ -668,6 +685,7 @@ Offline frame-accurate render, never realtime capture.
 | EXP-016 | P1 | W9 | Todo | Export SRT subtitles and cover frame |
 | EXP-017 | P2 | W9 | Todo | Export queue in the background |
 | EXP-018 | P2 | W9 | Todo | PNG sequence export |
+| EXP-019 | P0 | W5 | Verified | Export joins every scene one after another, with an option to export the current scene only |
 
 ## REL: Performance, reliability and platform (Wave 9 unless noted)
 

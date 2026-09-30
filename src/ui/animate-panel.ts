@@ -12,22 +12,23 @@ import {
 import { formatNumber, t } from '../i18n';
 import { locateLayer } from '../render/adapter';
 import type { EditorSession } from './session';
+import type { DeepPanelHandle } from './side-panel';
+import { createNumberField } from './components/number-field';
+import { createSelect } from './components/select';
 
 type Tab = 'in' | 'out' | 'loop' | 'kenBurns';
 const DEFAULT_DURATION = 0.5;
 const DEFAULT_PERIOD = 1.5;
 
 export function mountAnimatePanel(
-  panel: HTMLElement,
+  handle: DeepPanelHandle,
   engine: EditorEngine,
   session: EditorSession,
   report: (error: unknown) => void,
-  registerOverlay: (close: () => void) => () => void,
 ) {
-  panel.setAttribute('role', 'dialog');
-  panel.setAttribute('aria-label', t('animate.title'));
+  // G1.5: rendered in the left side panel, which owns the header and Back.
+  const panel = handle.body;
   let tab: Tab = 'in';
-  let unregister: (() => void) | undefined;
   const safely = (action: () => void) => {
     try {
       action();
@@ -86,31 +87,20 @@ export function mountAnimatePanel(
     max: number,
     commit: (value: number) => void,
   ) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'animate-slider';
-    wrap.htmlFor = `${id}-range`;
-    const text = document.createElement('span');
-    text.textContent = label;
-    const range = document.createElement('input');
-    range.type = 'range';
-    range.id = `${id}-range`;
-    range.min = String(min);
-    range.max = String(max);
-    range.step = '0.1';
-    range.value = String(value);
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.id = id;
-    input.min = String(min);
-    input.max = String(max);
-    input.step = '0.1';
-    input.value = String(value);
-    input.setAttribute('aria-label', label);
-    const unit = document.createElement('span');
-    unit.textContent = t('animate.seconds');
-    const apply = (raw: string) => {
-      const next = Number(raw);
-      if (!Number.isFinite(next) || next < min || next > max) {
+    // G1: the shared NumberField with a slider in its chevron popover.
+    return createNumberField({
+      id,
+      label,
+      value,
+      unit: t('animate.seconds'),
+      min,
+      max,
+      step: 0.1,
+      decimals: 1,
+      slider: true,
+      className: 'animate-slider',
+      onCommit: (next) => commit(Math.round(next * 10) / 10),
+      onInvalid: () =>
         report(
           new RangeError(
             t('animate.range', {
@@ -118,18 +108,11 @@ export function mountAnimatePanel(
               max: formatNumber(max),
             }),
           ),
-        );
-        return;
-      }
-      commit(Math.round(next * 10) / 10);
-    };
-    range.onchange = () => apply(range.value);
-    input.onchange = () => apply(input.value);
-    wrap.append(text, range, input, unit);
-    return wrap;
+        ),
+    });
   };
   const render = () => {
-    if (panel.hidden) return;
+    if (!handle.isOpen) return;
     const found = target();
     if (!found) {
       close();
@@ -196,22 +179,16 @@ export function mountAnimatePanel(
           ),
         );
         if (current.preset === 'slide') {
-          const wrap = document.createElement('label');
-          wrap.className = 'animate-slider';
-          const text = document.createElement('span');
-          text.textContent = t('animate.direction');
-          const select = document.createElement('select');
-          select.id = 'animate-direction';
-          for (const direction of SLIDE_DIRECTIONS) {
-            const option = document.createElement('option');
-            option.value = direction;
-            option.textContent = t(`animate.direction.${direction}`);
-            select.append(option);
-          }
-          select.value = current.direction ?? 'up';
-          select.onchange = () =>
-            set(tab, { ...current, direction: select.value });
-          wrap.append(text, select);
+          const wrap = createSelect({
+            id: 'animate-direction',
+            label: t('animate.direction'),
+            value: current.direction ?? 'up',
+            options: SLIDE_DIRECTIONS.map((direction) => ({
+              value: direction,
+              label: t(`animate.direction.${direction}`),
+            })),
+            onChange: (direction) => set(tab, { ...current, direction }),
+          });
           extras.push(wrap);
         }
       }
@@ -263,33 +240,18 @@ export function mountAnimatePanel(
     }
     panel.replaceChildren(tabs, cards, ...extras);
   };
-  const close = () => {
-    if (panel.hidden) return;
-    panel.hidden = true;
-    unregister?.();
-    unregister = undefined;
-  };
+  const close = () => handle.close();
   const open = () => {
     if (!target()) return;
-    panel.hidden = false;
-    unregister ??= registerOverlay(close);
+    handle.open();
     render();
     panel.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
   };
-  document.addEventListener('pointerdown', (event) => {
-    const element = event.target as HTMLElement;
-    if (
-      !panel.hidden &&
-      !panel.contains(element) &&
-      !element.closest('[data-control="animate"]')
-    )
-      close();
-  });
   const unsubscribe = session.onChange(render);
   return {
     open,
     close,
-    toggle: () => (panel.hidden ? open() : close()),
+    toggle: () => (handle.isOpen ? close() : open()),
     render,
     dispose: () => {
       unsubscribe();

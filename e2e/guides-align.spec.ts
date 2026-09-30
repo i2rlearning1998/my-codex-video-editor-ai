@@ -147,9 +147,14 @@ test('[CV-013] a right-edge resize snaps to the safe margin', async ({
 
 async function alignMenu(page: Page, at: [number, number]) {
   // An open menu sits under the pointer; close it before right-clicking again.
-  if (await page.locator('#canvas-context-menu').isVisible())
-    await page.keyboard.press('Escape');
-  await expect(page.locator('#canvas-context-menu')).toBeHidden();
+  // G1.3: Escape closes one menu level at a time (a flyout, then the menu).
+  await expect(async () => {
+    if (await page.locator('#canvas-context-menu').isVisible())
+      await page.keyboard.press('Escape');
+    await expect(page.locator('#canvas-context-menu')).toBeHidden({
+      timeout: 200,
+    });
+  }).toPass();
   const point = await toScreen(page, at[0], at[1]);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await page.locator('#canvas-context-menu [data-action="align"]').click();

@@ -38,6 +38,12 @@ export class Playback {
     if (time >= duration) {
       this.session.setCurrentTime(duration);
       this.session.setPlaying(false);
+      // G5: playback runs through the scenes in order.
+      const next = this.session.nextCompositionId;
+      if (next) {
+        this.session.selectComposition(next);
+        this.play();
+      }
       return;
     }
     this.session.setCurrentTime(

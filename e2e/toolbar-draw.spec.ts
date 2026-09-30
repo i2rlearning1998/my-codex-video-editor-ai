@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard } from './fixtures';
+import { pickColor } from './controls';
 
 // Default example: text "example-headline" (76,165, fill #272b29, size 78),
 // shape "example-badge" (76,456 224×48, fill #cbbced), group "example-cards".
@@ -81,7 +82,8 @@ test.beforeEach(async ({ page }) => {
 test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and Color, shape Fill, disabled controls name their wave', async ({
   page,
 }, testInfo) => {
-  await expect(toolbar(page)).toBeHidden();
+  // G3.3: with nothing selected, the toolbar is the scene bar.
+  await expect(toolbar(page)).toHaveAttribute('data-kind', 'scene');
   const canvasBefore = await page.locator('canvas').boundingBox();
   await select(page, 'example-headline');
   await expect(toolbar(page)).toBeVisible();
@@ -104,7 +106,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   expect(
     (await layer(page, 'example-headline')).properties.fontSize.value,
   ).toBe(60);
-  await page.locator('#toolbar-color').fill('#ff0000');
+  await pickColor(page, 'toolbar-color', '#ff0000');
   await expect
     .poll(
       async () => (await layer(page, 'example-headline')).properties.fill.value,
@@ -122,7 +124,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
     'title',
     'Select two or more shapes, then right-click and choose Combine shapes.',
   );
-  await page.locator('#toolbar-fill').fill('#00aa00');
+  await pickColor(page, 'toolbar-fill', '#00aa00');
   await expect
     .poll(
       async () => (await layer(page, 'example-badge')).properties.fill.value,
@@ -136,7 +138,7 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   await expect(toolbar(page)).toBeHidden();
 });
 
-test('[CV-036] image and video toolbar: position, scale, rotate, opacity and flip, one undo each; Crop names its wave', async ({
+test('[CV-036] image and video toolbar: X, Y, width and height, rotate, opacity and flip, one undo each; Crop names its wave', async ({
   page,
   openFixtureProject,
 }, testInfo) => {
@@ -155,10 +157,20 @@ test('[CV-036] image and video toolbar: position, scale, rotate, opacity and fli
   expect((await layer(page, 'layer-a')).transform.position.value).toEqual([
     150, 100,
   ]);
-  await commit(page, 'scale', '50');
+  // G2.1: W is the drawn width; with the ratio locked the height follows,
+  // and the top-left (X, Y) stays put.
+  await expect(page.locator('#toolbar-lock-ratio')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await commit(page, 'w', '200');
   expect((await layer(page, 'layer-a')).transform.scale.value).toEqual([
     0.5, 0.5,
   ]);
+  expect((await layer(page, 'layer-a')).transform.position.value).toEqual([
+    150, 100,
+  ]);
+  await expect(page.locator('#toolbar-h')).toHaveValue('112.5');
   await commit(page, 'opacity', '40');
   expect((await layer(page, 'layer-a')).transform.opacity.value).toBe(0.4);
   await commit(page, 'rotate', '90');
@@ -177,8 +189,8 @@ test('[CV-036] image and video toolbar: position, scale, rotate, opacity and fli
   expect(center(flipped)[0]).toBeCloseTo(before[0]!, 9);
   expect(center(flipped)[1]).toBeCloseTo(before[1]!, 9);
   expect((await hook(page)).history.labels).toEqual([
-    'Set Position X',
-    'Set scale',
+    'Set X',
+    'Set width',
     'Set Opacity',
     'Flip horizontal',
   ]);
@@ -194,7 +206,7 @@ test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and cl
     'aria-checked',
     'true',
   );
-  await page.locator('#draw-color').fill('#0055ff');
+  await pickColor(page, 'draw-color', '#0055ff');
   const before = layers((await hook(page)).project).length;
   await stroke(page, [
     [900, 200],
@@ -219,8 +231,9 @@ test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and cl
   expect(b).toBeGreaterThan(200);
   expect(g).toBeLessThan(120);
   await page.screenshot({ path: testInfo.outputPath('marker-stroke.png') });
-  // Still drawing: a click does not select anything.
-  const at = await toScreen(page, 1000, 260);
+  // Still drawing: a click does not select anything. (G4 smoothing rounds
+  // the corner at 1000,260, so click inside the stroke's box.)
+  const at = await toScreen(page, 1000, 240);
   await page.mouse.click(at.x, at.y);
   expect((await hook(page)).session.selectedIds).toEqual([]);
   // Esc leaves draw mode; now a click selects the drawing.
@@ -278,7 +291,7 @@ test('[SHP-019][CV-038] a highlighter stroke is 40% opaque, can be moved, edited
   );
   // Its toolbar edits color and brush size.
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'drawing');
-  await page.locator('#toolbar-color').fill('#ff8800');
+  await pickColor(page, 'toolbar-color', '#ff8800');
   await commit(page, 'brush', '30');
   drawing = await layer(page, id);
   expect(drawing.properties.stroke.value).toBe('#ff8800');
@@ -321,15 +334,15 @@ test('[CV-039] Copy style from text and Paste style onto a shape and a text in o
   );
 });
 
-test('[SHP-020] the Eraser removes the whole strokes it touches in one undo step; size, color and opacity are shared by the brushes', async ({
+test('[SHP-020][SHP-018] the Eraser removes the ink it passes over (strokes are cut, not deleted) in one undo step; each brush keeps its own settings', async ({
   page,
 }, testInfo) => {
   await page.locator('[data-category="Draw"]').click();
   await page.locator('[data-brush="pen"]').click();
-  const size = page.locator('#draw-size-value');
+  const size = page.locator('#draw-size');
   await size.fill('10');
   await size.press('Enter');
-  await page.locator('#draw-color').fill('#0055ff');
+  await pickColor(page, 'draw-color', '#0055ff');
   const blank = await pixel(page, 1100, 60);
   const before = layers((await hook(page)).project).length;
   const lines = [60, 250, 650];
@@ -342,11 +355,20 @@ test('[SHP-020] the Eraser removes the whole strokes it touches in one undo step
     (item) => item.id,
   );
   expect(await pixel(page, 1100, 60)).not.toEqual(blank);
-  // Shared settings: the Marker keeps the size and color set for the Pen.
+  // G4: each brush keeps its own settings: the Marker still has its own.
   await page.locator('[data-brush="marker"]').click();
+  await expect(size).toHaveValue('12');
+  await expect(page.locator('#draw-color')).toHaveAttribute(
+    'data-value',
+    '#ff4fa3',
+  );
+  await page.locator('[data-brush="pen"]').click();
   await expect(size).toHaveValue('10');
-  await expect(page.locator('#draw-color')).toHaveValue('#0055ff');
-  // The Eraser uses the size; color and opacity do not apply to it.
+  await expect(page.locator('#draw-color')).toHaveAttribute(
+    'data-value',
+    '#0055ff',
+  );
+  // The Eraser has a size only; colour and opacity do not apply to it.
   await page.locator('[data-brush="eraser"]').click();
   await expect(page.locator('[data-brush="eraser"]')).toHaveAttribute(
     'aria-checked',
@@ -354,40 +376,41 @@ test('[SHP-020] the Eraser removes the whole strokes it touches in one undo step
   );
   await expect(page.locator('#draw-color')).toBeDisabled();
   await expect(page.locator('#draw-opacity')).toBeDisabled();
-  await expect(size).toHaveValue('10');
+  await expect(size).toHaveValue('24');
   // A vertical drag across the first two strokes (and the example's cards).
   const from = await toScreen(page, 1100, 20);
   const to = await toScreen(page, 1100, 400);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 12 });
-  // Touched strokes vanish at once, but nothing is committed before release.
+  // The ink under the eraser vanishes at once; nothing is committed yet.
   await expect.poll(() => pixel(page, 1100, 60)).toEqual(blank);
+  expect(await pixel(page, 1000, 60)).not.toEqual(blank);
   expect((await hook(page)).history.labels.at(-1)).toBe('Draw');
   await page.screenshot({ path: testInfo.outputPath('erasing.png') });
   await page.mouse.up();
-  const after = (await hook(page)).project.compositions[0]!.layers.map(
-    (item) => item.id,
-  );
-  expect(after).not.toContain(ids[0]);
-  expect(after).not.toContain(ids[1]);
-  expect(after).toContain(ids[2]);
-  // Only freehand strokes are erased: the example's own layers remain.
-  expect(layers((await hook(page)).project)).toHaveLength(before + 1);
-  const history = (await hook(page)).history.labels;
-  expect(history.slice(-2)).toEqual(['Draw', 'Erase']);
-  // The clips went with the layers.
-  const clips = (await hook(page)).project.compositions[0]!.tracks.flatMap(
-    (track) => track.clips,
-  );
-  expect(clips.some((clip) => clip.layerId === ids[0])).toBe(false);
-  // One undo brings both strokes back.
+  // By area: both strokes remain, each cut in two; the ink either side stays.
+  const project = (await hook(page)).project;
+  expect(layers(project)).toHaveLength(before + 3);
+  for (const id of ids.slice(0, 2)) {
+    const cut = project.compositions[0]!.layers.find(
+      (item) => item.id === id,
+    )! as any;
+    expect(cut.properties.path.value.split(';')).toHaveLength(2);
+  }
+  expect(await pixel(page, 1100, 60)).toEqual(blank);
+  expect(await pixel(page, 1000, 60)).not.toEqual(blank);
+  expect(await pixel(page, 1140, 60)).not.toEqual(blank);
+  expect(await pixel(page, 1100, 650)).not.toEqual(blank);
+  // Only freehand ink is erased: the example's own layers are unchanged.
+  expect((await hook(page)).history.labels.slice(-2)).toEqual([
+    'Draw',
+    'Erase',
+  ]);
+  // One undo brings the whole strokes back.
   await page.keyboard.press('Control+z');
-  const restored = (await hook(page)).project.compositions[0]!.layers.map(
-    (item) => item.id,
-  );
-  expect(restored).toEqual(expect.arrayContaining(ids));
-  // A drag that touches nothing adds no history (redo stays available).
+  expect(await pixel(page, 1100, 60)).not.toEqual(blank);
+  // A drag over no ink adds no history (redo stays available).
   const undoable = (await hook(page)).history.labels.length;
   await stroke(page, [
     [40, 700],

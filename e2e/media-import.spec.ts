@@ -407,6 +407,8 @@ test.describe('NLE fixture', () => {
     page,
   }) => {
     await importWithPicker(page, [PNG]);
+    await waitThumbnail(page, PNG);
+    const stored = await opfsKeys(page);
     const canvas = page.locator('canvas');
     const box = (await canvas.boundingBox())!;
     const point = await toScreen(page, 640, 360);
@@ -425,6 +427,9 @@ test.describe('NLE fixture', () => {
     expect(x! + (1920 * sx!) / 2).toBeCloseTo(640, -0.5);
     expect(y! + (1080 * sy!) / 2).toBeCloseTo(360, -0.5);
     expect((await hook(page)).history.labels.at(-1)).toBe('Add asset layer');
+    // G2.5: the layer refers to the imported asset; nothing is re-imported.
+    expect(await assets(page)).toHaveLength(1);
+    expect(await opfsKeys(page)).toEqual(stored);
   });
 
   test('[MED-015] a card dropped on the canvas refers to the stored media even when the drag also carries file data', async ({

@@ -21,6 +21,11 @@ import {
   type CompositionRenderer,
 } from '../render/canvas';
 import { renderInspector } from './inspector';
+import { syncGeometryFields } from './geometry-fields';
+import { mountCanvasView } from './canvas-view';
+import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
+import { createNumberField, syncNumberField } from './components/number-field';
+import { isGeometryField } from './geometry';
 import { mountMediaPanel } from './media-panel';
 import { openExportDialog } from './export-dialog';
 import { drawComposition } from '../render/canvas';
@@ -41,13 +46,14 @@ import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
 import { mountWorkspace } from './workspace';
-import { DrawTool, withoutLayers } from './draw-tool';
+import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape, mountShapesPanel } from './shapes';
 import { mountContextToolbar } from './context-toolbar';
 import { mountAnimationPanel } from './animation-panel';
 import { mountAnimatePanel } from './animate-panel';
 import { mountPositionPanel } from './position-panel';
+import { createSidePanels } from './side-panel';
 import { canvasMenuEntries } from './canvas-menu';
 import { createMenu } from './context-menu';
 import { mountSelectionActions } from './selection-actions';
@@ -169,33 +175,37 @@ export function mountEditorShell(
       </div>
       <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}</nav>
       <aside class="library panel" aria-label="${t('library.title')}">
-        <div class="library-tabs" id="media-source-tabs">
+        <div class="library-tabs" id="media-source-tabs" data-rail-panel="Media" hidden>
           <button type="button" data-source="project" aria-pressed="true">${t('library.projectMedia')}</button>
           <button type="button" data-source="stock" aria-pressed="false">${t('library.stock')}</button>
         </div>
-        <div class="library-search">
+        <div class="library-search" data-rail-panel="Media" hidden>
           ${iconSvg('search')}
           <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
         </div>
-        <div class="import-row"><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
-        <div class="media-panel" id="media-panel" hidden></div>
-        <div class="library-placeholder"><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
-        <div class="draw-panel" id="draw-panel" hidden></div>
-        <div class="draw-panel shapes-panel" id="shapes-panel" hidden></div>
-        <div class="scene-heading" id="scene-heading"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
-        <div id="scene-list" class="scene-list" aria-label="${t('scene.layers')}"></div>
+        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
+        <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
+        <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
+        <div class="draw-panel" id="draw-panel" data-rail-panel="Draw" hidden></div>
+        <div class="draw-panel shapes-panel" id="shapes-panel" data-rail-panel="Elements" hidden></div>
+        <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
+        <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
+        <div id="side-panel-host"></div>
         <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
         <div class="preview-toolbar">
-          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select></div>
+          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select><button type="button" class="button" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('templates', 15)}${t('scene.board')}</button></div>
           <div class="canvas-zoom-controls">
-            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')}">${iconSvg('zoomOut')}</button>
-            <button type="button" data-canvas-zoom="fit" title="${t('canvas.fit')}">${iconSvg('fit')}${t('canvas.fit')}</button>
-            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')}">${iconSvg('zoomIn')}</button>
+            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')}">${iconSvg('hand')}</button>
+            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut')}</button>
+            <span id="canvas-zoom-field"></span>
+            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn')}</button>
+            <button type="button" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit')}${t('canvas.fit')}</button>
+            <button type="button" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><div class="animate-panel" id="animate-panel" hidden></div><div class="animate-panel position-panel" id="position-panel" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -274,24 +284,71 @@ export function mountEditorShell(
       });
     },
   );
-  const viewport = () => {
+  // G3: Fit, then the zoom about the view's center, then the pan.
+  const viewportFor = (z: number, pan: readonly [number, number]) => {
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
       Math.max(1, canvas.clientHeight || stage.clientHeight),
       session.source.composition,
       window.devicePixelRatio || 1,
     );
-    const z = session.canvasZoom;
     const centered: AffineMatrix = [
       z,
       0,
       0,
       z,
-      (view.width * (1 - z)) / 2,
-      (view.height * (1 - z)) / 2,
+      (view.width * (1 - z)) / 2 + pan[0],
+      (view.height * (1 - z)) / 2 + pan[1],
     ];
     return { ...view, matrix: multiplyMatrices(centered, view.matrix) };
   };
+  const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
+  // G4: a circle the size of the brush (or eraser) follows the pointer.
+  const brushCursor = element('#brush-cursor');
+  const moveBrushCursor = (event: PointerEvent) => {
+    const brush = session.drawBrush;
+    brushCursor.hidden = !brush;
+    if (!brush) return;
+    const box = stage.getBoundingClientRect();
+    const size = Math.max(4, session.drawStyle.size * canvasView.scale);
+    Object.assign(brushCursor.style, {
+      width: `${size}px`,
+      height: `${size}px`,
+      left: `${event.clientX - box.left - size / 2}px`,
+      top: `${event.clientY - box.top - size / 2}px`,
+    });
+    brushCursor.classList.toggle('erasing', brush === 'eraser');
+  };
+  canvas.addEventListener('pointermove', moveBrushCursor);
+  canvas.addEventListener('pointerdown', moveBrushCursor);
+  canvas.addEventListener('pointerleave', () => (brushCursor.hidden = true));
+  const canvasView = mountCanvasView(
+    stage,
+    canvas,
+    session,
+    viewportFor,
+    () => element<HTMLButtonElement>('[data-action="play"]').click(),
+    () =>
+      element('[data-canvas-tool="hand"]').setAttribute(
+        'aria-pressed',
+        String(canvasView.hand),
+      ),
+  );
+  // G3: the effective zoom as a number field (100% = actual pixels).
+  element('#canvas-zoom-field').replaceWith(
+    createNumberField({
+      id: 'canvas-zoom-percent',
+      label: t('canvas.zoomPercent'),
+      value: 100,
+      unit: '%',
+      decimals: 0,
+      compact: true,
+      min: 5,
+      max: 800,
+      presets: [25, 50, 100, 200, 400],
+      onCommit: (value) => safely(() => canvasView.zoomToScale(value / 100)),
+    }),
+  );
   let timeline: ReturnType<typeof mountTimeline> | undefined;
   let lastAudio: {
     time: number;
@@ -327,41 +384,48 @@ export function mountEditorShell(
             session.currentTime
         : 0,
     );
+    const drawn = {
+      ...session.source,
+      // G4: the eraser's cuts show while dragging; release commits them.
+      ...(drawTool.erased.size
+        ? {
+            composition: withErasedPaths(
+              session.source.composition,
+              drawTool.erased,
+            ),
+          }
+        : {}),
+      frames,
+      playing: session.playing,
+      animate: true,
+      ...(timeline?.controller.previews.length
+        ? { timingPreviews: timeline.controller.previews }
+        : {}),
+      ...(interaction.previews ? { previews: interaction.previews } : {}),
+      ...(timeline?.controller.preview
+        ? { timingPreview: timeline.controller.preview }
+        : {}),
+      ...(interaction.preview ? { preview: interaction.preview } : {}),
+      ...(interaction.guides.length ? { guides: interaction.guides } : {}),
+      ...(interaction.highlight.length
+        ? { highlightIds: interaction.highlight }
+        : {}),
+      ...(interaction.frame ? { selectionFrame: interaction.frame } : {}),
+      ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
+      ...(interaction.hoveredHandle !== null
+        ? { hoveredHandle: interaction.hoveredHandle }
+        : {}),
+    };
     const report = renderer.render(
       canvas,
-      {
-        ...session.source,
-        // SHP-020: strokes the eraser touched vanish until release commits them.
-        ...(drawTool.erased.size
-          ? {
-              composition: withoutLayers(
-                session.source.composition,
-                drawTool.erased,
-              ),
-            }
-          : {}),
-        frames,
-        playing: session.playing,
-        animate: true,
-        ...(timeline?.controller.previews.length
-          ? { timingPreviews: timeline.controller.previews }
-          : {}),
-        ...(interaction.previews ? { previews: interaction.previews } : {}),
-        ...(timeline?.controller.preview
-          ? { timingPreview: timeline.controller.preview }
-          : {}),
-        ...(interaction.preview ? { preview: interaction.preview } : {}),
-        ...(interaction.guides.length ? { guides: interaction.guides } : {}),
-        ...(interaction.frame ? { selectionFrame: interaction.frame } : {}),
-        ...(drawTool.preview ? { drawing: drawTool.preview } : {}),
-        ...(interaction.hoveredHandle !== null
-          ? { hoveredHandle: interaction.hoveredHandle }
-          : {}),
-      },
+      drawn,
       viewport(),
       session.selectedId,
     );
     frames.endFrame();
+    syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
+    // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
+    if (!session.playing) syncGeometryFields(root, drawn);
     updateSelectionActions();
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
@@ -386,31 +450,48 @@ export function mountEditorShell(
     reportError,
   );
   // W5-C: animation presets, opened from the toolbar's Animate button.
+  // G1.5: deep panels open in the left side panel, never over the canvas.
+  const sidePanels = createSidePanels(
+    element('#side-panel-host'),
+    registerExternalOverlay,
+  );
   const animatePanel = mountAnimatePanel(
-    element('#animate-panel'),
+    sidePanels.register('animate', () => t('animate.title')),
     engine,
     session,
     reportError,
-    registerExternalOverlay,
   );
   // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
   // selection action cluster.
   const positionPanel = mountPositionPanel(
-    element('#position-panel'),
+    sidePanels.register('position', () => t('position.title')),
     engine,
     session,
     reportError,
-    registerExternalOverlay,
+    (field, value) => interaction.geometry(field, value),
   );
   // CV-035: the selected layer's context toolbar above the canvas.
   const contextToolbar = mountContextToolbar(
     element('#context-toolbar'),
     engine,
     session,
-    (field, value) => interaction.edit(field, value),
+    (field, value) =>
+      isGeometryField(field)
+        ? interaction.geometry(field, value)
+        : interaction.edit(field, value),
     reportError,
     () => animatePanel.toggle(),
     () => positionPanel.toggle(),
+    sidePanels,
+  );
+  // G5: the scene board over the canvas.
+  const sceneBoard = mountSceneBoard(
+    stage,
+    element<HTMLButtonElement>('#scene-board-toggle'),
+    engine,
+    session,
+    reportError,
+    registerExternalOverlay,
   );
   const canvasMenu = element('#canvas-context-menu');
   // W2-F1: the canvas menu is built from the selection's capabilities and
@@ -433,6 +514,8 @@ export function mountEditorShell(
     const bounds = stage.getBoundingClientRect();
     canvasMenu.style.left = `${Math.max(0, Math.min(bounds.width - 170, point[0]))}px`;
     canvasMenu.style.top = `${Math.max(0, Math.min(bounds.height - 40, point[1]))}px`;
+    // G1.3: flip or shift so the whole menu shows without a scrollbar.
+    canvasMenuController.fit();
     unregisterCanvasMenu ??= registerExternalOverlay(hideCanvasMenu);
   };
   document.addEventListener('click', (event) => {
@@ -496,6 +579,7 @@ export function mountEditorShell(
   const commandContext: CommandContext = {
     engine,
     session,
+    view: canvasView,
     ...(actions.save ? { save: actions.save } : {}),
     togglePlayback: () =>
       element<HTMLButtonElement>('[data-action="play"]').click(),
@@ -602,6 +686,15 @@ export function mountEditorShell(
         button.className = 'scene-row';
         button.dataset.layerId = layer.id;
         button.style.paddingLeft = `${14 + depth * 14}px`;
+        // G5: a top-level layer can be dragged onto a scene on the board.
+        if (depth === 0) {
+          button.draggable = true;
+          button.ondragstart = (event) => {
+            event.dataTransfer?.setData(LAYER_DRAG_TYPE, layer.id);
+            if (event.dataTransfer)
+              event.dataTransfer.effectAllowed = 'copyMove';
+          };
+        }
         button.setAttribute(
           'aria-pressed',
           String(session.selectedIds.includes(layer.id)),
@@ -723,6 +816,10 @@ export function mountEditorShell(
         });
         refresh(true);
       },
+      (field, value) => {
+        safely(() => interaction.geometry(field, value));
+        refresh(true);
+      },
     );
     element<HTMLButtonElement>('#undo').disabled = !engine.canUndo;
     element<HTMLButtonElement>('#redo').disabled = !engine.canRedo;
@@ -783,6 +880,7 @@ export function mountEditorShell(
     session.setPlaying(false);
     openExportDialog({
       composition: session.source.composition,
+      scenes: engine.state.compositions,
       assets: session.source.assets,
       background: session.source.background,
       projectName: engine.state.metadata.name,
@@ -827,13 +925,13 @@ export function mountEditorShell(
     Elements: ['library.elementsTitle', 'library.elementsDescription'],
     Transitions: ['library.transitionsTitle', 'library.transitionsDescription'],
   };
-  const mediaOnly = [
-    element('#media-source-tabs'),
-    element('.library-search'),
-    element('.import-row'),
-    element('#media-panel'),
+  // G1.7: every rail category shows only its own panels. The markup tags each
+  // panel with data-rail-panel; this is the one place that decides visibility,
+  // applied on first load and after every switch.
+  const railPanels = [
+    ...root.querySelectorAll<HTMLElement>('[data-rail-panel]'),
   ];
-  const sceneOnly = [element('#scene-heading'), element('#scene-list')];
+  const OWN_PANELS = new Set(['Media', 'Scene', 'Draw', 'Elements']);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
     element('#draw-panel'),
@@ -851,28 +949,26 @@ export function mountEditorShell(
         'aria-pressed',
         String(sibling.getAttribute('data-category') === category),
       );
-    const isMedia = category === 'Media';
-    const isScene = category === 'Scene';
-    const isDraw = category === 'Draw';
-    const isElements = category === 'Elements';
-    for (const el of mediaOnly) el.hidden = !isMedia;
-    for (const el of sceneOnly) el.hidden = !isScene;
-    element('#draw-panel').hidden = !isDraw;
-    element('#shapes-panel').hidden = !isElements;
-    if (!isDraw) session.setDrawBrush(null);
-    element('.library-placeholder').hidden =
-      isMedia || isScene || isDraw || isElements;
-    if (!isScene && !isDraw && !isElements) {
+    const shown = OWN_PANELS.has(category) ? category : 'placeholder';
+    for (const panel of railPanels)
+      panel.hidden = panel.dataset.railPanel !== shown;
+    root
+      .querySelector('.library')
+      ?.setAttribute('data-active-category', category);
+    if (category !== 'Draw') session.setDrawBrush(null);
+    if (shown === 'placeholder') {
       const [titleKey, descriptionKey] = descriptions[category]!;
       element('#library-title').textContent = t(titleKey);
       element('#library-description').textContent = t(descriptionKey);
     }
   };
+  applyCategory(activeCategory);
   for (const button of root.querySelectorAll<HTMLButtonElement>(
     '[data-category]',
   ))
     button.onclick = () => {
       activeCategory = button.dataset.category!;
+      sidePanels.close();
       applyCategory(activeCategory);
     };
   const searchInput = element<HTMLInputElement>('#asset-search');
@@ -1064,12 +1160,14 @@ export function mountEditorShell(
     '[data-canvas-zoom]',
   ))
     button.onclick = () =>
-      session.setCanvasZoom(
-        button.dataset.canvasZoom === 'fit'
-          ? 1
-          : session.canvasZoom *
-              (button.dataset.canvasZoom === 'in' ? 1.25 : 0.8),
-      );
+      safely(() => {
+        const action = button.dataset.canvasZoom;
+        if (action === 'fit') canvasView.fit();
+        else if (action === 'actual') canvasView.actualSize();
+        else canvasView.zoomBy(action === 'in' ? 1.25 : 0.8);
+      });
+  element<HTMLButtonElement>('[data-canvas-tool="hand"]').onclick = () =>
+    canvasView.toggleHand();
   const assetDrop = (event: DragEvent) =>
     safely(() => {
       const id = event.dataTransfer?.getData('application/x-editor-asset');
@@ -1325,7 +1423,12 @@ export function mountEditorShell(
       transport: timeline?.playback.clock ?? session.currentTime,
     }),
     /** Dev/test-only: the active gesture's snap guides (CV-013). */
-    canvasDebug: () => ({ guides: interaction.guides }),
+    canvasDebug: () => ({
+      guides: interaction.guides,
+      // G3: composition to canvas CSS pixels, for proofs of pan and zoom.
+      view: viewport().matrix,
+      hand: canvasView.hand,
+    }),
     message,
     refresh,
     setSaveStatus,
@@ -1337,6 +1440,7 @@ export function mountEditorShell(
       palette.dispose();
       newProjectForm.dispose();
       unsubscribeLanguage();
+      sceneBoard.dispose();
       mediaPanel.dispose();
       positionPanel.dispose();
       frames.dispose();

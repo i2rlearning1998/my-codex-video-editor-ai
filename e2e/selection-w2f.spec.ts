@@ -148,6 +148,7 @@ test.describe('default example', () => {
     await expect(menu(page)).toBeVisible();
     await expect(menu(page).locator('[data-action="group"]')).toBeVisible();
     await page.keyboard.press('Escape');
+    await expect(menu(page)).toBeHidden();
     // The cluster hides with no selection.
     await page.keyboard.press('Escape');
     await expect(cluster(page)).toBeHidden();
@@ -256,7 +257,7 @@ test.describe('media and timeline fixture', () => {
     await openFixtureProject('nle-example.json');
   });
 
-  test('[CV-040][VID-015] clip-only actions appear only when every selected item is a video or audio clip', async ({
+  test('[CV-040][VID-015][CV-043] clip-only actions appear only when every selected item is a video or audio clip; timeline-only items never show on the canvas', async ({
     page,
   }) => {
     const clipOnly = ['speed', 'reverse', 'freeze', 'detach-audio'];
@@ -272,7 +273,11 @@ test.describe('media and timeline fixture', () => {
     expect(await actions()).not.toEqual(expect.arrayContaining(['speed']));
     for (const action of clipOnly)
       expect(await actions()).not.toContain(action);
-    expect(await actions()).toContain('toggle-enabled');
+    // G1.3 (CV-043): timeline-only items stay off the canvas menu, and Copy
+    // style is always offered.
+    for (const action of ['toggle-enabled', 'link', 'unlink'])
+      expect(await actions()).not.toContain(action);
+    expect(await actions()).toContain('copy-style');
     await page.keyboard.press('Escape');
     // Video layer-b (3..5 s) alone: all four are offered.
     await rightClickAt(page, 800, 200);

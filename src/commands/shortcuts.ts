@@ -19,6 +19,20 @@ function matches(event: KeyboardEvent, shortcut: string): boolean {
     );
   });
 }
+/**
+ * Whether a key's target is inside a menu, listbox or popover that is still
+ * shown. A menu that has just closed can keep focus for a moment (the browser
+ * moves it out on the next frame); keys pressed then must still reach the
+ * shortcuts (a CI flake in KEY-002, KEY-006 and CV-040).
+ */
+export function insideOpenMenu(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  const menu = target.closest('[role="menu"],[role="listbox"],.popover');
+  if (!menu || !menu.isConnected || menu.closest('[hidden]')) return false;
+  return typeof menu.checkVisibility === 'function'
+    ? menu.checkVisibility()
+    : true;
+}
 export function bindShortcuts(
   context: CommandContext,
   options: {
@@ -30,6 +44,9 @@ export function bindShortcuts(
 ): () => void {
   const keydown = (event: KeyboardEvent) => {
     if (event.isComposing || event.defaultPrevented) return;
+    // G1: menus, listboxes and popovers handle their own keys (arrows,
+    // Enter, Escape) while they have focus.
+    if (insideOpenMenu(event.target)) return;
     try {
       // Escape must still dismiss a palette while its search input owns focus.
       if (event.key === 'Escape') {

@@ -159,7 +159,7 @@ test.describe('media fixture', () => {
     await openFixtureProject('nle-example.json');
   });
 
-  test('[CV-041] edge handles stretch a straight multi-selection along one axis; Alt resizes from the center', async ({
+  test('[CV-041] a multi-selection of pictures has no side handles (G2.2: never stretched); Alt resizes from the center', async ({
     page,
   }) => {
     // At 1.5 s: layer-a 100,100 and layer-c 300,400 (both 400x225).
@@ -169,19 +169,26 @@ test.describe('media fixture', () => {
     await expect
       .poll(async () => (await hook(page)).session.selectedIds)
       .toEqual(['layer-a', 'layer-c']);
-    // Frame 100..700 x 100..625: drag the right edge 100 units right.
+    // Frame 100..700 x 100..625: the right edge's midpoint is not a handle,
+    // so a drag there cannot stretch the pictures along one axis.
+    const history = (await hook(page)).history.labels.length;
     await drag(
       page,
       await toScreen(page, 700, 362.5),
       await toScreen(page, 800, 362.5),
     );
-    expect((await hook(page)).history.labels.at(-1)).toBe('Resize layers');
-    const a = await layer(page, 'layer-a');
-    const c = await layer(page, 'layer-c');
-    expect(a.transform.scale.value[0]).toBeCloseTo(7 / 6, 2);
-    expect(a.transform.scale.value[1]).toBe(1);
-    expect(c.transform.position.value[0]).toBeCloseTo(100 + (7 / 6) * 200, 0);
-    await page.locator('#undo').click();
+    expect((await layer(page, 'layer-a')).transform.scale.value).toEqual([
+      1, 1,
+    ]);
+    expect((await hook(page)).history.labels.at(-1)).not.toBe('Resize layers');
+    // Restore the selection (a drag off a handle may have changed it).
+    while ((await hook(page)).history.labels.length > history)
+      await page.locator('#undo').click();
+    await clickAt(page, 200, 150);
+    await clickAt(page, 500, 500, true);
+    await expect
+      .poll(async () => (await hook(page)).session.selectedIds)
+      .toEqual(['layer-a', 'layer-c']);
     // Alt on a corner keeps the frame center (400, 362.5) fixed.
     await drag(
       page,

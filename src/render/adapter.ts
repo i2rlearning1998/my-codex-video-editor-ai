@@ -58,6 +58,8 @@ export interface RenderSource {
   readonly preview?: LayerPreview;
   readonly previews?: readonly LayerPreview[];
   readonly selectedIds?: readonly string[];
+  /** G3: layers a marquee in progress would select (outlined, transient). */
+  readonly highlightIds?: readonly string[];
   /** Session-only Solo: when present, clips on other tracks are not drawn. */
   readonly soloTrackIds?: readonly string[];
   readonly timingPreviews?: readonly {
@@ -369,15 +371,8 @@ function mediaRequest(
 }
 
 export function hitTest(source: RenderSource, point: Point2): string | null {
-  const { width, height } = source.composition;
-  if (
-    !point.every(Number.isFinite) ||
-    point[0] < 0 ||
-    point[1] < 0 ||
-    point[0] > width ||
-    point[1] > height
-  )
-    return null;
+  // G3: parts outside the composition are shown faintly and stay pickable.
+  if (!point.every(Number.isFinite)) return null;
   const { items } = deriveRenderItems(source);
   for (const item of [...items].reverse()) {
     if (item.opacity === 0) continue;

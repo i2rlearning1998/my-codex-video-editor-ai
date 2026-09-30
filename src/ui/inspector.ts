@@ -1,8 +1,15 @@
 import { effectiveLayerTiming } from '../core';
 import { layerSize, locateLayer, type RenderSource } from '../render/adapter';
 import { iconSvg } from './icons';
+import {
+  createNumberField,
+  restoreFieldFocus,
+} from './components/number-field';
 
 import type { InspectorField } from './transform-commands';
+import { createGeometryRow } from './geometry-fields';
+import type { GeometryField } from './geometry';
+import { t } from '../i18n';
 
 /** Transform math is exact and unrounded by design (see TRANSFORM_CONTRACT.md);
  *  this only rounds what the inspector *displays*, so a drag doesn't surface
@@ -32,6 +39,8 @@ export function renderInspector(
     key: 'position' | 'scale' | 'rotation' | 'opacity',
     remove: boolean,
   ) => void,
+  /** G2.1: X, Y, W and H of what is drawn (the main fields). */
+  geometry?: (field: GeometryField, value: number) => void,
 ): void {
   const generation = ++renderGeneration;
   // Removing a focused input fires its blur-commit mid-replaceChildren in
@@ -113,13 +122,43 @@ export function renderInspector(
     tab.textContent = name;
     tab.onclick = () => {
       activeSubTab = name;
-      renderInspector(root, source, selectedId, commit, timing, keyframe);
+      renderInspector(
+        root,
+        source,
+        selectedId,
+        commit,
+        timing,
+        keyframe,
+        geometry,
+      );
     };
     tabs.append(tab);
   }
   root.append(tabs);
   const title = activeSubTab;
   const fields = sections[title];
+  if (title === 'Transform' && geometry) {
+    const row = createGeometryRow('inspector', source, geometry, () =>
+      renderInspector(
+        root,
+        source,
+        selectedId,
+        commit,
+        timing,
+        keyframe,
+        geometry,
+      ),
+    );
+    if (row) {
+      row.classList.add('inspector-geometry');
+      root.append(row);
+      // The stored values (anchor position, scale) are secondary.
+      const values = document.createElement('h4');
+      values.className = 'inspector-subheading';
+      values.textContent = t('geometry.values');
+      root.append(values);
+    }
+  }
   {
     const section = document.createElement('section');
     section.className = 'inspector-section';
@@ -131,42 +170,60 @@ export function renderInspector(
       dd.textContent = value;
       dd.dataset.field = name;
       if (title === 'Transform' && commit) {
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.step = 'any';
-        input.value =
-          name === 'Rotation'
-            ? formatNumber(layer.transform.rotation.value)
-            : value;
-        const initial = input.value;
-        input.setAttribute(
-          'aria-label',
-          name === 'Rotation' ? 'Rotation (degrees)' : name,
-        );
-        if (name === 'Opacity') {
-          input.min = '0';
-          input.max = '1';
-        }
-        const apply = () => {
-          if (input.value === initial) return;
-          commit(
-            name as InspectorField,
-            input.value.trim() === '' ? NaN : Number(input.value),
-          );
-        };
-        input.onchange = apply;
-        input.onkeydown = (event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            apply();
-            input.blur();
+        // G1: the shared NumberField. Opacity shows 0-100 %, rotation in
+        // degrees, position in px; the committed values keep their units.
+        const t = layer.transform;
+        const spec: Record<
+          string,
+          {
+            value: number;
+            unit: string;
+            scale?: number;
+            min?: number;
+            max?: number;
           }
-          if (event.key === 'Escape') {
-            input.value = initial;
-            input.blur();
-          }
+        > = {
+          'Position X': { value: t.position.value[0], unit: 'px' },
+          'Position Y': { value: t.position.value[1], unit: 'px' },
+          'Scale X': { value: t.scale.value[0], unit: '×' },
+          'Scale Y': { value: t.scale.value[1], unit: '×' },
+          Rotation: { value: t.rotation.value, unit: '°' },
+          Opacity: {
+            value: t.opacity.value * 100,
+            unit: '%',
+            scale: 100,
+            min: 0,
+            max: 100,
+          },
         };
-        dd.replaceChildren(input);
+        const item = spec[name]!;
+        const numberField = createNumberField({
+          id: `inspector-${name.toLowerCase().replace(/\s+/g, '-')}`,
+          label: name === 'Rotation' ? 'Rotation (degrees)' : name,
+          value: item.value,
+          unit: item.unit,
+          decimals: 3,
+          step: name.startsWith('Scale') ? 0.01 : 1,
+          ...(item.min !== undefined ? { min: item.min } : {}),
+          ...(item.max !== undefined ? { max: item.max } : {}),
+          ...(name === 'Opacity'
+            ? { slider: true, presets: [0, 25, 50, 75, 100] }
+            : {}),
+          ...(name === 'Rotation' ? { presets: [0, 45, 90, 180, -90] } : {}),
+          onCommit: (next) =>
+            commit(name as InspectorField, next / (item.scale ?? 1)),
+          // A non-number goes to the command boundary, which explains it.
+          onInvalid: (_message, kind) => {
+            if (kind === 'invalid') commit(name as InspectorField, NaN);
+          },
+        });
+        // The row's label scrubs the value too.
+        const scrubLabel = numberField.querySelector<HTMLElement>(
+          '.number-field-label',
+        )!;
+        scrubLabel.textContent = name;
+        dt.replaceChildren(scrubLabel);
+        dd.replaceChildren(numberField);
       }
       if (
         title === 'Transform' &&
@@ -205,37 +262,29 @@ export function renderInspector(
         timing &&
         (source.selectedIds?.length ?? 1) === 1
       ) {
-        const input = document.createElement('input');
-        input.type = 'number';
-        input.step = 'any';
-        input.value = value;
-        input.setAttribute('aria-label', name);
-        let committed = false;
-        const apply = () => {
-          if (committed || input.value === value) return;
-          committed = true;
-          timing(
-            name as 'Start time' | 'Duration',
-            input.value.trim() === '' ? NaN : Number(input.value),
-          );
-        };
-        input.onchange = apply;
-        input.onblur = apply;
-        input.onkeydown = (event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            apply();
-            input.blur();
-          } else if (event.key === 'Escape') {
-            input.value = value;
-            input.blur();
-          }
-        };
-        dd.replaceChildren(input);
+        const numberField = createNumberField({
+          id: `inspector-${name.toLowerCase().replace(/\s+/g, '-')}`,
+          label: name,
+          value: Number(value),
+          unit: 's',
+          decimals: 3,
+          step: 0.1,
+          onCommit: (next) => timing(name as 'Start time' | 'Duration', next),
+          onInvalid: (_message, kind) => {
+            if (kind === 'invalid')
+              timing(name as 'Start time' | 'Duration', NaN);
+          },
+        });
+        const scrubLabel = numberField.querySelector<HTMLElement>(
+          '.number-field-label',
+        )!;
+        dt.replaceChildren(scrubLabel);
+        dd.replaceChildren(numberField);
       }
       list.append(dt, dd);
     }
     section.append(list);
     root.append(section);
   }
+  restoreFieldFocus(root);
 }

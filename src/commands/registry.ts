@@ -1,5 +1,6 @@
 import type { EditorEngine } from '../core';
 import type { EditorSession } from '../ui/session';
+import type { CanvasView } from '../ui/canvas-view';
 import {
   ALIGN_EDGES,
   alignSelection,
@@ -40,6 +41,8 @@ export interface CommandContext {
   newProject?: () => void;
   openShortcuts?: () => void;
   togglePlayback: () => void;
+  /** G3: the canvas view (zoom and pan); absent outside the full shell. */
+  view?: CanvasView;
 }
 export interface RegisteredCommand {
   id: string;
@@ -287,6 +290,32 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
         session.source.composition.layers.map((layer) => layer.id),
       ),
   },
+  ...(
+    [
+      ['zoom-in', 'command.zoomIn', 'Ctrl+=', (view) => view.zoomBy(1.25)],
+      ['zoom-out', 'command.zoomOut', 'Ctrl+-', (view) => view.zoomBy(0.8)],
+      ['zoom-fit', 'command.zoomFit', 'Ctrl+0', (view) => view.fit()],
+      ['zoom-fill', 'command.zoomFill', '', (view) => view.fill()],
+      [
+        'zoom-actual',
+        'command.zoomActual',
+        'Ctrl+1',
+        (view) => view.actualSize(),
+      ],
+      ['hand-tool', 'command.handTool', 'H', (view) => view.toggleHand()],
+    ] as const satisfies readonly (readonly [
+      string,
+      string,
+      string,
+      (view: CanvasView) => void,
+    ])[]
+  ).map(([id, labelKey, shortcut, run]): RegisteredCommand => ({
+    id,
+    labelKey,
+    shortcut,
+    isEnabled: ({ view }) => !!view,
+    run: ({ view }) => view && run(view),
+  })),
   {
     id: 'play',
     labelKey: 'command.play',

@@ -22,6 +22,10 @@ export interface DrawStyle {
 }
 
 /** Transient identifiers, time and zoom only; canonical objects resolve on every read. */
+/** G3: canvas zoom limits, relative to Fit. */
+export const MIN_CANVAS_ZOOM = 0.1;
+export const MAX_CANVAS_ZOOM = 16;
+
 export class EditorSession {
   #currentTime = 0;
   #timelineZoom = 80;
@@ -37,13 +41,22 @@ export class EditorSession {
   #keyframes: readonly SelectedKeyframe[] = Object.freeze([]);
   /** SHP-018 draw mode: the active brush or eraser, or null when not drawing. */
   #drawBrush: DrawMode | null = null;
-  /** SHP-020: set once the user changes size or opacity; then they persist. */
-  #drawStyleChanged = false;
-  #drawStyle: DrawStyle = {
-    ...BRUSH_DEFAULTS.pen,
-    color: DEFAULT_DRAW_COLOR,
+  /**
+   * G4: every brush (and the eraser) keeps its own size, colour and opacity;
+   * the eraser uses only its size. Transient like the selection.
+   */
+  #drawStyles: Record<DrawMode, DrawStyle> = {
+    pen: { ...BRUSH_DEFAULTS.pen },
+    marker: { ...BRUSH_DEFAULTS.marker },
+    highlighter: { ...BRUSH_DEFAULTS.highlighter },
+    glow: { ...BRUSH_DEFAULTS.glow },
+    eraser: { size: 24, opacity: 1, color: DEFAULT_DRAW_COLOR },
   };
+  /** The brush the panel shows while the Draw tool is off. */
+  #lastBrush: DrawMode = 'pen';
   #canvasZoom = 1;
+  /** G3: the canvas pan in CSS pixels (transient, never saved). */
+  #canvasPan: readonly [number, number] = [0, 0];
   #compositionId: string;
   #listeners = new Set<() => void>();
   #unsubscribe: () => void;
@@ -141,34 +154,29 @@ export class EditorSession {
     return this.#drawBrush;
   }
   get drawStyle(): DrawStyle {
-    return this.#drawStyle;
+    return this.#drawStyles[this.#drawBrush ?? this.#lastBrush];
   }
-  /**
-   * Choosing a brush applies its default size and opacity until the user
-   * changes either; from then on the settings are shared by every brush
-   * (SHP-020). The eraser keeps the settings and uses the size.
-   */
+  /** G4: each brush keeps its own settings (no sharing between brushes). */
   setDrawBrush(brush: DrawMode | null): void {
     if (brush === this.#drawBrush) return;
     this.#drawBrush = brush;
-    if (brush && brush !== 'eraser' && !this.#drawStyleChanged)
-      this.#drawStyle = { ...this.#drawStyle, ...BRUSH_DEFAULTS[brush] };
+    if (brush) this.#lastBrush = brush;
     this.#notify();
   }
+  /** Changes the current brush's size, colour or opacity. */
   setDrawStyle(style: Partial<DrawStyle>): void {
-    const next = { ...this.#drawStyle, ...style };
+    const mode = this.#drawBrush ?? this.#lastBrush;
+    const next = { ...this.#drawStyles[mode], ...style };
     if (
       !(next.size >= MIN_BRUSH && next.size <= MAX_BRUSH) ||
       !(next.opacity >= 0 && next.opacity <= 1) ||
       !/^#[0-9a-fA-F]{6}$/.test(next.color)
     )
       throw new RangeError('Invalid brush settings');
-    if (
-      next.size !== this.#drawStyle.size ||
-      next.opacity !== this.#drawStyle.opacity
-    )
-      this.#drawStyleChanged = true;
-    this.#drawStyle = Object.freeze(next);
+    this.#drawStyles = {
+      ...this.#drawStyles,
+      [mode]: Object.freeze(next),
+    };
     this.#notify();
   }
   get selectedKeyframes(): readonly SelectedKeyframe[] {
@@ -249,8 +257,23 @@ export class EditorSession {
     return this.#canvasZoom;
   }
   setCanvasZoom(value: number): void {
-    if (!Number.isFinite(value)) throw new RangeError('Invalid Canvas zoom');
-    this.#canvasZoom = Math.max(0.25, Math.min(4, value));
+    this.setCanvasView(value, this.#canvasPan);
+  }
+  get canvasPan(): readonly [number, number] {
+    return this.#canvasPan;
+  }
+  /** G3: zoom (relative to Fit, 0.1 to 16) and pan together, one change. */
+  setCanvasView(zoom: number, pan: readonly [number, number]): void {
+    if (!Number.isFinite(zoom) || !pan.every(Number.isFinite))
+      throw new RangeError('Invalid Canvas view');
+    this.#canvasZoom = Math.max(
+      MIN_CANVAS_ZOOM,
+      Math.min(MAX_CANVAS_ZOOM, zoom),
+    );
+    this.#canvasPan = Object.freeze([pan[0], pan[1]]) as readonly [
+      number,
+      number,
+    ];
     this.#notify();
   }
   selectMany(ids: readonly string[]): void {
@@ -276,6 +299,12 @@ export class EditorSession {
           : [id]
         : [],
     );
+  }
+  /** G5: the scene after this one in playback order, if any. */
+  get nextCompositionId(): string | null {
+    const all = this.engine.state.compositions;
+    const index = all.findIndex((item) => item.id === this.#compositionId);
+    return all[index + 1]?.id ?? null;
   }
   selectComposition(id: string): void {
     if (!this.engine.state.compositions.some((item) => item.id === id))

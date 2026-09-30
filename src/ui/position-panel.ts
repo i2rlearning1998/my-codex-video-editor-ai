@@ -16,6 +16,10 @@ import { ARRANGE_ACTIONS, arrangeSelection, canArrange } from './arrange';
 import { ARRANGE_KEYS } from './canvas-menu';
 import { iconSvg } from './icons';
 import type { EditorSession } from './session';
+import type { DeepPanelHandle } from './side-panel';
+import { createGeometryRow } from './geometry-fields';
+import type { GeometryField } from './geometry';
+import { restoreFieldFocus } from './components/number-field';
 
 type Tab = 'arrange' | 'layers';
 
@@ -34,16 +38,16 @@ export const layerIcon = (layer: SceneLayer) =>
             : 'media';
 
 export function mountPositionPanel(
-  panel: HTMLElement,
+  handle: DeepPanelHandle,
   engine: EditorEngine,
   session: EditorSession,
   report: (error: unknown) => void,
-  registerOverlay: (close: () => void) => () => void,
+  /** G2.1: commits X, Y, W or H (the shared geometry fields). */
+  geometry?: (field: GeometryField, value: number) => void,
 ) {
-  panel.setAttribute('role', 'dialog');
-  panel.setAttribute('aria-label', t('position.title'));
+  // G1.5: rendered in the left side panel, which owns the header and Back.
+  const panel = handle.body;
   let tab: Tab = 'arrange';
-  let unregister: (() => void) | undefined;
   let dragged: string | null = null;
   const safely = (action: () => void) => {
     try {
@@ -125,7 +129,23 @@ export function mountPositionPanel(
     relative.textContent = t('command.alignToCanvas');
     relative.onclick = () =>
       safely(() => session.setAlignToCanvas(!session.alignToCanvas));
-    return [order, align, distribute, relative];
+    // G2.1: Canva's "Advanced": width, height, ratio lock, X and Y.
+    const fields =
+      selected && geometry
+        ? createGeometryRow(
+            'position',
+            session.source,
+            (field, value) => safely(() => geometry(field, value)),
+            render,
+          )
+        : null;
+    return [
+      ...(fields ? [section(t('geometry.title'), fields)] : []),
+      order,
+      align,
+      distribute,
+      relative,
+    ];
   };
   const layers = () => {
     const list = document.createElement('ul');
@@ -141,14 +161,18 @@ export function mountPositionPanel(
       return [empty];
     }
     // Front-first, like the Scene list (D-043): the last layer paints on top.
-    [...all].reverse().forEach((layer) => {
+    // G2.4: a group's children are listed under it, indented. Only top-level
+    // rows reorder by drag (moving into or out of groups is LYR-004).
+    const appendRow = (layer: SceneLayer, depth: number) => {
       const row = document.createElement('li');
       row.className = 'position-layer';
       row.setAttribute('role', 'option');
       row.dataset.layerId = layer.id;
       row.dataset.type = layer.type;
       row.title = `${layer.name} (${layer.type})`;
-      row.draggable = true;
+      row.dataset.depth = String(depth);
+      row.style.setProperty('--depth', String(depth));
+      row.draggable = depth === 0;
       row.tabIndex = 0;
       row.setAttribute(
         'aria-selected',
@@ -190,7 +214,7 @@ export function mountPositionPanel(
         if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
       };
       row.ondragover = (event) => {
-        if (!dragged) return;
+        if (!dragged || depth > 0) return;
         event.preventDefault();
         row.classList.add('position-drop-target');
       };
@@ -204,7 +228,7 @@ export function mountPositionPanel(
           row.classList.remove('position-drop-target');
           const moving = dragged;
           dragged = null;
-          if (!moving || moving === layer.id) return;
+          if (!moving || moving === layer.id || depth > 0) return;
           const ids = session.source.composition.layers.map((item) => item.id);
           const index = ids.indexOf(layer.id);
           if (index < 0 || !ids.includes(moving)) return;
@@ -220,11 +244,15 @@ export function mountPositionPanel(
           ]);
         });
       list.append(row);
-    });
+      [...layer.children]
+        .reverse()
+        .forEach((child) => appendRow(child, depth + 1));
+    };
+    [...all].reverse().forEach((layer) => appendRow(layer, 0));
     return [list];
   };
   const render = () => {
-    if (panel.hidden) return;
+    if (!handle.isOpen) return;
     const tabs = document.createElement('div');
     tabs.className = 'animate-tabs';
     tabs.setAttribute('role', 'tablist');
@@ -242,41 +270,25 @@ export function mountPositionPanel(
       tabs.append(item);
     }
     panel.replaceChildren(tabs, ...(tab === 'arrange' ? arrange() : layers()));
+    restoreFieldFocus(panel);
   };
-  const close = () => {
-    if (panel.hidden) return;
-    panel.hidden = true;
-    unregister?.();
-    unregister = undefined;
-  };
+  const close = () => handle.close();
   const open = () => {
-    panel.hidden = false;
-    unregister ??= registerOverlay(close);
+    handle.open();
     render();
     panel.querySelector<HTMLElement>('[aria-selected="true"]')?.focus();
   };
-  const outside = (event: PointerEvent) => {
-    const element = event.target as HTMLElement;
-    if (
-      !panel.hidden &&
-      !panel.contains(element) &&
-      !element.closest('[data-control="position"], [data-action="position"]')
-    )
-      close();
-  };
-  document.addEventListener('pointerdown', outside);
   const unsubscribe = session.onChange(render);
   return {
     open,
     close,
-    toggle: () => (panel.hidden ? open() : close()),
+    toggle: () => (handle.isOpen ? close() : open()),
     render,
     get isOpen() {
-      return !panel.hidden;
+      return handle.isOpen;
     },
     dispose: () => {
       unsubscribe();
-      document.removeEventListener('pointerdown', outside);
       close();
     },
   };

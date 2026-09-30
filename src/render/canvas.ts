@@ -1,4 +1,5 @@
 import {
+  boundsCorners,
   invertMatrix,
   multiplyMatrices,
   transformPoint,
@@ -17,7 +18,7 @@ import {
   selectionGeometry,
   type SelectionHandle,
 } from './selection';
-import type { DrawingPath } from './drawing';
+import { brushCap, type DrawingPath } from './drawing';
 import { drawShape } from './shapes';
 import {
   deriveRenderItems,
@@ -202,6 +203,8 @@ export class Canvas2DRenderer implements CompositionRenderer {
   }
 }
 
+/** G3: the opacity of layer parts outside the composition in the editor. */
+const OUTSIDE_FADE = 0.3;
 export interface DrawOptions {
   /** Selection handles and the composition border (false for export, W5-A). */
   readonly overlays?: boolean;
@@ -209,18 +212,60 @@ export interface DrawOptions {
   readonly surround?: string;
 }
 
+/**
+ * G4: each brush draws differently. Pen: a round, solid line. Marker: a
+ * round line with a softer, lighter rim. Highlighter: a flat-ended (chisel)
+ * line that multiplies with what is under it, so text stays readable. Glow
+ * pen: a bright core with a halo of its colour.
+ */
 function strokePath(
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   path: DrawingPath,
 ) {
-  context.strokeStyle = path.color;
-  context.lineWidth = path.width;
-  context.lineCap = path.cap;
-  context.lineJoin = path.cap === 'butt' ? 'miter' : 'round';
-  context.beginPath();
-  context.moveTo(...path.points[0]!);
-  for (const point of path.points.slice(1)) context.lineTo(...point);
-  context.stroke();
+  const trace = () => {
+    context.beginPath();
+    for (const stroke of path.strokes) {
+      context.moveTo(...stroke[0]!);
+      for (const point of stroke.slice(1)) context.lineTo(...point);
+    }
+  };
+  const line = (width: number, color: string) => {
+    context.lineWidth = width;
+    context.strokeStyle = color;
+    trace();
+    context.stroke();
+  };
+  context.lineCap = brushCap(path.brush);
+  context.lineJoin = path.brush === 'highlighter' ? 'miter' : 'round';
+  const alpha = context.globalAlpha;
+  switch (path.brush) {
+    case 'marker':
+      context.globalAlpha = alpha * 0.55;
+      line(path.width, path.color);
+      context.globalAlpha = alpha;
+      line(path.width * 0.7, path.color);
+      return;
+    case 'highlighter':
+      context.globalCompositeOperation = 'multiply';
+      line(path.width, path.color);
+      context.globalCompositeOperation = 'source-over';
+      return;
+    case 'glow': {
+      // shadowBlur is in device pixels: scale it with the current transform.
+      const { a, b } = context.getTransform();
+      context.shadowColor = path.color;
+      context.shadowBlur = path.width * 1.5 * Math.hypot(a, b);
+      line(path.width, path.color);
+      context.shadowBlur = 0;
+      context.shadowColor = 'transparent';
+      context.globalAlpha = alpha * 0.85;
+      line(path.width * 0.4, '#ffffff');
+      context.globalAlpha = alpha;
+      return;
+    }
+    default:
+      line(path.width, path.color);
+  }
 }
 
 export function drawComposition(
@@ -257,20 +302,13 @@ export function drawComposition(
       viewport.height * viewport.pixelRatio,
     );
   }
-  context.save();
-  try {
-    context.setTransform(...view);
-    context.globalAlpha = 1;
-    context.fillStyle = source.background;
-    context.fillRect(0, 0, source.composition.width, source.composition.height);
-    context.beginPath();
-    context.rect(0, 0, source.composition.width, source.composition.height);
-    context.clip();
+  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
     for (const item of items) {
+      if (only && !only(item)) continue;
       context.save();
       try {
         context.setTransform(...multiplyMatrices(view, item.matrix));
-        context.globalAlpha = item.opacity;
+        context.globalAlpha = item.opacity * fade;
         // W5-C Wipe: only the revealed part of the box is drawn.
         if (item.reveal !== undefined) {
           context.beginPath();
@@ -332,6 +370,34 @@ export function drawComposition(
         context.restore();
       }
     }
+  };
+  // G3: in the editor (not export), what lies outside the composition shows
+  // faintly, so it can be seen and selected; the artboard then covers it.
+  if (options.overlays !== false && !source.playing) {
+    context.save();
+    try {
+      context.setTransform(...view);
+      const { width, height } = source.composition;
+      drawItems(OUTSIDE_FADE, (item) =>
+        boundsCorners({ x: 0, y: 0, ...item.size }).some((corner) => {
+          const [x, y] = transformPoint(item.matrix, corner);
+          return x < 0 || y < 0 || x > width || y > height;
+        }),
+      );
+    } finally {
+      context.restore();
+    }
+  }
+  context.save();
+  try {
+    context.setTransform(...view);
+    context.globalAlpha = 1;
+    context.fillStyle = source.background;
+    context.fillRect(0, 0, source.composition.width, source.composition.height);
+    context.beginPath();
+    context.rect(0, 0, source.composition.width, source.composition.height);
+    context.clip();
+    drawItems(1);
     // SHP-018: the stroke being drawn, in composition space.
     if (source.drawing) {
       context.setTransform(...view);
@@ -370,7 +436,10 @@ export function drawComposition(
     }
     context.stroke();
   }
-  for (const id of source.selectedIds ?? []) {
+  for (const id of [
+    ...(source.selectedIds ?? []),
+    ...(source.highlightIds ?? []),
+  ]) {
     if (id === selectedId) continue;
     const box = selectionGeometry(source, id, viewport.matrix);
     if (!box) continue;

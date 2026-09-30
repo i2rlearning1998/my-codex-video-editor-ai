@@ -76,6 +76,11 @@ export function bindCanvasInteraction(
   let start: Point2 = [0, 0];
   let moved = false;
   let suppressClick = false;
+  /**
+   * G2.4: a click (no drag) on one member of a multi-selection selects just
+   * that member; a drag still moves them all (like Canva and Figma).
+   */
+  let collapseTo: string | null = null;
   const release = () => {
     const id = pointer;
     pointer = null;
@@ -89,6 +94,7 @@ export function bindCanvasInteraction(
     interaction.cancel();
     marquee?.box.remove();
     marquee = null;
+    interaction.setHighlight([]);
   };
   const screenPoint = (event: MouseEvent): Point2 => {
     const bounds = canvas.getBoundingClientRect();
@@ -165,7 +171,11 @@ export function bindCanvasInteraction(
         }
         if (!insideGroup && !session.selectedIds.includes(picked))
           session.select(picked);
-      }
+        collapseTo =
+          session.selectedIds.length > 1 && session.selectedIds.includes(picked)
+            ? picked
+            : null;
+      } else collapseTo = null;
       suppressClick = true;
       if (!interaction.begin(handle ?? 'move', compositionPoint(point))) return;
       pointer = event.pointerId;
@@ -181,10 +191,37 @@ export function bindCanvasInteraction(
       canvas.focus({ preventScroll: true });
       event.preventDefault();
     });
+  /** The layers a marquee from its start to `end` selects (G3: also live). */
+  const marqueeIds = (end: Point2): string[] => {
+    const a = marquee!.start;
+    const selected = deriveRenderItems(session.source)
+      .items.filter((item) => {
+        const box = selectionGeometry(
+          session.source,
+          item.id,
+          viewport().matrix,
+        );
+        if (!box) return false;
+        const xs = box.corners.map((p) => p[0]),
+          ys = box.corners.map((p) => p[1]);
+        return (
+          Math.max(...xs) >= Math.min(a[0], end[0]) &&
+          Math.min(...xs) <= Math.max(a[0], end[0]) &&
+          Math.max(...ys) >= Math.min(a[1], end[1]) &&
+          Math.min(...ys) <= Math.max(a[1], end[1])
+        );
+      })
+      .map((item) =>
+        resolvePick(session.source, item.id, session.enteredGroupId),
+      )
+      .filter((resolved) => !session.enteredGroupId || resolved.inside)
+      .map((resolved) => resolved.id!);
+    return [...new Set([...marquee!.ids, ...selected])];
+  };
   const update = (event: PointerEvent) => {
     const point = screenPoint(event);
     if (draw?.active) {
-      draw.add(compositionPoint(point));
+      draw.add(compositionPoint(point), event.shiftKey);
       return;
     }
     if (marquee) {
@@ -195,6 +232,8 @@ export function bindCanvasInteraction(
         width: `${Math.abs(point[0] - marquee.start[0])}px`,
         height: `${Math.abs(point[1] - marquee.start[1])}px`,
       });
+      // G3: the layers the marquee would select are outlined as it grows.
+      interaction.setHighlight(marqueeIds(point));
       return;
     }
     if (Math.hypot(point[0] - start[0], point[1] - start[1]) >= 3) moved = true;
@@ -241,39 +280,18 @@ export function bindCanvasInteraction(
         return;
       }
       if (marquee) {
-        const end = screenPoint(event),
-          a = marquee.start;
-        const selected = deriveRenderItems(session.source)
-          .items.filter((item) => {
-            const box = selectionGeometry(
-              session.source,
-              item.id,
-              viewport().matrix,
-            );
-            if (!box) return false;
-            const xs = box.corners.map((p) => p[0]),
-              ys = box.corners.map((p) => p[1]);
-            return (
-              Math.max(...xs) >= Math.min(a[0], end[0]) &&
-              Math.min(...xs) <= Math.max(a[0], end[0]) &&
-              Math.max(...ys) >= Math.min(a[1], end[1]) &&
-              Math.min(...ys) <= Math.max(a[1], end[1])
-            );
-          })
-          .map((item) =>
-            resolvePick(session.source, item.id, session.enteredGroupId),
-          )
-          .filter((resolved) => !session.enteredGroupId || resolved.inside)
-          .map((resolved) => resolved.id!);
-        const ids = [...new Set([...marquee.ids, ...selected])];
+        const ids = marqueeIds(screenPoint(event));
         marquee.box.remove();
         marquee = null;
+        interaction.setHighlight([]);
         release();
         session.selectMany(ids);
         return;
       }
       release();
       interaction.finish();
+      if (!moved && collapseTo) session.select(collapseTo);
+      collapseTo = null;
     });
   const pointercancel = (event: PointerEvent) => {
     if (event.pointerId === pointer) cancel();

@@ -183,7 +183,8 @@ describe('canvas command interactions', () => {
       s.event('pointermove', [start[0] + i, start[1] + i / 2]);
     expect(s.engine.state).toBe(before);
     expect(changed).not.toHaveBeenCalled();
-    expect(s.input('Position X').value).toBe('30');
+    // Revision 7: the fields follow the preview live; nothing is committed.
+    expect(s.input('Position X').value).toBe('60');
     const preview = s.render.mock.calls.at(-1)![1];
     expect(preview.composition).toBe(before.compositions[0]);
     expect(deriveRenderItems(preview).items[0]!.matrix[4]).toBe(60);
@@ -429,12 +430,16 @@ describe('inspector shares the canonical command path', () => {
     ['Scale X', '-2'],
     ['Scale Y', '0'],
     ['Rotation', '450'],
-    ['Opacity', '0.25'],
+    // G1: the Inspector shows opacity as 0-100 %.
+    ['Opacity', '25'],
   ])('commits %s, refreshes canvas, and follows undo/redo', (field, value) => {
     const s = setup();
     s.shell.session.select('child');
     const before = s.input(field).value;
-    expect(s.root.querySelectorAll('#inspector-content input')).toHaveLength(6);
+    // G2.1: X, Y, W and H come first, then the six stored values.
+    expect(s.root.querySelectorAll('#inspector-content input')).toHaveLength(
+      10,
+    );
     s.edit(field, value);
     expect(s.input(field).value).toBe(value);
     expect(s.render.mock.calls.at(-1)![1].composition).toBe(
@@ -452,8 +457,7 @@ describe('inspector shares the canonical command path', () => {
   it.each([
     ['Position X', ''],
     ['Rotation', 'Infinity'],
-    ['Opacity', '-0.1'],
-    ['Opacity', '1.01'],
+    ['Opacity', 'abc'],
   ])('rejects invalid %s=%s without changing history', (field, value) => {
     const s = setup();
     s.shell.session.select('child');

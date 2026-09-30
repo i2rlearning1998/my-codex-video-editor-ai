@@ -685,7 +685,9 @@ test('[ANI-007] an exported frame with an animation preset matches the preview',
   // Fade the badge in over 1 s, then compare 0.5 s in the file and the preview.
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
   await page.locator('#context-toolbar [data-control="animate"]').click();
-  await page.locator('#animate-panel [data-preset="fade"]').click();
+  await page
+    .locator('[data-deep-panel="animate"] [data-preset="fade"]')
+    .click();
   await page.locator('#animate-duration').fill('1');
   await page.locator('#animate-duration').press('Enter');
   await page.keyboard.press('Escape');

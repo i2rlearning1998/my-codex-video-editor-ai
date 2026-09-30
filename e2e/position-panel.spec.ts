@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard } from './fixtures';
+import { sidePanel } from './controls';
 
 // W2-F3: the Position panel (CV-042), opened from the context toolbar and the
 // selection action cluster. Default example, back to front: kicker, headline,
@@ -13,7 +14,7 @@ async function clickAt(page: Page, x: number, y: number, shift = false) {
   await page.mouse.click(board.x + x * board.scale, board.y + y * board.scale);
   if (shift) await page.keyboard.up('Shift');
 }
-const panel = (page: Page) => page.locator('#position-panel');
+const panel = (page: Page) => sidePanel(page, 'position');
 const order = async (page: Page) =>
   (await hook(page)).project.compositions[0]!.layers.map((layer) => layer.id);
 const badge = async (page: Page) =>
@@ -71,8 +72,14 @@ test('[CV-042] the toolbar Position button opens Arrange (order, align, distribu
   ).toBeDisabled();
   // Layers: front-first, groups show a folder icon and their item count.
   await panel(page).locator('[data-tab="layers"]').click();
-  const rows = panel(page).locator('[data-layer-id]');
+  const rows = panel(page).locator('[data-layer-id][data-depth="0"]');
   await expect(rows).toHaveCount(7);
+  // G2.4: a group's children are listed under it, one level deeper.
+  const cards = panel(page).locator('[data-layer-id="example-cards"]');
+  await expect(cards.locator('xpath=following-sibling::*[1]')).toHaveAttribute(
+    'data-depth',
+    '1',
+  );
   await expect(rows.first()).toHaveAttribute(
     'data-layer-id',
     'example-edition',
@@ -95,9 +102,13 @@ test('[CV-042] the toolbar Position button opens Arrange (order, align, distribu
   await expect(rows.first()).toHaveAttribute('data-layer-id', 'example-badge');
   await page.keyboard.press('Control+z');
   expect(await order(page)).toEqual(before);
-  // Clicking the canvas outside the panel closes it.
+  // G1.5: the side panel stays open while the canvas is used; Back closes it.
   await clickAt(page, 1240, 690);
+  await expect(panel(page)).toBeVisible();
+  await panel(page).locator('[data-action="side-panel-back"]').click();
   await expect(panel(page)).toBeHidden();
+  // The Scene list is back.
+  await expect(page.locator('#scene-list')).toBeVisible();
 });
 
 test('[CV-042] a multi-selection opens the Position panel from the action cluster; align and order act on every layer', async ({

@@ -49,6 +49,18 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       newProject: vi.fn(),
       openShortcuts: vi.fn(),
       togglePlayback: () => session.setPlaying(!session.playing),
+      // G3: the canvas view commands act on the view, never on the project.
+      view: {
+        zoomBy: vi.fn(),
+        zoomToScale: vi.fn(),
+        fit: vi.fn(),
+        fill: vi.fn(),
+        actualSize: vi.fn(),
+        toggleHand: vi.fn(),
+        hand: false,
+        scale: 1,
+        dispose: vi.fn(),
+      },
     };
     if (command.id === 'undo' || command.id === 'redo')
       runCommand('duplicate', context);
@@ -130,7 +142,17 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'align-to-canvas')
       expect(session.alignToCanvas).toBe(true);
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);
-    else expect(engine.canUndo, command.id).toBe(true);
+    else if (command.id.startsWith('zoom-') || command.id === 'hand-tool') {
+      // View commands call the view and leave the project and history alone.
+      const calls = Object.values(context.view)
+        .filter((value) => typeof value === 'function')
+        .reduce(
+          (sum, fn) => sum + (fn as ReturnType<typeof vi.fn>).mock.calls.length,
+          0,
+        );
+      expect(calls, command.id).toBe(1);
+      expect(engine.canUndo).toBe(false);
+    } else expect(engine.canUndo, command.id).toBe(true);
     session.dispose();
   }
   setLanguage('en');

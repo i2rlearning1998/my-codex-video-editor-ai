@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard } from './fixtures';
+import { choose, pickColor, sidePanel } from './controls';
 
 // W5-D shapes on the default example (1280x720). Presets are added centered:
 // rectangle 520..760 x 280..440, ellipse 540..740 x 260..460, line 520..760 x
@@ -31,10 +32,11 @@ async function pixel(page: Page, x: number, y: number) {
 /** Pixels with the selection cleared, then the layer selected again. */
 async function clean(page: Page, points: [number, number][], id?: string) {
   await page.locator('canvas').focus();
-  await page.keyboard.press('Escape');
-  await expect
-    .poll(async () => (await hook(page)).session.selectedIds)
-    .toEqual([]);
+  // Escape closes an open side panel first, then clears the selection.
+  await expect(async () => {
+    await page.keyboard.press('Escape');
+    expect((await hook(page)).session.selectedIds).toEqual([]);
+  }).toPass();
   const values = [];
   for (const [x, y] of points) values.push(await pixel(page, x, y));
   if (id) await select(page, id);
@@ -66,6 +68,14 @@ async function commit(page: Page, id: string, value: string) {
   const input = page.locator(`#toolbar-${id}`);
   await input.fill(value);
   await input.press('Enter');
+}
+/** G1.5: Stroke style opens in the left side panel. */
+async function openStrokeStyle(page: Page) {
+  if (!(await sidePanel(page, 'stroke-style').isVisible()))
+    await page
+      .locator('#context-toolbar [data-control="stroke-style"]')
+      .click();
+  await expect(sidePanel(page, 'stroke-style')).toBeVisible();
 }
 const close = (a: number[], b: number[], tolerance = 12) =>
   a.every((value, index) => Math.abs(value - b[index]!) <= tolerance);
@@ -175,7 +185,7 @@ test('[SHP-005] stroke color, width, dash, caps and joins', async ({
   page,
 }, testInfo) => {
   const rectangle = await add(page, 'rectangle');
-  await page.locator('#toolbar-stroke').fill('#00aa00');
+  await pickColor(page, 'toolbar-stroke', '#00aa00');
   // A stroke color on a shape without one also gives it a width of 4.
   expect(await lastLabel(page)).toBe('Set stroke');
   let layer = (await layers(page)).at(-1)!;
@@ -195,8 +205,8 @@ test('[SHP-005] stroke color, width, dash, caps and joins', async ({
   expect(close(edge!, [0, 0xaa, 0])).toBe(true);
   expect(close(inside!, PURPLE)).toBe(true);
   // Dashes leave gaps along the top edge.
-  await page.locator('#context-toolbar [data-control="stroke-style"]').click();
-  await page.locator('#toolbar-dash').selectOption('dash');
+  await openStrokeStyle(page);
+  await choose(page, 'toolbar-dash', 'dash');
   expect(await lastLabel(page)).toBe('Set stroke dash');
   const samples: [number, number][] = Array.from(
     { length: 40 },
@@ -207,8 +217,9 @@ test('[SHP-005] stroke color, width, dash, caps and joins', async ({
   expect(green).toBeGreaterThan(8);
   expect(green).toBeLessThan(36);
   await page.screenshot({ path: testInfo.outputPath('dashed.png') });
-  await page.locator('#toolbar-join').selectOption('round');
-  await page.locator('#toolbar-cap').selectOption('round');
+  await openStrokeStyle(page);
+  await choose(page, 'toolbar-join', 'round');
+  await choose(page, 'toolbar-cap', 'round');
   layer = (await layers(page)).at(-1)!;
   expect(layer.properties.strokeJoin.value).toBe('round');
   expect(layer.properties.strokeCap.value).toBe('round');
@@ -216,10 +227,12 @@ test('[SHP-005] stroke color, width, dash, caps and joins', async ({
   const [beyond] = await clean(page, [[766, 360]]);
   const line = await add(page, 'line');
   await commit(page, 'width', '20');
-  await page.locator('#toolbar-cap').selectOption('butt');
+  await openStrokeStyle(page);
+  await choose(page, 'toolbar-cap', 'butt');
   let [cap] = await clean(page, [[766, 360]], line.id);
   expect(cap).toEqual(beyond);
-  await page.locator('#toolbar-cap').selectOption('round');
+  await openStrokeStyle(page);
+  await choose(page, 'toolbar-cap', 'round');
   [cap] = await clean(page, [[766, 360]]);
   expect(close(cap!, INK, 30)).toBe(true);
 });

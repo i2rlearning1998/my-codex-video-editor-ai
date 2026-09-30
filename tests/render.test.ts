@@ -258,7 +258,14 @@ describe('Canvas 2D renderer boundary', () => {
     expect(
       drawComposition(port, source(), viewport, 'rectangle').warnings,
     ).toEqual([]);
-    expect(records[1]).toEqual({
+    // G3: this rotated rectangle reaches outside the composition, so it is
+    // first drawn faintly (30%) unclipped, then normally inside the artboard.
+    expect(records[0]).toEqual({
+      matrix: [0, 2, -3, 0, 10, 20],
+      alpha: 0.25 * 0.3,
+      rectangle: [0, 0, 40, 60],
+    });
+    expect(records[2]).toEqual({
       matrix: [0, 2, -3, 0, 10, 20],
       alpha: 0.25,
       rectangle: [0, 0, 40, 60],
@@ -291,11 +298,13 @@ describe('Canvas 2D renderer boundary', () => {
       viewport,
       'g',
     );
-    // Composition and child retain inherited opacity; eight resize handles are opaque; the separate rotation disc uses fill().
+    // Composition and child retain inherited opacity; a group's four corner
+    // handles are opaque (G2.2: groups have no side handles); the separate
+    // rotation disc uses fill().
     expect(records.map((item) => item.alpha)).toEqual([
       1,
       0.25,
-      ...Array<number>(8).fill(1),
+      ...Array<number>(4).fill(1),
     ]);
     expect(context.stroke).toHaveBeenCalledTimes(2);
   });

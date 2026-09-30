@@ -265,7 +265,8 @@ test('[INS-003] Position Y, scale, rotation and opacity fields edit the layer an
   expect((await transform()).scale.value[0]).toBe(1.5);
   await setField(page, 'Rotation (degrees)', '15');
   expect((await transform()).rotation.value).toBe(15);
-  await setField(page, 'Opacity', '0.5');
+  // G1: the Inspector shows opacity as 0-100 %.
+  await setField(page, 'Opacity', '50');
   expect((await transform()).opacity.value).toBe(0.5);
   expect((await hook(page)).history.labels).toHaveLength(4);
   // A canvas drag shows up in the fields.
