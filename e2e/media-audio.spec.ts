@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, rulerBox } from './fixtures';
+import { test, expect, hook, rulerBox, showCategory } from './fixtures';
 
 // W4-C: audio playback, sync, mute and solo, scrub snippets and waveforms.
 // av-sync.json: Video 1 holds clip-av (0..4 s) of video_av_sync_flash_beep_720p.webm,
@@ -63,7 +63,7 @@ test.beforeEach(async ({ page, openFixtureProject }) => {
     .toBe(true);
   await openFixtureProject('av-sync.json');
   // Restore this browser's media bytes for the fixture's references (D-052).
-  await page.locator('[data-category="Media"]').click();
+  await showCategory(page, 'Media');
   const chooser = page.waitForEvent('filechooser');
   await page.locator('#import-media').click();
   await (
@@ -218,7 +218,7 @@ test('[MED-019] audio waveforms are made in the background and cached across rel
     };
   });
   await page.reload();
-  await page.locator('[data-category="Media"]').click();
+  await showCategory(page, 'Media');
   await expect(card).toHaveAttribute('data-waveform', 'ready');
   expect(
     await page.evaluate(

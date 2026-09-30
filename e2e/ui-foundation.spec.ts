@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
+import { test, expect, hook, artboard, showCategory } from './fixtures';
 import { choose, openPanel, pickColor } from './controls';
 
 // G1: shared UI foundation. Rail categories, number fields, selects, colour
@@ -31,11 +31,11 @@ test('[LAY-002] each rail category shows only its own panel, on first load, afte
     Scene: 'Scene',
   };
   for (const [category, panel] of Object.entries(expected)) {
-    await page.locator(`[data-category="${category}"]`).click();
+    await showCategory(page, category);
     expect(await visiblePanels(page)).toEqual([panel]);
   }
   // After a reload (the reported bug showed Media and Scene mixed).
-  await page.locator('[data-category="Media"]').click();
+  await showCategory(page, 'Media');
   await page.reload();
   await ready(page);
   expect(await visiblePanels(page)).toEqual(['Scene']);
@@ -84,7 +84,7 @@ test('[SHP-005] stroke joins and caps change the exported frame, not just the st
   await page.goto('/');
   await ready(page);
   // A rectangle (520,280 240x160) with a 40 px green stroke kept inside it.
-  await page.locator('[data-category="Elements"]').click();
+  await showCategory(page, 'Elements');
   await page.locator('[data-shape="rectangle"]').click();
   await pickColor(page, 'toolbar-stroke', '#00aa00');
   const width = page.locator('#toolbar-width');
@@ -105,7 +105,7 @@ test('[SHP-005] stroke joins and caps change the exported frame, not just the st
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
-  await page.locator('[data-category="Elements"]').click();
+  await showCategory(page, 'Elements');
   await page.locator('[data-shape="line"]').click();
   await width.fill('30');
   await width.press('Enter');
@@ -123,7 +123,7 @@ test('[SHP-005] stroke joins and caps change the exported frame, not just the st
 });
 
 const selectLayer = async (page: Page, id: string) => {
-  await page.locator('[data-category="Scene"]').click();
+  await showCategory(page, 'Scene');
   await page.locator(`#scene-list [data-layer-id="${id}"]`).click();
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)

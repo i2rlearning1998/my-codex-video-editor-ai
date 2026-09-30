@@ -121,6 +121,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-028 | P0 | W1 | Verified | Deep panels (Position, Animate, Colour, Stroke style) open in the left side panel with a Back button and never cover the canvas; quick choices open as popovers anchored under the toolbar without pushing the layout |
 | LAY-029 | P0 | W1 | Verified | Every clickable element has hover, pressed and keyboard-focus states |
 | LAY-030 | P0 | W1 | Verified | Menus: submenus open on hover after a short delay and stay open on a diagonal move toward them; arrow keys, Enter and Esc work at every level; menus reposition to fit and show no scrollbar in normal use |
+| LAY-031 | P0 | W1 | Verified | Side panels have one open state: a rail category opens its panel, the active category collapses it, another swaps it; the top-bar toggles show and change the same state, on the left and on the right |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -289,6 +290,8 @@ Everything the user does directly on the preview canvas.
 | CV-046 | P0 | W2 | Verified | While a marquee is dragged, the layers it will select are outlined live, before release |
 | CV-047 | P0 | W2 | Verified | A hand tool (H) and Shift+wheel also pan; Fit resets the pan; layers outside the artboard show faintly and stay selectable |
 | CV-048 | P0 | W2 | Verified | With nothing selected the toolbar is a scene bar: background colour, scene length (retimes the clips at the end, one undo step) and Animate (disabled, names its wave) |
+| CV-049 | P0 | W2 | Verified | Rotated objects of every kind (shapes, text, pictures, groups, nested groups, flipped) resize smoothly: the opposite corner or edge stays fixed in world space, the dragged corner follows the pointer from the first step, corners stay square, groups never skew; resize cursors turn with the object; a live W × H chip while resizing and an angle chip while rotating (contract revision 8) |
+| CV-050 | P0 | W2 | Verified | Ctrl/Cmd+wheel and pinch zoom toward the pointer; a plain wheel never moves an artboard that fits; zoomed in, wheel, Shift+wheel, trackpad scroll, Space-drag, middle-drag and the hand tool pan, clamped to 48 px of stage past the artboard; below Fit the artboard stays centred; minimum zoom 10% |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -646,6 +649,7 @@ Real audio engine. Currently mute is only metadata.
 | AUD-015 | P0 | W7 | Todo | Audio mixdown in export equals the preview mix (48 kHz stereo) |
 | AUD-016 | P2 | W7 | Todo | Beat detection markers |
 | AUD-017 | P2 | W7 | Todo | Multichannel to stereo downmix |
+| AUD-018 | P0 | W4 | Verified | Audio layers are never drawn, picked, boxed or snapped to on the canvas; they exist as clips on audio tracks, in the Scene list and in the side panel (also after Detach audio and when an audio file is dropped on the canvas) |
 
 ## TPL: Templates, components and nesting (Wave 8)
 

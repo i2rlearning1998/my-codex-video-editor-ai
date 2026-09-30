@@ -193,30 +193,38 @@ test('[CV-049] the template Front card (4 degrees in the world) resizes smoothly
     await dragHandle(page, handle, `Card arrangement, handle ${handle}`, true);
 });
 
-const CASES: [string, string, (number | 'right' | 'bottom')[]][] = [
-  ['shape', 'h1-rect', [2, 0, 'right', 'bottom']],
-  ['text', 'h1-text', [2, 1]],
-  ['group', 'h1-group', [2, 3]],
-  ['image', 'h1-image', [2, 'right']],
-  ['nested group', 'h1-nested', [2, 0]],
-  ['flipped shape', 'h1-flip', [2, 'right']],
-];
-for (const [kind, id, handles] of CASES)
-  test(`[CV-049] a rotated ${kind} resizes from its handles: the opposite side stays put, corners stay square, the size follows the pointer`, async ({
-    page,
-  }) => {
-    test.setTimeout(120_000);
-    await select(page, id);
-    for (const angle of ANGLES) {
-      await rotate(page, angle);
-      for (const handle of handles)
-        await dragHandle(
-          page,
-          handle,
-          `${kind} at ${angle}°, handle ${handle}`,
-        );
-    }
-  });
+async function rotatedCase(
+  page: Page,
+  kind: string,
+  id: string,
+  handles: (number | 'right' | 'bottom')[],
+) {
+  test.setTimeout(120_000);
+  await select(page, id);
+  for (const angle of ANGLES) {
+    await rotate(page, angle);
+    for (const handle of handles)
+      await dragHandle(page, handle, `${kind} at ${angle}°, handle ${handle}`);
+  }
+}
+test('[CV-049] a rotated shape resizes from corners and edges: fixed opposite side, square corners, size follows the pointer', async ({
+  page,
+}) => rotatedCase(page, 'shape', 'h1-rect', [2, 0, 'right', 'bottom']));
+test('[CV-049] a rotated text resizes from its corners: fixed opposite corner, square corners, size follows the pointer', async ({
+  page,
+}) => rotatedCase(page, 'text', 'h1-text', [2, 1]));
+test('[CV-049] a rotated group resizes from its corners without skewing', async ({
+  page,
+}) => rotatedCase(page, 'group', 'h1-group', [2, 3]));
+test('[CV-049] a rotated image resizes from a corner and an edge', async ({
+  page,
+}) => rotatedCase(page, 'image', 'h1-image', [2, 'right']));
+test('[CV-049] a nested group inside a rotated group resizes from its corners', async ({
+  page,
+}) => rotatedCase(page, 'nested group', 'h1-nested', [2, 0]));
+test('[CV-049] a flipped, rotated shape resizes from a corner and an edge', async ({
+  page,
+}) => rotatedCase(page, 'flipped shape', 'h1-flip', [2, 'right']));
 
 test('[CV-049] resize cursors turn with the object and rotating shows an angle chip', async ({
   page,

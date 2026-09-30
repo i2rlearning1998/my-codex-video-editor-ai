@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
+import { test, expect, hook, artboard, showCategory } from './fixtures';
 import { choose, pickColor, sidePanel } from './controls';
 
 // W5-D shapes on the default example (1280x720). Presets are added centered:
@@ -44,7 +44,7 @@ async function clean(page: Page, points: [number, number][], id?: string) {
 }
 async function select(page: Page, id: string) {
   // The Scene list shows only in the Scene category.
-  await page.locator('[data-category="Scene"]').click();
+  await showCategory(page, 'Scene');
   await page.locator(`#scene-list [data-layer-id="${id}"]`).click();
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
@@ -55,7 +55,7 @@ const layers = async (page: Page) =>
 const lastLabel = async (page: Page) =>
   (await hook(page)).history.labels.at(-1);
 async function add(page: Page, preset: string) {
-  await page.locator('[data-category="Elements"]').click();
+  await showCategory(page, 'Elements');
   await page.locator(`[data-shape="${preset}"]`).click();
   expect(await lastLabel(page)).toBe('Add shape');
   const layer = (await layers(page)).at(-1)!;

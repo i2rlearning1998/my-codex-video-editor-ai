@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
+import { test, expect, hook, artboard, showCategory } from './fixtures';
 import { pickColor } from './controls';
 
 // Default example: text "example-headline" (76,165, fill #272b29, size 78),
@@ -200,7 +200,7 @@ test('[CV-036] image and video toolbar: X, Y, width and height, rotate, opacity 
 test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and clip; Esc leaves draw mode', async ({
   page,
 }, testInfo) => {
-  await page.locator('[data-category="Draw"]').click();
+  await showCategory(page, 'Draw');
   await page.locator('[data-brush="marker"]').click();
   await expect(page.locator('[data-brush="marker"]')).toHaveAttribute(
     'aria-checked',
@@ -262,7 +262,7 @@ test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and cl
 test('[SHP-019][CV-038] a highlighter stroke is 40% opaque, can be moved, edited from its toolbar and survives a reload', async ({
   page,
 }) => {
-  await page.locator('[data-category="Draw"]').click();
+  await showCategory(page, 'Draw');
   await page.locator('[data-brush="highlighter"]').click();
   await stroke(page, [
     [900, 450],
@@ -337,7 +337,7 @@ test('[CV-039] Copy style from text and Paste style onto a shape and a text in o
 test('[SHP-020][SHP-018] the Eraser removes the ink it passes over (strokes are cut, not deleted) in one undo step; each brush keeps its own settings', async ({
   page,
 }, testInfo) => {
-  await page.locator('[data-category="Draw"]').click();
+  await showCategory(page, 'Draw');
   await page.locator('[data-brush="pen"]').click();
   const size = page.locator('#draw-size');
   await size.fill('10');

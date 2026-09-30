@@ -1,12 +1,24 @@
 import type { EditorSession } from './session';
 import { iconSvg } from './icons';
 
+/**
+ * H1.5: the one source of truth for whether each side panel is open. The
+ * rails and the top-bar toggles all read and change it here.
+ */
+export interface Workspace {
+  readonly leftOpen: boolean;
+  readonly rightOpen: boolean;
+  setOpen(side: 'left' | 'right', open: boolean): void;
+  onChange(listener: () => void): () => void;
+  dispose(): void;
+}
 /** Small transient panel sizing, not a docking or document-layout model. */
 export function mountWorkspace(
   shell: HTMLElement,
   session: EditorSession,
   resize: () => void,
-) {
+): Workspace {
+  const listeners = new Set<() => void>();
   let left = 224,
     right = 258,
     height = 230;
@@ -15,13 +27,13 @@ export function mountWorkspace(
   const bar = shell.querySelector('.topbar')!;
   const leftToggle = document.createElement('div');
   leftToggle.className = 'workspace-controls';
-  leftToggle.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-label="Toggle library" title="Toggle library">${iconSvg('panelLeft')}</button>`;
+  leftToggle.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-controls="library-panel" aria-label="Toggle library" title="Toggle library">${iconSvg('panelLeft')}</button>`;
   (bar.querySelector('#menu-trigger') ?? bar.firstElementChild)!.after(
     leftToggle,
   );
   const rightToggle = document.createElement('div');
   rightToggle.className = 'workspace-controls';
-  rightToggle.innerHTML = `<button type="button" class="icon-button" data-panel="right" aria-label="Toggle inspector" title="Toggle inspector">${iconSvg('panelRight')}</button>`;
+  rightToggle.innerHTML = `<button type="button" class="icon-button" data-panel="right" aria-controls="inspector-panel" aria-label="Toggle inspector" title="Toggle inspector">${iconSvg('panelRight')}</button>`;
   (bar.querySelector('.top-actions') ?? bar).prepend(rightToggle);
   const paint = () => {
     shell.style.setProperty('--left-panel', `${leftClosed ? 0 : left}px`);
@@ -32,7 +44,14 @@ export function mountWorkspace(
     );
     shell.classList.toggle('library-collapsed', leftClosed);
     shell.classList.toggle('inspector-collapsed', rightClosed);
+    leftToggle
+      .querySelector('button')
+      ?.setAttribute('aria-expanded', String(!leftClosed));
+    rightToggle
+      .querySelector('button')
+      ?.setAttribute('aria-expanded', String(!rightClosed));
     resize();
+    for (const listener of [...listeners]) listener();
   };
   const togglePanel = (event: MouseEvent) => {
     const side = (event.target as HTMLElement).closest<HTMLElement>(
@@ -162,10 +181,28 @@ export function mountWorkspace(
   };
   window.addEventListener('resize', onWindowResize);
   paint();
-  return () => {
-    disposers.forEach((fn) => fn());
-    window.removeEventListener('resize', onWindowResize);
-    leftToggle.remove();
-    rightToggle.remove();
+  return {
+    get leftOpen() {
+      return !leftClosed;
+    },
+    get rightOpen() {
+      return !rightClosed;
+    },
+    setOpen(side, open) {
+      if (side === 'left') leftClosed = !open;
+      else rightClosed = !open;
+      paint();
+    },
+    onChange(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    dispose() {
+      listeners.clear();
+      disposers.forEach((fn) => fn());
+      window.removeEventListener('resize', onWindowResize);
+      leftToggle.remove();
+      rightToggle.remove();
+    },
   };
 }

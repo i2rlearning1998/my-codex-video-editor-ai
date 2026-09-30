@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
+import { test, expect, hook, artboard, showCategory } from './fixtures';
 import { pickColor } from './controls';
 
 // G4: the rebuilt Draw tools. Fixture g2-types.json leaves the area
@@ -68,7 +68,7 @@ test.beforeEach(async ({ page, openFixtureProject }) => {
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
   await openFixtureProject('g2-types.json');
-  await page.locator('[data-category="Draw"]').click();
+  await showCategory(page, 'Draw');
 });
 
 test('[SHP-021][SHP-018] Pen, Marker, Highlighter and Glow pen draw differently, and each is stored as its brush', async ({

@@ -48,7 +48,7 @@ import { bindCanvasInteraction } from './canvas-interaction';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
-import { mountWorkspace } from './workspace';
+import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape, mountShapesPanel } from './shapes';
@@ -177,7 +177,7 @@ export function mountEditorShell(
         </div>
       </div>
       <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}</nav>
-      <aside class="library panel" aria-label="${t('library.title')}">
+      <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
         <div class="library-tabs" id="media-source-tabs" data-rail-panel="Media" hidden>
           <button type="button" data-source="project" aria-pressed="true">${t('library.projectMedia')}</button>
           <button type="button" data-source="stock" aria-pressed="false">${t('library.stock')}</button>
@@ -212,7 +212,7 @@ export function mountEditorShell(
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
-      <aside class="inspector panel" aria-label="${t('inspector.title')}">
+      <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
@@ -988,12 +988,31 @@ export function mountEditorShell(
     safely(() => addShape(engine, session, preset)),
   );
   let activeCategory = 'Scene';
-  const applyCategory = (category: string) => {
+  let activeSection = 'Properties';
+  let workspace: Workspace | undefined;
+  // H1.5: a rail button is pressed only while its panel is open.
+  const syncRails = () => {
     for (const sibling of root.querySelectorAll('[data-category]'))
       sibling.setAttribute(
         'aria-pressed',
-        String(sibling.getAttribute('data-category') === category),
+        String(
+          (workspace?.leftOpen ?? true) &&
+            sibling.getAttribute('data-category') === activeCategory,
+        ),
       );
+    for (const el of root.querySelectorAll<HTMLElement>(
+      '.icon-rail-right button',
+    ))
+      el.setAttribute(
+        'aria-pressed',
+        String(
+          (workspace?.rightOpen ?? true) &&
+            el.dataset.section === activeSection,
+        ),
+      );
+  };
+  const applyCategory = (category: string) => {
+    syncRails();
     const shown = OWN_PANELS.has(category) ? category : 'placeholder';
     for (const panel of railPanels)
       panel.hidden = panel.dataset.railPanel !== shown;
@@ -1012,9 +1031,17 @@ export function mountEditorShell(
     '[data-category]',
   ))
     button.onclick = () => {
-      activeCategory = button.dataset.category!;
+      const category = button.dataset.category!;
+      // H1.5: the active category collapses its open panel; any other
+      // category (or a collapsed panel) opens with that content.
+      if (category === activeCategory && workspace?.leftOpen) {
+        workspace.setOpen('left', false);
+        return;
+      }
+      activeCategory = category;
       sidePanels.close();
       applyCategory(activeCategory);
+      workspace?.setOpen('left', true);
     };
   const searchInput = element<HTMLInputElement>('#asset-search');
   searchInput.oninput = () => mediaPanel.filter(searchInput.value);
@@ -1023,6 +1050,7 @@ export function mountEditorShell(
     if (!files.length) return;
     activeCategory = 'Media';
     applyCategory(activeCategory);
+    workspace?.setOpen('left', true);
     safely(() => mediaPanel.importFiles(files));
   };
   const mediaInput = element<HTMLInputElement>('#import-media-input');
@@ -1043,13 +1071,9 @@ export function mountEditorShell(
     Audio: ['panel.audioTitle', 'panel.audioDescription'],
     Speed: ['panel.speedTitle', 'panel.speedDescription'],
   };
-  let activeSection = 'Properties';
   const setRightSection = (name: string) => {
     activeSection = name;
-    for (const el of root.querySelectorAll<HTMLElement>(
-      '.icon-rail-right button',
-    ))
-      el.setAttribute('aria-pressed', String(el.dataset.section === name));
+    syncRails();
     const isProperties = name === 'Properties';
     element('#inspector-content').hidden = !isProperties;
     element('#animation-panel').hidden = true;
@@ -1068,7 +1092,15 @@ export function mountEditorShell(
   for (const el of root.querySelectorAll<HTMLElement>(
     '.icon-rail-right button',
   ))
-    el.onclick = () => setRightSection(el.dataset.section!);
+    el.onclick = () => {
+      const name = el.dataset.section!;
+      if (name === activeSection && workspace?.rightOpen) {
+        workspace.setOpen('right', false);
+        return;
+      }
+      setRightSection(name);
+      workspace?.setOpen('right', true);
+    };
 
   // Hamburger menu: open/close, outside click, Esc, focus handling.
   // Registered into the shared overlay stack (temporary-overlay.ts) so the global
@@ -1196,11 +1228,9 @@ export function mountEditorShell(
     typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
   observer?.observe(stage);
   window.addEventListener('resize', resize);
-  const disposeWorkspace = mountWorkspace(
-    element('.editor-shell'),
-    session,
-    resize,
-  );
+  workspace = mountWorkspace(element('.editor-shell'), session, resize);
+  workspace.onChange(syncRails);
+  syncRails();
   for (const button of root.querySelectorAll<HTMLButtonElement>(
     '[data-canvas-zoom]',
   ))
@@ -1519,7 +1549,7 @@ export function mountEditorShell(
       audio.dispose();
       waveforms.dispose();
       window.removeEventListener('drop', windowDrop);
-      disposeWorkspace();
+      workspace?.dispose();
       canvas.removeEventListener('dragover', assetOver);
       canvas.removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener('drop', assetDrop);

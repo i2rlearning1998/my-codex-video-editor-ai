@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, rulerBox } from './fixtures';
+import { test, expect, hook, rulerBox, showCategory } from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2, clip-b 3..5 · Video 2: clip-c 1..4 · Video 3: empty
@@ -74,7 +74,7 @@ test('[TL-001] every layer is a clip on a track: example, canvas drops and group
   await page.screenshot({ path: testInfo.outputPath('example-as-clips.png') });
   // A media drop on the canvas becomes a clip on a free video track.
   await openFixtureProject('nle-example.json');
-  await page.locator('[data-category="Media"]').click();
+  await showCategory(page, 'Media');
   const asset = page.locator('.media-card[data-name="Footage 1080p"]');
   const canvas = page.locator('canvas');
   const box = (await canvas.boundingBox())!;

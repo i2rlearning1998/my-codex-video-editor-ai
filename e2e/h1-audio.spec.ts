@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, rulerBox } from './fixtures';
+import { test, expect, hook, rulerBox, showCategory } from './fixtures';
 
 // H1.3: audio layers are never drawn on, or picked from, the canvas. They
 // live as clips on audio tracks, in the Scene list and in the side panels.
@@ -48,7 +48,7 @@ const clipEl = (page: Page, id: string) =>
 test.beforeEach(async ({ page, openFixtureProject }) => {
   await page.goto('/');
   await openFixtureProject('av-sync.json');
-  await page.locator('[data-category="Media"]').click();
+  await showCategory(page, 'Media');
   const chooser = page.waitForEvent('filechooser');
   await page.locator('#import-media').click();
   await (
@@ -84,7 +84,7 @@ test('[AUD-018] an audio layer is never drawn or picked on the canvas', async ({
   expect((await canvasDebug(page)).corners).toBeNull();
   await expect(page.locator('#selection-actions')).toBeHidden();
   // It is still in the Scene list.
-  await page.locator('[data-category="Scene"]').click();
+  await showCategory(page, 'Scene');
   await expect(
     page.locator('.scene-row[data-layer-id="layer-tone"]'),
   ).toBeVisible();

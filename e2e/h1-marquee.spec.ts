@@ -117,22 +117,21 @@ test('[CV-003][CV-046] the drag-select box works at 100% zoom', async ({
   await expect.poll(() => selectedIds(page)).toEqual(['example-subtitle']);
 });
 
-for (const scale of [1.25, 1.5]) {
-  test.describe(`device pixel ratio ${scale}`, () => {
-    test.use({ deviceScaleFactor: scale });
-    test(`[CV-003][CV-046] the drag-select box is painted and selects at device pixel ratio ${scale}`, async ({
-      page,
-    }) => {
-      await sweep(
-        page,
-        await screen(page, -25, 440),
-        await screen(page, 330, 520),
-      );
-      await expect
-        .poll(() => selectedIds(page))
-        .toEqual(
-          expect.arrayContaining(['example-badge', 'example-badge-text']),
-        );
-    });
-  });
+async function dprCase(page: Page) {
+  await sweep(page, await screen(page, -25, 440), await screen(page, 330, 520));
+  await expect
+    .poll(() => selectedIds(page))
+    .toEqual(expect.arrayContaining(['example-badge', 'example-badge-text']));
 }
+test.describe('device pixel ratio 1.25', () => {
+  test.use({ deviceScaleFactor: 1.25 });
+  test('[CV-003][CV-046] the drag-select box is painted and selects at device pixel ratio 1.25', async ({
+    page,
+  }) => dprCase(page));
+});
+test.describe('device pixel ratio 1.5', () => {
+  test.use({ deviceScaleFactor: 1.5 });
+  test('[CV-003][CV-046] the drag-select box is painted and selects at device pixel ratio 1.5', async ({
+    page,
+  }) => dprCase(page));
+});
