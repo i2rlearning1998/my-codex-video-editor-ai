@@ -95,18 +95,18 @@ test.describe('default example', () => {
     expect((await layer(page, 'example-badge')).transform.scale.value).toEqual([
       1, 1,
     ]);
-    // Rotate handle: 34 CSS px above the top edge's middle; drag it a quarter
-    // turn clockwise around the frame center (416, 548).
-    const top = await toScreen(page, 416, 456);
+    // Rotate handle (revision 8): 28 CSS px below the bottom edge's middle;
+    // drag it a quarter turn clockwise around the frame center (416, 548).
+    const bottom = await toScreen(page, 416, 640);
     const center = await toScreen(page, 416, 548);
-    const handle = { x: top.x, y: top.y - 34 };
-    const radius = center.y - handle.y;
+    const handle = { x: bottom.x, y: bottom.y + 28 };
+    const radius = handle.y - center.y;
     await page.mouse.move(handle.x, handle.y);
     await page.mouse.down();
-    await page.mouse.move(center.x + radius * 0.7, center.y - radius * 0.7, {
+    await page.mouse.move(center.x - radius * 0.7, center.y + radius * 0.7, {
       steps: 4,
     });
-    await page.mouse.move(center.x + radius, center.y, { steps: 4 });
+    await page.mouse.move(center.x - radius, center.y, { steps: 4 });
     await page.screenshot({ path: testInfo.outputPath('rotating.png') });
     await page.mouse.up();
     expect((await hook(page)).history.labels.at(-1)).toBe('Rotate layers');

@@ -87,8 +87,14 @@ function recordingContext() {
     closePath: vi.fn(),
     stroke: vi.fn(),
     arc: vi.fn(),
+    roundRect: vi.fn(),
     fill: vi.fn(),
     strokeRect: vi.fn(),
+    setLineDash: vi.fn(),
+    shadowColor: '',
+    shadowBlur: 0,
+    shadowOffsetY: 0,
+    lineCap: '',
   };
   return {
     context,
@@ -273,7 +279,12 @@ describe('Canvas 2D renderer boundary', () => {
     expect(context.moveTo).toHaveBeenCalledWith(10, 20);
     expect(context.lineTo).toHaveBeenCalledWith(10, 100);
     expect(context.lineTo).toHaveBeenCalledWith(-170, 100);
-    expect(context.stroke).toHaveBeenCalledTimes(2);
+    // H3 handles: four white circles at the corners, four pills on the
+    // edges and one round rotate button below the box.
+    const radii = context.arc.mock.calls.map((call) => call[2]);
+    expect(radii.filter((radius) => radius === 6)).toHaveLength(8);
+    expect(radii.filter((radius) => radius === 10)).toHaveLength(2);
+    expect(context.roundRect).toHaveBeenCalledTimes(8);
     expect(context.clip).toHaveBeenCalled();
     expect(engine.state).toBe(before);
     expect(engine.history).toEqual(history);
@@ -298,15 +309,15 @@ describe('Canvas 2D renderer boundary', () => {
       viewport,
       'g',
     );
-    // Composition and child retain inherited opacity; a group's four corner
-    // handles are opaque (G2.2: groups have no side handles); the separate
-    // rotation disc uses fill().
-    expect(records.map((item) => item.alpha)).toEqual([
-      1,
-      0.25,
-      ...Array<number>(4).fill(1),
-    ]);
-    expect(context.stroke).toHaveBeenCalledTimes(2);
+    // Composition and child retain inherited opacity (the only filled
+    // rectangles); a group has four corner circles and no side pills
+    // (G2.2), plus the round rotate button (H3). Handles draw opaque.
+    expect(records.map((item) => item.alpha)).toEqual([1, 0.25]);
+    const radii = context.arc.mock.calls.map((call) => call[2]);
+    expect(radii.filter((radius) => radius === 6)).toHaveLength(8);
+    expect(radii.filter((radius) => radius === 10)).toHaveLength(2);
+    expect(context.roundRect).not.toHaveBeenCalled();
+    expect(context.globalAlpha).toBe(1);
   });
   it('separates device pixels from fit coordinates and clips to composition bounds', () => {
     const { source } = setup();

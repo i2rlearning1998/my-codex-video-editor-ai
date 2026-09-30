@@ -12,6 +12,7 @@ import type { EditorSession } from './session';
 import type { TransformInteraction } from './transform-interaction';
 import { SNAP_PIXELS } from './snapping';
 import type { DrawTool } from './draw-tool';
+import type { CropTool } from './crop-tool';
 
 /**
  * CV-022: map a picked leaf to the selectable layer. Outside any entered group
@@ -81,8 +82,13 @@ export function bindCanvasInteraction(
   externalKeyboard = false,
   onContextMenu?: (point: Point2, layerId: string | null) => void,
   draw?: DrawTool,
+  /** H3: the crop tool (picture and video layers). */
+  crop?: CropTool,
+  /** H3: the object or empty artboard under the pointer changed. */
+  onHover?: (target: string | 'artboard' | null) => void,
 ) {
   let pointer: number | null = null;
+  let cropping = false;
   // CV-041: a multi-selection has its own box and handles (revision 6).
   const handleAt = (point: Point2): TransformHandle | null =>
     session.selectedIds.length > 1
@@ -127,6 +133,10 @@ export function bindCanvasInteraction(
   };
   const cancel = () => {
     release();
+    // A crop drag stops; the crop tool itself stays open (Cancel or Escape
+    // leaves it).
+    cropping = false;
+    crop?.end();
     draw?.cancel();
     interaction.cancel();
     marquee?.box.remove();
@@ -162,6 +172,19 @@ export function bindCanvasInteraction(
         return;
       session.setPlaying(false);
       const point = screenPoint(event);
+      // H3: while cropping, the canvas edits the crop frame; a press
+      // outside it applies the crop (Canva).
+      if (crop?.active) {
+        suppressClick = true;
+        if (crop.begin(viewport().matrix, point)) {
+          cropping = true;
+          pointer = event.pointerId;
+          canvas.setPointerCapture(pointer);
+          canvas.focus({ preventScroll: true });
+          event.preventDefault();
+        } else crop.done();
+        return;
+      }
       if (drawing()) {
         const at = compositionPoint(point);
         const { width, height } = session.source.composition;
@@ -249,6 +272,10 @@ export function bindCanvasInteraction(
   };
   const update = (event: PointerEvent) => {
     const point = screenPoint(event);
+    if (cropping) {
+      crop?.update(viewport().matrix, point);
+      return;
+    }
     if (draw?.active) {
       draw.add(compositionPoint(point), event.shiftKey);
       return;
@@ -288,11 +315,46 @@ export function bindCanvasInteraction(
           return;
         }
         const point = screenPoint(event);
+        if (crop?.active) {
+          const hit = crop.hit(viewport().matrix, point);
+          canvas.style.cursor =
+            hit === null
+              ? 'default'
+              : hit === 'move'
+                ? 'move'
+                : hit === 0 || hit === 2
+                  ? 'nwse-resize'
+                  : hit === 1 || hit === 3
+                    ? 'nesw-resize'
+                    : hit === 'left' || hit === 'right'
+                      ? 'ew-resize'
+                      : 'ns-resize';
+          return;
+        }
         const handle = handleAt(point);
         interaction.hover(handle);
+        const picked = pickLayer(session.source, viewport(), point);
         canvas.style.cursor =
           (handle === null ? undefined : handleCursor(handle)) ??
-          (pickLayer(session.source, viewport(), point) ? 'move' : 'default');
+          (picked ? 'move' : 'default');
+        // H3: outline what a click would select, or the empty page.
+        if (onHover) {
+          const resolved = resolvePick(
+            session.source,
+            picked,
+            session.enteredGroupId,
+          );
+          const at = compositionPoint(point);
+          const { width, height } = session.source.composition;
+          onHover(
+            handle !== null
+              ? null
+              : (resolved.id ??
+                  (at[0] >= 0 && at[1] >= 0 && at[0] <= width && at[1] <= height
+                    ? 'artboard'
+                    : null)),
+          );
+        }
         return;
       }
       if (event.pointerId !== pointer) return;
@@ -303,18 +365,36 @@ export function bindCanvasInteraction(
     safely(() => {
       if (event.pointerId !== pointer) return;
       update(event);
+      if (cropping) {
+        cropping = false;
+        crop?.end();
+        release();
+        return;
+      }
       if (draw?.active) {
         release();
         draw.finish();
         return;
       }
       if (marquee) {
-        const ids = marqueeIds(screenPoint(event));
+        const end = screenPoint(event);
+        const ids = marqueeIds(end);
+        const click =
+          Math.hypot(end[0] - marquee.start[0], end[1] - marquee.start[1]) < 3;
         marquee.box.remove();
         marquee = null;
         interaction.setHighlight([]);
         release();
         session.selectMany(ids);
+        // H3: a click on the empty page selects the page (the scene bar);
+        // a click on the stage outside it deselects everything.
+        if (click && !ids.length) {
+          const at = compositionPoint(end);
+          const { width, height } = session.source.composition;
+          session.setCanvasSelected(
+            at[0] >= 0 && at[1] >= 0 && at[0] <= width && at[1] <= height,
+          );
+        }
         return;
       }
       release();
@@ -349,11 +429,27 @@ export function bindCanvasInteraction(
       const current = resolvePick(session.source, leaf, session.enteredGroupId);
       if (!current.id) return;
       const found = locateLayer(session.source.composition.layers, current.id);
+      // H3: a double-click on a picture or video crops it (Canva).
+      if (
+        crop &&
+        (found?.layer.type === 'image' || found?.layer.type === 'video')
+      ) {
+        session.select(current.id);
+        crop.start(current.id);
+        return;
+      }
       if (found?.layer.type !== 'group') return;
       session.enterGroup(current.id);
       session.select(resolvePick(session.source, leaf, current.id).id);
     });
   const keydown = (event: KeyboardEvent) => {
+    // H3: Enter applies a crop, Escape cancels it.
+    if (crop?.active && (event.key === 'Escape' || event.key === 'Enter')) {
+      event.preventDefault();
+      if (event.key === 'Enter') crop.done();
+      else crop.cancel();
+      return;
+    }
     if (event.target === canvas && event.key !== 'Escape') {
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault();
@@ -397,6 +493,7 @@ export function bindCanvasInteraction(
   };
   const pointerleave = () => {
     if (pointer === null) {
+      onHover?.(null);
       interaction.hover(null);
       canvas.style.cursor = 'default';
     }

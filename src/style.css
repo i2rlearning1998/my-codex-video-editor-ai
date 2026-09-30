@@ -4151,3 +4151,242 @@ button.color-swatch-trigger {
   position: relative;
   z-index: 1;
 }
+
+/* H3: the size chip, icon-only toolbar buttons and toolbar popovers. */
+.toolbar-button:not(.labelled) {
+  inline-size: var(--control-md);
+  padding: 0;
+  justify-content: center;
+}
+.toolbar-size-chip.toolbar-button {
+  inline-size: auto;
+  padding: 0 var(--space-2);
+  gap: 2px;
+  font-weight: var(--weight-semibold);
+  background: var(--raised-hover);
+}
+.toolbar-font.toolbar-button {
+  inline-size: auto;
+  min-inline-size: 104px;
+  max-inline-size: 150px;
+  justify-content: flex-start;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-subtle);
+}
+.toolbar-font span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toolbar-size .number-field input {
+  inline-size: 44px;
+  text-align: center;
+}
+.toolbar-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 160px;
+}
+.toolbar-options .select-option {
+  gap: var(--space-2);
+  padding: 0 var(--space-2);
+  cursor: pointer;
+}
+.toolbar-options .select-option:hover {
+  background: var(--hover);
+}
+.toolbar-popover-label {
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+}
+.toolbar-popover-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-small);
+}
+.stroke-styles button {
+  flex: 1;
+}
+.canvas-size-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.canvas-size-preset {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 32px;
+  padding: 0 var(--space-2);
+  background: transparent;
+  border-color: transparent;
+  text-align: start;
+}
+.canvas-size-preset:hover {
+  background: var(--hover);
+}
+.canvas-size-preset[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.canvas-size-ratio {
+  font-weight: var(--weight-semibold);
+}
+.canvas-size-px {
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+}
+.canvas-size-custom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--border-subtle);
+}
+.canvas-size-custom h4 {
+  inline-size: 100%;
+  margin: 0;
+  font-size: var(--font-small);
+  font-weight: var(--weight-semibold);
+}
+
+/* H3: the toolbar's deep panels (Font, Effects, Edit, Replace, Crop). */
+.tool-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.tool-panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.tool-panel-section h3 {
+  margin: 0 0 var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+  font-weight: var(--weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tool-panel-item {
+  justify-content: flex-start;
+  gap: var(--space-2);
+  min-block-size: 36px;
+  background: transparent;
+  border-color: transparent;
+}
+.tool-panel-item:hover:not([aria-disabled='true']) {
+  background: var(--hover);
+}
+.tool-panel-item[aria-disabled='true'] {
+  opacity: 0.5;
+}
+.tool-panel-hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-small);
+}
+.font-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.font-option {
+  justify-content: flex-start;
+  min-block-size: 36px;
+  font-size: var(--font-panel-title);
+  background: transparent;
+  border-color: transparent;
+}
+.font-option:hover {
+  background: var(--hover);
+}
+.font-option[aria-selected='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.replace-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.replace-option {
+  min-block-size: 56px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.replace-option[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+.crop-ratios {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+.crop-ratios button[aria-checked='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.crop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+/* The toolbar's own fields show no text label (the tooltip names them). */
+.context-toolbar > .color-field .color-field-label,
+.toolbar-size .number-field-label,
+.toolbar-size .number-field-more {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.context-toolbar.compact .toolbar-button.labelled:not(.toolbar-font) span {
+  display: none;
+}
+.context-toolbar.compact .toolbar-button.labelled:not(.toolbar-font) {
+  inline-size: var(--control-md);
+  padding: 0;
+  justify-content: center;
+}
+.toolbar-overflow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  max-inline-size: 256px;
+}
+.toolbar-overflow .toolbar-divider {
+  display: none;
+}
+
+/* H3: the export dialog's size note and More options. */
+.export-size {
+  margin: calc(var(--space-2) * -1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-small);
+}
+.export-more {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+}
+.export-more summary {
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+.export-more[open] summary {
+  margin-block-end: var(--space-2);
+}
+.export-more .export-row + .export-row {
+  margin-block-start: var(--space-2);
+}

@@ -507,10 +507,11 @@ describe('Tier 2.2.1 professional interaction contract', () => {
       expect(
         overlay.handles.filter((handle) => handle.kind === 'text-width'),
       ).toHaveLength(type === 'text' ? 2 : 0);
-      expect(overlay.rotation[1]).toBeLessThan(
-        Math.min(...overlay.corners.map((point) => point[1])),
+      // Revision 8 (H3): the rotation handle sits below the box, as in Canva.
+      expect(overlay.rotation[1]).toBeGreaterThan(
+        Math.max(...overlay.corners.map((point) => point[1])),
       );
-      expect(overlay.rotation[0]).toBe(overlay.top[0]);
+      expect(overlay.rotation[0]).toBeCloseTo(overlay.top[0], 9);
       expect(
         hitHandle(s.source(), 'child', s.view().matrix, overlay.rotation),
       ).toBe('rotate');
@@ -553,10 +554,12 @@ describe('Tier 2.2.1 professional interaction contract', () => {
       center[1] + Math.sin((degrees * Math.PI) / 180) * radius,
     ];
     s.event('pointerdown', start);
+    // Revision 8: the handle starts below the center (90°), so the same
+    // pointer path across the branch cut ends 180° further round.
     for (const angle of [-150, -179, 179, 170])
       s.event('pointermove', point(angle));
     s.event('pointerup', point(170));
-    expect(Number(s.input('Rotation').value)).toBeCloseTo(-100);
+    expect(Number(s.input('Rotation').value)).toBeCloseTo(80);
     expect(s.geometry().center[0]).toBeCloseTo(center[0]);
     expect(s.geometry().center[1]).toBeCloseTo(center[1]);
     expect(s.engine.history.undo).toHaveLength(1);
@@ -831,16 +834,17 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     expect(s.current().transform).toEqual(child);
     const overlay = s.geometry();
     // A transformed top side has its own normal, not a screen-axis-aligned box.
+    // Revision 8: the stem leaves the bottom side along its own normal.
     const edge: Point2 = [
-      overlay.corners[1]![0] - overlay.top[0],
-      overlay.corners[1]![1] - overlay.top[1],
+      overlay.corners[2]![0] - overlay.stem[0],
+      overlay.corners[2]![1] - overlay.stem[1],
     ];
     const stem: Point2 = [
-      overlay.rotation[0] - overlay.top[0],
-      overlay.rotation[1] - overlay.top[1],
+      overlay.rotation[0] - overlay.stem[0],
+      overlay.rotation[1] - overlay.stem[1],
     ];
     expect(edge[0] * stem[0] + edge[1] * stem[1]).toBeCloseTo(0, 8);
-    expect(Math.hypot(...stem)).toBeCloseTo(34);
+    expect(Math.hypot(...stem)).toBeCloseTo(28);
     expect(s.engine.history.undo).toHaveLength(1);
     s.engine.undo();
     expect(s.engine.canUndo).toBe(false);

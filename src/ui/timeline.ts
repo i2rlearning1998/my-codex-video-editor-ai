@@ -2023,6 +2023,16 @@ export function mountTimeline(
     playback,
     render,
     cancel,
+    /** H3: scrolls so `time` is in view (Show element timing). */
+    reveal(time: number) {
+      const x = timeToPixel(time, session.timelineZoom);
+      if (
+        x < scroll.scrollLeft ||
+        x > scroll.scrollLeft + scroll.clientWidth - headerWidth
+      )
+        scroll.scrollLeft = Math.max(0, x - 40);
+      render();
+    },
     dispose: () => {
       cancel();
       unsubscribe();

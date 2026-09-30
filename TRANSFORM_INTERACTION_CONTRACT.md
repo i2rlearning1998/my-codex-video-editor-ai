@@ -26,7 +26,7 @@ A drawable box uses its local width/height corners under the full world matrix. 
 
 `SelectionOverlay` is derived on demand from canonical state plus the active numeric preview. It contains bounds, corners, center, rotation stem/handle, capabilities, and handle records. Drawing and hit testing share these records. Handles follow the box orientation with normalized screen basis vectors; their graphics do not shrink with zoom or DPR. No duplicate authoritative geometry is retained.
 
-The rotation disc has radius 8 CSS pixels and a rotation glyph. A connector runs from the top-side midpoint to a point 34 CSS pixels outward along the top-side normal, chosen away from the center. It remains outside rotated/reflected/sheared bounds, separated from corner hit regions. Corners are 8px squares; generic edges are 6px squares; text width grips are distinct 5x14px bars. Hover highlights a handle and updates the cursor; rotation uses grab/grabbing and resize cursors follow screen axes.
+The rotation disc has radius 10 CSS pixels and a rotation glyph. Since revision 8 (H3, Canva), a connector runs from the bottom-side midpoint to a point 28 CSS pixels outward along the bottom-side normal, chosen away from the center (before revision 8: from the top-side midpoint, 34 CSS pixels). It remains outside rotated/reflected/sheared bounds, separated from corner hit regions. Corners are drawn as 12px white circles and generic edges as 16x6px pills along their side (revision 8; hit regions unchanged); text width grips are distinct 5x14px bars. Hover highlights a handle and updates the cursor; rotation uses grab/grabbing and resize cursors follow screen axes.
 
 ## Type capabilities and picking
 

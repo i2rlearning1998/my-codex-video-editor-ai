@@ -136,7 +136,7 @@ export function syncGeometryFields(
     syncNumberField(root, 'inspector-scale-x', scale.value[0]);
     syncNumberField(root, 'inspector-scale-y', scale.value[1]);
     syncNumberField(root, 'inspector-rotation', rotation.value);
-    syncNumberField(root, 'toolbar-rotate', rotation.value);
+    syncNumberField(root, 'position-rotate', rotation.value);
   }
   for (const prefix of PREFIXES) {
     syncNumberField(root, `${prefix}-x`, geometry.x);

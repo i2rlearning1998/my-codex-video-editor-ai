@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook } from './fixtures';
-import { pickColor } from './controls';
+import { pickColor, reveal } from './controls';
 
 // G3: marquee with a live highlight, pan and zoom, objects outside the
 // artboard, and the scene bar. Default example (1280x720): badge 76,456
@@ -308,7 +308,7 @@ test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: back
   expect(project.settings.backgroundColor).toBe('#223344');
   expect((await hook(page)).history.labels.at(-1)).toBe('Set background');
   // Scene length: a longer scene extends the clips that end with it.
-  const length = page.locator('#toolbar-scene-length');
+  const length = await reveal(page, 'toolbar-scene-length');
   const duration = project.compositions[0]!.duration;
   await expect(length).toHaveValue(String(Math.round(duration * 100) / 100));
   await length.fill(String(duration + 3));

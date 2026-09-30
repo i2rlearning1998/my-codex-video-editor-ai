@@ -388,15 +388,10 @@ test.describe('canvas', () => {
       ];
     };
     const before = center(await layer(page, 'example-badge'));
-    const top = await toScreen(page, 76 + 112, 456);
-    const middle = await toScreen(page, 76 + 112, 456 + 24);
-    // The handle sits 34 screen px above the top edge; swing it to the right.
-    await drag(
-      page,
-      { x: top.x, y: top.y - 34 },
-      middle.y - top.y + 34,
-      middle.y - top.y + 34,
-    );
+    // Revision 8 (H3): the handle sits 28 screen px below the bottom edge's
+    // middle; swing it to the right and up.
+    const bottom = await toScreen(page, 76 + 112, 456 + 48);
+    await drag(page, { x: bottom.x, y: bottom.y + 28 }, 60, -60);
     const after = await layer(page, 'example-badge');
     expect(Math.abs(after.transform.rotation.value)).toBeGreaterThan(10);
     const moved = center(after);

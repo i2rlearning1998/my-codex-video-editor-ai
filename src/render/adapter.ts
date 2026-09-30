@@ -93,6 +93,33 @@ export interface RenderSource {
   }[];
   readonly frames?: FrameProvider;
   readonly playing?: boolean;
+  /** H3: the object (or the empty artboard) under the pointer. */
+  readonly hoverId?: string;
+  readonly hoverArtboard?: boolean;
+  /** H3: the picture being cropped and its crop frame (canvas CSS px). */
+  readonly cropLayerId?: string;
+  readonly crop?: CropOverlay;
+  /**
+   * H3: while cropping, the layer shows its whole source (dimmed) at
+   * `source` and the kept part at `frame`, both in the layer's local units.
+   */
+  readonly cropView?: CropView;
+}
+export interface LocalRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+export interface CropView {
+  readonly layerId: string;
+  readonly source: LocalRect;
+  readonly frame: LocalRect;
+}
+export interface CropOverlay {
+  /** The kept frame's four corners, then the whole source's. */
+  readonly frame: readonly Point2[];
+  readonly source: readonly Point2[];
 }
 export interface LayerSize {
   readonly width: number;
@@ -120,6 +147,8 @@ export interface RenderItem {
   readonly path?: DrawingPath;
   /** H3: a picture's crop, rounded corners and border. */
   readonly picture?: PictureStyle;
+  /** H3: the crop being edited on this picture. */
+  readonly cropView?: CropView;
   /** W5-C Wipe: the visible fraction of the box, from the left. */
   readonly reveal?: number;
 }
@@ -305,6 +334,9 @@ export function deriveRenderItems(input: RenderSource): {
               : {}),
             ...(media ? { media } : {}),
             ...(pictureOf(layer) ? { picture: pictureOf(layer)! } : {}),
+            ...(source.cropView?.layerId === layer.id
+              ? { cropView: source.cropView }
+              : {}),
             ...(drawing ? { path: drawing } : {}),
             ...(numericProperty(layer, 'presetReveal') !== undefined
               ? {

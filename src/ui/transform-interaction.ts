@@ -25,7 +25,11 @@ import {
   type LayerPreview,
   type SceneLayer,
 } from '../render/adapter';
-import { layerTransformCapabilities } from '../render/transform-capabilities';
+import { t } from '../i18n';
+import {
+  isLocked,
+  layerTransformCapabilities,
+} from '../render/transform-capabilities';
 import {
   multiSelectionFrame,
   multiSelectionStretchable,
@@ -281,6 +285,14 @@ export class TransformInteraction {
       ? locateLayer(source.composition.layers, this.session.selectedId)
       : null;
     if (!found || !point.every(Number.isFinite)) return false;
+    // H3 (CV-024): nothing locked moves, also as part of a multi-selection.
+    if (
+      this.session.selectedIds.some((id) => {
+        const item = locateLayer(source.composition.layers, id)?.layer;
+        return !!item && isLocked(item);
+      })
+    )
+      return false;
     if (this.session.selectedIds.length > 1 && kind !== 'move')
       return this.#beginMulti(kind, point);
     const capabilities = layerTransformCapabilities(
@@ -685,8 +697,20 @@ export class TransformInteraction {
       this.changed();
     }
   }
+  /** H3 (CV-024): a locked selection refuses every transform edit. */
+  #refuseLocked(): void {
+    const layers = this.session.source.composition.layers;
+    if (
+      this.session.selectedIds.some((id) => {
+        const item = locateLayer(layers, id)?.layer;
+        return !!item && isLocked(item);
+      })
+    )
+      throw new Error(t('lock.refused'));
+  }
   edit(field: InspectorField, value: number): void {
     this.cancel();
+    this.#refuseLocked();
     const source = this.session.source;
     const found = this.session.selectedId
       ? locateLayer(source.composition.layers, this.session.selectedId)
@@ -710,6 +734,7 @@ export class TransformInteraction {
   /** G2.1: X, Y, W or H from the Inspector, toolbar or Position panel. */
   geometry(field: GeometryField, value: number): void {
     this.cancel();
+    this.#refuseLocked();
     const source = this.session.source;
     const ids = this.session.selectedIds;
     const multi = ids.length > 1;

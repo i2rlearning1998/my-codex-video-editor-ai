@@ -76,6 +76,13 @@ async function openExport(page: Page) {
     /Checking/,
   );
 }
+/** H3: frame rate, format and range are under More options. */
+async function moreOptions(page: Page) {
+  const more = dialog(page).locator('#export-more');
+  if ((await more.getAttribute('open')) === null)
+    await more.locator('summary').click();
+  await expect(dialog(page).locator('#export-end')).toBeVisible();
+}
 /** Runs the export and returns the downloaded file's bytes and name. */
 async function runExport(page: Page, testInfo: TestInfo) {
   const downloading = page.waitForEvent('download', { timeout: 120_000 });
@@ -183,16 +190,12 @@ test.describe('frame code', () => {
   }, testInfo) => {
     await expect(page.locator('#export')).toHaveText('Export');
     await openExport(page);
-    for (const id of [
-      'preset',
-      'width',
-      'height',
-      'fps',
-      'quality',
-      'start',
-      'end',
-      'name',
-    ])
+    // H3: Quality and the file name; the rest is under More options.
+    for (const id of ['resolution', 'name'])
+      await expect(dialog(page).locator(`#export-${id}`)).toBeVisible();
+    await expect(dialog(page).locator('#export-resolution')).toHaveValue('720');
+    await moreOptions(page);
+    for (const id of ['container', 'fps', 'start', 'end'])
       await expect(dialog(page).locator(`#export-${id}`)).toBeVisible();
     await expect(dialog(page).locator('#export-format')).toHaveAttribute(
       'data-container',
@@ -238,7 +241,7 @@ test.describe('frame code', () => {
   }) => {
     await openExport(page);
     // 4K makes the export long enough to watch.
-    await dialog(page).locator('#export-preset').selectOption('youtube-4k');
+    await dialog(page).locator('#export-resolution').selectOption('2160');
     await page.evaluate(() => {
       const probe = window as unknown as {
         __gap: number;
@@ -300,77 +303,39 @@ test.describe('frame code', () => {
     expect(leftovers).toEqual([]);
   });
 
-  test('[EXP-006] presets fill the dialog, and a Shorts export is 1080x1920 with the frame letterboxed', async ({
+  test('[EXP-006] Quality sets the shorter edge (720p, 1080p, 4K) in the canvas shape; a vertical canvas exports vertical', async ({
     page,
   }, testInfo) => {
     await openExport(page);
-    const expected: [string, string, string, string][] = [
-      ['youtube-1080', '1920', '1080', 'high'],
-      ['youtube-4k', '3840', '2160', 'high'],
-      ['vertical', '1080', '1920', 'high'],
-      ['square', '1080', '1080', 'high'],
-      ['portrait', '1080', '1350', 'high'],
-      ['whatsapp', '854', '480', 'low'],
-    ];
-    for (const [preset, width, height, quality] of expected) {
-      await dialog(page).locator('#export-preset').selectOption(preset);
-      await expect(dialog(page).locator('#export-width')).toHaveValue(width);
-      await expect(dialog(page).locator('#export-height')).toHaveValue(height);
-      await expect(dialog(page).locator('#export-quality')).toHaveValue(
-        quality,
-      );
+    const size = dialog(page).locator('#export-size');
+    for (const [edge, text] of [
+      ['720', '1,280 × 720'],
+      ['1080', '1,920 × 1,080'],
+      ['2160', '3,840 × 2,160'],
+    ] as const) {
+      await dialog(page).locator('#export-resolution').selectOption(edge);
+      await expect(size).toContainText(text);
     }
-    // Typing a size switches the preset to Custom and keeps sizes even.
-    await dialog(page).locator('#export-width').fill('641');
-    await dialog(page).locator('#export-width').press('Tab');
-    await expect(dialog(page).locator('#export-preset')).toHaveValue('custom');
-    await expect(dialog(page).locator('#export-width')).toHaveValue('640');
-    await dialog(page).locator('#export-preset').selectOption('vertical');
+    // No size or platform presets in the dialog any more.
+    await expect(dialog(page).locator('#export-preset')).toHaveCount(0);
+    await expect(dialog(page).locator('#export-width')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(dialog(page)).toHaveCount(0);
+    // A 9:16 canvas (Canvas size) exports 720 × 1280 at 720p.
+    await page.locator('#context-toolbar [data-control="canvas-size"]').click();
+    await page.locator('.canvas-size-preset[data-preset="vertical"]').click();
+    await openExport(page);
+    await dialog(page).locator('#export-resolution').selectOption('720');
+    await expect(size).toContainText('720 × 1,280');
     // Only the clip's first second, to keep the test quick.
+    await moreOptions(page);
     await dialog(page).locator('#export-start').fill('1');
     await dialog(page).locator('#export-start').press('Tab');
     await dialog(page).locator('#export-end').fill('2');
     await dialog(page).locator('#export-end').press('Tab');
     const { bytes } = await runExport(page, testInfo);
     const info = await readBack(bytes);
-    expect(info.video).toMatchObject({ width: 1080, height: 1920, frames: 30 });
-    // Letterboxed: black above the 16:9 frame; the frame-code grey block inside it.
-    const pixels = await page.evaluate(
-      async ({ base64, type }) => {
-        const binary = atob(base64);
-        const data = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
-        const video = await (
-          window as unknown as {
-            __loadVideo(
-              data: Uint8Array,
-              type: string,
-            ): Promise<HTMLVideoElement>;
-          }
-        ).__loadVideo(data, type);
-        await new Promise((resolve) => {
-          video.onseeked = resolve;
-          video.currentTime = 0.5 / 30;
-        });
-        const canvas = document.createElement('canvas');
-        canvas.width = 1080;
-        canvas.height = 1920;
-        const context = canvas.getContext('2d')!;
-        context.drawImage(video, 0, 0);
-        const at = (x: number, y: number) => [
-          ...context.getImageData(x, y, 1, 1).data,
-        ];
-        // The composition (1280x720 scaled by 1080/1280) spans y 656..1264.
-        return { top: at(540, 100), grey: at(1012, 960) };
-      },
-      {
-        base64: bytes.toString('base64'),
-        type: expectedCodecs(container()).type,
-      },
-    );
-    expect(Math.max(...pixels.top.slice(0, 3))).toBeLessThan(20);
-    expect(pixels.grey[0]).toBeGreaterThan(90);
-    expect(pixels.grey[0]).toBeLessThan(170);
+    expect(info.video).toMatchObject({ width: 720, height: 1280, frames: 30 });
   });
 
   test('[EXP-007][EXP-009] the exported frames match the preview render; Export frame saves the playhead frame as PNG', async ({
@@ -558,6 +523,7 @@ test('[EXP-008] media missing from this browser is listed and blocks the export'
   );
   await expect(dialog(page).locator('#export-start-button')).toBeDisabled();
   // A range with no clip needs no media.
+  await moreOptions(page);
   await dialog(page).locator('#export-end').fill('0.5');
   await dialog(page).locator('#export-end').press('Tab');
   await expect(dialog(page).locator('#export-missing')).toBeHidden();
@@ -604,6 +570,7 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
   await x.press('Enter');
   await seek(1);
   await openExport(page);
+  await moreOptions(page);
   await dialog(page).locator('#export-end').fill('2');
   await dialog(page).locator('#export-end').press('Tab');
   const saving = page.waitForEvent('download');
@@ -697,6 +664,7 @@ test('[ANI-007] an exported frame with an animation preset matches the preview',
     .poll(async () => (await hook(page)).session.time)
     .toBeCloseTo(0.5, 2);
   await openExport(page);
+  await moreOptions(page);
   await dialog(page).locator('#export-end').fill('1');
   await dialog(page).locator('#export-end').press('Tab');
   const saving = page.waitForEvent('download');

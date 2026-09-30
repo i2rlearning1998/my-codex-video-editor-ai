@@ -68,6 +68,8 @@ export interface ExportSettings {
   readonly start: number;
   readonly end: number;
   readonly fileName: string;
+  /** H3: 'webm' forces WebM; otherwise MP4 when the browser can encode it. */
+  readonly container?: 'auto' | 'webm';
 }
 
 export const MIN_SIZE = 16;
@@ -90,6 +92,31 @@ export function safeFileName(name: string): string {
     .trim()
     .slice(0, 120);
   return cleaned || 'export';
+}
+
+/**
+ * H3 (EXP-006): export quality is the output's shorter edge, 720p, 1080p or
+ * 4K; the output keeps the canvas's shape. Platform sizes are canvas sizes.
+ */
+export const RESOLUTIONS = [720, 1080, 2160] as const;
+export type Resolution = (typeof RESOLUTIONS)[number];
+export function resolutionSize(
+  canvas: { width: number; height: number },
+  shortEdge: number,
+): { width: number; height: number } {
+  const scale = shortEdge / Math.min(canvas.width, canvas.height);
+  return {
+    width: evenSize(canvas.width * scale),
+    height: evenSize(canvas.height * scale),
+  };
+}
+/** The quality matching the canvas's shorter edge (the nearest one above). */
+export function defaultResolution(canvas: {
+  width: number;
+  height: number;
+}): Resolution {
+  const short = Math.min(canvas.width, canvas.height);
+  return RESOLUTIONS.find((edge) => edge >= short) ?? 2160;
 }
 
 /** Default settings for a composition: its own size and rate, the whole length. */

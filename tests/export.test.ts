@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   EXPORT_PRESETS,
+  defaultResolution,
+  resolutionSize,
   defaultSettings,
   evenSize,
   fitMatrix,
@@ -108,5 +110,33 @@ describe('[EXP-008] pre-flight', () => {
     };
     expect(usedAssetIds(composition, 0, 4)).toEqual(['a', 'b']);
     expect(usedAssetIds(composition, 2, 4)).toEqual(['b']);
+  });
+});
+
+describe('H3 export quality (EXP-006)', () => {
+  it('sets the shorter edge and keeps the canvas shape, with even sizes', () => {
+    expect(resolutionSize({ width: 1920, height: 1080 }, 720)).toEqual({
+      width: 1280,
+      height: 720,
+    });
+    expect(resolutionSize({ width: 1080, height: 1920 }, 2160)).toEqual({
+      width: 2160,
+      height: 3840,
+    });
+    // 21:9 at 1080p: 2520 × 1080; odd results round down to even.
+    expect(resolutionSize({ width: 2520, height: 1080 }, 1080)).toEqual({
+      width: 2520,
+      height: 1080,
+    });
+    expect(resolutionSize({ width: 1001, height: 1000 }, 720).width % 2).toBe(
+      0,
+    );
+  });
+  it('defaults to the quality matching the canvas', () => {
+    expect(defaultResolution({ width: 1280, height: 720 })).toBe(720);
+    expect(defaultResolution({ width: 1920, height: 1080 })).toBe(1080);
+    expect(defaultResolution({ width: 1080, height: 1350 })).toBe(1080);
+    expect(defaultResolution({ width: 3840, height: 2160 })).toBe(2160);
+    expect(defaultResolution({ width: 7680, height: 4320 })).toBe(2160);
   });
 });

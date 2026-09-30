@@ -1,3 +1,4 @@
+import { isLocked } from '../render/transform-capabilities';
 import {
   layerSchema,
   clipSchema,
@@ -236,7 +237,11 @@ export function contextActions(
   if (markerId) return ['delete-marker'];
   const layers = selectionRoots(source, ids);
   if (!layers.length) return hasClipboard() ? ['marker', 'paste'] : ['marker'];
-  const actions: EditAction[] = ['duplicate', 'delete'];
+  // H3 (CV-024): a locked layer is not deleted or cut.
+  const locked = layers.some(isLocked);
+  const actions: EditAction[] = locked
+    ? ['duplicate']
+    : ['duplicate', 'delete'];
   // W2-F1: an action is offered only when every selected item supports it, so
   // clip-only actions never reach a selection that mixes in images or shapes.
   const selection = describeSelection(source, ids);
@@ -245,7 +250,9 @@ export function contextActions(
     actions.push('toggle-enabled');
     if (selection.every('time-effects'))
       actions.push('speed', 'reverse', 'freeze');
-    actions.push('cut', 'copy');
+    actions.push(
+      ...(locked ? ['copy' as const] : ['cut' as const, 'copy' as const]),
+    );
     if (hasClipboard()) actions.push('paste');
     const links = clips.map(({ clip }) => clipLinkId(clip));
     if (clips.length > 1 && !(links[0] && links.every((l) => l === links[0])))

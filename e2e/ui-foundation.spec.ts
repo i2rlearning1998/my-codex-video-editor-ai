@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard, showCategory } from './fixtures';
-import { choose, openPanel, pickColor } from './controls';
+import { choose, pickColor, reveal } from './controls';
 
 // G1: shared UI foundation. Rail categories, number fields, selects, colour
 // picker, menus, side panels and focus states.
@@ -87,7 +87,7 @@ test('[SHP-005] stroke joins and caps change the exported frame, not just the st
   await showCategory(page, 'Elements');
   await page.locator('[data-shape="rectangle"]').click();
   await pickColor(page, 'toolbar-stroke', '#00aa00');
-  const width = page.locator('#toolbar-width');
+  const width = await reveal(page, 'toolbar-width');
   await width.fill('40');
   await width.press('Enter');
   // Sharp (miter) joins fill the outer corner; round joins leave it empty.
@@ -95,7 +95,6 @@ test('[SHP-005] stroke joins and caps change the exported frame, not just the st
   expect(isGreen((await exportedPixels(page, testInfo, [corner]))[0]!)).toBe(
     true,
   );
-  await openPanel(page, 'stroke-style', 'stroke-style');
   await choose(page, 'toolbar-join', 'round');
   expect(isGreen((await exportedPixels(page, testInfo, [corner]))[0]!)).toBe(
     false,
@@ -107,15 +106,14 @@ test('[SHP-005] stroke joins and caps change the exported frame, not just the st
   await page.keyboard.press('Control+z');
   await showCategory(page, 'Elements');
   await page.locator('[data-shape="line"]').click();
-  await width.fill('30');
-  await width.press('Enter');
+  const lineWidth = await reveal(page, 'toolbar-width');
+  await lineWidth.fill('30');
+  await lineWidth.press('Enter');
   const beyond: [number, number] = [770, 360];
-  await openPanel(page, 'stroke-style', 'stroke-style');
   await choose(page, 'toolbar-cap', 'butt');
   expect(isInk((await exportedPixels(page, testInfo, [beyond]))[0]!)).toBe(
     false,
   );
-  await openPanel(page, 'stroke-style', 'stroke-style');
   await choose(page, 'toolbar-cap', 'square');
   expect(isInk((await exportedPixels(page, testInfo, [beyond]))[0]!)).toBe(
     true,
@@ -192,10 +190,11 @@ test('[INS-006][INS-007][LAY-023] number fields scrub, type, step with arrows, r
   await page.locator('.popover [data-preset="50"]').click();
   await expect(opacity).toHaveValue('50');
   expect((await badge(page)).transform.opacity.value).toBe(0.5);
-  // The toolbar uses the same field, with units.
+  // The toolbar uses the same field, with units (Transparency, in %).
+  await page.locator('#context-toolbar [data-control="transparency"]').click();
   await expect(
-    page.locator('#context-toolbar .number-field-unit').first(),
-  ).toBeVisible();
+    page.locator('.toolbar-popover .number-field-unit').first(),
+  ).toHaveText('%');
 });
 
 test('[LAY-018] the custom select opens a listbox, moves with the keyboard, and closes on Escape or an outside click', async ({
@@ -226,10 +225,10 @@ test('[LAY-018] the custom select opens a listbox, moves with the keyboard, and 
   await page.mouse.click(10, 990);
   await expect(list).toHaveCount(0);
   await expect(align).toHaveAttribute('data-value', 'center');
-  // The font list shows each font in its own face.
+  // H3: the Font panel shows each font in its own face.
   await page.locator('#toolbar-font').click();
   await expect(
-    page.locator('.select-popover [data-value="Georgia"]'),
+    page.locator('[data-tool-panel="font"] [data-font="Georgia"]'),
   ).toHaveCSS('font-family', /Georgia/);
 });
 
@@ -357,7 +356,6 @@ test('[LAY-028] deep panels open in the left side panel with Back and never cove
   for (const [control, id] of [
     ['position', 'position'],
     ['animate', 'animate'],
-    ['stroke-style', 'stroke-style'],
   ] as const) {
     await page.locator(`#context-toolbar [data-control="${control}"]`).click();
     const panel = page.locator(`[data-deep-panel="${id}"]`);
@@ -369,7 +367,11 @@ test('[LAY-028] deep panels open in the left side panel with Back and never cove
     await expect(panel).toBeHidden();
     await expect(page.locator('#scene-list')).toBeVisible();
   }
-  // Spacing is a quick popover: it floats, so the canvas does not move.
+  // Spacing and Stroke style are quick popovers: they float, so the canvas
+  // does not move.
+  await page.locator('#context-toolbar [data-control="stroke-style"]').click();
+  await expect(page.locator('#toolbar-width')).toBeVisible();
+  await page.keyboard.press('Escape');
   await selectLayer(page, 'example-subtitle');
   await page.locator('#context-toolbar [data-control="spacing"]').click();
   await expect(page.locator('#toolbar-line-height')).toBeVisible();

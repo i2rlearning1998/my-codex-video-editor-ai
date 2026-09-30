@@ -27,6 +27,8 @@ export interface ColorFieldOptions {
    * toolbar colours, G1.5). It receives a builder to call on open and refresh.
    */
   readonly host?: (build: () => HTMLElement) => void;
+  /** H3: more controls under the swatches (for example fill opacity). */
+  readonly extra?: () => HTMLElement | null;
 }
 
 const HEX = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i;
@@ -302,6 +304,9 @@ export function createColorPicker(
     const used = [...new Set(options.documentColors?.() ?? [])].slice(0, 16);
     if (used.length) body.append(row(t('color.document'), used, 'document'));
     body.append(row(t('color.defaults'), DEFAULT_SWATCHES, 'defaults'));
+    // H3: an owner's extra controls (a shape's fill opacity) go last.
+    const extra = options.extra?.();
+    if (extra) body.append(extra);
     sync();
     return body;
   }

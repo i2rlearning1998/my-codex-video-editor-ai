@@ -27,6 +27,17 @@ export const openAnchor = () => stack.at(-1)?.anchor ?? null;
 export function closePopover(): void {
   stack.at(-1)?.handle.close();
 }
+/**
+ * H3: Escape with focus outside a popover (on the toolbar button that opened
+ * it) closes the popover and returns focus, instead of deselecting.
+ */
+export function escapeTopPopover(): boolean {
+  const top = stack.at(-1);
+  if (!top) return false;
+  top.handle.close();
+  if (top.anchor.isConnected) top.anchor.focus();
+  return true;
+}
 
 const insideAny = (target: Node, from: number) =>
   stack

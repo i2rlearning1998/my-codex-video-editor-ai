@@ -133,9 +133,21 @@ function drawText(
   context.fillStyle = item.fill;
   const offsets = lineOffsets(layout);
   const visible = Math.min(1000, layout.lines.length);
+  // H3: the text's vertical anchor in a box taller than its lines.
+  const room = Math.max(0, item.size.height - layout.height);
+  const shift =
+    style.anchor === 'middle' ? room / 2 : style.anchor === 'bottom' ? room : 0;
+  // H3: underline and strikethrough follow each drawn line.
+  const decorate = (x: number, y: number, lineWidth: number) => {
+    const thickness = Math.max(1, item.fontSize / 15);
+    if (style.underline)
+      context.fillRect(x, y + item.fontSize * 0.95, lineWidth, thickness);
+    if (style.strike)
+      context.fillRect(x, y + item.fontSize * 0.52, lineWidth, thickness);
+  };
   for (let index = 0; index < visible; index++) {
     const line = layout.lines[index]!;
-    const y = offsets[index]!;
+    const y = offsets[index]! + shift;
     if (y > item.size.height) break;
     const words = line
       .split(/(\s+)/u)
@@ -152,6 +164,7 @@ function drawText(
         fillSpaced(context, word, x, y, style.letterSpacing);
         x += measure(word) + gap;
       }
+      decorate(0, y, width);
       continue;
     }
     const lineWidth = measure(line);
@@ -162,6 +175,7 @@ function drawText(
           ? width - lineWidth
           : 0;
     fillSpaced(context, line, x, y, style.letterSpacing);
+    if (line.trim()) decorate(x, y, lineWidth);
   }
 }
 
@@ -278,6 +292,63 @@ function strokePath(
   }
 }
 
+/** H3: the crop frame: a dark veil is not needed (the source is dimmed);
+ *  an outline, thirds and corner marks. Points are canvas CSS px. */
+function drawCropOverlay(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  pixels: AffineMatrix,
+  crop: NonNullable<RenderSource['crop']>,
+) {
+  const [a, b, c, d] = crop.frame as [Point2, Point2, Point2, Point2];
+  const lerp = (p: Point2, q: Point2, t: number): Point2 => [
+    p[0] + (q[0] - p[0]) * t,
+    p[1] + (q[1] - p[1]) * t,
+  ];
+  context.setTransform(...pixels);
+  context.globalAlpha = 1;
+  context.lineWidth = 1;
+  context.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+  context.beginPath();
+  for (const t of [1 / 3, 2 / 3]) {
+    context.moveTo(...lerp(a, b, t));
+    context.lineTo(...lerp(d, c, t));
+    context.moveTo(...lerp(a, d, t));
+    context.lineTo(...lerp(b, c, t));
+  }
+  context.stroke();
+  context.strokeStyle = '#ffffff';
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.moveTo(...a);
+  for (const point of [b, c, d]) context.lineTo(...point);
+  context.closePath();
+  context.stroke();
+  // Corner marks: short thick L shapes along both sides of each corner.
+  context.lineWidth = 4;
+  context.lineCap = 'round';
+  const corners: [Point2, Point2, Point2][] = [
+    [a, b, d],
+    [b, c, a],
+    [c, d, b],
+    [d, a, c],
+  ];
+  context.beginPath();
+  for (const [corner, next, previous] of corners) {
+    const along = (to: Point2) => {
+      const length = Math.hypot(to[0] - corner[0], to[1] - corner[1]) || 1;
+      const k = Math.min(14, length / 3) / length;
+      return [
+        corner[0] + (to[0] - corner[0]) * k,
+        corner[1] + (to[1] - corner[1]) * k,
+      ] as Point2;
+    };
+    context.moveTo(...along(next));
+    context.lineTo(...corner);
+    context.lineTo(...along(previous));
+  }
+  context.stroke();
+  context.lineCap = 'butt';
+}
 export function drawComposition(
   context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   source: RenderSource,
@@ -329,6 +400,25 @@ export function drawComposition(
         const frame = item.media
           ? source.frames?.frame(item.media, source.playing ?? false)
           : null;
+        // H3: cropping shows the whole source dimmed and the kept part bright.
+        if (item.cropView) {
+          const { source: full, frame: kept } = item.cropView;
+          const paint = (alpha: number) => {
+            context.globalAlpha = item.opacity * fade * alpha;
+            if (frame)
+              context.drawImage(frame, full.x, full.y, full.width, full.height);
+            else {
+              context.fillStyle = item.fill;
+              context.fillRect(full.x, full.y, full.width, full.height);
+            }
+          };
+          paint(0.35);
+          context.beginPath();
+          context.rect(kept.x, kept.y, kept.width, kept.height);
+          context.clip();
+          paint(1);
+          continue;
+        }
         if (frame) {
           if (item.picture)
             drawPicture(
@@ -463,75 +553,159 @@ export function drawComposition(
     }
     context.stroke();
   }
+  // H3: overlays (editor only). Colours are fixed, not themed: they sit on
+  // project content, which is never themed.
+  const ACCENT = '#8b6cff';
+  const OUTLINE = '#b7a2ff';
+  const outline = (
+    corners: readonly Point2[],
+    width: number,
+    color: string,
+  ) => {
+    context.setTransform(...pixels);
+    context.globalAlpha = 1;
+    context.strokeStyle = color;
+    context.lineWidth = width;
+    context.beginPath();
+    context.moveTo(...corners[0]!);
+    corners.slice(1).forEach((point) => context.lineTo(...point));
+    context.closePath();
+    context.stroke();
+  };
+  // Hovering the empty artboard outlines the page.
+  if (source.hoverArtboard && !source.cropLayerId) {
+    const { width, height } = source.composition;
+    outline(
+      (
+        [
+          [0, 0],
+          [width, 0],
+          [width, height],
+          [0, height],
+        ] as Point2[]
+      ).map((point) => transformPoint(viewport.matrix, point)),
+      1.5,
+      ACCENT,
+    );
+  }
+  // Hovering an unselected object outlines it (1.5 px accent).
+  if (
+    source.hoverId &&
+    !source.cropLayerId &&
+    !(source.selectedIds ?? []).includes(source.hoverId)
+  ) {
+    const box = selectionGeometry(source, source.hoverId, viewport.matrix);
+    if (box) outline(box.corners, 1.5, ACCENT);
+  }
   for (const id of [
     ...(source.selectedIds ?? []),
     ...(source.highlightIds ?? []),
   ]) {
     if (id === selectedId) continue;
     const box = selectionGeometry(source, id, viewport.matrix);
-    if (!box) continue;
-    context.setTransform(...pixels);
-    context.globalAlpha = 1;
-    context.strokeStyle = '#b7a2ff';
-    context.lineWidth = 1.5;
-    context.beginPath();
-    context.moveTo(...box.corners[0]!);
-    box.corners.slice(1).forEach((point) => context.lineTo(...point));
-    context.closePath();
-    context.stroke();
+    if (box) outline(box.corners, 1.5, OUTLINE);
   }
+  const shadowed = (draw: () => void) => {
+    context.save();
+    context.shadowColor = 'rgba(16, 18, 27, 0.35)';
+    context.shadowBlur = 4 * viewport.pixelRatio;
+    context.shadowOffsetY = 1 * viewport.pixelRatio;
+    draw();
+    context.restore();
+  };
   const drawHandles = (handles: readonly SelectionHandle[]) => {
     for (const handle of handles) {
       const [x, y] = handle.point;
-      context.fillStyle =
-        source.hoveredHandle === handle.id ? '#b7a2ff' : '#ffffff';
+      const hovered = source.hoveredHandle === handle.id;
+      context.strokeStyle = hovered ? ACCENT : '#c9ccd6';
+      context.lineWidth = 1;
+      context.fillStyle = hovered ? OUTLINE : '#ffffff';
       if (handle.kind === 'rotate') {
+        // A round button with a turning arrow.
         context.setTransform(...pixels);
+        shadowed(() => {
+          context.beginPath();
+          context.arc(x, y, 10, 0, Math.PI * 2);
+          context.fill();
+        });
         context.beginPath();
-        context.arc(x, y, 8, 0, Math.PI * 2);
-        context.fill();
+        context.arc(x, y, 10, 0, Math.PI * 2);
         context.stroke();
-        context.fillStyle = '#302548';
-        context.font = '14px Arial, sans-serif';
-        context.textBaseline = 'middle';
-        context.fillText('\u21bb', x - 6, y);
+        context.strokeStyle = '#302548';
+        context.lineWidth = 1.5;
+        context.lineCap = 'round';
+        context.beginPath();
+        context.arc(x, y, 4.5, -Math.PI * 0.2, Math.PI * 1.35);
+        context.stroke();
+        const tip: Point2 = [
+          x + 4.5 * Math.cos(-Math.PI * 0.2),
+          y + 4.5 * Math.sin(-Math.PI * 0.2),
+        ];
+        context.beginPath();
+        context.moveTo(tip[0] - 3, tip[1] - 1);
+        context.lineTo(tip[0], tip[1]);
+        context.lineTo(tip[0] + 0.5, tip[1] - 3.2);
+        context.stroke();
+        context.lineCap = 'butt';
+      } else if (handle.kind === 'corner') {
+        // White circles at the corners.
+        context.setTransform(...pixels);
+        shadowed(() => {
+          context.beginPath();
+          context.arc(x, y, 6, 0, Math.PI * 2);
+          context.fill();
+        });
+        context.beginPath();
+        context.arc(x, y, 6, 0, Math.PI * 2);
+        context.stroke();
       } else {
-        const width =
-          handle.kind === 'text-width' ? 5 : handle.kind === 'edge' ? 6 : 8;
-        const height = handle.kind === 'text-width' ? 14 : width;
+        // Pills along the edges (and the text width grips), turning with
+        // the box.
+        const along = handle.kind === 'text-width' ? 6 : 16;
+        const across = 6;
         context.setTransform(...multiplyMatrices(pixels, handle.matrix));
-        context.fillRect(-width / 2, -height / 2, width, height);
-        context.strokeRect(-width / 2, -height / 2, width, height);
+        const vertical =
+          handle.id === 'left' ||
+          handle.id === 'right' ||
+          handle.kind === 'text-width';
+        const w = vertical ? across : along,
+          h = vertical ? (handle.kind === 'text-width' ? 16 : along) : across;
+        shadowed(() => {
+          context.beginPath();
+          context.roundRect(-w / 2, -h / 2, w, h, 3);
+          context.fill();
+        });
+        context.beginPath();
+        context.roundRect(-w / 2, -h / 2, w, h, 3);
+        context.stroke();
       }
     }
   };
   const multi = (source.selectedIds?.length ?? 1) > 1;
-  const geometry = selectionGeometry(source, selectedId, viewport.matrix);
+  const geometry = source.cropLayerId
+    ? null
+    : selectionGeometry(source, selectedId, viewport.matrix);
   if (geometry) {
-    context.setTransform(...pixels);
-    context.globalAlpha = 1;
-    context.strokeStyle = '#b7a2ff';
-    context.fillStyle = '#ffffff';
-    context.lineWidth = 1.5;
-    context.beginPath();
-    context.moveTo(...geometry.corners[0]!);
-    geometry.corners.slice(1).forEach((point) => context.lineTo(...point));
-    context.closePath();
+    outline(geometry.corners, 1.5, OUTLINE);
     if (!multi && geometry.handles.some((handle) => handle.id === 'rotate')) {
-      context.moveTo(...geometry.top);
+      context.strokeStyle = OUTLINE;
+      context.lineWidth = 1;
+      context.beginPath();
+      context.moveTo(...geometry.stem);
       context.lineTo(...geometry.rotation);
+      context.stroke();
     }
-    context.stroke();
     if (!multi) drawHandles(geometry.handles);
   }
   // CV-040/CV-041: one dashed box around the whole multi-selection, with its
   // own corner, edge and rotate handles.
-  const outer = multiSelectionGeometry(source, viewport.matrix);
+  const outer = source.cropLayerId
+    ? null
+    : multiSelectionGeometry(source, viewport.matrix);
   if (outer) {
     context.setTransform(...pixels);
     context.globalAlpha = 1;
-    context.strokeStyle = '#8b6cff';
-    context.fillStyle = '#ffffff';
+    context.strokeStyle = ACCENT;
     context.lineWidth = 1.5;
     context.setLineDash([6, 4]);
     context.beginPath();
@@ -542,11 +716,13 @@ export function drawComposition(
     context.setLineDash([]);
     if (outer.handles.some((handle) => handle.id === 'rotate')) {
       context.beginPath();
-      context.moveTo(...outer.top);
+      context.moveTo(...outer.stem);
       context.lineTo(...outer.rotation);
       context.stroke();
     }
     drawHandles(outer.handles);
   }
+  if (source.cropLayerId && source.crop)
+    drawCropOverlay(context, pixels, source.crop);
   return { warnings: errors, zoom: viewport.matrix[0] };
 }

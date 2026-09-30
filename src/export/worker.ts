@@ -166,7 +166,10 @@ async function run(job: ExportJob): Promise<void> {
 
   // Codecs: MP4 (H.264 + AAC) when the browser can encode it, else WebM (VP9 + Opus).
   const quality = QUALITY[settings.quality];
-  const mp4 = await canUseMp4(settings.width, settings.height, settings.fps);
+  // H3: More options can ask for WebM; MP4 still needs both encoders.
+  const mp4 =
+    settings.container !== 'webm' &&
+    (await canUseMp4(settings.width, settings.height, settings.fps));
   const container = mp4 ? 'mp4' : 'webm';
   const videoCodec = mp4 ? 'avc' : 'vp9';
   const audioCodec = job.audio ? (mp4 ? 'aac' : 'opus') : null;

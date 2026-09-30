@@ -33,7 +33,9 @@ import {
   FONT_WEIGHTS,
   SYSTEM_FONTS,
   TEXT_ALIGNS,
+  TEXT_ANCHORS,
   TEXT_CASES,
+  TEXT_DECORATIONS,
   TEXT_LIMITS,
   textStyleOf,
 } from '../render/text-style';
@@ -52,65 +54,19 @@ import {
   type InspectorField,
 } from './transform-commands';
 import { copyProperty, isAnimated, withValueAt } from './keyframes';
-import { createGeometryControls } from './geometry-fields';
 import type { GeometryField } from './geometry';
 import { sceneLengthCommands } from './scene-length';
 import { documentColors } from './palette';
+import { CANVAS_LIMITS, CANVAS_PRESETS, ratioLabel } from './canvas-size';
+import { pictureOf } from '../render/picture';
+import { canCopyStyle, copyStyle } from './style-clipboard';
+import { showToast } from './components/toast';
+import { describeSelection, selectionRoots } from './selection-context';
+import { contextActions, performEdit } from './editing';
+import { ungroupBlocker } from './ungroup';
+import { selectionLocked, setLocked } from './layer-actions';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
-/** A control not built yet: its label key, ledger item and wave. */
-type Later = readonly [label: string, id: string, wave: number];
-const LATER: Record<string, Later> = {
-  crop: ['toolbar.crop', 'VID-003', 4],
-  blend: ['toolbar.blend', 'MSK-001', 6],
-  replace: ['toolbar.replace', 'VID-009', 4],
-  effects: ['toolbar.effects', 'TXT-019', 3],
-  'scene-animate': ['toolbar.animate', 'ANI-020', 8],
-};
-/** The spec's control order per type; strings name live controls or LATER keys. */
-const LAYOUT: Record<ToolbarKind, readonly string[]> = {
-  media: [
-    'x',
-    'y',
-    'w',
-    'lock',
-    'h',
-    'rotate',
-    'crop',
-    'flip',
-    'opacity',
-    'blend',
-    'animate',
-    'replace',
-    'position',
-  ],
-  text: [
-    'font',
-    'size',
-    'weight',
-    'italic',
-    'color',
-    'align',
-    'spacing',
-    'effects',
-    'animate',
-    'position',
-  ],
-  shape: [
-    'fill',
-    'fill-opacity',
-    'no-fill',
-    'stroke',
-    'width',
-    'stroke-style',
-    'corners',
-    'boolean',
-    'animate',
-    'position',
-  ],
-  drawing: ['color', 'brush', 'opacity', 'animate', 'position'],
-};
-
 export function toolbarKind(layer: SceneLayer | null): ToolbarKind | null {
   if (!layer) return null;
   if (layer.type === 'image' || layer.type === 'video') return 'media';
@@ -247,6 +203,11 @@ const TEXT_STYLE_KEYS = {
     typeof value === 'number' &&
     value >= TEXT_LIMITS.paragraphSpacing[0] &&
     value <= TEXT_LIMITS.paragraphSpacing[1],
+  // H3: underline and strikethrough, and the vertical anchor in the box.
+  textDecoration: (value: unknown) =>
+    (TEXT_DECORATIONS as readonly unknown[]).includes(value),
+  textAnchor: (value: unknown) =>
+    (TEXT_ANCHORS as readonly unknown[]).includes(value),
 } as const;
 export type TextStyleKey = keyof typeof TEXT_STYLE_KEYS;
 /**
@@ -402,6 +363,36 @@ export function drawingPathCommands(
 const round = (value: number, digits = 3) =>
   Number(value.toFixed(digits)).toString();
 
+/** H3: what the floating toolbar reaches outside itself. */
+export interface ToolbarHooks {
+  /** Opens a left tool panel (font, effects, edit-image, replace). */
+  openPanel?: (id: 'font' | 'effects' | 'edit-image' | 'replace') => void;
+  /** Starts cropping the selected picture (and opens the Crop panel). */
+  crop?: () => void;
+  /** Opens the Scenes board. */
+  scenes?: () => void;
+  /** Applies a canvas size to every scene. */
+  canvasSize?: (width: number, height: number) => void;
+}
+/** H3: the kinds of toolbar, from the selection. */
+export type ToolbarMode =
+  | 'scene'
+  | 'image'
+  | 'video'
+  | 'text'
+  | 'shape'
+  | 'drawing'
+  | 'group'
+  | 'multi';
+/** Disabled controls: their label key, icon, ledger item and wave. */
+const PLANNED: Record<string, readonly [string, string, string, number]> = {
+  'bg-remover': ['toolbar.bgRemover', 'magic', 'AI-007', 10],
+  eraser: ['toolbar.magicEraser', 'eraser', 'AI-007', 10],
+  transition: ['toolbar.transition', 'transitions', 'TR-001', 6],
+  list: ['toolbar.list', 'list', 'TXT-024', 3],
+  'scene-animate': ['toolbar.animate', 'animate', 'ANI-020', 8],
+};
+
 export function mountContextToolbar(
   bar: HTMLElement,
   engine: EditorEngine,
@@ -412,8 +403,9 @@ export function mountContextToolbar(
   animate?: () => void,
   /** W2-F3: toggles the Position panel (CV-042). */
   position?: () => void,
-  /** G1.5: the left side panel hosting Colour and Stroke style. */
+  /** G1.5: the left side panel hosting Colour. */
   panels?: SidePanels,
+  hooks: ToolbarHooks = {},
 ) {
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('toolbar.label'));
@@ -424,8 +416,11 @@ export function mountContextToolbar(
           null)
       : null;
   };
-  /** G1.5: the Spacing popover stays open across re-renders. */
-  let spacingPopover: PopoverHandle | null = null;
+  /** H3: open popovers by control id; they follow re-renders. */
+  const popovers = new Map<
+    string,
+    { handle: PopoverHandle; build: () => HTMLElement | null }
+  >();
   /** The layer and control the side panel's colour picker edits. */
   let colourFor: { layerId: string; control: string } | null = null;
   const run = (label: string, commands: (Command | null)[]) => {
@@ -472,7 +467,6 @@ export function mountContextToolbar(
       onInvalid: (message) => report(new RangeError(message)),
     });
   /** Every colour used in the composition, for the picker's design row. */
-  /** Every colour used in the composition, for the picker's design row. */
   const designColors = () => documentColors(session.source.composition);
   const colorField = (
     id: string,
@@ -480,6 +474,7 @@ export function mountContextToolbar(
     value: string | null,
     commit: (value: string) => void,
     none?: () => void,
+    extra?: () => HTMLElement | null,
   ) =>
     createColorField({
       id: `toolbar-${id}`,
@@ -488,6 +483,7 @@ export function mountContextToolbar(
       compact: true,
       data: { control: id },
       documentColors: designColors,
+      ...(extra ? { extra } : {}),
       ...(panels
         ? {
             host: (build: () => HTMLElement) => {
@@ -510,7 +506,6 @@ export function mountContextToolbar(
     options: readonly (readonly [value: string, text: string])[],
     value: string,
     commit: (value: string) => void,
-    fonts = false,
   ) =>
     createSelect({
       id: `toolbar-${id}`,
@@ -521,73 +516,660 @@ export function mountContextToolbar(
       options: options.map(([option, text]) => ({
         value: option,
         label: text,
-        ...(fonts ? { font: `"${option}"` } : {}),
       })),
       onChange: (next) => safely(() => commit(next)),
     });
-  const button = (
+  /**
+   * One toolbar button. `text` shows the label beside the icon (primary
+   * controls); otherwise it is icon-only with a tooltip.
+   */
+  const tool = (
     id: string,
-    label: string,
     icon: string,
+    label: string,
     onClick?: () => void,
+    options: { text?: boolean; shortcut?: string; pressed?: boolean } = {},
   ) => {
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'toolbar-button';
+    item.className = `toolbar-button${options.text ? ' labelled' : ''}`;
     item.dataset.control = id;
     item.setAttribute('aria-label', label);
-    item.innerHTML = `${iconSvg(icon, 16)}<span>${label}</span>`;
-    item.title = label;
+    item.innerHTML = `${iconSvg(icon, 18)}${options.text ? `<span>${label}</span>` : ''}`;
+    item.title = options.shortcut ? `${label} (${options.shortcut})` : label;
+    if (options.pressed !== undefined)
+      item.setAttribute('aria-pressed', String(options.pressed));
     if (onClick) item.onclick = () => safely(onClick);
     return item;
   };
-  const later = (id: string) => {
-    const [label, ledger, wave] = LATER[id]!;
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'toolbar-button';
-    item.dataset.control = id;
+  const planned = (id: string) => {
+    const [key, icon, ledger, wave] = PLANNED[id]!;
+    const reason = t('toolbar.later', { wave: String(wave), id: ledger });
+    const item = tool(id, icon, t(key));
     item.setAttribute('aria-disabled', 'true');
-    item.textContent = t(label);
-    item.title = t('toolbar.later', { wave: String(wave), id: ledger });
-    item.setAttribute(
-      'aria-label',
-      `${t(label)}: ${t('toolbar.later', { wave: String(wave), id: ledger })}`,
-    );
+    item.title = reason;
+    item.setAttribute('aria-label', `${t(key)}: ${reason}`);
     return item;
   };
-  /** Keeps the Spacing popover and the side panels in step with the toolbar. */
-  const refreshAttached = (layer: SceneLayer | null) => {
-    if (spacingPopover) {
-      const content = spacingContent();
-      const anchor = bar.querySelector<HTMLElement>('[data-control="spacing"]');
-      if (!content || !anchor) spacingPopover.close();
-      else {
-        spacingPopover.retarget(anchor);
-        spacingPopover.element.replaceChildren(content);
-        restoreFieldFocus(spacingPopover.element);
-      }
-    }
-    if (panels?.openId === 'stroke-style') panels.refresh();
-    if (panels?.openId === 'colour' && colourFor) {
-      const trigger = bar.querySelector<HTMLElement>(
-        `#toolbar-${colourFor.control}`,
-      );
-      // The scene bar's background has no layer (layerId '').
-      if ((layer?.id ?? '') !== colourFor.layerId || !trigger) panels.close();
-      else trigger.click();
-    }
+  const divider = () => {
+    const line = document.createElement('span');
+    line.className = 'toolbar-divider';
+    line.setAttribute('aria-hidden', 'true');
+    return line;
   };
-  /** G1.5 quick choice: line height, letter and paragraph spacing, case. */
-  const spacingContent = () => {
-    const layer = selected();
-    if (!layer || layer.type !== 'text') return null;
-    const style = textStyleOf(layer);
-    const compositionId = session.source.composition.id;
+  /** A button that opens a small popover (at most 280 px) under itself. */
+  const popTool = (
+    id: string,
+    icon: string,
+    label: string,
+    build: () => HTMLElement | null,
+    options: { text?: boolean; listbox?: boolean } = {},
+  ) => {
+    const item = tool(id, icon, label, undefined, options);
+    item.setAttribute('aria-haspopup', options.listbox ? 'listbox' : 'dialog');
+    item.setAttribute('aria-expanded', String(popovers.has(id)));
+    item.onclick = () =>
+      safely(() => {
+        const open = popovers.get(id);
+        if (open) return open.handle.close();
+        const content = build();
+        if (!content) return;
+        const handle = openPopover(item, content, {
+          label,
+          className: options.listbox
+            ? 'select-popover toolbar-popover'
+            : 'toolbar-popover',
+          ...(options.listbox ? { role: 'listbox' as const } : {}),
+          onClose: () => popovers.delete(id),
+        });
+        popovers.set(id, { handle, build });
+        // A listbox takes focus, so Escape and arrows reach it.
+        if (options.listbox)
+          handle.element
+            .querySelector<HTMLElement>(
+              '[role="option"][aria-selected="true"], [role="option"]',
+            )
+            ?.focus();
+      });
+    // A listbox opens from the keyboard like the shared Select (LAY-018).
+    if (options.listbox)
+      item.onkeydown = (event) => {
+        if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+        event.preventDefault();
+        if (!popovers.has(id)) item.click();
+        popovers
+          .get(id)
+          ?.handle.element.querySelector<HTMLElement>(
+            '[role="option"][aria-selected="true"], [role="option"]',
+          )
+          ?.focus();
+      };
+    return item;
+  };
+  /** A column of labelled controls inside a popover. */
+  const form = (label: string, ...children: HTMLElement[]) => {
     const wrap = document.createElement('div');
     wrap.className = 'toolbar-popover-body';
     wrap.setAttribute('role', 'group');
-    wrap.setAttribute('aria-label', t('toolbar.spacing'));
+    wrap.setAttribute('aria-label', label);
+    wrap.append(...children);
+    return wrap;
+  };
+  /** Choices shown as a listbox (for example Align); `choose` helpers work. */
+  const options = (
+    items: readonly { value: string; label: string; icon?: string }[],
+    current: string,
+    commit: (value: string) => void,
+    close: () => void,
+  ) => {
+    const list = document.createElement('div');
+    list.className = 'toolbar-options';
+    for (const item of items) {
+      const option = document.createElement('div');
+      option.className = 'select-option';
+      option.setAttribute('role', 'option');
+      option.tabIndex = -1;
+      option.dataset.value = item.value;
+      option.setAttribute('aria-selected', String(item.value === current));
+      option.innerHTML = `${item.icon ? iconSvg(item.icon, 16) : ''}<span></span>`;
+      option.querySelector('span')!.textContent = item.label;
+      option.onclick = () =>
+        safely(() => {
+          close();
+          commit(item.value);
+        });
+      list.append(option);
+    }
+    list.onkeydown = (event) => {
+      const items = [...list.querySelectorAll<HTMLElement>('[role="option"]')];
+      const index = items.indexOf(document.activeElement as HTMLElement);
+      const move = (to: number) => {
+        event.preventDefault();
+        items[Math.max(0, Math.min(items.length - 1, to))]?.focus();
+      };
+      if (event.key === 'ArrowDown') move(index + 1);
+      else if (event.key === 'ArrowUp') move(index - 1);
+      else if (event.key === 'Home') move(0);
+      else if (event.key === 'End') move(items.length - 1);
+      else if ((event.key === 'Enter' || event.key === ' ') && index >= 0) {
+        event.preventDefault();
+        items[index]!.click();
+      }
+    };
+    return list;
+  };
+  const closePopover = (id: string) => popovers.get(id)?.handle.close();
+
+  // --- Shared controls -------------------------------------------------
+  /** H3: the canvas size chip ("16:9 ▾") at the toolbar's left end. */
+  const sizeChip = () => {
+    const { width, height } = session.source.composition;
+    const chip = popTool(
+      'canvas-size',
+      'chevronDown',
+      t('canvasSize.title'),
+      () => canvasSizeContent(),
+    );
+    chip.classList.add('toolbar-size-chip');
+    chip.innerHTML = `<span>${ratioLabel(width, height)}</span>${iconSvg('chevronDown', 14)}`;
+    chip.title = t('canvasSize.tip', {
+      width: formatNumber(width),
+      height: formatNumber(height),
+    });
+    return chip;
+  };
+  const canvasSizeContent = () => {
+    const { width, height } = session.source.composition;
+    const apply = (w: number, h: number) =>
+      safely(() => {
+        closePopover('canvas-size');
+        hooks.canvasSize?.(w, h);
+      });
+    const list = document.createElement('div');
+    list.className = 'canvas-size-list';
+    for (const preset of CANVAS_PRESETS) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'canvas-size-preset';
+      item.dataset.preset = preset.id;
+      item.setAttribute(
+        'aria-pressed',
+        String(preset.width === width && preset.height === height),
+      );
+      item.innerHTML = `<span class="canvas-size-ratio"></span><span class="canvas-size-name"></span><span class="canvas-size-px"></span>`;
+      item.querySelector('.canvas-size-ratio')!.textContent = preset.ratio;
+      item.querySelector('.canvas-size-name')!.textContent = t(
+        `canvasSize.${preset.id}`,
+      );
+      item.querySelector('.canvas-size-px')!.textContent =
+        `${formatNumber(preset.width)} × ${formatNumber(preset.height)}`;
+      item.onclick = () => apply(preset.width, preset.height);
+      list.append(item);
+    }
+    let customWidth = width,
+      customHeight = height;
+    const custom = document.createElement('div');
+    custom.className = 'canvas-size-custom';
+    const heading = document.createElement('h4');
+    heading.textContent = t('canvasSize.custom');
+    const done = document.createElement('button');
+    done.type = 'button';
+    done.id = 'canvas-size-apply';
+    done.className = 'primary sm';
+    done.textContent = t('canvasSize.apply');
+    done.onclick = () =>
+      apply(Math.round(customWidth), Math.round(customHeight));
+    custom.append(
+      heading,
+      createNumberField({
+        id: 'canvas-size-w',
+        label: 'W',
+        value: width,
+        unit: 'px',
+        decimals: 0,
+        min: CANVAS_LIMITS[0],
+        max: CANVAS_LIMITS[1],
+        compact: true,
+        onCommit: (value) => (customWidth = value),
+      }),
+      createNumberField({
+        id: 'canvas-size-h',
+        label: 'H',
+        value: height,
+        unit: 'px',
+        decimals: 0,
+        min: CANVAS_LIMITS[0],
+        max: CANVAS_LIMITS[1],
+        compact: true,
+        onCommit: (value) => (customHeight = value),
+      }),
+      done,
+    );
+    return form(t('canvasSize.title'), list, custom);
+  };
+  const animateTool = (enabled = true) => {
+    const item = tool(
+      'animate',
+      'animate',
+      t('toolbar.animate'),
+      () => animate?.(),
+      { text: true },
+    );
+    item.disabled = !animate || !enabled;
+    if (!enabled) item.title = t('toolbar.animateOne');
+    item.setAttribute('aria-haspopup', 'dialog');
+    return item;
+  };
+  const positionTool = () => {
+    const item = tool(
+      'position',
+      'layers',
+      t('toolbar.position'),
+      () => position?.(),
+      { text: true },
+    );
+    item.disabled = !position;
+    item.setAttribute('aria-haspopup', 'dialog');
+    return item;
+  };
+  const copyStyleTool = () => {
+    const item = tool(
+      'copy-style',
+      'brush',
+      t('command.copyStyle'),
+      () => {
+        copyStyle(session);
+        showToast(t('toolbar.styleCopied'), 'info', 2500);
+      },
+      { shortcut: 'Ctrl+Alt+C' },
+    );
+    item.disabled = !canCopyStyle(session);
+    return item;
+  };
+  /** Transparency: the layer opacity (all selected layers for several). */
+  const transparencyTool = (extra?: () => HTMLElement | null) =>
+    popTool('transparency', 'transparency', t('toolbar.transparency'), () => {
+      const layer = selected();
+      const opacity = layer
+        ? layer.transform.opacity.value
+        : (selectionRoots(session.source, session.selectedIds)[0]?.transform
+            .opacity.value ?? 1);
+      const slider = field(
+        'opacity',
+        t('toolbar.opacity'),
+        round(opacity * 100, 1),
+        (value) => {
+          if (!(value >= 0 && value <= 100))
+            throw new RangeError(t('toolbar.opacityRange'));
+          if (layer) edit('Opacity', value / 100);
+          else
+            run(
+              'Set opacity',
+              selectionRoots(session.source, session.selectedIds).flatMap(
+                (root) =>
+                  buildTransformCommands(
+                    session.source.composition.id,
+                    root,
+                    {
+                      ...(root.transform as TransformValues),
+                      opacity: { value: value / 100 },
+                    },
+                    undefined,
+                    session.currentTime,
+                  ),
+              ),
+            );
+        },
+        '%',
+        '',
+        { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
+      );
+      const more = extra?.();
+      return form(t('toolbar.transparency'), slider, ...(more ? [more] : []));
+    });
+  const flipTool = (layer: SceneLayer) =>
+    popTool('flip', 'flipH', t('toolbar.flip'), () => {
+      const compositionId = session.source.composition.id;
+      const flip = (axis: 'horizontal' | 'vertical') =>
+        tool(
+          `flip-${axis}`,
+          axis === 'horizontal' ? 'flipH' : 'flipV',
+          t(axis === 'horizontal' ? 'toolbar.flipH' : 'toolbar.flipV'),
+          () => {
+            const current = selected() ?? layer;
+            const bounds = selectionBounds(session.source, current.id)?.bounds;
+            if (!bounds) return;
+            run(
+              axis === 'horizontal' ? 'Flip horizontal' : 'Flip vertical',
+              buildTransformCommands(
+                compositionId,
+                current,
+                flipTransform(
+                  current.transform as TransformValues,
+                  [bounds.x + bounds.width / 2, bounds.y + bounds.height / 2],
+                  axis,
+                ),
+                undefined,
+                session.currentTime,
+              ),
+            );
+          },
+          { text: true },
+        );
+      return form(t('toolbar.flip'), flip('horizontal'), flip('vertical'));
+    });
+  /** Stroke (shapes) or border (pictures): colour, width, style, ends. */
+  const strokeContent = (picture: boolean) => {
+    const layer = selected();
+    if (!layer) return null;
+    const compositionId = session.source.composition.id;
+    const shape = shapeOf(layer);
+    const border = picture ? pictureOf(layer)?.border : null;
+    const color = picture
+      ? (border?.color ??
+        (layer.properties.stroke?.type === 'color'
+          ? layer.properties.stroke.value.slice(0, 7)
+          : '#000000'))
+      : (shape?.stroke ?? '#000000');
+    const width = picture ? (border?.width ?? 0) : (shape?.strokeWidth ?? 0);
+    const dash = picture ? (border?.dash ?? 'solid') : (shape?.dash ?? 'solid');
+    const set = (label: string, key: string, value: number | string) =>
+      run(label, [
+        picture
+          ? setProperty(
+              compositionId,
+              selected() ?? layer,
+              key,
+              withValue(
+                selected() ?? layer,
+                key,
+                value,
+                typeof value === 'number'
+                  ? 'number'
+                  : key === 'stroke'
+                    ? 'color'
+                    : 'string',
+              ),
+            )
+          : shapeStyleCommand(
+              compositionId,
+              selected() ?? layer,
+              key as ShapeKey,
+              value,
+            ),
+      ]);
+    const styleChoice = document.createElement('div');
+    styleChoice.className = 'segmented stroke-styles';
+    styleChoice.setAttribute('role', 'radiogroup');
+    styleChoice.setAttribute('aria-label', t('toolbar.strokeStyle'));
+    for (const choice of ['none', ...STROKE_DASHES] as const) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.dataset.stroke = choice;
+      item.setAttribute('role', 'radio');
+      const current = width <= 0 ? 'none' : dash;
+      item.setAttribute('aria-checked', String(current === choice));
+      item.title = t(`shape.dash.${choice}`);
+      item.setAttribute('aria-label', t(`shape.dash.${choice}`));
+      item.innerHTML = iconSvg(
+        choice === 'none'
+          ? 'noFill'
+          : choice === 'solid'
+            ? 'minus'
+            : 'strokeStyle',
+        16,
+      );
+      item.onclick = () =>
+        safely(() => {
+          if (choice === 'none') return set('Remove stroke', 'strokeWidth', 0);
+          const commands: (Command | null)[] = [];
+          const target = selected() ?? layer;
+          const key = 'strokeDash';
+          commands.push(
+            picture
+              ? setProperty(
+                  compositionId,
+                  target,
+                  key,
+                  withValue(target, key, choice, 'string'),
+                )
+              : shapeStyleCommand(compositionId, target, key, choice),
+          );
+          if (width <= 0)
+            commands.push(
+              picture
+                ? setProperty(
+                    compositionId,
+                    target,
+                    'strokeWidth',
+                    withValue(target, 'strokeWidth', 4, 'number'),
+                  )
+                : shapeStyleCommand(compositionId, target, 'strokeWidth', 4),
+            );
+          if (picture && !border)
+            commands.push(
+              setProperty(
+                compositionId,
+                target,
+                'stroke',
+                withValue(target, 'stroke', color, 'color'),
+              ),
+            );
+          run('Set stroke style', commands);
+        });
+      styleChoice.append(item);
+    }
+    const colour = createColorField({
+      id: 'toolbar-stroke',
+      label: t('toolbar.stroke'),
+      value: color,
+      compact: true,
+      data: { control: 'stroke' },
+      documentColors: designColors,
+      onCommit: (value) =>
+        safely(() => {
+          const target = selected() ?? layer;
+          run('Set stroke', [
+            picture
+              ? setProperty(
+                  compositionId,
+                  target,
+                  'stroke',
+                  withValue(target, 'stroke', value, 'color'),
+                )
+              : shapeStyleCommand(compositionId, target, 'stroke', value),
+            width <= 0
+              ? picture
+                ? setProperty(
+                    compositionId,
+                    target,
+                    'strokeWidth',
+                    withValue(target, 'strokeWidth', 4, 'number'),
+                  )
+                : shapeStyleCommand(compositionId, target, 'strokeWidth', 4)
+              : null,
+          ]);
+        }),
+    });
+    const children: HTMLElement[] = [
+      styleChoice,
+      field(
+        'width',
+        t('toolbar.strokeWidth'),
+        round(width, 2),
+        (value) => set('Set stroke width', 'strokeWidth', value),
+        'px',
+        '',
+        { min: 0, max: 200, slider: true, presets: [0, 1, 2, 4, 8, 16] },
+      ),
+      colour,
+    ];
+    if (!picture && shape) {
+      children.push(
+        select(
+          'dash',
+          t('toolbar.dash'),
+          STROKE_DASHES.map((item) => [item, t(`shape.dash.${item}`)] as const),
+          shape.dash,
+          (value) => set('Set stroke dash', 'strokeDash', value),
+        ),
+        select(
+          'cap',
+          t('toolbar.cap'),
+          STROKE_CAPS.map((cap) => [cap, t(`shape.cap.${cap}`)] as const),
+          shape.cap,
+          (value) => set('Set stroke caps', 'strokeCap', value),
+        ),
+        select(
+          'join',
+          t('toolbar.join'),
+          STROKE_JOINS.map((join) => [join, t(`shape.join.${join}`)] as const),
+          shape.join,
+          (value) => set('Set stroke joins', 'strokeJoin', value),
+        ),
+      );
+    }
+    return form(t('toolbar.strokeStyle'), ...children);
+  };
+  const cornersTool = (layer: SceneLayer, picture: boolean) =>
+    popTool('corners-menu', 'corners', t('toolbar.corners'), () => {
+      const current = selected() ?? layer;
+      const compositionId = session.source.composition.id;
+      const shape = shapeOf(current);
+      const value = picture
+        ? (pictureOf(current)?.radius ?? 0)
+        : (shape?.radius ?? 0);
+      const item = field(
+        'corners',
+        t('toolbar.corners'),
+        round(value, 2),
+        (next) =>
+          run('Set corner radius', [
+            picture
+              ? setProperty(
+                  compositionId,
+                  selected() ?? current,
+                  'cornerRadius',
+                  withValue(
+                    selected() ?? current,
+                    'cornerRadius',
+                    next,
+                    'number',
+                  ),
+                )
+              : shapeCommandFor(selected() ?? current, 'cornerRadius', next),
+          ]),
+        'px',
+        '',
+        { min: 0, max: 500, slider: true, presets: [0, 8, 16, 32, 64] },
+      );
+      if (!picture && shape?.kind !== 'rectangle')
+        item.querySelector('input')!.disabled = true;
+      return form(t('toolbar.corners'), item);
+    });
+  const shapeCommandFor = (
+    layer: SceneLayer,
+    key: ShapeKey,
+    value: number | string | boolean,
+  ) => shapeStyleCommand(session.source.composition.id, layer, key, value);
+
+  // --- The scene bar ------------------------------------------------------
+  const renderScene = () => {
+    const source = session.source;
+    bar.dataset.kind = 'scene';
+    const name = document.createElement('span');
+    name.className = 'toolbar-scene-name';
+    name.textContent = source.composition.name;
+    return [
+      sizeChip(),
+      divider(),
+      name,
+      colorField(
+        'background',
+        t('scene.background'),
+        source.background,
+        (color) =>
+          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+      ),
+      popTool(
+        'duration',
+        'timing',
+        t('scene.duration'),
+        () =>
+          form(
+            t('scene.duration'),
+            field(
+              'scene-length',
+              t('scene.length'),
+              round(session.source.composition.duration, 2),
+              (value) =>
+                run(
+                  'Set scene length',
+                  sceneLengthCommands(session.source, value),
+                ),
+              's',
+              '0.1',
+              { min: 0.1, max: 3600, presets: [3, 5, 10, 15, 30] },
+            ),
+          ),
+        { text: true },
+      ),
+      planned('transition'),
+      tool('scene-order', 'scenes', t('scene.order'), () => hooks.scenes?.(), {
+        text: true,
+      }),
+      divider(),
+      planned('scene-animate'),
+    ];
+  };
+
+  // --- Per type -------------------------------------------------------------
+  const imageControls = (layer: SceneLayer, video: boolean) => [
+    sizeChip(),
+    divider(),
+    ...(video
+      ? []
+      : [
+          tool(
+            'edit-image',
+            'edit',
+            t('toolbar.editImage'),
+            () => hooks.openPanel?.('edit-image'),
+            { text: true },
+          ),
+        ]),
+    tool(
+      'replace',
+      'replace',
+      t('toolbar.replace'),
+      () => hooks.openPanel?.('replace'),
+      { text: !video },
+    ),
+    ...(video ? [] : [planned('bg-remover'), planned('eraser')]),
+    divider(),
+    ...(video
+      ? []
+      : [
+          popTool('stroke-style', 'border', t('toolbar.border'), () =>
+            strokeContent(true),
+          ),
+          cornersTool(layer, true),
+        ]),
+    tool('crop', 'crop', t('toolbar.crop'), () => hooks.crop?.(), {
+      text: true,
+    }),
+    flipTool(layer),
+    transparencyTool(),
+    divider(),
+    animateTool(),
+    positionTool(),
+    copyStyleTool(),
+  ];
+  const textControls = (layer: SceneLayer) => {
+    const compositionId = session.source.composition.id;
+    const style = textStyleOf(layer);
+    const size = layer.properties.fontSize;
+    const fontSize = size?.type === 'number' ? size.value : 32;
     const styleRun = (
       label: string,
       key: TextStyleKey,
@@ -597,15 +1179,224 @@ export function mountContextToolbar(
         label,
         textStyleCommands(compositionId, selected() ?? layer, key, value),
       );
-    wrap.append(
+    const font = tool(
+      'font',
+      'text',
+      style.family,
+      () => hooks.openPanel?.('font'),
+      { text: true },
+    );
+    font.id = 'toolbar-font';
+    font.dataset.value = style.family;
+    font.classList.add('toolbar-font');
+    font.setAttribute('aria-label', t('toolbar.font'));
+    font.title = t('toolbar.font');
+    font.setAttribute('aria-haspopup', 'dialog');
+    const setSize = (value: number) =>
+      run('Set text size', [
+        fontSizeCommand(
+          compositionId,
+          selected() ?? layer,
+          value,
+          session.currentTime,
+        ),
+      ]);
+    const sizeGroup = document.createElement('div');
+    sizeGroup.className = 'toolbar-group toolbar-size';
+    sizeGroup.append(
+      tool('size-down', 'minus', t('toolbar.sizeDown'), () =>
+        setSize(Math.max(1, Math.round(fontSize) - 1)),
+      ),
       field(
-        'line-height',
-        t('toolbar.lineHeight'),
-        round(style.lineHeight, 2),
-        (value) => styleRun('Set line height', 'lineHeight', value),
-        '×',
-        '0.1',
-        { min: 0.5, max: 5, slider: true, decimals: 2 },
+        'size',
+        t('toolbar.size'),
+        round(fontSize, 2),
+        (value) => setSize(value),
+        '',
+        '',
+        {
+          min: 1,
+          max: 4096,
+          presets: [12, 14, 16, 18, 24, 32, 48, 64, 96, 128],
+        },
+      ),
+      tool('size-up', 'plus', t('toolbar.sizeUp'), () =>
+        setSize(Math.min(4096, Math.round(fontSize) + 1)),
+      ),
+    );
+    const decoration = (underline: boolean, strike: boolean) =>
+      underline && strike
+        ? 'underline line-through'
+        : underline
+          ? 'underline'
+          : strike
+            ? 'line-through'
+            : 'none';
+    const alignIcons: Record<string, string> = {
+      left: 'alignLeft',
+      center: 'alignCenter',
+      right: 'alignRight',
+      justify: 'alignJustify',
+    };
+    const align = popTool(
+      'align',
+      alignIcons[style.align]!,
+      t('toolbar.textAlign'),
+      () =>
+        options(
+          TEXT_ALIGNS.map((value) => ({
+            value,
+            label: t(`text.align.${value}`),
+            icon: alignIcons[value]!,
+          })),
+          textStyleOf(selected() ?? layer).align,
+          (value) => styleRun('Set text alignment', 'textAlign', value),
+          () => closePopover('align'),
+        ),
+      { listbox: true },
+    );
+    align.id = 'toolbar-align';
+    align.dataset.value = style.align;
+    return [
+      sizeChip(),
+      divider(),
+      font,
+      sizeGroup,
+      colorField(
+        'color',
+        t('toolbar.color'),
+        layer.properties.fill?.type === 'color'
+          ? layer.properties.fill.value.slice(0, 7)
+          : '#000000',
+        (value) =>
+          run('Set color', [
+            colorCommand(
+              compositionId,
+              selected() ?? layer,
+              value,
+              session.currentTime,
+            ),
+          ]),
+      ),
+      divider(),
+      tool(
+        'bold',
+        'bold',
+        t('toolbar.bold'),
+        () =>
+          styleRun('Set bold', 'fontWeight', style.weight >= 700 ? 400 : 700),
+        { pressed: style.weight >= 700, shortcut: 'Ctrl+B' },
+      ),
+      tool(
+        'italic',
+        'italic',
+        t('toolbar.italic'),
+        () =>
+          styleRun(
+            'Set italic',
+            'fontStyle',
+            style.italic ? 'normal' : 'italic',
+          ),
+        { pressed: style.italic, shortcut: 'Ctrl+I' },
+      ),
+      tool(
+        'underline',
+        'underline',
+        t('toolbar.underline'),
+        () =>
+          styleRun(
+            'Set underline',
+            'textDecoration',
+            decoration(!style.underline, style.strike),
+          ),
+        { pressed: style.underline, shortcut: 'Ctrl+U' },
+      ),
+      tool(
+        'strike',
+        'strike',
+        t('toolbar.strike'),
+        () =>
+          styleRun(
+            'Set strikethrough',
+            'textDecoration',
+            decoration(style.underline, !style.strike),
+          ),
+        { pressed: style.strike },
+      ),
+      tool(
+        'uppercase',
+        'uppercase',
+        t('toolbar.uppercase'),
+        () =>
+          styleRun(
+            'Set text case',
+            'textCase',
+            style.textCase === 'upper' ? 'none' : 'upper',
+          ),
+        { pressed: style.textCase === 'upper' },
+      ),
+      align,
+      planned('list'),
+      popTool('spacing', 'spacing', t('toolbar.advanced'), () =>
+        advancedContent(),
+      ),
+      divider(),
+      transparencyTool(),
+      tool(
+        'effects',
+        'effects',
+        t('toolbar.effects'),
+        () => hooks.openPanel?.('effects'),
+        { text: true },
+      ),
+      animateTool(),
+      positionTool(),
+      copyStyleTool(),
+    ];
+  };
+  /** Advanced text settings: weight, spacing, case and vertical anchor. */
+  const advancedContent = () => {
+    const layer = selected();
+    if (!layer || layer.type !== 'text') return null;
+    const style = textStyleOf(layer);
+    const compositionId = session.source.composition.id;
+    const styleRun = (
+      label: string,
+      key: TextStyleKey,
+      value: number | string,
+    ) =>
+      run(
+        label,
+        textStyleCommands(compositionId, selected() ?? layer, key, value),
+      );
+    const anchor = document.createElement('div');
+    anchor.className = 'segmented';
+    anchor.setAttribute('role', 'radiogroup');
+    anchor.setAttribute('aria-label', t('toolbar.anchor'));
+    for (const value of TEXT_ANCHORS) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.dataset.anchor = value;
+      item.setAttribute('role', 'radio');
+      item.setAttribute('aria-checked', String(style.anchor === value));
+      item.textContent = t(`text.anchor.${value}`);
+      item.onclick = () =>
+        safely(() => styleRun('Set text anchor', 'textAnchor', value));
+      anchor.append(item);
+    }
+    const anchorLabel = document.createElement('span');
+    anchorLabel.className = 'toolbar-popover-label';
+    anchorLabel.textContent = t('toolbar.anchor');
+    return form(
+      t('toolbar.advanced'),
+      select(
+        'weight',
+        t('toolbar.weight'),
+        FONT_WEIGHTS.map(
+          (weight) => [String(weight), t(`text.weight${weight}`)] as const,
+        ),
+        String(style.weight),
+        (value) => styleRun('Set font weight', 'fontWeight', Number(value)),
       ),
       field(
         'letter-spacing',
@@ -615,6 +1406,15 @@ export function mountContextToolbar(
         'px',
         '',
         { min: -50, max: 200, slider: true },
+      ),
+      field(
+        'line-height',
+        t('toolbar.lineHeight'),
+        round(style.lineHeight, 2),
+        (value) => styleRun('Set line height', 'lineHeight', value),
+        '×',
+        '0.1',
+        { min: 0.5, max: 5, slider: true, decimals: 2 },
       ),
       field(
         'paragraph-spacing',
@@ -634,94 +1434,203 @@ export function mountContextToolbar(
         style.textCase,
         (value) => styleRun('Set text case', 'textCase', value),
       ),
+      anchorLabel,
+      anchor,
     );
-    return wrap;
   };
-  /** G1.5 deep panel: the shape's stroke colour, width, dash, caps and joins. */
-  const strokeContent = () => {
-    const layer = selected();
-    const shape = layer ? shapeOf(layer) : null;
-    if (!layer || !shape) return null;
+  const shapeControls = (layer: SceneLayer) => {
+    const shape = shapeOf(layer);
     const compositionId = session.source.composition.id;
-    const shapeRun = (label: string, key: ShapeKey, value: number | string) =>
-      run(label, [
-        shapeStyleCommand(compositionId, selected() ?? layer, key, value),
-      ]);
-    const wrap = document.createElement('div');
-    wrap.className = 'side-panel-form';
-    wrap.append(
-      field(
-        'panel-stroke-width',
-        t('toolbar.strokeWidth'),
-        round(shape.strokeWidth, 2),
-        (value) => shapeRun('Set stroke width', 'strokeWidth', value),
-        'px',
-        '',
-        { min: 0, max: 200, slider: true, presets: [0, 1, 2, 4, 8, 16] },
-      ),
-      select(
-        'dash',
-        t('toolbar.dash'),
-        STROKE_DASHES.map((dash) => [dash, t(`shape.dash.${dash}`)] as const),
-        shape.dash,
-        (value) => shapeRun('Set stroke dash', 'strokeDash', value),
-      ),
-      select(
-        'cap',
-        t('toolbar.cap'),
-        STROKE_CAPS.map((cap) => [cap, t(`shape.cap.${cap}`)] as const),
-        shape.cap,
-        (value) => shapeRun('Set stroke caps', 'strokeCap', value),
-      ),
-      select(
-        'join',
-        t('toolbar.join'),
-        STROKE_JOINS.map((join) => [join, t(`shape.join.${join}`)] as const),
-        shape.join,
-        (value) => shapeRun('Set stroke joins', 'strokeJoin', value),
-      ),
-    );
-    return wrap;
-  };
-  // D-031 pattern: a focused field commits on blur, which re-renders; blur it
-  // first and drop this render if that commit already re-rendered.
-  /**
-   * G3.3: the scene bar: the background (shared by every scene in schema 5),
-   * the scene's length and scene animation (not built yet).
-   */
-  const renderScene = () => {
-    const source = session.source;
-    bar.hidden = false;
-    bar.dataset.kind = 'scene';
-    const name = document.createElement('span');
-    name.className = 'toolbar-scene-name';
-    name.textContent = source.composition.name;
-    bar.replaceChildren(
-      name,
-      colorField(
-        'background',
-        t('scene.background'),
-        source.background,
-        (color) =>
-          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
-      ),
-      field(
-        'scene-length',
-        t('scene.length'),
-        round(source.composition.duration, 2),
+    const open = !!shape && (shape.kind === 'line' || shape.kind === 'arrow');
+    const fillOpacity = () => {
+      const current = selected() ?? layer;
+      const style = shapeOf(current);
+      if (!style || !style.fill) return null;
+      return field(
+        'fill-opacity',
+        t('toolbar.fillOpacity'),
+        percent(style.fillOpacity),
         (value) =>
-          run('Set scene length', sceneLengthCommands(session.source, value)),
-        's',
-        '0.1',
-        { min: 0.1, max: 3600 },
-      ),
-      later('scene-animate'),
+          run('Set fill opacity', [
+            shapeCommandFor(selected() ?? current, 'fillOpacity', value / 100),
+          ]),
+        '%',
+        '',
+        { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
+      );
+    };
+    const fill = colorField(
+      'fill',
+      t('toolbar.fill'),
+      shape && !shape.fill ? null : (shape?.fill ?? '#000000'),
+      (value) =>
+        run('Set color', [
+          colorCommand(
+            compositionId,
+            selected() ?? layer,
+            value,
+            session.currentTime,
+          ),
+          shape && !shape.fill
+            ? shapeCommandFor(selected() ?? layer, 'fillEnabled', true)
+            : null,
+        ]),
+      shape
+        ? () =>
+            run('Remove fill', [
+              shapeCommandFor(selected() ?? layer, 'fillEnabled', false),
+            ])
+        : undefined,
+      fillOpacity,
     );
-    restoreFieldFocus(bar);
-    refreshAttached(null);
+    if (open) fill.querySelector('button')!.disabled = true;
+    // Combining needs two or more shapes; the button says how (W5-D).
+    const combine = popTool('boolean', 'combine', t('toolbar.boolean'), () => {
+      const hint = document.createElement('p');
+      hint.className = 'toolbar-popover-hint';
+      hint.textContent = t('shape.combineHint');
+      return form(t('toolbar.boolean'), hint);
+    });
+    combine.title = t('shape.combineHint');
+    return [
+      sizeChip(),
+      divider(),
+      fill,
+      popTool('stroke-style', 'strokeStyle', t('toolbar.strokeStyle'), () =>
+        strokeContent(false),
+      ),
+      cornersTool(layer, false),
+      combine,
+      divider(),
+      transparencyTool(),
+      animateTool(),
+      positionTool(),
+      copyStyleTool(),
+    ];
+  };
+  const drawingControls = (layer: SceneLayer) => {
+    const compositionId = session.source.composition.id;
+    const drawing = drawingOf(layer);
+    const stroke = layer.properties.stroke;
+    return [
+      sizeChip(),
+      divider(),
+      colorField(
+        'color',
+        t('toolbar.color'),
+        stroke?.type === 'color' ? stroke.value.slice(0, 7) : '#000000',
+        (value) =>
+          run('Set color', [
+            colorCommand(
+              compositionId,
+              selected() ?? layer,
+              value,
+              session.currentTime,
+            ),
+          ]),
+      ),
+      popTool('brush-size', 'brush', t('toolbar.brushSize'), () =>
+        form(
+          t('toolbar.brushSize'),
+          field(
+            'brush',
+            t('toolbar.brushSize'),
+            round(drawing && drawing !== 'invalid' ? drawing.width : 0, 2),
+            (value) =>
+              run(
+                'Set brush size',
+                brushSizeCommands(compositionId, selected() ?? layer, value),
+              ),
+            'px',
+            '',
+            { min: MIN_BRUSH, max: MAX_BRUSH, slider: true },
+          ),
+        ),
+      ),
+      divider(),
+      transparencyTool(),
+      animateTool(),
+      positionTool(),
+      copyStyleTool(),
+    ];
+  };
+  const groupControls = (multi: boolean) => {
+    const ids = session.selectedIds;
+    const isGroup =
+      !multi && describeSelection(session.source, ids).every('group');
+    const actions = contextActions(session.source, ids, session.currentTime);
+    const blocker = isGroup ? ungroupBlocker(session.source, ids) : null;
+    const grouping = isGroup
+      ? tool(
+          'ungroup',
+          'ungroup',
+          t('command.ungroup'),
+          () => performEdit(engine, session, 'ungroup'),
+          { text: true, shortcut: 'Ctrl+Shift+G' },
+        )
+      : tool(
+          'group',
+          'group',
+          t('command.group'),
+          () => performEdit(engine, session, 'group'),
+          { text: true, shortcut: 'Ctrl+G' },
+        );
+    if (isGroup && blocker) {
+      grouping.setAttribute('aria-disabled', 'true');
+      grouping.onclick = null;
+      grouping.title = blocker;
+    } else if (!isGroup && !actions.includes('group')) grouping.disabled = true;
+    return [
+      sizeChip(),
+      divider(),
+      grouping,
+      divider(),
+      positionTool(),
+      transparencyTool(),
+      animateTool(!multi),
+      copyStyleTool(),
+    ];
+  };
+
+  /** Keeps the open popovers and the colour panel in step with the toolbar. */
+  const refreshAttached = (layer: SceneLayer | null) => {
+    for (const [id, open] of [...popovers]) {
+      const anchor = bar.querySelector<HTMLElement>(`[data-control="${id}"]`);
+      const content = anchor ? open.build() : null;
+      if (!anchor || !content) open.handle.close();
+      else {
+        open.handle.retarget(anchor);
+        open.handle.element.replaceChildren(content);
+        restoreFieldFocus(open.handle.element);
+      }
+    }
+    if (panels?.openId === 'colour' && colourFor) {
+      const trigger = bar.querySelector<HTMLElement>(
+        `#toolbar-${colourFor.control}`,
+      );
+      // The scene bar's background has no layer (layerId '').
+      if ((layer?.id ?? '') !== colourFor.layerId || !trigger) panels.close();
+      else trigger.click();
+    }
+  };
+  /** H3: which toolbar the selection shows (null hides it). */
+  const modeOf = (): ToolbarMode | null => {
+    const ids = session.selectedIds;
+    if (!ids.length) return session.canvasSelected ? 'scene' : null;
+    if (ids.length > 1) return 'multi';
+    const layer = selected();
+    if (!layer) return null;
+    if (layer.type === 'group') return 'group';
+    if (layer.type === 'audio') return null;
+    if (layer.type === 'image') return 'image';
+    if (layer.type === 'video') return 'video';
+    const kind = toolbarKind(layer);
+    return kind === 'media' ? 'image' : (kind as ToolbarMode | null);
   };
   let renders = 0;
   const render = () => {
+    // D-031 pattern: a focused field commits on blur, which re-renders; blur
+    // it first and drop this render if that commit already re-rendered.
     const active = document.activeElement;
     if (active instanceof HTMLElement && bar.contains(active)) {
       const before = renders;
@@ -729,369 +1638,96 @@ export function mountContextToolbar(
       if (renders !== before) return;
     }
     renders++;
+    const mode = modeOf();
     const layer = selected();
-    // G3.3: with nothing selected, the toolbar is the scene bar.
-    if (!layer && session.selectedIds.length === 0) {
-      renderScene();
-      return;
-    }
-    const kind = toolbarKind(layer);
-    bar.hidden = !kind;
-    bar.dataset.kind = kind ?? '';
-    if (!layer || !kind) {
+    // The row stays reserved; an empty toolbar fades out.
+    bar.hidden = !mode;
+    bar.dataset.kind =
+      mode === 'image' || mode === 'video' ? 'media' : (mode ?? '');
+    if (mode) bar.dataset.mode = mode;
+    else delete bar.dataset.mode;
+    if (!mode) {
+      overflow = [];
       bar.replaceChildren();
+      refreshAttached(null);
       return;
     }
-    const compositionId = session.source.composition.id;
-    const opacity = layer.transform.opacity.value;
-    const colorOf = (key: string) => {
-      const property = layer.properties[key];
-      return property?.type === 'color'
-        ? property.value.slice(0, 7)
-        : '#000000';
-    };
-    const drawing = drawingOf(layer);
-    const shape = shapeOf(layer);
-    const shapeCommand = (key: ShapeKey, value: number | string | boolean) =>
-      shapeStyleCommand(compositionId, selected() ?? layer, key, value);
-    const geometry = createGeometryControls(
-      'toolbar',
-      session.source,
-      (field, value) => safely(() => edit(field, value)),
-      () => render(),
-      true,
-    );
-    const controls = LAYOUT[kind].map((id) => {
-      if (LATER[id]) return later(id);
-      switch (id) {
-        case 'animate': {
-          const item = button(id, t('toolbar.animate'), 'animate', () =>
-            animate?.(),
-          );
-          item.disabled = !animate;
-          item.setAttribute('aria-haspopup', 'dialog');
-          return item;
-        }
-        case 'position': {
-          const item = button(id, t('toolbar.position'), 'layers', () =>
-            position?.(),
-          );
-          item.disabled = !position;
-          item.setAttribute('aria-haspopup', 'dialog');
-          return item;
-        }
-        // G2.1: X, Y, W and H of what is drawn, shared with the Inspector.
-        case 'x':
-        case 'y':
-        case 'w':
-        case 'h':
-        case 'lock':
-          return geometry![id];
-        case 'rotate':
-          return field(
-            id,
-            t('toolbar.rotate'),
-            round(layer.transform.rotation.value, 2),
-            (value) => edit('Rotation', value),
-            '°',
-            '',
-            { min: -360, max: 360, slider: true, presets: [0, 45, 90, 180] },
-          );
-        case 'opacity':
-          return field(
-            id,
-            t('toolbar.opacity'),
-            round(opacity * 100, 1),
-            (value) => {
-              if (!(value >= 0 && value <= 100))
-                throw new RangeError(t('toolbar.opacityRange'));
-              edit('Opacity', value / 100);
-            },
-            '%',
-            '',
-            { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
-          );
-        case 'flip': {
-          const group = document.createElement('div');
-          group.className = 'toolbar-group';
-          for (const axis of ['horizontal', 'vertical'] as const)
-            group.append(
-              button(
-                `flip-${axis}`,
-                t(axis === 'horizontal' ? 'toolbar.flipH' : 'toolbar.flipV'),
-                axis === 'horizontal' ? 'flipH' : 'flipV',
-                () => {
-                  const bounds = selectionBounds(
-                    session.source,
-                    layer.id,
-                  )?.bounds;
-                  if (!bounds) return;
-                  run(
-                    axis === 'horizontal' ? 'Flip horizontal' : 'Flip vertical',
-                    buildTransformCommands(
-                      compositionId,
-                      layer,
-                      flipTransform(
-                        layer.transform as TransformValues,
-                        [
-                          bounds.x + bounds.width / 2,
-                          bounds.y + bounds.height / 2,
-                        ],
-                        axis,
-                      ),
-                      undefined,
-                      session.currentTime,
-                    ),
-                  );
-                },
-              ),
-            );
-          return group;
-        }
-        case 'fill-opacity': {
-          const item = field(
-            id,
-            t('toolbar.fillOpacity'),
-            percent(shape?.fillOpacity ?? 1),
-            (value) =>
-              run('Set fill opacity', [
-                shapeCommand('fillOpacity', value / 100),
-              ]),
-            '%',
-            '',
-            { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
-          );
-          item.querySelector('input')!.disabled = !shape?.fill;
-          return item;
-        }
-        case 'no-fill': {
-          const none = !!shape && !shape.fill;
-          const item = button(id, t('toolbar.noFill'), 'noFill', () =>
-            run(none ? 'Show fill' : 'Remove fill', [
-              shapeCommand('fillEnabled', none),
-            ]),
-          );
-          item.setAttribute('aria-pressed', String(none));
-          item.disabled =
-            !shape || shape.kind === 'line' || shape.kind === 'arrow';
-          return item;
-        }
-        case 'stroke':
-          return colorField(
-            id,
-            t('toolbar.stroke'),
-            shape?.stroke ?? colorOf('stroke'),
-            (value) => {
-              // A stroke color on a shape with no stroke also gives it a width.
-              run('Set stroke', [
-                shapeCommand('stroke', value),
-                shape && !shape.strokeWidth
-                  ? shapeCommand('strokeWidth', 4)
-                  : null,
-              ]);
-            },
-          );
-        case 'width':
-          return field(
-            id,
-            t('toolbar.strokeWidth'),
-            round(shape?.strokeWidth ?? 0, 2),
-            (value) =>
-              run('Set stroke width', [shapeCommand('strokeWidth', value)]),
-            'px',
-            '',
-            { min: 0, max: 200, slider: true, presets: [0, 1, 2, 4, 8, 16] },
-          );
-        case 'stroke-style': {
-          const item = button(
-            id,
-            t('toolbar.strokeStyle'),
-            'strokeStyle',
-            () =>
-              panels?.openId === 'stroke-style'
-                ? panels.close()
-                : panels?.show(
-                    'stroke-style',
-                    t('toolbar.strokeStyle'),
-                    strokeContent,
-                  ),
-          );
-          item.disabled = !panels;
-          item.setAttribute('aria-haspopup', 'dialog');
-          item.setAttribute(
-            'aria-expanded',
-            String(panels?.openId === 'stroke-style'),
-          );
-          return item;
-        }
-        case 'corners': {
-          const item = field(
-            id,
-            t('toolbar.corners'),
-            round(shape?.radius ?? 0, 2),
-            (value) =>
-              run('Set corner radius', [shapeCommand('cornerRadius', value)]),
-          );
-          item.querySelector('input')!.disabled = shape?.kind !== 'rectangle';
-          return item;
-        }
-        case 'boolean': {
-          // SHP-015 works on two or more shapes, so it lives in the canvas
-          // menu's Combine shapes submenu; this button says how to reach it.
-          const item = button(id, t('toolbar.boolean'), 'combine');
-          item.setAttribute('aria-disabled', 'true');
-          item.title = t('shape.combineHint');
-          item.setAttribute(
-            'aria-label',
-            `${t('toolbar.boolean')}: ${t('shape.combineHint')}`,
-          );
-          return item;
-        }
-        case 'font':
-          return select(
-            id,
-            t('toolbar.font'),
-            SYSTEM_FONTS.map(([name]) => [name, name] as const),
-            textStyleOf(layer).family,
-            (value) =>
-              run(
-                'Set font',
-                textStyleCommands(compositionId, layer, 'fontFamily', value),
-              ),
-            true,
-          );
-        case 'weight':
-          return select(
-            id,
-            t('toolbar.weight'),
-            FONT_WEIGHTS.map(
-              (weight) => [String(weight), t(`text.weight${weight}`)] as const,
-            ),
-            String(textStyleOf(layer).weight),
-            (value) =>
-              run(
-                'Set font weight',
-                textStyleCommands(
-                  compositionId,
-                  layer,
-                  'fontWeight',
-                  Number(value),
-                ),
-              ),
-          );
-        case 'italic': {
-          const italic = textStyleOf(layer).italic;
-          const item = button(id, t('toolbar.italic'), 'italic', () =>
-            run(
-              'Set italic',
-              textStyleCommands(
-                compositionId,
-                layer,
-                'fontStyle',
-                italic ? 'normal' : 'italic',
-              ),
-            ),
-          );
-          item.setAttribute('aria-pressed', String(italic));
-          return item;
-        }
-        case 'align':
-          return select(
-            id,
-            t('toolbar.textAlign'),
-            TEXT_ALIGNS.map(
-              (align) => [align, t(`text.align.${align}`)] as const,
-            ),
-            textStyleOf(layer).align,
-            (value) =>
-              run(
-                'Set text alignment',
-                textStyleCommands(compositionId, layer, 'textAlign', value),
-              ),
-          );
-        case 'spacing': {
-          const item = button(id, t('toolbar.spacing'), 'spacing', () => {
-            if (spacingPopover) return spacingPopover.close();
-            const content = spacingContent();
-            if (!content) return;
-            spacingPopover = openPopover(item, content, {
-              label: t('toolbar.spacing'),
-              className: 'toolbar-popover',
-              onClose: () => {
-                spacingPopover = null;
-              },
-            });
-          });
-          item.setAttribute('aria-haspopup', 'dialog');
-          item.setAttribute('aria-expanded', String(!!spacingPopover));
-          return item;
-        }
-        case 'size': {
-          const size = layer.properties.fontSize;
-          return field(
-            id,
-            t('toolbar.size'),
-            round(size?.type === 'number' ? size.value : 32, 2),
-            (value) =>
-              run('Set text size', [
-                fontSizeCommand(
-                  compositionId,
-                  layer,
-                  value,
-                  session.currentTime,
-                ),
-              ]),
-          );
-        }
-        case 'color':
-        case 'fill': {
-          const item = colorField(
-            id,
-            t(id === 'fill' ? 'toolbar.fill' : 'toolbar.color'),
-            // A shape with No fill shows the empty swatch.
-            shape && !shape.fill && id === 'fill'
-              ? null
-              : colorOf(kind === 'drawing' ? 'stroke' : 'fill'),
-            (value) =>
-              run('Set color', [
-                colorCommand(
-                  compositionId,
-                  selected() ?? layer,
-                  value,
-                  session.currentTime,
-                ),
-                // Picking a colour for a shape with No fill turns fill back on.
-                shape && !shape.fill && id === 'fill'
-                  ? shapeCommand('fillEnabled', true)
-                  : null,
-              ]),
-            id === 'fill' && shape
-              ? () => run('Remove fill', [shapeCommand('fillEnabled', false)])
-              : undefined,
-          );
-          // Lines and arrows have no fill; their color is the stroke.
-          if (shape && (shape.kind === 'line' || shape.kind === 'arrow'))
-            item.querySelector('button')!.disabled = true;
-          return item;
-        }
-        case 'brush':
-          return field(
-            id,
-            t('toolbar.brushSize'),
-            round(drawing && drawing !== 'invalid' ? drawing.width : 0, 2),
-            (value) =>
-              run(
-                'Set brush size',
-                brushSizeCommands(compositionId, layer, value),
-              ),
-          );
-      }
-      throw new Error(`Unknown toolbar control ${id}`);
-    });
+    // H3 (CV-051): a locked selection offers only Unlock (Canva).
+    const locked = mode !== 'scene' && selectionLocked(session);
+    const controls = locked
+      ? [
+          sizeChip(),
+          divider(),
+          tool(
+            'unlock',
+            'unlock',
+            t('toolbar.unlock'),
+            () => setLocked(engine, session, false),
+            { text: true },
+          ),
+        ]
+      : mode === 'scene'
+        ? renderScene()
+        : mode === 'image' || mode === 'video'
+          ? imageControls(layer!, mode === 'video')
+          : mode === 'text'
+            ? textControls(layer!)
+            : mode === 'shape'
+              ? shapeControls(layer!)
+              : mode === 'drawing'
+                ? drawingControls(layer!)
+                : groupControls(mode === 'multi');
+    overflow = [];
     bar.replaceChildren(...controls);
+    fit();
     restoreFieldFocus(bar);
-    refreshAttached(layer);
+    refreshAttached(mode === 'scene' ? null : layer);
   };
+  /**
+   * H3: the row never scrolls. When it is wider than the stage, labelled
+   * buttons first drop their text, then trailing controls move into a More
+   * popover (Canva).
+   */
+  let overflow: HTMLElement[] = [];
+  const fit = () => {
+    for (const item of overflow) bar.append(item);
+    overflow = [];
+    bar.querySelector('[data-control="toolbar-more"]')?.remove();
+    bar.classList.remove('compact');
+    const available = bar.parentElement?.clientWidth ?? 0;
+    if (bar.hidden || available <= 0) return;
+    const fits = () =>
+      bar.scrollWidth <= Math.min(available, bar.clientWidth) + 1;
+    if (fits()) return;
+    bar.classList.add('compact');
+    if (fits()) return;
+    const more = popTool('toolbar-more', 'more', t('toolbar.more'), () => {
+      const list = document.createElement('div');
+      list.className = 'toolbar-overflow';
+      list.append(...overflow);
+      return list;
+    });
+    bar.append(more);
+    const movable = () =>
+      [...bar.children].filter(
+        (child): child is HTMLElement =>
+          child !== more && !child.matches('.toolbar-size-chip'),
+      );
+    while (!fits()) {
+      const items = movable();
+      const last = items[items.length - 1];
+      if (!last || items.length <= 2) break;
+      last.remove();
+      if (!last.classList.contains('toolbar-divider')) overflow.unshift(last);
+    }
+    // No divider right before More.
+    const before = more.previousElementSibling;
+    if (before?.classList.contains('toolbar-divider')) before.remove();
+  };
+  if (typeof ResizeObserver !== 'undefined' && bar.parentElement)
+    new ResizeObserver(() => {
+      if (!bar.hidden) fit();
+    }).observe(bar.parentElement);
   render();
   return { render };
 }

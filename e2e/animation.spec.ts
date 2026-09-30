@@ -154,7 +154,8 @@ test('[ANI-002][ANI-003] easing from the keyframe menu and the Inspector changes
   await easing('hold');
   expect(await xAt1()).toBe(76);
   // The canvas agrees: with Hold the badge is still at x 76 at 1 s.
-  const at = await toScreen(page, 290, 480);
+  // H3: sampled clear of the right edge's pill handle at (300, 480).
+  const at = await toScreen(page, 282, 480);
   const painted = await page
     .locator('canvas')
     .evaluate((canvas: HTMLCanvasElement, point) => {

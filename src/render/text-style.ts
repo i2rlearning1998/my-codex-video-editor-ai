@@ -17,6 +17,16 @@ export const SYSTEM_FONTS = [
 export const FONT_WEIGHTS = [400, 600, 700] as const;
 export const TEXT_ALIGNS = ['left', 'center', 'right', 'justify'] as const;
 export const TEXT_CASES = ['none', 'upper', 'lower', 'title'] as const;
+/** H3: underline and strikethrough, stored together in `textDecoration`. */
+export const TEXT_DECORATIONS = [
+  'none',
+  'underline',
+  'line-through',
+  'underline line-through',
+] as const;
+/** H3: where a text sits in a box taller than its lines (`textAnchor`). */
+export const TEXT_ANCHORS = ['top', 'middle', 'bottom'] as const;
+export type TextAnchor = (typeof TEXT_ANCHORS)[number];
 export type TextAlign = (typeof TEXT_ALIGNS)[number];
 export type TextCase = (typeof TEXT_CASES)[number];
 /** Ranges accepted from stored values and from the toolbar. */
@@ -38,6 +48,9 @@ export interface TextStyle {
   /** Composition units added after every paragraph but the last. */
   readonly paragraphSpacing: number;
   readonly textCase: TextCase;
+  readonly underline: boolean;
+  readonly strike: boolean;
+  readonly anchor: TextAnchor;
 }
 /** Matches the pre-W2-F5 rendering exactly (600 Arial, 1.2 line height). */
 export const DEFAULT_TEXT_STYLE: TextStyle = Object.freeze({
@@ -49,6 +62,9 @@ export const DEFAULT_TEXT_STYLE: TextStyle = Object.freeze({
   letterSpacing: 0,
   paragraphSpacing: 0,
   textCase: 'none',
+  underline: false,
+  strike: false,
+  anchor: 'top',
 });
 
 const inRange = (value: number, [low, high]: readonly [number, number]) =>
@@ -71,7 +87,14 @@ export function textStyleOf(layer: SceneLayer): TextStyle {
   const lineHeight = numeric('lineHeight');
   const letterSpacing = numeric('letterSpacing');
   const paragraphSpacing = numeric('paragraphSpacing');
+  const decoration = string('textDecoration') ?? '';
+  const anchor = string('textAnchor');
   return {
+    underline: decoration.split(' ').includes('underline'),
+    strike: decoration.split(' ').includes('line-through'),
+    anchor: (TEXT_ANCHORS as readonly string[]).includes(anchor ?? '')
+      ? (anchor as TextAnchor)
+      : 'top',
     family: SYSTEM_FONTS.some(([name]) => name === family)
       ? family!
       : DEFAULT_TEXT_STYLE.family,

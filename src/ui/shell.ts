@@ -54,6 +54,19 @@ import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape, mountShapesPanel } from './shapes';
 import { mountContextToolbar } from './context-toolbar';
+import { CropTool } from './crop-tool';
+import { escapeTopPopover } from './components/popover';
+import { mountToolPanels } from './tool-panels';
+import { applyCanvasSize } from './canvas-size';
+import {
+  ALT_TEXT_LIMIT,
+  altTextOf,
+  layerInfo,
+  setAltText,
+  worldBox,
+} from './layer-actions';
+import { selectionRoots } from './selection-context';
+import { blankScene, duplicateScene } from './scenes';
 import { mountAnimationPanel } from './animation-panel';
 import { mountAnimatePanel } from './animate-panel';
 import { mountPositionPanel } from './position-panel';
@@ -483,6 +496,20 @@ export function mountEditorShell(
       ...(interaction.hoveredHandle !== null
         ? { hoveredHandle: interaction.hoveredHandle }
         : {}),
+      ...(hover === 'artboard' && !session.canvasSelected
+        ? { hoverArtboard: true }
+        : hover && hover !== 'artboard' && !interaction.active
+          ? { hoverId: hover }
+          : {}),
+      ...(cropTool.active && cropTool.layerId
+        ? {
+            cropLayerId: cropTool.layerId,
+            ...(cropTool.view ? { cropView: cropTool.view } : {}),
+            ...(cropTool.overlay(viewport().matrix)
+              ? { crop: cropTool.overlay(viewport().matrix)! }
+              : {}),
+          }
+        : {}),
     };
     const report = renderer.render(
       canvas,
@@ -512,6 +539,18 @@ export function mountEditorShell(
     safely(draw),
   );
   const drawTool = new DrawTool(engine, session, () => safely(draw));
+  // H3: the crop tool; the Crop panel opens and closes with it.
+  let cropWasActive = false;
+  const cropTool = new CropTool(engine, session, () => {
+    if (cropTool.active !== cropWasActive) {
+      cropWasActive = cropTool.active;
+      toolPanels?.syncCrop();
+    }
+    safely(draw);
+  });
+  let toolPanels: ReturnType<typeof mountToolPanels> | undefined;
+  // H3: the object (or the empty artboard) under the pointer is outlined.
+  let hover: string | 'artboard' | null = null;
   // W5-B: the Inspector's Animation section (stopwatches and keyframes).
   const animationPanel = mountAnimationPanel(
     element('#animation-panel'),
@@ -539,7 +578,31 @@ export function mountEditorShell(
     session,
     reportError,
     (field, value) => interaction.geometry(field, value),
+    (value) => interaction.edit('Rotation', value),
   );
+  toolPanels = mountToolPanels(
+    sidePanels,
+    engine,
+    session,
+    cropTool,
+    reportError,
+  );
+  // H3: a new canvas size for every scene, with Undo in the toast.
+  const resizeCanvas = (width: number, height: number) => {
+    if (!applyCanvasSize(engine, width, height)) return;
+    showToast(
+      t('canvasSize.changed', {
+        width: formatNumber(width),
+        height: formatNumber(height),
+      }),
+      'info',
+      6000,
+      {
+        label: t('command.undo'),
+        run: () => runCommand('undo', commandContext),
+      },
+    );
+  };
   // CV-035: the selected layer's context toolbar above the canvas.
   const contextToolbar = mountContextToolbar(
     element('#context-toolbar'),
@@ -553,6 +616,12 @@ export function mountEditorShell(
     () => animatePanel.toggle(),
     () => positionPanel.toggle(),
     sidePanels,
+    {
+      openPanel: (id) => toolPanels?.open(id),
+      crop: () => toolPanels?.startCrop(),
+      scenes: () => sceneBoard.open(),
+      canvasSize: resizeCanvas,
+    },
   );
   // G5: the scene board over the canvas.
   const sceneBoard = mountSceneBoard(
@@ -575,10 +644,160 @@ export function mountEditorShell(
     },
   });
   const hideCanvasMenu = () => canvasMenuController.close();
+  // H3: the canvas menu's actions outside the Command Bus.
+  const selectedLayer = () =>
+    session.selectedIds.length === 1 && session.selectedId
+      ? (locateLayer(session.source.composition.layers, session.selectedId)
+          ?.layer ?? null)
+      : null;
+  const openAltText = () => {
+    const layer = selectedLayer();
+    if (!layer) return;
+    sidePanels.show('alt-text', t('altText.title'), () => {
+      const current = selectedLayer();
+      if (!current || current.id !== layer.id) return null;
+      const wrap = document.createElement('div');
+      wrap.className = 'tool-panel';
+      wrap.dataset.toolPanel = 'alt-text';
+      const hint = document.createElement('p');
+      hint.className = 'tool-panel-hint';
+      hint.textContent = t('altText.hint');
+      const area = document.createElement('textarea');
+      area.id = 'alt-text-input';
+      area.rows = 4;
+      area.maxLength = ALT_TEXT_LIMIT;
+      area.setAttribute('aria-label', t('altText.title'));
+      area.value = altTextOf(current);
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'primary';
+      save.dataset.action = 'alt-text-save';
+      save.textContent = t('altText.save');
+      save.onclick = () =>
+        safely(() => {
+          setAltText(engine, session, area.value);
+          sidePanels.close();
+        });
+      wrap.append(hint, area, save);
+      queueMicrotask(() => area.focus());
+      return wrap;
+    });
+  };
+  /** Download selection: the selected elements alone, as a PNG. */
+  const downloadSelection = () => {
+    const source = session.source;
+    const roots = selectionRoots(source, session.selectedIds);
+    const boxes = roots
+      .map((layer) => worldBox(source, layer.id))
+      .filter((box): box is NonNullable<typeof box> => !!box);
+    if (!boxes.length) return;
+    const left = Math.floor(Math.min(...boxes.map((box) => box.x))),
+      top = Math.floor(Math.min(...boxes.map((box) => box.y))),
+      right = Math.ceil(Math.max(...boxes.map((box) => box.x + box.width))),
+      bottom = Math.ceil(Math.max(...boxes.map((box) => box.y + box.height)));
+    const width = Math.max(1, right - left),
+      height = Math.max(1, bottom - top);
+    const ids = new Set(roots.map((layer) => layer.id));
+    const keep = (layers: typeof source.composition.layers): typeof layers =>
+      layers
+        .filter((layer) => ids.has(layer.id) || layer.children.length)
+        .map((layer) =>
+          ids.has(layer.id)
+            ? layer
+            : { ...layer, children: keep(layer.children) },
+        )
+        .filter((layer) => ids.has(layer.id) || layer.children.length);
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = width;
+    frameCanvas.height = height;
+    const context = frameCanvas.getContext('2d');
+    if (!context) return;
+    drawComposition(
+      context,
+      {
+        ...source,
+        composition: {
+          ...source.composition,
+          layers: keep(source.composition.layers),
+        },
+        background: 'rgba(0, 0, 0, 0)',
+        frames,
+        playing: false,
+        animate: true,
+      },
+      {
+        width,
+        height,
+        pixelRatio: 1,
+        matrix: [1, 0, 0, 1, -left, -top],
+      },
+      null,
+      { overlays: false },
+    );
+    const name = `${(roots.length === 1 ? roots[0]!.name : engine.state.metadata.name).replace(/[\\/:*?"<>|]+/g, '-')}.png`;
+    frameCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      showToast(t('download.saved', { name }), 'info', 3000);
+    }, 'image/png');
+  };
+  const menuHooks = {
+    showTiming: () => {
+      const layer = selectedLayer();
+      if (!layer) return;
+      const clip = findClipByLayer(session.source.composition, layer.id);
+      const start = clip?.clip.startTime ?? layer.startTime;
+      session.setCurrentTime(start);
+      timeline?.reveal(start);
+      element('#timeline-foundation .timeline-scroll').focus();
+    },
+    altText: openAltText,
+    download: downloadSelection,
+    info: () => {
+      const lines = layerInfo(session);
+      if (lines.length) showToast(lines.join(' · '), 'info', 6000);
+    },
+    canvasSize: resizeCanvas,
+    customSize: () => {
+      session.select(null);
+      session.setCanvasSelected(true);
+      requestAnimationFrame(() =>
+        element<HTMLElement>(
+          '#context-toolbar [data-control="canvas-size"]',
+        ).click(),
+      );
+    },
+    addScene: (copy: boolean) =>
+      safely(() => {
+        const current = session.source.composition.id;
+        const added = copy
+          ? duplicateScene(engine.state, current)
+          : blankScene(engine.state, current);
+        engine.commands.transaction(
+          copy ? 'Duplicate scene' : 'Add scene',
+          added.commands,
+        );
+        session.selectComposition(added.id);
+      }),
+    deleteScene: () =>
+      safely(() => {
+        engine.commands.transaction('Delete scene', [
+          {
+            type: 'DELETE_COMPOSITION',
+            compositionId: session.source.composition.id,
+          },
+        ]);
+      }),
+  };
   const openCanvasMenu = (point: Point2, layerId: string | null) => {
-    const entries = canvasMenuEntries(engine, session, !!layerId);
+    const entries = canvasMenuEntries(engine, session, !!layerId, menuHooks);
     canvasMenuController.open(() =>
-      canvasMenuEntries(engine, session, !!layerId),
+      canvasMenuEntries(engine, session, !!layerId, menuHooks),
     );
     if (!entries.length) canvasMenuController.close();
     const bounds = stage.getBoundingClientRect();
@@ -652,6 +871,12 @@ export function mountEditorShell(
     true,
     openCanvasMenu,
     drawTool,
+    cropTool,
+    (target) => {
+      if (target === hover) return;
+      hover = target;
+      safely(draw);
+    },
   );
   const commandContext: CommandContext = {
     engine,
@@ -676,9 +901,13 @@ export function mountEditorShell(
         const found = locateLayer(source.composition.layers, id);
         return !!found && hasAnimation(found.layer);
       });
+    // H3: a crop ends when its layer is no longer the selection.
+    if (cropTool.active && session.selectedId !== cropTool.layerId)
+      cropTool.cancel();
     const identity = JSON.stringify([
       source.composition.id,
       session.selectedIds,
+      session.canvasSelected,
       animatedSelection ? session.currentTime : null,
     ]);
     if (
@@ -1509,6 +1738,10 @@ export function mountEditorShell(
   // so there is exactly one document-level keydown listener for the whole shell.
   const disposeShortcuts = bindShortcuts(commandContext, {
     cancelGesture: () => {
+      if (cropTool.active) {
+        cropTool.cancel();
+        return true;
+      }
       if (pointer.active) {
         pointer.cancel();
         return true;
@@ -1524,7 +1757,10 @@ export function mountEditorShell(
       }
       return false;
     },
-    closeOverlay: () => closeTopOverlay() || (timeline?.closeMenu() ?? false),
+    closeOverlay: () =>
+      escapeTopPopover() ||
+      closeTopOverlay() ||
+      (timeline?.closeMenu() ?? false),
     localKey: (event) => {
       if (
         session.drawBrush &&
@@ -1638,6 +1874,13 @@ export function mountEditorShell(
       chip: element('#canvas-chip').hidden
         ? null
         : element('#canvas-chip').textContent,
+      // H3: what the pointer outlines, whether the canvas itself is
+      // selected, and the crop in progress.
+      hover,
+      canvasSelected: session.canvasSelected,
+      crop: cropTool.active
+        ? { layerId: cropTool.layerId, frame: cropTool.working }
+        : null,
     }),
     message,
     refresh,

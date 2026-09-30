@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard, showCategory } from './fixtures';
-import { choose, pickColor, sidePanel } from './controls';
+import { choose, pickColor, reveal } from './controls';
 
 // W5-D shapes on the default example (1280x720). Presets are added centered:
 // rectangle 520..760 x 280..440, ellipse 540..740 x 260..460, line 520..760 x
@@ -65,17 +65,13 @@ async function add(page: Page, preset: string) {
   return layer;
 }
 async function commit(page: Page, id: string, value: string) {
-  const input = page.locator(`#toolbar-${id}`);
+  const input = await reveal(page, `toolbar-${id}`);
   await input.fill(value);
   await input.press('Enter');
 }
-/** G1.5: Stroke style opens in the left side panel. */
+/** H3: Stroke style is a popover under the toolbar's Border button. */
 async function openStrokeStyle(page: Page) {
-  if (!(await sidePanel(page, 'stroke-style').isVisible()))
-    await page
-      .locator('#context-toolbar [data-control="stroke-style"]')
-      .click();
-  await expect(sidePanel(page, 'stroke-style')).toBeVisible();
+  await reveal(page, 'toolbar-dash');
 }
 const close = (a: number[], b: number[], tolerance = 12) =>
   a.every((value, index) => Math.abs(value - b[index]!) <= tolerance);
@@ -159,11 +155,14 @@ test('[SHP-003][SHP-006] fill opacity, no fill and corner radius, one undo step 
   // Half purple over what was there.
   for (let i = 0; i < 3; i++)
     expect(c![i]).toBeCloseTo((PURPLE[i]! + center![i]!) / 2, -1);
-  await page.locator('#context-toolbar [data-control="no-fill"]').click();
+  // H3: No fill is in the Colour panel, beside the swatches.
+  await reveal(page, 'toolbar-fill-opacity');
+  await page.locator('[data-action="no-fill"]').click();
   expect(await lastLabel(page)).toBe('Remove fill');
-  await expect(
-    page.locator('#context-toolbar [data-control="no-fill"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#toolbar-fill')).toHaveAttribute(
+    'data-value',
+    'none',
+  );
   [c] = await clean(page, points, rectangle.id);
   expect(c).toEqual(center);
   await page.keyboard.press('Control+z');
@@ -180,7 +179,7 @@ test('[SHP-003][SHP-006] fill opacity, no fill and corner radius, one undo step 
   ).toBeVisible();
   const ellipse = await add(page, 'ellipse');
   await select(page, ellipse.id);
-  await expect(page.locator('#toolbar-corners')).toBeDisabled();
+  await expect(await reveal(page, 'toolbar-corners')).toBeDisabled();
 });
 
 test('[SHP-005] stroke color, width, dash, caps and joins', async ({
