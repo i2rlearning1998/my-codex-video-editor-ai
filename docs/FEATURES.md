@@ -125,6 +125,9 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-032 | P0 | W1 | Verified | Themes: dark (default) and light from semantic tokens; dark, light or system from the top bar, the menu and the palette; kept in the browser (not the project) and applied before first paint; the artboard is never themed; text, secondary text and accent on panels reach 4.5:1 |
 | LAY-033 | P0 | W1 | Verified | Motion tokens (120, 180, 240 and 320 ms with enter and exit easings); side panels open and close in 150 to 300 ms without reflowing their content; reduced motion makes it about 0 |
 | LAY-034 | P1 | W1 | Verified | A window under 800 px tall shows six rail categories and a More menu for the rest |
+| LAY-035 | P0 | W1 | Verified | The right panel's icon rail lists the sections that fit the selection (Clipchamp): Properties always; Color, Fade, Speed, Animate where they apply; Filters, Effects, Adjust colors, Audio, Captions and Transitions show which wave builds them (H4 LCR) |
+| LAY-036 | P0 | W1 | Verified | The Inspector stacks Position and size, Timing and Details (dimensions and the layer's place) instead of sub-tabs; a section header opens and scrolls to its section, the chevron folds it (H4 LCR) |
+| LAY-037 | P0 | W1 | Verified | The right panel's Color, Fade (in and out) and Speed (presets, reverse, freeze) edit the selection as one undo step each (H4 LCR) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -549,6 +552,8 @@ Preview and export must evaluate animation with the same code.
 | ANI-018 | P2 | W8 | Todo | Path trim (draw-on) animation |
 | ANI-019 | P2 | W8 | Todo | Particle emitters |
 | ANI-020 | P1 | W8 | Todo | Scene (page) animation: one preset animates every layer of a scene |
+| ANI-021 | P0 | W5 | Verified | Editor and 2D Animation modes: stopwatches, keyframe diamonds and timeline keyframes show in 2D Animation only; the switch crossfades in 320 ms and keeps the selection; 3D Animation is shown as planned (H4 LCR) |
+| ANI-022 | P0 | W5 | Verified | In Editor mode a change to an animated property (canvas drag or nudge, Inspector, Position panel, toolbar) is refused with "Animated in 2D Animation" and a button that opens 2D Animation (H4 LCR) |
 
 ## VID: Video and image clip operations
 

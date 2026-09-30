@@ -21,7 +21,7 @@ Resume rule: when the owner says "continue", read this file and pick up at the f
 | H1   | Draft PR opened                                                                                  | done   | see PR        |
 | H2   | Design system, shell, responsive, themes; full verify (381 unit, 210 e2e, PB-010 sandbox flake)  | done   | `5afe627`     |
 | H3   | Canvas toolbar, tool panels, menus, canvas size, export dialog                                   | done   | see `git log` |
-| H4   | Right panel (Clipchamp) and mode toggle                                                          | todo   |               |
+| H4   | Right panel (Clipchamp) and mode toggle                                                          | done   | see `git log` |
 | H5   | Library system and Starter Pack 1, gradient fill                                                 | todo   |               |
 | H6   | Signatures; image border and corners if not done                                                 | todo   |               |
 | End  | Fetch main (PR #14?), full verify, report, PR ready                                              | todo   |               |

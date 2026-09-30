@@ -53,3 +53,6 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - H3: locking a group does not lock the children reached by double-clicking into it.
 - H3: Download selection has no size, background or format choice (transparent PNG at composition scale).
 - H3: a popover opened from inside the toolbar's More overflow closes when the toolbar re-renders after its edit.
+- H4: the Inspector's field labels (Position X, Start time, Parent and so on) are still English only; they predate the i18n rule and need translation keys.
+- H4: 2D Animation shows the keyframe tools only; a dedicated animation workspace (graph editor, onion skin) is Wave 8.
+- H4: the right panel's Audio section waits for the audio engine's Sound panel (PR #14).

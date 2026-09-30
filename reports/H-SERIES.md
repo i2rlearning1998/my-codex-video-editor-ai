@@ -225,3 +225,46 @@ Every fix below has a Playwright test in the sandbox Chromium that fails on the 
 - A new canvas size moves the design, but does not scale it to fit (Canva's Magic resize is AI).
 - Locking a group does not lock children you reach by double-clicking into the group.
 - Download selection saves a transparent PNG at composition scale. There is no size or background option yet.
+
+## Part H4: right panel and the mode switch
+
+### What changed
+
+- **Right panel (LAY-035, LAY-037, D-131).**
+  - The icon rail on the right now shows only the sections that fit what you selected, as in Clipchamp. With nothing selected it shows Properties. Text shows Color, Fade, Effects and Animate. A video shows Captions, Audio, Fade, Filters, Effects, Adjust colors, Speed, Animate and Transitions.
+  - **Color** sets the fill of text and shapes, or the ink of a drawing.
+  - **Fade** sets fade in and fade out, in seconds, on the selected clips. 0 removes the fade.
+  - **Speed** has the speed presets and the Reverse and Freeze frame switches.
+  - **Animate** opens the animation presets and offers 2D Animation.
+  - Filters, Effects, Adjust colors, Audio, Captions and Transitions each say which wave builds them.
+- **Inspector sections (LAY-036, D-132).**
+  - The four sub-tabs are now three stacked sections: Position and size, Timing, and Details.
+  - Each section's header opens it and scrolls to it. The chevron beside the header folds it.
+- **Editor | 2D Animation (ANI-021, ANI-022, D-130).**
+  - The switch in the top bar works. 3D Animation shows as planned (Wave 8).
+  - In Editor mode there are no stopwatches or keyframe diamonds, in the Inspector or on the timeline. 2D Animation shows them.
+  - Switching crossfades the stage, the panels and the timeline in 320 ms. The selection stays.
+  - If a property is animated, Editor mode will not change it. This covers dragging or nudging on the canvas, the Inspector, the Position panel, the toolbar and the right panel. A message says "Animated in 2D Animation", and its button opens 2D Animation.
+  - Animation presets such as Animate and Fade are not keyframes, so they work in both modes.
+- **Tests.**
+  - `e2e/h4-panels.spec.ts` has 5 new tests.
+  - The keyframe tests (ANI-001 to ANI-010, INS-009 and the animated export frame) now switch to 2D Animation first. Two jsdom tests were updated for the stacked sections and the mode.
+
+### Try it (H4)
+
+| # | Do this | Expect | ID |
+| --- | --- | --- | --- |
+| 1 | Click the headline and look at the right icon rail | Properties, Color, Fade, Effects, Animate | LAY-035 |
+| 2 | Click Effects | A short description and "Planned: Wave 6 (FX-001)" | LAY-035 |
+| 3 | Click Color and pick red | The headline turns red; one undo step | LAY-037 |
+| 4 | Click Fade, set Fade in to 1 and play | The headline fades in over a second | LAY-037 |
+| 5 | Click Properties | Position and size, Timing and Details are all shown; the chevron folds one | LAY-036 |
+| 6 | Click "2D Animation" at the top | A soft crossfade; stopwatches and keyframe diamonds appear; the selection stays | ANI-021 |
+| 7 | Turn on the Position stopwatch, move the playhead, move the headline | Two keyframes | ANI-021 |
+| 8 | Click "Editor" and drag the headline | It does not move; a message "Animated in 2D Animation" with an "Open 2D Animation" button | ANI-022 |
+
+### Known gaps (H4)
+
+- The Inspector's own field names (Position X, Start time and so on) are still English only; they predate the translation rule (backlog).
+- 2D Animation adds no new animation tools yet; it shows the keyframe tools that existed.
+- The right panel's Audio section waits for the Sound panel of PR #14.
