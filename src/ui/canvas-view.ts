@@ -9,6 +9,32 @@ import type { Viewport } from '../render/canvas';
 import { isTyping } from '../commands/shortcuts';
 import type { EditorSession } from './session';
 
+/** H1.4: how far past the view's edge the artboard may be panned (CSS px). */
+export const PAN_MARGIN = 48;
+/** H1.4: the smallest effective zoom (composition px per CSS px). */
+export const MIN_VIEW_SCALE = 0.1;
+/**
+ * H1.4: the pan a view may use. `centered` is the view at the same zoom with
+ * no pan. On an axis where the artboard fits, it stays centred (pan 0); where
+ * it overflows, it may move until PAN_MARGIN px of stage show past its edge.
+ */
+export function clampPan(
+  centered: Viewport,
+  size: { width: number; height: number },
+  pan: readonly [number, number],
+): [number, number] {
+  const [a, , , d, e, f] = centered.matrix;
+  const axis = (start: number, length: number, view: number, value: number) => {
+    if (length <= view + 1e-6) return 0;
+    const min = view - PAN_MARGIN - (start + length),
+      max = PAN_MARGIN - start;
+    return Math.max(min, Math.min(max, value));
+  };
+  return [
+    axis(e, Math.abs(a) * size.width, centered.width, pan[0]),
+    axis(f, Math.abs(d) * size.height, centered.height, pan[1]),
+  ];
+}
 export interface CanvasView {
   /** Multiplies the zoom, keeping the composition point under `at` still. */
   zoomBy(factor: number, at?: Point2): void;
@@ -50,17 +76,26 @@ export function mountCanvasView(
     const box = canvas.getBoundingClientRect();
     return [event.clientX - box.left, event.clientY - box.top];
   };
+  const fitScale = () => viewportFor(1, [0, 0]).matrix[0];
+  /** Stores a view with its pan clamped (the rules of H1.4). */
+  const setView = (zoom: number, pan: readonly [number, number]) => {
+    const level = Math.max(zoom, MIN_VIEW_SCALE / fitScale());
+    session.setCanvasView(
+      level,
+      clampPan(viewportFor(level, [0, 0]), session.source.composition, pan),
+    );
+  };
   const zoomTo = (zoom: number, at: Point2 = center()) => {
     const inverse = invertMatrix(
       viewportFor(session.canvasZoom, session.canvasPan).matrix,
     );
     if (!inverse) return;
+    const level = Math.max(zoom, MIN_VIEW_SCALE / fitScale());
     const point = transformPoint(inverse, at);
-    const next = viewportFor(zoom, [0, 0]).matrix;
+    const next = viewportFor(level, [0, 0]).matrix;
     const landed = transformPoint(next, point);
-    session.setCanvasView(zoom, [at[0] - landed[0], at[1] - landed[1]]);
+    setView(level, [at[0] - landed[0], at[1] - landed[1]]);
   };
-  const fitScale = () => viewportFor(1, [0, 0]).matrix[0];
   const setCursor = () => {
     stage.classList.toggle('panning-ready', hand || space);
     stage.classList.toggle('panning', !!pan);
@@ -86,7 +121,7 @@ export function mountCanvasView(
     if (!pan || event.pointerId !== pan.pointer) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    session.setCanvasView(session.canvasZoom, [
+    setView(session.canvasZoom, [
       pan.from[0] + event.clientX - pan.start[0],
       pan.from[1] + event.clientY - pan.start[1],
     ]);
@@ -115,7 +150,8 @@ export function mountCanvasView(
     const dx = event.shiftKey && !event.deltaX ? event.deltaY : event.deltaX;
     const dy = event.shiftKey && !event.deltaX ? 0 : event.deltaY;
     const [x, y] = session.canvasPan;
-    session.setCanvasView(session.canvasZoom, [x - dx * lines, y - dy * lines]);
+    // H1.4: a view where the artboard fits never moves (clampPan keeps 0).
+    setView(session.canvasZoom, [x - dx * lines, y - dy * lines]);
   };
   // Space held over the canvas pans; a Space press without a drag still
   // plays or pauses (on release).
@@ -160,7 +196,7 @@ export function mountCanvasView(
       const view = viewportFor(1, [0, 0]);
       const { width, height } = session.source.composition;
       const cover = Math.max(view.width / width, view.height / height);
-      session.setCanvasView(cover / view.matrix[0], [0, 0]);
+      setView(cover / view.matrix[0], [0, 0]);
     },
     actualSize: () => zoomTo(1 / fitScale()),
     toggleHand: () => {

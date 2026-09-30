@@ -22,7 +22,7 @@ import {
 } from '../render/canvas';
 import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
-import { mountCanvasView } from './canvas-view';
+import { clampPan, mountCanvasView } from './canvas-view';
 import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
 import { createNumberField, syncNumberField } from './components/number-field';
 import {
@@ -288,22 +288,33 @@ export function mountEditorShell(
     },
   );
   // G3: Fit, then the zoom about the view's center, then the pan.
-  const viewportFor = (z: number, pan: readonly [number, number]) => {
+  const viewportFor = (z: number, requested: readonly [number, number]) => {
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
       Math.max(1, canvas.clientHeight || stage.clientHeight),
       session.source.composition,
       window.devicePixelRatio || 1,
     );
-    const centered: AffineMatrix = [
-      z,
-      0,
-      0,
-      z,
-      (view.width * (1 - z)) / 2 + pan[0],
-      (view.height * (1 - z)) / 2 + pan[1],
-    ];
-    return { ...view, matrix: multiplyMatrices(centered, view.matrix) };
+    const at = (pan: readonly [number, number]): AffineMatrix =>
+      multiplyMatrices(
+        [
+          z,
+          0,
+          0,
+          z,
+          (view.width * (1 - z)) / 2 + pan[0],
+          (view.height * (1 - z)) / 2 + pan[1],
+        ],
+        view.matrix,
+      );
+    // H1.4: the stored pan is re-clamped for the current stage size, so a
+    // resized window can never leave the artboard out of view.
+    const pan = clampPan(
+      { ...view, matrix: at([0, 0]) },
+      session.source.composition,
+      requested,
+    );
+    return { ...view, matrix: at(pan) };
   };
   const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
   // G4: a circle the size of the brush (or eraser) follows the pointer.

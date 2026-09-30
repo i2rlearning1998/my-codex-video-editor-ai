@@ -100,6 +100,10 @@ test('[CV-018][CV-047] Space-drag, the middle button, the hand tool and the whee
   page,
 }) => {
   const initial = await view(page);
+  // H1.4 (CV-050): an artboard that fits never pans, so zoom in first.
+  for (let i = 0; i < 3; i++)
+    await page.locator('[data-canvas-zoom="in"]').click();
+  const zoomed = await view(page);
   const middle = await screen(page, 640, 360);
   await page.mouse.move(middle.x, middle.y);
   // Space + drag pans and does not play or select.
@@ -109,8 +113,8 @@ test('[CV-018][CV-047] Space-drag, the middle button, the hand tool and the whee
   await page.mouse.up();
   await page.keyboard.up('Space');
   let now = await view(page);
-  expect(now[4] - initial[4]).toBeCloseTo(100, 0);
-  expect(now[5] - initial[5]).toBeCloseTo(50, 0);
+  expect(now[4] - zoomed[4]).toBeCloseTo(100, 0);
+  expect(now[5] - zoomed[5]).toBeCloseTo(50, 0);
   expect((await hook(page)).session.playing).toBe(false);
   expect(await selectedIds(page)).toEqual([]);
   // Space pressed without a drag still plays and pauses.
