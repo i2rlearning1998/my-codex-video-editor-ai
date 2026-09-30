@@ -1,0 +1,776 @@
+{
+  "schemaVersion": 5,
+  "id": "h1-rotated",
+  "metadata": {
+    "name": "H1 rotated",
+    "createdAt": "2026-09-30T00:00:00.000Z",
+    "updatedAt": "2026-09-30T00:00:00.000Z"
+  },
+  "settings": {
+    "backgroundColor": "#f0eee7",
+    "audioSampleRate": 48000
+  },
+  "compositions": [
+    {
+      "id": "h1-composition",
+      "name": "H1 rotated",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "duration": 5,
+      "layers": [
+        {
+          "id": "h1-rect",
+          "name": "h1-rect",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                133,
+                135
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 160,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 90,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#e04040"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "h1-text",
+          "name": "h1-text",
+          "type": "text",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                560,
+                150
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 160,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 60,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#222222"
+            },
+            "text": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "Rotate",
+              "keyframes": []
+            },
+            "fontSize": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 36,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "h1-group",
+          "name": "h1-group",
+          "type": "group",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                980,
+                135
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": [
+            {
+              "id": "h1-group-a",
+              "name": "h1-group-a",
+              "type": "shape",
+              "startTime": 0,
+              "duration": 5,
+              "transform": {
+                "position": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    0,
+                    0
+                  ],
+                  "keyframes": []
+                },
+                "rotation": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 0,
+                  "keyframes": []
+                },
+                "scale": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    1,
+                    1
+                  ],
+                  "keyframes": []
+                },
+                "opacity": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 1,
+                  "keyframes": []
+                }
+              },
+              "properties": {
+                "width": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 90,
+                  "keyframes": []
+                },
+                "height": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 60,
+                  "keyframes": []
+                },
+                "fill": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "color",
+                  "keyframes": [],
+                  "value": "#30a060"
+                }
+              },
+              "effects": [],
+              "masks": [],
+              "assetId": null,
+              "children": []
+            },
+            {
+              "id": "h1-group-b",
+              "name": "h1-group-b",
+              "type": "shape",
+              "startTime": 0,
+              "duration": 5,
+              "transform": {
+                "position": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    70,
+                    30
+                  ],
+                  "keyframes": []
+                },
+                "rotation": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 0,
+                  "keyframes": []
+                },
+                "scale": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    1,
+                    1
+                  ],
+                  "keyframes": []
+                },
+                "opacity": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 1,
+                  "keyframes": []
+                }
+              },
+              "properties": {
+                "width": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 90,
+                  "keyframes": []
+                },
+                "height": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 60,
+                  "keyframes": []
+                },
+                "fill": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "color",
+                  "keyframes": [],
+                  "value": "#a030a0"
+                }
+              },
+              "effects": [],
+              "masks": [],
+              "assetId": null,
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "h1-image",
+          "name": "h1-image",
+          "type": "image",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                133,
+                495
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 160,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 90,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#d0a020"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": "h1-image-asset",
+          "children": []
+        },
+        {
+          "id": "h1-outer",
+          "name": "h1-outer",
+          "type": "group",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                640,
+                540
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 12,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": [
+            {
+              "id": "h1-nested",
+              "name": "h1-nested",
+              "type": "group",
+              "startTime": 0,
+              "duration": 5,
+              "transform": {
+                "position": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    -80,
+                    -45
+                  ],
+                  "keyframes": []
+                },
+                "rotation": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 0,
+                  "keyframes": []
+                },
+                "scale": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    1,
+                    1
+                  ],
+                  "keyframes": []
+                },
+                "opacity": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 1,
+                  "keyframes": []
+                }
+              },
+              "properties": {},
+              "effects": [],
+              "masks": [],
+              "assetId": null,
+              "children": [
+                {
+                  "id": "h1-nested-a",
+                  "name": "h1-nested-a",
+                  "type": "shape",
+                  "startTime": 0,
+                  "duration": 5,
+                  "transform": {
+                    "position": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        0,
+                        0
+                      ],
+                      "keyframes": []
+                    },
+                    "rotation": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 0,
+                      "keyframes": []
+                    },
+                    "scale": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        1,
+                        1
+                      ],
+                      "keyframes": []
+                    },
+                    "opacity": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 1,
+                      "keyframes": []
+                    }
+                  },
+                  "properties": {
+                    "width": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 160,
+                      "keyframes": []
+                    },
+                    "height": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 90,
+                      "keyframes": []
+                    },
+                    "fill": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "color",
+                      "keyframes": [],
+                      "value": "#d9e38e"
+                    }
+                  },
+                  "effects": [],
+                  "masks": [],
+                  "assetId": null,
+                  "children": []
+                },
+                {
+                  "id": "h1-nested-b",
+                  "name": "h1-nested-b",
+                  "type": "text",
+                  "startTime": 0,
+                  "duration": 5,
+                  "transform": {
+                    "position": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        20,
+                        20
+                      ],
+                      "keyframes": []
+                    },
+                    "rotation": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 0,
+                      "keyframes": []
+                    },
+                    "scale": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        1,
+                        1
+                      ],
+                      "keyframes": []
+                    },
+                    "opacity": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 1,
+                      "keyframes": []
+                    }
+                  },
+                  "properties": {
+                    "width": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 120,
+                      "keyframes": []
+                    },
+                    "height": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 40,
+                      "keyframes": []
+                    },
+                    "fill": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "color",
+                      "keyframes": [],
+                      "value": "#242b24"
+                    },
+                    "text": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "string",
+                      "value": "NEST",
+                      "keyframes": []
+                    },
+                    "fontSize": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 28,
+                      "keyframes": []
+                    }
+                  },
+                  "effects": [],
+                  "masks": [],
+                  "assetId": null,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "h1-flip",
+          "name": "h1-flip",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1140,
+                495
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                -1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 160,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 90,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#e07020"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      ],
+      "tracks": [],
+      "markers": [],
+      "audioTracks": []
+    }
+  ],
+  "assets": [
+    {
+      "id": "h1-image-asset",
+      "name": "Photo",
+      "type": "image",
+      "source": {
+        "kind": "local",
+        "reference": "media/h1-missing-image"
+      },
+      "metadata": {},
+      "duration": 5
+    }
+  ]
+}

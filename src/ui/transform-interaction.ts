@@ -85,6 +85,11 @@ interface Gesture {
   /** CV-013: fixed at gesture start (revision 5). */
   targets: SnapTargets;
   guides: readonly SnapGuide[];
+  /**
+   * H1.2 (revision 8): whether the layer is straight in the composition (a
+   * multiple of 90 degrees). Only straight layers snap while resizing.
+   */
+  straight: boolean;
 }
 /**
  * CV-041 (revision 6): resizing or rotating a multi-selection. The world delta
@@ -170,6 +175,16 @@ export function multiAffine(
     ? [scale, 0, 0, 1, fixed - scale * fixed, 0]
     : [1, 0, 0, scale, 0, fixed - scale * fixed];
 }
+/** Whether a world matrix keeps the box's sides parallel to the canvas axes. */
+export function isStraight(matrix: AffineMatrix): boolean {
+  const [a, b, c, d] = matrix;
+  const scale = Math.max(Math.abs(a), Math.abs(b), Math.abs(c), Math.abs(d));
+  const tolerance = 1e-9 * Math.max(1, scale);
+  return (
+    (Math.abs(b) <= tolerance && Math.abs(c) <= tolerance) ||
+    (Math.abs(a) <= tolerance && Math.abs(d) <= tolerance)
+  );
+}
 export class TransformInteraction {
   #gesture: Gesture | null = null;
   #multi: MultiGesture | null = null;
@@ -210,6 +225,21 @@ export class TransformInteraction {
   }
   get active(): boolean {
     return this.#gesture !== null || this.#multi !== null;
+  }
+  /**
+   * H1.2: what the canvas chip shows while a handle is dragged: 'size' for a
+   * resize, or the angle in degrees for a rotation; null otherwise.
+   */
+  get chip(): { kind: 'size' } | { kind: 'angle'; degrees: number } | null {
+    if (this.#multi)
+      return this.#multi.kind === 'rotate'
+        ? { kind: 'angle', degrees: this.#multi.angle }
+        : { kind: 'size' };
+    const gesture = this.#gesture;
+    if (!gesture || gesture.kind === 'move') return null;
+    if (gesture.kind === 'rotate')
+      return { kind: 'angle', degrees: gesture.value.rotation.value };
+    return { kind: 'size' };
   }
   /** CV-041: the multi-selection frame (world corners) while it is transformed. */
   get frame(): readonly Point2[] | undefined {
@@ -335,6 +365,7 @@ export class TransformInteraction {
         this.session.enteredGroupId,
       ),
       guides: [],
+      straight: isStraight(selected.matrix),
     };
     return true;
   }
@@ -368,7 +399,10 @@ export class TransformInteraction {
           value,
         );
         gesture.guides = [];
-      } else if (snap !== undefined) {
+      } else if (
+        snap !== undefined &&
+        (gesture.kind === 'move' || gesture.straight)
+      ) {
         const snapped = solveSnap(
           (candidate) => {
             this.#apply(gesture, candidate, proportional, fromCenter);

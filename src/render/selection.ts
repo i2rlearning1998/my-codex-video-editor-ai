@@ -323,10 +323,14 @@ export function hitMultiHandle(
 export function multiSelectionBox(
   source: RenderSource,
   view: AffineMatrix,
-): { corners: readonly Point2[]; center: Point2 } | null {
+): { corners: readonly Point2[]; center: Point2; rotation: Point2 } | null {
   const geometry = multiSelectionGeometry(source, view);
   return geometry
-    ? { corners: geometry.corners, center: geometry.center }
+    ? {
+        corners: geometry.corners,
+        center: geometry.center,
+        rotation: geometry.rotation,
+      }
     : null;
 }
 export type TransformHandle =

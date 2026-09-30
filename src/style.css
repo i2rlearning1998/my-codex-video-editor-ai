@@ -2803,6 +2803,19 @@ button.color-swatch:hover {
   pointer-events: none;
   z-index: 3;
 }
+/* H1.2: the size (W × H) or angle chip beside the pointer while dragging. */
+.canvas-chip {
+  position: absolute;
+  z-index: 25;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-accent-text);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  white-space: nowrap;
+}
 /* H1.1: the canvas drag-select box. It is appended to <body> and placed in
    viewport (client) coordinates, so it is fixed; it never takes the pointer. */
 .canvas-marquee {

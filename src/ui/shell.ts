@@ -25,7 +25,10 @@ import { syncGeometryFields } from './geometry-fields';
 import { mountCanvasView } from './canvas-view';
 import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
 import { createNumberField, syncNumberField } from './components/number-field';
-import { isGeometryField } from './geometry';
+import {
+  isGeometryField,
+  selectionGeometry as selectionGeometryOf,
+} from './geometry';
 import { mountMediaPanel } from './media-panel';
 import { openExportDialog } from './export-dialog';
 import { drawComposition } from '../render/canvas';
@@ -205,7 +208,7 @@ export function mountEditorShell(
             <button type="button" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
         <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
@@ -320,6 +323,29 @@ export function mountEditorShell(
     brushCursor.classList.toggle('erasing', brush === 'eraser');
   };
   canvas.addEventListener('pointermove', moveBrushCursor);
+  // H1.2: the size or angle chip sits beside the pointer while dragging.
+  let chipPointer: Point2 = [0, 0];
+  canvas.addEventListener('pointermove', (event) => {
+    const box = stage.getBoundingClientRect();
+    chipPointer = [event.clientX - box.left, event.clientY - box.top];
+  });
+  const canvasChip = element('#canvas-chip');
+  const updateChip = (source: typeof session.source) => {
+    const chip = interaction.chip;
+    const geometry = chip?.kind === 'size' ? selectionGeometryOf(source) : null;
+    if (!chip || (chip.kind === 'size' && !geometry)) {
+      canvasChip.hidden = true;
+      return;
+    }
+    canvasChip.hidden = false;
+    canvasChip.textContent =
+      chip.kind === 'size'
+        ? `${Math.round(geometry!.width)} × ${Math.round(geometry!.height)}`
+        : `${Math.round(chip.degrees)}°`;
+    const box = stage.getBoundingClientRect();
+    canvasChip.style.left = `${Math.min(box.width - 96, chipPointer[0] + 16)}px`;
+    canvasChip.style.top = `${Math.min(box.height - 32, chipPointer[1] + 20)}px`;
+  };
   canvas.addEventListener('pointerdown', moveBrushCursor);
   canvas.addEventListener('pointerleave', () => (brushCursor.hidden = true));
   const canvasView = mountCanvasView(
@@ -426,6 +452,7 @@ export function mountEditorShell(
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
     // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
     if (!session.playing) syncGeometryFields(root, drawn);
+    updateChip(drawn);
     updateSelectionActions();
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
@@ -548,9 +575,16 @@ export function mountEditorShell(
       ...(interaction.previews ? { previews: interaction.previews } : {}),
     };
     const view = viewport().matrix;
-    const corners =
-      multiSelectionBox(source, view)?.corners ??
-      selectionGeometry(source, session.selectedId, view)?.corners;
+    const multiBox = multiSelectionBox(source, view);
+    const single = multiBox
+      ? null
+      : selectionGeometry(source, session.selectedId, view);
+    // H1.2: the rotation handle belongs to the box the cluster must avoid.
+    const corners = multiBox
+      ? [...multiBox.corners, multiBox.rotation]
+      : single
+        ? [...single.corners, single.rotation]
+        : undefined;
     if (!corners?.length)
       return selectionActions.update(null, stage.getBoundingClientRect());
     const xs = corners.map((point) => point[0] + canvas.offsetLeft),
@@ -562,7 +596,7 @@ export function mountEditorShell(
         right: Math.max(...xs),
         bottom: Math.max(...ys),
       },
-      stage.getBoundingClientRect(),
+      { width: stage.clientWidth, height: stage.clientHeight },
     );
   }
   const pointer = bindCanvasInteraction(
@@ -1428,6 +1462,32 @@ export function mountEditorShell(
       // G3: composition to canvas CSS pixels, for proofs of pan and zoom.
       view: viewport().matrix,
       hand: canvasView.hand,
+      // H1.2: the drawn selection box (canvas CSS px), including a preview.
+      selection:
+        selectionGeometry(
+          {
+            ...session.source,
+            ...(interaction.preview ? { preview: interaction.preview } : {}),
+          },
+          session.selectedId,
+          viewport().matrix,
+        )?.handles.map((handle) => ({
+          id: handle.id,
+          point: handle.point,
+          cursor: handle.cursor,
+        })) ?? null,
+      corners:
+        selectionGeometry(
+          {
+            ...session.source,
+            ...(interaction.preview ? { preview: interaction.preview } : {}),
+          },
+          session.selectedId,
+          viewport().matrix,
+        )?.corners ?? null,
+      chip: element('#canvas-chip').hidden
+        ? null
+        : element('#canvas-chip').textContent,
     }),
     message,
     refresh,
