@@ -2803,6 +2803,17 @@ button.color-swatch:hover {
   pointer-events: none;
   z-index: 3;
 }
+/* H1.1: the canvas drag-select box. It is appended to <body> and placed in
+   viewport (client) coordinates, so it is fixed; it never takes the pointer. */
+.canvas-marquee {
+  position: fixed;
+  z-index: 30;
+  box-sizing: border-box;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-soft);
+  border-radius: 2px;
+  pointer-events: none;
+}
 .brush-cursor.erasing {
   border-style: dashed;
 }

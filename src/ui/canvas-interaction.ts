@@ -33,6 +33,43 @@ export function resolvePick(
     ? { id: path[at + 1]!, inside: true }
     : { id: path[0]!, inside: false };
 }
+/**
+ * H1.1: whether a layer's drawn box (a convex quad, possibly rotated) touches
+ * the axis-aligned marquee from `a` to `b`, by the separating-axis test: the
+ * marquee's two axes and the quad's own edge normals.
+ */
+export function quadTouchesRect(
+  quad: readonly Point2[],
+  a: Point2,
+  b: Point2,
+): boolean {
+  const rect: Point2[] = [
+    [Math.min(a[0], b[0]), Math.min(a[1], b[1])],
+    [Math.max(a[0], b[0]), Math.min(a[1], b[1])],
+    [Math.max(a[0], b[0]), Math.max(a[1], b[1])],
+    [Math.min(a[0], b[0]), Math.max(a[1], b[1])],
+  ];
+  const axes: Point2[] = [
+    [1, 0],
+    [0, 1],
+  ];
+  for (let i = 0; i < quad.length; i++) {
+    const p = quad[i]!,
+      q = quad[(i + 1) % quad.length]!;
+    if (p[0] !== q[0] || p[1] !== q[1]) axes.push([q[1] - p[1], p[0] - q[0]]);
+  }
+  const project = (points: readonly Point2[], axis: Point2) => {
+    const values = points.map(
+      (point) => point[0] * axis[0] + point[1] * axis[1],
+    );
+    return [Math.min(...values), Math.max(...values)] as const;
+  };
+  return axes.every((axis) => {
+    const [minA, maxA] = project(quad, axis);
+    const [minB, maxB] = project(rect, axis);
+    return maxA >= minB && maxB >= minA;
+  });
+}
 /** DOM pointer lifetime only; the controller resolves and commits semantic edits. */
 export function bindCanvasInteraction(
   canvas: HTMLCanvasElement,
@@ -201,15 +238,7 @@ export function bindCanvasInteraction(
           item.id,
           viewport().matrix,
         );
-        if (!box) return false;
-        const xs = box.corners.map((p) => p[0]),
-          ys = box.corners.map((p) => p[1]);
-        return (
-          Math.max(...xs) >= Math.min(a[0], end[0]) &&
-          Math.min(...xs) <= Math.max(a[0], end[0]) &&
-          Math.max(...ys) >= Math.min(a[1], end[1]) &&
-          Math.min(...ys) <= Math.max(a[1], end[1])
-        );
+        return !!box && quadTouchesRect(box.corners, a, end);
       })
       .map((item) =>
         resolvePick(session.source, item.id, session.enteredGroupId),
