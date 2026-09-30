@@ -279,10 +279,10 @@ Everything the user does directly on the preview canvas.
 | CV-032 | P1 | W2 | Todo | 100 layers can be dragged smoothly without dropped frames on the reference machine |
 | CV-033 | P1 | W2 | Todo | Preview quality setting Full, Half, Quarter |
 | CV-034 | P2 | W2 | Todo | Touch and pen input work with pointer events |
-| CV-035 | P0 | W2 | Verified | A context toolbar above the canvas appears for one selected text, image, video, shape or drawing layer, with controls for that type; it hides for no selection, groups, audio layers and multi-selections |
-| CV-036 | P0 | W2 | Verified | Image and video toolbar: Position X and Y, Scale, Rotate, Flip horizontal and vertical, and Opacity edit the layer as one undo step each; Crop, Blend and Replace show disabled with a tooltip naming the wave that builds them; Animate opens the animation presets |
-| CV-037 | P0 | W2 | Verified | Text toolbar: Font (system fonts until the W3 font picker), Size, Weight, Italic, Color, Align and Spacing (line height, letter and paragraph spacing, case) edit the layer as one undo step each; Effects shows disabled with a tooltip naming its wave; Animate opens the animation presets |
-| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill, Fill opacity, No fill, Stroke, Width, Stroke style (dash, caps, joins) and Corners edit the layer as one undo step each; Boolean explains that shapes combine from the canvas menu; Animate opens the animation presets. A drawing's toolbar edits its Color, Brush size and Opacity |
+| CV-035 | P0 | W2 | Verified | The floating toolbar shows the selection's controls: text, image, video, shape, drawing, group or multi-selection, and the scene toolbar when the canvas itself is selected; it hides for audio layers and when nothing is selected (H3 LCR) |
+| CV-036 | P0 | W2 | Verified | Image and video toolbar: Edit (images), Replace, Border and Corners (images), Crop, Flip, Transparency, Animate and Position edit the layer as one undo step each; X, Y, width, height and rotation are in the Position panel; AI tools show disabled with the wave that builds them (H3 LCR) |
+| CV-037 | P0 | W2 | Verified | Text toolbar: Font (opens the Font panel), Size with − and +, Colour, Bold, Italic, Underline, Strikethrough, Uppercase, Align, Spacing (weight, letter, line and paragraph spacing, case, position in the box), Transparency and Effects (a panel whose effects name their wave) edit the layer as one undo step each (H3 LCR) |
+| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill (fill opacity and No fill in the Colour panel), Stroke style (colour, width, style, dash, caps, joins), Corners, Combine (explains that shapes combine from the canvas menu), Transparency, Animate and Position edit the layer as one undo step each (H3 LCR) |
 | CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
 | CV-040 | P0 | W2 | Verified | A selection shows a small action cluster above its box with Group (for two or more sibling layers) or Ungroup (for groups), Duplicate, Delete and More (the right-click menu); with two or more layers selected, one dashed box surrounds the whole selection and each layer keeps its own outline. Menu and cluster actions are offered only when every selected item supports them |
 | CV-041 | P0 | W2 | Verified | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
@@ -295,6 +295,12 @@ Everything the user does directly on the preview canvas.
 | CV-048 | P0 | W2 | Verified | With nothing selected the toolbar is a scene bar: background colour, scene length (retimes the clips at the end, one undo step) and Animate (disabled, names its wave) |
 | CV-049 | P0 | W2 | Verified | Rotated objects of every kind (shapes, text, pictures, groups, nested groups, flipped) resize smoothly: the opposite corner or edge stays fixed in world space, the dragged corner follows the pointer from the first step, corners stay square, groups never skew; resize cursors turn with the object; a live W × H chip while resizing and an angle chip while rotating (contract revision 8) |
 | CV-050 | P0 | W2 | Verified | Ctrl/Cmd+wheel and pinch zoom toward the pointer; a plain wheel never moves an artboard that fits; zoomed in, wheel, Shift+wheel, trackpad scroll, Space-drag, middle-drag and the hand tool pan, clamped to 48 px of stage past the artboard; below Fit the artboard stays centred; minimum zoom 10% |
+| CV-051 | P0 | W2 | Verified | Lock (canvas menu): a locked element can be selected but not moved, resized, rotated, nudged, edited or deleted; its toolbar offers Unlock (H3 LCR) |
+| CV-052 | P0 | W2 | Verified | Hover outlines the object, or the empty artboard, under the pointer; a click on the empty artboard selects the canvas (scene toolbar), a click on the stage around it deselects everything (H3 LCR) |
+| CV-053 | P0 | W2 | Verified | Canva handles: white round corners, pill-shaped side handles and the rotate handle 28 px below the box (interaction contract revision 8) (H3 LCR) |
+| CV-054 | P0 | W2 | Verified | One fixed floating toolbar row (44 px, radius 12) with the canvas size chip at its left; it never scrolls: labels collapse first, then trailing tools move into More (H3 LCR) |
+| CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to every scene, keep the design centred, as one undo step with Undo in the toast (H3 LCR) |
+| CV-056 | P0 | W2 | Verified | Right-click menus per type, with icons and shortcuts: an element offers Lock, Show element timing, Alternative text, Set image as background, Resize canvas to selection, Download selection and Info; the empty canvas offers Paste, scenes, Canvas size and Guides; unbuilt items name their wave (H3 LCR) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -485,6 +491,7 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-033 | P2 | W3 | Todo | Find and replace text across the project |
 | TXT-034 | P2 | W3 | Todo | Spellcheck while editing |
 | TXT-035 | P1 | W8 | Todo | Captions: manual caption track, import SRT and VTT, style presets, burn-in on export |
+| TXT-036 | P0 | W2 | Verified | Underline, strikethrough and uppercase toggle from the text toolbar, and a box taller than its text anchors its lines top, middle or bottom (H3 LCR) |
 
 ## SHP: Shapes, graphics and elements (Wave 5)
 
@@ -551,13 +558,13 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 |---|---|---|---|---|
 | VID-001 | P0 | W4 | Verified | Video clips can be trimmed and split with frame-exact seeking |
 | VID-002 | P0 | W4 | Verified | Picture-in-picture: clips on overlay tracks can be moved, scaled and rotated on the canvas |
-| VID-003 | P0 | W4 | Todo | Crop tool for image and video layers with aspect lock and handles |
+| VID-003 | P0 | W4 | Verified | Crop tool for image and video layers with aspect lock and handles |
 | VID-004 | P0 | W4 | Todo | Fit, Fill, Stretch and Custom modes handle media whose aspect differs from the canvas |
 | VID-005 | P0 | W4 | Verified | Default still image duration is 5 seconds and adjustable |
 | VID-006 | P0 | W4 | Verified | Detach audio from a video clip |
 | VID-007 | P1 | W4 | Todo | Fill mismatched aspect ratios with a blurred copy of the media |
 | VID-008 | P1 | W4 | Todo | GIF is treated as an animated clip |
-| VID-009 | P1 | W4 | Todo | Replace media keeps all edits on the clip |
+| VID-009 | P1 | W4 | Verified | Replace media keeps all edits on the clip |
 | VID-010 | P0 | W4 | Verified | Constant speed from 0.1x to 8x |
 | VID-011 | P1 | W4 | Verified | Reverse a clip |
 | VID-012 | P0 | W4 | Verified | Freeze frame at the playhead |
@@ -566,6 +573,7 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 | VID-015 | P0 | W2 | Verified | Clip speed 0.1x to 8x (menu presets 0.25x to 4x) is a non-destructive clip property set through an undoable command; the clip's timeline duration becomes source length divided by speed, a speed badge shows on the clip, and slowing a clip into its neighbor is refused; offered in the timeline clip and canvas context menus |
 | VID-016 | P0 | W2 | Verified | Reverse toggles a non-destructive clip property through an undoable command, keeps source range and duration, shows a badge, and trim and split respect reversed source time; offered in the timeline clip and canvas context menus |
 | VID-017 | P0 | W2 | Verified | Freeze frame toggles a non-destructive hold of one source frame (the frame under the playhead, else the first frame) for the whole clip duration through an undoable command, with a badge; offered in the timeline clip and canvas context menus |
+| VID-018 | P0 | W2 | Verified | A picture or video takes a border (colour, width, solid, dashed or dotted) and rounded corners, drawn the same in the preview and the export (H3 LCR) |
 
 ## FX: Effects and filters (Wave 6)
 
@@ -679,7 +687,7 @@ Offline frame-accurate render, never realtime capture.
 | EXP-003 | P0 | W5 | Verified | Rendering is frame-accurate and offline through a worker, independent of playback speed |
 | EXP-004 | P0 | W5 | Verified | Audio mixdown is included and in sync |
 | EXP-005 | P0 | W5 | Verified | Exported files pass container checks in e2e by an independent read-back (codec, resolution, fps, duration, audio); a one-off ffprobe check is recorded in the report |
-| EXP-006 | P0 | W5 | Verified | Presets: YouTube 1080p and 4K, Shorts, Reels and TikTok (9:16), Instagram square and portrait, small WhatsApp, custom |
+| EXP-006 | P0 | W5 | Verified | Quality 720p, 1080p or 4K sets the export's shorter edge in the canvas's shape; platform sizes are canvas sizes (CV-055), not export presets (H3 LCR) |
 | EXP-007 | P0 | W5 | Verified | Preview and export visuals match; a parity suite compares frames with tolerances |
 | EXP-008 | P0 | W5 | Verified | Missing media or fonts are caught before export with a clear message |
 | EXP-009 | P0 | W5 | Verified | Export the current frame as PNG |

@@ -48,3 +48,8 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - G5: posters of scenes that are not open draw video and image layers as placeholders until their media has been shown once.
 - G5: the board is a scrolling row, not a zoomable canvas; a zoom-out gesture from the canvas into the board is not built.
 - G5: moving a linked clip to another scene drops its link (D-112).
+- H3: the Font panel lists system fonts only; search, recents, Google Fonts and uploads wait for W3 (TXT-006 to TXT-009).
+- H3: a new canvas size re-centres the design but does not scale it (Canva's Magic resize).
+- H3: locking a group does not lock the children reached by double-clicking into it.
+- H3: Download selection has no size, background or format choice (transparent PNG at composition scale).
+- H3: a popover opened from inside the toolbar's More overflow closes when the toolbar re-renders after its edit.

@@ -146,5 +146,82 @@ Every fix below has a Playwright test in the sandbox Chromium that fails on the 
 
 - The export dialog, the New project form and the palette keep their structure; they only have the new colours, radius and animation (the export dialog is reworked in H3).
 - The phone layout is usable, but the timeline keeps its 224 px track-header column (a structural timeline change is out of scope), so on a 390 px phone the tracks scroll sideways.
-- The context toolbar still has the G-series controls with labels; on narrower stages it scrolls. H3 turns it into the compact Canva row.
+- The context toolbar still has the G-series controls with labels; on narrower stages it scrolls. H3 turns it into the compact Canva row (done, see H3).
 - Bundled UI font: the system font stack is used until the text series.
+
+## Part H3: canvas toolbar, tool panels, menus, canvas size
+
+### What changed
+
+- **Floating toolbar (CV-035 to CV-038, CV-054, D-122).**
+  - One fixed row over the canvas, 44 px high with rounded corners. It starts with a size chip such as "16:9 ▾".
+  - Each kind of selection has its own tools, in Canva's order:
+    - **Text:** font, size − and +, colour, B I U S, uppercase, align, spacing, transparency and effects.
+    - **Picture:** edit, replace, border, corners, crop, flip and transparency.
+    - **Shape:** fill, stroke style, corners and combine.
+    - **Also:** drawings, groups (Ungroup) and multi-selections (Group).
+    - **Every kind:** Animate, Position and Copy style.
+  - Quick choices (align, spacing, stroke style, corners, flip, transparency) are small popovers. Font, Effects, Edit, Replace, Crop and Colour open in the left panel.
+  - X, Y, width, height and rotation moved into the Position panel. A Rotate field was added there.
+  - When the canvas is narrow, button labels collapse first, then the last tools move into a More button. The row never scrolls.
+  - Escape closes an open popover before it deselects anything.
+- **Canvas states (CV-052).**
+  - The object under the pointer gets a thin outline, and so does the empty page.
+  - Clicking the empty page selects the canvas and shows the scene toolbar.
+  - Clicking the grey stage around the page deselects everything and hides the toolbar.
+- **Handles (CV-053, contract revision 8, D-125).**
+  - Corners are white round dots and the sides are white pills.
+  - The rotate button sits under the object, as in Canva.
+- **Canvas size (CV-055, D-123).**
+  - The size chip lists Wide 16:9, Vertical 9:16, Square 1:1, Classic 4:3, Social 4:5, Cinema 21:9 and Portrait 2:3, plus a custom size.
+  - A new size applies to every scene and keeps the design centred. It is one undo step, and the toast has an Undo button.
+- **Crop, border, corners (VID-003, VID-018, D-124).**
+  - To crop, double-click a picture or video, or use Crop in the toolbar or the Edit panel.
+  - Drag the frame or its handles, or pick Freeform, Original, 1:1, 4:3, 16:9 or 9:16. You can also rotate, reset, cancel or finish with Done.
+  - When you crop, the part you keep stays exactly where it was.
+  - A picture can take a border (colour, width, solid, dashed or dotted) and rounded corners.
+  - All of this is drawn the same way in the preview and the export.
+  - Smart crop and Expand are shown as "Planned: Wave 10 (AI-009)".
+- **Replace (VID-009).** The Replace panel lists the project's media of the same kind. Picking one swaps the media and keeps position, size, crop, timing and animation.
+- **Text (TXT-036, D-129).** Underline, strikethrough and uppercase toggles were added. Spacing now also sets where the text sits in a taller box (top, middle or bottom).
+- **Right-click menus (CV-051, CV-056, D-126, D-127).**
+  - Menus now have icons and shortcuts.
+  - **An element** adds:
+    - Lock and Unlock. A locked element can be selected but not moved, resized, nudged, edited or deleted.
+    - Show element timing, Alternative text and Set image as background.
+    - Resize canvas to selection, Download selection (a PNG) and Info.
+    - Comment and Hide, shown as planned.
+  - **The empty canvas** offers:
+    - Paste, Add scene, Duplicate scene and Delete scene.
+    - Canvas size, with the presets and Custom.
+    - Guides: Off, with grid, rulers and safe areas planned.
+- **Export dialog (EXP-006 reworded, D-128).**
+  - The size and platform presets are gone.
+  - Quality 720p, 1080p or 4K sets the video's shorter edge, in the canvas's shape. The dialog shows the resulting size.
+  - The file name is next. More options holds the format (MP4 when possible, or WebM), the frame rate and the start and end.
+- **Tests.** `e2e/h3-canvas.spec.ts` has 10 new tests. The earlier toolbar, handle and export tests were updated for the moved controls; their intent is unchanged. A new e2e helper opens a control's popover the way a user reaches it.
+
+### Try it (H3)
+
+| # | Do this | Expect | ID |
+| --- | --- | --- | --- |
+| 1 | Move the mouse over the headline, then over an empty part of the page | A thin outline follows the pointer: the headline, then the whole page | CV-052 |
+| 2 | Click the grey area around the page, then the empty page | The toolbar disappears; then the page toolbar (16:9 ▾, background, duration, Scenes) appears | CV-052 |
+| 3 | Click the headline | One toolbar row: 16:9 ▾, Arial, − 78 +, colour, B I U S, aA, align, …; handles are round, the rotate button is under the box | CV-054, CV-053 |
+| 4 | Click U, then S | The subtitle is underlined, then struck through; each is one undo step | TXT-036 |
+| 5 | Click 16:9 ▾ and choose Square | The page becomes square, the design stays centred; the toast's Undo brings 16:9 back | CV-055 |
+| 6 | Import a photo, drag it onto the page, double-click it | Crop mode: the photo dims outside a frame; the Crop panel opens on the left | VID-003 |
+| 7 | Pick 1:1, then Done | The photo becomes square; what you kept did not move | VID-003 |
+| 8 | Border ▾ (the square icon): choose Solid, set width 20; Corners: 100 | A black border inside the photo; rounded corners | VID-018 |
+| 9 | Right-click the photo | Menu with icons: Lock, Show element timing, Alternative text, Set image as background, Download selection, Info… | CV-056 |
+| 10 | Choose Lock, then try to drag it | It stays put; the toolbar shows only Unlock | CV-051 |
+| 11 | Export | Quality 720p / 1080p / 4K with the size shown; More options has format, frame rate, start and end | EXP-006 |
+
+### Known gaps (H3)
+
+- The Font panel lists the seven system fonts. Search, recent fonts, Google Fonts and uploads are Wave 3 (TXT-006 to TXT-009).
+- Effects, Adjust, Filters, the AI tools and Comment are shown but disabled; each names its wave.
+- Hide (LYR-006) is not built, so CV-024 stays Todo even though Lock works.
+- A new canvas size moves the design, but does not scale it to fit (Canva's Magic resize is AI).
+- Locking a group does not lock children you reach by double-clicking into the group.
+- Download selection saves a transparent PNG at composition scale. There is no size or background option yet.
