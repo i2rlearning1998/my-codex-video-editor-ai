@@ -323,3 +323,33 @@ Every fix below has a Playwright test in the sandbox Chromium that fails on the 
 - Text gradients are not built (shapes and backgrounds only).
 - Emoji, stickers and open-license icons (SHP-009) are not part of Starter Pack 1.
 
+## Part H6: Draw extras
+
+### What changed
+
+- **Signature (SHP-024, D-135).**
+  - The Draw panel has a new Signature section. Add signature opens a panel with three tabs:
+    - **Type:** your name, shown in three italic styles, with an ink colour.
+    - **Draw:** a white pad you sign on with the mouse or a pen; Clear starts again.
+    - **Upload:** a picture of your signature, imported like any media.
+  - The signature lands in the middle of the page at the playhead, selected, as one undo step.
+  - A typed or drawn signature can be saved in this browser. "Use saved signature" then adds it again in one click; "Forget saved signature" removes it.
+- **Image border and corners** were already done in H3 (VID-018).
+- **Tests.** `e2e/h6-signature.spec.ts` has 2 tests.
+
+### Try it (H6)
+
+| # | Do this | Expect | ID |
+| --- | --- | --- | --- |
+| 1 | Click Draw in the left rail, then Add signature | A Signature panel with Type, Draw and Upload | SHP-024 |
+| 2 | Type your name and pick a style, Add to page | Your name appears in the middle in that style | SHP-024 |
+| 3 | Reload the page, open Draw | "Use saved signature" adds it again in one click | SHP-024 |
+| 4 | Add signature > Draw: sign on the pad, Add to page | Your drawn signature appears as one drawing | SHP-024 |
+| 5 | Add signature > Upload: choose a PNG of a signature | It appears as an image a third of the page wide | SHP-024 |
+| 6 | Click Forget saved signature | The saved button disappears | SHP-024 |
+
+### Known gaps (H6)
+
+- The typed styles use the bundled system fonts in italic; real handwriting fonts come with the font catalogue (W3).
+- An uploaded signature is not kept for one-click reuse (media bytes never go into browser settings); it stays in Project Media.
+
