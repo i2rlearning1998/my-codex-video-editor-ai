@@ -59,6 +59,8 @@ import { AnimatedInEditorError } from './editor-mode';
 import { escapeTopPopover } from './components/popover';
 import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
+import { mountSignature } from './signature';
+import { addTopLevel } from './library-insert';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
@@ -1416,6 +1418,54 @@ export function mountEditorShell(
   };
   const searchInput = element<HTMLInputElement>('#asset-search');
   searchInput.oninput = () => mediaPanel.filter(searchInput.value);
+  // H6: signatures in the Draw panel (typed, drawn or uploaded).
+  mountSignature({
+    host: element('#draw-panel'),
+    panels: sidePanels,
+    engine,
+    session,
+    report: reportError,
+    upload: async (file) => {
+      await mediaPanel.importFiles([file]);
+      const assets = engine.state.assets as unknown as readonly {
+        id: string;
+        type: string;
+        width?: number;
+        height?: number;
+        metadata: { fileName?: string };
+      }[];
+      const asset = [...assets]
+        .reverse()
+        .find(
+          (item) =>
+            item.type === 'image' && item.metadata.fileName === file.name,
+        );
+      if (!asset) return;
+      session.setPlaying(false);
+      const { width: W, height: H } = session.source.composition;
+      const layer = createLayer(
+        crypto.randomUUID(),
+        'image',
+        t('signature.layerName'),
+        5,
+      );
+      layer.assetId = asset.id;
+      const scale =
+        asset.width && asset.height
+          ? Math.min((W * 0.3) / asset.width, (H * 0.3) / asset.height)
+          : 1;
+      layer.transform.scale = vector2(scale, scale);
+      layer.transform.position = vector2(
+        (W - (asset.width ?? 0) * scale) / 2,
+        (H - (asset.height ?? 0) * scale) / 2,
+      );
+      engine.commands.transaction(
+        'Add signature',
+        addTopLevel(session.source.composition, layer, session.currentTime),
+      );
+      session.select(layer.id);
+    },
+  });
   // MED-001/MED-002: the Import button and OS file drops both import into Project Media.
   const importMedia = (files: readonly File[]) => {
     if (!files.length) return;

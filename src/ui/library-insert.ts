@@ -172,7 +172,7 @@ function textLayer(
 }
 
 /** The commands that add one top-level layer and its clip at `time`. */
-function addTopLevel(
+export function addTopLevel(
   composition: RenderSource['composition'],
   layer: Layer,
   time: number,
@@ -203,7 +203,7 @@ function addTopLevel(
         id: newId(),
         name: layer.name,
         layerId: layer.id,
-        assetId: null,
+        assetId: layer.assetId ?? null,
         startTime: time,
         duration: DRAWING_DURATION,
         sourceIn: 0,
