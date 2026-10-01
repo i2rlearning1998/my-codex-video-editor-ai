@@ -43,7 +43,19 @@ Not done, and why:
 
 ## 3. Checks
 
-VERIFY_PENDING
+Final `npm run verify` on the last commit: exit 0 (2026-10-01).
+
+- **Format, typecheck and build:** pass.
+- **Unit and jsdom (Vitest):** 388 passed in 35 files. jsdom tests do not count as proof of user-visible behaviour.
+- **E2E (Playwright):** 235 passed. The only failure is DEV-006, the deliberate probe that proves the console-error guard works.
+  - The browser was the sandbox Chromium 141 (`/opt/pw-browsers`), headless, at 1600 × 1000 by default.
+  - Viewport tests ran at 1920, 1440, 1366, 1280, 1024, 820 and 390 px wide, in both themes.
+- **The hook assertion and the ledger** pass: 547 items, 217 Verified, 12 Claimed, 318 Todo, 0 Bug.
+- **A failure fixed in the first final run.**
+  - PRJ-001 read the test hook right after a page reload, before the app had started. It failed once, while 163 library previews were being drawn at start-up.
+  - The test now waits for the app. The previews are drawn only when they scroll into view, so they no longer slow the start.
+- **Timing tests.** In this sandbox, the timing-sensitive media tests can miss their limits when several workers run at once (see section 7). The final run passed them.
+- **Screenshots** of every step in the try-it scripts are in each test's output folder (`test-results/<test>/*.png`) and were looked at during the work.
 
 ## 5. Deviations from the brief
 
