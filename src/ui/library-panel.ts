@@ -189,6 +189,18 @@ export function mountLibraryPanels(
     };
     requestAnimationFrame(step);
   };
+  const lazy = new WeakMap<Element, () => void>();
+  const observer =
+    typeof IntersectionObserver === 'undefined'
+      ? null
+      : new IntersectionObserver((entries) => {
+          for (const entry of entries)
+            if (entry.isIntersecting) {
+              observer!.unobserve(entry.target);
+              lazy.get(entry.target)?.();
+              lazy.delete(entry.target);
+            }
+        });
   const render = (panel: (typeof panels)[number]) => {
     const query = panel.search.value.trim().toLowerCase();
     const list = items.filter(
@@ -226,15 +238,24 @@ export function mountLibraryPanels(
         label.textContent = name;
         card.append(thumb, label);
         card.onclick = () => add(item);
-        queue.push(() => {
-          try {
-            const canvas = document.createElement('canvas');
-            drawLibraryPreview(canvas, item, measureText);
-            thumb.src = canvas.toDataURL('image/png');
-          } catch {
-            // A preview that cannot be drawn leaves the card's label.
-          }
-        });
+        // Drawn when the card first scrolls into view.
+        const draw = () =>
+          queue.push(() => {
+            try {
+              const canvas = document.createElement('canvas');
+              drawLibraryPreview(canvas, item, measureText);
+              thumb.src = canvas.toDataURL('image/png');
+            } catch {
+              // A preview that cannot be drawn leaves the card's label.
+            }
+          });
+        if (observer) {
+          lazy.set(card, () => {
+            draw();
+            pump();
+          });
+          observer.observe(card);
+        } else draw();
         return card;
       }),
     );
