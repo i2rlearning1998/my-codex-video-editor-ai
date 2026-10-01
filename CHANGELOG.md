@@ -2,6 +2,29 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## H-series (H1 to H6) — 2026-10-01
+
+- **Bugs (H1):** the drag-select box is painted again. Rotated objects resize smoothly. Audio stays off the canvas. Panning and the wheel can no longer lose the page. Side panels open and close from their rail category.
+- **Look and layout (H2):**
+  - New design tokens with dark and light themes (and System), switched from the top bar.
+  - A Canva and Clipchamp style shell with the Editor | 2D Animation switch.
+  - Layouts for wide, medium, narrow and phone screens.
+  - Styled tooltips, menus with icons, toasts with actions.
+- **Canvas (H3):**
+  - One floating toolbar row per type, with a canvas size chip.
+  - Font, Effects, Edit, Replace and Crop panels.
+  - Crop, border and rounded corners for pictures.
+  - Lock, and right-click menus with timing, alt text, set as background, download selection and info.
+  - Canvas size presets for every scene.
+  - Canva-style handles with the rotate button below.
+  - A simpler export dialog: Quality 720p, 1080p or 4K.
+- **Panels (H4):**
+  - The right panel lists the sections that fit the selection: Color, Fade, Speed, Animate, and planned ones that name their wave.
+  - The Inspector is one scrolling list of sections.
+  - Keyframes live in 2D Animation mode; Editor mode protects animated values.
+- **Library (H5):** Starter Pack 1 has 81 shapes, 40 backgrounds, 30 text styles and 12 templates, with search and previews. Shapes and backgrounds can have gradient fills.
+- **Draw (H6):** signatures, by typing, drawing or uploading, kept in this browser on request.
+
 ## G-series (G1 to G5) — 2026-09-28
 
 - **Controls:** one set of Canva-style number fields, lists and colour pickers. Deep panels open on the left with Back, and right-click submenus open on hover.

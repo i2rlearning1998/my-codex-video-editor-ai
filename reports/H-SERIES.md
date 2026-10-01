@@ -1,47 +1,126 @@
-# Report: H-series, H1 to H6 (2026-09-30)
+# Report: H-series, H1 to H6 (2026-09-30 to 2026-10-01)
 
-Branch `claude/h-series`, draft PR to `main`. This report is written part by part; the summary, checks and git sections are completed at the end of the series.
+Branch `claude/h-series`, PR #15 to `main` (not merged). Each part has its own section after the summary: what changed, a try-it script and known gaps.
 
 ## 1. Summary
 
-- **Bugs (H1).** The drag-select box is now painted. Rotated objects resize smoothly from their handles. Audio stays off the canvas. The wheel and panning can no longer lose the artboard. Side panels open and close from their rail category.
-- (H2 to H6 are added as they are finished.)
+- **Bugs (H1).**
+  - The drag-select box is now painted.
+  - Rotated objects resize smoothly from their handles.
+  - Audio stays off the canvas.
+  - The wheel and panning can no longer lose the artboard.
+  - Side panels open and close from their rail category.
+- **Design system and shell (H2).**
+  - Dark and light themes.
+  - A Canva and Clipchamp style layout that works from 1920 px down to a phone.
+  - New tooltips, menus, toasts and components.
+- **Canvas (H3).**
+  - One floating toolbar per type, with the canvas size chip.
+  - Crop, border and corners for pictures.
+  - Lock, and right-click menus per type.
+  - Canvas size presets, Canva handles, and a simpler export dialog.
+- **Right panel and modes (H4).** A Clipchamp-style right panel, a stacked Inspector, and Editor and 2D Animation modes.
+- **Library (H5).** Starter Pack 1 (81 shapes, 40 backgrounds, 30 text styles, 12 templates) and gradient fills.
+- **Draw extras (H6).** Signatures, typed, drawn or uploaded.
+- **PR #14 (audio engine).** It was not merged when the series ended, so no rebase was needed. The right panel's Audio section names Wave 7 until it is merged; `src/audio/*`, the export mixdown and `sound-panel.ts` were not touched.
 
 ## 2. Scope and results
 
 | Part | Ledger IDs | Result | Evidence |
 | ---- | ---------- | ------ | -------- |
-| H1 | CV-003, CV-046 (strengthened), CV-049, CV-050, AUD-018, LAY-031, VID-006 (strengthened), CV-018 (updated) | Verified | `e2e/h1-marquee.spec.ts`, `e2e/h1-rotated.spec.ts`, `e2e/h1-audio.spec.ts`, `e2e/h1-wheel.spec.ts`, `e2e/h1-panels.spec.ts` |
+| H1 | CV-003, CV-046 (strengthened), CV-049, CV-050, AUD-018, LAY-031, VID-006 (strengthened), CV-018 (updated) | Verified | `e2e/h1-*.spec.ts` |
+| H2 | LAY-003, LAY-004, LAY-008, LAY-013, LAY-014, LAY-015, LAY-016, LAY-020, LAY-032, LAY-033, LAY-034 | Verified | `e2e/h2-shell.spec.ts`, `tests/h2-tokens.test.ts` |
+| H3 | CV-035 to CV-038 (reworded), CV-051 to CV-056, VID-003, VID-009, VID-018, TXT-036, EXP-006 (reworded) | Verified | `e2e/h3-canvas.spec.ts`, updated toolbar and export specs |
+| H4 | LAY-035, LAY-036, LAY-037, ANI-021, ANI-022 | Verified | `e2e/h4-panels.spec.ts` |
+| H5 | TPL-010, TPL-011, SHP-002, SHP-004, SHP-013, TXT-001 | Verified | `e2e/h5-library.spec.ts`, `tests/library.test.ts` |
+| H6 | SHP-024 | Verified | `e2e/h6-signature.spec.ts` |
+
+Not done, and why:
+
+- CV-024 stays Todo: Lock is built (CV-051), but Hide (LYR-006) is not.
+- TPL-001 and TPL-002 stay Todo: the library has no categories, animated previews or lower-third and subtitle templates.
+- SHP-011 stays Todo: image shadows are not built.
 
 ## 3. Checks
 
-(Completed at the end of the series.)
+VERIFY_PENDING
 
 ## 5. Deviations from the brief
 
 - **H1.2 snapping.** Resizing a rotated object no longer snaps to guides (moves still snap). Snapping lined up the rotated object's axis-aligned bounds with a guide, and that pulled the corner off the pointer. Canva behaves the same way (D-115).
+- **H3 Stroke style** is a popover under the toolbar instead of a side panel (D-122 supersedes that part of D-101).
+- **H3 groups and multi-selections** now get a toolbar (Ungroup or Group), as in Canva. CV-035 was reworded rather than weakened.
+- **H3 export.** The encoder quality is always High, because Quality now means resolution (D-128).
+- **H4 Audio section.** It shows "Planned: Wave 7 (AUD-002)" because PR #14 was not merged.
+- **H6 upload.** An uploaded signature is not kept for one-click reuse, because media bytes never go into browser settings (D-004).
 
 ## 6. Decisions made
 
-D-114 to D-118 in `docs/DECISIONS.md`.
+D-114 to D-135 in `docs/DECISIONS.md`.
 
 ## 7. Not tested, known gaps, risks
 
-- Each part below lists its own known gaps.
+- **Browser.** Every e2e test ran in the sandbox Chromium 141, not Google Chrome or Edge. MP4 export is proven only by the Windows CI job.
+- **Sandbox timing.** Under load, the sandbox's timing-sensitive media tests (PB-010, sometimes PB-009, VID-010 and EXP-001) can miss their limits. They pass when run alone; PB-010 is the known sandbox flake.
+- **Fonts.** Hindi text in library items uses the system font fallback; there are no bundled Indic fonts yet (W3).
+- **Screens.** No touch device and no real high-DPI screen were tested; device pixel ratios 1.25 and 1.5 were emulated.
+- **Per part.** Each part below lists its own known gaps.
 
 ## 8. Architecture and contract impact
 
-- **Schema:** unchanged (5).
-- **New dependencies:** none.
-- **Contracts:** `TRANSFORM_INTERACTION_CONTRACT.md` revision 8 (pre-authorised).
+- **Schema.** Unchanged (5). New data lives in existing property records:
+  - pictures: `crop*`, `cornerRadius`, `stroke*`;
+  - layers: `locked`, `altText`;
+  - text: `textDecoration`, `textAnchor`;
+  - shapes: `fillGradient`.
+- **New additive commands:** `SET_COMPOSITION_SIZE` and `SET_LAYER_ASSET`.
+- **New dependencies:** none. zod was already a dependency.
+- **Contracts:** `TRANSFORM_INTERACTION_CONTRACT.md` revision 8 (pre-authorised): rotated resizing, and the handles' look with the rotate handle below.
+- **Library.** A static manifest validated at load (`src/library/`); everything it adds goes through the Command Bus.
 
 ## 9. Ledger and backlog
 
-- **Rows added (LCR):** CV-049, CV-050, LAY-031, AUD-018.
+- **Rows added (LCR):**
+  - H1: CV-049, CV-050, LAY-031, AUD-018.
+  - H2: LAY-032 to LAY-034.
+  - H3: CV-051 to CV-056, VID-018, TXT-036.
+  - H4: LAY-035 to LAY-037, ANI-021, ANI-022.
+  - H5: TPL-010, TPL-011.
+  - H6: SHP-024.
+- **Reworded:** LAY-013, LAY-014, CV-035 to CV-038, EXP-006.
+- **Ledger now:** 547 rows: 217 Verified, 12 Claimed, 318 Todo, 0 Bug.
+- **Backlog:** new lines for H3 to H5 in `docs/BACKLOG_INBOX.md`.
 
 ## 10. Git
 
-(Completed at the end of the series.)
+- **Branch:** `claude/h-series`, one draft PR to `main` (#15), pushed after every part. Not merged.
+- **Commits:** one feature commit and one docs commit per part; see `git log fc72fdb..HEAD`.
+
+## Owner tick-list
+
+Answer each line with OK, BUG, MISSING or CHANGE and one sentence.
+
+| ID | What to check | Answer |
+| --- | --- | --- |
+| CV-003, CV-046 | Drag-select box is visible and selects what it touches | |
+| CV-049 | Rotated objects resize smoothly from every handle | |
+| AUD-018 | Detached audio never shows on the canvas | |
+| CV-050 | Wheel and pan never lose the page | |
+| LAY-031 | Rail categories open, collapse and swap their panel | |
+| LAY-032 | Dark, light and system themes, no flash on reload | |
+| LAY-013, LAY-014 | Layout at your window sizes, panels as drawers on smaller screens | |
+| LAY-015, LAY-016 | Tooltips and menus look and feel right | |
+| CV-052, CV-053 | Hover outlines, page selection, Canva handles | |
+| CV-054 | Floating toolbar per type, More when narrow | |
+| CV-055 | Canvas size presets with Undo | |
+| VID-003, VID-018 | Crop, border and corners on a photo | |
+| CV-051, CV-056 | Lock and the right-click menus | |
+| EXP-006 | Export dialog with Quality and More options | |
+| LAY-035 to LAY-037 | Right panel sections; Color, Fade, Speed | |
+| ANI-021, ANI-022 | Editor and 2D Animation modes | |
+| TPL-010, TPL-011 | Library panels and Starter Pack 1 | |
+| SHP-004 | Gradient fills | |
+| SHP-024 | Signatures | |
 
 ## Part H1: bugs
 
