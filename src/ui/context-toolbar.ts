@@ -59,6 +59,7 @@ import { sceneLengthCommands } from './scene-length';
 import { documentColors } from './palette';
 import { CANVAS_LIMITS, CANVAS_PRESETS, ratioLabel } from './canvas-size';
 import { pictureOf } from '../render/picture';
+import { formatGradient, type Gradient } from '../render/paint';
 import { canCopyStyle, copyStyle } from './style-clipboard';
 import { showToast } from './components/toast';
 import { describeSelection, selectionRoots } from './selection-context';
@@ -1462,6 +1463,161 @@ export function mountContextToolbar(
         { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
       );
     };
+    /** H5: Solid, Linear or Radial fill with 2 to 4 stops. */
+    const gradientEditor = () => {
+      const current = selected() ?? layer;
+      const style = shapeOf(current);
+      if (!style || !style.fill) return null;
+      const gradient = style.gradient ?? null;
+      const commit = (next: Gradient | null) =>
+        safely(() =>
+          run(next ? 'Set gradient' : 'Remove gradient', [
+            setProperty(
+              session.source.composition.id,
+              selected() ?? current,
+              'fillGradient',
+              withValue(
+                selected() ?? current,
+                'fillGradient',
+                next ? formatGradient(next) : '',
+                'string',
+              ),
+            ),
+          ]),
+        );
+      const wrap = document.createElement('section');
+      wrap.className = 'gradient-editor';
+      wrap.dataset.control = 'gradient';
+      const heading = document.createElement('h4');
+      heading.textContent = t('gradient.title');
+      const types = document.createElement('div');
+      types.className = 'segmented';
+      types.setAttribute('role', 'radiogroup');
+      types.setAttribute('aria-label', t('gradient.title'));
+      for (const type of ['solid', 'linear', 'radial'] as const) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.setAttribute('role', 'radio');
+        item.dataset.gradientType = type;
+        item.setAttribute(
+          'aria-checked',
+          String((gradient?.type ?? 'solid') === type),
+        );
+        item.textContent = t(`gradient.${type}`);
+        item.onclick = () =>
+          commit(
+            type === 'solid'
+              ? null
+              : {
+                  type,
+                  angle: gradient?.angle ?? 0,
+                  stops: gradient?.stops ?? [
+                    { offset: 0, color: style.fill! },
+                    { offset: 1, color: '#ffffff' },
+                  ],
+                },
+          );
+        types.append(item);
+      }
+      wrap.append(heading, types);
+      if (!gradient) return wrap;
+      const stops = document.createElement('div');
+      stops.className = 'gradient-stops';
+      gradient.stops.forEach((stop, index) => {
+        const row = document.createElement('div');
+        row.className = 'gradient-stop';
+        row.append(
+          createColorField({
+            id: `gradient-stop-${index}`,
+            label: t('gradient.stop', { n: String(index + 1) }),
+            value: stop.color,
+            compact: true,
+            documentColors: designColors,
+            onCommit: (color) =>
+              commit({
+                ...gradient,
+                stops: gradient.stops.map((item, i) =>
+                  i === index ? { ...item, color } : item,
+                ),
+              }),
+          }),
+        );
+        if (gradient.stops.length > 2) {
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'icon-button';
+          remove.dataset.action = `gradient-remove-${index}`;
+          remove.setAttribute('aria-label', t('gradient.remove'));
+          remove.title = t('gradient.remove');
+          remove.innerHTML = iconSvg('minus', 14);
+          remove.onclick = () =>
+            commit({
+              ...gradient,
+              stops: gradient.stops.filter((_, i) => i !== index),
+            });
+          row.append(remove);
+        }
+        stops.append(row);
+      });
+      wrap.append(stops);
+      if (gradient.stops.length < 4) {
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'ghost sm';
+        add.dataset.action = 'gradient-add';
+        add.innerHTML = `${iconSvg('plus', 14)}<span></span>`;
+        add.querySelector('span')!.textContent = t('gradient.add');
+        add.onclick = () => {
+          // The new stop goes in the widest gap, in its middle colour.
+          const sorted = gradient.stops;
+          let at = 0;
+          for (let i = 1; i < sorted.length - 1; i++)
+            if (
+              sorted[i + 1]!.offset - sorted[i]!.offset >
+              sorted[at + 1]!.offset - sorted[at]!.offset
+            )
+              at = i;
+          commit({
+            ...gradient,
+            stops: [
+              ...sorted.slice(0, at + 1),
+              {
+                offset: (sorted[at]!.offset + sorted[at + 1]!.offset) / 2,
+                color: sorted[at]!.color,
+              },
+              ...sorted.slice(at + 1),
+            ],
+          });
+        };
+        wrap.append(add);
+      }
+      if (gradient.type === 'linear')
+        wrap.append(
+          createNumberField({
+            id: 'gradient-angle',
+            label: t('gradient.angle'),
+            value: gradient.angle,
+            unit: '°',
+            decimals: 0,
+            min: 0,
+            max: 360,
+            slider: true,
+            presets: [0, 45, 90, 135, 180],
+            onCommit: (angle) => commit({ ...gradient, angle }),
+          }),
+        );
+      return wrap;
+    };
+    const fillExtras = () => {
+      const opacity = fillOpacity();
+      const gradient = gradientEditor();
+      if (!opacity && !gradient) return null;
+      const box = document.createElement('div');
+      box.className = 'fill-extras';
+      if (opacity) box.append(opacity);
+      if (gradient) box.append(gradient);
+      return box;
+    };
     const fill = colorField(
       'fill',
       t('toolbar.fill'),
@@ -1484,7 +1640,7 @@ export function mountContextToolbar(
               shapeCommandFor(selected() ?? layer, 'fillEnabled', false),
             ])
         : undefined,
-      fillOpacity,
+      fillExtras,
     );
     if (open) fill.querySelector('button')!.disabled = true;
     // Combining needs two or more shapes; the button says how (W5-D).

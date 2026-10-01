@@ -62,7 +62,7 @@ export function cloneScene(
 }
 
 /** A new scene placed right after `afterId`, and the commands that add it. */
-function place(
+export function placeScene(
   project: ReadonlyProject,
   afterId: string,
   scene: Composition,
@@ -87,7 +87,7 @@ export function blankScene(project: ReadonlyProject, afterId: string) {
   const current =
     project.compositions.find((item) => item.id === afterId) ??
     project.compositions[0]!;
-  return place(
+  return placeScene(
     project,
     afterId,
     createComposition({
@@ -103,7 +103,7 @@ export function blankScene(project: ReadonlyProject, afterId: string) {
 export function duplicateScene(project: ReadonlyProject, id: string) {
   const scene = project.compositions.find((item) => item.id === id);
   if (!scene) throw new Error('Unknown scene');
-  return place(
+  return placeScene(
     project,
     id,
     cloneScene(scene as object, t('scene.copyName', { name: scene.name })),
@@ -113,7 +113,7 @@ export function duplicateScene(project: ReadonlyProject, id: string) {
 /** The built-in layout (the example design) as a new scene. */
 export function templateScene(project: ReadonlyProject, afterId: string) {
   const example = adoptFreeLayers(createExampleProject()).project;
-  return place(
+  return placeScene(
     project,
     afterId,
     cloneScene(example.compositions[0]!, t('scene.templateName')),

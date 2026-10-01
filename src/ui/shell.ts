@@ -58,6 +58,7 @@ import { CropTool } from './crop-tool';
 import { AnimatedInEditorError } from './editor-mode';
 import { escapeTopPopover } from './components/popover';
 import { mountToolPanels } from './tool-panels';
+import { mountLibraryPanels } from './library-panel';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
@@ -210,6 +211,10 @@ export function mountEditorShell(
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" data-rail-panel="Draw" hidden></div>
         <div class="draw-panel shapes-panel" id="shapes-panel" data-rail-panel="Elements" hidden></div>
+        <div id="library-elements" data-rail-panel="Elements" hidden></div>
+        <div id="library-templates" data-rail-panel="Templates" hidden></div>
+        <div id="library-text" data-rail-panel="Text" hidden></div>
+        <div id="library-graphics" data-rail-panel="Graphics" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -1276,7 +1281,15 @@ export function mountEditorShell(
   const railPanels = [
     ...root.querySelectorAll<HTMLElement>('[data-rail-panel]'),
   ];
-  const OWN_PANELS = new Set(['Media', 'Scene', 'Draw', 'Elements']);
+  const OWN_PANELS = new Set([
+    'Media',
+    'Scene',
+    'Draw',
+    'Elements',
+    'Templates',
+    'Text',
+    'Graphics',
+  ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
     element('#draw-panel'),
@@ -1286,6 +1299,19 @@ export function mountEditorShell(
   // SHP-001: the Elements category offers shapes; a click adds one.
   mountShapesPanel(element('#shapes-panel'), (preset) =>
     safely(() => addShape(engine, session, preset)),
+  );
+  // H5: Starter Pack 1 in Templates, Elements, Text and Graphics.
+  mountLibraryPanels(
+    {
+      Templates: element('#library-templates'),
+      Elements: element('#library-elements'),
+      Text: element('#library-text'),
+      Graphics: element('#library-graphics'),
+    },
+    engine,
+    session,
+    reportError,
+    renderer.measureText,
   );
   let activeCategory = 'Scene';
   let activeSection = 'Properties';

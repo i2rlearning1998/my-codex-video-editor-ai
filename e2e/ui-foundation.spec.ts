@@ -27,7 +27,12 @@ test('[LAY-002] each rail category shows only its own panel, on first load, afte
     Media: 'Media',
     Draw: 'Draw',
     Elements: 'Elements',
-    Text: 'placeholder',
+    // H5: Text, Templates and Graphics hold the library; Audio is still a
+    // placeholder.
+    Text: 'Text',
+    Templates: 'Templates',
+    Graphics: 'Graphics',
+    Audio: 'placeholder',
     Scene: 'Scene',
   };
   for (const [category, panel] of Object.entries(expected)) {
