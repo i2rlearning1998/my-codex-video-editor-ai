@@ -268,3 +268,58 @@ Every fix below has a Playwright test in the sandbox Chromium that fails on the 
 - The Inspector's own field names (Position X, Start time and so on) are still English only; they predate the translation rule (backlog).
 - 2D Animation adds no new animation tools yet; it shows the keyframe tools that existed.
 - The right panel's Audio section waits for the Sound panel of PR #14.
+
+## Part H5: library and Starter Pack 1
+
+### What changed
+
+- **Library (TPL-010, D-133).**
+  - A content library now fills four rail categories:
+    - **Templates** holds the templates.
+    - **Elements** keeps the five basic shapes and adds the library shapes.
+    - **Text** holds the text styles.
+    - **Graphics** holds the backgrounds.
+  - Each panel has a search box (names in English and Hindi, and tags), small previews drawn by the editor itself, a loading message, and an error message if the library cannot load.
+  - The format and how to add content are in `docs/LIBRARY.md`.
+- **Starter Pack 1 (TPL-011).**
+  - The pack holds 81 shapes, 40 backgrounds, 30 text styles and 12 templates.
+  - **Shapes:** polygons, stars, blobs, arrows, hearts, flowers, seals, rings, frames, symbols, speech bubbles, clouds and waves.
+  - **Backgrounds:** gradients and layered shapes, with no patterns.
+  - **Text styles:** headings, body text and labels, plus two-part styles.
+  - **Templates:** intro, lesson, quote, list, thumbnail, end screen, chapter, compare, announcement, quiz, event and recipe.
+  - All of it is original and made by `scripts/build-library.mjs` (`npm run library`).
+  - Everything the library adds is ordinary layers, as one undo step each:
+    - A shape is centred at the playhead.
+    - A background goes to the back.
+    - A text style is centred, in the UI language.
+    - A template becomes a new scene after the open one, sized to the canvas.
+- **Gradient fill (SHP-004, D-134).**
+  - Shapes and backgrounds can be filled with a linear or radial gradient of 2 to 4 colours.
+  - In a shape's Colour panel, Fill type switches between Solid, Linear and Radial. You can then edit the colours, add or remove one, and set the angle.
+  - Gradients are drawn the same in the preview and the export.
+  - No schema change was needed.
+- **Tests.**
+  - `e2e/h5-library.spec.ts` has 7 tests and `tests/library.test.ts` has 5.
+  - The LAY-002 test now expects the Text, Templates and Graphics panels, and still checks the Audio placeholder.
+
+### Try it (H5)
+
+| # | Do this | Expect | ID |
+| --- | --- | --- | --- |
+| 1 | Click Templates in the left rail | 12 template cards with small pictures | TPL-010 |
+| 2 | Click "YouTube intro" | A new scene opens with a pink-purple gradient and "Welcome back!"; Undo removes it | TPL-011 |
+| 3 | Click Elements, type "star" in the search box | Only stars and the burst remain | TPL-010 |
+| 4 | Click a star | It appears in the middle of the page, selected | SHP-002 |
+| 5 | Click Graphics, then "Sunrise" | The page gets a warm gradient behind everything | SHP-013 |
+| 6 | Click Text, then "Bold heading" | "Add a heading" appears in the middle, bold | TXT-001 |
+| 7 | Add a rectangle, click its fill swatch, choose Linear | The rectangle shades from its colour to white | SHP-004 |
+| 8 | Set the angle to 90, click "Add colour" | The gradient turns vertical; a third colour appears | SHP-004 |
+| 9 | Export a PNG frame | The gradients look the same as on the canvas | SHP-004 |
+
+### Known gaps (H5)
+
+- The library has no categories inside a panel, favourites or recently used items. Templates have still previews, not animated ones (TPL-001 stays Todo).
+- Library items cannot be dragged onto the canvas; a click adds them.
+- Text gradients are not built (shapes and backgrounds only).
+- Emoji, stickers and open-license icons (SHP-009) are not part of Starter Pack 1.
+
