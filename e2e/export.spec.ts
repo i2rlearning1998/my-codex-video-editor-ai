@@ -2,7 +2,15 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Page, TestInfo } from '@playwright/test';
 import { ALL_FORMATS, BufferSource, Input } from 'mediabunny';
-import { test, expect, hook, rulerBox, showCategory, mode2d } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  rulerBox,
+  showCategory,
+  mode2d,
+  openInspector,
+} from './fixtures';
 
 // W5-A: export v1. The sandbox Chromium has no H.264/AAC encoder, so exports here are
 // WebM (VP9 + Opus). The CI "export-mp4" job sets REQUIRE_H264=1 and runs the same
@@ -566,6 +574,7 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
     )
     .click();
   await seek(2);
+  await openInspector(page);
   const x = page.locator('#inspector-content input[aria-label="Position X"]');
   await x.fill('276');
   await x.press('Enter');

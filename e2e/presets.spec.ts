@@ -1,5 +1,13 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox, mode2d } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  artboard,
+  rulerBox,
+  mode2d,
+  openInspector,
+} from './fixtures';
 import { choose as chooseOption, sidePanel } from './controls';
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced) over the
@@ -235,6 +243,7 @@ test('[ANI-010] the easing library previews named curves and applies one to the 
     )
     .click();
   await seek(page, 2);
+  await openInspector(page);
   const x = page.locator('#inspector-content input[aria-label="Position X"]');
   await x.fill('276');
   await x.press('Enter');

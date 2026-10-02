@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect } from './fixtures';
+import { test, expect, openInspector } from './fixtures';
 
 // H1.2 (contract revision 8): resizing rotated objects. Fixture
 // h1-rotated.json holds a shape, a text, a group, an image, a nested group
@@ -39,6 +39,7 @@ async function select(page: Page, id: string) {
   await expect.poll(async () => (await debug(page)).corners).not.toBeNull();
 }
 async function rotate(page: Page, angle: number) {
+  await openInspector(page);
   const field = page.locator('#inspector-rotation');
   await field.fill(String(angle));
   await field.press('Enter');

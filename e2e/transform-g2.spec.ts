@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
+import { test, expect, hook, artboard, openInspector } from './fixtures';
 
 // G2: what the Inspector says about an object's size and place matches what
 // is drawn, for every kind of object, before and after a handle drag.
@@ -267,6 +267,7 @@ test('[CV-044] a multi-selection: X, Y, W and H are its dashed box, match the dr
   ).toBeLessThanOrEqual(slack);
   // Typing X moves both layers by the same amount, as one undo step.
   await select(page, 'g2-text', 'g2-rect');
+  await openInspector(page);
   const input = page.locator('#inspector-x');
   await input.fill(String(after.x + 20));
   await input.press('Enter');

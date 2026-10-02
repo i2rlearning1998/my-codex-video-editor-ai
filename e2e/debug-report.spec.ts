@@ -25,7 +25,7 @@ test('[DEV-007] button copies a parseable debug report and shortcut also works',
   expect(report.schema).toBe('aive-debug-report/1');
   expect(report.project).toEqual((await hook(page)).project);
   expect(report.editor).toEqual((await hook(page)).session);
-  expect(report.env.viewport).toEqual({ width: 1600, height: 1000 });
+  expect(report.env.viewport).toEqual(page.viewportSize());
   await page.screenshot({ path: testInfo.outputPath('debug-report.png') });
   await page.keyboard.press('Control+Shift+d');
   await expect

@@ -428,6 +428,15 @@ export class TransformInteraction {
         );
         current = transformPoint(gesture.inverseParent, snapped.point);
         gesture.guides = snapped.guides;
+        // I3 (D-150): the pointer correction leaves floating-point dust (a
+        // snapped edge at 499.99999999999994); a single-layer move puts the
+        // feature exactly on its guide, in the parent's space.
+        if (
+          gesture.kind === 'move' &&
+          !gesture.members &&
+          snapped.guides.length
+        )
+          this.#exactSnap(gesture, snapped.guides);
       } else {
         current = this.#apply(gesture, point, proportional, fromCenter);
         gesture.guides = [];
@@ -510,6 +519,33 @@ export class TransformInteraction {
     return current;
   }
   /** World bounds of the previewed selection. */
+  #exactSnap(gesture: Gesture, guides: readonly SnapGuide[]) {
+    const box = this.#box(gesture);
+    const value = gesture.value;
+    if (!box || !value) return;
+    const delta: [number, number] = [0, 0];
+    for (const guide of guides) {
+      const [low, high] =
+        guide.axis === 'x' ? [box.minX, box.maxX] : [box.minY, box.maxY];
+      const nearest = [low, (low + high) / 2, high].reduce((a, b) =>
+        Math.abs(b - guide.value) < Math.abs(a - guide.value) ? b : a,
+      );
+      const off = guide.value - nearest;
+      if (off !== 0 && Math.abs(off) < 1e-6)
+        delta[guide.axis === 'x' ? 0 : 1] = off;
+    }
+    if (!delta[0] && !delta[1]) return;
+    const origin = transformPoint(gesture.inverseParent, [0, 0]);
+    const moved = transformPoint(gesture.inverseParent, delta);
+    const [x, y] = value.position.value;
+    gesture.value = {
+      ...value,
+      position: {
+        ...value.position,
+        value: [x + moved[0] - origin[0], y + moved[1] - origin[1]],
+      },
+    };
+  }
   #box(gesture: Gesture): Box | null {
     const source = this.session.source;
     if (gesture.members)

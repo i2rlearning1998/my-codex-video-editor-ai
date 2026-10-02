@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, rulerBox } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  toScreen,
+  rulerBox,
+  openInspector,
+} from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
 test.beforeEach(async ({ page }) => {
@@ -77,6 +84,7 @@ async function seek(page: Page, seconds: number) {
 const field = (page: Page, name: string) =>
   page.getByRole('spinbutton', { name, exact: true });
 async function setField(page: Page, name: string, value: string) {
+  await openInspector(page);
   await field(page, name).fill(value);
   await field(page, name).press('Enter');
 }

@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  artboard,
+  showCategory,
+  openInspector,
+} from './fixtures';
 import { choose, pickColor, reveal } from './controls';
 
 // G1: shared UI foundation. Rail categories, number fields, selects, colour
@@ -150,6 +157,7 @@ test('[INS-006][INS-007][LAY-023] number fields scrub, type, step with arrows, r
   await page.goto('/');
   await ready(page);
   await selectLayer(page, 'example-badge');
+  await openInspector(page);
   const x = page.getByRole('spinbutton', { name: 'Position X', exact: true });
   await expect(x).toHaveValue('76');
   // Scrub: drag the label right; the value previews and commits once.
