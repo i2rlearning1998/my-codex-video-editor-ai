@@ -110,6 +110,9 @@ test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom siz
   });
   await menuAction(page, '#save');
   await page.reload();
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
   expect((await hook(page)).project).toEqual(snapshot.project);
   await page.screenshot({ path: testInfo.outputPath('new-project.png') });
 });

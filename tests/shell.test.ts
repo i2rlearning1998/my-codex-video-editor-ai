@@ -79,15 +79,16 @@ describe('editor shell integration', () => {
         (button) => button.dataset.category,
       ),
     ).toEqual([
-      'Media',
-      'Graphics',
-      'Text',
+      // H2: the order a user reaches for them (D-120).
       'Templates',
-      'Audio',
       'Elements',
+      'Text',
+      'Media',
       'Draw',
-      'Transitions',
       'Scene',
+      'Graphics',
+      'Audio',
+      'Transitions',
     ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();
     expect(root.querySelector('.timeline canvas')).toBeNull();

@@ -1,4 +1,7 @@
 // W5-A Export dialog (EXP-001, EXP-002, EXP-006, EXP-008, EXP-009, APP-015).
+// H3 (Canva): Quality (720p, 1080p, 4K: the output's shorter edge, in the
+// canvas's shape) and the file name; More options holds the format, frame
+// rate and range. Platform sizes are canvas sizes, not export presets.
 import type { Asset, Composition, DeepReadonly } from '../core';
 import {
   download,
@@ -8,12 +11,12 @@ import {
   type ExportRun,
 } from '../export/client';
 import {
-  EXPORT_PRESETS,
   FRAME_RATES,
+  RESOLUTIONS,
+  defaultResolution,
   defaultSettings,
-  evenSize,
   remainingSeconds,
-  type ExportQuality,
+  resolutionSize,
   type ExportSettings,
 } from '../export/settings';
 import type { AudioDecoder, MediaStore } from '../media';
@@ -49,10 +52,10 @@ export function openExportDialog(options: ExportDialogOptions) {
     joinError = error instanceof Error ? error.message : String(error);
   }
   let composition = joined ?? options.composition;
-  let settings: ExportSettings = defaultSettings(
-    composition,
-    options.projectName,
-  );
+  let settings: ExportSettings = {
+    ...defaultSettings(composition, options.projectName),
+    ...resolutionSize(composition, defaultResolution(composition)),
+  };
   let run: ExportRun | null = null;
   const modal = openModal({
     titleText: t('export.title'),
@@ -72,49 +75,42 @@ export function openExportDialog(options: ExportDialogOptions) {
           }
           <p class="export-format" id="export-scenes-note" role="note"${joinError ? '' : ' hidden'}>${joinError}</p>
           ${field(
-            'export-preset',
-            t('export.preset'),
-            `<select id="export-preset"><option value="custom">${t('export.preset.custom')}</option>${EXPORT_PRESETS.map(
-              (preset) =>
-                `<option value="${preset.id}">${t(preset.label)} · ${preset.width}×${preset.height}</option>`,
+            'export-resolution',
+            t('export.quality'),
+            `<select id="export-resolution">${RESOLUTIONS.map(
+              (edge) =>
+                `<option value="${edge}">${t(`export.resolution.${edge}`)}</option>`,
             ).join('')}</select>`,
           )}
-          <div class="export-row">
-            ${field('export-width', t('export.width'), `<input id="export-width" type="number" min="16" max="7680" step="2" />`)}
-            ${field('export-height', t('export.height'), `<input id="export-height" type="number" min="16" max="7680" step="2" />`)}
-          </div>
-          <div class="export-row">
-            ${field(
-              'export-fps',
-              t('export.fps'),
-              `<select id="export-fps">${[
-                ...new Set([composition.fps, ...FRAME_RATES]),
-              ]
-                .sort((a, b) => a - b)
-                .map(
-                  (fps) =>
-                    `<option value="${fps}">${formatNumber(fps)}</option>`,
-                )
-                .join('')}</select>`,
-            )}
-            ${field(
-              'export-quality',
-              t('export.quality'),
-              `<select id="export-quality">${(
-                ['low', 'medium', 'high'] as const
-              )
-                .map(
-                  (quality) =>
-                    `<option value="${quality}">${t(`export.quality.${quality}`)}</option>`,
-                )
-                .join('')}</select>`,
-            )}
-          </div>
-          <div class="export-row">
-            ${field('export-start', t('export.start'), `<input id="export-start" type="number" min="0" step="0.1" />`)}
-            ${field('export-end', t('export.end'), `<input id="export-end" type="number" min="0" step="0.1" />`)}
-          </div>
+          <p class="export-size" id="export-size" role="status"></p>
           ${field('export-name', t('export.fileName'), `<input id="export-name" type="text" maxlength="120" />`)}
+          <details class="export-more" id="export-more">
+            <summary>${t('export.more')}</summary>
+            <div class="export-row">
+              ${field(
+                'export-container',
+                t('export.formatChoice'),
+                `<select id="export-container"><option value="auto">${t('export.container.auto')}</option><option value="webm">${t('export.container.webm')}</option></select>`,
+              )}
+              ${field(
+                'export-fps',
+                t('export.fps'),
+                `<select id="export-fps">${[
+                  ...new Set([composition.fps, ...FRAME_RATES]),
+                ]
+                  .sort((a, b) => a - b)
+                  .map(
+                    (fps) =>
+                      `<option value="${fps}">${formatNumber(fps)}</option>`,
+                  )
+                  .join('')}</select>`,
+              )}
+            </div>
+            <div class="export-row">
+              ${field('export-start', t('export.start'), `<input id="export-start" type="number" min="0" step="0.1" />`)}
+              ${field('export-end', t('export.end'), `<input id="export-end" type="number" min="0" step="0.1" />`)}
+            </div>
+          </details>
           <p class="export-format" id="export-format" role="status"></p>
           <div class="export-missing" id="export-missing" role="alert" hidden></div>
           <div class="export-progress" id="export-progress" hidden>
@@ -133,43 +129,56 @@ export function openExportDialog(options: ExportDialogOptions) {
   const find = <T extends HTMLElement>(id: string) =>
     root.querySelector<T>(`#${id}`)!;
   const inputs = {
-    preset: find<HTMLSelectElement>('export-preset'),
-    width: find<HTMLInputElement>('export-width'),
-    height: find<HTMLInputElement>('export-height'),
+    resolution: find<HTMLSelectElement>('export-resolution'),
+    container: find<HTMLSelectElement>('export-container'),
     fps: find<HTMLSelectElement>('export-fps'),
-    quality: find<HTMLSelectElement>('export-quality'),
     start: find<HTMLInputElement>('export-start'),
     end: find<HTMLInputElement>('export-end'),
     name: find<HTMLInputElement>('export-name'),
   };
   const startButton = find<HTMLButtonElement>('export-start-button');
+  let resolution: number = defaultResolution(composition);
   const show = () => {
-    inputs.width.value = String(settings.width);
-    inputs.height.value = String(settings.height);
+    inputs.resolution.value = String(resolution);
+    inputs.container.value = settings.container ?? 'auto';
     inputs.fps.value = String(settings.fps);
-    inputs.quality.value = settings.quality;
     inputs.start.value = String(settings.start);
     inputs.end.value = String(settings.end);
     inputs.name.value = settings.fileName;
+    find('export-size').textContent = t('export.sizeNote', {
+      width: formatNumber(settings.width),
+      height: formatNumber(settings.height),
+    });
   };
   const read = (): ExportSettings => ({
-    width: evenSize(Number(inputs.width.value)),
-    height: evenSize(Number(inputs.height.value)),
+    ...resolutionSize(composition, resolution),
     fps: Number(inputs.fps.value),
-    quality: inputs.quality.value as ExportQuality,
+    quality: 'high',
     start: Math.max(0, Number(inputs.start.value) || 0),
     end: Math.min(composition.duration, Number(inputs.end.value) || 0),
     fileName: inputs.name.value,
+    container: inputs.container.value === 'webm' ? 'webm' : 'auto',
   });
   // EXP-001: say which format will be written, and why.
   let probe = 0;
   const describeFormat = () => {
     const ticket = ++probe;
     find('export-format').textContent = t('export.format.checking');
-    void probeMp4(settings.width, settings.height, settings.fps).then((mp4) => {
+    const forced = settings.container === 'webm';
+    void (
+      forced
+        ? Promise.resolve(false)
+        : probeMp4(settings.width, settings.height, settings.fps)
+    ).then((mp4) => {
       if (ticket !== probe) return;
       const format = find('export-format');
-      format.textContent = t(mp4 ? 'export.format.mp4' : 'export.format.webm');
+      format.textContent = t(
+        mp4
+          ? 'export.format.mp4'
+          : forced
+            ? 'export.format.webmChosen'
+            : 'export.format.webm',
+      );
       format.dataset.container = mp4 ? 'mp4' : 'webm';
     });
   };
@@ -187,35 +196,20 @@ export function openExportDialog(options: ExportDialogOptions) {
     startButton.disabled = missing.length > 0 || run !== null;
   };
   const changed = () => {
+    resolution = Number(inputs.resolution.value);
     settings = read();
     show();
     describeFormat();
     void checkMissing();
   };
-  inputs.preset.onchange = () => {
-    const preset = EXPORT_PRESETS.find(
-      (item) => item.id === inputs.preset.value,
-    );
-    if (preset) {
-      inputs.width.value = String(preset.width);
-      inputs.height.value = String(preset.height);
-      inputs.quality.value = preset.quality;
-    }
-    changed();
-  };
   for (const input of [
-    inputs.width,
-    inputs.height,
+    inputs.resolution,
+    inputs.container,
     inputs.fps,
-    inputs.quality,
     inputs.start,
     inputs.end,
   ])
-    input.onchange = () => {
-      if (input === inputs.width || input === inputs.height)
-        inputs.preset.value = 'custom';
-      changed();
-    };
+    input.onchange = changed;
   const scope = root.querySelector<HTMLSelectElement>('#export-scenes');
   if (scope) {
     scope.value = joined ? 'all' : 'current';
@@ -224,7 +218,9 @@ export function openExportDialog(options: ExportDialogOptions) {
         scope.value === 'all' && joined ? joined : options.composition;
       settings = {
         ...defaultSettings(composition, options.projectName),
+        ...resolutionSize(composition, resolution),
         fileName: settings.fileName,
+        container: settings.container ?? 'auto',
       };
       show();
       describeFormat();

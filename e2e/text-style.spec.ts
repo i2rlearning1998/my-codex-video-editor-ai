@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, artboard } from './fixtures';
-import { choose } from './controls';
+import { choose, reveal } from './controls';
 
 // W2-F5 text styling from the context toolbar. Default example:
 // headline 76,165 730x230 "Make room\nfor your ideas." (size 78, #272b29);
@@ -78,15 +78,16 @@ async function ink(page: Page, rect: [number, number, number, number]) {
 const control = (page: Page, id: string) =>
   page.locator(`#context-toolbar [data-control="${id}"]`);
 async function commit(page: Page, id: string, value: string) {
-  const input = page.locator(`#toolbar-${id}`);
+  const input = await reveal(page, `toolbar-${id}`);
   await input.fill(value);
   await input.press('Enter');
 }
 const lastLabel = async (page: Page) =>
   (await hook(page)).history.labels.at(-1);
 const SUBTITLE: [number, number, number, number] = [60, 565, 900, 645];
-// Above the badge (456) and left of the cards.
-const HEADLINE: [number, number, number, number] = [60, 160, 700, 452];
+// Above the badge (456), left of the cards, and left of the rotation handle
+// under the box's middle (H3); both lines start at x 76.
+const HEADLINE: [number, number, number, number] = [60, 160, 400, 452];
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -99,14 +100,35 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
   page,
 }, testInfo) => {
   await select(page, 'example-subtitle');
-  // Font, Size, Weight, Italic, Color, Align, Spacing, Effects, Animate, Position.
-  await expect(page.locator('#context-toolbar [data-control]')).toHaveCount(10);
-  for (const id of ['font', 'weight', 'italic', 'align', 'spacing'])
+  // H3: the Canva text row: size chip, font, size, colour, B I U S aA,
+  // align, list, spacing, transparency, effects, animate, position, style.
+  for (const id of [
+    'canvas-size',
+    'font',
+    'size',
+    'color',
+    'bold',
+    'italic',
+    'underline',
+    'strike',
+    'uppercase',
+    'align',
+    'spacing',
+    'transparency',
+    'effects',
+    'animate',
+    'position',
+    'copy-style',
+  ])
     await expect(control(page, id)).toBeEnabled();
-  await expect(control(page, 'effects')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  // List is planned (TXT-024, Wave 3); Effects opens a panel whose effects
+  // name their wave.
+  await expect(control(page, 'list')).toHaveAttribute('aria-disabled', 'true');
+  await control(page, 'effects').click();
+  await expect(
+    page.locator('[data-tool-panel="effects"] [aria-disabled="true"]').first(),
+  ).toHaveAttribute('title', 'Planned: Wave 3 (TXT-019)');
+  await page.keyboard.press('Escape');
   const left = await ink(page, SUBTITLE);
   expect(left.left).toBeLessThan(80);
   await choose(page, 'toolbar-align', 'right');
@@ -227,7 +249,15 @@ test('[TXT-010] the toolbar changes the font, the weight and italic, one undo st
 }) => {
   await select(page, 'example-subtitle');
   const arial = await ink(page, SUBTITLE);
-  await choose(page, 'toolbar-font', 'Courier New');
+  // H3: the font button opens the Font panel, each font in its own face.
+  await control(page, 'font').click();
+  await page
+    .locator('[data-tool-panel="font"] [data-font="Courier New"]')
+    .click();
+  await expect(page.locator('#toolbar-font')).toHaveAttribute(
+    'data-value',
+    'Courier New',
+  );
   expect(await lastLabel(page)).toBe('Set font');
   const courier = await ink(page, SUBTITLE);
   // Monospace at 24 px: 38 characters of about 14.4 units each.

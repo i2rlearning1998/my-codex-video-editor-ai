@@ -1,6 +1,13 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  artboard,
+  rulerBox,
+  showCategory,
+} from './fixtures';
 
 // W4-B: decoded video and images on the canvas and in playback.
 // frame-code.json: 1280x720 composition at 30 fps, background #f0eee7. Video 1 holds
@@ -19,7 +26,7 @@ interface Transform {
 const FULL: Transform = { position: [0, 0], rotation: 0, scale: [4, 4] };
 
 async function importFiles(page: Page, names: string[]) {
-  await page.locator('[data-category="Media"]').click();
+  await showCategory(page, 'Media');
   const chooser = page.waitForEvent('filechooser');
   await page.locator('#import-media').click();
   await (await chooser).setFiles(names.map(fixture));
@@ -303,7 +310,7 @@ test('[VID-002] a video on an overlay track moves, scales and rotates on the can
   ).toBe('clip-code');
   await seek(page, 1.5);
   // Make it a picture in picture: scale 1 via the inspector, then drag on the canvas.
-  await page.locator('[data-category="Scene"]').click();
+  await showCategory(page, 'Scene');
   await page.locator('#scene-list [data-layer-id="layer-code"]').click();
   for (const [field, value] of [
     ['Scale X', '1'],

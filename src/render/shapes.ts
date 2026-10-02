@@ -5,6 +5,7 @@
 // `shapePolygons` in world space.
 import { transformPoint, type AffineMatrix, type Point2 } from '../core';
 import type { SceneLayer } from './adapter';
+import { canvasGradient, parseGradient, type Gradient } from './paint';
 
 export const SHAPE_KINDS = [
   'rectangle',
@@ -42,6 +43,8 @@ export interface ShapeStyle {
   readonly radius: number;
   /** Local outline of a boolean result (kind `path`). */
   readonly polygons?: MultiPolygon;
+  /** H5: a gradient that replaces the fill colour (closed shapes). */
+  readonly gradient?: Gradient;
 }
 
 const COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -118,6 +121,7 @@ export function shapeOf(layer: SceneLayer): ShapeStyle | null {
   const opacity = numeric('fillOpacity');
   const radius = numeric('cornerRadius');
   const enabled = p.fillEnabled;
+  const gradient = open ? null : parseGradient(string('fillGradient'));
   return {
     kind,
     fill:
@@ -139,6 +143,7 @@ export function shapeOf(layer: SceneLayer): ShapeStyle | null {
         ? radius
         : 0,
     ...(polygons ? { polygons } : {}),
+    ...(gradient ? { gradient } : {}),
   };
 }
 
@@ -175,7 +180,9 @@ export function drawShape(
     if (!shape.fill) return;
     const alpha = context.globalAlpha;
     context.globalAlpha = alpha * shape.fillOpacity;
-    context.fillStyle = shape.fill;
+    context.fillStyle = shape.gradient
+      ? canvasGradient(context, shape.gradient, width, height)
+      : shape.fill;
     context.fillRect(0, 0, width, height);
     context.globalAlpha = alpha;
     return;
@@ -240,7 +247,9 @@ export function drawShape(
   if (shape.fill) {
     const alpha = context.globalAlpha;
     context.globalAlpha = alpha * shape.fillOpacity;
-    context.fillStyle = shape.fill;
+    context.fillStyle = shape.gradient
+      ? canvasGradient(context, shape.gradient, width, height)
+      : shape.fill;
     context.fill('evenodd');
     context.globalAlpha = alpha;
   }

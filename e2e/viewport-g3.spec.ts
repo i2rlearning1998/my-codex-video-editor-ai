@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook } from './fixtures';
-import { pickColor } from './controls';
+import { pickColor, reveal } from './controls';
 
 // G3: marquee with a live highlight, pan and zoom, objects outside the
 // artboard, and the scene bar. Default example (1280x720): badge 76,456
@@ -100,6 +100,10 @@ test('[CV-018][CV-047] Space-drag, the middle button, the hand tool and the whee
   page,
 }) => {
   const initial = await view(page);
+  // H1.4 (CV-050): an artboard that fits never pans, so zoom in first.
+  for (let i = 0; i < 3; i++)
+    await page.locator('[data-canvas-zoom="in"]').click();
+  const zoomed = await view(page);
   const middle = await screen(page, 640, 360);
   await page.mouse.move(middle.x, middle.y);
   // Space + drag pans and does not play or select.
@@ -109,8 +113,8 @@ test('[CV-018][CV-047] Space-drag, the middle button, the hand tool and the whee
   await page.mouse.up();
   await page.keyboard.up('Space');
   let now = await view(page);
-  expect(now[4] - initial[4]).toBeCloseTo(100, 0);
-  expect(now[5] - initial[5]).toBeCloseTo(50, 0);
+  expect(now[4] - zoomed[4]).toBeCloseTo(100, 0);
+  expect(now[5] - zoomed[5]).toBeCloseTo(50, 0);
   expect((await hook(page)).session.playing).toBe(false);
   expect(await selectedIds(page)).toEqual([]);
   // Space pressed without a drag still plays and pauses.
@@ -296,7 +300,7 @@ test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: back
   // Animate is not built for scenes yet and says which wave builds it.
   await expect(bar.locator('[data-control="scene-animate"]')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 8 (ANI-020)',
+    'Planned: Wave 8 (ANI-020)',
   );
   // Background: one undo step, applied to the project (every scene).
   await pickColor(page, 'toolbar-background', '#223344');
@@ -304,7 +308,7 @@ test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: back
   expect(project.settings.backgroundColor).toBe('#223344');
   expect((await hook(page)).history.labels.at(-1)).toBe('Set background');
   // Scene length: a longer scene extends the clips that end with it.
-  const length = page.locator('#toolbar-scene-length');
+  const length = await reveal(page, 'toolbar-scene-length');
   const duration = project.compositions[0]!.duration;
   await expect(length).toHaveValue(String(Math.round(duration * 100) / 100));
   await length.fill(String(duration + 3));

@@ -83,7 +83,10 @@ export function mountSelectionActions(
   let identity = '';
   let rendered: unknown = null;
   /** Shows the cluster above `box`, or hides it when there is nothing to act on. */
-  const update = (box: StageBox | null, stage: { width: number }) => {
+  const update = (
+    box: StageBox | null,
+    stage: { width: number; height?: number },
+  ) => {
     const ids = session.selectedIds;
     if (!box || !ids.length) {
       cluster.hidden = true;
@@ -135,25 +138,31 @@ export function mountSelectionActions(
       cluster.replaceChildren(...items, ...arrange, more);
     }
     cluster.hidden = false;
-    // Above the box's top-right corner, clear of the corner handle; beside a
-    // narrow box so it never covers the rotation handle; below it when there
-    // is no room above.
+    // H1.2: the cluster never covers the box or any of its handles. The box
+    // passed in already includes the rotation handle; handles reach 12 px past
+    // it. Try above (right-aligned), right, left and below, in that order, and
+    // take the first that fits in the stage.
     const width = cluster.offsetWidth,
       height = cluster.offsetHeight;
     const gap = 16;
-    const narrow = box.right - box.left < width + 80;
-    const left = Math.max(
-      0,
-      Math.min(
-        stage.width - width,
-        narrow ? box.right + gap : box.right - width,
-      ),
-    );
-    const top = narrow
-      ? Math.max(0, box.top)
-      : box.top - height - gap >= 0
-        ? box.top - height - gap
-        : box.bottom + gap;
+    const stageHeight = stage.height ?? Infinity;
+    const clampX = (x: number) => Math.max(0, Math.min(stage.width - width, x));
+    const candidates: [number, number][] = [
+      [clampX(box.right - width), box.top - height - gap],
+      [box.right + gap, Math.max(0, box.top)],
+      [box.left - gap - width, Math.max(0, box.top)],
+      [clampX(box.right - width), box.bottom + gap],
+    ];
+    const fits = ([x, y]: [number, number]) =>
+      x >= 0 &&
+      y >= 0 &&
+      x + width <= stage.width &&
+      y + height <= stageHeight &&
+      (x + width <= box.left - 12 ||
+        x >= box.right + 12 ||
+        y + height <= box.top - 12 ||
+        y >= box.bottom + 12);
+    const [left, top] = candidates.find(fits) ?? candidates[0]!;
     cluster.style.left = `${left}px`;
     cluster.style.top = `${top}px`;
   };

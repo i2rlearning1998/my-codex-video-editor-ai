@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
-import { pickColor } from './controls';
+import { test, expect, hook, artboard, showCategory } from './fixtures';
+import { pickColor, reveal } from './controls';
 
 // Default example: text "example-headline" (76,165, fill #272b29, size 78),
 // shape "example-badge" (76,456 224×48, fill #cbbced), group "example-cards".
@@ -38,7 +38,7 @@ async function select(page: Page, ...ids: string[]) {
     .toEqual(ids);
 }
 async function commit(page: Page, id: string, value: string) {
-  const input = page.locator(`#toolbar-${id}`);
+  const input = await reveal(page, `toolbar-${id}`);
   await input.fill(value);
   await input.press('Enter');
 }
@@ -90,16 +90,11 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   // Regression: the toolbar floats; showing it never moves the canvas.
   expect(await page.locator('canvas').boundingBox()).toEqual(canvasBefore);
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'text');
-  // The spec's text controls, in order.
-  await expect(toolbar(page).locator('[data-control]')).toHaveCount(10);
-  // W2-F5 made Font, Weight, Align and Spacing live; Effects is still later.
-  await expect(control(page, 'effects')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
-  await expect(control(page, 'effects')).toHaveAttribute(
+  // H3: one row; unbuilt controls name their wave (List, TXT-024).
+  await expect(control(page, 'list')).toHaveAttribute('aria-disabled', 'true');
+  await expect(control(page, 'list')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 3 (TXT-019)',
+    'Planned: Wave 3 (TXT-024)',
   );
   await page.screenshot({ path: testInfo.outputPath('text-toolbar.png') });
   await commit(page, 'size', '60');
@@ -119,7 +114,8 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   // A shape: Fill edits; W5-D made Stroke live, and Boolean says how to reach it.
   await select(page, 'example-badge');
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'shape');
-  await expect(page.locator('#toolbar-stroke')).toBeEnabled();
+  await expect(await reveal(page, 'toolbar-stroke')).toBeEnabled();
+  await page.keyboard.press('Escape');
   await expect(control(page, 'boolean')).toHaveAttribute(
     'title',
     'Select two or more shapes, then right-click and choose Combine shapes.',
@@ -131,51 +127,65 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
     )
     .toBe('#00aa00');
   await page.screenshot({ path: testInfo.outputPath('shape-toolbar.png') });
-  // Groups and multi-selections hide it.
+  // H3: a group offers Ungroup, a multi-selection Group (Canva).
   await select(page, 'example-cards');
-  await expect(toolbar(page)).toBeHidden();
+  await expect(toolbar(page)).toHaveAttribute('data-mode', 'group');
+  await expect(control(page, 'ungroup')).toBeVisible();
   await select(page, 'example-badge', 'example-headline');
-  await expect(toolbar(page)).toBeHidden();
+  await expect(toolbar(page)).toHaveAttribute('data-mode', 'multi');
+  await expect(control(page, 'group')).toBeVisible();
 });
 
-test('[CV-036] image and video toolbar: X, Y, width and height, rotate, opacity and flip, one undo each; Crop names its wave', async ({
+test('[CV-036] image and video toolbar: Position holds X, Y, width, height and rotation; transparency and flip, one undo each', async ({
   page,
   openFixtureProject,
 }, testInfo) => {
   await openFixtureProject('nle-example.json');
   await select(page, 'layer-a');
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'media');
-  await expect(control(page, 'crop')).toHaveAttribute(
+  // H3: Canva's picture row; unbuilt tools name their wave.
+  for (const id of ['replace', 'crop', 'flip', 'transparency'])
+    await expect(control(page, id)).toBeEnabled();
+  // A picture adds Edit, and its AI tools name their wave.
+  await select(page, 'layer-c');
+  await expect(control(page, 'edit-image')).toBeEnabled();
+  await expect(control(page, 'bg-remover')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 4 (VID-003)',
+    'Planned: Wave 10 (AI-007)',
   );
-  await expect(control(page, 'replace')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
-  await commit(page, 'x', '150');
+  await select(page, 'layer-a');
+  // X, Y, W, H and rotation are in the Position panel (G2.1 fields).
+  await control(page, 'position').click();
+  const field = async (id: string, value: string) => {
+    const input = page.locator(`#position-${id}`);
+    await input.fill(value);
+    await input.press('Enter');
+  };
+  await field('x', '150');
   expect((await layer(page, 'layer-a')).transform.position.value).toEqual([
     150, 100,
   ]);
   // G2.1: W is the drawn width; with the ratio locked the height follows,
   // and the top-left (X, Y) stays put.
-  await expect(page.locator('#toolbar-lock-ratio')).toHaveAttribute(
+  await expect(page.locator('#position-lock-ratio')).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await commit(page, 'w', '200');
+  await field('w', '200');
   expect((await layer(page, 'layer-a')).transform.scale.value).toEqual([
     0.5, 0.5,
   ]);
   expect((await layer(page, 'layer-a')).transform.position.value).toEqual([
     150, 100,
   ]);
-  await expect(page.locator('#toolbar-h')).toHaveValue('112.5');
-  await commit(page, 'opacity', '40');
-  expect((await layer(page, 'layer-a')).transform.opacity.value).toBe(0.4);
-  await commit(page, 'rotate', '90');
+  await expect(page.locator('#position-h')).toHaveValue('112.5');
+  await field('rotate', '90');
   expect((await layer(page, 'layer-a')).transform.rotation.value).toBe(90);
   await page.locator('#undo').click();
+  await page.keyboard.press('Escape');
+  await commit(page, 'opacity', '40');
+  expect((await layer(page, 'layer-a')).transform.opacity.value).toBe(0.4);
+  await page.keyboard.press('Escape');
   // Flip horizontal: scale X turns negative, the visual center stays.
   const center = (item: any) => {
     const [x, y] = item.transform.position.value;
@@ -183,7 +193,7 @@ test('[CV-036] image and video toolbar: X, Y, width and height, rotate, opacity 
     return [x + (400 * sx) / 2, y + (225 * sy) / 2];
   };
   const before = center(await layer(page, 'layer-a'));
-  await control(page, 'flip-horizontal').click();
+  await (await reveal(page, 'flip-horizontal')).click();
   const flipped = await layer(page, 'layer-a');
   expect(flipped.transform.scale.value).toEqual([-0.5, 0.5]);
   expect(center(flipped)[0]).toBeCloseTo(before[0]!, 9);
@@ -200,7 +210,7 @@ test('[CV-036] image and video toolbar: X, Y, width and height, rotate, opacity 
 test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and clip; Esc leaves draw mode', async ({
   page,
 }, testInfo) => {
-  await page.locator('[data-category="Draw"]').click();
+  await showCategory(page, 'Draw');
   await page.locator('[data-brush="marker"]').click();
   await expect(page.locator('[data-brush="marker"]')).toHaveAttribute(
     'aria-checked',
@@ -262,7 +272,7 @@ test('[SHP-018][SHP-019] the Marker draws a stroke that becomes one layer and cl
 test('[SHP-019][CV-038] a highlighter stroke is 40% opaque, can be moved, edited from its toolbar and survives a reload', async ({
   page,
 }) => {
-  await page.locator('[data-category="Draw"]').click();
+  await showCategory(page, 'Draw');
   await page.locator('[data-brush="highlighter"]').click();
   await stroke(page, [
     [900, 450],
@@ -337,7 +347,7 @@ test('[CV-039] Copy style from text and Paste style onto a shape and a text in o
 test('[SHP-020][SHP-018] the Eraser removes the ink it passes over (strokes are cut, not deleted) in one undo step; each brush keeps its own settings', async ({
   page,
 }, testInfo) => {
-  await page.locator('[data-category="Draw"]').click();
+  await showCategory(page, 'Draw');
   await page.locator('[data-brush="pen"]').click();
   const size = page.locator('#draw-size');
   await size.fill('10');

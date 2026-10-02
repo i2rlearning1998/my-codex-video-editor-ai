@@ -1,5 +1,13 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, artboard, rulerBox } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  toScreen,
+  artboard,
+  rulerBox,
+  mode2d,
+} from './fixtures';
 
 // W2-B proof debt: Claimed Wave 2 items proven the way a user does them.
 // Example project (default load) and nle-example.json at 80 px/s, 30 fps.
@@ -388,15 +396,10 @@ test.describe('canvas', () => {
       ];
     };
     const before = center(await layer(page, 'example-badge'));
-    const top = await toScreen(page, 76 + 112, 456);
-    const middle = await toScreen(page, 76 + 112, 456 + 24);
-    // The handle sits 34 screen px above the top edge; swing it to the right.
-    await drag(
-      page,
-      { x: top.x, y: top.y - 34 },
-      middle.y - top.y + 34,
-      middle.y - top.y + 34,
-    );
+    // Revision 8 (H3): the handle sits 28 screen px below the bottom edge's
+    // middle; swing it to the right and up.
+    const bottom = await toScreen(page, 76 + 112, 456 + 48);
+    await drag(page, { x: bottom.x, y: bottom.y + 28 }, 60, -60);
     const after = await layer(page, 'example-badge');
     expect(Math.abs(after.transform.rotation.value)).toBeGreaterThan(10);
     const moved = center(after);
@@ -483,6 +486,7 @@ test.describe('layers and inspector', () => {
   test('[INS-009] the keyframe diamond toggles a keyframe for its property', async ({
     page,
   }) => {
+    await mode2d(page);
     await page
       .locator('#scene-list [data-layer-id="example-headline"]')
       .click();

@@ -26,6 +26,9 @@ export interface DrawStyle {
 export const MIN_CANVAS_ZOOM = 0.1;
 export const MAX_CANVAS_ZOOM = 16;
 
+/** H4: the editor's modes; 3D Animation is planned (ADV-002). */
+export type EditorMode = 'editor' | 'animation2d';
+
 export class EditorSession {
   #currentTime = 0;
   #timelineZoom = 80;
@@ -37,6 +40,8 @@ export class EditorSession {
   #playing = false;
   /** CV-025: align relative to the canvas instead of the selection. */
   #alignToCanvas = false;
+  /** H4: Editor or 2D Animation (transient UI state, like selection). */
+  #mode: EditorMode = 'editor';
   /** ANI-004: selected timeline keyframes (a layer and a time); transient. */
   #keyframes: readonly SelectedKeyframe[] = Object.freeze([]);
   /** SHP-018 draw mode: the active brush or eraser, or null when not drawing. */
@@ -54,6 +59,14 @@ export class EditorSession {
   };
   /** The brush the panel shows while the Draw tool is off. */
   #lastBrush: DrawMode = 'pen';
+  /**
+   * H3: the page (artboard) itself is selected: the toolbar shows the scene
+   * bar. A click on the empty artboard selects it; a click on the stage
+   * outside deselects everything. Transient.
+   */
+  #canvasSelected = true;
+  /** H3: the picture layer being cropped on the canvas, if any. Transient. */
+  #cropLayer: string | null = null;
   #canvasZoom = 1;
   /** G3: the canvas pan in CSS pixels (transient, never saved). */
   #canvasPan: readonly [number, number] = [0, 0];
@@ -78,7 +91,14 @@ export class EditorSession {
         this.#solo = Object.freeze([]);
         this.#enteredGroup = null;
         this.#currentTime = 0;
+        this.#canvasSelected = true;
+        this.#cropLayer = null;
       }
+      if (
+        this.#cropLayer &&
+        !locateLayer(this.source.composition.layers, this.#cropLayer)
+      )
+        this.#cropLayer = null;
       if (
         this.#enteredGroup &&
         locateLayer(this.source.composition.layers, this.#enteredGroup)?.layer
@@ -196,6 +216,14 @@ export class EditorSession {
     this.#keyframes = Object.freeze(next);
     this.#notify();
   }
+  get mode(): EditorMode {
+    return this.#mode;
+  }
+  setMode(mode: EditorMode): void {
+    if (mode === this.#mode) return;
+    this.#mode = mode;
+    this.#notify();
+  }
   get alignToCanvas(): boolean {
     return this.#alignToCanvas;
   }
@@ -245,6 +273,23 @@ export class EditorSession {
   get selectedIds(): readonly string[] {
     return this.#selection;
   }
+  get canvasSelected(): boolean {
+    return this.#canvasSelected && this.#selection.length === 0;
+  }
+  setCanvasSelected(value: boolean): void {
+    if (value === this.#canvasSelected) return;
+    this.#canvasSelected = value;
+    this.#notify();
+  }
+  get cropLayerId(): string | null {
+    return this.#cropLayer;
+  }
+  /** H3: starts (a layer id) or ends (null) cropping on the canvas. */
+  setCropLayer(id: string | null): void {
+    if (id === this.#cropLayer) return;
+    this.#cropLayer = id;
+    this.#notify();
+  }
   get playing(): boolean {
     return this.#playing;
   }
@@ -282,6 +327,9 @@ export class EditorSession {
     );
     if (JSON.stringify(next) === JSON.stringify(this.#selection)) return;
     this.#selection = Object.freeze(next);
+    if (next.length) this.#canvasSelected = false;
+    if (this.#cropLayer && !next.includes(this.#cropLayer))
+      this.#cropLayer = null;
     this.#notify();
   }
   select(id: string | null, toggle = false): void {
@@ -316,6 +364,8 @@ export class EditorSession {
     this.#keyframes = Object.freeze([]);
     this.#solo = Object.freeze([]);
     this.#enteredGroup = null;
+    this.#canvasSelected = true;
+    this.#cropLayer = null;
     this.#notify();
   }
   onChange(listener: () => void): () => void {

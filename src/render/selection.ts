@@ -26,12 +26,15 @@ import {
 import { layerTransformCapabilities } from './transform-capabilities';
 import { drawingOf } from './drawing';
 
+/** H3 (revision 8): the rotate handle's distance below the box, CSS px. */
+export const ROTATE_OFFSET = 28;
 export function selectionBounds(
   source: RenderSource,
   id: string,
 ): { bounds: TransformBounds; matrix: AffineMatrix } | null {
   const found = locateLayer(source.composition.layers, id);
-  if (!found) return null;
+  // H1.3: audio has no box to select, resize or measure.
+  if (!found || found.layer.type === 'audio') return null;
   try {
     const matrix = worldTransform(
       source.composition,
@@ -95,13 +98,23 @@ export function selectionGeometry(
       (corners[0]![0] + corners[1]![0]) / 2,
       (corners[0]![1] + corners[1]![1]) / 2,
     ];
+    // H3 (revision 8): the rotate handle sits below the box, as in Canva.
+    const stem: Point2 = [
+      (corners[2]![0] + corners[3]![0]) / 2,
+      (corners[2]![1] + corners[3]![1]) / 2,
+    ];
     const layer = locateLayer(source.composition.layers, id)!.layer;
     const capabilities = layerTransformCapabilities(layer, source.capabilities);
     const interactive =
       !!invertMatrix(selected.matrix) &&
       selected.bounds.width > 0 &&
       selected.bounds.height > 0;
-    const rotation = rotationHandlePoint(top, corners[1]!, center, 34);
+    const rotation = rotationHandlePoint(
+      stem,
+      corners[2]!,
+      center,
+      ROTATE_OFFSET,
+    );
     const handles: SelectionHandle[] = [];
     const add = (
       id: TransformHandle,
@@ -147,6 +160,7 @@ export function selectionGeometry(
       ...selected,
       corners,
       top,
+      stem,
       rotation,
       center,
       handles,
@@ -252,6 +266,7 @@ export function multiSelectionGeometry(
     ];
     const center = mid(corners[0]!, corners[2]!);
     const top = mid(corners[0]!, corners[1]!);
+    const stem = mid(corners[2]!, corners[3]!);
     const along = (a: Point2, b: Point2): [number, number] => {
       const length = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
       return [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
@@ -259,7 +274,12 @@ export function multiSelectionGeometry(
     const [ux, uy] = along(corners[0]!, corners[1]!),
       [vx, vy] = along(corners[0]!, corners[3]!);
     const orientation: AffineMatrix = [ux, uy, vx, vy, 0, 0];
-    const rotation = rotationHandlePoint(top, corners[1]!, center, 34);
+    const rotation = rotationHandlePoint(
+      stem,
+      corners[2]!,
+      center,
+      ROTATE_OFFSET,
+    );
     const handles: SelectionHandle[] = [];
     const add = (
       id: MultiHandle,
@@ -298,7 +318,7 @@ export function multiSelectionGeometry(
         add('left', mid(corners[3]!, corners[0]!), 'edge');
       }
     }
-    return { frame, corners, center, top, rotation, handles };
+    return { frame, corners, center, top, stem, rotation, handles };
   } catch {
     return null;
   }
@@ -323,10 +343,14 @@ export function hitMultiHandle(
 export function multiSelectionBox(
   source: RenderSource,
   view: AffineMatrix,
-): { corners: readonly Point2[]; center: Point2 } | null {
+): { corners: readonly Point2[]; center: Point2; rotation: Point2 } | null {
   const geometry = multiSelectionGeometry(source, view);
   return geometry
-    ? { corners: geometry.corners, center: geometry.center }
+    ? {
+        corners: geometry.corners,
+        center: geometry.center,
+        rotation: geometry.rotation,
+      }
     : null;
 }
 export type TransformHandle =

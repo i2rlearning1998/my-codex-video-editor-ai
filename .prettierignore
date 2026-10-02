@@ -12,3 +12,4 @@ tests/fixtures/
 e2e-results/
 playwright-report/
 test-results/
+public/library/

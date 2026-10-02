@@ -60,10 +60,23 @@ export function transformCapabilities(
  * G2: the capabilities of one layer. Freehand drawings keep their brush
  * shape (corners only); lines and arrows lengthen from their ends only.
  */
+/** H3 (CV-024): a locked layer is stored with the property `locked: true`. */
+export const isLocked = (layer: SceneLayer): boolean =>
+  layer.properties.locked?.type === 'boolean' &&
+  layer.properties.locked.value === true;
+const LOCKED: TransformCapabilities = Object.freeze({
+  move: false,
+  rotate: false,
+  corners: false,
+  edges: false,
+  textWidth: false,
+});
 export function layerTransformCapabilities(
   layer: SceneLayer,
   definitions?: Readonly<Record<string, TransformCapabilities>>,
 ): TransformCapabilities {
+  // A locked layer can be selected, but has no handles and does not move.
+  if (isLocked(layer)) return LOCKED;
   const base = transformCapabilities(layer.type, definitions);
   if (layer.type !== 'shape' || !base.edges) return base;
   if (drawingOf(layer)) return { ...base, edges: false };

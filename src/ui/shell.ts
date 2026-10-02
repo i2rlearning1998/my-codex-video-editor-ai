@@ -18,14 +18,18 @@ import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
   Canvas2DRenderer,
   fitViewport,
+  EDITOR_FIT,
   type CompositionRenderer,
 } from '../render/canvas';
 import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
-import { mountCanvasView } from './canvas-view';
+import { clampPan, mountCanvasView } from './canvas-view';
 import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
 import { createNumberField, syncNumberField } from './components/number-field';
-import { isGeometryField } from './geometry';
+import {
+  isGeometryField,
+  selectionGeometry as selectionGeometryOf,
+} from './geometry';
 import { mountMediaPanel } from './media-panel';
 import { openExportDialog } from './export-dialog';
 import { drawComposition } from '../render/canvas';
@@ -45,11 +49,35 @@ import { bindCanvasInteraction } from './canvas-interaction';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
-import { mountWorkspace } from './workspace';
+import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape, mountShapesPanel } from './shapes';
 import { mountContextToolbar } from './context-toolbar';
+import { CropTool } from './crop-tool';
+import { AnimatedInEditorError } from './editor-mode';
+import { escapeTopPopover } from './components/popover';
+import { mountToolPanels } from './tool-panels';
+import { mountLibraryPanels } from './library-panel';
+import { mountSignature } from './signature';
+import { addTopLevel } from './library-insert';
+import {
+  RIGHT_ICONS,
+  RIGHT_SECTIONS,
+  mountRightPanel,
+  sectionsFor,
+  type RightSection,
+} from './right-panel';
+import { applyCanvasSize } from './canvas-size';
+import {
+  ALT_TEXT_LIMIT,
+  altTextOf,
+  layerInfo,
+  setAltText,
+  worldBox,
+} from './layer-actions';
+import { selectionRoots } from './selection-context';
+import { blankScene, duplicateScene } from './scenes';
 import { mountAnimationPanel } from './animation-panel';
 import { mountAnimatePanel } from './animate-panel';
 import { mountPositionPanel } from './position-panel';
@@ -61,6 +89,7 @@ import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
 import { openModal } from './components/modal';
+import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
@@ -68,6 +97,7 @@ import { mountShortcutSheet } from './shortcut-sheet';
 import { runCommand, type CommandContext } from '../commands/registry';
 import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
+import { cycleThemePreference, onThemeChange, themePreference } from './theme';
 import {
   t,
   formatNumber,
@@ -77,16 +107,18 @@ import {
   bindDomTranslations,
 } from '../i18n';
 
+// H2: the order a user reaches for them; below 800 px of height the rail
+// shows the first six and a More button for the rest.
 const RAIL_CATEGORIES = [
-  'Media',
-  'Graphics',
-  'Text',
   'Templates',
-  'Audio',
   'Elements',
+  'Text',
+  'Media',
   'Draw',
-  'Transitions',
   'Scene',
+  'Graphics',
+  'Audio',
+  'Transitions',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -97,25 +129,8 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Elements: 'elements',
   Draw: 'pen',
   Transitions: 'transitions',
-  Scene: 'group',
+  Scene: 'layers',
 };
-const RIGHT_SECTIONS = [
-  'Properties',
-  'Effects',
-  'Transitions',
-  'Color',
-  'Audio',
-  'Speed',
-] as const;
-const RIGHT_ICONS: Record<(typeof RIGHT_SECTIONS)[number], string> = {
-  Properties: 'properties',
-  Effects: 'effects',
-  Transitions: 'transitions',
-  Color: 'color',
-  Audio: 'audio',
-  Speed: 'speed',
-};
-
 export interface ShellActions {
   save?: () => void;
   exportProject?: () => void;
@@ -137,20 +152,29 @@ export function mountEditorShell(
   const rightRailButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-section="${name}" aria-pressed="${pressed}" title="${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}</span></button>`;
   root.innerHTML = `
-    <div class="editor-shell">
+    <div class="editor-shell" data-editor-mode="editor">
       <header class="topbar">
-        <button type="button" id="menu-trigger" class="icon-button menu-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" aria-label="${t('menu.main')}" title="${t('menu.main')}">${iconSvg('menu')}</button>
-        <div class="brand"><span class="brand-mark" aria-hidden="true">N</span><strong>${t('app.title')}</strong><span class="brand-divider"></span><span class="product-mode">${t('app.mode')}</span></div>
-        <div class="project-title">
-          <span class="project-dot" id="save-status-dot" aria-hidden="true"></span>
-          <span id="project-name" tabindex="0" role="button" aria-label="${t('project.renameLabel')}"></span>
-          <input type="text" id="project-name-input" class="project-name-field" aria-label="${t('project.name')}" hidden />
-          <span class="save-status" id="save-status-text"></span>
+        <div class="topbar-start">
+          <button type="button" id="menu-trigger" class="icon-button menu-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" aria-label="${t('menu.main')}" title="${t('menu.main')}">${iconSvg('menu')}</button>
+          <span class="brand-mark" aria-hidden="true">N</span>
+          <div class="project-title">
+            <span class="project-dot" id="save-status-dot" aria-hidden="true"></span>
+            <span id="project-name" tabindex="0" role="button" aria-label="${t('project.renameLabel')}"></span>
+            <input type="text" id="project-name-input" class="project-name-field" aria-label="${t('project.name')}" hidden />
+            <span class="save-status" id="save-status-text"></span>
+          </div>
         </div>
-        <div class="top-actions">
-          <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')}">${iconSvg('undo')}</button>
-          <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')}">${iconSvg('redo')}</button>
-          <button type="button" id="export" class="primary">${iconSvg('export')}${t('action.export')}</button>
+        <div class="segmented mode-switch" id="mode-switch" role="radiogroup" aria-label="${t('mode.label')}">
+          <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
+          <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
+          <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
+        </div>
+        <div class="topbar-end top-actions">
+          <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
+          <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
+          <span class="topbar-divider" aria-hidden="true"></span>
+          <button type="button" id="theme-toggle" class="icon-button" aria-label="${t('theme.label')}" title="${t('theme.label')}">${iconSvg('themeDark')}</button>
+          <button type="button" id="export" class="primary">${iconSvg('export')}<span class="export-label">${t('action.export')}</span></button>
         </div>
       </header>
       <div class="app-menu" id="app-menu" role="menu" hidden>
@@ -165,7 +189,8 @@ export function mountEditorShell(
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
-          <button type="button" id="language-toggle" role="menuitem">${iconSvg('properties')}<span id="language-toggle-label"></span></button>
+          <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
+          <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.help')}">
           <div class="app-menu-label">${t('menu.help')}</div>
@@ -173,8 +198,8 @@ export function mountEditorShell(
           <button type="button" id="about" role="menuitem">${iconSvg('info')}${t('menu.about')}</button>
         </div>
       </div>
-      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}</nav>
-      <aside class="library panel" aria-label="${t('library.title')}">
+      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
+      <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
         <div class="library-tabs" id="media-source-tabs" data-rail-panel="Media" hidden>
           <button type="button" data-source="project" aria-pressed="true">${t('library.projectMedia')}</button>
           <button type="button" data-source="stock" aria-pressed="false">${t('library.stock')}</button>
@@ -188,35 +213,41 @@ export function mountEditorShell(
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" data-rail-panel="Draw" hidden></div>
         <div class="draw-panel shapes-panel" id="shapes-panel" data-rail-panel="Elements" hidden></div>
+        <div id="library-elements" data-rail-panel="Elements" hidden></div>
+        <div id="library-templates" data-rail-panel="Templates" hidden></div>
+        <div id="library-text" data-rail-panel="Text" hidden></div>
+        <div id="library-graphics" data-rail-panel="Graphics" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
-        <div class="library-footer"><span class="local-dot"></span> ${t('app.local')} <span class="milestone">${t('app.wave')}</span></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="preview-toolbar">
-          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select><button type="button" class="button" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('templates', 15)}${t('scene.board')}</button></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="preview-toolbar" id="canvas-footer">
+          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 16)}<span>${t('scene.board')}</span></button></div>
+          <div class="preview-summary"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom" class="sr-only">${t('canvas.fit')}</span></div>
           <div class="canvas-zoom-controls">
-            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')}">${iconSvg('hand')}</button>
+            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')} (H)">${iconSvg('hand')}</button>
             <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut')}</button>
             <span id="canvas-zoom-field"></span>
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn')}</button>
-            <button type="button" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit')}${t('canvas.fit')}</button>
-            <button type="button" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
+            <button type="button" class="button sm ghost" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit', 16)}<span>${t('canvas.fit')}</span></button>
+            <button type="button" class="button sm ghost" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
+            <button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button>
           </div>
         </div>
-        <div class="canvas-stage" id="canvas-stage"><div class="context-toolbar" id="context-toolbar" hidden></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div></div>
-        <div class="preview-footer"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom">${t('canvas.fit')}</span><button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button></div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
-      <aside class="inspector panel" aria-label="${t('inspector.title')}">
+      <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
+        <div id="right-section" hidden></div>
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
       <section class="timeline" aria-label="${t('timeline.title')}"><div class="timeline-header"><div class="timeline-label"><h2>${t('timeline.title')}</h2></div></div><div id="timeline-foundation"></div></section>
-      <footer class="statusbar"><span id="status" role="status" aria-live="polite">${t('status.ready')}</span><span>${t('app.wave')} <span class="status-separator">·</span> ${t('app.shellStatus')}</span></footer>
+      <footer class="statusbar sr-only"><span id="status" role="status" aria-live="polite">${t('status.ready')}</span></footer>
+      <div class="drawer-scrim" id="drawer-scrim" hidden></div>
       <div class="drop-overlay" id="drop-overlay" hidden>${t('drop.overlay')}</div>
     </div>`;
 
@@ -233,7 +264,13 @@ export function mountEditorShell(
   const reportError = (error: unknown) => {
     const text = error instanceof Error ? error.message : String(error);
     message(text);
-    showToast(text, 'error');
+    // H4: an animated property offers to open 2D Animation.
+    if (error instanceof AnimatedInEditorError)
+      showToast(text, 'info', 6000, {
+        label: t('mode.open2d'),
+        run: () => session.setMode('animation2d'),
+      });
+    else showToast(text, 'error');
   };
   const safely = (action: () => void | Promise<void>) => {
     try {
@@ -285,22 +322,34 @@ export function mountEditorShell(
     },
   );
   // G3: Fit, then the zoom about the view's center, then the pan.
-  const viewportFor = (z: number, pan: readonly [number, number]) => {
+  const viewportFor = (z: number, requested: readonly [number, number]) => {
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
       Math.max(1, canvas.clientHeight || stage.clientHeight),
       session.source.composition,
       window.devicePixelRatio || 1,
+      EDITOR_FIT,
     );
-    const centered: AffineMatrix = [
-      z,
-      0,
-      0,
-      z,
-      (view.width * (1 - z)) / 2 + pan[0],
-      (view.height * (1 - z)) / 2 + pan[1],
-    ];
-    return { ...view, matrix: multiplyMatrices(centered, view.matrix) };
+    const at = (pan: readonly [number, number]): AffineMatrix =>
+      multiplyMatrices(
+        [
+          z,
+          0,
+          0,
+          z,
+          (view.width * (1 - z)) / 2 + pan[0],
+          (view.height * (1 - z)) / 2 + pan[1],
+        ],
+        view.matrix,
+      );
+    // H1.4: the stored pan is re-clamped for the current stage size, so a
+    // resized window can never leave the artboard out of view.
+    const pan = clampPan(
+      { ...view, matrix: at([0, 0]) },
+      session.source.composition,
+      requested,
+    );
+    return { ...view, matrix: at(pan) };
   };
   const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
   // G4: a circle the size of the brush (or eraser) follows the pointer.
@@ -320,6 +369,43 @@ export function mountEditorShell(
     brushCursor.classList.toggle('erasing', brush === 'eraser');
   };
   canvas.addEventListener('pointermove', moveBrushCursor);
+  // H1.2: the size or angle chip sits beside the pointer while dragging.
+  let chipPointer: Point2 = [0, 0];
+  canvas.addEventListener('pointermove', (event) => {
+    const box = stage.getBoundingClientRect();
+    chipPointer = [event.clientX - box.left, event.clientY - box.top];
+  });
+  const canvasChip = element('#canvas-chip');
+  // H2: the artboard's soft shadow is a themed element behind the canvas (the
+  // canvas is transparent outside the artboard), so no pixel of the canvas
+  // outside the artboard is painted by it.
+  const artboardShadow = element('#artboard-shadow');
+  const placeArtboardShadow = () => {
+    const [a, , , d, e, f] = viewport().matrix;
+    const { width, height } = session.source.composition;
+    Object.assign(artboardShadow.style, {
+      left: `${canvas.offsetLeft + e}px`,
+      top: `${canvas.offsetTop + f}px`,
+      width: `${a * width}px`,
+      height: `${d * height}px`,
+    });
+  };
+  const updateChip = (source: typeof session.source) => {
+    const chip = interaction.chip;
+    const geometry = chip?.kind === 'size' ? selectionGeometryOf(source) : null;
+    if (!chip || (chip.kind === 'size' && !geometry)) {
+      canvasChip.hidden = true;
+      return;
+    }
+    canvasChip.hidden = false;
+    canvasChip.textContent =
+      chip.kind === 'size'
+        ? `${Math.round(geometry!.width)} × ${Math.round(geometry!.height)}`
+        : `${Math.round(chip.degrees)}°`;
+    const box = stage.getBoundingClientRect();
+    canvasChip.style.left = `${Math.min(box.width - 96, chipPointer[0] + 16)}px`;
+    canvasChip.style.top = `${Math.min(box.height - 32, chipPointer[1] + 20)}px`;
+  };
   canvas.addEventListener('pointerdown', moveBrushCursor);
   canvas.addEventListener('pointerleave', () => (brushCursor.hidden = true));
   const canvasView = mountCanvasView(
@@ -415,6 +501,20 @@ export function mountEditorShell(
       ...(interaction.hoveredHandle !== null
         ? { hoveredHandle: interaction.hoveredHandle }
         : {}),
+      ...(hover === 'artboard' && !session.canvasSelected
+        ? { hoverArtboard: true }
+        : hover && hover !== 'artboard' && !interaction.active
+          ? { hoverId: hover }
+          : {}),
+      ...(cropTool.active && cropTool.layerId
+        ? {
+            cropLayerId: cropTool.layerId,
+            ...(cropTool.view ? { cropView: cropTool.view } : {}),
+            ...(cropTool.overlay(viewport().matrix)
+              ? { crop: cropTool.overlay(viewport().matrix)! }
+              : {}),
+          }
+        : {}),
     };
     const report = renderer.render(
       canvas,
@@ -426,6 +526,8 @@ export function mountEditorShell(
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
     // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
     if (!session.playing) syncGeometryFields(root, drawn);
+    updateChip(drawn);
+    placeArtboardShadow();
     updateSelectionActions();
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
@@ -442,6 +544,18 @@ export function mountEditorShell(
     safely(draw),
   );
   const drawTool = new DrawTool(engine, session, () => safely(draw));
+  // H3: the crop tool; the Crop panel opens and closes with it.
+  let cropWasActive = false;
+  const cropTool = new CropTool(engine, session, () => {
+    if (cropTool.active !== cropWasActive) {
+      cropWasActive = cropTool.active;
+      toolPanels?.syncCrop();
+    }
+    safely(draw);
+  });
+  let toolPanels: ReturnType<typeof mountToolPanels> | undefined;
+  // H3: the object (or the empty artboard) under the pointer is outlined.
+  let hover: string | 'artboard' | null = null;
   // W5-B: the Inspector's Animation section (stopwatches and keyframes).
   const animationPanel = mountAnimationPanel(
     element('#animation-panel'),
@@ -461,6 +575,14 @@ export function mountEditorShell(
     session,
     reportError,
   );
+  // H4: the right panel's sections other than Properties.
+  const rightPanel = mountRightPanel(
+    element('#right-section'),
+    engine,
+    session,
+    reportError,
+    { animate: () => animatePanel.toggle() },
+  );
   // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
   // selection action cluster.
   const positionPanel = mountPositionPanel(
@@ -469,7 +591,31 @@ export function mountEditorShell(
     session,
     reportError,
     (field, value) => interaction.geometry(field, value),
+    (value) => interaction.edit('Rotation', value),
   );
+  toolPanels = mountToolPanels(
+    sidePanels,
+    engine,
+    session,
+    cropTool,
+    reportError,
+  );
+  // H3: a new canvas size for every scene, with Undo in the toast.
+  const resizeCanvas = (width: number, height: number) => {
+    if (!applyCanvasSize(engine, width, height)) return;
+    showToast(
+      t('canvasSize.changed', {
+        width: formatNumber(width),
+        height: formatNumber(height),
+      }),
+      'info',
+      6000,
+      {
+        label: t('command.undo'),
+        run: () => runCommand('undo', commandContext),
+      },
+    );
+  };
   // CV-035: the selected layer's context toolbar above the canvas.
   const contextToolbar = mountContextToolbar(
     element('#context-toolbar'),
@@ -483,6 +629,12 @@ export function mountEditorShell(
     () => animatePanel.toggle(),
     () => positionPanel.toggle(),
     sidePanels,
+    {
+      openPanel: (id) => toolPanels?.open(id),
+      crop: () => toolPanels?.startCrop(),
+      scenes: () => sceneBoard.open(),
+      canvasSize: resizeCanvas,
+    },
   );
   // G5: the scene board over the canvas.
   const sceneBoard = mountSceneBoard(
@@ -505,10 +657,160 @@ export function mountEditorShell(
     },
   });
   const hideCanvasMenu = () => canvasMenuController.close();
+  // H3: the canvas menu's actions outside the Command Bus.
+  const selectedLayer = () =>
+    session.selectedIds.length === 1 && session.selectedId
+      ? (locateLayer(session.source.composition.layers, session.selectedId)
+          ?.layer ?? null)
+      : null;
+  const openAltText = () => {
+    const layer = selectedLayer();
+    if (!layer) return;
+    sidePanels.show('alt-text', t('altText.title'), () => {
+      const current = selectedLayer();
+      if (!current || current.id !== layer.id) return null;
+      const wrap = document.createElement('div');
+      wrap.className = 'tool-panel';
+      wrap.dataset.toolPanel = 'alt-text';
+      const hint = document.createElement('p');
+      hint.className = 'tool-panel-hint';
+      hint.textContent = t('altText.hint');
+      const area = document.createElement('textarea');
+      area.id = 'alt-text-input';
+      area.rows = 4;
+      area.maxLength = ALT_TEXT_LIMIT;
+      area.setAttribute('aria-label', t('altText.title'));
+      area.value = altTextOf(current);
+      const save = document.createElement('button');
+      save.type = 'button';
+      save.className = 'primary';
+      save.dataset.action = 'alt-text-save';
+      save.textContent = t('altText.save');
+      save.onclick = () =>
+        safely(() => {
+          setAltText(engine, session, area.value);
+          sidePanels.close();
+        });
+      wrap.append(hint, area, save);
+      queueMicrotask(() => area.focus());
+      return wrap;
+    });
+  };
+  /** Download selection: the selected elements alone, as a PNG. */
+  const downloadSelection = () => {
+    const source = session.source;
+    const roots = selectionRoots(source, session.selectedIds);
+    const boxes = roots
+      .map((layer) => worldBox(source, layer.id))
+      .filter((box): box is NonNullable<typeof box> => !!box);
+    if (!boxes.length) return;
+    const left = Math.floor(Math.min(...boxes.map((box) => box.x))),
+      top = Math.floor(Math.min(...boxes.map((box) => box.y))),
+      right = Math.ceil(Math.max(...boxes.map((box) => box.x + box.width))),
+      bottom = Math.ceil(Math.max(...boxes.map((box) => box.y + box.height)));
+    const width = Math.max(1, right - left),
+      height = Math.max(1, bottom - top);
+    const ids = new Set(roots.map((layer) => layer.id));
+    const keep = (layers: typeof source.composition.layers): typeof layers =>
+      layers
+        .filter((layer) => ids.has(layer.id) || layer.children.length)
+        .map((layer) =>
+          ids.has(layer.id)
+            ? layer
+            : { ...layer, children: keep(layer.children) },
+        )
+        .filter((layer) => ids.has(layer.id) || layer.children.length);
+    const frameCanvas = document.createElement('canvas');
+    frameCanvas.width = width;
+    frameCanvas.height = height;
+    const context = frameCanvas.getContext('2d');
+    if (!context) return;
+    drawComposition(
+      context,
+      {
+        ...source,
+        composition: {
+          ...source.composition,
+          layers: keep(source.composition.layers),
+        },
+        background: 'rgba(0, 0, 0, 0)',
+        frames,
+        playing: false,
+        animate: true,
+      },
+      {
+        width,
+        height,
+        pixelRatio: 1,
+        matrix: [1, 0, 0, 1, -left, -top],
+      },
+      null,
+      { overlays: false },
+    );
+    const name = `${(roots.length === 1 ? roots[0]!.name : engine.state.metadata.name).replace(/[\\/:*?"<>|]+/g, '-')}.png`;
+    frameCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      showToast(t('download.saved', { name }), 'info', 3000);
+    }, 'image/png');
+  };
+  const menuHooks = {
+    showTiming: () => {
+      const layer = selectedLayer();
+      if (!layer) return;
+      const clip = findClipByLayer(session.source.composition, layer.id);
+      const start = clip?.clip.startTime ?? layer.startTime;
+      session.setCurrentTime(start);
+      timeline?.reveal(start);
+      element('#timeline-foundation .timeline-scroll').focus();
+    },
+    altText: openAltText,
+    download: downloadSelection,
+    info: () => {
+      const lines = layerInfo(session);
+      if (lines.length) showToast(lines.join(' · '), 'info', 6000);
+    },
+    canvasSize: resizeCanvas,
+    customSize: () => {
+      session.select(null);
+      session.setCanvasSelected(true);
+      requestAnimationFrame(() =>
+        element<HTMLElement>(
+          '#context-toolbar [data-control="canvas-size"]',
+        ).click(),
+      );
+    },
+    addScene: (copy: boolean) =>
+      safely(() => {
+        const current = session.source.composition.id;
+        const added = copy
+          ? duplicateScene(engine.state, current)
+          : blankScene(engine.state, current);
+        engine.commands.transaction(
+          copy ? 'Duplicate scene' : 'Add scene',
+          added.commands,
+        );
+        session.selectComposition(added.id);
+      }),
+    deleteScene: () =>
+      safely(() => {
+        engine.commands.transaction('Delete scene', [
+          {
+            type: 'DELETE_COMPOSITION',
+            compositionId: session.source.composition.id,
+          },
+        ]);
+      }),
+  };
   const openCanvasMenu = (point: Point2, layerId: string | null) => {
-    const entries = canvasMenuEntries(engine, session, !!layerId);
+    const entries = canvasMenuEntries(engine, session, !!layerId, menuHooks);
     canvasMenuController.open(() =>
-      canvasMenuEntries(engine, session, !!layerId),
+      canvasMenuEntries(engine, session, !!layerId, menuHooks),
     );
     if (!entries.length) canvasMenuController.close();
     const bounds = stage.getBoundingClientRect();
@@ -548,9 +850,16 @@ export function mountEditorShell(
       ...(interaction.previews ? { previews: interaction.previews } : {}),
     };
     const view = viewport().matrix;
-    const corners =
-      multiSelectionBox(source, view)?.corners ??
-      selectionGeometry(source, session.selectedId, view)?.corners;
+    const multiBox = multiSelectionBox(source, view);
+    const single = multiBox
+      ? null
+      : selectionGeometry(source, session.selectedId, view);
+    // H1.2: the rotation handle belongs to the box the cluster must avoid.
+    const corners = multiBox
+      ? [...multiBox.corners, multiBox.rotation]
+      : single
+        ? [...single.corners, single.rotation]
+        : undefined;
     if (!corners?.length)
       return selectionActions.update(null, stage.getBoundingClientRect());
     const xs = corners.map((point) => point[0] + canvas.offsetLeft),
@@ -562,7 +871,7 @@ export function mountEditorShell(
         right: Math.max(...xs),
         bottom: Math.max(...ys),
       },
-      stage.getBoundingClientRect(),
+      { width: stage.clientWidth, height: stage.clientHeight },
     );
   }
   const pointer = bindCanvasInteraction(
@@ -575,6 +884,12 @@ export function mountEditorShell(
     true,
     openCanvasMenu,
     drawTool,
+    cropTool,
+    (target) => {
+      if (target === hover) return;
+      hover = target;
+      safely(draw);
+    },
   );
   const commandContext: CommandContext = {
     engine,
@@ -599,9 +914,14 @@ export function mountEditorShell(
         const found = locateLayer(source.composition.layers, id);
         return !!found && hasAnimation(found.layer);
       });
+    // H3: a crop ends when its layer is no longer the selection.
+    if (cropTool.active && session.selectedId !== cropTool.layerId)
+      cropTool.cancel();
     const identity = JSON.stringify([
       source.composition.id,
       session.selectedIds,
+      session.canvasSelected,
+      session.mode,
       animatedSelection ? session.currentTime : null,
     ]);
     if (
@@ -793,29 +1113,32 @@ export function mountEditorShell(
         });
         refresh(true);
       },
-      (key, _remove) => {
-        safely(() => {
-          session.setPlaying(false);
-          const remove =
-            selected?.layer.transform[key].keyframes.some(
-              (frame) => frame.time === session.currentTime,
-            ) ?? false;
-          if (selected)
-            engine.commands.transaction(
-              remove ? 'Remove keyframe' : 'Add keyframe',
-              [
-                {
-                  type: remove ? 'REMOVE_KEYFRAME' : 'SET_KEYFRAME',
-                  compositionId: source.composition.id,
-                  layerId: selected.layer.id,
-                  key,
-                  time: session.currentTime,
-                },
-              ],
-            );
-        });
-        refresh(true);
-      },
+      // H4: keyframe diamonds belong to 2D Animation.
+      session.mode !== 'animation2d'
+        ? undefined
+        : (key, _remove) => {
+            safely(() => {
+              session.setPlaying(false);
+              const remove =
+                selected?.layer.transform[key].keyframes.some(
+                  (frame) => frame.time === session.currentTime,
+                ) ?? false;
+              if (selected)
+                engine.commands.transaction(
+                  remove ? 'Remove keyframe' : 'Add keyframe',
+                  [
+                    {
+                      type: remove ? 'REMOVE_KEYFRAME' : 'SET_KEYFRAME',
+                      compositionId: source.composition.id,
+                      layerId: selected.layer.id,
+                      key,
+                      time: session.currentTime,
+                    },
+                  ],
+                );
+            });
+            refresh(true);
+          },
       (field, value) => {
         safely(() => interaction.geometry(field, value));
         refresh(true);
@@ -835,6 +1158,35 @@ export function mountEditorShell(
     previews,
     waveforms,
   );
+  // H4: Editor | 2D Animation (3D is planned). The switch crossfades the
+  // panels and the timeline in 320 ms and keeps the selection.
+  const shellRoot = element('.editor-shell');
+  const modeButtons = root.querySelectorAll<HTMLButtonElement>(
+    '#mode-switch [data-mode]',
+  );
+  let shownMode = session.mode;
+  const syncMode = () => {
+    const mode = session.mode;
+    for (const button of modeButtons)
+      button.setAttribute('aria-checked', String(button.dataset.mode === mode));
+    if (mode === shownMode) return;
+    shownMode = mode;
+    shellRoot.dataset.editorMode = mode;
+    shellRoot.classList.remove('mode-fade');
+    void shellRoot.offsetWidth;
+    shellRoot.classList.add('mode-fade');
+    message(t(mode === 'editor' ? 'mode.nowEditor' : 'mode.now2d'));
+  };
+  shellRoot.addEventListener('animationend', (event) => {
+    if ((event as AnimationEvent).animationName === 'mode-fade')
+      shellRoot.classList.remove('mode-fade');
+  });
+  for (const button of modeButtons)
+    button.onclick = () => {
+      if (button.getAttribute('aria-disabled') === 'true') return;
+      session.setMode(button.dataset.mode as 'editor' | 'animation2d');
+    };
+  session.onChange(syncMode);
   const unsubscribe = session.onChange(refresh);
   element<HTMLSelectElement>('#composition').onchange = (event) =>
     session.selectComposition((event.target as HTMLSelectElement).value);
@@ -931,7 +1283,15 @@ export function mountEditorShell(
   const railPanels = [
     ...root.querySelectorAll<HTMLElement>('[data-rail-panel]'),
   ];
-  const OWN_PANELS = new Set(['Media', 'Scene', 'Draw', 'Elements']);
+  const OWN_PANELS = new Set([
+    'Media',
+    'Scene',
+    'Draw',
+    'Elements',
+    'Templates',
+    'Text',
+    'Graphics',
+  ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
     element('#draw-panel'),
@@ -942,12 +1302,55 @@ export function mountEditorShell(
   mountShapesPanel(element('#shapes-panel'), (preset) =>
     safely(() => addShape(engine, session, preset)),
   );
+  // H5: Starter Pack 1 in Templates, Elements, Text and Graphics.
+  mountLibraryPanels(
+    {
+      Templates: element('#library-templates'),
+      Elements: element('#library-elements'),
+      Text: element('#library-text'),
+      Graphics: element('#library-graphics'),
+    },
+    engine,
+    session,
+    reportError,
+    renderer.measureText,
+  );
   let activeCategory = 'Scene';
-  const applyCategory = (category: string) => {
+  let activeSection = 'Properties';
+  let workspace: Workspace | undefined;
+  // H1.5: a rail button is pressed only while its panel is open.
+  const syncRails = () => {
     for (const sibling of root.querySelectorAll('[data-category]'))
       sibling.setAttribute(
         'aria-pressed',
-        String(sibling.getAttribute('data-category') === category),
+        String(
+          (workspace?.leftOpen ?? true) &&
+            sibling.getAttribute('data-category') === activeCategory,
+        ),
+      );
+    for (const el of root.querySelectorAll<HTMLElement>(
+      '.icon-rail-right button',
+    ))
+      el.setAttribute(
+        'aria-pressed',
+        String(
+          (workspace?.rightOpen ?? true) &&
+            el.dataset.section === activeSection,
+        ),
+      );
+  };
+  const applyCategory = (category: string) => {
+    syncRails();
+    const hidden = root.querySelector<HTMLElement>(
+      `#rail-left [data-category="${category}"]`,
+    );
+    root
+      .querySelector('#rail-more')
+      ?.setAttribute(
+        'aria-pressed',
+        String(
+          !!hidden && hidden.offsetParent === null && !!workspace?.leftOpen,
+        ),
       );
     const shown = OWN_PANELS.has(category) ? category : 'placeholder';
     for (const panel of railPanels)
@@ -967,17 +1370,108 @@ export function mountEditorShell(
     '[data-category]',
   ))
     button.onclick = () => {
-      activeCategory = button.dataset.category!;
+      const category = button.dataset.category!;
+      // H1.5: the active category collapses its open panel; any other
+      // category (or a collapsed panel) opens with that content.
+      if (category === activeCategory && workspace?.leftOpen) {
+        workspace.setOpen('left', false);
+        return;
+      }
+      activeCategory = category;
       sidePanels.close();
       applyCategory(activeCategory);
+      workspace?.setOpen('left', true);
     };
+  // H2: on a short window the rail shows six categories; More lists the rest.
+  const moreButton = element<HTMLButtonElement>('#rail-more');
+  let morePopover: PopoverHandle | null = null;
+  moreButton.onclick = () => {
+    if (morePopover) return morePopover.close();
+    const menu = document.createElement('div');
+    menu.className = 'rail-more-menu';
+    menu.setAttribute('role', 'menu');
+    for (const button of root.querySelectorAll<HTMLButtonElement>(
+      '#rail-left [data-category]',
+    )) {
+      if (button.offsetParent !== null) continue;
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'menuitem');
+      item.dataset.moreCategory = button.dataset.category!;
+      item.setAttribute(
+        'aria-pressed',
+        button.getAttribute('aria-pressed') ?? 'false',
+      );
+      item.innerHTML = button.innerHTML;
+      item.onclick = () => {
+        morePopover?.close();
+        button.click();
+      };
+      menu.append(item);
+    }
+    morePopover = openPopover(moreButton, menu, {
+      label: t('library.more'),
+      onClose: () => {
+        morePopover = null;
+      },
+    });
+  };
   const searchInput = element<HTMLInputElement>('#asset-search');
   searchInput.oninput = () => mediaPanel.filter(searchInput.value);
+  // H6: signatures in the Draw panel (typed, drawn or uploaded).
+  mountSignature({
+    host: element('#draw-panel'),
+    panels: sidePanels,
+    engine,
+    session,
+    report: reportError,
+    upload: async (file) => {
+      await mediaPanel.importFiles([file]);
+      const assets = engine.state.assets as unknown as readonly {
+        id: string;
+        type: string;
+        width?: number;
+        height?: number;
+        metadata: { fileName?: string };
+      }[];
+      const asset = [...assets]
+        .reverse()
+        .find(
+          (item) =>
+            item.type === 'image' && item.metadata.fileName === file.name,
+        );
+      if (!asset) return;
+      session.setPlaying(false);
+      const { width: W, height: H } = session.source.composition;
+      const layer = createLayer(
+        crypto.randomUUID(),
+        'image',
+        t('signature.layerName'),
+        5,
+      );
+      layer.assetId = asset.id;
+      const scale =
+        asset.width && asset.height
+          ? Math.min((W * 0.3) / asset.width, (H * 0.3) / asset.height)
+          : 1;
+      layer.transform.scale = vector2(scale, scale);
+      layer.transform.position = vector2(
+        (W - (asset.width ?? 0) * scale) / 2,
+        (H - (asset.height ?? 0) * scale) / 2,
+      );
+      engine.commands.transaction(
+        'Add signature',
+        addTopLevel(session.source.composition, layer, session.currentTime),
+      );
+      session.select(layer.id);
+    },
+  });
   // MED-001/MED-002: the Import button and OS file drops both import into Project Media.
   const importMedia = (files: readonly File[]) => {
     if (!files.length) return;
     activeCategory = 'Media';
     applyCategory(activeCategory);
+    workspace?.setOpen('left', true);
     safely(() => mediaPanel.importFiles(files));
   };
   const mediaInput = element<HTMLInputElement>('#import-media-input');
@@ -991,39 +1485,44 @@ export function mountEditorShell(
 
   // Right panel: shared "section" state driven by both the tab row and the icon rail.
   const rightEmpty = element('#right-panel-empty');
-  const rightDescriptions: Record<string, [string, string]> = {
-    Effects: ['panel.effectsTitle', 'panel.effectsDescription'],
-    Transitions: ['panel.transitionsTitle', 'panel.transitionsDescription'],
-    Color: ['panel.colorTitle', 'panel.colorDescription'],
-    Audio: ['panel.audioTitle', 'panel.audioDescription'],
-    Speed: ['panel.speedTitle', 'panel.speedDescription'],
-  };
-  let activeSection = 'Properties';
+
   const setRightSection = (name: string) => {
     activeSection = name;
+    syncRails();
+    const isProperties = name === 'Properties';
+    element('#inspector-content').hidden = !isProperties;
+    element('#animation-panel').hidden = !isProperties;
+    if (isProperties) animationPanel.render();
+    rightEmpty.hidden = true;
+    element('#right-section').hidden = isProperties;
+    if (!isProperties) rightPanel.render(name as RightSection);
+  };
+  /** H4: the rail lists the sections that fit the selection (Clipchamp). */
+  const syncRightRail = () => {
+    const shown = sectionsFor(session);
     for (const el of root.querySelectorAll<HTMLElement>(
       '.icon-rail-right button',
     ))
-      el.setAttribute('aria-pressed', String(el.dataset.section === name));
-    const isProperties = name === 'Properties';
-    element('#inspector-content').hidden = !isProperties;
-    element('#animation-panel').hidden = true;
-    if (isProperties) animationPanel.render();
-    rightEmpty.hidden = isProperties;
-    if (!isProperties) {
-      const [titleKey, descriptionKey] = rightDescriptions[name] ?? ['', ''];
-      element('#right-panel-empty-title').textContent = titleKey
-        ? t(titleKey)
-        : '';
-      element('#right-panel-empty-description').textContent = descriptionKey
-        ? t(descriptionKey)
-        : '';
-    }
+      el.hidden = !shown.includes(el.dataset.section as RightSection);
+    if (!shown.includes(activeSection as RightSection))
+      setRightSection('Properties');
+    else if (activeSection !== 'Properties')
+      rightPanel.render(activeSection as RightSection);
   };
+  session.onChange(syncRightRail);
+  syncRightRail();
   for (const el of root.querySelectorAll<HTMLElement>(
     '.icon-rail-right button',
   ))
-    el.onclick = () => setRightSection(el.dataset.section!);
+    el.onclick = () => {
+      const name = el.dataset.section!;
+      if (name === activeSection && workspace?.rightOpen) {
+        workspace.setOpen('right', false);
+        return;
+      }
+      setRightSection(name);
+      workspace?.setOpen('right', true);
+    };
 
   // Hamburger menu: open/close, outside click, Esc, focus handling.
   // Registered into the shared overlay stack (temporary-overlay.ts) so the global
@@ -1151,11 +1650,9 @@ export function mountEditorShell(
     typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
   observer?.observe(stage);
   window.addEventListener('resize', resize);
-  const disposeWorkspace = mountWorkspace(
-    element('.editor-shell'),
-    session,
-    resize,
-  );
+  workspace = mountWorkspace(element('.editor-shell'), session, resize);
+  workspace.onChange(syncRails);
+  syncRails();
   for (const button of root.querySelectorAll<HTMLButtonElement>(
     '[data-canvas-zoom]',
   ))
@@ -1357,6 +1854,10 @@ export function mountEditorShell(
   // so there is exactly one document-level keydown listener for the whole shell.
   const disposeShortcuts = bindShortcuts(commandContext, {
     cancelGesture: () => {
+      if (cropTool.active) {
+        cropTool.cancel();
+        return true;
+      }
       if (pointer.active) {
         pointer.cancel();
         return true;
@@ -1372,7 +1873,10 @@ export function mountEditorShell(
       }
       return false;
     },
-    closeOverlay: () => closeTopOverlay() || (timeline?.closeMenu() ?? false),
+    closeOverlay: () =>
+      escapeTopPopover() ||
+      closeTopOverlay() ||
+      (timeline?.closeMenu() ?? false),
     localKey: (event) => {
       if (
         session.drawBrush &&
@@ -1404,10 +1908,42 @@ export function mountEditorShell(
   element<HTMLButtonElement>('#language-toggle').onclick = () => {
     setLanguage(getLanguage() === 'en' ? 'hi' : 'en');
   };
+  // H2: the theme (dark, light or system), from the top bar, the menu and
+  // the palette; a UI preference, never project data.
+  const themeButton = element<HTMLButtonElement>('#theme-toggle');
+  const applyThemeControls = () => {
+    const preference = themePreference();
+    const order = ['dark', 'light', 'system'] as const;
+    const next = order[(order.indexOf(preference) + 1) % order.length]!;
+    const name = t(`theme.${preference}`);
+    themeButton.innerHTML = iconSvg(
+      preference === 'dark'
+        ? 'themeDark'
+        : preference === 'light'
+          ? 'themeLight'
+          : 'themeSystem',
+    );
+    themeButton.title = t('theme.toggleTip', {
+      name,
+      next: t(`theme.${next}`),
+    });
+    themeButton.dataset.theme = preference;
+    element('#theme-menu-label').textContent = t('theme.menu', { name });
+  };
+  themeButton.onclick = () => cycleThemePreference();
+  element<HTMLButtonElement>('#theme-menu').onclick = () =>
+    cycleThemePreference();
+  const unsubscribeTheme = onThemeChange(() => {
+    applyThemeControls();
+    // The canvas overlays and stage follow the theme.
+    safely(draw);
+  });
+  applyThemeControls();
   const translateStatic = bindDomTranslations(root);
   const unsubscribeLanguage = subscribe(() => {
     translateStatic();
     applyLanguage();
+    applyThemeControls();
     applyCategory(activeCategory);
     setRightSection(activeSection);
     refresh(true);
@@ -1428,6 +1964,39 @@ export function mountEditorShell(
       // G3: composition to canvas CSS pixels, for proofs of pan and zoom.
       view: viewport().matrix,
       hand: canvasView.hand,
+      // H1.2: the drawn selection box (canvas CSS px), including a preview.
+      selection:
+        selectionGeometry(
+          {
+            ...session.source,
+            ...(interaction.preview ? { preview: interaction.preview } : {}),
+          },
+          session.selectedId,
+          viewport().matrix,
+        )?.handles.map((handle) => ({
+          id: handle.id,
+          point: handle.point,
+          cursor: handle.cursor,
+        })) ?? null,
+      corners:
+        selectionGeometry(
+          {
+            ...session.source,
+            ...(interaction.preview ? { preview: interaction.preview } : {}),
+          },
+          session.selectedId,
+          viewport().matrix,
+        )?.corners ?? null,
+      chip: element('#canvas-chip').hidden
+        ? null
+        : element('#canvas-chip').textContent,
+      // H3: what the pointer outlines, whether the canvas itself is
+      // selected, and the crop in progress.
+      hover,
+      canvasSelected: session.canvasSelected,
+      crop: cropTool.active
+        ? { layerId: cropTool.layerId, frame: cropTool.working }
+        : null,
     }),
     message,
     refresh,
@@ -1440,6 +2009,7 @@ export function mountEditorShell(
       palette.dispose();
       newProjectForm.dispose();
       unsubscribeLanguage();
+      unsubscribeTheme();
       sceneBoard.dispose();
       mediaPanel.dispose();
       positionPanel.dispose();
@@ -1448,7 +2018,7 @@ export function mountEditorShell(
       audio.dispose();
       waveforms.dispose();
       window.removeEventListener('drop', windowDrop);
-      disposeWorkspace();
+      workspace?.dispose();
       canvas.removeEventListener('dragover', assetOver);
       canvas.removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener('drop', assetDrop);

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen } from './fixtures';
+import { test, expect, hook, toScreen, showCategory } from './fixtures';
 
 // W4-A: media import, browser media storage and the Project Media tab.
 // Fixtures come from tests/fixtures/media (DEV-008). The sandbox Chromium cannot
@@ -17,7 +17,7 @@ const card = (page: Page, name: string) =>
   page.locator(`#media-panel .media-card[data-name="${name}"]`);
 
 async function openMediaTab(page: Page) {
-  await page.locator('[data-category="Media"]').click();
+  await showCategory(page, 'Media');
   await expect(page.locator('#media-panel')).toBeVisible();
 }
 async function importWithPicker(page: Page, names: string[]) {
@@ -355,7 +355,7 @@ test.describe('NLE fixture', () => {
   }) => {
     await openMediaTab(page);
     await expect(card(page, 'Footage 1080p')).toBeVisible();
-    await page.locator('[data-category="Graphics"]').click();
+    await showCategory(page, 'Graphics');
     await expect(page.locator('#media-panel')).toBeHidden();
     await expect(page.locator('.media-card').first()).toBeHidden();
   });
@@ -440,7 +440,7 @@ test.describe('NLE fixture', () => {
     const before = await opfsKeys(page);
     const asset = (await assets(page))[0]!;
     // Leave the Media tab: a file import would switch back to it.
-    await page.locator('[data-category="Text"]').first().click();
+    await showCategory(page, 'Text');
     const transfer = await page.evaluateHandle(
       ({ id, name }) => {
         const data = new DataTransfer();

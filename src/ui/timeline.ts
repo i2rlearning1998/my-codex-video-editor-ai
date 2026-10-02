@@ -654,6 +654,8 @@ export function mountTimeline(
     times: readonly number[],
     zoom: number,
   ) => {
+    // H4: keyframes are shown and edited in 2D Animation only.
+    if (session.mode !== 'animation2d') return;
     for (const time of times) {
       const selected = isSelectedKeyframe(layerId, time);
       const shown =
@@ -2023,6 +2025,16 @@ export function mountTimeline(
     playback,
     render,
     cancel,
+    /** H3: scrolls so `time` is in view (Show element timing). */
+    reveal(time: number) {
+      const x = timeToPixel(time, session.timelineZoom);
+      if (
+        x < scroll.scrollLeft ||
+        x > scroll.scrollLeft + scroll.clientWidth - headerWidth
+      )
+        scroll.scrollLeft = Math.max(0, x - 40);
+      render();
+    },
     dispose: () => {
       cancel();
       unsubscribe();

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, artboard, rulerBox, mode2d } from './fixtures';
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced), text
 // "example-headline"; composition 1280×720 at 30 fps, 10 s long.
@@ -82,6 +82,8 @@ test.beforeEach(async ({ page }) => {
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
+  // H4: keyframes live in 2D Animation mode.
+  await mode2d(page);
 });
 
 test('[ANI-001][ANI-006] stopwatches record keyframes; edits at the playhead add keyframes; stopwatch off keeps the shown value', async ({
@@ -154,7 +156,8 @@ test('[ANI-002][ANI-003] easing from the keyframe menu and the Inspector changes
   await easing('hold');
   expect(await xAt1()).toBe(76);
   // The canvas agrees: with Hold the badge is still at x 76 at 1 s.
-  const at = await toScreen(page, 290, 480);
+  // H3: sampled clear of the right edge's pill handle at (300, 480).
+  const at = await toScreen(page, 282, 480);
   const painted = await page
     .locator('canvas')
     .evaluate((canvas: HTMLCanvasElement, point) => {

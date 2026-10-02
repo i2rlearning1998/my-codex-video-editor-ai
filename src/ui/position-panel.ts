@@ -5,7 +5,7 @@
 // works for any selection the shared capability rules allow.
 import type { EditorEngine } from '../core';
 import { t } from '../i18n';
-import type { SceneLayer } from '../render/adapter';
+import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
   ALIGN_EDGES,
   alignSelection,
@@ -19,7 +19,10 @@ import type { EditorSession } from './session';
 import type { DeepPanelHandle } from './side-panel';
 import { createGeometryRow } from './geometry-fields';
 import type { GeometryField } from './geometry';
-import { restoreFieldFocus } from './components/number-field';
+import {
+  createNumberField,
+  restoreFieldFocus,
+} from './components/number-field';
 
 type Tab = 'arrange' | 'layers';
 
@@ -44,6 +47,8 @@ export function mountPositionPanel(
   report: (error: unknown) => void,
   /** G2.1: commits X, Y, W or H (the shared geometry fields). */
   geometry?: (field: GeometryField, value: number) => void,
+  /** H3: commits the rotation (moved here from the toolbar, Canva). */
+  rotate?: (value: number) => void,
 ) {
   // G1.5: rendered in the left side panel, which owns the header and Back.
   const panel = handle.body;
@@ -139,6 +144,28 @@ export function mountPositionPanel(
             render,
           )
         : null;
+    const single =
+      session.selectedIds.length === 1 && session.selectedId
+        ? locateLayer(session.source.composition.layers, session.selectedId)
+            ?.layer
+        : undefined;
+    const rotation =
+      single && rotate
+        ? createNumberField({
+            id: 'position-rotate',
+            label: t('toolbar.rotate'),
+            value: Number(single.transform.rotation.value.toFixed(2)),
+            unit: '°',
+            decimals: 2,
+            min: -360,
+            max: 360,
+            slider: true,
+            presets: [0, 45, 90, 180],
+            onCommit: (value) => safely(() => rotate(value)),
+            onInvalid: (message) => report(new RangeError(message)),
+          })
+        : null;
+    if (fields && rotation) fields.append(rotation);
     return [
       ...(fields ? [section(t('geometry.title'), fields)] : []),
       order,

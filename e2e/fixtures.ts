@@ -161,3 +161,20 @@ export async function rulerBox(page: Page) {
     .not.toBeNull();
   return box!;
 }
+/**
+ * H1.5: shows a left-rail category's panel. Clicking the active category
+ * collapses its panel (LAY-031), so this clicks only when the category is not
+ * already showing.
+ */
+export async function showCategory(page: Page, name: string) {
+  const button = page.locator(`#rail-left [data-category="${name}"]`);
+  if ((await button.getAttribute('aria-pressed')) !== 'true')
+    await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+}
+/** H4: keyframes are shown and edited in 2D Animation mode. */
+export async function mode2d(page: Page) {
+  const button = page.locator('#mode-switch [data-mode="animation2d"]');
+  await button.click();
+  await expect(button).toHaveAttribute('aria-checked', 'true');
+}

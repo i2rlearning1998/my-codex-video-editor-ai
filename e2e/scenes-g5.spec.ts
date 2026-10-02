@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { ALL_FORMATS, BufferSource, Input } from 'mediabunny';
 import { test, expect, hook, rulerBox } from './fixtures';
+import { reveal } from './controls';
 
 // G5: scenes on a board. Fixture two-scenes.json: "Main composition" (5 s;
 // layer-a, layer-b, layer-c; clips clip-a, clip-b, clip-c) then "Scene 2"
@@ -61,7 +62,7 @@ test('[PRJ-014][PRJ-020] the board shows every scene in playback order with a po
   await expect(board(page).locator('.scene-transition')).toHaveCount(1);
   await expect(board(page).locator('.scene-transition')).toHaveAttribute(
     'title',
-    'Not built yet: planned for Wave 6 (TR-001)',
+    'Planned: Wave 6 (TR-001)',
   );
   await page.screenshot({ path: testInfo.outputPath('board.png') });
   // Double-click opens scene 2; the timeline shows only its clips.
@@ -212,7 +213,7 @@ test('[EXP-019] export joins every scene one after another, or this scene only',
   page,
 }, testInfo) => {
   // Make the example 1 s long, then add a copy: two 1 s scenes.
-  const length = page.locator('#toolbar-scene-length');
+  const length = await reveal(page, 'toolbar-scene-length');
   await length.fill('1');
   await length.press('Enter');
   await openBoard(page);
@@ -226,9 +227,6 @@ test('[EXP-019] export joins every scene one after another, or this scene only',
   await dialog.locator('#export-scenes').selectOption('current');
   await expect(dialog.locator('#export-end')).toHaveValue('1');
   await dialog.locator('#export-scenes').selectOption('all');
-  await dialog.locator('#export-width').fill('320');
-  await dialog.locator('#export-height').fill('180');
-  await dialog.locator('#export-height').press('Tab');
   await expect(dialog.locator('#export-format')).not.toHaveText(/Checking/);
   const downloading = page.waitForEvent('download', { timeout: 120_000 });
   await dialog.locator('#export-start-button').click();

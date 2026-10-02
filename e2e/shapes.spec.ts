@@ -1,6 +1,6 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard } from './fixtures';
-import { choose, pickColor, sidePanel } from './controls';
+import { test, expect, hook, artboard, showCategory } from './fixtures';
+import { choose, pickColor, reveal } from './controls';
 
 // W5-D shapes on the default example (1280x720). Presets are added centered:
 // rectangle 520..760 x 280..440, ellipse 540..740 x 260..460, line 520..760 x
@@ -44,7 +44,7 @@ async function clean(page: Page, points: [number, number][], id?: string) {
 }
 async function select(page: Page, id: string) {
   // The Scene list shows only in the Scene category.
-  await page.locator('[data-category="Scene"]').click();
+  await showCategory(page, 'Scene');
   await page.locator(`#scene-list [data-layer-id="${id}"]`).click();
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
@@ -55,7 +55,7 @@ const layers = async (page: Page) =>
 const lastLabel = async (page: Page) =>
   (await hook(page)).history.labels.at(-1);
 async function add(page: Page, preset: string) {
-  await page.locator('[data-category="Elements"]').click();
+  await showCategory(page, 'Elements');
   await page.locator(`[data-shape="${preset}"]`).click();
   expect(await lastLabel(page)).toBe('Add shape');
   const layer = (await layers(page)).at(-1)!;
@@ -65,17 +65,13 @@ async function add(page: Page, preset: string) {
   return layer;
 }
 async function commit(page: Page, id: string, value: string) {
-  const input = page.locator(`#toolbar-${id}`);
+  const input = await reveal(page, `toolbar-${id}`);
   await input.fill(value);
   await input.press('Enter');
 }
-/** G1.5: Stroke style opens in the left side panel. */
+/** H3: Stroke style is a popover under the toolbar's Border button. */
 async function openStrokeStyle(page: Page) {
-  if (!(await sidePanel(page, 'stroke-style').isVisible()))
-    await page
-      .locator('#context-toolbar [data-control="stroke-style"]')
-      .click();
-  await expect(sidePanel(page, 'stroke-style')).toBeVisible();
+  await reveal(page, 'toolbar-dash');
 }
 const close = (a: number[], b: number[], tolerance = 12) =>
   a.every((value, index) => Math.abs(value - b[index]!) <= tolerance);
@@ -133,9 +129,11 @@ test('[SHP-001] the Elements panel adds a rectangle, rounded rectangle, ellipse,
   await page.keyboard.press('Control+z');
   // Arrow: the head at the right end is wider than the 6-unit shaft.
   await add(page, 'arrow');
+  // The head spans x 742 to 760 around the axis at y 360; (746, 357) is 3
+  // units inside it, where the 6-unit shaft would not reach.
   const [shaft, arrowHead] = await clean(page, [
     [600, 352],
-    [750, 355],
+    [746, 357],
   ]);
   expect(shaft).toEqual(beside);
   expect(close(arrowHead!, INK, 30)).toBe(true);
@@ -157,11 +155,14 @@ test('[SHP-003][SHP-006] fill opacity, no fill and corner radius, one undo step 
   // Half purple over what was there.
   for (let i = 0; i < 3; i++)
     expect(c![i]).toBeCloseTo((PURPLE[i]! + center![i]!) / 2, -1);
-  await page.locator('#context-toolbar [data-control="no-fill"]').click();
+  // H3: No fill is in the Colour panel, beside the swatches.
+  await reveal(page, 'toolbar-fill-opacity');
+  await page.locator('[data-action="no-fill"]').click();
   expect(await lastLabel(page)).toBe('Remove fill');
-  await expect(
-    page.locator('#context-toolbar [data-control="no-fill"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('#toolbar-fill')).toHaveAttribute(
+    'data-value',
+    'none',
+  );
   [c] = await clean(page, points, rectangle.id);
   expect(c).toEqual(center);
   await page.keyboard.press('Control+z');
@@ -178,7 +179,7 @@ test('[SHP-003][SHP-006] fill opacity, no fill and corner radius, one undo step 
   ).toBeVisible();
   const ellipse = await add(page, 'ellipse');
   await select(page, ellipse.id);
-  await expect(page.locator('#toolbar-corners')).toBeDisabled();
+  await expect(await reveal(page, 'toolbar-corners')).toBeDisabled();
 });
 
 test('[SHP-005] stroke color, width, dash, caps and joins', async ({

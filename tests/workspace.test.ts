@@ -548,6 +548,8 @@ describe('T3 editing workspace', () => {
     input.dispatchEvent(new Event('blur'));
     expect(s.engine.history.undo).toHaveLength(1);
     expect(s.engine.state.compositions[0]!.layers[0]!.startTime).toBe(2);
+    // H4: keyframes are edited in 2D Animation.
+    shell.session.setMode('animation2d');
     root.querySelector<HTMLButtonElement>('[data-subtab="Transform"]')!.click();
     root
       .querySelector<HTMLButtonElement>('[aria-label="Add Opacity keyframe"]')!

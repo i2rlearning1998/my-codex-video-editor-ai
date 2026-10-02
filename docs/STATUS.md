@@ -1,3 +1,9 @@
+- **H-series (H1 to H6)** is on `claude/h-series`, PR #15 to `main`, not merged; see reports/H-SERIES.md.
+  - **H1** fixes canvas and panel bugs. **H2** adds design tokens with dark and light themes, the new shell and the responsive layouts.
+  - **H3** brings the Canva floating toolbar and tool panels, crop, border and corners, lock, per-type menus, canvas size and the simpler export dialog.
+  - **H4** adds the Clipchamp right panel and the Editor and 2D Animation modes. **H5** adds the library with Starter Pack 1 and gradient fills. **H6** adds signatures.
+  - Last full verify: see reports/H-SERIES.md, section 3. Ledger: 217 Verified, 12 Claimed, 318 Todo, 0 Bug. Schema is still 5; no new dependencies.
+  - PR #14 (audio engine, Codex) was not merged at the end of the series; the right panel's Audio section names Wave 7 until it is.
 - **G-series (G1 to G5)** is on `claude/g-series`, draft PR #13 to `main`, not merged; see reports/G-SERIES.md.
   - It adds shared controls and left side panels, size and position fields that match what is drawn, handles per type (contract revision 7), pan and zoom, a scene bar, the rebuilt Draw tools, and a scenes board with playback and export through all scenes.
   - Last full verify: 374 unit and jsdom tests; 179 e2e passes plus the DEV-006 probe; ledger 180 Verified, 14 Claimed, 330 Todo. Schema is still 5.

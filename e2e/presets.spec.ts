@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, artboard, rulerBox, mode2d } from './fixtures';
 import { choose as chooseOption, sidePanel } from './controls';
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced) over the
@@ -119,17 +119,18 @@ test('[ANI-007] one click fades a layer in; duration is adjustable; undo removes
   await expect(panel(page)).toBeHidden();
   // The badge is half-transparent early in the fade and solid after it.
   await seek(page, 0.25);
-  const early = await pixel(page, 200, 462);
+  // H3: sampled clear of the top edge's pill handle (x 188) and its shadow.
+  const early = await pixel(page, 250, 461);
   expect(near(early, LAVENDER)).toBe(false);
   expect(near(early, PAPER)).toBe(false);
   await seek(page, 1.5);
-  expect(near(await pixel(page, 200, 462), LAVENDER)).toBe(true);
+  expect(near(await pixel(page, 250, 461), LAVENDER)).toBe(true);
   // A longer fade is less visible at the same time.
   await seek(page, 0.25);
   await openAnimate(page);
   await setNumber(page, 'animate-duration', '3');
   await page.keyboard.press('Escape');
-  const slower = await pixel(page, 200, 462);
+  const slower = await pixel(page, 250, 461);
   expect(slower[2]! - PAPER[2]!).toBeLessThan(early[2]! - PAPER[2]!);
   // The clip shows an animation badge; each change was one undo step.
   await expect(
@@ -142,7 +143,7 @@ test('[ANI-007] one click fades a layer in; duration is adjustable; undo removes
   ]);
   for (let i = 0; i < 3; i++) await page.locator('#undo').click();
   expect(await animationOf(page, 'example-badge')).toBeUndefined();
-  expect(near(await pixel(page, 200, 462), LAVENDER)).toBe(true);
+  expect(near(await pixel(page, 250, 461), LAVENDER)).toBe(true);
 });
 
 test('[ANI-007] slide out, pulse loop and typewriter, and presets follow a trimmed clip', async ({
@@ -225,6 +226,7 @@ test('[ANI-008] Ken Burns slowly zooms and pans an image clip', async ({
 test('[ANI-010] the easing library previews named curves and applies one to the selected keyframes', async ({
   page,
 }, testInfo) => {
+  await mode2d(page);
   await select(page, 'example-badge');
   await seek(page, 0);
   await page

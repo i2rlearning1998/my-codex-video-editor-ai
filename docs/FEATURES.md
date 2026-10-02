@@ -93,24 +93,24 @@ Layout of the target UI plus the reusable component set every later feature uses
 |---|---|---|---|---|
 | LAY-001 | P0 | W1 | Todo | Layout matches the approved target: left icon rail with panel, central canvas, right panel with tabs and icon rail, bottom timeline |
 | LAY-002 | P0 | W1 | Verified | Left rail has Media, Graphics, Text, Templates, Audio, Elements, Transitions; each switches the left panel content |
-| LAY-003 | P0 | W1 | Claimed | Left panel can be collapsed and expanded |
-| LAY-004 | P0 | W1 | Claimed | Panel dividers (left, right, timeline) are draggable with min and max sizes |
+| LAY-003 | P0 | W1 | Verified | Left panel can be collapsed and expanded |
+| LAY-004 | P0 | W1 | Verified | Panel dividers (left, right, timeline) are draggable with min and max sizes |
 | LAY-005 | P1 | W1 | Todo | Panel sizes and collapsed state persist across reloads |
 | LAY-006 | P2 | W1 | Todo | Double-click a divider to reset its size |
 | LAY-007 | P0 | W1 | Todo | Right panel has tabs Properties, Effects, Transitions and an icon rail Properties, Effects, Color, Audio, Speed; selection persists while switching |
-| LAY-008 | P0 | W1 | Todo | Right panel can be collapsed and expanded |
+| LAY-008 | P0 | W1 | Verified | Right panel can be collapsed and expanded |
 | LAY-009 | P1 | W1 | Todo | Timeline height is resizable and can be maximized and restored |
 | LAY-010 | P1 | W1 | Todo | Preview can go fullscreen and exit with Esc |
 | LAY-011 | P2 | W1 | Todo | Layout presets (Edit, Timeline focus, Preview focus) |
 | LAY-012 | P1 | W1 | Todo | View mode switch Beginner, Creator, Advanced changes only which tools are visible, never the engine or project data |
-| LAY-013 | P1 | W1 | Todo | Responsive: 1440+ full layout, 1024 to 1439 collapses right panel, 768 to 1023 tablet layout, below 768 review-only mode |
-| LAY-014 | P0 | W1 | Todo | No horizontal page scroll and no clipped controls at 1280x720 and 1920x1080 |
-| LAY-015 | P0 | W1 | Todo | Every icon-only button has an accessible name and a tooltip that includes its shortcut |
-| LAY-016 | P0 | W1 | Todo | Toast notification component (info, success, warning, error) with auto-dismiss and manual dismiss |
+| LAY-013 | P1 | W1 | Verified | Responsive (owner H2): 1440 px and wider docks both panels; 1024 to 1439 docks the left panel and opens the right one as an overlay drawer beside its icon rail; 768 to 1023 opens both as drawers over a scrim with 40 px touch targets; below 768 one panel at a time opens as a bottom sheet and the timeline toolbar is simpler |
+| LAY-014 | P0 | W1 | Verified | No horizontal page scroll and no overlapping or clipped top-bar controls at 1920x1080, 1440x900, 1366x768, 1280x720, 1024x768, 820x1180 and 390x844, in both themes |
+| LAY-015 | P0 | W1 | Verified | Every icon-only button has an accessible name and a tooltip that includes its shortcut |
+| LAY-016 | P0 | W1 | Verified | Toast notification component (info, success, warning, error) with auto-dismiss and manual dismiss |
 | LAY-017 | P0 | W1 | Todo | Modal dialog component traps focus, closes on Esc and returns focus to the trigger |
 | LAY-018 | P0 | W1 | Verified | Dropdown, popover and menu components share one implementation with keyboard navigation |
 | LAY-019 | P0 | W1 | Todo | Every panel has designed loading, empty and error states |
-| LAY-020 | P0 | W1 | Todo | Design tokens (color, spacing, radius, type scale, elevation) live in one place; a theme swap needs no component edits |
+| LAY-020 | P0 | W1 | Verified | Design tokens (color, spacing, radius, type scale, elevation) live in one place; a theme swap needs no component edits |
 | LAY-021 | P0 | W1 | Todo | One consistent line-icon set replaces all unicode glyph icons |
 | LAY-022 | P0 | W1 | Claimed | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
 | LAY-023 | P0 | W1 | Claimed | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
@@ -121,6 +121,13 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-028 | P0 | W1 | Verified | Deep panels (Position, Animate, Colour, Stroke style) open in the left side panel with a Back button and never cover the canvas; quick choices open as popovers anchored under the toolbar without pushing the layout |
 | LAY-029 | P0 | W1 | Verified | Every clickable element has hover, pressed and keyboard-focus states |
 | LAY-030 | P0 | W1 | Verified | Menus: submenus open on hover after a short delay and stay open on a diagonal move toward them; arrow keys, Enter and Esc work at every level; menus reposition to fit and show no scrollbar in normal use |
+| LAY-031 | P0 | W1 | Verified | Side panels have one open state: a rail category opens its panel, the active category collapses it, another swaps it; the top-bar toggles show and change the same state, on the left and on the right |
+| LAY-032 | P0 | W1 | Verified | Themes: dark (default) and light from semantic tokens; dark, light or system from the top bar, the menu and the palette; kept in the browser (not the project) and applied before first paint; the artboard is never themed; text, secondary text and accent on panels reach 4.5:1 |
+| LAY-033 | P0 | W1 | Verified | Motion tokens (120, 180, 240 and 320 ms with enter and exit easings); side panels open and close in 150 to 300 ms without reflowing their content; reduced motion makes it about 0 |
+| LAY-034 | P1 | W1 | Verified | A window under 800 px tall shows six rail categories and a More menu for the rest |
+| LAY-035 | P0 | W1 | Verified | The right panel's icon rail lists the sections that fit the selection (Clipchamp): Properties always; Color, Fade, Speed, Animate where they apply; Filters, Effects, Adjust colors, Audio, Captions and Transitions show which wave builds them (H4 LCR) |
+| LAY-036 | P0 | W1 | Verified | The Inspector stacks Position and size, Timing and Details (dimensions and the layer's place) instead of sub-tabs; a section header opens and scrolls to its section, the chevron folds it (H4 LCR) |
+| LAY-037 | P0 | W1 | Verified | The right panel's Color, Fade (in and out) and Speed (presets, reverse, freeze) edit the selection as one undo step each (H4 LCR) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -275,10 +282,10 @@ Everything the user does directly on the preview canvas.
 | CV-032 | P1 | W2 | Todo | 100 layers can be dragged smoothly without dropped frames on the reference machine |
 | CV-033 | P1 | W2 | Todo | Preview quality setting Full, Half, Quarter |
 | CV-034 | P2 | W2 | Todo | Touch and pen input work with pointer events |
-| CV-035 | P0 | W2 | Verified | A context toolbar above the canvas appears for one selected text, image, video, shape or drawing layer, with controls for that type; it hides for no selection, groups, audio layers and multi-selections |
-| CV-036 | P0 | W2 | Verified | Image and video toolbar: Position X and Y, Scale, Rotate, Flip horizontal and vertical, and Opacity edit the layer as one undo step each; Crop, Blend and Replace show disabled with a tooltip naming the wave that builds them; Animate opens the animation presets |
-| CV-037 | P0 | W2 | Verified | Text toolbar: Font (system fonts until the W3 font picker), Size, Weight, Italic, Color, Align and Spacing (line height, letter and paragraph spacing, case) edit the layer as one undo step each; Effects shows disabled with a tooltip naming its wave; Animate opens the animation presets |
-| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill, Fill opacity, No fill, Stroke, Width, Stroke style (dash, caps, joins) and Corners edit the layer as one undo step each; Boolean explains that shapes combine from the canvas menu; Animate opens the animation presets. A drawing's toolbar edits its Color, Brush size and Opacity |
+| CV-035 | P0 | W2 | Verified | The floating toolbar shows the selection's controls: text, image, video, shape, drawing, group or multi-selection, and the scene toolbar when the canvas itself is selected; it hides for audio layers and when nothing is selected (H3 LCR) |
+| CV-036 | P0 | W2 | Verified | Image and video toolbar: Edit (images), Replace, Border and Corners (images), Crop, Flip, Transparency, Animate and Position edit the layer as one undo step each; X, Y, width, height and rotation are in the Position panel; AI tools show disabled with the wave that builds them (H3 LCR) |
+| CV-037 | P0 | W2 | Verified | Text toolbar: Font (opens the Font panel), Size with − and +, Colour, Bold, Italic, Underline, Strikethrough, Uppercase, Align, Spacing (weight, letter, line and paragraph spacing, case, position in the box), Transparency and Effects (a panel whose effects name their wave) edit the layer as one undo step each (H3 LCR) |
+| CV-038 | P0 | W2 | Verified | Shape toolbar: Fill (fill opacity and No fill in the Colour panel), Stroke style (colour, width, style, dash, caps, joins), Corners, Combine (explains that shapes combine from the canvas menu), Transparency, Animate and Position edit the layer as one undo step each (H3 LCR) |
 | CV-039 | P0 | W2 | Verified | Right-click Copy style and Paste style (also in the palette) copy opacity, color, text size and brush size from one layer and apply the compatible ones to every selected layer in one undo step |
 | CV-040 | P0 | W2 | Verified | A selection shows a small action cluster above its box with Group (for two or more sibling layers) or Ungroup (for groups), Duplicate, Delete and More (the right-click menu); with two or more layers selected, one dashed box surrounds the whole selection and each layer keeps its own outline. Menu and cluster actions are offered only when every selected item supports them |
 | CV-041 | P0 | W2 | Verified | The multi-selection box has corner and edge handles and a rotate handle: dragging them resizes or rotates every selected layer together from the shared box, as one undo step |
@@ -289,6 +296,14 @@ Everything the user does directly on the preview canvas.
 | CV-046 | P0 | W2 | Verified | While a marquee is dragged, the layers it will select are outlined live, before release |
 | CV-047 | P0 | W2 | Verified | A hand tool (H) and Shift+wheel also pan; Fit resets the pan; layers outside the artboard show faintly and stay selectable |
 | CV-048 | P0 | W2 | Verified | With nothing selected the toolbar is a scene bar: background colour, scene length (retimes the clips at the end, one undo step) and Animate (disabled, names its wave) |
+| CV-049 | P0 | W2 | Verified | Rotated objects of every kind (shapes, text, pictures, groups, nested groups, flipped) resize smoothly: the opposite corner or edge stays fixed in world space, the dragged corner follows the pointer from the first step, corners stay square, groups never skew; resize cursors turn with the object; a live W × H chip while resizing and an angle chip while rotating (contract revision 8) |
+| CV-050 | P0 | W2 | Verified | Ctrl/Cmd+wheel and pinch zoom toward the pointer; a plain wheel never moves an artboard that fits; zoomed in, wheel, Shift+wheel, trackpad scroll, Space-drag, middle-drag and the hand tool pan, clamped to 48 px of stage past the artboard; below Fit the artboard stays centred; minimum zoom 10% |
+| CV-051 | P0 | W2 | Verified | Lock (canvas menu): a locked element can be selected but not moved, resized, rotated, nudged, edited or deleted; its toolbar offers Unlock (H3 LCR) |
+| CV-052 | P0 | W2 | Verified | Hover outlines the object, or the empty artboard, under the pointer; a click on the empty artboard selects the canvas (scene toolbar), a click on the stage around it deselects everything (H3 LCR) |
+| CV-053 | P0 | W2 | Verified | Canva handles: white round corners, pill-shaped side handles and the rotate handle 28 px below the box (interaction contract revision 8) (H3 LCR) |
+| CV-054 | P0 | W2 | Verified | One fixed floating toolbar row (44 px, radius 12) with the canvas size chip at its left; it never scrolls: labels collapse first, then trailing tools move into More (H3 LCR) |
+| CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to every scene, keep the design centred, as one undo step with Undo in the toast (H3 LCR) |
+| CV-056 | P0 | W2 | Verified | Right-click menus per type, with icons and shortcuts: an element offers Lock, Show element timing, Alternative text, Set image as background, Resize canvas to selection, Download selection and Info; the empty canvas offers Paste, scenes, Canvas size and Guides; unbuilt items name their wave (H3 LCR) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -444,7 +459,7 @@ Users must be able to type text in any language and choose from very many fonts,
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| TXT-001 | P0 | W3 | Todo | Text panel offers Heading, Subheading and Body plus styled text presets; click adds to canvas at the playhead |
+| TXT-001 | P0 | W3 | Verified | Text panel offers Heading, Subheading and Body plus styled text presets; click adds to canvas at the playhead |
 | TXT-002 | P0 | W3 | Todo | Text tool: click to create a text box at that point, or drag to define a box |
 | TXT-003 | P0 | W3 | Todo | Double-click a text layer edits it inline on the canvas with caret, selection, copy and paste |
 | TXT-004 | P0 | W3 | Todo | System input methods (IME) work while editing, including Hindi and other Indic phonetic keyboards and CJK composition |
@@ -479,6 +494,7 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-033 | P2 | W3 | Todo | Find and replace text across the project |
 | TXT-034 | P2 | W3 | Todo | Spellcheck while editing |
 | TXT-035 | P1 | W8 | Todo | Captions: manual caption track, import SRT and VTT, style presets, burn-in on export |
+| TXT-036 | P0 | W2 | Verified | Underline, strikethrough and uppercase toggle from the text toolbar, and a box taller than its text anchors its lines top, middle or bottom (H3 LCR) |
 
 ## SHP: Shapes, graphics and elements (Wave 5)
 
@@ -487,9 +503,9 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | SHP-001 | P0 | W5 | Verified | Shape tools: rectangle, rounded rectangle, ellipse, line, arrow |
-| SHP-002 | P1 | W5 | Todo | More shapes: triangle, polygon, star, heart and similar |
+| SHP-002 | P1 | W5 | Verified | More shapes: triangle, polygon, star, heart and similar |
 | SHP-003 | P0 | W5 | Verified | Fill: solid color with opacity, none |
-| SHP-004 | P1 | W5 | Todo | Fill: linear and radial gradient |
+| SHP-004 | P1 | W5 | Verified | Fill: linear and radial gradient |
 | SHP-005 | P0 | W5 | Verified | Stroke: color, width, dash style, caps and joins |
 | SHP-006 | P0 | W5 | Verified | Corner radius control on rectangles |
 | SHP-007 | P1 | W5 | Todo | Drop shadow and blur on shapes |
@@ -498,7 +514,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-010 | P1 | W5 | Todo | Frames: drop an image into a frame shape |
 | SHP-011 | P0 | W5 | Todo | Image layer styling: crop, flip, corner radius, border, shadow |
 | SHP-012 | P1 | W5 | Todo | Animated GIF, APNG and WebP stickers |
-| SHP-013 | P0 | W5 | Todo | Backgrounds: solid color and gradient background layers |
+| SHP-013 | P0 | W5 | Verified | Backgrounds: solid color and gradient background layers |
 | SHP-014 | P1 | W5 | Todo | Logo or watermark quick-add with corner placement presets |
 | SHP-015 | P2 | W5 | Verified | Freehand pen and boolean shape operations |
 | SHP-016 | P2 | W8 | Todo | Data charts (bar, line, pie) from typed or pasted data |
@@ -509,6 +525,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-021 | P0 | W2 | Verified | The brushes draw differently: Pen a solid round line, Marker a softer rim, Highlighter flat (chisel) ends and translucent over what is under it, Glow pen a bright core with a halo |
 | SHP-022 | P0 | W2 | Verified | Strokes are smoothed; holding Shift draws a straight line; a circle the size of the brush follows the pointer while drawing |
 | SHP-023 | P1 | W2 | Todo | Shape assist: a roughly drawn line, rectangle or ellipse can become the clean shape |
+| SHP-024 | P1 | W2 | Verified | Signature (Draw panel): type a name in a script style, draw it on a pad or upload an image; it is added centred as one undo step and can be kept in this browser and added again with one click (H6 LCR) |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 
@@ -536,6 +553,8 @@ Preview and export must evaluate animation with the same code.
 | ANI-018 | P2 | W8 | Todo | Path trim (draw-on) animation |
 | ANI-019 | P2 | W8 | Todo | Particle emitters |
 | ANI-020 | P1 | W8 | Todo | Scene (page) animation: one preset animates every layer of a scene |
+| ANI-021 | P0 | W5 | Verified | Editor and 2D Animation modes: stopwatches, keyframe diamonds and timeline keyframes show in 2D Animation only; the switch crossfades in 320 ms and keeps the selection; 3D Animation is shown as planned (H4 LCR) |
+| ANI-022 | P0 | W5 | Verified | In Editor mode a change to an animated property (canvas drag or nudge, Inspector, Position panel, toolbar) is refused with "Animated in 2D Animation" and a button that opens 2D Animation (H4 LCR) |
 
 ## VID: Video and image clip operations
 
@@ -545,13 +564,13 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 |---|---|---|---|---|
 | VID-001 | P0 | W4 | Verified | Video clips can be trimmed and split with frame-exact seeking |
 | VID-002 | P0 | W4 | Verified | Picture-in-picture: clips on overlay tracks can be moved, scaled and rotated on the canvas |
-| VID-003 | P0 | W4 | Todo | Crop tool for image and video layers with aspect lock and handles |
+| VID-003 | P0 | W4 | Verified | Crop tool for image and video layers with aspect lock and handles |
 | VID-004 | P0 | W4 | Todo | Fit, Fill, Stretch and Custom modes handle media whose aspect differs from the canvas |
 | VID-005 | P0 | W4 | Verified | Default still image duration is 5 seconds and adjustable |
 | VID-006 | P0 | W4 | Verified | Detach audio from a video clip |
 | VID-007 | P1 | W4 | Todo | Fill mismatched aspect ratios with a blurred copy of the media |
 | VID-008 | P1 | W4 | Todo | GIF is treated as an animated clip |
-| VID-009 | P1 | W4 | Todo | Replace media keeps all edits on the clip |
+| VID-009 | P1 | W4 | Verified | Replace media keeps all edits on the clip |
 | VID-010 | P0 | W4 | Verified | Constant speed from 0.1x to 8x |
 | VID-011 | P1 | W4 | Verified | Reverse a clip |
 | VID-012 | P0 | W4 | Verified | Freeze frame at the playhead |
@@ -560,6 +579,7 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 | VID-015 | P0 | W2 | Verified | Clip speed 0.1x to 8x (menu presets 0.25x to 4x) is a non-destructive clip property set through an undoable command; the clip's timeline duration becomes source length divided by speed, a speed badge shows on the clip, and slowing a clip into its neighbor is refused; offered in the timeline clip and canvas context menus |
 | VID-016 | P0 | W2 | Verified | Reverse toggles a non-destructive clip property through an undoable command, keeps source range and duration, shows a badge, and trim and split respect reversed source time; offered in the timeline clip and canvas context menus |
 | VID-017 | P0 | W2 | Verified | Freeze frame toggles a non-destructive hold of one source frame (the frame under the playhead, else the first frame) for the whole clip duration through an undoable command, with a badge; offered in the timeline clip and canvas context menus |
+| VID-018 | P0 | W2 | Verified | A picture or video takes a border (colour, width, solid, dashed or dotted) and rounded corners, drawn the same in the preview and the export (H3 LCR) |
 
 ## FX: Effects and filters (Wave 6)
 
@@ -646,6 +666,7 @@ Real audio engine. Currently mute is only metadata.
 | AUD-015 | P0 | W7 | Todo | Audio mixdown in export equals the preview mix (48 kHz stereo) |
 | AUD-016 | P2 | W7 | Todo | Beat detection markers |
 | AUD-017 | P2 | W7 | Todo | Multichannel to stereo downmix |
+| AUD-018 | P0 | W4 | Verified | Audio layers are never drawn, picked, boxed or snapped to on the canvas; they exist as clips on audio tracks, in the Scene list and in the side panel (also after Detach audio and when an audio file is dropped on the canvas) |
 
 ## TPL: Templates, components and nesting (Wave 8)
 
@@ -660,6 +681,8 @@ Real audio engine. Currently mute is only metadata.
 | TPL-007 | P1 | W8 | Todo | Brand kit: colors, fonts and logos applied across a project |
 | TPL-008 | P1 | W8 | Todo | Slide mode for teachers: slides as scenes with transitions and timing |
 | TPL-009 | P2 | W8 | Todo | Data-driven variants from CSV |
+| TPL-010 | P0 | W8 | Verified | A content library (manifest, validator, loader) fills Templates, Elements, Text and Graphics with search and drawn previews, and says so when it cannot load (H5 LCR) |
+| TPL-011 | P0 | W8 | Verified | Starter Pack 1: about 80 shapes, 40 backgrounds (gradients and layered shapes), 30 text styles and 12 templates, original and generated by a script; a template becomes a new scene sized to the canvas, with clips (H5 LCR) |
 
 ## EXP: Export (Wave 5 first version, Wave 9 full)
 
@@ -672,7 +695,7 @@ Offline frame-accurate render, never realtime capture.
 | EXP-003 | P0 | W5 | Verified | Rendering is frame-accurate and offline through a worker, independent of playback speed |
 | EXP-004 | P0 | W5 | Verified | Audio mixdown is included and in sync |
 | EXP-005 | P0 | W5 | Verified | Exported files pass container checks in e2e by an independent read-back (codec, resolution, fps, duration, audio); a one-off ffprobe check is recorded in the report |
-| EXP-006 | P0 | W5 | Verified | Presets: YouTube 1080p and 4K, Shorts, Reels and TikTok (9:16), Instagram square and portrait, small WhatsApp, custom |
+| EXP-006 | P0 | W5 | Verified | Quality 720p, 1080p or 4K sets the export's shorter edge in the canvas's shape; platform sizes are canvas sizes (CV-055), not export presets (H3 LCR) |
 | EXP-007 | P0 | W5 | Verified | Preview and export visuals match; a parity suite compares frames with tolerances |
 | EXP-008 | P0 | W5 | Verified | Missing media or fonts are caught before export with a clear message |
 | EXP-009 | P0 | W5 | Verified | Export the current frame as PNG |

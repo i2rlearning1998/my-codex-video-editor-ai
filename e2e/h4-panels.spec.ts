@@ -1,0 +1,233 @@
+import type { Page } from '@playwright/test';
+import { test, expect, hook, mode2d, rulerBox, toScreen } from './fixtures';
+
+// H4: the right panel (Clipchamp) and the Editor | 2D Animation switch.
+const rail = (page: Page) => page.locator('#rail-right');
+const section = (page: Page, name: string) =>
+  page.locator(`#rail-right [data-section="${name}"]`);
+async function select(page: Page, id: string) {
+  await page.locator(`#scene-list [data-layer-id="${id}"]`).click();
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds)
+    .toEqual([id]);
+}
+async function seek(page: Page, seconds: number) {
+  const box = await rulerBox(page);
+  const zoom = (await hook(page)).session.timelinePxPerSecond;
+  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
+  await expect
+    .poll(async () => (await hook(page)).session.time)
+    .toBeCloseTo(seconds, 2);
+}
+const layerOf = async (page: Page, id: string) =>
+  (await hook(page)).project.compositions[0]!.layers.find(
+    (layer) => layer.id === id,
+  ) as any;
+const clipOf = async (page: Page, id: string) =>
+  (await hook(page)).project.compositions[0]!.tracks.flatMap(
+    (track) => track.clips,
+  ).find((clip) => clip.layerId === id) as any;
+const shownSections = (page: Page) =>
+  rail(page)
+    .locator('button[data-section]:not([hidden])')
+    .evaluateAll((items) =>
+      items.map((item) => (item as HTMLElement).dataset.section),
+    );
+
+test.beforeEach(async ({ page }) => {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+});
+
+test('[LAY-035] the right rail lists the sections that fit the selection; unbuilt ones name their wave', async ({
+  page,
+  openFixtureProject,
+}) => {
+  expect(await shownSections(page)).toEqual(['Properties']);
+  await select(page, 'example-headline');
+  expect(await shownSections(page)).toEqual([
+    'Properties',
+    'Color',
+    'Fade',
+    'Animate',
+    'Effects',
+  ]);
+  await select(page, 'example-badge');
+  expect(await shownSections(page)).toEqual([
+    'Properties',
+    'Color',
+    'Fade',
+    'Animate',
+  ]);
+  await openFixtureProject('nle-example.json');
+  await select(page, 'layer-a');
+  expect(await shownSections(page)).toEqual([
+    'Properties',
+    'Fade',
+    'Speed',
+    'Animate',
+    'Filters',
+    'Effects',
+    'Adjust',
+    'Audio',
+    'Captions',
+    'Transitions',
+  ]);
+  await section(page, 'Filters').click();
+  await expect(page.locator('#right-section')).toContainText(
+    'Planned: Wave 6 (FX-004)',
+  );
+  // A section that no longer fits falls back to Properties.
+  // An image keeps Filters open; with nothing selected it falls back.
+  await select(page, 'layer-c');
+  await expect(section(page, 'Filters')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await page.keyboard.press('Escape');
+  await expect.poll(() => shownSections(page)).toEqual(['Properties']);
+  await expect(section(page, 'Properties')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+});
+
+test('[LAY-036] the Inspector stacks Position and size, Timing and Details; a header opens its section, the chevron folds it', async ({
+  page,
+}) => {
+  await select(page, 'example-headline');
+  const inspector = page.locator('#inspector-content');
+  await expect(inspector.locator('[role="tab"]')).toHaveCount(0);
+  for (const name of ['Position and size', 'Timing', 'Details'])
+    await expect(
+      inspector.locator('.inspector-group-title', { hasText: name }),
+    ).toBeVisible();
+  // Everything is visible at once: a transform field and a timing field.
+  await expect(inspector.locator('#inspector-position-x')).toBeVisible();
+  await expect(inspector.locator('#inspector-start-time')).toBeVisible();
+  await expect(inspector.locator('[data-field="Layer ID"]')).toHaveText(
+    'example-headline',
+  );
+  await inspector.locator('[data-fold="inspector.timing"]').click();
+  await expect(inspector.locator('#inspector-start-time')).toBeHidden();
+  await inspector.locator('[data-subtab="Timing"]').click();
+  await expect(inspector.locator('#inspector-start-time')).toBeVisible();
+});
+
+test('[LAY-037] Color, Fade and Speed in the right panel edit the selection as one undo step each', async ({
+  page,
+  openFixtureProject,
+}) => {
+  await select(page, 'example-headline');
+  await section(page, 'Color').click();
+  await page.locator('#right-color').click();
+  const hex = page.locator('#color-picker-hex');
+  await hex.fill('#ff0000');
+  await hex.press('Enter');
+  await page.keyboard.press('Escape');
+  expect((await layerOf(page, 'example-headline')).properties.fill.value).toBe(
+    '#ff0000',
+  );
+  await section(page, 'Fade').click();
+  const fadeIn = page.locator('#right-fade-in');
+  await fadeIn.fill('1');
+  await fadeIn.press('Enter');
+  expect(
+    (await clipOf(page, 'example-headline')).metadata.animation.in,
+  ).toEqual({ preset: 'fade', duration: 1 });
+  expect((await hook(page)).history.labels.slice(-2)).toEqual([
+    'Set color',
+    'Fade in',
+  ]);
+  await openFixtureProject('nle-example.json');
+  await select(page, 'layer-a');
+  await section(page, 'Speed').click();
+  await page.locator('#right-section [data-speed="2"]').click();
+  expect((await clipOf(page, 'layer-a')).speed).toBe(2);
+  await page.locator('[data-action="right-reverse"]').click();
+  expect((await clipOf(page, 'layer-a')).metadata.reversed).toBe(true);
+  await expect(page.locator('[data-action="right-reverse"]')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+});
+
+test('[ANI-021] Editor | 2D Animation: keyframe tools show in 2D Animation only; the switch crossfades in 320 ms and keeps the selection', async ({
+  page,
+}) => {
+  const editor = page.locator('#mode-switch [data-mode="editor"]');
+  await expect(editor).toHaveAttribute('aria-checked', 'true');
+  await expect(
+    page.locator('#mode-switch [data-mode="animation3d"]'),
+  ).toHaveAttribute('title', 'Planned: Wave 8 (ADV-002)');
+  await select(page, 'example-badge');
+  // Editor: no stopwatches, no keyframe diamonds in the Inspector.
+  await expect(page.locator('#animation-panel')).toBeHidden();
+  await expect(page.locator('.keyframe-button')).toHaveCount(0);
+  // The crossfade runs as the mode changes (read in the same task).
+  const duration = await page.evaluate(() => {
+    document
+      .querySelector<HTMLElement>('#mode-switch [data-mode="animation2d"]')!
+      .click();
+    return getComputedStyle(document.querySelector('#inspector-panel')!)
+      .animationDuration;
+  });
+  expect(duration).toBe('0.32s');
+  await expect(
+    page.locator('#mode-switch [data-mode="animation2d"]'),
+  ).toHaveAttribute('aria-checked', 'true');
+  expect((await hook(page)).session.selectedIds).toEqual(['example-badge']);
+  await expect(page.locator('#animation-panel')).toBeVisible();
+  await expect(page.locator('.keyframe-button').first()).toBeVisible();
+  // Back to Editor: the tools go away again, the selection stays.
+  await editor.click();
+  await expect(page.locator('#animation-panel')).toBeHidden();
+  expect((await hook(page)).session.selectedIds).toEqual(['example-badge']);
+});
+
+test('[ANI-022] in Editor mode an animated property is not changed: "Animated in 2D Animation", with a button that opens 2D Animation', async ({
+  page,
+}) => {
+  // Animate the badge's position in 2D Animation.
+  await mode2d(page);
+  await select(page, 'example-badge');
+  await seek(page, 0);
+  await page
+    .locator(
+      '#animation-panel [data-property="position"] [data-action="stopwatch"]',
+    )
+    .click();
+  await seek(page, 2);
+  const x = page.locator('#inspector-content input[aria-label="Position X"]');
+  await x.fill('276');
+  await x.press('Enter');
+  const animated = (await layerOf(page, 'example-badge')).transform.position;
+  expect(animated.keyframes).toHaveLength(2);
+  await page.locator('#mode-switch [data-mode="editor"]').click();
+  const history = (await hook(page)).history.labels.length;
+  // A canvas drag is refused.
+  const from = await toScreen(page, 380, 470);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 60, from.y, { steps: 6 });
+  await page.mouse.up();
+  const toast = page.locator('.toast', { hasText: 'Animated in 2D Animation' });
+  await expect(toast).toBeVisible();
+  // So is an Inspector edit.
+  await x.fill('300');
+  await x.press('Enter');
+  expect((await hook(page)).history.labels.length).toBe(history);
+  expect((await layerOf(page, 'example-badge')).transform.position).toEqual(
+    animated,
+  );
+  // The toast's button opens 2D Animation.
+  await toast
+    .first()
+    .locator('button', { hasText: 'Open 2D Animation' })
+    .click();
+  await expect(
+    page.locator('#mode-switch [data-mode="animation2d"]'),
+  ).toHaveAttribute('aria-checked', 'true');
+});
