@@ -380,8 +380,7 @@ export function mountLibraryPanels(
         ? {
             // I5: the title's own entrance plays on hover.
             hover: (thumb: HTMLElement, on: boolean) => {
-              thumb.dataset.preview =
-                item.data.animation?.in?.preset ?? 'fade';
+              thumb.dataset.preview = item.data.animation?.in?.preset ?? 'fade';
               thumb.classList.toggle('title-preview', on);
             },
           }

@@ -378,7 +378,10 @@ export function libraryCommands(
       const commands = addTopLevel(composition, layer, time);
       // I5: an animated title brings its entrance with its clip (one step).
       if (item.data.animation)
-        for (const command of commands as { type: string; clip?: { metadata: Record<string, unknown> } }[])
+        for (const command of commands as {
+          type: string;
+          clip?: { metadata: Record<string, unknown> };
+        }[])
           if (command.type === 'CREATE_CLIP' && command.clip)
             command.clip.metadata = {
               ...command.clip.metadata,
