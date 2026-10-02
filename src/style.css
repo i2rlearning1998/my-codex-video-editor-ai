@@ -5133,6 +5133,58 @@ button.color-swatch-trigger {
 .browse-thumb.title-preview img {
   animation: title-preview 900ms var(--ease-enter) infinite alternate;
 }
+.browse-thumb.title-preview[data-preview='pop'] img {
+  animation-name: title-pop;
+}
+.browse-thumb.title-preview[data-preview='zoom'] img {
+  animation-name: title-zoom;
+}
+.browse-thumb.title-preview[data-preview='wipe'] img,
+.browse-thumb.title-preview[data-preview='typewriter'] img {
+  animation-name: title-wipe;
+}
+.browse-thumb.title-preview[data-preview='fade'] img {
+  animation-name: title-fade;
+}
+@keyframes title-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes title-zoom {
+  from {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes title-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes title-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes title-preview {
   from {
     transform: translateY(14%) scale(0.92);

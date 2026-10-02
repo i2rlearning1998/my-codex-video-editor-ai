@@ -67,3 +67,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - I2: My Templates live in localStorage (about 5 MB in total); a large design may not fit and shows an error toast. IndexedDB would hold more.
 - I2: the Draw palette's weight and transparency are fields in the flyout, not a compact popover.
 - I2: Text titles preview with a generic rise-in on hover; per-title animation presets come with I5 content.
+- I4: the right panel's first tab for text has no font weight list of its own; weight is in Spacing and more (the toolbar's popover).
+- I5: an icon pack (for example Lucide, ISC) needs a stroked-path shape kind in the renderer before it can be bundled.

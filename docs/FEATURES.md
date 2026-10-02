@@ -511,6 +511,7 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-036 | P0 | W2 | Verified | Underline, strikethrough and uppercase toggle from the text toolbar, and a box taller than its text anchors its lines top, middle or bottom (H3 LCR) |
 | TXT-037 | P2 | W8 | Todo | Dynamic text: page number, date and similar fields that update themselves |
 | TXT-038 | P0 | W3 | Todo | Text panel: search; Add a text box; Magic Write (planned, W10); Default text styles (click or drag); Dynamic text (planned); Font combinations, Plain text, Text styles, Titles (hover preview) and Two line with See all; Captions (planned, W8) |
+| TXT-039 | P1 | W5 | Todo | Animated titles in Text › Titles: each brings its entrance preset (pop, slide, typewriter, zoom, wipe, fade) with its clip in one undo step, and its card previews the entrance on hover |
 
 ## SHP: Shapes, graphics and elements (Wave 5)
 
@@ -545,6 +546,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-025 | P2 | W8 | Todo | Tables: insert and edit a table of cells |
 | SHP-026 | P0 | W5 | Todo | Elements panel: Recently used, Browse categories (Shapes and Graphics live; Photos, Videos, 3D, Animations, Audio, Tables, Charts, Frames and Grids planned with their wave), a Shapes page (Lines with solid, dashed, dotted, arrow and double arrow; Basic shapes; Polygons; Stars; Arrows; Flowchart shapes) and a Graphics page (Featured, Gradients, Backgrounds) |
 | SHP-027 | P0 | W2 | Todo | Draw palette at the canvas edge: Select; Draw with the brush flyout; Shape and Line drawn by dragging; Sticky note and Text by click (Text by drag for its width); Signature; Table planned; the left panel collapses while it is open and comes back when it closes; each placement is one undo step |
+| SHP-028 | P1 | W5 | Todo | Flowchart shapes in Elements › Shapes: terminator, process, decision, data, document, predefined process, connector, manual input, preparation, manual operation, delay, merge, off-page connector and display |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 

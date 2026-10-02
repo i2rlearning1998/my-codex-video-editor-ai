@@ -4,6 +4,7 @@
 // polygons, and backgrounds, text styles and templates are lists of elements
 // placed in fractions of the canvas, so they fit every canvas size.
 import { z } from 'zod';
+import { clipAnimationSchema } from '../core/clip-animation';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const color = z.string().regex(HEX);
@@ -118,7 +119,13 @@ const textItem = z
   .object({
     ...base,
     type: z.literal('text'),
-    data: z.object({ elements: z.array(textElement).min(1).max(4) }).strict(),
+    data: z
+      .object({
+        elements: z.array(textElement).min(1).max(4),
+        /** I5: an animated title's clip presets (W5-C, D-071). */
+        animation: clipAnimationSchema.optional(),
+      })
+      .strict(),
   })
   .strict();
 const templateItem = z

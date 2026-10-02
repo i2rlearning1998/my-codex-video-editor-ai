@@ -655,6 +655,78 @@ shape(
   gradient('#ffb84d', '#ff6b6b', 0, 'radial'),
 );
 
+// --- I5: flowchart shapes (original outlines) -------------------------------
+const arc = (cx, cy, r, from, to, n = 16) =>
+  Array.from({ length: n + 1 }, (_, i) => {
+    const angle = from + ((to - from) * i) / n;
+    return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r];
+  });
+const FLOW = [
+  [
+    'terminator',
+    'Terminator',
+    'टर्मिनेटर',
+    [...arc(130, 30, 30, -Math.PI / 2, Math.PI / 2), ...arc(30, 30, 30, Math.PI / 2, (3 * Math.PI) / 2)],
+  ],
+  ['process', 'Process', 'प्रक्रिया', [[0, 0], [120, 0], [120, 80], [0, 80]]],
+  ['decision', 'Decision', 'निर्णय', [[60, 0], [120, 50], [60, 100], [0, 50]]],
+  ['data', 'Data', 'डेटा', [[24, 0], [120, 0], [96, 70], [0, 70]]],
+  [
+    'document',
+    'Document',
+    'दस्तावेज़',
+    [
+      [0, 0],
+      [120, 0],
+      [120, 70],
+      ...Array.from({ length: 25 }, (_, i) => [
+        120 - i * 5,
+        70 + Math.sin((i / 24) * Math.PI * 2) * 8,
+      ]),
+    ],
+  ],
+  [
+    'predefined',
+    'Predefined process',
+    'पूर्वनिर्धारित प्रक्रिया',
+    [
+      [[0, 0], [120, 0], [120, 80], [0, 80]],
+      [[12, 4], [12, 76], [16, 76], [16, 4]],
+      [[104, 4], [104, 76], [108, 76], [108, 4]],
+    ],
+  ],
+  ['connector', 'Connector', 'कनेक्टर', circlePoints(50, 50, 50)],
+  ['manual-input', 'Manual input', 'मैनुअल इनपुट', [[0, 24], [120, 0], [120, 80], [0, 80]]],
+  [
+    'preparation',
+    'Preparation',
+    'तैयारी',
+    [[22, 0], [98, 0], [120, 40], [98, 80], [22, 80], [0, 40]],
+  ],
+  [
+    'manual-operation',
+    'Manual operation',
+    'मैनुअल संचालन',
+    [[0, 0], [120, 0], [98, 70], [22, 70]],
+  ],
+  ['delay', 'Delay', 'विलंब', [[0, 0], [70, 0], ...arc(70, 40, 40, -Math.PI / 2, Math.PI / 2), [0, 80]]],
+  ['merge', 'Merge', 'विलय', [[0, 0], [120, 0], [60, 90]]],
+  [
+    'off-page',
+    'Off-page connector',
+    'ऑफ़-पेज कनेक्टर',
+    [[0, 0], [100, 0], [100, 60], [50, 90], [0, 60]],
+  ],
+  [
+    'display',
+    'Display',
+    'डिस्प्ले',
+    [[22, 0], [96, 0], ...arc(96, 40, 40, -Math.PI / 2, Math.PI / 2).slice(1, -1), [96, 80], [22, 80], [0, 40]],
+  ],
+];
+for (const [id, en, hi, rings] of FLOW)
+  shape(`flow-${id}`, en, hi, ['flowchart', 'diagram'], rings, '#e0e7ff');
+
 // --- backgrounds (about 40) -------------------------------------------------
 const GRADIENTS = [
   ['Sunrise', 'सूर्योदय', '#ff9a8b', '#ffd86f', 135],
@@ -1481,6 +1553,40 @@ TEXT_STYLES.forEach(([en, hi, parts], i) =>
     },
   }),
 );
+
+// --- I5: animated titles (Text › Titles) ------------------------------------
+const TITLES = [
+  ['pop', 'Pop title', 'पॉप शीर्षक', 'Big news', 'बड़ी ख़बर', { preset: 'pop', duration: 0.6 }, '#7c3aed'],
+  ['slide', 'Slide-up title', 'ऊपर स्लाइड शीर्षक', 'Coming up', 'आगे देखें', { preset: 'slide', duration: 0.8, direction: 'up' }, '#0f766e'],
+  ['typewriter', 'Typewriter title', 'टाइपराइटर शीर्षक', 'Chapter one', 'अध्याय एक', { preset: 'typewriter', duration: 1.5 }, '#111827'],
+  ['zoom', 'Zoom title', 'ज़ूम शीर्षक', 'Welcome', 'स्वागत है', { preset: 'zoom', duration: 0.7 }, '#be123c'],
+  ['wipe', 'Wipe title', 'वाइप शीर्षक', 'Key point', 'मुख्य बात', { preset: 'wipe', duration: 0.8 }, '#1d4ed8'],
+  ['fade', 'Fade title', 'फ़ेड शीर्षक', 'Thank you', 'धन्यवाद', { preset: 'fade', duration: 1 }, '#374151'],
+];
+for (const [id, en, hi, textEn, textHi, entrance, color] of TITLES)
+  items.push({
+    id: `text-title-${id}`,
+    type: 'text',
+    name: { en, hi },
+    tags: ['text', 'title', 'animated', entrance.preset],
+    data: {
+      elements: [
+        {
+          kind: 'text',
+          x: 0,
+          y: 0,
+          w: 0.7,
+          h: round(0.11 * 1.4),
+          text: { en: textEn, hi: textHi },
+          size: 0.11,
+          weight: 700,
+          color,
+          align: 'center',
+        },
+      ],
+      animation: { in: entrance },
+    },
+  });
 
 // --- templates (about 12) ---------------------------------------------------
 const text = (en, hi, x, y, w, size, color, extra = {}) => ({

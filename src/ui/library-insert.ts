@@ -375,9 +375,18 @@ export function libraryCommands(
       }
       const layer = grouped(layers, name);
       centreOn(layer, canvas, options.at);
+      const commands = addTopLevel(composition, layer, time);
+      // I5: an animated title brings its entrance with its clip (one step).
+      if (item.data.animation)
+        for (const command of commands as { type: string; clip?: { metadata: Record<string, unknown> } }[])
+          if (command.type === 'CREATE_CLIP' && command.clip)
+            command.clip.metadata = {
+              ...command.clip.metadata,
+              animation: structuredClone(item.data.animation),
+            };
       return {
         label: 'Add text',
-        commands: addTopLevel(composition, layer, time),
+        commands,
         layerId: layer.id,
       };
     }
