@@ -84,10 +84,13 @@ export type LibraryElement = z.infer<typeof element>;
 export type LibraryTextElement = z.infer<typeof textElement>;
 export type LibraryShapeElement = z.infer<typeof shapeElement>;
 
+const slug = z.string().regex(/^[a-z0-9-]{1,40}$/);
 const base = {
   id: z.string().regex(/^[a-z0-9-]{3,64}$/),
   name,
   tags: z.array(z.string().min(1).max(30)).max(12),
+  /** I2: the browse-panel section the item is listed in (by type). */
+  section: slug.optional(),
 };
 const shapeItem = z
   .object({
@@ -129,6 +132,43 @@ const templateItem = z
         /** I1.4: the template's own canvas; absent means "any canvas". */
         width: z.number().int().min(16).max(7680).optional(),
         height: z.number().int().min(16).max(7680).optional(),
+        /** I2: its place in the template taxonomy (manifest `templates`). */
+        category: slug.optional(),
+        subcategory: slug.optional(),
+      })
+      .strict(),
+  })
+  .strict();
+/** I2: a transition shown in the Transitions panel (applied from W6). */
+const transitionItem = z
+  .object({
+    ...base,
+    type: z.literal('transition'),
+    data: z
+      .object({
+        /** How the static poster is drawn. */
+        poster: z.enum([
+          'fade',
+          'blur',
+          'dissolve',
+          'wipe-left',
+          'wipe-up',
+          'wipe-circle',
+          'push-left',
+          'push-up',
+          'slide',
+          'cartoon-pop',
+          'cartoon-zoom',
+          'glitch',
+          'rgb-split',
+          'flip',
+          'cube',
+          'page',
+        ]),
+        from: color,
+        to: color,
+        /** The ledger item that builds it (shown in the tooltip). */
+        planned: z.string().regex(/^[A-Z]{2,4}-\d{3}$/),
       })
       .strict(),
   })
@@ -138,15 +178,48 @@ export const libraryItemSchema = z.discriminatedUnion('type', [
   backgroundItem,
   textItem,
   templateItem,
+  transitionItem,
 ]);
 export type LibraryItem = z.infer<typeof libraryItemSchema>;
 export type LibraryItemType = LibraryItem['type'];
 
+/** I2: a template subcategory carries the canvas size of its designs. */
+const subcategory = z
+  .object({
+    id: slug,
+    name,
+    width: z.number().int().min(16).max(7680).optional(),
+    height: z.number().int().min(16).max(7680).optional(),
+  })
+  .strict();
+export const templateCategorySchema = z
+  .object({
+    id: slug,
+    name,
+    /** A flat list (no chips) when empty. */
+    subcategories: z.array(subcategory).max(40),
+  })
+  .strict();
+export type TemplateCategory = z.infer<typeof templateCategorySchema>;
+/** I2: a licensed asset pack bundled with the library (licence kept). */
+const packSchema = z
+  .object({
+    id: z.string(),
+    name,
+    licence: z.string().max(40).optional(),
+    source: z.string().max(200).optional(),
+    attribution: z.string().max(400).optional(),
+  })
+  .strict();
 export const libraryManifestSchema = z
   .object({
     version: z.literal(1),
-    pack: z.object({ id: z.string(), name }).strict(),
-    items: z.array(libraryItemSchema).max(2000),
+    pack: packSchema,
+    /** I2: further packs (for example icons), with their licences. */
+    packs: z.array(packSchema).max(20).optional(),
+    /** I2: the Templates panel's categories, in order. */
+    templates: z.array(templateCategorySchema).max(20).optional(),
+    items: z.array(libraryItemSchema).max(4000),
   })
   .strict()
   .superRefine((manifest, context) => {

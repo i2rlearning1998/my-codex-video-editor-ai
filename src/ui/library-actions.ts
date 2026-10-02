@@ -13,9 +13,61 @@ import {
   itemName,
   libraryCommands,
   TEMPLATE_MODES,
+  type LibraryInsert,
   type TemplateMode,
 } from './library-insert';
+import { myTemplateCommands, type MyTemplate } from './my-templates';
 import type { EditorSession } from './session';
+
+/** I2: recently used library items, per panel, in this browser. */
+export type RecentKind = 'template' | 'element' | 'graphic' | 'text';
+const RECENT_KEY = 'aive.library.recent';
+const RECENT_MAX = 12;
+const recentListeners = new Set<() => void>();
+export const recent = {
+  list(kind: RecentKind): string[] {
+    try {
+      const value = JSON.parse(
+        localStorage.getItem(RECENT_KEY) ?? '{}',
+      ) as Record<string, unknown> | null;
+      const list = value?.[kind];
+      return Array.isArray(list)
+        ? list.filter((id): id is string => typeof id === 'string')
+        : [];
+    } catch {
+      return [];
+    }
+  },
+  add(kind: RecentKind, id: string) {
+    try {
+      const value = JSON.parse(
+        localStorage.getItem(RECENT_KEY) ?? '{}',
+      ) as Record<string, unknown>;
+      value[kind] = [
+        id,
+        ...recent.list(kind).filter((item) => item !== id),
+      ].slice(0, RECENT_MAX);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(value));
+    } catch {
+      // Recents are a convenience.
+    }
+    recentListeners.forEach((listener) => listener());
+  },
+  onChange(listener: () => void) {
+    recentListeners.add(listener);
+    return () => recentListeners.delete(listener);
+  },
+};
+const recentKind = (item: LibraryItem): RecentKind | null =>
+  item.type === 'template'
+    ? 'template'
+    : item.type === 'shape'
+      ? 'element'
+      : item.type === 'background'
+        ? 'graphic'
+        : item.type === 'text'
+          ? 'text'
+          : null;
 
 /** The drag type of a library card (never a file). */
 export const LIBRARY_DRAG_TYPE = 'application/x-aive-library-item';
@@ -42,6 +94,13 @@ function rememberMode(mode: TemplateMode) {
 export interface LibraryActions {
   /** Adds an item; `at` is a composition point (a drop). */
   insert(item: LibraryItem, at?: readonly [number, number]): void;
+  /**
+   * I2: a plain text box ("Add a text box", the Draw palette's Text tool),
+   * centred on `at` (composition point) or the canvas, `width` px wide.
+   */
+  insertTextBox(at?: readonly [number, number], width?: number): void;
+  /** I2: a template saved in this browser (My Templates). */
+  insertMine(template: MyTemplate): void;
   /** The item a drag carries, by id. */
   find(id: string): LibraryItem | undefined;
   setItems(items: readonly LibraryItem[]): void;
@@ -59,25 +118,18 @@ export function createLibraryActions(options: {
   let items: readonly LibraryItem[] = [];
   let asking = false;
   const run = (
-    item: LibraryItem,
-    at: readonly [number, number] | undefined,
+    name: string,
+    build: (mode?: TemplateMode) => LibraryInsert,
     mode?: TemplateMode,
   ) => {
     session.setPlaying(false);
-    const insert = libraryCommands(
-      engine.state,
-      session.source,
-      item,
-      session.currentTime,
-      { ...(at ? { at } : {}), ...(mode ? { mode } : {}) },
-    );
+    const insert = build(mode);
     engine.commands.transaction(insert.label, insert.commands);
     if (insert.sceneId) {
       options.crossfade();
       session.selectComposition(insert.sceneId);
     } else if (insert.layerId) session.select(insert.layerId);
-    if (mode) {
-      const name = itemName(item);
+    if (mode)
       showToast(
         t(`template.done.${mode}`, { name }) +
           (insert.scaled ? ` ${t('template.scaled')}` : ''),
@@ -85,15 +137,25 @@ export function createLibraryActions(options: {
         6000,
         { label: t('command.undo'), run: options.undo },
       );
-    }
   };
-  const askMode = (item: LibraryItem, at?: readonly [number, number]) => {
+  const libraryBuild =
+    (item: LibraryItem, at: readonly [number, number] | undefined) =>
+    (mode?: TemplateMode) =>
+      libraryCommands(engine.state, session.source, item, session.currentTime, {
+        ...(at ? { at } : {}),
+        ...(mode ? { mode } : {}),
+      });
+  const askMode = (
+    name: string,
+    build: (mode?: TemplateMode) => LibraryInsert,
+    done_?: () => void,
+  ) => {
     if (asking) return;
     asking = true;
     let choice = lastTemplateMode();
     let done = false;
     const modal = openModal({
-      titleText: t('template.dialogTitle', { name: itemName(item) }),
+      titleText: t('template.dialogTitle', { name }),
       onClose: () => {
         asking = false;
       },
@@ -101,10 +163,7 @@ export function createLibraryActions(options: {
         const list = document.createElement('div');
         list.className = 'template-modes';
         list.setAttribute('role', 'radiogroup');
-        list.setAttribute(
-          'aria-label',
-          t('template.dialogTitle', { name: itemName(item) }),
-        );
+        list.setAttribute('aria-label', t('template.dialogTitle', { name }));
         const buttons = TEMPLATE_MODES.map((mode) => {
           const button = document.createElement('button');
           button.type = 'button';
@@ -191,7 +250,8 @@ export function createLibraryActions(options: {
       rememberMode(choice);
       modal.close();
       try {
-        run(item, at, choice);
+        run(name, build, choice);
+        done_?.();
       } catch (error) {
         report(error);
       }
@@ -199,9 +259,66 @@ export function createLibraryActions(options: {
   };
   return {
     insert(item, at) {
+      const kind = recentKind(item);
+      const remember = () => kind && recent.add(kind, item.id);
       try {
-        if (item.type === 'template') askMode(item, at);
-        else run(item, at);
+        if (item.type === 'transition') return;
+        if (item.type === 'template')
+          askMode(itemName(item), libraryBuild(item, at), remember);
+        else {
+          run(itemName(item), libraryBuild(item, at));
+          remember();
+        }
+      } catch (error) {
+        report(error);
+      }
+    },
+    insertTextBox(at, width) {
+      try {
+        const canvas = session.source.composition;
+        const w = Math.min(
+          3,
+          Math.max(0.05, (width ?? canvas.width * 0.4) / canvas.width),
+        );
+        const item = {
+          id: 'text-box',
+          type: 'text',
+          name: { en: t('text.boxName'), hi: t('text.boxName') },
+          tags: [],
+          data: {
+            elements: [
+              {
+                kind: 'text',
+                x: 0.5 - w / 2,
+                y: 0.45,
+                w,
+                h: 0.1,
+                text: { en: t('text.boxText'), hi: t('text.boxText') },
+                size: 0.05,
+                color: '#272b29',
+                align: 'center',
+              },
+            ],
+          },
+        } as unknown as LibraryItem;
+        run(t('text.boxName'), libraryBuild(item, at));
+      } catch (error) {
+        report(error);
+      }
+    },
+    insertMine(template) {
+      try {
+        askMode(
+          template.name,
+          (mode) =>
+            myTemplateCommands(
+              engine.state,
+              session.source,
+              template,
+              mode ?? 'new',
+            ),
+          () => recent.add('template', template.id),
+        );
       } catch (error) {
         report(error);
       }

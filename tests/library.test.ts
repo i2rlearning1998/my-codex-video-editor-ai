@@ -40,7 +40,7 @@ describe('H5 library manifest', () => {
               expect(y).toBeLessThanOrEqual(100.01);
             }
       const elements =
-        item.type === 'shape'
+        item.type === 'shape' || item.type === 'transition'
           ? []
           : (item.data.elements as { kind: string; font?: string }[]);
       for (const element of elements)

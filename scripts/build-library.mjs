@@ -1822,8 +1822,274 @@ TEMPLATES.forEach(([en, hi, background, elements], i) =>
   }),
 );
 
+// --- I2: browse sections, template taxonomy, transitions --------------------
+// Each item names the browse-panel section it is listed in. Templates sit in
+// a category and subcategory; a subcategory carries the canvas size of its
+// designs (common sizes for document types, recorded in docs/LIBRARY.md).
+const sectionOf = (item) => {
+  const id = item.id;
+  if (item.type === 'shape') {
+    if (/^shape-polygon-/.test(id)) return 'polygons';
+    if (/^shape-(star|seal|burst|flower)/.test(id)) return 'stars';
+    if (/^shape-arrow/.test(id)) return 'arrows';
+    if (/^shape-flow-/.test(id)) return 'flowchart';
+    return 'basic';
+  }
+  if (item.type === 'background')
+    return /^bg-layered-/.test(id) ? 'backgrounds' : 'gradients';
+  if (item.type === 'text') {
+    const n = Number(id.replace('text-', ''));
+    if ([1, 2, 3].includes(n)) return 'default';
+    if ([11, 12, 13, 22].includes(n)) return 'combinations';
+    if ([21, 25, 27].includes(n)) return 'two-line';
+    if ([16, 17, 19, 23, 24, 30].includes(n)) return 'plain';
+    if ([9, 14, 28].includes(n) || /^text-title-/.test(id)) return 'titles';
+    return 'styles';
+  }
+  return undefined;
+};
+const FEATURED = new Set([
+  'bg-layered-1',
+  'bg-layered-9',
+  'bg-layered-10',
+  'bg-layered-13',
+  'bg-gradient-6',
+  'bg-gradient-16',
+]);
+const size = (width, height) => ({ width, height });
+const sub = (id, en, hi, dims) => ({ id, name: { en, hi }, ...(dims ?? {}) });
+const DOC = {
+  youtube: size(1920, 1080),
+  instagram: size(1080, 1080),
+  facebook: size(1200, 630),
+  presentation: size(1920, 1080),
+  invitation: size(1500, 2100),
+  poster: size(1800, 2400),
+  cv: size(1240, 1754),
+  logo: size(500, 500),
+  code: size(1920, 1080),
+  'business-card': size(1050, 600),
+  flyer: size(1275, 1650),
+  brochure: size(1650, 1275),
+  menu: size(1275, 1650),
+  'photo-collage': size(1080, 1080),
+  sheet: size(1920, 1080),
+  doc: size(1240, 1754),
+  website: size(1366, 768),
+  whiteboard: size(1920, 1080),
+};
+const DOC_NAMES = {
+  youtube: ['YouTube', 'यूट्यूब'],
+  instagram: ['Instagram', 'इंस्टाग्राम'],
+  facebook: ['Facebook', 'फ़ेसबुक'],
+  presentation: ['Presentation', 'प्रस्तुति'],
+  invitation: ['Invitation', 'निमंत्रण'],
+  poster: ['Poster', 'पोस्टर'],
+  cv: ['CV', 'सीवी'],
+  logo: ['Logo', 'लोगो'],
+  code: ['Code', 'कोड'],
+  'business-card': ['Business card', 'बिज़नेस कार्ड'],
+  flyer: ['Flyer', 'फ़्लायर'],
+  brochure: ['Brochure', 'ब्रोशर'],
+  menu: ['Menu', 'मेन्यू'],
+  'photo-collage': ['Photo collage', 'फ़ोटो कोलाज'],
+  sheet: ['Sheet', 'शीट'],
+  doc: ['Doc', 'डॉक'],
+  website: ['Website', 'वेबसाइट'],
+  whiteboard: ['Whiteboard', 'व्हाइटबोर्ड'],
+};
+const doc = (id) => sub(id, DOC_NAMES[id][0], DOC_NAMES[id][1], DOC[id]);
+const TAXONOMY = [
+  {
+    id: 'all',
+    name: { en: 'All Templates', hi: 'सभी टेम्पलेट' },
+    subcategories: Object.keys(DOC).map(doc),
+  },
+  {
+    id: 'video',
+    name: { en: 'Video Templates', hi: 'वीडियो टेम्पलेट' },
+    subcategories: [
+      sub('mobile-video', 'Mobile video', 'मोबाइल वीडियो', size(1080, 1920)),
+      sub(
+        'landscape-video',
+        'Landscape video',
+        'लैंडस्केप वीडियो',
+        size(1920, 1080),
+      ),
+      sub(
+        'youtube-shorts',
+        'YouTube Shorts',
+        'यूट्यूब शॉर्ट्स',
+        size(1080, 1920),
+      ),
+      sub(
+        'instagram-reels',
+        'Instagram Reels',
+        'इंस्टाग्राम रील्स',
+        size(1080, 1920),
+      ),
+      sub(
+        'youtube-videos',
+        'YouTube videos',
+        'यूट्यूब वीडियो',
+        size(1920, 1080),
+      ),
+      sub(
+        'facebook-videos',
+        'Facebook videos',
+        'फ़ेसबुक वीडियो',
+        size(1920, 1080),
+      ),
+      sub('video-collage', 'Video collage', 'वीडियो कोलाज', size(1080, 1080)),
+      sub('video-message', 'Video message', 'वीडियो संदेश', size(1080, 1920)),
+      sub(
+        'feed-ad-video',
+        'Feed ad video',
+        'फ़ीड विज्ञापन वीडियो',
+        size(1080, 1350),
+      ),
+    ],
+  },
+  {
+    id: 'graphics',
+    name: { en: 'Graphics Templates', hi: 'ग्राफ़िक्स टेम्पलेट' },
+    subcategories: [
+      'presentation',
+      'cv',
+      'logo',
+      'code',
+      'business-card',
+      'doc',
+      'website',
+      'whiteboard',
+      'flyer',
+      'brochure',
+      'menu',
+      'photo-collage',
+      'invitation',
+    ].map(doc),
+  },
+  {
+    id: 'social',
+    name: { en: 'Social media Templates', hi: 'सोशल मीडिया टेम्पलेट' },
+    subcategories: [
+      sub(
+        'instagram-post',
+        'Instagram post',
+        'इंस्टाग्राम पोस्ट',
+        size(1080, 1080),
+      ),
+      sub(
+        'youtube-thumbnail',
+        'YouTube thumbnail',
+        'यूट्यूब थंबनेल',
+        size(1280, 720),
+      ),
+      sub('facebook-post', 'Facebook post', 'फ़ेसबुक पोस्ट', size(1200, 630)),
+      sub('linkedin-post', 'LinkedIn post', 'लिंक्डइन पोस्ट', size(1200, 627)),
+      sub('pinterest-pin', 'Pinterest pin', 'पिनटेरेस्ट पिन', size(1000, 1500)),
+    ],
+  },
+  {
+    id: 'education',
+    name: { en: 'Education Templates', hi: 'शिक्षा टेम्पलेट' },
+    subcategories: [],
+  },
+];
+/** Where each Starter Pack 1 template goes (all are 16:9 designs). */
+const PLACE = {
+  'template-1': ['video', 'youtube-videos', ['youtube']],
+  'template-2': ['education', undefined, ['presentation']],
+  'template-3': ['graphics', 'presentation', ['presentation']],
+  'template-4': ['education', undefined, ['presentation']],
+  'template-5': ['social', 'youtube-thumbnail', ['youtube']],
+  'template-6': ['video', 'youtube-videos', ['youtube']],
+  'template-7': ['video', 'landscape-video', ['youtube']],
+  'template-8': ['education', undefined, ['presentation']],
+  'template-9': ['graphics', 'presentation', ['presentation']],
+  'template-10': ['education', undefined, ['presentation']],
+  'template-11': ['video', 'landscape-video', ['invitation']],
+  'template-12': ['graphics', 'presentation', ['menu']],
+};
+for (const item of items) {
+  const section = sectionOf(item);
+  if (section) item.section = section;
+  if (FEATURED.has(item.id)) item.tags = [...item.tags, 'featured'];
+  if (item.type === 'template' && PLACE[item.id]) {
+    const [category, subcategory, tags] = PLACE[item.id];
+    const dims = subcategory
+      ? TAXONOMY.find((entry) => entry.id === category).subcategories.find(
+          (entry) => entry.id === subcategory,
+        )
+      : DOC.presentation;
+    item.data.category = category;
+    if (subcategory) item.data.subcategory = subcategory;
+    item.data.width = dims.width;
+    item.data.height = dims.height;
+    item.tags = [...new Set([...item.tags, ...tags])];
+  }
+}
+// Transitions: listed now with static posters, applied from Wave 6.
+const TRANSITIONS = [
+  ['fades', 'fade', 'Fade', 'फ़ेड', 'fade', 'TR-003'],
+  ['fades', 'fade-black', 'Fade to black', 'काले में फ़ेड', 'fade', 'TR-003'],
+  [
+    'fades',
+    'dissolve',
+    'Cross dissolve',
+    'क्रॉस डिज़ॉल्व',
+    'dissolve',
+    'TR-003',
+  ],
+  ['fades', 'blur', 'Blur', 'धुंधला', 'blur', 'TR-004'],
+  ['wipes', 'wipe-left', 'Wipe left', 'बाएँ वाइप', 'wipe-left', 'TR-003'],
+  ['wipes', 'wipe-up', 'Wipe up', 'ऊपर वाइप', 'wipe-up', 'TR-003'],
+  ['wipes', 'iris', 'Circle wipe', 'गोल वाइप', 'wipe-circle', 'TR-004'],
+  ['pushes', 'push-left', 'Push left', 'बाएँ पुश', 'push-left', 'TR-003'],
+  ['pushes', 'push-up', 'Push up', 'ऊपर पुश', 'push-up', 'TR-003'],
+  ['pushes', 'slide', 'Slide', 'स्लाइड', 'slide', 'TR-003'],
+  ['cartoon', 'pop', 'Pop', 'पॉप', 'cartoon-pop', 'TR-004'],
+  [
+    'cartoon',
+    'zoom-burst',
+    'Zoom burst',
+    'ज़ूम बर्स्ट',
+    'cartoon-zoom',
+    'TR-004',
+  ],
+  ['glitches', 'glitch', 'Glitch', 'ग्लिच', 'glitch', 'TR-004'],
+  [
+    'glitches',
+    'rgb-split',
+    'RGB split',
+    'आरजीबी विभाजन',
+    'rgb-split',
+    'TR-004',
+  ],
+  ['3d', 'flip', 'Flip', 'फ़्लिप', 'flip', 'TR-004'],
+  ['3d', 'cube', 'Cube', 'क्यूब', 'cube', 'TR-004'],
+  ['3d', 'page-turn', 'Page turn', 'पन्ना पलटना', 'page', 'TR-004'],
+];
+const TRANSITION_COLOURS = [
+  ['#7c5cff', '#f59e0b'],
+  ['#0ea5e9', '#f43f5e'],
+  ['#10b981', '#6366f1'],
+];
+TRANSITIONS.forEach(([section, id, en, hi, poster, planned], i) => {
+  const [from, to] = TRANSITION_COLOURS[i % TRANSITION_COLOURS.length];
+  items.push({
+    id: `transition-${id}`,
+    type: 'transition',
+    name: { en, hi },
+    tags: ['transition', section],
+    section,
+    data: { poster, from, to, planned },
+  });
+});
+
 const manifest = {
   version: 1,
+  templates: TAXONOMY,
   pack: {
     id: 'starter-1',
     name: { en: 'Starter Pack 1', hi: 'स्टार्टर पैक 1' },
@@ -1834,5 +2100,5 @@ mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, `${JSON.stringify(manifest)}\n`);
 const count = (type) => items.filter((item) => item.type === type).length;
 console.log(
-  `Wrote ${out}: ${count('shape')} shapes, ${count('background')} backgrounds, ${count('text')} text styles, ${count('template')} templates`,
+  `Wrote ${out}: ${count('shape')} shapes, ${count('background')} backgrounds, ${count('text')} text styles, ${count('template')} templates, ${count('transition')} transitions`,
 );

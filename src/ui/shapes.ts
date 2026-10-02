@@ -43,11 +43,55 @@ export const SHAPE_PRESETS = {
   ellipse: { kind: 'ellipse', width: 200, height: 200, radius: 0 },
   line: { kind: 'line', width: 240, height: 24, radius: 0 },
   arrow: { kind: 'arrow', width: 240, height: 36, radius: 0 },
+  // I2: the Elements panel's Lines section.
+  'line-dashed': {
+    kind: 'line',
+    width: 240,
+    height: 24,
+    radius: 0,
+    dash: 'dash',
+  },
+  'line-dotted': {
+    kind: 'line',
+    width: 240,
+    height: 24,
+    radius: 0,
+    dash: 'dot',
+  },
+  'arrow-double': {
+    kind: 'arrow',
+    width: 240,
+    height: 36,
+    radius: 0,
+    both: true,
+  },
 } as const satisfies Record<
   string,
-  { kind: ShapeKind; width: number; height: number; radius: number }
+  {
+    kind: ShapeKind;
+    width: number;
+    height: number;
+    radius: number;
+    dash?: 'dash' | 'dot';
+    both?: boolean;
+  }
 >;
 export type ShapePreset = keyof typeof SHAPE_PRESETS;
+/** The W5-D presets (the Basic shapes and the plain line and arrow). */
+export const BASIC_PRESETS: readonly ShapePreset[] = [
+  'rectangle',
+  'rounded',
+  'ellipse',
+  'line',
+  'arrow',
+];
+export const LINE_PRESETS: readonly ShapePreset[] = [
+  'line',
+  'line-dashed',
+  'line-dotted',
+  'arrow',
+  'arrow-double',
+];
 export const DEFAULT_SHAPE_FILL = '#8b6cff';
 export const DEFAULT_LINE_COLOR = '#272b29';
 
@@ -94,6 +138,8 @@ export function addShapeCommands(
         }
       : { fill: property('color', DEFAULT_SHAPE_FILL) }),
     ...(spec.radius ? { cornerRadius: number(spec.radius) } : {}),
+    ...('dash' in spec ? { strokeDash: property('string', spec.dash) } : {}),
+    ...('both' in spec ? { arrowStart: property('boolean', true) } : {}),
   } as never;
   const target = trackForNewClip(
     composition,
@@ -395,7 +441,7 @@ export function mountShapesPanel(
   hint.textContent = t('shape.hint');
   const grid = document.createElement('div');
   grid.className = 'draw-brushes shape-presets';
-  for (const preset of Object.keys(SHAPE_PRESETS) as ShapePreset[]) {
+  for (const preset of BASIC_PRESETS) {
     const item = document.createElement('button');
     item.type = 'button';
     item.dataset.shape = preset;

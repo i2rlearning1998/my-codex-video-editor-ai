@@ -52,7 +52,7 @@ import { mountTimeline } from './timeline';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
-import { addShape, mountShapesPanel } from './shapes';
+import { addShape } from './shapes';
 import { mountContextToolbar } from './context-toolbar';
 import { CropTool } from './crop-tool';
 import { AnimatedInEditorError } from './editor-mode';
@@ -117,13 +117,11 @@ const RAIL_CATEGORIES = [
   'Media',
   'Draw',
   'Scene',
-  'Graphics',
   'Audio',
   'Transitions',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
-  Graphics: 'graphics',
   Text: 'text',
   Templates: 'templates',
   Audio: 'audio',
@@ -213,11 +211,10 @@ export function mountEditorShell(
         <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" data-rail-panel="Draw" hidden></div>
-        <div class="draw-panel shapes-panel" id="shapes-panel" data-rail-panel="Elements" hidden></div>
         <div id="library-elements" data-rail-panel="Elements" hidden></div>
         <div id="library-templates" data-rail-panel="Templates" hidden></div>
         <div id="library-text" data-rail-panel="Text" hidden></div>
-        <div id="library-graphics" data-rail-panel="Graphics" hidden></div>
+        <div id="library-transitions" data-rail-panel="Transitions" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -1326,17 +1323,13 @@ export function mountEditorShell(
     'Elements',
     'Templates',
     'Text',
-    'Graphics',
+    'Transitions',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
     element('#draw-panel'),
     session,
     reportError,
-  );
-  // SHP-001: the Elements category offers shapes; a click adds one.
-  mountShapesPanel(element('#shapes-panel'), (preset) =>
-    safely(() => addShape(engine, session, preset)),
   );
   // I1.3, I1.4: adding library items by click, drop and the template dialog.
   const crossfade = () => {
@@ -1368,19 +1361,27 @@ export function mountEditorShell(
     crossfade,
   });
   // H5: Starter Pack 1 in Templates, Elements, Text and Graphics.
-  mountLibraryPanels(
+  // I2: browse panels; Graphics lives inside Elements.
+  const libraryBrowsers = mountLibraryPanels(
     {
       Templates: element('#library-templates'),
       Elements: element('#library-elements'),
       Text: element('#library-text'),
-      Graphics: element('#library-graphics'),
+      Transitions: element('#library-transitions'),
     },
     engine,
     session,
     reportError,
     renderer.measureText,
     libraryActions,
+    {
+      close: () => workspace?.setOpen('left', false),
+      // SHP-001: the five W5-D shapes and the I2 lines.
+      addPreset: (preset) => safely(() => addShape(engine, session, preset)),
+      addTextBox: () => libraryActions.insertTextBox(),
+    },
   );
+  void libraryBrowsers;
   let activeCategory = 'Scene';
   let activeSection = 'Properties';
   let workspace: Workspace | undefined;

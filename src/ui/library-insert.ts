@@ -381,6 +381,9 @@ export function libraryCommands(
         layerId: layer.id,
       };
     }
+    case 'transition':
+      // I2: transitions are listed now and applied from Wave 6 (TR-003).
+      throw new Error('Transitions are planned for Wave 6');
     case 'template': {
       const mode = options.mode ?? 'new';
       const { layers, scaled } = templateLayers(item, canvas, name);
@@ -458,7 +461,7 @@ export function libraryCommands(
  * The composition after some CREATE_TRACK and CREATE_CLIP commands, enough
  * for the next `trackForNewClip` to see occupied tracks and times.
  */
-function applyTracks(
+export function applyTracks(
   composition: RenderSource['composition'],
   commands: readonly Command[],
 ): RenderSource['composition'] {
