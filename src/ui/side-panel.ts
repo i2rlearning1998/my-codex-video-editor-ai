@@ -30,11 +30,22 @@ export interface SidePanels {
   refresh(): void;
   close(): void;
   readonly openId: string | null;
+  /** I1.2: a deep panel is open and the side panel area is shown. */
+  readonly visible: boolean;
 }
 
 export function createSidePanels(
   host: HTMLElement,
   registerOverlay: (close: () => void) => () => void,
+  /**
+   * I1.2: the side panel area itself. Opening a deep panel reveals it (it
+   * animates open when collapsed); a panel counts as open only while the
+   * area is shown.
+   */
+  area: { reveal(): void; revealed(): boolean } = {
+    reveal: () => undefined,
+    revealed: () => true,
+  },
 ): SidePanels {
   host.classList.add('side-panel-host');
   let openId: string | null = null;
@@ -69,6 +80,7 @@ export function createSidePanels(
     return { root, body, label };
   };
   const opened = (id: string) => {
+    area.reveal();
     for (const [other, close] of closers) if (other !== id) close();
     openId = id;
     host.dataset.open = id;
@@ -120,7 +132,7 @@ export function createSidePanels(
       const handle: DeepPanelHandle = {
         body: panel.body,
         get isOpen() {
-          return !panel.root.hidden;
+          return !panel.root.hidden && area.revealed();
         },
         open() {
           panel.label();
@@ -136,7 +148,7 @@ export function createSidePanels(
           hooks.onClose?.();
         },
         toggle() {
-          if (panel.root.hidden) handle.open();
+          if (panel.root.hidden || !area.revealed()) handle.open();
           else handle.close();
         },
       };
@@ -147,6 +159,7 @@ export function createSidePanels(
       if (built?.id === id) {
         built.build = build;
         built.title = title;
+        area.reveal();
         return renderBuilt();
       }
       closeBuilt();
@@ -177,6 +190,9 @@ export function createSidePanels(
     },
     get openId() {
       return openId;
+    },
+    get visible() {
+      return openId !== null && area.revealed();
     },
   };
 }

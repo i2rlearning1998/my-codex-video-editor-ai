@@ -693,5 +693,20 @@
   "signature.clear": "Clear",
   "signature.uploadHint": "Upload a photo or scan of your signature (PNG with a clear background works best).",
   "signature.uploadLabel": "Choose a signature image",
-  "signature.layerName": "Signature"
+  "signature.layerName": "Signature",
+  "template.dialogTitle": "Use template “{name}”",
+  "template.mode.replace": "Replace this scene",
+  "template.mode.add": "Add onto this scene",
+  "template.mode.new": "New scene",
+  "template.modeHint.replace": "Everything in this scene is replaced by the template.",
+  "template.modeHint.add": "The template's elements are added on top of this scene.",
+  "template.modeHint.new": "The template becomes a new scene after this one.",
+  "template.confirm": "Use template",
+  "template.done.replace": "This scene was replaced by “{name}”.",
+  "template.done.add": "“{name}” was added onto this scene.",
+  "template.done.new": "“{name}” was added as a new scene.",
+  "template.scaled": "It was scaled to fit your canvas.",
+  "toolbar.ratio": "Ratio",
+  "toolbar.canvasBackground": "Canvas background",
+  "toolbar.autoCaptions": "Auto captions"
 }

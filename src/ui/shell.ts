@@ -59,6 +59,7 @@ import { AnimatedInEditorError } from './editor-mode';
 import { escapeTopPopover } from './components/popover';
 import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
+import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
 import { addTopLevel } from './library-insert';
 import {
@@ -568,6 +569,12 @@ export function mountEditorShell(
   const sidePanels = createSidePanels(
     element('#side-panel-host'),
     registerExternalOverlay,
+    {
+      reveal: () => {
+        if (workspace && !workspace.leftOpen) workspace.setOpen('left', true);
+      },
+      revealed: () => workspace?.leftOpen ?? true,
+    },
   );
   const animatePanel = mountAnimatePanel(
     sidePanels.register('animate', () => t('animate.title')),
@@ -1302,6 +1309,36 @@ export function mountEditorShell(
   mountShapesPanel(element('#shapes-panel'), (preset) =>
     safely(() => addShape(engine, session, preset)),
   );
+  // I1.3, I1.4: adding library items by click, drop and the template dialog.
+  const crossfade = () => {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
+      return;
+    try {
+      const snapshot = document.createElement('img');
+      snapshot.className = 'scene-crossfade';
+      snapshot.alt = '';
+      snapshot.setAttribute('aria-hidden', 'true');
+      snapshot.src = canvas.toDataURL();
+      Object.assign(snapshot.style, {
+        left: `${canvas.offsetLeft}px`,
+        top: `${canvas.offsetTop}px`,
+        width: `${canvas.clientWidth}px`,
+        height: `${canvas.clientHeight}px`,
+      });
+      stage.append(snapshot);
+      snapshot.addEventListener('animationend', () => snapshot.remove());
+      setTimeout(() => snapshot.remove(), 600);
+    } catch {
+      // A canvas that cannot be read (tainted) just switches.
+    }
+  };
+  const libraryActions = createLibraryActions({
+    engine,
+    session,
+    report: reportError,
+    undo: () => runCommand('undo', commandContext),
+    crossfade,
+  });
   // H5: Starter Pack 1 in Templates, Elements, Text and Graphics.
   mountLibraryPanels(
     {
@@ -1314,6 +1351,7 @@ export function mountEditorShell(
     session,
     reportError,
     renderer.measureText,
+    libraryActions,
   );
   let activeCategory = 'Scene';
   let activeSection = 'Properties';
@@ -1584,7 +1622,8 @@ export function mountEditorShell(
       nameDisplay.hidden = false;
       if (next && next !== current)
         safely(() => {
-          engine.commands.transaction('Rename project', [
+          // I1.6: the project's name is not a project edit (not undoable).
+          engine.library('Rename project', [
             { type: 'SET_PROJECT_NAME', name: next },
           ]);
           showToast(t('project.renamed'), 'success', 2000);
@@ -1619,7 +1658,8 @@ export function mountEditorShell(
   // attaches file data to the drag (MED-015 regression).
   const isFileDrag = (event: DragEvent) =>
     !!event.dataTransfer?.types.includes('Files') &&
-    !event.dataTransfer.types.includes('application/x-editor-asset');
+    !event.dataTransfer.types.includes('application/x-editor-asset') &&
+    !event.dataTransfer.types.includes(LIBRARY_DRAG_TYPE);
   window.addEventListener('dragenter', (event) => {
     if (!isFileDrag(event)) return;
     dragDepth++;
@@ -1650,6 +1690,17 @@ export function mountEditorShell(
     typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(resize);
   observer?.observe(stage);
   window.addEventListener('resize', resize);
+  // I1.1: each side panel's content sits in a body that keeps the panel's
+  // open width, so the panel itself can animate its width without the
+  // content reflowing mid-animation.
+  for (const panel of root.querySelectorAll<HTMLElement>(
+    '.library, .inspector',
+  )) {
+    const body = document.createElement('div');
+    body.className = 'panel-body';
+    body.append(...panel.childNodes);
+    panel.append(body);
+  }
   workspace = mountWorkspace(element('.editor-shell'), session, resize);
   workspace.onChange(syncRails);
   syncRails();
@@ -1809,9 +1860,35 @@ export function mountEditorShell(
       session.select(layer.id);
     });
   const assetOver = (event: DragEvent) => {
-    if (event.dataTransfer?.types.includes('application/x-editor-asset'))
+    if (
+      event.dataTransfer?.types.includes('application/x-editor-asset') ||
+      event.dataTransfer?.types.includes(LIBRARY_DRAG_TYPE)
+    )
       event.preventDefault();
   };
+  // I1.3: a library card dropped on the canvas is inserted at the drop
+  // point (never imported as media).
+  const libraryDrop = (event: DragEvent) => {
+    const id = event.dataTransfer?.getData(LIBRARY_DRAG_TYPE);
+    if (!id) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const item = libraryActions.find(id);
+    if (!item) return;
+    const rect = canvas.getBoundingClientRect(),
+      inverse = invertMatrix(viewport().matrix);
+    const point = inverse
+      ? transformPoint(inverse, [
+          event.clientX - rect.left,
+          event.clientY - rect.top,
+        ])
+      : undefined;
+    libraryActions.insert(
+      item,
+      point ? [point[0], point[1]] : undefined,
+    );
+  };
+  canvas.addEventListener('drop', libraryDrop);
   canvas.addEventListener('dragover', assetOver);
   canvas.addEventListener('drop', assetDrop);
   element('#timeline-foundation').addEventListener('drop', assetDrop);

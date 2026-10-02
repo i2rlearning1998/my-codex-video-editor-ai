@@ -10,6 +10,7 @@ import type { TextMeasurer } from '../render/text-layout';
 import { drawComposition } from '../render/canvas';
 import { iconSvg } from './icons';
 import { itemName, libraryCommands } from './library-insert';
+import { LIBRARY_DRAG_TYPE, type LibraryActions } from './library-actions';
 import type { EditorSession } from './session';
 
 const PREVIEW = { width: 1280, height: 720 };
@@ -136,6 +137,7 @@ export function mountLibraryPanels(
   session: EditorSession,
   report: (error: unknown) => void,
   measureText?: TextMeasurer,
+  actions?: LibraryActions,
 ) {
   const panels = Object.entries(hosts).map(([category, host]) => {
     const type = TYPES[category]!;
@@ -160,6 +162,7 @@ export function mountLibraryPanels(
   });
   let items: readonly LibraryItem[] = [];
   const add = (item: LibraryItem) => {
+    if (actions) return actions.insert(item);
     try {
       session.setPlaying(false);
       const insert = libraryCommands(
@@ -238,6 +241,14 @@ export function mountLibraryPanels(
         label.textContent = name;
         card.append(thumb, label);
         card.onclick = () => add(item);
+        // I1.3: the card drags as a library item; its preview image never
+        // drags on its own (the browser would drag it as a file).
+        thumb.draggable = false;
+        card.draggable = true;
+        card.ondragstart = (event) => {
+          event.dataTransfer?.setData(LIBRARY_DRAG_TYPE, item.id);
+          if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
+        };
         // Drawn when the card first scrolls into view.
         const draw = () =>
           queue.push(() => {
@@ -269,6 +280,7 @@ export function mountLibraryPanels(
   loadLibrary().then(
     (manifest) => {
       items = manifest.items;
+      actions?.setItems(items);
       for (const panel of panels) {
         panel.status.classList.remove('loading');
         render(panel);

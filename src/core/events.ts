@@ -1,6 +1,16 @@
 import type { DeepReadonly, Project } from './model';
 
-export type ChangeReason = 'command' | 'transaction' | 'undo' | 'redo' | 'load';
+/**
+ * 'library': an asset-library change (I1.6) outside undo history, e.g. a
+ * media import, rename or delete.
+ */
+export type ChangeReason =
+  | 'command'
+  | 'transaction'
+  | 'undo'
+  | 'redo'
+  | 'load'
+  | 'library';
 export interface EditorEvents {
   'command:before': { type: string; transactionId: string };
   'command:applied': { type: string; transactionId: string };

@@ -4618,3 +4618,139 @@ button.color-swatch-trigger {
   gap: var(--space-2);
   font-size: var(--font-small);
 }
+
+/* ===== I1.1 Side panels animate their real width =====
+   The panel takes its grid column's width (or, as a drawer, its own width),
+   which animates over 240 ms with an even curve; its body keeps the open
+   width, so the content only fades and never reflows. */
+:root {
+  --ease-panel: cubic-bezier(0.4, 0, 0.2, 1);
+}
+.editor-shell {
+  transition: grid-template-columns var(--motion-panel) var(--ease-panel);
+}
+.library,
+.inspector {
+  overflow: hidden;
+}
+.panel-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+.library > .panel-body {
+  inline-size: var(--left-open);
+}
+.inspector > .panel-body {
+  inline-size: var(--right-open);
+  overflow-y: auto;
+}
+.editor-shell:not(.left-drawer) .library,
+.editor-shell:not(.right-drawer) .inspector {
+  inline-size: auto;
+  justify-self: stretch;
+}
+.editor-shell:not(.right-drawer) .inspector {
+  justify-content: flex-end;
+}
+.editor-shell.left-drawer .library,
+.editor-shell.right-drawer .inspector {
+  transition:
+    inline-size var(--motion-panel) var(--ease-panel),
+    opacity var(--motion-panel) var(--ease-panel),
+    visibility 0s linear 0s;
+}
+.editor-shell.left-drawer.library-collapsed .library,
+.editor-shell.right-drawer.inspector-collapsed .inspector {
+  inline-size: 0;
+  transform: none;
+  transition:
+    inline-size var(--motion-panel) var(--ease-panel),
+    opacity var(--motion-panel) var(--ease-panel),
+    visibility 0s linear var(--motion-panel);
+}
+.editor-shell.right-drawer .inspector {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+.library-collapsed .library,
+.inspector-collapsed .inspector {
+  transition:
+    opacity var(--motion-panel) var(--ease-panel),
+    visibility 0s linear var(--motion-panel);
+}
+@media (max-width: 767px) {
+  /* Phone: a bottom sheet slides; it keeps the full width. */
+  .editor-shell.left-drawer .library,
+  .editor-shell.right-drawer .inspector,
+  .editor-shell.left-drawer.library-collapsed .library,
+  .editor-shell.right-drawer.inspector-collapsed .inspector {
+    inline-size: auto;
+  }
+  .library > .panel-body,
+  .inspector > .panel-body {
+    inline-size: 100%;
+  }
+  .editor-shell.left-drawer.library-collapsed .library,
+  .editor-shell.right-drawer.inspector-collapsed .inspector {
+    transform: translateY(24px);
+  }
+}
+
+/* I1.4: the template dialog and the editor-only scene crossfade. */
+.template-modes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-inline-size: min(380px, 80vw);
+}
+.template-mode {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-3);
+  text-align: start;
+  background: var(--raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+.template-mode span {
+  color: var(--text-secondary);
+  font-size: var(--font-small);
+}
+.template-mode[aria-checked='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+}
+.scene-crossfade {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  animation: scene-crossfade 250ms var(--ease-panel) forwards;
+}
+@keyframes scene-crossfade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-crossfade {
+    display: none;
+  }
+}
+.toolbar-chip-label {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+  margin-inline-end: 4px;
+}

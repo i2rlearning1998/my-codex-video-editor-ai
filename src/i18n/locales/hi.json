@@ -693,5 +693,20 @@
   "signature.clear": "साफ़ करें",
   "signature.uploadHint": "अपने हस्ताक्षर की फ़ोटो या स्कैन अपलोड करें (पारदर्शी पृष्ठभूमि वाली PNG सबसे अच्छी रहती है)।",
   "signature.uploadLabel": "हस्ताक्षर की छवि चुनें",
-  "signature.layerName": "हस्ताक्षर"
+  "signature.layerName": "हस्ताक्षर",
+  "template.dialogTitle": "टेम्पलेट “{name}” का उपयोग करें",
+  "template.mode.replace": "यह दृश्य बदलें",
+  "template.mode.add": "इस दृश्य पर जोड़ें",
+  "template.mode.new": "नया दृश्य",
+  "template.modeHint.replace": "इस दृश्य की हर चीज़ टेम्पलेट से बदल जाती है।",
+  "template.modeHint.add": "टेम्पलेट के तत्व इस दृश्य के ऊपर जुड़ जाते हैं।",
+  "template.modeHint.new": "टेम्पलेट इसके बाद एक नया दृश्य बन जाता है।",
+  "template.confirm": "टेम्पलेट उपयोग करें",
+  "template.done.replace": "यह दृश्य “{name}” से बदल दिया गया।",
+  "template.done.add": "“{name}” इस दृश्य पर जोड़ा गया।",
+  "template.done.new": "“{name}” नए दृश्य के रूप में जोड़ा गया।",
+  "template.scaled": "इसे आपके कैनवास में फ़िट करने के लिए छोटा-बड़ा किया गया।",
+  "toolbar.ratio": "अनुपात",
+  "toolbar.canvasBackground": "कैनवास पृष्ठभूमि",
+  "toolbar.autoCaptions": "स्वचालित कैप्शन"
 }

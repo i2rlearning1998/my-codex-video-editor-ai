@@ -126,6 +126,9 @@ const templateItem = z
       .object({
         background: color,
         elements: z.array(element).min(1).max(24),
+        /** I1.4: the template's own canvas; absent means "any canvas". */
+        width: z.number().int().min(16).max(7680).optional(),
+        height: z.number().int().min(16).max(7680).optional(),
       })
       .strict(),
   })

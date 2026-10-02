@@ -379,6 +379,7 @@ export interface ToolbarHooks {
 /** H3: the kinds of toolbar, from the selection. */
 export type ToolbarMode =
   | 'scene'
+  | 'canvas'
   | 'image'
   | 'video'
   | 'text'
@@ -393,6 +394,7 @@ const PLANNED: Record<string, readonly [string, string, string, number]> = {
   transition: ['toolbar.transition', 'transitions', 'TR-001', 6],
   list: ['toolbar.list', 'list', 'TXT-024', 3],
   'scene-animate': ['toolbar.animate', 'animate', 'ANI-020', 8],
+  'auto-captions': ['toolbar.autoCaptions', 'captions', 'TXT-035', 8],
 };
 
 export function mountContextToolbar(
@@ -1127,10 +1129,32 @@ export function mountContextToolbar(
     ];
   };
 
+  // --- The sticky canvas bar (I1.5) --------------------------------------
+  const renderCanvas = () => {
+    const source = session.source;
+    const ratio = sizeChip();
+    ratio.classList.add('labelled');
+    const label = document.createElement('span');
+    label.className = 'toolbar-chip-label';
+    label.textContent = t('toolbar.ratio');
+    ratio.prepend(label);
+    return [
+      ratio,
+      divider(),
+      colorField(
+        'canvas-background',
+        t('toolbar.canvasBackground'),
+        source.background,
+        (color) =>
+          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+      ),
+      divider(),
+      planned('auto-captions'),
+    ];
+  };
+
   // --- Per type -------------------------------------------------------------
   const imageControls = (layer: SceneLayer, video: boolean) => [
-    sizeChip(),
-    divider(),
     ...(video
       ? []
       : [
@@ -1262,8 +1286,6 @@ export function mountContextToolbar(
     align.id = 'toolbar-align';
     align.dataset.value = style.align;
     return [
-      sizeChip(),
-      divider(),
       font,
       sizeGroup,
       colorField(
@@ -1652,8 +1674,6 @@ export function mountContextToolbar(
     });
     combine.title = t('shape.combineHint');
     return [
-      sizeChip(),
-      divider(),
       fill,
       popTool('stroke-style', 'strokeStyle', t('toolbar.strokeStyle'), () =>
         strokeContent(false),
@@ -1672,8 +1692,6 @@ export function mountContextToolbar(
     const drawing = drawingOf(layer);
     const stroke = layer.properties.stroke;
     return [
-      sizeChip(),
-      divider(),
       colorField(
         'color',
         t('toolbar.color'),
@@ -1740,8 +1758,6 @@ export function mountContextToolbar(
       grouping.title = blocker;
     } else if (!isGroup && !actions.includes('group')) grouping.disabled = true;
     return [
-      sizeChip(),
-      divider(),
       grouping,
       divider(),
       positionTool(),
@@ -1775,7 +1791,9 @@ export function mountContextToolbar(
   /** H3: which toolbar the selection shows (null hides it). */
   const modeOf = (): ToolbarMode | null => {
     const ids = session.selectedIds;
-    if (!ids.length) return session.canvasSelected ? 'scene' : null;
+    // I1.5: the artboard selected shows the scene bar; the stage around it
+    // (or nothing selected after Escape) shows the sticky canvas bar.
+    if (!ids.length) return session.canvasSelected ? 'scene' : 'canvas';
     if (ids.length > 1) return 'multi';
     const layer = selected();
     if (!layer) return null;
@@ -1812,11 +1830,10 @@ export function mountContextToolbar(
       return;
     }
     // H3 (CV-051): a locked selection offers only Unlock (Canva).
-    const locked = mode !== 'scene' && selectionLocked(session);
+    const locked =
+      mode !== 'scene' && mode !== 'canvas' && selectionLocked(session);
     const controls = locked
       ? [
-          sizeChip(),
-          divider(),
           tool(
             'unlock',
             'unlock',
@@ -1827,20 +1844,22 @@ export function mountContextToolbar(
         ]
       : mode === 'scene'
         ? renderScene()
-        : mode === 'image' || mode === 'video'
-          ? imageControls(layer!, mode === 'video')
-          : mode === 'text'
-            ? textControls(layer!)
-            : mode === 'shape'
-              ? shapeControls(layer!)
-              : mode === 'drawing'
-                ? drawingControls(layer!)
-                : groupControls(mode === 'multi');
+        : mode === 'canvas'
+          ? renderCanvas()
+          : mode === 'image' || mode === 'video'
+            ? imageControls(layer!, mode === 'video')
+            : mode === 'text'
+              ? textControls(layer!)
+              : mode === 'shape'
+                ? shapeControls(layer!)
+                : mode === 'drawing'
+                  ? drawingControls(layer!)
+                  : groupControls(mode === 'multi');
     overflow = [];
     bar.replaceChildren(...controls);
     fit();
     restoreFieldFocus(bar);
-    refreshAttached(mode === 'scene' ? null : layer);
+    refreshAttached(mode === 'scene' || mode === 'canvas' ? null : layer);
   };
   /**
    * H3: the row never scrolls. When it is wider than the stage, labelled

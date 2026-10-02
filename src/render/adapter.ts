@@ -93,6 +93,8 @@ export interface RenderSource {
   }[];
   readonly frames?: FrameProvider;
   readonly playing?: boolean;
+  /** I1.7: the label drawn on missing media (translated by the UI). */
+  readonly missingLabel?: string;
   /** H3: the object (or the empty artboard) under the pointer. */
   readonly hoverId?: string;
   readonly hoverArtboard?: boolean;
@@ -143,6 +145,8 @@ export interface RenderItem {
   readonly shape?: ShapeStyle;
   readonly kind: 'rectangle' | 'text' | 'placeholder' | 'path';
   readonly media?: MediaFrameRequest;
+  /** I1.7: the layer's media was deleted (or never imported here). */
+  readonly missing?: boolean;
   /** SHP-019: a freehand drawing's stroke in local coordinates. */
   readonly path?: DrawingPath;
   /** H3: a picture's crop, rounded corners and border. */
@@ -319,8 +323,20 @@ export function deriveRenderItems(input: RenderSource): {
           );
           continue;
         }
+        const missing =
+          (layer.type === 'image' || layer.type === 'video') &&
+          !!layer.assetId &&
+          isMissingAsset(
+            source.assets as unknown as readonly {
+              readonly id: string;
+              readonly metadata: unknown;
+            }[],
+            layer.assetId,
+          );
         const media =
-          (layer.type === 'image' || layer.type === 'video') && layer.assetId
+          (layer.type === 'image' || layer.type === 'video') &&
+          layer.assetId &&
+          !missing
             ? mediaRequest(source, layer, layer.type, layer.assetId)
             : undefined;
         items.push(
@@ -333,6 +349,7 @@ export function deriveRenderItems(input: RenderSource): {
               ? { shape: shapeOf(layer)! }
               : {}),
             ...(media ? { media } : {}),
+            ...(missing ? { missing: true } : {}),
             ...(pictureOf(layer) ? { picture: pictureOf(layer)! } : {}),
             ...(source.cropView?.layerId === layer.id
               ? { cropView: source.cropView }
@@ -379,6 +396,16 @@ export function deriveRenderItems(input: RenderSource): {
   return { items: Object.freeze(items), warnings: Object.freeze(warnings) };
 }
 
+/** I1.7: an asset that is gone, or deleted from the library (soft). */
+export function isMissingAsset(
+  assets: readonly { readonly id: string; readonly metadata: unknown }[],
+  id: string,
+): boolean {
+  const asset = assets.find((item) => item.id === id);
+  return (
+    !asset || (asset.metadata as Record<string, unknown>).removed === true
+  );
+}
 function mediaRequest(
   source: RenderSource,
   layer: SceneLayer,

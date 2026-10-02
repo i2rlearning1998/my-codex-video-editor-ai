@@ -285,10 +285,9 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         probe: probeMedia,
         signal: controller.signal,
         hasAsset: (id) => engine.state.assets.some((asset) => asset.id === id),
+        // I1.6: importing is a library change, not an undoable edit.
         addAsset: (asset) =>
-          engine.commands.transaction('Import media', [
-            { type: 'ADD_ASSET', asset },
-          ]),
+          engine.library('Import media', [{ type: 'ADD_ASSET', asset }]),
         onProgress: (progress) =>
           showProgress(
             progress.fileName,
