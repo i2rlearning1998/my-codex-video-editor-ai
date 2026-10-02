@@ -47,6 +47,18 @@ Existing tests changed because the brief changes the behaviour on purpose. Each 
 - `[CV-054]…` checks that object toolbars have no size chip, and that the scene bar starts with it.
 - `[TPL-011]…` confirms the new dialog's default (New scene).
 
+## 3. Checks
+
+### After I1 (commit `1fd6db6`, plus the CV-037 test update)
+
+- `npm run verify` on the I1 commit, from a clean snapshot: format, typecheck and build passed. Unit and jsdom: 388 passed in 35 files.
+- E2E: 246 passed, 1 failed. The failure was `[CV-037]`: it still expected the size chip on the text toolbar, which I1.5 removes on purpose. The test was updated to assert that the chip is absent. On the same commit plus that update, `e2e/text-style.spec.ts` and `e2e/i1-fixes.spec.ts` then passed 16 of 16.
+- DEV-006 is the expected-failure probe.
+- Browser: Chromium 141.0.7390.37 (the sandbox fallback, D-030).
+- Build: main bundle 607.55 kB (186.21 kB gzip), export worker 543.54 kB.
+- Ledger: OK, 555 items: 226 Verified, 12 Claimed, 317 Todo, 0 Bug.
+- CI: checked once after the final push (section 10).
+
 ## 4. Try-it script for the owner
 
 ### I1 (about 8 minutes)
