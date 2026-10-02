@@ -5,7 +5,7 @@ Brief: the owner's I-series message (2026-10-02). One branch `claude/i-series`, 
 | Part | What                                                                        | Status | Last commit |
 | ---- | --------------------------------------------------------------------------- | ------ | ----------- |
 | 0    | main contains PR #15; branch created                                        | done   |             |
-| I1   | Bugs, undo rules, media delete and rename                                   | done   | f0c8d2e+    |
+| I1   | Bugs, undo rules, media delete and rename                                   | done   | a91221c     |
 | I2   | Browse panels (Templates, Elements, Text, Media, Draw palette, Transitions) | todo   |             |
 | I3   | Scene strip                                                                 | todo   |             |
 | I4   | Right panel per object                                                      | todo   |             |
