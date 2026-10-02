@@ -331,7 +331,9 @@ test.describe('frame code', () => {
     await expect(dialog(page)).toHaveCount(0);
     // A 9:16 canvas (Canvas size) exports 720 × 1280 at 720p.
     await page.locator('#context-toolbar [data-control="canvas-size"]').click();
-    await page.locator('.canvas-size-preset[data-preset="vertical"]').click();
+    await page
+      .locator('.toolbar-popover .canvas-size-preset[data-preset="vertical"]')
+      .click();
     await openExport(page);
     await dialog(page).locator('#export-resolution').selectOption('720');
     await expect(size).toContainText('720 × 1,280');

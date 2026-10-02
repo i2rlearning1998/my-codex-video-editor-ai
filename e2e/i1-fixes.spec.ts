@@ -393,7 +393,9 @@ test('[TPL-013] a template of another size is scaled to fit and centred on a squ
     'canvas',
   );
   await (await toolbarButton(page, 'canvas-size')).click();
-  await page.locator('.canvas-size-preset[data-preset="square"]').click();
+  await page
+    .locator('.toolbar-popover .canvas-size-preset[data-preset="square"]')
+    .click();
   expect((await scene(page)).width).toBe((await scene(page)).height);
   await showCategory(page, 'Templates');
   await card(page, 'template-1').click();

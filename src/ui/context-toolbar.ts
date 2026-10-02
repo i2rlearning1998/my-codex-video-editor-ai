@@ -1948,18 +1948,29 @@ export function mountContextToolbar(
                     ? strokeContent(true)
                     : advancedContent();
     if (!content) return null;
-    for (const element of content.querySelectorAll<HTMLElement>('[id]'))
-      if (element.id.startsWith('toolbar-'))
-        element.id = `right-${element.id.slice('toolbar-'.length)}`;
-    for (const element of content.querySelectorAll<HTMLElement>(
-      '[aria-labelledby], [for]',
-    )) {
-      for (const name of ['aria-labelledby', 'for']) {
-        const value = element.getAttribute(name);
-        if (value?.startsWith('toolbar-'))
-          element.setAttribute(name, `right-${value.slice('toolbar-'.length)}`);
-      }
+    // Every id in the copy is renamed (toolbar-x to right-x, any other id to
+    // right-id), and references follow, so no id is on the page twice.
+    const renamed = new Map<string, string>();
+    for (const element of content.querySelectorAll<HTMLElement>('[id]')) {
+      const next = element.id.startsWith('toolbar-')
+        ? `right-${element.id.slice('toolbar-'.length)}`
+        : `right-${element.id}`;
+      renamed.set(element.id, next);
+      element.id = next;
     }
+    for (const name of ['aria-labelledby', 'aria-controls', 'for'])
+      for (const element of content.querySelectorAll<HTMLElement>(
+        `[${name}]`,
+      )) {
+        const value = element.getAttribute(name)!;
+        element.setAttribute(
+          name,
+          value
+            .split(' ')
+            .map((id) => renamed.get(id) ?? id)
+            .join(' '),
+        );
+      }
     return content;
   };
   return { render, build };
