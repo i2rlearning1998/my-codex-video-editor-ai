@@ -245,7 +245,11 @@ export interface LibraryInsert {
 }
 /** I1.4: where a template goes. */
 export type TemplateMode = 'replace' | 'add' | 'new';
-export const TEMPLATE_MODES: readonly TemplateMode[] = ['replace', 'add', 'new'];
+export const TEMPLATE_MODES: readonly TemplateMode[] = [
+  'replace',
+  'add',
+  'new',
+];
 export interface LibraryInsertOptions {
   /** I1.3: centre the item on this composition point (a drop). */
   readonly at?: readonly [number, number];
@@ -471,9 +475,9 @@ function applyTracks(
     if (command.type === 'CREATE_TRACK' && command.track)
       tracks.push({ ...command.track, clips: [...command.track.clips] });
     if (command.type === 'CREATE_CLIP' && command.clip)
-      tracks.find((track) => track.id === command.trackId)?.clips.push(
-        command.clip,
-      );
+      tracks
+        .find((track) => track.id === command.trackId)
+        ?.clips.push(command.clip);
   }
   return { ...composition, tracks } as unknown as RenderSource['composition'];
 }

@@ -282,6 +282,8 @@ test('[TPL-011] a template becomes a new scene after this one, sized to the canv
   const before = (await hook(page)).project.compositions.length;
   await showCategory(page, 'Templates');
   await card(page, 'template-1').click();
+  // I1.4 (TPL-013): the template asks where it goes; New scene is the default.
+  await page.locator('.modal-dialog [data-action="template-confirm"]').click();
   expect((await labels(page)).at(-1)).toBe('Add template');
   const project = (await hook(page)).project;
   expect(project.compositions).toHaveLength(before + 1);

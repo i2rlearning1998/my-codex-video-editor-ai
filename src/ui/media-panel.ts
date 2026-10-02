@@ -9,7 +9,12 @@ import {
   type WaveformCache,
 } from '../media';
 import { formatDuration, formatNumber, t } from '../i18n';
-import { confirmDialog, escapeHtml, openModal, promptDialog } from './components/modal';
+import {
+  confirmDialog,
+  escapeHtml,
+  openModal,
+  promptDialog,
+} from './components/modal';
 import { showToast } from './components/toast';
 import { createMenu, type MenuEntry } from './context-menu';
 import { iconSvg } from './icons';
@@ -215,7 +220,10 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         more.type = 'button';
         more.className = 'media-card-more icon-button';
         more.dataset.action = 'media-more';
-        more.setAttribute('aria-label', t('media.menu.more', { name: asset.name }));
+        more.setAttribute(
+          'aria-label',
+          t('media.menu.more', { name: asset.name }),
+        );
         more.setAttribute('aria-haspopup', 'menu');
         more.title = t('media.menu.more', { name: asset.name });
         more.innerHTML = iconSvg('more', 16);
@@ -261,18 +269,20 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     find('#media-import-cancel').textContent = t('media.cancel');
   }
 
-
   // I1.7: the media item menu (Rename, Delete, Add to scene, Move to folder,
   // Details). Rename, Delete and folders are library changes: never on the
   // Undo stack (docs/UNDO-RULES.md).
   const menuElement = document.createElement('div');
-  menuElement.className = 'canvas-context-menu media-menu';
+  menuElement.className = 'media-menu';
   menuElement.id = 'media-menu';
   menuElement.hidden = true;
   document.body.append(menuElement);
   const menu = createMenu(menuElement, {
     report: (error) =>
-      options.toast(error instanceof Error ? error.message : String(error), 'error'),
+      options.toast(
+        error instanceof Error ? error.message : String(error),
+        'error',
+      ),
   });
   const closeOutside = (event: PointerEvent) => {
     if (!menuElement.hidden && !menuElement.contains(event.target as Node))
@@ -294,7 +304,10 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     for (const composition of engine.state.compositions)
       for (const track of composition.tracks)
         for (const clip of track.clips)
-          if (clip.assetId === id || (clip.assetId && derived.has(clip.assetId)))
+          if (
+            clip.assetId === id ||
+            (clip.assetId && derived.has(clip.assetId))
+          )
             count++;
     return count;
   };
@@ -362,10 +375,15 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       id,
       window.setTimeout(() => void purge(id), MEDIA_RESTORE_MS),
     );
-    showToast(t('media.deleted', { name: asset.name }), 'info', MEDIA_RESTORE_MS, {
-      label: t('media.restore'),
-      run: () => restore(id),
-    });
+    showToast(
+      t('media.deleted', { name: asset.name }),
+      'info',
+      MEDIA_RESTORE_MS,
+      {
+        label: t('media.restore'),
+        run: () => restore(id),
+      },
+    );
   };
   const rename = async (id: string) => {
     const asset = assetById(id);
@@ -415,7 +433,10 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       ]);
     if (asset.duration !== undefined)
       rows.push([t('media.details.duration'), formatDuration(asset.duration)]);
-    rows.push([t('media.details.used'), t('media.details.clips', { count: usage(id) })]);
+    rows.push([
+      t('media.details.used'),
+      t('media.details.clips', { count: usage(id) }),
+    ]);
     openModal({
       titleText: escapeHtml(t('media.details.title', { name: asset.name })),
       bodyBuilder: (body) => {
@@ -437,10 +458,16 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       const result = action();
       if (result instanceof Promise)
         result.catch((error: unknown) =>
-          options.toast(error instanceof Error ? error.message : String(error), 'error'),
+          options.toast(
+            error instanceof Error ? error.message : String(error),
+            'error',
+          ),
         );
     } catch (error) {
-      options.toast(error instanceof Error ? error.message : String(error), 'error');
+      options.toast(
+        error instanceof Error ? error.message : String(error),
+        'error',
+      );
     }
   };
   const openMenu = (id: string, x: number, y: number) => {
@@ -448,7 +475,12 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       const project = engine.state.id;
       const current = mediaFolders.folderOf(project, id);
       return [
-        { id: 'media-rename', label: t('media.menu.rename'), icon: 'edit', run: run(() => rename(id)) },
+        {
+          id: 'media-rename',
+          label: t('media.menu.rename'),
+          icon: 'edit',
+          run: run(() => rename(id)),
+        },
         {
           id: 'media-add',
           label: t('media.menu.add'),
@@ -468,7 +500,10 @@ export function mountMediaPanel(options: MediaPanelOptions) {
               data: { folderId: folder.id },
               run: run(() => {
                 mediaFolders.move(project, id, folder.id);
-                options.toast(t('media.folder.moved', { name: folder.name }), 'success');
+                options.toast(
+                  t('media.folder.moved', { name: folder.name }),
+                  'success',
+                );
               }),
             })),
             ...(current
@@ -489,7 +524,12 @@ export function mountMediaPanel(options: MediaPanelOptions) {
             },
           ],
         },
-        { id: 'media-details', label: t('media.menu.details'), icon: 'info', run: run(() => details(id)) },
+        {
+          id: 'media-details',
+          label: t('media.menu.details'),
+          icon: 'info',
+          run: run(() => details(id)),
+        },
         {
           id: 'media-delete',
           label: t('media.menu.delete'),
@@ -609,7 +649,10 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         cancelled,
       );
       if (restoredIds.size)
-        options.toast(t('media.restored', { count: restoredIds.size }), 'success');
+        options.toast(
+          t('media.restored', { count: restoredIds.size }),
+          'success',
+        );
       const last = [...outcomes].reverse().find((item) => item.assetId);
       if (last?.assetId)
         grid

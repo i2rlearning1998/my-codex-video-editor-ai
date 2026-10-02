@@ -308,11 +308,29 @@ export function mountEditorShell(
       }),
     toast: (text, kind) => showToast(text, kind),
   });
+  const audibleAssets = () => {
+    const assets = mediaAssets();
+    const removed = new Set(
+      assets
+        .filter(
+          (asset) => (asset.metadata as { removed?: unknown }).removed === true,
+        )
+        .map((asset) => asset.id),
+    );
+    if (!removed.size) return assets;
+    return assets.filter(
+      (asset) =>
+        !removed.has(asset.id) &&
+        !removed.has(asset.source.reference.replace(/^audio-of:/, '')),
+    );
+  };
   // W4-C: every clip that can sound, flattened from the canonical composition.
   const audibleClips = (): AudibleClip[] =>
     listAudibleClips(
       session.source.composition,
-      mediaAssets(),
+      // I1.7: a deleted media item's clips are silent (Missing media), and
+      // so is audio detached from it.
+      audibleAssets(),
       session.soloTrackIds,
     );
   // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
@@ -1322,8 +1340,7 @@ export function mountEditorShell(
   );
   // I1.3, I1.4: adding library items by click, drop and the template dialog.
   const crossfade = () => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)
-      return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     try {
       const snapshot = document.createElement('img');
       snapshot.className = 'scene-crossfade';
@@ -1740,114 +1757,112 @@ export function mountEditorShell(
     const id = asset.id;
     const time = place.time;
     session.setPlaying(false);
-      const duration =
-        asset.duration && asset.duration > 0 ? asset.duration : 5;
-      const layer = createLayer(
-        crypto.randomUUID(),
-        asset.type as 'image' | 'video' | 'audio',
-        asset.name,
-        duration,
-      );
-      layer.startTime = time;
-      if (place.point) {
-        const point = place.point;
-        {
-          // MED-015: centred on the drop point at the media's own size, scaled
-          // down to fit inside the composition when it is larger.
-          const { width: w, height: h } = session.source.composition;
-          if (asset.width && asset.height) {
-            const fit = Math.min(1, w / asset.width, h / asset.height);
-            layer.transform.scale = vector2(fit, fit);
-            layer.transform.position = vector2(
-              point[0] - (asset.width * fit) / 2,
-              point[1] - (asset.height * fit) / 2,
-            );
-          } else layer.transform.position = vector2(point[0], point[1]);
-        }
-      }
-      layer.assetId = id;
-      const compositionId = session.source.composition.id;
-      const commands: Command[] = [
-        {
-          type: 'CREATE_LAYER',
-          compositionId,
-          parentId: null,
-          layer,
-        },
-      ];
-      // TL-001: every drop creates a clip. The canvas uses a free compatible
-      // track at the playhead (or a new one); a track row uses the insert rule.
-      const type = asset.type === 'audio' ? 'audio' : 'video';
-      const requestedTrackId = place.trackId;
-      const requestedTrack = requestedTrackId
-        ? session.source.composition.tracks.find(
-            (item) => item.id === requestedTrackId,
-          )
-        : undefined;
-      if (
-        requestedTrack &&
-        (requestedTrack.type !== type || requestedTrack.locked)
-      )
-        throw new Error(
-          requestedTrack.locked
-            ? t('asset.locked', { name: requestedTrack.name })
-            : t('asset.incompatible', {
-                name: asset.name,
-                track: requestedTrack.name,
-              }),
-        );
-      const target = requestedTrack
-        ? { trackId: requestedTrack.id, commands: [] as Command[] }
-        : trackForNewClip(
-            session.source.composition,
-            layer.type,
-            time,
-            time + duration,
+    const duration = asset.duration && asset.duration > 0 ? asset.duration : 5;
+    const layer = createLayer(
+      crypto.randomUUID(),
+      asset.type as 'image' | 'video' | 'audio',
+      asset.name,
+      duration,
+    );
+    layer.startTime = time;
+    if (place.point) {
+      const point = place.point;
+      {
+        // MED-015: centred on the drop point at the media's own size, scaled
+        // down to fit inside the composition when it is larger.
+        const { width: w, height: h } = session.source.composition;
+        if (asset.width && asset.height) {
+          const fit = Math.min(1, w / asset.width, h / asset.height);
+          layer.transform.scale = vector2(fit, fit);
+          layer.transform.position = vector2(
+            point[0] - (asset.width * fit) / 2,
+            point[1] - (asset.height * fit) / 2,
           );
-      commands.unshift(...target.commands);
-      const clip = {
-        id: crypto.randomUUID(),
-        name: asset.name,
-        layerId: layer.id,
-        assetId: asset.id,
-        startTime: time,
-        duration,
-        sourceIn: 0,
-        sourceOut: duration,
-        enabled: true,
-        speed: 1,
-        transitionMetadata: {},
-        effectMetadata: {},
-        metadata: {},
-      };
-      if (requestedTrack) {
-        const plan = planLanding(session.source.composition, [
-          { clip, trackId: requestedTrack.id, startTime: time },
-        ]);
-        clip.startTime = plan.placed.get(clip.id)!;
-        layer.startTime = clip.startTime;
-        plan.pushed.forEach(({ startTime }, clipId) =>
-          commands.push({
-            type: 'SET_CLIP_TIMING',
-            compositionId,
-            clipId,
-            startTime,
-            duration: findClip(session.source.composition, clipId)!.clip
-              .duration,
-          }),
-        );
+        } else layer.transform.position = vector2(point[0], point[1]);
       }
-      commands.push({
-        type: 'CREATE_CLIP',
+    }
+    layer.assetId = id;
+    const compositionId = session.source.composition.id;
+    const commands: Command[] = [
+      {
+        type: 'CREATE_LAYER',
         compositionId,
-        trackId: target.trackId,
-        clip,
-      });
-      engine.commands.transaction(
-        place.trackId === undefined ? 'Add asset layer' : 'Add timeline clip',
-        commands,
+        parentId: null,
+        layer,
+      },
+    ];
+    // TL-001: every drop creates a clip. The canvas uses a free compatible
+    // track at the playhead (or a new one); a track row uses the insert rule.
+    const type = asset.type === 'audio' ? 'audio' : 'video';
+    const requestedTrackId = place.trackId;
+    const requestedTrack = requestedTrackId
+      ? session.source.composition.tracks.find(
+          (item) => item.id === requestedTrackId,
+        )
+      : undefined;
+    if (
+      requestedTrack &&
+      (requestedTrack.type !== type || requestedTrack.locked)
+    )
+      throw new Error(
+        requestedTrack.locked
+          ? t('asset.locked', { name: requestedTrack.name })
+          : t('asset.incompatible', {
+              name: asset.name,
+              track: requestedTrack.name,
+            }),
       );
-      session.select(layer.id);
+    const target = requestedTrack
+      ? { trackId: requestedTrack.id, commands: [] as Command[] }
+      : trackForNewClip(
+          session.source.composition,
+          layer.type,
+          time,
+          time + duration,
+        );
+    commands.unshift(...target.commands);
+    const clip = {
+      id: crypto.randomUUID(),
+      name: asset.name,
+      layerId: layer.id,
+      assetId: asset.id,
+      startTime: time,
+      duration,
+      sourceIn: 0,
+      sourceOut: duration,
+      enabled: true,
+      speed: 1,
+      transitionMetadata: {},
+      effectMetadata: {},
+      metadata: {},
+    };
+    if (requestedTrack) {
+      const plan = planLanding(session.source.composition, [
+        { clip, trackId: requestedTrack.id, startTime: time },
+      ]);
+      clip.startTime = plan.placed.get(clip.id)!;
+      layer.startTime = clip.startTime;
+      plan.pushed.forEach(({ startTime }, clipId) =>
+        commands.push({
+          type: 'SET_CLIP_TIMING',
+          compositionId,
+          clipId,
+          startTime,
+          duration: findClip(session.source.composition, clipId)!.clip.duration,
+        }),
+      );
+    }
+    commands.push({
+      type: 'CREATE_CLIP',
+      compositionId,
+      trackId: target.trackId,
+      clip,
+    });
+    engine.commands.transaction(
+      place.trackId === undefined ? 'Add asset layer' : 'Add timeline clip',
+      commands,
+    );
+    session.select(layer.id);
   };
   const assetDrop = (event: DragEvent) =>
     safely(() => {
@@ -1915,10 +1930,7 @@ export function mountEditorShell(
           event.clientY - rect.top,
         ])
       : undefined;
-    libraryActions.insert(
-      item,
-      point ? [point[0], point[1]] : undefined,
-    );
+    libraryActions.insert(item, point ? [point[0], point[1]] : undefined);
   };
   canvas.addEventListener('drop', libraryDrop);
   canvas.addEventListener('dragover', assetOver);

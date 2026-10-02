@@ -117,15 +117,11 @@ test('[MED-001][MED-007][MED-018] Import button adds video, audio and image card
   ]);
   expect(imported[0]!.duration).toBeCloseTo(2, 1);
   expect(imported[1]!.duration).toBeCloseTo(3, 1);
-  expect((await hook(page)).history.labels).toEqual([
-    'Import media',
-    'Import media',
-    'Import media',
-  ]);
-  // Each import is one undo step; undo removes the card, redo brings it back.
-  await page.locator('#undo').click();
-  await expect(cards(page)).toHaveCount(2);
-  await page.locator('#redo').click();
+  // I1.6 (HIS-008): importing is a library change, not an undo step, so
+  // Undo can never take the cards away again.
+  expect((await hook(page)).history.labels).toEqual([]);
+  await expect(page.locator('#undo')).toBeDisabled();
+  await page.keyboard.press('Control+z');
   await expect(cards(page)).toHaveCount(3);
   await waitThumbnail(page, PNG);
 });
@@ -457,7 +453,7 @@ test.describe('NLE fixture', () => {
     await canvas.dispatchEvent('drop', { dataTransfer: transfer });
     await expect
       .poll(async () => (await hook(page)).history.labels)
-      .toEqual(['Import media', 'Add asset layer']);
+      .toEqual(['Add asset layer']);
     // No import started: the Media tab did not reopen, no asset or bytes were added.
     await expect(
       page.locator('[data-category="Text"]').first(),

@@ -402,9 +402,7 @@ export function isMissingAsset(
   id: string,
 ): boolean {
   const asset = assets.find((item) => item.id === id);
-  return (
-    !asset || (asset.metadata as Record<string, unknown>).removed === true
-  );
+  return !asset || (asset.metadata as Record<string, unknown>).removed === true;
 }
 function mediaRequest(
   source: RenderSource,

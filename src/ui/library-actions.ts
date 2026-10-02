@@ -101,7 +101,10 @@ export function createLibraryActions(options: {
         const list = document.createElement('div');
         list.className = 'template-modes';
         list.setAttribute('role', 'radiogroup');
-        list.setAttribute('aria-label', t('template.dialogTitle', { name: itemName(item) }));
+        list.setAttribute(
+          'aria-label',
+          t('template.dialogTitle', { name: itemName(item) }),
+        );
         const buttons = TEMPLATE_MODES.map((mode) => {
           const button = document.createElement('button');
           button.type = 'button';
@@ -162,16 +165,25 @@ export function createLibraryActions(options: {
         ok.onclick = () => confirm();
         actions.append(cancel, ok);
         body.append(list, actions);
-        body.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            confirm();
-          }
-        });
-        queueMicrotask(() =>
-          buttons[TEMPLATE_MODES.indexOf(choice)]?.focus(),
+        // The modal focuses its first control on the next frame; the chosen
+        // option takes focus after that, so Enter confirms it.
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() =>
+            buttons[TEMPLATE_MODES.indexOf(choice)]?.focus(),
+          ),
         );
       },
+    });
+    // Enter confirms from anywhere in the dialog except its Cancel and Close.
+    modal.root.addEventListener('keydown', (event) => {
+      const target = event.target as HTMLElement;
+      if (
+        event.key === 'Enter' &&
+        !target.closest('.modal-close, [data-action="template-cancel"]')
+      ) {
+        event.preventDefault();
+        confirm();
+      }
     });
     const confirm = () => {
       if (done) return;

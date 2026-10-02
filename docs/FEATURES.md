@@ -128,8 +128,8 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-035 | P0 | W1 | Verified | The right panel's icon rail lists the sections that fit the selection (Clipchamp): Properties always; Color, Fade, Speed, Animate where they apply; Filters, Effects, Adjust colors, Audio, Captions and Transitions show which wave builds them (H4 LCR) |
 | LAY-036 | P0 | W1 | Verified | The Inspector stacks Position and size, Timing and Details (dimensions and the layer's place) instead of sub-tabs; a section header opens and scrolls to its section, the chevron folds it (H4 LCR) |
 | LAY-037 | P0 | W1 | Verified | The right panel's Color, Fade (in and out) and Speed (presets, reverse, freeze) edit the selection as one undo step each (H4 LCR) |
-| LAY-038 | P0 | W2 | Todo | The left and right side panels visibly animate (width and content fade, 240 ms; about 0 with reduced motion) when opened, collapsed or swapped from the rail, the top-bar toggle or a toolbar button, without the content reflowing mid-animation |
-| LAY-039 | P0 | W2 | Todo | A toolbar button that opens a side panel (Font, Effects, Position, Animate, Edit, Replace, Crop, Colour, Text colour, Fill) first opens a collapsed left or right panel, animated, then shows its content |
+| LAY-038 | P0 | W2 | Verified | The left and right side panels visibly animate (width and content fade, 240 ms; about 0 with reduced motion) when opened, collapsed or swapped from the rail, the top-bar toggle or a toolbar button, without the content reflowing mid-animation |
+| LAY-039 | P0 | W2 | Verified | A toolbar button that opens a side panel (Font, Effects, Position, Animate, Edit, Replace, Crop, Colour, Text colour, Fill) first opens a collapsed left or right panel, animated, then shows its content |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -243,8 +243,8 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-033 | P2 | W4 | Todo | Stock favorites and recents |
 | MED-034 | P1 | W8 | Todo | Record screen, webcam and microphone (voiceover lives in AUD) |
 | MED-035 | P0 | W4 | Verified | The Media tab (Project Media) lists the project's registered media as draggable cards; today the cards appear only under other library categories because the Media tab hides the panel that holds them |
-| MED-036 | P0 | W4 | Todo | Deleting media: unused media goes at once with an 8 s Restore toast; media used by N clips first asks, naming N, and those clips then show a Missing media placeholder (export refuses them); the stored files are removed after the toast; importing the file again brings it back; delete is not undoable |
-| MED-037 | P0 | W4 | Todo | Each Project Media item has a menu (More button and right-click): Rename (not undoable), Delete, Add to scene, Move to folder (browser-stored folders) and Details |
+| MED-036 | P0 | W4 | Verified | Deleting media: unused media goes at once with an 8 s Restore toast; media used by N clips first asks, naming N, and those clips then show a Missing media placeholder (export refuses them); the stored files are removed after the toast; importing the file again brings it back; delete is not undoable |
+| MED-037 | P0 | W4 | Verified | Each Project Media item has a menu (More button and right-click): Rename (not undoable), Delete, Add to scene, Move to folder (browser-stored folders) and Details |
 
 ## CV: Canvas (Wave 2)
 
@@ -303,12 +303,12 @@ Everything the user does directly on the preview canvas.
 | CV-049 | P0 | W2 | Verified | Rotated objects of every kind (shapes, text, pictures, groups, nested groups, flipped) resize smoothly: the opposite corner or edge stays fixed in world space, the dragged corner follows the pointer from the first step, corners stay square, groups never skew; resize cursors turn with the object; a live W × H chip while resizing and an angle chip while rotating (contract revision 8) |
 | CV-050 | P0 | W2 | Verified | Ctrl/Cmd+wheel and pinch zoom toward the pointer; a plain wheel never moves an artboard that fits; zoomed in, wheel, Shift+wheel, trackpad scroll, Space-drag, middle-drag and the hand tool pan, clamped to 48 px of stage past the artboard; below Fit the artboard stays centred; minimum zoom 10% |
 | CV-051 | P0 | W2 | Verified | Lock (canvas menu): a locked element can be selected but not moved, resized, rotated, nudged, edited or deleted; its toolbar offers Unlock (H3 LCR) |
-| CV-052 | P0 | W2 | Verified | Hover outlines the object, or the empty artboard, under the pointer; a click on the empty artboard selects the canvas (scene toolbar), a click on the stage around it deselects everything (H3 LCR) |
+| CV-052 | P0 | W2 | Verified | Hover outlines the object, or the empty artboard, under the pointer; a click on the empty artboard selects the canvas (scene toolbar), a click on the stage around it deselects everything and shows the canvas bar (H3 LCR; I1 LCR) |
 | CV-053 | P0 | W2 | Verified | Canva handles: white round corners, pill-shaped side handles and the rotate handle 28 px below the box (interaction contract revision 8) (H3 LCR) |
-| CV-054 | P0 | W2 | Verified | One fixed floating toolbar row (44 px, radius 12) with the canvas size chip at its left; it never scrolls: labels collapse first, then trailing tools move into More (H3 LCR) |
+| CV-054 | P0 | W2 | Verified | One fixed floating toolbar row (44 px, radius 12); the scene bar has the canvas size chip at its left (I1 LCR: object toolbars have none); it never scrolls: labels collapse first, then trailing tools move into More (H3 LCR) |
 | CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to every scene, keep the design centred, as one undo step with Undo in the toast (H3 LCR) |
 | CV-056 | P0 | W2 | Verified | Right-click menus per type, with icons and shortcuts: an element offers Lock, Show element timing, Alternative text, Set image as background, Resize canvas to selection, Download selection and Info; the empty canvas offers Paste, scenes, Canvas size and Guides; unbuilt items name their wave (H3 LCR) |
-| CV-057 | P0 | W2 | Todo | A click on the stage outside the artboard, or Escape with nothing selected, shows the canvas bar in the toolbar slot: Ratio (size presets), canvas background colour and Auto captions (planned, W8); a click on the artboard or an object hides it; object toolbars carry no size chip; never two bars at once |
+| CV-057 | P0 | W2 | Verified | A click on the stage outside the artboard, or Escape with nothing selected, shows the canvas bar in the toolbar slot: Ratio (size presets), canvas background colour and Auto captions (planned, W8); a click on the artboard or an object hides it; object toolbars carry no size chip; never two bars at once |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -456,8 +456,8 @@ The engine already has atomic transactions and history; this covers what the use
 | HIS-004 | P0 | W2 | Verified | History is memory-bounded and never crashes on long sessions |
 | HIS-005 | P1 | W2 | Todo | History panel lists steps with labels and jumps to any step |
 | HIS-006 | P1 | W8 | Todo | Named checkpoints |
-| HIS-007 | P1 | W4 | Todo | Undoing media import removes the clip without deleting the imported asset (behavior is documented) |
-| HIS-008 | P0 | W2 | Todo | Undo and Redo cover project edits only; media import, rename, delete and folders, the project name, saved templates and signatures, library recents and every view or session setting are outside history, as listed in docs/UNDO-RULES.md |
+| HIS-007 | P1 | W4 | Verified | Undoing media import removes the clip without deleting the imported asset (behavior is documented) |
+| HIS-008 | P0 | W2 | Verified | Undo and Redo cover project edits only; media import, rename, delete and folders, the project name, saved templates and signatures, library recents and every view or session setting are outside history, as listed in docs/UNDO-RULES.md |
 
 ## TXT: Text, fonts and languages (Wave 3)
 
@@ -689,8 +689,8 @@ Real audio engine. Currently mute is only metadata.
 | TPL-009 | P2 | W8 | Todo | Data-driven variants from CSV |
 | TPL-010 | P0 | W8 | Verified | A content library (manifest, validator, loader) fills Templates, Elements, Text and Graphics with search and drawn previews, and says so when it cannot load (H5 LCR) |
 | TPL-011 | P0 | W8 | Verified | Starter Pack 1: about 80 shapes, 40 backgrounds (gradients and layered shapes), 30 text styles and 12 templates, original and generated by a script; a template becomes a new scene sized to the canvas, with clips (H5 LCR) |
-| TPL-012 | P0 | W8 | Todo | Library cards drag onto the canvas and insert at the drop point as one undo step; a card is never imported as media and its preview image never drags on its own; a click still inserts at the centre |
-| TPL-013 | P0 | W8 | Todo | Adding a template asks Replace this scene, Add onto this scene or New scene (the last choice is the default; Enter confirms, Escape cancels; repeated clicks open one dialog); a template of another size is scaled to fit and centred; a toast offers Undo; a new scene crossfades in |
+| TPL-012 | P0 | W8 | Verified | Library cards drag onto the canvas and insert at the drop point as one undo step; a card is never imported as media and its preview image never drags on its own; a click still inserts at the centre |
+| TPL-013 | P0 | W8 | Verified | Adding a template asks Replace this scene, Add onto this scene or New scene (the last choice is the default; Enter confirms, Escape cancels; repeated clicks open one dialog); a template of another size is scaled to fit and centred; a toast offers Undo; a new scene crossfades in |
 
 ## EXP: Export (Wave 5 first version, Wave 9 full)
 

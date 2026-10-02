@@ -1817,7 +1817,8 @@ TEMPLATES.forEach(([en, hi, background, elements], i) =>
     type: 'template',
     name: { en, hi },
     tags: ['template'],
-    data: { background, elements },
+    // I1.4: every Starter Pack 1 template is designed for a 16:9 canvas.
+    data: { background, elements, width: 1920, height: 1080 },
   }),
 );
 

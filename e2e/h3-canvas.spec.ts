@@ -161,7 +161,8 @@ test('[CV-052] hovering outlines an object or the empty artboard; the artboard s
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([]);
   expect((await debug(page)).canvasSelected).toBe(false);
-  await expect(bar(page)).toBeHidden();
+  // I1.5 (CV-057): the stage around the artboard shows the canvas bar.
+  await expect(bar(page)).toHaveAttribute('data-mode', 'canvas');
   // A click on the empty artboard selects the canvas: the scene toolbar.
   await page.mouse.click(empty.x, empty.y);
   await expect(bar(page)).toHaveAttribute('data-mode', 'scene');
@@ -202,7 +203,7 @@ test('[CV-053] Canva handles: round white corners, pills on the sides and the ro
   ).toBeGreaterThan(10);
 });
 
-test('[CV-054] one fixed floating toolbar row with the canvas size chip first; it never scrolls, and extra tools move into More', async ({
+test('[CV-054] one fixed floating toolbar row (the scene bar starts with the canvas size chip); it never scrolls, and extra tools move into More', async ({
   page,
 }) => {
   for (const id of ['example-headline', 'example-badge', null] as const) {
@@ -211,11 +212,19 @@ test('[CV-054] one fixed floating toolbar row with the canvas size chip first; i
       const empty = await screen(page, 1000, 650);
       await page.mouse.click(empty.x, empty.y);
     }
-    await expect(bar(page).locator('> *').first()).toHaveAttribute(
-      'data-control',
-      'canvas-size',
-    );
-    await expect(control(page, 'canvas-size')).toContainText('16:9');
+    // I1.5 (CV-057): only the scene bar starts with the size chip; object
+    // toolbars carry none.
+    if (id)
+      await expect(
+        bar(page).locator('[data-control="canvas-size"]'),
+      ).toHaveCount(0);
+    else {
+      await expect(bar(page).locator('> *').first()).toHaveAttribute(
+        'data-control',
+        'canvas-size',
+      );
+      await expect(control(page, 'canvas-size')).toContainText('16:9');
+    }
     const shape = await bar(page).evaluate((element) => ({
       height: element.getBoundingClientRect().height,
       radius: getComputedStyle(element).borderTopLeftRadius,

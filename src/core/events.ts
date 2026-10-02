@@ -5,12 +5,7 @@ import type { DeepReadonly, Project } from './model';
  * media import, rename or delete.
  */
 export type ChangeReason =
-  | 'command'
-  | 'transaction'
-  | 'undo'
-  | 'redo'
-  | 'load'
-  | 'library';
+  'command' | 'transaction' | 'undo' | 'redo' | 'load' | 'library';
 export interface EditorEvents {
   'command:before': { type: string; transactionId: string };
   'command:applied': { type: string; transactionId: string };

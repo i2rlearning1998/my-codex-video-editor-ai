@@ -59,3 +59,7 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - H5: library categories, favourites and recently used items inside each panel; animated template previews (TPL-001).
 - H5: drag a library item onto the canvas or a timeline track.
 - H5: gradient fill for text.
+- I1: no toolbar button opens the right panel; when one is added it should reveal a collapsed right panel the same way (D-137).
+- I1: a media item deleted in one project removes the shared stored bytes for every project in this browser (D-141); per-project reference counting would avoid that.
+- I1: the asset record of deleted media stays in the project as a hidden reference; a "Clean up unused media" action could drop it once no history step names it.
+- I1: dragging a library card onto a timeline track is not built (canvas drops only).
