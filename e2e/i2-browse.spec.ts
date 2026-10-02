@@ -230,7 +230,7 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
     ['photos', 'MED-028'],
     ['tables', 'SHP-025'],
     ['frames', 'MSK-003'],
-  ]) {
+  ] as const) {
     const button = host.locator(`[data-tile="${tile}"]`);
     await expect(button).toHaveAttribute('aria-disabled', 'true');
     await expect(button).toHaveAttribute(
@@ -256,10 +256,10 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
   ]);
   await host.locator('[data-shape="line-dashed"]').click();
   let layer = (await scene(page)).layers.at(-1)!;
-  expect(layer.properties.strokeDash.value).toBe('dash');
+  expect(layer.properties.strokeDash?.value).toBe('dash');
   await host.locator('[data-shape="arrow-double"]').click();
   layer = (await scene(page)).layers.at(-1)!;
-  expect(layer.properties.arrowStart.value).toBe(true);
+  expect(layer.properties.arrowStart?.value).toBe(true);
   // Recently used shows them on the Shapes page and the Elements page.
   await expect(
     host.locator('[data-section="recent"] [data-shape="arrow-double"]'),
@@ -312,7 +312,7 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   expect((await labels(page)).at(-1)).toBe('Add text');
   const box = (await scene(page)).layers.at(-1)!;
   expect(box.type).toBe('text');
-  expect(box.properties.text.value).toBe('Add your text');
+  expect(box.properties.text?.value).toBe('Add your text');
   // A default style drags onto the canvas at the drop point.
   const canvas = page.locator('#composition-canvas');
   const at = await toScreen(page, 300, 500);
@@ -324,9 +324,9 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
     .poll(async () => (await scene(page)).layers.length)
     .toBeGreaterThan(0);
   const sub = (await scene(page)).layers.at(-1)!;
-  expect(sub.properties.text.value).toBe('Add a subheading');
-  const width = sub.properties.width.value as number,
-    height = sub.properties.height.value as number;
+  expect(sub.properties.text?.value).toBe('Add a subheading');
+  const width = sub.properties.width?.value as number,
+    height = sub.properties.height?.value as number;
   // Within the pointer's rounding to whole screen pixels.
   expect(
     Math.abs(sub.transform.position.value[0] + width / 2 - 300),
@@ -392,7 +392,7 @@ test('[MED-038] Media: type tabs, sort, folders with drag in, Designs from Save 
     ['image', 'image'],
     ['video', 'video'],
     ['audio', 'audio'],
-  ]) {
+  ] as const) {
     await page.locator(`[data-media-tab="${tab}"]`).click();
     await expect(cards).toHaveCount(1);
     await expect(cards.first()).toHaveAttribute('data-kind', kind);
@@ -482,8 +482,8 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   await page.mouse.up();
   expect((await labels(page)).at(-1)).toBe('Add shape');
   let layer = (await scene(page)).layers.at(-1)!;
-  expect(layer.properties.width.value as number).toBeCloseTo(300, -1);
-  expect(layer.properties.height.value as number).toBeCloseTo(200, -1);
+  expect(layer.properties.width?.value as number).toBeCloseTo(300, -1);
+  expect(layer.properties.height?.value as number).toBeCloseTo(200, -1);
   expect(layer.transform.position.value[0]).toBeCloseTo(100, -1);
   // The palette is back on Select after placing.
   await expect(palette.locator('[data-palette-tool="select"]')).toHaveAttribute(
@@ -499,8 +499,8 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   await page.mouse.move(d.x, d.y, { steps: 6 });
   await page.mouse.up();
   layer = (await scene(page)).layers.at(-1)!;
-  expect(layer.properties.shapeKind.value).toBe('line');
-  expect(layer.properties.width.value as number).toBeCloseTo(424, -1);
+  expect(layer.properties.shapeKind?.value).toBe('line');
+  expect(layer.properties.width?.value as number).toBeCloseTo(424, -1);
   expect(layer.transform.rotation.value).toBeCloseTo(45, 0);
   // Sticky note: one group at the click.
   await palette.locator('[data-palette-tool="sticky"]').click();
@@ -516,7 +516,7 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   await page.mouse.click(f.x, f.y);
   layer = (await scene(page)).layers.at(-1)!;
   expect(layer.type).toBe('text');
-  const width = layer.properties.width.value as number;
+  const width = layer.properties.width?.value as number;
   expect(
     Math.abs(layer.transform.position.value[0] + width / 2 - 300),
   ).toBeLessThan(3);

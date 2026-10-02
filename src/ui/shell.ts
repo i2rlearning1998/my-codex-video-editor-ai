@@ -53,6 +53,7 @@ import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape } from './shapes';
+import { mountSceneStrip } from './scene-strip';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
 import { scenePosterUrl } from './scene-poster';
@@ -220,8 +221,9 @@ export function mountEditorShell(
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
         <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
-          <div class="composition-picker">${iconSvg('templates', 15)}<select id="composition" aria-label="${t('canvas.composition')}"></select><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 16)}<span>${t('scene.board')}</span></button></div>
+          <div class="composition-picker"><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 16)}<span>${t('scene.board')}</span></button></div>
           <div class="preview-summary"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom" class="sr-only">${t('canvas.fit')}</span></div>
           <div class="canvas-zoom-controls">
             <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')} (H)">${iconSvg('hand')}</button>
@@ -1020,16 +1022,6 @@ export function mountEditorShell(
     contextToolbar.render();
     if (!element('#inspector-content').hidden) animationPanel.render();
     element('#project-name').textContent = engine.state.metadata.name;
-    const picker = element<HTMLSelectElement>('#composition');
-    picker.replaceChildren(
-      ...engine.state.compositions.map((composition) => {
-        const option = document.createElement('option');
-        option.value = composition.id;
-        option.textContent = composition.name;
-        return option;
-      }),
-    );
-    picker.value = source.composition.id;
     element('#composition-summary').textContent = t('canvas.summary', {
       width: formatNumber(source.composition.width),
       height: formatNumber(source.composition.height),
@@ -1242,8 +1234,6 @@ export function mountEditorShell(
     };
   session.onChange(syncMode);
   const unsubscribe = session.onChange(refresh);
-  element<HTMLSelectElement>('#composition').onchange = (event) =>
-    session.selectComposition((event.target as HTMLSelectElement).value);
   element<HTMLButtonElement>('#undo').onclick = () =>
     safely(() => {
       runCommand('undo', commandContext);
@@ -1575,6 +1565,25 @@ export function mountEditorShell(
       );
       session.select(layer.id);
     },
+  });
+  // I3: the scene strip under the canvas.
+  mountSceneStrip({
+    host: element('#scene-strip'),
+    engine,
+    session,
+    frames,
+    report: reportError,
+    crossfade,
+    openTemplates: () => {
+      const templates = element<HTMLButtonElement>(
+        '#rail-left [data-category="Templates"]',
+      );
+      if (templates.getAttribute('aria-pressed') !== 'true') templates.click();
+    },
+    saveAsTemplate: (sceneId) =>
+      openSaveTemplate(engine, sceneId, () =>
+        scenePosterUrl(engine, session, sceneId, frames),
+      ),
   });
   // I2: the Draw palette (the Draw rail item).
   drawPalette = mountDrawPalette({

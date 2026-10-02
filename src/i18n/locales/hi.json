@@ -850,5 +850,15 @@
   "palette.signature": "हस्ताक्षर",
   "palette.table": "तालिका",
   "palette.close": "ड्रॉ टूल बंद करें",
-  "palette.stickyText": "एक नोट लिखें"
+  "palette.stickyText": "एक नोट लिखें",
+  "strip.label": "दृश्य",
+  "strip.add": "दृश्य जोड़ें",
+  "strip.blank": "खाली दृश्य",
+  "strip.duplicateCurrent": "वर्तमान दृश्य की प्रति",
+  "strip.fromTemplate": "टेम्पलेट से…",
+  "strip.moveLeft": "बाएँ ले जाएँ",
+  "strip.moveRight": "दाएँ ले जाएँ",
+  "strip.collapse": "दृश्य पट्टी छिपाएँ",
+  "strip.expand": "दृश्य पट्टी दिखाएँ",
+  "strip.position": "दृश्य {n} / {count}"
 }

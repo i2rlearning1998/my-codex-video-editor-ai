@@ -202,6 +202,7 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-020 | P0 | W2 | Verified | A scene board shows every scene in one row in playback order with a poster, name and length and a transition chip between scenes (transitions are Wave 6); double-click opens a scene and the timeline then shows that scene only |
 | PRJ-021 | P0 | W2 | Verified | Dragging a layer onto another scene on the board moves it there with its clip (Alt copies it), one undo step |
 | PRJ-022 | P0 | W2 | Verified | Playback runs through the scenes in order |
+| PRJ-023 | P0 | W2 | Todo | A 72 px scene strip under the canvas replaces the composition select: cards with a lazily drawn 16:9 thumbnail, the name and a length chip, the open scene highlighted and scrolled into view; + adds a blank scene, a copy of the open one, or opens Templates; cards drag to reorder with an insertion line; double-click renames; right-click offers Rename, Duplicate, Delete, Save as template, Move left and Move right; a chevron collapses it; below 1024 px it is a Scene n of m button with a list |
 
 ## MED: Media library and stock (Wave 4)
 

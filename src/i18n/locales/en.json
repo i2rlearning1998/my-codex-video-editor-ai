@@ -850,5 +850,15 @@
   "palette.signature": "Signature",
   "palette.table": "Table",
   "palette.close": "Close draw tools",
-  "palette.stickyText": "Write a note"
+  "palette.stickyText": "Write a note",
+  "strip.label": "Scenes",
+  "strip.add": "Add scene",
+  "strip.blank": "Blank scene",
+  "strip.duplicateCurrent": "Duplicate current scene",
+  "strip.fromTemplate": "From template…",
+  "strip.moveLeft": "Move left",
+  "strip.moveRight": "Move right",
+  "strip.collapse": "Hide the scene strip",
+  "strip.expand": "Show the scene strip",
+  "strip.position": "Scene {n} of {count}"
 }

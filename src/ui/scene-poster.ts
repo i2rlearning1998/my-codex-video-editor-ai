@@ -28,7 +28,7 @@ export function drawScenePoster(
   drawComposition(
     context,
     source,
-    fitViewport(canvas.width, canvas.height, scene, 1),
+    fitViewport(canvas.width, canvas.height, scene, 1, { padding: 0 }),
     null,
     { overlays: false },
   );

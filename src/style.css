@@ -5358,3 +5358,164 @@ button.color-swatch-trigger {
 canvas.placing {
   cursor: crosshair;
 }
+
+/* I3: the scene strip under the canvas. */
+.scene-strip {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  block-size: 72px;
+  padding: 0 var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  background: var(--panel);
+}
+.scene-strip.collapsed {
+  block-size: 28px;
+}
+.scene-strip.collapsed .scene-strip-list,
+.scene-strip.collapsed .scene-strip-add,
+.scene-strip.collapsed .scene-strip-compact {
+  display: none;
+}
+.scene-strip-toggle {
+  flex: none;
+  inline-size: 24px;
+  block-size: 24px;
+  padding: 0;
+}
+.scene-strip-list {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  block-size: 100%;
+  padding-block: var(--space-1);
+  scrollbar-width: thin;
+}
+.scene-strip-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  inline-size: 96px;
+  padding: 2px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+.scene-strip-card:hover {
+  border-color: var(--border-strong);
+}
+.scene-strip-card[aria-selected='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.scene-strip-card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.scene-strip-frame {
+  position: relative;
+  display: block;
+  inline-size: 88px;
+  block-size: 40px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--raised);
+}
+.scene-strip-thumb {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.scene-strip-duration {
+  position: absolute;
+  inset-block-end: 2px;
+  inset-inline-end: 2px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  background: var(--overlay);
+  color: var(--text);
+  font-size: 10px;
+  line-height: 14px;
+}
+.scene-strip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 14px;
+}
+.scene-strip-name-input {
+  inline-size: 100%;
+  block-size: 16px;
+  padding: 0 2px;
+  font-size: var(--font-size-xs);
+}
+.scene-strip-add {
+  flex: none;
+  inline-size: 40px;
+  block-size: 48px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--text-secondary);
+}
+.scene-strip-add:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.scene-strip-insert {
+  position: absolute;
+  inset-block: var(--space-2);
+  inline-size: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.scene-strip-insert[hidden] {
+  display: none;
+}
+.scene-strip-compact {
+  display: none;
+}
+.scene-strip-popover {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 200px;
+  max-block-size: 320px;
+  overflow-y: auto;
+}
+.scene-strip-popover button {
+  justify-content: flex-start;
+  border: 0;
+  background: none;
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+}
+.scene-strip-popover button[aria-selected='true'] {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+@media (max-width: 1023px) {
+  .scene-strip {
+    block-size: 40px;
+  }
+  .scene-strip-list,
+  .scene-strip-add {
+    display: none;
+  }
+  .scene-strip-compact {
+    display: inline-flex;
+  }
+}
