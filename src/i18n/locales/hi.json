@@ -839,5 +839,16 @@
   "media.folder.renameTitle": "फ़ोल्डर का नाम बदलें",
   "media.folder.delete": "फ़ोल्डर हटाएँ (मीडिया बना रहेगा)",
   "export.saveToMedia": "फ़्रेम को मीडिया में सहेजें",
-  "export.savedToMedia": "फ़्रेम मीडिया › डिज़ाइन में सहेजा गया"
+  "export.savedToMedia": "फ़्रेम मीडिया › डिज़ाइन में सहेजा गया",
+  "palette.label": "ड्रॉ टूल",
+  "palette.select": "चुनें (V)",
+  "palette.draw": "ड्रॉ",
+  "palette.shape": "आकार: कैनवास पर खींचें",
+  "palette.line": "रेखा: कैनवास पर खींचें",
+  "palette.sticky": "स्टिकी नोट",
+  "palette.text": "टेक्स्ट: क्लिक करें, या बॉक्स के लिए खींचें",
+  "palette.signature": "हस्ताक्षर",
+  "palette.table": "तालिका",
+  "palette.close": "ड्रॉ टूल बंद करें",
+  "palette.stickyText": "एक नोट लिखें"
 }

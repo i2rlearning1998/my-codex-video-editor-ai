@@ -53,6 +53,7 @@ import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape } from './shapes';
+import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
 import { scenePosterUrl } from './scene-poster';
 import { mountContextToolbar } from './context-toolbar';
@@ -208,7 +209,7 @@ export function mountEditorShell(
         <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
         <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
-        <div class="draw-panel" id="draw-panel" data-rail-panel="Draw" hidden></div>
+        <div class="draw-panel" id="draw-panel" hidden></div>
         <div id="library-elements" data-rail-panel="Elements" hidden></div>
         <div id="library-templates" data-rail-panel="Templates" hidden></div>
         <div id="library-text" data-rail-panel="Text" hidden></div>
@@ -570,6 +571,7 @@ export function mountEditorShell(
     safely(draw),
   );
   const drawTool = new DrawTool(engine, session, () => safely(draw));
+  let drawPalette: DrawPalette | undefined;
   // H3: the crop tool; the Crop panel opens and closes with it.
   let cropWasActive = false;
   const cropTool = new CropTool(engine, session, () => {
@@ -928,6 +930,19 @@ export function mountEditorShell(
       hover = target;
       safely(draw);
     },
+    {
+      // I2: the Draw palette is mounted later; its tools are read lazily.
+      get armed() {
+        return drawPalette?.place.armed ?? false;
+      },
+      get active() {
+        return drawPalette?.place.active ?? false;
+      },
+      begin: (at) => drawPalette?.place.begin(at),
+      update: (at) => drawPalette?.place.update(at),
+      finish: () => drawPalette?.place.finish(),
+      cancel: () => drawPalette?.place.cancel(),
+    },
   );
   const commandContext: CommandContext = {
     engine,
@@ -941,6 +956,7 @@ export function mountEditorShell(
   let renderedSelection = '';
   const refresh = (force = false) => {
     drawPanel.sync();
+    drawPalette?.sync();
     canvas.classList.toggle('drawing', session.drawBrush !== null);
     canvas.classList.toggle('erasing', session.drawBrush === 'eraser');
     const source = session.source;
@@ -1336,7 +1352,6 @@ export function mountEditorShell(
   const OWN_PANELS = new Set([
     'Media',
     'Scene',
-    'Draw',
     'Elements',
     'Templates',
     'Text',
@@ -1408,8 +1423,11 @@ export function mountEditorShell(
       sibling.setAttribute(
         'aria-pressed',
         String(
-          (workspace?.leftOpen ?? true) &&
-            sibling.getAttribute('data-category') === activeCategory,
+          sibling.getAttribute('data-category') === 'Draw'
+            ? !!drawPalette?.open
+            : (workspace?.leftOpen ?? true) &&
+                !drawPalette?.open &&
+                sibling.getAttribute('data-category') === activeCategory,
         ),
       );
     for (const el of root.querySelectorAll<HTMLElement>(
@@ -1455,6 +1473,14 @@ export function mountEditorShell(
   ))
     button.onclick = () => {
       const category = button.dataset.category!;
+      // I2: Draw toggles the palette at the canvas's left edge instead of
+      // a panel.
+      if (category === 'Draw') {
+        drawPalette?.toggle();
+        syncRails();
+        return;
+      }
+      if (drawPalette?.open) drawPalette.close();
       // H1.5: the active category collapses its open panel; any other
       // category (or a collapsed panel) opens with that content.
       if (category === activeCategory && workspace?.leftOpen) {
@@ -1503,7 +1529,7 @@ export function mountEditorShell(
   const searchInput = element<HTMLInputElement>('#asset-search');
   searchInput.oninput = () => mediaPanel.filter(searchInput.value);
   // H6: signatures in the Draw panel (typed, drawn or uploaded).
-  mountSignature({
+  const signature = mountSignature({
     host: element('#draw-panel'),
     panels: sidePanels,
     engine,
@@ -1548,6 +1574,24 @@ export function mountEditorShell(
         addTopLevel(session.source.composition, layer, session.currentTime),
       );
       session.select(layer.id);
+    },
+  });
+  // I2: the Draw palette (the Draw rail item).
+  drawPalette = mountDrawPalette({
+    stage,
+    canvas,
+    engine,
+    session,
+    drawPanel: element('#draw-panel'),
+    toCanvas: (point) => transformPoint(viewport().matrix, point),
+    report: reportError,
+    openSignature: () => signature.open(),
+    insertTextBox: (at, width) => libraryActions.insertTextBox(at, width),
+    setLeftOpen: (open) => workspace?.setOpen('left', open),
+    leftOpen: () => workspace?.leftOpen ?? true,
+    changed: () => {
+      syncRails();
+      safely(draw);
     },
   });
   // MED-001/MED-002: the Import button and OS file drops both import into Project Media.

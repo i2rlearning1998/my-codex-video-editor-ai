@@ -839,5 +839,16 @@
   "media.folder.renameTitle": "Rename folder",
   "media.folder.delete": "Delete folder (media stay)",
   "export.saveToMedia": "Save frame to Media",
-  "export.savedToMedia": "Frame saved to Media › Designs"
+  "export.savedToMedia": "Frame saved to Media › Designs",
+  "palette.label": "Draw tools",
+  "palette.select": "Select (V)",
+  "palette.draw": "Draw",
+  "palette.shape": "Shape: drag on the canvas",
+  "palette.line": "Line: drag on the canvas",
+  "palette.sticky": "Sticky note",
+  "palette.text": "Text: click, or drag for a box",
+  "palette.signature": "Signature",
+  "palette.table": "Table",
+  "palette.close": "Close draw tools",
+  "palette.stickyText": "Write a note"
 }

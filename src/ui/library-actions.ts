@@ -289,8 +289,9 @@ export function createLibraryActions(options: {
             elements: [
               {
                 kind: 'text',
-                x: 0.5 - w / 2,
-                y: 0.45,
+                // The block is centred by libraryCommands (or on `at`).
+                x: 0,
+                y: 0,
                 w,
                 h: 0.1,
                 text: { en: t('text.boxText'), hi: t('text.boxText') },

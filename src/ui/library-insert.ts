@@ -484,3 +484,54 @@ export function applyTracks(
   }
   return { ...composition, tracks } as unknown as RenderSource['composition'];
 }
+
+/**
+ * I2: the Draw palette's Sticky note, a square paper with a line of text as
+ * one group, centred on `at` (a composition point), one undo step.
+ */
+export function stickyNoteCommands(
+  source: RenderSource,
+  at: readonly [number, number],
+  time: number,
+  text: string,
+  name: string,
+): LibraryInsert {
+  const composition = source.composition;
+  const side = Math.round(Math.min(composition.width, composition.height) / 4);
+  const box = { width: side, height: side };
+  const paper = shapeLayer(
+    {
+      kind: 'shape',
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      shape: 'rectangle',
+      radius: 0.04,
+      fill: '#fde68a',
+    },
+    box,
+    name,
+  );
+  const label = textLayer(
+    {
+      kind: 'text',
+      x: 0.1,
+      y: 0.1,
+      w: 0.8,
+      h: 0.8,
+      text: { en: text, hi: text },
+      size: 0.11,
+      color: '#3f3a1f',
+      align: 'left',
+    },
+    box,
+  );
+  const group = grouped([paper, label], name);
+  group.transform.position = vector2(at[0] - side / 2, at[1] - side / 2);
+  return {
+    label: 'Add sticky note',
+    commands: addTopLevel(composition, group, time),
+    layerId: group.id,
+  };
+}
