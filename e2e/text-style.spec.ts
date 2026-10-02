@@ -100,10 +100,11 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
   page,
 }, testInfo) => {
   await select(page, 'example-subtitle');
-  // H3: the Canva text row: size chip, font, size, colour, B I U S aA,
-  // align, list, spacing, transparency, effects, animate, position, style.
+  // H3: the Canva text row: font, size, colour, B I U S aA, align, list,
+  // spacing, transparency, effects, animate, position, style. I1.5 (CV-057):
+  // the canvas size chip belongs to the scene and canvas bars only.
+  await expect(control(page, 'canvas-size')).toHaveCount(0);
   for (const id of [
-    'canvas-size',
     'font',
     'size',
     'color',
