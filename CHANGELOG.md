@@ -2,6 +2,26 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
 
+## I-series (I1 to I5) — 2026-10-02
+
+- **Fixes (I1):**
+  - Side panels slide open and shut, and toolbar buttons open a folded panel.
+  - Library cards drag onto the canvas.
+  - Templates ask whether to replace the scene, add onto it or make a new scene.
+  - A canvas bar shows outside the page.
+  - Undo no longer removes imported media.
+  - Media items can be renamed, moved to folders, inspected and deleted (with Restore).
+- **Browse panels (I2):**
+  - Templates in categories, plus My Templates.
+  - Elements with Shapes and Graphics pages.
+  - A Text panel with titles.
+  - A Transitions catalogue (Wave 6).
+  - Media tabs, folders and designs.
+  - A Draw palette at the canvas edge.
+- **Scene strip (I3):** scene cards under the canvas to add, reorder, rename and save scenes.
+- **Right panel (I4):** tabs that follow the selection: Canvas, Shape, Text, Image, Video, Audio, Group and Arrange, with Adjust colors.
+- **Library (I5):** flowchart shapes and animated titles.
+
 ## H-series (H1 to H6) — 2026-10-01
 
 - **Bugs (H1):** the drag-select box is painted again. Rotated objects resize smoothly. Audio stays off the canvas. Panning and the wheel can no longer lose the page. Side panels open and close from their rail category.
