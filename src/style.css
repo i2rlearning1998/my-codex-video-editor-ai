@@ -4842,6 +4842,7 @@ button.color-swatch-trigger {
 
 /* I2: the browse panel (Templates, Elements, Text, Transitions). */
 .browse-panel {
+  --browse-columns: 2;
   display: flex;
   flex-direction: column;
   min-block-size: 0;

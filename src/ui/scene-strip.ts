@@ -444,7 +444,7 @@ export function mountSceneStrip(options: {
     list.replaceChildren(...all.map((_, i) => card(i)));
     list
       .querySelector<HTMLElement>('[aria-selected="true"]')
-      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   };
   // Structure (scenes, names, order, the open scene) re-renders now; content
   // edits only repaint the visible thumbnails, debounced.

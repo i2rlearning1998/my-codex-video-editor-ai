@@ -79,14 +79,14 @@ describe('editor shell integration', () => {
         (button) => button.dataset.category,
       ),
     ).toEqual([
-      // H2: the order a user reaches for them (D-120).
+      // H2: the order a user reaches for them (D-120); I2: Graphics lives
+      // inside Elements (D-142).
       'Templates',
       'Elements',
       'Text',
       'Media',
       'Draw',
       'Scene',
-      'Graphics',
       'Audio',
       'Transitions',
     ]);
@@ -236,9 +236,10 @@ describe('editor shell integration', () => {
       .querySelector<HTMLButtonElement>('[data-subtab="Dimensions"]')!
       .click();
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('—');
-    const picker = root.querySelector<HTMLSelectElement>('#composition')!;
-    picker.value = 'second';
-    picker.dispatchEvent(new Event('change'));
+    // I3: the scene strip replaces the composition select (D-147).
+    root
+      .querySelector<HTMLElement>('#scene-strip [data-scene-id="second"]')!
+      .click();
     expect(shell.session.source.composition.id).toBe('second');
     expect(shell.session.selectedId).toBeNull();
     expect(engine.state).toBe(before);

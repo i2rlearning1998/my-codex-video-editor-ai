@@ -793,77 +793,83 @@ export function mountContextToolbar(
     return item;
   };
   /** Transparency: the layer opacity (all selected layers for several). */
-  const transparencyTool = (extra?: () => HTMLElement | null) =>
-    popTool('transparency', 'transparency', t('toolbar.transparency'), () => {
-      const layer = selected();
-      const opacity = layer
-        ? layer.transform.opacity.value
-        : (selectionRoots(session.source, session.selectedIds)[0]?.transform
-            .opacity.value ?? 1);
-      const slider = field(
-        'opacity',
-        t('toolbar.opacity'),
-        round(opacity * 100, 1),
-        (value) => {
-          if (!(value >= 0 && value <= 100))
-            throw new RangeError(t('toolbar.opacityRange'));
-          if (layer) edit('Opacity', value / 100);
-          else
-            run(
-              'Set opacity',
-              selectionRoots(session.source, session.selectedIds).flatMap(
-                (root) =>
-                  buildTransformCommands(
-                    session.source.composition.id,
-                    root,
-                    {
-                      ...(root.transform as TransformValues),
-                      opacity: { value: value / 100 },
-                    },
-                    undefined,
-                    session.currentTime,
-                  ),
-              ),
-            );
-        },
-        '%',
-        '',
-        { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
-      );
-      const more = extra?.();
-      return form(t('toolbar.transparency'), slider, ...(more ? [more] : []));
-    });
-  const flipTool = (layer: SceneLayer) =>
-    popTool('flip', 'flipH', t('toolbar.flip'), () => {
-      const compositionId = session.source.composition.id;
-      const flip = (axis: 'horizontal' | 'vertical') =>
-        tool(
-          `flip-${axis}`,
-          axis === 'horizontal' ? 'flipH' : 'flipV',
-          t(axis === 'horizontal' ? 'toolbar.flipH' : 'toolbar.flipV'),
-          () => {
-            const current = selected() ?? layer;
-            const bounds = selectionBounds(session.source, current.id)?.bounds;
-            if (!bounds) return;
-            run(
-              axis === 'horizontal' ? 'Flip horizontal' : 'Flip vertical',
-              buildTransformCommands(
-                compositionId,
-                current,
-                flipTransform(
-                  current.transform as TransformValues,
-                  [bounds.x + bounds.width / 2, bounds.y + bounds.height / 2],
-                  axis,
+  // I4: the popover contents are named builders, so the right panel shows
+  // the same controls (one implementation).
+  const transparencyContent = (extra?: () => HTMLElement | null) => {
+    const layer = selected();
+    const opacity = layer
+      ? layer.transform.opacity.value
+      : (selectionRoots(session.source, session.selectedIds)[0]?.transform
+          .opacity.value ?? 1);
+    const slider = field(
+      'opacity',
+      t('toolbar.opacity'),
+      round(opacity * 100, 1),
+      (value) => {
+        if (!(value >= 0 && value <= 100))
+          throw new RangeError(t('toolbar.opacityRange'));
+        if (layer) edit('Opacity', value / 100);
+        else
+          run(
+            'Set opacity',
+            selectionRoots(session.source, session.selectedIds).flatMap(
+              (root) =>
+                buildTransformCommands(
+                  session.source.composition.id,
+                  root,
+                  {
+                    ...(root.transform as TransformValues),
+                    opacity: { value: value / 100 },
+                  },
+                  undefined,
+                  session.currentTime,
                 ),
-                undefined,
-                session.currentTime,
+            ),
+          );
+      },
+      '%',
+      '',
+      { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
+    );
+    const more = extra?.();
+    return form(t('toolbar.transparency'), slider, ...(more ? [more] : []));
+  };
+  const transparencyTool = (extra?: () => HTMLElement | null) =>
+    popTool('transparency', 'transparency', t('toolbar.transparency'), () =>
+      transparencyContent(extra),
+    );
+  const flipContent = (layer: SceneLayer) => {
+    const compositionId = session.source.composition.id;
+    const flip = (axis: 'horizontal' | 'vertical') =>
+      tool(
+        `flip-${axis}`,
+        axis === 'horizontal' ? 'flipH' : 'flipV',
+        t(axis === 'horizontal' ? 'toolbar.flipH' : 'toolbar.flipV'),
+        () => {
+          const current = selected() ?? layer;
+          const bounds = selectionBounds(session.source, current.id)?.bounds;
+          if (!bounds) return;
+          run(
+            axis === 'horizontal' ? 'Flip horizontal' : 'Flip vertical',
+            buildTransformCommands(
+              compositionId,
+              current,
+              flipTransform(
+                current.transform as TransformValues,
+                [bounds.x + bounds.width / 2, bounds.y + bounds.height / 2],
+                axis,
               ),
-            );
-          },
-          { text: true },
-        );
-      return form(t('toolbar.flip'), flip('horizontal'), flip('vertical'));
-    });
+              undefined,
+              session.currentTime,
+            ),
+          );
+        },
+        { text: true },
+      );
+    return form(t('toolbar.flip'), flip('horizontal'), flip('vertical'));
+  };
+  const flipTool = (layer: SceneLayer) =>
+    popTool('flip', 'flipH', t('toolbar.flip'), () => flipContent(layer));
   /** Stroke (shapes) or border (pictures): colour, width, style, ends. */
   const strokeContent = (picture: boolean) => {
     const layer = selected();
@@ -1037,42 +1043,45 @@ export function mountContextToolbar(
     }
     return form(t('toolbar.strokeStyle'), ...children);
   };
-  const cornersTool = (layer: SceneLayer, picture: boolean) =>
-    popTool('corners-menu', 'corners', t('toolbar.corners'), () => {
-      const current = selected() ?? layer;
-      const compositionId = session.source.composition.id;
-      const shape = shapeOf(current);
-      const value = picture
-        ? (pictureOf(current)?.radius ?? 0)
-        : (shape?.radius ?? 0);
-      const item = field(
-        'corners',
-        t('toolbar.corners'),
-        round(value, 2),
-        (next) =>
-          run('Set corner radius', [
-            picture
-              ? setProperty(
-                  compositionId,
+  const cornersContent = (layer: SceneLayer, picture: boolean) => {
+    const current = selected() ?? layer;
+    const compositionId = session.source.composition.id;
+    const shape = shapeOf(current);
+    const value = picture
+      ? (pictureOf(current)?.radius ?? 0)
+      : (shape?.radius ?? 0);
+    const item = field(
+      'corners',
+      t('toolbar.corners'),
+      round(value, 2),
+      (next) =>
+        run('Set corner radius', [
+          picture
+            ? setProperty(
+                compositionId,
+                selected() ?? current,
+                'cornerRadius',
+                withValue(
                   selected() ?? current,
                   'cornerRadius',
-                  withValue(
-                    selected() ?? current,
-                    'cornerRadius',
-                    next,
-                    'number',
-                  ),
-                )
-              : shapeCommandFor(selected() ?? current, 'cornerRadius', next),
-          ]),
-        'px',
-        '',
-        { min: 0, max: 500, slider: true, presets: [0, 8, 16, 32, 64] },
-      );
-      if (!picture && shape?.kind !== 'rectangle')
-        item.querySelector('input')!.disabled = true;
-      return form(t('toolbar.corners'), item);
-    });
+                  next,
+                  'number',
+                ),
+              )
+            : shapeCommandFor(selected() ?? current, 'cornerRadius', next),
+        ]),
+      'px',
+      '',
+      { min: 0, max: 500, slider: true, presets: [0, 8, 16, 32, 64] },
+    );
+    if (!picture && shape?.kind !== 'rectangle')
+      item.querySelector('input')!.disabled = true;
+    return form(t('toolbar.corners'), item);
+  };
+  const cornersTool = (layer: SceneLayer, picture: boolean) =>
+    popTool('corners-menu', 'corners', t('toolbar.corners'), () =>
+      cornersContent(layer, picture),
+    );
   const shapeCommandFor = (
     layer: SceneLayer,
     key: ShapeKey,
@@ -1907,7 +1916,53 @@ export function mountContextToolbar(
       if (!bar.hidden) fit();
     }).observe(bar.parentElement);
   render();
-  return { render };
+  /**
+   * I4: the same controls as the toolbar's popovers, for the right panel.
+   * Ids are renamed from toolbar-* to right-* so both can be on screen.
+   */
+  const build = (
+    id:
+      | 'transparency'
+      | 'flip'
+      | 'corners'
+      | 'stroke'
+      | 'border'
+      | 'spacing'
+      | 'canvas-size',
+  ): HTMLElement | null => {
+    const layer = selected();
+    const content =
+      id === 'canvas-size'
+        ? canvasSizeContent()
+        : id === 'transparency'
+          ? transparencyContent()
+          : !layer
+            ? null
+            : id === 'flip'
+              ? flipContent(layer)
+              : id === 'corners'
+                ? cornersContent(layer, layer.type !== 'shape')
+                : id === 'stroke'
+                  ? strokeContent(false)
+                  : id === 'border'
+                    ? strokeContent(true)
+                    : advancedContent();
+    if (!content) return null;
+    for (const element of content.querySelectorAll<HTMLElement>('[id]'))
+      if (element.id.startsWith('toolbar-'))
+        element.id = `right-${element.id.slice('toolbar-'.length)}`;
+    for (const element of content.querySelectorAll<HTMLElement>(
+      '[aria-labelledby], [for]',
+    )) {
+      for (const name of ['aria-labelledby', 'for']) {
+        const value = element.getAttribute(name);
+        if (value?.startsWith('toolbar-'))
+          element.setAttribute(name, `right-${value.slice('toolbar-'.length)}`);
+      }
+    }
+    return content;
+  };
+  return { render, build };
 }
 
 /** Formats a percentage for display (no raw floats in the UI). */
