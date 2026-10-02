@@ -108,6 +108,18 @@ The default e2e viewport grew by the strip's 72 px (D-150). No tolerance was loo
 - Ledger: OK, 555 items: 226 Verified, 12 Claimed, 317 Todo, 0 Bug.
 - CI: checked once after the final push (section 10).
 
+### Final (I1 to I5, commit `70c7224` plus the CSS comment repair)
+
+- `npm run verify` from a clean snapshot: exit 0.
+  - Format, typecheck (app and e2e) and build passed.
+  - Unit and jsdom: 388 passed in 35 files.
+  - E2E: 265 passed, including the DEV-006 expected-failure probe, in Chromium 141.0.7390.37 (D-030), single worker, 15.3 min.
+  - Ledger: OK, 573 items: 242 Verified, 12 Claimed, 319 Todo, 0 Bug.
+  - Build: main bundle 676.97 kB (207.15 kB gzip), export worker 543.78 kB.
+- **CSS repair.** The build warned about one CSS comment that a selector rewrite had broken (I1's media menu). It was repaired after this verify. `npm run check` then passed again (388 unit tests, build with no CSS warning), and the menu tests passed: `[MED-036]`, `[MED-037]` and `[CV-056]`, 4 of 4.
+- **Viewports.** No horizontal scrollbar at the seven H-series viewports, in both themes, with each I-series panel open (section 7).
+- **Flakiness.** Sampling the panel width under 4 to 5 parallel workers failed now and then: frames stall for 100 ms or more. The check now anchors its 60 to 120 ms window on the start of the transition (D-150 note in the test). With the verify's single worker, it passed 15 of 15 repeated runs.
+
 ## 4. Try-it script for the owner
 
 ### I1 (about 8 minutes)
@@ -215,6 +227,12 @@ See `docs/DECISIONS.md`.
 - LCR I2 to I5, added and Verified: LAY-040 to LAY-045, TPL-014, TPL-015, SHP-026, SHP-027, SHP-028, TXT-038, TXT-039, MED-038, TR-010, PRJ-023.
 - Added as Todo, for planned controls: SHP-025 (Tables), TXT-037 (Dynamic text).
 - `docs/BACKLOG_INBOX.md`: 6 more lines (I2 to I5).
+
+## 10. Git
+
+- Branch `claude/i-series`, PR #16 to `main` (marked ready for review after I5; not merged by Claude).
+- No tag: the owner tags after acceptance (AGENTS.md section 8). The review patch is `git diff origin/main...claude/i-series`.
+- CI: see the PR's checks after the final push.
 
 ## Owner tick-list
 

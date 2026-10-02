@@ -3630,14 +3630,12 @@ button.color-swatch:hover {
 /* ===================================================================== */
 
 /* Menus: radius 12, padding 6, 32 px rows, a 16 px icon column, the shortcut
-on the right in tertiary,
-1 px separators; they enter with a fade,
-a 4 px
+   on the right in tertiary, 1 px separators; they enter with a fade, a 4 px
    slide and a scale from .98. */
 .canvas-context-menu,
 .menu-flyout,
 .timeline-menu,
-a 4 px slide and a scale from .98. */ .media-menu {
+.media-menu {
   position: absolute;
   z-index: var(--z-menu);
   min-inline-size: 220px;
