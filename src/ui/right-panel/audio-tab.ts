@@ -75,7 +75,7 @@ export function audioTab(
     detach.className = 'button';
     detach.dataset.action = 'right-detach-audio';
     detach.innerHTML = `${iconSvg('audioFile', 16)}<span></span>`;
-    detach.querySelector('span')!.textContent = t('command.detachAudio');
+    detach.querySelector('span')!.textContent = t('command.detach-audio');
     detach.disabled = !describeSelection(
       session.source,
       session.selectedIds,

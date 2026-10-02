@@ -69,7 +69,10 @@ import { addTopLevel } from './library-insert';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
+  firstTabKey,
+  kindOf,
   mountRightPanel,
+  plannedSection,
   sectionsFor,
   type RightSection,
 } from './right-panel';
@@ -238,9 +241,9 @@ export function mountEditorShell(
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
+        <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
-        <div id="right-section" hidden></div>
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
@@ -617,7 +620,12 @@ export function mountEditorShell(
     engine,
     session,
     reportError,
-    { animate: () => animatePanel.toggle() },
+    {
+      animate: () => animatePanel.toggle(),
+      // I4: the toolbar's crop tool and popover contents (one implementation).
+      crop: () => toolPanels?.startCrop(),
+      build: (id) => contextToolbar.build(id),
+    },
   );
   // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
   // selection action cluster.
@@ -1631,20 +1639,58 @@ export function mountEditorShell(
     element('#animation-panel').hidden = !isProperties;
     if (isProperties) animationPanel.render();
     rightEmpty.hidden = true;
-    element('#right-section').hidden = isProperties;
-    if (!isProperties) rightPanel.render(name as RightSection);
+    // I4: the first tab is the selection's own controls above the Inspector.
+    element('#right-section').hidden = false;
+    rightPanel.render(name as RightSection);
+    renderedRight = rightKey();
+    renderedRightState = engine.state;
   };
+  let renderedRight = '';
+  const rightKey = () =>
+    [
+      activeSection,
+      session.selectedIds.join(','),
+      session.source.composition.id,
+      session.mode,
+    ].join('|');
+  let renderedRightState: unknown = null;
   /** H4: the rail lists the sections that fit the selection (Clipchamp). */
   const syncRightRail = () => {
     const shown = sectionsFor(session);
     for (const el of root.querySelectorAll<HTMLElement>(
       '.icon-rail-right button',
-    ))
-      el.hidden = !shown.includes(el.dataset.section as RightSection);
-    if (!shown.includes(activeSection as RightSection))
+    )) {
+      const section = el.dataset.section as RightSection;
+      el.hidden = !shown.includes(section);
+      // I4: the first tab is named after the selection; unbuilt tabs show
+      // disabled and name their wave.
+      const label =
+        section === 'Properties'
+          ? t(firstTabKey(kindOf(session)))
+          : t(`panel.${section.toLowerCase()}`);
+      const planned = plannedSection(section, session);
+      const title = planned
+        ? `${label}: ${t('toolbar.later', { wave: String(planned[1]), id: planned[0] })}`
+        : label;
+      el.title = title;
+      el.setAttribute('aria-label', title);
+      el.querySelector('.icon-rail-label')!.textContent = label;
+      if (planned) el.setAttribute('aria-disabled', 'true');
+      else el.removeAttribute('aria-disabled');
+    }
+    if (
+      !shown.includes(activeSection as RightSection) ||
+      plannedSection(activeSection as RightSection, session)
+    )
       setRightSection('Properties');
-    else if (activeSection !== 'Properties')
+    else if (
+      rightKey() !== renderedRight ||
+      engine.state !== renderedRightState
+    ) {
+      renderedRight = rightKey();
+      renderedRightState = engine.state;
       rightPanel.render(activeSection as RightSection);
+    }
   };
   session.onChange(syncRightRail);
   syncRightRail();
@@ -1653,6 +1699,7 @@ export function mountEditorShell(
   ))
     el.onclick = () => {
       const name = el.dataset.section!;
+      if (el.getAttribute('aria-disabled') === 'true') return;
       if (name === activeSection && workspace?.rightOpen) {
         workspace.setOpen('right', false);
         return;

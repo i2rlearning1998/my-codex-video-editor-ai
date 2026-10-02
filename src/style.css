@@ -5520,3 +5520,82 @@ canvas.placing {
     display: inline-flex;
   }
 }
+
+/* I4: the right panel's tabs: accordions and button rows. */
+#right-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) 0;
+}
+#right-section:empty {
+  display: none;
+}
+#right-section[hidden] {
+  display: none;
+}
+.right-accordion {
+  border-block-end: 1px solid var(--border-subtle);
+}
+.right-accordion-head {
+  inline-size: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--weight-semibold);
+  text-align: start;
+}
+.right-accordion-head:hover {
+  background: none;
+  color: var(--accent-text);
+}
+.right-accordion-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-block-end: var(--space-4);
+}
+.right-accordion-body[hidden] {
+  display: none;
+}
+.right-accordion-body .toolbar-popover-form,
+.right-accordion-body form {
+  padding: 0;
+}
+.right-accordion-body h4:first-child {
+  display: none;
+}
+.right-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.right-button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.right-button[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.right-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+.right-row-planned {
+  opacity: 0.55;
+}
+.icon-rail-right button[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

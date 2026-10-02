@@ -187,6 +187,14 @@ export async function showGraphics(page: Page) {
     'elements-graphics',
   );
 }
+/**
+ * I4: the Inspector's Position and size, Timing and Details start folded at
+ * the bottom of the right panel's first tab; this opens them.
+ */
+export async function openInspector(page: Page) {
+  for (const tab of ['Transform', 'Timing', 'Dimensions'])
+    await page.locator(`#inspector-content [data-subtab="${tab}"]`).click();
+}
 /** H4: keyframes are shown and edited in 2D Animation mode. */
 export async function mode2d(page: Page) {
   const button = page.locator('#mode-switch [data-mode="animation2d"]');

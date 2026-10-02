@@ -131,6 +131,11 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-038 | P0 | W2 | Verified | The left and right side panels visibly animate (width and content fade, 240 ms; about 0 with reduced motion) when opened, collapsed or swapped from the rail, the top-bar toggle or a toolbar button, without the content reflowing mid-animation |
 | LAY-039 | P0 | W2 | Verified | A toolbar button that opens a side panel (Font, Effects, Position, Animate, Edit, Replace, Crop, Colour, Text colour, Fill) first opens a collapsed left or right panel, animated, then shows its content |
 | LAY-040 | P0 | W2 | Todo | One browse panel for the left-rail libraries: header with Back, title and Close; sticky search; sections with a title, See all and a horizontal strip; chips; a drill-down that slides in 180 ms; grids rendered in chunks with skeleton previews; empty and error states; arrow keys move between cards |
+| LAY-041 | P0 | W2 | Todo | Right panel per object: an always-visible icon rail whose tabs fit the selection; the first tab is named after it (Canvas, Shape, Drawing, Text, Image, Video, Audio, Group or Arrange); unbuilt tabs show disabled and name their wave; with nothing selected the Canvas tab sets size, background and scene length |
+| LAY-042 | P0 | W2 | Todo | Right panel for shapes: Color, Outline (colour, weight, dash, caps, joins), Corners and Combine as accordions; Adjust colors with Transparency live and Exposure, Contrast, Saturation, Temperature, Blend mode and Reset planned; Transform and Timing are folded accordions at the bottom of the first tab |
+| LAY-043 | P0 | W2 | Todo | Right panel for text: font, size, bold, italic, underline, strikethrough, case, alignment, colour and spacing, each one undo step and in step with the toolbar |
+| LAY-044 | P0 | W2 | Todo | Right panel for groups (Group: ungroup, align) and multi-selections (Arrange: group, align, distribute) |
+| LAY-045 | P0 | W4 | Todo | Right panel for media: Image (crop, flip, corners, border; Filters planned), Video (crop, flip, corners; Speed; Audio with track mute and Detach audio, volume planned; Fade), Audio clip (Audio, Speed; Fade planned) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
