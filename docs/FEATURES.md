@@ -130,6 +130,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-037 | P0 | W1 | Verified | The right panel's Color, Fade (in and out) and Speed (presets, reverse, freeze) edit the selection as one undo step each (H4 LCR) |
 | LAY-038 | P0 | W2 | Verified | The left and right side panels visibly animate (width and content fade, 240 ms; about 0 with reduced motion) when opened, collapsed or swapped from the rail, the top-bar toggle or a toolbar button, without the content reflowing mid-animation |
 | LAY-039 | P0 | W2 | Verified | A toolbar button that opens a side panel (Font, Effects, Position, Animate, Edit, Replace, Crop, Colour, Text colour, Fill) first opens a collapsed left or right panel, animated, then shows its content |
+| LAY-040 | P0 | W2 | Todo | One browse panel for the left-rail libraries: header with Back, title and Close; sticky search; sections with a title, See all and a horizontal strip; chips; a drill-down that slides in 180 ms; grids rendered in chunks with skeleton previews; empty and error states; arrow keys move between cards |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -245,6 +246,7 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-035 | P0 | W4 | Verified | The Media tab (Project Media) lists the project's registered media as draggable cards; today the cards appear only under other library categories because the Media tab hides the panel that holds them |
 | MED-036 | P0 | W4 | Verified | Deleting media: unused media goes at once with an 8 s Restore toast; media used by N clips first asks, naming N, and those clips then show a Missing media placeholder (export refuses them); the stored files are removed after the toast; importing the file again brings it back; delete is not undoable |
 | MED-037 | P0 | W4 | Verified | Each Project Media item has a menu (More button and right-click): Rename (not undoable), Delete, Add to scene, Move to folder (browser-stored folders) and Details |
+| MED-038 | P0 | W4 | Todo | Media tabs All, Images, Videos, Audio, Designs and Folders; sort; an import drop zone; folders (create, rename, delete, drag media in, open); Designs saved from the export dialog with Save frame to Media; videos preview their filmstrip on hover; none of it is an undo step |
 
 ## CV: Canvas (Wave 2)
 
@@ -501,6 +503,8 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-034 | P2 | W3 | Todo | Spellcheck while editing |
 | TXT-035 | P1 | W8 | Todo | Captions: manual caption track, import SRT and VTT, style presets, burn-in on export |
 | TXT-036 | P0 | W2 | Verified | Underline, strikethrough and uppercase toggle from the text toolbar, and a box taller than its text anchors its lines top, middle or bottom (H3 LCR) |
+| TXT-037 | P2 | W8 | Todo | Dynamic text: page number, date and similar fields that update themselves |
+| TXT-038 | P0 | W3 | Todo | Text panel: search; Add a text box; Magic Write (planned, W10); Default text styles (click or drag); Dynamic text (planned); Font combinations, Plain text, Text styles, Titles (hover preview) and Two line with See all; Captions (planned, W8) |
 
 ## SHP: Shapes, graphics and elements (Wave 5)
 
@@ -532,6 +536,9 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-022 | P0 | W2 | Verified | Strokes are smoothed; holding Shift draws a straight line; a circle the size of the brush follows the pointer while drawing |
 | SHP-023 | P1 | W2 | Todo | Shape assist: a roughly drawn line, rectangle or ellipse can become the clean shape |
 | SHP-024 | P1 | W2 | Verified | Signature (Draw panel): type a name in a script style, draw it on a pad or upload an image; it is added centred as one undo step and can be kept in this browser and added again with one click (H6 LCR) |
+| SHP-025 | P2 | W8 | Todo | Tables: insert and edit a table of cells |
+| SHP-026 | P0 | W5 | Todo | Elements panel: Recently used, Browse categories (Shapes and Graphics live; Photos, Videos, 3D, Animations, Audio, Tables, Charts, Frames and Grids planned with their wave), a Shapes page (Lines with solid, dashed, dotted, arrow and double arrow; Basic shapes; Polygons; Stars; Arrows; Flowchart shapes) and a Graphics page (Featured, Gradients, Backgrounds) |
+| SHP-027 | P0 | W2 | Todo | Draw palette at the canvas edge: Select; Draw with the brush flyout; Shape and Line drawn by dragging; Sticky note and Text by click (Text by drag for its width); Signature; Table planned; the left panel collapses while it is open and comes back when it closes; each placement is one undo step |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 
@@ -623,6 +630,7 @@ Between clips and at clip edges.
 | TR-007 | P0 | W6 | Todo | Transitions render identically in preview and export |
 | TR-008 | P1 | W6 | Todo | Video cross dissolve also crossfades the audio |
 | TR-009 | P1 | W6 | Todo | Alignment choice: centered, start or end on the cut |
+| TR-010 | P1 | W6 | Todo | Transitions panel lists transitions by section (Fades & blurs, Wipes, Pushes, Cartoon, Glitches, 3D) with static posters, a tip and a Duration control; they are disabled with their wave until transitions are built |
 
 ## MSK: Masks, blend modes and compositing (Wave 6)
 
@@ -691,6 +699,8 @@ Real audio engine. Currently mute is only metadata.
 | TPL-011 | P0 | W8 | Verified | Starter Pack 1: about 80 shapes, 40 backgrounds (gradients and layered shapes), 30 text styles and 12 templates, original and generated by a script; a template becomes a new scene sized to the canvas, with clips (H5 LCR) |
 | TPL-012 | P0 | W8 | Verified | Library cards drag onto the canvas and insert at the drop point as one undo step; a card is never imported as media and its preview image never drags on its own; a click still inserts at the centre |
 | TPL-013 | P0 | W8 | Verified | Adding a template asks Replace this scene, Add onto this scene or New scene (the last choice is the default; Enter confirms, Escape cancels; repeated clicks open one dialog); a template of another size is scaled to fit and centred; a toast offers Undo; a new scene crossfades in |
+| TPL-014 | P0 | W8 | Todo | Templates panel: search; rows All, Video, Graphics, Social media, Education and My Templates; each opens a page with subcategory chips (each with its canvas size), Recently used and a grid; an empty subcategory says No templates yet |
+| TPL-015 | P1 | W8 | Todo | Save as template (empty canvas menu, scene strip menu): a name and a category, kept in this browser under My Templates (not the project, not an undo step); media kept by reference up to 50 MB, otherwise left out with a warning; a saved template is added like any template |
 
 ## EXP: Export (Wave 5 first version, Wave 9 full)
 

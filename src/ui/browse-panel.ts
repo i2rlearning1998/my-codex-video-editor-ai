@@ -69,8 +69,8 @@ export interface BrowsePage {
   readonly status?: () => { kind: 'loading' | 'error'; text: string } | null;
 }
 
-const CHUNK = 24;
-const STRIP_LIMIT = 16;
+const CHUNK = 48;
+const STRIP_LIMIT = 24;
 
 export interface BrowsePanel {
   /** Re-renders the current page (data arrived or changed). */
@@ -338,7 +338,20 @@ export function createBrowsePanel(
     return wrap;
   };
 
+  // A hidden panel renders when it is next shown, so loading the library
+  // never builds pages nobody sees.
+  let dirty = false;
+  const hiddenNow = () => !host.isConnected || host.offsetParent === null;
+  if (typeof ResizeObserver !== 'undefined')
+    new ResizeObserver(() => {
+      if (dirty && !hiddenNow()) render();
+    }).observe(host);
   const render = (direction: 'forward' | 'back' | 'none' = 'none') => {
+    if (hiddenNow() && typeof ResizeObserver !== 'undefined') {
+      dirty = true;
+      return;
+    }
+    dirty = false;
     const frame = top();
     const page = frame.page;
     title.textContent = page.title;

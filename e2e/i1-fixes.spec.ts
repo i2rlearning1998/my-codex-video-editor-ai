@@ -1,6 +1,13 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, showCategory, toScreen } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  showCategory,
+  showGraphics,
+  toScreen,
+} from './fixtures';
 import { toolbarButton } from './controls';
 
 // I1: fixes for the H-series test findings. Side panels animate their real
@@ -20,7 +27,8 @@ const rightOpen = (page: Page) =>
 const leftToggle = (page: Page) => page.locator('[data-panel="left"]');
 const rightToggle = (page: Page) => page.locator('[data-panel="right"]');
 const card = (page: Page, id: string) =>
-  page.locator(`.library-card[data-item-id="${id}"]`);
+  // I2: an item can show in more than one section.
+  page.locator(`.library-card[data-item-id="${id}"]`).first();
 const scene = async (page: Page) => {
   const state = await hook(page);
   return state.project.compositions.find(
@@ -103,13 +111,27 @@ function expectMidway(result: Awaited<ReturnType<typeof sampleWidth>>) {
   const low = Math.min(result.before, result.after),
     high = Math.max(result.before, result.after);
   expect(high - low).toBeGreaterThan(100);
-  let window = result.samples.filter(([time]) => time >= 60 && time <= 120);
+  // The window runs 60 to 120 ms from when the width starts to change (the
+  // last frame still at the start width). On a busy machine the first frame
+  // after the click can come late; anchoring on the start keeps the check
+  // about the animation, not the machine. A jump with no animation still
+  // fails: the next frame is already at the end width.
+  const startAt =
+    [...result.samples]
+      .filter(([, width]) => Math.abs(width - result.before) < 1)
+      .at(-1)?.[0] ?? 0;
+  let window = result.samples.filter(
+    ([time]) => time >= startAt + 60 && time <= startAt + 120,
+  );
   // A busy machine may skip frames: use the frame nearest 90 ms.
   if (!window.length)
     window = [
-      [...result.samples].sort(
-        (a, b) => Math.abs(a[0] - 90) - Math.abs(b[0] - 90),
-      )[0]!,
+      [...result.samples]
+        .filter(([time]) => time > startAt)
+        .sort(
+          (a, b) =>
+            Math.abs(a[0] - startAt - 90) - Math.abs(b[0] - startAt - 90),
+        )[0]!,
     ];
   for (const [, width] of window) {
     expect(width).toBeGreaterThan(low + 2);
@@ -262,7 +284,8 @@ test('[TPL-012] a dragged library shape, background and text style land at the d
   expect(Math.abs(text.cx - at2.x)).toBeLessThan(3);
   expect(Math.abs(text.cy - at2.y)).toBeLessThan(3);
   // A background covers the canvas wherever it is dropped.
-  await showCategory(page, 'Graphics');
+  // I2: Graphics live inside Elements.
+  await showGraphics(page);
   const steps = (await labels(page)).length;
   await card(page, 'bg-gradient-1').dragTo(canvas, {
     targetPosition: { x: 40, y: 40 },
@@ -364,7 +387,6 @@ test('[TPL-013] a template of another size is scaled to fit and centred on a squ
   page,
 }) => {
   // Square canvas from the canvas bar's Ratio chip.
-  await page.mouse.click(5, 300);
   await page.locator('#composition-canvas').click({ position: { x: 4, y: 4 } });
   await expect(page.locator('#context-toolbar')).toHaveAttribute(
     'data-mode',

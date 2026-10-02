@@ -351,7 +351,8 @@ test.describe('NLE fixture', () => {
   }) => {
     await openMediaTab(page);
     await expect(card(page, 'Footage 1080p')).toBeVisible();
-    await showCategory(page, 'Graphics');
+    // I2: Graphics moved into Elements.
+    await showCategory(page, 'Elements');
     await expect(page.locator('#media-panel')).toBeHidden();
     await expect(page.locator('.media-card').first()).toBeHidden();
   });
