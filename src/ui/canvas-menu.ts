@@ -58,6 +58,8 @@ export interface CanvasMenuHooks {
   readonly addScene?: (copy: boolean) => void;
   /** Deletes this scene (not the last). */
   readonly deleteScene?: () => void;
+  /** I2: saves this scene to My Templates (in this browser). */
+  readonly saveAsTemplate?: () => void;
 }
 const planned = (wave: number | string, id: string) =>
   t('toolbar.later', { wave: String(wave), id });
@@ -392,6 +394,16 @@ function sceneMenuEntries(
             ...(scenes > 1
               ? { run: hooks.deleteScene }
               : { reason: t('scenes.lastScene') }),
+          },
+        ]
+      : []),
+    ...(hooks.saveAsTemplate
+      ? [
+          {
+            id: 'save-as-template',
+            label: t('myTemplates.save'),
+            icon: 'templates',
+            run: hooks.saveAsTemplate,
           },
         ]
       : []),

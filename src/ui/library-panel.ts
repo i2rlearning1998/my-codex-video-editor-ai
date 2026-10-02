@@ -511,7 +511,19 @@ export function mountLibraryPanels(
         (item) =>
           !chip || item.data.subcategory === chip || item.tags.includes(chip),
       );
-      const cards = list.map(libraryCard);
+      // The user's own templates saved into this category come first.
+      const cards = [
+        ...(chip
+          ? []
+          : myTemplates
+              .list()
+              .filter(
+                (mine) =>
+                  category.id === 'all' || mine.category === category.id,
+              )
+              .map(mineCard)),
+        ...list.map(libraryCard),
+      ];
       if (query) return searchResults(cards, query);
       const ids = new Set(inCategory(category.id).map((item) => item.id));
       return [

@@ -53,6 +53,8 @@ import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape } from './shapes';
+import { openSaveTemplate } from './save-template';
+import { scenePosterUrl } from './scene-poster';
 import { mountContextToolbar } from './context-toolbar';
 import { CropTool } from './crop-tool';
 import { AnimatedInEditorError } from './editor-mode';
@@ -199,10 +201,6 @@ export function mountEditorShell(
       </div>
       <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
       <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
-        <div class="library-tabs" id="media-source-tabs" data-rail-panel="Media" hidden>
-          <button type="button" data-source="project" aria-pressed="true">${t('library.projectMedia')}</button>
-          <button type="button" data-source="stock" aria-pressed="false">${t('library.stock')}</button>
-        </div>
         <div class="library-search" data-rail-panel="Media" hidden>
           ${iconSvg('search')}
           <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
@@ -293,6 +291,7 @@ export function mountEditorShell(
     previews,
     waveforms,
     imported: () => frames.retry(),
+    pick: () => element<HTMLInputElement>('#import-media-input').click(),
     place: (assetId) =>
       safely(() => {
         const asset = session.source.assets.find((item) => item.id === assetId);
@@ -830,6 +829,12 @@ export function mountEditorShell(
         );
         session.selectComposition(added.id);
       }),
+    saveAsTemplate: () => {
+      const sceneId = session.source.composition.id;
+      openSaveTemplate(engine, sceneId, () =>
+        scenePosterUrl(engine, session, sceneId, frames),
+      );
+    },
     deleteScene: () =>
       safely(() => {
         engine.commands.transaction('Delete scene', [
@@ -1272,6 +1277,18 @@ export function mountEditorShell(
       store: mediaStore,
       decoder,
       renderFrame,
+      // I2: Designs in Project Media (a library change, not an undo step).
+      saveFrame: (blob, name) =>
+        mediaPanel.importFiles(
+          [
+            new File(
+              [blob],
+              name.replace(/\.png$/, `-${Date.now().toString(36)}.png`),
+              { type: 'image/png' },
+            ),
+          ],
+          { design: true },
+        ),
       toast: (text, kind) => showToast(text, kind),
     });
   };
