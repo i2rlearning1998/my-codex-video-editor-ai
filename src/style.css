@@ -4754,3 +4754,63 @@ button.color-swatch-trigger {
   font-weight: var(--weight-medium);
   margin-inline-end: 4px;
 }
+
+/* I1.7: a media item is its card plus a More button; the item menu. */
+.media-item {
+  position: relative;
+  min-inline-size: 0;
+}
+.media-item[hidden] {
+  display: none;
+}
+.media-item > .media-card {
+  inline-size: 100%;
+}
+.media-card-more {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  inset-inline-end: var(--space-3);
+  inline-size: 28px;
+  block-size: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  border: 1px solid var(--border-subtle);
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease-enter);
+}
+.media-item:hover .media-card-more,
+.media-item:focus-within .media-card-more,
+.media-card-more[aria-expanded='true'] {
+  opacity: 1;
+}
+@media (hover: none) {
+  .media-card-more {
+    opacity: 1;
+  }
+}
+.media-menu {
+  position: fixed;
+  z-index: var(--z-menu);
+  width: 210px;
+}
+.media-details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+.media-details dt {
+  color: var(--color-text-muted);
+}
+.media-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.modal-input {
+  inline-size: 100%;
+  margin-block-end: var(--space-4);
+}

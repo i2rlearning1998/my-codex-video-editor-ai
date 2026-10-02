@@ -296,6 +296,16 @@ export function mountEditorShell(
     previews,
     waveforms,
     imported: () => frames.retry(),
+    place: (assetId) =>
+      safely(() => {
+        const asset = session.source.assets.find((item) => item.id === assetId);
+        if (!asset) return;
+        const { width, height } = session.source.composition;
+        placeAsset(asset, {
+          time: session.currentTime,
+          point: [width / 2, height / 2],
+        });
+      }),
     toast: (text, kind) => showToast(text, kind),
   });
   // W4-C: every clip that can sound, flattened from the canonical composition.
@@ -485,6 +495,7 @@ export function mountEditorShell(
       frames,
       playing: session.playing,
       animate: true,
+      missingLabel: t('media.missing'),
       ...(timeline?.controller.previews.length
         ? { timingPreviews: timeline.controller.previews }
         : {}),
@@ -1716,28 +1727,19 @@ export function mountEditorShell(
       });
   element<HTMLButtonElement>('[data-canvas-tool="hand"]').onclick = () =>
     canvasView.toggleHand();
-  const assetDrop = (event: DragEvent) =>
-    safely(() => {
-      const id = event.dataTransfer?.getData('application/x-editor-asset');
-      if (!id) return;
-      const asset = session.source.assets.find((item) => item.id === id);
-      if (!asset || !['image', 'video', 'audio'].includes(asset.type)) return;
-      event.preventDefault();
-      session.setPlaying(false);
-      const track = element('.timeline-scroll');
-      const time =
-        event.currentTarget === canvas
-          ? session.currentTime
-          : Math.max(
-              0,
-              pixelToTime(
-                event.clientX -
-                  track.getBoundingClientRect().left +
-                  track.scrollLeft -
-                  224,
-                session.timelineZoom,
-              ),
-            );
+  /** Adds an asset as a layer with a clip, at a composition point or the
+   *  centre (canvas), or on a timeline track (the insert rule). */
+  const placeAsset = (
+    asset: (typeof session.source.assets)[number],
+    place: {
+      time: number;
+      point?: readonly [number, number] | null;
+      trackId?: string | undefined;
+    },
+  ) => {
+    const id = asset.id;
+    const time = place.time;
+    session.setPlaying(false);
       const duration =
         asset.duration && asset.duration > 0 ? asset.duration : 5;
       const layer = createLayer(
@@ -1747,14 +1749,9 @@ export function mountEditorShell(
         duration,
       );
       layer.startTime = time;
-      if (event.currentTarget === canvas) {
-        const rect = canvas.getBoundingClientRect(),
-          inverse = invertMatrix(viewport().matrix);
-        if (inverse) {
-          const point = transformPoint(inverse, [
-            event.clientX - rect.left,
-            event.clientY - rect.top,
-          ]);
+      if (place.point) {
+        const point = place.point;
+        {
           // MED-015: centred on the drop point at the media's own size, scaled
           // down to fit inside the composition when it is larger.
           const { width: w, height: h } = session.source.composition;
@@ -1781,12 +1778,7 @@ export function mountEditorShell(
       // TL-001: every drop creates a clip. The canvas uses a free compatible
       // track at the playhead (or a new one); a track row uses the insert rule.
       const type = asset.type === 'audio' ? 'audio' : 'video';
-      const requestedTrackId =
-        event.currentTarget === canvas
-          ? undefined
-          : (event.target as HTMLElement).closest<HTMLElement>(
-              '[data-track-id]',
-            )?.dataset.trackId;
+      const requestedTrackId = place.trackId;
       const requestedTrack = requestedTrackId
         ? session.source.composition.tracks.find(
             (item) => item.id === requestedTrackId,
@@ -1852,12 +1844,52 @@ export function mountEditorShell(
         clip,
       });
       engine.commands.transaction(
-        event.currentTarget === canvas
-          ? 'Add asset layer'
-          : 'Add timeline clip',
+        place.trackId === undefined ? 'Add asset layer' : 'Add timeline clip',
         commands,
       );
       session.select(layer.id);
+  };
+  const assetDrop = (event: DragEvent) =>
+    safely(() => {
+      const id = event.dataTransfer?.getData('application/x-editor-asset');
+      if (!id) return;
+      const asset = session.source.assets.find((item) => item.id === id);
+      if (!asset || !['image', 'video', 'audio'].includes(asset.type)) return;
+      event.preventDefault();
+      const track = element('.timeline-scroll');
+      const time =
+        event.currentTarget === canvas
+          ? session.currentTime
+          : Math.max(
+              0,
+              pixelToTime(
+                event.clientX -
+                  track.getBoundingClientRect().left +
+                  track.scrollLeft -
+                  224,
+                session.timelineZoom,
+              ),
+            );
+      let point: [number, number] | null = null;
+      if (event.currentTarget === canvas) {
+        const rect = canvas.getBoundingClientRect(),
+          inverse = invertMatrix(viewport().matrix);
+        if (inverse)
+          point = transformPoint(inverse, [
+            event.clientX - rect.left,
+            event.clientY - rect.top,
+          ]) as [number, number];
+      }
+      placeAsset(asset, {
+        time,
+        point,
+        trackId:
+          event.currentTarget === canvas
+            ? undefined
+            : ((event.target as HTMLElement).closest<HTMLElement>(
+                '[data-track-id]',
+              )?.dataset.trackId ?? ''),
+      });
     });
   const assetOver = (event: DragEvent) => {
     if (

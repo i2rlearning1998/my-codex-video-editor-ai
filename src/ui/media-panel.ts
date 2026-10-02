@@ -9,8 +9,16 @@ import {
   type WaveformCache,
 } from '../media';
 import { formatDuration, formatNumber, t } from '../i18n';
+import { confirmDialog, escapeHtml, openModal, promptDialog } from './components/modal';
+import { showToast } from './components/toast';
+import { createMenu, type MenuEntry } from './context-menu';
 import { iconSvg } from './icons';
+import { mediaFolders } from './media-folders';
 import type { EditorSession } from './session';
+
+/** I1.7: how long a deleted media item can be restored before its stored
+ *  files are removed for real. */
+export const MEDIA_RESTORE_MS = 8000;
 
 export interface MediaPanelOptions {
   container: HTMLElement;
@@ -21,6 +29,8 @@ export interface MediaPanelOptions {
   waveforms: WaveformCache;
   /** Called after an import, so other media views can look for new bytes. */
   imported?(): void;
+  /** I1.7 "Add to scene": the asset as a layer with a clip at the playhead. */
+  place?(assetId: string): void;
   toast(text: string, kind: 'info' | 'success' | 'error'): void;
 }
 
@@ -31,7 +41,15 @@ interface Asset {
   readonly type: string;
   readonly source: { readonly kind: string; readonly reference: string };
   readonly duration?: number | undefined;
-  readonly metadata: { readonly mimeType?: unknown };
+  readonly width?: number | undefined;
+  readonly height?: number | undefined;
+  readonly metadata: {
+    readonly mimeType?: unknown;
+    readonly size?: unknown;
+    readonly fileName?: unknown;
+    readonly fingerprint?: unknown;
+    readonly removed?: unknown;
+  };
 }
 
 const KIND_ICON: Record<string, string> = {
@@ -39,9 +57,17 @@ const KIND_ICON: Record<string, string> = {
   audio: 'audio',
   image: 'graphics',
 };
+/** I1.7: a deleted (soft-removed) asset stays as a reference until its
+ *  restore window ends; the panel no longer lists it. */
+const removed = (asset: Asset) => asset.metadata.removed === true;
 const listed = (asset: Asset) =>
   ['video', 'audio', 'image'].includes(asset.type) &&
-  asset.source.kind !== 'generated';
+  asset.source.kind !== 'generated' &&
+  !removed(asset);
+const fingerprintOf = (asset: Asset) =>
+  typeof asset.metadata.fingerprint === 'string'
+    ? asset.metadata.fingerprint
+    : asset.source.reference.replace(/^media\//, '');
 
 /**
  * Project Media (MED-007/MED-009/MED-018/MED-035): the card grid, the import row
@@ -164,6 +190,11 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     ).filter(listed);
     grid.replaceChildren(
       ...assets.map((asset) => {
+        const item = document.createElement('div');
+        item.className = 'media-item';
+        item.dataset.assetId = asset.id;
+        const folderId = mediaFolders.folderOf(engine.state.id, asset.id);
+        if (folderId) item.dataset.folderId = folderId;
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'media-card';
@@ -179,7 +210,27 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         setThumb(card, asset);
         card.ondragstart = (event) =>
           event.dataTransfer?.setData('application/x-editor-asset', asset.id);
-        return card;
+        // I1.7: the item's menu, from its More button or a right-click.
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'media-card-more icon-button';
+        more.dataset.action = 'media-more';
+        more.setAttribute('aria-label', t('media.menu.more', { name: asset.name }));
+        more.setAttribute('aria-haspopup', 'menu');
+        more.title = t('media.menu.more', { name: asset.name });
+        more.innerHTML = iconSvg('more', 16);
+        more.onclick = (event) => {
+          event.stopPropagation();
+          const box = more.getBoundingClientRect();
+          openMenu(asset.id, box.left, box.bottom + 4);
+        };
+        card.oncontextmenu = (event) => {
+          event.preventDefault();
+          openMenu(asset.id, event.clientX, event.clientY);
+        };
+        item.hidden = card.hidden;
+        item.append(card, more);
+        return item;
       }),
     );
     const state = find('#media-state');
@@ -209,6 +260,252 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     }
     find('#media-import-cancel').textContent = t('media.cancel');
   }
+
+
+  // I1.7: the media item menu (Rename, Delete, Add to scene, Move to folder,
+  // Details). Rename, Delete and folders are library changes: never on the
+  // Undo stack (docs/UNDO-RULES.md).
+  const menuElement = document.createElement('div');
+  menuElement.className = 'canvas-context-menu media-menu';
+  menuElement.id = 'media-menu';
+  menuElement.hidden = true;
+  document.body.append(menuElement);
+  const menu = createMenu(menuElement, {
+    report: (error) =>
+      options.toast(error instanceof Error ? error.message : String(error), 'error'),
+  });
+  const closeOutside = (event: PointerEvent) => {
+    if (!menuElement.hidden && !menuElement.contains(event.target as Node))
+      menu.close();
+  };
+  document.addEventListener('pointerdown', closeOutside, true);
+  const assetById = (id: string) =>
+    (engine.state.assets as unknown as readonly Asset[]).find(
+      (asset) => asset.id === id,
+    );
+  /** Clips (in every scene) that play this asset or its detached audio. */
+  const usage = (id: string) => {
+    const derived = new Set(
+      (engine.state.assets as unknown as readonly Asset[])
+        .filter((asset) => asset.source.reference === `audio-of:${id}`)
+        .map((asset) => asset.id),
+    );
+    let count = 0;
+    for (const composition of engine.state.compositions)
+      for (const track of composition.tracks)
+        for (const clip of track.clips)
+          if (clip.assetId === id || (clip.assetId && derived.has(clip.assetId)))
+            count++;
+    return count;
+  };
+  const replaceAsset = (label: string, asset: Asset) =>
+    engine.library(label, [
+      {
+        type: 'REPLACE_ASSET',
+        assetId: asset.id,
+        asset: structuredClone(asset) as never,
+      },
+    ]);
+  const setRemoved = (id: string, value: boolean) => {
+    const asset = assetById(id);
+    if (!asset) return;
+    const metadata: Record<string, unknown> = { ...asset.metadata };
+    if (value) metadata.removed = true;
+    else delete metadata.removed;
+    replaceAsset(value ? 'Delete media' : 'Restore media', {
+      ...asset,
+      metadata: metadata as Asset['metadata'],
+    });
+  };
+  /** Pending removals: the stored files go once the restore window ends. */
+  const purges = new Map<string, number>();
+  const purge = async (id: string) => {
+    purges.delete(id);
+    const asset = assetById(id);
+    if (!asset || !removed(asset)) return;
+    const media = await store;
+    if (!media) return;
+    const fingerprint = fingerprintOf(asset);
+    await Promise.all(
+      ['media', 'thumbs', 'strips', 'waves'].map((folder) =>
+        media.remove(`${folder}/${fingerprint}`).catch(() => undefined),
+      ),
+    );
+    mediaFolders.move(engine.state.id, id, null);
+  };
+  const restore = (id: string) => {
+    window.clearTimeout(purges.get(id));
+    purges.delete(id);
+    setRemoved(id, false);
+    options.previews.retry();
+    options.waveforms.retry();
+  };
+  const remove = async (id: string) => {
+    const asset = assetById(id);
+    if (!asset) return;
+    const count = usage(id);
+    if (
+      count &&
+      !(await confirmDialog(
+        escapeHtml(t('media.delete.inUse', { name: asset.name, count })),
+        {
+          titleText: escapeHtml(t('media.delete.title', { name: asset.name })),
+          confirmLabel: t('media.menu.delete'),
+          cancelLabel: t('media.cancel'),
+          danger: true,
+        },
+      ))
+    )
+      return;
+    setRemoved(id, true);
+    purges.set(
+      id,
+      window.setTimeout(() => void purge(id), MEDIA_RESTORE_MS),
+    );
+    showToast(t('media.deleted', { name: asset.name }), 'info', MEDIA_RESTORE_MS, {
+      label: t('media.restore'),
+      run: () => restore(id),
+    });
+  };
+  const rename = async (id: string) => {
+    const asset = assetById(id);
+    if (!asset) return;
+    const name = await promptDialog(t('media.rename.title'), asset.name, {
+      label: t('media.rename.label'),
+      confirmLabel: t('media.rename.confirm'),
+      cancelLabel: t('media.cancel'),
+    });
+    const current = assetById(id);
+    if (!name || !current || name === current.name) return;
+    replaceAsset('Rename media', { ...current, name });
+  };
+  const newFolder = async (id: string) => {
+    const name = await promptDialog(t('media.folder.newTitle'), '', {
+      label: t('media.folder.name'),
+      confirmLabel: t('media.folder.create'),
+      cancelLabel: t('media.cancel'),
+    });
+    if (!name) return;
+    const folder = mediaFolders.create(engine.state.id, name);
+    mediaFolders.move(engine.state.id, id, folder.id);
+    options.toast(t('media.folder.moved', { name: folder.name }), 'success');
+  };
+  const details = (id: string) => {
+    const asset = assetById(id);
+    if (!asset) return;
+    const rows: [string, string][] = [
+      [t('media.details.name'), asset.name],
+      [t('media.details.type'), t(`media.${asset.type}`)],
+    ];
+    if (typeof asset.metadata.fileName === 'string')
+      rows.push([t('media.details.file'), asset.metadata.fileName]);
+    if (typeof asset.metadata.size === 'number')
+      rows.push([
+        t('media.details.size'),
+        t('media.details.megabytes', {
+          size: formatNumber(
+            Math.round((asset.metadata.size / 1048576) * 10) / 10,
+          ),
+        }),
+      ]);
+    if (asset.width && asset.height)
+      rows.push([
+        t('media.details.dimensions'),
+        `${formatNumber(asset.width)} × ${formatNumber(asset.height)}`,
+      ]);
+    if (asset.duration !== undefined)
+      rows.push([t('media.details.duration'), formatDuration(asset.duration)]);
+    rows.push([t('media.details.used'), t('media.details.clips', { count: usage(id) })]);
+    openModal({
+      titleText: escapeHtml(t('media.details.title', { name: asset.name })),
+      bodyBuilder: (body) => {
+        const list = document.createElement('dl');
+        list.className = 'media-details';
+        for (const [term, value] of rows) {
+          const dt = document.createElement('dt');
+          dt.textContent = term;
+          const dd = document.createElement('dd');
+          dd.textContent = value;
+          list.append(dt, dd);
+        }
+        body.append(list);
+      },
+    });
+  };
+  const run = (action: () => unknown) => () => {
+    try {
+      const result = action();
+      if (result instanceof Promise)
+        result.catch((error: unknown) =>
+          options.toast(error instanceof Error ? error.message : String(error), 'error'),
+        );
+    } catch (error) {
+      options.toast(error instanceof Error ? error.message : String(error), 'error');
+    }
+  };
+  const openMenu = (id: string, x: number, y: number) => {
+    const entries = (): MenuEntry[] => {
+      const project = engine.state.id;
+      const current = mediaFolders.folderOf(project, id);
+      return [
+        { id: 'media-rename', label: t('media.menu.rename'), icon: 'edit', run: run(() => rename(id)) },
+        {
+          id: 'media-add',
+          label: t('media.menu.add'),
+          icon: 'plus',
+          ...(options.place ? { run: run(() => options.place!(id)) } : {}),
+        },
+        {
+          id: 'media-folder',
+          label: t('media.menu.folder'),
+          icon: 'folder',
+          submenu: () => [
+            ...mediaFolders.list(project).map((folder) => ({
+              id: 'media-folder-pick',
+              label: folder.name,
+              role: 'menuitemradio' as const,
+              checked: folder.id === current,
+              data: { folderId: folder.id },
+              run: run(() => {
+                mediaFolders.move(project, id, folder.id);
+                options.toast(t('media.folder.moved', { name: folder.name }), 'success');
+              }),
+            })),
+            ...(current
+              ? [
+                  {
+                    id: 'media-folder-none',
+                    label: t('media.folder.none'),
+                    run: run(() => mediaFolders.move(project, id, null)),
+                  },
+                ]
+              : []),
+            {
+              id: 'media-folder-new',
+              label: t('media.folder.new'),
+              icon: 'plus',
+              divider: mediaFolders.list(project).length > 0,
+              run: run(() => newFolder(id)),
+            },
+          ],
+        },
+        { id: 'media-details', label: t('media.menu.details'), icon: 'info', run: run(() => details(id)) },
+        {
+          id: 'media-delete',
+          label: t('media.menu.delete'),
+          icon: 'delete',
+          divider: true,
+          run: run(() => remove(id)),
+        },
+      ];
+    };
+    menu.open(entries);
+    const width = menuElement.offsetWidth,
+      height = menuElement.offsetHeight;
+    menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
+    menuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  };
+  const unsubscribeFolders = mediaFolders.onChange(() => render());
 
   const showProgress = (
     fileName: string,
@@ -279,12 +576,21 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       return;
     }
     controller = new AbortController();
+    const restoredIds = new Set<string>();
     try {
       const { outcomes, cancelled } = await importMediaFiles(files, {
         store: media,
         probe: probeMedia,
         signal: controller.signal,
-        hasAsset: (id) => engine.state.assets.some((asset) => asset.id === id),
+        hasAsset: (id) => {
+          const asset = assetById(id);
+          // I1.7: importing a deleted file again brings it back.
+          if (asset && removed(asset)) {
+            restore(id);
+            restoredIds.add(id);
+          }
+          return !!asset;
+        },
         // I1.6: importing is a library change, not an undoable edit.
         addAsset: (asset) =>
           engine.library('Import media', [{ type: 'ADD_ASSET', asset }]),
@@ -296,7 +602,14 @@ export function mountMediaPanel(options: MediaPanelOptions) {
             progress.fraction,
           ),
       });
-      summarize(outcomes, cancelled);
+      summarize(
+        outcomes.filter(
+          (item) => !(item.assetId && restoredIds.has(item.assetId)),
+        ),
+        cancelled,
+      );
+      if (restoredIds.size)
+        options.toast(t('media.restored', { count: restoredIds.size }), 'success');
       const last = [...outcomes].reverse().find((item) => item.assetId);
       if (last?.assetId)
         grid
@@ -332,6 +645,11 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       controller?.abort();
       unsubscribePreviews();
       unsubscribeWaveforms();
+      unsubscribeFolders();
+      document.removeEventListener('pointerdown', closeOutside, true);
+      menu.close();
+      menuElement.remove();
+      for (const timer of purges.values()) window.clearTimeout(timer);
     },
   };
 }
