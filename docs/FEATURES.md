@@ -423,6 +423,8 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-068 | P0 | W2 | Verified | A timeline clip dragged and released outside the timeline stays where it was (it dims while outside), and Escape during a clip drag cancels it; neither adds history (J9) |
 | TL-069 | P0 | W2 | Verified | Clips are rounded and coloured by kind (text, shape, group, video, image, audio) with a kind icon before the name, a tooltip with start and length, an outline on hover; the selected clip has a purple outline, white trim handles and its length in a pill on the ruler (J10) |
 | TL-070 | P0 | W2 | Verified | A marquee from empty time on the timeline selects the clips it touches across lanes; with the timeline focused Ctrl+G groups them and Ctrl+Shift+G ungroups, one undo step each (J10) |
+| TL-071 | P0 | W2 | Verified | A gap between two clips on a lane is hatched; its trash button (named with the gap's length) closes it, moving the later clips on that lane left, in one undo step (J11) |
+| TL-072 | P0 | W2 | Verified | A faint playhead with a time chip follows the pointer over the lanes and ruler and goes when the pointer leaves; the playhead has a white handle; moving a clip near another clip's edge snaps to it with a guide (J11) |
 
 ## PB: Playback and transport
 

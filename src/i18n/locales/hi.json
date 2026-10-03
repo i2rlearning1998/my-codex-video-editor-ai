@@ -913,5 +913,6 @@
   "drop.replace": "क्लिप बदलें",
   "drop.addClip": "नई क्लिप के रूप में जोड़ें",
   "drop.title": "क्लिप पर डाला गया मीडिया",
-  "timeline.durationPill": "{time} से."
+  "timeline.durationPill": "{time} से.",
+  "timeline.closeGap": "{time} से. का अंतर हटाएँ"
 }

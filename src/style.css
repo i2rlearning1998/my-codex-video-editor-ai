@@ -5974,3 +5974,72 @@ button.number-field-step:focus-visible {
   font-size: 11px;
   pointer-events: none;
 }
+/* J11: hatched gaps with a trash button, a hover playhead with its time, and
+   a white playhead handle. */
+.timeline-gap {
+  position: absolute;
+  inset-block: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: repeating-linear-gradient(
+    135deg,
+    var(--hover) 0 4px,
+    transparent 4px 8px
+  );
+}
+.timeline-gap [data-action='close-gap'] {
+  display: grid;
+  place-items: center;
+  inline-size: 18px;
+  block-size: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-text-muted);
+  opacity: 0;
+  cursor: pointer;
+}
+.timeline-gap:hover [data-action='close-gap'],
+.timeline-gap [data-action='close-gap']:focus-visible {
+  opacity: 1;
+}
+.timeline-gap [data-action='close-gap']:hover {
+  color: var(--color-danger);
+}
+.timeline-hover-head {
+  position: absolute;
+  inset-block-start: 0;
+  z-index: 2;
+  inline-size: 1px;
+  background: color-mix(in srgb, var(--color-text) 45%, transparent);
+  pointer-events: none;
+}
+.timeline-hover-head span {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 4px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.timeline-playhead svg {
+  visibility: hidden;
+}
+.timeline-playhead::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 0;
+  inline-size: 12px;
+  block-size: 16px;
+  border-radius: 4px 4px 6px 6px;
+  background: var(--text-on-accent);
+  box-shadow:
+    0 0 0 1.5px var(--color-accent),
+    var(--shadow-1);
+}

@@ -913,5 +913,6 @@
   "drop.replace": "Replace clip",
   "drop.addClip": "Add as a new clip",
   "drop.title": "Media dropped on a clip",
-  "timeline.durationPill": "{time} s"
+  "timeline.durationPill": "{time} s",
+  "timeline.closeGap": "Close the {time} s gap"
 }

@@ -1109,6 +1109,39 @@ export function mountTimeline(
           zoom,
         );
       }
+      const spans = [...row.clips]
+        .map((entry) => entry.clip)
+        .sort((a, b) => a.startTime - b.startTime);
+      // J11: a gap between two clips is hatched; its trash button closes it
+      // (the later clips on the lane move left, one step).
+      const frame = frameToTime(1, composition.fps);
+      for (let index = 1; index < spans.length; index++) {
+        const end = spans[index - 1]!.startTime + spans[index - 1]!.duration;
+        const next = spans[index]!.startTime;
+        if (next - end < frame - 1e-9) continue;
+        const gap = document.createElement('div');
+        gap.className = 'timeline-gap';
+        gap.dataset.start = String(end);
+        gap.dataset.end = String(next);
+        gap.style.left = `${timeToPixel(end, zoom)}px`;
+        gap.style.width = `${timeToPixel(next - end, zoom)}px`;
+        if (!row.track.locked && timeToPixel(next - end, zoom) >= 18) {
+          const close = button(
+            iconSvg('delete', 12),
+            'close-gap',
+            row.track.id,
+            true,
+          );
+          close.dataset.time = String(end);
+          const label = t('timeline.closeGap', {
+            time: formatTimelineTime(Math.round((next - end) * 100) / 100),
+          });
+          close.setAttribute('aria-label', label);
+          close.title = label;
+          gap.append(close);
+        }
+        track.append(gap);
+      }
       if (crossTrack)
         for (const item of controller.previews) {
           if (trackMoves.get(item.layerId) !== row.track.id) continue;
@@ -1555,7 +1588,36 @@ export function mountTimeline(
       scroll.focus({ preventScroll: true });
       if (ruler) seek(event.clientX);
     });
-  const pointermove = (event: PointerEvent) => safely(() => update(event));
+  // J11: while the pointer is over the lanes (and nothing is dragged), a
+  // faint playhead with a time chip follows it.
+  const hoverHead = document.createElement('div');
+  hoverHead.className = 'timeline-hover-head';
+  hoverHead.setAttribute('aria-hidden', 'true');
+  const hoverTime = document.createElement('span');
+  hoverHead.append(hoverTime);
+  const hideHoverHead = () => hoverHead.remove();
+  const showHoverHead = (event: PointerEvent) => {
+    const bounds = scroll.getBoundingClientRect();
+    const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth;
+    if (
+      pointer ||
+      x < 0 ||
+      !(event.target as HTMLElement).closest('.timeline-track, .timeline-ruler')
+    )
+      return hideHoverHead();
+    const time = pixelToTime(x, session.timelineZoom);
+    hoverHead.style.left = `${headerWidth + x}px`;
+    hoverHead.style.height = `${content.scrollHeight}px`;
+    hoverTime.textContent = t('timeline.ghostTime', {
+      time: formatTimelineTime(Math.round(time * 100) / 100),
+    });
+    if (hoverHead.parentElement !== content) content.append(hoverHead);
+  };
+  const pointermove = (event: PointerEvent) =>
+    safely(() => {
+      update(event);
+      showHoverHead(event);
+    });
   const pointerup = (event: PointerEvent) =>
     safely(() => {
       if (event.pointerId !== pointer?.id) return;
@@ -1684,6 +1746,31 @@ export function mountTimeline(
         case 'speed-preset':
           setClipSpeed(engine, session, Number(target.dataset.speed));
           break;
+        case 'close-gap': {
+          // J11: ripple close: every later clip on the lane moves left by the
+          // gap, in one step.
+          const lane = session.source.composition.tracks.find(
+            (track) => track.id === target.dataset.id,
+          );
+          const at = Number(target.dataset.time);
+          if (!lane || lane.locked) break;
+          const later = [...lane.clips]
+            .filter((clip) => clip.startTime > at + 1e-9)
+            .sort((a, b) => a.startTime - b.startTime);
+          const shift = later[0] ? later[0].startTime - at : 0;
+          if (shift <= 0) break;
+          engine.commands.transaction(
+            'Close gap',
+            later.map((clip) => ({
+              type: 'SET_CLIP_TIMING' as const,
+              compositionId: session.source.composition.id,
+              clipId: clip.id,
+              startTime: clip.startTime - shift,
+              duration: clip.duration,
+            })),
+          );
+          break;
+        }
         case 'track-up':
         case 'track-down': {
           const tracks = [...session.source.composition.tracks].sort(
@@ -2264,6 +2351,7 @@ export function mountTimeline(
   const listeners = {
     pointerdown,
     pointermove,
+    pointerleave: hideHoverHead,
     pointerup,
     pointercancel,
     lostpointercapture: pointercancel,
