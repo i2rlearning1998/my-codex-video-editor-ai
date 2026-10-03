@@ -6172,7 +6172,8 @@ button.number-field-step:focus-visible {
   align-items: center;
   gap: var(--space-3);
 }
-.timeline-menu .menu-shortcut {
+.timeline-menu [data-shortcut]::after {
+  content: attr(data-shortcut);
   margin-inline-start: auto;
   color: var(--color-text-muted);
   font-size: 11px;

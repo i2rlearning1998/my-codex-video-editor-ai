@@ -2335,11 +2335,12 @@ export function mountTimeline(
     const command = commands.find((item) => item.id === id)!;
     const item = menuItem(t(command.labelKey), 'run-command', role);
     item.dataset.command = id;
+    // The shortcut is drawn by CSS from data-shortcut, so the entry's text
+    // and accessible name stay its label (aria-keyshortcuts names the keys).
     if (command.shortcut) {
-      const keys = document.createElement('span');
-      keys.className = 'menu-shortcut';
-      keys.textContent = command.shortcut.split(' / ')[0]!;
-      item.append(keys);
+      const keys = command.shortcut.split(' / ')[0]!;
+      item.dataset.shortcut = keys;
+      item.setAttribute('aria-keyshortcuts', keys);
     }
     if (!command.isEnabled(commandContext)) item.disabled = true;
     return item;
@@ -2454,7 +2455,6 @@ export function mountTimeline(
           : [],
       ),
     );
-    if (kind === 'video') shown.add('detach-audio');
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
       (layer) => {
         const found = findClipByLayer(session.source.composition, layer.id);

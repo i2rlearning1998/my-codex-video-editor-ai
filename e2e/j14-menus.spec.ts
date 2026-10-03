@@ -83,12 +83,15 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
   await expect(menu(page).locator('.timeline-menu-divider')).toHaveCount(1);
   expect(shown).toContain('Cut');
   expect(shown.filter((item) => item === 'Duplicate')).toHaveLength(1);
+  // Detach audio stays where it was (in the earlier entries) and is also in
+  // the Audio submenu.
+  expect(shown).toContain('Detach audio');
   // Shortcuts on the right; Auto cut is planned.
   const row = (command: string) =>
     menu(page).locator(`[data-command="${command}"]`);
-  await expect(row('duplicate').locator('.menu-shortcut')).toHaveText('Ctrl+D');
-  await expect(row('split').locator('.menu-shortcut')).toHaveText('S');
-  await expect(row('freeze').locator('.menu-shortcut')).toHaveText('F');
+  await expect(row('duplicate')).toHaveAttribute('aria-keyshortcuts', 'Ctrl+D');
+  await expect(row('split')).toHaveAttribute('aria-keyshortcuts', 'S');
+  await expect(row('freeze')).toHaveAttribute('aria-keyshortcuts', 'F');
   const autoCut = menu(page).locator('[data-action="auto-cut"]');
   await expect(autoCut).toBeDisabled();
   await expect(autoCut).toHaveAttribute('title', 'Planned: Wave 10 (AI-008)');
