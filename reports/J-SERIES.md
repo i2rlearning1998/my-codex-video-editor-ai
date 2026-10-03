@@ -76,16 +76,16 @@ Each change states the new rule the brief asked for. None was deleted, skipped o
 
 ## 3. Checks
 
-- `npm run verify` on the final commit: see section 3a (filled in after the run).
-- Unit and jsdom: 404 passed.
-- Browser: Chromium 141.0.7390.37, the sandbox fallback (D-030). It cannot decode H.264 or AAC.
-- Ledger: OK. 603 items: 278 Verified, 12 Claimed, 313 Todo, 0 Bug.
-- After each step, typecheck (app and e2e), unit tests and ledger passed. The step's own e2e tests and the specs it touched were run in a snapshot.
-- Full verify on J11 (`e396fb7`): 295 passed, 2 failed (TL-056 and MED-013). Both are fixed in `5faa082`.
-
-### 3a. Final verify
-
-(See below.)
+- `npm run verify` on the final commit `83e399a`, from a clean `git archive` copy: **exit 0**.
+  - Format, typecheck (app and e2e) and build passed. Build: main bundle 758.33 kB (232.50 kB gzip), CSS 120.60 kB, export worker 554.98 kB.
+  - Unit and jsdom: 404 passed in 38 files.
+  - E2E: 304 passed, including the DEV-006 expected-failure probe, in Chromium 141.0.7390.37 (the sandbox fallback, D-030; no H.264 or AAC), single worker, 17.1 min.
+  - Ledger: OK. 603 items: 278 Verified, 12 Claimed, 313 Todo, 0 Bug.
+- After each step: typecheck (app and e2e), unit tests and the ledger passed, and the step's own e2e tests plus the specs it touched were run in a snapshot.
+- **Earlier full runs.**
+  - J11 (`e396fb7`): 295 passed, 2 failed (TL-056 and MED-013), fixed in `5faa082`.
+  - The run before the final one (`c39eb33`): 298 passed, 6 failed. Five were caused by J14: Detach audio had left the main clip menu, and shortcut text was part of each entry's name. Both were fixed in `83e399a` without changing the older tests.
+- **Export flake.** The sixth failure was `[EXP-001]…frame-exact video file`: it read frame 43 where 44 was expected, once. It passed in the re-run of the affected specs and in the final verify. J12 changed the drawing path that export uses (transitions are applied after presets), but with no transition the composition is passed through unchanged (unit-tested). It is recorded here as seen once and not reproduced; a second failure must be investigated.
 
 ## 4. Try-it script for the owner
 
@@ -232,7 +232,7 @@ None changed. A canvas size change now anchors at the top-left, which is the tra
 ## 10. Git
 
 - Branch `claude/j-series`, draft PR #17, stacked on PR #16. Not merged by Claude.
-- One commit per step, plus three follow-up fixes (`582de29`, `087275b`, `5faa082`).
+- One commit per step, plus four follow-up fixes (`582de29`, `087275b`, `5faa082`, `83e399a`).
 - No tag: the owner tags after acceptance.
 - Review patch: `git diff origin/claude/i-series...claude/j-series`.
 

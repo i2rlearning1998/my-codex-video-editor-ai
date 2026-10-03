@@ -11,18 +11,18 @@ Tick an item only when its step is committed and `npm run verify` is green. One 
 - [x] J2 Gradient fill and keyboard undo
 - [x] J3 NumberField everywhere
 - [x] J4 Real text editing
-- [ ] J5 Weights and vertical align
-- [ ] J6 Element timing, Alt text, Resize canvas to selection
-- [ ] J7 Lane model
-- [ ] J8 Empty and loading states
-- [ ] J9 Drag and drop guides
-- [ ] J10 Clip and selection visuals
-- [ ] J11 Magnetic snapping and gaps
-- [ ] J12 Transitions
-- [ ] J13 Player panel and collapse
-- [ ] J14 Right-click menus
-- [ ] J15 Right-panel redesign
-- [ ] Report, ledger, docs, draft PR
+- [x] J5 Weights and vertical align
+- [x] J6 Element timing, Alt text, Resize canvas to selection
+- [x] J7 Lane model
+- [x] J8 Empty and loading states
+- [x] J9 Drag and drop guides
+- [x] J10 Clip and selection visuals
+- [x] J11 Magnetic snapping and gaps
+- [x] J12 Transitions
+- [x] J13 Player panel and collapse
+- [x] J14 Right-click menus
+- [x] J15 Right-panel redesign
+- [x] Report, ledger, docs, draft PR
 
 ## Notes for a resuming session
 
