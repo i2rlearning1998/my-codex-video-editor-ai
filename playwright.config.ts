@@ -59,7 +59,9 @@ export default defineConfig({
     ...browser,
     // H2: wide enough for the desktop layout (docked left and right panels)
     // with the canvas at least as large as before the H2 shell.
-    viewport: { width: 1600, height: 1000 },
+    // I3 (D-150): 72 px taller for the scene strip, so the canvas keeps the
+    // size the pixel-measuring tests were written for (D-120).
+    viewport: { width: 1600, height: 1072 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

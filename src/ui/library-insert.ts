@@ -240,6 +240,75 @@ export interface LibraryInsert {
   /** The layer to select, or the scene to open (templates). */
   readonly layerId?: string;
   readonly sceneId?: string;
+  /** I1.4: a template was scaled to fit a canvas of another size. */
+  readonly scaled?: boolean;
+}
+/** I1.4: where a template goes. */
+export type TemplateMode = 'replace' | 'add' | 'new';
+export const TEMPLATE_MODES: readonly TemplateMode[] = [
+  'replace',
+  'add',
+  'new',
+];
+export interface LibraryInsertOptions {
+  /** I1.3: centre the item on this composition point (a drop). */
+  readonly at?: readonly [number, number];
+  /** I1.4: templates only; 'new' when absent. */
+  readonly mode?: TemplateMode;
+}
+/**
+ * I1.4: a template's layers on a canvas. A template made for another size
+ * is scaled to fit and centred; its background colour still covers the
+ * whole canvas, so no bare border shows.
+ */
+function templateLayers(
+  item: Extract<LibraryItem, { type: 'template' }>,
+  canvas: { width: number; height: number },
+  name: string,
+): { layers: Layer[]; scaled: boolean } {
+  const tw = item.data.width ?? canvas.width,
+    th = item.data.height ?? canvas.height;
+  const scale = Math.min(canvas.width / tw, canvas.height / th);
+  const scaled = Math.abs(tw / th - canvas.width / canvas.height) > 1e-3;
+  const box = { width: tw * scale, height: th * scale };
+  const ox = (canvas.width - box.width) / 2,
+    oy = (canvas.height - box.height) / 2;
+  const background = shapeLayer(
+    {
+      kind: 'shape',
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      shape: 'rectangle',
+      fill: item.data.background,
+    },
+    canvas,
+    name,
+  );
+  const layers = item.data.elements.map((element) => {
+    const layer =
+      element.kind === 'text'
+        ? textLayer(element, box)
+        : shapeLayer(element, box, name);
+    const [x, y] = layer.transform.position.value;
+    layer.transform.position = vector2(x + ox, y + oy);
+    return layer;
+  });
+  return { layers: [background, ...layers], scaled };
+}
+/** Moves a centred top-level layer so its centre lands on `at`. */
+function centreOn(
+  layer: Layer,
+  canvas: { width: number; height: number },
+  at: readonly [number, number] | undefined,
+) {
+  if (!at) return;
+  const [x, y] = layer.transform.position.value;
+  layer.transform.position = vector2(
+    x + at[0] - canvas.width / 2,
+    y + at[1] - canvas.height / 2,
+  );
 }
 /** The commands that add a library item to the open scene (or a new one). */
 export function libraryCommands(
@@ -247,6 +316,7 @@ export function libraryCommands(
   source: RenderSource,
   item: LibraryItem,
   time: number,
+  options: LibraryInsertOptions = {},
 ): LibraryInsert {
   const composition = source.composition;
   const canvas = { width: composition.width, height: composition.height };
@@ -271,6 +341,7 @@ export function libraryCommands(
         canvas,
         name,
       );
+      centreOn(layer, canvas, options.at);
       return {
         label: 'Add element',
         commands: addTopLevel(composition, layer, time),
@@ -303,13 +374,73 @@ export function libraryCommands(
         layer.transform.position = vector2(x + dx, y + dy);
       }
       const layer = grouped(layers, name);
+      centreOn(layer, canvas, options.at);
+      const commands = addTopLevel(composition, layer, time);
+      // I5: an animated title brings its entrance with its clip (one step).
+      if (item.data.animation)
+        for (const command of commands as {
+          type: string;
+          clip?: { metadata: Record<string, unknown> };
+        }[])
+          if (command.type === 'CREATE_CLIP' && command.clip)
+            command.clip.metadata = {
+              ...command.clip.metadata,
+              animation: structuredClone(item.data.animation),
+            };
       return {
         label: 'Add text',
-        commands: addTopLevel(composition, layer, time),
+        commands,
         layerId: layer.id,
       };
     }
+    case 'transition':
+      // I2: transitions are listed now and applied from Wave 6 (TR-003).
+      throw new Error('Transitions are planned for Wave 6');
     case 'template': {
+      const mode = options.mode ?? 'new';
+      const { layers, scaled } = templateLayers(item, canvas, name);
+      if (mode !== 'new') {
+        // Replace removes this scene's top-level layers (their clips go too)
+        // first; both add the template's layers on top, each with a clip.
+        const commands: Command[] =
+          mode === 'replace'
+            ? composition.layers.map(
+                (layer) =>
+                  ({
+                    type: 'DELETE_LAYER',
+                    compositionId: composition.id,
+                    layerId: layer.id,
+                  }) as Command,
+              )
+            : [];
+        // Clips are placed against the scene as it will be after removals.
+        let target = (
+          mode === 'replace'
+            ? {
+                ...composition,
+                layers: [],
+                // Every top-level layer goes, so every clip goes; the
+                // emptied tracks are reused.
+                tracks: composition.tracks.map((track) => ({
+                  ...track,
+                  clips: [],
+                })),
+              }
+            : composition
+        ) as RenderSource['composition'];
+        for (const layer of layers) {
+          const added = addTopLevel(target, layer, time);
+          commands.push(...added);
+          // Later layers see the tracks the earlier ones created or used.
+          target = applyTracks(target, added);
+        }
+        return {
+          label: mode === 'replace' ? 'Replace with template' : 'Add template',
+          commands,
+          layerId: layers[layers.length - 1]!.id,
+          scaled,
+        };
+      }
       const scene = createComposition({
         id: newId(),
         name,
@@ -317,27 +448,7 @@ export function libraryCommands(
         height: canvas.height,
         fps: composition.fps,
       }) as Composition;
-      const background = shapeLayer(
-        {
-          kind: 'shape',
-          x: 0,
-          y: 0,
-          w: 1,
-          h: 1,
-          shape: 'rectangle',
-          fill: item.data.background,
-        },
-        canvas,
-        name,
-      );
-      scene.layers = [
-        background,
-        ...item.data.elements.map((element) =>
-          element.kind === 'text'
-            ? textLayer(element, canvas)
-            : shapeLayer(element, canvas, name),
-        ),
-      ];
+      scene.layers = layers;
       // Every top-level layer gets its clip (D-039).
       const adopted = adoptFreeLayers({
         ...createProject(name),
@@ -352,7 +463,87 @@ export function libraryCommands(
         label: 'Add template',
         commands: placed.commands,
         sceneId: placed.id,
+        scaled,
       };
     }
   }
+}
+
+/**
+ * The composition after some CREATE_TRACK and CREATE_CLIP commands, enough
+ * for the next `trackForNewClip` to see occupied tracks and times.
+ */
+export function applyTracks(
+  composition: RenderSource['composition'],
+  commands: readonly Command[],
+): RenderSource['composition'] {
+  const tracks = composition.tracks.map((track) => ({
+    ...track,
+    clips: [...track.clips],
+  })) as { id: string; clips: unknown[] }[];
+  for (const command of commands as readonly {
+    type: string;
+    track?: { id: string; clips: unknown[] };
+    trackId?: string;
+    clip?: unknown;
+  }[]) {
+    if (command.type === 'CREATE_TRACK' && command.track)
+      tracks.push({ ...command.track, clips: [...command.track.clips] });
+    if (command.type === 'CREATE_CLIP' && command.clip)
+      tracks
+        .find((track) => track.id === command.trackId)
+        ?.clips.push(command.clip);
+  }
+  return { ...composition, tracks } as unknown as RenderSource['composition'];
+}
+
+/**
+ * I2: the Draw palette's Sticky note, a square paper with a line of text as
+ * one group, centred on `at` (a composition point), one undo step.
+ */
+export function stickyNoteCommands(
+  source: RenderSource,
+  at: readonly [number, number],
+  time: number,
+  text: string,
+  name: string,
+): LibraryInsert {
+  const composition = source.composition;
+  const side = Math.round(Math.min(composition.width, composition.height) / 4);
+  const box = { width: side, height: side };
+  const paper = shapeLayer(
+    {
+      kind: 'shape',
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      shape: 'rectangle',
+      radius: 0.04,
+      fill: '#fde68a',
+    },
+    box,
+    name,
+  );
+  const label = textLayer(
+    {
+      kind: 'text',
+      x: 0.1,
+      y: 0.1,
+      w: 0.8,
+      h: 0.8,
+      text: { en: text, hi: text },
+      size: 0.11,
+      color: '#3f3a1f',
+      align: 'left',
+    },
+    box,
+  );
+  const group = grouped([paper, label], name);
+  group.transform.position = vector2(at[0] - side / 2, at[1] - side / 2);
+  return {
+    label: 'Add sticky note',
+    commands: addTopLevel(composition, group, time),
+    layerId: group.id,
+  };
 }

@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, openInspector } from './fixtures';
 import { pickColor, reveal } from './controls';
 
 // G3: marquee with a live highlight, pan and zoom, objects outside the
@@ -231,6 +231,7 @@ test('[CV-047] a layer moved outside the artboard shows faintly and stays select
   page,
 }) => {
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  await openInspector(page);
   const x = page.locator('#inspector-x');
   await x.fill('-240');
   await x.press('Enter');

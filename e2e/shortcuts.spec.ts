@@ -1,4 +1,12 @@
-import { menuAction, test, expect, hook, toScreen, rulerBox } from './fixtures';
+import {
+  menuAction,
+  test,
+  expect,
+  hook,
+  toScreen,
+  rulerBox,
+  openInspector,
+} from './fixtures';
 import type { Page } from '@playwright/test';
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -86,6 +94,7 @@ test('[KEY-007] typing in inputs, textarea and contenteditable never runs editor
   page,
 }) => {
   await page.locator('[data-layer-id="example-headline"]').first().click();
+  await openInspector(page);
   const position = page.getByRole('spinbutton', {
     name: 'Position X',
     exact: true,

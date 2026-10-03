@@ -6,6 +6,7 @@ import {
   expect,
   hook,
   showCategory,
+  showGraphics,
   toScreen,
 } from './fixtures';
 import { reveal } from './controls';
@@ -13,7 +14,8 @@ import { reveal } from './controls';
 // H5: the library (Starter Pack 1) and gradient fills.
 const panel = (page: Page, id: string) => page.locator(`#library-${id}`);
 const card = (page: Page, id: string) =>
-  page.locator(`.library-card[data-item-id="${id}"]`);
+  // I2: an item can show in more than one section (Recently used, a row).
+  page.locator(`.library-card[data-item-id="${id}"]`).first();
 const labels = async (page: Page) => (await hook(page)).history.labels;
 const layers = async (page: Page): Promise<any[]> => {
   const state = await hook(page);
@@ -82,50 +84,61 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[TPL-010] the library lists Starter Pack 1 in Templates, Elements, Text and Graphics with drawn previews and search', async ({
+test('[TPL-010] the library lists Starter Pack 1 in Templates, Elements (shapes and graphics) and Text with drawn previews and search', async ({
   page,
 }) => {
-  for (const [category, id, minimum] of [
-    ['Templates', 'templates', 12],
-    ['Elements', 'elements', 75],
-    ['Text', 'text', 28],
-    ['Graphics', 'graphics', 38],
+  // I2: each panel is a browse panel; "See all" (or a category tile) opens
+  // the full list.
+  const drawn = (locator: ReturnType<Page['locator']>) =>
+    locator
+      .first()
+      .locator('img')
+      .evaluate(async (image: HTMLImageElement) => {
+        if (!image.complete || !image.naturalWidth) return false;
+        const canvas = new OffscreenCanvas(
+          image.naturalWidth,
+          image.naturalHeight,
+        );
+        const context = canvas.getContext('2d')!;
+        context.drawImage(image, 0, 0);
+        const data = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        ).data;
+        const first = [data[0], data[1], data[2]].join();
+        for (let i = 4; i < data.length; i += 4)
+          if ([data[i], data[i + 1], data[i + 2]].join() !== first) return true;
+        return false;
+      })
+      .catch(() => false);
+  for (const [category, id, open, minimum] of [
+    ['Templates', 'templates', '[data-see-all="all"]', 12],
+    ['Elements', 'elements', '[data-tile="shapes"]', 75],
+    ['Elements', 'elements', '[data-tile="graphics"]', 38],
+    ['Text', 'text', '[data-see-all="styles"]', 28],
   ] as const) {
     await showCategory(page, category);
+    const back = panel(page, id).locator('[data-action="browse-back"]');
+    while (await back.isVisible()) await back.click();
+    await panel(page, id).locator(open).click();
     const cards = panel(page, id).locator('.library-card');
-    await expect.poll(() => cards.count()).toBeGreaterThanOrEqual(minimum);
-    // The first preview is drawn by the editor's renderer (not blank).
+    // Grids render in chunks as they scroll: scroll to the end to count.
     await expect
-      .poll(() =>
-        cards
-          .first()
-          .locator('img')
-          .evaluate(async (image: HTMLImageElement) => {
-            if (!image.complete || !image.naturalWidth) return false;
-            const canvas = new OffscreenCanvas(
-              image.naturalWidth,
-              image.naturalHeight,
-            );
-            const context = canvas.getContext('2d')!;
-            context.drawImage(image, 0, 0);
-            const data = context.getImageData(
-              0,
-              0,
-              canvas.width,
-              canvas.height,
-            ).data;
-            const first = [data[0], data[1], data[2]].join();
-            for (let i = 4; i < data.length; i += 4)
-              if ([data[i], data[i + 1], data[i + 2]].join() !== first)
-                return true;
-            return false;
-          }),
-      )
-      .toBe(true);
+      .poll(async () => {
+        await cards.last().scrollIntoViewIfNeeded();
+        return cards.count();
+      })
+      .toBeGreaterThanOrEqual(minimum);
+    // The first preview is drawn by the editor's renderer (not blank).
+    await cards.first().scrollIntoViewIfNeeded();
+    await expect.poll(() => drawn(cards)).toBe(true);
   }
   // Search filters by name and tag, and says when nothing matches.
   await showCategory(page, 'Elements');
-  const search = page.locator('#library-search-shape');
+  await panel(page, 'elements').locator('[data-action="browse-back"]').click();
+  const search = page.locator('#browse-search-elements');
   await search.fill('star');
   const names = await panel(page, 'elements')
     .locator('.library-card')
@@ -133,9 +146,9 @@ test('[TPL-010] the library lists Starter Pack 1 in Templates, Elements, Text an
   expect(names.length).toBeGreaterThan(5);
   expect(names.every((name) => /star|burst|seal/i.test(name ?? ''))).toBe(true);
   await search.fill('zzzz');
-  await expect(panel(page, 'elements').locator('.library-status')).toHaveText(
-    'Nothing matches “zzzz”.',
-  );
+  await expect(
+    panel(page, 'elements').locator('.browse-no-results'),
+  ).toHaveText('Nothing matches “zzzz”.');
 });
 
 test('[TPL-010] a library that cannot load says so in its panels', async ({
@@ -156,7 +169,7 @@ test('[TPL-010] a library that cannot load says so in its panels', async ({
     .toBe(true);
   await showCategory(page, 'Templates');
   await expect(
-    panel(page, 'templates').locator('.library-status'),
+    panel(page, 'templates').locator('.browse-status-error'),
   ).toContainText('The library could not be loaded');
 });
 
@@ -188,7 +201,8 @@ test('[SHP-013] a background goes behind everything and covers the canvas, gradi
     toScreen(page, 1220, 60),
     toScreen(page, 60, 660),
   ]);
-  await showCategory(page, 'Graphics');
+  // I2: Graphics live inside Elements.
+  await showGraphics(page);
   await card(page, 'bg-gradient-1').click();
   expect((await labels(page)).at(-1)).toBe('Add background');
   const background = (await layers(page))[0]!;
@@ -282,6 +296,8 @@ test('[TPL-011] a template becomes a new scene after this one, sized to the canv
   const before = (await hook(page)).project.compositions.length;
   await showCategory(page, 'Templates');
   await card(page, 'template-1').click();
+  // I1.4 (TPL-013): the template asks where it goes; New scene is the default.
+  await page.locator('.modal-dialog [data-action="template-confirm"]').click();
   expect((await labels(page)).at(-1)).toBe('Add template');
   const project = (await hook(page)).project;
   expect(project.compositions).toHaveLength(before + 1);

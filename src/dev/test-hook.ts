@@ -25,6 +25,8 @@ export function createTestHook(
         soloTrackIds: session.soloTrackIds,
         /** W5-B: the selected timeline keyframes. */
         selectedKeyframes: session.selectedKeyframes,
+        /** I2: the active brush (null outside draw mode). */
+        drawBrush: session.drawBrush,
       }),
     getHistory: () =>
       snapshot({

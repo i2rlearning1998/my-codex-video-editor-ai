@@ -400,6 +400,16 @@ export function drawComposition(
         const frame = item.media
           ? source.frames?.frame(item.media, source.playing ?? false)
           : null;
+        // I1.7: deleted or missing media draws a clear hatched placeholder.
+        if (item.missing) {
+          drawMissing(
+            context,
+            item.size.width,
+            item.size.height,
+            source.missingLabel ?? 'Missing media',
+          );
+          continue;
+        }
         // H3: cropping shows the whole source dimmed and the kept part bright.
         if (item.cropView) {
           const { source: full, frame: kept } = item.cropView;
@@ -725,4 +735,46 @@ export function drawComposition(
   if (source.cropLayerId && source.crop)
     drawCropOverlay(context, pixels, source.crop);
   return { warnings: errors, zoom: viewport.matrix[0] };
+}
+
+/** I1.7: a hatched box with a label, for a layer whose media is missing. */
+function drawMissing(
+  context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  width: number,
+  height: number,
+  label: string,
+) {
+  context.save();
+  try {
+    context.fillStyle = '#3b3f4a';
+    context.fillRect(0, 0, width, height);
+    context.beginPath();
+    context.rect(0, 0, width, height);
+    context.clip();
+    context.strokeStyle = '#555a66';
+    context.lineWidth = Math.max(2, Math.min(width, height) / 60);
+    const step = Math.max(16, Math.min(width, height) / 8);
+    for (let x = -height; x < width; x += step) {
+      context.beginPath();
+      context.moveTo(x, height);
+      context.lineTo(x + height, 0);
+      context.stroke();
+    }
+    const size = Math.max(12, Math.min(height / 8, width / 10));
+    context.font = `600 ${size}px Arial, sans-serif`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    const textWidth = context.measureText(label).width;
+    context.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    context.fillRect(
+      width / 2 - textWidth / 2 - size / 2,
+      height / 2 - size,
+      textWidth + size,
+      size * 2,
+    );
+    context.fillStyle = '#ffffff';
+    context.fillText(label, width / 2, height / 2);
+  } finally {
+    context.restore();
+  }
 }

@@ -59,3 +59,13 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - H5: library categories, favourites and recently used items inside each panel; animated template previews (TPL-001).
 - H5: drag a library item onto the canvas or a timeline track.
 - H5: gradient fill for text.
+- I1: no toolbar button opens the right panel; when one is added it should reveal a collapsed right panel the same way (D-137).
+- I1: a media item deleted in one project removes the shared stored bytes for every project in this browser (D-141); per-project reference counting would avoid that.
+- I1: the asset record of deleted media stays in the project as a hidden reference; a "Clean up unused media" action could drop it once no history step names it.
+- I1: dragging a library card onto a timeline track is not built (canvas drops only).
+- I2: Elements categories Photos, Videos, 3D, Animations, Audio, Tables, Charts, Frames and Grids are planned tiles only.
+- I2: My Templates live in localStorage (about 5 MB in total); a large design may not fit and shows an error toast. IndexedDB would hold more.
+- I2: the Draw palette's weight and transparency are fields in the flyout, not a compact popover.
+- I2: Text titles preview with a generic rise-in on hover; per-title animation presets come with I5 content.
+- I4: the right panel's first tab for text has no font weight list of its own; weight is in Spacing and more (the toolbar's popover).
+- I5: an icon pack (for example Lucide, ISC) needs a stroked-path shape kind in the renderer before it can be bundled.

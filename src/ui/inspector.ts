@@ -33,7 +33,9 @@ const GROUPS: readonly (readonly [key: string, tabs: readonly SubTab[]])[] = [
   ['inspector.timing', ['Timing']],
   ['inspector.details', ['Dimensions', 'Hierarchy']],
 ];
-const folded = new Set<string>();
+// I4: Position and size, Timing and Details start folded at the bottom of
+// the right panel's first tab, under the selection's own controls.
+const folded = new Set<string>(GROUPS.map(([key]) => key));
 let revealTab: SubTab | null = null;
 /** Bumped on every render so a render re-entered from a blur commit can stop. */
 let renderGeneration = 0;

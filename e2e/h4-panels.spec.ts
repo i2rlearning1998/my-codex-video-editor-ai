@@ -1,5 +1,13 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, mode2d, rulerBox, toScreen } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  mode2d,
+  openInspector,
+  rulerBox,
+  toScreen,
+} from './fixtures';
 
 // H4: the right panel (Clipchamp) and the Editor | 2D Animation switch.
 const rail = (page: Page) => page.locator('#rail-right');
@@ -41,60 +49,78 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[LAY-035] the right rail lists the sections that fit the selection; unbuilt ones name their wave', async ({
+test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt ones are disabled and name their wave', async ({
   page,
   openFixtureProject,
 }) => {
-  expect(await shownSections(page)).toEqual(['Properties']);
+  // I4 (D-148): tabs per selection; the first is named after it.
+  expect(await shownSections(page)).toEqual([
+    'Properties',
+    'Captions',
+    'Transitions',
+  ]);
+  await expect(section(page, 'Properties')).toHaveAttribute(
+    'aria-label',
+    'Canvas',
+  );
+  await expect(section(page, 'Captions')).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
   await select(page, 'example-headline');
   expect(await shownSections(page)).toEqual([
     'Properties',
-    'Color',
-    'Fade',
     'Animate',
     'Effects',
+    'Adjust',
   ]);
+  await expect(section(page, 'Properties')).toHaveAttribute(
+    'aria-label',
+    'Text',
+  );
   await select(page, 'example-badge');
   expect(await shownSections(page)).toEqual([
     'Properties',
-    'Color',
-    'Fade',
     'Animate',
+    'Effects',
+    'Adjust',
   ]);
   await openFixtureProject('nle-example.json');
   await select(page, 'layer-a');
   expect(await shownSections(page)).toEqual([
     'Properties',
-    'Fade',
     'Speed',
+    'Audio',
+    'Fade',
     'Animate',
-    'Filters',
     'Effects',
     'Adjust',
-    'Audio',
-    'Captions',
-    'Transitions',
   ]);
-  await section(page, 'Filters').click();
-  await expect(page.locator('#right-section')).toContainText(
-    'Planned: Wave 6 (FX-004)',
+  // An unbuilt tab is disabled with its wave; clicking it changes nothing.
+  await expect(section(page, 'Effects')).toHaveAttribute(
+    'title',
+    'Effects: Planned: Wave 6 (FX-001)',
   );
-  // A section that no longer fits falls back to Properties.
-  // An image keeps Filters open; with nothing selected it falls back.
-  await select(page, 'layer-c');
-  await expect(section(page, 'Filters')).toHaveAttribute(
+  await section(page, 'Effects').click({ force: true });
+  await expect(section(page, 'Properties')).toHaveAttribute(
     'aria-pressed',
     'true',
   );
+  // An image keeps Adjust open; with nothing selected it falls back.
+  await section(page, 'Adjust').click();
+  await select(page, 'layer-c');
+  await expect(section(page, 'Adjust')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
-  await expect.poll(() => shownSections(page)).toEqual(['Properties']);
+  await expect
+    .poll(() => shownSections(page))
+    .toEqual(['Properties', 'Captions', 'Transitions']);
   await expect(section(page, 'Properties')).toHaveAttribute(
     'aria-pressed',
     'true',
   );
 });
 
-test('[LAY-036] the Inspector stacks Position and size, Timing and Details; a header opens its section, the chevron folds it', async ({
+test('[LAY-036] the Inspector stacks Position and size, Timing and Details, folded under the first tab; a header opens its section, the chevron folds it', async ({
   page,
 }) => {
   await select(page, 'example-headline');
@@ -104,7 +130,11 @@ test('[LAY-036] the Inspector stacks Position and size, Timing and Details; a he
     await expect(
       inspector.locator('.inspector-group-title', { hasText: name }),
     ).toBeVisible();
-  // Everything is visible at once: a transform field and a timing field.
+  // I4: they start folded at the bottom of the first tab.
+  await expect(inspector.locator('#inspector-position-x')).toBeHidden();
+  await inspector.locator('[data-subtab="Transform"]').click();
+  await inspector.locator('[data-subtab="Timing"]').click();
+  await inspector.locator('[data-subtab="Dimensions"]').click();
   await expect(inspector.locator('#inspector-position-x')).toBeVisible();
   await expect(inspector.locator('#inspector-start-time')).toBeVisible();
   await expect(inspector.locator('[data-field="Layer ID"]')).toHaveText(
@@ -114,14 +144,22 @@ test('[LAY-036] the Inspector stacks Position and size, Timing and Details; a he
   await expect(inspector.locator('#inspector-start-time')).toBeHidden();
   await inspector.locator('[data-subtab="Timing"]').click();
   await expect(inspector.locator('#inspector-start-time')).toBeVisible();
+  // The selection's own controls come first.
+  const order = await page
+    .locator('#inspector-panel > .panel-body')
+    .evaluate((panel) =>
+      [...panel.children].map((child) => child.id).filter(Boolean),
+    );
+  expect(order.indexOf('right-section')).toBeLessThan(
+    order.indexOf('inspector-content'),
+  );
 });
 
-test('[LAY-037] Color, Fade and Speed in the right panel edit the selection as one undo step each', async ({
+test('[LAY-037] Color (the first tab), Fade and Speed in the right panel edit the selection as one undo step each', async ({
   page,
   openFixtureProject,
 }) => {
   await select(page, 'example-headline');
-  await section(page, 'Color').click();
   await page.locator('#right-color').click();
   const hex = page.locator('#color-picker-hex');
   await hex.fill('#ff0000');
@@ -130,19 +168,18 @@ test('[LAY-037] Color, Fade and Speed in the right panel edit the selection as o
   expect((await layerOf(page, 'example-headline')).properties.fill.value).toBe(
     '#ff0000',
   );
+  expect((await hook(page)).history.labels.at(-1)).toBe('Set color');
+  await openFixtureProject('nle-example.json');
+  await select(page, 'layer-a');
   await section(page, 'Fade').click();
   const fadeIn = page.locator('#right-fade-in');
   await fadeIn.fill('1');
   await fadeIn.press('Enter');
-  expect(
-    (await clipOf(page, 'example-headline')).metadata.animation.in,
-  ).toEqual({ preset: 'fade', duration: 1 });
-  expect((await hook(page)).history.labels.slice(-2)).toEqual([
-    'Set color',
-    'Fade in',
-  ]);
-  await openFixtureProject('nle-example.json');
-  await select(page, 'layer-a');
+  expect((await clipOf(page, 'layer-a')).metadata.animation.in).toEqual({
+    preset: 'fade',
+    duration: 1,
+  });
+  expect((await hook(page)).history.labels.at(-1)).toBe('Fade in');
   await section(page, 'Speed').click();
   await page.locator('#right-section [data-speed="2"]').click();
   expect((await clipOf(page, 'layer-a')).speed).toBe(2);
@@ -180,6 +217,8 @@ test('[ANI-021] Editor | 2D Animation: keyframe tools show in 2D Animation only;
   ).toHaveAttribute('aria-checked', 'true');
   expect((await hook(page)).session.selectedIds).toEqual(['example-badge']);
   await expect(page.locator('#animation-panel')).toBeVisible();
+  // I4: the Inspector's sections start folded under the first tab.
+  await openInspector(page);
   await expect(page.locator('.keyframe-button').first()).toBeVisible();
   // Back to Editor: the tools go away again, the selection stays.
   await editor.click();
@@ -200,6 +239,7 @@ test('[ANI-022] in Editor mode an animated property is not changed: "Animated in
     )
     .click();
   await seek(page, 2);
+  await openInspector(page);
   const x = page.locator('#inspector-content input[aria-label="Position X"]');
   await x.fill('276');
   await x.press('Enter');

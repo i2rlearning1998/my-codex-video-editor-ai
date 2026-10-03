@@ -1,9 +1,10 @@
-import { menuAction, test, expect, hook } from './fixtures';
+import { menuAction, test, expect, hook, openInspector } from './fixtures';
 test('[KEY-002] fuzzy palette runs Undo and exposes shortcuts', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
   await page.locator('[data-layer-id="example-headline"]').first().click();
+  await openInspector(page);
   const input = page.getByRole('spinbutton', {
     name: 'Position X',
     exact: true,

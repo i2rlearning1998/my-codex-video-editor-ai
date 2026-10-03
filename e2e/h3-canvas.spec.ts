@@ -161,7 +161,8 @@ test('[CV-052] hovering outlines an object or the empty artboard; the artboard s
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([]);
   expect((await debug(page)).canvasSelected).toBe(false);
-  await expect(bar(page)).toBeHidden();
+  // I1.5 (CV-057): the stage around the artboard shows the canvas bar.
+  await expect(bar(page)).toHaveAttribute('data-mode', 'canvas');
   // A click on the empty artboard selects the canvas: the scene toolbar.
   await page.mouse.click(empty.x, empty.y);
   await expect(bar(page)).toHaveAttribute('data-mode', 'scene');
@@ -202,7 +203,7 @@ test('[CV-053] Canva handles: round white corners, pills on the sides and the ro
   ).toBeGreaterThan(10);
 });
 
-test('[CV-054] one fixed floating toolbar row with the canvas size chip first; it never scrolls, and extra tools move into More', async ({
+test('[CV-054] one fixed floating toolbar row (the scene bar starts with the canvas size chip); it never scrolls, and extra tools move into More', async ({
   page,
 }) => {
   for (const id of ['example-headline', 'example-badge', null] as const) {
@@ -211,11 +212,19 @@ test('[CV-054] one fixed floating toolbar row with the canvas size chip first; i
       const empty = await screen(page, 1000, 650);
       await page.mouse.click(empty.x, empty.y);
     }
-    await expect(bar(page).locator('> *').first()).toHaveAttribute(
-      'data-control',
-      'canvas-size',
-    );
-    await expect(control(page, 'canvas-size')).toContainText('16:9');
+    // I1.5 (CV-057): only the scene bar starts with the size chip; object
+    // toolbars carry none.
+    if (id)
+      await expect(
+        bar(page).locator('[data-control="canvas-size"]'),
+      ).toHaveCount(0);
+    else {
+      await expect(bar(page).locator('> *').first()).toHaveAttribute(
+        'data-control',
+        'canvas-size',
+      );
+      await expect(control(page, 'canvas-size')).toContainText('16:9');
+    }
     const shape = await bar(page).evaluate((element) => ({
       height: element.getBoundingClientRect().height,
       radius: getComputedStyle(element).borderTopLeftRadius,
@@ -249,7 +258,8 @@ test('[CV-055] canvas size presets resize every scene, keep the design centred, 
 }) => {
   const chip = control(page, 'canvas-size');
   await chip.click();
-  const presets = page.locator('.canvas-size-preset');
+  // I4: the right panel's Canvas tab shows the same presets; this is the popover.
+  const presets = page.locator('.toolbar-popover .canvas-size-preset');
   await expect(presets).toHaveCount(7);
   await expect(presets.locator('.canvas-size-ratio')).toHaveText([
     '16:9',
@@ -262,7 +272,9 @@ test('[CV-055] canvas size presets resize every scene, keep the design centred, 
   ]);
   const headline = (await layerOf(page, 'example-headline')).transform.position
     .value;
-  await page.locator('.canvas-size-preset[data-preset="square"]').click();
+  await page
+    .locator('.toolbar-popover .canvas-size-preset[data-preset="square"]')
+    .click();
   let project = (await hook(page)).project;
   expect(project.compositions.map((item) => [item.width, item.height])).toEqual(
     [[1080, 1080]],
@@ -377,7 +389,10 @@ test('[VID-018] a picture takes a border (colour, width, style) and rounded corn
   // Clear of the side's pill handle at mid-height.
   const inner: Point = [left + 3, top + (corners[3]![1] - top) * 0.3];
   await control(page, 'stroke-style').click();
-  await page.locator('.stroke-styles [data-stroke="solid"]').click();
+  // I4: the right panel shows the same controls; this is the toolbar popover.
+  await page
+    .locator('.toolbar-popover .stroke-styles [data-stroke="solid"]')
+    .click();
   expect((await labels(page)).at(-1)).toBe('Set stroke style');
   const width = await reveal(page, 'toolbar-width');
   await width.fill('24');
@@ -632,14 +647,14 @@ test('[TXT-036] underline, strikethrough and uppercase toggle from the toolbar, 
       }, box);
   const top = await inkTop();
   await control(page, 'spacing').click();
-  await page.locator('[data-anchor="bottom"]').click();
+  await page.locator('.toolbar-popover [data-anchor="bottom"]').click();
   expect(
     (await layerOf(page, 'example-headline')).properties.textAnchor.value,
   ).toBe('bottom');
   expect((await labels(page)).at(-1)).toBe('Set text anchor');
   const [a] = (await debug(page)).view;
   expect((await inkTop()) - top).toBeGreaterThan(30 * a);
-  await page.locator('[data-anchor="middle"]').click();
+  await page.locator('.toolbar-popover [data-anchor="middle"]').click();
   const middle = await inkTop();
   expect(middle - top).toBeGreaterThan(10 * a);
   expect(middle - top).toBeLessThan(30 * a);

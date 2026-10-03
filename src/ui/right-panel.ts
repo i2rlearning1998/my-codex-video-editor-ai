@@ -1,7 +1,12 @@
-// H4: the right panel (Clipchamp). An icon rail lists the sections that fit
-// the selection; Properties is the Inspector, Color, Fade and Speed edit the
-// selection, Animate opens the Animate panel, and the sections whose systems
-// are not built say which wave builds them.
+// H4: the right panel (Clipchamp). I4: an always-visible icon rail with
+// tabs per selection. The first tab is named after what is selected
+// (Canvas, Shape, Text, Image, Video, Audio, Group or Arrange) and holds its
+// controls as accordions; the Inspector's Position and size, Timing and
+// Details follow it as collapsed accordions. Animate, Speed, Audio, Fade and
+// Adjust colors edit the selection; tabs whose systems are not built are
+// shown disabled and name their wave. The controls are the toolbar's own
+// builders (one implementation), so values, ratio lock and the 2D Animation
+// rules (guardCommands) are shared.
 import {
   clipAnimation,
   clipTimeEffects,
@@ -10,10 +15,18 @@ import {
 } from '../core';
 import { formatNumber, t } from '../i18n';
 import { drawingOf } from '../render/drawing';
-import { colorCommand } from './context-toolbar';
+import { SYSTEM_FONTS, TEXT_ALIGNS, textStyleOf } from '../render/text-style';
+import { alignSelection, canDistribute, distributeSelection } from './align';
+import {
+  colorCommand,
+  fontSizeCommand,
+  textStyleCommands,
+} from './context-toolbar';
 import { createColorField } from './components/color-picker';
 import { createNumberField } from './components/number-field';
+import { createSelect } from './components/select';
 import {
+  contextActions,
   performEdit,
   selectedClips,
   setClipSpeed,
@@ -22,26 +35,27 @@ import {
 import { guardCommands } from './editor-mode';
 import { iconSvg } from './icons';
 import { documentColors } from './palette';
+import { audioTab } from './right-panel/audio-tab';
+import { sceneLengthCommands } from './scene-length';
 import { describeSelection, selectionRoots } from './selection-context';
 import type { EditorSession } from './session';
+import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
 
 export const RIGHT_SECTIONS = [
   'Properties',
-  'Color',
-  'Fade',
   'Speed',
+  'Audio',
+  'Fade',
   'Animate',
-  'Filters',
   'Effects',
   'Adjust',
-  'Audio',
+  'Filters',
   'Captions',
   'Transitions',
 ] as const;
 export type RightSection = (typeof RIGHT_SECTIONS)[number];
 export const RIGHT_ICONS: Record<RightSection, string> = {
   Properties: 'properties',
-  Color: 'color',
   Fade: 'transparency',
   Speed: 'speed',
   Animate: 'animate',
@@ -52,17 +66,15 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Captions: 'captions',
   Transitions: 'transitions',
 };
-/** Sections not built yet: their ledger item and wave. */
+/** Tabs not built yet: their ledger item and wave. */
 const PLANNED: Partial<Record<RightSection, readonly [string, number]>> = {
   Filters: ['FX-004', 6],
   Effects: ['FX-001', 6],
-  Adjust: ['CLR-001', 6],
-  Audio: ['AUD-002', 7],
   Captions: ['TXT-035', 8],
   Transitions: ['TR-001', 6],
 };
 
-type Kind =
+export type SelectionKind =
   | 'none'
   | 'text'
   | 'image'
@@ -72,61 +84,87 @@ type Kind =
   | 'drawing'
   | 'group'
   | 'multi';
-function kindOf(session: EditorSession): Kind {
+export function kindOf(session: EditorSession): SelectionKind {
   const roots = selectionRoots(session.source, session.selectedIds);
   if (!roots.length) return 'none';
   if (roots.length > 1) return 'multi';
   const layer = roots[0]!;
   if (layer.type === 'shape') return drawingOf(layer) ? 'drawing' : 'shape';
-  return layer.type as Kind;
+  return layer.type as SelectionKind;
 }
-/** The sections the rail shows for the current selection (Clipchamp). */
+/** The first tab's name for the selection. */
+export const firstTabKey = (kind: SelectionKind) =>
+  `right.tab.${kind === 'none' ? 'canvas' : kind === 'multi' ? 'arrange' : kind}`;
+const TABS: Record<SelectionKind, RightSection[]> = {
+  none: ['Properties', 'Captions', 'Transitions'],
+  text: ['Properties', 'Animate', 'Effects', 'Adjust'],
+  image: ['Properties', 'Animate', 'Effects', 'Adjust', 'Filters'],
+  video: [
+    'Properties',
+    'Speed',
+    'Audio',
+    'Fade',
+    'Animate',
+    'Effects',
+    'Adjust',
+  ],
+  audio: ['Properties', 'Speed', 'Fade'],
+  shape: ['Properties', 'Animate', 'Effects', 'Adjust'],
+  drawing: ['Properties', 'Animate', 'Effects', 'Adjust'],
+  group: ['Properties', 'Animate'],
+  multi: ['Properties'],
+};
+/** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
-  switch (kindOf(session)) {
-    case 'none':
-      return ['Properties'];
-    case 'text':
-      return ['Properties', 'Color', 'Fade', 'Effects', 'Animate'];
-    case 'image':
-      return [
-        'Properties',
-        'Fade',
-        'Filters',
-        'Effects',
-        'Adjust',
-        'Animate',
-        'Transitions',
-      ];
-    case 'video':
-      return [
-        'Properties',
-        'Captions',
-        'Audio',
-        'Fade',
-        'Filters',
-        'Effects',
-        'Adjust',
-        'Speed',
-        'Animate',
-        'Transitions',
-      ];
-    case 'audio':
-      return ['Properties', 'Audio', 'Fade', 'Speed'];
-    case 'shape':
-    case 'drawing':
-      return ['Properties', 'Color', 'Fade', 'Animate'];
-    default:
-      return ['Properties', 'Fade', 'Animate'];
-  }
+  return TABS[kindOf(session)];
 }
-export const plannedSection = (section: RightSection) => PLANNED[section];
+/**
+ * A shown tab that cannot be used yet: its ledger item and wave. Audio fades
+ * wait for the audio engine (AUD-003, Wave 7); a video's Fade is the visual
+ * fade preset and works.
+ */
+export function plannedSection(
+  section: RightSection,
+  session?: EditorSession,
+): readonly [string, number] | undefined {
+  if (section === 'Fade' && session && kindOf(session) === 'audio')
+    return ['AUD-003', 7];
+  return PLANNED[section];
+}
+
+const ALIGN_ICONS = {
+  left: 'alignLeft',
+  center: 'alignCenter',
+  right: 'alignRight',
+  top: 'arrowUp',
+  middle: 'minus',
+  bottom: 'arrowDown',
+} as const;
+/** Accordions remember being open or folded for the session. */
+const folded = new Set<string>();
+
+export interface RightPanelHooks {
+  animate?: () => void;
+  crop?: () => void;
+  /** The toolbar's popover contents, for the same controls here. */
+  build?: (
+    id:
+      | 'transparency'
+      | 'flip'
+      | 'corners'
+      | 'stroke'
+      | 'border'
+      | 'spacing'
+      | 'canvas-size',
+  ) => HTMLElement | null;
+}
 
 export function mountRightPanel(
   host: HTMLElement,
   engine: EditorEngine,
   session: EditorSession,
   report: (error: unknown) => void,
-  hooks: { animate?: () => void } = {},
+  hooks: RightPanelHooks = {},
 ) {
   host.classList.add('right-section');
   const safely = (action: () => void) => {
@@ -154,36 +192,418 @@ export function mountRightPanel(
     }
     return wrap;
   };
-  const color = () => {
+  /** One accordion: a header that folds its body (open by default). */
+  const accordion = (
+    id: string,
+    title: string,
+    content: readonly (HTMLElement | null | undefined)[],
+  ) => {
+    const section = document.createElement('section');
+    section.className = 'right-accordion';
+    section.dataset.accordion = id;
+    const head = document.createElement('button');
+    head.type = 'button';
+    head.className = 'right-accordion-head';
+    head.dataset.accordionToggle = id;
+    const open = !folded.has(id);
+    head.setAttribute('aria-expanded', String(open));
+    head.innerHTML = `<span></span>${iconSvg(open ? 'chevronDown' : 'chevronRight', 14)}`;
+    head.querySelector('span')!.textContent = title;
+    const body = document.createElement('div');
+    body.className = 'right-accordion-body';
+    body.hidden = !open;
+    body.append(...content.filter((item): item is HTMLElement => !!item));
+    head.onclick = () => {
+      if (folded.has(id)) folded.delete(id);
+      else folded.add(id);
+      const now = !folded.has(id);
+      head.setAttribute('aria-expanded', String(now));
+      head.querySelector('svg')!.outerHTML = iconSvg(
+        now ? 'chevronDown' : 'chevronRight',
+        14,
+      );
+      body.hidden = !now;
+    };
+    section.append(head, body);
+    return section;
+  };
+  const single = () => {
     const roots = selectionRoots(session.source, session.selectedIds);
-    const layer = roots.length === 1 ? roots[0]! : null;
-    if (!layer) return [];
-    const drawing = !!drawingOf(layer);
-    const key = drawing ? 'stroke' : 'fill';
+    return roots.length === 1 ? roots[0]! : null;
+  };
+  const button = (
+    id: string,
+    icon: string,
+    label: string,
+    action: (() => void) | null,
+    options: { pressed?: boolean; reason?: string } = {},
+  ) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'button sm right-button';
+    item.dataset.action = id;
+    item.innerHTML = `${iconSvg(icon, 16)}<span></span>`;
+    item.querySelector('span')!.textContent = label;
+    item.title = options.reason ?? label;
+    if (options.pressed !== undefined)
+      item.setAttribute('aria-pressed', String(options.pressed));
+    if (!action) item.setAttribute('aria-disabled', 'true');
+    else item.onclick = () => safely(action);
+    return item;
+  };
+  const row = (...items: HTMLElement[]) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'right-button-row';
+    wrap.append(...items);
+    return wrap;
+  };
+  const colorField = (id: string) => {
+    const layer = single();
+    if (!layer) return null;
+    const key = drawingOf(layer) ? 'stroke' : 'fill';
     const property = layer.properties[key];
-    const value =
-      property?.type === 'color' ? property.value.slice(0, 7) : '#000000';
+    return createColorField({
+      id,
+      label: t('toolbar.color'),
+      value:
+        property?.type === 'color' ? property.value.slice(0, 7) : '#000000',
+      documentColors: () => documentColors(session.source.composition),
+      onCommit: (next) =>
+        safely(() =>
+          run('Set color', [
+            colorCommand(
+              session.source.composition.id,
+              single() ?? layer,
+              next,
+              session.currentTime,
+            ),
+          ]),
+        ),
+    });
+  };
+
+  // --- First tab, per selection ---------------------------------------------
+  const canvasTab = () => {
+    const composition = session.source.composition;
     return [
-      heading(t('panel.color'), t('right.colorHint')),
-      createColorField({
-        id: 'right-color',
-        label: t('toolbar.color'),
-        value,
-        documentColors: () => documentColors(session.source.composition),
-        onCommit: (next) =>
-          safely(() =>
-            run('Set color', [
-              colorCommand(
-                session.source.composition.id,
-                layer,
-                next,
-                session.currentTime,
+      accordion('canvas-size', t('right.size'), [hooks.build?.('canvas-size')]),
+      accordion('canvas-background', t('toolbar.canvasBackground'), [
+        createColorField({
+          id: 'right-canvas-background',
+          label: t('toolbar.canvasBackground'),
+          value: session.source.background.slice(0, 7),
+          documentColors: () => documentColors(composition),
+          onCommit: (color) =>
+            safely(() =>
+              run('Set background', [
+                { type: 'SET_PROJECT_BACKGROUND', color } as Command,
+              ]),
+            ),
+        }),
+      ]),
+      accordion('scene-length', t('scene.length'), [
+        createNumberField({
+          id: 'right-scene-length',
+          label: t('scene.length'),
+          value: Math.round(composition.duration * 100) / 100,
+          unit: 's',
+          min: 0.1,
+          max: 3600,
+          decimals: 2,
+          step: 0.1,
+          presets: [3, 5, 10, 15, 30],
+          onCommit: (value) =>
+            safely(() =>
+              run(
+                'Set scene length',
+                sceneLengthCommands(session.source, value),
               ),
-            ]),
-          ),
-      }),
+            ),
+        }),
+      ]),
     ];
   };
+  const shapeTab = (drawing: boolean) => {
+    const ids = session.selectedIds;
+    const combine = canCombine(session.source, ids);
+    return [
+      accordion('shape-color', t(drawing ? 'right.ink' : 'panel.color'), [
+        colorField('right-color'),
+      ]),
+      drawing
+        ? null
+        : accordion('shape-outline', t('right.outline'), [
+            hooks.build?.('stroke'),
+          ]),
+      drawing
+        ? null
+        : accordion('shape-corners', t('toolbar.corners'), [
+            hooks.build?.('corners'),
+          ]),
+      drawing
+        ? null
+        : accordion('shape-combine', t('toolbar.boolean'), [
+            row(
+              ...BOOLEAN_OPS.map((op) =>
+                button(
+                  `right-combine-${op}`,
+                  'combine',
+                  t(`command.${op}`),
+                  combine ? () => combineShapes(engine, session, op) : null,
+                  combine ? {} : { reason: t('shape.combineHint') },
+                ),
+              ),
+            ),
+          ]),
+    ];
+  };
+  const textTab = () => {
+    const layer = single();
+    if (!layer || layer.type !== 'text') return [];
+    const style = textStyleOf(layer);
+    const compositionId = session.source.composition.id;
+    const styleRun = (
+      label: string,
+      key: Parameters<typeof textStyleCommands>[2],
+      value: number | string,
+    ) =>
+      safely(() =>
+        run(
+          label,
+          textStyleCommands(compositionId, single() ?? layer, key, value),
+        ),
+      );
+    const size = layer.properties.fontSize;
+    const decoration = (underline: boolean, strike: boolean) =>
+      underline && strike
+        ? 'underline line-through'
+        : underline
+          ? 'underline'
+          : strike
+            ? 'line-through'
+            : 'none';
+    return [
+      accordion('text-text', t('right.tab.text'), [
+        createSelect({
+          id: 'right-font',
+          label: t('toolbar.font'),
+          value: style.family,
+          options: SYSTEM_FONTS.map(([name]) => ({
+            value: name,
+            label: name,
+            font: name,
+          })),
+          onChange: (value) => styleRun('Set font', 'fontFamily', value),
+        }),
+        createNumberField({
+          id: 'right-font-size',
+          label: t('toolbar.size'),
+          value: size?.type === 'number' ? size.value : 32,
+          unit: 'px',
+          min: 1,
+          max: 4096,
+          decimals: 0,
+          presets: [12, 16, 24, 32, 48, 64, 96, 128],
+          onCommit: (value) =>
+            safely(() =>
+              run('Set font size', [
+                fontSizeCommand(
+                  compositionId,
+                  single() ?? layer,
+                  value,
+                  session.currentTime,
+                ),
+              ]),
+            ),
+        }),
+        row(
+          button(
+            'right-bold',
+            'bold',
+            t('toolbar.bold'),
+            () =>
+              styleRun(
+                'Set bold',
+                'fontWeight',
+                style.weight >= 700 ? 400 : 700,
+              ),
+            { pressed: style.weight >= 700 },
+          ),
+          button(
+            'right-italic',
+            'italic',
+            t('toolbar.italic'),
+            () =>
+              styleRun(
+                'Set italic',
+                'fontStyle',
+                style.italic ? 'normal' : 'italic',
+              ),
+            { pressed: style.italic },
+          ),
+          button(
+            'right-underline',
+            'underline',
+            t('toolbar.underline'),
+            () =>
+              styleRun(
+                'Set underline',
+                'textDecoration',
+                decoration(!style.underline, style.strike),
+              ),
+            { pressed: style.underline },
+          ),
+          button(
+            'right-strike',
+            'strike',
+            t('toolbar.strike'),
+            () =>
+              styleRun(
+                'Set strikethrough',
+                'textDecoration',
+                decoration(style.underline, !style.strike),
+              ),
+            { pressed: style.strike },
+          ),
+          button(
+            'right-uppercase',
+            'uppercase',
+            t('toolbar.uppercase'),
+            () =>
+              styleRun(
+                'Set case',
+                'textCase',
+                style.textCase === 'upper' ? 'none' : 'upper',
+              ),
+            { pressed: style.textCase === 'upper' },
+          ),
+        ),
+        createSelect({
+          id: 'right-align',
+          label: t('toolbar.textAlign'),
+          value: style.align,
+          options: TEXT_ALIGNS.map((align) => ({
+            value: align,
+            label: t(`text.align.${align}`),
+          })),
+          onChange: (value) => styleRun('Set alignment', 'textAlign', value),
+        }),
+        colorField('right-color'),
+      ]),
+      accordion('text-spacing', t('toolbar.advanced'), [
+        hooks.build?.('spacing'),
+      ]),
+    ];
+  };
+  const pictureTab = (video: boolean) => {
+    return [
+      accordion(
+        video ? 'video-video' : 'image-image',
+        t(video ? 'right.tab.video' : 'right.tab.image'),
+        [
+          row(
+            button('right-crop', 'crop', t('toolbar.crop'), hooks.crop ?? null),
+          ),
+          hooks.build?.('flip'),
+          hooks.build?.('corners'),
+          video ? null : hooks.build?.('border'),
+        ],
+      ),
+    ];
+  };
+  const groupTab = () => {
+    const actions = contextActions(
+      session.source,
+      session.selectedIds,
+      session.currentTime,
+    );
+    const can = (action: 'group' | 'ungroup') =>
+      actions.some((entry) => entry === action);
+    const alignRow = row(
+      ...(['left', 'center', 'right', 'top', 'middle', 'bottom'] as const).map(
+        (edge) =>
+          button(
+            `right-align-${edge}`,
+            ALIGN_ICONS[edge],
+            t(`command.align${edge[0]!.toUpperCase()}${edge.slice(1)}`),
+            () => alignSelection(engine, session, edge),
+          ),
+      ),
+    );
+    const multi = session.selectedIds.length > 1;
+    return [
+      accordion(
+        multi ? 'arrange-arrange' : 'group-group',
+        t(multi ? 'right.tab.arrange' : 'right.tab.group'),
+        [
+          row(
+            button(
+              'right-group',
+              'group',
+              t('command.group'),
+              can('group') ? () => performEdit(engine, session, 'group') : null,
+            ),
+            button(
+              'right-ungroup',
+              'ungroup',
+              t('command.ungroup'),
+              can('ungroup')
+                ? () => performEdit(engine, session, 'ungroup')
+                : null,
+            ),
+          ),
+        ],
+      ),
+      accordion(multi ? 'arrange-align' : 'group-align', t('command.align'), [
+        alignRow,
+        multi
+          ? row(
+              ...(['horizontal', 'vertical'] as const).map((axis) =>
+                button(
+                  `right-distribute-${axis}`,
+                  'spacing',
+                  t(
+                    `command.distribute${axis[0]!.toUpperCase()}${axis.slice(1)}`,
+                  ),
+                  canDistribute(session)
+                    ? () => distributeSelection(engine, session, axis)
+                    : null,
+                ),
+              ),
+            )
+          : null,
+      ]),
+    ];
+  };
+  const firstTab = () => {
+    const kind = kindOf(session);
+    switch (kind) {
+      case 'none':
+        return canvasTab();
+      case 'shape':
+        return shapeTab(false);
+      case 'drawing':
+        return shapeTab(true);
+      case 'text':
+        return textTab();
+      case 'image':
+        return pictureTab(false);
+      case 'video':
+        return pictureTab(true);
+      case 'audio':
+        return [
+          accordion(
+            'audio-audio',
+            t('right.tab.audio'),
+            audioTab(engine, session, run, report),
+          ),
+        ];
+      default:
+        return groupTab();
+    }
+  };
+
+  // --- Other tabs --------------------------------------------------------------
   const fade = () => {
     const clips = selectedClips(session.source, session.selectedIds);
     if (!clips.length)
@@ -293,8 +713,53 @@ export function mountRightPanel(
       keyframes,
     ];
   };
+  /** Adjust colors: Transparency works; the colour controls wait for W6. */
+  const adjust = () => {
+    const planned = (key: string, id: string) => {
+      const item = document.createElement('label');
+      item.className = 'right-row right-row-planned';
+      item.title = t('toolbar.later', { wave: '6', id });
+      const caption = document.createElement('span');
+      caption.textContent = t(`right.adjust.${key}`);
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.id = `right-adjust-${key}`;
+      range.min = '-100';
+      range.max = '100';
+      range.value = '0';
+      range.disabled = true;
+      range.setAttribute('aria-label', t(`right.adjust.${key}`));
+      item.append(caption, range);
+      return item;
+    };
+    const blend = createSelect({
+      id: 'right-blend-mode',
+      label: t('right.adjust.blend'),
+      value: 'normal',
+      options: [{ value: 'normal', label: t('right.adjust.normal') }],
+      disabled: true,
+      onChange: () => undefined,
+    });
+    blend.title = t('toolbar.later', { wave: '6', id: 'MSK-001' });
+    return [
+      heading(t('panel.adjust'), t('right.adjustHint')),
+      accordion('adjust-transparency', t('toolbar.transparency'), [
+        hooks.build?.('transparency'),
+      ]),
+      accordion('adjust-colors', t('right.adjust.colors'), [
+        planned('exposure', 'CLR-001'),
+        planned('contrast', 'CLR-001'),
+        planned('saturation', 'CLR-001'),
+        planned('temperature', 'CLR-001'),
+        blend,
+        button('right-adjust-reset', 'undo', t('right.adjust.reset'), null, {
+          reason: t('toolbar.later', { wave: '6', id: 'CLR-001' }),
+        }),
+      ]),
+    ];
+  };
   const planned = (section: RightSection) => {
-    const [id, wave] = PLANNED[section]!;
+    const [id, wave] = plannedSection(section, session)!;
     const tag = document.createElement('span');
     tag.className = 'quiet-tag';
     tag.textContent = t('toolbar.later', { wave: String(wave), id });
@@ -309,19 +774,29 @@ export function mountRightPanel(
   return {
     render(section: RightSection) {
       host.dataset.section = section;
+      host.dataset.kind = kindOf(session);
       const content =
-        section === 'Color'
-          ? color()
-          : section === 'Fade'
-            ? fade()
-            : section === 'Speed'
-              ? speed()
-              : section === 'Animate'
-                ? animate()
-                : PLANNED[section]
-                  ? planned(section)
-                  : [];
-      host.replaceChildren(...content);
+        section === 'Properties'
+          ? firstTab()
+          : plannedSection(section, session)
+            ? planned(section)
+            : section === 'Fade'
+              ? fade()
+              : section === 'Speed'
+                ? speed()
+                : section === 'Animate'
+                  ? animate()
+                  : section === 'Adjust'
+                    ? adjust()
+                    : section === 'Audio'
+                      ? [
+                          heading(t('panel.audio'), t('right.audioHint')),
+                          ...audioTab(engine, session, run, report),
+                        ]
+                      : [];
+      host.replaceChildren(
+        ...content.filter((item): item is HTMLElement => !!item),
+      );
     },
   };
 }

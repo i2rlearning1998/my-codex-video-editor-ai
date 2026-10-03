@@ -7,6 +7,7 @@ import {
   artboard,
   rulerBox,
   showCategory,
+  openInspector,
 } from './fixtures';
 
 // W4-B: decoded video and images on the canvas and in playback.
@@ -312,6 +313,7 @@ test('[VID-002] a video on an overlay track moves, scales and rotates on the can
   // Make it a picture in picture: scale 1 via the inspector, then drag on the canvas.
   await showCategory(page, 'Scene');
   await page.locator('#scene-list [data-layer-id="layer-code"]').click();
+  await openInspector(page);
   for (const [field, value] of [
     ['Scale X', '1'],
     ['Scale Y', '1'],
@@ -350,6 +352,7 @@ test('[VID-002] a video on an overlay track moves, scales and rotates on the can
     },
   );
   await page.mouse.up();
+  await openInspector(page);
   const input = page.getByRole('spinbutton', {
     name: 'Rotation (degrees)',
     exact: true,
