@@ -2133,7 +2133,7 @@ export function mountTimeline(
       if (row.dataset.laneGroup !== group) {
         assetTarget = { mode: 'refused', trackId: row.dataset.trackId!, time };
         showAssetTarget();
-        if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';
+        // The drop still arrives, so the shell can say why it was refused.
         return;
       }
       assetTarget = { mode: 'lane', trackId: row.dataset.trackId!, time };

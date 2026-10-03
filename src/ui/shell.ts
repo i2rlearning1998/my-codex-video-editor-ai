@@ -2191,7 +2191,15 @@ export function mountEditorShell(
     target: AssetTarget,
     event: DragEvent,
   ) => {
-    if (target.mode === 'refused') return;
+    // A lane of another group refuses the media with the earlier message.
+    if (target.mode === 'refused') {
+      const lane = session.source.composition.tracks.find(
+        (item) => item.id === target.trackId,
+      );
+      throw new Error(
+        t('asset.incompatible', { name: asset.name, track: lane?.name ?? '' }),
+      );
+    }
     if (target.mode === 'lane')
       return placeAsset(asset, { time: target.time, trackId: target.trackId });
     if (target.mode === 'insert') {
