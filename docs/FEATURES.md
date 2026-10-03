@@ -493,7 +493,7 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-012 | P0 | W3 | Todo | Text color; solid fill first, gradient fill later |
 | TXT-013 | P1 | W3 | Todo | Gradient text fill |
 | TXT-014 | P0 | W2 | Verified | Alignment left, center, right, justify |
-| TXT-015 | P1 | W3 | Todo | Vertical alignment inside the box |
+| TXT-015 | P1 | W2 | Verified | Vertical alignment inside the box |
 | TXT-016 | P0 | W2 | Verified | Line height, letter spacing and paragraph spacing |
 | TXT-017 | P1 | W2 | Verified | Text case transform: UPPER, lower, Title |
 | TXT-018 | P0 | W3 | Claimed | Text box modes: auto width, fixed width with auto height, fixed box |
@@ -518,6 +518,8 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-037 | P2 | W8 | Todo | Dynamic text: page number, date and similar fields that update themselves |
 | TXT-038 | P0 | W3 | Verified | Text panel: search; Add a text box; Magic Write (planned, W10); Default text styles (click or drag); Dynamic text (planned); Font combinations, Plain text, Text styles, Titles (hover preview) and Two line with See all; Captions (planned, W8) |
 | TXT-039 | P1 | W5 | Verified | Animated titles in Text › Titles: each brings its entrance preset (pop, slide, typewriter, zoom, wipe, fade) with its clip in one undo step, and its card previews the entrance on hover |
+| TXT-040 | P0 | W2 | Verified | Bundled open-licence fonts with real weights 100 to 900 (Inter, Poppins and Noto Sans Devanagari, which also cover Devanagari) work in the preview and export; the weight list offers only what a font has (system fonts: Regular and Bold); Regular, Medium, Semibold and Bold look visibly different (J5 LCR) |
+| TXT-041 | P0 | W2 | Verified | The Bold button shows the resolved weight of the selection (the whole box's characters, runs included, or the selected characters while editing), so text that is already bold shows Bold on in the toolbar and the right panel (J5 LCR) |
 
 ## SHP: Shapes, graphics and elements (Wave 5)
 

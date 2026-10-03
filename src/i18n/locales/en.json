@@ -890,5 +890,12 @@
   "text.list.none": "No list",
   "text.list.bullet": "Bulleted list",
   "text.list.number": "Numbered list",
+  "text.weight100": "Thin",
+  "text.weight200": "Extra light",
+  "text.weight300": "Light",
+  "text.weight500": "Medium",
+  "text.weight800": "Extra bold",
+  "text.weight900": "Black",
+  "panels.bundledFonts": "Bundled fonts (all weights)",
   "field.slider": "{label} slider"
 }

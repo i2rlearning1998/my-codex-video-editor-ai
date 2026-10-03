@@ -24,6 +24,8 @@ export interface ExportInput {
   composition: DeepReadonly<Composition>;
   assets: readonly DeepReadonly<Asset>[];
   background: string;
+  /** J1: joined scenes keep their own backgrounds (start times in seconds). */
+  backgrounds?: readonly { start: number; color: string }[];
   settings: ExportSettings;
 }
 export interface ExportProgress {
@@ -162,6 +164,7 @@ export function startExport(
       composition: input.composition,
       assets: input.assets,
       background: input.background,
+      ...(input.backgrounds ? { backgrounds: input.backgrounds } : {}),
       settings,
       videos,
       images,

@@ -7,6 +7,7 @@
 // shown disabled and name their wave. The controls are the toolbar's own
 // builders (one implementation), so values, ratio lock and the 2D Animation
 // rules (guardCommands) are shared.
+import { resolvedTextStyle } from './text-editor';
 import {
   clipAnimation,
   clipTimeEffects,
@@ -365,6 +366,7 @@ export function mountRightPanel(
     const layer = single();
     if (!layer || layer.type !== 'text') return [];
     const style = textStyleOf(layer);
+    const look = resolvedTextStyle(layer);
     const compositionId = session.source.composition.id;
     const styleRun = (
       label: string,
@@ -429,9 +431,10 @@ export function mountRightPanel(
               styleRun(
                 'Set bold',
                 'fontWeight',
-                style.weight >= 700 ? 400 : 700,
+                (look.weight ?? 0) >= 700 ? 400 : 700,
               ),
-            { pressed: style.weight >= 700 },
+            // J5: the resolved weight (runs included) decides.
+            { pressed: (look.weight ?? 0) >= 700 },
           ),
           button(
             'right-italic',

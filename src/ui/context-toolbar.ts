@@ -1,6 +1,7 @@
 // CV-035 to CV-038 context toolbar (UX spec 4.1): the selected layer's most used
 // controls above the canvas. Controls whose systems are not built are shown
 // disabled with the wave that builds them (D-068); nothing behind them exists.
+import { fontWeights } from '../render/fonts';
 import { LIST_STYLES, parseListStyle } from '../render/rich-text';
 import {
   clearRunKeys,
@@ -1492,6 +1493,10 @@ export function mountContextToolbar(
       copyStyleTool(),
     ];
   };
+  /** J5: the weight to show: the selection's while editing, else the box's. */
+  const weightShown = (layer: SceneLayer) =>
+    (textEditorFor(layer.id)?.selectionStyle() ?? resolvedTextStyle(layer))
+      .weight ?? textStyleOf(layer).weight;
   /** Advanced text settings: weight, spacing, case and vertical anchor. */
   const advancedContent = () => {
     const layer = selected();
@@ -1530,11 +1535,18 @@ export function mountContextToolbar(
       select(
         'weight',
         t('toolbar.weight'),
-        FONT_WEIGHTS.map(
-          (weight) => [String(weight), t(`text.weight${weight}`)] as const,
-        ),
-        String(style.weight),
-        (value) => styleRun('Set font weight', 'fontWeight', Number(value)),
+        // J5: only the weights the font has (and the stored one).
+        [...new Set([...fontWeights(style.family), weightShown(layer)])]
+          .sort((a, b) => a - b)
+          .map(
+            (weight) => [String(weight), t(`text.weight${weight}`)] as const,
+          ),
+        String(weightShown(layer)),
+        (value) => {
+          const editor = textEditorFor(layer.id);
+          if (editor) editor.format('weight', Number(value));
+          else styleRun('Set font weight', 'fontWeight', Number(value));
+        },
       ),
       field(
         'letter-spacing',

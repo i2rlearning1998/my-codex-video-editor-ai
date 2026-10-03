@@ -1,3 +1,4 @@
+import { mountFonts } from './fonts';
 import {
   multiplyMatrices,
   invertMatrix,
@@ -1299,6 +1300,8 @@ export function mountEditorShell(
     end: () => session.setPreview(null),
   });
   const unsubscribePreview = session.onPreview(() => safely(draw));
+  // J5: bundled fonts the project uses load, then the canvas redraws.
+  const disposeFonts = mountFonts(engine, () => safely(draw));
   element<HTMLButtonElement>('#undo').onclick = () =>
     safely(() => {
       runCommand('undo', commandContext);
@@ -2326,6 +2329,7 @@ export function mountEditorShell(
       element('#timeline-foundation').removeEventListener('drop', assetDrop);
       unsubscribe();
       unsubscribePreview();
+      disposeFonts();
       setFieldPreview(null);
       timeline?.dispose();
       pointer.dispose();

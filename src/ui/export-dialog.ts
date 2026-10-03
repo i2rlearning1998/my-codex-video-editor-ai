@@ -270,6 +270,17 @@ export function openExportDialog(options: ExportDialogOptions) {
         composition,
         assets: options.assets,
         background: options.background,
+        // J1: each joined scene keeps its own background.
+        ...(composition === joined
+          ? {
+              backgrounds: scenes.map((scene, index) => ({
+                start: scenes
+                  .slice(0, index)
+                  .reduce((sum, item) => sum + item.duration, 0),
+                color: scene.backgroundColor,
+              })),
+            }
+          : {}),
         settings,
       },
       {
