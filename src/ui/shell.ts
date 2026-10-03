@@ -50,6 +50,7 @@ import {
   type PreviewAsset,
 } from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
+import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import { mountTimeline } from './timeline';
@@ -499,6 +500,8 @@ export function mountEditorShell(
     };
   };
   let selectionActions: ReturnType<typeof mountSelectionActions> | undefined;
+  /** J4: the on-canvas text editor (mounted with the canvas interaction). */
+  let textEditing: TextEditor | undefined;
   const draw = () => {
     if (disposed) return;
     syncAudio();
@@ -561,6 +564,7 @@ export function mountEditorShell(
       session.selectedId,
     );
     frames.endFrame();
+    if (textEditing?.layerId) textEditing.sync();
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
     // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
     if (!session.playing) syncGeometryFields(root, drawn);
@@ -931,6 +935,31 @@ export function mountEditorShell(
       { width: stage.clientWidth, height: stage.clientHeight },
     );
   }
+  // J4: on-canvas text editing (double-click, Enter or the Text tool).
+  const textEditor = mountTextEditor(
+    stage,
+    canvas,
+    engine,
+    session,
+    viewport,
+    reportError,
+  );
+  textEditing = textEditor;
+  // The toolbar mirrors the editor's selection (J4).
+  let toolbarFrame = 0;
+  textEditor.onChange(() => {
+    if (toolbarFrame) return;
+    toolbarFrame = requestAnimationFrame(() => {
+      toolbarFrame = 0;
+      safely(() => contextToolbar.render());
+    });
+  });
+  const editText = (
+    id: string | null,
+    options?: Parameters<typeof textEditor.start>[1],
+  ) => {
+    if (id) safely(() => textEditor.start(id, options));
+  };
   const pointer = bindCanvasInteraction(
     canvas,
     session,
@@ -960,6 +989,7 @@ export function mountEditorShell(
       finish: () => drawPalette?.place.finish(),
       cancel: () => drawPalette?.place.cancel(),
     },
+    (id, at) => editText(id, at ? { at } : { selectAll: true }),
   );
   const commandContext: CommandContext = {
     engine,
@@ -1435,7 +1465,10 @@ export function mountEditorShell(
       close: () => workspace?.setOpen('left', false),
       // SHP-001: the five W5-D shapes and the I2 lines.
       addPreset: (preset) => safely(() => addShape(engine, session, preset)),
-      addTextBox: () => libraryActions.insertTextBox(),
+      addTextBox: () => {
+        libraryActions.insertTextBox();
+        editText(session.selectedId, { selectAll: true });
+      },
     },
   );
   void libraryBrowsers;
@@ -1630,7 +1663,10 @@ export function mountEditorShell(
     toCanvas: (point) => transformPoint(viewport().matrix, point),
     report: reportError,
     openSignature: () => signature.open(),
-    insertTextBox: (at, width) => libraryActions.insertTextBox(at, width),
+    insertTextBox: (at, width) => {
+      libraryActions.insertTextBox(at, width);
+      editText(session.selectedId, { selectAll: true });
+    },
     setLeftOpen: (open) => workspace?.setOpen('left', open),
     leftOpen: () => workspace?.leftOpen ?? true,
     changed: () => {

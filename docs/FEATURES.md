@@ -480,9 +480,9 @@ Users must be able to type text in any language and choose from very many fonts,
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | TXT-001 | P0 | W3 | Verified | Text panel offers Heading, Subheading and Body plus styled text presets; click adds to canvas at the playhead |
-| TXT-002 | P0 | W3 | Todo | Text tool: click to create a text box at that point, or drag to define a box |
-| TXT-003 | P0 | W3 | Todo | Double-click a text layer edits it inline on the canvas with caret, selection, copy and paste |
-| TXT-004 | P0 | W3 | Todo | System input methods (IME) work while editing, including Hindi and other Indic phonetic keyboards and CJK composition |
+| TXT-002 | P0 | W2 | Verified | Text tool: click to create a text box at that point, or drag to define a box |
+| TXT-003 | P0 | W2 | Verified | Double-click a text layer edits it inline on the canvas with caret, selection, copy and paste |
+| TXT-004 | P0 | W2 | Verified | System input methods (IME) work while editing, including Hindi and other Indic phonetic keyboards and CJK composition |
 | TXT-005 | P0 | W3 | Todo | Text content can also be edited in the inspector |
 | TXT-006 | P0 | W3 | Todo | Font picker: searchable list, each font shown in its own typeface, recent and favorite fonts, categories |
 | TXT-007 | P0 | W3 | Todo | Bundled curated fonts work offline; the wider Google Fonts catalog loads on demand and is cached |
@@ -501,8 +501,8 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-020 | P1 | W3 | Todo | Background box, highlight, glow |
 | TXT-021 | P2 | W3 | Todo | Curved text on a path |
 | TXT-022 | P1 | W3 | Todo | Text style presets (neon, outlined, retro and similar) with one-click apply |
-| TXT-023 | P1 | W3 | Todo | Range styling: bold, italic, underline, strike, color, size, font for selected characters |
-| TXT-024 | P2 | W3 | Todo | Bulleted and numbered lists |
+| TXT-023 | P1 | W2 | Verified | Range styling: bold, italic, underline, strike, color, size, font for selected characters |
+| TXT-024 | P1 | W2 | Verified | Bulleted and numbered lists |
 | TXT-025 | P0 | W3 | Todo | Correct shaping of complex scripts: Devanagari conjuncts and matras, other Indic scripts, Arabic joining (fixture: text_multilingual_samples.json) |
 | TXT-026 | P0 | W3 | Todo | Right-to-left and mixed bidirectional text render and edit correctly |
 | TXT-027 | P0 | W3 | Todo | Line breaking follows language rules (Intl.Segmenter) including Thai, CJK and Indic text |

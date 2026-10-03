@@ -1,3 +1,4 @@
+import { drawRich } from './rich-text';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
@@ -471,7 +472,18 @@ export function drawComposition(
         context.beginPath();
         context.rect(0, 0, item.size.width, item.size.height);
         context.clip();
-        if (item.kind === 'text' && item.textLayout) {
+        // J4: text being edited is drawn by the editor over the canvas.
+        if (item.editing) {
+          // Nothing: the box stays for its outline and handles.
+        } else if (item.kind === 'text' && item.richLayout) {
+          drawRich(
+            context,
+            item.richLayout,
+            item.textStyle ?? DEFAULT_TEXT_STYLE,
+            item.size.width,
+            item.size.height,
+          );
+        } else if (item.kind === 'text' && item.textLayout) {
           drawText(context, item);
         } else if (item.kind !== 'rectangle') {
           context.textBaseline = 'top';

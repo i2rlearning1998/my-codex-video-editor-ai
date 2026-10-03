@@ -10,7 +10,7 @@ Tick an item only when its step is committed and `npm run verify` is green. One 
 - [x] J1 Scene isolation
 - [x] J2 Gradient fill and keyboard undo
 - [x] J3 NumberField everywhere
-- [ ] J4 Real text editing
+- [x] J4 Real text editing
 - [ ] J5 Weights and vertical align
 - [ ] J6 Element timing, Alt text, Resize canvas to selection
 - [ ] J7 Lane model

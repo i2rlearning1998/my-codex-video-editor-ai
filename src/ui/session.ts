@@ -83,6 +83,8 @@ export class EditorSession {
    * saved and is cleared by any project change.
    */
   #preview: DeepReadonly<Project> | null = null;
+  /** J4: the text layer being edited on the canvas (transient). */
+  #editingText: string | null = null;
   #previewListeners = new Set<() => void>();
   #listeners = new Set<() => void>();
   #unsubscribe: () => void;
@@ -200,6 +202,14 @@ export class EditorSession {
       background: scene.backgroundColor,
     };
   }
+  get editingTextId(): string | null {
+    return this.#editingText;
+  }
+  setEditingText(id: string | null): void {
+    if (id === this.#editingText) return;
+    this.#editingText = id;
+    this.#notify();
+  }
   setPreview(project: DeepReadonly<Project> | null): void {
     if (project === this.#preview) return;
     this.#preview = project;
@@ -227,6 +237,7 @@ export class EditorSession {
       background: project.compositions.find(
         (item) => item.id === this.#compositionId,
       )!.backgroundColor,
+      ...(this.#editingText ? { editingTextId: this.#editingText } : {}),
     };
   }
   get drawBrush(): DrawMode | null {

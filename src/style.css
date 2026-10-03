@@ -5695,3 +5695,54 @@ button.number-field-step:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
 }
+
+/* J4: the on-canvas text editor, laid over its layer (same transform). */
+.text-editor {
+  position: absolute;
+  z-index: 3;
+  transform-origin: 0 0;
+  margin: 0;
+  padding: 0;
+  outline: none;
+  border: 0;
+  background: transparent;
+  caret-color: var(--color-accent);
+  cursor: text;
+  overflow-wrap: anywhere;
+  font-kerning: normal;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.text-editor[hidden] {
+  display: none;
+}
+.text-editor > div {
+  min-block-size: 1em;
+}
+.text-editor > div:not(:last-child) {
+  margin-block-end: var(--paragraph-spacing, 0);
+}
+.text-editor[data-list='bullet'] > div::before {
+  content: '•\2002';
+}
+.text-editor[data-list='number'] {
+  counter-reset: text-list;
+}
+.text-editor[data-list='number'] > div {
+  counter-increment: text-list;
+}
+.text-editor[data-list='number'] > div::before {
+  content: counter(text-list) '.\2002';
+}
+.text-editor ::selection {
+  background: color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+.text-editor[data-anchor='middle'],
+.text-editor[data-anchor='bottom'] {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.text-editor[data-anchor='bottom'] {
+  justify-content: flex-end;
+}

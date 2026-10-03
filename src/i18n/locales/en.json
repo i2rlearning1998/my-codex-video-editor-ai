@@ -885,5 +885,9 @@
   "right.adjust.reset": "Reset",
   "field.range": "{label} ({min} to {max}{unit})",
   "field.increase": "Increase {label}",
-  "field.decrease": "Decrease {label}"
+  "field.decrease": "Decrease {label}",
+  "text.editing": "Text being edited",
+  "text.list.none": "No list",
+  "text.list.bullet": "Bulleted list",
+  "text.list.number": "Numbered list"
 }
