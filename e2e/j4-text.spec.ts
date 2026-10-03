@@ -51,14 +51,29 @@ async function selectRange(page: Page, from: number, to: number) {
         );
         total += length;
       }
-      document
-        .getSelection()!
-        .setBaseAndExtent(
-          points[0]![0],
-          points[0]![1],
-          points[1]![0],
-          points[1]![1],
-        );
+      // The editor reads the selection on selectionchange, which the browser
+      // fires asynchronously; wait for it (its listener was added first, so
+      // it has run by then) so the next toolbar action sees this selection.
+      const selection = document.getSelection()!;
+      const same =
+        selection.anchorNode === points[0]![0] &&
+        selection.anchorOffset === points[0]![1] &&
+        selection.focusNode === points[1]![0] &&
+        selection.focusOffset === points[1]![1];
+      const seen = same
+        ? Promise.resolve()
+        : new Promise<void>((resolve) =>
+            document.addEventListener('selectionchange', () => resolve(), {
+              once: true,
+            }),
+          );
+      selection.setBaseAndExtent(
+        points[0]![0],
+        points[0]![1],
+        points[1]![0],
+        points[1]![1],
+      );
+      return seen;
     },
     [from, to] as const,
   );
