@@ -187,6 +187,8 @@
   --right-open: 280px;
   --timeline-height: 280px;
   --statusbar-height: 0px;
+  /* J13: the player bar left when the timeline is collapsed. */
+  --player-bar-height: 56px;
   --stage-padding: 24px;
   --toolbar-row: 60px;
 }

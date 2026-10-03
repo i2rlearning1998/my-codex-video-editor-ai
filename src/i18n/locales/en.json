@@ -946,5 +946,15 @@
   "transition.type.rgb-split": "RGB split",
   "transition.type.flip": "Flip",
   "transition.type.cube": "Cube",
-  "transition.type.page-turn": "Page turn"
+  "transition.type.page-turn": "Page turn",
+  "player.ai": "AI tools",
+  "player.aiPlanned": "Planned: Wave 10 (AI-001)",
+  "player.split": "Split (S)",
+  "player.previous": "Previous cut",
+  "player.back5": "Back 5 seconds",
+  "player.forward5": "Forward 5 seconds",
+  "player.fit": "Fit the timeline",
+  "player.collapse": "Collapse the timeline",
+  "player.expand": "Expand the timeline",
+  "player.timecode": "{current} / {total}"
 }

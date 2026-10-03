@@ -1765,6 +1765,25 @@ export function mountEditorShell(
     'timeline-hint',
     timelineHint,
   );
+  // J13: Collapse leaves only the player bar under a large preview; Expand
+  // brings the lanes back. UI state only (not saved, no history).
+  const collapseTimeline = () => {
+    const shellElement = element('.editor-shell');
+    const collapsed = !shellElement.classList.contains('timeline-collapsed');
+    shellElement.classList.toggle('timeline-collapsed', collapsed);
+    const toggle = element<HTMLButtonElement>(
+      '#timeline-foundation [data-action="collapse-timeline"]',
+    );
+    const label = t(collapsed ? 'player.expand' : 'player.collapse');
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+    toggle.innerHTML = iconSvg(collapsed ? 'chevronUp' : 'chevronDown', 15);
+  };
+  element('#timeline-foundation').addEventListener(
+    'timeline-collapse',
+    collapseTimeline,
+  );
   // J12: a cut's + or chip opens the Transition panel for that cut.
   const transitionState = { query: '' };
   const openTransition = (event: Event) =>
@@ -2604,6 +2623,10 @@ export function mountEditorShell(
         openTransition,
       );
       unsubscribeTransition();
+      element('#timeline-foundation').removeEventListener(
+        'timeline-collapse',
+        collapseTimeline,
+      );
       unsubscribe();
       unsubscribePreview();
       disposeFonts();

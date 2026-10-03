@@ -79,6 +79,13 @@ const CLIP_ACTIONS: readonly EditAction[] = [
   'detach-audio',
 ];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
+/** J13: minutes, seconds and hundredths (01:05.40). */
+const timecode = (time: number) => {
+  const hundredths = Math.round(Math.max(0, time) * 100);
+  const minutes = Math.floor(hundredths / 6000);
+  const seconds = (hundredths % 6000) / 100;
+  return `${String(minutes).padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
+};
 
 /** J10: the kind of element a clip holds, for its colour and icon. */
 type ClipKind = 'text' | 'shape' | 'group' | 'video' | 'image' | 'audio';
@@ -563,7 +570,13 @@ export function mountTimeline(
   previews?: MediaPreviews,
   waveforms?: WaveformCache,
 ) {
-  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  // J13: the Player panel. Left: the AI wand (planned) and the clip tools
+  // (Split as scissors). Centre: previous cut, back 5 s, play, forward 5 s
+  // and the timecode, with the frame steps and Stop kept. Right, floating:
+  // zoom out, zoom in, fit and collapse.
+  const player = (action: string, icon: string, key: string, size = 15) =>
+    `<button class="icon-button" data-action="${action}" aria-label="${t(key)}" title="${t(key)}">${iconSvg(icon, size)}</button>`;
+  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 15)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('previous-cut', 'skipBack', 'player.previous')}${player('back-5', 'back5', 'player.back5')}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button>${player('forward-5', 'forward5', 'player.forward5')}<button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><span class="player-timecode" data-timecode aria-live="off"></span><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button>${player('zoom-fit', 'fit', 'player.fit')}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
@@ -842,6 +855,10 @@ export function mountTimeline(
         : null;
     root.querySelector('[data-composition-strip]')!.textContent =
       `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${composition.fps} fps`;
+    root.querySelector('[data-timecode]')!.textContent = t('player.timecode', {
+      current: timecode(session.currentTime),
+      total: timecode(composition.duration),
+    });
     root.querySelector('[data-current-time]')!.textContent =
       `${session.currentTime.toFixed(3)}s / ${formatTimelineTime(composition.duration)}s · frame ${timeToFrame(session.currentTime, composition.fps)}`;
     root.querySelector('[data-derived-duration]')!.textContent =
@@ -1836,6 +1853,36 @@ export function mountTimeline(
           break;
         case 'stop':
           playback.stop();
+          break;
+        // J13: the Player panel's buttons.
+        case 'previous-cut':
+          jumpToCut(session, -1);
+          break;
+        case 'back-5':
+        case 'forward-5':
+          session.setCurrentTime(
+            Math.min(
+              session.source.composition.duration,
+              Math.max(
+                0,
+                session.currentTime +
+                  (target.dataset.action === 'back-5' ? -5 : 5),
+              ),
+            ),
+          );
+          break;
+        case 'zoom-fit': {
+          // The whole scene fits the visible lanes.
+          const visible = scroll.clientWidth - headerWidth - 24;
+          const duration = Math.max(1, session.source.composition.duration);
+          zoomAt(visible / duration);
+          scroll.scrollLeft = 0;
+          break;
+        }
+        case 'collapse-timeline':
+          root.dispatchEvent(
+            new CustomEvent('timeline-collapse', { bubbles: true }),
+          );
           break;
         case 'frame-back':
           stepFrame(-1);

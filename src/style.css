@@ -6141,3 +6141,26 @@ button.number-field-step:focus-visible {
   );
   color: var(--clip-label);
 }
+
+/* J13: the Player panel. The timecode beside the transport; Collapse keeps
+   only the player bar under a large preview. */
+.player-timecode {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.transport-meta {
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-raised);
+  box-shadow: var(--shadow-1);
+}
+.editor-shell.timeline-collapsed {
+  grid-template-rows:
+    var(--topbar-height) minmax(0, 1fr) var(--player-bar-height)
+    var(--statusbar-height);
+}
+.editor-shell.timeline-collapsed .timeline-header,
+.editor-shell.timeline-collapsed .timeline-scroll,
+.editor-shell.timeline-collapsed .timeline > .panel-resizer {
+  display: none;
+}

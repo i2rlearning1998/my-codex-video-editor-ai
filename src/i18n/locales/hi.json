@@ -946,5 +946,15 @@
   "transition.type.rgb-split": "RGB स्प्लिट",
   "transition.type.flip": "फ़्लिप",
   "transition.type.cube": "क्यूब",
-  "transition.type.page-turn": "पेज टर्न"
+  "transition.type.page-turn": "पेज टर्न",
+  "player.ai": "AI टूल",
+  "player.aiPlanned": "योजना: वेव 10 (AI-001)",
+  "player.split": "बाँटें (S)",
+  "player.previous": "पिछला कट",
+  "player.back5": "5 सेकंड पीछे",
+  "player.forward5": "5 सेकंड आगे",
+  "player.fit": "टाइमलाइन फ़िट करें",
+  "player.collapse": "टाइमलाइन छोटी करें",
+  "player.expand": "टाइमलाइन बड़ी करें",
+  "player.timecode": "{current} / {total}"
 }

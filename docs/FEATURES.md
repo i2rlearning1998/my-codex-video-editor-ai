@@ -425,6 +425,8 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-070 | P0 | W2 | Verified | A marquee from empty time on the timeline selects the clips it touches across lanes; with the timeline focused Ctrl+G groups them and Ctrl+Shift+G ungroups, one undo step each (J10) |
 | TL-071 | P0 | W2 | Verified | A gap between two clips on a lane is hatched; its trash button (named with the gap's length) closes it, moving the later clips on that lane left, in one undo step (J11) |
 | TL-072 | P0 | W2 | Verified | A faint playhead with a time chip follows the pointer over the lanes and ruler and goes when the pointer leaves; the playhead has a white handle; moving a clip near another clip's edge snaps to it with a guide (J11) |
+| TL-073 | P0 | W2 | Verified | The player bar: an AI wand (disabled, Planned: Wave 10) and scissors (Split) on the left; previous cut, back 5 s, play, forward 5 s and a timecode (mm:ss.hh / total) in the centre, with the frame steps and Stop kept; zoom out, zoom in, fit (the whole scene fits the lanes) and collapse floating on the right; the ruler's labels adapt to the zoom (J13) |
+| TL-074 | P0 | W2 | Verified | Collapse in the player bar leaves only the player bar under a large preview, and Expand brings the lanes back; it is UI state (no history) (J13) |
 
 ## PB: Playback and transport
 
