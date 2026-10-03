@@ -15,6 +15,7 @@ import {
   type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
+import { syncLanes } from './lanes';
 import { clipAnimation, clipAnimationSlots } from './clip-animation';
 import {
   childrenOf,
@@ -409,6 +410,7 @@ export function applyCommand(project: Project, command: Command): void {
     case 'CREATE_TRACK':
       composition.tracks.push(command.track);
       composition.tracks.sort((a, b) => a.order - b.order);
+      syncLanes(composition);
       return;
     case 'DELETE_TRACK': {
       const index = composition.tracks.findIndex(
@@ -419,6 +421,7 @@ export function applyCommand(project: Project, command: Command): void {
         throw new Error('Delete clips before deleting their track');
       composition.tracks.splice(index, 1);
       composition.tracks.forEach((track, order) => (track.order = order));
+      syncLanes(composition);
       return;
     }
     case 'SET_TRACK_STATE': {
@@ -442,6 +445,8 @@ export function applyCommand(project: Project, command: Command): void {
         track!,
       );
       composition.tracks.forEach((item, order) => (item.order = order));
+      // J7: a lane stays in its group, and the layers follow the lanes.
+      syncLanes(composition);
       return;
     }
     case 'CREATE_CLIP': {
@@ -452,6 +457,7 @@ export function applyCommand(project: Project, command: Command): void {
         0,
         command.clip,
       );
+      syncLanes(composition);
       return;
     }
     case 'DELETE_CLIP': {
@@ -501,6 +507,7 @@ export function applyCommand(project: Project, command: Command): void {
         0,
         source.clip,
       );
+      syncLanes(composition);
       return;
     }
     case 'SET_CLIP_ENABLED': {

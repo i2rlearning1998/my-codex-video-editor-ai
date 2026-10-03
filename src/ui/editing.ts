@@ -25,6 +25,11 @@ import {
   type Command,
   type EditorEngine,
   type Layer,
+  laneGroupOfLayer,
+  laneInsertIndex,
+  nearestFreeStart,
+  sortedLanes,
+  type LaneLayer,
 } from '../core';
 import {
   locateLayer,
@@ -177,26 +182,49 @@ export function landingCommands(
   });
   return commands;
 }
-/** A free compatible track for [start, end), or commands creating a new one. */
+/**
+ * A free lane of the layer's group for [start, end), or commands creating a
+ * new lane at the top of that group (J7). Audio has a single lane: when it is
+ * busy there, the clip moves to the nearest free time (`startTime`), unless
+ * `keepTime` (detached audio stays in sync, on a second audio lane).
+ */
 export function trackForNewClip(
   composition: DeepReadonly<Composition>,
-  layerType: string,
+  layer: LaneLayer | string,
   startTime: number,
   endTime: number,
   excludedClipIds: readonly string[] = [],
-): { trackId: string; commands: Command[] } {
+  options: { readonly keepTime?: boolean } = {},
+): { trackId: string; commands: Command[]; startTime: number } {
   const free = findFreeTrack(
     composition,
-    layerType,
+    layer,
     startTime,
     endTime,
     excludedClipIds,
   );
-  if (free) return { trackId: free.id, commands: [] };
-  const type = trackTypeForLayer(layerType);
+  if (free) return { trackId: free.id, commands: [], startTime };
+  const group = laneGroupOfLayer(layer);
+  if (group === 'audio' && !options.keepTime) {
+    const lane = sortedLanes(composition.tracks).find(
+      (track) => track.type === 'audio' && !track.locked,
+    );
+    if (lane)
+      return {
+        trackId: lane.id,
+        commands: [],
+        startTime: nearestFreeStart(
+          lane.clips.filter((clip) => !excludedClipIds.includes(clip.id)),
+          startTime,
+          endTime - startTime,
+        ),
+      };
+  }
+  const type = trackTypeForLayer(layer);
   const trackId = crypto.randomUUID();
   return {
     trackId,
+    startTime,
     commands: [
       {
         type: 'CREATE_TRACK',
@@ -211,6 +239,14 @@ export function trackForNewClip(
           muted: false,
           clips: [],
         },
+      },
+      // J7: a new lane opens at the top of its group, so the new element is
+      // in front of the others of its kind.
+      {
+        type: 'MOVE_TRACK',
+        compositionId: composition.id,
+        trackId,
+        index: laneInsertIndex(composition.tracks, group),
       },
     ],
   };
@@ -438,9 +474,10 @@ export function performEdit(
       const end = Math.max(
         ...timings.map((item) => item.startTime + item.duration),
       );
+      // J7: the group's lane is the visuals' when it holds a picture.
       const target = trackForNewClip(
         source.composition,
-        'group',
+        { type: 'group', children: layers },
         start,
         end,
         childClips.map(({ clip }) => clip.id),
@@ -735,8 +772,7 @@ export function moveClipsToAdjacentTrack(
     let index = tracks.findIndex((item) => item.id === track.id) + direction;
     while (
       tracks[index] &&
-      (tracks[index]!.locked ||
-        !trackAcceptsLayer(tracks[index]!.type, layer.type))
+      (tracks[index]!.locked || !trackAcceptsLayer(tracks[index]!.type, layer))
     )
       index += direction;
     const destination = tracks[index];
@@ -931,7 +967,7 @@ function clipAction(
         clip.metadata.linkId = relinked.get(link)!;
       }
       const usable = (track: DeepReadonly<Track> | undefined) =>
-        track && !track.locked && trackAcceptsLayer(track.type, layer.type);
+        track && !track.locked && trackAcceptsLayer(track.type, layer);
       const original = composition.tracks.find(
         (track) => track.id === item.trackId,
       );
@@ -940,18 +976,18 @@ function clipAction(
           ? target!.id
           : usable(original)
             ? original!.id
-            : created.get(trackTypeForLayer(layer.type));
+            : created.get(trackTypeForLayer(layer));
       if (!trackId) {
         const fresh = trackForNewClip(
           composition,
-          layer.type,
+          layer,
           clip.startTime,
           clip.startTime + clip.duration,
         );
         trackId = fresh.trackId;
         commands.push(...fresh.commands);
         if (fresh.commands.length)
-          created.set(trackTypeForLayer(layer.type), trackId);
+          created.set(trackTypeForLayer(layer), trackId);
       }
       commands.push({
         type: 'CREATE_LAYER',
@@ -1059,6 +1095,10 @@ function clipAction(
         Math.max(
           ...clips.map(({ clip: item }) => item.startTime + item.duration),
         ),
+        [],
+        // J7: detached audio stays under its picture, in sync; when the audio
+        // lane is busy then, a second audio lane opens.
+        { keepTime: true },
       );
       audioTrack = target.trackId;
       commands.push(...target.commands);

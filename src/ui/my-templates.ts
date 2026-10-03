@@ -261,7 +261,7 @@ export function myTemplateCommands(
     const clip = clipOf(layer.id);
     const start = clip?.startTime ?? layer.startTime;
     const length = clip?.duration ?? layer.duration;
-    const placed = trackForNewClip(target, layer.type, start, start + length);
+    const placed = trackForNewClip(target, layer, start, start + length);
     const added: Command[] = [
       ...placed.commands,
       {

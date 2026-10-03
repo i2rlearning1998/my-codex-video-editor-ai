@@ -6,7 +6,10 @@ import {
   createLayer,
   decomposeMatrix,
   findClipByLayer,
-  findFreeTrack,
+  laneGroupOfLayer,
+  laneGroupOfTrack,
+  laneInsertIndex,
+  sortedLanes,
   localTransformMatrix,
   multiplyMatrices,
   nextTrackName,
@@ -62,7 +65,8 @@ export function ungroupBlocker(
   if (!groups.length || groups.some((layer) => layer.type !== 'group'))
     return 'Select a group to ungroup it';
   for (const group of groups) {
-    if (Object.keys(group.properties).length)
+    // J7: a background's `role` marker is not a setting (its pieces carry it).
+    if (Object.keys(group.properties).some((key) => key !== 'role'))
       return 'This group has its own settings, so it cannot be ungrouped yet';
     const clip = findClipByLayer(source.composition, group.id);
     if (clip?.track.locked) return 'The group is on a locked track';
@@ -102,6 +106,7 @@ export function ungroupCommands(
   // A working copy of the tracks so several children never land on one lane.
   const draft = structuredClone(source.composition as unknown as Composition);
   const later: Command[] = [];
+  const tail: Command[] = [];
   for (const group of selectionRoots(source, ids)) {
     if (!isIdentity(group)) {
       for (const child of group.children) {
@@ -142,29 +147,44 @@ export function ungroupCommands(
     }
     commands.push({ type: 'UNGROUP', compositionId, groupId: group.id });
     // TL-001: children of a top-level group become top-level layers with clips.
+    // J7: each gets a new lane where the group's lane was (or at the top of
+    // its own group), back child first, so the front child is on the top
+    // lane and the stacking is kept.
+    // Every child of the lane's group goes in at the group's old place; each
+    // new lane lands above the one before.
+    const home = clip
+      ? sortedLanes(draft.tracks).findIndex((item) => item.id === clip.track.id)
+      : -1;
     if (clip)
       for (const child of group.children) {
-        const end = child.startTime + child.duration;
-        let track = findFreeTrack(draft, child.type, child.startTime, end);
-        if (!track) {
-          const type = trackTypeForLayer(child.type);
-          track = {
-            id: crypto.randomUUID(),
-            name: nextTrackName(draft, type),
-            type,
-            order: draft.tracks.length,
-            enabled: true,
-            locked: false,
-            muted: false,
-            clips: [],
-          };
-          draft.tracks.push(track);
-          later.push({
+        const lanes = sortedLanes(draft.tracks);
+        const childGroup = laneGroupOfLayer(child);
+        const index =
+          home >= 0 && laneGroupOfTrack(lanes[home]!.type) === childGroup
+            ? home
+            : laneInsertIndex(lanes, childGroup);
+        const type = trackTypeForLayer(child);
+        const track: Composition['tracks'][number] = {
+          id: crypto.randomUUID(),
+          name: nextTrackName(draft, type),
+          type,
+          order: draft.tracks.length,
+          enabled: true,
+          locked: false,
+          muted: false,
+          clips: [],
+        };
+        lanes.splice(index, 0, track);
+        lanes.forEach((item, order) => (item.order = order));
+        draft.tracks = lanes;
+        later.push(
+          {
             type: 'CREATE_TRACK',
             compositionId,
-            track: structuredClone(track),
-          });
-        }
+            track: { ...structuredClone(track), clips: [] },
+          },
+          { type: 'MOVE_TRACK', compositionId, trackId: track.id, index },
+        );
         const asset = source.assets.find((item) => item.id === child.assetId);
         const created = {
           id: crypto.randomUUID(),
@@ -193,6 +213,12 @@ export function ungroupCommands(
         });
       }
     selected.push(...group.children.map((child) => child.id));
+    // The group's lane goes when the ungroup emptied it.
+    const emptied = clip
+      ? draft.tracks.find((item) => item.id === clip.track.id)
+      : undefined;
+    if (emptied && !emptied.clips.length && clip!.track.clips.length === 1)
+      tail.push({ type: 'DELETE_TRACK', compositionId, trackId: emptied.id });
   }
-  return { commands: [...commands, ...later], selected };
+  return { commands: [...commands, ...later, ...tail], selected };
 }

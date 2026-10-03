@@ -413,6 +413,9 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-058 | P0 | W2 | Verified | Dragging a clip onto another compatible track shows a ghost of the clip at its landing track and time while the original stays dimmed in place; releasing commits exactly the ghost position in one undo step; Escape cancels |
 | TL-059 | P0 | W2 | Verified | Track header has Lock, Hide, Solo and Mute icon buttons with accessible names, tooltips and a distinct pressed state; Solo previews only soloed tracks (session-only, not saved, no history) |
 | TL-060 | P0 | W2 | Verified | Keyboard equivalents for timeline gestures, listed in the shortcut sheet: Alt+Left/Right nudge selected clips one frame (Shift for ten), Alt+Up/Down move them to the adjacent compatible track, [ and ] trim the selected clip start or end to the playhead |
+| TL-061 | P0 | W2 | Verified | Lanes come in three groups, top to bottom: text and shapes, visuals (video, images, backgrounds), audio, with a line between groups; at least three lanes when every kind is present, new lanes created on demand at the top of their group; lane order is the canvas stacking order (top lane in front); audio has a single lane and a second sound goes to the nearest free time (J7) |
+| TL-062 | P0 | W2 | Verified | A clip dragged over a lane of another group shows a not-allowed cursor and a hatched lane, and the drop changes nothing (it snaps back); a lane's up and down buttons stay within its group (J7) |
+| TL-063 | P0 | W2 | Verified | Bring forward, Send backward, Bring to front and Send to back move a top-level element between the lanes of its own group (a new lane when the next one is busy at its time; a lane emptied by the move goes), one undo step each; group children still move among their siblings (J7) |
 
 ## PB: Playback and transport
 

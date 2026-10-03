@@ -22,12 +22,16 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     // Clip time/keyboard commands need a clip with room to act on: layer-b
     // (video, 3..5 on Video 1) can move earlier and slow down; layer-c (alone
     // on Video 2) can move up. Layer order needs a layer that is not already at
-    // the bottom. Other commands keep the first layer.
+    // the bottom; J7: a layer's place is its lane, so layer-b (top lane) can
+    // go back and layer-c (the lane below) can come forward. Other commands
+    // keep the first layer.
     const layerFor: Record<string, string> = {
       'speed-slower': 'layer-b',
       'speed-normal': 'layer-b',
       'arrange-backward': 'layer-b',
       'arrange-back': 'layer-b',
+      'arrange-forward': 'layer-c',
+      'arrange-front': 'layer-c',
       'clip-nudge-left': 'layer-b',
       'clip-track-up': 'layer-c',
     };

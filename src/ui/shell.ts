@@ -1984,7 +1984,7 @@ export function mountEditorShell(
     },
   ) => {
     const id = asset.id;
-    const time = place.time;
+    let time = place.time;
     session.setPlaying(false);
     const duration = asset.duration && asset.duration > 0 ? asset.duration : 5;
     const layer = createLayer(
@@ -2050,6 +2050,11 @@ export function mountEditorShell(
           time + duration,
         );
     commands.unshift(...target.commands);
+    // J7: audio goes to the single audio lane, at the nearest free time.
+    if ('startTime' in target && target.startTime !== time) {
+      time = target.startTime;
+      layer.startTime = time;
+    }
     const clip = {
       id: crypto.randomUUID(),
       name: asset.name,

@@ -4,6 +4,7 @@ import {
   EditorEngine,
   adoptFreeLayers,
   deserializeProject,
+  laneGroupOfTrack,
   planInsert,
   type Project,
 } from '../src/core';
@@ -45,12 +46,17 @@ describe('[TL-001] one clip model', () => {
     expect(
       composition.tracks.map((track) => [track.type, track.name]),
     ).toContainEqual(['text', 'Text 1']);
+    // J7: the cards group is on a lane of the text-and-shapes group.
     expect(
-      composition.tracks.find((track) =>
-        track.clips.some((clip) => clip.layerId === 'example-cards'),
-      )!.type,
-    ).toBe('object');
-    // Layer timing and every layer are preserved; only clips and tracks are added.
+      laneGroupOfTrack(
+        composition.tracks.find((track) =>
+          track.clips.some((clip) => clip.layerId === 'example-cards'),
+        )!.type,
+      ),
+    ).toBe('text');
+    // Layer timing and every layer are preserved; only clips and tracks are
+    // added. J7: the layers are kept in their stacking order, because the
+    // lanes were made from it.
     expect(composition.layers).toEqual(
       createExampleProject().compositions[0]!.layers,
     );
@@ -60,7 +66,18 @@ describe('[TL-001] one clip model', () => {
 
   it('leaves an all-clip document unchanged and folds nested clips into their layer', () => {
     const clean = fixture();
-    expect(adoptFreeLayers(clean)).toEqual({ project: clean, adopted: 0 });
+    // J7: the clips and lanes are unchanged; the layers take their lanes'
+    // stacking (Video 1 is the top lane, so clip-c on Video 2 is behind).
+    const converted = adoptFreeLayers(clean);
+    expect(converted.adopted).toBe(0);
+    expect(converted.project.compositions[0]!.tracks).toEqual(
+      clean.compositions[0]!.tracks,
+    );
+    expect(
+      converted.project.compositions[0]!.layers.map((layer) => layer.id),
+    ).toEqual(['layer-c', 'layer-a', 'layer-b']);
+    // A converted document converts nothing more.
+    expect(adoptFreeLayers(converted.project)).toEqual(converted);
     const nested = fixture();
     const composition = nested.compositions[0]!;
     const group = structuredClone(composition.layers[0]!);

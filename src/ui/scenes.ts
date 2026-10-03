@@ -169,7 +169,7 @@ export function moveLayerToScene(
     delete metadata.linkId;
     const target = trackForNewClip(
       to,
-      layer.type,
+      layer,
       clip.startTime,
       clip.startTime + clip.duration,
     );

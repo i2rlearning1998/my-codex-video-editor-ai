@@ -21,6 +21,54 @@
       "backgroundColor": "#101219",
       "layers": [
         {
+          "id": "layer-media-2498c3ee7cc43364",
+          "name": "audio_tone_440hz_3s.wav",
+          "type": "audio",
+          "startTime": 0,
+          "duration": 3,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                0,
+                0
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "media-2498c3ee7cc43364",
+          "children": []
+        },
+        {
           "id": "layer-media-36bca395291051be",
           "name": "video_testsrc_720p_2s_vp9_opus.webm",
           "type": "video",
@@ -114,54 +162,6 @@
           "effects": [],
           "masks": [],
           "assetId": "media-0d2dbf17c7d6f5e7",
-          "children": []
-        },
-        {
-          "id": "layer-media-2498c3ee7cc43364",
-          "name": "audio_tone_440hz_3s.wav",
-          "type": "audio",
-          "startTime": 0,
-          "duration": 3,
-          "transform": {
-            "position": {
-              "animated": false,
-              "constraints": [],
-              "type": "vector2",
-              "value": [
-                0,
-                0
-              ],
-              "keyframes": []
-            },
-            "rotation": {
-              "animated": false,
-              "constraints": [],
-              "type": "number",
-              "value": 0,
-              "keyframes": []
-            },
-            "scale": {
-              "animated": false,
-              "constraints": [],
-              "type": "vector2",
-              "value": [
-                1,
-                1
-              ],
-              "keyframes": []
-            },
-            "opacity": {
-              "animated": false,
-              "constraints": [],
-              "type": "number",
-              "value": 1,
-              "keyframes": []
-            }
-          },
-          "properties": {},
-          "effects": [],
-          "masks": [],
-          "assetId": "media-2498c3ee7cc43364",
           "children": []
         }
       ],

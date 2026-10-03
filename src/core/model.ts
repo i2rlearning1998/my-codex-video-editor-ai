@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { trackHolds } from './lanes';
 
 export const SCHEMA_VERSION = 6;
 export type JsonValue =
@@ -357,13 +358,9 @@ export const projectSchema = z
               message: `Invalid or duplicate clip layer ${clip.layerId}`,
             });
           linkedLayers.add(clip.layerId);
-          const compatible =
-            layer &&
-            (track.type === 'object'
-              ? ['group', 'shape'].includes(layer.type)
-              : track.type === 'video'
-                ? ['video', 'image'].includes(layer.type)
-                : layer.type === track.type);
+          // J7: compatibility is by lane group (text and shapes, visuals,
+          // audio); placement within a group is the UI's `laneAccepts`.
+          const compatible = layer && trackHolds(track.type, layer.type);
           if (!compatible)
             ctx.addIssue({
               code: 'custom',

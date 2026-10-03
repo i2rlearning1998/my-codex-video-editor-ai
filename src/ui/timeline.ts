@@ -11,6 +11,7 @@ import {
   clipTrimBounds,
   retimeClip,
   trackAcceptsLayer,
+  laneGroupOfTrack,
   type EditorEngine,
   type Command,
   clipAnimation,
@@ -89,6 +90,9 @@ export class TimelineInteraction {
     locked?: boolean;
     /** Linked partners carried along in time only; they keep their tracks. */
     followers?: ReadonlySet<string>;
+    /** J7: over a lane of another group; the drop snaps back. */
+    refused?: boolean;
+    overTrackId?: string | undefined;
   } | null = null;
   #unsubscribe: () => void;
   constructor(
@@ -114,6 +118,7 @@ export class TimelineInteraction {
     }));
   }
   get previews(): readonly TimingPreview[] {
+    if (this.#gesture?.refused) return [];
     const plan = this.landingPlan;
     return this.rawPreviews.map((preview) => {
       const clip = findClipByLayer(
@@ -129,7 +134,8 @@ export class TimelineInteraction {
   /** Clip landings of a move gesture (all moving layers must be clips). */
   #landings(): ClipLanding[] | undefined {
     const gesture = this.#gesture;
-    if (!gesture || gesture.kind !== 'move') return undefined;
+    if (!gesture || gesture.kind !== 'move' || gesture.refused)
+      return undefined;
     const composition = this.session.source.composition;
     const moves = this.trackMoves;
     const landings: ClipLanding[] = [];
@@ -189,11 +195,7 @@ export class TimelineInteraction {
         tracks[
           tracks.findIndex((track) => track.id === found.track.id) + shift
         ];
-      if (
-        !target ||
-        target.locked ||
-        !trackAcceptsLayer(target.type, layer.type)
-      )
+      if (!target || target.locked || !trackAcceptsLayer(target.type, layer))
         return undefined;
       moves.set(layer.id, target.id);
     }
@@ -208,6 +210,13 @@ export class TimelineInteraction {
   }
   get destinationId(): string | undefined {
     return this.#gesture?.destinationId;
+  }
+  /** J7: the pointer is over a lane of another group (not allowed). */
+  get refused(): boolean {
+    return !!this.#gesture?.refused;
+  }
+  get refusedTrackId(): string | undefined {
+    return this.#gesture?.refused ? this.#gesture.overTrackId : undefined;
   }
   /** Candidate time the moving edge is snapped to, for the visible guide. */
   get snapTime(): number | undefined {
@@ -311,7 +320,20 @@ export class TimelineInteraction {
         timing = { ...timing, startTime: gesture.layer.startTime + delta };
       }
       delete gesture.destinationId;
-      if (gesture.kind === 'move' && destinationId) {
+      gesture.refused = false;
+      if (gesture.kind === 'move' && destinationId?.startsWith('track:')) {
+        const composition = this.session.source.composition;
+        const lane = composition.tracks.find(
+          (track) => track.id === destinationId.slice(6),
+        );
+        const from = findClipByLayer(composition, gesture.layer.id)?.track;
+        gesture.overTrackId = lane?.id;
+        gesture.refused =
+          !!lane &&
+          !!from &&
+          laneGroupOfTrack(lane.type) !== laneGroupOfTrack(from.type);
+      }
+      if (gesture.kind === 'move' && destinationId && !gesture.refused) {
         const clips = gesture.layers
           .filter((layer) => !gesture.followers?.has(layer.id))
           .map((layer) => ({
@@ -368,6 +390,11 @@ export class TimelineInteraction {
     const landings = this.#landings();
     this.#gesture = null;
     if (!gesture) return;
+    // J7: a drop on a lane of another group changes nothing (it snaps back).
+    if (gesture.refused) {
+      this.changed();
+      return;
+    }
     try {
       if (landings) {
         // Clip moves land under the insert rule in one step (TL-020/TL-030).
@@ -732,6 +759,7 @@ export function mountTimeline(
   let renderedIdentity = '';
   const render = () => {
     const { composition } = session.source;
+    root.classList.toggle('lane-refused', controller.refused);
     const zoom = session.timelineZoom;
     const rows = timelineRows(session.source, zoom).map((row) => {
       const preview = controller.previews.find(
@@ -843,6 +871,19 @@ export function mountTimeline(
       line.className = 'timeline-row timeline-nle-row';
       line.dataset.rowId = `track:${row.track.id}`;
       line.dataset.trackId = row.track.id;
+      // J7: lanes come in groups (text and shapes, visuals, audio); a line
+      // separates them, and a lane of another group refuses a dragged clip.
+      const laneGroup = laneGroupOfTrack(row.track.type);
+      line.dataset.laneGroup = laneGroup;
+      line.classList.toggle(
+        'lane-group-start',
+        trackIndex > 0 &&
+          laneGroupOfTrack(trackRows[trackIndex - 1]!.track.type) !== laneGroup,
+      );
+      line.classList.toggle(
+        'drop-refused',
+        controller.refused && controller.refusedTrackId === row.track.id,
+      );
       line.classList.toggle(
         'drop-target',
         [...trackMoves.values()].includes(row.track.id),
@@ -905,8 +946,13 @@ export function mountTimeline(
         row.track.id,
         true,
       );
-      up.disabled = trackIndex === 0;
-      down.disabled = trackIndex === trackRows.length - 1;
+      // J7: a lane moves only within its group.
+      const group = laneGroupOfTrack(row.track.type);
+      const sameGroup = (index: number) =>
+        !!trackRows[index] &&
+        laneGroupOfTrack(trackRows[index]!.track.type) === group;
+      up.disabled = !sameGroup(trackIndex - 1);
+      down.disabled = !sameGroup(trackIndex + 1);
       up.setAttribute('aria-label', `Move ${row.track.name} track up`);
       down.setAttribute('aria-label', `Move ${row.track.name} track down`);
       up.title = up.getAttribute('aria-label')!;

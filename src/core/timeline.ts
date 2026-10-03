@@ -1,4 +1,12 @@
 import {
+  laneAccepts,
+  laneGroupOfLayer,
+  packLanesByOrder,
+  syncLanes,
+  trackTypeForGroup,
+  type LaneLayer,
+} from './lanes';
+import {
   validateProject,
   type Clip,
   type Composition,
@@ -162,26 +170,28 @@ export function clipTrimBounds(
   return { minStart, maxEnd };
 }
 
-/** Mirrors the project validator's track/layer compatibility rule. */
+/**
+ * J7: a lane accepts the layers of its own group (text and shapes, visuals,
+ * audio). A layer type alone is enough for most callers; pass the layer when
+ * it may be a background or a group of pictures.
+ */
 export function trackAcceptsLayer(
   trackType: Track['type'],
-  layerType: string,
+  layer: LaneLayer | string,
 ): boolean {
-  return trackType === 'object'
-    ? ['group', 'shape'].includes(layerType)
-    : trackType === 'video'
-      ? ['video', 'image'].includes(layerType)
-      : layerType === trackType;
+  return laneAccepts(trackType, layer);
 }
 
-/** TL-001: the track type that holds clips of a layer type. */
-export function trackTypeForLayer(layerType: string): Track['type'] {
-  return layerType === 'text'
-    ? 'text'
-    : layerType === 'audio'
+/** TL-001, J7: the track type that holds clips of a layer. */
+export function trackTypeForLayer(layer: LaneLayer | string): Track['type'] {
+  const type = typeof layer === 'string' ? layer : layer.type;
+  const group = laneGroupOfLayer(layer);
+  return group === 'visual'
+    ? 'video'
+    : group === 'audio'
       ? 'audio'
-      : layerType === 'video' || layerType === 'image'
-        ? 'video'
+      : type === 'text'
+        ? 'text'
         : 'object';
 }
 const TRACK_LABELS: Record<Track['type'], string> = {
@@ -209,7 +219,7 @@ interface LaneTrack {
 /** First unlocked track accepting `layerType` whose clips leave [start, end) free. */
 export function findFreeTrack<T extends LaneTrack>(
   composition: { readonly tracks: readonly T[] },
-  layerType: string,
+  layerType: LaneLayer | string,
   startTime: number,
   endTime: number,
   excludedClipIds: readonly string[] = [],
@@ -242,6 +252,7 @@ export function adoptFreeLayers(
   const project = structuredClone(input) as Project;
   let adopted = 0;
   for (const composition of project.compositions) {
+    const hadClips = composition.tracks.some((track) => track.clips.length);
     const topLevel = new Set(composition.layers.map((layer) => layer.id));
     const byId = new Map<string, Layer>();
     const collect = (layers: Layer[]) =>
@@ -269,9 +280,9 @@ export function adoptFreeLayers(
     for (const layer of composition.layers) {
       if (linked.has(layer.id)) continue;
       const end = layer.startTime + layer.duration;
-      let track = findFreeTrack(composition, layer.type, layer.startTime, end);
+      let track = findFreeTrack(composition, layer, layer.startTime, end);
       if (!track) {
-        const type = trackTypeForLayer(layer.type);
+        const type = trackTypeForLayer(layer);
         track = {
           id: newId(),
           name: nextTrackName(composition, type),
@@ -308,6 +319,60 @@ export function adoptFreeLayers(
       track.clips.sort((a, b) => a.startTime - b.startTime);
       adopted++;
     }
+    const occupied = new Set(
+      composition.tracks
+        .filter((track) => track.clips.length)
+        .map((track) => track.id),
+    );
+    // J7: a clip on a lane of another group moves to a free lane of its own
+    // group (or a new one at the bottom of it); then lanes and layers are put
+    // in lane order.
+    for (const track of [...composition.tracks])
+      for (const clip of [...track.clips]) {
+        const layer = byId.get(clip.layerId);
+        if (!layer || laneAccepts(track.type, layer)) continue;
+        track.clips.splice(track.clips.indexOf(clip), 1);
+        const end = clip.startTime + clip.duration;
+        let home = findFreeTrack(composition, layer, clip.startTime, end);
+        if (!home) {
+          const type = trackTypeForLayer(layer);
+          home = {
+            id: newId(),
+            name: nextTrackName(composition, type),
+            type,
+            order: composition.tracks.length,
+            enabled: true,
+            locked: false,
+            muted: false,
+            clips: [],
+          };
+          composition.tracks.push(home);
+        }
+        home.clips.push(clip);
+        home.clips.sort((a, b) => a.startTime - b.startTime);
+      }
+    // A document without clips (the example, a template) keeps its stacking
+    // where clips overlap; one with clips keeps its lanes, and its stacking
+    // follows them.
+    if (!hadClips)
+      packLanesByOrder(composition, (group) => {
+        const type = trackTypeForGroup(group);
+        return {
+          id: newId(),
+          name: nextTrackName(composition, type),
+          type,
+          order: 0,
+          enabled: true,
+          locked: false,
+          muted: false,
+          clips: [],
+        };
+      });
+    // Lanes that the moves emptied are left out.
+    composition.tracks = composition.tracks.filter(
+      (track) => track.clips.length || !occupied.has(track.id),
+    );
+    syncLanes(composition);
   }
   return { project: validateProject(project), adopted };
 }
