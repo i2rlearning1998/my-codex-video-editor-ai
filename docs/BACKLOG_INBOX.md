@@ -69,3 +69,8 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - I2: Text titles preview with a generic rise-in on hover; per-title animation presets come with I5 content.
 - I4: the right panel's first tab for text has no font weight list of its own; weight is in Spacing and more (the toolbar's popover).
 - I5: an icon pack (for example Lucide, ISC) needs a stroked-path shape kind in the renderer before it can be bundled.
+- J12: audio is not crossfaded under a transition; it needs the audio engine (PR #14).
+- J12: Blur, Circle wipe, Wipe up, Push up, Pop, Zoom burst, Glitch, RGB split, Flip, Cube and Page turn transitions are planned (TR-003, Wave 6).
+- J12: a transition record stays on a clip that is moved away from its neighbour (nothing plays); a cleanup or a warning could follow.
+- J15: Filters other than Original and Effects other than the shape outline are listed but planned (FX-004, FX-001, TXT-019).
+- J9: the drag image and J8's clip-loading shimmer are built but have no automated proof.
