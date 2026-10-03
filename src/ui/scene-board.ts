@@ -64,7 +64,7 @@ export function mountSceneBoard(
     const source: RenderSource = {
       composition: compositionAt(scene, 0),
       assets: engine.state.assets,
-      background: engine.state.settings.backgroundColor,
+      background: scene.backgroundColor,
       currentTime: 0,
       ...(session.source.measureText
         ? { measureText: session.source.measureText }

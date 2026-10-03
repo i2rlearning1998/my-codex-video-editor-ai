@@ -114,6 +114,7 @@ export function createProjectFromSettings(
       width: normalized.width,
       height: normalized.height,
       fps: normalized.fps,
+      backgroundColor: normalized.background,
     }),
   ];
   engine.load(project);

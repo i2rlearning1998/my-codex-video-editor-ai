@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "id": "av-sync-project",
   "metadata": {
     "name": "AV Sync Fixture",
@@ -18,6 +18,7 @@
       "height": 720,
       "fps": 30,
       "duration": 4,
+      "backgroundColor": "#f0eee7",
       "layers": [
         {
           "id": "layer-av",

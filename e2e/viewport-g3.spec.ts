@@ -303,10 +303,11 @@ test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: back
     'title',
     'Planned: Wave 8 (ANI-020)',
   );
-  // Background: one undo step, applied to the project (every scene).
+  // Background: one undo step, applied to this scene (J1: each scene owns
+  // its background; the project's is the default for new scenes).
   await pickColor(page, 'toolbar-background', '#223344');
   let project = (await hook(page)).project;
-  expect(project.settings.backgroundColor).toBe('#223344');
+  expect(project.compositions[0]!.backgroundColor).toBe('#223344');
   expect((await hook(page)).history.labels.at(-1)).toBe('Set background');
   // Scene length: a longer scene extends the clips that end with it.
   const length = await reveal(page, 'toolbar-scene-length');

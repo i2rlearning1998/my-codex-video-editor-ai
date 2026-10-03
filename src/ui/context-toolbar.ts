@@ -1104,7 +1104,13 @@ export function mountContextToolbar(
         t('scene.background'),
         source.background,
         (color) =>
-          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+          run('Set background', [
+            {
+              type: 'SET_COMPOSITION_BACKGROUND',
+              compositionId: session.source.composition.id,
+              color,
+            },
+          ]),
       ),
       popTool(
         'duration',
@@ -1155,7 +1161,13 @@ export function mountContextToolbar(
         t('toolbar.canvasBackground'),
         source.background,
         (color) =>
-          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+          run('Set background', [
+            {
+              type: 'SET_COMPOSITION_BACKGROUND',
+              compositionId: session.source.composition.id,
+              color,
+            },
+          ]),
       ),
       divider(),
       planned('auto-captions'),

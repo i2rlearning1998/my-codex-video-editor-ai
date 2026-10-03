@@ -190,9 +190,9 @@ export function layerInfo(session: EditorSession): string[] {
 }
 
 /**
- * Canva's "Resize canvas to selection": every scene gets the selection's size
- * (whole pixels); this scene's layers move so the selection fills it, other
- * scenes stay centred. One undo step.
+ * Canva's "Resize canvas to selection": this scene gets the selection's size
+ * (whole pixels) and its layers move together so the selection fills it.
+ * Other scenes keep their own size (J1). One undo step.
  */
 export function resizeCanvasToSelection(
   engine: EditorEngine,
@@ -210,13 +210,7 @@ export function resizeCanvasToSelection(
   const width = Math.max(16, Math.round(right - left)),
     height = Math.max(16, Math.round(bottom - top));
   const current = source.composition.id;
-  const commands = canvasSizeCommands(engine.state, width, height).filter(
-    (command) =>
-      !(
-        command.type === 'SET_PROPERTY' &&
-        (command as { compositionId: string }).compositionId === current
-      ),
-  );
+  const commands = canvasSizeCommands(engine.state, current, width, height);
   const composition = engine.state.compositions.find(
     (item) => item.id === current,
   )!;

@@ -296,7 +296,11 @@ export function mountRightPanel(
           onCommit: (color) =>
             safely(() =>
               run('Set background', [
-                { type: 'SET_PROJECT_BACKGROUND', color } as Command,
+                {
+                  type: 'SET_COMPOSITION_BACKGROUND',
+                  compositionId: session.source.composition.id,
+                  color,
+                } as Command,
               ]),
             ),
         }),

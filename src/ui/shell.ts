@@ -644,9 +644,10 @@ export function mountEditorShell(
     cropTool,
     reportError,
   );
-  // H3: a new canvas size for every scene, with Undo in the toast.
+  // H3, J1: a new canvas size for the open scene, with Undo in the toast.
   const resizeCanvas = (width: number, height: number) => {
-    if (!applyCanvasSize(engine, width, height)) return;
+    if (!applyCanvasSize(engine, session.source.composition.id, width, height))
+      return;
     showToast(
       t('canvasSize.changed', {
         width: formatNumber(width),

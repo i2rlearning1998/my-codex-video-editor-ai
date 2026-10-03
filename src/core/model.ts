@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export const jsonSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -26,6 +26,7 @@ export const nameSchema = z.string().trim().min(1).max(256);
 const finite = z.number().finite();
 const positive = finite.positive();
 const vector = z.tuple([finite, finite]);
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 /**
  * Schema 5 (ANI-002): the easing of the segment that starts at a keyframe.
  * Absent means linear. Cubic x1 and x2 stay in [0, 1] so time is monotonic.
@@ -212,6 +213,8 @@ export const compositionSchema = z
     height: positive.int().max(32768),
     fps: positive.max(240),
     duration: positive,
+    /** Schema 6 (J1): each scene owns its background colour. */
+    backgroundColor: hexColor,
     layers: z.array(layerSchema),
     tracks: z.array(trackSchema),
     markers: z.array(
@@ -300,7 +303,8 @@ export const projectSchema = z
       .strict(),
     settings: z
       .object({
-        backgroundColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+        /** The default background of new scenes (J1); each scene has its own. */
+        backgroundColor: hexColor,
         audioSampleRate: z.union([z.literal(44100), z.literal(48000)]),
       })
       .strict(),
@@ -469,9 +473,19 @@ export function validateProject(value: unknown): Project {
   return projectSchema.parse(project);
 }
 
+export const DEFAULT_BACKGROUND = '#101219';
 export function createComposition(
   options: Partial<
-    Pick<Composition, 'id' | 'name' | 'width' | 'height' | 'fps' | 'duration'>
+    Pick<
+      Composition,
+      | 'id'
+      | 'name'
+      | 'width'
+      | 'height'
+      | 'fps'
+      | 'duration'
+      | 'backgroundColor'
+    >
   > = {},
 ): Composition {
   return compositionSchema.parse({
@@ -481,7 +495,11 @@ export function createComposition(
     height: 1080,
     fps: 30,
     duration: 10,
-    ...options,
+    backgroundColor: DEFAULT_BACKGROUND,
+    // An option given as undefined keeps its default.
+    ...Object.fromEntries(
+      Object.entries(options).filter(([, value]) => value !== undefined),
+    ),
     layers: [],
     tracks: [],
     markers: [],
@@ -497,7 +515,7 @@ export function createProject(
     schemaVersion: SCHEMA_VERSION,
     id: crypto.randomUUID(),
     metadata: { name, createdAt: now, updatedAt: now },
-    settings: { backgroundColor: '#101219', audioSampleRate: 48000 },
+    settings: { backgroundColor: DEFAULT_BACKGROUND, audioSampleRate: 48000 },
     compositions: [createComposition()],
     assets: [],
   });

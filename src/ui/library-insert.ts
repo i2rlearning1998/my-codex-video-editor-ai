@@ -312,7 +312,10 @@ function centreOn(
 }
 /** The commands that add a library item to the open scene (or a new one). */
 export function libraryCommands(
-  project: { readonly compositions: readonly object[] },
+  project: {
+    readonly compositions: readonly object[];
+    readonly settings?: { readonly backgroundColor: string };
+  },
   source: RenderSource,
   item: LibraryItem,
   time: number,
@@ -447,6 +450,9 @@ export function libraryCommands(
         width: canvas.width,
         height: canvas.height,
         fps: composition.fps,
+        // J1: a new scene starts from the project's default background.
+        backgroundColor:
+          project.settings?.backgroundColor ?? composition.backgroundColor,
       }) as Composition;
       scene.layers = layers;
       // Every top-level layer gets its clip (D-039).

@@ -208,6 +208,9 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-021 | P0 | W2 | Verified | Dragging a layer onto another scene on the board moves it there with its clip (Alt copies it), one undo step |
 | PRJ-022 | P0 | W2 | Verified | Playback runs through the scenes in order |
 | PRJ-023 | P0 | W2 | Verified | A 72 px scene strip under the canvas replaces the composition select: cards with a lazily drawn 16:9 thumbnail, the name and a length chip, the open scene highlighted and scrolled into view; + adds a blank scene, a copy of the open one, or opens Templates; cards drag to reorder with an insertion line; double-click renames; right-click offers Rename, Duplicate, Delete, Save as template, Move left and Move right; a chevron collapses it; below 1024 px it is a Scene n of m button with a list |
+| PRJ-024 | P0 | W2 | Verified | Each scene owns its background colour (schema 6): changing it in one scene never changes another, and the canvas, the scene strip, the board and export show each scene's own colour (J1 LCR) |
+| PRJ-025 | P0 | W2 | Verified | A canvas size belongs to its scene: changing one scene's size changes no other scene and never rewrites a layer's position or scale, so changing it and back restores the scene exactly (J1 LCR) |
+| PRJ-026 | P0 | W2 | Verified | A new scene starts from the project's defaults (the background chosen for the project and the open scene's size and frame rate) and then owns its own settings (J1 LCR) |
 
 ## MED: Media library and stock (Wave 4)
 
@@ -314,7 +317,7 @@ Everything the user does directly on the preview canvas.
 | CV-052 | P0 | W2 | Verified | Hover outlines the object, or the empty artboard, under the pointer; a click on the empty artboard selects the canvas (scene toolbar), a click on the stage around it deselects everything and shows the canvas bar (H3 LCR; I1 LCR) |
 | CV-053 | P0 | W2 | Verified | Canva handles: white round corners, pill-shaped side handles and the rotate handle 28 px below the box (interaction contract revision 8) (H3 LCR) |
 | CV-054 | P0 | W2 | Verified | One fixed floating toolbar row (44 px, radius 12); the scene bar has the canvas size chip at its left (I1 LCR: object toolbars have none); it never scrolls: labels collapse first, then trailing tools move into More (H3 LCR) |
-| CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to every scene, keep the design centred, as one undo step with Undo in the toast (H3 LCR) |
+| CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to the open scene without moving its layers (J1 LCR, PRJ-025), as one undo step with Undo in the toast |
 | CV-056 | P0 | W2 | Verified | Right-click menus per type, with icons and shortcuts: an element offers Lock, Show element timing, Alternative text, Set image as background, Resize canvas to selection, Download selection and Info; the empty canvas offers Paste, scenes, Canvas size and Guides; unbuilt items name their wave (H3 LCR) |
 | CV-057 | P0 | W2 | Verified | A click on the stage outside the artboard, or Escape with nothing selected, shows the canvas bar in the toolbar slot: Ratio (size presets), canvas background colour and Auto captions (planned, W8); a click on the artboard or an object hides it; object toolbars carry no size chip; never two bars at once |
 
@@ -466,6 +469,7 @@ The engine already has atomic transactions and history; this covers what the use
 | HIS-006 | P1 | W8 | Todo | Named checkpoints |
 | HIS-007 | P1 | W4 | Verified | Undoing media import removes the clip without deleting the imported asset (behavior is documented) |
 | HIS-008 | P0 | W2 | Verified | Undo and Redo cover project edits only; media import, rename, delete and folders, the project name, saved templates and signatures, library recents and every view or session setting are outside history, as listed in docs/UNDO-RULES.md |
+| HIS-009 | P0 | W2 | Verified | One global undo stack whose entries are scoped to the scene they edited: Undo and Redo revert only that edit and open the scene it changed (J1 LCR) |
 
 ## TXT: Text, fonts and languages (Wave 3)
 

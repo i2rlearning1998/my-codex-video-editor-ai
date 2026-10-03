@@ -7,7 +7,7 @@ Decisions start at D-151 (the I-series used D-136 to D-150, so D-150 is taken).
 Tick an item only when its step is committed and `npm run verify` is green. One commit per step.
 
 - [x] Audit report (reports/J-AUDIT.md)
-- [ ] J1 Scene isolation
+- [x] J1 Scene isolation
 - [ ] J2 Gradient fill and keyboard undo
 - [ ] J3 NumberField everywhere
 - [ ] J4 Real text editing

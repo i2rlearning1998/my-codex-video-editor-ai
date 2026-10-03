@@ -78,7 +78,24 @@ export class EditorSession {
     private readonly measureText?: TextMeasurer,
   ) {
     this.#compositionId = engine.state.compositions[0]!.id;
-    this.#unsubscribe = engine.on('state:changed', ({ reason }) => {
+    this.#unsubscribe = engine.on('state:changed', (event) => {
+      const { reason } = event;
+      // J1 (HIS-009): undo and redo open the scene their edit changed.
+      const scenes = event.compositionIds ?? [];
+      if (
+        (reason === 'undo' || reason === 'redo') &&
+        scenes.length &&
+        !scenes.includes(this.#compositionId)
+      ) {
+        this.#compositionId = scenes[0]!;
+        this.#selection = Object.freeze([]);
+        this.#keyframes = Object.freeze([]);
+        this.#solo = Object.freeze([]);
+        this.#enteredGroup = null;
+        this.#currentTime = 0;
+        this.#canvasSelected = true;
+        this.#cropLayer = null;
+      }
       if (
         reason === 'load' ||
         !engine.state.compositions.some(
@@ -167,7 +184,9 @@ export class EditorSession {
       selectedIds: this.#selection,
       ...(this.#solo.length ? { soloTrackIds: this.#solo } : {}),
       ...(this.measureText ? { measureText: this.measureText } : {}),
-      background: project.settings.backgroundColor,
+      background: project.compositions.find(
+        (item) => item.id === this.#compositionId,
+      )!.backgroundColor,
     };
   }
   get drawBrush(): DrawMode | null {

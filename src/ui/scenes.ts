@@ -96,6 +96,8 @@ export function blankScene(project: ReadonlyProject, afterId: string) {
       width: current.width,
       height: current.height,
       fps: current.fps,
+      // J1: a new scene starts from the project's default background.
+      backgroundColor: project.settings.backgroundColor,
     }),
   );
 }

@@ -15,7 +15,12 @@ export function createExampleProject(): Project {
   const project = createProject('Form & Motion — Example');
   project.settings.backgroundColor = '#f0eee7';
   project.compositions = [
-    createComposition({ name: 'Main composition', width: 1280, height: 720 }),
+    createComposition({
+      name: 'Main composition',
+      width: 1280,
+      height: 720,
+      backgroundColor: '#f0eee7',
+    }),
   ];
   const color = (value: string): Property => ({
     type: 'color',

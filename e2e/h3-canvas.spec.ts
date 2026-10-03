@@ -253,7 +253,7 @@ test('[CV-054] one fixed floating toolbar row (the scene bar starts with the can
   await expect(page.locator('[data-deep-panel="position"]')).toBeVisible();
 });
 
-test('[CV-055] canvas size presets resize every scene, keep the design centred, one undo step, with Undo in the toast', async ({
+test('[CV-055] canvas size presets resize the open scene without moving its layers, one undo step, with Undo in the toast', async ({
   page,
 }) => {
   const chip = control(page, 'canvas-size');
@@ -279,10 +279,10 @@ test('[CV-055] canvas size presets resize every scene, keep the design centred, 
   expect(project.compositions.map((item) => [item.width, item.height])).toEqual(
     [[1080, 1080]],
   );
-  // Centred: every layer moves by half the change.
+  // J1 (PRJ-025): a size change never rewrites a layer's transform.
   expect(
     (await layerOf(page, 'example-headline')).transform.position.value,
-  ).toEqual([headline[0] - 100, headline[1] + 180]);
+  ).toEqual(headline);
   expect(await labels(page)).toEqual(['Canvas size']);
   await expect(chip).toContainText('1:1');
   // The toast's Undo restores the old size.

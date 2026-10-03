@@ -17,6 +17,8 @@ export interface HistoryMetadata {
   timestamp: string;
   kind: 'command' | 'transaction';
   commands: EditorCommand[];
+  /** J1: the scenes (composition ids) this edit changed, added or removed. */
+  compositionIds: string[];
 }
 interface HistoryEntry {
   metadata: DeepReadonly<HistoryMetadata>;
@@ -94,8 +96,12 @@ export class EditorEngine {
     }
   }
 
-  #notify(reason: ChangeReason): void {
-    this.#events.emit('state:changed', { state: this.#state, reason });
+  #notify(reason: ChangeReason, compositionIds?: readonly string[]): void {
+    this.#events.emit('state:changed', {
+      state: this.#state,
+      reason,
+      ...(compositionIds ? { compositionIds } : {}),
+    });
     this.#events.emit('history:changed', {
       canUndo: this.canUndo,
       canRedo: this.canRedo,
@@ -147,6 +153,7 @@ export class EditorEngine {
           timestamp: draft.metadata.updatedAt,
           kind,
           commands: [...commands],
+          compositionIds: changedCompositions(this.#state, after),
         });
         this.#undo.push({ metadata, before: this.#state, after });
         if (this.#undo.length > this.#limit) this.#undo.shift();
@@ -193,7 +200,12 @@ export class EditorEngine {
       if (!entry) return false;
       destination.push(entry);
       this.#state = direction === 'undo' ? entry.before : entry.after;
-      this.#notify(direction);
+      // J1: the scenes this edit changed, so the editor can open them.
+      const present = new Set(this.#state.compositions.map((item) => item.id));
+      this.#notify(
+        direction,
+        entry.metadata.compositionIds.filter((id) => present.has(id)),
+      );
       return true;
     });
   }
@@ -273,6 +285,26 @@ export class EditorEngine {
       this.#notify('load');
     });
   }
+}
+
+/** J1: composition ids whose content differs between two snapshots. */
+function changedCompositions(
+  before: DeepReadonly<Project>,
+  after: DeepReadonly<Project>,
+): string[] {
+  const old = new Map(before.compositions.map((item) => [item.id, item]));
+  const ids: string[] = [];
+  for (const composition of after.compositions) {
+    const previous = old.get(composition.id);
+    old.delete(composition.id);
+    if (
+      previous !== composition &&
+      JSON.stringify(previous) !== JSON.stringify(composition)
+    )
+      ids.push(composition.id);
+  }
+  ids.push(...old.keys());
+  return ids;
 }
 
 export class CommandBus {

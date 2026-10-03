@@ -34,6 +34,27 @@ function versionOf(document: unknown): number {
 export class MigrationRegistry {
   #migrations = new Map<number, Migration>();
   constructor() {
+    // Schema 6 (J1): every scene owns its background colour, starting from
+    // the project's background (now the default for new scenes).
+    this.register({
+      from: 5,
+      to: 6,
+      migrate: (input) => {
+        const document = structuredClone(input) as Record<string, unknown>;
+        if (!Array.isArray(document.compositions))
+          throw new Error('Invalid compositions');
+        const settings = document.settings as
+          { backgroundColor?: unknown } | undefined;
+        const background = settings?.backgroundColor;
+        document.compositions = document.compositions.map(
+          (composition: Record<string, unknown>) => ({
+            ...composition,
+            backgroundColor: background,
+          }),
+        );
+        return { ...document, schemaVersion: 6 };
+      },
+    });
     // Schema 5 adds only the optional keyframe easing; absent means linear.
     this.register({
       from: 4,

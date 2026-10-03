@@ -48,7 +48,7 @@ test('[LAY-041] nothing selected: the Canvas tab sets size, background and scene
     'title',
     'Transitions: Planned: Wave 6 (TR-001)',
   );
-  // Size: a preset applies to every scene, one step.
+  // Size: a preset applies to the open scene (J1), one step.
   await panel(page)
     .locator('.canvas-size-preset[data-preset="square"]')
     .click();

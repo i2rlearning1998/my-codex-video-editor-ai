@@ -43,11 +43,19 @@ export const commandSchema = z.discriminatedUnion('type', [
       name: nameSchema,
     })
     .strict(),
-  // G3: the scene bar's background. Schema 5 has one background for the
-  // whole project, so every scene shares it.
+  // G3, J1: the project's default background, used by new scenes. Each
+  // scene's own background is SET_COMPOSITION_BACKGROUND (schema 6).
   z
     .object({
       type: z.literal('SET_PROJECT_BACKGROUND'),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    })
+    .strict(),
+  // J1: one scene's background colour; other scenes are not changed.
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION_BACKGROUND'),
+      ...location,
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
     })
     .strict(),
@@ -60,8 +68,8 @@ export const commandSchema = z.discriminatedUnion('type', [
       name: nameSchema,
     })
     .strict(),
-  // H3: a scene's canvas size (16 to 7680 px each side). Moving its layers
-  // so they stay centred is the caller's job, in the same transaction.
+  // H3, J1: one scene's canvas size (16 to 7680 px each side). Layers are
+  // never moved by a size change.
   z
     .object({
       type: z.literal('SET_COMPOSITION_SIZE'),
@@ -328,6 +336,10 @@ export function applyCommand(project: Project, command: Command): void {
       return;
     case 'SET_PROJECT_BACKGROUND':
       project.settings.backgroundColor = command.color;
+      return;
+    case 'SET_COMPOSITION_BACKGROUND':
+      compositionById(project, command.compositionId).backgroundColor =
+        command.color;
       return;
     case 'SET_COMPOSITION': {
       compositionById(project, command.compositionId).name = command.name;
