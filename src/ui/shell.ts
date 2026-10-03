@@ -828,6 +828,7 @@ export function mountEditorShell(
       const start = clip?.clip.startTime ?? layer.startTime;
       session.setCurrentTime(start);
       timeline?.reveal(start);
+      element('#timeline-foundation .timeline-scroll').focus();
       // J6: a popover with the start and duration; the clip is highlighted.
       openElementTiming(
         element('#context-toolbar').hidden

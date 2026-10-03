@@ -79,8 +79,7 @@ test('[CV-059] Alternative text is saved per layer with a confirmation and an AL
   )!;
   expect(layer.properties.altText!.value).toBe('A subtitle about shapes');
   expect((await labels(page)).at(-1)).toBe('Set alternative text');
-  // The scene list shows the badge.
-  await page.locator('#rail-left [data-category="Scene"]').click();
+  // The scene list (the open Scene panel) shows the badge.
   await expect(
     page.locator('#scene-list [data-layer-id="example-subtitle"] .alt-badge'),
   ).toHaveText('ALT');
