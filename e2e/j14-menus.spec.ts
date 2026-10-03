@@ -40,9 +40,13 @@ async function clipMenu(page: Page, layerId: string) {
   const clip = page.locator(
     `#timeline-foundation .timeline-clip[data-action="clip"][data-id="${layerId}"]`,
   );
-  await clip.scrollIntoViewIfNeeded();
-  await clip.click({ button: 'right', position: { x: 20, y: 10 } });
-  await expect(menu(page)).toBeVisible();
+  // The timeline re-renders its clips while a new video's filmstrip and
+  // waveform arrive, so the element can be replaced mid-action; retry the
+  // whole right-click until the menu is open.
+  await expect(async () => {
+    await clip.click({ button: 'right', position: { x: 20, y: 10 } });
+    await expect(menu(page)).toBeVisible({ timeout: 1000 });
+  }).toPass();
   return clip;
 }
 
