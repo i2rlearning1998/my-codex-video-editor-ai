@@ -1,5 +1,11 @@
 import type { TextMeasurer } from '../render/text-layout';
-import { clampTime, compositionAt, type EditorEngine } from '../core';
+import {
+  clampTime,
+  compositionAt,
+  type DeepReadonly,
+  type EditorEngine,
+  type Project,
+} from '../core';
 import { locateLayer, type RenderSource } from '../render/adapter';
 import { keyframeTimes } from './keyframes';
 import {
@@ -71,6 +77,13 @@ export class EditorSession {
   /** G3: the canvas pan in CSS pixels (transient, never saved). */
   #canvasPan: readonly [number, number] = [0, 0];
   #compositionId: string;
+  /**
+   * J3: a transient preview of a control's edit while it is dragged (a
+   * NumberField scrub or slider). Only the canvas draws it; it is never
+   * saved and is cleared by any project change.
+   */
+  #preview: DeepReadonly<Project> | null = null;
+  #previewListeners = new Set<() => void>();
   #listeners = new Set<() => void>();
   #unsubscribe: () => void;
   constructor(
@@ -80,6 +93,7 @@ export class EditorSession {
     this.#compositionId = engine.state.compositions[0]!.id;
     this.#unsubscribe = engine.on('state:changed', (event) => {
       const { reason } = event;
+      this.#preview = null;
       // J1 (HIS-009): undo and redo open the scene their edit changed.
       const scenes = event.compositionIds ?? [];
       if (
@@ -170,6 +184,32 @@ export class EditorSession {
   }
   get selectedId(): string | null {
     return this.#selection.at(-1) ?? null;
+  }
+  /** J3: the open scene as the canvas should draw it during a preview. */
+  get previewSource(): RenderSource | null {
+    const preview = this.#preview;
+    if (!preview) return null;
+    const scene = preview.compositions.find(
+      (item) => item.id === this.#compositionId,
+    );
+    if (!scene) return null;
+    return {
+      ...this.source,
+      composition: compositionAt(scene, this.#currentTime),
+      assets: preview.assets,
+      background: scene.backgroundColor,
+    };
+  }
+  setPreview(project: DeepReadonly<Project> | null): void {
+    if (project === this.#preview) return;
+    this.#preview = project;
+    for (const listener of this.#previewListeners) listener();
+  }
+  onPreview(listener: () => void): () => void {
+    this.#previewListeners.add(listener);
+    return () => {
+      this.#previewListeners.delete(listener);
+    };
   }
   get source(): RenderSource {
     const project = this.engine.state;
@@ -399,5 +439,6 @@ export class EditorSession {
   dispose(): void {
     this.#unsubscribe();
     this.#listeners.clear();
+    this.#previewListeners.clear();
   }
 }

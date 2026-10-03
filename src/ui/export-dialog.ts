@@ -3,6 +3,7 @@
 // canvas's shape) and the file name; More options holds the format, frame
 // rate and range. Platform sizes are canvas sizes, not export presets.
 import type { Asset, Composition, DeepReadonly } from '../core';
+import { createNumberField, syncNumberField } from './components/number-field';
 import {
   download,
   missingMedia,
@@ -109,8 +110,8 @@ export function openExportDialog(options: ExportDialogOptions) {
               )}
             </div>
             <div class="export-row">
-              ${field('export-start', t('export.start'), `<input id="export-start" type="number" min="0" step="0.1" />`)}
-              ${field('export-end', t('export.end'), `<input id="export-end" type="number" min="0" step="0.1" />`)}
+              <div class="export-field" id="export-start-slot"></div>
+              <div class="export-field" id="export-end-slot"></div>
             </div>
           </details>
           <p class="export-format" id="export-format" role="status"></p>
@@ -131,6 +132,24 @@ export function openExportDialog(options: ExportDialogOptions) {
   const root = modal.root;
   const find = <T extends HTMLElement>(id: string) =>
     root.querySelector<T>(`#${id}`)!;
+  // J3: the range uses the shared NumberField (steppers, wheel, arrow keys).
+  for (const [id, key] of [
+    ['export-start', 'export.start'],
+    ['export-end', 'export.end'],
+  ] as const)
+    find(`${id}-slot`).replaceWith(
+      createNumberField({
+        id,
+        label: t(key),
+        value: 0,
+        unit: 's',
+        min: 0,
+        step: 0.1,
+        decimals: 2,
+        className: 'export-field',
+        onCommit: () => changed(),
+      }),
+    );
   const inputs = {
     resolution: find<HTMLSelectElement>('export-resolution'),
     container: find<HTMLSelectElement>('export-container'),
@@ -145,8 +164,8 @@ export function openExportDialog(options: ExportDialogOptions) {
     inputs.resolution.value = String(resolution);
     inputs.container.value = settings.container ?? 'auto';
     inputs.fps.value = String(settings.fps);
-    inputs.start.value = String(settings.start);
-    inputs.end.value = String(settings.end);
+    syncNumberField(root, 'export-start', settings.start);
+    syncNumberField(root, 'export-end', settings.end);
     inputs.name.value = settings.fileName;
     find('export-size').textContent = t('export.sizeNote', {
       width: formatNumber(settings.width),
@@ -198,20 +217,14 @@ export function openExportDialog(options: ExportDialogOptions) {
       : '';
     startButton.disabled = missing.length > 0 || run !== null;
   };
-  const changed = () => {
+  function changed() {
     resolution = Number(inputs.resolution.value);
     settings = read();
     show();
     describeFormat();
     void checkMissing();
-  };
-  for (const input of [
-    inputs.resolution,
-    inputs.container,
-    inputs.fps,
-    inputs.start,
-    inputs.end,
-  ])
+  }
+  for (const input of [inputs.resolution, inputs.container, inputs.fps])
     input.onchange = changed;
   const scope = root.querySelector<HTMLSelectElement>('#export-scenes');
   if (scope) {

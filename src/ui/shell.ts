@@ -25,7 +25,11 @@ import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
 import { clampPan, mountCanvasView } from './canvas-view';
 import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
-import { createNumberField, syncNumberField } from './components/number-field';
+import {
+  createNumberField,
+  setFieldPreview,
+  syncNumberField,
+} from './components/number-field';
 import {
   isGeometryField,
   selectionGeometry as selectionGeometryOf,
@@ -263,7 +267,10 @@ export function mountEditorShell(
     element('#status').textContent = text;
   };
   // Refused or failed edits must be noticed, not just logged in the status bar.
+  /** J3: errors from a live preview are not shown (the commit reports them). */
+  let previewing = false;
   const reportError = (error: unknown) => {
+    if (previewing) return;
     const text = error instanceof Error ? error.message : String(error);
     message(text);
     // H4: an animated property offers to open 2D Animation.
@@ -501,15 +508,14 @@ export function mountEditorShell(
             session.currentTime
         : 0,
     );
+    // J3: a control being dragged previews its edit on the canvas.
+    const base = session.previewSource ?? session.source;
     const drawn = {
-      ...session.source,
+      ...base,
       // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
         ? {
-            composition: withErasedPaths(
-              session.source.composition,
-              drawTool.erased,
-            ),
+            composition: withErasedPaths(base.composition, drawTool.erased),
           }
         : {}),
       frames,
@@ -966,6 +972,8 @@ export function mountEditorShell(
   let renderedProject: unknown;
   let renderedSelection = '';
   const refresh = (force = false) => {
+    // J3: a live preview never rebuilds the panels (the field is being dragged).
+    if (previewing) return;
     drawPanel.sync();
     drawPalette?.sync();
     canvas.classList.toggle('drawing', session.drawBrush !== null);
@@ -1243,6 +1251,24 @@ export function mountEditorShell(
     };
   session.onChange(syncMode);
   const unsubscribe = session.onChange(refresh);
+  // J3: a NumberField being scrubbed or slid previews its edit on the canvas:
+  // the commit runs in capture mode and the canvas draws the result. Nothing
+  // reaches the project or history until release.
+  setFieldPreview({
+    preview: (commit) => {
+      previewing = true;
+      try {
+        const commands = engine.commands.capture(commit);
+        session.setPreview(commands.length ? engine.preview(commands) : null);
+      } catch {
+        // A refused edit shows nothing; its commit reports the reason.
+      } finally {
+        previewing = false;
+      }
+    },
+    end: () => session.setPreview(null),
+  });
+  const unsubscribePreview = session.onPreview(() => safely(draw));
   element<HTMLButtonElement>('#undo').onclick = () =>
     safely(() => {
       runCommand('undo', commandContext);
@@ -2263,6 +2289,8 @@ export function mountEditorShell(
       canvas.removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener('drop', assetDrop);
       unsubscribe();
+      unsubscribePreview();
+      setFieldPreview(null);
       timeline?.dispose();
       pointer.dispose();
       interaction.dispose();

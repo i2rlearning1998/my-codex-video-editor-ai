@@ -275,6 +275,22 @@ export class EditorEngine {
     });
   }
 
+  /**
+   * J3: the project as it would be after `inputs`, validated and frozen, for
+   * a live preview. The editor's state and history are not touched.
+   */
+  preview(inputs: readonly EditorCommand[]): DeepReadonly<Project> {
+    assertJson(inputs);
+    let draft = structuredClone(this.#state) as unknown as Project;
+    for (const raw of structuredClone(inputs)) {
+      if (typeof raw?.type === 'string' && raw.type.startsWith('plugin:'))
+        this.capabilities.execute(draft, raw as CapabilityInvocation);
+      else applyCommand(draft, validateCommand(raw));
+      draft = validateProject(draft);
+    }
+    return freeze(draft);
+  }
+
   /** Explicit document/session boundary, never an edit or an undoable command. */
   load(project: unknown): void {
     this.#exclusive(() => {
@@ -308,6 +324,8 @@ function changedCompositions(
 }
 
 export class CommandBus {
+  /** J3: commands recorded instead of run while `capture` is active. */
+  #captured: EditorCommand[] | null = null;
   constructor(
     private readonly run: (
       commands: readonly EditorCommand[],
@@ -316,12 +334,35 @@ export class CommandBus {
     ) => readonly JsonValue[],
   ) {}
   execute(command: EditorCommand, label: string = command.type): JsonValue {
+    if (this.#captured) {
+      this.#captured.push(command);
+      return null;
+    }
     return this.run([command], label, 'command')[0] ?? null;
   }
   transaction(
     label: string,
     commands: readonly EditorCommand[],
   ): readonly JsonValue[] {
+    if (this.#captured) {
+      this.#captured.push(...commands);
+      return commands.map(() => null);
+    }
     return this.run(commands, label, 'transaction');
+  }
+  /**
+   * J3: runs `action` and returns the commands it would have executed,
+   * without executing them (no state change, no history). Used to preview a
+   * control's edit live while it is being dragged.
+   */
+  capture(action: () => void): EditorCommand[] {
+    if (this.#captured) throw new Error('Command capture is already active');
+    this.#captured = [];
+    try {
+      action();
+      return this.#captured;
+    } finally {
+      this.#captured = null;
+    }
   }
 }

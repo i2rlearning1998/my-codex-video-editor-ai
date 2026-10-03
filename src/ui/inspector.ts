@@ -236,7 +236,12 @@ export function renderInspector(
                 ? { slider: true, presets: [0, 25, 50, 75, 100] }
                 : {}),
               ...(name === 'Rotation'
-                ? { presets: [0, 45, 90, 180, -90] }
+                ? {
+                    presets: [0, 45, 90, 180, -90],
+                    // J3: a slider over one turn; typing allows any angle.
+                    slider: true,
+                    sliderRange: [-180, 180] as const,
+                  }
                 : {}),
               onCommit: (next) =>
                 commit(name as InspectorField, next / (item.scale ?? 1)),

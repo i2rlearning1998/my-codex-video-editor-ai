@@ -882,5 +882,8 @@
   "right.adjust.temperature": "Temperature",
   "right.adjust.blend": "Blend mode",
   "right.adjust.normal": "Normal",
-  "right.adjust.reset": "Reset"
+  "right.adjust.reset": "Reset",
+  "field.range": "{label} ({min} to {max}{unit})",
+  "field.increase": "Increase {label}",
+  "field.decrease": "Decrease {label}"
 }

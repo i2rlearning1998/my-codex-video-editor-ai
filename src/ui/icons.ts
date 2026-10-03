@@ -46,6 +46,7 @@ const PATHS: Record<string, string> = {
   marker: 'M10 3l4 4v10H6V7z',
   close: 'M5 5l10 10 M15 5L5 15',
   chevronDown: 'M5 8l5 5 5-5',
+  chevronUp: 'M5 12l5-5 5 5',
   chevronRight: 'M8 5l5 5-5 5',
   chevronLeft: 'M12 5l-5 5 5 5',
   check: 'M4 10l4 4 8-8',

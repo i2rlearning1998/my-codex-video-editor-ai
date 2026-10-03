@@ -1,6 +1,7 @@
 // W5-B Inspector "Animation" section (ANI-001, ANI-002, ANI-004, ANI-005):
 // stopwatches, keyframe add/remove and navigation per property, and the
 // selected timeline keyframes' time, easing and edit buttons.
+import { createNumberField } from './components/number-field';
 import type { EditorEngine, Easing } from '../core';
 import { formatNumber, t } from '../i18n';
 import { locateLayer } from '../render/adapter';
@@ -208,33 +209,20 @@ export function mountAnimationPanel(
     summary.textContent = t('animation.selected', {
       count: formatNumber(times.length),
     });
-    const timeField = document.createElement('label');
-    timeField.className = 'animation-field';
-    const timeLabel = document.createElement('span');
-    timeLabel.textContent = t('animation.time');
-    const timeInput = document.createElement('input');
-    timeInput.type = 'number';
-    timeInput.step = 'any';
-    timeInput.min = '0';
-    timeInput.id = 'keyframe-time';
+    // J3: the shared NumberField (steppers, wheel, arrow keys, scrub).
     const first = Math.min(...times);
-    timeInput.value = String(Math.round(first * 1000) / 1000);
-    timeInput.onchange = () =>
-      safely(() => {
-        const value = Number(timeInput.value);
-        if (
-          timeInput.value.trim() === '' ||
-          !Number.isFinite(value) ||
-          value < 0
-        )
-          throw new RangeError(t('animation.timeRange'));
-        timeInput.blur();
-        moveSelectedKeyframes(engine, session, value - first);
-      });
-    timeInput.onkeydown = (event) => {
-      if (event.key === 'Enter') timeInput.blur();
-    };
-    timeField.append(timeLabel, timeInput);
+    const timeField = createNumberField({
+      id: 'keyframe-time',
+      label: t('animation.time'),
+      value: Math.round(first * 1000) / 1000,
+      unit: 's',
+      min: 0,
+      step: 1 / session.source.composition.fps,
+      decimals: 3,
+      className: 'animation-field',
+      onCommit: (value) =>
+        safely(() => moveSelectedKeyframes(engine, session, value - first)),
+    });
     const easingField = document.createElement('label');
     easingField.className = 'animation-field';
     const easingLabel = document.createElement('span');
@@ -260,22 +248,25 @@ export function mountAnimationPanel(
       typeof current === 'object' && current
         ? [current.x1, current.y1, current.x2, current.y2]
         : [0.25, 0.1, 0.25, 1];
-    const inputs = ['x1', 'y1', 'x2', 'y2'].map((name, index) => {
-      const input = document.createElement('input');
-      input.type = 'number';
-      input.step = '0.05';
-      input.id = `keyframe-${name}`;
-      input.setAttribute('aria-label', t('animation.curvePoint', { name }));
-      input.value = String(values[index]);
-      if (name.startsWith('x')) {
-        input.min = '0';
-        input.max = '1';
-      }
-      return input;
-    });
+    const point = [...values];
+    const fields = ['x1', 'y1', 'x2', 'y2'].map((name, index) =>
+      createNumberField({
+        id: `keyframe-${name}`,
+        label: t('animation.curvePoint', { name }),
+        value: values[index]!,
+        step: 0.05,
+        decimals: 3,
+        compact: true,
+        ...(name.startsWith('x') ? { min: 0, max: 1 } : {}),
+        onCommit: (value) => {
+          point[index] = value;
+          applyCurve();
+        },
+      }),
+    );
     const applyCurve = () =>
       safely(() => {
-        const [x1, y1, x2, y2] = inputs.map((input) => Number(input.value));
+        const [x1, y1, x2, y2] = point;
         if (
           ![x1, y1, x2, y2].every(Number.isFinite) ||
           x1! < 0 ||
@@ -292,8 +283,7 @@ export function mountAnimationPanel(
           y2: y2!,
         });
       });
-    for (const input of inputs) input.onchange = applyCurve;
-    curve.append(...inputs);
+    curve.append(...fields);
     select.onchange = () => {
       custom = select.value === 'custom';
       if (custom) {

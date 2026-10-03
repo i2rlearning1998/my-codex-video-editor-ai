@@ -5649,3 +5649,49 @@ canvas.placing {
   opacity: 0.45;
   cursor: not-allowed;
 }
+
+/* J3: NumberField steppers and inline slider. */
+.number-field {
+  position: relative;
+}
+.number-field-steps {
+  display: inline-flex;
+  flex-direction: column;
+  margin-inline-start: -2px;
+}
+button.number-field-step {
+  display: grid;
+  place-items: center;
+  inline-size: 14px;
+  block-size: 11px;
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-faint);
+  cursor: pointer;
+}
+button.number-field-step:hover:not(:disabled) {
+  background: var(--color-bg-hover, var(--color-bg-sunken));
+  color: var(--color-text);
+}
+button.number-field-step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.number-field.has-slider {
+  flex-wrap: wrap;
+}
+.number-field.has-slider .slider-field {
+  flex: 1 1 90px;
+  min-inline-size: 90px;
+}
+.number-field.has-slider .slider-field input[type='range'] {
+  min-inline-size: 70px;
+}
+.number-field-input:focus-visible,
+button.number-field-step:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}

@@ -12,6 +12,7 @@ import {
   type NewProjectInput,
 } from '../project/new-project';
 import { confirmDialog } from './components/modal';
+import { createNumberField } from './components/number-field';
 import { temporaryOverlay } from './temporary-overlay';
 
 export function mountNewProjectForm(
@@ -28,12 +29,32 @@ export function mountNewProjectForm(
   >();
   const labels = new Map<keyof NewProjectInput, HTMLSpanElement>();
   const errors = new Map<keyof NewProjectInput, HTMLElement>();
-  const field = (name: keyof NewProjectInput, options?: readonly string[]) => {
+  const field = (
+    name: keyof NewProjectInput,
+    options?: readonly string[],
+    numeric = false,
+  ) => {
     const label = document.createElement('label');
     const caption = document.createElement('span');
-    const input = options
-      ? document.createElement('select')
-      : document.createElement('input');
+    // J3: width and height use the shared NumberField (steppers, wheel,
+    // arrow keys). It does not clamp here: the form explains a bad size.
+    const numberField = numeric
+      ? createNumberField({
+          id: `new-project-${name}`,
+          label: t(`project.${name}`),
+          value: 0,
+          step: 2,
+          decimals: 0,
+          unit: 'px',
+          compact: true,
+          onCommit: () => undefined,
+        })
+      : null;
+    const input = numberField
+      ? numberField.querySelector<HTMLInputElement>('input')!
+      : options
+        ? document.createElement('select')
+        : document.createElement('input');
     if (options)
       for (const value of options) {
         const option = document.createElement('option');
@@ -49,7 +70,7 @@ export function mountNewProjectForm(
     error.id = `${input.id}-error`;
     error.setAttribute('role', 'alert');
     input.setAttribute('aria-describedby', error.id);
-    label.append(caption, input, error);
+    label.append(caption, numberField ?? input, error);
     form.append(label, document.createElement('br'));
     controls.set(name, input);
     labels.set(name, caption);
@@ -59,13 +80,7 @@ export function mountNewProjectForm(
   field('name');
   field('aspect', aspects);
   field('resolution', Object.keys(resolutions));
-  for (const name of ['width', 'height'] as const) {
-    const input = field(name) as HTMLInputElement;
-    input.type = 'number';
-    input.min = '16';
-    input.max = '7680';
-    input.step = '2';
-  }
+  for (const name of ['width', 'height'] as const) field(name, undefined, true);
   field('fps', frameRates.map(String));
   // TODO: "transparent" will need a schema migration in a later wave.
   (field('background') as HTMLInputElement).type = 'color';
@@ -90,8 +105,14 @@ export function mountNewProjectForm(
   const updateSize = () => {
     const custom = value('aspect') === 'custom';
     controls.get('resolution')!.disabled = custom;
-    for (const key of ['width', 'height'] as const)
-      controls.get(key)!.disabled = !custom;
+    for (const key of ['width', 'height'] as const) {
+      const input = controls.get(key)!;
+      input.disabled = !custom;
+      input
+        .closest('.number-field')
+        ?.querySelectorAll<HTMLButtonElement>('button')
+        .forEach((button) => (button.disabled = !custom));
+    }
     if (!custom) {
       const size = presetSize(
         value('aspect') as Exclude<Aspect, 'custom'>,

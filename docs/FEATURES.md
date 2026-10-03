@@ -455,6 +455,7 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | INS-015 | P1 | W2 | Todo | Sections are collapsible and remember their state |
 | INS-016 | P0 | W4 | Todo | Media section: source details, replace media, loop, fit mode (Fit, Fill, Stretch, Custom) |
 | INS-017 | P2 | W2 | Todo | Copy and paste properties between layers |
+| INS-018 | P0 | W2 | Verified | Every numeric control is the shared NumberField: up and down arrows step once (Shift ×10, Alt ×0.1), the wheel and arrow keys step a focused field, bounded fields show their range and a slider beside them, scrubbing or sliding previews live on the canvas and commits one undo step on release (J3 LCR) |
 
 ## HIS: Undo, redo and history
 

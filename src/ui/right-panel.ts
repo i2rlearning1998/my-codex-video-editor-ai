@@ -720,20 +720,20 @@ export function mountRightPanel(
   /** Adjust colors: Transparency works; the colour controls wait for W6. */
   const adjust = () => {
     const planned = (key: string, id: string) => {
-      const item = document.createElement('label');
-      item.className = 'right-row right-row-planned';
+      // J3: the shared NumberField with its slider, disabled until Wave 6.
+      const item = createNumberField({
+        id: `right-adjust-${key}`,
+        label: t(`right.adjust.${key}`),
+        value: 0,
+        min: -100,
+        max: 100,
+        decimals: 0,
+        slider: true,
+        disabled: true,
+        className: 'right-row right-row-planned',
+        onCommit: () => undefined,
+      });
       item.title = t('toolbar.later', { wave: '6', id });
-      const caption = document.createElement('span');
-      caption.textContent = t(`right.adjust.${key}`);
-      const range = document.createElement('input');
-      range.type = 'range';
-      range.id = `right-adjust-${key}`;
-      range.min = '-100';
-      range.max = '100';
-      range.value = '0';
-      range.disabled = true;
-      range.setAttribute('aria-label', t(`right.adjust.${key}`));
-      item.append(caption, range);
       return item;
     };
     const blend = createSelect({

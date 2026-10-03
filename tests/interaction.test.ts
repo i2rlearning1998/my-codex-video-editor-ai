@@ -441,7 +441,8 @@ describe('inspector shares the canonical command path', () => {
     // the Position and size section, above Timing and Details).
     expect(
       s.root.querySelectorAll(
-        '#inspector-content [data-group="inspector.position"] input',
+        // J3: bounded fields also show a slider (a range input) beside them.
+        '#inspector-content [data-group="inspector.position"] input:not([type="range"])',
       ),
     ).toHaveLength(10);
     s.edit(field, value);

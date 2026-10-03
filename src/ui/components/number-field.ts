@@ -1,8 +1,11 @@
-// G1: the one numeric input (INS-006, LAY-023). Drag left or right on the
+// G1, J3: the one numeric input (INS-006, LAY-023). Drag left or right on the
 // label or on the unfocused field to scrub (Shift fine, Alt coarse); click to
-// type; Enter commits, Escape reverts; arrow keys step (Shift ×10); the unit is
-// shown; values clamp to min and max; the chevron opens a slider and presets.
-// Scrubbing previews only; it commits once, on release.
+// type; Enter or leaving commits, Escape reverts. The up and down arrow
+// buttons, the arrow keys and the mouse wheel (while focused) step once
+// (Shift ×10, Alt ×0.1). A bounded field shows a slider beside it; the
+// chevron opens presets. The unit and the range are shown. Scrubbing and
+// sliding preview live on the canvas and commit once, on release (one undo
+// step).
 import { formatNumber, t } from '../../i18n';
 import { iconSvg } from '../icons';
 import { closePopover, openAnchor, openPopover } from './popover';
@@ -28,8 +31,13 @@ export interface NumberFieldOptions {
   readonly data?: Readonly<Record<string, string>>;
   /** Called with the clamped value when a scrub or edit is committed. */
   readonly onCommit: (value: number) => void;
-  /** Called while scrubbing or sliding, before the commit. */
+  /**
+   * Called while scrubbing or sliding, before the commit. Without it, the
+   * shell's live preview (J3) shows the edit that `onCommit` would make.
+   */
   readonly onPreview?: (value: number) => void;
+  /** J3: the slider's range when the field itself is unbounded (rotation). */
+  readonly sliderRange?: readonly [number, number];
   /**
    * Reports an entry that was not a number (reverted) or was outside min and
    * max (clamped and committed).
@@ -61,6 +69,19 @@ export function syncNumberField(
     ?.dispatchEvent(new CustomEvent('number-field-sync', { detail: value }));
 }
 
+/**
+ * J3: the shell's live preview of a field's edit while it is dragged:
+ * `preview` runs the field's commit in capture mode and draws the result;
+ * `end` clears it. Unset outside the editor (unit tests).
+ */
+let livePreview: {
+  preview: (commit: () => void) => void;
+  end: () => void;
+} | null = null;
+export function setFieldPreview(handler: typeof livePreview): void {
+  livePreview = handler;
+}
+
 const SCRUB_THRESHOLD = 3;
 /** Composition units (or unit steps) per CSS pixel of drag. */
 const SCRUB_RATE = 0.5;
@@ -84,7 +105,21 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = `number-field ${options.className ?? ''}`.trim();
   if (options.compact) wrap.classList.add('compact');
-  wrap.title = options.label;
+  const range =
+    options.sliderRange ??
+    (options.min !== undefined && options.max !== undefined
+      ? ([options.min, options.max] as const)
+      : null);
+  // J3: the range is shown with the label (and in the tooltip).
+  wrap.title =
+    options.min !== undefined && options.max !== undefined
+      ? t('field.range', {
+          label: options.label,
+          min: formatNumber(options.min),
+          max: formatNumber(options.max),
+          unit: options.unit ?? '',
+        })
+      : options.label;
   const label = document.createElement('label');
   label.className = 'number-field-label';
   label.htmlFor = options.id;
@@ -133,9 +168,41 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
   const commit = (value: number) => {
     const next = clamp(value);
     setShown(next);
+    endPreview();
     if (round(next) === round(committed)) return;
     committed = next;
     options.onCommit(next);
+  };
+  // J3: a live preview of the value being dragged (no history).
+  let previewing = false;
+  const preview = (value: number) => {
+    if (options.onPreview) return options.onPreview(value);
+    if (!livePreview) return;
+    previewing = true;
+    livePreview.preview(() => options.onCommit(value));
+  };
+  const endPreview = () => {
+    if (!previewing) return;
+    previewing = false;
+    livePreview?.end();
+  };
+  /** One step of the arrows, the keys or the wheel (Shift ×10, Alt ×0.1). */
+  const stepBy = (
+    direction: 1 | -1,
+    modifiers: { shiftKey: boolean; altKey: boolean },
+  ) => {
+    const base = Number(input.value.trim().replace(',', '.'));
+    const from = Number.isFinite(base) ? base : committed;
+    const factor = modifiers.shiftKey ? 10 : modifiers.altKey ? 0.1 : 1;
+    // The owner may re-render more than once for this commit; keep the
+    // field focused through all of them, then forget it.
+    if (document.activeElement === input) {
+      refocusId = input.id;
+      window.setTimeout(() => {
+        if (refocusId === input.id) refocusId = null;
+      });
+    }
+    commit(from + direction * step * factor);
   };
   const commitTyped = () => {
     const text = input.value.trim().replace(',', '.');
@@ -163,18 +230,20 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
       input.blur();
     } else if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
       event.preventDefault();
-      const direction = event.key === 'ArrowUp' ? 1 : -1;
-      const base = Number(input.value);
-      const from = Number.isFinite(base) ? base : committed;
-      // The owner may re-render more than once for this commit; keep the
-      // field focused through all of them, then forget it.
-      refocusId = input.id;
-      window.setTimeout(() => {
-        if (refocusId === input.id) refocusId = null;
-      });
-      commit(from + direction * step * (event.shiftKey ? 10 : 1));
+      stepBy(event.key === 'ArrowUp' ? 1 : -1, event);
     }
   };
+  // The wheel steps while the field has focus (so panels still scroll).
+  input.addEventListener(
+    'wheel',
+    (event) => {
+      if (document.activeElement !== input || input.disabled || !event.deltaY)
+        return;
+      event.preventDefault();
+      stepBy(event.deltaY < 0 ? 1 : -1, event);
+    },
+    { passive: false },
+  );
   input.onblur = () => {
     if (input.value !== show(committed)) commitTyped();
   };
@@ -203,7 +272,7 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
       const rate = next.shiftKey ? 0.1 : next.altKey ? 10 : 1;
       value = clamp(start + Math.round(dx * SCRUB_RATE) * step * rate);
       setShown(value);
-      options.onPreview?.(value);
+      preview(value);
     };
     const up = () => {
       target.removeEventListener('pointermove', move);
@@ -222,7 +291,8 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
       target.removeEventListener('pointercancel', cancel);
       wrap.classList.remove('scrubbing');
       setShown(committed);
-      options.onPreview?.(committed);
+      if (options.onPreview) options.onPreview(committed);
+      endPreview();
     };
     target.addEventListener('pointermove', move);
     target.addEventListener('pointerup', up);
@@ -230,7 +300,54 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
   };
   label.onpointerdown = (event) => scrub(event, false);
   input.onpointerdown = (event) => scrub(event, true);
-  if (options.slider || options.presets?.length) {
+  // J3: up and down arrows, one step per click (Shift ×10, Alt ×0.1).
+  const steps = document.createElement('span');
+  steps.className = 'number-field-steps';
+  for (const direction of [1, -1] as const) {
+    const arrow = document.createElement('button');
+    arrow.type = 'button';
+    arrow.tabIndex = -1;
+    arrow.id = `${options.id}-${direction > 0 ? 'up' : 'down'}`;
+    arrow.className = 'number-field-step';
+    arrow.dataset.step = direction > 0 ? 'up' : 'down';
+    arrow.innerHTML = iconSvg(direction > 0 ? 'chevronUp' : 'chevronDown', 10);
+    arrow.setAttribute(
+      'aria-label',
+      t(direction > 0 ? 'field.increase' : 'field.decrease', {
+        label: options.label,
+      }),
+    );
+    arrow.disabled = input.disabled;
+    // Keep focus where it is (the field or the canvas).
+    arrow.onpointerdown = (event) => event.preventDefault();
+    arrow.onclick = (event) => stepBy(direction, event);
+    steps.append(arrow);
+  }
+  wrap.append(steps);
+  // J3: a bounded field shows its slider beside it.
+  if (options.slider && range) {
+    wrap.classList.add('has-slider');
+    wrap.append(
+      createSlider({
+        id: `${options.id}-slider`,
+        label: options.label,
+        value: committed,
+        min: range[0],
+        max: range[1],
+        step,
+        decimals,
+        disabled: input.disabled,
+        readout: false,
+        ...(options.unit ? { unit: options.unit } : {}),
+        onPreview: (value) => {
+          setShown(value);
+          preview(value);
+        },
+        onCommit: (value) => commit(value),
+      }),
+    );
+  }
+  if (options.presets?.length) {
     const more = document.createElement('button');
     more.type = 'button';
     more.className = 'number-field-more';
@@ -243,28 +360,6 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
       if (openAnchor() === more) return closePopover();
       const body = document.createElement('div');
       body.className = 'number-field-popover';
-      if (
-        options.slider &&
-        options.min !== undefined &&
-        options.max !== undefined
-      )
-        body.append(
-          createSlider({
-            id: `${options.id}-slider`,
-            label: options.label,
-            value: committed,
-            min: options.min,
-            max: options.max,
-            step,
-            decimals,
-            ...(options.unit ? { unit: options.unit } : {}),
-            onPreview: (value) => {
-              setShown(value);
-              options.onPreview?.(value);
-            },
-            onCommit: (value) => commit(value),
-          }),
-        );
       if (options.presets?.length) {
         const list = document.createElement('div');
         list.className = 'number-field-presets';
@@ -298,6 +393,8 @@ export interface SliderOptions {
   readonly unit?: string;
   readonly decimals?: number;
   readonly disabled?: boolean;
+  /** Shows the value beside the slider (default true). */
+  readonly readout?: boolean;
   readonly onCommit: (value: number) => void;
   readonly onPreview?: (value: number) => void;
 }
@@ -334,6 +431,7 @@ export function createSlider(options: SliderOptions): HTMLElement {
     options.onPreview?.(Number(range.value));
   };
   range.onchange = () => options.onCommit(Number(range.value));
-  wrap.append(range, readout);
+  wrap.append(range);
+  if (options.readout !== false) wrap.append(readout);
   return wrap;
 }

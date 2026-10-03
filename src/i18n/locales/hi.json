@@ -882,5 +882,8 @@
   "right.adjust.temperature": "तापमान",
   "right.adjust.blend": "ब्लेंड मोड",
   "right.adjust.normal": "सामान्य",
-  "right.adjust.reset": "रीसेट"
+  "right.adjust.reset": "रीसेट",
+  "field.range": "{label} ({min} से {max}{unit})",
+  "field.increase": "{label} बढ़ाएँ",
+  "field.decrease": "{label} घटाएँ"
 }
