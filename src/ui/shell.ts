@@ -1,3 +1,4 @@
+import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
 import { mountFonts } from './fonts';
 import {
@@ -15,6 +16,9 @@ import {
   type Command,
   type Point2,
   hasAnimation,
+  laneAccepts,
+  nextTrackName,
+  trackTypeForLayer,
 } from '../core';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
@@ -55,7 +59,7 @@ import { bindCanvasInteraction } from './canvas-interaction';
 import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
-import { mountTimeline } from './timeline';
+import { mountTimeline, type AssetTarget } from './timeline';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
@@ -2008,6 +2012,8 @@ export function mountEditorShell(
       time: number;
       point?: readonly [number, number] | null;
       trackId?: string | undefined;
+      /** J9: commands making the lane `trackId` names (a new lane). */
+      newTrack?: Command[];
     },
   ) => {
     const id = asset.id;
@@ -2051,14 +2057,18 @@ export function mountEditorShell(
     // track at the playhead (or a new one); a track row uses the insert rule.
     const type = asset.type === 'audio' ? 'audio' : 'video';
     const requestedTrackId = place.trackId;
-    const requestedTrack = requestedTrackId
-      ? session.source.composition.tracks.find(
-          (item) => item.id === requestedTrackId,
-        )
-      : undefined;
+    const requestedTrack = place.newTrack
+      ? undefined
+      : requestedTrackId
+        ? session.source.composition.tracks.find(
+            (item) => item.id === requestedTrackId,
+          )
+        : undefined;
+    void type;
+    // J7: a lane takes media of its own group only.
     if (
       requestedTrack &&
-      (requestedTrack.type !== type || requestedTrack.locked)
+      (!laneAccepts(requestedTrack.type, layer) || requestedTrack.locked)
     )
       throw new Error(
         requestedTrack.locked
@@ -2068,14 +2078,16 @@ export function mountEditorShell(
               track: requestedTrack.name,
             }),
       );
-    const target = requestedTrack
-      ? { trackId: requestedTrack.id, commands: [] as Command[] }
-      : trackForNewClip(
-          session.source.composition,
-          layer.type,
-          time,
-          time + duration,
-        );
+    const target = place.newTrack
+      ? { trackId: requestedTrackId!, commands: place.newTrack }
+      : requestedTrack
+        ? { trackId: requestedTrack.id, commands: [] as Command[] }
+        : trackForNewClip(
+            session.source.composition,
+            layer.type,
+            time,
+            time + duration,
+          );
     commands.unshift(...target.commands);
     // J7: audio goes to the single audio lane, at the nearest free time.
     if ('startTime' in target && target.startTime !== time) {
@@ -2132,6 +2144,13 @@ export function mountEditorShell(
       const asset = session.source.assets.find((item) => item.id === id);
       if (!asset || !['image', 'video', 'audio'].includes(asset.type)) return;
       event.preventDefault();
+      // J9: the timeline knows where the drop lands (a lane, a new lane, a
+      // clip to replace) or that it is refused.
+      if (event.currentTarget !== canvas && timeline) {
+        const target = timeline.assetTarget();
+        timeline.clearAssetTarget();
+        if (target) return timelineAssetDrop(asset, target, event);
+      }
       const track = element('.timeline-scroll');
       const time =
         event.currentTarget === canvas
@@ -2167,13 +2186,147 @@ export function mountEditorShell(
               )?.dataset.trackId ?? ''),
       });
     });
+  const timelineAssetDrop = (
+    asset: (typeof session.source.assets)[number],
+    target: AssetTarget,
+    event: DragEvent,
+  ) => {
+    if (target.mode === 'refused') return;
+    if (target.mode === 'lane')
+      return placeAsset(asset, { time: target.time, trackId: target.trackId });
+    if (target.mode === 'insert') {
+      // A new lane at the separator, holding the new clip.
+      const type = trackTypeForLayer(asset.type);
+      const trackId = crypto.randomUUID();
+      const compositionId = session.source.composition.id;
+      return placeAsset(asset, {
+        time: target.time,
+        trackId,
+        newTrack: [
+          {
+            type: 'CREATE_TRACK',
+            compositionId,
+            track: {
+              id: trackId,
+              name: nextTrackName(session.source.composition, type),
+              type,
+              order: session.source.composition.tracks.length,
+              enabled: true,
+              locked: false,
+              muted: false,
+              clips: [],
+            },
+          },
+          { type: 'MOVE_TRACK', compositionId, trackId, index: target.index },
+        ],
+      });
+    }
+    // Over a clip of the same kind: Replace it, or add the media as a clip.
+    const layerId = target.layerId;
+    const menu = document.createElement('div');
+    menu.className = 'replace-drop-menu';
+    menu.setAttribute('role', 'menu');
+    const item = (label: string, action: string, run: () => void) => {
+      const entry = document.createElement('button');
+      entry.type = 'button';
+      entry.setAttribute('role', 'menuitem');
+      entry.dataset.action = action;
+      entry.textContent = label;
+      entry.onclick = () => {
+        handle.close();
+        safely(run);
+      };
+      menu.append(entry);
+    };
+    item(t('drop.replace'), 'drop-replace', () => {
+      engine.commands.transaction('Replace media', [
+        {
+          type: 'SET_LAYER_ASSET',
+          compositionId: session.source.composition.id,
+          layerId,
+          assetId: asset.id,
+        } as Command,
+      ]);
+      session.select(layerId);
+    });
+    item(t('drop.addClip'), 'drop-add', () => {
+      const clip = findClipByLayer(session.source.composition, layerId);
+      placeAsset(asset, {
+        time: target.time,
+        ...(clip ? { trackId: clip.track.id } : {}),
+      });
+    });
+    const anchor = document.createElement('span');
+    anchor.className = 'drop-anchor';
+    Object.assign(anchor.style, {
+      position: 'fixed',
+      left: `${event.clientX}px`,
+      top: `${event.clientY}px`,
+    });
+    root.append(anchor);
+    const handle = openPopover(anchor, menu, {
+      label: t('drop.title'),
+      className: 'replace-drop-popover',
+      onClose: () => anchor.remove(),
+    });
+    (menu.firstElementChild as HTMLElement | null)?.focus();
+  };
   const assetOver = (event: DragEvent) => {
     if (
       event.dataTransfer?.types.includes('application/x-editor-asset') ||
       event.dataTransfer?.types.includes(LIBRARY_DRAG_TYPE)
     )
       event.preventDefault();
+    showDropBox(event);
   };
+  // J9: over the canvas (only there), a box shows where a picture would land:
+  // centred on the pointer at its own size, scaled to fit the composition.
+  const dropBox = document.createElement('div');
+  dropBox.className = 'canvas-drop-box';
+  dropBox.hidden = true;
+  dropBox.setAttribute('aria-hidden', 'true');
+  root.append(dropBox);
+  const hideDropBox = () => {
+    dropBox.hidden = true;
+  };
+  const showDropBox = (event: DragEvent) => {
+    const drag = assetDrag();
+    if (!drag || drag.type === 'audio') return hideDropBox();
+    const { width: w, height: h } = session.source.composition;
+    const fit =
+      drag.width && drag.height
+        ? Math.min(1, w / drag.width, h / drag.height)
+        : 1;
+    const bw = (drag.width ?? 320) * fit,
+      bh = (drag.height ?? 180) * fit;
+    const rect = canvas.getBoundingClientRect();
+    const matrix = viewport().matrix;
+    const inverse = invertMatrix(matrix);
+    if (!inverse) return hideDropBox();
+    const [cx, cy] = transformPoint(inverse, [
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+    ]);
+    const a = transformPoint(matrix, [cx - bw / 2, cy - bh / 2]);
+    const b = transformPoint(matrix, [cx + bw / 2, cy + bh / 2]);
+    Object.assign(dropBox.style, {
+      left: `${rect.left + Math.min(a[0], b[0])}px`,
+      top: `${rect.top + Math.min(a[1], b[1])}px`,
+      width: `${Math.abs(b[0] - a[0])}px`,
+      height: `${Math.abs(b[1] - a[1])}px`,
+    });
+    dropBox.hidden = false;
+  };
+  const canvasDragLeave = (event: DragEvent) => {
+    if (!(
+      event.relatedTarget instanceof Node &&
+      canvas.contains(event.relatedTarget)
+    ))
+      hideDropBox();
+  };
+  canvas.addEventListener('dragleave', canvasDragLeave);
+  canvas.addEventListener('drop', hideDropBox);
+  document.addEventListener('dragend', hideDropBox);
   // I1.3: a library card dropped on the canvas is inserted at the drop
   // point (never imported as media).
   const libraryDrop = (event: DragEvent) => {
@@ -2402,6 +2555,10 @@ export function mountEditorShell(
       window.removeEventListener('drop', windowDrop);
       workspace?.dispose();
       canvas.removeEventListener('dragover', assetOver);
+      canvas.removeEventListener('dragleave', canvasDragLeave);
+      canvas.removeEventListener('drop', hideDropBox);
+      document.removeEventListener('dragend', hideDropBox);
+      dropBox.remove();
       canvas.removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener(

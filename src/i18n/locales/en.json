@@ -908,5 +908,9 @@
   "field.slider": "{label} slider",
   "timeline.hint.text": "+ Add text",
   "timeline.hint.video": "+ Add video",
-  "timeline.hint.audio": "+ Add audio"
+  "timeline.hint.audio": "+ Add audio",
+  "timeline.ghostTime": "{time} s",
+  "drop.replace": "Replace clip",
+  "drop.addClip": "Add as a new clip",
+  "drop.title": "Media dropped on a clip"
 }

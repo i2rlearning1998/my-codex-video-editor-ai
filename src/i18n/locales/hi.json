@@ -908,5 +908,9 @@
   "field.slider": "{label} स्लाइडर",
   "timeline.hint.text": "+ टेक्स्ट जोड़ें",
   "timeline.hint.video": "+ वीडियो जोड़ें",
-  "timeline.hint.audio": "+ ऑडियो जोड़ें"
+  "timeline.hint.audio": "+ ऑडियो जोड़ें",
+  "timeline.ghostTime": "{time} से.",
+  "drop.replace": "क्लिप बदलें",
+  "drop.addClip": "नई क्लिप के रूप में जोड़ें",
+  "drop.title": "क्लिप पर डाला गया मीडिया"
 }

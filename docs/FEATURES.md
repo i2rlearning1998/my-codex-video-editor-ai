@@ -418,6 +418,9 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-063 | P0 | W2 | Verified | Bring forward, Send backward, Bring to front and Send to back move a top-level element between the lanes of its own group (a new lane when the next one is busy at its time; a lane emptied by the move goes), one undo step each; group children still move among their siblings (J7) |
 | TL-064 | P1 | W2 | Verified | A shimmer skeleton of the editor (bar, panels, three timeline rows) shows from the first paint until the app has loaded, then goes (J8) |
 | TL-065 | P0 | W2 | Verified | An empty scene's timeline shows three hint rows, + Add text, + Add video and + Add audio: text adds a text box ready to type, video opens Media with the file picker, audio opens the Audio panel; they go once the scene has a clip (J8) |
+| TL-066 | P0 | W2 | Verified | Media dragged from the Media panel shows where it lands: over the canvas only, a box at the picture's size centred on the pointer; over a lane, a ghost clip with its start time; at a lane's edge, a purple separator with + whose drop makes a new lane there (J9) |
+| TL-067 | P0 | W2 | Verified | Media dragged over a lane of another group is refused (not-allowed, hatched lane, nothing on drop); over a clip of the same kind the drop offers Replace clip or Add as a new clip, and Replace is one undo step (J9) |
+| TL-068 | P0 | W2 | Verified | A timeline clip dragged and released outside the timeline stays where it was (it dims while outside), and Escape during a clip drag cancels it; neither adds history (J9) |
 
 ## PB: Playback and transport
 

@@ -1,3 +1,4 @@
+import { dragGhost, setAssetDrag } from './drag-state';
 import type { EditorEngine } from '../core';
 import {
   importMediaFiles,
@@ -452,8 +453,23 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         card.querySelector('.media-badge')!.textContent = badge(asset);
         card.querySelector('.media-name')!.textContent = asset.name;
         setThumb(card, asset);
-        card.ondragstart = (event) =>
+        card.ondragstart = (event) => {
           event.dataTransfer?.setData('application/x-editor-asset', asset.id);
+          // J9: the canvas and the timeline show where it would land.
+          setAssetDrag({
+            assetId: asset.id,
+            type: asset.type as 'image' | 'video' | 'audio',
+            name: asset.name,
+            duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
+            ...(asset.width && asset.height
+              ? { width: asset.width, height: asset.height }
+              : {}),
+          });
+          const ghost = dragGhost(card, asset.name);
+          event.dataTransfer?.setDragImage(ghost, 20, 20);
+          requestAnimationFrame(() => ghost.remove());
+        };
+        card.ondragend = () => setAssetDrag(null);
         // I1.7: the item's menu, from its More button or a right-click.
         const more = document.createElement('button');
         more.type = 'button';

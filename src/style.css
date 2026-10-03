@@ -5828,3 +5828,88 @@ button.number-field-step:focus-visible {
     animation: none;
   }
 }
+/* J9: drag and drop. The drag image, the canvas drop box, the timeline's
+   ghost clip, the new-lane separator and a clip offered for Replace. */
+.drag-ghost {
+  position: fixed;
+  inset-block-start: -200px;
+  inset-inline-start: -400px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-size-sm, 13px);
+  box-shadow: var(--shadow-md);
+  pointer-events: none;
+}
+.drag-ghost-thumb {
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-sunken) center / cover no-repeat;
+}
+.canvas-drop-box {
+  position: fixed;
+  z-index: 30;
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  pointer-events: none;
+}
+.timeline-asset-ghost {
+  position: absolute;
+  z-index: 6;
+  block-size: 28px;
+  border: 1px dashed var(--color-accent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  pointer-events: none;
+}
+.timeline-asset-ghost span {
+  position: absolute;
+  inset-block-end: calc(100% + 2px);
+  inset-inline-start: 0;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.timeline-lane-insert {
+  position: absolute;
+  inset-inline-end: 0;
+  z-index: 7;
+  block-size: 2px;
+  margin-block-start: -1px;
+  background: var(--color-accent);
+  pointer-events: none;
+}
+.timeline-lane-insert span {
+  position: absolute;
+  inset-inline-start: -10px;
+  inset-block-start: -9px;
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+}
+.timeline-clip.replace-target {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+}
+.replace-drop-menu {
+  display: grid;
+  min-inline-size: 180px;
+}
+/* J9: a clip dragged out of the timeline will go back where it was. */
+#timeline-foundation.drag-outside .timeline-clip.selected,
+#timeline-foundation.drag-outside .timeline-clip[aria-pressed='true'] {
+  opacity: 0.5;
+}
