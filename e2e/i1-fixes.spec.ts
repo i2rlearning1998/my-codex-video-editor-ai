@@ -100,7 +100,9 @@ async function sampleWidth(
           )?.[0] ?? 0,
       ),
     )
-    .toBeGreaterThan(400);
+    // Sampling stops at the first frame at or past 400 ms (`time < 400`
+    // above), so a frame landing exactly on 400 ends it too.
+    .toBeGreaterThanOrEqual(400);
   const samples = await page.evaluate(
     () => (window as unknown as { samples: [number, number][] }).samples,
   );
