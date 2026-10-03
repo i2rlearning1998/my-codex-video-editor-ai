@@ -75,6 +75,15 @@ export const commandSchema = z.discriminatedUnion('type', [
       transition: transitionSchema.nullable(),
     })
     .strict(),
+  // J14: a layer's name, and its clips' names, in one step.
+  z
+    .object({
+      type: z.literal('SET_LAYER_NAME'),
+      ...location,
+      layerId: idSchema,
+      name: nameSchema,
+    })
+    .strict(),
   // G5: a composition's (scene's) name. Its duration is derived from its
   // content by the validator, so it is not set directly.
   z
@@ -732,6 +741,14 @@ export function applyCommand(project: Project, command: Command): void {
       for (const track of composition.tracks)
         for (const clip of track.clips)
           if (clip.layerId === layer.id) clip.assetId = asset.id;
+      return;
+    }
+    case 'SET_LAYER_NAME': {
+      const { layer } = requireLayer(composition, command.layerId);
+      layer.name = command.name;
+      for (const track of composition.tracks)
+        for (const clip of track.clips)
+          if (clip.layerId === layer.id) clip.name = command.name;
       return;
     }
     case 'SET_PROPERTY': {

@@ -251,7 +251,7 @@ export function trackForNewClip(
     ],
   };
 }
-/** Speed presets offered by the clip menus (the command accepts 0.1x to 8x). */
+/** Speed presets offered by the clip menus (the command accepts 0.1x to 16x). */
 export const SPEED_PRESETS = [0.25, 0.5, 1, 1.5, 2, 4] as const;
 /** Clip locations for the selection roots; empty unless every root is a clip. */
 export function selectedClips(
@@ -1134,4 +1134,35 @@ function clipAction(
   for (const { clip, trackId } of landings)
     commands.push({ type: 'CREATE_CLIP', compositionId, trackId, clip });
   engine.commands.transaction('Detach audio', commands);
+}
+
+/**
+ * J14: the clip menu's Audio › Mute: the selected clips' lanes are muted (or,
+ * when they all are, unmuted) in one step. Clip volume is Wave 7 (AUD-002).
+ */
+export function toggleClipMute(
+  engine: EditorEngine,
+  session: EditorSession,
+): void {
+  const tracks = [
+    ...new Map(
+      selectedClips(session.source, session.selectedIds).map(({ track }) => [
+        track.id,
+        track,
+      ]),
+    ).values(),
+  ];
+  if (!tracks.length) return;
+  const muted = !tracks.every((track) => track.muted);
+  engine.commands.transaction(
+    muted ? 'Mute' : 'Unmute',
+    tracks.map((track) => ({
+      type: 'SET_TRACK_STATE' as const,
+      compositionId: session.source.composition.id,
+      trackId: track.id,
+      enabled: track.enabled,
+      locked: track.locked,
+      muted,
+    })),
+  );
 }

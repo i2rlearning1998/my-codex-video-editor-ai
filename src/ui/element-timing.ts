@@ -58,6 +58,8 @@ export function openElementTiming(
   session: EditorSession,
   report: (error: unknown) => void,
   highlight: (layerId: string | null) => void,
+  /** J14: the clip menu's Edit duration shows the duration only. */
+  only?: 'duration',
 ): void {
   const id = session.selectedId;
   const layer = id
@@ -78,32 +80,32 @@ export function openElementTiming(
   body.className = 'element-timing';
   const title = document.createElement('h4');
   title.textContent = layer.name;
-  body.append(
-    title,
-    createNumberField({
-      id: 'element-timing-start',
-      label: t('timing.start'),
-      value: Math.round(timing.startTime * 1000) / 1000,
-      unit: 's',
-      min: 0,
-      step: frame,
-      decimals: 3,
-      onCommit: (value) => commit('start', value),
-    }),
-    createNumberField({
-      id: 'element-timing-duration',
-      label: t('timing.duration'),
-      value: Math.round(timing.duration * 1000) / 1000,
-      unit: 's',
-      min: frame,
-      step: frame,
-      decimals: 3,
-      onCommit: (value) => commit('duration', value),
-    }),
-  );
+  const start = createNumberField({
+    id: 'element-timing-start',
+    label: t('timing.start'),
+    value: Math.round(timing.startTime * 1000) / 1000,
+    unit: 's',
+    min: 0,
+    step: frame,
+    decimals: 3,
+    onCommit: (value) => commit('start', value),
+  });
+  const duration = createNumberField({
+    id: 'element-timing-duration',
+    label: t('timing.duration'),
+    value: Math.round(timing.duration * 1000) / 1000,
+    unit: 's',
+    min: frame,
+    step: frame,
+    decimals: 3,
+    onCommit: (value) => commit('duration', value),
+  });
+  body.append(title, ...(only === 'duration' ? [] : [start]), duration);
   highlight(id);
   openPopover(anchor, body, {
-    label: t('command.showTiming'),
+    label: t(
+      only === 'duration' ? 'command.editDuration' : 'command.showTiming',
+    ),
     className: 'element-timing-popover',
     onClose: () => highlight(null),
   });

@@ -956,5 +956,13 @@
   "player.fit": "टाइमलाइन फ़िट करें",
   "player.collapse": "टाइमलाइन छोटी करें",
   "player.expand": "टाइमलाइन बड़ी करें",
-  "player.timecode": "{current} / {total}"
+  "player.timecode": "{current} / {total}",
+  "command.editDuration": "अवधि बदलें",
+  "command.renameClip": "नाम बदलें",
+  "command.clipMute": "म्यूट",
+  "command.moreOptions": "और विकल्प",
+  "menu.audio": "ऑडियो",
+  "command.autoCut": "ऑटो कट",
+  "menu.autoCutPlanned": "योजना: वेव 10 (AI-008)",
+  "clip.renameLabel": "क्लिप का नाम"
 }

@@ -956,5 +956,13 @@
   "player.fit": "Fit the timeline",
   "player.collapse": "Collapse the timeline",
   "player.expand": "Expand the timeline",
-  "player.timecode": "{current} / {total}"
+  "player.timecode": "{current} / {total}",
+  "command.editDuration": "Edit duration",
+  "command.renameClip": "Rename",
+  "command.clipMute": "Mute",
+  "command.moreOptions": "More options",
+  "menu.audio": "Audio",
+  "command.autoCut": "Auto cut",
+  "menu.autoCutPlanned": "Planned: Wave 10 (AI-008)",
+  "clip.renameLabel": "Clip name"
 }

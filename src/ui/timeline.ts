@@ -1,3 +1,4 @@
+import { commands } from '../commands/registry';
 import { assetDrag } from './drag-state';
 import {
   frameToTime,
@@ -1788,6 +1789,20 @@ export function mountTimeline(
         case 'speed':
           showSpeedMenu();
           return;
+        // J14: the clip menu's own entries run registered commands (the
+        // shell holds their context); Audio opens its submenu.
+        case 'run-command':
+          menu.hidden = true;
+          root.dispatchEvent(
+            new CustomEvent('timeline-command', {
+              detail: target.dataset.command,
+              bubbles: true,
+            }),
+          );
+          return;
+        case 'audio-menu':
+          showAudioMenu();
+          return;
         case 'menu-back':
           showMainMenu();
           return;
@@ -2308,20 +2323,157 @@ export function mountTimeline(
     }
     menu.replaceChildren(...items);
   };
+  // J14: a Clipchamp section for the kind of clip first (each entry a
+  // registered command with its shortcut), then a divider and the earlier
+  // entries that are not already in it.
+  const commandContext = {
+    engine,
+    session,
+    togglePlayback: () => undefined,
+  };
+  const commandItem = (id: string, role = 'menuitem') => {
+    const command = commands.find((item) => item.id === id)!;
+    const item = menuItem(t(command.labelKey), 'run-command', role);
+    item.dataset.command = id;
+    if (command.shortcut) {
+      const keys = document.createElement('span');
+      keys.className = 'menu-shortcut';
+      keys.textContent = command.shortcut.split(' / ')[0]!;
+      item.append(keys);
+    }
+    if (!command.isEnabled(commandContext)) item.disabled = true;
+    return item;
+  };
+  const clipMenuKind = () => {
+    const kinds = new Set(
+      selectionRoots(session.source, session.selectedIds).map((layer) =>
+        findClipByLayer(session.source.composition, layer.id)
+          ? layer.type === 'video' ||
+            layer.type === 'image' ||
+            layer.type === 'audio'
+            ? layer.type
+            : 'element'
+          : 'none',
+      ),
+    );
+    return kinds.size === 1 && !kinds.has('none') ? [...kinds][0]! : null;
+  };
+  const kindSection = (kind: string): HTMLElement[] => {
+    const items: HTMLElement[] = [
+      'duplicate',
+      'copy',
+      'paste',
+      'delete',
+      'split',
+    ].map((id) => commandItem(id));
+    if (kind === 'video') {
+      const freeze = commandItem('freeze', 'menuitemcheckbox');
+      freeze.setAttribute(
+        'aria-checked',
+        String(
+          selectionRoots(session.source, session.selectedIds).every((layer) => {
+            const found = findClipByLayer(session.source.composition, layer.id);
+            return !!found && clipTimeEffects(found.clip).freezeFrame !== null;
+          }),
+        ),
+      );
+      items.push(freeze);
+    }
+    items.push(commandItem('edit-duration'), commandItem('rename-clip'));
+    if (kind === 'video' || kind === 'audio') {
+      const audio = menuItem(`${t('menu.audio')} ›`, 'audio-menu');
+      audio.setAttribute('aria-haspopup', 'menu');
+      items.push(audio);
+    }
+    if (kind === 'video') {
+      const cut = menuItem(t('command.autoCut'), 'auto-cut');
+      cut.setAttribute('aria-disabled', 'true');
+      cut.disabled = true;
+      cut.title = t('menu.autoCutPlanned');
+      items.push(cut);
+    }
+    items.push(commandItem('more-options'));
+    return items;
+  };
+  const showAudioMenu = () => {
+    const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
+    const mute = commandItem('clip-mute', 'menuitemcheckbox');
+    const clips = selectionRoots(session.source, session.selectedIds).flatMap(
+      (layer) => {
+        const found = findClipByLayer(session.source.composition, layer.id);
+        return found ? [found] : [];
+      },
+    );
+    mute.setAttribute(
+      'aria-checked',
+      String(clips.length > 0 && clips.every(({ track }) => track.muted)),
+    );
+    const items: HTMLElement[] = [back, mute];
+    if (clipMenuKind() === 'video') items.push(commandItem('detach-audio'));
+    menu.replaceChildren(...items);
+    back.focus();
+  };
+  // J14: the menu works from the keyboard: Up and Down move (skipping
+  // disabled entries), Home and End, Right opens Audio, Left goes back.
+  menu.addEventListener('keydown', (event) => {
+    const items = [
+      ...menu.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+    ];
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const focus = (at: number) =>
+      items[(at + items.length) % items.length]?.focus();
+    if (event.key === 'ArrowDown') focus(index + 1);
+    else if (event.key === 'ArrowUp') focus(index < 0 ? -1 : index - 1);
+    else if (event.key === 'Home') focus(0);
+    else if (event.key === 'End') focus(-1);
+    else if (event.key === 'Escape') {
+      menu.hidden = true;
+      scroll.focus();
+    } else if (
+      event.key === 'ArrowRight' &&
+      (document.activeElement as HTMLElement | null)?.dataset.action ===
+        'audio-menu'
+    )
+      showAudioMenu();
+    else if (
+      event.key === 'ArrowLeft' &&
+      menu.querySelector('[data-action="menu-back"]')
+    )
+      showMainMenu();
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
   const showMainMenu = () => {
+    const kind = clipMenuKind();
+    const section = kind ? kindSection(kind) : [];
+    const shown = new Set(
+      section.flatMap((item) =>
+        (item as HTMLElement).dataset.command
+          ? [(item as HTMLElement).dataset.command!]
+          : [],
+      ),
+    );
+    if (kind === 'video') shown.add('detach-audio');
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
       (layer) => {
         const found = findClipByLayer(session.source.composition, layer.id);
         return found ? [found.clip] : [];
       },
     );
+    const earlier = contextActions(
+      session.source,
+      session.selectedIds,
+      session.currentTime,
+      menuMarker,
+    ).filter((action) => !shown.has(action));
+    const divider = document.createElement('div');
+    divider.className = 'timeline-menu-divider';
+    divider.setAttribute('role', 'separator');
     menu.replaceChildren(
-      ...contextActions(
-        session.source,
-        session.selectedIds,
-        session.currentTime,
-        menuMarker,
-      ).map((action) => {
+      ...section,
+      ...(section.length && earlier.length ? [divider] : []),
+      ...earlier.map((action) => {
         if (action === 'speed')
           return menuItem(`${t('command.speed')} ›`, action);
         if (CLIP_ACTIONS.includes(action))
@@ -2415,6 +2567,8 @@ export function mountTimeline(
     }
     showMainMenu();
     menu.hidden = false;
+    // J14: the first entry takes focus once the menu is shown.
+    menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
     menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
   };
   // TL-055: scrolling within half a viewport of the end extends the timeline.
@@ -2505,6 +2659,59 @@ export function mountTimeline(
     playback,
     render,
     cancel,
+    /** J14: renames a layer's clip in place (Enter or leaving commits). */
+    renameClip(layerId: string) {
+      const clip = root.querySelector<HTMLElement>(
+        `.timeline-clip[data-action="clip"][data-id="${CSS.escape(layerId)}"]`,
+      );
+      const layer = locateLayer(
+        session.source.composition.layers,
+        layerId,
+      )?.layer;
+      if (!clip || !layer) return;
+      clip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const box = clip.getBoundingClientRect();
+      const input = document.createElement('input');
+      input.className = 'timeline-rename';
+      input.value = layer.name;
+      input.setAttribute('aria-label', t('clip.renameLabel'));
+      Object.assign(input.style, {
+        left: `${box.left}px`,
+        top: `${box.top}px`,
+        width: `${Math.max(120, box.width)}px`,
+        height: `${box.height}px`,
+      });
+      let done = false;
+      const finish = (commit: boolean) => {
+        if (done) return;
+        done = true;
+        const name = input.value.trim();
+        input.remove();
+        if (commit && name && name !== layer.name)
+          try {
+            engine.commands.transaction('Rename', [
+              {
+                type: 'SET_LAYER_NAME',
+                compositionId: session.source.composition.id,
+                layerId,
+                name,
+              },
+            ]);
+          } catch (error) {
+            report(error);
+          }
+        scroll.focus({ preventScroll: true });
+      };
+      input.addEventListener('keydown', (event) => {
+        event.stopPropagation();
+        if (event.key === 'Enter') finish(true);
+        else if (event.key === 'Escape') finish(false);
+      });
+      input.addEventListener('blur', () => finish(true));
+      document.body.append(input);
+      input.focus();
+      input.select();
+    },
     /** J9: where a media drop over the timeline lands, while one is over it. */
     assetTarget: () => assetTarget,
     clearAssetTarget: clearAssetDropTarget,

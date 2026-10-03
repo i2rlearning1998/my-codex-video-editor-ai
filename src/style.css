@@ -6164,3 +6164,29 @@ button.number-field-step:focus-visible {
 .editor-shell.timeline-collapsed .timeline > .panel-resizer {
   display: none;
 }
+
+/* J14: the timeline clip menu shows each entry's shortcut on the right; a
+   clip is renamed in a field laid over it. */
+.timeline-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.timeline-menu .menu-shortcut {
+  margin-inline-start: auto;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.timeline-menu button:disabled {
+  opacity: 0.45;
+}
+.timeline-rename {
+  position: fixed;
+  z-index: 40;
+  padding-inline: var(--space-2);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}

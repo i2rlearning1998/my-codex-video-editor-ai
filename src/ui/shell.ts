@@ -1042,6 +1042,28 @@ export function mountEditorShell(
     ...(actions.save ? { save: actions.save } : {}),
     togglePlayback: () =>
       element<HTMLButtonElement>('[data-action="play"]').click(),
+    // J14: the clip menu's Edit duration, Rename and More options.
+    editDuration: () =>
+      safely(() => {
+        const id = session.selectedId;
+        const clip = id
+          ? root.querySelector<HTMLElement>(
+              `#timeline-foundation .timeline-clip[data-action="clip"][data-id="${CSS.escape(id)}"]`,
+            )
+          : null;
+        openElementTiming(
+          clip ?? element('#timeline-foundation'),
+          engine,
+          session,
+          reportError,
+          (layerId) => timeline?.highlight(layerId),
+          'duration',
+        );
+      }),
+    renameClip: () => {
+      if (session.selectedId) timeline?.renameClip(session.selectedId);
+    },
+    moreOptions: () => workspace?.setOpen('right', true),
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -1764,6 +1786,15 @@ export function mountEditorShell(
   element('#timeline-foundation').addEventListener(
     'timeline-hint',
     timelineHint,
+  );
+  // J14: the timeline clip menu's entries run registered commands here.
+  const timelineCommand = (event: Event) =>
+    safely(() => {
+      runCommand((event as CustomEvent<string>).detail, commandContext);
+    });
+  element('#timeline-foundation').addEventListener(
+    'timeline-command',
+    timelineCommand,
   );
   // J13: Collapse leaves only the player bar under a large preview; Expand
   // brings the lanes back. UI state only (not saved, no history).
@@ -2623,6 +2654,10 @@ export function mountEditorShell(
         openTransition,
       );
       unsubscribeTransition();
+      element('#timeline-foundation').removeEventListener(
+        'timeline-command',
+        timelineCommand,
+      );
       element('#timeline-foundation').removeEventListener(
         'timeline-collapse',
         collapseTimeline,
