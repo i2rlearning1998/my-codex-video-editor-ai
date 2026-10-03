@@ -2651,6 +2651,7 @@ export function mountEditorShell(
     refresh,
     setSaveStatus,
     dispose: () => {
+      libraryBrowsers.dispose();
       if (disposed) return;
       disposed = true;
       disposeShortcuts();

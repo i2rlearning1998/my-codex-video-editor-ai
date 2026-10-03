@@ -287,6 +287,8 @@ export interface LibraryHosts {
 export interface LibraryBrowsers {
   /** Back to every panel's first page. */
   reset(): void;
+  /** Stops drawing (a late manifest is ignored). */
+  dispose(): void;
 }
 
 const later = (wave: number | string, id: string) =>
@@ -941,8 +943,13 @@ export function mountLibraryPanels(
       close: options.close,
     }),
   };
-  const refreshAll = () =>
+  // The manifest can arrive after the shell is gone (a closed page or a
+  // finished test); nothing is drawn then.
+  let disposed = false;
+  const refreshAll = () => {
+    if (disposed) return;
     Object.values(panels).forEach((panel) => panel.refresh());
+  };
   recent.onChange(refreshAll);
   myTemplates.onChange(() => panels.Templates.refresh());
   loadLibrary().then(
@@ -968,5 +975,8 @@ export function mountLibraryPanels(
   void report;
   return {
     reset: () => Object.values(panels).forEach((panel) => panel.reset()),
+    dispose: () => {
+      disposed = true;
+    },
   };
 }
