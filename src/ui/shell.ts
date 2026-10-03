@@ -166,6 +166,8 @@ export function mountEditorShell(
   const sectionKey = (name: string) => `panel.${name.toLowerCase()}`;
   const rightRailButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-section="${name}" aria-pressed="${pressed}" title="${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}</span></button>`;
+  // J8: the editor replaces index.html's loading skeleton.
+  root.removeAttribute('aria-busy');
   root.innerHTML = `
     <div class="editor-shell" data-editor-mode="editor">
       <header class="topbar">
@@ -1733,6 +1735,31 @@ export function mountEditorShell(
   const mediaInput = element<HTMLInputElement>('#import-media-input');
   element<HTMLButtonElement>('#import-media').onclick = () =>
     mediaInput.click();
+  // J8: the empty timeline's hint rows add text, or open Media (with the file
+  // picker) or Audio.
+  const openCategory = (category: string) => {
+    if (drawPalette?.open) drawPalette.close();
+    activeCategory = category;
+    sidePanels.close();
+    applyCategory(category);
+    workspace?.setOpen('left', true);
+    syncRails();
+  };
+  const timelineHint = (event: Event) =>
+    safely(() => {
+      const kind = (event as CustomEvent<string>).detail;
+      if (kind === 'text') {
+        libraryActions.insertTextBox();
+        editText(session.selectedId, { selectAll: true });
+      } else if (kind === 'video') {
+        openCategory('Media');
+        mediaInput.click();
+      } else openCategory('Audio');
+    });
+  element('#timeline-foundation').addEventListener(
+    'timeline-hint',
+    timelineHint,
+  );
   mediaInput.onchange = () => {
     const files = [...(mediaInput.files ?? [])];
     mediaInput.value = '';
@@ -2377,6 +2404,10 @@ export function mountEditorShell(
       canvas.removeEventListener('dragover', assetOver);
       canvas.removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener('drop', assetDrop);
+      element('#timeline-foundation').removeEventListener(
+        'timeline-hint',
+        timelineHint,
+      );
       unsubscribe();
       unsubscribePreview();
       disposeFonts();

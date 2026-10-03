@@ -905,5 +905,8 @@
   "resize.confirm": "इस दृश्य का कैनवास {width} × {height} (चयन का आकार) होगा, और हर तत्व साथ में खिसकेगा ताकि चयन पूरा कैनवास भरे। बाहर के तत्व दृश्य में रहेंगे। पूर्ववत करने से सब वापस आ जाएगा।",
   "resize.apply": "आकार बदलें",
   "altText.short": "ALT",
-  "field.slider": "{label} स्लाइडर"
+  "field.slider": "{label} स्लाइडर",
+  "timeline.hint.text": "+ टेक्स्ट जोड़ें",
+  "timeline.hint.video": "+ वीडियो जोड़ें",
+  "timeline.hint.audio": "+ ऑडियो जोड़ें"
 }

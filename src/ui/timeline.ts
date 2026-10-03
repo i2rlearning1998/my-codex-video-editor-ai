@@ -553,6 +553,8 @@ export function mountTimeline(
       asset.type === 'video'
         ? previews.strip(asset)
         : previews.thumbnail(asset);
+    // J8: a shimmer stands in while the filmstrip is decoded.
+    element.classList.toggle('clip-loading', preview.state === 'loading');
     if (preview.state !== 'ready') return;
     const strip = document.createElement('div');
     strip.className = 'clip-filmstrip';
@@ -598,6 +600,7 @@ export function mountTimeline(
       session.source.assets as unknown as readonly PreviewAsset[]
     ).find((item) => item.id === clip.assetId);
     const wave = asset ? waveforms.waveform(asset) : undefined;
+    if (wave?.state === 'loading') element.classList.add('clip-loading');
     if (wave?.state !== 'ready') return;
     const canvas = document.createElement('canvas');
     canvas.className = 'clip-waveform';
@@ -1136,10 +1139,29 @@ export function mountTimeline(
       line.append(header, track);
       content.append(line);
     }
-    if (!rows.length) {
-      const empty = document.createElement('p');
-      empty.textContent = 'No layers in this composition.';
-      content.append(empty);
+    // J8: an empty scene shows one hint row per lane group; each adds that
+    // kind of element (the shell runs it).
+    if (
+      !rows.length &&
+      !composition.tracks.some((track) => track.clips.length)
+    ) {
+      const hints = document.createElement('div');
+      hints.className = 'timeline-hints';
+      hints.style.marginLeft = `${headerWidth}px`;
+      for (const kind of ['text', 'video', 'audio'] as const) {
+        const hint = document.createElement('button');
+        hint.type = 'button';
+        hint.className = 'timeline-hint';
+        hint.dataset.hint = kind;
+        hint.innerHTML = `${iconSvg(kind === 'text' ? 'text' : kind === 'video' ? 'media' : 'audio', 15)}<span></span>`;
+        hint.querySelector('span')!.textContent = t(`timeline.hint.${kind}`);
+        hint.onclick = () =>
+          root.dispatchEvent(
+            new CustomEvent('timeline-hint', { detail: kind, bubbles: true }),
+          );
+        hints.append(hint);
+      }
+      content.append(hints);
     }
     const playhead = button(
       iconSvg('chevronDown', 12),

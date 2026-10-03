@@ -31,12 +31,80 @@
         background: #f4f5f8;
         color: #14161d;
       }
+      /* J8: a shimmer skeleton of the editor until the app replaces it. */
+      .boot-skeleton {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        grid-template-rows: 48px 1fr 240px;
+        grid-template-columns: 64px 1fr;
+        gap: 8px;
+        padding: 8px;
+        --shimmer-a: #1c1e26;
+        --shimmer-b: #272a35;
+      }
+      html[data-theme='light'] .boot-skeleton {
+        --shimmer-a: #e6e8ee;
+        --shimmer-b: #f3f4f8;
+      }
+      .boot-skeleton > *,
+      .boot-skeleton .boot-row {
+        border-radius: 8px;
+        background: linear-gradient(
+          90deg,
+          var(--shimmer-a) 25%,
+          var(--shimmer-b) 37%,
+          var(--shimmer-a) 63%
+        );
+        background-size: 400% 100%;
+        animation: boot-shimmer 1.4s ease infinite;
+      }
+      .boot-skeleton .boot-bar {
+        grid-column: 1 / -1;
+      }
+      .boot-skeleton .boot-timeline {
+        grid-column: 1 / -1;
+        display: grid;
+        align-content: start;
+        gap: 8px;
+        padding: 40px 12px 12px 240px;
+        background: none;
+        animation: none;
+      }
+      .boot-skeleton .boot-row {
+        height: 30px;
+      }
+      @keyframes boot-shimmer {
+        from {
+          background-position: 100% 50%;
+        }
+        to {
+          background-position: 0 50%;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .boot-skeleton > *,
+        .boot-skeleton .boot-row {
+          animation: none;
+        }
+      }
     </style>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>AI-Native Video Editor · Composition Studio</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app" aria-busy="true">
+      <div class="boot-skeleton" aria-hidden="true">
+        <div class="boot-bar"></div>
+        <div></div>
+        <div></div>
+        <div class="boot-timeline">
+          <div class="boot-row"></div>
+          <div class="boot-row"></div>
+          <div class="boot-row"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

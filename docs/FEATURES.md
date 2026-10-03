@@ -416,6 +416,8 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-061 | P0 | W2 | Verified | Lanes come in three groups, top to bottom: text and shapes, visuals (video, images, backgrounds), audio, with a line between groups; at least three lanes when every kind is present, new lanes created on demand at the top of their group; lane order is the canvas stacking order (top lane in front); audio has a single lane and a second sound goes to the nearest free time (J7) |
 | TL-062 | P0 | W2 | Verified | A clip dragged over a lane of another group shows a not-allowed cursor and a hatched lane, and the drop changes nothing (it snaps back); a lane's up and down buttons stay within its group (J7) |
 | TL-063 | P0 | W2 | Verified | Bring forward, Send backward, Bring to front and Send to back move a top-level element between the lanes of its own group (a new lane when the next one is busy at its time; a lane emptied by the move goes), one undo step each; group children still move among their siblings (J7) |
+| TL-064 | P1 | W2 | Verified | A shimmer skeleton of the editor (bar, panels, three timeline rows) shows from the first paint until the app has loaded, then goes (J8) |
+| TL-065 | P0 | W2 | Verified | An empty scene's timeline shows three hint rows, + Add text, + Add video and + Add audio: text adds a text box ready to type, video opens Media with the file picker, audio opens the Audio panel; they go once the scene has a clip (J8) |
 
 ## PB: Playback and transport
 
