@@ -163,8 +163,11 @@ test('[TXT-023] bold, italic, colour and size apply to the selected characters o
   await page.locator('#color-picker-hex').fill('#cc2200');
   await page.locator('#color-picker-hex').press('Enter');
   await page.keyboard.press('Escape');
-  // A size for the first word.
+  // A size for the first word. The toolbar re-renders on the next frame to
+  // mirror the new selection (bold again); wait for that, or the typing below
+  // can land in a field that the render then replaces.
   await selectRange(page, 0, first);
+  await expect(bold).toHaveAttribute('aria-pressed', 'true');
   const size = page.locator('#toolbar-size');
   await size.fill('60');
   await size.press('Enter');
