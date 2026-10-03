@@ -421,6 +421,8 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-066 | P0 | W2 | Verified | Media dragged from the Media panel shows where it lands: over the canvas only, a box at the picture's size centred on the pointer; over a lane, a ghost clip with its start time; at a lane's edge, a purple separator with + whose drop makes a new lane there (J9) |
 | TL-067 | P0 | W2 | Verified | Media dragged over a lane of another group is refused (not-allowed, hatched lane, nothing on drop); over a clip of the same kind the drop offers Replace clip or Add as a new clip, and Replace is one undo step (J9) |
 | TL-068 | P0 | W2 | Verified | A timeline clip dragged and released outside the timeline stays where it was (it dims while outside), and Escape during a clip drag cancels it; neither adds history (J9) |
+| TL-069 | P0 | W2 | Verified | Clips are rounded and coloured by kind (text, shape, group, video, image, audio) with a kind icon before the name, a tooltip with start and length, an outline on hover; the selected clip has a purple outline, white trim handles and its length in a pill on the ruler (J10) |
+| TL-070 | P0 | W2 | Verified | A marquee from empty time on the timeline selects the clips it touches across lanes; with the timeline focused Ctrl+G groups them and Ctrl+Shift+G ungroups, one undo step each (J10) |
 
 ## PB: Playback and transport
 

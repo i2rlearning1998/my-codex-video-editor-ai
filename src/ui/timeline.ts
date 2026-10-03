@@ -79,6 +79,20 @@ const CLIP_ACTIONS: readonly EditAction[] = [
 ];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
 
+/** J10: the kind of element a clip holds, for its colour and icon. */
+type ClipKind = 'text' | 'shape' | 'group' | 'video' | 'image' | 'audio';
+const CLIP_ICONS: Record<ClipKind, string> = {
+  text: 'text',
+  shape: 'elements',
+  group: 'group',
+  video: 'media',
+  image: 'image',
+  audio: 'audio',
+};
+const clipKind = (layer: { readonly type: string }): ClipKind =>
+  (['text', 'shape', 'group', 'video', 'image', 'audio'] as const).find(
+    (kind) => kind === layer.type,
+  ) ?? 'shape';
 /** J9: where media dragged over the timeline would land. */
 export type AssetTarget =
   | { readonly mode: 'lane'; readonly trackId: string; readonly time: number }
@@ -890,6 +904,21 @@ export function mountTimeline(
       '--track-height',
       `${(trackRows.length + rows.length) * 34}px`,
     );
+    // J10: the selected clip's span and length on the ruler.
+    const picked =
+      session.selectedIds.length === 1
+        ? findClipByLayer(composition, session.selectedIds[0]!)
+        : undefined;
+    if (picked) {
+      const pill = document.createElement('span');
+      pill.className = 'ruler-duration';
+      pill.style.left = `${timeToPixel(picked.clip.startTime, zoom)}px`;
+      pill.style.width = `${Math.max(24, timeToPixel(picked.clip.duration, zoom))}px`;
+      pill.textContent = t('timeline.durationPill', {
+        time: formatTimelineTime(Math.round(picked.clip.duration * 100) / 100),
+      });
+      ruler.append(pill);
+    }
     rulerBar.append(ruler);
     content.append(rulerBar);
     const trackMoves = controller.trackMoves;
@@ -1016,6 +1045,14 @@ export function mountTimeline(
         clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}${pushedTo === undefined ? '' : ' pushed'}${row.track.locked ? ' locked' : ''}`;
         clip.dataset.clipId = entry.clip.id;
         clip.dataset.trackId = row.track.id;
+        // J10: a colour and an icon per kind of element.
+        const kind = clipKind(entry.layer);
+        clip.dataset.kind = kind;
+        const icon = document.createElement('span');
+        icon.className = 'clip-kind-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = iconSvg(CLIP_ICONS[kind], 12);
+        clip.prepend(icon);
         if (highlighted === entry.layer.id)
           clip.classList.add('timing-highlight');
         clip.style.left = `${preview ? timeToPixel(preview.startTime, zoom) : entry.left}px`;

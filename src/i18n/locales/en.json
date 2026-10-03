@@ -912,5 +912,6 @@
   "timeline.ghostTime": "{time} s",
   "drop.replace": "Replace clip",
   "drop.addClip": "Add as a new clip",
-  "drop.title": "Media dropped on a clip"
+  "drop.title": "Media dropped on a clip",
+  "timeline.durationPill": "{time} s"
 }

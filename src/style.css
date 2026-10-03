@@ -5913,3 +5913,64 @@ button.number-field-step:focus-visible {
 #timeline-foundation.drag-outside .timeline-clip[aria-pressed='true'] {
   opacity: 0.5;
 }
+/* J10: clips are rounded, coloured by kind, with an icon and the name; a
+   hover outline; selected, a purple outline and white trim handles; the
+   selected clip's length shows as a pill on the ruler. */
+.timeline-clip.nle-clip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-2);
+  text-indent: 0;
+  border-radius: var(--radius-md);
+  background: var(--clip-shape);
+  color: var(--clip-label);
+  box-shadow: none;
+}
+.nle-clip[data-kind='text'] {
+  background: var(--clip-text);
+}
+.nle-clip[data-kind='group'] {
+  background: var(--clip-group);
+}
+.nle-clip[data-kind='video'] {
+  background: var(--clip-video);
+}
+.nle-clip[data-kind='image'] {
+  background: var(--clip-image);
+}
+.nle-clip[data-kind='audio'] {
+  background: var(--clip-audio);
+}
+.clip-kind-icon {
+  display: inline-flex;
+  flex: none;
+}
+.timeline-clip.nle-clip:hover {
+  outline: 1px solid var(--clip-label);
+  outline-offset: -1px;
+}
+.timeline-clip.nle-clip[aria-pressed='true'] {
+  color: var(--clip-label);
+  outline: 2px solid var(--color-accent);
+  outline-offset: 0;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+.timeline-clip.nle-clip[aria-pressed='true'] .timeline-trim::after {
+  background: var(--text-on-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.timeline-ruler .ruler-duration {
+  position: absolute;
+  top: auto;
+  inset-block-end: 2px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  block-size: 16px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  font-size: 11px;
+  pointer-events: none;
+}

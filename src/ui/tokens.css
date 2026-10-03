@@ -25,6 +25,14 @@
   --text-secondary: #a6abba;
   --text-tertiary: #858a9b;
   --text-on-accent: #ffffff;
+  /* J10: timeline clips, one colour per kind (white text). */
+  --clip-text: #b4542d;
+  --clip-shape: #2f7f7a;
+  --clip-group: #55607a;
+  --clip-video: #2f5fa8;
+  --clip-image: #3f7d3a;
+  --clip-audio: #2a6f8f;
+  --clip-label: #ffffff;
   /* Accent and status */
   --accent: #7c5cff;
   --accent-hover: #8f74ff;
@@ -77,6 +85,14 @@
   --text-secondary: #515668;
   --text-tertiary: #6b7085;
   --text-on-accent: #ffffff;
+  /* J10: timeline clips, one colour per kind (dark text). */
+  --clip-text: #f6c9b4;
+  --clip-shape: #bfe6e2;
+  --clip-group: #d7dbe6;
+  --clip-video: #c7d8f5;
+  --clip-image: #cfe8c9;
+  --clip-audio: #c3e0ee;
+  --clip-label: #14161d;
   --accent: #6c47ff;
   --accent-hover: #5b37f0;
   --accent-pressed: #4f2ce0;
