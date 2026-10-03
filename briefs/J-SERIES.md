@@ -8,7 +8,7 @@ Tick an item only when its step is committed and `npm run verify` is green. One 
 
 - [x] Audit report (reports/J-AUDIT.md)
 - [x] J1 Scene isolation
-- [ ] J2 Gradient fill and keyboard undo
+- [x] J2 Gradient fill and keyboard undo
 - [ ] J3 NumberField everywhere
 - [ ] J4 Real text editing
 - [ ] J5 Weights and vertical align

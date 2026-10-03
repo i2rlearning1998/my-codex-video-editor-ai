@@ -5,6 +5,55 @@ export function isTyping(element: Element | null): boolean {
     'input,textarea,select,[contenteditable]:not([contenteditable="false"])',
   );
 }
+/**
+ * J2: text fields with typing that is not committed yet. A field becomes
+ * dirty on input and clean again when its value is committed (Enter, change
+ * or leaving it), so Ctrl+Z inside a dirty field undoes the typing (the
+ * browser's own undo) and anywhere else undoes the last project edit.
+ */
+const dirtyFields = new WeakSet<Element>();
+let trackingFields = false;
+function trackFields(): void {
+  if (trackingFields) return;
+  trackingFields = true;
+  document.addEventListener(
+    'input',
+    (event) => {
+      if (event.target instanceof Element) dirtyFields.add(event.target);
+    },
+    true,
+  );
+  for (const type of ['change', 'focusout'])
+    document.addEventListener(
+      type,
+      (event) => {
+        if (event.target instanceof Element) dirtyFields.delete(event.target);
+      },
+      true,
+    );
+  // Enter commits a field; its own handler runs first (bubbling phase).
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && event.target instanceof Element)
+      dirtyFields.delete(event.target);
+  });
+}
+/** Whether a key goes to text the user is still typing. */
+export function hasUncommittedTyping(element: Element | null): boolean {
+  if (!element) return false;
+  // Rich text editing (on-canvas text) always keeps its own undo.
+  if (element.closest('[contenteditable]:not([contenteditable="false"])'))
+    return true;
+  const field = element.closest('input,textarea');
+  return !!field && dirtyFields.has(field);
+}
+/** Ctrl or Cmd with Z, Shift+Z or Y: the history chords. */
+function historyChord(event: KeyboardEvent): 'undo' | 'redo' | null {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
+  const key = event.key.toLowerCase();
+  if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
+  if (key === 'y' && !event.shiftKey) return 'redo';
+  return null;
+}
 function matches(event: KeyboardEvent, shortcut: string): boolean {
   return shortcut.split(' / ').some((alternative) => {
     const pieces = alternative.toLowerCase().split('+');
@@ -42,8 +91,29 @@ export function bindShortcuts(
     report: (error: unknown) => void;
   },
 ): () => void {
+  trackFields();
   const keydown = (event: KeyboardEvent) => {
     if (event.isComposing || event.defaultPrevented) return;
+    // J2: undo and redo work right after a panel edit, wherever focus is
+    // left (a committed field, a picker or a popover), but never take Ctrl+Z
+    // from text that is still being typed.
+    const chord = historyChord(event);
+    if (
+      chord &&
+      !hasUncommittedTyping(document.activeElement) &&
+      !hasUncommittedTyping(
+        event.target instanceof Element ? event.target : null,
+      )
+    ) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      try {
+        if (!event.repeat) runCommand(chord, context);
+      } catch (error) {
+        options.report(error);
+      }
+      return;
+    }
     // G1: menus, listboxes and popovers handle their own keys (arrows,
     // Enter, Escape) while they have focus.
     if (insideOpenMenu(event.target)) return;

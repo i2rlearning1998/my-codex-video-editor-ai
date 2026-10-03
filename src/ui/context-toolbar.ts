@@ -59,7 +59,7 @@ import { sceneLengthCommands } from './scene-length';
 import { documentColors } from './palette';
 import { CANVAS_LIMITS, CANVAS_PRESETS, ratioLabel } from './canvas-size';
 import { pictureOf } from '../render/picture';
-import { formatGradient, type Gradient } from '../render/paint';
+import { formatGradient, parseGradient, type Gradient } from '../render/paint';
 import { canCopyStyle, copyStyle } from './style-clipboard';
 import { showToast } from './components/toast';
 import { describeSelection, selectionRoots } from './selection-context';
@@ -1512,22 +1512,65 @@ export function mountContextToolbar(
       const style = shapeOf(current);
       if (!style || !style.fill) return null;
       const gradient = style.gradient ?? null;
+      /**
+       * J2: Solid, Linear and Radial share one stop list. Solid shows the
+       * first stop and keeps the list in `fillGradientSaved`, so switching
+       * away and back restores the stops exactly. `fill` always holds the
+       * first stop's colour.
+       */
+      const saved = () => {
+        const property = (selected() ?? current).properties.fillGradientSaved;
+        return parseGradient(
+          property?.type === 'string' ? property.value : undefined,
+        );
+      };
       const commit = (next: Gradient | null) =>
-        safely(() =>
+        safely(() => {
+          const target = selected() ?? current;
+          const id = session.source.composition.id;
+          const kept = next ?? gradient ?? saved();
+          const first = (next ?? gradient)?.stops[0]?.color;
           run(next ? 'Set gradient' : 'Remove gradient', [
             setProperty(
-              session.source.composition.id,
-              selected() ?? current,
+              id,
+              target,
               'fillGradient',
               withValue(
-                selected() ?? current,
+                target,
                 'fillGradient',
                 next ? formatGradient(next) : '',
                 'string',
               ),
             ),
-          ]),
-        );
+            kept
+              ? setProperty(
+                  id,
+                  target,
+                  'fillGradientSaved',
+                  withValue(
+                    target,
+                    'fillGradientSaved',
+                    formatGradient(kept),
+                    'string',
+                  ),
+                )
+              : null,
+            first && first !== style.fill?.slice(0, 7)
+              ? setProperty(
+                  id,
+                  target,
+                  'fill',
+                  withValue(
+                    target,
+                    'fill',
+                    first,
+                    'color',
+                    session.currentTime,
+                  ),
+                )
+              : null,
+          ]);
+        });
       const wrap = document.createElement('section');
       wrap.className = 'gradient-editor';
       wrap.dataset.control = 'gradient';
@@ -1547,19 +1590,25 @@ export function mountContextToolbar(
           String((gradient?.type ?? 'solid') === type),
         );
         item.textContent = t(`gradient.${type}`);
-        item.onclick = () =>
-          commit(
-            type === 'solid'
-              ? null
-              : {
-                  type,
-                  angle: gradient?.angle ?? 0,
-                  stops: gradient?.stops ?? [
-                    { offset: 0, color: style.fill! },
-                    { offset: 1, color: '#ffffff' },
-                  ],
-                },
-          );
+        item.onclick = () => {
+          if (type === 'solid') {
+            if (gradient) commit(null);
+            return;
+          }
+          // From Solid: the remembered stops, with the solid colour first
+          // when it was changed meanwhile.
+          const fill = style.fill!.slice(0, 7);
+          const remembered = gradient ?? saved();
+          const stops = remembered?.stops.map((stop, index) =>
+            index === 0 && !gradient && stop.color !== fill
+              ? { ...stop, color: fill }
+              : stop,
+          ) ?? [
+            { offset: 0, color: fill },
+            { offset: 1, color: '#ffffff' },
+          ];
+          commit({ type, angle: remembered?.angle ?? 0, stops });
+        };
         types.append(item);
       }
       wrap.append(heading, types);

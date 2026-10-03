@@ -178,6 +178,7 @@ Single registry of user commands. Shortcuts, menus, palette and context menus al
 | KEY-014 | P1 | W1 | Todo | Cmd equivalents on macOS |
 | KEY-015 | P1 | W1 | Todo | Tool shortcuts: V select, T text, R rectangle, E ellipse |
 | KEY-016 | P1 | W1 | Todo | Bring forward and send backward shortcuts (Ctrl+] and Ctrl+[) |
+| KEY-017 | P0 | W2 | Verified | Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y undo and redo right after a panel edit (a committed field, a colour picker, a panel button) with no click elsewhere; Ctrl+Z inside a field still being typed in stays with the field, and other shortcuts never fire while typing (J2 LCR) |
 
 ## PRJ: Projects, scenes and composition settings
 
@@ -551,6 +552,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-026 | P0 | W5 | Verified | Elements panel: Recently used, Browse categories (Shapes and Graphics live; Photos, Videos, 3D, Animations, Audio, Tables, Charts, Frames and Grids planned with their wave), a Shapes page (Lines with solid, dashed, dotted, arrow and double arrow; Basic shapes; Polygons; Stars; Arrows; Flowchart shapes) and a Graphics page (Featured, Gradients, Backgrounds) |
 | SHP-027 | P0 | W2 | Verified | Draw palette at the canvas edge: Select; Draw with the brush flyout; Shape and Line drawn by dragging; Sticky note and Text by click (Text by drag for its width); Signature; Table planned; the left panel collapses while it is open and comes back when it closes; each placement is one undo step |
 | SHP-028 | P1 | W5 | Verified | Flowchart shapes in Elements › Shapes: terminator, process, decision, data, document, predefined process, connector, manual input, preparation, manual operation, delay, merge, off-page connector and display |
+| SHP-029 | P0 | W2 | Verified | A shape's Solid, Linear and Radial fills share one stop list: Solid shows the first stop, and switching away and back restores the stops exactly (J2 LCR) |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 
