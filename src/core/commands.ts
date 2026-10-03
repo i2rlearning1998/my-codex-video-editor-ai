@@ -15,6 +15,12 @@ import {
   type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
+import { syncLanes } from './lanes';
+import {
+  maxTransition,
+  previousTouching,
+  transitionSchema,
+} from './transitions';
 import { clipAnimation, clipAnimationSlots } from './clip-animation';
 import {
   childrenOf,
@@ -43,12 +49,39 @@ export const commandSchema = z.discriminatedUnion('type', [
       name: nameSchema,
     })
     .strict(),
-  // G3: the scene bar's background. Schema 5 has one background for the
-  // whole project, so every scene shares it.
+  // G3, J1: the project's default background, used by new scenes. Each
+  // scene's own background is SET_COMPOSITION_BACKGROUND (schema 6).
   z
     .object({
       type: z.literal('SET_PROJECT_BACKGROUND'),
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    })
+    .strict(),
+  // J1: one scene's background colour; other scenes are not changed.
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION_BACKGROUND'),
+      ...location,
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    })
+    .strict(),
+  // J12: the transition into a clip from the clip that touches it on the
+  // same lane (null removes it). Stored in the clip's transitionMetadata.
+  z
+    .object({
+      type: z.literal('SET_CLIP_TRANSITION'),
+      ...location,
+      clipId: idSchema,
+      transition: transitionSchema.nullable(),
+    })
+    .strict(),
+  // J14: a layer's name, and its clips' names, in one step.
+  z
+    .object({
+      type: z.literal('SET_LAYER_NAME'),
+      ...location,
+      layerId: idSchema,
+      name: nameSchema,
     })
     .strict(),
   // G5: a composition's (scene's) name. Its duration is derived from its
@@ -60,8 +93,8 @@ export const commandSchema = z.discriminatedUnion('type', [
       name: nameSchema,
     })
     .strict(),
-  // H3: a scene's canvas size (16 to 7680 px each side). Moving its layers
-  // so they stay centred is the caller's job, in the same transaction.
+  // H3, J1: one scene's canvas size (16 to 7680 px each side). Layers are
+  // never moved by a size change.
   z
     .object({
       type: z.literal('SET_COMPOSITION_SIZE'),
@@ -329,6 +362,10 @@ export function applyCommand(project: Project, command: Command): void {
     case 'SET_PROJECT_BACKGROUND':
       project.settings.backgroundColor = command.color;
       return;
+    case 'SET_COMPOSITION_BACKGROUND':
+      compositionById(project, command.compositionId).backgroundColor =
+        command.color;
+      return;
     case 'SET_COMPOSITION': {
       compositionById(project, command.compositionId).name = command.name;
       return;
@@ -397,6 +434,7 @@ export function applyCommand(project: Project, command: Command): void {
     case 'CREATE_TRACK':
       composition.tracks.push(command.track);
       composition.tracks.sort((a, b) => a.order - b.order);
+      syncLanes(composition);
       return;
     case 'DELETE_TRACK': {
       const index = composition.tracks.findIndex(
@@ -407,6 +445,7 @@ export function applyCommand(project: Project, command: Command): void {
         throw new Error('Delete clips before deleting their track');
       composition.tracks.splice(index, 1);
       composition.tracks.forEach((track, order) => (track.order = order));
+      syncLanes(composition);
       return;
     }
     case 'SET_TRACK_STATE': {
@@ -430,6 +469,8 @@ export function applyCommand(project: Project, command: Command): void {
         track!,
       );
       composition.tracks.forEach((item, order) => (item.order = order));
+      // J7: a lane stays in its group, and the layers follow the lanes.
+      syncLanes(composition);
       return;
     }
     case 'CREATE_CLIP': {
@@ -440,6 +481,7 @@ export function applyCommand(project: Project, command: Command): void {
         0,
         command.clip,
       );
+      syncLanes(composition);
       return;
     }
     case 'DELETE_CLIP': {
@@ -489,6 +531,22 @@ export function applyCommand(project: Project, command: Command): void {
         0,
         source.clip,
       );
+      syncLanes(composition);
+      return;
+    }
+    case 'SET_CLIP_TRANSITION': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      if (!command.transition) {
+        delete clip.transitionMetadata.in;
+        return;
+      }
+      const before = previousTouching(track.clips, clip);
+      if (!before)
+        throw new Error('A transition needs a clip touching this one');
+      if (command.transition.duration > maxTransition(before, clip) + 1e-9)
+        throw new Error('The transition is longer than the clips allow');
+      clip.transitionMetadata.in = { ...command.transition };
       return;
     }
     case 'SET_CLIP_ENABLED': {
@@ -683,6 +741,14 @@ export function applyCommand(project: Project, command: Command): void {
       for (const track of composition.tracks)
         for (const clip of track.clips)
           if (clip.layerId === layer.id) clip.assetId = asset.id;
+      return;
+    }
+    case 'SET_LAYER_NAME': {
+      const { layer } = requireLayer(composition, command.layerId);
+      layer.name = command.name;
+      for (const track of composition.tracks)
+        for (const clip of track.clips)
+          if (clip.layerId === layer.id) clip.name = command.name;
       return;
     }
     case 'SET_PROPERTY': {

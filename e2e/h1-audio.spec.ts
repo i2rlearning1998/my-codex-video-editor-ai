@@ -147,7 +147,12 @@ test('[AUD-018] an audio file dropped on the canvas becomes a clip on an audio t
       targetPosition: { x: 200, y: 150 },
     });
   const project = (await hook(page)).project;
-  const layer = project.compositions[0]!.layers.at(-1)!;
+  // J7: the new sound is at the back of the stacking (its lane is the
+  // bottom one), so it is found by its file, not its place.
+  const tone = project.assets.find((asset) => asset.name === TONE)!;
+  const layer = project.compositions[0]!.layers.find(
+    (item) => item.assetId === tone.id && item.id !== 'layer-tone',
+  )!;
   expect(layer.type).toBe('audio');
   const track = project.compositions[0]!.tracks.find((item) =>
     item.clips.some((clip) => clip.layerId === layer.id),

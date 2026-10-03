@@ -18,16 +18,24 @@ import {
 } from '../core';
 
 import {
+  fallbackTextMeasure,
   layoutParagraphs,
   layoutText,
   type TextLayout,
   type TextMeasurer,
 } from './text-layout';
+import {
+  layoutRich,
+  parseListStyle,
+  parseRuns,
+  type RichLayout,
+} from './rich-text';
 import { textStyleOf, type TextStyle } from './text-style';
 import { shapeOf, type ShapeStyle } from './shapes';
 import type { TransformCapabilities } from './transform-capabilities';
 import { drawingOf, type DrawingPath } from './drawing';
 import { applyPresets } from './presets';
+import { applyTransitions } from './transitions';
 
 export interface LayerPreview extends TransformPreview {
   readonly textBox?: { readonly width: number; readonly height: number };
@@ -106,6 +114,8 @@ export interface RenderSource {
    * `source` and the kept part at `frame`, both in the layer's local units.
    */
   readonly cropView?: CropView;
+  /** J4: the text layer being edited on the canvas; its text is not drawn. */
+  readonly editingTextId?: string;
 }
 export interface LocalRect {
   readonly x: number;
@@ -141,6 +151,10 @@ export interface RenderItem {
   /** W2-F5: a text layer's style and its laid-out lines. */
   readonly textStyle?: TextStyle;
   readonly textLayout?: TextLayout;
+  /** J4: rich text (per-range styles or a list) replaces the plain layout. */
+  readonly richLayout?: RichLayout;
+  /** J4: the text is being edited on the canvas (an editor draws it). */
+  readonly editing?: boolean;
   /** W5-D: a shape layer's kind, fill, stroke and corner radius. */
   readonly shape?: ShapeStyle;
   readonly kind: 'rectangle' | 'text' | 'placeholder' | 'path';
@@ -155,6 +169,8 @@ export interface RenderItem {
   readonly cropView?: CropView;
   /** W5-C Wipe: the visible fraction of the box, from the left. */
   readonly reveal?: number;
+  /** J12: the side the reveal starts from (left unless set). */
+  readonly revealFrom?: 'left' | 'right';
 }
 const defaults = {
   image: [320, 180],
@@ -236,9 +252,9 @@ export function deriveRenderItems(input: RenderSource): {
     ? {
         ...input,
         animate: false,
-        composition: applyPresets(
-          input.composition,
-          input.assets,
+        // J12: then the transitions in play across cuts.
+        composition: applyTransitions(
+          applyPresets(input.composition, input.assets, input.currentTime ?? 0),
           input.currentTime ?? 0,
         ),
       }
@@ -310,12 +326,19 @@ export function deriveRenderItems(input: RenderSource): {
                 textStyleOf(layer),
               ))
             : undefined;
+        // J4: per-range styles or a list lay out as rich text.
+        const richLayout =
+          layer.type === 'text'
+            ? richTextLayout(layer, size, source)
+            : undefined;
         // The stored height is a static field the user (or a drag) set; wrapped
         // text can need more lines than that at the current width/font size, so
         // never clip content the layout itself says it needs.
-        const effectiveSize = wrapped
-          ? { ...size, height: Math.max(size.height, wrapped.height) }
-          : size;
+        const needed = richLayout?.height ?? wrapped?.height;
+        const effectiveSize =
+          wrapped && needed !== undefined
+            ? { ...size, height: Math.max(size.height, needed) }
+            : size;
         const drawing = drawingOf(layer);
         if (drawing === 'invalid') {
           warnings.push(
@@ -345,6 +368,8 @@ export function deriveRenderItems(input: RenderSource): {
             ...(textLayout
               ? { textStyle: textStyleOf(layer), textLayout }
               : {}),
+            ...(richLayout ? { richLayout } : {}),
+            ...(source.editingTextId === layer.id ? { editing: true } : {}),
             ...(layer.type === 'shape' && !drawing
               ? { shape: shapeOf(layer)! }
               : {}),
@@ -361,6 +386,11 @@ export function deriveRenderItems(input: RenderSource): {
                     1,
                     Math.max(0, numericProperty(layer, 'presetReveal')!),
                   ),
+                  // J12: a wipe to the left reveals from the right edge.
+                  ...(layer.properties.presetRevealFrom?.type === 'string' &&
+                  layer.properties.presetRevealFrom.value === 'right'
+                    ? { revealFrom: 'right' as const }
+                    : {}),
                 }
               : {}),
             id: layer.id,
@@ -451,6 +481,42 @@ export function hitTest(source: RenderSource, point: Point2): string | null {
     }
   }
   return null;
+}
+
+/** J4: a text layer's rich layout, or undefined when it is plain text. */
+export function richTextLayout(
+  layer: SceneLayer,
+  size: { readonly width: number },
+  source: Pick<RenderSource, 'measureText'>,
+): RichLayout | undefined {
+  const value = (key: string) => {
+    const property = layer.properties[key];
+    return property?.type === 'string' ? property.value : undefined;
+  };
+  const text = value('text') ?? layer.name;
+  const runs = parseRuns(value('textRuns'), text.length);
+  const list = parseListStyle(value('listStyle'));
+  if (!runs.length && list === 'none') return undefined;
+  const fill = layer.properties.fill;
+  const wrap =
+    layer.properties.textWrap?.type === 'boolean' &&
+    layer.properties.textWrap.value;
+  try {
+    return layoutRich(
+      text,
+      runs,
+      list,
+      {
+        style: textStyleOf(layer),
+        size: Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
+        color: fill?.type === 'color' ? fill.value.slice(0, 7) : colors.text,
+      },
+      wrap ? size.width : null,
+      source.measureText ?? fallbackTextMeasure,
+    );
+  } catch {
+    return undefined;
+  }
 }
 
 export function textLayoutForWidth(

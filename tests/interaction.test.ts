@@ -441,7 +441,8 @@ describe('inspector shares the canonical command path', () => {
     // the Position and size section, above Timing and Details).
     expect(
       s.root.querySelectorAll(
-        '#inspector-content [data-group="inspector.position"] input',
+        // J3: bounded fields also show a slider (a range input) beside them.
+        '#inspector-content [data-group="inspector.position"] input:not([type="range"])',
       ),
     ).toHaveLength(10);
     s.edit(field, value);
@@ -872,7 +873,7 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     const json = JSON.parse(JSON.stringify(s.engine.state));
     const loaded = new EditorEngine(json);
     const layer = loaded.state.compositions[0]!.layers[0]!;
-    expect(json.schemaVersion).toBe(5);
+    expect(json.schemaVersion).toBe(6);
     expect(layer.properties.width!.value).toBe(60);
     expect(
       JSON.parse(JSON.stringify(layer.properties.width)).constraints,

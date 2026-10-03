@@ -122,9 +122,13 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
     'copy-style',
   ])
     await expect(control(page, id)).toBeEnabled();
-  // List is planned (TXT-024, Wave 3); Effects opens a panel whose effects
+  // List is live since J4 (TXT-024); Effects opens a panel whose effects
   // name their wave.
-  await expect(control(page, 'list')).toHaveAttribute('aria-disabled', 'true');
+  await expect(control(page, 'list')).toBeEnabled();
+  await expect(control(page, 'list')).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
   await control(page, 'effects').click();
   await expect(
     page.locator('[data-tool-panel="effects"] [aria-disabled="true"]').first(),

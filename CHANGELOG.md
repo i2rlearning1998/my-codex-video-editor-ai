@@ -1,6 +1,19 @@
 # Changelog
 
-> Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline includes schema 4, timeline editing, and playback.
+> Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 6 (J-series).
+
+## J-series (J1 to J15) — 2026-10-03
+
+- **Scenes (J1):** each scene has its own background (schema 6) and canvas size; a size change never moves layers; Undo opens the scene it changed.
+- **Fixes (J2):** gradient colours survive Solid, Linear and Radial; Ctrl+Z works right after a panel edit.
+- **Number fields (J3):** arrows, wheel and an inline slider on every number field, with a live canvas preview while sliding.
+- **Text (J4, J5):** edit text on the canvas with a caret, styles on part of the text, lists, IME and copy and paste; bundled open-licence fonts (Inter, Poppins, Noto Sans Devanagari) with weights 100 to 900; exact vertical alignment.
+- **Menus (J6):** Show element timing popover, saved alternative text with an ALT badge, Resize canvas to selection with a confirmation.
+- **Timeline (J7 to J11):** lanes for text and shapes, visuals and audio; a loading skeleton and empty-scene hints; drop guides with Replace; clips coloured by kind; hatched gaps with a close button and a hover playhead.
+- **Transitions (J12):** cross fade, fades through black and white, wipes and slides where two clips touch, in preview and export.
+- **Player (J13):** back and forward 5 s, previous cut, timecode, Fit and Collapse.
+- **Clip menus (J14):** a section per clip kind with shortcuts, Edit duration, Rename in place, Audio › Mute and More options.
+- **Right panel (J15):** Clipchamp layout with a header, Filters and Effects lists, a 0.1x to 16x speed slider and Animate grids.
 
 ## I-series (I1 to I5) — 2026-10-02
 

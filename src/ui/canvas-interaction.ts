@@ -90,6 +90,8 @@ export function bindCanvasInteraction(
   onHover?: (target: string | 'artboard' | null) => void,
   /** I2: the Draw palette's Shape, Line, Sticky note and Text tools. */
   place?: PlaceTool,
+  /** J4: edit a text layer on the canvas (caret at a page point, or all). */
+  editText?: (id: string, at?: { x: number; y: number }) => void,
 ) {
   let pointer: number | null = null;
   let cropping = false;
@@ -485,6 +487,12 @@ export function bindCanvasInteraction(
         crop.start(current.id);
         return;
       }
+      // J4: a double-click on text edits it, with the caret at the pointer.
+      if (found?.layer.type === 'text' && editText) {
+        session.select(current.id);
+        editText(current.id, { x: event.clientX, y: event.clientY });
+        return;
+      }
       if (found?.layer.type !== 'group') return;
       session.enterGroup(current.id);
       session.select(resolvePick(session.source, leaf, current.id).id);
@@ -498,6 +506,18 @@ export function bindCanvasInteraction(
       return;
     }
     if (event.target === canvas && event.key !== 'Escape') {
+      // J4: Enter edits the selected text layer, all of it selected.
+      if (
+        event.key === 'Enter' &&
+        editText &&
+        session.selectedIds.length === 1 &&
+        locateLayer(session.source.composition.layers, session.selectedId!)
+          ?.layer.type === 'text'
+      ) {
+        event.preventDefault();
+        editText(session.selectedId!);
+        return;
+      }
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault();
         safely(() => edit?.('delete'));

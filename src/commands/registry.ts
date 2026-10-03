@@ -32,6 +32,7 @@ import {
   stepClipSpeed,
   trimClipToPlayhead,
   type EditAction,
+  toggleClipMute,
 } from '../ui/editing';
 
 export interface CommandContext {
@@ -42,6 +43,11 @@ export interface CommandContext {
   newProject?: () => void;
   openShortcuts?: () => void;
   togglePlayback: () => void;
+  /** J14: the clip menu's Edit duration (a popover) and Rename (inline). */
+  editDuration?: () => void;
+  renameClip?: () => void;
+  /** J14: More options opens the right panel for the selection. */
+  moreOptions?: () => void;
   /** G3: the canvas view (zoom and pan); absent outside the full shell. */
   view?: CanvasView;
 }
@@ -183,7 +189,46 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   edit('unlink', ''),
   edit('detach-audio', ''),
   edit('reverse', ''),
-  edit('freeze', ''),
+  edit('freeze', 'F'),
+  // J14: the clip menu's own commands (also in the palette).
+  {
+    id: 'edit-duration',
+    labelKey: 'command.editDuration',
+    shortcut: '',
+    isEnabled: ({ session }) =>
+      selectedClips(session.source, session.selectedIds).length === 1,
+    run: (context) => context.editDuration?.(),
+  },
+  {
+    id: 'rename-clip',
+    labelKey: 'command.renameClip',
+    shortcut: '',
+    isEnabled: ({ session }) =>
+      selectedClips(session.source, session.selectedIds).length === 1,
+    run: (context) => context.renameClip?.(),
+  },
+  {
+    id: 'clip-mute',
+    labelKey: 'command.clipMute',
+    shortcut: '',
+    isEnabled: ({ session }) => {
+      const clips = selectedClips(session.source, session.selectedIds);
+      return (
+        clips.length > 0 &&
+        clips.every(
+          ({ track }) => track.type === 'video' || track.type === 'audio',
+        )
+      );
+    },
+    run: ({ engine, session }) => toggleClipMute(engine, session),
+  },
+  {
+    id: 'more-options',
+    labelKey: 'command.moreOptions',
+    shortcut: '',
+    isEnabled: ({ session }) => session.selectedIds.length > 0,
+    run: (context) => context.moreOptions?.(),
+  },
   // CV-025: align and distribute (palette, canvas Align submenu).
   ...ALIGN_EDGES.map((edge): RegisteredCommand => ({
     id: `align-${edge}`,

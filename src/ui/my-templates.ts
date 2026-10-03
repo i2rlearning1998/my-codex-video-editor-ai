@@ -159,7 +159,7 @@ export function templateFromScene(
     createdAt: new Date().toISOString(),
     width: scene.width,
     height: scene.height,
-    background: project.settings.backgroundColor,
+    background: scene.backgroundColor,
     scene: copy,
     assets: JSON.parse(JSON.stringify(kept)) as Asset[],
     mediaIncluded,
@@ -224,6 +224,10 @@ export function myTemplateCommands(
       width: canvas.width,
       height: canvas.height,
       fps: composition.fps,
+      // J1: the scene's own background when it was saved.
+      backgroundColor: /^#[0-9a-fA-F]{6}$/.test(template.background)
+        ? template.background
+        : composition.backgroundColor,
     }) as Composition;
     scene.layers = copy.layers;
     scene.tracks = copy.tracks;
@@ -257,7 +261,7 @@ export function myTemplateCommands(
     const clip = clipOf(layer.id);
     const start = clip?.startTime ?? layer.startTime;
     const length = clip?.duration ?? layer.duration;
-    const placed = trackForNewClip(target, layer.type, start, start + length);
+    const placed = trackForNewClip(target, layer, start, start + length);
     const added: Command[] = [
       ...placed.commands,
       {

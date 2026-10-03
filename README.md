@@ -1,8 +1,17 @@
 # AI-Native Video Editor
 
-T3 baseline (schema 4), with Wave 0 proof infrastructure. Six baseline behaviors now have real-browser proof; see the ledger for the exact verified scope.
+A browser-first video and motion-graphics editor for YouTubers and teachers, in the spirit of Canva, Clipchamp and After Effects. It has one engine, one scene graph and one command bus; the manual editor is built first (Waves 0 to 9) and AI comes last (Wave 10).
 
-Scope and evidence now follow [AGENTS.md](AGENTS.md), the [process](docs/PROCESS.md), [Feature Ledger](docs/FEATURES.md), [decisions](docs/DECISIONS.md), and [current status](docs/STATUS.md). Historical Tier restrictions are obsolete. Known baseline bugs: locked-track deletion, right-trim overlap, and a missing favicon; Wave 0 records them without fixing them.
+**Current state (J-series, 2026-10-03): project schema 6.** See [docs/STATUS.md](docs/STATUS.md) for the branch-by-branch state and the latest reports in [reports/](reports/). In short, the editor has:
+
+- A Canva and Clipchamp style shell with dark and light themes, browse panels (Templates, Elements, Text, Media, Transitions, Draw), a floating context toolbar and a right panel that follows the selection.
+- Scenes, each with its own background and canvas size, a scene strip and a scenes board; undo is one stack whose steps open the scene they changed.
+- Shapes, gradients, drawings, signatures and on-canvas rich text editing (range styles, lists, IME) with bundled open-licence fonts (Inter, Poppins, Noto Sans Devanagari).
+- Media import (stored in OPFS or IndexedDB, never in project JSON), video and audio playback in sync, keyframe animation and animation presets.
+- A Clipchamp-style timeline: lanes for text and shapes, visuals and audio; drop guides; clips coloured by kind; gaps; transitions; a player bar; clip menus per kind.
+- Export to MP4 (H.264 + AAC where the browser can encode it) or WebM, and PNG frames.
+
+What exists and what is proven is defined by the [Feature Ledger](docs/FEATURES.md), not by this page. Scope and evidence follow [AGENTS.md](AGENTS.md), the [process](docs/PROCESS.md), the [decisions](docs/DECISIONS.md) and the [current status](docs/STATUS.md).
 
 ## Proof commands
 
@@ -38,9 +47,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. The shell can switch compositions, select layers in the canvas or scene list, inspect local values and parent information, undo/redo existing project commands, save locally, and export/open project JSON. Click empty canvas space or press Escape with the canvas focused to clear selection. Scene-list buttons provide keyboard access, including group selection.
-
-On first use, a labeled example project demonstrates shapes, text, rotations, and nested groups. It is ordinary validated, serializable project data owned by the same engine. Existing local projects are loaded as-is, including empty compositions. **Open example** explicitly replaces the document after confirmation; export any current work you want to keep separately.
+Open the local URL printed by Vite. On first use an example project opens; File › Open example replaces the document after confirmation.
 
 ```sh
 npm run format
@@ -49,47 +56,12 @@ npm run check
 
 `check` runs formatting verification, TypeScript checking, all Vitest tests, and a production build. `npm run test:watch` runs tests during development. The static build is written to `dist/`; there is no deployment setup.
 
-## What is included
+## Where the details live
 
-- Versioned project metadata/settings, compositions, nested layers, canonical NLE tracks/clips, typed properties, assets, markers, and explicitly reserved fields.
-- Validated semantic commands for scene layers, NLE tracks/clips, properties, assets, grouping, markers, and keyframes.
-- Atomic transactions, bounded snapshot history, undo/redo, typed lifecycle events, and immutable public snapshots.
-- Capability declarations and namespaced command handlers that use the same validation and history path as built-in commands.
-- Strict JSON serialization, migration registration/runner, and rejection of newer document versions.
-- Local storage persistence with last-good backup, corrupt-data quarantine, debounced autosave, error reporting, and explicit retry.
-- Frozen spatial semantics and pure affine helpers for local/world matrices, point transformation, and guarded inversion. See [TRANSFORM_CONTRACT.md](TRANSFORM_CONTRACT.md). No renderer or new UI was added in Tier 1.1; that milestone retained schema version 1.
-- A desktop shell with top bar, library categories and scene list, centered composition preview, limited transform inspector, and a functional timeline projection. No extra editor modes or state-management library.
-- A replaceable render adapter/Canvas 2D boundary with inherited opacity, nested affine transforms, composition clipping, selection outlines, and inverse-transform hit testing. Selection is transient UI state; it is never persisted.
-
-## Transform controls
-
-Drag a drawable to move it. Select a group in the Scene list to move it by dragging a descendant's body; choose a child in the list to edit it separately. Corners scale the whole selected object; scaling always preserves the original signed scale ratio, with or without Shift. Generic side handles change only the corresponding scale axis, fixing the opposite edge. The round rotation handle turns the object around its visual center with position compensation. The local geometry origin stays at `(0,0)`.
-
-Text has distinct left/right middle width grips instead of generic edge scaling. They change box width, wrap text using the renderer's font measurements, and update box height without changing font size or scale. Text corners scale the whole box without reflow. Width editing activates the schema-1 `textWrap` boolean property; existing text keeps its previous explicit-newline layout until width is edited.
-
-The transform inspector edits local X/Y, scale X/Y, rotation in degrees, and opacity from 0 to 1. Inspector rotation uses the same center compensation as Canvas. Enter or leaving the input commits; Escape reverts. One completed gesture or field commit is one undo operation. Cancellation and no-op never autosave. See revision 3 of [TRANSFORM_INTERACTION_CONTRACT.md](TRANSFORM_INTERACTION_CONTRACT.md) for precise conversion, modifiers, text, hit testing, and limits.
-
-## Workspace and timeline controls
-
-Resize either side panel or the timeline with its divider; use the top-left buttons to collapse side panels. Canvas Fit and +/− adapt its centered viewport. Layout, selection, playback, time, zoom, and scrolling are transient and never enter project history.
-
-Click or Shift/Ctrl-click clips, Canvas objects, or Scene entries for shared selection. Drag empty Canvas or timeline space for marquee selection; Escape cancels. Multi-selection can move, duplicate, or delete together. Ancestor/descendant selections act on the selected roots once. Resize, rotation, text width, and clip trim remain single-selection operations; uniform corner scaling and center-pivot rotation are unchanged.
-
-NLE tracks may contain multiple independent clips. Drag clip bodies to move time or move between compatible unlocked tracks, and drag either edge to trim the clip and its source range. Track controls change visibility, lock, mute metadata, and order. One completed gesture is one undo operation. Escape, capture loss, blur, or an invalidated document cancels. Snapping uses an 8 CSS pixel threshold against composition boundaries, other clips, playhead, and markers, with a temporary guide. Inspector start time and duration edit the selected clip through the command bus. Unlinked scene layers retain the earlier animation-style timing rows.
-
-Click/drag the ruler or playhead to seek. Play/Pause advances from elapsed time at composition FPS; Stop resets to zero. Active intervals remain `[startTime, startTime + duration)` including ancestor gating; composition end shows no active layers. Timeline keyboard shortcuts: Space play/pause, arrows one frame (Shift ten), Home/End bounds, S split, Ctrl/Cmd+D duplicate, Delete/Backspace delete, +/− zoom. Ctrl/Cmd-wheel zooms around the pointer; Shift-wheel scrolls horizontally. Normal scrolling moves through rows.
-
-Split is available strictly inside selected non-group clips and preserves editable properties and asset references. Duplicate recursively creates fresh IDs. Context menus expose only supported actions. Add a marker with + Marker, drag its flag to position it, or right-click to delete. Inspector diamond buttons add/remove a transform keyframe at current time; timeline diamonds seek to those keys. Position/scale keys capture the complete vector. These are authoring records and indicators, without interpolation or animated rendering.
-
-Existing image/video/audio asset references in project JSON can be dragged from Library to Canvas or timeline. Canvas drops create unlinked scene layers at current time and composition coordinates. Timeline drops create a linked layer and clip on a compatible track at the exact horizontal drop time, creating the smallest compatible track when necessary. No media bytes are imported or decoded.
-
-Schema 4 adds canonical composition tracks and clips. The explicit 3→4 migration adds an empty track array without guessing clip ownership; earlier 1→2 and 2→3 migrations remain consecutive. Composition duration is derived from NLE clip ends, unlinked layer timing, keyframes, and markers, with the established empty-project fallback. Persistence and recovery remain unchanged.
-
-## Preview conventions
-
-The preview consumes existing typed custom properties: positive numeric `width`/`height`, color `fill`, string `text`, and positive numeric `fontSize`. These are adapter conventions using schema-1 properties, not new schema fields. Width/height fall back independently to asset metadata, then deterministic type-specific sizes. Groups have no size. The inspector identifies properties/asset/placeholder/mixed size sources.
-
-Shapes preview as rectangles. Text uses system-font lines with greedy width wrapping after a width edit. It retains editable string content and typed dimensions; rich text, advanced typography, and a text-content editor are not included. Image, video, and audio layers use labeled rectangles without fetching or decoding media. Hit testing uses transformed rectangles, not glyph/pixel alpha. Unsupported numerical geometry is skipped with a visible warning. The example is artwork in the project, not independent canvas state.
+- Behaviour and proof, by ID: [docs/FEATURES.md](docs/FEATURES.md) (`npm run ledger -- --summary` prints the counts).
+- Spatial and interaction rules: [TRANSFORM_CONTRACT.md](TRANSFORM_CONTRACT.md) and [TRANSFORM_INTERACTION_CONTRACT.md](TRANSFORM_INTERACTION_CONTRACT.md).
+- Architecture: [ARCHITECTURE.md](ARCHITECTURE.md). Undo rules: [docs/UNDO-RULES.md](docs/UNDO-RULES.md). Library content: [docs/LIBRARY.md](docs/LIBRARY.md).
+- Schema versions: each change bumps the version with consecutive migrations and regression fixtures (`tests/fixtures/projects`); schema 6 adds a background per scene (D-151). A newer document is refused, never downgraded.
 
 ## Core usage
 
@@ -133,4 +105,4 @@ Local storage is only for development. It is size-limited and origin-specific; i
 
 ## Boundaries
 
-No media importing/decoding, audio mixing/output, transition/effect evaluation, masks, keyframe interpolation/curves, AI, 3D, cloud services, docking framework, or plugin marketplace is included. Source in/out is canonical clip metadata and is maintained by trim/split, but media evaluation is still placeholder-only. There is no automatic edge scrolling or track virtualization; extremely long timelines remain limited by browser coordinate precision. See [ARCHITECTURE.md](ARCHITECTURE.md). T3 stops here; T4 has not started.
+Not built yet (each is a ledger item with its wave, and its controls are greyed out with "Planned: Wave N"): effects, filters and colour adjustment (Wave 6), most transitions (Wave 6), clip volume, fades and mixing (Wave 7, with the audio engine in PR #14), captions and advanced features (Wave 8), more UI languages (Wave 9) and AI (Wave 10). Projects are stored locally only (D-013).

@@ -136,6 +136,8 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-043 | P0 | W2 | Verified | Right panel for text: font, size, bold, italic, underline, strikethrough, case, alignment, colour and spacing, each one undo step and in step with the toolbar |
 | LAY-044 | P0 | W2 | Verified | Right panel for groups (Group: ungroup, align) and multi-selections (Arrange: group, align, distribute) |
 | LAY-045 | P0 | W4 | Verified | Right panel for media: Image (crop, flip, corners, border; Filters planned), Video (crop, flip, corners; Speed; Audio with track mute and Detach audio, volume planned; Fade), Audio clip (Audio, Speed; Fade planned) |
+| LAY-046 | P0 | W2 | Verified | The right panel has a header with the selection's name, a count badge and a collapse button; its labelled icon rail lists the selection's sections in Clipchamp's order: video Captions, Audio, Fade, Filters, Effects, Adjust colors, Speed, Transitions, Advanced; image Fade, Filters, Effects, Adjust colors, Transitions, Advanced; shape and text their own tab, Animate, Effects, Adjust colors; Advanced holds a picture's own controls, Animate and the Inspector (J15) |
+| LAY-047 | P0 | W2 | Verified | The right panel's sections hold: Speed a slider from 0.1x to 16x on a log scale with ticks at 0.1, 1, 2, 4 and 16 (one step on release) above the presets, Reverse and Freeze frame; Effects a list (shapes: the live Outline and planned Shadow settings; text: Outline and Shadow planned; pictures: planned effects); Filters a list (Original, the others planned); Animate In, Out and Loop presets as grids (one step each); Transitions the J12 panel for a clip that touches the one before it, or how to get one (J15) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -178,6 +180,7 @@ Single registry of user commands. Shortcuts, menus, palette and context menus al
 | KEY-014 | P1 | W1 | Todo | Cmd equivalents on macOS |
 | KEY-015 | P1 | W1 | Todo | Tool shortcuts: V select, T text, R rectangle, E ellipse |
 | KEY-016 | P1 | W1 | Todo | Bring forward and send backward shortcuts (Ctrl+] and Ctrl+[) |
+| KEY-017 | P0 | W2 | Verified | Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y undo and redo right after a panel edit (a committed field, a colour picker, a panel button) with no click elsewhere; Ctrl+Z inside a field still being typed in stays with the field, and other shortcuts never fire while typing (J2 LCR) |
 
 ## PRJ: Projects, scenes and composition settings
 
@@ -208,6 +211,9 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-021 | P0 | W2 | Verified | Dragging a layer onto another scene on the board moves it there with its clip (Alt copies it), one undo step |
 | PRJ-022 | P0 | W2 | Verified | Playback runs through the scenes in order |
 | PRJ-023 | P0 | W2 | Verified | A 72 px scene strip under the canvas replaces the composition select: cards with a lazily drawn 16:9 thumbnail, the name and a length chip, the open scene highlighted and scrolled into view; + adds a blank scene, a copy of the open one, or opens Templates; cards drag to reorder with an insertion line; double-click renames; right-click offers Rename, Duplicate, Delete, Save as template, Move left and Move right; a chevron collapses it; below 1024 px it is a Scene n of m button with a list |
+| PRJ-024 | P0 | W2 | Verified | Each scene owns its background colour (schema 6): changing it in one scene never changes another, and the canvas, the scene strip, the board and export show each scene's own colour (J1 LCR) |
+| PRJ-025 | P0 | W2 | Verified | A canvas size belongs to its scene: changing one scene's size changes no other scene and never rewrites a layer's position or scale, so changing it and back restores the scene exactly (J1 LCR) |
+| PRJ-026 | P0 | W2 | Verified | A new scene starts from the project's defaults (the background chosen for the project and the open scene's size and frame rate) and then owns its own settings (J1 LCR) |
 
 ## MED: Media library and stock (Wave 4)
 
@@ -314,9 +320,12 @@ Everything the user does directly on the preview canvas.
 | CV-052 | P0 | W2 | Verified | Hover outlines the object, or the empty artboard, under the pointer; a click on the empty artboard selects the canvas (scene toolbar), a click on the stage around it deselects everything and shows the canvas bar (H3 LCR; I1 LCR) |
 | CV-053 | P0 | W2 | Verified | Canva handles: white round corners, pill-shaped side handles and the rotate handle 28 px below the box (interaction contract revision 8) (H3 LCR) |
 | CV-054 | P0 | W2 | Verified | One fixed floating toolbar row (44 px, radius 12); the scene bar has the canvas size chip at its left (I1 LCR: object toolbars have none); it never scrolls: labels collapse first, then trailing tools move into More (H3 LCR) |
-| CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to every scene, keep the design centred, as one undo step with Undo in the toast (H3 LCR) |
+| CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to the open scene without moving its layers (J1 LCR, PRJ-025), as one undo step with Undo in the toast |
 | CV-056 | P0 | W2 | Verified | Right-click menus per type, with icons and shortcuts: an element offers Lock, Show element timing, Alternative text, Set image as background, Resize canvas to selection, Download selection and Info; the empty canvas offers Paste, scenes, Canvas size and Guides; unbuilt items name their wave (H3 LCR) |
 | CV-057 | P0 | W2 | Verified | A click on the stage outside the artboard, or Escape with nothing selected, shows the canvas bar in the toolbar slot: Ratio (size presets), canvas background colour and Auto captions (planned, W8); a click on the artboard or an object hides it; object toolbars carry no size chip; never two bars at once |
+| CV-058 | P0 | W2 | Verified | Show element timing opens a popover with the element's start time and duration (NumberFields), highlights its clip on the timeline while open, and each change is one undo step (J6 LCR) |
+| CV-059 | P0 | W2 | Verified | Alternative text is stored per layer in the project, saved with a visible confirmation, marked with an ALT badge in the scene list, and shown again when reopened (J6 LCR) |
+| CV-060 | P0 | W2 | Verified | Resize canvas to selection asks for confirmation naming the new size, gives the open scene the selection's size with every layer moved together in one undo step, and Fit then fits the whole artboard in view (J6 LCR) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -406,6 +415,21 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-058 | P0 | W2 | Verified | Dragging a clip onto another compatible track shows a ghost of the clip at its landing track and time while the original stays dimmed in place; releasing commits exactly the ghost position in one undo step; Escape cancels |
 | TL-059 | P0 | W2 | Verified | Track header has Lock, Hide, Solo and Mute icon buttons with accessible names, tooltips and a distinct pressed state; Solo previews only soloed tracks (session-only, not saved, no history) |
 | TL-060 | P0 | W2 | Verified | Keyboard equivalents for timeline gestures, listed in the shortcut sheet: Alt+Left/Right nudge selected clips one frame (Shift for ten), Alt+Up/Down move them to the adjacent compatible track, [ and ] trim the selected clip start or end to the playhead |
+| TL-061 | P0 | W2 | Verified | Lanes come in three groups, top to bottom: text and shapes, visuals (video, images, backgrounds), audio, with a line between groups; at least three lanes when every kind is present, new lanes created on demand at the top of their group; lane order is the canvas stacking order (top lane in front); audio has a single lane and a second sound goes to the nearest free time (J7) |
+| TL-062 | P0 | W2 | Verified | A clip dragged over a lane of another group shows a not-allowed cursor and a hatched lane, and the drop changes nothing (it snaps back); a lane's up and down buttons stay within its group (J7) |
+| TL-063 | P0 | W2 | Verified | Bring forward, Send backward, Bring to front and Send to back move a top-level element between the lanes of its own group (a new lane when the next one is busy at its time; a lane emptied by the move goes), one undo step each; group children still move among their siblings (J7) |
+| TL-064 | P1 | W2 | Verified | A shimmer skeleton of the editor (bar, panels, three timeline rows) shows from the first paint until the app has loaded, then goes (J8) |
+| TL-065 | P0 | W2 | Verified | An empty scene's timeline shows three hint rows, + Add text, + Add video and + Add audio: text adds a text box ready to type, video opens Media with the file picker, audio opens the Audio panel; they go once the scene has a clip (J8) |
+| TL-066 | P0 | W2 | Verified | Media dragged from the Media panel shows where it lands: over the canvas only, a box at the picture's size centred on the pointer; over a lane, a ghost clip with its start time; at a lane's edge, a purple separator with + whose drop makes a new lane there (J9) |
+| TL-067 | P0 | W2 | Verified | Media dragged over a lane of another group is refused (not-allowed, hatched lane, nothing on drop); over a clip of the same kind the drop offers Replace clip or Add as a new clip, and Replace is one undo step (J9) |
+| TL-068 | P0 | W2 | Verified | A timeline clip dragged and released outside the timeline stays where it was (it dims while outside), and Escape during a clip drag cancels it; neither adds history (J9) |
+| TL-069 | P0 | W2 | Verified | Clips are rounded and coloured by kind (text, shape, group, video, image, audio) with a kind icon before the name, a tooltip with start and length, an outline on hover; the selected clip has a purple outline, white trim handles and its length in a pill on the ruler (J10) |
+| TL-070 | P0 | W2 | Verified | A marquee from empty time on the timeline selects the clips it touches across lanes; with the timeline focused Ctrl+G groups them and Ctrl+Shift+G ungroups, one undo step each (J10) |
+| TL-071 | P0 | W2 | Verified | A gap between two clips on a lane is hatched; its trash button (named with the gap's length) closes it, moving the later clips on that lane left, in one undo step (J11) |
+| TL-072 | P0 | W2 | Verified | A faint playhead with a time chip follows the pointer over the lanes and ruler and goes when the pointer leaves; the playhead has a white handle; moving a clip near another clip's edge snaps to it with a guide (J11) |
+| TL-073 | P0 | W2 | Verified | The player bar: an AI wand (disabled, Planned: Wave 10) and scissors (Split) on the left; previous cut, back 5 s, play, forward 5 s and a timecode (mm:ss.hh / total) in the centre, with the frame steps and Stop kept; zoom out, zoom in, fit (the whole scene fits the lanes) and collapse floating on the right; the ruler's labels adapt to the zoom (J13) |
+| TL-074 | P0 | W2 | Verified | Collapse in the player bar leaves only the player bar under a large preview, and Expand brings the lanes back; it is UI state (no history) (J13) |
+| TL-075 | P0 | W2 | Verified | The timeline clip menu starts with a section for the kind of clip, each entry a registered command with its shortcut: video Duplicate (Ctrl+D), Copy, Paste, Delete, Split (S), Freeze frame (F), Edit duration (a popover), Rename (in place), Audio › (Mute, Detach audio), Auto cut (disabled, Wave 10) and More options (the right panel); image, shape and text the same without Freeze frame, Audio and Auto cut; then a divider and the earlier entries not already shown; Up, Down, Home, End, Right and Left work (J14) |
 
 ## PB: Playback and transport
 
@@ -451,6 +475,7 @@ Right panel. Sections depend on the selection. Every edit uses the same command 
 | INS-015 | P1 | W2 | Todo | Sections are collapsible and remember their state |
 | INS-016 | P0 | W4 | Todo | Media section: source details, replace media, loop, fit mode (Fit, Fill, Stretch, Custom) |
 | INS-017 | P2 | W2 | Todo | Copy and paste properties between layers |
+| INS-018 | P0 | W2 | Verified | Every numeric control is the shared NumberField: up and down arrows step once (Shift ×10, Alt ×0.1), the wheel and arrow keys step a focused field, bounded fields show their range and a slider beside them, scrubbing or sliding previews live on the canvas and commits one undo step on release (J3 LCR) |
 
 ## HIS: Undo, redo and history
 
@@ -466,6 +491,7 @@ The engine already has atomic transactions and history; this covers what the use
 | HIS-006 | P1 | W8 | Todo | Named checkpoints |
 | HIS-007 | P1 | W4 | Verified | Undoing media import removes the clip without deleting the imported asset (behavior is documented) |
 | HIS-008 | P0 | W2 | Verified | Undo and Redo cover project edits only; media import, rename, delete and folders, the project name, saved templates and signatures, library recents and every view or session setting are outside history, as listed in docs/UNDO-RULES.md |
+| HIS-009 | P0 | W2 | Verified | One global undo stack whose entries are scoped to the scene they edited: Undo and Redo revert only that edit and open the scene it changed (J1 LCR) |
 
 ## TXT: Text, fonts and languages (Wave 3)
 
@@ -474,9 +500,9 @@ Users must be able to type text in any language and choose from very many fonts,
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | TXT-001 | P0 | W3 | Verified | Text panel offers Heading, Subheading and Body plus styled text presets; click adds to canvas at the playhead |
-| TXT-002 | P0 | W3 | Todo | Text tool: click to create a text box at that point, or drag to define a box |
-| TXT-003 | P0 | W3 | Todo | Double-click a text layer edits it inline on the canvas with caret, selection, copy and paste |
-| TXT-004 | P0 | W3 | Todo | System input methods (IME) work while editing, including Hindi and other Indic phonetic keyboards and CJK composition |
+| TXT-002 | P0 | W2 | Verified | Text tool: click to create a text box at that point, or drag to define a box |
+| TXT-003 | P0 | W2 | Verified | Double-click a text layer edits it inline on the canvas with caret, selection, copy and paste |
+| TXT-004 | P0 | W2 | Verified | System input methods (IME) work while editing, including Hindi and other Indic phonetic keyboards and CJK composition |
 | TXT-005 | P0 | W3 | Todo | Text content can also be edited in the inspector |
 | TXT-006 | P0 | W3 | Todo | Font picker: searchable list, each font shown in its own typeface, recent and favorite fonts, categories |
 | TXT-007 | P0 | W3 | Todo | Bundled curated fonts work offline; the wider Google Fonts catalog loads on demand and is cached |
@@ -487,7 +513,7 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-012 | P0 | W3 | Todo | Text color; solid fill first, gradient fill later |
 | TXT-013 | P1 | W3 | Todo | Gradient text fill |
 | TXT-014 | P0 | W2 | Verified | Alignment left, center, right, justify |
-| TXT-015 | P1 | W3 | Todo | Vertical alignment inside the box |
+| TXT-015 | P1 | W2 | Verified | Vertical alignment inside the box |
 | TXT-016 | P0 | W2 | Verified | Line height, letter spacing and paragraph spacing |
 | TXT-017 | P1 | W2 | Verified | Text case transform: UPPER, lower, Title |
 | TXT-018 | P0 | W3 | Claimed | Text box modes: auto width, fixed width with auto height, fixed box |
@@ -495,8 +521,8 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-020 | P1 | W3 | Todo | Background box, highlight, glow |
 | TXT-021 | P2 | W3 | Todo | Curved text on a path |
 | TXT-022 | P1 | W3 | Todo | Text style presets (neon, outlined, retro and similar) with one-click apply |
-| TXT-023 | P1 | W3 | Todo | Range styling: bold, italic, underline, strike, color, size, font for selected characters |
-| TXT-024 | P2 | W3 | Todo | Bulleted and numbered lists |
+| TXT-023 | P1 | W2 | Verified | Range styling: bold, italic, underline, strike, color, size, font for selected characters |
+| TXT-024 | P1 | W2 | Verified | Bulleted and numbered lists |
 | TXT-025 | P0 | W3 | Todo | Correct shaping of complex scripts: Devanagari conjuncts and matras, other Indic scripts, Arabic joining (fixture: text_multilingual_samples.json) |
 | TXT-026 | P0 | W3 | Todo | Right-to-left and mixed bidirectional text render and edit correctly |
 | TXT-027 | P0 | W3 | Todo | Line breaking follows language rules (Intl.Segmenter) including Thai, CJK and Indic text |
@@ -512,6 +538,8 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-037 | P2 | W8 | Todo | Dynamic text: page number, date and similar fields that update themselves |
 | TXT-038 | P0 | W3 | Verified | Text panel: search; Add a text box; Magic Write (planned, W10); Default text styles (click or drag); Dynamic text (planned); Font combinations, Plain text, Text styles, Titles (hover preview) and Two line with See all; Captions (planned, W8) |
 | TXT-039 | P1 | W5 | Verified | Animated titles in Text › Titles: each brings its entrance preset (pop, slide, typewriter, zoom, wipe, fade) with its clip in one undo step, and its card previews the entrance on hover |
+| TXT-040 | P0 | W2 | Verified | Bundled open-licence fonts with real weights 100 to 900 (Inter, Poppins and Noto Sans Devanagari, which also cover Devanagari) work in the preview and export; the weight list offers only what a font has (system fonts: Regular and Bold); Regular, Medium, Semibold and Bold look visibly different (J5 LCR) |
+| TXT-041 | P0 | W2 | Verified | The Bold button shows the resolved weight of the selection (the whole box's characters, runs included, or the selected characters while editing), so text that is already bold shows Bold on in the toolbar and the right panel (J5 LCR) |
 
 ## SHP: Shapes, graphics and elements (Wave 5)
 
@@ -547,6 +575,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-026 | P0 | W5 | Verified | Elements panel: Recently used, Browse categories (Shapes and Graphics live; Photos, Videos, 3D, Animations, Audio, Tables, Charts, Frames and Grids planned with their wave), a Shapes page (Lines with solid, dashed, dotted, arrow and double arrow; Basic shapes; Polygons; Stars; Arrows; Flowchart shapes) and a Graphics page (Featured, Gradients, Backgrounds) |
 | SHP-027 | P0 | W2 | Verified | Draw palette at the canvas edge: Select; Draw with the brush flyout; Shape and Line drawn by dragging; Sticky note and Text by click (Text by drag for its width); Signature; Table planned; the left panel collapses while it is open and comes back when it closes; each placement is one undo step |
 | SHP-028 | P1 | W5 | Verified | Flowchart shapes in Elements › Shapes: terminator, process, decision, data, document, predefined process, connector, manual input, preparation, manual operation, delay, merge, off-page connector and display |
+| SHP-029 | P0 | W2 | Verified | A shape's Solid, Linear and Radial fills share one stop list: Solid shows the first stop, and switching away and back restores the stops exactly (J2 LCR) |
 
 ## ANI: Animation and keyframes (Wave 5; graph editor Wave 8)
 
@@ -639,6 +668,7 @@ Between clips and at clip edges.
 | TR-008 | P1 | W6 | Todo | Video cross dissolve also crossfades the audio |
 | TR-009 | P1 | W6 | Todo | Alignment choice: centered, start or end on the cut |
 | TR-010 | P1 | W6 | Verified | Transitions panel lists transitions by section (Fades & blurs, Wipes, Pushes, Cartoon, Glitches, 3D) with static posters, a tip and a Duration control; they are disabled with their wave until transitions are built |
+| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane, a + adds a transition and a cut with one shows a chip; both open a Transition panel with search, a grouped grid (Cross fade, Fade through black and white, Wipe left and right, Slide left and right live; the rest disabled with their wave) and Duration (default 1 s, clamped with a message to what the clips allow); each change and Remove is one undo step; the transition is drawn the same in the preview and the export (J12) |
 
 ## MSK: Masks, blend modes and compositing (Wave 6)
 

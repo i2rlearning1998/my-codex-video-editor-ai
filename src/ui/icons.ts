@@ -1,6 +1,12 @@
 /** Minimal inline-SVG line-icon set. No external icon library dependency (offline build).
  *  One style: a 24-unit grid, 1.75 stroke, round caps, inherits currentColor. Usage: element.innerHTML = icon('menu'). */
 const PATHS: Record<string, string> = {
+  // J13: the Player panel.
+  scissors:
+    'M7 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z M7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z M6.5 7.5L17 15 M6.5 12.5L17 5',
+  skipBack: 'M5 4v12 M15 4l-7 6 7 6z',
+  back5: 'M4 10a6 6 0 1 0 2-4.5 M6 2v3.5h3.5',
+  forward5: 'M16 10a6 6 0 1 1-2-4.5 M14 2v3.5h-3.5',
   menu: 'M3 5h14M3 10h14M3 15h14',
   media: 'M3 4h14v12H3z M6 8l3 2-3 2z M11 6h4 M11 9h4 M11 12h4',
   graphics: 'M10 3l2.5 5 5.5.8-4 3.9.9 5.5-4.9-2.6-4.9 2.6.9-5.5-4-3.9 5.5-.8z',
@@ -46,6 +52,7 @@ const PATHS: Record<string, string> = {
   marker: 'M10 3l4 4v10H6V7z',
   close: 'M5 5l10 10 M15 5L5 15',
   chevronDown: 'M5 8l5 5 5-5',
+  chevronUp: 'M5 12l5-5 5 5',
   chevronRight: 'M8 5l5 5-5 5',
   chevronLeft: 'M12 5l-5 5 5 5',
   check: 'M4 10l4 4 8-8',

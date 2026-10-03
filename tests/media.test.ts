@@ -182,7 +182,11 @@ async function buildFixture(plan: FixturePlan) {
     project.id = plan.id;
     if (plan.background) project.settings.backgroundColor = plan.background;
     project.compositions = [
-      createComposition({ ...plan.composition, name: 'Main composition' }),
+      createComposition({
+        ...plan.composition,
+        name: 'Main composition',
+        ...(plan.background ? { backgroundColor: plan.background } : {}),
+      }),
     ];
     const engine = new EditorEngine(project);
     const assets: Asset[] = [];

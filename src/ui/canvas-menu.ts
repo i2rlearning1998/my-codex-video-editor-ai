@@ -46,6 +46,8 @@ export interface CanvasMenuHooks {
   readonly showTiming?: () => void;
   /** Opens the Alternative text editor. */
   readonly altText?: () => void;
+  /** J6: Resize canvas to selection, after a confirmation. */
+  readonly resizeToSelection?: () => void;
   /** Saves the selection as a PNG. */
   readonly download?: () => void;
   /** Shows the element's details. */
@@ -324,7 +326,10 @@ export function canvasMenuEntries(
     id: 'resize-to-selection',
     label: t('command.resizeToSelection'),
     icon: 'crop',
-    run: () => resizeCanvasToSelection(engine, session),
+    run: () =>
+      hooks.resizeToSelection
+        ? hooks.resizeToSelection()
+        : resizeCanvasToSelection(engine, session),
   });
   if (hooks.download)
     entries.push({

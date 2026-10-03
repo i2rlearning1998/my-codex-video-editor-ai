@@ -18,7 +18,7 @@ export function drawScenePoster(
   const source: RenderSource = {
     composition: compositionAt(scene, 0),
     assets: engine.state.assets,
-    background: engine.state.settings.backgroundColor,
+    background: scene.backgroundColor,
     currentTime: 0,
     ...(frames ? { frames, playing: false } : {}),
     ...(session.source.measureText

@@ -1,3 +1,4 @@
+import { drawRich } from './rich-text';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
@@ -227,8 +228,12 @@ export class Canvas2DRenderer implements CompositionRenderer {
   }
 }
 
-/** G3: the opacity of layer parts outside the composition in the editor. */
-const OUTSIDE_FADE = 0.3;
+/**
+ * G3, J6: the opacity of layer parts outside the composition in the editor.
+ * 0.3 made elements left outside the page (after Resize canvas to
+ * selection) look disabled; 0.6 reads as "outside the page" but still active.
+ */
+const OUTSIDE_FADE = 0.6;
 export interface DrawOptions {
   /** Selection handles and the composition border (false for export, W5-A). */
   readonly overlays?: boolean;
@@ -393,7 +398,13 @@ export function drawComposition(
         // W5-C Wipe: only the revealed part of the box is drawn.
         if (item.reveal !== undefined) {
           context.beginPath();
-          context.rect(0, 0, item.size.width * item.reveal, item.size.height);
+          const shown = item.size.width * item.reveal;
+          context.rect(
+            item.revealFrom === 'right' ? item.size.width - shown : 0,
+            0,
+            shown,
+            item.size.height,
+          );
           context.clip();
         }
         // W4-B: decoded media replaces the placeholder once its frame is ready.
@@ -471,7 +482,18 @@ export function drawComposition(
         context.beginPath();
         context.rect(0, 0, item.size.width, item.size.height);
         context.clip();
-        if (item.kind === 'text' && item.textLayout) {
+        // J4: text being edited is drawn by the editor over the canvas.
+        if (item.editing) {
+          // Nothing: the box stays for its outline and handles.
+        } else if (item.kind === 'text' && item.richLayout) {
+          drawRich(
+            context,
+            item.richLayout,
+            item.textStyle ?? DEFAULT_TEXT_STYLE,
+            item.size.width,
+            item.size.height,
+          );
+        } else if (item.kind === 'text' && item.textLayout) {
           drawText(context, item);
         } else if (item.kind !== 'rectangle') {
           context.textBaseline = 'top';

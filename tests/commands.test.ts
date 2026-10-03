@@ -22,12 +22,16 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     // Clip time/keyboard commands need a clip with room to act on: layer-b
     // (video, 3..5 on Video 1) can move earlier and slow down; layer-c (alone
     // on Video 2) can move up. Layer order needs a layer that is not already at
-    // the bottom. Other commands keep the first layer.
+    // the bottom; J7: a layer's place is its lane, so layer-b (top lane) can
+    // go back and layer-c (the lane below) can come forward. Other commands
+    // keep the first layer.
     const layerFor: Record<string, string> = {
       'speed-slower': 'layer-b',
       'speed-normal': 'layer-b',
       'arrange-backward': 'layer-b',
       'arrange-back': 'layer-b',
+      'arrange-forward': 'layer-c',
+      'arrange-front': 'layer-c',
       'clip-nudge-left': 'layer-b',
       'clip-track-up': 'layer-c',
     };
@@ -48,6 +52,10 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       openPalette: vi.fn(),
       newProject: vi.fn(),
       openShortcuts: vi.fn(),
+      // J14: the clip menu's UI entries open a popover, a field or a panel.
+      editDuration: vi.fn(),
+      renameClip: vi.fn(),
+      moreOptions: vi.fn(),
       togglePlayback: () => session.setPlaying(!session.playing),
       // G3: the canvas view commands act on the view, never on the project.
       view: {
@@ -128,6 +136,12 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'shortcuts')
       expect(context.openShortcuts).toHaveBeenCalledOnce();
     else if (command.id === 'save') expect(context.save).toHaveBeenCalledOnce();
+    else if (command.id === 'edit-duration')
+      expect(context.editDuration).toHaveBeenCalledOnce();
+    else if (command.id === 'rename-clip')
+      expect(context.renameClip).toHaveBeenCalledOnce();
+    else if (command.id === 'more-options')
+      expect(context.moreOptions).toHaveBeenCalledOnce();
     else if (command.id === 'play') expect(session.playing).toBe(true);
     else if (command.id === 'select-all')
       expect(session.selectedIds).toEqual(ids);

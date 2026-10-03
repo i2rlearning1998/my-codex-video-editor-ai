@@ -1,3 +1,5 @@
+import { commands } from '../commands/registry';
+import { assetDrag } from './drag-state';
 import {
   frameToTime,
   pixelToTime,
@@ -11,6 +13,10 @@ import {
   clipTrimBounds,
   retimeClip,
   trackAcceptsLayer,
+  laneGroupOfTrack,
+  laneGroupOfLayer,
+  findClip,
+  clipTransition,
   type EditorEngine,
   type Command,
   clipAnimation,
@@ -74,6 +80,43 @@ const CLIP_ACTIONS: readonly EditAction[] = [
   'detach-audio',
 ];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
+/** J13: minutes, seconds and hundredths (01:05.40). */
+const timecode = (time: number) => {
+  const hundredths = Math.round(Math.max(0, time) * 100);
+  const minutes = Math.floor(hundredths / 6000);
+  const seconds = (hundredths % 6000) / 100;
+  return `${String(minutes).padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
+};
+
+/** J10: the kind of element a clip holds, for its colour and icon. */
+type ClipKind = 'text' | 'shape' | 'group' | 'video' | 'image' | 'audio';
+const CLIP_ICONS: Record<ClipKind, string> = {
+  text: 'text',
+  shape: 'elements',
+  group: 'group',
+  video: 'media',
+  image: 'image',
+  audio: 'audio',
+};
+const clipKind = (layer: { readonly type: string }): ClipKind =>
+  (['text', 'shape', 'group', 'video', 'image', 'audio'] as const).find(
+    (kind) => kind === layer.type,
+  ) ?? 'shape';
+/** J9: where media dragged over the timeline would land. */
+export type AssetTarget =
+  | { readonly mode: 'lane'; readonly trackId: string; readonly time: number }
+  | { readonly mode: 'insert'; readonly index: number; readonly time: number }
+  | {
+      readonly mode: 'replace';
+      readonly layerId: string;
+      readonly clipId: string;
+      readonly time: number;
+    }
+  | {
+      readonly mode: 'refused';
+      readonly trackId: string;
+      readonly time: number;
+    };
 
 export class TimelineInteraction {
   #gesture: {
@@ -89,6 +132,9 @@ export class TimelineInteraction {
     locked?: boolean;
     /** Linked partners carried along in time only; they keep their tracks. */
     followers?: ReadonlySet<string>;
+    /** J7: over a lane of another group; the drop snaps back. */
+    refused?: boolean;
+    overTrackId?: string | undefined;
   } | null = null;
   #unsubscribe: () => void;
   constructor(
@@ -114,6 +160,7 @@ export class TimelineInteraction {
     }));
   }
   get previews(): readonly TimingPreview[] {
+    if (this.#gesture?.refused) return [];
     const plan = this.landingPlan;
     return this.rawPreviews.map((preview) => {
       const clip = findClipByLayer(
@@ -129,7 +176,8 @@ export class TimelineInteraction {
   /** Clip landings of a move gesture (all moving layers must be clips). */
   #landings(): ClipLanding[] | undefined {
     const gesture = this.#gesture;
-    if (!gesture || gesture.kind !== 'move') return undefined;
+    if (!gesture || gesture.kind !== 'move' || gesture.refused)
+      return undefined;
     const composition = this.session.source.composition;
     const moves = this.trackMoves;
     const landings: ClipLanding[] = [];
@@ -189,11 +237,7 @@ export class TimelineInteraction {
         tracks[
           tracks.findIndex((track) => track.id === found.track.id) + shift
         ];
-      if (
-        !target ||
-        target.locked ||
-        !trackAcceptsLayer(target.type, layer.type)
-      )
+      if (!target || target.locked || !trackAcceptsLayer(target.type, layer))
         return undefined;
       moves.set(layer.id, target.id);
     }
@@ -208,6 +252,13 @@ export class TimelineInteraction {
   }
   get destinationId(): string | undefined {
     return this.#gesture?.destinationId;
+  }
+  /** J7: the pointer is over a lane of another group (not allowed). */
+  get refused(): boolean {
+    return !!this.#gesture?.refused;
+  }
+  get refusedTrackId(): string | undefined {
+    return this.#gesture?.refused ? this.#gesture.overTrackId : undefined;
   }
   /** Candidate time the moving edge is snapped to, for the visible guide. */
   get snapTime(): number | undefined {
@@ -311,7 +362,20 @@ export class TimelineInteraction {
         timing = { ...timing, startTime: gesture.layer.startTime + delta };
       }
       delete gesture.destinationId;
-      if (gesture.kind === 'move' && destinationId) {
+      gesture.refused = false;
+      if (gesture.kind === 'move' && destinationId?.startsWith('track:')) {
+        const composition = this.session.source.composition;
+        const lane = composition.tracks.find(
+          (track) => track.id === destinationId.slice(6),
+        );
+        const from = findClipByLayer(composition, gesture.layer.id)?.track;
+        gesture.overTrackId = lane?.id;
+        gesture.refused =
+          !!lane &&
+          !!from &&
+          laneGroupOfTrack(lane.type) !== laneGroupOfTrack(from.type);
+      }
+      if (gesture.kind === 'move' && destinationId && !gesture.refused) {
         const clips = gesture.layers
           .filter((layer) => !gesture.followers?.has(layer.id))
           .map((layer) => ({
@@ -368,6 +432,11 @@ export class TimelineInteraction {
     const landings = this.#landings();
     this.#gesture = null;
     if (!gesture) return;
+    // J7: a drop on a lane of another group changes nothing (it snaps back).
+    if (gesture.refused) {
+      this.changed();
+      return;
+    }
     try {
       if (landings) {
         // Clip moves land under the insert rule in one step (TL-020/TL-030).
@@ -502,7 +571,13 @@ export function mountTimeline(
   previews?: MediaPreviews,
   waveforms?: WaveformCache,
 ) {
-  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button data-action="split">${iconSvg('split', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback"><button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button><button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  // J13: the Player panel. Left: the AI wand (planned) and the clip tools
+  // (Split as scissors). Centre: previous cut, back 5 s, play, forward 5 s
+  // and the timecode, with the frame steps and Stop kept. Right, floating:
+  // zoom out, zoom in, fit and collapse.
+  const player = (action: string, icon: string, key: string, size = 15) =>
+    `<button class="icon-button" data-action="${action}" aria-label="${t(key)}" title="${t(key)}">${iconSvg(icon, size)}</button>`;
+  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 15)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('previous-cut', 'skipBack', 'player.previous')}${player('back-5', 'back5', 'player.back5')}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button>${player('forward-5', 'forward5', 'player.forward5')}<button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><span class="player-timecode" data-timecode aria-live="off"></span><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button>${player('zoom-fit', 'fit', 'player.fit')}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
@@ -526,6 +601,8 @@ export function mountTimeline(
       asset.type === 'video'
         ? previews.strip(asset)
         : previews.thumbnail(asset);
+    // J8: a shimmer stands in while the filmstrip is decoded.
+    element.classList.toggle('clip-loading', preview.state === 'loading');
     if (preview.state !== 'ready') return;
     const strip = document.createElement('div');
     strip.className = 'clip-filmstrip';
@@ -571,6 +648,7 @@ export function mountTimeline(
       session.source.assets as unknown as readonly PreviewAsset[]
     ).find((item) => item.id === clip.assetId);
     const wave = asset ? waveforms.waveform(asset) : undefined;
+    if (wave?.state === 'loading') element.classList.add('clip-loading');
     if (wave?.state !== 'ready') return;
     const canvas = document.createElement('canvas');
     canvas.className = 'clip-waveform';
@@ -641,6 +719,8 @@ export function mountTimeline(
       }
     | undefined;
   let suppressClick = false;
+  /** J6: the clip whose timing popover is open (highlighted). */
+  let highlighted: string | null = null;
   /** ANI-004: the frame-quantized offset of a keyframe drag in progress. */
   let keyframeDrag: { delta: number } | undefined;
   const isSelectedKeyframe = (layerId: string, time: number) =>
@@ -728,8 +808,14 @@ export function mountTimeline(
   };
   let renderedProject: unknown;
   let renderedIdentity = '';
+  // J9: where a media drag over the timeline would land.
+  let assetTarget: AssetTarget | null = null;
   const render = () => {
     const { composition } = session.source;
+    root.classList.toggle(
+      'lane-refused',
+      controller.refused || assetTarget?.mode === 'refused',
+    );
     const zoom = session.timelineZoom;
     const rows = timelineRows(session.source, zoom).map((row) => {
       const preview = controller.previews.find(
@@ -770,6 +856,10 @@ export function mountTimeline(
         : null;
     root.querySelector('[data-composition-strip]')!.textContent =
       `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${composition.fps} fps`;
+    root.querySelector('[data-timecode]')!.textContent = t('player.timecode', {
+      current: timecode(session.currentTime),
+      total: timecode(composition.duration),
+    });
     root.querySelector('[data-current-time]')!.textContent =
       `${session.currentTime.toFixed(3)}s / ${formatTimelineTime(composition.duration)}s · frame ${timeToFrame(session.currentTime, composition.fps)}`;
     root.querySelector('[data-derived-duration]')!.textContent =
@@ -833,6 +923,21 @@ export function mountTimeline(
       '--track-height',
       `${(trackRows.length + rows.length) * 34}px`,
     );
+    // J10: the selected clip's span and length on the ruler.
+    const picked =
+      session.selectedIds.length === 1
+        ? findClipByLayer(composition, session.selectedIds[0]!)
+        : undefined;
+    if (picked) {
+      const pill = document.createElement('span');
+      pill.className = 'ruler-duration';
+      pill.style.left = `${timeToPixel(picked.clip.startTime, zoom)}px`;
+      pill.style.width = `${Math.max(24, timeToPixel(picked.clip.duration, zoom))}px`;
+      pill.textContent = t('timeline.durationPill', {
+        time: formatTimelineTime(Math.round(picked.clip.duration * 100) / 100),
+      });
+      ruler.append(pill);
+    }
     rulerBar.append(ruler);
     content.append(rulerBar);
     const trackMoves = controller.trackMoves;
@@ -841,6 +946,19 @@ export function mountTimeline(
       line.className = 'timeline-row timeline-nle-row';
       line.dataset.rowId = `track:${row.track.id}`;
       line.dataset.trackId = row.track.id;
+      // J7: lanes come in groups (text and shapes, visuals, audio); a line
+      // separates them, and a lane of another group refuses a dragged clip.
+      const laneGroup = laneGroupOfTrack(row.track.type);
+      line.dataset.laneGroup = laneGroup;
+      line.classList.toggle(
+        'lane-group-start',
+        trackIndex > 0 &&
+          laneGroupOfTrack(trackRows[trackIndex - 1]!.track.type) !== laneGroup,
+      );
+      line.classList.toggle(
+        'drop-refused',
+        controller.refused && controller.refusedTrackId === row.track.id,
+      );
       line.classList.toggle(
         'drop-target',
         [...trackMoves.values()].includes(row.track.id),
@@ -903,8 +1021,13 @@ export function mountTimeline(
         row.track.id,
         true,
       );
-      up.disabled = trackIndex === 0;
-      down.disabled = trackIndex === trackRows.length - 1;
+      // J7: a lane moves only within its group.
+      const group = laneGroupOfTrack(row.track.type);
+      const sameGroup = (index: number) =>
+        !!trackRows[index] &&
+        laneGroupOfTrack(trackRows[index]!.track.type) === group;
+      up.disabled = !sameGroup(trackIndex - 1);
+      down.disabled = !sameGroup(trackIndex + 1);
       up.setAttribute('aria-label', `Move ${row.track.name} track up`);
       down.setAttribute('aria-label', `Move ${row.track.name} track down`);
       up.title = up.getAttribute('aria-label')!;
@@ -941,6 +1064,16 @@ export function mountTimeline(
         clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}${pushedTo === undefined ? '' : ' pushed'}${row.track.locked ? ' locked' : ''}`;
         clip.dataset.clipId = entry.clip.id;
         clip.dataset.trackId = row.track.id;
+        // J10: a colour and an icon per kind of element.
+        const kind = clipKind(entry.layer);
+        clip.dataset.kind = kind;
+        const icon = document.createElement('span');
+        icon.className = 'clip-kind-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = iconSvg(CLIP_ICONS[kind], 12);
+        clip.prepend(icon);
+        if (highlighted === entry.layer.id)
+          clip.classList.add('timing-highlight');
         clip.style.left = `${preview ? timeToPixel(preview.startTime, zoom) : entry.left}px`;
         clip.style.width = `${preview ? timeToPixel(preview.duration, zoom) : entry.width}px`;
         clip.title = `${entry.clip.name}: ${formatTimelineTime(entry.clip.startTime)}s, ${formatTimelineTime(entry.clip.duration)}s duration`;
@@ -994,6 +1127,69 @@ export function mountTimeline(
           ),
           zoom,
         );
+      }
+      const spans = [...row.clips]
+        .map((entry) => entry.clip)
+        .sort((a, b) => a.startTime - b.startTime);
+      // J12: where two clips touch, a + adds a transition; a cut that has one
+      // shows a chip that opens it. Both open the Transition panel.
+      for (let index = 1; index < spans.length; index++) {
+        const before = spans[index - 1]!,
+          after = spans[index]!;
+        if (
+          Math.abs(before.startTime + before.duration - after.startTime) > 1e-6
+        )
+          continue;
+        const transition = clipTransition(
+          after as unknown as { transitionMetadata: Record<string, unknown> },
+        );
+        const cut = document.createElement('button');
+        cut.type = 'button';
+        cut.dataset.action = 'transition';
+        cut.dataset.id = after.id;
+        cut.className = transition ? 'transition-chip' : 'transition-add';
+        cut.style.left = `${timeToPixel(after.startTime, zoom)}px`;
+        const label = transition
+          ? t('transition.chip', {
+              name: t(`transition.type.${transition.type}`),
+              time: formatTimelineTime(transition.duration),
+            })
+          : t('transition.add');
+        cut.setAttribute('aria-label', label);
+        cut.title = label;
+        cut.innerHTML = iconSvg(transition ? 'transitions' : 'plus', 12);
+        if (row.track.locked) cut.disabled = true;
+        track.append(cut);
+      }
+      // J11: a gap between two clips is hatched; its trash button closes it
+      // (the later clips on the lane move left, one step).
+      const frame = frameToTime(1, composition.fps);
+      for (let index = 1; index < spans.length; index++) {
+        const end = spans[index - 1]!.startTime + spans[index - 1]!.duration;
+        const next = spans[index]!.startTime;
+        if (next - end < frame - 1e-9) continue;
+        const gap = document.createElement('div');
+        gap.className = 'timeline-gap';
+        gap.dataset.start = String(end);
+        gap.dataset.end = String(next);
+        gap.style.left = `${timeToPixel(end, zoom)}px`;
+        gap.style.width = `${timeToPixel(next - end, zoom)}px`;
+        if (!row.track.locked && timeToPixel(next - end, zoom) >= 18) {
+          const close = button(
+            iconSvg('delete', 12),
+            'close-gap',
+            row.track.id,
+            true,
+          );
+          close.dataset.time = String(end);
+          const label = t('timeline.closeGap', {
+            time: formatTimelineTime(Math.round((next - end) * 100) / 100),
+          });
+          close.setAttribute('aria-label', label);
+          close.title = label;
+          gap.append(close);
+        }
+        track.append(gap);
       }
       if (crossTrack)
         for (const item of controller.previews) {
@@ -1086,10 +1282,29 @@ export function mountTimeline(
       line.append(header, track);
       content.append(line);
     }
-    if (!rows.length) {
-      const empty = document.createElement('p');
-      empty.textContent = 'No layers in this composition.';
-      content.append(empty);
+    // J8: an empty scene shows one hint row per lane group; each adds that
+    // kind of element (the shell runs it).
+    if (
+      !rows.length &&
+      !composition.tracks.some((track) => track.clips.length)
+    ) {
+      const hints = document.createElement('div');
+      hints.className = 'timeline-hints';
+      hints.style.marginLeft = `${headerWidth}px`;
+      for (const kind of ['text', 'video', 'audio'] as const) {
+        const hint = document.createElement('button');
+        hint.type = 'button';
+        hint.className = 'timeline-hint';
+        hint.dataset.hint = kind;
+        hint.innerHTML = `${iconSvg(kind === 'text' ? 'text' : kind === 'video' ? 'media' : 'audio', 15)}<span></span>`;
+        hint.querySelector('span')!.textContent = t(`timeline.hint.${kind}`);
+        hint.onclick = () =>
+          root.dispatchEvent(
+            new CustomEvent('timeline-hint', { detail: kind, bubbles: true }),
+          );
+        hints.append(hint);
+      }
+      content.append(hints);
     }
     const playhead = button(
       iconSvg('chevronDown', 12),
@@ -1147,6 +1362,8 @@ export function mountTimeline(
             item.dataset.id === focused.id,
         )
         ?.focus({ preventScroll: true });
+    // J9: a media drag in progress keeps its marks across re-renders.
+    showAssetTarget();
   };
   const release = () => {
     const id = pointer?.id;
@@ -1291,6 +1508,15 @@ export function mountTimeline(
         event.clientY - pointer.startY + scroll.scrollTop - pointer.scrollY;
       if (Math.abs(delta) >= 3 || Math.abs(deltaY) >= 3) pointer.moved = true;
       if (pointer.moved) {
+        const area = root.getBoundingClientRect();
+        root.classList.toggle(
+          'drag-outside',
+          area.width > 0 &&
+            (event.clientX < area.left ||
+              event.clientX > area.right ||
+              event.clientY < area.top ||
+              event.clientY > area.bottom),
+        );
         const bounds = scroll.getBoundingClientRect();
         const index = Math.floor(
           (event.clientY - bounds.top + scroll.scrollTop - 28) / 34,
@@ -1411,7 +1637,36 @@ export function mountTimeline(
       scroll.focus({ preventScroll: true });
       if (ruler) seek(event.clientX);
     });
-  const pointermove = (event: PointerEvent) => safely(() => update(event));
+  // J11: while the pointer is over the lanes (and nothing is dragged), a
+  // faint playhead with a time chip follows it.
+  const hoverHead = document.createElement('div');
+  hoverHead.className = 'timeline-hover-head';
+  hoverHead.setAttribute('aria-hidden', 'true');
+  const hoverTime = document.createElement('span');
+  hoverHead.append(hoverTime);
+  const hideHoverHead = () => hoverHead.remove();
+  const showHoverHead = (event: PointerEvent) => {
+    const bounds = scroll.getBoundingClientRect();
+    const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth;
+    if (
+      pointer ||
+      x < 0 ||
+      !(event.target as HTMLElement).closest('.timeline-track, .timeline-ruler')
+    )
+      return hideHoverHead();
+    const time = pixelToTime(x, session.timelineZoom);
+    hoverHead.style.left = `${headerWidth + x}px`;
+    hoverHead.style.height = `${content.scrollHeight}px`;
+    hoverTime.textContent = t('timeline.ghostTime', {
+      time: formatTimelineTime(Math.round(time * 100) / 100),
+    });
+    if (hoverHead.parentElement !== content) content.append(hoverHead);
+  };
+  const pointermove = (event: PointerEvent) =>
+    safely(() => {
+      update(event);
+      showHoverHead(event);
+    });
   const pointerup = (event: PointerEvent) =>
     safely(() => {
       if (event.pointerId !== pointer?.id) return;
@@ -1420,7 +1675,20 @@ export function mountTimeline(
       const moved = pointer?.moved ?? false;
       release();
       pointerSnap = undefined;
-      if (kind === 'clip') controller.finish();
+      // J9: a clip released outside the timeline stays where it was.
+      const area = root.getBoundingClientRect();
+      const outside =
+        area.width > 0 &&
+        area.height > 0 &&
+        (event.clientX < area.left ||
+          event.clientX > area.right ||
+          event.clientY < area.top ||
+          event.clientY > area.bottom);
+      root.classList.remove('drag-outside');
+      if (kind === 'clip' && outside) {
+        controller.cancel();
+        render();
+      } else if (kind === 'clip') controller.finish();
       if (kind === 'keyframe') {
         const delta = keyframeDrag?.delta ?? 0;
         keyframeDrag = undefined;
@@ -1521,12 +1789,59 @@ export function mountTimeline(
         case 'speed':
           showSpeedMenu();
           return;
+        // J14: the clip menu's own entries run registered commands (the
+        // shell holds their context); Audio opens its submenu.
+        case 'run-command':
+          menu.hidden = true;
+          root.dispatchEvent(
+            new CustomEvent('timeline-command', {
+              detail: target.dataset.command,
+              bubbles: true,
+            }),
+          );
+          return;
+        case 'audio-menu':
+          showAudioMenu();
+          return;
         case 'menu-back':
           showMainMenu();
           return;
         case 'speed-preset':
           setClipSpeed(engine, session, Number(target.dataset.speed));
           break;
+        case 'transition':
+          root.dispatchEvent(
+            new CustomEvent('timeline-transition', {
+              detail: target.dataset.id,
+              bubbles: true,
+            }),
+          );
+          return;
+        case 'close-gap': {
+          // J11: ripple close: every later clip on the lane moves left by the
+          // gap, in one step.
+          const lane = session.source.composition.tracks.find(
+            (track) => track.id === target.dataset.id,
+          );
+          const at = Number(target.dataset.time);
+          if (!lane || lane.locked) break;
+          const later = [...lane.clips]
+            .filter((clip) => clip.startTime > at + 1e-9)
+            .sort((a, b) => a.startTime - b.startTime);
+          const shift = later[0] ? later[0].startTime - at : 0;
+          if (shift <= 0) break;
+          engine.commands.transaction(
+            'Close gap',
+            later.map((clip) => ({
+              type: 'SET_CLIP_TIMING' as const,
+              compositionId: session.source.composition.id,
+              clipId: clip.id,
+              startTime: clip.startTime - shift,
+              duration: clip.duration,
+            })),
+          );
+          break;
+        }
         case 'track-up':
         case 'track-down': {
           const tracks = [...session.source.composition.tracks].sort(
@@ -1553,6 +1868,36 @@ export function mountTimeline(
           break;
         case 'stop':
           playback.stop();
+          break;
+        // J13: the Player panel's buttons.
+        case 'previous-cut':
+          jumpToCut(session, -1);
+          break;
+        case 'back-5':
+        case 'forward-5':
+          session.setCurrentTime(
+            Math.min(
+              session.source.composition.duration,
+              Math.max(
+                0,
+                session.currentTime +
+                  (target.dataset.action === 'back-5' ? -5 : 5),
+              ),
+            ),
+          );
+          break;
+        case 'zoom-fit': {
+          // The whole scene fits the visible lanes.
+          const visible = scroll.clientWidth - headerWidth - 24;
+          const duration = Math.max(1, session.source.composition.duration);
+          zoomAt(visible / duration);
+          scroll.scrollLeft = 0;
+          break;
+        }
+        case 'collapse-timeline':
+          root.dispatchEvent(
+            new CustomEvent('timeline-collapse', { bubbles: true }),
+          );
           break;
         case 'frame-back':
           stepFrame(-1);
@@ -1747,26 +2092,171 @@ export function mountTimeline(
     if (reorderId)
       event.dataTransfer?.setData('application/x-editor-row', reorderId);
   };
+  // J9: while media from the Media panel is over the timeline, a ghost clip
+  // with its start time shows where it lands; near a lane's edge a purple
+  // line with + makes a new lane there; over a clip of the same kind, the
+  // drop offers Replace; a lane of another group refuses it.
+  const ghost = document.createElement('div');
+  ghost.className = 'timeline-asset-ghost';
+  ghost.setAttribute('aria-hidden', 'true');
+  const ghostLabel = document.createElement('span');
+  ghost.append(ghostLabel);
+  const separator = document.createElement('div');
+  separator.className = 'timeline-lane-insert';
+  separator.setAttribute('aria-hidden', 'true');
+  separator.innerHTML = `<span>${iconSvg('plus', 12)}</span>`;
+  const clearAssetDropTarget = () => {
+    assetTarget = null;
+    ghost.remove();
+    separator.remove();
+    ghost.dataset.shown = separator.dataset.shown = 'false';
+    root.classList.remove('lane-refused');
+    for (const item of root.querySelectorAll(
+      '.asset-drop-target, .drop-refused, .replace-target',
+    ))
+      item.classList.remove(
+        'asset-drop-target',
+        'drop-refused',
+        'replace-target',
+      );
+  };
+  /** Marks the lane, clip or refusal for the current target (again after a
+   *  re-render, which rebuilds the rows). */
+  const showAssetTarget = () => {
+    const target = assetTarget;
+    root.classList.toggle(
+      'lane-refused',
+      controller.refused || target?.mode === 'refused',
+    );
+    if (!target) return;
+    const row = (id: string) =>
+      root.querySelector(
+        `.timeline-nle-row[data-track-id="${CSS.escape(id)}"]`,
+      );
+    if (target.mode === 'lane')
+      row(target.trackId)?.classList.add('asset-drop-target');
+    if (target.mode === 'refused')
+      row(target.trackId)?.classList.add('drop-refused');
+    if (target.mode === 'replace')
+      root
+        .querySelector(
+          `.timeline-clip[data-clip-id="${CSS.escape(target.clipId)}"]`,
+        )
+        ?.classList.add('replace-target');
+    for (const overlay of [ghost, separator])
+      if (overlay.dataset.shown === 'true' && overlay.parentElement !== content)
+        content.append(overlay);
+  };
+  const assetOver = (event: DragEvent) => {
+    const drag = assetDrag();
+    const overLane = (event.target as HTMLElement).closest(
+      '.timeline-nle-row, .timeline-clip',
+    );
+    // Between lanes' elements (a border, the content's edge) the last target
+    // stands; it is cleared when the drag leaves the timeline.
+    if (!overLane) return;
+    clearAssetDropTarget();
+    // Without a known asset (a drag from elsewhere), the row is marked only.
+    if (!drag) {
+      (event.target as HTMLElement)
+        .closest('.timeline-nle-row')
+        ?.classList.add('asset-drop-target');
+      return;
+    }
+    const zoom = session.timelineZoom;
+    const bounds = scroll.getBoundingClientRect();
+    const time = Math.max(
+      0,
+      pixelToTime(
+        event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
+        zoom,
+      ),
+    );
+    const group = laneGroupOfLayer(drag.type);
+    const lanes = [...root.querySelectorAll<HTMLElement>('.timeline-nle-row')];
+    const row = (event.target as HTMLElement).closest<HTMLElement>(
+      '.timeline-nle-row',
+    );
+    const clipElement = (event.target as HTMLElement).closest<HTMLElement>(
+      '.timeline-clip[data-clip-id]',
+    );
+    const contentBox = content.getBoundingClientRect();
+    const place = (element: HTMLElement, top: number) => {
+      element.style.top = `${top - contentBox.top}px`;
+      element.dataset.shown = 'true';
+      content.append(element);
+    };
+    // Over a clip of the same kind: Replace is offered on drop.
+    const clip = clipElement
+      ? findClip(session.source.composition, clipElement.dataset.clipId!)
+      : undefined;
+    const clipLayer = clip
+      ? locateLayer(session.source.composition.layers, clip.clip.layerId)?.layer
+      : undefined;
+    if (clip && clipLayer?.type === drag.type && drag.type !== 'audio') {
+      assetTarget = {
+        mode: 'replace',
+        layerId: clipLayer.id,
+        clipId: clip.clip.id,
+        time,
+      };
+      showAssetTarget();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+      return;
+    }
+    if (row) {
+      const box = row.getBoundingClientRect();
+      const index = lanes.indexOf(row);
+      const edge =
+        event.clientY - box.top < 6
+          ? index
+          : box.bottom - event.clientY < 6
+            ? index + 1
+            : -1;
+      const groupAt = (at: number) => lanes[at]?.dataset.laneGroup;
+      // A new lane between two lanes stays in the media's group.
+      if (
+        edge >= 0 &&
+        (groupAt(edge - 1) === group || groupAt(edge) === group)
+      ) {
+        assetTarget = { mode: 'insert', index: edge, time };
+        place(separator, edge === index ? box.top : box.bottom);
+        separator.style.left = `${headerWidth}px`;
+        ghost.style.left = `${headerWidth + timeToPixel(time, zoom)}px`;
+        ghost.style.width = `${Math.max(8, timeToPixel(drag.duration, zoom))}px`;
+        ghostLabel.textContent = t('timeline.ghostTime', {
+          time: formatTimelineTime(Math.round(time * 100) / 100),
+        });
+        place(ghost, (edge === index ? box.top : box.bottom) - 14);
+        if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+        return;
+      }
+      if (row.dataset.laneGroup !== group) {
+        assetTarget = { mode: 'refused', trackId: row.dataset.trackId!, time };
+        showAssetTarget();
+        // The drop still arrives, so the shell can say why it was refused.
+        return;
+      }
+      assetTarget = { mode: 'lane', trackId: row.dataset.trackId!, time };
+      showAssetTarget();
+      ghost.style.left = `${headerWidth + timeToPixel(time, zoom)}px`;
+      ghost.style.width = `${Math.max(8, timeToPixel(drag.duration, zoom))}px`;
+      ghostLabel.textContent = t('timeline.ghostTime', {
+        time: formatTimelineTime(Math.round(time * 100) / 100),
+      });
+      place(ghost, box.top + 3);
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    }
+  };
   const dragover = (event: DragEvent) => {
     const asset = event.dataTransfer?.types.includes(
       'application/x-editor-asset',
     );
     if (reorderId || asset) {
       event.preventDefault();
-      if (asset) {
-        root
-          .querySelector('.asset-drop-target')
-          ?.classList.remove('asset-drop-target');
-        (event.target as HTMLElement)
-          .closest('.timeline-nle-row')
-          ?.classList.add('asset-drop-target');
-      }
+      if (asset) assetOver(event);
     }
   };
-  const clearAssetDropTarget = () =>
-    root
-      .querySelector('.asset-drop-target')
-      ?.classList.remove('asset-drop-target');
   const dragleave = (event: DragEvent) => {
     if (
       !(event.relatedTarget instanceof Node) ||
@@ -1776,7 +2266,7 @@ export function mountTimeline(
   };
   const drop = (event: DragEvent) =>
     safely(() => {
-      clearAssetDropTarget();
+      // A media drop is read and cleared by the shell's drop listener.
       if (!reorderId) return;
       event.preventDefault();
       const target = (event.target as HTMLElement).closest<HTMLElement>(
@@ -1833,20 +2323,157 @@ export function mountTimeline(
     }
     menu.replaceChildren(...items);
   };
+  // J14: a Clipchamp section for the kind of clip first (each entry a
+  // registered command with its shortcut), then a divider and the earlier
+  // entries that are not already in it.
+  const commandContext = {
+    engine,
+    session,
+    togglePlayback: () => undefined,
+  };
+  const commandItem = (id: string, role = 'menuitem') => {
+    const command = commands.find((item) => item.id === id)!;
+    const item = menuItem(t(command.labelKey), 'run-command', role);
+    item.dataset.command = id;
+    // The shortcut is drawn by CSS from data-shortcut, so the entry's text
+    // and accessible name stay its label (aria-keyshortcuts names the keys).
+    if (command.shortcut) {
+      const keys = command.shortcut.split(' / ')[0]!;
+      item.dataset.shortcut = keys;
+      item.setAttribute('aria-keyshortcuts', keys);
+    }
+    if (!command.isEnabled(commandContext)) item.disabled = true;
+    return item;
+  };
+  const clipMenuKind = () => {
+    const kinds = new Set(
+      selectionRoots(session.source, session.selectedIds).map((layer) =>
+        findClipByLayer(session.source.composition, layer.id)
+          ? layer.type === 'video' ||
+            layer.type === 'image' ||
+            layer.type === 'audio'
+            ? layer.type
+            : 'element'
+          : 'none',
+      ),
+    );
+    return kinds.size === 1 && !kinds.has('none') ? [...kinds][0]! : null;
+  };
+  const kindSection = (kind: string): HTMLElement[] => {
+    const items: HTMLElement[] = [
+      'duplicate',
+      'copy',
+      'paste',
+      'delete',
+      'split',
+    ].map((id) => commandItem(id));
+    if (kind === 'video') {
+      const freeze = commandItem('freeze', 'menuitemcheckbox');
+      freeze.setAttribute(
+        'aria-checked',
+        String(
+          selectionRoots(session.source, session.selectedIds).every((layer) => {
+            const found = findClipByLayer(session.source.composition, layer.id);
+            return !!found && clipTimeEffects(found.clip).freezeFrame !== null;
+          }),
+        ),
+      );
+      items.push(freeze);
+    }
+    items.push(commandItem('edit-duration'), commandItem('rename-clip'));
+    if (kind === 'video' || kind === 'audio') {
+      const audio = menuItem(`${t('menu.audio')} ›`, 'audio-menu');
+      audio.setAttribute('aria-haspopup', 'menu');
+      items.push(audio);
+    }
+    if (kind === 'video') {
+      const cut = menuItem(t('command.autoCut'), 'auto-cut');
+      cut.setAttribute('aria-disabled', 'true');
+      cut.disabled = true;
+      cut.title = t('menu.autoCutPlanned');
+      items.push(cut);
+    }
+    items.push(commandItem('more-options'));
+    return items;
+  };
+  const showAudioMenu = () => {
+    const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
+    const mute = commandItem('clip-mute', 'menuitemcheckbox');
+    const clips = selectionRoots(session.source, session.selectedIds).flatMap(
+      (layer) => {
+        const found = findClipByLayer(session.source.composition, layer.id);
+        return found ? [found] : [];
+      },
+    );
+    mute.setAttribute(
+      'aria-checked',
+      String(clips.length > 0 && clips.every(({ track }) => track.muted)),
+    );
+    const items: HTMLElement[] = [back, mute];
+    if (clipMenuKind() === 'video') items.push(commandItem('detach-audio'));
+    menu.replaceChildren(...items);
+    back.focus();
+  };
+  // J14: the menu works from the keyboard: Up and Down move (skipping
+  // disabled entries), Home and End, Right opens Audio, Left goes back.
+  menu.addEventListener('keydown', (event) => {
+    const items = [
+      ...menu.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+    ];
+    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const focus = (at: number) =>
+      items[(at + items.length) % items.length]?.focus();
+    if (event.key === 'ArrowDown') focus(index + 1);
+    else if (event.key === 'ArrowUp') focus(index < 0 ? -1 : index - 1);
+    else if (event.key === 'Home') focus(0);
+    else if (event.key === 'End') focus(-1);
+    else if (event.key === 'Escape') {
+      menu.hidden = true;
+      scroll.focus();
+    } else if (
+      event.key === 'ArrowRight' &&
+      (document.activeElement as HTMLElement | null)?.dataset.action ===
+        'audio-menu'
+    )
+      showAudioMenu();
+    else if (
+      event.key === 'ArrowLeft' &&
+      menu.querySelector('[data-action="menu-back"]')
+    )
+      showMainMenu();
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
   const showMainMenu = () => {
+    const kind = clipMenuKind();
+    const section = kind ? kindSection(kind) : [];
+    const shown = new Set(
+      section.flatMap((item) =>
+        (item as HTMLElement).dataset.command
+          ? [(item as HTMLElement).dataset.command!]
+          : [],
+      ),
+    );
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
       (layer) => {
         const found = findClipByLayer(session.source.composition, layer.id);
         return found ? [found.clip] : [];
       },
     );
+    const earlier = contextActions(
+      session.source,
+      session.selectedIds,
+      session.currentTime,
+      menuMarker,
+    ).filter((action) => !shown.has(action));
+    const divider = document.createElement('div');
+    divider.className = 'timeline-menu-divider';
+    divider.setAttribute('role', 'separator');
     menu.replaceChildren(
-      ...contextActions(
-        session.source,
-        session.selectedIds,
-        session.currentTime,
-        menuMarker,
-      ).map((action) => {
+      ...section,
+      ...(section.length && earlier.length ? [divider] : []),
+      ...earlier.map((action) => {
         if (action === 'speed')
           return menuItem(`${t('command.speed')} ›`, action);
         if (CLIP_ACTIONS.includes(action))
@@ -1940,6 +2567,8 @@ export function mountTimeline(
     }
     showMainMenu();
     menu.hidden = false;
+    // J14: the first entry takes focus once the menu is shown.
+    menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
     menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
   };
   // TL-055: scrolling within half a viewport of the end extends the timeline.
@@ -1962,6 +2591,7 @@ export function mountTimeline(
   const listeners = {
     pointerdown,
     pointermove,
+    pointerleave: hideHoverHead,
     pointerup,
     pointercancel,
     lostpointercapture: pointercancel,
@@ -1975,6 +2605,9 @@ export function mountTimeline(
       clearAssetDropTarget();
     },
     dragover,
+    // J9: entering must accept the drag too, or the browser sends the next
+    // dragover to the page body instead of the lane under the pointer.
+    dragenter: dragover,
     drop,
     wheel,
   };
@@ -2010,6 +2643,7 @@ export function mountTimeline(
     menu.hidden = true;
     render();
   });
+  document.addEventListener('dragend', clearAssetDropTarget);
   render();
   return {
     get active() {
@@ -2025,6 +2659,68 @@ export function mountTimeline(
     playback,
     render,
     cancel,
+    /** J14: renames a layer's clip in place (Enter or leaving commits). */
+    renameClip(layerId: string) {
+      const clip = root.querySelector<HTMLElement>(
+        `.timeline-clip[data-action="clip"][data-id="${CSS.escape(layerId)}"]`,
+      );
+      const layer = locateLayer(
+        session.source.composition.layers,
+        layerId,
+      )?.layer;
+      if (!clip || !layer) return;
+      clip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+      const box = clip.getBoundingClientRect();
+      const input = document.createElement('input');
+      input.className = 'timeline-rename';
+      input.value = layer.name;
+      input.setAttribute('aria-label', t('clip.renameLabel'));
+      Object.assign(input.style, {
+        left: `${box.left}px`,
+        top: `${box.top}px`,
+        width: `${Math.max(120, box.width)}px`,
+        height: `${box.height}px`,
+      });
+      let done = false;
+      const finish = (commit: boolean) => {
+        if (done) return;
+        done = true;
+        const name = input.value.trim();
+        input.remove();
+        if (commit && name && name !== layer.name)
+          try {
+            engine.commands.transaction('Rename', [
+              {
+                type: 'SET_LAYER_NAME',
+                compositionId: session.source.composition.id,
+                layerId,
+                name,
+              },
+            ]);
+          } catch (error) {
+            report(error);
+          }
+        scroll.focus({ preventScroll: true });
+      };
+      input.addEventListener('keydown', (event) => {
+        event.stopPropagation();
+        if (event.key === 'Enter') finish(true);
+        else if (event.key === 'Escape') finish(false);
+      });
+      input.addEventListener('blur', () => finish(true));
+      document.body.append(input);
+      input.focus();
+      input.select();
+    },
+    /** J9: where a media drop over the timeline lands, while one is over it. */
+    assetTarget: () => assetTarget,
+    clearAssetTarget: clearAssetDropTarget,
+    /** J6: highlights a layer's clip (Show element timing), or none. */
+    highlight(id: string | null) {
+      highlighted = id;
+      renderedProject = undefined;
+      render();
+    },
     /** H3: scrolls so `time` is in view (Show element timing). */
     reveal(time: number) {
       const x = timeToPixel(time, session.timelineZoom);
@@ -2045,6 +2741,7 @@ export function mountTimeline(
       for (const [name, listener] of Object.entries(listeners))
         root.removeEventListener(name, listener as EventListener);
       window.removeEventListener('blur', cancel);
+      document.removeEventListener('dragend', clearAssetDropTarget);
       window.removeEventListener('resize', cancel);
       scroll.removeEventListener('scroll', onScroll);
       root.replaceChildren();
