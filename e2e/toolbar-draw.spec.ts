@@ -90,12 +90,13 @@ test('[CV-035][CV-037][CV-038] the toolbar follows the selection: text Size and 
   // Regression: the toolbar floats; showing it never moves the canvas.
   expect(await page.locator('canvas').boundingBox()).toEqual(canvasBefore);
   await expect(toolbar(page)).toHaveAttribute('data-kind', 'text');
-  // H3: one row; unbuilt controls name their wave (List, TXT-024).
-  await expect(control(page, 'list')).toHaveAttribute('aria-disabled', 'true');
-  await expect(control(page, 'list')).toHaveAttribute(
-    'title',
-    'Planned: Wave 3 (TXT-024)',
+  // H3: one row. J4 built List (TXT-024): it is live, with its own name.
+  await expect(control(page, 'list')).toBeEnabled();
+  await expect(control(page, 'list')).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
   );
+  await expect(control(page, 'list')).toHaveAttribute('title', 'List');
   await page.screenshot({ path: testInfo.outputPath('text-toolbar.png') });
   await commit(page, 'size', '60');
   expect(

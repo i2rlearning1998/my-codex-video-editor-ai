@@ -889,5 +889,6 @@
   "text.editing": "संपादित हो रहा टेक्स्ट",
   "text.list.none": "कोई सूची नहीं",
   "text.list.bullet": "बुलेट सूची",
-  "text.list.number": "क्रमांकित सूची"
+  "text.list.number": "क्रमांकित सूची",
+  "field.slider": "{label} स्लाइडर"
 }

@@ -330,7 +330,7 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
     wrap.append(
       createSlider({
         id: `${options.id}-slider`,
-        label: options.label,
+        label: t('field.slider', { label: options.label }),
         value: committed,
         min: range[0],
         max: range[1],

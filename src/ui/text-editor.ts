@@ -344,6 +344,11 @@ export function mountTextEditor(
   /** The last selection inside the editor, kept while a toolbar has focus. */
   let saved: [number, number] = [0, 0];
 
+  const sameAsOpened = () =>
+    !!original &&
+    model.text === original.text &&
+    formatRuns(runsFromStyles(model.styles)) === original.runs &&
+    list === original.list;
   const layer = (): SceneLayer | null =>
     layerId
       ? (locateLayer(session.source.composition.layers, layerId)?.layer ?? null)
@@ -607,6 +612,12 @@ export function mountTextEditor(
       if (next) {
         to.push(model);
         restore(next);
+      } else if (!redoing && !redo.length && sameAsOpened()) {
+        // Nothing typed in this session: Undo leaves the editor and undoes
+        // the project's last step (for example the text box just added).
+        editor.finish();
+        engine.undo();
+        return;
       }
       lastSnapshot = 0;
       return;

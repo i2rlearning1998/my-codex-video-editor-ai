@@ -889,5 +889,6 @@
   "text.editing": "Text being edited",
   "text.list.none": "No list",
   "text.list.bullet": "Bulleted list",
-  "text.list.number": "Numbered list"
+  "text.list.number": "Numbered list",
+  "field.slider": "{label} slider"
 }
