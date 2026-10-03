@@ -6051,3 +6051,93 @@ button.number-field-step:focus-visible {
     0 0 0 1.5px var(--color-accent),
     var(--shadow-1);
 }
+
+/* J12: transitions: a + where two clips touch, a chip on a cut that has
+   one, and the Transition panel. */
+.transition-add,
+.transition-chip {
+  position: absolute;
+  inset-block-start: 50%;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  padding: 0;
+  margin-inline-start: -10px;
+  margin-block-start: -10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.transition-add {
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  opacity: 0;
+}
+.timeline-track:hover .transition-add,
+.transition-add:focus-visible {
+  opacity: 1;
+}
+.transition-chip {
+  inline-size: 26px;
+  margin-inline-start: -13px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-accent-text);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.transition-add:disabled,
+.transition-chip:disabled {
+  display: none;
+}
+.transition-panel {
+  display: grid;
+  gap: var(--space-3);
+}
+.transition-search {
+  inline-size: 100%;
+}
+.transition-group h4 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.transition-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.transition-option {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.transition-option[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.transition-option[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.transition-preview {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: 36px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--clip-video) 50%,
+    var(--clip-image) 50%
+  );
+  color: var(--clip-label);
+}

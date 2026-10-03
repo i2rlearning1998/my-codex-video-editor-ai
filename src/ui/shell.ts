@@ -1,3 +1,4 @@
+import { buildTransitionPanel } from './transition-panel';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
 import { mountFonts } from './fonts';
@@ -1764,6 +1765,31 @@ export function mountEditorShell(
     'timeline-hint',
     timelineHint,
   );
+  // J12: a cut's + or chip opens the Transition panel for that cut.
+  const transitionState = { query: '' };
+  const openTransition = (event: Event) =>
+    safely(() => {
+      const clipId = (event as CustomEvent<string>).detail;
+      transitionState.query = '';
+      sidePanels.show('transition', t('transition.title'), () =>
+        buildTransitionPanel(
+          clipId,
+          engine,
+          session,
+          reportError,
+          transitionState,
+        ),
+      );
+    });
+  element('#timeline-foundation').addEventListener(
+    'timeline-transition',
+    openTransition,
+  );
+  // It shows the cut's current transition after every change (and closes
+  // when the clips no longer touch).
+  const unsubscribeTransition = session.onChange(() => {
+    if (sidePanels.openId === 'transition') sidePanels.refresh();
+  });
   mediaInput.onchange = () => {
     const files = [...(mediaInput.files ?? [])];
     mediaInput.value = '';
@@ -2573,6 +2599,11 @@ export function mountEditorShell(
         'timeline-hint',
         timelineHint,
       );
+      element('#timeline-foundation').removeEventListener(
+        'timeline-transition',
+        openTransition,
+      );
+      unsubscribeTransition();
       unsubscribe();
       unsubscribePreview();
       disposeFonts();

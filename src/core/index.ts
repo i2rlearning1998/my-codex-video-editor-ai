@@ -8,5 +8,6 @@ export * from './transforms';
 export * from './time';
 export * from './timeline';
 export * from './lanes';
+export * from './transitions';
 export * from './animation';
 export * from './clip-animation';

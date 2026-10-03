@@ -398,7 +398,13 @@ export function drawComposition(
         // W5-C Wipe: only the revealed part of the box is drawn.
         if (item.reveal !== undefined) {
           context.beginPath();
-          context.rect(0, 0, item.size.width * item.reveal, item.size.height);
+          const shown = item.size.width * item.reveal;
+          context.rect(
+            item.revealFrom === 'right' ? item.size.width - shown : 0,
+            0,
+            shown,
+            item.size.height,
+          );
           context.clip();
         }
         // W4-B: decoded media replaces the placeholder once its frame is ready.

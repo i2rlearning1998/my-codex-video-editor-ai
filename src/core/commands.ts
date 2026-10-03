@@ -16,6 +16,11 @@ import {
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
 import { syncLanes } from './lanes';
+import {
+  maxTransition,
+  previousTouching,
+  transitionSchema,
+} from './transitions';
 import { clipAnimation, clipAnimationSlots } from './clip-animation';
 import {
   childrenOf,
@@ -58,6 +63,16 @@ export const commandSchema = z.discriminatedUnion('type', [
       type: z.literal('SET_COMPOSITION_BACKGROUND'),
       ...location,
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    })
+    .strict(),
+  // J12: the transition into a clip from the clip that touches it on the
+  // same lane (null removes it). Stored in the clip's transitionMetadata.
+  z
+    .object({
+      type: z.literal('SET_CLIP_TRANSITION'),
+      ...location,
+      clipId: idSchema,
+      transition: transitionSchema.nullable(),
     })
     .strict(),
   // G5: a composition's (scene's) name. Its duration is derived from its
@@ -508,6 +523,21 @@ export function applyCommand(project: Project, command: Command): void {
         source.clip,
       );
       syncLanes(composition);
+      return;
+    }
+    case 'SET_CLIP_TRANSITION': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      if (!command.transition) {
+        delete clip.transitionMetadata.in;
+        return;
+      }
+      const before = previousTouching(track.clips, clip);
+      if (!before)
+        throw new Error('A transition needs a clip touching this one');
+      if (command.transition.duration > maxTransition(before, clip) + 1e-9)
+        throw new Error('The transition is longer than the clips allow');
+      clip.transitionMetadata.in = { ...command.transition };
       return;
     }
     case 'SET_CLIP_ENABLED': {

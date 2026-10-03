@@ -35,6 +35,7 @@ import { shapeOf, type ShapeStyle } from './shapes';
 import type { TransformCapabilities } from './transform-capabilities';
 import { drawingOf, type DrawingPath } from './drawing';
 import { applyPresets } from './presets';
+import { applyTransitions } from './transitions';
 
 export interface LayerPreview extends TransformPreview {
   readonly textBox?: { readonly width: number; readonly height: number };
@@ -168,6 +169,8 @@ export interface RenderItem {
   readonly cropView?: CropView;
   /** W5-C Wipe: the visible fraction of the box, from the left. */
   readonly reveal?: number;
+  /** J12: the side the reveal starts from (left unless set). */
+  readonly revealFrom?: 'left' | 'right';
 }
 const defaults = {
   image: [320, 180],
@@ -249,9 +252,9 @@ export function deriveRenderItems(input: RenderSource): {
     ? {
         ...input,
         animate: false,
-        composition: applyPresets(
-          input.composition,
-          input.assets,
+        // J12: then the transitions in play across cuts.
+        composition: applyTransitions(
+          applyPresets(input.composition, input.assets, input.currentTime ?? 0),
           input.currentTime ?? 0,
         ),
       }
@@ -383,6 +386,11 @@ export function deriveRenderItems(input: RenderSource): {
                     1,
                     Math.max(0, numericProperty(layer, 'presetReveal')!),
                   ),
+                  // J12: a wipe to the left reveals from the right edge.
+                  ...(layer.properties.presetRevealFrom?.type === 'string' &&
+                  layer.properties.presetRevealFrom.value === 'right'
+                    ? { revealFrom: 'right' as const }
+                    : {}),
                 }
               : {}),
             id: layer.id,

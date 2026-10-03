@@ -15,6 +15,7 @@ import {
   laneGroupOfTrack,
   laneGroupOfLayer,
   findClip,
+  clipTransition,
   type EditorEngine,
   type Command,
   clipAnimation,
@@ -1112,6 +1113,36 @@ export function mountTimeline(
       const spans = [...row.clips]
         .map((entry) => entry.clip)
         .sort((a, b) => a.startTime - b.startTime);
+      // J12: where two clips touch, a + adds a transition; a cut that has one
+      // shows a chip that opens it. Both open the Transition panel.
+      for (let index = 1; index < spans.length; index++) {
+        const before = spans[index - 1]!,
+          after = spans[index]!;
+        if (
+          Math.abs(before.startTime + before.duration - after.startTime) > 1e-6
+        )
+          continue;
+        const transition = clipTransition(
+          after as unknown as { transitionMetadata: Record<string, unknown> },
+        );
+        const cut = document.createElement('button');
+        cut.type = 'button';
+        cut.dataset.action = 'transition';
+        cut.dataset.id = after.id;
+        cut.className = transition ? 'transition-chip' : 'transition-add';
+        cut.style.left = `${timeToPixel(after.startTime, zoom)}px`;
+        const label = transition
+          ? t('transition.chip', {
+              name: t(`transition.type.${transition.type}`),
+              time: formatTimelineTime(transition.duration),
+            })
+          : t('transition.add');
+        cut.setAttribute('aria-label', label);
+        cut.title = label;
+        cut.innerHTML = iconSvg(transition ? 'transitions' : 'plus', 12);
+        if (row.track.locked) cut.disabled = true;
+        track.append(cut);
+      }
       // J11: a gap between two clips is hatched; its trash button closes it
       // (the later clips on the lane move left, one step).
       const frame = frameToTime(1, composition.fps);
@@ -1746,6 +1777,14 @@ export function mountTimeline(
         case 'speed-preset':
           setClipSpeed(engine, session, Number(target.dataset.speed));
           break;
+        case 'transition':
+          root.dispatchEvent(
+            new CustomEvent('timeline-transition', {
+              detail: target.dataset.id,
+              bubbles: true,
+            }),
+          );
+          return;
         case 'close-gap': {
           // J11: ripple close: every later clip on the lane moves left by the
           // gap, in one step.

@@ -663,6 +663,7 @@ Between clips and at clip edges.
 | TR-008 | P1 | W6 | Todo | Video cross dissolve also crossfades the audio |
 | TR-009 | P1 | W6 | Todo | Alignment choice: centered, start or end on the cut |
 | TR-010 | P1 | W6 | Verified | Transitions panel lists transitions by section (Fades & blurs, Wipes, Pushes, Cartoon, Glitches, 3D) with static posters, a tip and a Duration control; they are disabled with their wave until transitions are built |
+| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane, a + adds a transition and a cut with one shows a chip; both open a Transition panel with search, a grouped grid (Cross fade, Fade through black and white, Wipe left and right, Slide left and right live; the rest disabled with their wave) and Duration (default 1 s, clamped with a message to what the clips allow); each change and Remove is one undo step; the transition is drawn the same in the preview and the export (J12) |
 
 ## MSK: Masks, blend modes and compositing (Wave 6)
 
