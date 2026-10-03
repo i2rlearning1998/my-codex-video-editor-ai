@@ -228,8 +228,12 @@ export class Canvas2DRenderer implements CompositionRenderer {
   }
 }
 
-/** G3: the opacity of layer parts outside the composition in the editor. */
-const OUTSIDE_FADE = 0.3;
+/**
+ * G3, J6: the opacity of layer parts outside the composition in the editor.
+ * 0.3 made elements left outside the page (after Resize canvas to
+ * selection) look disabled; 0.6 reads as "outside the page" but still active.
+ */
+const OUTSIDE_FADE = 0.6;
 export interface DrawOptions {
   /** Selection handles and the composition border (false for export, W5-A). */
   readonly overlays?: boolean;

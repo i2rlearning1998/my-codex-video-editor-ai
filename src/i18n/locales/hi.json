@@ -897,5 +897,13 @@
   "text.weight800": "अति मोटा",
   "text.weight900": "सबसे मोटा",
   "panels.bundledFonts": "साथ आने वाले फ़ॉन्ट (सभी मोटाइयाँ)",
+  "timing.start": "शुरुआत",
+  "timing.duration": "अवधि",
+  "altText.saved": "वैकल्पिक टेक्स्ट सहेजा गया",
+  "altText.badge": "वैकल्पिक टेक्स्ट है",
+  "resize.confirmTitle": "कैनवास को चयन के आकार का करें?",
+  "resize.confirm": "इस दृश्य का कैनवास {width} × {height} (चयन का आकार) होगा, और हर तत्व साथ में खिसकेगा ताकि चयन पूरा कैनवास भरे। बाहर के तत्व दृश्य में रहेंगे। पूर्ववत करने से सब वापस आ जाएगा।",
+  "resize.apply": "आकार बदलें",
+  "altText.short": "ALT",
   "field.slider": "{label} स्लाइडर"
 }

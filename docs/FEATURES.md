@@ -321,6 +321,9 @@ Everything the user does directly on the preview canvas.
 | CV-055 | P0 | W2 | Verified | Canvas size presets (16:9, 9:16, 1:1, 4:3, 4:5, 21:9, 2:3) and a custom size apply to the open scene without moving its layers (J1 LCR, PRJ-025), as one undo step with Undo in the toast |
 | CV-056 | P0 | W2 | Verified | Right-click menus per type, with icons and shortcuts: an element offers Lock, Show element timing, Alternative text, Set image as background, Resize canvas to selection, Download selection and Info; the empty canvas offers Paste, scenes, Canvas size and Guides; unbuilt items name their wave (H3 LCR) |
 | CV-057 | P0 | W2 | Verified | A click on the stage outside the artboard, or Escape with nothing selected, shows the canvas bar in the toolbar slot: Ratio (size presets), canvas background colour and Auto captions (planned, W8); a click on the artboard or an object hides it; object toolbars carry no size chip; never two bars at once |
+| CV-058 | P0 | W2 | Verified | Show element timing opens a popover with the element's start time and duration (NumberFields), highlights its clip on the timeline while open, and each change is one undo step (J6 LCR) |
+| CV-059 | P0 | W2 | Verified | Alternative text is stored per layer in the project, saved with a visible confirmation, marked with an ALT badge in the scene list, and shown again when reopened (J6 LCR) |
+| CV-060 | P0 | W2 | Verified | Resize canvas to selection asks for confirmation naming the new size, gives the open scene the selection's size with every layer moved together in one undo step, and Fit then fits the whole artboard in view (J6 LCR) |
 
 ## LYR: Layers panel (Wave 2)
 

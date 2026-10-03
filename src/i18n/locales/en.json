@@ -897,5 +897,13 @@
   "text.weight800": "Extra bold",
   "text.weight900": "Black",
   "panels.bundledFonts": "Bundled fonts (all weights)",
+  "timing.start": "Start",
+  "timing.duration": "Duration",
+  "altText.saved": "Alternative text saved",
+  "altText.badge": "Has alternative text",
+  "resize.confirmTitle": "Resize canvas to selection?",
+  "resize.confirm": "The canvas of this scene becomes {width} × {height}, the size of the selection, and every element moves with it so the selection fills the canvas. Elements outside it stay in the scene. Undo restores everything.",
+  "resize.apply": "Resize",
+  "altText.short": "ALT",
   "field.slider": "{label} slider"
 }

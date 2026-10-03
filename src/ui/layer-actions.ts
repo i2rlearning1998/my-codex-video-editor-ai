@@ -194,6 +194,23 @@ export function layerInfo(session: EditorSession): string[] {
  * (whole pixels) and its layers move together so the selection fills it.
  * Other scenes keep their own size (J1). One undo step.
  */
+/** J6: the whole-pixel size Resize canvas to selection would give. */
+export function selectionSize(
+  session: EditorSession,
+): { width: number; height: number } | null {
+  const boxes = session.selectedIds
+    .map((id) => worldBox(session.source, id))
+    .filter((box): box is NonNullable<typeof box> => !!box);
+  if (!boxes.length) return null;
+  const left = Math.min(...boxes.map((box) => box.x)),
+    top = Math.min(...boxes.map((box) => box.y)),
+    right = Math.max(...boxes.map((box) => box.x + box.width)),
+    bottom = Math.max(...boxes.map((box) => box.y + box.height));
+  return {
+    width: Math.max(16, Math.round(right - left)),
+    height: Math.max(16, Math.round(bottom - top)),
+  };
+}
 export function resizeCanvasToSelection(
   engine: EditorEngine,
   session: EditorSession,

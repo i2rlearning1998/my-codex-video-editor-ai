@@ -1,3 +1,4 @@
+import { openElementTiming } from './element-timing';
 import { mountFonts } from './fonts';
 import {
   multiplyMatrices,
@@ -87,6 +88,8 @@ import {
   ALT_TEXT_LIMIT,
   altTextOf,
   layerInfo,
+  resizeCanvasToSelection,
+  selectionSize,
   setAltText,
   worldBox,
 } from './layer-actions';
@@ -102,7 +105,7 @@ import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
-import { openModal } from './components/modal';
+import { confirmDialog, openModal } from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
@@ -746,6 +749,8 @@ export function mountEditorShell(
         safely(() => {
           setAltText(engine, session, area.value);
           sidePanels.close();
+          // J6: a visible confirmation.
+          showToast(t('altText.saved'), 'success', 3000);
         });
       wrap.append(hint, area, save);
       queueMicrotask(() => area.focus());
@@ -823,9 +828,39 @@ export function mountEditorShell(
       const start = clip?.clip.startTime ?? layer.startTime;
       session.setCurrentTime(start);
       timeline?.reveal(start);
-      element('#timeline-foundation .timeline-scroll').focus();
+      // J6: a popover with the start and duration; the clip is highlighted.
+      openElementTiming(
+        element('#context-toolbar').hidden
+          ? element('#composition-canvas')
+          : element('#context-toolbar'),
+        engine,
+        session,
+        reportError,
+        (id) => timeline?.highlight(id),
+      );
     },
     altText: openAltText,
+    // J6: a confirmation names the new size; one undo step restores it all.
+    resizeToSelection: () => {
+      const size = selectionSize(session);
+      if (!size) return;
+      void confirmDialog(
+        t('resize.confirm', {
+          width: formatNumber(size.width),
+          height: formatNumber(size.height),
+        }),
+        {
+          titleText: t('resize.confirmTitle'),
+          confirmLabel: t('resize.apply'),
+          cancelLabel: t('action.cancel'),
+        },
+      ).then((confirmed) => {
+        if (!confirmed) return;
+        safely(() => {
+          if (resizeCanvasToSelection(engine, session)) canvasView.fit();
+        });
+      });
+    },
     download: downloadSelection,
     info: () => {
       const lines = layerInfo(session);
@@ -1135,6 +1170,15 @@ export function mountEditorShell(
         label.className = 'scene-name';
         label.textContent = layer.name;
         button.append(icon, label);
+        // J6: a layer with alternative text shows an ALT badge.
+        if (altTextOf(layer)) {
+          const badge = document.createElement('span');
+          badge.className = 'alt-badge';
+          badge.textContent = t('altText.short');
+          badge.title = t('altText.badge');
+          badge.setAttribute('aria-label', t('altText.badge'));
+          button.append(badge);
+        }
         button.onclick = (event) =>
           session.select(
             layer.id,

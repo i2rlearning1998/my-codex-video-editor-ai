@@ -241,7 +241,7 @@ test('[CV-047] a layer moved outside the artboard shows faintly and stays select
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect.poll(() => selectedIds(page)).toEqual([]);
-  // The badge is drawn at 30% outside the artboard: its area differs from
+  // The badge is drawn faded (60%, J6) outside the artboard: its area differs from
   // an empty spot outside the artboard.
   const differing = async (rect: [number, number, number, number]) => {
     const a = await screen(page, rect[0], rect[1]);

@@ -5746,3 +5746,29 @@ button.number-field-step:focus-visible {
 .text-editor[data-anchor='bottom'] {
   justify-content: flex-end;
 }
+
+/* J6: Show element timing and the alternative text badge. */
+.element-timing {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 220px;
+}
+.element-timing h4 {
+  margin: 0;
+  font-size: var(--font-size-sm, 13px);
+}
+.timeline-clip.timing-highlight {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+.alt-badge {
+  margin-inline-start: auto;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}

@@ -641,6 +641,8 @@ export function mountTimeline(
       }
     | undefined;
   let suppressClick = false;
+  /** J6: the clip whose timing popover is open (highlighted). */
+  let highlighted: string | null = null;
   /** ANI-004: the frame-quantized offset of a keyframe drag in progress. */
   let keyframeDrag: { delta: number } | undefined;
   const isSelectedKeyframe = (layerId: string, time: number) =>
@@ -941,6 +943,8 @@ export function mountTimeline(
         clip.className = `timeline-clip nle-clip${entry.clip.enabled ? '' : ' disabled'}${crossTrack && moving ? ' drag-origin' : ''}${pushedTo === undefined ? '' : ' pushed'}${row.track.locked ? ' locked' : ''}`;
         clip.dataset.clipId = entry.clip.id;
         clip.dataset.trackId = row.track.id;
+        if (highlighted === entry.layer.id)
+          clip.classList.add('timing-highlight');
         clip.style.left = `${preview ? timeToPixel(preview.startTime, zoom) : entry.left}px`;
         clip.style.width = `${preview ? timeToPixel(preview.duration, zoom) : entry.width}px`;
         clip.title = `${entry.clip.name}: ${formatTimelineTime(entry.clip.startTime)}s, ${formatTimelineTime(entry.clip.duration)}s duration`;
@@ -2025,6 +2029,12 @@ export function mountTimeline(
     playback,
     render,
     cancel,
+    /** J6: highlights a layer's clip (Show element timing), or none. */
+    highlight(id: string | null) {
+      highlighted = id;
+      renderedProject = undefined;
+      render();
+    },
     /** H3: scrolls so `time` is in view (Show element timing). */
     reveal(time: number) {
       const x = timeToPixel(time, session.timelineZoom);
