@@ -87,21 +87,25 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   ]);
   await openFixtureProject('nle-example.json');
   await select(page, 'layer-a');
+  // J15: a video's sections in Clipchamp's order; its own controls, the
+  // Inspector and Animate are Advanced, last.
   expect(await shownSections(page)).toEqual([
-    'Properties',
-    'Speed',
+    'Captions',
     'Audio',
     'Fade',
-    'Animate',
+    'Filters',
     'Effects',
     'Adjust',
+    'Speed',
+    'Transitions',
+    'Properties',
   ]);
   // An unbuilt tab is disabled with its wave; clicking it changes nothing.
-  await expect(section(page, 'Effects')).toHaveAttribute(
+  await expect(section(page, 'Captions')).toHaveAttribute(
     'title',
-    'Effects: Planned: Wave 6 (FX-001)',
+    'Captions: Planned: Wave 8 (TXT-035)',
   );
-  await section(page, 'Effects').click({ force: true });
+  await section(page, 'Captions').click({ force: true });
   await expect(section(page, 'Properties')).toHaveAttribute(
     'aria-pressed',
     'true',

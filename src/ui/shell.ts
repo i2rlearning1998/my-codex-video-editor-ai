@@ -257,6 +257,7 @@ export function mountEditorShell(
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
+        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('chevronRight', 16)}</button></header>
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
@@ -1875,6 +1876,33 @@ export function mountEditorShell(
   /** H4: the rail lists the sections that fit the selection (Clipchamp). */
   const syncRightRail = () => {
     const shown = sectionsFor(session);
+    // J15: the rail lists the shown sections in the selection's order (the
+    // keyboard order matches what is seen).
+    const nav = element('#rail-right');
+    const ordered = [
+      ...nav.querySelectorAll<HTMLElement>('button[data-section]'),
+    ]
+      .map((el) => ({
+        el,
+        at: shown.indexOf(el.dataset.section as RightSection),
+      }))
+      .sort((a, b) => (a.at < 0 ? 99 : a.at) - (b.at < 0 ? 99 : b.at));
+    if (ordered.some(({ el }, index) => nav.children[index] !== el))
+      nav.prepend(...ordered.map(({ el }) => el));
+    // J15: the header names the selection and counts it; the rail follows
+    // the selection's order.
+    const kind = kindOf(session);
+    element('#right-panel-title').textContent = t(
+      kind === 'video' || kind === 'image'
+        ? `right.tab.${kind}`
+        : firstTabKey(kind),
+    );
+    const count = element('#right-panel-count');
+    count.hidden = session.selectedIds.length === 0;
+    count.textContent = String(session.selectedIds.length);
+    count.title = t('right.count', {
+      count: String(session.selectedIds.length),
+    });
     for (const el of root.querySelectorAll<HTMLElement>(
       '.icon-rail-right button',
     )) {
@@ -1912,6 +1940,8 @@ export function mountEditorShell(
   };
   session.onChange(syncRightRail);
   syncRightRail();
+  element<HTMLButtonElement>('#right-panel-collapse').onclick = () =>
+    workspace?.setOpen('right', false);
   for (const el of root.querySelectorAll<HTMLElement>(
     '.icon-rail-right button',
   ))

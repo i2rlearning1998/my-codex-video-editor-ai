@@ -171,7 +171,8 @@ describe('[VID-015][VID-016][VID-017] clip time effects', () => {
         type: 'SET_CLIP_SPEED',
         compositionId,
         clipId: 'clip-a',
-        speed: 9,
+        // J15: the limit is 16x (it was 8x).
+        speed: 17,
       }),
     ).toThrow();
     engine.undo();

@@ -1,0 +1,145 @@
+import type { Page } from '@playwright/test';
+import { test, expect, hook } from './fixtures';
+
+// J15: the right panel: a labelled icon rail in the selection's order, a
+// header with the title, a count badge and collapse; sections per type with
+// filter and effect lists, the speed slider and the animate grids; a
+// picture's own controls under Advanced.
+// nle-example: layer-a and layer-b are videos (clip-a 0..2 s, clip-b
+// 3..5 s on Video 1); layer-c is an image (clip-c on Video 2).
+const rail = (page: Page) => page.locator('#rail-right');
+const tab = (page: Page, name: string) =>
+  rail(page).locator(`[data-section="${name}"]`);
+const panel = (page: Page) => page.locator('#right-section');
+const labels = async (page: Page) => (await hook(page)).history.labels;
+const clip = async (page: Page, id: string) =>
+  (await hook(page)).project.compositions[0]!.tracks.flatMap(
+    (track) => track.clips,
+  ).find((item) => item.id === id)!;
+const shown = (page: Page) =>
+  rail(page)
+    .locator('button[data-section]:not([hidden])')
+    .evaluateAll((items) =>
+      items.map(
+        (item) => item.querySelector('.icon-rail-label')?.textContent ?? '',
+      ),
+    );
+async function select(page: Page, id: string) {
+  await page
+    .locator(
+      `#timeline-foundation .timeline-clip[data-action="clip"][data-id="${id}"]`,
+    )
+    .click({ position: { x: 20, y: 10 } });
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds)
+    .toEqual([id]);
+}
+
+test.beforeEach(async ({ page, openFixtureProject }) => {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await openFixtureProject('nle-example.json');
+});
+
+test('[LAY-046] the right panel has a header with the title, a count badge and collapse; the rail shows each type its sections in order', async ({
+  page,
+}, testInfo) => {
+  const title = page.locator('#right-panel-title');
+  const count = page.locator('#right-panel-count');
+  await expect(title).toHaveText('Canvas');
+  await expect(count).toBeHidden();
+  await select(page, 'layer-a');
+  await expect(title).toHaveText('Video');
+  await expect(count).toHaveText('1');
+  expect(await shown(page)).toEqual([
+    'Captions',
+    'Sound',
+    'Fade',
+    'Filters',
+    'Effects',
+    'Adjust colors',
+    'Speed',
+    'Transitions',
+    'Advanced',
+  ]);
+  await select(page, 'layer-c');
+  await expect(title).toHaveText('Image');
+  expect(await shown(page)).toEqual([
+    'Fade',
+    'Filters',
+    'Effects',
+    'Adjust colors',
+    'Transitions',
+    'Advanced',
+  ]);
+  // Advanced holds the picture's own controls and Animate (it is already
+  // the open section: clicking it again would collapse the panel).
+  await expect(tab(page, 'Properties')).toHaveAttribute('aria-pressed', 'true');
+  await expect(panel(page).locator('[data-action="right-crop"]')).toBeVisible();
+  await expect(
+    panel(page).locator('[data-accordion="image-animate"]'),
+  ).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('right-panel.png') });
+  // Collapse closes the panel.
+  await page.locator('#right-panel-collapse').click();
+  await expect
+    .poll(() =>
+      page
+        .locator('.editor-shell')
+        .evaluate((shell) => shell.classList.contains('inspector-collapsed')),
+    )
+    .toBe(true);
+});
+
+test('[LAY-047] Speed has a slider from 0.1x to 16x with ticks; Effects and Filters list their items; Animate presets are grids; a touching clip shows its Transition', async ({
+  page,
+}) => {
+  await select(page, 'layer-b');
+  // Speed: the slider and its ticks; End goes to 16x (one step, on release).
+  await tab(page, 'Speed').click();
+  const slider = panel(page).locator('#right-speed-slider');
+  await expect(slider).toHaveAttribute('aria-valuetext', '1×');
+  await expect(panel(page).locator('.right-speed-ticks span')).toHaveText([
+    '0.1×',
+    '1×',
+    '2×',
+    '4×',
+    '16×',
+  ]);
+  // clip-b (2 s long) has room after it; 0.5x makes it 4 s.
+  await slider.focus();
+  await page.keyboard.press('Home');
+  await expect(slider).toHaveAttribute('aria-valuetext', '0.1×');
+  await slider.evaluate((input: HTMLInputElement) => {
+    input.value = String(
+      Math.round(((Math.log10(2) + 1) / (Math.log10(16) + 1)) * 1000),
+    );
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  expect((await labels(page)).at(-1)).toBe('Change speed');
+  expect((await clip(page, 'clip-b')).speed).toBe(2);
+  // Effects: a list of planned effects for a video.
+  await tab(page, 'Effects').click();
+  await expect(panel(page).locator('[data-choice="blur"]')).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  // Animate presets are grids under Advanced: In › Fade, one step.
+  await tab(page, 'Properties').click();
+  await panel(page).locator('[data-choice="in-fade"]').click();
+  expect((await labels(page)).at(-1)).toBe('Animate');
+  expect(
+    ((await clip(page, 'clip-b')).metadata as { animation?: { in?: unknown } })
+      .animation?.in,
+  ).toMatchObject({ preset: 'fade' });
+  await expect(panel(page).locator('[data-choice="in-fade"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  // Transitions: clip-b does not touch clip-a, so it says how to get one.
+  await tab(page, 'Transitions').click();
+  await expect(panel(page).locator('.right-note')).toBeVisible();
+});

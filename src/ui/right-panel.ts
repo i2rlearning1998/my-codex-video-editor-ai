@@ -7,12 +7,17 @@
 // shown disabled and name their wave. The controls are the toolbar's own
 // builders (one implementation), so values, ratio lock and the 2D Animation
 // rules (guardCommands) are shared.
+import { buildTransitionPanel } from './transition-panel';
 import { resolvedTextStyle } from './text-editor';
 import {
   clipAnimation,
   clipTimeEffects,
   type Command,
   type EditorEngine,
+  IN_OUT_PRESETS,
+  LOOP_PRESETS,
+  MAX_CLIP_SPEED,
+  MIN_CLIP_SPEED,
 } from '../core';
 import { formatNumber, t } from '../i18n';
 import { drawingOf } from '../render/drawing';
@@ -67,12 +72,11 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Captions: 'captions',
   Transitions: 'transitions',
 };
-/** Tabs not built yet: their ledger item and wave. */
+/** Tabs not built yet: their ledger item and wave. J15: Filters and
+ *  Effects open, listing what they will hold; Transitions is the J12 panel
+ *  for a clip (it stays planned for the canvas). */
 const PLANNED: Partial<Record<RightSection, readonly [string, number]>> = {
-  Filters: ['FX-004', 6],
-  Effects: ['FX-001', 6],
   Captions: ['TXT-035', 8],
-  Transitions: ['TR-001', 6],
 };
 
 export type SelectionKind =
@@ -95,19 +99,26 @@ export function kindOf(session: EditorSession): SelectionKind {
 }
 /** The first tab's name for the selection. */
 export const firstTabKey = (kind: SelectionKind) =>
-  `right.tab.${kind === 'none' ? 'canvas' : kind === 'multi' ? 'arrange' : kind}`;
+  // J15: a picture's own controls, the Inspector and Animate are Advanced,
+  // after the Clipchamp sections.
+  kind === 'video' || kind === 'image'
+    ? 'right.tab.advanced'
+    : `right.tab.${kind === 'none' ? 'canvas' : kind === 'multi' ? 'arrange' : kind}`;
+/** J15: the rail's sections per selection, in rail order (Clipchamp). */
 const TABS: Record<SelectionKind, RightSection[]> = {
   none: ['Properties', 'Captions', 'Transitions'],
   text: ['Properties', 'Animate', 'Effects', 'Adjust'],
-  image: ['Properties', 'Animate', 'Effects', 'Adjust', 'Filters'],
+  image: ['Fade', 'Filters', 'Effects', 'Adjust', 'Transitions', 'Properties'],
   video: [
-    'Properties',
-    'Speed',
+    'Captions',
     'Audio',
     'Fade',
-    'Animate',
+    'Filters',
     'Effects',
     'Adjust',
+    'Speed',
+    'Transitions',
+    'Properties',
   ],
   audio: ['Properties', 'Speed', 'Fade'],
   shape: ['Properties', 'Animate', 'Effects', 'Adjust'],
@@ -130,6 +141,8 @@ export function plannedSection(
 ): readonly [string, number] | undefined {
   if (section === 'Fade' && session && kindOf(session) === 'audio')
     return ['AUD-003', 7];
+  if (section === 'Transitions' && (!session || kindOf(session) === 'none'))
+    return ['TR-001', 6];
   return PLANNED[section];
 }
 
@@ -504,6 +517,7 @@ export function mountRightPanel(
   };
   const pictureTab = (video: boolean) => {
     return [
+      heading(t('right.tab.advanced'), t('right.advancedHint')),
       accordion(
         video ? 'video-video' : 'image-image',
         t(video ? 'right.tab.video' : 'right.tab.image'),
@@ -515,6 +529,12 @@ export function mountRightPanel(
           hooks.build?.('corners'),
           video ? null : hooks.build?.('border'),
         ],
+      ),
+      // J15: Animate has no tab of its own for pictures; it lives here.
+      accordion(
+        video ? 'video-animate' : 'image-animate',
+        t('panel.animate'),
+        animateGrid(),
       ),
     ];
   };
@@ -692,8 +712,49 @@ export function mountRightPanel(
       item.onclick = () => safely(() => performEdit(engine, session, action));
       return item;
     };
+    // J15: a slider on a log scale from 0.1x to 16x with ticks at 0.1, 1,
+    // 2, 4 and 16; it commits on release (one step).
+    const LOW = Math.log10(MIN_CLIP_SPEED),
+      HIGH = Math.log10(MAX_CLIP_SPEED);
+    const toPosition = (value: number) =>
+      Math.round(((Math.log10(value) - LOW) / (HIGH - LOW)) * 1000);
+    const toSpeed = (position: number) =>
+      Math.round(10 ** (LOW + (position / 1000) * (HIGH - LOW)) * 100) / 100;
+    const slider = document.createElement('div');
+    slider.className = 'right-speed-slider';
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.id = 'right-speed-slider';
+    range.min = '0';
+    range.max = '1000';
+    range.step = '1';
+    range.value = String(toPosition(current));
+    range.setAttribute('aria-label', t('panel.speed'));
+    const readout = document.createElement('output');
+    readout.htmlFor.add(range.id);
+    const show = (value: number) => {
+      const text = t('clip.speedValue', { speed: formatNumber(value) });
+      readout.textContent = text;
+      range.setAttribute('aria-valuetext', text);
+    };
+    show(current);
+    range.oninput = () => show(toSpeed(Number(range.value)));
+    range.onchange = () =>
+      safely(() => setClipSpeed(engine, session, toSpeed(Number(range.value))));
+    const ticks = document.createElement('div');
+    ticks.className = 'right-speed-ticks';
+    ticks.setAttribute('aria-hidden', 'true');
+    for (const tick of [0.1, 1, 2, 4, 16]) {
+      const mark = document.createElement('span');
+      mark.dataset.tick = String(tick);
+      mark.style.insetInlineStart = `${toPosition(tick) / 10}%`;
+      mark.textContent = t('clip.speedValue', { speed: formatNumber(tick) });
+      ticks.append(mark);
+    }
+    slider.append(range, readout, ticks);
     return [
       heading(t('panel.speed'), t('right.speedHint')),
+      slider,
       list,
       toggle('reverse'),
       toggle('freeze'),
@@ -716,6 +777,7 @@ export function mountRightPanel(
     keyframes.onclick = () => session.setMode('animation2d');
     return [
       heading(t('panel.animate'), t('right.animateHint')),
+      ...animateGrid().filter((item) => item.tagName !== 'HEADER'),
       open,
       keyframes,
     ];
@@ -778,6 +840,234 @@ export function mountRightPanel(
       tag,
     ];
   };
+  // --- J15 sections -----------------------------------------------------------
+  const plannedNote = (wave: string, id: string) => {
+    const tag = document.createElement('span');
+    tag.className = 'quiet-tag';
+    tag.textContent = t('toolbar.later', { wave, id });
+    return tag;
+  };
+  /** A grid of choices; planned ones are disabled and name their wave. */
+  const choiceGrid = (
+    name: string,
+    items: readonly {
+      id: string;
+      label: string;
+      pressed?: boolean;
+      action?: () => void;
+      planned?: readonly [string, string];
+    }[],
+  ) => {
+    const grid = document.createElement('div');
+    grid.className = 'right-choice-grid';
+    grid.setAttribute('role', 'group');
+    grid.setAttribute('aria-label', name);
+    for (const item of items) {
+      const choice = document.createElement('button');
+      choice.type = 'button';
+      choice.className = 'right-choice';
+      choice.dataset.choice = item.id;
+      choice.innerHTML = `<span class="right-choice-preview" data-preview="${item.id}"></span><span></span>`;
+      choice.lastElementChild!.textContent = item.label;
+      if (item.pressed !== undefined)
+        choice.setAttribute('aria-pressed', String(item.pressed));
+      if (item.planned) {
+        choice.setAttribute('aria-disabled', 'true');
+        choice.title = t('toolbar.later', {
+          wave: item.planned[0],
+          id: item.planned[1],
+        });
+      } else {
+        choice.title = item.label;
+        if (item.action) {
+          const action = item.action;
+          choice.onclick = () => safely(action);
+        }
+      }
+      grid.append(choice);
+    }
+    return grid;
+  };
+  /** Disabled settings of a planned effect (the shared NumberField). */
+  const plannedFields = (
+    id: string,
+    fields: readonly (readonly [string, number, number])[],
+    wave: string,
+    ledger: string,
+  ) =>
+    fields.map(([key, min, max]) => {
+      const field = createNumberField({
+        id: `right-${id}-${key}`,
+        label: t(`right.effect.${key}`),
+        value: 0,
+        min,
+        max,
+        decimals: 0,
+        slider: true,
+        disabled: true,
+        className: 'right-row right-row-planned',
+        onCommit: () => undefined,
+      });
+      field.title = t('toolbar.later', { wave, id: ledger });
+      return field;
+    });
+  const FILTERS = [
+    'original',
+    'vintage',
+    'mono',
+    'warm',
+    'cool',
+    'vivid',
+    'noir',
+    'dream',
+  ] as const;
+  const filters = () => [
+    heading(t('panel.filters'), t('right.filtersHint')),
+    choiceGrid(
+      t('panel.filters'),
+      FILTERS.map((id) =>
+        id === 'original'
+          ? { id, label: t(`right.filter.${id}`), pressed: true }
+          : {
+              id,
+              label: t(`right.filter.${id}`),
+              planned: ['6', 'FX-004'] as const,
+            },
+      ),
+    ),
+    ...plannedFields('filter', [['intensity', 0, 100]], '6', 'FX-004'),
+  ];
+  const SHADOW: readonly (readonly [string, number, number])[] = [
+    ['blur', 0, 100],
+    ['distance', 0, 100],
+    ['angle', -180, 180],
+  ];
+  const effects = () => {
+    const kind = kindOf(session);
+    if (kind === 'video' || kind === 'image')
+      return [
+        heading(t('panel.effects'), t('right.effectsHint')),
+        choiceGrid(
+          t('panel.effects'),
+          ['blur', 'glow', 'vignette', 'chroma', 'pixelate', 'grain'].map(
+            (id) => ({
+              id,
+              label: t(`right.effect.${id}`),
+              planned: ['6', 'FX-001'] as const,
+            }),
+          ),
+        ),
+      ];
+    // Shapes: the outline is the stroke (live); shadows are planned. Text
+    // outline and shadow come with the text effects (TXT-019, Wave 3).
+    const [wave, ledger] = kind === 'text' ? ['3', 'TXT-019'] : ['6', 'FX-001'];
+    return [
+      heading(t('panel.effects'), t('right.effectsHint')),
+      accordion(
+        `${kind}-effect-outline`,
+        t('right.outline'),
+        kind === 'shape'
+          ? [hooks.build?.('stroke')]
+          : [plannedNote(wave, ledger)],
+      ),
+      accordion(`${kind}-effect-shadow`, t('right.effect.shadow'), [
+        ...plannedFields('shadow', SHADOW, wave, ledger),
+      ]),
+    ];
+  };
+  /** J15: In, Out and Loop presets as grids (the W5-C presets, one step). */
+  const animateGrid = () => {
+    const clips = selectedClips(session.source, session.selectedIds);
+    if (!clips.length)
+      return [heading(t('panel.animate'), t('right.fadeNeedsClip'))];
+    const current = clipAnimation(clips[0]!.clip);
+    const set = (slot: 'in' | 'out' | 'loop', value: unknown) =>
+      run(
+        'Animate',
+        clips.map(({ clip }) => ({
+          type: 'SET_CLIP_ANIMATION',
+          compositionId: session.source.composition.id,
+          clipId: clip.id,
+          slot,
+          value,
+        })) as Command[],
+      );
+    const group = (slot: 'in' | 'out') =>
+      choiceGrid(t(slot === 'in' ? 'right.animateIn' : 'right.animateOut'), [
+        {
+          id: `${slot}-none`,
+          label: t('right.animateNone'),
+          pressed: !current[slot],
+          action: () => set(slot, null),
+        },
+        ...IN_OUT_PRESETS.map((preset) => ({
+          id: `${slot}-${preset}`,
+          label: t(`animate.preset.${preset}`),
+          pressed: current[slot]?.preset === preset,
+          action: () =>
+            set(slot, {
+              preset,
+              duration: current[slot]?.duration ?? 0.6,
+            }),
+        })),
+      ]);
+    const titled = (key: string, element: HTMLElement) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'right-grid-group';
+      const h = document.createElement('h4');
+      h.textContent = t(key);
+      wrap.append(h, element);
+      return wrap;
+    };
+    return [
+      titled('right.animateIn', group('in')),
+      titled('right.animateOut', group('out')),
+      titled(
+        'right.animateLoop',
+        choiceGrid(t('right.animateLoop'), [
+          {
+            id: 'loop-none',
+            label: t('right.animateNone'),
+            pressed: !current.loop,
+            action: () => set('loop', null),
+          },
+          ...LOOP_PRESETS.map((preset) => ({
+            id: `loop-${preset}`,
+            label: t(`animate.preset.${preset}`),
+            pressed: current.loop?.preset === preset,
+            action: () =>
+              set('loop', { preset, period: current.loop?.period ?? 2 }),
+          })),
+        ]),
+      ),
+    ];
+  };
+  const transitionState = { query: '' };
+  /** J15: the transition into the selected clip (the J12 panel). */
+  const transitions = () => {
+    const clips = selectedClips(session.source, session.selectedIds);
+    const panel =
+      clips.length === 1
+        ? buildTransitionPanel(
+            clips[0]!.clip.id,
+            engine,
+            session,
+            report,
+            transitionState,
+          )
+        : null;
+    return [
+      heading(t('panel.transitions'), t('right.transitionHint')),
+      panel ?? plannedNoteText(t('right.transitionNeedsCut')),
+    ];
+  };
+  const plannedNoteText = (text: string) => {
+    const p = document.createElement('p');
+    p.className = 'right-note';
+    p.textContent = text;
+    return p;
+  };
+
   return {
     render(section: RightSection) {
       host.dataset.section = section;
@@ -795,12 +1085,18 @@ export function mountRightPanel(
                   ? animate()
                   : section === 'Adjust'
                     ? adjust()
-                    : section === 'Audio'
-                      ? [
-                          heading(t('panel.audio'), t('right.audioHint')),
-                          ...audioTab(engine, session, run, report),
-                        ]
-                      : [];
+                    : section === 'Filters'
+                      ? filters()
+                      : section === 'Effects'
+                        ? effects()
+                        : section === 'Transitions'
+                          ? transitions()
+                          : section === 'Audio'
+                            ? [
+                                heading(t('panel.audio'), t('right.audioHint')),
+                                ...audioTab(engine, session, run, report),
+                              ]
+                            : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

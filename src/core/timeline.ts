@@ -64,7 +64,8 @@ export function effectiveLayerTiming(
 
 /** Speed range accepted by SET_CLIP_SPEED (the schema itself allows up to 16). */
 export const MIN_CLIP_SPEED = 0.1;
-export const MAX_CLIP_SPEED = 8;
+// J15: the Speed slider reaches 16x (its ticks: 0.1, 1, 2, 4, 16).
+export const MAX_CLIP_SPEED = 16;
 /** Clip time effects stored under schema 4: speed is a field; reverse and freeze
  * frame live in clip.metadata until a schema bump promotes them. Invalid metadata
  * values are ignored rather than trusted. */
