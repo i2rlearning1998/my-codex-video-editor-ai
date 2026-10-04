@@ -16,6 +16,7 @@ import { t } from '../i18n';
 import {
   locateLayer,
   numericProperty,
+  textLayoutForWidth,
   type SceneLayer,
 } from '../render/adapter';
 import type { Viewport } from '../render/canvas';
@@ -531,6 +532,7 @@ export function mountTextEditor(
   const restore = (next: Model) => {
     model = next;
     render();
+    live();
     writeSelection(model.selection);
     changed();
   };
@@ -538,6 +540,33 @@ export function mountTextEditor(
     if (!base) return;
     const { text, styles } = readDom(box, base);
     model = { text, styles, selection: readSelection() ?? model.selection };
+  };
+
+  // T6: while typing, the canvas draws the box at the size the text needs
+  // (the same commands the commit runs), so the selection grows with each
+  // line and nothing jumps when editing ends.
+  const live = () => {
+    const item = layer();
+    if (!item || !base || !layerId) return;
+    try {
+      const commands = commitCommands(
+        item,
+        model.text,
+        formatRuns(runsFromStyles(model.styles)),
+        list,
+        base,
+        session,
+        compositionId,
+      ).filter(
+        (command) =>
+          command.type === 'SET_PROPERTY' &&
+          command.target.kind === 'property' &&
+          (command.target.key === 'width' || command.target.key === 'height'),
+      );
+      session.setPreview(commands.length ? engine.preview(commands) : null);
+    } catch {
+      session.setPreview(null);
+    }
   };
 
   // --- Geometry ------------------------------------------------------------
@@ -562,6 +591,13 @@ export function mountTextEditor(
     box.style.minHeight = `${height}px`;
     box.style.whiteSpace = wrap ? 'pre-wrap' : 'pre';
     box.style.opacity = String(world.opacity);
+    // T6: a fixed-height box shows where it ends while the text is typed in
+    // full; past that line the canvas clips it.
+    const fixed =
+      item.properties.textFixedHeight?.type === 'boolean' &&
+      item.properties.textFixedHeight.value;
+    box.classList.toggle('fixed-height', fixed);
+    box.style.setProperty('--fixed-height', `${height}px`);
   };
 
   // --- Events ----------------------------------------------------------------
@@ -571,6 +607,7 @@ export function mountTextEditor(
   box.addEventListener('input', (event) => {
     if (composing || (event as InputEvent).isComposing) return;
     readModel();
+    live();
     changed();
   });
   box.addEventListener('compositionstart', () => {
@@ -580,6 +617,7 @@ export function mountTextEditor(
   box.addEventListener('compositionend', () => {
     composing = false;
     readModel();
+    live();
     changed();
   });
   const onSelection = () => {
@@ -753,6 +791,7 @@ export function mountTextEditor(
       current = null;
       box.hidden = true;
       box.replaceChildren();
+      session.setPreview(null);
       session.setEditingText(null);
       if (
         document.activeElement === box ||
@@ -917,6 +956,25 @@ function commitCommands(
         ...layout.lines.map((line) => line.width + line.indent),
         0,
       );
+  } else if (wrap) {
+    // T6: a fixed-width box wraps at its width (as the canvas draws it).
+    needHeight = textLayoutForWidth(
+      {
+        ...item,
+        properties: {
+          ...item.properties,
+          text: {
+            type: 'string',
+            value: text,
+            animated: false,
+            keyframes: [],
+            constraints: [],
+          },
+        },
+      } as unknown as SceneLayer,
+      width,
+      session.source.measureText,
+    ).height;
   } else {
     const layout = layoutParagraphs(text, base.size, base.style);
     needHeight = layout.height;
@@ -926,9 +984,13 @@ function commitCommands(
         0,
       );
   }
+  // T6: a fixed-height box keeps its height (the text past it is clipped).
+  const fixed =
+    item.properties.textFixedHeight?.type === 'boolean' &&
+    item.properties.textFixedHeight.value;
   for (const [key, value, now] of [
     ['width', Math.ceil(needWidth), width],
-    ['height', Math.ceil(needHeight), height],
+    ['height', fixed ? height : Math.ceil(needHeight), height],
   ] as const)
     if (value > now && Number.isFinite(value))
       commands.push({

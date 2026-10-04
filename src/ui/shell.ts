@@ -22,6 +22,7 @@ import {
   trackTypeForLayer,
 } from '../core';
 import {
+  deriveRenderItems,
   locateLayer,
   type RenderSource,
   type SceneLayer,
@@ -3105,12 +3106,18 @@ export function mountEditorShell(
       corners:
         selectionGeometry(
           {
-            ...session.source,
+            // T6: the box as drawn (a live text preview grows it).
+            ...(session.previewSource ?? session.source),
             ...(interaction.preview ? { preview: interaction.preview } : {}),
           },
           session.selectedId,
           viewport().matrix,
         )?.corners ?? null,
+      // T6: text boxes whose fixed height clips their text (the editor
+      // draws an overflow mark on them).
+      textOverflow: deriveRenderItems(session.source)
+        .items.filter((item) => item.textOverflow)
+        .map((item) => item.id),
       chip: element('#canvas-chip').hidden
         ? null
         : element('#canvas-chip').textContent,

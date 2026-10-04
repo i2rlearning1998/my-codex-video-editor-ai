@@ -1008,5 +1008,7 @@
   "player.timecodeTip": "समय लिखने के लिए क्लिक करें",
   "player.zoomOut": "ज़ूम आउट",
   "player.zoomIn": "ज़ूम इन",
-  "player.timecodeInvalid": "1:05 या 65.5 जैसा समय लिखें"
+  "player.timecodeInvalid": "1:05 या 65.5 जैसा समय लिखें",
+  "toolbar.autoHeight": "स्वतः ऊँचाई",
+  "toolbar.autoHeightTip": "चालू: बॉक्स अपने टेक्स्ट के साथ बढ़ता है। बंद: ऊँचाई वही रहती है और बाकी टेक्स्ट कट जाता है।"
 }

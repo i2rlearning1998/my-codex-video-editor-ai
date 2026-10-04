@@ -552,6 +552,38 @@ export function drawComposition(
     context.rect(0, 0, source.composition.width, source.composition.height);
     context.clip();
     drawItems(1);
+    // T6: in the editor (not export), a text box whose text is clipped by
+    // its fixed height shows a small overflow badge on its bottom edge.
+    if (options.overlays !== false)
+      for (const item of items)
+        if (item.textOverflow && !item.editing) {
+          context.save();
+          context.setTransform(...view);
+          context.transform(...item.matrix);
+          const scale = Math.hypot(view[0], view[1]) || 1;
+          const w = 26 / scale,
+            h = 12 / scale;
+          const x = item.size.width / 2 - w / 2,
+            y = item.size.height - h / 2;
+          context.globalAlpha = 1;
+          context.fillStyle = '#7c5cff';
+          context.beginPath();
+          context.roundRect(x, y, w, h, h / 2);
+          context.fill();
+          context.fillStyle = '#ffffff';
+          for (const dx of [-6, 0, 6]) {
+            context.beginPath();
+            context.arc(
+              x + w / 2 + dx / scale,
+              y + h / 2,
+              1.6 / scale,
+              0,
+              Math.PI * 2,
+            );
+            context.fill();
+          }
+          context.restore();
+        }
     // SHP-018: the stroke being drawn, in composition space.
     if (source.drawing) {
       context.setTransform(...view);

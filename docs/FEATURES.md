@@ -555,6 +555,9 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-039 | P1 | W5 | Verified | Animated titles in Text › Titles: each brings its entrance preset (pop, slide, typewriter, zoom, wipe, fade) with its clip in one undo step, and its card previews the entrance on hover |
 | TXT-040 | P0 | W2 | Verified | Bundled open-licence fonts with real weights 100 to 900 (Inter, Poppins and Noto Sans Devanagari, which also cover Devanagari) work in the preview and export; the weight list offers only what a font has (system fonts: Regular and Bold); Regular, Medium, Semibold and Bold look visibly different (J5 LCR) |
 | TXT-041 | P0 | W2 | Verified | The Bold button shows the resolved weight of the selection (the whole box's characters, runs included, or the selected characters while editing), so text that is already bold shows Bold on in the toolbar and the right panel (J5 LCR) |
+| TXT-042 | P0 | W2 | Verified | While a text box is typed in, its drawn box grows with every new line (live, before anything is stored); the stored box after editing ends draws exactly as it did while typing, so nothing jumps (T6 LCR) |
+| TXT-043 | P0 | W2 | Verified | A fixed-width (wrapped) text box wraps live as it is typed and keeps its width; it grows in height only (T6 LCR) |
+| TXT-044 | P0 | W2 | Verified | Auto height (Spacing popover, on by default) can be turned off: the box keeps its height, the text past it is clipped, the editor marks the overflow (a badge on the box's bottom edge, never exported; a dashed line while editing) and turning it on again grows the box to its text; each switch is one undo step (T6 LCR) |
 
 ## SHP: Shapes, graphics and elements (Wave 5)
 

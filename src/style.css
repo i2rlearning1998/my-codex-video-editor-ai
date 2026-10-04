@@ -6507,3 +6507,18 @@ button.number-field-step:focus-visible {
   font: inherit;
   font-variant-numeric: tabular-nums;
 }
+
+/* T6: while a fixed-height text box is edited, a dashed line marks where
+   it ends (the canvas clips the text past it and shows an overflow badge). */
+.text-editor.fixed-height {
+  /* Set inline to the box's stored height. */
+  --fixed-height: 100%;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-accent) 0 6px,
+    transparent 6px 10px
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-position: 0 calc(var(--fixed-height) - 1px);
+}
