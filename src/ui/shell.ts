@@ -1750,13 +1750,23 @@ export function mountEditorShell(
   } catch {
     // A view setting only.
   }
+  // The first state applies at once: a slide on load would move the canvas
+  // after it has been laid out.
+  stripHost.style.transition = 'none';
   showStrip(stripShown, false);
+  void stripHost.offsetHeight;
+  stripHost.style.transition = '';
   stripButton.onclick = () => {
     stripShown = !stripShown;
     showStrip(stripShown, true);
   };
   // The canvas refits as the strip slides.
-  stripHost.addEventListener('transitionend', () => resize());
+  // (Only the strip's own slide: transitions inside it bubble here too, and
+  // a refit at a random moment would cut short a gesture on the canvas.)
+  stripHost.addEventListener('transitionend', (event) => {
+    if (event.target === stripHost && event.propertyName === 'block-size')
+      resize();
+  });
   // I3: the scene strip under the canvas.
   mountSceneStrip({
     host: element('#scene-strip'),
