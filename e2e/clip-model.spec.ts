@@ -107,12 +107,17 @@ test('[TL-001] every layer is a clip on a track: example, canvas drops and group
   const state = await clips(page);
   expect(state('clip-a')).toBeUndefined();
   expect(state('clip-b')).toBeUndefined();
-  const groupTrack = (await hook(page)).project.compositions[0]!.tracks.find(
-    (track) => track.type === 'object',
+  // J7: a group of pictures is a visual, so its clip is on a visual lane.
+  const composition = (await hook(page)).project.compositions[0]!;
+  const group = composition.layers.find((layer) => layer.type === 'group')!;
+  const groupTrack = composition.tracks.find((track) =>
+    track.clips.some((clip) => clip.layerId === group.id),
   )!;
-  expect(groupTrack.name).toBe('Graphics 1');
+  expect(groupTrack.type).toBe('video');
   expect(
-    groupTrack.clips.map((clip) => [clip.startTime, clip.duration]),
+    groupTrack.clips
+      .filter((clip) => clip.layerId === group.id)
+      .map((clip) => [clip.startTime, clip.duration]),
   ).toEqual([[0, 5]]);
   expect((await hook(page)).history.labels.at(-1)).toBe('Group');
 });

@@ -12,7 +12,15 @@ export interface EditorEvents {
   'command:failed': { type: string; transactionId: string; error: Error };
   'transaction:committed': { id: string; label: string; commandCount: number };
   'transaction:failed': { id: string; error: Error };
-  'state:changed': { state: DeepReadonly<Project>; reason: ChangeReason };
+  'state:changed': {
+    state: DeepReadonly<Project>;
+    reason: ChangeReason;
+    /**
+     * J1: for undo and redo, the scenes (composition ids) the restored edit
+     * changed that exist after it; empty when it changed no scene.
+     */
+    compositionIds?: readonly string[];
+  };
   'history:changed': { canUndo: boolean; canRedo: boolean };
 }
 type Listener<T> = (event: T) => void;

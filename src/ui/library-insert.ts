@@ -128,6 +128,13 @@ function shapeLayer(
   );
   return layer;
 }
+/** J7: a background is a visual: its clip goes to the visual lanes, behind. */
+function markBackground(layer: Layer): void {
+  layer.properties = {
+    ...layer.properties,
+    role: plain('string', 'background'),
+  } as never;
+}
 function textLayer(
   element: LibraryTextElement,
   canvas: { width: number; height: number },
@@ -182,7 +189,7 @@ export function addTopLevel(
   layer.duration = DRAWING_DURATION;
   const target = trackForNewClip(
     composition,
-    layer.type,
+    layer,
     time,
     time + DRAWING_DURATION,
   );
@@ -286,6 +293,7 @@ function templateLayers(
     canvas,
     name,
   );
+  markBackground(background);
   const layers = item.data.elements.map((element) => {
     const layer =
       element.kind === 'text'
@@ -312,7 +320,10 @@ function centreOn(
 }
 /** The commands that add a library item to the open scene (or a new one). */
 export function libraryCommands(
-  project: { readonly compositions: readonly object[] },
+  project: {
+    readonly compositions: readonly object[];
+    readonly settings?: { readonly backgroundColor: string };
+  },
   source: RenderSource,
   item: LibraryItem,
   time: number,
@@ -352,8 +363,11 @@ export function libraryCommands(
       const layers = item.data.elements.map((element) =>
         shapeLayer(element, canvas, name),
       );
+      // J7: each piece is marked too, so an ungrouped piece stays behind.
+      layers.forEach(markBackground);
       const layer = grouped(layers, name);
       layer.name = name;
+      markBackground(layer);
       return {
         label: 'Add background',
         commands: addTopLevel(composition, layer, time, 0),
@@ -447,6 +461,9 @@ export function libraryCommands(
         width: canvas.width,
         height: canvas.height,
         fps: composition.fps,
+        // J1: a new scene starts from the project's default background.
+        backgroundColor:
+          project.settings?.backgroundColor ?? composition.backgroundColor,
       }) as Composition;
       scene.layers = layers;
       // Every top-level layer gets its clip (D-039).

@@ -1,6 +1,16 @@
 // CV-035 to CV-038 context toolbar (UX spec 4.1): the selected layer's most used
 // controls above the canvas. Controls whose systems are not built are shown
 // disabled with the wave that builds them (D-068); nothing behind them exists.
+import { fontWeights } from '../render/fonts';
+import { LIST_STYLES, parseListStyle } from '../render/rich-text';
+import {
+  clearRunKeys,
+  resolvedTextStyle,
+  RUN_KEYS,
+  textEditorFor,
+  type Override,
+  type OverrideKey,
+} from './text-editor';
 import {
   localTransformMatrix,
   number,
@@ -59,7 +69,7 @@ import { sceneLengthCommands } from './scene-length';
 import { documentColors } from './palette';
 import { CANVAS_LIMITS, CANVAS_PRESETS, ratioLabel } from './canvas-size';
 import { pictureOf } from '../render/picture';
-import { formatGradient, type Gradient } from '../render/paint';
+import { formatGradient, parseGradient, type Gradient } from '../render/paint';
 import { canCopyStyle, copyStyle } from './style-clipboard';
 import { showToast } from './components/toast';
 import { describeSelection, selectionRoots } from './selection-context';
@@ -226,8 +236,12 @@ export function textStyleCommands(
   if (layer.type !== 'text') return [];
   if (!TEXT_STYLE_KEYS[key](value))
     throw new RangeError(t('toolbar.textStyleRange'));
+  // J4: a whole-box style also clears the same style from the runs.
+  const cleanup = RUN_KEYS[key]
+    ? clearRunKeys(compositionId, layer, RUN_KEYS[key]!)
+    : null;
   const current = layer.properties[key];
-  if (current && current.value === value) return [];
+  if (current && current.value === value) return cleanup ? [cleanup] : [];
   const property = withValue(
     layer,
     key,
@@ -235,6 +249,7 @@ export function textStyleCommands(
     typeof value === 'number' ? 'number' : 'string',
   );
   const commands = [setProperty(compositionId, layer, key, property)];
+  if (cleanup) commands.push(cleanup);
   const wrap = layer.properties.textWrap;
   const height = layer.properties.height;
   if (
@@ -1104,7 +1119,13 @@ export function mountContextToolbar(
         t('scene.background'),
         source.background,
         (color) =>
-          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+          run('Set background', [
+            {
+              type: 'SET_COMPOSITION_BACKGROUND',
+              compositionId: session.source.composition.id,
+              color,
+            },
+          ]),
       ),
       popTool(
         'duration',
@@ -1155,7 +1176,13 @@ export function mountContextToolbar(
         t('toolbar.canvasBackground'),
         source.background,
         (color) =>
-          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+          run('Set background', [
+            {
+              type: 'SET_COMPOSITION_BACKGROUND',
+              compositionId: session.source.composition.id,
+              color,
+            },
+          ]),
       ),
       divider(),
       planned('auto-captions'),
@@ -1202,11 +1229,59 @@ export function mountContextToolbar(
     positionTool(),
     copyStyleTool(),
   ];
+  /** J4 (TXT-024): None, bullets or numbers, one undo step. */
+  const listTool = (layer: SceneLayer) => {
+    const value = () => {
+      const property = (selected() ?? layer).properties.listStyle;
+      return parseListStyle(
+        property?.type === 'string' ? property.value : undefined,
+      );
+    };
+    const item = popTool(
+      'list',
+      'list',
+      t('toolbar.list'),
+      () =>
+        options(
+          LIST_STYLES.map((style) => ({
+            value: style,
+            label: t(`text.list.${style}`),
+            icon: style === 'none' ? 'minus' : 'list',
+          })),
+          value(),
+          (style) => {
+            const target = selected() ?? layer;
+            run(style === 'none' ? 'Remove list' : 'Set list', [
+              setProperty(
+                session.source.composition.id,
+                target,
+                'listStyle',
+                withValue(
+                  target,
+                  'listStyle',
+                  style === 'none' ? '' : style,
+                  'string',
+                ),
+              ),
+            ]);
+          },
+          () => closePopover('list'),
+        ),
+      { listbox: true },
+    );
+    item.dataset.value = value();
+    item.setAttribute('aria-pressed', String(value() !== 'none'));
+    return item;
+  };
   const textControls = (layer: SceneLayer) => {
     const compositionId = session.source.composition.id;
     const style = textStyleOf(layer);
+    // J4, J5: while editing, the buttons show and style the selected
+    // characters; otherwise the whole box's resolved style (runs included).
+    const editor = textEditorFor(layer.id);
+    const look = editor?.selectionStyle() ?? resolvedTextStyle(layer);
     const size = layer.properties.fontSize;
-    const fontSize = size?.type === 'number' ? size.value : 32;
+    const fontSize = look.size ?? (size?.type === 'number' ? size.value : 32);
     const styleRun = (
       label: string,
       key: TextStyleKey,
@@ -1216,6 +1291,16 @@ export function mountContextToolbar(
         label,
         textStyleCommands(compositionId, selected() ?? layer, key, value),
       );
+    /** A run style for the selection while editing, else the whole box. */
+    const runStyle = (
+      key: OverrideKey,
+      value: Override[OverrideKey] | 'toggle',
+      whole: () => void,
+    ) => {
+      const active = textEditorFor(layer.id);
+      if (active) active.format(key, value);
+      else whole();
+    };
     const font = tool(
       'font',
       'text',
@@ -1230,14 +1315,17 @@ export function mountContextToolbar(
     font.title = t('toolbar.font');
     font.setAttribute('aria-haspopup', 'dialog');
     const setSize = (value: number) =>
-      run('Set text size', [
-        fontSizeCommand(
-          compositionId,
-          selected() ?? layer,
-          value,
-          session.currentTime,
-        ),
-      ]);
+      runStyle('size', value, () =>
+        run('Set text size', [
+          fontSizeCommand(
+            compositionId,
+            selected() ?? layer,
+            value,
+            session.currentTime,
+          ),
+          clearRunKeys(compositionId, selected() ?? layer, ['size']),
+        ]),
+      );
     const sizeGroup = document.createElement('div');
     sizeGroup.className = 'toolbar-group toolbar-size';
     sizeGroup.append(
@@ -1300,18 +1388,22 @@ export function mountContextToolbar(
       colorField(
         'color',
         t('toolbar.color'),
-        layer.properties.fill?.type === 'color'
-          ? layer.properties.fill.value.slice(0, 7)
-          : '#000000',
+        look.color ??
+          (layer.properties.fill?.type === 'color'
+            ? layer.properties.fill.value.slice(0, 7)
+            : '#000000'),
         (value) =>
-          run('Set color', [
-            colorCommand(
-              compositionId,
-              selected() ?? layer,
-              value,
-              session.currentTime,
-            ),
-          ]),
+          runStyle('color', value, () =>
+            run('Set color', [
+              colorCommand(
+                compositionId,
+                selected() ?? layer,
+                value,
+                session.currentTime,
+              ),
+              clearRunKeys(compositionId, selected() ?? layer, ['color']),
+            ]),
+          ),
       ),
       divider(),
       tool(
@@ -1319,44 +1411,56 @@ export function mountContextToolbar(
         'bold',
         t('toolbar.bold'),
         () =>
-          styleRun('Set bold', 'fontWeight', style.weight >= 700 ? 400 : 700),
-        { pressed: style.weight >= 700, shortcut: 'Ctrl+B' },
+          runStyle('weight', 'toggle', () =>
+            styleRun(
+              'Set bold',
+              'fontWeight',
+              (look.weight ?? 0) >= 700 ? 400 : 700,
+            ),
+          ),
+        { pressed: (look.weight ?? 0) >= 700, shortcut: 'Ctrl+B' },
       ),
       tool(
         'italic',
         'italic',
         t('toolbar.italic'),
         () =>
-          styleRun(
-            'Set italic',
-            'fontStyle',
-            style.italic ? 'normal' : 'italic',
+          runStyle('italic', 'toggle', () =>
+            styleRun(
+              'Set italic',
+              'fontStyle',
+              look.italic ? 'normal' : 'italic',
+            ),
           ),
-        { pressed: style.italic, shortcut: 'Ctrl+I' },
+        { pressed: !!look.italic, shortcut: 'Ctrl+I' },
       ),
       tool(
         'underline',
         'underline',
         t('toolbar.underline'),
         () =>
-          styleRun(
-            'Set underline',
-            'textDecoration',
-            decoration(!style.underline, style.strike),
+          runStyle('underline', 'toggle', () =>
+            styleRun(
+              'Set underline',
+              'textDecoration',
+              decoration(!look.underline, !!look.strike),
+            ),
           ),
-        { pressed: style.underline, shortcut: 'Ctrl+U' },
+        { pressed: !!look.underline, shortcut: 'Ctrl+U' },
       ),
       tool(
         'strike',
         'strike',
         t('toolbar.strike'),
         () =>
-          styleRun(
-            'Set strikethrough',
-            'textDecoration',
-            decoration(style.underline, !style.strike),
+          runStyle('strike', 'toggle', () =>
+            styleRun(
+              'Set strikethrough',
+              'textDecoration',
+              decoration(!!look.underline, !look.strike),
+            ),
           ),
-        { pressed: style.strike },
+        { pressed: !!look.strike },
       ),
       tool(
         'uppercase',
@@ -1371,7 +1475,7 @@ export function mountContextToolbar(
         { pressed: style.textCase === 'upper' },
       ),
       align,
-      planned('list'),
+      listTool(layer),
       popTool('spacing', 'spacing', t('toolbar.advanced'), () =>
         advancedContent(),
       ),
@@ -1389,6 +1493,10 @@ export function mountContextToolbar(
       copyStyleTool(),
     ];
   };
+  /** J5: the weight to show: the selection's while editing, else the box's. */
+  const weightShown = (layer: SceneLayer) =>
+    (textEditorFor(layer.id)?.selectionStyle() ?? resolvedTextStyle(layer))
+      .weight ?? textStyleOf(layer).weight;
   /** Advanced text settings: weight, spacing, case and vertical anchor. */
   const advancedContent = () => {
     const layer = selected();
@@ -1427,11 +1535,18 @@ export function mountContextToolbar(
       select(
         'weight',
         t('toolbar.weight'),
-        FONT_WEIGHTS.map(
-          (weight) => [String(weight), t(`text.weight${weight}`)] as const,
-        ),
-        String(style.weight),
-        (value) => styleRun('Set font weight', 'fontWeight', Number(value)),
+        // J5: only the weights the font has (and the stored one).
+        [...new Set([...fontWeights(style.family), weightShown(layer)])]
+          .sort((a, b) => a - b)
+          .map(
+            (weight) => [String(weight), t(`text.weight${weight}`)] as const,
+          ),
+        String(weightShown(layer)),
+        (value) => {
+          const editor = textEditorFor(layer.id);
+          if (editor) editor.format('weight', Number(value));
+          else styleRun('Set font weight', 'fontWeight', Number(value));
+        },
       ),
       field(
         'letter-spacing',
@@ -1500,22 +1615,65 @@ export function mountContextToolbar(
       const style = shapeOf(current);
       if (!style || !style.fill) return null;
       const gradient = style.gradient ?? null;
+      /**
+       * J2: Solid, Linear and Radial share one stop list. Solid shows the
+       * first stop and keeps the list in `fillGradientSaved`, so switching
+       * away and back restores the stops exactly. `fill` always holds the
+       * first stop's colour.
+       */
+      const saved = () => {
+        const property = (selected() ?? current).properties.fillGradientSaved;
+        return parseGradient(
+          property?.type === 'string' ? property.value : undefined,
+        );
+      };
       const commit = (next: Gradient | null) =>
-        safely(() =>
+        safely(() => {
+          const target = selected() ?? current;
+          const id = session.source.composition.id;
+          const kept = next ?? gradient ?? saved();
+          const first = (next ?? gradient)?.stops[0]?.color;
           run(next ? 'Set gradient' : 'Remove gradient', [
             setProperty(
-              session.source.composition.id,
-              selected() ?? current,
+              id,
+              target,
               'fillGradient',
               withValue(
-                selected() ?? current,
+                target,
                 'fillGradient',
                 next ? formatGradient(next) : '',
                 'string',
               ),
             ),
-          ]),
-        );
+            kept
+              ? setProperty(
+                  id,
+                  target,
+                  'fillGradientSaved',
+                  withValue(
+                    target,
+                    'fillGradientSaved',
+                    formatGradient(kept),
+                    'string',
+                  ),
+                )
+              : null,
+            first && first !== style.fill?.slice(0, 7)
+              ? setProperty(
+                  id,
+                  target,
+                  'fill',
+                  withValue(
+                    target,
+                    'fill',
+                    first,
+                    'color',
+                    session.currentTime,
+                  ),
+                )
+              : null,
+          ]);
+        });
       const wrap = document.createElement('section');
       wrap.className = 'gradient-editor';
       wrap.dataset.control = 'gradient';
@@ -1535,19 +1693,25 @@ export function mountContextToolbar(
           String((gradient?.type ?? 'solid') === type),
         );
         item.textContent = t(`gradient.${type}`);
-        item.onclick = () =>
-          commit(
-            type === 'solid'
-              ? null
-              : {
-                  type,
-                  angle: gradient?.angle ?? 0,
-                  stops: gradient?.stops ?? [
-                    { offset: 0, color: style.fill! },
-                    { offset: 1, color: '#ffffff' },
-                  ],
-                },
-          );
+        item.onclick = () => {
+          if (type === 'solid') {
+            if (gradient) commit(null);
+            return;
+          }
+          // From Solid: the remembered stops, with the solid colour first
+          // when it was changed meanwhile.
+          const fill = style.fill!.slice(0, 7);
+          const remembered = gradient ?? saved();
+          const stops = remembered?.stops.map((stop, index) =>
+            index === 0 && !gradient && stop.color !== fill
+              ? { ...stop, color: fill }
+              : stop,
+          ) ?? [
+            { offset: 0, color: fill },
+            { offset: 1, color: '#ffffff' },
+          ];
+          commit({ type, angle: remembered?.angle ?? 0, stops });
+        };
         types.append(item);
       }
       wrap.append(heading, types);

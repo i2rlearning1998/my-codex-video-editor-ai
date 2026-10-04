@@ -1,6 +1,5 @@
-// H3: the canvas size (Clipchamp's aspect presets). A new size applies to
-// every scene in one undo step; each scene's top-level layers move by half the
-// change, so they stay centred relative to the old canvas.
+// H3: the canvas size (Clipchamp's aspect presets). J1: a size belongs to
+// its scene (one undo step) and never moves layers.
 import type { Command, EditorEngine } from '../core';
 import type { SceneLayer } from '../render/adapter';
 import { copyProperty } from './keyframes';
@@ -71,16 +70,20 @@ export function shiftLayerCommand(
   } as Command;
 }
 
-/** Every command that resizes every scene, keeping the layers centred. */
+/**
+ * J1: the command that gives one scene a new canvas size. Sizes belong to
+ * their scene, and a size change never rewrites any layer's transform, so
+ * changing a size and back restores the scene exactly.
+ */
 export function canvasSizeCommands(
   project: {
     readonly compositions: readonly {
       readonly id: string;
       readonly width: number;
       readonly height: number;
-      readonly layers: readonly unknown[];
     }[];
   },
+  compositionId: string,
   width: number,
   height: number,
 ): Command[] {
@@ -96,32 +99,27 @@ export function canvasSizeCommands(
     throw new RangeError(
       `Canvas size must be whole pixels from ${min} to ${max}`,
     );
-  const commands: Command[] = [];
-  for (const composition of project.compositions) {
-    if (composition.width === width && composition.height === height) continue;
-    const dx = (width - composition.width) / 2,
-      dy = (height - composition.height) / 2;
-    commands.push({
-      type: 'SET_COMPOSITION_SIZE',
-      compositionId: composition.id,
-      width,
-      height,
-    });
-    for (const layer of composition.layers as readonly SceneLayer[]) {
-      const command = shiftLayerCommand(composition.id, layer, dx, dy);
-      if (command) commands.push(command);
-    }
-  }
-  return commands;
+  const composition = project.compositions.find(
+    (item) => item.id === compositionId,
+  );
+  if (!composition) throw new Error('Unknown scene');
+  if (composition.width === width && composition.height === height) return [];
+  return [{ type: 'SET_COMPOSITION_SIZE', compositionId, width, height }];
 }
 
-/** Applies a canvas size as one undo step; returns false when nothing changed. */
+/** Applies a scene's canvas size as one undo step; false when nothing changed. */
 export function applyCanvasSize(
   engine: EditorEngine,
+  compositionId: string,
   width: number,
   height: number,
 ): boolean {
-  const commands = canvasSizeCommands(engine.state, width, height);
+  const commands = canvasSizeCommands(
+    engine.state,
+    compositionId,
+    width,
+    height,
+  );
   if (!commands.length) return false;
   engine.commands.transaction('Canvas size', commands);
   return true;

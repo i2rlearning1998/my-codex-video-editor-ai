@@ -5,6 +5,7 @@
 import { findClipByLayer, type Command, type EditorEngine } from '../../core';
 import { t } from '../../i18n';
 import { performEdit } from '../editing';
+import { createNumberField } from '../components/number-field';
 import { iconSvg } from '../icons';
 import { describeSelection, selectionRoots } from '../selection-context';
 import type { EditorSession } from '../session';
@@ -22,20 +23,20 @@ export function audioTab(
   const track = located?.track ?? null;
   const elements: HTMLElement[] = [];
   // Clip volume waits for the audio engine (Wave 7).
-  const volume = document.createElement('label');
-  volume.className = 'right-row right-row-planned';
+  const volume = createNumberField({
+    id: 'right-volume',
+    label: t('right.volume'),
+    value: 100,
+    unit: '%',
+    min: 0,
+    max: 100,
+    decimals: 0,
+    slider: true,
+    disabled: true,
+    className: 'right-row right-row-planned',
+    onCommit: () => undefined,
+  });
   volume.title = t('toolbar.later', { wave: '7', id: 'AUD-002' });
-  const caption = document.createElement('span');
-  caption.textContent = t('right.volume');
-  const range = document.createElement('input');
-  range.type = 'range';
-  range.id = 'right-volume';
-  range.min = '0';
-  range.max = '100';
-  range.value = '100';
-  range.disabled = true;
-  range.setAttribute('aria-label', t('right.volume'));
-  volume.append(caption, range);
   elements.push(volume);
   // Track mute (audible since W4-C).
   if (track) {

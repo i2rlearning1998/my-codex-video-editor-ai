@@ -4,8 +4,15 @@
 // the preview, hit-testing and export share one interpretation.
 import type { SceneLayer } from './adapter';
 
-/** System fonts with their generic fallback; the W3 font picker replaces this. */
+/**
+ * The fonts a text can use, with their generic fallback: J5's bundled fonts
+ * (render/fonts.ts, real weights 100 to 900) then system fonts. The W3 font
+ * catalog replaces this list.
+ */
 export const SYSTEM_FONTS = [
+  ['Inter', 'sans-serif'],
+  ['Poppins', 'sans-serif'],
+  ['Noto Sans Devanagari', 'sans-serif'],
   ['Arial', 'sans-serif'],
   ['Verdana', 'sans-serif'],
   ['Tahoma', 'sans-serif'],
@@ -14,7 +21,10 @@ export const SYSTEM_FONTS = [
   ['Times New Roman', 'serif'],
   ['Courier New', 'monospace'],
 ] as const;
-export const FONT_WEIGHTS = [400, 600, 700] as const;
+/** J5: every weight a stored text may use; a family offers its own (fontWeights). */
+export const FONT_WEIGHTS = [
+  100, 200, 300, 400, 500, 600, 700, 800, 900,
+] as const;
 export const TEXT_ALIGNS = ['left', 'center', 'right', 'justify'] as const;
 export const TEXT_CASES = ['none', 'upper', 'lower', 'title'] as const;
 /** H3: underline and strikethrough, stored together in `textDecoration`. */

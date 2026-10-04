@@ -48,7 +48,7 @@ test('[LAY-041] nothing selected: the Canvas tab sets size, background and scene
     'title',
     'Transitions: Planned: Wave 6 (TR-001)',
   );
-  // Size: a preset applies to every scene, one step.
+  // Size: a preset applies to the open scene (J1), one step.
   await panel(page)
     .locator('.canvas-size-preset[data-preset="square"]')
     .click();
@@ -101,7 +101,14 @@ test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and
   await expect(
     panel(page).locator('[data-action="right-adjust-reset"]'),
   ).toHaveAttribute('title', 'Planned: Wave 6 (CLR-001)');
-  await expect(tab(page, 'Effects')).toHaveAttribute('aria-disabled', 'true');
+  // J15: Effects opens: the outline is the stroke (live), shadows are
+  // planned and say so.
+  await tab(page, 'Effects').click();
+  await expect(panel(page).locator('#right-width')).toBeVisible();
+  await expect(panel(page).locator('#right-shadow-blur')).toBeDisabled();
+  await expect(
+    panel(page).locator('.right-row-planned').first(),
+  ).toHaveAttribute('title', 'Planned: Wave 6 (FX-001)');
 });
 
 test('[LAY-043] text: font, size, B I U S, case, align, colour and spacing in the Text tab, one step each', async ({
@@ -161,19 +168,36 @@ test('[LAY-045] media: an image has Image (Crop, Flip, Corners, Border) and Filt
 }) => {
   await openFixtureProject('nle-example.json');
   await select(page, 'layer-c');
-  await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Image');
+  // J15: a picture's own controls are under Advanced.
+  await expect(tab(page, 'Properties')).toHaveAttribute(
+    'aria-label',
+    'Advanced',
+  );
   await expect(panel(page).locator('[data-action="right-crop"]')).toBeVisible();
   await expect(
     panel(page)
       .locator('#right-flip-horizontal, [data-control="flip-horizontal"]')
       .first(),
   ).toBeVisible();
-  await expect(tab(page, 'Filters')).toHaveAttribute('aria-disabled', 'true');
+  // J15: Filters lists the looks; only Original works until Wave 6.
+  await tab(page, 'Filters').click();
+  await expect(panel(page).locator('[data-choice="original"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(panel(page).locator('[data-choice="vintage"]')).toHaveAttribute(
+    'title',
+    'Planned: Wave 6 (FX-004)',
+  );
+  await tab(page, 'Properties').click();
   await panel(page).locator('[data-action="right-crop"]').click();
   await expect(page.locator('[data-tool-panel="crop"]')).toBeVisible();
   await page.keyboard.press('Escape');
   await select(page, 'layer-a');
-  await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Video');
+  await expect(tab(page, 'Properties')).toHaveAttribute(
+    'aria-label',
+    'Advanced',
+  );
   await tab(page, 'Audio').click();
   await expect(panel(page).locator('#right-volume')).toBeDisabled();
   await panel(page).locator('[data-action="right-mute"]').click();

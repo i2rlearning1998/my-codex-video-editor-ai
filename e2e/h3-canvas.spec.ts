@@ -253,7 +253,7 @@ test('[CV-054] one fixed floating toolbar row (the scene bar starts with the can
   await expect(page.locator('[data-deep-panel="position"]')).toBeVisible();
 });
 
-test('[CV-055] canvas size presets resize every scene, keep the design centred, one undo step, with Undo in the toast', async ({
+test('[CV-055] canvas size presets resize the open scene without moving its layers, one undo step, with Undo in the toast', async ({
   page,
 }) => {
   const chip = control(page, 'canvas-size');
@@ -279,10 +279,10 @@ test('[CV-055] canvas size presets resize every scene, keep the design centred, 
   expect(project.compositions.map((item) => [item.width, item.height])).toEqual(
     [[1080, 1080]],
   );
-  // Centred: every layer moves by half the change.
+  // J1 (PRJ-025): a size change never rewrites a layer's transform.
   expect(
     (await layerOf(page, 'example-headline')).transform.position.value,
-  ).toEqual([headline[0] - 100, headline[1] + 180]);
+  ).toEqual(headline);
   expect(await labels(page)).toEqual(['Canvas size']);
   await expect(chip).toContainText('1:1');
   // The toast's Undo restores the old size.
@@ -386,8 +386,10 @@ test('[VID-018] a picture takes a border (colour, width, style) and rounded corn
   const id = await addPicture(page, ['image_testsrc_1200x800.jpg']);
   const corners = (await debug(page)).corners!;
   const [left, top] = corners[0]!;
-  // Clear of the side's pill handle at mid-height.
-  const inner: Point = [left + 3, top + (corners[3]![1] - top) * 0.3];
+  // Clear of the side's pill handle at mid-height, of the rounded corners
+  // set below, and (J7: the picture is behind the example's text and
+  // shapes) between the headline and the label on the left.
+  const inner: Point = [left + 3, top + (corners[3]![1] - top) * 0.6];
   await control(page, 'stroke-style').click();
   // I4: the right panel shows the same controls; this is the toolbar popover.
   await page
@@ -426,8 +428,9 @@ test('[VID-009] Replace swaps the media and keeps position, size, crop and timin
     'image_testsrc_1200x800.jpg',
     'image_gradient_1920x1080.png',
   ]);
-  // Move it first, so the kept edits are visible.
-  const nudged = await screen(page, 640, 360);
+  // Move it first, so the kept edits are visible. (J7: from a part of the
+  // picture that no text or shape is drawn over.)
+  const nudged = await screen(page, 150, 690);
   await page.mouse.move(nudged.x, nudged.y);
   await page.mouse.down();
   await page.mouse.move(nudged.x + 40, nudged.y + 20, { steps: 4 });
@@ -494,7 +497,9 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
     await page.mouse.click(at.x, at.y, { button: 'right' });
     await expect(menu).toBeVisible();
   };
-  await open(640, 360);
+  // J7: a new picture is behind the example's text and shapes (lane
+  // order), so its menus open on a part nothing is drawn over.
+  await open(150, 690);
   for (const action of [
     'copy',
     'duplicate',
@@ -527,7 +532,7 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
     page.locator('.toast', { hasText: 'Type: Image' }),
   ).toBeVisible();
   // Alternative text.
-  await open(640, 360);
+  await open(150, 690);
   await menu.locator('[data-action="alt-text"]').click();
   await page.locator('#alt-text-input').fill('A test pattern');
   await page.locator('[data-action="alt-text-save"]').click();
@@ -535,7 +540,7 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
     'A test pattern',
   );
   // Download selection: a PNG the size of the picture.
-  await open(640, 360);
+  await open(150, 690);
   const saving = page.waitForEvent('download');
   await menu.locator('[data-action="download-selection"]').click();
   const download = await saving;
@@ -551,13 +556,13 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   const [a] = (await debug(page)).view;
   expect(size[0]).toBeCloseTo((drawn[1]![0] - drawn[0]![0]) / a, -1);
   // Show element timing moves the playhead to the clip's start.
-  await open(640, 360);
+  await open(150, 690);
   await menu.locator('[data-action="show-timing"]').click();
   await expect(
     page.locator('#timeline-foundation .timeline-scroll'),
   ).toBeFocused();
   // Set image as background: it covers the canvas and goes to the back.
-  await open(640, 360);
+  await open(150, 690);
   await menu.locator('[data-action="set-background"]').click();
   expect((await labels(page)).at(-1)).toBe('Set image as background');
   const project = (await hook(page)).project;

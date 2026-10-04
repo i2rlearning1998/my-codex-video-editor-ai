@@ -41,6 +41,7 @@ export function buildH1Project() {
     name: 'H1 rotated',
     width: 1280,
     height: 720,
+    backgroundColor: '#f0eee7',
     duration: 5,
   });
   const group = createLayer('h1-group', 'group', 'h1-group', 5);

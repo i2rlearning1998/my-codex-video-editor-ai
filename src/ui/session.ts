@@ -1,5 +1,11 @@
 import type { TextMeasurer } from '../render/text-layout';
-import { clampTime, compositionAt, type EditorEngine } from '../core';
+import {
+  clampTime,
+  compositionAt,
+  type DeepReadonly,
+  type EditorEngine,
+  type Project,
+} from '../core';
 import { locateLayer, type RenderSource } from '../render/adapter';
 import { keyframeTimes } from './keyframes';
 import {
@@ -71,6 +77,15 @@ export class EditorSession {
   /** G3: the canvas pan in CSS pixels (transient, never saved). */
   #canvasPan: readonly [number, number] = [0, 0];
   #compositionId: string;
+  /**
+   * J3: a transient preview of a control's edit while it is dragged (a
+   * NumberField scrub or slider). Only the canvas draws it; it is never
+   * saved and is cleared by any project change.
+   */
+  #preview: DeepReadonly<Project> | null = null;
+  /** J4: the text layer being edited on the canvas (transient). */
+  #editingText: string | null = null;
+  #previewListeners = new Set<() => void>();
   #listeners = new Set<() => void>();
   #unsubscribe: () => void;
   constructor(
@@ -78,7 +93,25 @@ export class EditorSession {
     private readonly measureText?: TextMeasurer,
   ) {
     this.#compositionId = engine.state.compositions[0]!.id;
-    this.#unsubscribe = engine.on('state:changed', ({ reason }) => {
+    this.#unsubscribe = engine.on('state:changed', (event) => {
+      const { reason } = event;
+      this.#preview = null;
+      // J1 (HIS-009): undo and redo open the scene their edit changed.
+      const scenes = event.compositionIds ?? [];
+      if (
+        (reason === 'undo' || reason === 'redo') &&
+        scenes.length &&
+        !scenes.includes(this.#compositionId)
+      ) {
+        this.#compositionId = scenes[0]!;
+        this.#selection = Object.freeze([]);
+        this.#keyframes = Object.freeze([]);
+        this.#solo = Object.freeze([]);
+        this.#enteredGroup = null;
+        this.#currentTime = 0;
+        this.#canvasSelected = true;
+        this.#cropLayer = null;
+      }
       if (
         reason === 'load' ||
         !engine.state.compositions.some(
@@ -154,6 +187,40 @@ export class EditorSession {
   get selectedId(): string | null {
     return this.#selection.at(-1) ?? null;
   }
+  /** J3: the open scene as the canvas should draw it during a preview. */
+  get previewSource(): RenderSource | null {
+    const preview = this.#preview;
+    if (!preview) return null;
+    const scene = preview.compositions.find(
+      (item) => item.id === this.#compositionId,
+    );
+    if (!scene) return null;
+    return {
+      ...this.source,
+      composition: compositionAt(scene, this.#currentTime),
+      assets: preview.assets,
+      background: scene.backgroundColor,
+    };
+  }
+  get editingTextId(): string | null {
+    return this.#editingText;
+  }
+  setEditingText(id: string | null): void {
+    if (id === this.#editingText) return;
+    this.#editingText = id;
+    this.#notify();
+  }
+  setPreview(project: DeepReadonly<Project> | null): void {
+    if (project === this.#preview) return;
+    this.#preview = project;
+    for (const listener of this.#previewListeners) listener();
+  }
+  onPreview(listener: () => void): () => void {
+    this.#previewListeners.add(listener);
+    return () => {
+      this.#previewListeners.delete(listener);
+    };
+  }
   get source(): RenderSource {
     const project = this.engine.state;
     return {
@@ -167,7 +234,10 @@ export class EditorSession {
       selectedIds: this.#selection,
       ...(this.#solo.length ? { soloTrackIds: this.#solo } : {}),
       ...(this.measureText ? { measureText: this.measureText } : {}),
-      background: project.settings.backgroundColor,
+      background: project.compositions.find(
+        (item) => item.id === this.#compositionId,
+      )!.backgroundColor,
+      ...(this.#editingText ? { editingTextId: this.#editingText } : {}),
     };
   }
   get drawBrush(): DrawMode | null {
@@ -380,5 +450,6 @@ export class EditorSession {
   dispose(): void {
     this.#unsubscribe();
     this.#listeners.clear();
+    this.#previewListeners.clear();
   }
 }

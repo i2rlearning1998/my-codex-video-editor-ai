@@ -96,6 +96,8 @@ export function blankScene(project: ReadonlyProject, afterId: string) {
       width: current.width,
       height: current.height,
       fps: current.fps,
+      // J1: a new scene starts from the project's default background.
+      backgroundColor: project.settings.backgroundColor,
     }),
   );
 }
@@ -167,7 +169,7 @@ export function moveLayerToScene(
     delete metadata.linkId;
     const target = trackForNewClip(
       to,
-      layer.type,
+      layer,
       clip.startTime,
       clip.startTime + clip.duration,
     );

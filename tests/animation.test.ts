@@ -71,9 +71,15 @@ test('[ANI-002] interpolation: linear, named eases, hold and custom cubic-bezier
 
 test('[ANI-002] schema 5: a v4 file migrates losslessly; invalid easing is rejected', () => {
   const project = deserializeProject(fixture('v4-keyframes.json'));
-  expect(project.schemaVersion).toBe(5);
+  expect(project.schemaVersion).toBe(6);
   const legacy = JSON.parse(fixture('v4-keyframes.json'));
-  expect(project.compositions).toEqual(legacy.compositions);
+  // Schema 6 adds only each scene's background, from the project's.
+  expect(project.compositions).toEqual(
+    legacy.compositions.map((composition: object) => ({
+      ...composition,
+      backgroundColor: legacy.settings.backgroundColor,
+    })),
+  );
   const layer = project.compositions[0]!.layers[0]!;
   // Absent easing reads as linear.
   expect(evaluateProperty(layer.transform.position, 1)).toEqual([300, 200]);

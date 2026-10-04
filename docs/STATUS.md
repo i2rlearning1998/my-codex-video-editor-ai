@@ -1,3 +1,8 @@
+- **J-series (J1 to J15)** is on `claude/j-series`, draft PR #17 stacked on PR #16 (`claude/i-series`), not merged; see reports/J-SERIES.md and the audit reports/J-AUDIT.md.
+  - **J1 to J6** fix the PR #16 test findings: per-scene background and size (**schema 6**, one field: `composition.backgroundColor`), undo scoped to scenes, gradient stops, keyboard undo after panel edits, NumberField everywhere with live preview, on-canvas text editing (range styles, lists, IME, copy and paste), bundled OFL fonts with real weights, element timing, alternative text and Resize canvas to selection.
+  - **J7 to J15** bring the Clipchamp-style timeline (lanes in three groups, loading and empty states, drop guides, clip colours, gaps, transitions), the Player bar with Collapse, clip menus per kind and the Clipchamp right panel.
+  - No new npm dependencies; three fonts (Inter, Poppins, Noto Sans Devanagari, SIL OFL 1.1) are vendored in `public/fonts`. PR #14 (audio engine) is still unmerged and untouched.
+  - Last full verify and ledger counts: reports/J-SERIES.md, section 3.
 - **I-series (I1 to I5)** is on `claude/i-series`, PR #16 to `main`, not merged; see reports/I-SERIES.md.
   - **I1** fixes the H-series test findings: panels animate their real width, toolbar buttons open a collapsed panel, library cards drag onto the canvas, templates ask Replace, Add or New scene, the canvas bar, undo rules (docs/UNDO-RULES.md, `engine.library`), and a media menu with soft delete and Restore.
   - **I2** brings browse panels for Templates, Elements, Text and Transitions; Graphics moves into Elements; Media tabs, folders and designs; My Templates; and the Draw palette.

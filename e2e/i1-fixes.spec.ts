@@ -100,7 +100,9 @@ async function sampleWidth(
           )?.[0] ?? 0,
       ),
     )
-    .toBeGreaterThan(400);
+    // Sampling stops at the first frame at or past 400 ms (`time < 400`
+    // above), so a frame landing exactly on 400 ends it too.
+    .toBeGreaterThanOrEqual(400);
   const samples = await page.evaluate(
     () => (window as unknown as { samples: [number, number][] }).samples,
   );
@@ -533,7 +535,10 @@ test('[MED-037] the media item menu renames (not undoable), moves to a folder, s
   await expect(menu).toBeVisible();
   await menu.locator('[data-action="media-add"]').click();
   expect((await labels(page)).at(-1)).toBe('Add asset layer');
-  const layer = (await scene(page)).layers.at(-1)!;
+  // J7: the picture goes behind the text and shapes (lane order); it is
+  // the layer just added, which is selected.
+  const added = (await hook(page)).session.selectedIds[0];
+  const layer = (await scene(page)).layers.find((item) => item.id === added)!;
   expect(layer.type).toBe('image');
 });
 

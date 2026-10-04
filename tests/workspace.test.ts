@@ -289,16 +289,18 @@ describe('T3 editing workspace', () => {
     ).toHaveLength(1);
     expect(
       deserializeProject(serializeProject(s.engine.state)).schemaVersion,
-    ).toBe(5);
+    ).toBe(6);
   });
   it('migrates schema 2 without changing existing timing/transforms', () => {
     const legacy = legacyFixture;
     const migrated = deserializeProject(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(5);
+    expect(migrated.schemaVersion).toBe(6);
     expect(migrated.compositions).toEqual(
       legacy.compositions.map((composition) => ({
         ...composition,
         tracks: [],
+        // Schema 6: each scene takes the project's background.
+        backgroundColor: legacy.settings.backgroundColor,
       })),
     );
     expect(legacy.schemaVersion).toBe(2);

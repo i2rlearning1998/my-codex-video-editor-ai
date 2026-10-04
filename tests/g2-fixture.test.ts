@@ -44,6 +44,7 @@ export function buildG2Project() {
     name: 'G2 types',
     width: 1280,
     height: 720,
+    backgroundColor: '#f0eee7',
     duration: 5,
   });
   const group = createLayer('g2-group', 'group', 'g2-group', 5);

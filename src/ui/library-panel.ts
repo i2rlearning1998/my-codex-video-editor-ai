@@ -2,6 +2,7 @@
 // graphics), Text and Transitions are browse panels (browse-panel.ts) over
 // Starter Pack 1, with drawn previews; a click or a drop adds the item
 // through the Command Bus.
+import { createNumberField } from './components/number-field';
 import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
 import { loadLibrary } from '../library/loader';
@@ -286,6 +287,8 @@ export interface LibraryHosts {
 export interface LibraryBrowsers {
   /** Back to every panel's first page. */
   reset(): void;
+  /** Stops drawing (a late manifest is ignored). */
+  dispose(): void;
 }
 
 const later = (wave: number | string, id: string) =>
@@ -892,22 +895,21 @@ export function mountLibraryPanels(
             const text = document.createElement('p');
             text.textContent = t('transitions.tip');
             tip.append(text);
-            const duration = document.createElement('label');
-            duration.className = 'browse-duration';
-            const caption = document.createElement('span');
-            caption.textContent = t('transitions.duration');
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.id = 'transition-duration';
-            input.min = '0.1';
-            input.max = '5';
-            input.step = '0.1';
-            input.value = '1';
-            input.disabled = true;
-            input.title = later(6, 'TR-002');
-            const unit = document.createElement('span');
-            unit.textContent = t('units.seconds');
-            duration.append(caption, input, unit);
+            // J3: the shared NumberField, disabled until transitions work.
+            const duration = createNumberField({
+              id: 'transition-duration',
+              label: t('transitions.duration'),
+              value: 1,
+              unit: 's',
+              min: 0.1,
+              max: 5,
+              step: 0.1,
+              decimals: 1,
+              disabled: true,
+              className: 'browse-duration',
+              onCommit: () => undefined,
+            });
+            duration.title = later(6, 'TR-002');
             host.append(tip, duration);
           },
         },
@@ -941,8 +943,13 @@ export function mountLibraryPanels(
       close: options.close,
     }),
   };
-  const refreshAll = () =>
+  // The manifest can arrive after the shell is gone (a closed page or a
+  // finished test); nothing is drawn then.
+  let disposed = false;
+  const refreshAll = () => {
+    if (disposed) return;
     Object.values(panels).forEach((panel) => panel.refresh());
+  };
   recent.onChange(refreshAll);
   myTemplates.onChange(() => panels.Templates.refresh());
   loadLibrary().then(
@@ -968,5 +975,8 @@ export function mountLibraryPanels(
   void report;
   return {
     reset: () => Object.values(panels).forEach((panel) => panel.reset()),
+    dispose: () => {
+      disposed = true;
+    },
   };
 }

@@ -87,6 +87,8 @@ describe('H2 design tokens', () => {
       '--easing',
       '--depth',
       '--track-height',
+      // J4: the text editor's paragraph spacing (inline, per layer).
+      '--paragraph-spacing',
     ]);
     const missing = [
       ...new Set(

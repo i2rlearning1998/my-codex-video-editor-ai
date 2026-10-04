@@ -1,3 +1,7 @@
+import { buildTransitionPanel } from './transition-panel';
+import { assetDrag } from './drag-state';
+import { openElementTiming } from './element-timing';
+import { mountFonts } from './fonts';
 import {
   multiplyMatrices,
   invertMatrix,
@@ -13,6 +17,9 @@ import {
   type Command,
   type Point2,
   hasAnimation,
+  laneAccepts,
+  nextTrackName,
+  trackTypeForLayer,
 } from '../core';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
@@ -25,7 +32,11 @@ import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
 import { clampPan, mountCanvasView } from './canvas-view';
 import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
-import { createNumberField, syncNumberField } from './components/number-field';
+import {
+  createNumberField,
+  setFieldPreview,
+  syncNumberField,
+} from './components/number-field';
 import {
   isGeometryField,
   selectionGeometry as selectionGeometryOf,
@@ -46,9 +57,10 @@ import {
   type PreviewAsset,
 } from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
+import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
-import { mountTimeline } from './timeline';
+import { mountTimeline, type AssetTarget } from './timeline';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
@@ -81,6 +93,8 @@ import {
   ALT_TEXT_LIMIT,
   altTextOf,
   layerInfo,
+  resizeCanvasToSelection,
+  selectionSize,
   setAltText,
   worldBox,
 } from './layer-actions';
@@ -96,7 +110,7 @@ import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
-import { openModal } from './components/modal';
+import { confirmDialog, openModal } from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
@@ -157,6 +171,8 @@ export function mountEditorShell(
   const sectionKey = (name: string) => `panel.${name.toLowerCase()}`;
   const rightRailButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-section="${name}" aria-pressed="${pressed}" title="${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${name === 'Properties' ? t('panel.properties') : t(sectionKey(name))}</span></button>`;
+  // J8: the editor replaces index.html's loading skeleton.
+  root.removeAttribute('aria-busy');
   root.innerHTML = `
     <div class="editor-shell" data-editor-mode="editor">
       <header class="topbar">
@@ -241,6 +257,7 @@ export function mountEditorShell(
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
+        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('chevronRight', 16)}</button></header>
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
@@ -263,7 +280,10 @@ export function mountEditorShell(
     element('#status').textContent = text;
   };
   // Refused or failed edits must be noticed, not just logged in the status bar.
+  /** J3: errors from a live preview are not shown (the commit reports them). */
+  let previewing = false;
   const reportError = (error: unknown) => {
+    if (previewing) return;
     const text = error instanceof Error ? error.message : String(error);
     message(text);
     // H4: an animated property offers to open 2D Animation.
@@ -492,6 +512,8 @@ export function mountEditorShell(
     };
   };
   let selectionActions: ReturnType<typeof mountSelectionActions> | undefined;
+  /** J4: the on-canvas text editor (mounted with the canvas interaction). */
+  let textEditing: TextEditor | undefined;
   const draw = () => {
     if (disposed) return;
     syncAudio();
@@ -501,15 +523,14 @@ export function mountEditorShell(
             session.currentTime
         : 0,
     );
+    // J3: a control being dragged previews its edit on the canvas.
+    const base = session.previewSource ?? session.source;
     const drawn = {
-      ...session.source,
+      ...base,
       // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
         ? {
-            composition: withErasedPaths(
-              session.source.composition,
-              drawTool.erased,
-            ),
+            composition: withErasedPaths(base.composition, drawTool.erased),
           }
         : {}),
       frames,
@@ -555,6 +576,7 @@ export function mountEditorShell(
       session.selectedId,
     );
     frames.endFrame();
+    if (textEditing?.layerId) textEditing.sync();
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
     // G2.1: X, Y, W and H (and the stored values) follow a handle drag live.
     if (!session.playing) syncGeometryFields(root, drawn);
@@ -644,9 +666,10 @@ export function mountEditorShell(
     cropTool,
     reportError,
   );
-  // H3: a new canvas size for every scene, with Undo in the toast.
+  // H3, J1: a new canvas size for the open scene, with Undo in the toast.
   const resizeCanvas = (width: number, height: number) => {
-    if (!applyCanvasSize(engine, width, height)) return;
+    if (!applyCanvasSize(engine, session.source.composition.id, width, height))
+      return;
     showToast(
       t('canvasSize.changed', {
         width: formatNumber(width),
@@ -734,6 +757,8 @@ export function mountEditorShell(
         safely(() => {
           setAltText(engine, session, area.value);
           sidePanels.close();
+          // J6: a visible confirmation.
+          showToast(t('altText.saved'), 'success', 3000);
         });
       wrap.append(hint, area, save);
       queueMicrotask(() => area.focus());
@@ -812,8 +837,39 @@ export function mountEditorShell(
       session.setCurrentTime(start);
       timeline?.reveal(start);
       element('#timeline-foundation .timeline-scroll').focus();
+      // J6: a popover with the start and duration; the clip is highlighted.
+      openElementTiming(
+        element('#context-toolbar').hidden
+          ? element('#composition-canvas')
+          : element('#context-toolbar'),
+        engine,
+        session,
+        reportError,
+        (id) => timeline?.highlight(id),
+      );
     },
     altText: openAltText,
+    // J6: a confirmation names the new size; one undo step restores it all.
+    resizeToSelection: () => {
+      const size = selectionSize(session);
+      if (!size) return;
+      void confirmDialog(
+        t('resize.confirm', {
+          width: formatNumber(size.width),
+          height: formatNumber(size.height),
+        }),
+        {
+          titleText: t('resize.confirmTitle'),
+          confirmLabel: t('resize.apply'),
+          cancelLabel: t('action.cancel'),
+        },
+      ).then((confirmed) => {
+        if (!confirmed) return;
+        safely(() => {
+          if (resizeCanvasToSelection(engine, session)) canvasView.fit();
+        });
+      });
+    },
     download: downloadSelection,
     info: () => {
       const lines = layerInfo(session);
@@ -924,6 +980,31 @@ export function mountEditorShell(
       { width: stage.clientWidth, height: stage.clientHeight },
     );
   }
+  // J4: on-canvas text editing (double-click, Enter or the Text tool).
+  const textEditor = mountTextEditor(
+    stage,
+    canvas,
+    engine,
+    session,
+    viewport,
+    reportError,
+  );
+  textEditing = textEditor;
+  // The toolbar mirrors the editor's selection (J4).
+  let toolbarFrame = 0;
+  textEditor.onChange(() => {
+    if (toolbarFrame) return;
+    toolbarFrame = requestAnimationFrame(() => {
+      toolbarFrame = 0;
+      safely(() => contextToolbar.render());
+    });
+  });
+  const editText = (
+    id: string | null,
+    options?: Parameters<typeof textEditor.start>[1],
+  ) => {
+    if (id) safely(() => textEditor.start(id, options));
+  };
   const pointer = bindCanvasInteraction(
     canvas,
     session,
@@ -953,6 +1034,7 @@ export function mountEditorShell(
       finish: () => drawPalette?.place.finish(),
       cancel: () => drawPalette?.place.cancel(),
     },
+    (id, at) => editText(id, at ? { at } : { selectAll: true }),
   );
   const commandContext: CommandContext = {
     engine,
@@ -961,10 +1043,34 @@ export function mountEditorShell(
     ...(actions.save ? { save: actions.save } : {}),
     togglePlayback: () =>
       element<HTMLButtonElement>('[data-action="play"]').click(),
+    // J14: the clip menu's Edit duration, Rename and More options.
+    editDuration: () =>
+      safely(() => {
+        const id = session.selectedId;
+        const clip = id
+          ? root.querySelector<HTMLElement>(
+              `#timeline-foundation .timeline-clip[data-action="clip"][data-id="${CSS.escape(id)}"]`,
+            )
+          : null;
+        openElementTiming(
+          clip ?? element('#timeline-foundation'),
+          engine,
+          session,
+          reportError,
+          (layerId) => timeline?.highlight(layerId),
+          'duration',
+        );
+      }),
+    renameClip: () => {
+      if (session.selectedId) timeline?.renameClip(session.selectedId);
+    },
+    moreOptions: () => workspace?.setOpen('right', true),
   };
   let renderedProject: unknown;
   let renderedSelection = '';
   const refresh = (force = false) => {
+    // J3: a live preview never rebuilds the panels (the field is being dragged).
+    if (previewing) return;
     drawPanel.sync();
     drawPalette?.sync();
     canvas.classList.toggle('drawing', session.drawBrush !== null);
@@ -1095,6 +1201,15 @@ export function mountEditorShell(
         label.className = 'scene-name';
         label.textContent = layer.name;
         button.append(icon, label);
+        // J6: a layer with alternative text shows an ALT badge.
+        if (altTextOf(layer)) {
+          const badge = document.createElement('span');
+          badge.className = 'alt-badge';
+          badge.textContent = t('altText.short');
+          badge.title = t('altText.badge');
+          badge.setAttribute('aria-label', t('altText.badge'));
+          button.append(badge);
+        }
         button.onclick = (event) =>
           session.select(
             layer.id,
@@ -1242,6 +1357,26 @@ export function mountEditorShell(
     };
   session.onChange(syncMode);
   const unsubscribe = session.onChange(refresh);
+  // J3: a NumberField being scrubbed or slid previews its edit on the canvas:
+  // the commit runs in capture mode and the canvas draws the result. Nothing
+  // reaches the project or history until release.
+  setFieldPreview({
+    preview: (commit) => {
+      previewing = true;
+      try {
+        const commands = engine.commands.capture(commit);
+        session.setPreview(commands.length ? engine.preview(commands) : null);
+      } catch {
+        // A refused edit shows nothing; its commit reports the reason.
+      } finally {
+        previewing = false;
+      }
+    },
+    end: () => session.setPreview(null),
+  });
+  const unsubscribePreview = session.onPreview(() => safely(draw));
+  // J5: bundled fonts the project uses load, then the canvas redraws.
+  const disposeFonts = mountFonts(engine, () => safely(draw));
   element<HTMLButtonElement>('#undo').onclick = () =>
     safely(() => {
       runCommand('undo', commandContext);
@@ -1408,7 +1543,10 @@ export function mountEditorShell(
       close: () => workspace?.setOpen('left', false),
       // SHP-001: the five W5-D shapes and the I2 lines.
       addPreset: (preset) => safely(() => addShape(engine, session, preset)),
-      addTextBox: () => libraryActions.insertTextBox(),
+      addTextBox: () => {
+        libraryActions.insertTextBox();
+        editText(session.selectedId, { selectAll: true });
+      },
     },
   );
   void libraryBrowsers;
@@ -1603,7 +1741,10 @@ export function mountEditorShell(
     toCanvas: (point) => transformPoint(viewport().matrix, point),
     report: reportError,
     openSignature: () => signature.open(),
-    insertTextBox: (at, width) => libraryActions.insertTextBox(at, width),
+    insertTextBox: (at, width) => {
+      libraryActions.insertTextBox(at, width);
+      editText(session.selectedId, { selectAll: true });
+    },
     setLeftOpen: (open) => workspace?.setOpen('left', open),
     leftOpen: () => workspace?.leftOpen ?? true,
     changed: () => {
@@ -1622,6 +1763,84 @@ export function mountEditorShell(
   const mediaInput = element<HTMLInputElement>('#import-media-input');
   element<HTMLButtonElement>('#import-media').onclick = () =>
     mediaInput.click();
+  // J8: the empty timeline's hint rows add text, or open Media (with the file
+  // picker) or Audio.
+  const openCategory = (category: string) => {
+    if (drawPalette?.open) drawPalette.close();
+    activeCategory = category;
+    sidePanels.close();
+    applyCategory(category);
+    workspace?.setOpen('left', true);
+    syncRails();
+  };
+  const timelineHint = (event: Event) =>
+    safely(() => {
+      const kind = (event as CustomEvent<string>).detail;
+      if (kind === 'text') {
+        libraryActions.insertTextBox();
+        editText(session.selectedId, { selectAll: true });
+      } else if (kind === 'video') {
+        openCategory('Media');
+        mediaInput.click();
+      } else openCategory('Audio');
+    });
+  element('#timeline-foundation').addEventListener(
+    'timeline-hint',
+    timelineHint,
+  );
+  // J14: the timeline clip menu's entries run registered commands here.
+  const timelineCommand = (event: Event) =>
+    safely(() => {
+      runCommand((event as CustomEvent<string>).detail, commandContext);
+    });
+  element('#timeline-foundation').addEventListener(
+    'timeline-command',
+    timelineCommand,
+  );
+  // J13: Collapse leaves only the player bar under a large preview; Expand
+  // brings the lanes back. UI state only (not saved, no history).
+  const collapseTimeline = () => {
+    const shellElement = element('.editor-shell');
+    const collapsed = !shellElement.classList.contains('timeline-collapsed');
+    shellElement.classList.toggle('timeline-collapsed', collapsed);
+    const toggle = element<HTMLButtonElement>(
+      '#timeline-foundation [data-action="collapse-timeline"]',
+    );
+    const label = t(collapsed ? 'player.expand' : 'player.collapse');
+    toggle.setAttribute('aria-expanded', String(!collapsed));
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+    toggle.innerHTML = iconSvg(collapsed ? 'chevronUp' : 'chevronDown', 15);
+  };
+  element('#timeline-foundation').addEventListener(
+    'timeline-collapse',
+    collapseTimeline,
+  );
+  // J12: a cut's + or chip opens the Transition panel for that cut.
+  const transitionState = { query: '' };
+  const openTransition = (event: Event) =>
+    safely(() => {
+      const clipId = (event as CustomEvent<string>).detail;
+      transitionState.query = '';
+      sidePanels.show('transition', t('transition.title'), () =>
+        buildTransitionPanel(
+          clipId,
+          engine,
+          session,
+          reportError,
+          transitionState,
+        ),
+      );
+    });
+  element('#timeline-foundation').addEventListener(
+    'timeline-transition',
+    openTransition,
+  );
+  // It shows the cut's current transition after every change (and closes
+  // when the clips no longer touch).
+  const unsubscribeTransition = session.onChange(() => {
+    if (sidePanels.openId === 'transition') sidePanels.refresh();
+  });
   mediaInput.onchange = () => {
     const files = [...(mediaInput.files ?? [])];
     mediaInput.value = '';
@@ -1657,6 +1876,33 @@ export function mountEditorShell(
   /** H4: the rail lists the sections that fit the selection (Clipchamp). */
   const syncRightRail = () => {
     const shown = sectionsFor(session);
+    // J15: the rail lists the shown sections in the selection's order (the
+    // keyboard order matches what is seen).
+    const nav = element('#rail-right');
+    const ordered = [
+      ...nav.querySelectorAll<HTMLElement>('button[data-section]'),
+    ]
+      .map((el) => ({
+        el,
+        at: shown.indexOf(el.dataset.section as RightSection),
+      }))
+      .sort((a, b) => (a.at < 0 ? 99 : a.at) - (b.at < 0 ? 99 : b.at));
+    if (ordered.some(({ el }, index) => nav.children[index] !== el))
+      nav.prepend(...ordered.map(({ el }) => el));
+    // J15: the header names the selection and counts it; the rail follows
+    // the selection's order.
+    const kind = kindOf(session);
+    element('#right-panel-title').textContent = t(
+      kind === 'video' || kind === 'image'
+        ? `right.tab.${kind}`
+        : firstTabKey(kind),
+    );
+    const count = element('#right-panel-count');
+    count.hidden = session.selectedIds.length === 0;
+    count.textContent = String(session.selectedIds.length);
+    count.title = t('right.count', {
+      count: String(session.selectedIds.length),
+    });
     for (const el of root.querySelectorAll<HTMLElement>(
       '.icon-rail-right button',
     )) {
@@ -1694,6 +1940,8 @@ export function mountEditorShell(
   };
   session.onChange(syncRightRail);
   syncRightRail();
+  element<HTMLButtonElement>('#right-panel-collapse').onclick = () =>
+    workspace?.setOpen('right', false);
   for (const el of root.querySelectorAll<HTMLElement>(
     '.icon-rail-right button',
   ))
@@ -1870,10 +2118,12 @@ export function mountEditorShell(
       time: number;
       point?: readonly [number, number] | null;
       trackId?: string | undefined;
+      /** J9: commands making the lane `trackId` names (a new lane). */
+      newTrack?: Command[];
     },
   ) => {
     const id = asset.id;
-    const time = place.time;
+    let time = place.time;
     session.setPlaying(false);
     const duration = asset.duration && asset.duration > 0 ? asset.duration : 5;
     const layer = createLayer(
@@ -1913,14 +2163,18 @@ export function mountEditorShell(
     // track at the playhead (or a new one); a track row uses the insert rule.
     const type = asset.type === 'audio' ? 'audio' : 'video';
     const requestedTrackId = place.trackId;
-    const requestedTrack = requestedTrackId
-      ? session.source.composition.tracks.find(
-          (item) => item.id === requestedTrackId,
-        )
-      : undefined;
+    const requestedTrack = place.newTrack
+      ? undefined
+      : requestedTrackId
+        ? session.source.composition.tracks.find(
+            (item) => item.id === requestedTrackId,
+          )
+        : undefined;
+    void type;
+    // J7: a lane takes media of its own group only.
     if (
       requestedTrack &&
-      (requestedTrack.type !== type || requestedTrack.locked)
+      (!laneAccepts(requestedTrack.type, layer) || requestedTrack.locked)
     )
       throw new Error(
         requestedTrack.locked
@@ -1930,15 +2184,22 @@ export function mountEditorShell(
               track: requestedTrack.name,
             }),
       );
-    const target = requestedTrack
-      ? { trackId: requestedTrack.id, commands: [] as Command[] }
-      : trackForNewClip(
-          session.source.composition,
-          layer.type,
-          time,
-          time + duration,
-        );
+    const target = place.newTrack
+      ? { trackId: requestedTrackId!, commands: place.newTrack }
+      : requestedTrack
+        ? { trackId: requestedTrack.id, commands: [] as Command[] }
+        : trackForNewClip(
+            session.source.composition,
+            layer.type,
+            time,
+            time + duration,
+          );
     commands.unshift(...target.commands);
+    // J7: audio goes to the single audio lane, at the nearest free time.
+    if ('startTime' in target && target.startTime !== time) {
+      time = target.startTime;
+      layer.startTime = time;
+    }
     const clip = {
       id: crypto.randomUUID(),
       name: asset.name,
@@ -1989,6 +2250,13 @@ export function mountEditorShell(
       const asset = session.source.assets.find((item) => item.id === id);
       if (!asset || !['image', 'video', 'audio'].includes(asset.type)) return;
       event.preventDefault();
+      // J9: the timeline knows where the drop lands (a lane, a new lane, a
+      // clip to replace) or that it is refused.
+      if (event.currentTarget !== canvas && timeline) {
+        const target = timeline.assetTarget();
+        timeline.clearAssetTarget();
+        if (target) return timelineAssetDrop(asset, target, event);
+      }
       const track = element('.timeline-scroll');
       const time =
         event.currentTarget === canvas
@@ -2024,13 +2292,155 @@ export function mountEditorShell(
               )?.dataset.trackId ?? ''),
       });
     });
+  const timelineAssetDrop = (
+    asset: (typeof session.source.assets)[number],
+    target: AssetTarget,
+    event: DragEvent,
+  ) => {
+    // A lane of another group refuses the media with the earlier message.
+    if (target.mode === 'refused') {
+      const lane = session.source.composition.tracks.find(
+        (item) => item.id === target.trackId,
+      );
+      throw new Error(
+        t('asset.incompatible', { name: asset.name, track: lane?.name ?? '' }),
+      );
+    }
+    if (target.mode === 'lane')
+      return placeAsset(asset, { time: target.time, trackId: target.trackId });
+    if (target.mode === 'insert') {
+      // A new lane at the separator, holding the new clip.
+      const type = trackTypeForLayer(asset.type);
+      const trackId = crypto.randomUUID();
+      const compositionId = session.source.composition.id;
+      return placeAsset(asset, {
+        time: target.time,
+        trackId,
+        newTrack: [
+          {
+            type: 'CREATE_TRACK',
+            compositionId,
+            track: {
+              id: trackId,
+              name: nextTrackName(session.source.composition, type),
+              type,
+              order: session.source.composition.tracks.length,
+              enabled: true,
+              locked: false,
+              muted: false,
+              clips: [],
+            },
+          },
+          { type: 'MOVE_TRACK', compositionId, trackId, index: target.index },
+        ],
+      });
+    }
+    // Over a clip of the same kind: Replace it, or add the media as a clip.
+    const layerId = target.layerId;
+    const menu = document.createElement('div');
+    menu.className = 'replace-drop-menu';
+    menu.setAttribute('role', 'menu');
+    const item = (label: string, action: string, run: () => void) => {
+      const entry = document.createElement('button');
+      entry.type = 'button';
+      entry.setAttribute('role', 'menuitem');
+      entry.dataset.action = action;
+      entry.textContent = label;
+      entry.onclick = () => {
+        handle.close();
+        safely(run);
+      };
+      menu.append(entry);
+    };
+    item(t('drop.replace'), 'drop-replace', () => {
+      engine.commands.transaction('Replace media', [
+        {
+          type: 'SET_LAYER_ASSET',
+          compositionId: session.source.composition.id,
+          layerId,
+          assetId: asset.id,
+        } as Command,
+      ]);
+      session.select(layerId);
+    });
+    item(t('drop.addClip'), 'drop-add', () => {
+      const clip = findClipByLayer(session.source.composition, layerId);
+      placeAsset(asset, {
+        time: target.time,
+        ...(clip ? { trackId: clip.track.id } : {}),
+      });
+    });
+    const anchor = document.createElement('span');
+    anchor.className = 'drop-anchor';
+    Object.assign(anchor.style, {
+      position: 'fixed',
+      left: `${event.clientX}px`,
+      top: `${event.clientY}px`,
+    });
+    root.append(anchor);
+    const handle = openPopover(anchor, menu, {
+      label: t('drop.title'),
+      className: 'replace-drop-popover',
+      onClose: () => anchor.remove(),
+    });
+    (menu.firstElementChild as HTMLElement | null)?.focus();
+  };
   const assetOver = (event: DragEvent) => {
     if (
       event.dataTransfer?.types.includes('application/x-editor-asset') ||
       event.dataTransfer?.types.includes(LIBRARY_DRAG_TYPE)
     )
       event.preventDefault();
+    showDropBox(event);
   };
+  // J9: over the canvas (only there), a box shows where a picture would land:
+  // centred on the pointer at its own size, scaled to fit the composition.
+  const dropBox = document.createElement('div');
+  dropBox.className = 'canvas-drop-box';
+  dropBox.hidden = true;
+  dropBox.setAttribute('aria-hidden', 'true');
+  root.append(dropBox);
+  const hideDropBox = () => {
+    dropBox.hidden = true;
+  };
+  const showDropBox = (event: DragEvent) => {
+    const drag = assetDrag();
+    if (!drag || drag.type === 'audio') return hideDropBox();
+    const { width: w, height: h } = session.source.composition;
+    const fit =
+      drag.width && drag.height
+        ? Math.min(1, w / drag.width, h / drag.height)
+        : 1;
+    const bw = (drag.width ?? 320) * fit,
+      bh = (drag.height ?? 180) * fit;
+    const rect = canvas.getBoundingClientRect();
+    const matrix = viewport().matrix;
+    const inverse = invertMatrix(matrix);
+    if (!inverse) return hideDropBox();
+    const [cx, cy] = transformPoint(inverse, [
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+    ]);
+    const a = transformPoint(matrix, [cx - bw / 2, cy - bh / 2]);
+    const b = transformPoint(matrix, [cx + bw / 2, cy + bh / 2]);
+    Object.assign(dropBox.style, {
+      left: `${rect.left + Math.min(a[0], b[0])}px`,
+      top: `${rect.top + Math.min(a[1], b[1])}px`,
+      width: `${Math.abs(b[0] - a[0])}px`,
+      height: `${Math.abs(b[1] - a[1])}px`,
+    });
+    dropBox.hidden = false;
+  };
+  const canvasDragLeave = (event: DragEvent) => {
+    if (!(
+      event.relatedTarget instanceof Node &&
+      canvas.contains(event.relatedTarget)
+    ))
+      hideDropBox();
+  };
+  canvas.addEventListener('dragleave', canvasDragLeave);
+  canvas.addEventListener('drop', hideDropBox);
+  document.addEventListener('dragend', hideDropBox);
   // I1.3: a library card dropped on the canvas is inserted at the drop
   // point (never imported as media).
   const libraryDrop = (event: DragEvent) => {
@@ -2241,6 +2651,7 @@ export function mountEditorShell(
     refresh,
     setSaveStatus,
     dispose: () => {
+      libraryBrowsers.dispose();
       if (disposed) return;
       disposed = true;
       disposeShortcuts();
@@ -2259,9 +2670,33 @@ export function mountEditorShell(
       window.removeEventListener('drop', windowDrop);
       workspace?.dispose();
       canvas.removeEventListener('dragover', assetOver);
+      canvas.removeEventListener('dragleave', canvasDragLeave);
+      canvas.removeEventListener('drop', hideDropBox);
+      document.removeEventListener('dragend', hideDropBox);
+      dropBox.remove();
       canvas.removeEventListener('drop', assetDrop);
       element('#timeline-foundation').removeEventListener('drop', assetDrop);
+      element('#timeline-foundation').removeEventListener(
+        'timeline-hint',
+        timelineHint,
+      );
+      element('#timeline-foundation').removeEventListener(
+        'timeline-transition',
+        openTransition,
+      );
+      unsubscribeTransition();
+      element('#timeline-foundation').removeEventListener(
+        'timeline-command',
+        timelineCommand,
+      );
+      element('#timeline-foundation').removeEventListener(
+        'timeline-collapse',
+        collapseTimeline,
+      );
       unsubscribe();
+      unsubscribePreview();
+      disposeFonts();
+      setFieldPreview(null);
       timeline?.dispose();
       pointer.dispose();
       interaction.dispose();

@@ -2,6 +2,8 @@
 // W5-A export worker: decodes source video with WebCodecs (via Mediabunny), draws
 // every output frame with the same drawComposition as the preview, encodes video and
 // the pre-mixed audio, and streams the file into OPFS (EXP-001 to EXP-004).
+import { loadUsedFonts } from '../render/fonts';
+import type { SceneLayer } from '../render/adapter';
 import {
   AudioSample,
   AudioSampleSource,
@@ -47,6 +49,8 @@ export interface ExportJob {
   composition: DeepReadonly<Composition>;
   assets: readonly DeepReadonly<Asset>[];
   background: string;
+  /** J1: joined scenes keep their own backgrounds (start times in seconds). */
+  backgrounds?: readonly { start: number; color: string }[];
   settings: ExportSettings;
   /** Source bytes of every video asset drawn in the range. */
   videos: Record<string, Blob>;
@@ -122,6 +126,14 @@ async function run(job: ExportJob): Promise<void> {
   const canvas = new OffscreenCanvas(settings.width, settings.height);
   const context = canvas.getContext('2d')!;
   const measure = new OffscreenCanvas(1, 1).getContext('2d')!;
+  // J5: the bundled fonts the text uses, loaded before the first frame.
+  const fonts = (self as unknown as { fonts?: FontFaceSet }).fonts;
+  if (fonts && typeof FontFace !== 'undefined')
+    await loadUsedFonts(
+      fonts,
+      new URL(import.meta.env.BASE_URL, self.location.origin).href,
+      [job.composition as unknown as { layers: readonly SceneLayer[] }],
+    );
   const measureText: TextMeasurer = (text, fontSize, style) =>
     measureWithContext(measure, text, fontSize, style);
   const sourceAt = (time: number, frames?: FrameProvider): RenderSource => ({
@@ -130,7 +142,9 @@ async function run(job: ExportJob): Promise<void> {
     // W5-C: animation presets, drawn exactly like the preview.
     animate: true,
     assets: job.assets,
-    background: job.background,
+    background:
+      [...(job.backgrounds ?? [])].reverse().find((item) => item.start <= time)
+        ?.color ?? job.background,
     currentTime: time,
     measureText,
     ...(frames ? { frames } : {}),

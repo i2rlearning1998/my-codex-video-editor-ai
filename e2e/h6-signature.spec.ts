@@ -99,10 +99,14 @@ test('[SHP-024] a drawn signature becomes one pen drawing; an uploaded one an im
     .setInputFiles(
       path.resolve('tests/fixtures/media/image_alpha_logo_512.png'),
     );
+  // J7: a picture is behind the text and shapes (lane order), so the new
+  // layer is found by its name, not its place in the stack.
   await expect
-    .poll(async () => (await topLayers(page)).at(-1)!.type)
-    .toBe('image');
-  const image = (await topLayers(page)).at(-1)!;
-  expect(image.name).toBe('Signature');
+    .poll(async () =>
+      (await topLayers(page)).some(
+        (layer) => layer.type === 'image' && layer.name === 'Signature',
+      ),
+    )
+    .toBe(true);
   expect((await labels(page)).at(-1)).toBe('Add signature');
 });

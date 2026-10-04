@@ -24,6 +24,124 @@ const nle = () =>
     ),
   );
 
+describe('[PRJ-024] [PRJ-025] [HIS-009] scene isolation (J1, schema 6)', () => {
+  it('migrates a schema 5 file: every scene takes the project background, nothing else changes', () => {
+    const text = readFileSync('tests/fixtures/projects/v5-scenes.json', 'utf8');
+    const legacy = JSON.parse(text);
+    const project = deserializeProject(text);
+    expect(project.schemaVersion).toBe(6);
+    expect(project.compositions.map((item) => item.backgroundColor)).toEqual([
+      '#335577',
+      '#335577',
+    ]);
+    expect(
+      project.compositions.map(({ backgroundColor, ...rest }) => {
+        void backgroundColor;
+        return rest;
+      }),
+    ).toEqual(legacy.compositions);
+    expect(project.settings).toEqual(legacy.settings);
+  });
+  it('rejects a scene without a background and a newer schema', () => {
+    const project = JSON.parse(
+      readFileSync('tests/fixtures/projects/v5-scenes.json', 'utf8'),
+    );
+    project.schemaVersion = 6;
+    expect(() => deserializeProject(JSON.stringify(project))).toThrow();
+    project.schemaVersion = 7;
+    expect(() => deserializeProject(JSON.stringify(project))).toThrow(
+      /newer than supported/,
+    );
+  });
+  it('sets one scene background and one scene size; layers never move', () => {
+    const engine = new EditorEngine(
+      deserializeProject(
+        readFileSync('tests/fixtures/projects/v5-scenes.json', 'utf8'),
+      ),
+    );
+    const [a, b] = engine.state.compositions.map((item) => item.id);
+    const layers = JSON.stringify(engine.state.compositions[0]!.layers);
+    engine.commands.transaction('Set background', [
+      {
+        type: 'SET_COMPOSITION_BACKGROUND',
+        compositionId: a!,
+        color: '#aa0000',
+      },
+    ]);
+    engine.commands.transaction('Canvas size', [
+      {
+        type: 'SET_COMPOSITION_SIZE',
+        compositionId: a!,
+        width: 1080,
+        height: 1080,
+      },
+    ]);
+    expect(
+      engine.state.compositions.map((item) => [
+        item.backgroundColor,
+        item.width,
+        item.height,
+      ]),
+    ).toEqual([
+      ['#aa0000', 1080, 1080],
+      [
+        '#335577',
+        engine.state.compositions[1]!.width,
+        engine.state.compositions[1]!.height,
+      ],
+    ]);
+    expect(engine.state.compositions[1]!.width).not.toBe(1080);
+    expect(JSON.stringify(engine.state.compositions[0]!.layers)).toBe(layers);
+    expect(engine.history.undo.map((entry) => entry.compositionIds)).toEqual([
+      [a],
+      [a],
+    ]);
+    void b;
+  });
+  it('undo and redo report the scene their edit changed, and the session opens it', () => {
+    const engine = new EditorEngine(
+      deserializeProject(
+        readFileSync('tests/fixtures/projects/v5-scenes.json', 'utf8'),
+      ),
+    );
+    const session = new EditorSession(engine);
+    const [a, b] = engine.state.compositions.map((item) => item.id);
+    engine.commands.transaction('A', [
+      {
+        type: 'SET_COMPOSITION_BACKGROUND',
+        compositionId: a!,
+        color: '#aa0000',
+      },
+    ]);
+    session.selectComposition(b!);
+    engine.commands.transaction('B', [
+      {
+        type: 'SET_COMPOSITION_BACKGROUND',
+        compositionId: b!,
+        color: '#0000aa',
+      },
+    ]);
+    const scopes: (readonly string[] | undefined)[] = [];
+    const off = engine.on('state:changed', (event) =>
+      scopes.push(event.compositionIds),
+    );
+    engine.undo();
+    expect(session.source.composition.id).toBe(b);
+    engine.undo();
+    expect(session.source.composition.id).toBe(a);
+    expect(
+      engine.state.compositions.map((item) => item.backgroundColor),
+    ).toEqual(['#335577', '#335577']);
+    engine.redo();
+    expect(session.source.composition.id).toBe(a);
+    engine.redo();
+    expect(session.source.composition.id).toBe(b);
+    expect(scopes).toEqual([[b], [a], [a], [b]]);
+    off();
+    session.dispose();
+  });
+});
+
 describe('[CV-048] scene commands and scene length (G3, G5)', () => {
   it('sets the project background and a scene name as undoable commands', () => {
     const engine = nle();
