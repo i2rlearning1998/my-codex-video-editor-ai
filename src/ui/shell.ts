@@ -21,7 +21,11 @@ import {
   nextTrackName,
   trackTypeForLayer,
 } from '../core';
-import { locateLayer, type SceneLayer } from '../render/adapter';
+import {
+  locateLayer,
+  type RenderSource,
+  type SceneLayer,
+} from '../render/adapter';
 import {
   Canvas2DRenderer,
   fitViewport,
@@ -2569,19 +2573,207 @@ export function mountEditorShell(
       if (created?.type === 'CREATE_LAYER') session.select(created.layer.id);
     }
   };
+  // T2: while a library or Media item is dragged over the canvas, an outline
+  // of its real size and shape follows the pointer (snapping to the canvas
+  // centre and edges) and the canvas is highlighted; the drop lands exactly
+  // where the outline was, as one undo step.
+  interface Footprint {
+    readonly width: number;
+    readonly height: number;
+    /** From the drop point to the box centre (composition units). */
+    readonly dx: number;
+    readonly dy: number;
+    /** A whole scene (a template): the outline is the artboard. */
+    readonly whole?: boolean;
+  }
+  let measured: { key: string; value: Footprint | null } | null = null;
+  const measure = (payload: DragPayload): Footprint | null => {
+    const key = `${payload.kind}:${payload.id}:${session.source.composition.id}`;
+    if (measured?.key === key) return measured.value;
+    const { width: w, height: h } = session.source.composition;
+    const at: [number, number] = [w / 2, h / 2];
+    let value: Footprint | null = null;
+    try {
+      if (payload.kind === 'asset') {
+        if (payload.media !== 'audio') {
+          const aw = payload.width ?? 0,
+            ah = payload.height ?? 0;
+          const fit = aw && ah ? Math.min(1, w / aw, h / ah) : 1;
+          value =
+            aw && ah
+              ? { width: aw * fit, height: ah * fit, dx: 0, dy: 0 }
+              : { width: 240, height: 135, dx: 120, dy: 67.5 };
+        }
+      } else if (payload.kind === 'mine')
+        value = { width: w, height: h, dx: 0, dy: 0, whole: true };
+      else {
+        let commands: Command[] | null = null;
+        if (payload.kind === 'preset') {
+          commands = addShapeCommands(
+            session.source,
+            payload.id as ShapePreset,
+            session.currentTime,
+          );
+        } else {
+          const item =
+            payload.kind === 'textbox'
+              ? ('textbox' as const)
+              : libraryActions.find(payload.id);
+          const insert = item ? libraryActions.commandsFor(item, at) : null;
+          if (item && !insert)
+            value = { width: w, height: h, dx: 0, dy: 0, whole: true };
+          commands = insert?.commands ?? null;
+        }
+        if (commands) {
+          const ids = commands.flatMap((command) =>
+            command.type === 'CREATE_LAYER' && command.parentId === null
+              ? [command.layer.id]
+              : [],
+          );
+          const project = engine.preview(commands);
+          const composition = project.compositions.find(
+            (item) => item.id === session.source.composition.id,
+          );
+          const box =
+            composition && ids.length
+              ? selectionGeometryOf({
+                  ...session.source,
+                  composition,
+                  selectedIds: ids,
+                } as RenderSource)
+              : null;
+          if (box)
+            value = {
+              width: box.width,
+              height: box.height,
+              dx: box.x + box.width / 2 - at[0],
+              dy: box.y + box.height / 2 - at[1],
+            };
+        }
+      }
+    } catch {
+      value = null;
+    }
+    measured = { key, value };
+    return value;
+  };
+  const guideX = document.createElement('div');
+  const guideY = document.createElement('div');
+  guideX.className = 'canvas-drop-guide vertical';
+  guideY.className = 'canvas-drop-guide horizontal';
+  for (const guide of [guideX, guideY]) {
+    guide.hidden = true;
+    guide.setAttribute('aria-hidden', 'true');
+    root.append(guide);
+  }
+  /** Snap distance in CSS pixels (the D-066 tolerance). */
+  const SNAP = 6;
+  let dropAt: [number, number] | null = null;
+  const hidePreview = () => {
+    hideDropBox();
+    guideX.hidden = guideY.hidden = true;
+    stage.classList.remove('drop-highlight');
+    dropAt = null;
+  };
+  /** Shows the outline for `payload` at the pointer; returns the drop point
+   *  (composition units) after snapping. */
+  const showPreview = (payload: DragPayload, x: number, y: number) => {
+    stage.classList.add('drop-highlight');
+    const pointer = canvasPoint(x, y);
+    const footprint = measure(payload);
+    if (!pointer || !footprint) {
+      hideDropBox();
+      guideX.hidden = guideY.hidden = true;
+      return pointer;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const matrix = viewport().matrix;
+    const toScreen = (point: readonly [number, number]) => {
+      const [sx, sy] = transformPoint(matrix, point);
+      return [rect.left + sx, rect.top + sy] as const;
+    };
+    const { width: w, height: h } = session.source.composition;
+    const [boardLeft, boardTop] = toScreen([0, 0]);
+    const [boardRight, boardBottom] = toScreen([w, h]);
+    const scale = (boardRight - boardLeft) / w;
+    const width = footprint.width * scale,
+      height = footprint.height * scale;
+    let cx: number, cy: number;
+    let snappedX: number | null = null,
+      snappedY: number | null = null;
+    if (footprint.whole) {
+      cx = (boardLeft + boardRight) / 2;
+      cy = (boardTop + boardBottom) / 2;
+    } else {
+      cx = x + footprint.dx * scale;
+      cy = y + footprint.dy * scale;
+      // Snap the box's centre or edges to the canvas centre or edges.
+      const snap = (
+        centre: number,
+        half: number,
+        start: number,
+        end: number,
+      ): [number, number | null] => {
+        let best: [number, number | null] = [centre, null];
+        let distance = SNAP + 0.001;
+        for (const [feature, target] of [
+          [centre, (start + end) / 2],
+          [centre - half, start],
+          [centre + half, end],
+        ] as const) {
+          const d = Math.abs(feature - target);
+          if (d < distance) {
+            distance = d;
+            best = [centre + (target - feature), target];
+          }
+        }
+        return best;
+      };
+      [cx, snappedX] = snap(cx, width / 2, boardLeft, boardRight);
+      [cy, snappedY] = snap(cy, height / 2, boardTop, boardBottom);
+    }
+    Object.assign(dropBox.style, {
+      left: `${cx - width / 2}px`,
+      top: `${cy - height / 2}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    });
+    dropBox.hidden = false;
+    guideX.hidden = snappedX === null;
+    guideY.hidden = snappedY === null;
+    if (snappedX !== null)
+      Object.assign(guideX.style, {
+        left: `${snappedX}px`,
+        top: `${boardTop}px`,
+        height: `${boardBottom - boardTop}px`,
+      });
+    if (snappedY !== null)
+      Object.assign(guideY.style, {
+        top: `${snappedY}px`,
+        left: `${boardLeft}px`,
+        width: `${boardRight - boardLeft}px`,
+      });
+    const centre = canvasPoint(cx, cy);
+    return centre
+      ? ([centre[0] - footprint.dx, centre[1] - footprint.dy] as [
+          number,
+          number,
+        ])
+      : pointer;
+  };
   drags().register({
     // The whole stage, overlays included (the selection's action cluster,
     // the floating toolbar): a drop there lands on the canvas below.
     contains: (target) => target === canvas || stage.contains(target),
     over(payload, point) {
-      if (payload.kind === 'asset')
-        showDropBox({ clientX: point.x, clientY: point.y });
+      dropAt = showPreview(payload, point.x, point.y);
       return true;
     },
-    leave: hideDropBox,
+    leave: hidePreview,
     drop(payload, point) {
-      hideDropBox();
-      addPayload(payload, { point: canvasPoint(point.x, point.y) });
+      const at = dropAt ?? canvasPoint(point.x, point.y);
+      hidePreview();
+      addPayload(payload, { point: at });
     },
   });
   drags().register({

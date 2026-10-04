@@ -112,6 +112,14 @@ export interface LibraryActions {
   insertMine(template: MyTemplate): void;
   /** The item a drag carries, by id. */
   find(id: string): LibraryItem | undefined;
+  /**
+   * T2: the commands an insert centred on `at` would run (nothing runs), to
+   * measure what a drop would place; null for a template (a whole scene).
+   */
+  commandsFor(
+    item: LibraryItem | 'textbox',
+    at: readonly [number, number],
+  ): LibraryInsert | null;
   setItems(items: readonly LibraryItem[]): void;
 }
 
@@ -158,6 +166,36 @@ export function createLibraryActions(options: {
         ...(at ? { at } : {}),
         ...(mode ? { mode } : {}),
       });
+  /** I2: the item behind "Add a text box", `width` px wide. */
+  const textBoxItem = (width?: number) => {
+    const canvas = session.source.composition;
+    const w = Math.min(
+      3,
+      Math.max(0.05, (width ?? canvas.width * 0.4) / canvas.width),
+    );
+    return {
+      id: 'text-box',
+      type: 'text',
+      name: { en: t('text.boxName'), hi: t('text.boxName') },
+      tags: [],
+      data: {
+        elements: [
+          {
+            kind: 'text',
+            // The block is centred by libraryCommands (or on `at`).
+            x: 0,
+            y: 0,
+            w,
+            h: 0.1,
+            text: { en: t('text.boxText'), hi: t('text.boxText') },
+            size: 0.05,
+            color: '#272b29',
+            align: 'center',
+          },
+        ],
+      },
+    } as unknown as LibraryItem;
+  };
   const askMode = (
     name: string,
     build: (mode?: TemplateMode) => LibraryInsert,
@@ -288,37 +326,14 @@ export function createLibraryActions(options: {
     },
     insertTextBox(at, width, time) {
       try {
-        const canvas = session.source.composition;
-        const w = Math.min(
-          3,
-          Math.max(0.05, (width ?? canvas.width * 0.4) / canvas.width),
-        );
-        const item = {
-          id: 'text-box',
-          type: 'text',
-          name: { en: t('text.boxName'), hi: t('text.boxName') },
-          tags: [],
-          data: {
-            elements: [
-              {
-                kind: 'text',
-                // The block is centred by libraryCommands (or on `at`).
-                x: 0,
-                y: 0,
-                w,
-                h: 0.1,
-                text: { en: t('text.boxText'), hi: t('text.boxText') },
-                size: 0.05,
-                color: '#272b29',
-                align: 'center',
-              },
-            ],
-          },
-        } as unknown as LibraryItem;
-        run(t('text.boxName'), libraryBuild(item, at, time));
+        run(t('text.boxName'), libraryBuild(textBoxItem(width), at, time));
       } catch (error) {
         report(error);
       }
+    },
+    commandsFor(item, at) {
+      if (item !== 'textbox' && item.type === 'template') return null;
+      return libraryBuild(item === 'textbox' ? textBoxItem() : item, at)();
     },
     insertMine(template) {
       try {

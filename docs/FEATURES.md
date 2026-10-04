@@ -329,6 +329,7 @@ Everything the user does directly on the preview canvas.
 | CV-058 | P0 | W2 | Verified | Show element timing opens a popover with the element's start time and duration (NumberFields), highlights its clip on the timeline while open, and each change is one undo step (J6 LCR) |
 | CV-059 | P0 | W2 | Verified | Alternative text is stored per layer in the project, saved with a visible confirmation, marked with an ALT badge in the scene list, and shown again when reopened (J6 LCR) |
 | CV-060 | P0 | W2 | Verified | Resize canvas to selection asks for confirmation naming the new size, gives the open scene the selection's size with every layer moved together in one undo step, and Fit then fits the whole artboard in view (J6 LCR) |
+| CV-061 | P0 | W2 | Verified | While a library or Media item is dragged over the canvas (only there), an outline of its real size and shape follows the pointer, snapping to the canvas centre and edges with a guide, and the canvas is highlighted; the drop places it exactly at the outline as one undo step (T2 LCR) |
 
 ## LYR: Layers panel (Wave 2)
 

@@ -1501,6 +1501,30 @@ input[type='number'],
 .drop-overlay {
   pointer-events: none;
 }
+/* T2: while an item is dragged over the canvas, the stage is highlighted
+   and snap guides show where its outline meets the canvas centre or edges. */
+.canvas-stage.drop-highlight::after,
+#canvas-stage.drop-highlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  pointer-events: none;
+}
+.canvas-drop-guide {
+  position: fixed;
+  z-index: 31;
+  pointer-events: none;
+  background: var(--color-snap-guide);
+}
+.canvas-drop-guide.vertical {
+  inline-size: 1px;
+}
+.canvas-drop-guide.horizontal {
+  block-size: 1px;
+}
 /* T1: the drag controller's ghost follows the pointer; while a drag runs
    the cursor says whether the place under it accepts the drop. */
 .drag-ghost.drag-follow {
