@@ -108,6 +108,9 @@ const PATHS: Record<string, string> = {
   language:
     'M10 3a7 7 0 100 14 7 7 0 000-14z M3 10h14 M10 3c2 2 3 4.5 3 7s-1 5-3 7 M10 3c-2 2-3 4.5-3 7s1 5 3 7',
   scenes: 'M2 6h7v8H2z M11 6h7v8h-7z M5 3h10 M5 17h10',
+  // T5: first and last frame.
+  firstFrame: 'M4 4v12 M16 4l-9 6 9 6z',
+  lastFrame: 'M16 4v12 M4 4l9 6-9 6z',
   // T4: the scene strip toggle (a canvas over a row of three cards).
   filmstrip: 'M3 2h14v8H3z M2 13h4v5H2z M8 13h4v5H8z M14 13h4v5h-4z',
   crop: 'M6 2v12h12 M2 6h12v12',

@@ -442,6 +442,9 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-078 | P0 | W2 | Verified | Over a clip of the same group, the left third inserts before it and the right third after it (later clips on that lane ripple right); the middle third shows a Replace label on the clip and the drop replaces it as one undo step (T3 LCR) |
 | TL-079 | P0 | W2 | Verified | A purple + line at a lane's top or bottom edge, and in the strips above the first and below the last lane, makes a new lane where its group fits; a lane of another group shows not-allowed and refuses; visual lanes are 56 px, text, shape and audio lanes 36 px, clips at least 28 px (T3 LCR) |
 | TL-080 | P0 | W2 | Verified | A clip moved onto a + line or the middle of another clip follows the same rules and stays as a faint placeholder at its origin while dragged; released outside the timeline it stays where it was (T3 LCR) |
+| TL-081 | P0 | W2 | Verified | The Player bar: left, the AI wand (planned), Split, Duplicate and + Marker with 13 px labels and 20 px icons; centre, First frame, Back 5 s, Previous frame, Play (the largest button), Next frame, Forward 5 s and Last frame; right, zoom out, zoom in, fit and collapse with 20 px icons and 32 px hit areas; the composition summary and px/s are no longer shown (T5 LCR) |
+| TL-082 | P0 | W2 | Verified | The Player bar's timecode reads minutes and whole seconds in tabular digits (0:04 / 0:10); a click (or Enter on it) turns it into a field that takes seconds, m:ss(.cc) or h:mm:ss, Enter moves the playhead there (clamped to the scene) and Escape cancels; First and Last frame jump to the scene's ends; none of it is an undo step (T5 LCR) |
+| TL-083 | P0 | W2 | Verified | Previous cut and Stop are no longer on the Player bar and stay in the palette (Jump to previous cut; Stop (back to the start)) (T5 LCR) |
 
 ## PB: Playback and transport
 

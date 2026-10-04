@@ -97,6 +97,25 @@ const timecode = (time: number) => {
   const seconds = (hundredths % 6000) / 100;
   return `${String(minutes).padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
 };
+/** T5: the Player bar's timecode, minutes and whole seconds (1:05). */
+const shortTimecode = (time: number) => {
+  const whole = Math.floor(Math.max(0, time) + 1e-6);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+};
+/** T5: a typed time: seconds (65.5), m:ss(.cc) or h:mm:ss; null if not one. */
+export function parseTimecode(text: string): number | null {
+  const parts = text.trim().split(':');
+  if (!parts.length || parts.length > 3) return null;
+  if (
+    !parts.every((part, index) =>
+      index === parts.length - 1
+        ? /^\d+(\.\d+)?$/.test(part)
+        : /^\d+$/.test(part),
+    )
+  )
+    return null;
+  return parts.reduce((total, part) => total * 60 + Number(part), 0);
+}
 
 /** J10: the kind of element a clip holds, for its colour and icon. */
 type ClipKind = 'text' | 'shape' | 'group' | 'video' | 'image' | 'audio';
@@ -584,7 +603,7 @@ export function mountTimeline(
   // zoom out, zoom in, fit and collapse.
   const player = (action: string, icon: string, key: string, size = 15) =>
     `<button class="icon-button" data-action="${action}" aria-label="${t(key)}" title="${t(key)}">${iconSvg(icon, size)}</button>`;
-  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 15)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('previous-cut', 'skipBack', 'player.previous')}${player('back-5', 'back5', 'player.back5')}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button>${player('forward-5', 'forward5', 'player.forward5')}<button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><span class="player-timecode" data-timecode aria-live="off"></span><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button>${player('zoom-fit', 'fit', 'player.fit')}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
@@ -878,16 +897,16 @@ export function mountTimeline(
         : null;
     root.querySelector('[data-composition-strip]')!.textContent =
       `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${composition.fps} fps`;
-    root.querySelector('[data-timecode]')!.textContent = t('player.timecode', {
-      current: timecode(session.currentTime),
-      total: timecode(composition.duration),
-    });
+    const code = root.querySelector<HTMLElement>('[data-timecode]')!;
+    if (!code.querySelector('input'))
+      code.textContent = t('player.timecode', {
+        current: shortTimecode(session.currentTime),
+        total: shortTimecode(composition.duration),
+      });
     root.querySelector('[data-current-time]')!.textContent =
       `${session.currentTime.toFixed(3)}s / ${formatTimelineTime(composition.duration)}s · frame ${timeToFrame(session.currentTime, composition.fps)}`;
     root.querySelector('[data-derived-duration]')!.textContent =
       `${formatTimelineTime(composition.duration)}s content length`;
-    root.querySelector('[data-zoom-label]')!.textContent =
-      `${zoom.toFixed(0)} px/s`;
     const span = spanTime();
     const guideTime = controller.snapTime ?? pointerSnap;
     const identity = JSON.stringify([
@@ -1953,9 +1972,20 @@ export function mountTimeline(
         case 'stop':
           playback.stop();
           break;
-        // J13: the Player panel's buttons.
+        // J13, T5: the Player panel's buttons.
         case 'previous-cut':
           jumpToCut(session, -1);
+          break;
+        case 'first-frame':
+          session.setPlaying(false);
+          session.setCurrentTime(0);
+          break;
+        case 'last-frame':
+          session.setPlaying(false);
+          session.setCurrentTime(session.source.composition.duration);
+          break;
+        case 'timecode':
+          editTimecode(target);
           break;
         case 'back-5':
         case 'forward-5':
@@ -2524,6 +2554,59 @@ export function mountTimeline(
           },
         ]);
     });
+  // T5: a click on the timecode turns it into a field; Enter (or leaving
+  // it) moves the playhead there, clamped to the scene; Escape cancels.
+  const editTimecode = (code: HTMLElement) => {
+    if (code.querySelector('input')) return;
+    session.setPlaying(false);
+    const input = document.createElement('input');
+    input.className = 'player-timecode-input';
+    input.setAttribute('aria-label', t('player.timecodeTip'));
+    input.value = timecode(session.currentTime).replace(/^0(\d)/, '$1');
+    let done = false;
+    const close = (commit: boolean) => {
+      if (done) return;
+      done = true;
+      const value = parseTimecode(input.value);
+      input.remove();
+      if (commit && value !== null)
+        session.setCurrentTime(
+          Math.min(session.source.composition.duration, value),
+        );
+      else if (commit) report(new Error(t('player.timecodeInvalid')));
+      code.textContent = t('player.timecode', {
+        current: shortTimecode(session.currentTime),
+        total: shortTimecode(session.source.composition.duration),
+      });
+      code.focus({ preventScroll: true });
+    };
+    input.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        close(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        close(false);
+      }
+    });
+    input.addEventListener('blur', () => close(true));
+    input.addEventListener('click', (event) => event.stopPropagation());
+    code.replaceChildren(input);
+    input.focus();
+    input.select();
+  };
+  const timecodeButton = root.querySelector<HTMLElement>('[data-timecode]')!;
+  timecodeButton.addEventListener('keydown', (event) => {
+    if (
+      event.target === timecodeButton &&
+      (event.key === 'Enter' || event.key === ' ')
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      editTimecode(timecodeButton);
+    }
+  });
   const menuItem = (label: string, action: string, role = 'menuitem') => {
     const item = button(label, action);
     item.setAttribute('role', role);

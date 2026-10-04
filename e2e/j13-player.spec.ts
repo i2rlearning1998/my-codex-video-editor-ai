@@ -41,16 +41,21 @@ test('[TL-073] the player bar: wand planned, scissors split; previous cut, back 
   // Back and forward 5 s, clamped to the scene.
   await seek(page, 7);
   const timecode = page.locator('#timeline-foundation [data-timecode]');
-  await expect(timecode).toHaveText('00:07.00 / 00:10.00');
+  // (T5) minutes and whole seconds.
+  await expect(timecode).toHaveText('0:07 / 0:10');
   await control(page, 'back-5').click();
   await expect.poll(() => time(page)).toBeCloseTo(2, 6);
-  await expect(timecode).toHaveText('00:02.00 / 00:10.00');
+  await expect(timecode).toHaveText('0:02 / 0:10');
   await control(page, 'forward-5').click();
   await expect.poll(() => time(page)).toBeCloseTo(7, 6);
   await control(page, 'forward-5').click();
   await expect.poll(() => time(page)).toBeCloseTo(10, 6);
-  // Previous cut: the playhead goes back to the nearest clip edge.
-  await control(page, 'previous-cut').click();
+  // Previous cut: (T5) no longer on the bar; the palette runs it, and the
+  // playhead goes back to the nearest clip edge.
+  await expect(control(page, 'previous-cut')).toHaveCount(0);
+  await page.keyboard.press('Control+k');
+  await page.locator('#command-palette input').fill('Jump to previous cut');
+  await page.keyboard.press('Enter');
   await expect.poll(() => time(page)).toBeLessThan(10);
   // The ruler adapts: zooming in spreads its labels further apart.
   const before = await labelStep(page);

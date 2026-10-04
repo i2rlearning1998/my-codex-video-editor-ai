@@ -996,5 +996,17 @@
   "timeline.replace": "Replace",
   "timeline.replaceHint": "The old clip will be removed",
   "scene.stripShow": "Show the scene strip",
-  "scene.stripHide": "Hide the scene strip"
+  "scene.stripHide": "Hide the scene strip",
+  "command.stop": "Stop (back to the start)",
+  "player.splitLabel": "Split",
+  "player.duplicateLabel": "Duplicate",
+  "player.markerLabel": "+ Marker",
+  "player.duplicate": "Duplicate the selected clips (Ctrl+D)",
+  "player.marker": "Add a marker at the playhead (M)",
+  "player.first": "First frame (Home)",
+  "player.last": "Last frame (End)",
+  "player.timecodeTip": "Click to type a time",
+  "player.zoomOut": "Zoom out",
+  "player.zoomIn": "Zoom in",
+  "player.timecodeInvalid": "Type a time such as 1:05 or 65.5"
 }

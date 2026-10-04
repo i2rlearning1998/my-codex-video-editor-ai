@@ -996,5 +996,17 @@
   "timeline.replace": "बदलें",
   "timeline.replaceHint": "पुरानी क्लिप हटा दी जाएगी",
   "scene.stripShow": "सीन पट्टी दिखाएँ",
-  "scene.stripHide": "सीन पट्टी छिपाएँ"
+  "scene.stripHide": "सीन पट्टी छिपाएँ",
+  "command.stop": "रोकें (शुरुआत पर)",
+  "player.splitLabel": "विभाजित",
+  "player.duplicateLabel": "प्रतिलिपि",
+  "player.markerLabel": "+ मार्कर",
+  "player.duplicate": "चुनी हुई क्लिप की प्रतिलिपि (Ctrl+D)",
+  "player.marker": "प्लेहेड पर मार्कर जोड़ें (M)",
+  "player.first": "पहला फ़्रेम (Home)",
+  "player.last": "अंतिम फ़्रेम (End)",
+  "player.timecodeTip": "समय लिखने के लिए क्लिक करें",
+  "player.zoomOut": "ज़ूम आउट",
+  "player.zoomIn": "ज़ूम इन",
+  "player.timecodeInvalid": "1:05 या 65.5 जैसा समय लिखें"
 }
