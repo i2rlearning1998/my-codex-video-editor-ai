@@ -114,6 +114,10 @@ test('[TL-027] copy, cut and paste clips at the playhead onto the selected track
   await menu(page, 'clip-c', 'Cut');
   expect((await rows(page)).map((item) => item.id)).not.toContain('clip-c');
   expect((await hook(page)).history.labels.at(-1)).toBe('Cut');
+  // (T3) clip-c was alone on Video 2: the emptied lane goes in the same step.
+  const trackIds = async () =>
+    (await hook(page)).project.compositions[0]!.tracks.map((item) => item.id);
+  expect(await trackIds()).not.toContain('video-2');
   await seek(page, 0.5);
   const empty = await toScreen(page, 1200, 680);
   await page.mouse.click(empty.x, empty.y, { button: 'right' });
@@ -122,14 +126,18 @@ test('[TL-027] copy, cut and paste clips at the playhead onto the selected track
     .getByRole('menuitem', { name: 'Paste', exact: true })
     .click();
   const back = (await rows(page)).find((item) => item.name === 'clip-c')!;
-  expect([back.trackId, back.startTime, back.duration]).toEqual([
-    'video-2',
-    0.5,
-    3,
-  ]);
+  // Its lane is gone, so the paste opens a new video lane of its own.
+  expect(back.trackId).not.toBe('video-1');
+  expect(
+    (await hook(page)).project.compositions[0]!.tracks.find(
+      (item) => item.id === back.trackId,
+    )!.type,
+  ).toBe('video');
+  expect([back.startTime, back.duration]).toEqual([0.5, 3]);
   await page.locator('#undo').click();
   await page.locator('#undo').click();
   expect((await rows(page)).map((item) => item.id)).toContain('clip-c');
+  expect(await trackIds()).toContain('video-2');
 });
 
 test('[TL-032] linked clips move, split, delete and copy together; unlink and detach audio', async ({

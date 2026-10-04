@@ -992,5 +992,7 @@
   "right.transitionHint": "पिछली क्लिप से इस क्लिप में ट्रांज़िशन।",
   "right.transitionNeedsCut": "ट्रांज़िशन जोड़ने के लिए इस क्लिप को उसकी लेन पर किसी दूसरी क्लिप के ठीक बाद रखें।",
   "right.collapse": "पैनल छोटा करें",
-  "right.count": "{count} चुने गए"
+  "right.count": "{count} चुने गए",
+  "timeline.replace": "बदलें",
+  "timeline.replaceHint": "पुरानी क्लिप हटा दी जाएगी"
 }

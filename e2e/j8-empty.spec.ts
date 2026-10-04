@@ -54,8 +54,9 @@ test('[TL-065] an empty scene shows + Add text, + Add video and + Add audio rows
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
-  // The example has clips: no hints.
-  await expect(hints(page)).toHaveCount(0);
+  // The example has only text-and-shape lanes: (T3) hints stand in for the
+  // missing video and audio lanes.
+  await expect(hints(page)).toHaveText(['+ Add video', '+ Add audio']);
   await blankScene(page);
   await expect(hints(page)).toHaveText([
     '+ Add text',
@@ -69,7 +70,8 @@ test('[TL-065] an empty scene shows + Add text, + Add video and + Add audio rows
   expect(layers[0]!.type).toBe('text');
   await expect(page.locator('.text-editor')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(hints(page)).toHaveCount(0);
+  // (T3) The text lane exists now; video and audio still have none.
+  await expect(hints(page)).toHaveText(['+ Add video', '+ Add audio']);
   // + Add video: the Media panel with the file picker.
   await blankScene(page);
   const chooser = page.waitForEvent('filechooser');

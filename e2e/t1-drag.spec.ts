@@ -105,19 +105,25 @@ async function session(page: Page) {
       await stableBox(from);
       await from.click();
     } else if (mode === 2) {
-      // Onto a lane of the item's own group (a picture on a visual lane,
-      // a shape or text on a text-and-shapes lane).
+      // Onto the "+" line under the last lane of the item's own group (a
+      // picture under a visual lane, a shape or text under a text-and-shapes
+      // lane): a new lane (T3; over a clip's middle it would replace it).
       const lane = timeline
         .locator(
           `.timeline-nle-row[data-lane-group="${source <= 1 ? 'visual' : 'text'}"]`,
         )
-        .first();
+        .last();
       // A new project may have no such lane yet: then the empty timeline.
       const box =
         (await lane.count()) > 0
-          ? (await lane.scrollIntoViewIfNeeded(), (await lane.boundingBox())!)
+          ? (await lane.scrollIntoViewIfNeeded(), await stableBox(lane))
           : (await timeline.boundingBox())!;
-      await drag(page, from, box.x + 600 + i * 4, box.y + 18);
+      await drag(
+        page,
+        from,
+        box.x + 600 + i * 4,
+        (await lane.count()) > 0 ? box.y + box.height - 2 : box.y + 18,
+      );
     } else
       await drag(
         page,
@@ -215,7 +221,8 @@ test('[MED-041] a click adds a media or library item; a drag onto the timeline s
     .flatMap((track) => track.clips)
     .find((clip) => clip.name === JPG)!;
   expect(added.startTime).toBeCloseTo(time, 3);
-  // A rectangle dragged to 3 s on the timeline starts there.
+  // A rectangle dragged to 12 s on the timeline (empty time on the first
+  // lane, past the example's 10 s) starts there.
   await showCategory(page, 'Elements');
   const ruler = (await page.locator('.timeline-ruler').boundingBox())!;
   const scroll = (await page
@@ -224,13 +231,13 @@ test('[MED-041] a click adds a media or library item; a drag onto the timeline s
   await drag(
     page,
     page.locator('[data-shape="rectangle"]').first(),
-    ruler.x + 3 * 80,
-    scroll.y + 40,
+    ruler.x + 12 * 80,
+    scroll.y + 46,
   );
   expect((await labels(page)).at(-1)).toBe('Add shape');
   const shape = (await scene(page)).layers.at(-1)!;
   const clip = (await scene(page)).tracks
     .flatMap((track) => track.clips)
     .find((item) => item.layerId === shape.id)!;
-  expect(clip.startTime).toBeCloseTo(3, 1);
+  expect(clip.startTime).toBeCloseTo(12, 1);
 });

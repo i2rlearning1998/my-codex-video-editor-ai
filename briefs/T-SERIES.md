@@ -8,9 +8,9 @@ Decisions start at D-169. After a usage limit, the owner says "continue": resume
 
 | Part                                   | Status | Last commit   |
 | -------------------------------------- | ------ | ------------- |
-| T1 Drag-and-drop repair                | done   | (this commit) |
-| T2 Canvas drop preview                 | todo   |               |
-| T3 Timeline drop rules, no empty lanes | todo   |               |
+| T1 Drag-and-drop repair                | done   | c001718       |
+| T2 Canvas drop preview                 | done   | 8dd25b9       |
+| T3 Timeline drop rules, no empty lanes | done   | (this commit) |
 | T4 Layout                              | todo   |               |
 | T5 Player bar                          | todo   |               |
 | T6 Text live auto-grow                 | todo   |               |

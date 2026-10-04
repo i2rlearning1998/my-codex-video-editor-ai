@@ -216,14 +216,24 @@ describe('[TL-027][TL-032] clipboard, links and detach', () => {
     session.select('layer-c');
     editing.performEdit(engine, session, 'cut');
     expect(clips().map((clip) => clip.id)).not.toContain('clip-c');
+    // T3: clip-c was video-2's only clip, so the emptied lane went with it;
+    // Undo brings both back.
+    const lanes = () =>
+      engine.state.compositions[0]!.tracks.map((track) => track.id);
+    expect(lanes()).not.toContain('video-2');
     engine.undo();
     expect(clips().map((clip) => clip.id)).toContain('clip-c');
+    expect(lanes()).toContain('video-2');
     engine.redo();
     session.setCurrentTime(0);
     editing.performEdit(engine, session, 'paste');
     const pasted = clips().find((clip) => clip.name === 'clip-c')!;
-    expect([pasted.trackId, pasted.startTime, pasted.duration]).toEqual([
-      'video-2',
+    // Pasted on a visual lane (its original lane no longer exists).
+    const lane = engine.state.compositions[0]!.tracks.find(
+      (track) => track.id === pasted.trackId,
+    )!;
+    expect([lane.type, pasted.startTime, pasted.duration]).toEqual([
+      'video',
       0,
       3,
     ]);

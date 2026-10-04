@@ -64,7 +64,9 @@ import { bindCanvasInteraction } from './canvas-interaction';
 import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
-import { mountTimeline, type AssetTarget } from './timeline';
+import { mountTimeline, type AssetTarget, type LaneDropInfo } from './timeline';
+import { laneDropPlan, type LaneGroup } from './timeline-drop';
+import { laneGroupOfLayer } from '../core';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
@@ -2160,7 +2162,18 @@ export function mountEditorShell(
     canvasView.toggleHand();
   /** Adds an asset as a layer with a clip, at a composition point or the
    *  centre (canvas), or on a timeline track (the insert rule). */
+  /** Adds an asset as a layer with a clip (see `assetCommands`). */
   const placeAsset = (
+    asset: (typeof session.source.assets)[number],
+    place: Parameters<typeof assetCommands>[1],
+  ) => {
+    const built = assetCommands(asset, place);
+    engine.commands.transaction(built.label, built.commands);
+    session.select(built.layerId);
+  };
+  /** The commands adding an asset as a layer with a clip, at a composition
+   *  point or the centre (canvas), or on a timeline track (the insert rule). */
+  const assetCommands = (
     asset: (typeof session.source.assets)[number],
     place: {
       time: number;
@@ -2285,11 +2298,12 @@ export function mountEditorShell(
       trackId: target.trackId,
       clip,
     });
-    engine.commands.transaction(
-      place.trackId === undefined ? 'Add asset layer' : 'Add timeline clip',
+    return {
+      label:
+        place.trackId === undefined ? 'Add asset layer' : 'Add timeline clip',
       commands,
-    );
-    session.select(layer.id);
+      layerId: layer.id,
+    };
   };
   const assetDrop = (event: DragEvent) =>
     safely(() => {
@@ -2303,7 +2317,11 @@ export function mountEditorShell(
       if (event.currentTarget !== canvas && timeline) {
         const target = timeline.assetTarget();
         timeline.clearAssetTarget();
-        if (target) return timelineAssetDrop(asset, target, event);
+        if (target)
+          return laneDrop(
+            { kind: 'asset', id: asset.id, name: asset.name },
+            target,
+          );
       }
       const track = element('.timeline-scroll');
       const time =
@@ -2340,98 +2358,185 @@ export function mountEditorShell(
               )?.dataset.trackId ?? ''),
       });
     });
-  const timelineAssetDrop = (
-    asset: (typeof session.source.assets)[number],
-    target: AssetTarget,
-    event: { clientX: number; clientY: number },
-  ) => {
-    // A lane of another group refuses the media with the earlier message.
+  /** T3: the commands that add what a drag carries, with its clip at
+   *  `time` (a lane chosen by the insert rules, retargeted by the caller);
+   *  null for a template or My Template (a whole scene). */
+  const insertCommands = (
+    payload: DragPayload,
+    time: number,
+  ): { label: string; commands: Command[]; layerId: string } | null => {
+    if (payload.kind === 'asset') {
+      const asset = session.source.assets.find(
+        (item) => item.id === payload.id,
+      );
+      return asset ? assetCommands(asset, { time }) : null;
+    }
+    if (payload.kind === 'preset') {
+      const commands = addShapeCommands(
+        session.source,
+        payload.id as ShapePreset,
+        time,
+      );
+      const created = commands.find((item) => item.type === 'CREATE_LAYER');
+      return created?.type === 'CREATE_LAYER'
+        ? { label: 'Add shape', commands, layerId: created.layer.id }
+        : null;
+    }
+    if (payload.kind === 'mine') return null;
+    const item =
+      payload.kind === 'textbox'
+        ? ('textbox' as const)
+        : libraryActions.find(payload.id);
+    const insert = item
+      ? libraryActions.commandsFor(item, undefined, time)
+      : null;
+    return insert?.layerId
+      ? {
+          label: insert.label,
+          commands: insert.commands,
+          layerId: insert.layerId,
+        }
+      : null;
+  };
+  /** T3: what a drag carries, as the timeline sees it (lane group, clip
+   *  length, name, kind); measured once per drag. */
+  let laneInfoCache: { key: string; value: LaneDropInfo | null } | null = null;
+  const laneInfo = (payload: DragPayload): LaneDropInfo | null => {
+    const key = `${payload.kind}:${payload.id}`;
+    if (laneInfoCache?.key === key) return laneInfoCache.value;
+    let value: LaneDropInfo | null = null;
+    try {
+      const built = insertCommands(payload, 0);
+      const layer = built?.commands.find(
+        (item) =>
+          item.type === 'CREATE_LAYER' && item.layer.id === built.layerId,
+      );
+      const clip = built?.commands.find(
+        (item) =>
+          item.type === 'CREATE_CLIP' && item.clip.layerId === built.layerId,
+      );
+      if (layer?.type === 'CREATE_LAYER' && clip?.type === 'CREATE_CLIP')
+        value = {
+          group: laneGroupOfLayer(layer.layer) as LaneGroup,
+          duration: clip.clip.duration,
+          name: payload.name,
+          kind: layer.layer.type,
+        };
+    } catch {
+      value = null;
+    }
+    laneInfoCache = { key, value };
+    return value;
+  };
+  /** T3: drops what a drag carries on a lane target, as one undo step: its
+   *  clip on the target lane (or a new lane) at the target's start, later
+   *  clips pushed, a replaced clip removed. */
+  const laneDrop = (payload: DragPayload, target: AssetTarget) => {
+    const composition = session.source.composition;
     if (target.mode === 'refused') {
-      const lane = session.source.composition.tracks.find(
+      const lane = composition.tracks.find(
         (item) => item.id === target.trackId,
       );
       throw new Error(
-        t('asset.incompatible', { name: asset.name, track: lane?.name ?? '' }),
+        lane?.locked
+          ? t('asset.locked', { name: lane.name })
+          : t('asset.incompatible', {
+              name: payload.name,
+              track: lane?.name ?? '',
+            }),
       );
     }
-    if (target.mode === 'lane')
-      return placeAsset(asset, { time: target.time, trackId: target.trackId });
-    if (target.mode === 'insert') {
-      // A new lane at the separator, holding the new clip.
-      const type = trackTypeForLayer(asset.type);
-      const trackId = crypto.randomUUID();
-      const compositionId = session.source.composition.id;
-      return placeAsset(asset, {
-        time: target.time,
-        trackId,
-        newTrack: [
-          {
-            type: 'CREATE_TRACK',
-            compositionId,
-            track: {
-              id: trackId,
-              name: nextTrackName(session.source.composition, type),
-              type,
-              order: session.source.composition.tracks.length,
-              enabled: true,
-              locked: false,
-              muted: false,
-              clips: [],
-            },
-          },
-          { type: 'MOVE_TRACK', compositionId, trackId, index: target.index },
-        ],
+    const built = insertCommands(payload, target.time);
+    if (!built) return addPayload(payload, { time: target.time });
+    const create = built.commands.find(
+      (item) =>
+        item.type === 'CREATE_CLIP' && item.clip.layerId === built.layerId,
+    );
+    if (create?.type !== 'CREATE_CLIP') return;
+    const plan = laneDropPlan(composition, target, {
+      duration: create.clip.duration,
+    });
+    // The builder's own lane choice is replaced by the target's.
+    const autoTrack = create.trackId;
+    const madeTrack = built.commands.some(
+      (item) => item.type === 'CREATE_TRACK' && item.track.id === autoTrack,
+    );
+    const layerCommand = built.commands.find(
+      (item) => item.type === 'CREATE_LAYER' && item.layer.id === built.layerId,
+    );
+    let trackId = plan.trackId;
+    const before: Command[] = [];
+    if (plan.removeLayerId)
+      before.push({
+        type: 'DELETE_LAYER',
+        compositionId: composition.id,
+        layerId: plan.removeLayerId,
       });
-    }
-    // Over a clip of the same kind: Replace it, or add the media as a clip.
-    const layerId = target.layerId;
-    const menu = document.createElement('div');
-    menu.className = 'replace-drop-menu';
-    menu.setAttribute('role', 'menu');
-    const item = (label: string, action: string, run: () => void) => {
-      const entry = document.createElement('button');
-      entry.type = 'button';
-      entry.setAttribute('role', 'menuitem');
-      entry.dataset.action = action;
-      entry.textContent = label;
-      entry.onclick = () => {
-        handle.close();
-        safely(run);
-      };
-      menu.append(entry);
-    };
-    item(t('drop.replace'), 'drop-replace', () => {
-      engine.commands.transaction('Replace media', [
+    if (
+      !trackId &&
+      target.mode === 'new-lane' &&
+      layerCommand?.type === 'CREATE_LAYER'
+    ) {
+      const type = trackTypeForLayer(layerCommand.layer);
+      trackId = crypto.randomUUID();
+      before.push(
         {
-          type: 'SET_LAYER_ASSET',
-          compositionId: session.source.composition.id,
-          layerId,
-          assetId: asset.id,
-        } as Command,
-      ]);
-      session.select(layerId);
-    });
-    item(t('drop.addClip'), 'drop-add', () => {
-      const clip = findClipByLayer(session.source.composition, layerId);
-      placeAsset(asset, {
-        time: target.time,
-        ...(clip ? { trackId: clip.track.id } : {}),
+          type: 'CREATE_TRACK',
+          compositionId: composition.id,
+          track: {
+            id: trackId,
+            name: nextTrackName(composition, type),
+            type,
+            order: composition.tracks.length,
+            enabled: true,
+            locked: false,
+            muted: false,
+            clips: [],
+          },
+        },
+        {
+          type: 'MOVE_TRACK',
+          compositionId: composition.id,
+          trackId,
+          index: target.index,
+        },
+      );
+    }
+    if (!trackId) return;
+    before.push(...plan.pushes);
+    const commands = built.commands
+      .filter(
+        (item) =>
+          !madeTrack ||
+          !(
+            (item.type === 'CREATE_TRACK' && item.track.id === autoTrack) ||
+            (item.type === 'MOVE_TRACK' && item.trackId === autoTrack)
+          ),
+      )
+      .map((item): Command => {
+        if (item === create)
+          return {
+            ...create,
+            trackId: trackId!,
+            clip: { ...create.clip, startTime: plan.startTime },
+          };
+        if (item === layerCommand && item.type === 'CREATE_LAYER')
+          return {
+            ...item,
+            layer: { ...item.layer, startTime: plan.startTime },
+          };
+        return item;
       });
-    });
-    const anchor = document.createElement('span');
-    anchor.className = 'drop-anchor';
-    Object.assign(anchor.style, {
-      position: 'fixed',
-      left: `${event.clientX}px`,
-      top: `${event.clientY}px`,
-    });
-    root.append(anchor);
-    const handle = openPopover(anchor, menu, {
-      label: t('drop.title'),
-      className: 'replace-drop-popover',
-      onClose: () => anchor.remove(),
-    });
-    (menu.firstElementChild as HTMLElement | null)?.focus();
+    session.setPlaying(false);
+    engine.commands.transaction(
+      target.mode === 'replace'
+        ? 'Replace clip'
+        : payload.kind === 'asset'
+          ? 'Add timeline clip'
+          : built.label,
+      [...before, ...commands],
+    );
+    session.select(built.layerId);
   };
   const assetOver = (event: DragEvent) => {
     if (
@@ -2779,30 +2884,22 @@ export function mountEditorShell(
   drags().register({
     contains: (target) =>
       !!timeline && !!target.closest('#timeline-foundation .timeline-scroll'),
-    over: (_payload, point) =>
-      timeline?.dragOverAt(point.x, point.y, point.element) ?? false,
+    over(payload, point) {
+      const info = laneInfo(payload);
+      if (!info || !timeline) return !!timeline;
+      const target = timeline.dragOverAt(info, point.x, point.y);
+      return !!target && target.mode !== 'refused';
+    },
     leave: () => timeline?.clearAssetTarget(),
-    // A lane of another group refuses the media and says why (MED-013).
+    // A lane of another group refuses the drop and says why (MED-013).
     refuse(payload) {
       const target = timeline?.assetTarget();
-      const asset = session.source.assets.find(
-        (item) => item.id === payload.id,
-      );
-      if (payload.kind === 'asset' && asset && target?.mode === 'refused')
-        timelineAssetDrop(asset, target, { clientX: 0, clientY: 0 });
+      if (target?.mode === 'refused') laneDrop(payload, target);
     },
     drop(payload, point) {
       const target = timeline?.assetTarget();
       timeline?.clearAssetTarget();
-      const asset =
-        payload.kind === 'asset'
-          ? session.source.assets.find((item) => item.id === payload.id)
-          : undefined;
-      if (asset && target)
-        return timelineAssetDrop(asset, target, {
-          clientX: point.x,
-          clientY: point.y,
-        });
+      if (target) return laneDrop(payload, target);
       addPayload(payload, { time: timelineTimeAt(point.x) });
     },
   });

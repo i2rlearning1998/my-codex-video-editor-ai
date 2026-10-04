@@ -144,7 +144,7 @@ test.describe('timeline', () => {
     expect((await hook(page)).history.labels).toEqual(['Move clip']);
     await page.locator('#undo').click();
     expect((await hook(page)).project).toEqual(before);
-    await drag(page, { x: c.x + 30, y: c.y + 10 }, 0, 34);
+    await drag(page, { x: c.x + 30, y: c.y + 10 }, 0, 56); // one 56 px visual lane down (T3)
     expect((await clip(page, 'clip-c')).track).toBe('video-3');
     expect((await hook(page)).history.labels).toEqual(['Move clip']);
     await page.locator('#undo').click();

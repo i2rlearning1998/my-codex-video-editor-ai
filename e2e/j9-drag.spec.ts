@@ -90,8 +90,11 @@ test('[TL-066] media over the canvas shows a drop box only there; over the timel
   await expect(box).toBeHidden();
   const ghost = page.locator('#timeline-foundation .timeline-asset-ghost');
   await expect(ghost).toBeVisible();
-  await expect(ghost).toHaveText(/^\d+(\.\d+)? s$/);
-  await expect(lane).toHaveClass(/asset-drop-target/);
+  // (T3) The ghost is clip-sized with the name and a length pill; the lane
+  // itself is no longer outlined.
+  await expect(ghost.locator('.ghost-duration')).toHaveText(/^\d+(\.\d+)? s$/);
+  await expect(ghost.locator('.ghost-name')).toHaveText(PNG);
+  await expect(lane).not.toHaveClass(/asset-drop-target/);
   await page.screenshot({ path: testInfo.outputPath('timeline-ghost.png') });
   // At the lane's bottom edge: the separator; the drop makes a new lane.
   await moveTo(page, track.x + 480, track.y + track.height - 2);
@@ -133,7 +136,8 @@ test('[TL-067] media over a lane of another group is refused, and a clip of the 
   );
   await page.mouse.up();
   expect((await labels(page)).length).toBe(steps);
-  // Over the picture's clip: the drop offers Replace and Add as a new clip.
+  // (T3) Over the middle of the picture's clip: a Replace label, and the
+  // drop replaces the clip in one step (the J9 Replace menu is gone).
   const clip = (await scene(page)).tracks
     .flatMap((track) => track.clips)
     .find((item) => item.layerId === first)!;
@@ -143,26 +147,26 @@ test('[TL-067] media over a lane of another group is refused, and a clip of the 
   await element.scrollIntoViewIfNeeded();
   const at = (await element.boundingBox())!;
   await pickUp(page, card(page, PNG));
-  await moveTo(page, at.x + 30, at.y + at.height / 2);
+  await moveTo(page, at.x + at.width / 2, at.y + at.height / 2);
   await expect(element).toHaveClass(/replace-target/);
+  await expect(element.locator('.replace-label')).toHaveText('Replace');
   await page.mouse.up();
-  const menu = page.locator('.replace-drop-menu');
-  await expect(menu.locator('[role="menuitem"]')).toHaveText([
-    'Replace clip',
-    'Add as a new clip',
-  ]);
-  await menu.locator('[data-action="drop-replace"]').click();
-  expect((await labels(page)).at(-1)).toBe('Replace media');
+  expect((await labels(page)).at(-1)).toBe('Replace clip');
   const png = (await hook(page)).project.assets.find(
     (asset) => asset.name === PNG,
   )!;
-  const layer = (await scene(page)).layers.find((item) => item.id === first)!;
-  expect(layer.assetId).toBe(png.id);
+  const replaced = await scene(page);
+  expect(replaced.layers.some((item) => item.id === first)).toBe(false);
+  const added = replaced.layers.find((item) => item.assetId === png.id)!;
+  const home = replaced.tracks
+    .flatMap((track) => track.clips)
+    .find((item) => item.layerId === added.id)!;
+  expect(home.startTime).toBeCloseTo(clip.startTime, 6);
   // One step: Undo puts the first picture back.
   await page.keyboard.press('Control+z');
-  expect(
-    (await scene(page)).layers.find((item) => item.id === first)!.assetId,
-  ).not.toBe(png.id);
+  expect((await scene(page)).layers.some((item) => item.id === first)).toBe(
+    true,
+  );
 });
 
 test('[TL-068] a timeline clip released outside the timeline stays where it was; Escape cancels a clip drag', async ({

@@ -142,6 +142,9 @@ export class EditorEngine {
           // Validate each semantic boundary, not just the transaction's final state.
           draft = validateProject(draft);
         }
+        // T3: a lane never stays empty. A lane whose last clip left in this
+        // edit (moved, replaced, deleted or cut) goes in the same undo step.
+        draft = removeEmptiedLanes(this.#state, draft);
         // No-op actions do not invalidate redo or create empty history entries.
         if (JSON.stringify(draft) === JSON.stringify(this.#state))
           return Object.freeze(results);
@@ -301,6 +304,39 @@ export class EditorEngine {
       this.#notify('load');
     });
   }
+}
+
+/**
+ * T3: deletes every lane that had clips before an edit and has none after,
+ * through the ordinary DELETE_TRACK command. Lanes that were already empty
+ * (an older document, a fixture) are left alone.
+ */
+function removeEmptiedLanes(
+  before: DeepReadonly<Project>,
+  draft: Project,
+): Project {
+  const hadClips = new Set(
+    before.compositions.flatMap((composition) =>
+      composition.tracks
+        .filter((track) => track.clips.length)
+        .map((track) => `${composition.id}/${track.id}`),
+    ),
+  );
+  let changed = false;
+  for (const composition of draft.compositions)
+    for (const track of [...composition.tracks])
+      if (
+        !track.clips.length &&
+        hadClips.has(`${composition.id}/${track.id}`)
+      ) {
+        applyCommand(draft, {
+          type: 'DELETE_TRACK',
+          compositionId: composition.id,
+          trackId: track.id,
+        });
+        changed = true;
+      }
+  return changed ? validateProject(draft) : draft;
 }
 
 /** J1: composition ids whose content differs between two snapshots. */

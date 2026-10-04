@@ -1700,7 +1700,8 @@ input[type='number'],
 }
 .timeline-row {
   display: flex;
-  height: 34px;
+  /* T3: text, shape and audio lanes 36 px; visual lanes 56 px (inline). */
+  height: 36px;
   border-bottom: 1px solid var(--color-border);
 }
 .timeline-row-header {
@@ -1773,17 +1774,14 @@ input[type='number'],
   flex-shrink: 0;
   position: relative;
   overflow: visible;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 33px,
-    var(--color-border) 34px
-  );
+  background: transparent;
 }
 .timeline-clip {
   position: absolute;
-  top: 3px;
-  height: 27px;
+  top: 4px;
+  /* T3: clips fill their lane, at least 28 px tall. */
+  height: calc(100% - 8px);
+  min-height: 28px;
   min-width: 0;
   padding: 0;
   text-indent: var(--space-3);
@@ -1806,7 +1804,7 @@ input[type='number'],
 .timeline-keyframe {
   position: absolute;
   z-index: 2;
-  top: 9px;
+  top: calc(50% - 8px);
   inline-size: 16px;
   block-size: 16px;
   padding: 0;
@@ -5910,25 +5908,76 @@ button.number-field-step:focus-visible {
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   pointer-events: none;
 }
+/* T3: the ghost is a clip-sized block in the kind's colour with its icon,
+   name and length; a vertical line marks its start. */
 .timeline-asset-ghost {
   position: absolute;
   z-index: 6;
-  block-size: 28px;
-  border: 1px dashed var(--color-accent);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-2);
+  overflow: visible;
+  border: 2px solid var(--color-accent);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --clip-fill: var(--clip-shape);
+  background: color-mix(in srgb, var(--clip-fill) 80%, transparent);
+  color: var(--clip-label);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
   pointer-events: none;
+  box-shadow: var(--shadow-md);
 }
-.timeline-asset-ghost span {
-  position: absolute;
-  inset-block-end: calc(100% + 2px);
-  inset-inline-start: 0;
+.timeline-asset-ghost[data-kind='text'] {
+  --clip-fill: var(--clip-text);
+}
+.timeline-asset-ghost[data-kind='group'] {
+  --clip-fill: var(--clip-group);
+}
+.timeline-asset-ghost[data-kind='video'] {
+  --clip-fill: var(--clip-video);
+}
+.timeline-asset-ghost[data-kind='image'] {
+  --clip-fill: var(--clip-image);
+}
+.timeline-asset-ghost[data-kind='audio'] {
+  --clip-fill: var(--clip-audio);
+}
+.timeline-asset-ghost .ghost-name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline-asset-ghost .ghost-duration {
+  margin-inline-start: auto;
   padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--color-accent);
   color: var(--text-on-accent);
-  font-size: 11px;
-  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.timeline-drop-line {
+  position: absolute;
+  top: 0;
+  z-index: 5;
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  background: var(--color-accent);
+  pointer-events: none;
+}
+.timeline-clip .replace-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--color-danger, #e5484d) 55%, transparent);
+  color: #fff;
+  font-weight: 600;
+  pointer-events: none;
+}
+.timeline-clip.drag-origin {
+  opacity: 0.35;
 }
 .timeline-lane-insert {
   position: absolute;
@@ -5941,7 +5990,8 @@ button.number-field-step:focus-visible {
 }
 .timeline-lane-insert span {
   position: absolute;
-  inset-inline-start: -10px;
+  /* T3: the + sits at the line's centre. */
+  inset-inline-start: calc(50% - 10px);
   inset-block-start: -9px;
   display: grid;
   place-items: center;
@@ -5954,10 +6004,6 @@ button.number-field-step:focus-visible {
 .timeline-clip.replace-target {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
-}
-.replace-drop-menu {
-  display: grid;
-  min-inline-size: 180px;
 }
 /* J9: a clip dragged out of the timeline will go back where it was. */
 #timeline-foundation.drag-outside .timeline-clip.selected,

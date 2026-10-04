@@ -302,9 +302,12 @@ describe('canonical NLE tracks and clips', () => {
     timeline.update(80, 'track:video-2');
     timeline.finish();
     const composition = engine.state.compositions[0]!;
-    expect(composition.tracks[0]!.clips).toHaveLength(0);
+    // T3: the lane the clips left is now empty, so it is removed in the
+    // same step; video-2 holds both clips.
+    expect(composition.tracks).toHaveLength(1);
+    expect(composition.tracks[0]!.id).toBe('video-2');
     expect(
-      composition.tracks[1]!.clips.map((item) => [item.id, item.startTime]),
+      composition.tracks[0]!.clips.map((item) => [item.id, item.startTime]),
     ).toEqual([
       ['clip-a', 1],
       ['clip-b', 4],

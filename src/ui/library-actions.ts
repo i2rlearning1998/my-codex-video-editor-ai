@@ -118,7 +118,8 @@ export interface LibraryActions {
    */
   commandsFor(
     item: LibraryItem | 'textbox',
-    at: readonly [number, number],
+    at?: readonly [number, number],
+    time?: number,
   ): LibraryInsert | null;
   setItems(items: readonly LibraryItem[]): void;
 }
@@ -331,9 +332,13 @@ export function createLibraryActions(options: {
         report(error);
       }
     },
-    commandsFor(item, at) {
+    commandsFor(item, at, time) {
       if (item !== 'textbox' && item.type === 'template') return null;
-      return libraryBuild(item === 'textbox' ? textBoxItem() : item, at)();
+      return libraryBuild(
+        item === 'textbox' ? textBoxItem() : item,
+        at,
+        time,
+      )();
     },
     insertMine(template) {
       try {

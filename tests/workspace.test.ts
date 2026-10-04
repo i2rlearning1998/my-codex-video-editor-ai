@@ -15,6 +15,7 @@ import { TimelineInteraction } from '../src/ui/timeline';
 import { TransformInteraction } from '../src/ui/transform-interaction';
 import { calculateTiming } from '../src/ui/timeline-model';
 import { mountEditorShell } from '../src/ui/shell';
+import { setAssetDrag } from '../src/ui/drag-state';
 import legacyFixture from './fixtures/workspace-v2.json';
 import { deriveRenderItems } from '../src/render/adapter';
 const clean: (() => void)[] = [];
@@ -385,10 +386,45 @@ describe('T3 editing workspace', () => {
     });
     expect(shell.session.selectedId).toBe(added.id);
     const trackBody = root.querySelector('[data-track-id] .timeline-track')!;
-    drag('dragover', trackBody, 464);
-    expect(root.querySelector('.asset-drop-target')).not.toBeNull();
-    drag('drop', trackBody, 464);
+    // T3: the drag record a real drag sets, and a box for the lane (jsdom has
+    // no layout); then a clip-sized ghost marks the landing place, and the
+    // lane itself is no longer outlined.
+    // jsdom has no CSS.escape (every browser does).
+    const css = globalThis as unknown as { CSS?: { escape?: unknown } };
+    css.CSS ??= {};
+    css.CSS.escape ??= (value: string) => value.replace(/["\\]/g, '\\$&');
+    setAssetDrag({
+      assetId: 'asset',
+      type: 'video',
+      name: 'asset',
+      duration: 2,
+    });
+    const laneRow = root.querySelector<HTMLElement>('.timeline-nle-row')!;
+    laneRow.getBoundingClientRect = () =>
+      ({
+        top: 28,
+        bottom: 84,
+        left: 0,
+        right: 4000,
+        width: 4000,
+        height: 56,
+        x: 0,
+        y: 28,
+      }) as DOMRect;
+    const over = new MouseEvent('dragover', {
+      bubbles: true,
+      clientX: 464,
+      clientY: 56,
+    });
+    Object.defineProperty(over, 'dataTransfer', { value: transfer });
+    trackBody.dispatchEvent(over);
+    expect(
+      root.querySelector('.timeline-asset-ghost[data-shown="true"]'),
+    ).not.toBeNull();
     expect(root.querySelector('.asset-drop-target')).toBeNull();
+    drag('drop', trackBody, 464);
+    setAssetDrag(null);
+    expect(root.querySelector('.timeline-asset-ghost')).toBeNull();
     const secondLayer = s.engine.state.compositions[0]!.layers.at(-1)!;
     const selectedAfterSecond = shell.session.selectedId;
     expect(selectedAfterSecond).toBe(secondLayer.id);

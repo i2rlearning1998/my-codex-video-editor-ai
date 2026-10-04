@@ -248,7 +248,7 @@ test('[TL-058] a cross-track drag shows a ghost at the landing track and time, c
   const c = (await clipEl(page, 'clip-c').boundingBox())!;
   await page.mouse.move(c.x + 30, c.y + 10);
   await page.mouse.down();
-  await page.mouse.move(c.x + 30 + 40, c.y + 10 + 34, { steps: 10 });
+  await page.mouse.move(c.x + 30 + 40, c.y + 10 + 56, { steps: 10 });
   const ghost = page.locator(
     '.timeline-track[data-track-id="video-3"] .timeline-clip-ghost[data-ghost-for="clip-c"]',
   );
@@ -277,7 +277,7 @@ test('[TL-058] a cross-track drag shows a ghost at the landing track and time, c
   const again = (await clipEl(page, 'clip-c').boundingBox())!;
   await page.mouse.move(again.x + 30, again.y + 10);
   await page.mouse.down();
-  await page.mouse.move(again.x + 70, again.y + 44, { steps: 10 });
+  await page.mouse.move(again.x + 70, again.y + 66, { steps: 10 });
   await expect(ghost).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(ghost).toHaveCount(0);
@@ -345,8 +345,20 @@ test('[TL-060][TL-044] keyboard nudges, moves across tracks, trims to the playhe
   await selectClip(page, 'clip-c');
   await page.keyboard.press('Alt+ArrowDown');
   expect((await clips(page))('clip-c').trackId).toBe('video-3');
+  // (T3) clip-c was alone on Video 2: that lane went with the move, so the
+  // lane above is now Video 1.
+  expect(
+    (await hook(page)).project.compositions[0]!.tracks.some(
+      (track) => track.id === 'video-2',
+    ),
+  ).toBe(false);
   await page.keyboard.press('Alt+ArrowUp');
+  expect((await clips(page))('clip-c').trackId).toBe('video-1');
+  // Two Undos: clip-c and Video 2 are back.
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
   expect((await clips(page))('clip-c').trackId).toBe('video-2');
+  expect((await clips(page))('clip-b').startTime).toBe(3);
   // [ and ] trim to the playhead.
   await selectClip(page, 'clip-b');
   await seek(page, 4);

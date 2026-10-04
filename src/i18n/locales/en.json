@@ -992,5 +992,7 @@
   "right.transitionHint": "The transition into this clip from the clip before it.",
   "right.transitionNeedsCut": "Place this clip right after another on its lane to add a transition.",
   "right.collapse": "Collapse the panel",
-  "right.count": "{count} selected"
+  "right.count": "{count} selected",
+  "timeline.replace": "Replace",
+  "timeline.replaceHint": "The old clip will be removed"
 }
