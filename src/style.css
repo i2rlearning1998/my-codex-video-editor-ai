@@ -1175,7 +1175,8 @@ input[type='number'],
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-block-size: 320px;
+  /* T7: the taller rows need the panel's height (was a 320 px cap). */
+  max-block-size: max(320px, calc(100vh - 260px));
   margin: 0;
   padding: 0;
   overflow-y: auto;
