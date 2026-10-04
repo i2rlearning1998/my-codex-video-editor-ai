@@ -6,15 +6,15 @@ References: `docs/reference/frames/` (clipchamp_* target, ours_* bugs) and `docs
 
 Decisions start at D-169. After a usage limit, the owner says "continue": resume from the first unticked part.
 
-| Part                                   | Status | Last commit   |
-| -------------------------------------- | ------ | ------------- |
-| T1 Drag-and-drop repair                | done   | c001718       |
-| T2 Canvas drop preview                 | done   | 8dd25b9       |
-| T3 Timeline drop rules, no empty lanes | done   | 322639d       |
-| T4 Layout                              | done   | 21a132a       |
-| T5 Player bar                          | done   | accc3d1       |
-| T6 Text live auto-grow                 | done   | f8175b7       |
-| T7 Readable branded UI, finish         | done   | (this commit) |
+| Part                                   | Status | Last commit |
+| -------------------------------------- | ------ | ----------- |
+| T1 Drag-and-drop repair                | done   | c001718     |
+| T2 Canvas drop preview                 | done   | 8dd25b9     |
+| T3 Timeline drop rules, no empty lanes | done   | 322639d     |
+| T4 Layout                              | done   | 21a132a     |
+| T5 Player bar                          | done   | accc3d1     |
+| T6 Text live auto-grow                 | done   | f8175b7     |
+| T7 Readable branded UI, finish         | done   | fcc166c     |
 
 ## Notes for a resuming session
 

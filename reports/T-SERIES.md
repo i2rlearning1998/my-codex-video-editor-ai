@@ -32,7 +32,15 @@
 
 ## 3. Checks
 
-VERIFY_RESULTS
+- `npm run verify`: exit 0, on commit 3e9c76f.
+- Format: clean. Typecheck: clean. Build: `index` JS 782.00 kB (240.04 kB gzip), CSS 128.11 kB, export worker 555.64 kB. The built `index.html` carries the AI-Native title and wordmark.
+- Unit and jsdom tests: 406 passed in 38 files.
+- E2E tests: 330 passed, 0 failed, in the sandbox's Chromium 141 (no H.264 or AAC; D-030). The test hook is absent from the production build (assert-no-test-hook OK).
+- Ledger validation: 626 items, 301 Verified, 12 Claimed, 313 Todo. Ledger OK.
+- Two problems turned up in the final full runs and were fixed before the green run:
+  - **CV-042:** the Layers list's 320 px cap made T7's taller rows scroll, so a drag across the list missed. The list now uses the panel's height (30e178c).
+  - **CV-003 marquee (intermittent from T4 on, 3 of 28 runs):** the strip's `transitionend` listener also caught transitions bubbling from inside the hidden strip and refitted the canvas mid-drag. It now reacts only to the strip's own slide (3e9c76f). Afterwards the CV-003 tests passed 42 of 42.
+- CI: checked once after the final push (see the PR).
 
 ## 4. Try-it scripts for the owner (per part)
 
@@ -131,7 +139,7 @@ D-169 (T1), D-170 (T2), D-171 (T3), D-172 (T4), D-173 (T5), D-174 (T6) and D-175
 ## 10. Git
 
 - Branch: `claude/t-series` (from `claude/j-series`); draft PR #18, stacked on PR #17. Not merged.
-- Commits: c001718 (T1), 8dd25b9 (T2), 322639d (T3), 21a132a (T4), accc3d1 (T5), f8175b7 (T6), and the T7 commit.
+- Commits: c001718 (T1), 8dd25b9 (T2), 322639d (T3), 21a132a (T4), accc3d1 (T5), f8175b7 (T6), fcc166c (T7), 30e178c and 3e9c76f (fixes from the final verify).
 
 ## Owner tick-list
 
