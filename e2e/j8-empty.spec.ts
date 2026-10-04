@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, showSceneStrip } from './fixtures';
 
 // J8: a shimmer skeleton while the editor loads, and hint rows on an empty
 // timeline.
@@ -12,6 +12,7 @@ const scene = async (page: Page) => {
 const hints = (page: Page) =>
   page.locator('#timeline-foundation .timeline-hint');
 async function blankScene(page: Page) {
+  await showSceneStrip(page);
   await page.locator('#scene-strip-add').click();
   await page.locator('[data-action="strip-add-blank"]').click();
   await expect.poll(async () => (await scene(page)).layers.length).toBe(0);

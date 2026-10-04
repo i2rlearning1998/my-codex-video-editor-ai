@@ -994,5 +994,7 @@
   "right.collapse": "Collapse the panel",
   "right.count": "{count} selected",
   "timeline.replace": "Replace",
-  "timeline.replaceHint": "The old clip will be removed"
+  "timeline.replaceHint": "The old clip will be removed",
+  "scene.stripShow": "Show the scene strip",
+  "scene.stripHide": "Hide the scene strip"
 }

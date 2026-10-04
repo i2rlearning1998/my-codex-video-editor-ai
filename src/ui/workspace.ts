@@ -48,6 +48,25 @@ const LIMITS = {
   timeline: [160, 0.6],
 } as const;
 
+/** T4: the timeline's height is a view setting kept in this browser. */
+const HEIGHT_KEY = 'aive.timelineHeight';
+function storedHeight(): number | null {
+  try {
+    const value = Number(localStorage.getItem(HEIGHT_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+function storeHeight(value: number | null): void {
+  try {
+    if (value !== null)
+      localStorage.setItem(HEIGHT_KEY, String(Math.round(value)));
+  } catch {
+    // Storage may be blocked; the height then lasts for this page only.
+  }
+}
+
 /** Small transient panel sizing, not a docking or document-layout model. */
 export function mountWorkspace(
   shell: HTMLElement,
@@ -58,7 +77,7 @@ export function mountWorkspace(
   let layout = layoutFor(window.innerWidth);
   let left = SIZES[layout].left || SIZES.wide.left,
     right = SIZES[layout].right || SIZES.wide.right,
-    height: number | null = null;
+    height: number | null = storedHeight();
   let leftClosed = layout === 'narrow' || layout === 'phone',
     rightClosed = layout !== 'wide';
   const bar = shell.querySelector('.topbar')!;
@@ -185,6 +204,7 @@ export function mountWorkspace(
     } | null = null;
     const release = () => {
       const id = gesture?.id;
+      if (gesture && axis === 'height') storeHeight(height);
       gesture = null;
       shell.classList.remove('resizing');
       if (id !== undefined && handle.hasPointerCapture(id))
@@ -247,6 +267,25 @@ export function mountWorkspace(
       }
       apply(delta);
     };
+    // T4: the player bar is the timeline's top edge, so a press on its
+    // empty background (not on a control) also resizes the timeline.
+    if (axis === 'height') {
+      const grip = (event: PointerEvent) => {
+        const target = event.target as HTMLElement;
+        if (
+          !target.closest('[data-resize-grip]') ||
+          target.closest(
+            'button, input, select, textarea, a, [role="button"], [role="group"], [contenteditable], .number-field',
+          ) ||
+          shell.classList.contains('timeline-collapsed')
+        )
+          return;
+        handle.onpointerdown?.(event);
+      };
+      const area = shell.querySelector<HTMLElement>(selector)!;
+      area.addEventListener('pointerdown', grip);
+      disposers.push(() => area.removeEventListener('pointerdown', grip));
+    }
     handle.onpointerup = (event) => {
       if (event.pointerId === gesture?.id) release();
     };
@@ -259,6 +298,7 @@ export function mountWorkspace(
       ) {
         event.preventDefault();
         apply(['ArrowLeft', 'ArrowUp'].includes(event.key) ? -10 : 10);
+        if (axis === 'height') storeHeight(height);
       }
     };
     window.addEventListener('blur', cancel);

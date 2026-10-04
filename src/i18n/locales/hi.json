@@ -994,5 +994,7 @@
   "right.collapse": "पैनल छोटा करें",
   "right.count": "{count} चुने गए",
   "timeline.replace": "बदलें",
-  "timeline.replaceHint": "पुरानी क्लिप हटा दी जाएगी"
+  "timeline.replaceHint": "पुरानी क्लिप हटा दी जाएगी",
+  "scene.stripShow": "सीन पट्टी दिखाएँ",
+  "scene.stripHide": "सीन पट्टी छिपाएँ"
 }

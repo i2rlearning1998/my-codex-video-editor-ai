@@ -6373,3 +6373,82 @@ button.number-field-step:focus-visible {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
+
+/* T4: the Player bar is the timeline's top edge and its resize grip; the
+   "Timeline" title row is gone. A pill marks the grip. */
+.timeline > .panel-resizer.height {
+  top: -4px;
+  height: 9px;
+}
+.timeline > .panel-resizer.height::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-start: calc(50% - 18px);
+  inline-size: 36px;
+  block-size: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong, var(--color-border));
+}
+.timeline-controls[data-resize-grip] {
+  cursor: row-resize;
+}
+.timeline-controls[data-resize-grip]
+  :is(button, input, select, output, .number-field) {
+  cursor: pointer;
+}
+.timeline-controls[data-resize-grip] :is(input, output) {
+  cursor: text;
+}
+.editor-shell.timeline-collapsed .timeline-controls[data-resize-grip] {
+  cursor: default;
+}
+
+/* T4: the scene strip is hidden by default and slides in and out (240 ms,
+   about 0 with reduced motion) from the button left of Scenes. */
+.scene-strip {
+  transition:
+    block-size var(--motion-panel) var(--ease-panel, ease-in-out),
+    opacity var(--motion-panel) var(--ease-panel, ease-in-out);
+}
+.scene-strip.strip-hidden {
+  block-size: 0;
+  padding-block: 0;
+  border-top-width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* T4: the status row under the canvas: icons 20 px, text 13 px, 32 px hit
+   areas. */
+#canvas-footer {
+  font-size: 13px;
+}
+#canvas-footer .icon-button,
+#canvas-footer .button.sm {
+  min-block-size: 32px;
+  min-inline-size: 32px;
+  font-size: 13px;
+}
+#canvas-footer .icon {
+  inline-size: 20px;
+  block-size: 20px;
+}
+#canvas-footer .preview-summary {
+  font-size: 13px;
+}
+#canvas-footer .composition-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+#scene-strip-show[aria-pressed='true'] {
+  color: var(--accent-text);
+  background: var(--color-accent-soft);
+}
+.timeline-controls[data-resize-grip] [role='group'] {
+  cursor: default;
+}
+#canvas-footer :is(.number-field-label, .number-field-unit, input) {
+  font-size: 13px;
+}

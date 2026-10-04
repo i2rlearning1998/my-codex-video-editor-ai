@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, showSceneStrip } from './fixtures';
 
 // I3: the scene strip under the canvas.
 const strip = (page: Page) => page.locator('#scene-strip');
@@ -14,6 +14,8 @@ test.beforeEach(async ({ page }) => {
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
+  // T4: the strip is hidden by default.
+  await showSceneStrip(page);
 });
 
 test('[PRJ-023] [PRJ-014] the scene strip shows each scene with a thumbnail, name and length; + adds a blank or a copy; a click opens a scene', async ({

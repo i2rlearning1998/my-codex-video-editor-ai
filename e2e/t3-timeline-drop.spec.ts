@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Locator, Page } from '@playwright/test';
-import { test, expect, hook, showCategory } from './fixtures';
+import { test, expect, hook, showCategory, showSceneStrip } from './fixtures';
 
 // T3: Clipchamp's timeline drop rules. A clip-sized ghost at the snapped time
 // with a guide; over a clip the left third inserts before it, the right third
@@ -27,6 +27,7 @@ const MEDIA = 'tests/fixtures/media';
 const JPG = 'image_testsrc_1200x800.jpg';
 
 async function blankScene(page: Page) {
+  await showSceneStrip(page);
   await page.locator('#scene-strip-add').click();
   await page.locator('[data-action="strip-add-blank"]').click();
   await expect.poll(async () => (await scene(page)).layers.length).toBe(0);

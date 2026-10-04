@@ -201,3 +201,18 @@ export async function mode2d(page: Page) {
   await button.click();
   await expect(button).toHaveAttribute('aria-checked', 'true');
 }
+/**
+ * T4: the scene strip is hidden by default; this shows it (the button left
+ * of Scenes) and waits for its slide to end.
+ */
+export async function showSceneStrip(page: Page) {
+  const button = page.locator('#scene-strip-show');
+  if ((await button.getAttribute('aria-pressed')) !== 'true')
+    await button.click();
+  await expect(button).toHaveAttribute('aria-pressed', 'true');
+  const strip = page.locator('#scene-strip');
+  await expect(strip).not.toHaveClass(/strip-hidden/);
+  await expect
+    .poll(async () => strip.evaluate((item) => getComputedStyle(item).opacity))
+    .toBe('1');
+}

@@ -6,6 +6,7 @@ import {
   toScreen,
   rulerBox,
   openInspector,
+  showSceneStrip,
 } from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
@@ -296,6 +297,7 @@ test('[PRJ-012] switching the active composition shows its canvas and timeline a
   await clipEl(page, 'clip-a').click({ position: { x: 30, y: 10 } });
   expect((await hook(page)).session.selectedIds).toEqual(['layer-a']);
   // I3: the scene strip replaces the composition select.
+  await showSceneStrip(page);
   await page.locator('#scene-strip [data-scene-id="scene-2"]').click();
   const session = (await hook(page)).session;
   expect(session.compositionId).toBe('scene-2');

@@ -250,16 +250,16 @@ export function mountEditorShell(
         <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
-          <div class="composition-picker"><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 16)}<span>${t('scene.board')}</span></button></div>
+          <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
           <div class="preview-summary"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom" class="sr-only">${t('canvas.fit')}</span></div>
           <div class="canvas-zoom-controls">
-            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')} (H)">${iconSvg('hand')}</button>
-            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut')}</button>
+            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')} (H)">${iconSvg('hand', 20)}</button>
+            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut', 20)}</button>
             <span id="canvas-zoom-field"></span>
-            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn')}</button>
-            <button type="button" class="button sm ghost" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit', 16)}<span>${t('canvas.fit')}</span></button>
+            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn', 20)}</button>
+            <button type="button" class="button sm ghost" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit', 20)}<span>${t('canvas.fit')}</span></button>
             <button type="button" class="button sm ghost" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
-            <button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button>
+            <button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen', 20)}</button>
           </div>
         </div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
@@ -272,7 +272,7 @@ export function mountEditorShell(
         <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
-      <section class="timeline" aria-label="${t('timeline.title')}"><div class="timeline-header"><div class="timeline-label"><h2>${t('timeline.title')}</h2></div></div><div id="timeline-foundation"></div></section>
+      <section class="timeline" aria-label="${t('timeline.title')}"><div id="timeline-foundation"></div></section>
       <footer class="statusbar sr-only"><span id="status" role="status" aria-live="polite">${t('status.ready')}</span></footer>
       <div class="drawer-scrim" id="drawer-scrim" hidden></div>
       <div class="drop-overlay" id="drop-overlay" hidden>${t('drop.overlay')}</div>
@@ -1722,6 +1722,39 @@ export function mountEditorShell(
       session.select(layer.id);
     },
   });
+  // T4: the scene strip is hidden by default; the button left of Scenes
+  // shows it (240 ms slide) and the choice is kept in this browser. The
+  // strip stays mounted while hidden (inert).
+  const stripHost = element('#scene-strip');
+  const stripButton = element<HTMLButtonElement>('#scene-strip-show');
+  const STRIP_KEY = 'aive.sceneStrip.shown';
+  const showStrip = (shown: boolean, remember: boolean) => {
+    stripHost.classList.toggle('strip-hidden', !shown);
+    stripHost.inert = !shown;
+    stripButton.setAttribute('aria-pressed', String(shown));
+    const label = t(shown ? 'scene.stripHide' : 'scene.stripShow');
+    stripButton.setAttribute('aria-label', label);
+    stripButton.title = label;
+    if (remember)
+      try {
+        localStorage.setItem(STRIP_KEY, shown ? '1' : '0');
+      } catch {
+        // A view setting only.
+      }
+  };
+  let stripShown = false;
+  try {
+    stripShown = localStorage.getItem(STRIP_KEY) === '1';
+  } catch {
+    // A view setting only.
+  }
+  showStrip(stripShown, false);
+  stripButton.onclick = () => {
+    stripShown = !stripShown;
+    showStrip(stripShown, true);
+  };
+  // The canvas refits as the strip slides.
+  stripHost.addEventListener('transitionend', () => resize());
   // I3: the scene strip under the canvas.
   mountSceneStrip({
     host: element('#scene-strip'),
