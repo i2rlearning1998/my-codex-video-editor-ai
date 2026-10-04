@@ -2147,7 +2147,15 @@ export function mountTimeline(
       if (overlay.dataset.shown === 'true' && overlay.parentElement !== content)
         content.append(overlay);
   };
-  const assetOver = (event: DragEvent) => {
+  /** A drag over the timeline: a browser drag event, or a point from the T1
+   *  drag controller (which has no dataTransfer). */
+  type OverEvent = {
+    readonly target: EventTarget | null;
+    readonly clientX: number;
+    readonly clientY: number;
+    readonly dataTransfer?: DataTransfer | null;
+  };
+  const assetOver = (event: OverEvent) => {
     const drag = assetDrag();
     const overLane = (event.target as HTMLElement).closest(
       '.timeline-nle-row, .timeline-clip',
@@ -2614,6 +2622,11 @@ export function mountTimeline(
   for (const [name, listener] of Object.entries(listeners))
     root.addEventListener(name, listener as EventListener);
   window.addEventListener('blur', cancel);
+  // T1: a hidden page ends a clip drag too (the same rule as every drag).
+  const hidden = () => {
+    if (document.visibilityState === 'hidden') cancel();
+  };
+  document.addEventListener('visibilitychange', hidden);
   window.addEventListener('resize', cancel);
   let observedProject = engine.state;
   let observedComposition = session.source.composition.id;
@@ -2714,6 +2727,13 @@ export function mountTimeline(
     },
     /** J9: where a media drop over the timeline lands, while one is over it. */
     assetTarget: () => assetTarget,
+    /** T1: the drag controller's pointer is over the timeline at `x`, `y`;
+     *  returns whether a drop there is allowed. */
+    dragOverAt(x: number, y: number, element: Element | null) {
+      if (!element) return false;
+      assetOver({ target: element, clientX: x, clientY: y });
+      return assetTarget?.mode !== 'refused';
+    },
     clearAssetTarget: clearAssetDropTarget,
     /** J6: highlights a layer's clip (Show element timing), or none. */
     highlight(id: string | null) {
@@ -2741,6 +2761,7 @@ export function mountTimeline(
       for (const [name, listener] of Object.entries(listeners))
         root.removeEventListener(name, listener as EventListener);
       window.removeEventListener('blur', cancel);
+      document.removeEventListener('visibilitychange', hidden);
       document.removeEventListener('dragend', clearAssetDropTarget);
       window.removeEventListener('resize', cancel);
       scroll.removeEventListener('scroll', onScroll);

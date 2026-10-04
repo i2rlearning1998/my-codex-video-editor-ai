@@ -6,6 +6,7 @@
 // with skeleton cards until a preview is drawn, and every page has empty and
 // error states. Cards are buttons: Tab reaches them, arrows move along a
 // strip or grid, Enter adds.
+import { drags, type DragPayload } from './drag-controller';
 import { t } from '../i18n';
 import { iconSvg } from './icons';
 
@@ -23,8 +24,8 @@ export interface BrowseCard {
   /** Disabled with this tooltip ("Planned: …"). */
   readonly disabled?: string;
   readonly activate?: () => void;
-  /** A drag carrying `type` = `data` (never a file). */
-  readonly drag?: { readonly type: string; readonly data: string };
+  /** T1: what a pointer drag of the card carries (the drag controller). */
+  readonly drag?: () => DragPayload | null;
   /** data-* attributes (for example data-item-id). */
   readonly data?: Readonly<Record<string, string>>;
   readonly className?: string;
@@ -181,11 +182,13 @@ export function createBrowsePanel(
       card.activate?.();
     };
     if (card.drag && !card.disabled) {
-      button.draggable = true;
-      button.ondragstart = (event) => {
-        event.dataTransfer?.setData(card.drag!.type, card.drag!.data);
-        if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copy';
-      };
+      const payload = card.drag;
+      // T1: the ghost shows the card's preview once it is drawn.
+      drags().source(button, () => {
+        const value = payload();
+        const thumb = button.querySelector('img')?.getAttribute('src');
+        return value && thumb && !value.thumb ? { ...value, thumb } : value;
+      });
     }
     if (card.hover) {
       button.addEventListener('pointerenter', () => card.hover!(thumb, true));

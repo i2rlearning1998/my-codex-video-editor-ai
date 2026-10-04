@@ -92,13 +92,22 @@ function rememberMode(mode: TemplateMode) {
 }
 
 export interface LibraryActions {
-  /** Adds an item; `at` is a composition point (a drop). */
-  insert(item: LibraryItem, at?: readonly [number, number]): void;
+  /** Adds an item; `at` is a composition point (a drop), `time` the start
+   *  of its clip (default the playhead; T1: a drop on the timeline). */
+  insert(
+    item: LibraryItem,
+    at?: readonly [number, number],
+    time?: number,
+  ): void;
   /**
    * I2: a plain text box ("Add a text box", the Draw palette's Text tool),
    * centred on `at` (composition point) or the canvas, `width` px wide.
    */
-  insertTextBox(at?: readonly [number, number], width?: number): void;
+  insertTextBox(
+    at?: readonly [number, number],
+    width?: number,
+    time?: number,
+  ): void;
   /** I2: a template saved in this browser (My Templates). */
   insertMine(template: MyTemplate): void;
   /** The item a drag carries, by id. */
@@ -139,9 +148,13 @@ export function createLibraryActions(options: {
       );
   };
   const libraryBuild =
-    (item: LibraryItem, at: readonly [number, number] | undefined) =>
+    (
+      item: LibraryItem,
+      at: readonly [number, number] | undefined,
+      time = session.currentTime,
+    ) =>
     (mode?: TemplateMode) =>
-      libraryCommands(engine.state, session.source, item, session.currentTime, {
+      libraryCommands(engine.state, session.source, item, time, {
         ...(at ? { at } : {}),
         ...(mode ? { mode } : {}),
       });
@@ -258,22 +271,22 @@ export function createLibraryActions(options: {
     };
   };
   return {
-    insert(item, at) {
+    insert(item, at, time) {
       const kind = recentKind(item);
       const remember = () => kind && recent.add(kind, item.id);
       try {
         if (item.type === 'transition') return;
         if (item.type === 'template')
-          askMode(itemName(item), libraryBuild(item, at), remember);
+          askMode(itemName(item), libraryBuild(item, at, time), remember);
         else {
-          run(itemName(item), libraryBuild(item, at));
+          run(itemName(item), libraryBuild(item, at, time));
           remember();
         }
       } catch (error) {
         report(error);
       }
     },
-    insertTextBox(at, width) {
+    insertTextBox(at, width, time) {
       try {
         const canvas = session.source.composition;
         const w = Math.min(
@@ -302,7 +315,7 @@ export function createLibraryActions(options: {
             ],
           },
         } as unknown as LibraryItem;
-        run(t('text.boxName'), libraryBuild(item, at));
+        run(t('text.boxName'), libraryBuild(item, at, time));
       } catch (error) {
         report(error);
       }

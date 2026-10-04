@@ -259,6 +259,9 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-036 | P0 | W4 | Verified | Deleting media: unused media goes at once with an 8 s Restore toast; media used by N clips first asks, naming N, and those clips then show a Missing media placeholder (export refuses them); the stored files are removed after the toast; importing the file again brings it back; delete is not undoable |
 | MED-037 | P0 | W4 | Verified | Each Project Media item has a menu (More button and right-click): Rename (not undoable), Delete, Add to scene, Move to folder (browser-stored folders) and Details |
 | MED-038 | P0 | W4 | Verified | Media tabs All, Images, Videos, Audio, Designs and Folders; sort; an import drop zone; folders (create, rename, delete, drag media in, open); Designs saved from the export dialog with Save frame to Media; videos preview their filmstrip on hover; none of it is an undo step |
+| MED-039 | P0 | W2 | Verified | One drag controller for every in-app source (Media cards, library shapes, text styles, templates, My Templates, the text box): the item follows the pointer as a ghost, Escape cancels, and a release, pointer cancel, window blur or hidden page always cleans up; a long session of mixed drags and clicks onto the canvas and timeline keeps working, also after a new project (T1 LCR) |
+| MED-040 | P0 | W2 | Verified | An OS file dragged over the window shows a "drop to import" overlay that never takes the pointer and always goes away when the drag ends; the files go to Media, and dropped on the canvas or the timeline they are also placed there (T1 LCR) |
+| MED-041 | P0 | W2 | Verified | A single click adds a Media item or library item (canvas centre, clip at the playhead on its lane); a drag onto the timeline starts the clip at the drop time (T1 LCR) |
 
 ## CV: Canvas (Wave 2)
 

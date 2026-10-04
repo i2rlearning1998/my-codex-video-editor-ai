@@ -74,3 +74,4 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - J12: a transition record stays on a clip that is moved away from its neighbour (nothing plays); a cleanup or a warning could follow.
 - J15: Filters other than Original and Effects other than the shape outline are listed but planned (FX-004, FX-001, TXT-019).
 - J9: the drag image and J8's clip-loading shimmer are built but have no automated proof.
+- T1: the scene strip, scenes board and Layers rows still use HTML5 drag and drop for reordering (not in the T1 source list); they could move to the drag controller too.

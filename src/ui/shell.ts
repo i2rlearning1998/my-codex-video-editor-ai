@@ -64,7 +64,9 @@ import { mountTimeline, type AssetTarget } from './timeline';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
-import { addShape } from './shapes';
+import { addShape, addShapeCommands, type ShapePreset } from './shapes';
+import { myTemplates } from './my-templates';
+import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
@@ -1428,16 +1430,18 @@ export function mountEditorShell(
       renderFrame,
       // I2: Designs in Project Media (a library change, not an undo step).
       saveFrame: (blob, name) =>
-        mediaPanel.importFiles(
-          [
-            new File(
-              [blob],
-              name.replace(/\.png$/, `-${Date.now().toString(36)}.png`),
-              { type: 'image/png' },
-            ),
-          ],
-          { design: true },
-        ),
+        mediaPanel
+          .importFiles(
+            [
+              new File(
+                [blob],
+                name.replace(/\.png$/, `-${Date.now().toString(36)}.png`),
+                { type: 'image/png' },
+              ),
+            ],
+            { design: true },
+          )
+          .then(() => undefined),
       toast: (text, kind) => showToast(text, kind),
     });
   };
@@ -1753,12 +1757,17 @@ export function mountEditorShell(
     },
   });
   // MED-001/MED-002: the Import button and OS file drops both import into Project Media.
-  const importMedia = (files: readonly File[]) => {
-    if (!files.length) return;
+  const importMedia = async (files: readonly File[]): Promise<string[]> => {
+    if (!files.length) return [];
     activeCategory = 'Media';
     applyCategory(activeCategory);
     workspace?.setOpen('left', true);
-    safely(() => mediaPanel.importFiles(files));
+    try {
+      return await mediaPanel.importFiles(files);
+    } catch (error) {
+      reportError(error);
+      return [];
+    }
   };
   const mediaInput = element<HTMLInputElement>('#import-media-input');
   element<HTMLButtonElement>('#import-media').onclick = () =>
@@ -1844,7 +1853,7 @@ export function mountEditorShell(
   mediaInput.onchange = () => {
     const files = [...(mediaInput.files ?? [])];
     mediaInput.value = '';
-    importMedia(files);
+    void importMedia(files);
   };
 
   // Right panel: shared "section" state driven by both the tab row and the icon rail.
@@ -2043,37 +2052,72 @@ export function mountEditorShell(
     }
   });
 
-  // Drop overlay: shown while an OS file is dragged over the window (distinct from the
-  // internal application/x-editor-asset drag, which uses its own mime type and targets).
+  // Drop overlay: shown while an OS file is dragged over the window. In-app
+  // drags never use the browser's drag and drop (T1 drag controller); a
+  // Project Media card or library card drag that a test or browser still
+  // sends as HTML5 data is a reference, never a file (MED-015 regression).
   const dropOverlay = element('#drop-overlay');
   let dragDepth = 0;
-  // A Project Media card dragged onto the canvas or timeline is a reference to
-  // an asset already stored, never a new file, even if the browser also
-  // attaches file data to the drag (MED-015 regression).
   const isFileDrag = (event: DragEvent) =>
     !!event.dataTransfer?.types.includes('Files') &&
     !event.dataTransfer.types.includes('application/x-editor-asset') &&
     !event.dataTransfer.types.includes(LIBRARY_DRAG_TYPE);
+  // T1: the overlay is drawn over the page but never takes the pointer, so
+  // the element under it still receives the drop (a canvas or timeline drop
+  // also places the files). Its counter counts file drags only and is reset
+  // by every way a file drag can end, so it can never stay up.
+  const hideOverlay = () => {
+    dragDepth = 0;
+    dropOverlay.hidden = true;
+  };
   window.addEventListener('dragenter', (event) => {
     if (!isFileDrag(event)) return;
     dragDepth++;
     dropOverlay.hidden = false;
   });
-  window.addEventListener('dragleave', () => {
+  window.addEventListener('dragleave', (event) => {
+    if (!isFileDrag(event)) return;
+    // Leaving the window has no related element.
+    if (!event.relatedTarget) return hideOverlay();
     dragDepth = Math.max(0, dragDepth - 1);
     if (dragDepth === 0) dropOverlay.hidden = true;
   });
   window.addEventListener('dragover', (event) => {
-    if (isFileDrag(event)) event.preventDefault();
-  });
-  const windowDrop = (event: DragEvent) => {
     if (!isFileDrag(event)) return;
     event.preventDefault();
-    dragDepth = 0;
-    dropOverlay.hidden = true;
-    importMedia([...(event.dataTransfer?.files ?? [])]);
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragend', hideOverlay);
+  const windowDrop = (event: DragEvent) => {
+    // Any drop ends the overlay, whatever handles it.
+    hideOverlay();
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const files = [...(event.dataTransfer?.files ?? [])];
+    if (!files.length) return;
+    const over = event.target instanceof Element ? event.target : null;
+    const onCanvas = over === canvas;
+    const onTimeline = !!over?.closest('#timeline-foundation .timeline-scroll');
+    const point = onCanvas ? canvasPoint(event.clientX, event.clientY) : null;
+    const time = onTimeline ? timelineTimeAt(event.clientX) : undefined;
+    const imported = importMedia(files);
+    if (!onCanvas && !onTimeline) return;
+    // Dropped on the canvas or the timeline: also placed there.
+    void imported.then((ids) =>
+      safely(() => {
+        for (const id of ids)
+          addPayload(
+            { kind: 'asset', id, name: id },
+            {
+              ...(point ? { point } : {}),
+              ...(time !== undefined ? { time } : {}),
+            },
+          );
+      }),
+    );
   };
-  window.addEventListener('drop', windowDrop);
+  window.addEventListener('drop', windowDrop, true);
 
   const resize = () =>
     safely(() => {
@@ -2295,7 +2339,7 @@ export function mountEditorShell(
   const timelineAssetDrop = (
     asset: (typeof session.source.assets)[number],
     target: AssetTarget,
-    event: DragEvent,
+    event: { clientX: number; clientY: number },
   ) => {
     // A lane of another group refuses the media with the earlier message.
     if (target.mode === 'refused') {
@@ -2403,7 +2447,7 @@ export function mountEditorShell(
   const hideDropBox = () => {
     dropBox.hidden = true;
   };
-  const showDropBox = (event: DragEvent) => {
+  const showDropBox = (event: { clientX: number; clientY: number }) => {
     const drag = assetDrag();
     if (!drag || drag.type === 'audio') return hideDropBox();
     const { width: w, height: h } = session.source.composition;
@@ -2461,6 +2505,115 @@ export function mountEditorShell(
     libraryActions.insert(item, point ? [point[0], point[1]] : undefined);
   };
   canvas.addEventListener('drop', libraryDrop);
+  // T1: the drag controller's two drop targets, the canvas and the timeline.
+  setDragReporter(reportError);
+  const canvasPoint = (x: number, y: number) => {
+    const rect = canvas.getBoundingClientRect(),
+      inverse = invertMatrix(viewport().matrix);
+    return inverse
+      ? (transformPoint(inverse, [x - rect.left, y - rect.top]) as [
+          number,
+          number,
+        ])
+      : null;
+  };
+  const timelineTimeAt = (x: number) => {
+    const track = element('.timeline-scroll');
+    return Math.max(
+      0,
+      pixelToTime(
+        x - track.getBoundingClientRect().left + track.scrollLeft - 224,
+        session.timelineZoom,
+      ),
+    );
+  };
+  /** Adds what a drag carries: on the canvas centred on `point`, or with its
+   *  clip starting at `time` (a timeline drop). */
+  const addPayload = (
+    payload: DragPayload,
+    place: { point?: [number, number] | null; time?: number },
+  ) => {
+    const time = place.time ?? session.currentTime;
+    const point = place.point ?? undefined;
+    if (payload.kind === 'asset') {
+      const asset = session.source.assets.find(
+        (item) => item.id === payload.id,
+      );
+      if (asset) placeAsset(asset, { time, point: point ?? null });
+    } else if (payload.kind === 'library') {
+      const item = libraryActions.find(payload.id);
+      if (item) libraryActions.insert(item, point, time);
+    } else if (payload.kind === 'textbox')
+      libraryActions.insertTextBox(point, undefined, time);
+    else if (payload.kind === 'mine') {
+      const template = myTemplates.find(payload.id);
+      if (template) libraryActions.insertMine(template);
+    } else if (payload.kind === 'preset') {
+      const commands = addShapeCommands(
+        session.source,
+        payload.id as ShapePreset,
+        time,
+      );
+      const created = commands.find((item) => item.type === 'CREATE_LAYER');
+      if (created?.type === 'CREATE_LAYER' && point) {
+        const size = (key: 'width' | 'height') => {
+          const value = created.layer.properties[key];
+          return value?.type === 'number' ? value.value : 0;
+        };
+        created.layer.transform.position = vector2(
+          point[0] - size('width') / 2,
+          point[1] - size('height') / 2,
+        );
+      }
+      engine.commands.transaction('Add shape', commands);
+      if (created?.type === 'CREATE_LAYER') session.select(created.layer.id);
+    }
+  };
+  drags().register({
+    // The whole stage, overlays included (the selection's action cluster,
+    // the floating toolbar): a drop there lands on the canvas below.
+    contains: (target) => target === canvas || stage.contains(target),
+    over(payload, point) {
+      if (payload.kind === 'asset')
+        showDropBox({ clientX: point.x, clientY: point.y });
+      return true;
+    },
+    leave: hideDropBox,
+    drop(payload, point) {
+      hideDropBox();
+      addPayload(payload, { point: canvasPoint(point.x, point.y) });
+    },
+  });
+  drags().register({
+    contains: (target) =>
+      !!timeline && !!target.closest('#timeline-foundation .timeline-scroll'),
+    over: (_payload, point) =>
+      timeline?.dragOverAt(point.x, point.y, point.element) ?? false,
+    leave: () => timeline?.clearAssetTarget(),
+    // A lane of another group refuses the media and says why (MED-013).
+    refuse(payload) {
+      const target = timeline?.assetTarget();
+      const asset = session.source.assets.find(
+        (item) => item.id === payload.id,
+      );
+      if (payload.kind === 'asset' && asset && target?.mode === 'refused')
+        timelineAssetDrop(asset, target, { clientX: 0, clientY: 0 });
+    },
+    drop(payload, point) {
+      const target = timeline?.assetTarget();
+      timeline?.clearAssetTarget();
+      const asset =
+        payload.kind === 'asset'
+          ? session.source.assets.find((item) => item.id === payload.id)
+          : undefined;
+      if (asset && target)
+        return timelineAssetDrop(asset, target, {
+          clientX: point.x,
+          clientY: point.y,
+        });
+      addPayload(payload, { time: timelineTimeAt(point.x) });
+    },
+  });
   canvas.addEventListener('dragover', assetOver);
   canvas.addEventListener('drop', assetDrop);
   element('#timeline-foundation').addEventListener('drop', assetDrop);
