@@ -75,6 +75,7 @@ import { addShape, addShapeCommands, type ShapePreset } from './shapes';
 import { myTemplates } from './my-templates';
 import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
+import { wordmarkHtml } from '../brand/brand';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
 import { scenePosterUrl } from './scene-poster';
@@ -187,7 +188,7 @@ export function mountEditorShell(
       <header class="topbar">
         <div class="topbar-start">
           <button type="button" id="menu-trigger" class="icon-button menu-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" aria-label="${t('menu.main')}" title="${t('menu.main')}">${iconSvg('menu')}</button>
-          <span class="brand-mark" aria-hidden="true">N</span>
+          ${wordmarkHtml('sm')}
           <div class="project-title">
             <span class="project-dot" id="save-status-dot" aria-hidden="true"></span>
             <span id="project-name" tabindex="0" role="button" aria-label="${t('project.renameLabel')}"></span>
@@ -248,7 +249,7 @@ export function mountEditorShell(
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
           <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
@@ -270,7 +271,7 @@ export function mountEditorShell(
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
-        <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
+        <div id="right-panel-empty" class="inspector-empty" hidden>${wordmarkHtml('sm')}<h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
       <section class="timeline" aria-label="${t('timeline.title')}"><div id="timeline-foundation"></div></section>

@@ -23,7 +23,8 @@
   /* Text */
   --text: #eceef4;
   --text-secondary: #a6abba;
-  --text-tertiary: #858a9b;
+  /* T7: AA on every dark surface (was #858a9b, 3.99:1 on raised-hover). */
+  --text-tertiary: #9499aa;
   --text-on-accent: #ffffff;
   /* J10: timeline clips, one colour per kind (white text). */
   --clip-text: #b4542d;
@@ -46,6 +47,14 @@
   --warning: #f5b83d;
   --success: #3dd68c;
   --focus-ring: #8f74ff;
+  /* T7: AA variants. Fills that carry white text, and status colours used
+     as text; the owner's fills above stay for marks and borders. */
+  --accent-fill: #6a49f0;
+  --accent-fill-hover: #5b37f0;
+  --danger-fill: #c93a47;
+  --danger-text: #f27a84;
+  --success-text: #3dd68c;
+  --warning-text: #f5b83d;
   --scrim: rgba(5, 6, 10, 0.6);
   --scrollbar: rgba(255, 255, 255, 0.14);
   --scrollbar-hover: rgba(255, 255, 255, 0.24);
@@ -83,7 +92,8 @@
   --border-strong: rgba(16, 18, 27, 0.2);
   --text: #14161d;
   --text-secondary: #515668;
-  --text-tertiary: #6b7085;
+  /* T7: AA on every light surface (was #6b7085, 4.04:1 on raised-hover). */
+  --text-tertiary: #5c6175;
   --text-on-accent: #ffffff;
   /* J10: timeline clips, one colour per kind (dark text). */
   --clip-text: #f6c9b4;
@@ -104,6 +114,12 @@
   --warning: #b77a06;
   --success: #138a52;
   --focus-ring: #6c47ff;
+  --accent-fill: #5b37f0;
+  --accent-fill-hover: #4f2ce0;
+  --danger-fill: #c0313f;
+  --danger-text: #b42232;
+  --success-text: #0d6e40;
+  --warning-text: #8a5a00;
   --scrim: rgba(16, 18, 27, 0.32);
   --scrollbar: rgba(16, 18, 27, 0.16);
   --scrollbar-hover: rgba(16, 18, 27, 0.28);
@@ -146,21 +162,28 @@
     'Noto Sans Devanagari', 'Helvetica Neue', Arial, sans-serif;
   --font-family-mono:
     ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
-  --font-caption: 11px;
-  --font-small: 12px;
-  --font-body: 13px;
-  --font-panel-title: 14px;
-  --font-dialog-title: 16px;
+  /* T7: readable sizes. Secondary text 12.5, labels 13, body 14, section
+     titles 15; dialogs 17. Digits that change are tabular. */
+  --font-caption: 12.5px;
+  --font-small: 13px;
+  --font-label: 13px;
+  --font-body: 14px;
+  --font-panel-title: 15px;
+  --font-dialog-title: 17px;
   --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --line-height-tight: 1.25;
   --line-height-normal: 1.45;
   /* Controls */
-  --control-sm: 28px;
+  /* T7: every control is at least 32 px to hit; icons are 20 px (24 on
+     the rails and Play). */
+  --control-sm: 32px;
   --control-md: 32px;
   --control-lg: 40px;
-  --icon-size: 16px;
+  --hit-min: 32px;
+  --icon-size: 20px;
+  --icon-size-rail: 24px;
   /* Layers (z-index) */
   --z-panel: 10;
   --z-toolbar: 20;

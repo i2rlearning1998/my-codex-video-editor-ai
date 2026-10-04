@@ -13,8 +13,8 @@ Decisions start at D-169. After a usage limit, the owner says "continue": resume
 | T3 Timeline drop rules, no empty lanes | done   | 322639d       |
 | T4 Layout                              | done   | 21a132a       |
 | T5 Player bar                          | done   | accc3d1       |
-| T6 Text live auto-grow                 | done   | (this commit) |
-| T7 Readable branded UI, finish         | todo   |               |
+| T6 Text live auto-grow                 | done   | f8175b7       |
+| T7 Readable branded UI, finish         | done   | (this commit) |
 
 ## Notes for a resuming session
 

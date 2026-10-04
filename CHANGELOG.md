@@ -2,6 +2,15 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 6 (J-series).
 
+## T-series (T1 to T7) — 2026-10-04
+
+- **Drag and drop (T1, T2):** every library and Media card drags with one pointer controller (no stuck drags); OS files dropped on the canvas or timeline are imported and placed there; a click adds an item; a real-size outline snaps to the canvas centre and edges.
+- **Timeline drops (T3):** a clip-sized ghost with a guide; before, after or Replace over a clip; a + line makes a new lane; another kind's lane refuses; a lane an edit empties disappears in the same undo step; taller visual lanes.
+- **Layout (T4):** no Timeline title row; drag the Player bar to resize the timeline (remembered); the scene strip is hidden behind a toggle left of Scenes; a larger status row.
+- **Player bar (T5):** first and last frame, a 0:04 / 0:10 timecode you can type into, larger controls; Previous cut and Stop are in the palette.
+- **Text (T6):** boxes grow line by line while typing and never jump when editing ends; Auto height can be turned off, with an overflow mark.
+- **Readable, branded UI (T7):** 14 px body text, 20 px icons, 32 px controls, AA colours in both themes, and the placeholder AI-Native wordmark.
+
 ## J-series (J1 to J15) — 2026-10-03
 
 - **Scenes (J1):** each scene has its own background (schema 6) and canvas size; a size change never moves layers; Undo opens the scene it changed.

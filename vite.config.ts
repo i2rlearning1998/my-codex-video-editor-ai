@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { BRAND } from './src/brand/brand';
 
 let gitCommit = 'unknown';
 try {
@@ -22,6 +23,18 @@ const { version } = JSON.parse(
 ) as { version: string };
 
 export default defineConfig({
+  // T7: index.html (title, loading screen) takes the wordmark from
+  // src/brand/brand.ts, the one place the brand is defined.
+  plugins: [
+    {
+      name: 'brand-html',
+      transformIndexHtml: (html) =>
+        html
+          .replaceAll('%BRAND_NAME%', BRAND.name)
+          .replaceAll('%BRAND_WORDMARK%', BRAND.wordmark)
+          .replaceAll('%BRAND_MARK%', BRAND.mark),
+    },
+  ],
   define: {
     __APP_VERSION__: JSON.stringify(version),
     __GIT_COMMIT__: JSON.stringify(gitCommit),

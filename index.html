@@ -74,6 +74,30 @@
       .boot-skeleton .boot-row {
         height: 30px;
       }
+      .boot-skeleton .boot-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin: 12px 16px;
+        color: #eceef4;
+        font:
+          600 15px system-ui,
+          sans-serif;
+        animation: none;
+      }
+      html[data-theme='light'] .boot-skeleton .boot-brand {
+        color: #14161d;
+      }
+      .boot-skeleton .boot-brand-mark {
+        display: inline-grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: #7c5cff;
+        color: #fff;
+        font-size: 13px;
+      }
       @keyframes boot-shimmer {
         from {
           background-position: 100% 50%;
@@ -90,12 +114,17 @@
       }
     </style>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>AI-Native Video Editor · Composition Studio</title>
+    <title>%BRAND_NAME% Video Editor · Composition Studio</title>
   </head>
   <body>
     <div id="app" aria-busy="true">
       <div class="boot-skeleton" aria-hidden="true">
-        <div class="boot-bar"></div>
+        <div class="boot-bar">
+          <span class="boot-brand" data-brand-wordmark
+            ><span class="boot-brand-mark">%BRAND_MARK%</span
+            >%BRAND_WORDMARK%</span
+          >
+        </div>
         <div></div>
         <div></div>
         <div class="boot-timeline">

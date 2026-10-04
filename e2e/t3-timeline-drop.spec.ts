@@ -67,7 +67,7 @@ const centre = async (from: Locator) => {
  *  an edit). */
 async function stable(from: Locator) {
   let last = '';
-  let box: Awaited<ReturnType<Locator['boundingBox']>> = null;
+  let box = null as Awaited<ReturnType<Locator['boundingBox']>>;
   await expect
     .poll(async () => {
       box = await from.boundingBox();
@@ -77,7 +77,7 @@ async function stable(from: Locator) {
       return same && !!box;
     })
     .toBe(true);
-  return box;
+  return box!;
 }
 
 test.beforeEach(async ({ page }) => {
