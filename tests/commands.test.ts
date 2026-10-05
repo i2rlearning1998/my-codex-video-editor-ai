@@ -147,7 +147,12 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       expect(session.selectedIds).toEqual(ids);
     else if (command.id === 'undo') expect(engine.canRedo).toBe(true);
     else if (command.id === 'cut-previous') expect(session.currentTime).toBe(0);
-    else if (command.id === 'copy') expect(hasClipboard()).toBe(true);
+    // T5: Stop (palette only) pauses at the start; no history.
+    else if (command.id === 'stop') {
+      expect(session.currentTime).toBe(0);
+      expect(session.playing).toBe(false);
+      expect(engine.canUndo).toBe(false);
+    } else if (command.id === 'copy') expect(hasClipboard()).toBe(true);
     else if (command.id === 'copy-style') expect(hasStyle()).toBe(true);
     else if (command.id === 'keyframe-previous')
       expect(session.currentTime).toBe(0);

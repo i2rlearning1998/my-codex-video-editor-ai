@@ -379,6 +379,18 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     isEnabled: () => true,
     run: (context) => context.togglePlayback(),
   },
+  // T5: Stop left the Player bar; it stays in the palette (pause and go to
+  // the start).
+  {
+    id: 'stop',
+    labelKey: 'command.stop',
+    shortcut: '',
+    isEnabled: () => true,
+    run: ({ session }) => {
+      session.setPlaying(false);
+      session.setCurrentTime(0);
+    },
+  },
 ]);
 export function runCommand(id: string, context: CommandContext): boolean {
   const command = commands.find((item) => item.id === id);

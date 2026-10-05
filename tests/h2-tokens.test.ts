@@ -45,7 +45,8 @@ describe('H2 design tokens', () => {
       overlay: '#272a34',
       text: '#eceef4',
       'text-secondary': '#a6abba',
-      'text-tertiary': '#858a9b',
+      // T7 (owner: AA everywhere): was #858a9b.
+      'text-tertiary': '#9499aa',
       accent: '#7c5cff',
       'accent-hover': '#8f74ff',
       'accent-pressed': '#6a49f0',
@@ -61,7 +62,8 @@ describe('H2 design tokens', () => {
       overlay: '#ffffff',
       text: '#14161d',
       'text-secondary': '#515668',
-      'text-tertiary': '#6b7085',
+      // T7 (owner: AA everywhere): was #6b7085.
+      'text-tertiary': '#5c6175',
       accent: '#6c47ff',
       'accent-hover': '#5b37f0',
     });
@@ -75,6 +77,59 @@ describe('H2 design tokens', () => {
             `${ink} on ${surface}`,
           ).toBeGreaterThanOrEqual(4.5);
     });
+  const aa = (theme: Record<string, string>) => {
+    for (const surface of [
+      'stage',
+      'app',
+      'panel',
+      'raised',
+      'overlay',
+      'input',
+      'raised-hover',
+    ])
+      for (const ink of [
+        'text',
+        'text-secondary',
+        'text-tertiary',
+        'accent-text',
+        'danger-text',
+        'success-text',
+        'warning-text',
+      ])
+        expect(
+          contrast(theme[ink]!, theme[surface]!),
+          `${ink} on ${surface}`,
+        ).toBeGreaterThanOrEqual(4.5);
+    for (const clip of [
+      'clip-text',
+      'clip-shape',
+      'clip-group',
+      'clip-video',
+      'clip-image',
+      'clip-audio',
+      'clip-other',
+    ])
+      expect(
+        contrast(theme['clip-label']!, theme[clip]!),
+        `clip-label on ${clip}`,
+      ).toBeGreaterThanOrEqual(4.5);
+    for (const fill of ['accent-fill', 'accent-fill-hover', 'danger-fill'])
+      expect(
+        contrast(theme['text-on-accent']!, theme[fill]!),
+        `text-on-accent on ${fill}`,
+      ).toBeGreaterThanOrEqual(4.5);
+    // Marks (accent, focus ring) reach 3:1 on panels (WCAG 1.4.11).
+    for (const mark of ['accent', 'focus-ring'])
+      expect(
+        contrast(theme[mark]!, theme.panel!),
+        `${mark} on panel`,
+      ).toBeGreaterThanOrEqual(3);
+  };
+  it('[LAY-051] dark: every text colour reaches 4.5:1 on every surface, clip labels on every clip colour and white on every fill', () =>
+    aa(themes.dark));
+  it('[LAY-051] light: every text colour reaches 4.5:1 on every surface, clip labels on every clip colour and white on every fill', () =>
+    aa(themes.light));
+
   it('[LAY-032] every custom property the stylesheet reads is defined', () => {
     const defined = new Set(
       [...(tokens + styles).matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]),
@@ -89,6 +144,8 @@ describe('H2 design tokens', () => {
       '--track-height',
       // J4: the text editor's paragraph spacing (inline, per layer).
       '--paragraph-spacing',
+      // T6: a fixed-height text box's stored height (inline).
+      '--fixed-height',
     ]);
     const missing = [
       ...new Set(

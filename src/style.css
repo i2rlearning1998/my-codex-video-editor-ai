@@ -190,14 +190,14 @@ button.ghost:hover {
 }
 .primary,
 button.primary {
-  background-color: var(--accent);
+  background-color: var(--accent-fill);
   color: var(--text-on-accent);
   border-color: transparent;
   font-weight: var(--weight-semibold);
 }
 .primary:hover,
 button.primary:hover {
-  background-color: var(--accent-hover);
+  background-color: var(--accent-fill-hover);
   border-color: transparent;
 }
 .primary:active:not(:disabled),
@@ -205,7 +205,7 @@ button.primary:active:not(:disabled) {
   background-color: var(--accent-pressed);
 }
 button.danger {
-  background-color: var(--danger);
+  background-color: var(--danger-fill);
   border-color: transparent;
   color: var(--text-on-accent);
 }
@@ -360,7 +360,7 @@ input[type='number'],
   display: grid;
   place-items: center;
   color: var(--text-on-accent);
-  background: var(--accent);
+  background: var(--accent-fill);
   width: 24px;
   height: 24px;
   border-radius: var(--radius-sm);
@@ -744,7 +744,7 @@ input[type='number'],
   margin: 0;
 }
 .media-state[data-state='error'] h3 {
-  color: var(--color-danger);
+  color: var(--danger-text);
 }
 .media-grid {
   display: grid;
@@ -1175,7 +1175,8 @@ input[type='number'],
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-block-size: 320px;
+  /* T7: the taller rows need the panel's height (was a 320 px cap). */
+  max-block-size: max(320px, calc(100vh - 260px));
   margin: 0;
   padding: 0;
   overflow-y: auto;
@@ -1255,7 +1256,7 @@ input[type='number'],
   inline-size: 8px;
   block-size: 8px;
   border-radius: var(--radius-pill);
-  background: var(--color-accent-hover);
+  background: var(--accent-fill-hover);
 }
 .easing-preset:hover .easing-dot,
 .easing-preset:focus-visible .easing-dot {
@@ -1473,7 +1474,7 @@ input[type='number'],
 }
 .render-warning {
   margin: 0 var(--space-5) var(--space-3);
-  color: var(--color-warning);
+  color: var(--warning-text);
   font-size: var(--font-size-xs);
 }
 
@@ -1495,6 +1496,54 @@ input[type='number'],
 }
 .drop-overlay[hidden] {
   display: none;
+}
+/* T1: the overlay shows "Drop to import" but never takes the pointer, so
+   the element under it receives the drop. */
+.drop-overlay {
+  pointer-events: none;
+}
+/* T2: while an item is dragged over the canvas, the stage is highlighted
+   and snap guides show where its outline meets the canvas centre or edges. */
+.canvas-stage.drop-highlight::after,
+#canvas-stage.drop-highlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  pointer-events: none;
+}
+.canvas-drop-guide {
+  position: fixed;
+  z-index: 31;
+  pointer-events: none;
+  background: var(--color-snap-guide);
+}
+.canvas-drop-guide.vertical {
+  inline-size: 1px;
+}
+.canvas-drop-guide.horizontal {
+  block-size: 1px;
+}
+/* T1: the drag controller's ghost follows the pointer; while a drag runs
+   the cursor says whether the place under it accepts the drop. */
+.drag-ghost.drag-follow {
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0.92;
+  will-change: transform;
+}
+:root[data-dragging],
+:root[data-dragging] * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+:root[data-dragging='refused'],
+:root[data-dragging='refused'] * {
+  cursor: no-drop !important;
 }
 
 /* ===== Timeline ===== */
@@ -1595,11 +1644,11 @@ input[type='number'],
   align-items: center;
   justify-content: center;
   padding: 0 !important;
-  background: var(--color-accent) !important;
+  background: var(--accent-fill) !important;
   color: var(--color-accent-text) !important;
 }
 .transport-play-button:hover {
-  background: var(--color-accent-hover) !important;
+  background: var(--accent-fill-hover) !important;
 }
 .transport-time {
   font-variant-numeric: tabular-nums;
@@ -1652,7 +1701,8 @@ input[type='number'],
 }
 .timeline-row {
   display: flex;
-  height: 34px;
+  /* T3: text, shape and audio lanes 36 px; visual lanes 56 px (inline). */
+  height: 36px;
   border-bottom: 1px solid var(--color-border);
 }
 .timeline-row-header {
@@ -1725,17 +1775,14 @@ input[type='number'],
   flex-shrink: 0;
   position: relative;
   overflow: visible;
-  background: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent 33px,
-    var(--color-border) 34px
-  );
+  background: transparent;
 }
 .timeline-clip {
   position: absolute;
-  top: 3px;
-  height: 27px;
+  top: 4px;
+  /* T3: clips fill their lane, at least 28 px tall. */
+  height: calc(100% - 8px);
+  min-height: 28px;
   min-width: 0;
   padding: 0;
   text-indent: var(--space-3);
@@ -1758,7 +1805,7 @@ input[type='number'],
 .timeline-keyframe {
   position: absolute;
   z-index: 2;
-  top: 9px;
+  top: calc(50% - 8px);
   inline-size: 16px;
   block-size: 16px;
   padding: 0;
@@ -1810,7 +1857,7 @@ input[type='number'],
   background-position: center;
 }
 .timeline-clip[aria-pressed='true'] {
-  background: var(--color-accent);
+  background: var(--accent-fill);
   color: var(--color-accent-text);
   box-shadow: inset 0 0 0 1px var(--color-accent-hover);
 }
@@ -1836,7 +1883,7 @@ input[type='number'],
   left: 3px;
   width: 4px;
   border-radius: var(--radius-sm);
-  background: var(--color-accent-hover);
+  background: var(--accent-fill-hover);
   opacity: 0;
 }
 .timeline-trim.left {
@@ -1901,7 +1948,7 @@ input[type='number'],
 }
 .timeline-track-header button.track-toggle[aria-pressed='true'] {
   color: var(--color-accent-text);
-  background: var(--color-accent);
+  background: var(--accent-fill);
 }
 .timeline-track-header button[data-action='track-lock'][aria-pressed='true'] {
   background: var(--color-danger);
@@ -1963,7 +2010,7 @@ input[type='number'],
   border: none;
   border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--color-warning);
+  color: var(--warning-text);
   cursor: ew-resize;
 }
 .timeline-marker::after {
@@ -2422,7 +2469,7 @@ input[type='number'],
   height: 36px;
 }
 #new-project-form [role='alert']:not(:empty) {
-  color: var(--color-danger);
+  color: var(--danger-text);
   font-size: var(--font-size-xs);
 }
 #new-project-form button[type='submit'] {
@@ -2539,7 +2586,7 @@ input[type='number'],
   padding: var(--space-3);
   border-radius: var(--radius-md);
   background: var(--color-danger-soft);
-  color: var(--color-danger);
+  color: var(--danger-text);
   font-size: var(--font-size-sm);
 }
 .export-missing[hidden],
@@ -3033,7 +3080,7 @@ button.color-swatch:hover {
   z-index: 25;
   padding: 2px 8px;
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
+  background: var(--accent-fill);
   color: var(--color-accent-text);
   font-size: var(--font-size-xs);
   font-variant-numeric: tabular-nums;
@@ -3519,7 +3566,7 @@ button.color-swatch:hover {
   }
 }
 @media (max-width: 1100px) {
-  .brand-mark {
+  .topbar .brand-wordmark {
     display: none;
   }
 }
@@ -5083,7 +5130,7 @@ button.color-swatch-trigger {
   font-size: var(--font-size-xs);
 }
 .browse-status-error {
-  color: var(--danger);
+  color: var(--danger-text);
 }
 .browse-sentinel {
   block-size: 1px;
@@ -5495,7 +5542,7 @@ canvas.placing {
   border-radius: var(--radius-sm);
   background: var(--overlay);
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--font-caption);
   line-height: 14px;
 }
 .scene-strip-name {
@@ -5768,7 +5815,7 @@ button.number-field-step:focus-visible {
   border-radius: var(--radius-sm);
   background: var(--color-bg-sunken);
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--font-caption);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -5842,7 +5889,7 @@ button.number-field-step:focus-visible {
   gap: var(--space-2);
   padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1);
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
   font-size: var(--font-size-sm, 13px);
   box-shadow: var(--shadow-md);
@@ -5862,25 +5909,76 @@ button.number-field-step:focus-visible {
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
   pointer-events: none;
 }
+/* T3: the ghost is a clip-sized block in the kind's colour with its icon,
+   name and length; a vertical line marks its start. */
 .timeline-asset-ghost {
   position: absolute;
   z-index: 6;
-  block-size: 28px;
-  border: 1px dashed var(--color-accent);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-inline: var(--space-2);
+  overflow: visible;
+  border: 2px solid var(--color-accent);
   border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  --clip-fill: var(--clip-shape);
+  background: color-mix(in srgb, var(--clip-fill) 80%, transparent);
+  color: var(--clip-label);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+.timeline-asset-ghost[data-kind='text'] {
+  --clip-fill: var(--clip-text);
+}
+.timeline-asset-ghost[data-kind='group'] {
+  --clip-fill: var(--clip-group);
+}
+.timeline-asset-ghost[data-kind='video'] {
+  --clip-fill: var(--clip-video);
+}
+.timeline-asset-ghost[data-kind='image'] {
+  --clip-fill: var(--clip-image);
+}
+.timeline-asset-ghost[data-kind='audio'] {
+  --clip-fill: var(--clip-audio);
+}
+.timeline-asset-ghost .ghost-name {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.timeline-asset-ghost .ghost-duration {
+  margin-inline-start: auto;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--accent-fill);
+  color: var(--text-on-accent);
+  font-variant-numeric: tabular-nums;
+}
+.timeline-drop-line {
+  position: absolute;
+  top: 0;
+  z-index: 5;
+  inline-size: 2px;
+  margin-inline-start: -1px;
+  background: var(--color-accent);
   pointer-events: none;
 }
-.timeline-asset-ghost span {
+.timeline-clip .replace-label {
   position: absolute;
-  inset-block-end: calc(100% + 2px);
-  inset-inline-start: 0;
-  padding: 0 var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  color: var(--text-on-accent);
-  font-size: 11px;
-  white-space: nowrap;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--color-danger, #e5484d) 55%, transparent);
+  color: #fff;
+  font-weight: 600;
+  pointer-events: none;
+}
+.timeline-clip.drag-origin {
+  opacity: 0.35;
 }
 .timeline-lane-insert {
   position: absolute;
@@ -5893,23 +5991,20 @@ button.number-field-step:focus-visible {
 }
 .timeline-lane-insert span {
   position: absolute;
-  inset-inline-start: -10px;
+  /* T3: the + sits at the line's centre. */
+  inset-inline-start: calc(50% - 10px);
   inset-block-start: -9px;
   display: grid;
   place-items: center;
   inline-size: 20px;
   block-size: 20px;
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
 }
 .timeline-clip.replace-target {
   outline: 2px solid var(--color-accent);
   outline-offset: 1px;
-}
-.replace-drop-menu {
-  display: grid;
-  min-inline-size: 180px;
 }
 /* J9: a clip dragged out of the timeline will go back where it was. */
 #timeline-foundation.drag-outside .timeline-clip.selected,
@@ -5976,9 +6071,9 @@ button.number-field-step:focus-visible {
   place-items: center;
   block-size: 16px;
   border-radius: var(--radius-pill);
-  background: var(--color-accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
-  font-size: 11px;
+  font-size: var(--font-caption);
   pointer-events: none;
 }
 
@@ -6014,7 +6109,7 @@ button.number-field-step:focus-visible {
   opacity: 1;
 }
 .timeline-gap [data-action='close-gap']:hover {
-  color: var(--color-danger);
+  color: var(--danger-text);
 }
 .timeline-hover-head {
   position: absolute;
@@ -6032,7 +6127,7 @@ button.number-field-step:focus-visible {
   border-radius: var(--radius-sm);
   background: var(--color-bg-raised);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: var(--font-caption);
   white-space: nowrap;
 }
 .timeline-playhead svg {
@@ -6071,7 +6166,7 @@ button.number-field-step:focus-visible {
   cursor: pointer;
 }
 .transition-add {
-  background: var(--color-accent);
+  background: var(--accent-fill);
   color: var(--text-on-accent);
   opacity: 0;
 }
@@ -6084,7 +6179,8 @@ button.number-field-step:focus-visible {
   margin-inline-start: -13px;
   border-radius: var(--radius-sm);
   background: var(--color-bg-raised);
-  color: var(--color-accent-text);
+  /* T7: accent text on a raised surface (white was unreadable in light). */
+  color: var(--accent-text);
   box-shadow: 0 0 0 1px var(--color-accent);
 }
 .transition-add:disabled,
@@ -6117,7 +6213,7 @@ button.number-field-step:focus-visible {
   border-radius: var(--radius-md);
   background: var(--color-bg-raised);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: var(--font-caption);
   cursor: pointer;
 }
 .transition-option[aria-pressed='true'] {
@@ -6176,7 +6272,7 @@ button.number-field-step:focus-visible {
   content: attr(data-shortcut);
   margin-inline-start: auto;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: var(--font-caption);
 }
 .timeline-menu button:disabled {
   opacity: 0.45;
@@ -6212,7 +6308,7 @@ button.number-field-step:focus-visible {
   border-radius: var(--radius-pill);
   background: var(--color-accent-soft);
   color: var(--color-accent-text);
-  font-size: 11px;
+  font-size: var(--font-caption);
   font-weight: 600;
   text-align: center;
 }
@@ -6233,7 +6329,7 @@ button.number-field-step:focus-visible {
   border-radius: var(--radius-md);
   background: var(--color-bg-raised);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: var(--font-caption);
   cursor: pointer;
 }
 .right-choice-preview {
@@ -6273,9 +6369,310 @@ button.number-field-step:focus-visible {
   position: absolute;
   transform: translateX(-50%);
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--font-caption);
 }
 .right-note {
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+/* T4: the Player bar is the timeline's top edge and its resize grip; the
+   "Timeline" title row is gone. A pill marks the grip. */
+.timeline > .panel-resizer.height {
+  top: -4px;
+  height: 9px;
+}
+.timeline > .panel-resizer.height::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-start: calc(50% - 18px);
+  inline-size: 36px;
+  block-size: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong, var(--color-border));
+}
+.timeline-controls[data-resize-grip] {
+  cursor: row-resize;
+}
+.timeline-controls[data-resize-grip]
+  :is(button, input, select, output, .number-field) {
+  cursor: pointer;
+}
+.timeline-controls[data-resize-grip] :is(input, output) {
+  cursor: text;
+}
+.editor-shell.timeline-collapsed .timeline-controls[data-resize-grip] {
+  cursor: default;
+}
+
+/* T4: the scene strip is hidden by default and slides in and out (240 ms,
+   about 0 with reduced motion) from the button left of Scenes. */
+.scene-strip {
+  transition:
+    block-size var(--motion-panel) var(--ease-panel, ease-in-out),
+    opacity var(--motion-panel) var(--ease-panel, ease-in-out);
+}
+.scene-strip.strip-hidden {
+  block-size: 0;
+  padding-block: 0;
+  border-top-width: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+/* T4: the status row under the canvas: icons 20 px, text 13 px, 32 px hit
+   areas. */
+#canvas-footer {
+  font-size: 13px;
+}
+#canvas-footer .icon-button,
+#canvas-footer .button.sm {
+  min-block-size: 32px;
+  min-inline-size: 32px;
+  font-size: 13px;
+}
+#canvas-footer .icon {
+  inline-size: 20px;
+  block-size: 20px;
+}
+#canvas-footer .preview-summary {
+  font-size: 13px;
+}
+#canvas-footer .composition-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+#scene-strip-show[aria-pressed='true'] {
+  color: var(--accent-text);
+  background: var(--color-accent-soft);
+}
+.timeline-controls[data-resize-grip] [role='group'] {
+  cursor: default;
+}
+#canvas-footer :is(.number-field-label, .number-field-unit, input) {
+  font-size: 13px;
+}
+
+/* T5: the Player bar. Labels 13 px, icons 20 px (Play 24 px in the largest
+   button), hit areas of at least 32 px, and a tabular timecode that turns
+   into a field on click. */
+.timeline-controls .transport-clip-tools button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: 32px;
+  font-size: 13px;
+}
+.timeline-controls .transport-group .icon-button {
+  min-inline-size: 32px;
+  min-block-size: 32px;
+}
+.timeline-controls .transport-group .icon {
+  inline-size: 20px;
+  block-size: 20px;
+}
+.timeline-controls .transport-play-button {
+  inline-size: 44px;
+  block-size: 44px;
+  border-radius: var(--radius-pill);
+}
+.timeline-controls .transport-play-button .icon {
+  inline-size: 24px;
+  block-size: 24px;
+}
+.player-timecode {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+  cursor: text;
+  white-space: nowrap;
+}
+.player-timecode:hover,
+.player-timecode:focus-visible {
+  background: var(--color-bg-raised);
+}
+.player-timecode-input {
+  inline-size: 9ch;
+  min-block-size: 28px;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* T6: while a fixed-height text box is edited, a dashed line marks where
+   it ends (the canvas clips the text past it and shows an overflow badge). */
+.text-editor.fixed-height {
+  /* Set inline to the box's stored height. */
+  --fixed-height: 100%;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--color-accent) 0 6px,
+    transparent 6px 10px
+  );
+  background-repeat: no-repeat;
+  background-size: 100% 1px;
+  background-position: 0 calc(var(--fixed-height) - 1px);
+}
+
+/* ===== T7: readable sizes ===== */
+/* Icons on controls are 20 px (24 on the rails and Play); a few inline
+   glyphs (a clip's kind, a field's step arrows, a select's chevron) stay
+   small because they sit inside a 20 px line. */
+button svg.icon,
+[role='button'] svg.icon,
+[role='menuitem'] svg.icon,
+.toolbar-button svg.icon {
+  inline-size: var(--icon-size);
+  block-size: var(--icon-size);
+  flex: none;
+}
+.icon-rail button svg.icon,
+.timeline-controls .transport-play-button svg.icon {
+  inline-size: var(--icon-size-rail);
+  block-size: var(--icon-size-rail);
+}
+.number-field-step svg.icon,
+.select-trigger > svg.icon,
+.clip-kind-icon svg.icon {
+  inline-size: 12px;
+  block-size: 12px;
+}
+/* Every icon-only control is at least 32 × 32 to hit. */
+.icon-button,
+.toolbar-button,
+.button.sm {
+  min-inline-size: var(--hit-min);
+  min-block-size: var(--hit-min);
+}
+/* Digits that change sit still. */
+input[type='number'],
+.number-field input,
+output,
+.player-timecode,
+.count,
+.count-badge,
+.timeline-ruler {
+  font-variant-numeric: tabular-nums;
+}
+/* Section titles are 15 px; labels 13 px. */
+.panel h2,
+.right-panel-header h2,
+.right-section-header,
+.inspector-group-title,
+.browse-title,
+.deep-panel-header h2,
+.draw-title {
+  font-size: var(--font-panel-title);
+}
+label,
+.toolbar-popover-label,
+.number-field-label {
+  font-size: var(--font-label);
+}
+/* T7: the brand wordmark (src/brand/brand.ts). */
+.brand-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  white-space: nowrap;
+}
+.brand-wordmark .brand-name {
+  font-size: var(--font-panel-title);
+  letter-spacing: -0.01em;
+}
+.brand-wordmark.brand-sm .brand-name {
+  font-size: var(--font-label);
+}
+.canvas-empty .brand-wordmark,
+.inspector-empty .brand-wordmark,
+.export-brand {
+  margin-block-end: var(--space-3);
+}
+.inspector-empty .brand-wordmark {
+  opacity: 0.9;
+}
+/* T7: hit areas of at least 32 px. */
+#project-name {
+  display: inline-flex;
+  align-items: center;
+}
+#project-name,
+.segmented button,
+.inspector-group-title {
+  min-block-size: var(--hit-min);
+}
+button.color-swatch-trigger {
+  min-inline-size: var(--hit-min);
+  min-block-size: var(--hit-min);
+}
+.selection-action {
+  min-inline-size: var(--hit-min);
+}
+input[type='range'] {
+  min-block-size: var(--hit-min);
+}
+
+/* T7: the transition + and chip are 24 px (they sit on a cut, centred). */
+.transition-add,
+.transition-chip {
+  inline-size: 24px;
+  block-size: 24px;
+  margin-inline-start: -12px;
+  margin-block-start: -12px;
+}
+.transition-chip {
+  inline-size: 30px;
+  margin-inline-start: -15px;
+}
+/* T7: with the larger sizes, narrow windows keep every row inside the
+   window: the planned 3D mode and the clip tools' labels give way first,
+   then the 5 s and first/last jumps (their keys still work). */
+@media (max-width: 1023px) {
+  .mode-switch [data-mode='animation3d'] {
+    display: none;
+  }
+  #project-name {
+    max-inline-size: 140px;
+  }
+}
+@media (max-width: 1100px) {
+  .timeline-controls .transport-clip-tools button span {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .timeline-controls
+    :is(
+      [data-action='back-5'],
+      [data-action='forward-5'],
+      [data-action='first-frame'],
+      [data-action='last-frame']
+    ) {
+    display: none;
+  }
+}
+/* T7: on a phone the status row wraps instead of running off the screen. */
+@media (max-width: 767px) {
+  #canvas-footer {
+    flex-wrap: wrap;
+    block-size: auto;
+    row-gap: var(--space-1);
+    padding-inline: var(--space-2);
+  }
+  #canvas-footer .canvas-zoom-controls {
+    flex-wrap: wrap;
+  }
 }

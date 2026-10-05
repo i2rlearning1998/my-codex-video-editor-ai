@@ -1,3 +1,4 @@
+import { wordmarkHtml } from '../brand/brand';
 // W5-A Export dialog (EXP-001, EXP-002, EXP-006, EXP-008, EXP-009, APP-015).
 // H3 (Canva): Quality (720p, 1080p, 4K: the output's shorter edge, in the
 // canvas's shape) and the file name; More options holds the format, frame
@@ -66,6 +67,7 @@ export function openExportDialog(options: ExportDialogOptions) {
     onClose: () => run?.cancel(),
     bodyBuilder: (body) => {
       body.innerHTML = `
+        <div class="export-brand">${wordmarkHtml('sm')}</div>
         <form class="export-form" id="export-form">
           ${
             scenes.length > 1

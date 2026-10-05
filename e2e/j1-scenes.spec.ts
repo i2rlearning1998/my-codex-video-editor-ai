@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, showSceneStrip } from './fixtures';
 import { pickColor, toolbarButton } from './controls';
 
 // J1: every scene owns its background and canvas size; undo is scoped to the
@@ -33,6 +33,7 @@ async function pixelAt(page: Page, x: number, y: number) {
   );
 }
 async function addBlankScene(page: Page) {
+  await showSceneStrip(page);
   await page.locator('#scene-strip-add').click();
   await page.locator('[data-action="strip-add-blank"]').click();
 }

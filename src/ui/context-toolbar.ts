@@ -22,7 +22,11 @@ import {
   type TransformValues,
 } from '../core';
 import { formatNumber, t } from '../i18n';
-import { locateLayer, type SceneLayer } from '../render/adapter';
+import {
+  locateLayer,
+  textLayoutForWidth,
+  type SceneLayer,
+} from '../render/adapter';
 import {
   MAX_BRUSH,
   MIN_BRUSH,
@@ -252,7 +256,10 @@ export function textStyleCommands(
   if (cleanup) commands.push(cleanup);
   const wrap = layer.properties.textWrap;
   const height = layer.properties.height;
+  const fixed = layer.properties.textFixedHeight;
   if (
+    // T6: a fixed-height box keeps its height.
+    !(fixed?.type === 'boolean' && fixed.value) &&
     !(wrap?.type === 'boolean' && wrap.value) &&
     height?.type === 'number' &&
     !isAnimated(height)
@@ -278,6 +285,20 @@ export function textStyleCommands(
       );
   }
   return commands;
+}
+/** T6: the height a text box's lines need at its width. */
+function textHeightNeeded(layer: SceneLayer): number {
+  const wrap = layer.properties.textWrap;
+  const width = layer.properties.width;
+  if (wrap?.type === 'boolean' && wrap.value && width?.type === 'number')
+    return textLayoutForWidth(layer, width.value).height;
+  const text = layer.properties.text;
+  const size = layer.properties.fontSize;
+  return layoutParagraphs(
+    text?.type === 'string' ? text.value : layer.name,
+    Math.min(size?.type === 'number' ? size.value : 32, 4096),
+    textStyleOf(layer),
+  ).height;
 }
 /** Brush size keeps the stroke in place: the path and box are re-padded. */
 export function brushSizeCommands(
@@ -1530,6 +1551,51 @@ export function mountContextToolbar(
     const anchorLabel = document.createElement('span');
     anchorLabel.className = 'toolbar-popover-label';
     anchorLabel.textContent = t('toolbar.anchor');
+    // T6: Auto height (on by default) grows the box with its text; off,
+    // the box keeps its height and clips the rest (marked on the canvas).
+    const fixed =
+      layer.properties.textFixedHeight?.type === 'boolean' &&
+      layer.properties.textFixedHeight.value;
+    const autoHeight = document.createElement('button');
+    autoHeight.type = 'button';
+    autoHeight.className = 'switch-row';
+    autoHeight.dataset.action = 'auto-height';
+    autoHeight.setAttribute('role', 'switch');
+    autoHeight.setAttribute('aria-checked', String(!fixed));
+    autoHeight.innerHTML = `<span></span><span class="switch" aria-hidden="true"></span>`;
+    autoHeight.firstElementChild!.textContent = t('toolbar.autoHeight');
+    autoHeight.title = t('toolbar.autoHeightTip');
+    autoHeight.onclick = () =>
+      safely(() => {
+        const current = selected() ?? layer;
+        const commands: Command[] = [
+          setProperty(compositionId, current, 'textFixedHeight', {
+            type: 'boolean',
+            value: !fixed,
+            animated: false,
+            keyframes: [],
+            constraints: [],
+          } as never),
+        ];
+        // Back to Auto height: the box grows to its text in the same step.
+        const needed = fixed ? textHeightNeeded(current) : 0;
+        const stored = current.properties.height;
+        if (
+          needed &&
+          stored?.type === 'number' &&
+          !isAnimated(stored) &&
+          needed > stored.value
+        )
+          commands.push(
+            setProperty(
+              compositionId,
+              current,
+              'height',
+              withValue(current, 'height', Math.ceil(needed), 'number'),
+            ),
+          );
+        run(fixed ? 'Auto height' : 'Fixed height', commands);
+      });
     return form(
       t('toolbar.advanced'),
       select(
@@ -1586,6 +1652,7 @@ export function mountContextToolbar(
       ),
       anchorLabel,
       anchor,
+      autoHeight,
     );
   };
   const shapeControls = (layer: SceneLayer) => {

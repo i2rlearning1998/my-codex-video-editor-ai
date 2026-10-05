@@ -1,4 +1,13 @@
 import { commands } from '../commands/registry';
+import {
+  groupOfTrack,
+  laneDropPlan,
+  resolveLaneDrop,
+  type DropClip,
+  type DropRow,
+  type LaneDropTarget,
+  type LaneGroup,
+} from './timeline-drop';
 import { assetDrag } from './drag-state';
 import {
   frameToTime,
@@ -16,6 +25,7 @@ import {
   laneGroupOfTrack,
   laneGroupOfLayer,
   findClip,
+  nextTrackName,
   clipTransition,
   type EditorEngine,
   type Command,
@@ -87,6 +97,25 @@ const timecode = (time: number) => {
   const seconds = (hundredths % 6000) / 100;
   return `${String(minutes).padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
 };
+/** T5: the Player bar's timecode, minutes and whole seconds (1:05). */
+const shortTimecode = (time: number) => {
+  const whole = Math.floor(Math.max(0, time) + 1e-6);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+};
+/** T5: a typed time: seconds (65.5), m:ss(.cc) or h:mm:ss; null if not one. */
+export function parseTimecode(text: string): number | null {
+  const parts = text.trim().split(':');
+  if (!parts.length || parts.length > 3) return null;
+  if (
+    !parts.every((part, index) =>
+      index === parts.length - 1
+        ? /^\d+(\.\d+)?$/.test(part)
+        : /^\d+$/.test(part),
+    )
+  )
+    return null;
+  return parts.reduce((total, part) => total * 60 + Number(part), 0);
+}
 
 /** J10: the kind of element a clip holds, for its colour and icon. */
 type ClipKind = 'text' | 'shape' | 'group' | 'video' | 'image' | 'audio';
@@ -102,21 +131,18 @@ const clipKind = (layer: { readonly type: string }): ClipKind =>
   (['text', 'shape', 'group', 'video', 'image', 'audio'] as const).find(
     (kind) => kind === layer.type,
   ) ?? 'shape';
-/** J9: where media dragged over the timeline would land. */
-export type AssetTarget =
-  | { readonly mode: 'lane'; readonly trackId: string; readonly time: number }
-  | { readonly mode: 'insert'; readonly index: number; readonly time: number }
-  | {
-      readonly mode: 'replace';
-      readonly layerId: string;
-      readonly clipId: string;
-      readonly time: number;
-    }
-  | {
-      readonly mode: 'refused';
-      readonly trackId: string;
-      readonly time: number;
-    };
+/** T3: where something dragged over the timeline would land. */
+export type AssetTarget = LaneDropTarget;
+/** T3: what is being dragged over the timeline. */
+export interface LaneDropInfo {
+  readonly group: LaneGroup;
+  readonly duration: number;
+  readonly name: string;
+  /** Clip kind for the ghost's colour and icon. */
+  readonly kind: string;
+  /** A clip on the timeline being moved (not a target of its own move). */
+  readonly moving?: string;
+}
 
 export class TimelineInteraction {
   #gesture: {
@@ -577,12 +603,30 @@ export function mountTimeline(
   // zoom out, zoom in, fit and collapse.
   const player = (action: string, icon: string, key: string, size = 15) =>
     `<button class="icon-button" data-action="${action}" aria-label="${t(key)}" title="${t(key)}">${iconSvg(icon, size)}</button>`;
-  root.innerHTML = `<div class="timeline-controls"><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 15)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 15)}Split</button><button data-action="duplicate">${iconSvg('duplicate', 15)}Duplicate</button><button data-action="marker">${iconSvg('marker', 15)}+ Marker</button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('previous-cut', 'skipBack', 'player.previous')}${player('back-5', 'back5', 'player.back5')}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 15)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 18)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 15)}</button>${player('forward-5', 'forward5', 'player.forward5')}<button class="icon-button" data-action="stop" aria-label="Stop playback" title="Stop">${iconSvg('stop', 14)}</button><div class="transport-time"><span class="player-timecode" data-timecode aria-live="off"></span><output data-current-time aria-label="Current time"></output><span class="composition-duration" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span data-composition-strip></span><span class="transport-divider" aria-hidden="true"></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out">${iconSvg('zoomOut', 15)}</button><span data-zoom-label></span><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in">${iconSvg('zoomIn', 15)}</button>${player('zoom-fit', 'fit', 'player.fit')}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 15)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
   scroll.setAttribute('aria-label', t('timeline.keys'));
   const headerWidth = 224;
+  /** T3: lane heights (visual lanes taller, for their pictures). */
+  const laneHeight = (group: string) => (group === 'visual' ? 56 : 36);
+  /** Row index → top and height (content pixels below the ruler), for every
+   *  lane then every unlinked layer row, as drawn. */
+  const rowSpans = () => {
+    const spans: { top: number; height: number }[] = [];
+    let top = 0;
+    for (const row of nleTimelineRows(session.source, session.timelineZoom)) {
+      const height = laneHeight(laneGroupOfTrack(row.track.type));
+      spans.push({ top, height });
+      top += height;
+    }
+    for (const _row of timelineRows(session.source, session.timelineZoom)) {
+      spans.push({ top, height: 36 });
+      top += 36;
+    }
+    return { spans, total: top };
+  };
   /** TL-046: filmstrip tiles (video) or a repeated thumbnail (image) behind the label. */
   const TILE_WIDTH = 48;
   const appendFilmstrip = (
@@ -768,6 +812,8 @@ export function mountTimeline(
     scroll: number;
     originalTime: number;
     moved: boolean;
+    /** T3: a single clip being moved follows the lane drop rules. */
+    laneMove?: { clipId: string; info: LaneDropInfo };
   } | null = null;
   const safely = (action: () => void) => {
     try {
@@ -808,14 +854,9 @@ export function mountTimeline(
   };
   let renderedProject: unknown;
   let renderedIdentity = '';
-  // J9: where a media drag over the timeline would land.
-  let assetTarget: AssetTarget | null = null;
   const render = () => {
     const { composition } = session.source;
-    root.classList.toggle(
-      'lane-refused',
-      controller.refused || assetTarget?.mode === 'refused',
-    );
+    root.classList.toggle('lane-refused', controller.refused);
     const zoom = session.timelineZoom;
     const rows = timelineRows(session.source, zoom).map((row) => {
       const preview = controller.previews.find(
@@ -856,16 +897,16 @@ export function mountTimeline(
         : null;
     root.querySelector('[data-composition-strip]')!.textContent =
       `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${composition.fps} fps`;
-    root.querySelector('[data-timecode]')!.textContent = t('player.timecode', {
-      current: timecode(session.currentTime),
-      total: timecode(composition.duration),
-    });
+    const code = root.querySelector<HTMLElement>('[data-timecode]')!;
+    if (!code.querySelector('input'))
+      code.textContent = t('player.timecode', {
+        current: shortTimecode(session.currentTime),
+        total: shortTimecode(composition.duration),
+      });
     root.querySelector('[data-current-time]')!.textContent =
       `${session.currentTime.toFixed(3)}s / ${formatTimelineTime(composition.duration)}s · frame ${timeToFrame(session.currentTime, composition.fps)}`;
     root.querySelector('[data-derived-duration]')!.textContent =
       `${formatTimelineTime(composition.duration)}s content length`;
-    root.querySelector('[data-zoom-label]')!.textContent =
-      `${zoom.toFixed(0)} px/s`;
     const span = spanTime();
     const guideTime = controller.snapTime ?? pointerSnap;
     const identity = JSON.stringify([
@@ -919,10 +960,7 @@ export function mountTimeline(
     }
     const rulerBar = document.createElement('div');
     rulerBar.className = 'timeline-ruler-bar';
-    rulerBar.style.setProperty(
-      '--track-height',
-      `${(trackRows.length + rows.length) * 34}px`,
-    );
+    rulerBar.style.setProperty('--track-height', `${rowSpans().total}px`);
     // J10: the selected clip's span and length on the ruler.
     const picked =
       session.selectedIds.length === 1
@@ -950,6 +988,7 @@ export function mountTimeline(
       // separates them, and a lane of another group refuses a dragged clip.
       const laneGroup = laneGroupOfTrack(row.track.type);
       line.dataset.laneGroup = laneGroup;
+      line.style.height = `${laneHeight(laneGroup)}px`;
       line.classList.toggle(
         'lane-group-start',
         trackIndex > 0 &&
@@ -1282,16 +1321,21 @@ export function mountTimeline(
       line.append(header, track);
       content.append(line);
     }
-    // J8: an empty scene shows one hint row per lane group; each adds that
-    // kind of element (the shell runs it).
-    if (
-      !rows.length &&
-      !composition.tracks.some((track) => track.clips.length)
-    ) {
+    // J8, T3: a hint row stands in for each lane group that has no lane with
+    // clips yet; each adds that kind of element (the shell runs it).
+    const missing = (['text', 'video', 'audio'] as const).filter(
+      (kind) =>
+        !composition.tracks.some(
+          (track) =>
+            track.clips.length &&
+            groupOfTrack(track.type) === (kind === 'video' ? 'visual' : kind),
+        ),
+    );
+    if (!rows.length && missing.length) {
       const hints = document.createElement('div');
       hints.className = 'timeline-hints';
       hints.style.marginLeft = `${headerWidth}px`;
-      for (const kind of ['text', 'video', 'audio'] as const) {
+      for (const kind of missing) {
         const hint = document.createElement('button');
         hint.type = 'button';
         hint.className = 'timeline-hint';
@@ -1314,10 +1358,7 @@ export function mountTimeline(
     );
     playhead.className = 'timeline-playhead';
     playhead.setAttribute('aria-label', 'Drag playhead');
-    playhead.style.setProperty(
-      '--track-height',
-      `${(trackRows.length + rows.length) * 34}px`,
-    );
+    playhead.style.setProperty('--track-height', `${rowSpans().total}px`);
     playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
     rulerBar.append(playhead);
     for (const marker of composition.markers) {
@@ -1342,7 +1383,7 @@ export function mountTimeline(
       guide.dataset.time = String(guideTime);
       guide.setAttribute('aria-hidden', 'true');
       guide.style.left = `${headerWidth + timeToPixel(guideTime, zoom)}px`;
-      guide.style.height = `${28 + (trackRows.length + rows.length) * 34}px`;
+      guide.style.height = `${28 + rowSpans().total}px`;
       content.append(guide);
     }
     if (marquee) {
@@ -1372,6 +1413,7 @@ export function mountTimeline(
       root.releasePointerCapture(id);
   };
   const cancel = () => {
+    if (pointer?.laneMove) clearAssetDropTarget();
     const originalTime =
       pointer?.kind === 'playhead' ? pointer.originalTime : undefined;
     const originalIds = marquee?.originalIds;
@@ -1468,6 +1510,7 @@ export function mountTimeline(
       const bounds = scroll.getBoundingClientRect();
       const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
         y = event.clientY - bounds.top + scroll.scrollTop - 28;
+      const { spans } = rowSpans();
       const selected = [
         ...nleTimelineRows(session.source, session.timelineZoom).flatMap(
           (row, index) =>
@@ -1493,8 +1536,9 @@ export function mountTimeline(
           (item) =>
             item.left + item.width >= Math.min(marquee!.x, x) &&
             item.left <= Math.max(marquee!.x, x) &&
-            (item.index + 1) * 34 >= Math.min(marquee!.y, y) &&
-            item.index * 34 <= Math.max(marquee!.y, y),
+            spans[item.index]!.top + spans[item.index]!.height >=
+              Math.min(marquee!.y, y) &&
+            spans[item.index]!.top <= Math.max(marquee!.y, y),
         )
         .map((item) => item.id);
       marquee!.endX = x;
@@ -1517,9 +1561,30 @@ export function mountTimeline(
               event.clientY < area.top ||
               event.clientY > area.bottom),
         );
+        // T3: a "+" line, the middle of another clip (Replace) and a lane of
+        // another group follow the lane drop rules; elsewhere the clip moves
+        // as before (grab offset, frame grid, snapping, insert preview).
+        if (pointer.laneMove) {
+          const target = laneDropAt(
+            pointer.laneMove.info,
+            event.clientX,
+            event.clientY,
+          );
+          if (
+            target &&
+            (target.mode === 'new-lane' ||
+              target.mode === 'replace' ||
+              target.mode === 'refused')
+          ) {
+            controller.update(0, undefined);
+            return;
+          }
+          clearAssetDropTarget();
+        }
         const bounds = scroll.getBoundingClientRect();
-        const index = Math.floor(
-          (event.clientY - bounds.top + scroll.scrollTop - 28) / 34,
+        const offset = event.clientY - bounds.top + scroll.scrollTop - 28;
+        const index = rowSpans().spans.findIndex(
+          (span) => offset >= span.top && offset < span.top + span.height,
         );
         const destinationIds = [
           ...nleTimelineRows(session.source, session.timelineZoom).map(
@@ -1633,6 +1698,36 @@ export function mountTimeline(
         originalTime: session.currentTime,
         moved: false,
       };
+      // T3: one unlinked clip on an unlocked lane moves by the lane drop
+      // rules (before, after, Replace, a new lane); several clips, linked
+      // clips and trims keep the earlier rules.
+      if (clip && !target.dataset.trim) {
+        const found = findClipByLayer(
+          session.source.composition,
+          clip.dataset.id!,
+        );
+        if (
+          found &&
+          !found.track.locked &&
+          session.selectedIds.length === 1 &&
+          !clipLinkId(found.clip)
+        ) {
+          const layer = locateLayer(
+            session.source.composition.layers,
+            found.clip.layerId,
+          )?.layer;
+          pointer.laneMove = {
+            clipId: found.clip.id,
+            info: {
+              group: laneGroupOfTrack(found.track.type) as LaneGroup,
+              duration: found.clip.duration,
+              name: found.clip.name,
+              kind: layer ? clipKind(layer) : 'shape',
+              moving: found.clip.id,
+            },
+          };
+        }
+      }
       root.setPointerCapture(event.pointerId);
       scroll.focus({ preventScroll: true });
       if (ruler) seek(event.clientX);
@@ -1673,6 +1768,7 @@ export function mountTimeline(
       update(event);
       const kind = pointer?.kind;
       const moved = pointer?.moved ?? false;
+      const laneMove = pointer?.laneMove;
       release();
       pointerSnap = undefined;
       // J9: a clip released outside the timeline stays where it was.
@@ -1685,7 +1781,14 @@ export function mountTimeline(
           event.clientY < area.top ||
           event.clientY > area.bottom);
       root.classList.remove('drag-outside');
-      if (kind === 'clip' && outside) {
+      if (kind === 'clip' && laneMove && laneDrop) {
+        const target = laneDrop.target;
+        clearAssetDropTarget();
+        controller.cancel();
+        if (moved && !outside && target.mode !== 'refused')
+          moveClipTo(laneMove.clipId, target);
+        render();
+      } else if (kind === 'clip' && outside) {
         controller.cancel();
         render();
       } else if (kind === 'clip') controller.finish();
@@ -1869,9 +1972,20 @@ export function mountTimeline(
         case 'stop':
           playback.stop();
           break;
-        // J13: the Player panel's buttons.
+        // J13, T5: the Player panel's buttons.
         case 'previous-cut':
           jumpToCut(session, -1);
+          break;
+        case 'first-frame':
+          session.setPlaying(false);
+          session.setCurrentTime(0);
+          break;
+        case 'last-frame':
+          session.setPlaying(false);
+          session.setCurrentTime(session.source.composition.duration);
+          break;
+        case 'timecode':
+          editTimecode(target);
           break;
         case 'back-5':
         case 'forward-5':
@@ -2092,161 +2206,309 @@ export function mountTimeline(
     if (reorderId)
       event.dataTransfer?.setData('application/x-editor-row', reorderId);
   };
-  // J9: while media from the Media panel is over the timeline, a ghost clip
-  // with its start time shows where it lands; near a lane's edge a purple
-  // line with + makes a new lane there; over a clip of the same kind, the
-  // drop offers Replace; a lane of another group refuses it.
+  // T3: while a library item, Media item or clip is dragged over the
+  // timeline: a clip-sized ghost (kind colour, name, length) where it would
+  // land with a vertical guide at its start; at a lane's top or bottom edge
+  // (or the strip above the first lane or below the last) a purple line with
+  // a centre + for a new lane; over a clip, its thirds insert before, insert
+  // after or Replace it; a lane of another group refuses (only + lines work).
   const ghost = document.createElement('div');
   ghost.className = 'timeline-asset-ghost';
   ghost.setAttribute('aria-hidden', 'true');
+  const ghostIcon = document.createElement('span');
+  ghostIcon.className = 'clip-kind-icon';
+  const ghostName = document.createElement('span');
+  ghostName.className = 'ghost-name';
   const ghostLabel = document.createElement('span');
-  ghost.append(ghostLabel);
+  ghostLabel.className = 'ghost-duration';
+  ghost.append(ghostIcon, ghostName, ghostLabel);
   const separator = document.createElement('div');
   separator.className = 'timeline-lane-insert';
   separator.setAttribute('aria-hidden', 'true');
   separator.innerHTML = `<span>${iconSvg('plus', 12)}</span>`;
+  const dropLine = document.createElement('div');
+  dropLine.className = 'timeline-drop-line';
+  dropLine.setAttribute('aria-hidden', 'true');
+  const replaceLabel = document.createElement('span');
+  replaceLabel.className = 'replace-label';
+  replaceLabel.textContent = t('timeline.replace');
+  replaceLabel.title = t('timeline.replaceHint');
   const clearAssetDropTarget = () => {
-    assetTarget = null;
-    ghost.remove();
-    separator.remove();
+    laneDrop = null;
+    for (const item of [ghost, separator, dropLine, replaceLabel])
+      item.remove();
     ghost.dataset.shown = separator.dataset.shown = 'false';
     root.classList.remove('lane-refused');
     for (const item of root.querySelectorAll(
-      '.asset-drop-target, .drop-refused, .replace-target',
+      '.asset-drop-target, .drop-refused, .replace-target, .drag-origin',
     ))
       item.classList.remove(
         'asset-drop-target',
         'drop-refused',
         'replace-target',
+        'drag-origin',
       );
   };
-  /** Marks the lane, clip or refusal for the current target (again after a
-   *  re-render, which rebuilds the rows). */
-  const showAssetTarget = () => {
-    const target = assetTarget;
-    root.classList.toggle(
-      'lane-refused',
-      controller.refused || target?.mode === 'refused',
-    );
-    if (!target) return;
-    const row = (id: string) =>
-      root.querySelector(
-        `.timeline-nle-row[data-track-id="${CSS.escape(id)}"]`,
+  /** The lanes as drawn (screen pixels), top to bottom. */
+  const dropRows = (): DropRow[] =>
+    [...root.querySelectorAll<HTMLElement>('.timeline-nle-row')].map((row) => {
+      const box = row.getBoundingClientRect();
+      const track = session.source.composition.tracks.find(
+        (item) => item.id === row.dataset.trackId,
       );
-    if (target.mode === 'lane')
-      row(target.trackId)?.classList.add('asset-drop-target');
-    if (target.mode === 'refused')
-      row(target.trackId)?.classList.add('drop-refused');
-    if (target.mode === 'replace')
-      root
-        .querySelector(
-          `.timeline-clip[data-clip-id="${CSS.escape(target.clipId)}"]`,
-        )
-        ?.classList.add('replace-target');
-    for (const overlay of [ghost, separator])
-      if (overlay.dataset.shown === 'true' && overlay.parentElement !== content)
-        content.append(overlay);
-  };
-  const assetOver = (event: DragEvent) => {
-    const drag = assetDrag();
-    const overLane = (event.target as HTMLElement).closest(
-      '.timeline-nle-row, .timeline-clip',
-    );
-    // Between lanes' elements (a border, the content's edge) the last target
-    // stands; it is cleared when the drag leaves the timeline.
-    if (!overLane) return;
-    clearAssetDropTarget();
-    // Without a known asset (a drag from elsewhere), the row is marked only.
-    if (!drag) {
-      (event.target as HTMLElement)
-        .closest('.timeline-nle-row')
-        ?.classList.add('asset-drop-target');
-      return;
-    }
+      return {
+        trackId: row.dataset.trackId!,
+        group: (row.dataset.laneGroup ?? 'text') as LaneGroup,
+        locked: !!track?.locked,
+        top: box.top,
+        bottom: box.bottom,
+      };
+    });
+  const dropClips = (): DropClip[] =>
+    [
+      ...root.querySelectorAll<HTMLElement>(
+        '.timeline-nle-row .timeline-clip[data-clip-id]',
+      ),
+    ].map((clip) => {
+      const box = clip.getBoundingClientRect();
+      return {
+        clipId: clip.dataset.clipId!,
+        trackId: clip.dataset.trackId!,
+        left: box.left,
+        right: box.right,
+      };
+    });
+  /** A time under the pointer, snapped (8 CSS px) to 0, the playhead and
+   *  clip edges by its start or its end. */
+  const dropTime = (x: number, duration: number, exclude?: string) => {
     const zoom = session.timelineZoom;
     const bounds = scroll.getBoundingClientRect();
-    const time = Math.max(
+    const raw = Math.max(
       0,
-      pixelToTime(
-        event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-        zoom,
-      ),
+      pixelToTime(x - bounds.left + scroll.scrollLeft - headerWidth, zoom),
     );
-    const group = laneGroupOfLayer(drag.type);
-    const lanes = [...root.querySelectorAll<HTMLElement>('.timeline-nle-row')];
-    const row = (event.target as HTMLElement).closest<HTMLElement>(
-      '.timeline-nle-row',
+    const candidates = [0, session.currentTime];
+    for (const track of session.source.composition.tracks)
+      for (const clip of track.clips)
+        if (clip.id !== exclude)
+          candidates.push(clip.startTime, clip.startTime + clip.duration);
+    let best = raw;
+    let distance = SNAP_THRESHOLD_PX / zoom;
+    for (const candidate of candidates)
+      for (const [edge, start] of [
+        [raw, candidate],
+        [raw + duration, candidate - duration],
+      ] as const) {
+        const d = Math.abs(edge - candidate);
+        if (d < distance && start >= 0) {
+          distance = d;
+          best = start;
+        }
+      }
+    return best;
+  };
+  /** Where a lane drop lands now: the target, its start and the drop info. */
+  let laneDrop: {
+    target: LaneDropTarget;
+    info: LaneDropInfo;
+    start: number;
+  } | null = null;
+  /** Draws the current lane drop (again after a re-render). */
+  const showAssetTarget = () => {
+    const drop = laneDrop;
+    root.classList.toggle(
+      'lane-refused',
+      controller.refused || drop?.target.mode === 'refused',
     );
-    const clipElement = (event.target as HTMLElement).closest<HTMLElement>(
-      '.timeline-clip[data-clip-id]',
-    );
+    if (!drop) return;
+    const { target, info, start } = drop;
+    // A clip being moved leaves a faint placeholder where it was.
+    if (info.moving)
+      root
+        .querySelector(
+          `.timeline-clip[data-clip-id="${CSS.escape(info.moving)}"]`,
+        )
+        ?.classList.add('drag-origin');
+    const zoom = session.timelineZoom;
     const contentBox = content.getBoundingClientRect();
-    const place = (element: HTMLElement, top: number) => {
-      element.style.top = `${top - contentBox.top}px`;
-      element.dataset.shown = 'true';
-      content.append(element);
-    };
-    // Over a clip of the same kind: Replace is offered on drop.
-    const clip = clipElement
-      ? findClip(session.source.composition, clipElement.dataset.clipId!)
-      : undefined;
-    const clipLayer = clip
-      ? locateLayer(session.source.composition.layers, clip.clip.layerId)?.layer
-      : undefined;
-    if (clip && clipLayer?.type === drag.type && drag.type !== 'audio') {
-      assetTarget = {
-        mode: 'replace',
-        layerId: clipLayer.id,
-        clipId: clip.clip.id,
-        time,
-      };
-      showAssetTarget();
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    const row = (id: string) =>
+      root.querySelector<HTMLElement>(
+        `.timeline-nle-row[data-track-id="${CSS.escape(id)}"]`,
+      );
+    const left = headerWidth + timeToPixel(start, zoom);
+    if (target.mode === 'refused') {
+      row(target.trackId)?.classList.add('drop-refused');
+      for (const item of [ghost, separator, dropLine]) item.remove();
       return;
     }
-    if (row) {
-      const box = row.getBoundingClientRect();
-      const index = lanes.indexOf(row);
-      const edge =
-        event.clientY - box.top < 6
-          ? index
-          : box.bottom - event.clientY < 6
-            ? index + 1
-            : -1;
-      const groupAt = (at: number) => lanes[at]?.dataset.laneGroup;
-      // A new lane between two lanes stays in the media's group.
-      if (
-        edge >= 0 &&
-        (groupAt(edge - 1) === group || groupAt(edge) === group)
-      ) {
-        assetTarget = { mode: 'insert', index: edge, time };
-        place(separator, edge === index ? box.top : box.bottom);
-        separator.style.left = `${headerWidth}px`;
-        ghost.style.left = `${headerWidth + timeToPixel(time, zoom)}px`;
-        ghost.style.width = `${Math.max(8, timeToPixel(drag.duration, zoom))}px`;
-        ghostLabel.textContent = t('timeline.ghostTime', {
-          time: formatTimelineTime(Math.round(time * 100) / 100),
-        });
-        place(ghost, (edge === index ? box.top : box.bottom) - 14);
-        if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-        return;
-      }
-      if (row.dataset.laneGroup !== group) {
-        assetTarget = { mode: 'refused', trackId: row.dataset.trackId!, time };
-        showAssetTarget();
-        // The drop still arrives, so the shell can say why it was refused.
-        return;
-      }
-      assetTarget = { mode: 'lane', trackId: row.dataset.trackId!, time };
-      showAssetTarget();
-      ghost.style.left = `${headerWidth + timeToPixel(time, zoom)}px`;
-      ghost.style.width = `${Math.max(8, timeToPixel(drag.duration, zoom))}px`;
-      ghostLabel.textContent = t('timeline.ghostTime', {
-        time: formatTimelineTime(Math.round(time * 100) / 100),
-      });
-      place(ghost, box.top + 3);
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    if (target.mode === 'replace') {
+      ghost.remove();
+      separator.remove();
+      dropLine.remove();
+      const clip = root.querySelector<HTMLElement>(
+        `.timeline-clip[data-clip-id="${CSS.escape(target.clipId)}"]`,
+      );
+      clip?.classList.add('replace-target');
+      if (clip && replaceLabel.parentElement !== clip)
+        clip.append(replaceLabel);
+      return;
     }
+    replaceLabel.remove();
+    ghost.dataset.kind = info.kind;
+    ghostIcon.innerHTML = iconSvg(
+      CLIP_ICONS[info.kind as ClipKind] ?? CLIP_ICONS.shape,
+      12,
+    );
+    ghostName.textContent = info.name;
+    ghostLabel.textContent = t('timeline.ghostTime', {
+      time: formatTimelineTime(Math.round(info.duration * 100) / 100),
+    });
+    ghost.style.left = `${left}px`;
+    ghost.style.width = `${Math.max(8, timeToPixel(info.duration, zoom))}px`;
+    let top: number;
+    let height: number;
+    if (target.mode === 'new-lane') {
+      const rows = dropRows();
+      const lineY =
+        target.index < rows.length
+          ? rows[target.index]!.top
+          : (rows.at(-1)?.bottom ?? contentBox.top + 28);
+      separator.style.top = `${lineY - contentBox.top}px`;
+      separator.style.left = `${headerWidth}px`;
+      separator.dataset.shown = 'true';
+      content.append(separator);
+      // The "+" line is the mark; a ghost over it would hide it.
+      ghost.remove();
+      dropLine.style.left = `${left}px`;
+      dropLine.style.height = `${content.scrollHeight}px`;
+      content.append(dropLine);
+      return;
+    } else {
+      separator.remove();
+      const lane = row(target.trackId)!;
+      const box = lane.getBoundingClientRect();
+      top = box.top - contentBox.top + 4;
+      height = Math.max(28, box.height - 8);
+    }
+    ghost.style.top = `${top}px`;
+    ghost.style.height = `${height}px`;
+    ghost.dataset.shown = 'true';
+    content.append(ghost);
+    dropLine.style.left = `${left}px`;
+    dropLine.style.height = `${content.scrollHeight}px`;
+    content.append(dropLine);
+  };
+  /** T3: the pointer of a drag is at `x`, `y`; returns the target. */
+  const laneDropAt = (info: LaneDropInfo, x: number, y: number) => {
+    clearAssetDropTarget();
+    const time = dropTime(x, info.duration, info.moving);
+    const target = resolveLaneDrop({
+      x,
+      y,
+      time,
+      group: info.group,
+      rows: dropRows(),
+      clips: dropClips(),
+      ...(info.moving ? { exclude: new Set([info.moving]) } : {}),
+    });
+    if (!target) return null;
+    let start = time;
+    if (target.mode !== 'refused')
+      try {
+        start = laneDropPlan(session.source.composition, target, {
+          duration: info.duration,
+          ...(info.moving ? { moving: info.moving } : {}),
+        }).startTime;
+      } catch {
+        start = time;
+      }
+    laneDrop = { target, info, start };
+    showAssetTarget();
+    return target;
+  };
+  /** T3: moves one clip to a lane target as one undo step (a new lane,
+   *  later clips pushed, a replaced clip removed). */
+  const moveClipTo = (
+    clipId: string,
+    target: Exclude<LaneDropTarget, { mode: 'refused' }>,
+  ) => {
+    const composition = session.source.composition;
+    const found = findClip(composition, clipId);
+    if (!found) return;
+    const plan = laneDropPlan(composition, target, {
+      duration: found.clip.duration,
+      moving: clipId,
+    });
+    const commands: Command[] = [];
+    if (plan.removeLayerId)
+      commands.push({
+        type: 'DELETE_LAYER',
+        compositionId: composition.id,
+        layerId: plan.removeLayerId,
+      });
+    let trackId = plan.trackId;
+    if (!trackId && target.mode === 'new-lane') {
+      trackId = crypto.randomUUID();
+      commands.push(
+        {
+          type: 'CREATE_TRACK',
+          compositionId: composition.id,
+          track: {
+            id: trackId,
+            name: nextTrackName(composition, found.track.type),
+            type: found.track.type,
+            order: composition.tracks.length,
+            enabled: true,
+            locked: false,
+            muted: false,
+            clips: [],
+          },
+        },
+        {
+          type: 'MOVE_TRACK',
+          compositionId: composition.id,
+          trackId,
+          index: target.index,
+        },
+      );
+    }
+    if (!trackId) return;
+    if (trackId !== found.track.id)
+      commands.push({
+        type: 'MOVE_CLIP',
+        compositionId: composition.id,
+        clipId,
+        trackId,
+      });
+    commands.push(...plan.pushes);
+    if (plan.startTime !== found.clip.startTime)
+      commands.push({
+        type: 'SET_CLIP_TIMING',
+        compositionId: composition.id,
+        clipId,
+        startTime: plan.startTime,
+        duration: found.clip.duration,
+      });
+    if (commands.length) engine.commands.transaction('Move clip', commands);
+  };
+  const assetOver = (event: {
+    readonly target: EventTarget | null;
+    readonly clientX: number;
+    readonly clientY: number;
+  }) => {
+    const drag = assetDrag();
+    if (!drag) return;
+    laneDropAt(
+      {
+        group: laneGroupOfLayer(drag.type) as LaneGroup,
+        duration: drag.duration,
+        name: drag.name,
+        kind: drag.type,
+      },
+      event.clientX,
+      event.clientY,
+    );
+    void event.target;
   };
   const dragover = (event: DragEvent) => {
     const asset = event.dataTransfer?.types.includes(
@@ -2292,6 +2554,59 @@ export function mountTimeline(
           },
         ]);
     });
+  // T5: a click on the timecode turns it into a field; Enter (or leaving
+  // it) moves the playhead there, clamped to the scene; Escape cancels.
+  const editTimecode = (code: HTMLElement) => {
+    if (code.querySelector('input')) return;
+    session.setPlaying(false);
+    const input = document.createElement('input');
+    input.className = 'player-timecode-input';
+    input.setAttribute('aria-label', t('player.timecodeTip'));
+    input.value = timecode(session.currentTime).replace(/^0(\d)/, '$1');
+    let done = false;
+    const close = (commit: boolean) => {
+      if (done) return;
+      done = true;
+      const value = parseTimecode(input.value);
+      input.remove();
+      if (commit && value !== null)
+        session.setCurrentTime(
+          Math.min(session.source.composition.duration, value),
+        );
+      else if (commit) report(new Error(t('player.timecodeInvalid')));
+      code.textContent = t('player.timecode', {
+        current: shortTimecode(session.currentTime),
+        total: shortTimecode(session.source.composition.duration),
+      });
+      code.focus({ preventScroll: true });
+    };
+    input.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        close(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        close(false);
+      }
+    });
+    input.addEventListener('blur', () => close(true));
+    input.addEventListener('click', (event) => event.stopPropagation());
+    code.replaceChildren(input);
+    input.focus();
+    input.select();
+  };
+  const timecodeButton = root.querySelector<HTMLElement>('[data-timecode]')!;
+  timecodeButton.addEventListener('keydown', (event) => {
+    if (
+      event.target === timecodeButton &&
+      (event.key === 'Enter' || event.key === ' ')
+    ) {
+      event.preventDefault();
+      event.stopPropagation();
+      editTimecode(timecodeButton);
+    }
+  });
   const menuItem = (label: string, action: string, role = 'menuitem') => {
     const item = button(label, action);
     item.setAttribute('role', role);
@@ -2614,6 +2929,11 @@ export function mountTimeline(
   for (const [name, listener] of Object.entries(listeners))
     root.addEventListener(name, listener as EventListener);
   window.addEventListener('blur', cancel);
+  // T1: a hidden page ends a clip drag too (the same rule as every drag).
+  const hidden = () => {
+    if (document.visibilityState === 'hidden') cancel();
+  };
+  document.addEventListener('visibilitychange', hidden);
   window.addEventListener('resize', cancel);
   let observedProject = engine.state;
   let observedComposition = session.source.composition.id;
@@ -2712,8 +3032,13 @@ export function mountTimeline(
       input.focus();
       input.select();
     },
-    /** J9: where a media drop over the timeline lands, while one is over it. */
-    assetTarget: () => assetTarget,
+    /** T3: where a drop over the timeline lands, while one is over it. */
+    assetTarget: () => laneDrop?.target ?? null,
+    /** T3: the drag controller's pointer is over the timeline at `x`, `y`;
+     *  returns the target (null between lanes). */
+    dragOverAt(info: LaneDropInfo, x: number, y: number) {
+      return laneDropAt(info, x, y);
+    },
     clearAssetTarget: clearAssetDropTarget,
     /** J6: highlights a layer's clip (Show element timing), or none. */
     highlight(id: string | null) {
@@ -2741,6 +3066,7 @@ export function mountTimeline(
       for (const [name, listener] of Object.entries(listeners))
         root.removeEventListener(name, listener as EventListener);
       window.removeEventListener('blur', cancel);
+      document.removeEventListener('visibilitychange', hidden);
       document.removeEventListener('dragend', clearAssetDropTarget);
       window.removeEventListener('resize', cancel);
       scroll.removeEventListener('scroll', onScroll);

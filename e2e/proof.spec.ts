@@ -1,6 +1,13 @@
 import { test, expect, hook, toScreen, artboard, rulerBox } from './fixtures';
 import type { Page } from '@playwright/test';
 
+/** T5: Stop left the Player bar; the palette runs it. */
+async function stopFromPalette(page: Page) {
+  await page.keyboard.press('Control+k');
+  await page.locator('#command-palette input').fill('Stop (back to the start)');
+  await page.keyboard.press('Enter');
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
   await expect
@@ -168,9 +175,7 @@ test('[PB-001] playback tracks elapsed time and Stop holds the playhead', async 
   expect(playing.playing).toBe(true);
   expect(playing.time).toBeGreaterThanOrEqual(0.7);
   expect(playing.time).toBeLessThanOrEqual(1.3);
-  await page
-    .getByRole('button', { name: 'Stop playback', exact: true })
-    .click();
+  await stopFromPalette(page);
   const stopped = Date.now();
   await expect
     .poll(

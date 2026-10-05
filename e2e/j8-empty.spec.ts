@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, showSceneStrip } from './fixtures';
 
 // J8: a shimmer skeleton while the editor loads, and hint rows on an empty
 // timeline.
@@ -12,6 +12,7 @@ const scene = async (page: Page) => {
 const hints = (page: Page) =>
   page.locator('#timeline-foundation .timeline-hint');
 async function blankScene(page: Page) {
+  await showSceneStrip(page);
   await page.locator('#scene-strip-add').click();
   await page.locator('[data-action="strip-add-blank"]').click();
   await expect.poll(async () => (await scene(page)).layers.length).toBe(0);
@@ -54,8 +55,9 @@ test('[TL-065] an empty scene shows + Add text, + Add video and + Add audio rows
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
-  // The example has clips: no hints.
-  await expect(hints(page)).toHaveCount(0);
+  // The example has only text-and-shape lanes: (T3) hints stand in for the
+  // missing video and audio lanes.
+  await expect(hints(page)).toHaveText(['+ Add video', '+ Add audio']);
   await blankScene(page);
   await expect(hints(page)).toHaveText([
     '+ Add text',
@@ -69,7 +71,8 @@ test('[TL-065] an empty scene shows + Add text, + Add video and + Add audio rows
   expect(layers[0]!.type).toBe('text');
   await expect(page.locator('.text-editor')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(hints(page)).toHaveCount(0);
+  // (T3) The text lane exists now; video and audio still have none.
+  await expect(hints(page)).toHaveText(['+ Add video', '+ Add audio']);
   // + Add video: the Media panel with the file picker.
   await blankScene(page);
   const chooser = page.waitForEvent('filechooser');

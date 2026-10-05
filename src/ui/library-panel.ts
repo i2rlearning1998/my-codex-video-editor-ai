@@ -2,6 +2,7 @@
 // graphics), Text and Transitions are browse panels (browse-panel.ts) over
 // Starter Pack 1, with drawn previews; a click or a drop adds the item
 // through the Command Bus.
+import { drags } from './drag-controller';
 import { createNumberField } from './components/number-field';
 import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
@@ -20,11 +21,7 @@ import {
 import { iconSvg } from './icons';
 import { confirmDialog, escapeHtml } from './components/modal';
 import { itemName, libraryCommands } from './library-insert';
-import {
-  LIBRARY_DRAG_TYPE,
-  recent,
-  type LibraryActions,
-} from './library-actions';
+import { recent, type LibraryActions } from './library-actions';
 import { myTemplates, type MyTemplate } from './my-templates';
 import type { EditorSession } from './session';
 import {
@@ -377,7 +374,11 @@ export function mountLibraryPanels(
         ? { disabled: later(6, item.data.planned) }
         : {
             activate: () => actions.insert(item),
-            drag: { type: LIBRARY_DRAG_TYPE, data: item.id },
+            drag: () => ({
+              kind: 'library',
+              id: item.id,
+              name: itemName(item),
+            }),
           }),
       ...(item.type === 'text' && item.section === 'titles'
         ? {
@@ -425,6 +426,7 @@ export function mountLibraryPanels(
       options.addPreset(preset);
       recent.add('element', `preset-${preset}`);
     },
+    drag: () => ({ kind: 'preset', id: preset, name: t(`shape.${preset}`) }),
   });
   const mineCard = (template: MyTemplate): BrowseCard => ({
     id: template.id,
@@ -436,6 +438,12 @@ export function mountLibraryPanels(
     className: 'library-card my-template-card',
     data: { myTemplate: template.id },
     activate: () => actions.insertMine(template),
+    drag: () => ({
+      kind: 'mine',
+      id: template.id,
+      name: template.name,
+      thumb: template.poster ?? null,
+    }),
     menu: () =>
       void confirmDialog(
         escapeHtml(t('myTemplates.deleteConfirm', { name: template.name })),
@@ -819,6 +827,12 @@ export function mountLibraryPanels(
             add.id = 'add-text-box';
             add.textContent = t('text.addBox');
             add.onclick = () => options.addTextBox();
+            // T1: the text box can be dragged onto the canvas or timeline.
+            drags().source(add, () => ({
+              kind: 'textbox',
+              id: 'text-box',
+              name: t('text.boxName'),
+            }));
             const magic = document.createElement('button');
             magic.type = 'button';
             magic.className = 'button browse-secondary';

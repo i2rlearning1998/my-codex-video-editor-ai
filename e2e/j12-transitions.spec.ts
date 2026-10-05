@@ -8,6 +8,7 @@ import {
   rulerBox,
   showCategory,
   toScreen,
+  showSceneStrip,
 } from './fixtures';
 
 // J12: transitions. Two pictures touch on one lane; a + at the cut opens the
@@ -104,6 +105,7 @@ test('[TR-011] a + where two clips touch opens the Transition panel; a cross fad
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
   // A blank scene with two pictures, 0..5 s and 5..10 s, on one lane.
+  await showSceneStrip(page);
   await page.locator('#scene-strip-add').click();
   await page.locator('[data-action="strip-add-blank"]').click();
   await showCategory(page, 'Media');

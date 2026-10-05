@@ -21,7 +21,12 @@ import {
   nextTrackName,
   trackTypeForLayer,
 } from '../core';
-import { locateLayer, type SceneLayer } from '../render/adapter';
+import {
+  deriveRenderItems,
+  locateLayer,
+  type RenderSource,
+  type SceneLayer,
+} from '../render/adapter';
 import {
   Canvas2DRenderer,
   fitViewport,
@@ -60,12 +65,17 @@ import { bindCanvasInteraction } from './canvas-interaction';
 import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
-import { mountTimeline, type AssetTarget } from './timeline';
+import { mountTimeline, type AssetTarget, type LaneDropInfo } from './timeline';
+import { laneDropPlan, type LaneGroup } from './timeline-drop';
+import { laneGroupOfLayer } from '../core';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
-import { addShape } from './shapes';
+import { addShape, addShapeCommands, type ShapePreset } from './shapes';
+import { myTemplates } from './my-templates';
+import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
+import { wordmarkHtml } from '../brand/brand';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
 import { scenePosterUrl } from './scene-poster';
@@ -178,7 +188,7 @@ export function mountEditorShell(
       <header class="topbar">
         <div class="topbar-start">
           <button type="button" id="menu-trigger" class="icon-button menu-trigger" aria-haspopup="true" aria-expanded="false" aria-controls="app-menu" aria-label="${t('menu.main')}" title="${t('menu.main')}">${iconSvg('menu')}</button>
-          <span class="brand-mark" aria-hidden="true">N</span>
+          ${wordmarkHtml('sm')}
           <div class="project-title">
             <span class="project-dot" id="save-status-dot" aria-hidden="true"></span>
             <span id="project-name" tabindex="0" role="button" aria-label="${t('project.renameLabel')}"></span>
@@ -239,19 +249,19 @@ export function mountEditorShell(
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden><h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
-          <div class="composition-picker"><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 16)}<span>${t('scene.board')}</span></button></div>
+          <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
           <div class="preview-summary"><span id="composition-summary"></span><span id="selection-summary" role="status">${t('selection.none')}</span><span id="zoom" class="sr-only">${t('canvas.fit')}</span></div>
           <div class="canvas-zoom-controls">
-            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')} (H)">${iconSvg('hand')}</button>
-            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut')}</button>
+            <button type="button" class="icon-button" data-canvas-tool="hand" aria-pressed="false" aria-label="${t('canvas.hand')}" title="${t('canvas.hand')} (H)">${iconSvg('hand', 20)}</button>
+            <button type="button" class="icon-button" data-canvas-zoom="out" aria-label="${t('canvas.zoomOut')}" title="${t('canvas.zoomOut')} (Ctrl+-)">${iconSvg('zoomOut', 20)}</button>
             <span id="canvas-zoom-field"></span>
-            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn')}</button>
-            <button type="button" class="button sm ghost" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit', 16)}<span>${t('canvas.fit')}</span></button>
+            <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn', 20)}</button>
+            <button type="button" class="button sm ghost" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit', 20)}<span>${t('canvas.fit')}</span></button>
             <button type="button" class="button sm ghost" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
-            <button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen')}</button>
+            <button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen', 20)}</button>
           </div>
         </div>
         <p class="render-warning" id="render-warning" role="status" hidden></p>
@@ -261,10 +271,10 @@ export function mountEditorShell(
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
-        <div id="right-panel-empty" class="inspector-empty" hidden><h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
+        <div id="right-panel-empty" class="inspector-empty" hidden>${wordmarkHtml('sm')}<h3 id="right-panel-empty-title"></h3><p id="right-panel-empty-description"></p><span class="quiet-tag">${t('library.later')}</span></div>
       </aside>
       <nav class="icon-rail icon-rail-right" id="rail-right" aria-label="${t('inspector.title')}">${RIGHT_SECTIONS.map((name) => rightRailButton(name, RIGHT_ICONS[name], name === 'Properties')).join('')}</nav>
-      <section class="timeline" aria-label="${t('timeline.title')}"><div class="timeline-header"><div class="timeline-label"><h2>${t('timeline.title')}</h2></div></div><div id="timeline-foundation"></div></section>
+      <section class="timeline" aria-label="${t('timeline.title')}"><div id="timeline-foundation"></div></section>
       <footer class="statusbar sr-only"><span id="status" role="status" aria-live="polite">${t('status.ready')}</span></footer>
       <div class="drawer-scrim" id="drawer-scrim" hidden></div>
       <div class="drop-overlay" id="drop-overlay" hidden>${t('drop.overlay')}</div>
@@ -1428,16 +1438,18 @@ export function mountEditorShell(
       renderFrame,
       // I2: Designs in Project Media (a library change, not an undo step).
       saveFrame: (blob, name) =>
-        mediaPanel.importFiles(
-          [
-            new File(
-              [blob],
-              name.replace(/\.png$/, `-${Date.now().toString(36)}.png`),
-              { type: 'image/png' },
-            ),
-          ],
-          { design: true },
-        ),
+        mediaPanel
+          .importFiles(
+            [
+              new File(
+                [blob],
+                name.replace(/\.png$/, `-${Date.now().toString(36)}.png`),
+                { type: 'image/png' },
+              ),
+            ],
+            { design: true },
+          )
+          .then(() => undefined),
       toast: (text, kind) => showToast(text, kind),
     });
   };
@@ -1712,6 +1724,49 @@ export function mountEditorShell(
       session.select(layer.id);
     },
   });
+  // T4: the scene strip is hidden by default; the button left of Scenes
+  // shows it (240 ms slide) and the choice is kept in this browser. The
+  // strip stays mounted while hidden (inert).
+  const stripHost = element('#scene-strip');
+  const stripButton = element<HTMLButtonElement>('#scene-strip-show');
+  const STRIP_KEY = 'aive.sceneStrip.shown';
+  const showStrip = (shown: boolean, remember: boolean) => {
+    stripHost.classList.toggle('strip-hidden', !shown);
+    stripHost.inert = !shown;
+    stripButton.setAttribute('aria-pressed', String(shown));
+    const label = t(shown ? 'scene.stripHide' : 'scene.stripShow');
+    stripButton.setAttribute('aria-label', label);
+    stripButton.title = label;
+    if (remember)
+      try {
+        localStorage.setItem(STRIP_KEY, shown ? '1' : '0');
+      } catch {
+        // A view setting only.
+      }
+  };
+  let stripShown = false;
+  try {
+    stripShown = localStorage.getItem(STRIP_KEY) === '1';
+  } catch {
+    // A view setting only.
+  }
+  // The first state applies at once: a slide on load would move the canvas
+  // after it has been laid out.
+  stripHost.style.transition = 'none';
+  showStrip(stripShown, false);
+  void stripHost.offsetHeight;
+  stripHost.style.transition = '';
+  stripButton.onclick = () => {
+    stripShown = !stripShown;
+    showStrip(stripShown, true);
+  };
+  // The canvas refits as the strip slides.
+  // (Only the strip's own slide: transitions inside it bubble here too, and
+  // a refit at a random moment would cut short a gesture on the canvas.)
+  stripHost.addEventListener('transitionend', (event) => {
+    if (event.target === stripHost && event.propertyName === 'block-size')
+      resize();
+  });
   // I3: the scene strip under the canvas.
   mountSceneStrip({
     host: element('#scene-strip'),
@@ -1753,12 +1808,17 @@ export function mountEditorShell(
     },
   });
   // MED-001/MED-002: the Import button and OS file drops both import into Project Media.
-  const importMedia = (files: readonly File[]) => {
-    if (!files.length) return;
+  const importMedia = async (files: readonly File[]): Promise<string[]> => {
+    if (!files.length) return [];
     activeCategory = 'Media';
     applyCategory(activeCategory);
     workspace?.setOpen('left', true);
-    safely(() => mediaPanel.importFiles(files));
+    try {
+      return await mediaPanel.importFiles(files);
+    } catch (error) {
+      reportError(error);
+      return [];
+    }
   };
   const mediaInput = element<HTMLInputElement>('#import-media-input');
   element<HTMLButtonElement>('#import-media').onclick = () =>
@@ -1844,7 +1904,7 @@ export function mountEditorShell(
   mediaInput.onchange = () => {
     const files = [...(mediaInput.files ?? [])];
     mediaInput.value = '';
-    importMedia(files);
+    void importMedia(files);
   };
 
   // Right panel: shared "section" state driven by both the tab row and the icon rail.
@@ -2043,37 +2103,72 @@ export function mountEditorShell(
     }
   });
 
-  // Drop overlay: shown while an OS file is dragged over the window (distinct from the
-  // internal application/x-editor-asset drag, which uses its own mime type and targets).
+  // Drop overlay: shown while an OS file is dragged over the window. In-app
+  // drags never use the browser's drag and drop (T1 drag controller); a
+  // Project Media card or library card drag that a test or browser still
+  // sends as HTML5 data is a reference, never a file (MED-015 regression).
   const dropOverlay = element('#drop-overlay');
   let dragDepth = 0;
-  // A Project Media card dragged onto the canvas or timeline is a reference to
-  // an asset already stored, never a new file, even if the browser also
-  // attaches file data to the drag (MED-015 regression).
   const isFileDrag = (event: DragEvent) =>
     !!event.dataTransfer?.types.includes('Files') &&
     !event.dataTransfer.types.includes('application/x-editor-asset') &&
     !event.dataTransfer.types.includes(LIBRARY_DRAG_TYPE);
+  // T1: the overlay is drawn over the page but never takes the pointer, so
+  // the element under it still receives the drop (a canvas or timeline drop
+  // also places the files). Its counter counts file drags only and is reset
+  // by every way a file drag can end, so it can never stay up.
+  const hideOverlay = () => {
+    dragDepth = 0;
+    dropOverlay.hidden = true;
+  };
   window.addEventListener('dragenter', (event) => {
     if (!isFileDrag(event)) return;
     dragDepth++;
     dropOverlay.hidden = false;
   });
-  window.addEventListener('dragleave', () => {
+  window.addEventListener('dragleave', (event) => {
+    if (!isFileDrag(event)) return;
+    // Leaving the window has no related element.
+    if (!event.relatedTarget) return hideOverlay();
     dragDepth = Math.max(0, dragDepth - 1);
     if (dragDepth === 0) dropOverlay.hidden = true;
   });
   window.addEventListener('dragover', (event) => {
-    if (isFileDrag(event)) event.preventDefault();
-  });
-  const windowDrop = (event: DragEvent) => {
     if (!isFileDrag(event)) return;
     event.preventDefault();
-    dragDepth = 0;
-    dropOverlay.hidden = true;
-    importMedia([...(event.dataTransfer?.files ?? [])]);
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  });
+  window.addEventListener('dragend', hideOverlay);
+  const windowDrop = (event: DragEvent) => {
+    // Any drop ends the overlay, whatever handles it.
+    hideOverlay();
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const files = [...(event.dataTransfer?.files ?? [])];
+    if (!files.length) return;
+    const over = event.target instanceof Element ? event.target : null;
+    const onCanvas = over === canvas;
+    const onTimeline = !!over?.closest('#timeline-foundation .timeline-scroll');
+    const point = onCanvas ? canvasPoint(event.clientX, event.clientY) : null;
+    const time = onTimeline ? timelineTimeAt(event.clientX) : undefined;
+    const imported = importMedia(files);
+    if (!onCanvas && !onTimeline) return;
+    // Dropped on the canvas or the timeline: also placed there.
+    void imported.then((ids) =>
+      safely(() => {
+        for (const id of ids)
+          addPayload(
+            { kind: 'asset', id, name: id },
+            {
+              ...(point ? { point } : {}),
+              ...(time !== undefined ? { time } : {}),
+            },
+          );
+      }),
+    );
   };
-  window.addEventListener('drop', windowDrop);
+  window.addEventListener('drop', windowDrop, true);
 
   const resize = () =>
     safely(() => {
@@ -2112,7 +2207,18 @@ export function mountEditorShell(
     canvasView.toggleHand();
   /** Adds an asset as a layer with a clip, at a composition point or the
    *  centre (canvas), or on a timeline track (the insert rule). */
+  /** Adds an asset as a layer with a clip (see `assetCommands`). */
   const placeAsset = (
+    asset: (typeof session.source.assets)[number],
+    place: Parameters<typeof assetCommands>[1],
+  ) => {
+    const built = assetCommands(asset, place);
+    engine.commands.transaction(built.label, built.commands);
+    session.select(built.layerId);
+  };
+  /** The commands adding an asset as a layer with a clip, at a composition
+   *  point or the centre (canvas), or on a timeline track (the insert rule). */
+  const assetCommands = (
     asset: (typeof session.source.assets)[number],
     place: {
       time: number;
@@ -2237,11 +2343,12 @@ export function mountEditorShell(
       trackId: target.trackId,
       clip,
     });
-    engine.commands.transaction(
-      place.trackId === undefined ? 'Add asset layer' : 'Add timeline clip',
+    return {
+      label:
+        place.trackId === undefined ? 'Add asset layer' : 'Add timeline clip',
       commands,
-    );
-    session.select(layer.id);
+      layerId: layer.id,
+    };
   };
   const assetDrop = (event: DragEvent) =>
     safely(() => {
@@ -2255,7 +2362,11 @@ export function mountEditorShell(
       if (event.currentTarget !== canvas && timeline) {
         const target = timeline.assetTarget();
         timeline.clearAssetTarget();
-        if (target) return timelineAssetDrop(asset, target, event);
+        if (target)
+          return laneDrop(
+            { kind: 'asset', id: asset.id, name: asset.name },
+            target,
+          );
       }
       const track = element('.timeline-scroll');
       const time =
@@ -2292,98 +2403,185 @@ export function mountEditorShell(
               )?.dataset.trackId ?? ''),
       });
     });
-  const timelineAssetDrop = (
-    asset: (typeof session.source.assets)[number],
-    target: AssetTarget,
-    event: DragEvent,
-  ) => {
-    // A lane of another group refuses the media with the earlier message.
+  /** T3: the commands that add what a drag carries, with its clip at
+   *  `time` (a lane chosen by the insert rules, retargeted by the caller);
+   *  null for a template or My Template (a whole scene). */
+  const insertCommands = (
+    payload: DragPayload,
+    time: number,
+  ): { label: string; commands: Command[]; layerId: string } | null => {
+    if (payload.kind === 'asset') {
+      const asset = session.source.assets.find(
+        (item) => item.id === payload.id,
+      );
+      return asset ? assetCommands(asset, { time }) : null;
+    }
+    if (payload.kind === 'preset') {
+      const commands = addShapeCommands(
+        session.source,
+        payload.id as ShapePreset,
+        time,
+      );
+      const created = commands.find((item) => item.type === 'CREATE_LAYER');
+      return created?.type === 'CREATE_LAYER'
+        ? { label: 'Add shape', commands, layerId: created.layer.id }
+        : null;
+    }
+    if (payload.kind === 'mine') return null;
+    const item =
+      payload.kind === 'textbox'
+        ? ('textbox' as const)
+        : libraryActions.find(payload.id);
+    const insert = item
+      ? libraryActions.commandsFor(item, undefined, time)
+      : null;
+    return insert?.layerId
+      ? {
+          label: insert.label,
+          commands: insert.commands,
+          layerId: insert.layerId,
+        }
+      : null;
+  };
+  /** T3: what a drag carries, as the timeline sees it (lane group, clip
+   *  length, name, kind); measured once per drag. */
+  let laneInfoCache: { key: string; value: LaneDropInfo | null } | null = null;
+  const laneInfo = (payload: DragPayload): LaneDropInfo | null => {
+    const key = `${payload.kind}:${payload.id}`;
+    if (laneInfoCache?.key === key) return laneInfoCache.value;
+    let value: LaneDropInfo | null = null;
+    try {
+      const built = insertCommands(payload, 0);
+      const layer = built?.commands.find(
+        (item) =>
+          item.type === 'CREATE_LAYER' && item.layer.id === built.layerId,
+      );
+      const clip = built?.commands.find(
+        (item) =>
+          item.type === 'CREATE_CLIP' && item.clip.layerId === built.layerId,
+      );
+      if (layer?.type === 'CREATE_LAYER' && clip?.type === 'CREATE_CLIP')
+        value = {
+          group: laneGroupOfLayer(layer.layer) as LaneGroup,
+          duration: clip.clip.duration,
+          name: payload.name,
+          kind: layer.layer.type,
+        };
+    } catch {
+      value = null;
+    }
+    laneInfoCache = { key, value };
+    return value;
+  };
+  /** T3: drops what a drag carries on a lane target, as one undo step: its
+   *  clip on the target lane (or a new lane) at the target's start, later
+   *  clips pushed, a replaced clip removed. */
+  const laneDrop = (payload: DragPayload, target: AssetTarget) => {
+    const composition = session.source.composition;
     if (target.mode === 'refused') {
-      const lane = session.source.composition.tracks.find(
+      const lane = composition.tracks.find(
         (item) => item.id === target.trackId,
       );
       throw new Error(
-        t('asset.incompatible', { name: asset.name, track: lane?.name ?? '' }),
+        lane?.locked
+          ? t('asset.locked', { name: lane.name })
+          : t('asset.incompatible', {
+              name: payload.name,
+              track: lane?.name ?? '',
+            }),
       );
     }
-    if (target.mode === 'lane')
-      return placeAsset(asset, { time: target.time, trackId: target.trackId });
-    if (target.mode === 'insert') {
-      // A new lane at the separator, holding the new clip.
-      const type = trackTypeForLayer(asset.type);
-      const trackId = crypto.randomUUID();
-      const compositionId = session.source.composition.id;
-      return placeAsset(asset, {
-        time: target.time,
-        trackId,
-        newTrack: [
-          {
-            type: 'CREATE_TRACK',
-            compositionId,
-            track: {
-              id: trackId,
-              name: nextTrackName(session.source.composition, type),
-              type,
-              order: session.source.composition.tracks.length,
-              enabled: true,
-              locked: false,
-              muted: false,
-              clips: [],
-            },
-          },
-          { type: 'MOVE_TRACK', compositionId, trackId, index: target.index },
-        ],
+    const built = insertCommands(payload, target.time);
+    if (!built) return addPayload(payload, { time: target.time });
+    const create = built.commands.find(
+      (item) =>
+        item.type === 'CREATE_CLIP' && item.clip.layerId === built.layerId,
+    );
+    if (create?.type !== 'CREATE_CLIP') return;
+    const plan = laneDropPlan(composition, target, {
+      duration: create.clip.duration,
+    });
+    // The builder's own lane choice is replaced by the target's.
+    const autoTrack = create.trackId;
+    const madeTrack = built.commands.some(
+      (item) => item.type === 'CREATE_TRACK' && item.track.id === autoTrack,
+    );
+    const layerCommand = built.commands.find(
+      (item) => item.type === 'CREATE_LAYER' && item.layer.id === built.layerId,
+    );
+    let trackId = plan.trackId;
+    const before: Command[] = [];
+    if (plan.removeLayerId)
+      before.push({
+        type: 'DELETE_LAYER',
+        compositionId: composition.id,
+        layerId: plan.removeLayerId,
       });
-    }
-    // Over a clip of the same kind: Replace it, or add the media as a clip.
-    const layerId = target.layerId;
-    const menu = document.createElement('div');
-    menu.className = 'replace-drop-menu';
-    menu.setAttribute('role', 'menu');
-    const item = (label: string, action: string, run: () => void) => {
-      const entry = document.createElement('button');
-      entry.type = 'button';
-      entry.setAttribute('role', 'menuitem');
-      entry.dataset.action = action;
-      entry.textContent = label;
-      entry.onclick = () => {
-        handle.close();
-        safely(run);
-      };
-      menu.append(entry);
-    };
-    item(t('drop.replace'), 'drop-replace', () => {
-      engine.commands.transaction('Replace media', [
+    if (
+      !trackId &&
+      target.mode === 'new-lane' &&
+      layerCommand?.type === 'CREATE_LAYER'
+    ) {
+      const type = trackTypeForLayer(layerCommand.layer);
+      trackId = crypto.randomUUID();
+      before.push(
         {
-          type: 'SET_LAYER_ASSET',
-          compositionId: session.source.composition.id,
-          layerId,
-          assetId: asset.id,
-        } as Command,
-      ]);
-      session.select(layerId);
-    });
-    item(t('drop.addClip'), 'drop-add', () => {
-      const clip = findClipByLayer(session.source.composition, layerId);
-      placeAsset(asset, {
-        time: target.time,
-        ...(clip ? { trackId: clip.track.id } : {}),
+          type: 'CREATE_TRACK',
+          compositionId: composition.id,
+          track: {
+            id: trackId,
+            name: nextTrackName(composition, type),
+            type,
+            order: composition.tracks.length,
+            enabled: true,
+            locked: false,
+            muted: false,
+            clips: [],
+          },
+        },
+        {
+          type: 'MOVE_TRACK',
+          compositionId: composition.id,
+          trackId,
+          index: target.index,
+        },
+      );
+    }
+    if (!trackId) return;
+    before.push(...plan.pushes);
+    const commands = built.commands
+      .filter(
+        (item) =>
+          !madeTrack ||
+          !(
+            (item.type === 'CREATE_TRACK' && item.track.id === autoTrack) ||
+            (item.type === 'MOVE_TRACK' && item.trackId === autoTrack)
+          ),
+      )
+      .map((item): Command => {
+        if (item === create)
+          return {
+            ...create,
+            trackId: trackId!,
+            clip: { ...create.clip, startTime: plan.startTime },
+          };
+        if (item === layerCommand && item.type === 'CREATE_LAYER')
+          return {
+            ...item,
+            layer: { ...item.layer, startTime: plan.startTime },
+          };
+        return item;
       });
-    });
-    const anchor = document.createElement('span');
-    anchor.className = 'drop-anchor';
-    Object.assign(anchor.style, {
-      position: 'fixed',
-      left: `${event.clientX}px`,
-      top: `${event.clientY}px`,
-    });
-    root.append(anchor);
-    const handle = openPopover(anchor, menu, {
-      label: t('drop.title'),
-      className: 'replace-drop-popover',
-      onClose: () => anchor.remove(),
-    });
-    (menu.firstElementChild as HTMLElement | null)?.focus();
+    session.setPlaying(false);
+    engine.commands.transaction(
+      target.mode === 'replace'
+        ? 'Replace clip'
+        : payload.kind === 'asset'
+          ? 'Add timeline clip'
+          : built.label,
+      [...before, ...commands],
+    );
+    session.select(built.layerId);
   };
   const assetOver = (event: DragEvent) => {
     if (
@@ -2403,7 +2601,7 @@ export function mountEditorShell(
   const hideDropBox = () => {
     dropBox.hidden = true;
   };
-  const showDropBox = (event: DragEvent) => {
+  const showDropBox = (event: { clientX: number; clientY: number }) => {
     const drag = assetDrag();
     if (!drag || drag.type === 'audio') return hideDropBox();
     const { width: w, height: h } = session.source.composition;
@@ -2461,6 +2659,295 @@ export function mountEditorShell(
     libraryActions.insert(item, point ? [point[0], point[1]] : undefined);
   };
   canvas.addEventListener('drop', libraryDrop);
+  // T1: the drag controller's two drop targets, the canvas and the timeline.
+  setDragReporter(reportError);
+  const canvasPoint = (x: number, y: number) => {
+    const rect = canvas.getBoundingClientRect(),
+      inverse = invertMatrix(viewport().matrix);
+    return inverse
+      ? (transformPoint(inverse, [x - rect.left, y - rect.top]) as [
+          number,
+          number,
+        ])
+      : null;
+  };
+  const timelineTimeAt = (x: number) => {
+    const track = element('.timeline-scroll');
+    return Math.max(
+      0,
+      pixelToTime(
+        x - track.getBoundingClientRect().left + track.scrollLeft - 224,
+        session.timelineZoom,
+      ),
+    );
+  };
+  /** Adds what a drag carries: on the canvas centred on `point`, or with its
+   *  clip starting at `time` (a timeline drop). */
+  const addPayload = (
+    payload: DragPayload,
+    place: { point?: [number, number] | null; time?: number },
+  ) => {
+    const time = place.time ?? session.currentTime;
+    const point = place.point ?? undefined;
+    if (payload.kind === 'asset') {
+      const asset = session.source.assets.find(
+        (item) => item.id === payload.id,
+      );
+      if (asset) placeAsset(asset, { time, point: point ?? null });
+    } else if (payload.kind === 'library') {
+      const item = libraryActions.find(payload.id);
+      if (item) libraryActions.insert(item, point, time);
+    } else if (payload.kind === 'textbox')
+      libraryActions.insertTextBox(point, undefined, time);
+    else if (payload.kind === 'mine') {
+      const template = myTemplates.find(payload.id);
+      if (template) libraryActions.insertMine(template);
+    } else if (payload.kind === 'preset') {
+      const commands = addShapeCommands(
+        session.source,
+        payload.id as ShapePreset,
+        time,
+      );
+      const created = commands.find((item) => item.type === 'CREATE_LAYER');
+      if (created?.type === 'CREATE_LAYER' && point) {
+        const size = (key: 'width' | 'height') => {
+          const value = created.layer.properties[key];
+          return value?.type === 'number' ? value.value : 0;
+        };
+        created.layer.transform.position = vector2(
+          point[0] - size('width') / 2,
+          point[1] - size('height') / 2,
+        );
+      }
+      engine.commands.transaction('Add shape', commands);
+      if (created?.type === 'CREATE_LAYER') session.select(created.layer.id);
+    }
+  };
+  // T2: while a library or Media item is dragged over the canvas, an outline
+  // of its real size and shape follows the pointer (snapping to the canvas
+  // centre and edges) and the canvas is highlighted; the drop lands exactly
+  // where the outline was, as one undo step.
+  interface Footprint {
+    readonly width: number;
+    readonly height: number;
+    /** From the drop point to the box centre (composition units). */
+    readonly dx: number;
+    readonly dy: number;
+    /** A whole scene (a template): the outline is the artboard. */
+    readonly whole?: boolean;
+  }
+  let measured: { key: string; value: Footprint | null } | null = null;
+  const measure = (payload: DragPayload): Footprint | null => {
+    const key = `${payload.kind}:${payload.id}:${session.source.composition.id}`;
+    if (measured?.key === key) return measured.value;
+    const { width: w, height: h } = session.source.composition;
+    const at: [number, number] = [w / 2, h / 2];
+    let value: Footprint | null = null;
+    try {
+      if (payload.kind === 'asset') {
+        if (payload.media !== 'audio') {
+          const aw = payload.width ?? 0,
+            ah = payload.height ?? 0;
+          const fit = aw && ah ? Math.min(1, w / aw, h / ah) : 1;
+          value =
+            aw && ah
+              ? { width: aw * fit, height: ah * fit, dx: 0, dy: 0 }
+              : { width: 240, height: 135, dx: 120, dy: 67.5 };
+        }
+      } else if (payload.kind === 'mine')
+        value = { width: w, height: h, dx: 0, dy: 0, whole: true };
+      else {
+        let commands: Command[] | null = null;
+        if (payload.kind === 'preset') {
+          commands = addShapeCommands(
+            session.source,
+            payload.id as ShapePreset,
+            session.currentTime,
+          );
+        } else {
+          const item =
+            payload.kind === 'textbox'
+              ? ('textbox' as const)
+              : libraryActions.find(payload.id);
+          const insert = item ? libraryActions.commandsFor(item, at) : null;
+          if (item && !insert)
+            value = { width: w, height: h, dx: 0, dy: 0, whole: true };
+          commands = insert?.commands ?? null;
+        }
+        if (commands) {
+          const ids = commands.flatMap((command) =>
+            command.type === 'CREATE_LAYER' && command.parentId === null
+              ? [command.layer.id]
+              : [],
+          );
+          const project = engine.preview(commands);
+          const composition = project.compositions.find(
+            (item) => item.id === session.source.composition.id,
+          );
+          const box =
+            composition && ids.length
+              ? selectionGeometryOf({
+                  ...session.source,
+                  composition,
+                  selectedIds: ids,
+                } as RenderSource)
+              : null;
+          if (box)
+            value = {
+              width: box.width,
+              height: box.height,
+              dx: box.x + box.width / 2 - at[0],
+              dy: box.y + box.height / 2 - at[1],
+            };
+        }
+      }
+    } catch {
+      value = null;
+    }
+    measured = { key, value };
+    return value;
+  };
+  const guideX = document.createElement('div');
+  const guideY = document.createElement('div');
+  guideX.className = 'canvas-drop-guide vertical';
+  guideY.className = 'canvas-drop-guide horizontal';
+  for (const guide of [guideX, guideY]) {
+    guide.hidden = true;
+    guide.setAttribute('aria-hidden', 'true');
+    root.append(guide);
+  }
+  /** Snap distance in CSS pixels (the D-066 tolerance). */
+  const SNAP = 6;
+  let dropAt: [number, number] | null = null;
+  const hidePreview = () => {
+    hideDropBox();
+    guideX.hidden = guideY.hidden = true;
+    stage.classList.remove('drop-highlight');
+    dropAt = null;
+  };
+  /** Shows the outline for `payload` at the pointer; returns the drop point
+   *  (composition units) after snapping. */
+  const showPreview = (payload: DragPayload, x: number, y: number) => {
+    stage.classList.add('drop-highlight');
+    const pointer = canvasPoint(x, y);
+    const footprint = measure(payload);
+    if (!pointer || !footprint) {
+      hideDropBox();
+      guideX.hidden = guideY.hidden = true;
+      return pointer;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const matrix = viewport().matrix;
+    const toScreen = (point: readonly [number, number]) => {
+      const [sx, sy] = transformPoint(matrix, point);
+      return [rect.left + sx, rect.top + sy] as const;
+    };
+    const { width: w, height: h } = session.source.composition;
+    const [boardLeft, boardTop] = toScreen([0, 0]);
+    const [boardRight, boardBottom] = toScreen([w, h]);
+    const scale = (boardRight - boardLeft) / w;
+    const width = footprint.width * scale,
+      height = footprint.height * scale;
+    let cx: number, cy: number;
+    let snappedX: number | null = null,
+      snappedY: number | null = null;
+    if (footprint.whole) {
+      cx = (boardLeft + boardRight) / 2;
+      cy = (boardTop + boardBottom) / 2;
+    } else {
+      cx = x + footprint.dx * scale;
+      cy = y + footprint.dy * scale;
+      // Snap the box's centre or edges to the canvas centre or edges.
+      const snap = (
+        centre: number,
+        half: number,
+        start: number,
+        end: number,
+      ): [number, number | null] => {
+        let best: [number, number | null] = [centre, null];
+        let distance = SNAP + 0.001;
+        for (const [feature, target] of [
+          [centre, (start + end) / 2],
+          [centre - half, start],
+          [centre + half, end],
+        ] as const) {
+          const d = Math.abs(feature - target);
+          if (d < distance) {
+            distance = d;
+            best = [centre + (target - feature), target];
+          }
+        }
+        return best;
+      };
+      [cx, snappedX] = snap(cx, width / 2, boardLeft, boardRight);
+      [cy, snappedY] = snap(cy, height / 2, boardTop, boardBottom);
+    }
+    Object.assign(dropBox.style, {
+      left: `${cx - width / 2}px`,
+      top: `${cy - height / 2}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    });
+    dropBox.hidden = false;
+    guideX.hidden = snappedX === null;
+    guideY.hidden = snappedY === null;
+    if (snappedX !== null)
+      Object.assign(guideX.style, {
+        left: `${snappedX}px`,
+        top: `${boardTop}px`,
+        height: `${boardBottom - boardTop}px`,
+      });
+    if (snappedY !== null)
+      Object.assign(guideY.style, {
+        top: `${snappedY}px`,
+        left: `${boardLeft}px`,
+        width: `${boardRight - boardLeft}px`,
+      });
+    const centre = canvasPoint(cx, cy);
+    return centre
+      ? ([centre[0] - footprint.dx, centre[1] - footprint.dy] as [
+          number,
+          number,
+        ])
+      : pointer;
+  };
+  drags().register({
+    // The whole stage, overlays included (the selection's action cluster,
+    // the floating toolbar): a drop there lands on the canvas below.
+    contains: (target) => target === canvas || stage.contains(target),
+    over(payload, point) {
+      dropAt = showPreview(payload, point.x, point.y);
+      return true;
+    },
+    leave: hidePreview,
+    drop(payload, point) {
+      const at = dropAt ?? canvasPoint(point.x, point.y);
+      hidePreview();
+      addPayload(payload, { point: at });
+    },
+  });
+  drags().register({
+    contains: (target) =>
+      !!timeline && !!target.closest('#timeline-foundation .timeline-scroll'),
+    over(payload, point) {
+      const info = laneInfo(payload);
+      if (!info || !timeline) return !!timeline;
+      const target = timeline.dragOverAt(info, point.x, point.y);
+      return !!target && target.mode !== 'refused';
+    },
+    leave: () => timeline?.clearAssetTarget(),
+    // A lane of another group refuses the drop and says why (MED-013).
+    refuse(payload) {
+      const target = timeline?.assetTarget();
+      if (target?.mode === 'refused') laneDrop(payload, target);
+    },
+    drop(payload, point) {
+      const target = timeline?.assetTarget();
+      timeline?.clearAssetTarget();
+      if (target) return laneDrop(payload, target);
+      addPayload(payload, { time: timelineTimeAt(point.x) });
+    },
+  });
   canvas.addEventListener('dragover', assetOver);
   canvas.addEventListener('drop', assetDrop);
   element('#timeline-foundation').addEventListener('drop', assetDrop);
@@ -2630,12 +3117,18 @@ export function mountEditorShell(
       corners:
         selectionGeometry(
           {
-            ...session.source,
+            // T6: the box as drawn (a live text preview grows it).
+            ...(session.previewSource ?? session.source),
             ...(interaction.preview ? { preview: interaction.preview } : {}),
           },
           session.selectedId,
           viewport().matrix,
         )?.corners ?? null,
+      // T6: text boxes whose fixed height clips their text (the editor
+      // draws an overflow mark on them).
+      textOverflow: deriveRenderItems(session.source)
+        .items.filter((item) => item.textOverflow)
+        .map((item) => item.id),
       chip: element('#canvas-chip').hidden
         ? null
         : element('#canvas-chip').textContent,

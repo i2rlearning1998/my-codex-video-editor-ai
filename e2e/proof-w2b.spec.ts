@@ -10,6 +10,13 @@ import {
   openInspector,
 } from './fixtures';
 
+/** T5: Stop left the Player bar; the palette runs it. */
+async function stopFromPalette(page: Page) {
+  await page.keyboard.press('Control+k');
+  await page.locator('#command-palette input').fill('Stop (back to the start)');
+  await page.keyboard.press('Enter');
+}
+
 // W2-B proof debt: Claimed Wave 2 items proven the way a user does them.
 // Example project (default load) and nle-example.json at 80 px/s, 30 fps.
 test.beforeEach(async ({ page }) => {
@@ -144,7 +151,7 @@ test.describe('timeline', () => {
     expect((await hook(page)).history.labels).toEqual(['Move clip']);
     await page.locator('#undo').click();
     expect((await hook(page)).project).toEqual(before);
-    await drag(page, { x: c.x + 30, y: c.y + 10 }, 0, 34);
+    await drag(page, { x: c.x + 30, y: c.y + 10 }, 0, 56); // one 56 px visual lane down (T3)
     expect((await clip(page, 'clip-c')).track).toBe('video-3');
     expect((await hook(page)).history.labels).toEqual(['Move clip']);
     await page.locator('#undo').click();
@@ -237,9 +244,7 @@ test.describe('timeline', () => {
     await expect
       .poll(async () => (await hook(page)).session.time, { timeout: 1000 })
       .toBeGreaterThanOrEqual(0.65);
-    await page
-      .getByRole('button', { name: 'Stop playback', exact: true })
-      .click();
+    await stopFromPalette(page);
   });
 });
 

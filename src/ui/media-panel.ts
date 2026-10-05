@@ -1,4 +1,4 @@
-import { dragGhost, setAssetDrag } from './drag-state';
+import { drags } from './drag-controller';
 import type { EditorEngine } from '../core';
 import {
   importMediaFiles,
@@ -189,6 +189,8 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       const image = document.createElement('img');
       image.src = thumb.url;
       image.alt = '';
+      // T1: a thumbnail is never a browser drag source of its own.
+      image.draggable = false;
       slot.replaceChildren(image);
     } else
       slot.innerHTML = `${iconSvg(KIND_ICON[asset.type] ?? 'media', 22)}${
@@ -443,7 +445,6 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'media-card';
-        card.draggable = true;
         card.dataset.assetId = asset.id;
         card.dataset.name = asset.name;
         card.dataset.kind = asset.type;
@@ -453,23 +454,20 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         card.querySelector('.media-badge')!.textContent = badge(asset);
         card.querySelector('.media-name')!.textContent = asset.name;
         setThumb(card, asset);
-        card.ondragstart = (event) => {
-          event.dataTransfer?.setData('application/x-editor-asset', asset.id);
-          // J9: the canvas and the timeline show where it would land.
-          setAssetDrag({
-            assetId: asset.id,
-            type: asset.type as 'image' | 'video' | 'audio',
-            name: asset.name,
-            duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
-            ...(asset.width && asset.height
-              ? { width: asset.width, height: asset.height }
-              : {}),
-          });
-          const ghost = dragGhost(card, asset.name);
-          event.dataTransfer?.setDragImage(ghost, 20, 20);
-          requestAnimationFrame(() => ghost.remove());
-        };
-        card.ondragend = () => setAssetDrag(null);
+        // T1: one pointer-driven drag (no browser drag, no draggable
+        // thumbnail image); a plain click adds the media to the scene.
+        drags().source(card, () => ({
+          kind: 'asset',
+          id: asset.id,
+          name: asset.name,
+          thumb: card.querySelector('img')?.getAttribute('src') ?? null,
+          media: asset.type as 'image' | 'video' | 'audio',
+          duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
+          ...(asset.width && asset.height
+            ? { width: asset.width, height: asset.height }
+            : {}),
+        }));
+        card.addEventListener('click', () => options.place?.(asset.id));
         // I1.7: the item's menu, from its More button or a right-click.
         const more = document.createElement('button');
         more.type = 'button';
@@ -837,6 +835,34 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     placeMenu(x, y);
   };
   const unsubscribeFolders = mediaFolders.onChange(() => render());
+  // T1: a Media card dragged (pointer drag) onto a folder moves into it.
+  const folderUnder = (element: Element) =>
+    element.closest<HTMLElement>('#media-panel .media-folder[data-folder-id]');
+  const unregisterFolders = drags().register({
+    contains: (element) => !!folderUnder(element),
+    over(payload, point) {
+      for (const item of grid.querySelectorAll('.media-folder.over'))
+        item.classList.remove('over');
+      if (payload.kind !== 'asset' || !point.element) return false;
+      folderUnder(point.element)?.classList.add('over');
+      return true;
+    },
+    leave() {
+      for (const item of grid.querySelectorAll('.media-folder.over'))
+        item.classList.remove('over');
+    },
+    drop(payload, point) {
+      const folder = point.element && folderUnder(point.element);
+      if (!folder || payload.kind !== 'asset') return;
+      const project = engine.state.id;
+      const target = mediaFolders
+        .list(project)
+        .find((item) => item.id === folder.dataset.folderId);
+      if (!target) return;
+      mediaFolders.move(project, payload.id, target.id);
+      options.toast(t('media.folder.moved', { name: target.name }), 'success');
+    },
+  });
 
   const showProgress = (
     fileName: string,
@@ -895,20 +921,23 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     if (cancelled) options.toast(t('media.cancelled'), 'info');
   };
 
+  /** Imports files; resolves with the ids of the media they gave (new,
+   *  already there or restored), in file order. */
   const importFiles = async (
     files: readonly File[],
     importOptions: { design?: boolean } = {},
-  ) => {
-    if (!files.length) return;
+  ): Promise<string[]> => {
+    if (!files.length) return [];
     if (controller) {
       options.toast(t('media.busy'), 'info');
-      return;
+      return [];
     }
     const media = await store;
     if (!media) {
       options.toast(t('media.unavailableTitle'), 'error');
-      return;
+      return [];
     }
+    const ids: string[] = [];
     controller = new AbortController();
     const restoredIds = new Set<string>();
     try {
@@ -957,6 +986,8 @@ export function mountMediaPanel(options: MediaPanelOptions) {
               metadata: { ...asset.metadata, design: true },
             });
         }
+      for (const outcome of outcomes)
+        if (outcome.assetId) ids.push(outcome.assetId);
       const last = [...outcomes].reverse().find((item) => item.assetId);
       if (last?.assetId)
         grid
@@ -974,6 +1005,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       options.waveforms.retry();
       options.imported?.();
     }
+    return ids;
   };
 
   render();
@@ -993,6 +1025,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       unsubscribePreviews();
       unsubscribeWaveforms();
       unsubscribeFolders();
+      unregisterFolders();
       document.removeEventListener('pointerdown', closeOutside, true);
       menu.close();
       menuElement.remove();

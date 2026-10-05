@@ -300,9 +300,15 @@ test('[TPL-012] a dragged library shape, background and text style land at the d
     'draggable',
     'false',
   );
+  // T1: the card is a drag source of the app's own drag controller, not a
+  // browser drag (which could get stuck): it is not draggable natively.
+  await expect(card(page, 'bg-gradient-1')).toHaveAttribute(
+    'data-drag-source',
+    'true',
+  );
   await expect(card(page, 'bg-gradient-1')).toHaveAttribute(
     'draggable',
-    'true',
+    'false',
   );
   // Undo removes the last drop only.
   await page.keyboard.press('Control+z');

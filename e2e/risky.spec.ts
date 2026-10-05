@@ -6,6 +6,7 @@ import {
   toScreen,
   rulerBox,
   openInspector,
+  showSceneStrip,
 } from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
@@ -204,7 +205,7 @@ test.describe('NLE fixture', () => {
     // Drag clip-a (Video 1) down one track while holding: both ghosts show.
     await page.mouse.move(a.x + 30, a.y + 10);
     await page.mouse.down();
-    await page.mouse.move(a.x + 30, a.y + 10 + 34, { steps: 8 });
+    await page.mouse.move(a.x + 30, a.y + 10 + 56, { steps: 8 });
     await expect(page.locator('.timeline-clip-ghost')).toHaveCount(2);
     await expect(
       page.locator('[data-track-id="video-3"] .timeline-clip-ghost'),
@@ -220,7 +221,7 @@ test.describe('NLE fixture', () => {
     expect((await clipRow(page, 'clip-c')).trackId).toBe('video-2');
     // Two tracks down would push clip-c past the last track: no track change.
     await selectBoth();
-    await drag(page, { x: a.x + 30, y: a.y + 10 }, 0, 68);
+    await drag(page, { x: a.x + 30, y: a.y + 10 }, 0, 112);
     expect((await clipRow(page, 'clip-a')).trackId).toBe('video-1');
     expect((await clipRow(page, 'clip-c')).trackId).toBe('video-2');
   });
@@ -296,6 +297,7 @@ test('[PRJ-012] switching the active composition shows its canvas and timeline a
   await clipEl(page, 'clip-a').click({ position: { x: 30, y: 10 } });
   expect((await hook(page)).session.selectedIds).toEqual(['layer-a']);
   // I3: the scene strip replaces the composition select.
+  await showSceneStrip(page);
   await page.locator('#scene-strip [data-scene-id="scene-2"]').click();
   const session = (await hook(page)).session;
   expect(session.compositionId).toBe('scene-2');

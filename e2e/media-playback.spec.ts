@@ -302,7 +302,13 @@ test('[VID-002] a video on an overlay track moves, scales and rotates on the can
   const clip = (await clipEl(page, 'clip-code').boundingBox())!;
   await page.mouse.move(clip.x + 20, clip.y + 10);
   await page.mouse.down();
-  await page.mouse.move(clip.x + 20, clip.y + 10 + 34, { steps: 8 });
+  // (T3: visual lanes are 56 px tall; aim at the middle of Video 2.)
+  const overlay = (await page
+    .locator('.timeline-nle-row[data-track-id="video-2"]')
+    .boundingBox())!;
+  await page.mouse.move(clip.x + 20, overlay.y + overlay.height / 2, {
+    steps: 8,
+  });
   await page.mouse.up();
   expect(
     (await hook(page)).project.compositions[0]!.tracks.find(

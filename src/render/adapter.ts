@@ -153,6 +153,8 @@ export interface RenderItem {
   readonly textLayout?: TextLayout;
   /** J4: rich text (per-range styles or a list) replaces the plain layout. */
   readonly richLayout?: RichLayout;
+  /** T6: the text needs more height than its box (a fixed-height box). */
+  readonly textOverflow?: true;
   /** J4: the text is being edited on the canvas (an editor draws it). */
   readonly editing?: boolean;
   /** W5-D: a shape layer's kind, fill, stroke and corner radius. */
@@ -335,10 +337,20 @@ export function deriveRenderItems(input: RenderSource): {
         // text can need more lines than that at the current width/font size, so
         // never clip content the layout itself says it needs.
         const needed = richLayout?.height ?? wrapped?.height;
+        // T6: a fixed-height box never grows; text past it is clipped and
+        // the editor marks the overflow.
+        const fixedHeight =
+          layer.type === 'text' &&
+          layer.properties.textFixedHeight?.type === 'boolean' &&
+          layer.properties.textFixedHeight.value;
         const effectiveSize =
-          wrapped && needed !== undefined
+          wrapped && needed !== undefined && !fixedHeight
             ? { ...size, height: Math.max(size.height, needed) }
             : size;
+        const textOverflow =
+          fixedHeight &&
+          (richLayout?.height ?? textLayout?.height ?? 0) >
+            effectiveSize.height + 0.5;
         const drawing = drawingOf(layer);
         if (drawing === 'invalid') {
           warnings.push(
@@ -370,6 +382,7 @@ export function deriveRenderItems(input: RenderSource): {
               : {}),
             ...(richLayout ? { richLayout } : {}),
             ...(source.editingTextId === layer.id ? { editing: true } : {}),
+            ...(textOverflow ? { textOverflow: true } : {}),
             ...(layer.type === 'shape' && !drawing
               ? { shape: shapeOf(layer)! }
               : {}),
