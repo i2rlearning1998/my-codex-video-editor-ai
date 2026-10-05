@@ -25,3 +25,7 @@ F0: npm run check passed (format, typecheck, unit suite, editor build). No Playw
 FX-D06: Exposure spans −2..+2 stops, contrast uses a 0.25..4 gain around mid-grey, saturation spans greyscale..2× chroma, temperature adds a bounded warm/cool channel offset. Amount 0 is exact identity. Transparency −1 removes alpha, +1 makes nonzero-alpha pixels opaque; zero-alpha pixels stay invisible. `adjustmentDefaults` is a reset-friendly list; intensity always defaults to 1. Blend modes are metadata only, with Canvas operation strings; no CPU blend implementation is implied. Fade lengths each cap at half duration; outside clip bounds and nonpositive duration return 0; nonfinite arguments throw.
 
 F1: npm run check passed, 398 tests in 37 files. First benchmark on AMD EPYC 9V74 80-Core Processor: adjust.exposure 3.5 ms, adjust.contrast 3.55 ms, adjust.saturation 6.36 ms, adjust.temperature 6.04 ms, adjust.transparency 5.34 ms, filter.none 0.65 ms. Timing is descriptive, not a test gate.
+
+## F2
+
+47 original filters, including 4 duotones and 9 overlays. Shared compiled channel curves, luma saturation and split-tone tables; optional radial vignette and seeded frame-grain. Overlay strength at full intensity is 45%, so the source remains visible. All B&W variants use zero chroma. Unit coverage includes all IDs, distinct look outputs, exact zero-intensity identity, B&W saturation, overlays and seeded grain. npm run check passed. Initial slowest median: 37.08 ms (filter.old-western). Final per-item results follow after the performance pass.
