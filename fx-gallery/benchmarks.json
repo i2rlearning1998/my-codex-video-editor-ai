@@ -1,0 +1,2353 @@
+{
+  "opaque": {
+    "node": "v24.19.0",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "width": 1280,
+    "height": 720,
+    "method": "Bundled ES module (no Vite SSR wrappers); 3 warmups + 7 samples, median; defaults except adjustment amount=.5; effect time=1.37s; transition progress=.43; allocation included; no timing assertions",
+    "items": [
+      {
+        "id": "adjust.exposure",
+        "firstCallMs": 7.85,
+        "medianMs": 3.52,
+        "maxMs": 3.78,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.contrast",
+        "firstCallMs": 3.81,
+        "medianMs": 3.48,
+        "maxMs": 3.88,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.saturation",
+        "firstCallMs": 8.56,
+        "medianMs": 6.28,
+        "maxMs": 6.75,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.temperature",
+        "firstCallMs": 6.08,
+        "medianMs": 5.89,
+        "maxMs": 6.09,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.transparency",
+        "firstCallMs": 4.53,
+        "medianMs": 3.26,
+        "maxMs": 3.54,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.none",
+        "firstCallMs": 0.76,
+        "medianMs": 0.65,
+        "maxMs": 0.89,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.retro",
+        "firstCallMs": 14.13,
+        "medianMs": 12.22,
+        "maxMs": 12.59,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.orange-teal",
+        "firstCallMs": 11.7,
+        "medianMs": 12.2,
+        "maxMs": 14.35,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.bold-blue",
+        "firstCallMs": 12.18,
+        "medianMs": 12.37,
+        "maxMs": 17.24,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.golden-hour",
+        "firstCallMs": 11.99,
+        "medianMs": 11.82,
+        "maxMs": 11.98,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.vibrant-vlogger",
+        "firstCallMs": 11.65,
+        "medianMs": 11.4,
+        "maxMs": 12.84,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.purple-undertone",
+        "firstCallMs": 9.63,
+        "medianMs": 9.66,
+        "maxMs": 9.94,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.winter-sunset",
+        "firstCallMs": 9.57,
+        "medianMs": 9.51,
+        "maxMs": 9.94,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.35mm",
+        "firstCallMs": 20.69,
+        "medianMs": 15.07,
+        "maxMs": 38.86,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.contrast",
+        "firstCallMs": 9.97,
+        "medianMs": 10.15,
+        "maxMs": 10.37,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.fall",
+        "firstCallMs": 9.69,
+        "medianMs": 9.56,
+        "maxMs": 9.8,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.winter",
+        "firstCallMs": 11.04,
+        "medianMs": 11.18,
+        "maxMs": 13.15,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.old-western",
+        "firstCallMs": 15.06,
+        "medianMs": 14.77,
+        "maxMs": 15.19,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.warm-coastline",
+        "firstCallMs": 12.69,
+        "medianMs": 14.28,
+        "maxMs": 15.49,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-coastline",
+        "firstCallMs": 11.04,
+        "medianMs": 10.89,
+        "maxMs": 11.05,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.warm-countryside",
+        "firstCallMs": 10.39,
+        "medianMs": 10.92,
+        "maxMs": 12.85,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-countryside",
+        "firstCallMs": 10.45,
+        "medianMs": 10.39,
+        "maxMs": 10.59,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.golden",
+        "firstCallMs": 9.59,
+        "medianMs": 9.66,
+        "maxMs": 10.31,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.dreamscape",
+        "firstCallMs": 10.83,
+        "medianMs": 11.58,
+        "maxMs": 12.44,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.sunrise",
+        "firstCallMs": 10.79,
+        "medianMs": 13.13,
+        "maxMs": 14.53,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.warm-tone",
+        "firstCallMs": 9.68,
+        "medianMs": 9.5,
+        "maxMs": 10.25,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-tone",
+        "firstCallMs": 9.39,
+        "medianMs": 9.35,
+        "maxMs": 9.55,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.pastel-dreams",
+        "firstCallMs": 10.63,
+        "medianMs": 10.45,
+        "maxMs": 10.89,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.scenery",
+        "firstCallMs": 11.66,
+        "medianMs": 10.9,
+        "maxMs": 11.66,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.portrait",
+        "firstCallMs": 10.56,
+        "medianMs": 10.71,
+        "maxMs": 11.28,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.indoors",
+        "firstCallMs": 11.12,
+        "medianMs": 10.89,
+        "maxMs": 11.19,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.outdoors",
+        "firstCallMs": 11.16,
+        "medianMs": 13.1,
+        "maxMs": 16.04,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.muted",
+        "firstCallMs": 11.07,
+        "medianMs": 11.02,
+        "maxMs": 11.61,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.black-white",
+        "firstCallMs": 9.96,
+        "medianMs": 9.71,
+        "maxMs": 10.3,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.soft-bw",
+        "firstCallMs": 11.76,
+        "medianMs": 11.17,
+        "maxMs": 12.08,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.muted-bw",
+        "firstCallMs": 11.26,
+        "medianMs": 11.35,
+        "maxMs": 14.36,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.gloomy",
+        "firstCallMs": 14.7,
+        "medianMs": 15.22,
+        "maxMs": 16.63,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.deep-fried",
+        "firstCallMs": 10.82,
+        "medianMs": 10.52,
+        "maxMs": 11.05,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.euphoric",
+        "firstCallMs": 11.84,
+        "medianMs": 12.6,
+        "maxMs": 16.17,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-yellow-orange",
+        "firstCallMs": 12.8,
+        "medianMs": 10.99,
+        "maxMs": 11.04,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-pink-purple",
+        "firstCallMs": 10.56,
+        "medianMs": 10.8,
+        "maxMs": 11.5,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-blue-pink",
+        "firstCallMs": 10.57,
+        "medianMs": 11.2,
+        "maxMs": 11.72,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-green-blue",
+        "firstCallMs": 10.01,
+        "medianMs": 11.19,
+        "maxMs": 12.02,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-white",
+        "firstCallMs": 9.83,
+        "medianMs": 8.93,
+        "maxMs": 9.33,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-black",
+        "firstCallMs": 10.75,
+        "medianMs": 8.43,
+        "maxMs": 8.6,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-yellow",
+        "firstCallMs": 8.22,
+        "medianMs": 8.55,
+        "maxMs": 9.19,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-orange",
+        "firstCallMs": 8.52,
+        "medianMs": 8.63,
+        "maxMs": 9.05,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-red",
+        "firstCallMs": 8.37,
+        "medianMs": 8.23,
+        "maxMs": 9.36,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-pink",
+        "firstCallMs": 8.2,
+        "medianMs": 8.14,
+        "maxMs": 8.46,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-purple",
+        "firstCallMs": 8.51,
+        "medianMs": 8.2,
+        "maxMs": 9.62,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-blue",
+        "firstCallMs": 7.68,
+        "medianMs": 8.19,
+        "maxMs": 8.32,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-green",
+        "firstCallMs": 7.76,
+        "medianMs": 8.14,
+        "maxMs": 8.4,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.flash",
+        "firstCallMs": 8.69,
+        "medianMs": 7.17,
+        "maxMs": 7.21,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.pulse",
+        "firstCallMs": 9.26,
+        "medianMs": 5.94,
+        "maxMs": 6.55,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.spin",
+        "firstCallMs": 10.45,
+        "medianMs": 5.64,
+        "maxMs": 6.22,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.rotate",
+        "firstCallMs": 6.64,
+        "medianMs": 7.06,
+        "maxMs": 8.79,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.crash-zoom",
+        "firstCallMs": 7.38,
+        "medianMs": 6.63,
+        "maxMs": 7.07,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.slow-zoom",
+        "firstCallMs": 7.1,
+        "medianMs": 6.89,
+        "maxMs": 7.2,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.slow-zoom-random",
+        "firstCallMs": 7.37,
+        "medianMs": 7.09,
+        "maxMs": 7.52,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.blur",
+        "firstCallMs": 27.65,
+        "medianMs": 18.77,
+        "maxMs": 19.12,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.blur-fill",
+        "firstCallMs": 49.84,
+        "medianMs": 35.86,
+        "maxMs": 43.9,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vhs",
+        "firstCallMs": 13.51,
+        "medianMs": 9.15,
+        "maxMs": 9.95,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vaporwave",
+        "firstCallMs": 7.84,
+        "medianMs": 9.2,
+        "maxMs": 11.89,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.chromatic-aberration",
+        "firstCallMs": 10.15,
+        "medianMs": 5.51,
+        "maxMs": 5.69,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glitch",
+        "firstCallMs": 14.98,
+        "medianMs": 6.48,
+        "maxMs": 7.97,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.filmic",
+        "firstCallMs": 33.2,
+        "medianMs": 25.81,
+        "maxMs": 40.55,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.color-shift",
+        "firstCallMs": 7.83,
+        "medianMs": 6.09,
+        "maxMs": 6.57,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.pixelation",
+        "firstCallMs": 15.87,
+        "medianMs": 13.67,
+        "maxMs": 14.99,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glow",
+        "firstCallMs": 30.23,
+        "medianMs": 26.42,
+        "maxMs": 34.12,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.diffusion",
+        "firstCallMs": 26.1,
+        "medianMs": 21.84,
+        "maxMs": 26.25,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.disco",
+        "firstCallMs": 19.95,
+        "medianMs": 18.41,
+        "maxMs": 19.53,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glass",
+        "firstCallMs": 26.34,
+        "medianMs": 22.38,
+        "maxMs": 23.23,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.comic",
+        "firstCallMs": 21.65,
+        "medianMs": 21.9,
+        "maxMs": 28.88,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.retro-graphics",
+        "firstCallMs": 22.66,
+        "medianMs": 9.91,
+        "maxMs": 10.22,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vertical",
+        "firstCallMs": 9.41,
+        "medianMs": 6.31,
+        "maxMs": 6.37,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.radial",
+        "firstCallMs": 29.34,
+        "medianMs": 22.65,
+        "maxMs": 22.85,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.smoke",
+        "firstCallMs": 38.37,
+        "medianMs": 33.48,
+        "maxMs": 34.47,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.kaleidoscope",
+        "firstCallMs": 66.59,
+        "medianMs": 2.94,
+        "maxMs": 4.16,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.black-white-removal",
+        "firstCallMs": 8.21,
+        "medianMs": 5.77,
+        "maxMs": 5.92,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.green-screen",
+        "firstCallMs": 22.67,
+        "medianMs": 19.39,
+        "maxMs": 19.81,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.cross-blur",
+        "firstCallMs": 33.47,
+        "medianMs": 22.32,
+        "maxMs": 34.66,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.burn",
+        "firstCallMs": 7.47,
+        "medianMs": 5.19,
+        "maxMs": 5.53,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.horizontal-banding",
+        "firstCallMs": 15.48,
+        "medianMs": 9.99,
+        "maxMs": 10.24,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.tiles",
+        "firstCallMs": 18.43,
+        "medianMs": 15.94,
+        "maxMs": 17.56,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.hard-wipe-up",
+        "firstCallMs": 12.34,
+        "medianMs": 9.03,
+        "maxMs": 9.28,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-up",
+        "firstCallMs": 15.54,
+        "medianMs": 11.39,
+        "maxMs": 11.95,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.hard-wipe-down",
+        "firstCallMs": 12.57,
+        "medianMs": 10.65,
+        "maxMs": 10.96,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-down",
+        "firstCallMs": 11.46,
+        "medianMs": 11.64,
+        "maxMs": 11.97,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-left",
+        "firstCallMs": 14.47,
+        "medianMs": 11.5,
+        "maxMs": 11.92,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-right",
+        "firstCallMs": 11.62,
+        "medianMs": 11.66,
+        "maxMs": 11.97,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.diagonal-soft-wipe",
+        "firstCallMs": 19.24,
+        "medianMs": 15.68,
+        "maxMs": 15.77,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.iris-wipe",
+        "firstCallMs": 23.57,
+        "medianMs": 20.34,
+        "maxMs": 20.61,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.spin",
+        "firstCallMs": 23.44,
+        "medianMs": 20.9,
+        "maxMs": 25.24,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.zoom",
+        "firstCallMs": 19.3,
+        "medianMs": 20.09,
+        "maxMs": 22.72,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.swirl",
+        "firstCallMs": 67.48,
+        "medianMs": 68.72,
+        "maxMs": 115.25,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.push",
+        "firstCallMs": 10.95,
+        "medianMs": 6.58,
+        "maxMs": 7.42,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.glitch",
+        "firstCallMs": 33.24,
+        "medianMs": 26.35,
+        "maxMs": 32.34,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.glitch-reveal",
+        "firstCallMs": 15.19,
+        "medianMs": 10.5,
+        "maxMs": 11.25,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.bloom",
+        "firstCallMs": 19.14,
+        "medianMs": 14.13,
+        "maxMs": 15.64,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.page-turn",
+        "firstCallMs": 36.62,
+        "medianMs": 30.66,
+        "maxMs": 31.62,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.cube-flip",
+        "firstCallMs": 33.11,
+        "medianMs": 29.75,
+        "maxMs": 31.54,
+        "targetMs": 25,
+        "withinTarget": false
+      }
+    ]
+  },
+  "translucent": {
+    "node": "v24.19.0",
+    "alphaInput": true,
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "width": 1280,
+    "height": 720,
+    "method": "Bundled ES module (no Vite SSR wrappers); 3 warmups + 7 samples, median; defaults except adjustment amount=.5; effect time=1.37s; transition progress=.43; allocation included; no timing assertions",
+    "items": [
+      {
+        "id": "adjust.exposure",
+        "firstCallMs": 10.53,
+        "medianMs": 3.59,
+        "maxMs": 3.72,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.contrast",
+        "firstCallMs": 4.69,
+        "medianMs": 3.47,
+        "maxMs": 3.68,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.saturation",
+        "firstCallMs": 8.08,
+        "medianMs": 6.05,
+        "maxMs": 6.11,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.temperature",
+        "firstCallMs": 6.08,
+        "medianMs": 5.96,
+        "maxMs": 6.22,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.transparency",
+        "firstCallMs": 4.93,
+        "medianMs": 3.22,
+        "maxMs": 3.68,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.none",
+        "firstCallMs": 0.78,
+        "medianMs": 0.63,
+        "maxMs": 0.65,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.retro",
+        "firstCallMs": 12.3,
+        "medianMs": 10.69,
+        "maxMs": 11.11,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.orange-teal",
+        "firstCallMs": 11.01,
+        "medianMs": 11.34,
+        "maxMs": 15.13,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.bold-blue",
+        "firstCallMs": 11.43,
+        "medianMs": 11.05,
+        "maxMs": 11.75,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.golden-hour",
+        "firstCallMs": 10.5,
+        "medianMs": 10.4,
+        "maxMs": 10.85,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.vibrant-vlogger",
+        "firstCallMs": 11.12,
+        "medianMs": 11.1,
+        "maxMs": 11.8,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.purple-undertone",
+        "firstCallMs": 9.56,
+        "medianMs": 10.09,
+        "maxMs": 12.41,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.winter-sunset",
+        "firstCallMs": 9.84,
+        "medianMs": 9.89,
+        "maxMs": 10.36,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.35mm",
+        "firstCallMs": 30.95,
+        "medianMs": 14.75,
+        "maxMs": 43.19,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.contrast",
+        "firstCallMs": 11.74,
+        "medianMs": 11.28,
+        "maxMs": 12.17,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.fall",
+        "firstCallMs": 9.69,
+        "medianMs": 10.1,
+        "maxMs": 11.93,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.winter",
+        "firstCallMs": 11.05,
+        "medianMs": 10.97,
+        "maxMs": 12.08,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.old-western",
+        "firstCallMs": 14.49,
+        "medianMs": 14.84,
+        "maxMs": 16.73,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.warm-coastline",
+        "firstCallMs": 12.95,
+        "medianMs": 11.43,
+        "maxMs": 15.38,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-coastline",
+        "firstCallMs": 11.14,
+        "medianMs": 11.19,
+        "maxMs": 11.84,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.warm-countryside",
+        "firstCallMs": 10.76,
+        "medianMs": 11.18,
+        "maxMs": 12.77,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-countryside",
+        "firstCallMs": 10.19,
+        "medianMs": 10.6,
+        "maxMs": 13.64,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.golden",
+        "firstCallMs": 9.83,
+        "medianMs": 10.14,
+        "maxMs": 11.03,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.dreamscape",
+        "firstCallMs": 15.13,
+        "medianMs": 11.16,
+        "maxMs": 11.49,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.sunrise",
+        "firstCallMs": 18.6,
+        "medianMs": 11.03,
+        "maxMs": 11.38,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.warm-tone",
+        "firstCallMs": 9.41,
+        "medianMs": 9.4,
+        "maxMs": 10.03,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-tone",
+        "firstCallMs": 9.68,
+        "medianMs": 9.59,
+        "maxMs": 10.84,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.pastel-dreams",
+        "firstCallMs": 10.14,
+        "medianMs": 10.74,
+        "maxMs": 15.54,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.scenery",
+        "firstCallMs": 11.19,
+        "medianMs": 11.62,
+        "maxMs": 20.68,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.portrait",
+        "firstCallMs": 10.72,
+        "medianMs": 10.86,
+        "maxMs": 11.48,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.indoors",
+        "firstCallMs": 11.4,
+        "medianMs": 10.58,
+        "maxMs": 12.46,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.outdoors",
+        "firstCallMs": 10.59,
+        "medianMs": 10.6,
+        "maxMs": 11.15,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.muted",
+        "firstCallMs": 10.08,
+        "medianMs": 10.02,
+        "maxMs": 10.69,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.black-white",
+        "firstCallMs": 9.95,
+        "medianMs": 9.29,
+        "maxMs": 9.6,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.soft-bw",
+        "firstCallMs": 10.23,
+        "medianMs": 10.24,
+        "maxMs": 13.98,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.muted-bw",
+        "firstCallMs": 9.88,
+        "medianMs": 10.8,
+        "maxMs": 11.3,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.gloomy",
+        "firstCallMs": 15.53,
+        "medianMs": 14.85,
+        "maxMs": 15.29,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.deep-fried",
+        "firstCallMs": 11.48,
+        "medianMs": 10.35,
+        "maxMs": 11.47,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.euphoric",
+        "firstCallMs": 11.76,
+        "medianMs": 12.37,
+        "maxMs": 12.89,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-yellow-orange",
+        "firstCallMs": 12.81,
+        "medianMs": 10.15,
+        "maxMs": 11.43,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-pink-purple",
+        "firstCallMs": 9.95,
+        "medianMs": 10.26,
+        "maxMs": 12.97,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-blue-pink",
+        "firstCallMs": 10.67,
+        "medianMs": 10.35,
+        "maxMs": 12.14,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-green-blue",
+        "firstCallMs": 10.14,
+        "medianMs": 10.23,
+        "maxMs": 11.46,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-white",
+        "firstCallMs": 10.38,
+        "medianMs": 7.96,
+        "maxMs": 8.44,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-black",
+        "firstCallMs": 8.13,
+        "medianMs": 8.15,
+        "maxMs": 9.47,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-yellow",
+        "firstCallMs": 8.2,
+        "medianMs": 8.04,
+        "maxMs": 8.68,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-orange",
+        "firstCallMs": 7.78,
+        "medianMs": 8.03,
+        "maxMs": 8.75,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-red",
+        "firstCallMs": 7.94,
+        "medianMs": 8.29,
+        "maxMs": 8.53,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-pink",
+        "firstCallMs": 7.93,
+        "medianMs": 8.08,
+        "maxMs": 8.52,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-purple",
+        "firstCallMs": 8.08,
+        "medianMs": 7.94,
+        "maxMs": 8.26,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-blue",
+        "firstCallMs": 7.72,
+        "medianMs": 8.02,
+        "maxMs": 8.24,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-green",
+        "firstCallMs": 7.79,
+        "medianMs": 8.45,
+        "maxMs": 9.28,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.flash",
+        "firstCallMs": 9.9,
+        "medianMs": 7.48,
+        "maxMs": 8.67,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.pulse",
+        "firstCallMs": 8.54,
+        "medianMs": 6.78,
+        "maxMs": 7.23,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.spin",
+        "firstCallMs": 10.23,
+        "medianMs": 6.15,
+        "maxMs": 6.57,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.rotate",
+        "firstCallMs": 8.21,
+        "medianMs": 7.11,
+        "maxMs": 7.79,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.crash-zoom",
+        "firstCallMs": 7.85,
+        "medianMs": 7.89,
+        "maxMs": 8.56,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.slow-zoom",
+        "firstCallMs": 7.21,
+        "medianMs": 7.12,
+        "maxMs": 7.84,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.slow-zoom-random",
+        "firstCallMs": 8.14,
+        "medianMs": 7.19,
+        "maxMs": 8.79,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.blur",
+        "firstCallMs": 44.21,
+        "medianMs": 26.54,
+        "maxMs": 35.86,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.blur-fill",
+        "firstCallMs": 51.29,
+        "medianMs": 38.68,
+        "maxMs": 48.42,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vhs",
+        "firstCallMs": 20.03,
+        "medianMs": 7.3,
+        "maxMs": 8.14,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vaporwave",
+        "firstCallMs": 7.65,
+        "medianMs": 7.44,
+        "maxMs": 7.94,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.chromatic-aberration",
+        "firstCallMs": 9.26,
+        "medianMs": 5.67,
+        "maxMs": 6.45,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glitch",
+        "firstCallMs": 18.94,
+        "medianMs": 6.62,
+        "maxMs": 6.77,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.filmic",
+        "firstCallMs": 36.08,
+        "medianMs": 25.13,
+        "maxMs": 46.24,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.color-shift",
+        "firstCallMs": 8.69,
+        "medianMs": 6.09,
+        "maxMs": 7.81,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.pixelation",
+        "firstCallMs": 16.95,
+        "medianMs": 14.07,
+        "maxMs": 21.02,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glow",
+        "firstCallMs": 46.05,
+        "medianMs": 37.39,
+        "maxMs": 73.25,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.diffusion",
+        "firstCallMs": 29.8,
+        "medianMs": 28.27,
+        "maxMs": 44.22,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.disco",
+        "firstCallMs": 30.02,
+        "medianMs": 20.05,
+        "maxMs": 29.2,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glass",
+        "firstCallMs": 29.61,
+        "medianMs": 23.02,
+        "maxMs": 25.22,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.comic",
+        "firstCallMs": 26.72,
+        "medianMs": 18.81,
+        "maxMs": 21.41,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.retro-graphics",
+        "firstCallMs": 22.55,
+        "medianMs": 10.27,
+        "maxMs": 10.59,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vertical",
+        "firstCallMs": 9.95,
+        "medianMs": 6.66,
+        "maxMs": 7.78,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.radial",
+        "firstCallMs": 31.21,
+        "medianMs": 24.18,
+        "maxMs": 57.04,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.smoke",
+        "firstCallMs": 41.96,
+        "medianMs": 34.88,
+        "maxMs": 35.7,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.kaleidoscope",
+        "firstCallMs": 67.92,
+        "medianMs": 3.02,
+        "maxMs": 3.42,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.black-white-removal",
+        "firstCallMs": 8.14,
+        "medianMs": 5.76,
+        "maxMs": 6.08,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.green-screen",
+        "firstCallMs": 23.71,
+        "medianMs": 20.45,
+        "maxMs": 22.3,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.cross-blur",
+        "firstCallMs": 39.18,
+        "medianMs": 29.49,
+        "maxMs": 35.07,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.burn",
+        "firstCallMs": 9.82,
+        "medianMs": 5.25,
+        "maxMs": 5.74,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.horizontal-banding",
+        "firstCallMs": 23.5,
+        "medianMs": 13.39,
+        "maxMs": 13.83,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.tiles",
+        "firstCallMs": 21.95,
+        "medianMs": 18.86,
+        "maxMs": 19,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.hard-wipe-up",
+        "firstCallMs": 14.15,
+        "medianMs": 11.23,
+        "maxMs": 12.65,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-up",
+        "firstCallMs": 16.92,
+        "medianMs": 13.59,
+        "maxMs": 14.23,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.hard-wipe-down",
+        "firstCallMs": 14.65,
+        "medianMs": 12.4,
+        "maxMs": 12.83,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-down",
+        "firstCallMs": 13.67,
+        "medianMs": 13.8,
+        "maxMs": 17.36,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-left",
+        "firstCallMs": 17.48,
+        "medianMs": 13.81,
+        "maxMs": 14.14,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-right",
+        "firstCallMs": 14,
+        "medianMs": 13.56,
+        "maxMs": 13.82,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.diagonal-soft-wipe",
+        "firstCallMs": 21.49,
+        "medianMs": 17.19,
+        "maxMs": 17.6,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.iris-wipe",
+        "firstCallMs": 28.99,
+        "medianMs": 22.61,
+        "maxMs": 23.38,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.spin",
+        "firstCallMs": 32.98,
+        "medianMs": 27.15,
+        "maxMs": 30.8,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.zoom",
+        "firstCallMs": 20.97,
+        "medianMs": 21.93,
+        "maxMs": 29.52,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.swirl",
+        "firstCallMs": 72.45,
+        "medianMs": 67.78,
+        "maxMs": 100.2,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.push",
+        "firstCallMs": 10.22,
+        "medianMs": 5.88,
+        "maxMs": 6.54,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.glitch",
+        "firstCallMs": 30.2,
+        "medianMs": 26.04,
+        "maxMs": 34.35,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.glitch-reveal",
+        "firstCallMs": 16.57,
+        "medianMs": 13.55,
+        "maxMs": 14.08,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.bloom",
+        "firstCallMs": 18.94,
+        "medianMs": 17.21,
+        "maxMs": 17.73,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.page-turn",
+        "firstCallMs": 32.63,
+        "medianMs": 28.91,
+        "maxMs": 29.56,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.cube-flip",
+        "firstCallMs": 32.57,
+        "medianMs": 29.56,
+        "maxMs": 31.98,
+        "targetMs": 25,
+        "withinTarget": false
+      }
+    ]
+  },
+  "beforeOptimization": {
+    "node": "v24.19.0",
+    "cpu": "AMD EPYC 9V74 80-Core Processor",
+    "width": 1280,
+    "height": 720,
+    "method": "Bundled ES module (no Vite SSR wrappers); 3 warmups + 7 samples, median; defaults except adjustment amount=.5; effect time=1.37s; transition progress=.43; allocation included; no timing assertions",
+    "items": [
+      {
+        "id": "adjust.exposure",
+        "medianMs": 3.54,
+        "maxMs": 4.2,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.contrast",
+        "medianMs": 3.43,
+        "maxMs": 3.64,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.saturation",
+        "medianMs": 5.9,
+        "maxMs": 6.2,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.temperature",
+        "medianMs": 5.96,
+        "maxMs": 6.42,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "adjust.transparency",
+        "medianMs": 3.24,
+        "maxMs": 3.37,
+        "targetMs": 8,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.none",
+        "medianMs": 0.63,
+        "maxMs": 0.67,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.retro",
+        "medianMs": 15.56,
+        "maxMs": 30.8,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.orange-teal",
+        "medianMs": 16.13,
+        "maxMs": 16.42,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.bold-blue",
+        "medianMs": 16.54,
+        "maxMs": 16.8,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.golden-hour",
+        "medianMs": 15.69,
+        "maxMs": 16.39,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.vibrant-vlogger",
+        "medianMs": 16.87,
+        "maxMs": 17.24,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.purple-undertone",
+        "medianMs": 15.35,
+        "maxMs": 16.01,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.winter-sunset",
+        "medianMs": 15.92,
+        "maxMs": 17.1,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.35mm",
+        "medianMs": 14.81,
+        "maxMs": 18.25,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.contrast",
+        "medianMs": 14.31,
+        "maxMs": 14.59,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.fall",
+        "medianMs": 14.61,
+        "maxMs": 15.38,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.winter",
+        "medianMs": 15.56,
+        "maxMs": 17.29,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.old-western",
+        "medianMs": 15.19,
+        "maxMs": 15.88,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.warm-coastline",
+        "medianMs": 14.88,
+        "maxMs": 15.35,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-coastline",
+        "medianMs": 15.15,
+        "maxMs": 15.89,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.warm-countryside",
+        "medianMs": 18.5,
+        "maxMs": 22.29,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.cool-countryside",
+        "medianMs": 15.84,
+        "maxMs": 17.12,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.golden",
+        "medianMs": 14.13,
+        "maxMs": 14.79,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.dreamscape",
+        "medianMs": 15.93,
+        "maxMs": 17.36,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.sunrise",
+        "medianMs": 15.14,
+        "maxMs": 17.04,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.warm-tone",
+        "medianMs": 13.47,
+        "maxMs": 14.37,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.cool-tone",
+        "medianMs": 13.55,
+        "maxMs": 14.35,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.pastel-dreams",
+        "medianMs": 15.21,
+        "maxMs": 16.32,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.scenery",
+        "medianMs": 15.55,
+        "maxMs": 15.83,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.portrait",
+        "medianMs": 14.9,
+        "maxMs": 15.39,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.indoors",
+        "medianMs": 14.63,
+        "maxMs": 16.31,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.outdoors",
+        "medianMs": 15.33,
+        "maxMs": 16.29,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.muted",
+        "medianMs": 14.68,
+        "maxMs": 15,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.black-white",
+        "medianMs": 13.36,
+        "maxMs": 13.68,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.soft-bw",
+        "medianMs": 14.85,
+        "maxMs": 15.34,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.muted-bw",
+        "medianMs": 13.92,
+        "maxMs": 14.82,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.gloomy",
+        "medianMs": 14.09,
+        "maxMs": 18.63,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.deep-fried",
+        "medianMs": 13.58,
+        "maxMs": 14.22,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.euphoric",
+        "medianMs": 15.65,
+        "maxMs": 15.97,
+        "targetMs": 15,
+        "withinTarget": false
+      },
+      {
+        "id": "filter.duotone-yellow-orange",
+        "medianMs": 9.8,
+        "maxMs": 10.26,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-pink-purple",
+        "medianMs": 9.99,
+        "maxMs": 10.56,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-blue-pink",
+        "medianMs": 9.85,
+        "maxMs": 10.68,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.duotone-green-blue",
+        "medianMs": 9.83,
+        "maxMs": 10.03,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-white",
+        "medianMs": 7.85,
+        "maxMs": 8.04,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-black",
+        "medianMs": 7.76,
+        "maxMs": 7.81,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-yellow",
+        "medianMs": 7.96,
+        "maxMs": 8.39,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-orange",
+        "medianMs": 7.77,
+        "maxMs": 10.35,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-red",
+        "medianMs": 7.78,
+        "maxMs": 7.98,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-pink",
+        "medianMs": 7.69,
+        "maxMs": 8.02,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-purple",
+        "medianMs": 7.8,
+        "maxMs": 8.35,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-blue",
+        "medianMs": 7.68,
+        "maxMs": 8,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "filter.overlay-green",
+        "medianMs": 7.69,
+        "maxMs": 8.14,
+        "targetMs": 15,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.flash",
+        "medianMs": 7.03,
+        "maxMs": 8.17,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.pulse",
+        "medianMs": 5.82,
+        "maxMs": 6.14,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.spin",
+        "medianMs": 15.17,
+        "maxMs": 20.73,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.rotate",
+        "medianMs": 12.52,
+        "maxMs": 13.05,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.crash-zoom",
+        "medianMs": 10.49,
+        "maxMs": 11.81,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.slow-zoom",
+        "medianMs": 13.13,
+        "maxMs": 13.58,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.slow-zoom-random",
+        "medianMs": 11.57,
+        "maxMs": 12,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.blur",
+        "medianMs": 41.2,
+        "maxMs": 169.37,
+        "targetMs": 40,
+        "withinTarget": false
+      },
+      {
+        "id": "effect.blur-fill",
+        "medianMs": 65.2,
+        "maxMs": 78.4,
+        "targetMs": 40,
+        "withinTarget": false
+      },
+      {
+        "id": "effect.vhs",
+        "medianMs": 7.81,
+        "maxMs": 10.37,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vaporwave",
+        "medianMs": 7.46,
+        "maxMs": 8.19,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.chromatic-aberration",
+        "medianMs": 5.35,
+        "maxMs": 5.67,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glitch",
+        "medianMs": 9.31,
+        "maxMs": 9.58,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.filmic",
+        "medianMs": 32.11,
+        "maxMs": 46.13,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.color-shift",
+        "medianMs": 6.12,
+        "maxMs": 6.37,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.pixelation",
+        "medianMs": 13.7,
+        "maxMs": 14.37,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glow",
+        "medianMs": 44.32,
+        "maxMs": 51.25,
+        "targetMs": 40,
+        "withinTarget": false
+      },
+      {
+        "id": "effect.diffusion",
+        "medianMs": 39.2,
+        "maxMs": 43.87,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.disco",
+        "medianMs": 18.32,
+        "maxMs": 22.84,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.glass",
+        "medianMs": 30.8,
+        "maxMs": 47.78,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.comic",
+        "medianMs": 32.82,
+        "maxMs": 33.9,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.retro-graphics",
+        "medianMs": 10.01,
+        "maxMs": 11.05,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.vertical",
+        "medianMs": 7.5,
+        "maxMs": 7.9,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.radial",
+        "medianMs": 55.98,
+        "maxMs": 57.22,
+        "targetMs": 40,
+        "withinTarget": false
+      },
+      {
+        "id": "effect.smoke",
+        "medianMs": 33.73,
+        "maxMs": 34.45,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.kaleidoscope",
+        "medianMs": 81.37,
+        "maxMs": 83.54,
+        "targetMs": 40,
+        "withinTarget": false
+      },
+      {
+        "id": "effect.black-white-removal",
+        "medianMs": 6.07,
+        "maxMs": 6.57,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "effect.green-screen",
+        "medianMs": 20.13,
+        "maxMs": 20.93,
+        "targetMs": 40,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.cross-blur",
+        "medianMs": 78.66,
+        "maxMs": 81.98,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.burn",
+        "medianMs": 5.48,
+        "maxMs": 6.18,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.horizontal-banding",
+        "medianMs": 13.28,
+        "maxMs": 13.74,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.tiles",
+        "medianMs": 18.99,
+        "maxMs": 20.15,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.hard-wipe-up",
+        "medianMs": 11.29,
+        "maxMs": 18.63,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-up",
+        "medianMs": 13.82,
+        "maxMs": 14.45,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.hard-wipe-down",
+        "medianMs": 12.32,
+        "maxMs": 13.34,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-down",
+        "medianMs": 13.77,
+        "maxMs": 14.16,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-left",
+        "medianMs": 13.91,
+        "maxMs": 14.49,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.soft-wipe-right",
+        "medianMs": 13.54,
+        "maxMs": 14.85,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.diagonal-soft-wipe",
+        "medianMs": 18.19,
+        "maxMs": 18.85,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.iris-wipe",
+        "medianMs": 45.06,
+        "maxMs": 45.97,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.spin",
+        "medianMs": 36.22,
+        "maxMs": 41.27,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.zoom",
+        "medianMs": 38.28,
+        "maxMs": 47.77,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.swirl",
+        "medianMs": 97.6,
+        "maxMs": 110.69,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.push",
+        "medianMs": 7.18,
+        "maxMs": 8.08,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.glitch",
+        "medianMs": 33.76,
+        "maxMs": 38.71,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.glitch-reveal",
+        "medianMs": 12.85,
+        "maxMs": 13.67,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.bloom",
+        "medianMs": 16.37,
+        "maxMs": 16.85,
+        "targetMs": 25,
+        "withinTarget": true
+      },
+      {
+        "id": "transition.page-turn",
+        "medianMs": 29.56,
+        "maxMs": 30.28,
+        "targetMs": 25,
+        "withinTarget": false
+      },
+      {
+        "id": "transition.cube-flip",
+        "medianMs": 28.8,
+        "maxMs": 30.67,
+        "targetMs": 25,
+        "withinTarget": false
+      }
+    ]
+  }
+}
