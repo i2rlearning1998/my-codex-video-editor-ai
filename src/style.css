@@ -6704,3 +6704,28 @@ input[type='range'] {
   flex: none;
   color: var(--text-secondary);
 }
+
+/* U3: menus taller than the window scroll with the wheel; the timeline
+   menu's Speed and Audio open as flyouts. */
+.timeline-menu,
+.canvas-context-menu,
+.menu-flyout,
+[role='menu'] {
+  max-block-size: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.timeline-menu {
+  max-block-size: calc(100vh - 96px);
+}
+.timeline-submenu {
+  position: fixed;
+  z-index: var(--z-menu);
+  display: grid;
+  min-inline-size: 160px;
+  padding: var(--space-2);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}

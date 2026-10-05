@@ -128,7 +128,7 @@ test.beforeEach(async ({ page, openFixtureProject }) => {
   ).toBeVisible();
 });
 
-test('[PB-013] dragging the playhead over 1 s of video redraws the canvas at least 20 times and shows the exact frame on release; audio stays silent', async ({
+test('[PB-015] dragging the playhead over 1 s of video redraws the canvas at least 20 times and shows the exact frame on release; audio stays silent', async ({
   page,
 }) => {
   const draws = () =>

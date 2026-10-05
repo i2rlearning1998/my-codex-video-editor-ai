@@ -9,6 +9,7 @@ import {
   type LaneGroup,
 } from './timeline-drop';
 import { assetDrag } from './drag-state';
+import { announceMenu, dismissMenuOn } from './context-menu';
 import {
   frameToTime,
   pixelToTime,
@@ -2835,7 +2836,71 @@ export function mountTimeline(
     items.push(commandItem('more-options'));
     return items;
   };
-  const showAudioMenu = () => {
+  // U3: Speed and Audio open as flyouts beside their entry: on hover after
+  // 150 ms (a 300 ms grace lets the pointer travel to the flyout), on click
+  // and on the Right arrow; Left or Escape closes the flyout.
+  let submenu: HTMLElement | null = null;
+  let subOpen = 0,
+    subClose = 0;
+  const closeSub = () => {
+    window.clearTimeout(subClose);
+    submenu?.remove();
+    submenu = null;
+    for (const item of menu.querySelectorAll('[aria-expanded="true"]'))
+      item.setAttribute('aria-expanded', 'false');
+  };
+  const openSub = (action: string, items: HTMLElement[], focus: boolean) => {
+    const parent = menu.querySelector<HTMLElement>(
+      `:scope > [data-action="${action}"]`,
+    );
+    closeSub();
+    if (!parent) return;
+    const list = document.createElement('div');
+    list.className = 'timeline-submenu';
+    list.setAttribute('role', 'menu');
+    list.append(...items);
+    menu.append(list);
+    const box = parent.getBoundingClientRect();
+    const width = list.offsetWidth || 180;
+    const left =
+      box.right + width + 8 > window.innerWidth
+        ? Math.max(8, box.left - width)
+        : box.right;
+    list.style.left = `${left}px`;
+    list.style.top = `${Math.max(8, Math.min(box.top - 4, window.innerHeight - list.offsetHeight - 8))}px`;
+    parent.setAttribute('aria-expanded', 'true');
+    list.onpointerenter = () => window.clearTimeout(subClose);
+    submenu = list;
+    if (focus)
+      list.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+  };
+  dismissMenuOn(
+    menu,
+    () => !menu.hidden,
+    () => {
+      closeSub();
+      menu.hidden = true;
+    },
+  );
+  menu.addEventListener('pointerover', (event) => {
+    const item = (event.target as HTMLElement).closest<HTMLElement>('button');
+    if (!item || submenu?.contains(item)) return;
+    window.clearTimeout(subOpen);
+    const action = item.dataset.action;
+    if (action === 'audio-menu' || action === 'speed') {
+      window.clearTimeout(subClose);
+      if (item.getAttribute('aria-expanded') === 'true') return;
+      subOpen = window.setTimeout(
+        () =>
+          action === 'speed' ? showSpeedMenu(false) : showAudioMenu(false),
+        150,
+      );
+    } else if (submenu) {
+      window.clearTimeout(subClose);
+      subClose = window.setTimeout(closeSub, 300);
+    }
+  });
+  const showAudioMenu = (focus = true) => {
     const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
     const mute = commandItem('clip-mute', 'menuitemcheckbox');
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
@@ -2848,16 +2913,22 @@ export function mountTimeline(
       'aria-checked',
       String(clips.length > 0 && clips.every(({ track }) => track.muted)),
     );
-    const items: HTMLElement[] = [back, mute];
+    void back;
+    const items: HTMLElement[] = [mute];
     if (clipMenuKind() === 'video') items.push(commandItem('detach-audio'));
-    menu.replaceChildren(...items);
-    back.focus();
+    openSub('audio-menu', items, focus);
   };
   // J14: the menu works from the keyboard: Up and Down move (skipping
   // disabled entries), Home and End, Right opens Audio, Left goes back.
   menu.addEventListener('keydown', (event) => {
+    const list =
+      (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
+        '.timeline-submenu',
+      ) ?? menu;
     const items = [
-      ...menu.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+      ...list.querySelectorAll<HTMLButtonElement>(
+        ':scope > button:not(:disabled)',
+      ),
     ];
     const index = items.indexOf(document.activeElement as HTMLButtonElement);
     const focus = (at: number) =>
@@ -2875,11 +2946,17 @@ export function mountTimeline(
         'audio-menu'
     )
       showAudioMenu();
-    else if (
-      event.key === 'ArrowLeft' &&
-      menu.querySelector('[data-action="menu-back"]')
+    else if (event.key === 'ArrowLeft' && list !== menu) {
+      const parent = menu.querySelector<HTMLElement>(
+        ':scope > [aria-expanded="true"]',
+      );
+      closeSub();
+      parent?.focus();
+    } else if (
+      event.key === 'ArrowRight' &&
+      (document.activeElement as HTMLElement | null)?.dataset.action === 'speed'
     )
-      showMainMenu();
+      showSpeedMenu();
     else return;
     event.preventDefault();
     event.stopPropagation();
@@ -2951,14 +3028,13 @@ export function mountTimeline(
     menu.querySelector<HTMLButtonElement>('button')?.focus();
   };
   // VID-015: speed presets open in place of the main menu, with Back.
-  const showSpeedMenu = () => {
+  const showSpeedMenu = (focus = true) => {
     const current = selectionRoots(session.source, session.selectedIds)
       .map((layer) => findClipByLayer(session.source.composition, layer.id))
       .find(Boolean)?.clip.speed;
-    const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
-    menu.replaceChildren(
-      back,
-      ...SPEED_PRESETS.map((speed) => {
+    openSub(
+      'speed',
+      SPEED_PRESETS.map((speed) => {
         const item = menuItem(
           t('clip.speedValue', { speed: formatNumber(speed) }),
           'speed-preset',
@@ -2968,8 +3044,8 @@ export function mountTimeline(
         item.setAttribute('aria-checked', String(current === speed));
         return item;
       }),
+      focus,
     );
-    back.focus();
   };
   const contextmenu = (event: MouseEvent) => {
     event.preventDefault();
@@ -2987,6 +3063,7 @@ export function mountTimeline(
         session.selectKeyframes([item]);
       }
       showKeyframeMenu();
+      announceMenu(menu);
       menu.hidden = false;
       menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
       return;
@@ -3004,7 +3081,9 @@ export function mountTimeline(
       session.select(null);
       seek(event.clientX);
     }
+    closeSub();
     showMainMenu();
+    announceMenu(menu);
     menu.hidden = false;
     // J14: the first entry takes focus once the menu is shown.
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
