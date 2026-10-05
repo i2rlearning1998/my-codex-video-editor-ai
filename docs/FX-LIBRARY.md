@@ -19,3 +19,9 @@ Standalone original CPU RGBA library, not integrated into the editor. No schema,
 F0 foundation implemented. Run `npm run fx:gallery`, open the printed local URL. Choose category/item, adjust parameters, scrub or play time, inspect category thumbnails; drop a local image. Generated scene and portrait samples use canvas shapes/gradients/text; no image files. Gallery visual browser acceptance has not been performed. The editor build does not import this library.
 
 F0: npm run check passed (format, typecheck, unit suite, editor build). No Playwright run.
+
+## F1 decisions
+
+FX-D06: Exposure spans −2..+2 stops, contrast uses a 0.25..4 gain around mid-grey, saturation spans greyscale..2× chroma, temperature adds a bounded warm/cool channel offset. Amount 0 is exact identity. Transparency −1 removes alpha, +1 makes nonzero-alpha pixels opaque; zero-alpha pixels stay invisible. `adjustmentDefaults` is a reset-friendly list; intensity always defaults to 1. Blend modes are metadata only, with Canvas operation strings; no CPU blend implementation is implied. Fade lengths each cap at half duration; outside clip bounds and nonpositive duration return 0; nonfinite arguments throw.
+
+F1: npm run check passed, 398 tests in 37 files. First benchmark on AMD EPYC 9V74 80-Core Processor: adjust.exposure 3.5 ms, adjust.contrast 3.55 ms, adjust.saturation 6.36 ms, adjust.temperature 6.04 ms, adjust.transparency 5.34 ms, filter.none 0.65 ms. Timing is descriptive, not a test gate.

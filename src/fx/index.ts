@@ -8,6 +8,13 @@ import type {
 } from './types';
 import { copy, resize, surface } from './surface';
 import { effect } from './definition';
+import { adjustments, blendModes } from './adjustments';
+export {
+  adjustments,
+  blendModes,
+  adjustmentDefaults,
+  fadeAlpha,
+} from './adjustments';
 export * from './types';
 export { surface, copy, resize, random } from './surface';
 export { defaults, sanitize } from './definition';
@@ -23,13 +30,8 @@ export const filters: readonly Definition[] = [
     'filter',
   ),
 ];
-export const adjustments: readonly Definition[] = [];
+
 export const transitions: readonly Transition[] = [];
-export const blendModes: readonly {
-  id: string;
-  name: string;
-  operation: string;
-}[] = [];
 export const getEffect = (id: string): Definition | undefined =>
   effects.find((d) => d.id === id);
 export const getFilter = (id: string): Definition | undefined =>
