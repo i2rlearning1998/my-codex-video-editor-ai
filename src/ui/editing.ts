@@ -27,6 +27,8 @@ import {
   type Layer,
   laneGroupOfLayer,
   laneInsertIndex,
+  backgroundLaneIndex,
+  isBackground,
   nearestFreeStart,
   sortedLanes,
   type LaneLayer,
@@ -246,7 +248,10 @@ export function trackForNewClip(
         type: 'MOVE_TRACK',
         compositionId: composition.id,
         trackId,
-        index: laneInsertIndex(composition.tracks, group),
+        index:
+          typeof layer !== 'string' && isBackground(layer)
+            ? backgroundLaneIndex(composition.tracks)
+            : laneInsertIndex(composition.tracks, group),
       },
     ],
   };

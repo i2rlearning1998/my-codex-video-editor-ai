@@ -6905,9 +6905,6 @@ input[type='range'] {
 
 /* U6: the frame panel stays at the timeline's bottom right; the playback
    range is drawn on the ruler with the outside dimmed. */
-#timeline-foundation {
-  position: relative;
-}
 .frame-panel {
   position: absolute;
   inset-inline-end: var(--space-3);

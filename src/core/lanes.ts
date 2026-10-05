@@ -29,7 +29,7 @@ const stringProperty = (layer: LaneLayer, key: string) => {
   return property?.type === 'string' ? String(property.value) : '';
 };
 /** A background (library backgrounds and template backdrops) is a visual. */
-const isBackground = (layer: LaneLayer) =>
+export const isBackground = (layer: LaneLayer) =>
   stringProperty(layer, 'role') === 'background';
 /**
  * The group a layer's clip belongs to. Video, image and backgrounds are
@@ -260,4 +260,14 @@ export function packLanesByOrder<C extends PackClip, T extends PackTrack<C>>(
       lane.clips.sort((a, b) => a.startTime - b.startTime);
   }
   return changed;
+}
+
+/** U1: a background's new lane goes under every picture and text lane (above
+ *  audio), so the background stays behind everything. */
+export function backgroundLaneIndex(tracks: readonly OrderedTrack[]): number {
+  const lanes = sortedLanes(tracks);
+  let index = lanes.length;
+  while (index > 0 && laneGroupOfTrack(lanes[index - 1]!.type) === 'audio')
+    index--;
+  return index;
 }
