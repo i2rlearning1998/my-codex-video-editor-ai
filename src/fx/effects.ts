@@ -1,3 +1,4 @@
+import { effectsB } from './effects-b';
 import type { Context, Params, Surface } from './types';
 import { effect, numberParam, booleanParam, n } from './definition';
 import { clamp, copy, hash, sample, surface } from './surface';
@@ -328,3 +329,5 @@ export const effects = [
     [radius],
   ),
 ];
+
+effects.push(...effectsB);

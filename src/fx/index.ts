@@ -71,3 +71,5 @@ export function renderThumbnail(
   } else def.apply(src, dst, {}, ctx);
   return dst;
 }
+
+export { clearEffectCaches } from './effects-b';

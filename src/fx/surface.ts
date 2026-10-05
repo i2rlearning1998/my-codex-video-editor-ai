@@ -43,6 +43,8 @@ export function context(src: Surface, ctx: Context): void {
     ![ctx.time, ctx.duration, ctx.seed].every(Number.isFinite) ||
     !Number.isInteger(ctx.seed) ||
     ctx.duration < 0 ||
+    Math.abs(ctx.time) > 1e9 ||
+    ctx.duration > 1e9 ||
     ctx.width !== src.width ||
     ctx.height !== src.height
   )
@@ -88,7 +90,10 @@ export function sample(
     (Math.round(clamp(y, 0, src.height - 1)) * src.width +
       Math.round(clamp(x, 0, src.width - 1))) *
     4;
-  for (let c = 0; c < 4; c++) dst.data[i + c] = src.data[j + c]!;
+  dst.data[i] = src.data[j]!;
+  dst.data[i + 1] = src.data[j + 1]!;
+  dst.data[i + 2] = src.data[j + 2]!;
+  dst.data[i + 3] = src.data[j + 3]!;
 }
 export function resize(src: Surface, width: number, height: number): Surface {
   validate(src);
@@ -112,6 +117,13 @@ export function mixPixel(
   i: number,
   t: number,
 ): void {
+  if (a.data[i + 3] === 255 && b.data[i + 3] === 255) {
+    dst.data[i] = a.data[i]! + (b.data[i]! - a.data[i]!) * t;
+    dst.data[i + 1] = a.data[i + 1]! + (b.data[i + 1]! - a.data[i + 1]!) * t;
+    dst.data[i + 2] = a.data[i + 2]! + (b.data[i + 2]! - a.data[i + 2]!) * t;
+    dst.data[i + 3] = 255;
+    return;
+  }
   const aa = a.data[i + 3]! * (1 - t),
     ba = b.data[i + 3]! * t,
     alpha = aa + ba;
@@ -120,4 +132,35 @@ export function mixPixel(
       ? (a.data[i + c]! * aa + b.data[i + c]! * ba) / alpha
       : 0;
   dst.data[i + 3] = alpha;
+}
+/** Alpha-aware mixing of two already-resolved pixel indices (hot motion path). */
+export function mixIndexed(
+  a: Surface,
+  b: Surface,
+  d: Surface,
+  i: number,
+  j: number,
+  k: number,
+  t: number,
+): void {
+  const aa = a.data[j + 3]!,
+    ba = b.data[k + 3]!;
+  if (aa === 255 && ba === 255) {
+    d.data[i] = a.data[j]! + (b.data[k]! - a.data[j]!) * t;
+    d.data[i + 1] = a.data[j + 1]! + (b.data[k + 1]! - a.data[j + 1]!) * t;
+    d.data[i + 2] = a.data[j + 2]! + (b.data[k + 2]! - a.data[j + 2]!) * t;
+    d.data[i + 3] = 255;
+    return;
+  }
+  const aw = aa * (1 - t),
+    bw = ba * t,
+    alpha = aw + bw;
+  d.data[i] = alpha ? (a.data[j]! * aw + b.data[k]! * bw) / alpha : 0;
+  d.data[i + 1] = alpha
+    ? (a.data[j + 1]! * aw + b.data[k + 1]! * bw) / alpha
+    : 0;
+  d.data[i + 2] = alpha
+    ? (a.data[j + 2]! * aw + b.data[k + 2]! * bw) / alpha
+    : 0;
+  d.data[i + 3] = alpha;
 }

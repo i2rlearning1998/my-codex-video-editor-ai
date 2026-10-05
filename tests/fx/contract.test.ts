@@ -9,9 +9,9 @@ import {
   renderThumbnail,
   random,
 } from '../../src/fx';
-export function fixture(w = 19, h = 13) {
+export function fixture(w = 19, h = 13, seed = 33) {
   const s = surface(w, h),
-    rng = random(33);
+    rng = random(seed);
   for (let i = 0; i < s.data.length; i++) s.data[i] = rng() * 256;
   return s;
 }
@@ -23,7 +23,7 @@ describe('FX library item contract', () => {
         ' identity, deterministic bytes, alpha, dimensions and immutable input',
       () => {
         const a = fixture(),
-          b = fixture(),
+          b = fixture(19, 13, 99),
           before = a.data.slice(),
           bb = b.data.slice(),
           d = surface(19, 13),

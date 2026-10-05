@@ -52,6 +52,19 @@ export function compileGrade(
       grain = g.grain ?? 0,
       v = g.vignette ?? 0,
       seed = ctx.seed ^ Math.floor(ctx.time * 24);
+    if (!v && !grain) {
+      for (let i = 0; i < a.length; i += 4) {
+        const rr = r[a[i]!]!,
+          gg = green[a[i + 1]!]!,
+          bb = b[a[i + 2]!]!,
+          l = 0.2126 * rr + 0.7152 * gg + 0.0722 * bb,
+          k = Math.round(l) * 3;
+        o[i] = l + (rr - l) * sat + split[k]!;
+        o[i + 1] = l + (gg - l) * sat + split[k + 1]!;
+        o[i + 2] = l + (bb - l) * sat + split[k + 2]!;
+      }
+      return;
+    }
     const xs = new Float32Array(w);
     for (let x = 0; x < w; x++) xs[x] = ((2 * (x + 0.5)) / w - 1) ** 2;
     for (let y = 0; y < h; y++) {
