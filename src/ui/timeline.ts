@@ -902,7 +902,7 @@ export function mountTimeline(
           }
         : null;
     root.querySelector('[data-composition-strip]')!.textContent =
-      `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${composition.fps} fps`;
+      `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${Math.round(composition.fps * 100) / 100} fps`;
     const code = root.querySelector<HTMLElement>('[data-timecode]')!;
     if (!code.querySelector('input'))
       code.textContent = t('player.timecode', {

@@ -35,32 +35,26 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[LAY-041] nothing selected: the Canvas tab sets size, background and scene length; Captions and Transitions are planned', async ({
+test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, background and frame rate (U5)', async ({
   page,
 }) => {
-  await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Canvas');
-  expect(await accordions(page)).toEqual([
-    'Size',
-    'Canvas background',
-    'Scene length',
-  ]);
-  await expect(tab(page, 'Transitions')).toHaveAttribute(
-    'title',
-    'Transitions: Planned: Wave 6 (TR-001)',
-  );
+  await expect(page.locator('#right-panel-empty')).toBeVisible();
+  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(0);
+  // The stage around the artboard shows the canvas bar (CV-057).
+  const stage = (await page.locator('#canvas-stage').boundingBox())!;
+  await page.mouse.click(stage.x + 6, stage.y + stage.height - 60);
+  const bar = page.locator('#context-toolbar');
+  await expect(bar).toHaveAttribute('data-mode', 'canvas');
+  for (const control of ['canvas-size', 'canvas-background', 'canvas-fps'])
+    await expect(bar.locator(`[data-control="${control}"]`)).toBeVisible();
   // Size: a preset applies to the open scene (J1), one step.
-  await panel(page)
-    .locator('.canvas-size-preset[data-preset="square"]')
+  await bar.locator('[data-control="canvas-size"]').click();
+  await page
+    .locator('.toolbar-popover .canvas-size-preset[data-preset="square"]')
     .click();
   const scene = (await hook(page)).project.compositions[0]!;
   expect([scene.width, scene.height]).toEqual([1080, 1080]);
   expect((await labels(page)).at(-1)).toBe('Canvas size');
-  // Scene length.
-  const length = page.locator('#right-scene-length');
-  await length.fill('12');
-  await length.press('Enter');
-  expect((await labels(page)).at(-1)).toBe('Set scene length');
-  expect((await hook(page)).project.compositions[0]!.duration).toBeCloseTo(12);
 });
 
 test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and Combine; Adjust colors has Transparency, the rest planned', async ({

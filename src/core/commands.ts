@@ -103,6 +103,15 @@ export const commandSchema = z.discriminatedUnion('type', [
       height: z.number().int().min(16).max(7680),
     })
     .strict(),
+  // U5: one scene's frame rate; clip, layer, keyframe and marker times stay
+  // in seconds and are re-snapped to the new frame grid.
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION_FPS'),
+      ...location,
+      fps: z.number().positive().max(240),
+    })
+    .strict(),
   // G5: scenes play in array order; this moves one to a new index.
   z
     .object({
@@ -374,6 +383,55 @@ export function applyCommand(project: Project, command: Command): void {
       const composition = compositionById(project, command.compositionId);
       composition.width = command.width;
       composition.height = command.height;
+      return;
+    }
+    case 'SET_COMPOSITION_FPS': {
+      const composition = compositionById(project, command.compositionId);
+      const fps = command.fps;
+      composition.fps = fps;
+      const snap = (time: number) => Math.max(0, Math.round(time * fps) / fps);
+      const span = (start: number, duration: number) => {
+        const from = snap(start);
+        return [
+          from,
+          Math.max(1 / fps, snap(start + duration) - from),
+        ] as const;
+      };
+      const visit = (layers: Layer[]) => {
+        for (const layer of layers) {
+          [layer.startTime, layer.duration] = span(
+            layer.startTime,
+            layer.duration,
+          );
+          for (const property of [
+            ...Object.values(layer.transform),
+            ...Object.values(layer.properties),
+          ])
+            for (const frame of property.keyframes as { time: number }[])
+              frame.time = snap(frame.time);
+          visit(layer.children);
+        }
+      };
+      visit(composition.layers);
+      for (const track of composition.tracks)
+        for (const clip of track.clips) {
+          [clip.startTime, clip.duration] = span(clip.startTime, clip.duration);
+          const limit = project.assets.find(
+            (asset) => asset.id === clip.assetId,
+          )?.duration;
+          clip.sourceOut = clip.sourceIn + clip.duration * clip.speed;
+          if (limit !== undefined && clip.sourceOut > limit) {
+            clip.duration = Math.max(
+              1 / fps,
+              Math.floor(((limit - clip.sourceIn) / clip.speed) * fps) / fps,
+            );
+            clip.sourceOut = Math.min(
+              limit,
+              clip.sourceIn + clip.duration * clip.speed,
+            );
+          }
+        }
+      for (const marker of composition.markers) marker.time = snap(marker.time);
       return;
     }
     case 'MOVE_COMPOSITION': {

@@ -1016,5 +1016,12 @@
   "lane.kind.video": "वीडियो",
   "lane.kind.text": "टेक्स्ट",
   "lane.kind.object": "आकार",
-  "lane.kind.audio": "ऑडियो"
+  "lane.kind.audio": "ऑडियो",
+  "fps.title": "फ़्रेम दर",
+  "fps.short": "FPS",
+  "fps.value": "{fps} fps",
+  "fps.tip": "इस दृश्य के प्रति सेकंड फ़्रेम",
+  "fps.custom": "कस्टम फ़्रेम दर",
+  "right.emptyTitle": "कुछ चुना नहीं गया",
+  "right.emptyHint": "यहाँ संपादित करने के लिए कोई तत्व चुनें। कैनवास का अनुपात, पृष्ठभूमि और फ़्रेम दर कैनवास के ऊपर की पट्टी में हैं।"
 }

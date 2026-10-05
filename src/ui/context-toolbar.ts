@@ -72,6 +72,22 @@ import type { GeometryField } from './geometry';
 import { sceneLengthCommands } from './scene-length';
 import { documentColors } from './palette';
 import { CANVAS_LIMITS, CANVAS_PRESETS, ratioLabel } from './canvas-size';
+/** U5: the frame rates the canvas bar offers (NTSC rates exact). */
+const FPS_PRESETS = [
+  6,
+  8,
+  12,
+  24000 / 1001,
+  24,
+  25,
+  30000 / 1001,
+  30,
+  50,
+  60000 / 1001,
+  60,
+  120,
+  240,
+];
 import { pictureOf } from '../render/picture';
 import { formatGradient, parseGradient, type Gradient } from '../render/paint';
 import { canCopyStyle, copyStyle } from './style-clipboard';
@@ -720,6 +736,78 @@ export function mountContextToolbar(
     });
     return chip;
   };
+  /** U5: the scene's frame rate chip ("30 fps ▾") in the canvas bar. */
+  const fpsLabel = (fps: number) =>
+    t('fps.value', {
+      fps: formatNumber(Math.round(fps * 100) / 100),
+    });
+  const fpsChip = () => {
+    const chip = popTool('canvas-fps', 'chevronDown', t('fps.title'), () =>
+      fpsContent(),
+    );
+    chip.classList.add('toolbar-size-chip', 'labelled');
+    chip.innerHTML = `<span class="toolbar-chip-label"></span><span></span>${iconSvg('chevronDown', 14)}`;
+    chip.querySelector('.toolbar-chip-label')!.textContent = t('fps.short');
+    chip.querySelector('span:nth-child(2)')!.textContent = fpsLabel(
+      session.source.composition.fps,
+    );
+    chip.title = t('fps.tip');
+    return chip;
+  };
+  const fpsContent = () => {
+    const current = session.source.composition.fps;
+    const apply = (fps: number) =>
+      safely(() => {
+        closePopover('canvas-fps');
+        if (Math.abs(fps - session.source.composition.fps) < 1e-9) return;
+        session.setPlaying(false);
+        run(t('fps.title'), [
+          {
+            type: 'SET_COMPOSITION_FPS',
+            compositionId: session.source.composition.id,
+            fps,
+          },
+        ]);
+      });
+    const list = document.createElement('div');
+    list.className = 'canvas-size-list fps-list';
+    for (const fps of FPS_PRESETS) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'canvas-size-preset fps-preset';
+      item.dataset.fps = String(Math.round(fps * 100) / 100);
+      item.setAttribute('aria-pressed', String(Math.abs(fps - current) < 1e-6));
+      item.textContent = fpsLabel(fps);
+      item.onclick = () => apply(fps);
+      list.append(item);
+    }
+    let custom = current;
+    const heading = document.createElement('h4');
+    heading.textContent = t('fps.custom');
+    const done = document.createElement('button');
+    done.type = 'button';
+    done.id = 'canvas-fps-apply';
+    done.className = 'primary sm';
+    done.textContent = t('canvasSize.apply');
+    done.onclick = () => apply(custom);
+    const wrap = document.createElement('div');
+    wrap.className = 'canvas-size-custom';
+    wrap.append(
+      heading,
+      createNumberField({
+        id: 'canvas-fps-custom',
+        label: t('fps.short'),
+        value: current,
+        decimals: 3,
+        min: 1,
+        max: 240,
+        compact: true,
+        onCommit: (value) => (custom = value),
+      }),
+      done,
+    );
+    return form(t('fps.title'), list, wrap);
+  };
   const canvasSizeContent = () => {
     const { width, height } = session.source.composition;
     const apply = (w: number, h: number) =>
@@ -1205,6 +1293,8 @@ export function mountContextToolbar(
             },
           ]),
       ),
+      divider(),
+      fpsChip(),
       divider(),
       planned('auto-captions'),
     ];

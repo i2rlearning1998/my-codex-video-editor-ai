@@ -48,7 +48,8 @@ test('[LAY-046] the right panel has a header with the title, a count badge and c
 }, testInfo) => {
   const title = page.locator('#right-panel-title');
   const count = page.locator('#right-panel-count');
-  await expect(title).toHaveText('Canvas');
+  // U5: nothing selected has no Canvas panel.
+  await expect(title).toHaveText('Nothing selected');
   await expect(count).toBeHidden();
   await select(page, 'layer-a');
   await expect(title).toHaveText('Video');
@@ -57,6 +58,7 @@ test('[LAY-046] the right panel has a header with the title, a count badge and c
     'Captions',
     'Sound',
     'Fade',
+    'Animate',
     'Filters',
     'Effects',
     'Adjust colors',
@@ -68,19 +70,21 @@ test('[LAY-046] the right panel has a header with the title, a count badge and c
   await expect(title).toHaveText('Image');
   expect(await shown(page)).toEqual([
     'Fade',
+    'Animate',
     'Filters',
     'Effects',
     'Adjust colors',
     'Transitions',
     'Advanced',
   ]);
-  // Advanced holds the picture's own controls and Animate (it is already
-  // the open section: clicking it again would collapse the panel).
+  // Advanced holds the picture's own controls (it is already the open
+  // section: clicking it again would collapse the panel). U5: Animate is
+  // its own tab, not an Advanced section.
   await expect(tab(page, 'Properties')).toHaveAttribute('aria-pressed', 'true');
   await expect(panel(page).locator('[data-action="right-crop"]')).toBeVisible();
   await expect(
     panel(page).locator('[data-accordion="image-animate"]'),
-  ).toBeVisible();
+  ).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('right-panel.png') });
   // Collapse closes the panel.
   await page.locator('#right-panel-collapse').click();
@@ -127,15 +131,16 @@ test('[LAY-047] Speed has a slider from 0.1x to 16x with ticks; Effects and Filt
     'aria-disabled',
     'true',
   );
-  // Animate presets are grids under Advanced: In › Fade, one step.
-  await tab(page, 'Properties').click();
-  await panel(page).locator('[data-choice="in-fade"]').click();
-  expect((await labels(page)).at(-1)).toBe('Animate');
+  // Animate presets are thumbnail grids in the Animate tab (U5): In ›
+  // Fade, one step.
+  await tab(page, 'Animate').click();
+  await panel(page).locator('[data-preset="fade"]').click();
+  expect((await labels(page)).at(-1)).toBe('Set animation');
   expect(
     ((await clip(page, 'clip-b')).metadata as { animation?: { in?: unknown } })
       .animation?.in,
   ).toMatchObject({ preset: 'fade' });
-  await expect(panel(page).locator('[data-choice="in-fade"]')).toHaveAttribute(
+  await expect(panel(page).locator('[data-preset="fade"]')).toHaveAttribute(
     'aria-pressed',
     'true',
   );

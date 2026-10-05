@@ -245,6 +245,8 @@ test('[LAY-013] below 1440 the right panel is a drawer; below 1024 both panels a
   const canvasBefore = (await page
     .locator('#composition-canvas')
     .boundingBox())!;
+  // (U5: nothing selected shows no right rail tabs; select a layer.)
+  await page.locator('#scene-list [data-layer-id="example-headline"]').click();
   await page.locator('#rail-right [data-section="Properties"]').click();
   await expect.poll(inspectorShown).toBe(true);
   // An overlay: the canvas keeps its size.

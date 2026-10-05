@@ -37,7 +37,7 @@ const SIZES: Record<
   Layout,
   { rail: number; left: number; right: number; timeline: number }
 > = {
-  wide: { rail: 64, left: 320, right: 280, timeline: 280 },
+  wide: { rail: 64, left: 320, right: 252, timeline: 280 },
   medium: { rail: 56, left: 280, right: 280, timeline: 220 },
   narrow: { rail: 56, left: 300, right: 300, timeline: 200 },
   phone: { rail: 56, left: 0, right: 0, timeline: 180 },

@@ -1016,5 +1016,12 @@
   "lane.kind.video": "Video",
   "lane.kind.text": "Text",
   "lane.kind.object": "Shape",
-  "lane.kind.audio": "Audio"
+  "lane.kind.audio": "Audio",
+  "fps.title": "Frame rate",
+  "fps.short": "FPS",
+  "fps.value": "{fps} fps",
+  "fps.tip": "Frames per second of this scene",
+  "fps.custom": "Custom frame rate",
+  "right.emptyTitle": "Nothing selected",
+  "right.emptyHint": "Select an element to edit it here. The canvas's ratio, background and frame rate are in the bar above the canvas."
 }

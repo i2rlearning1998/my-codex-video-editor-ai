@@ -567,16 +567,19 @@ input[type='number'],
   text-overflow: ellipsis;
   line-height: 1.1;
 }
+/* U5: the right rail shows 24 px icons with their labels under them. */
 .icon-rail-right button {
-  min-block-size: 36px;
-  padding: 0;
+  min-block-size: 52px;
+  padding: var(--space-1) 2px;
 }
 .icon-rail-right button svg {
-  inline-size: 20px;
-  block-size: 20px;
+  inline-size: 24px;
+  block-size: 24px;
 }
 .icon-rail-right .icon-rail-label {
-  display: none;
+  display: block;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 .icon-rail button:hover {
   background-color: var(--hover);
@@ -6791,4 +6794,111 @@ input[type='range'] {
   transition:
     grid-template-columns var(--motion-panel) var(--ease-panel),
     grid-template-rows var(--motion-panel) var(--ease-panel);
+}
+
+/* U5: Animate presets are thumbnails, three per row, None first; the
+   thumbnail plays the preset while hovered or chosen (a live preview). */
+.right-animate-body .animate-cards {
+  grid-template-columns: repeat(3, 1fr);
+}
+.animate-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 13px;
+}
+.animate-thumb {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+}
+.animate-thumb i {
+  inline-size: 40%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+}
+.animate-card[data-preset='none'] .animate-thumb i {
+  background: transparent;
+  border: 2px dashed var(--color-border);
+}
+.animate-card:is(:hover, [aria-pressed='true']) .animate-thumb i {
+  animation: 1.2s ease-in-out infinite alternate var(--thumb-motion, none);
+}
+.animate-card[data-preset='fade'] {
+  --thumb-motion: thumb-fade;
+}
+.animate-card[data-preset='slide'] {
+  --thumb-motion: thumb-slide;
+}
+.animate-card:is([data-preset='zoom'], [data-preset^='ken-burns']) {
+  --thumb-motion: thumb-zoom;
+}
+.animate-card:is([data-preset='pop'], [data-preset='pulse']) {
+  --thumb-motion: thumb-pop;
+}
+.animate-card:is([data-preset='wipe'], [data-preset='typewriter']) {
+  --thumb-motion: thumb-wipe;
+}
+.animate-card[data-preset='float'] {
+  --thumb-motion: thumb-float;
+}
+.animate-card[data-preset='spin'] {
+  --thumb-motion: thumb-spin;
+}
+.animate-card[data-preset='wiggle'] {
+  --thumb-motion: thumb-wiggle;
+}
+@keyframes thumb-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes thumb-slide {
+  from {
+    transform: translateY(120%);
+  }
+}
+@keyframes thumb-zoom {
+  from {
+    transform: scale(0.4);
+  }
+}
+@keyframes thumb-pop {
+  50% {
+    transform: scale(1.25);
+  }
+}
+@keyframes thumb-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes thumb-float {
+  to {
+    transform: translateY(-25%);
+  }
+}
+@keyframes thumb-spin {
+  to {
+    transform: rotate(180deg);
+  }
+}
+@keyframes thumb-wiggle {
+  from {
+    transform: rotate(-12deg);
+  }
+  to {
+    transform: rotate(12deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-thumb i {
+    animation: none !important;
+  }
 }

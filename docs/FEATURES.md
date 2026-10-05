@@ -131,7 +131,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-038 | P0 | W2 | Verified | The left and right side panels visibly animate (width and content fade, 240 ms; about 0 with reduced motion) when opened, collapsed or swapped from the rail, the top-bar toggle or a toolbar button, without the content reflowing mid-animation |
 | LAY-039 | P0 | W2 | Verified | A toolbar button that opens a side panel (Font, Effects, Position, Animate, Edit, Replace, Crop, Colour, Text colour, Fill) first opens a collapsed left or right panel, animated, then shows its content |
 | LAY-040 | P0 | W2 | Verified | One browse panel for the left-rail libraries: header with Back, title and Close; sticky search; sections with a title, See all and a horizontal strip; chips; a drill-down that slides in 180 ms; grids rendered in chunks with skeleton previews; empty and error states; arrow keys move between cards |
-| LAY-041 | P0 | W2 | Verified | Right panel per object: an always-visible icon rail whose tabs fit the selection; the first tab is named after it (Canvas, Shape, Drawing, Text, Image, Video, Audio, Group or Arrange); unbuilt tabs show disabled and name their wave; with nothing selected the Canvas tab sets size, background and scene length |
+| LAY-041 | P0 | W2 | Verified | Right panel per object: an always-visible icon rail whose tabs fit the selection; the first tab is named after it (Canvas, Shape, Drawing, Text, Image, Video, Audio, Group or Arrange); unbuilt tabs show disabled and name their wave; with nothing selected the Canvas tab sets size, background and scene length U5 LCR: nothing selected shows no Canvas panel (an empty state); the canvas bar holds the ratio, background and frame rate |
 | LAY-042 | P0 | W2 | Verified | Right panel for shapes: Color, Outline (colour, weight, dash, caps, joins), Corners and Combine as accordions; Adjust colors with Transparency live and Exposure, Contrast, Saturation, Temperature, Blend mode and Reset planned; Transform and Timing are folded accordions at the bottom of the first tab |
 | LAY-043 | P0 | W2 | Verified | Right panel for text: font, size, bold, italic, underline, strikethrough, case, alignment, colour and spacing, each one undo step and in step with the toolbar |
 | LAY-044 | P0 | W2 | Verified | Right panel for groups (Group: ungroup, align) and multi-selections (Arrange: group, align, distribute) |
@@ -149,6 +149,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-056 | P0 | W2 | Verified | Only one context menu is open at a time (canvas, timeline, media, scenes); a press outside, Escape, a wheel outside, window blur and resize close it (U3 LCR) |
 | LAY-057 | P0 | W2 | Verified | Menus taller than the window scroll with the wheel; the wheel over a menu, the Draw panel or a floating popover scrolls it and never pans or zooms the canvas (U3 LCR) |
 | LAY-058 | P0 | W2 | Verified | The timeline menu's Speed and Audio open as flyouts beside their entry on hover (150 ms, with a 300 ms grace toward the flyout), on click and on the Right arrow; Left closes the flyout (U3 LCR) |
+| LAY-059 | P0 | W2 | Verified | The right rail shows 24 px icons with their labels under them (at least 12.5 px); nothing selected shows no Canvas panel, only an empty state (U5 LCR) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -225,6 +226,7 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-024 | P0 | W2 | Verified | Each scene owns its background colour (schema 6): changing it in one scene never changes another, and the canvas, the scene strip, the board and export show each scene's own colour (J1 LCR) |
 | PRJ-025 | P0 | W2 | Verified | A canvas size belongs to its scene: changing one scene's size changes no other scene and never rewrites a layer's position or scale, so changing it and back restores the scene exactly (J1 LCR) |
 | PRJ-026 | P0 | W2 | Verified | A new scene starts from the project's defaults (the background chosen for the project and the open scene's size and frame rate) and then owns its own settings (J1 LCR) |
+| PRJ-027 | P0 | W2 | Verified | The canvas bar's FPS chip sets the open scene's frame rate (6, 8, 12, 23.98, 24, 25, 29.97, 30, 50, 59.94, 60, 120, 240 or Custom); clip, layer, keyframe and marker times stay in seconds and re-snap to the new frame grid, as one undo step; the status text, timeline grid, playback and export follow (U5 LCR) |
 
 ## MED: Media library and stock (Wave 4)
 
@@ -637,6 +639,7 @@ Preview and export must evaluate animation with the same code.
 | ANI-020 | P1 | W8 | Todo | Scene (page) animation: one preset animates every layer of a scene |
 | ANI-021 | P0 | W5 | Verified | Editor and 2D Animation modes: stopwatches, keyframe diamonds and timeline keyframes show in 2D Animation only; the switch crossfades in 320 ms and keeps the selection; 3D Animation is shown as planned (H4 LCR) |
 | ANI-022 | P0 | W5 | Verified | In Editor mode a change to an animated property (canvas drag or nudge, Inspector, Position panel, toolbar) is refused with "Animated in 2D Animation" and a button that opens 2D Animation (H4 LCR) |
+| ANI-023 | P0 | W5 | Verified | Animate is a right-rail tab for every single element (text, shapes, drawings, groups, images, video): In, Out, Loop (and Ken Burns for images) as thumbnail grids, three per row, None first, the chosen one highlighted, each thumbnail playing its motion (live preview), with duration, direction and period fields; the toolbar's Animate button opens it; there is no left Animate side panel and no Animate section in the object panels (U5 LCR) |
 
 ## VID: Video and image clip operations
 

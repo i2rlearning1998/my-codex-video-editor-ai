@@ -26,7 +26,8 @@ export function mountAnimatePanel(
   session: EditorSession,
   report: (error: unknown) => void,
 ) {
-  // G1.5: rendered in the left side panel, which owns the header and Back.
+  // U5: rendered in the right panel's Animate tab (it was the G1.5 left
+  // side panel).
   const panel = handle.body;
   let tab: Tab = 'in';
   const safely = (action: () => void) => {
@@ -72,7 +73,15 @@ export function mountAnimatePanel(
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'animate-card';
-    item.textContent = label;
+    // U5: a thumbnail that plays the preset (live preview), then the name.
+    const thumb = document.createElement('span');
+    thumb.className = 'animate-thumb';
+    thumb.setAttribute('aria-hidden', 'true');
+    thumb.append(document.createElement('i'));
+    const name = document.createElement('span');
+    name.className = 'animate-card-name';
+    name.textContent = label;
+    item.append(thumb, name);
     item.setAttribute('aria-pressed', String(pressed));
     for (const [key, value] of Object.entries(data)) item.dataset[key] = value;
     item.disabled = disabled;

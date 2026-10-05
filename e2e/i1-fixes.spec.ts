@@ -169,6 +169,8 @@ test('[LAY-038] the left panel animates its real width when collapsed and opened
 test('[LAY-038] the right panel animates its real width from its rail and its top-bar toggle', async ({
   page,
 }) => {
+  // (U5: nothing selected shows no right rail tabs; select a layer.)
+  await page.locator('#scene-list [data-layer-id="example-headline"]').click();
   const active = page.locator('#rail-right button[aria-pressed="true"]');
   const name = (await active.getAttribute('data-section'))!;
   const rail = page.locator(`#rail-right [data-section="${name}"]`);
@@ -226,7 +228,7 @@ test('[LAY-039] every panel button of the text, shape and image toolbars opens t
     'font',
     'color',
     'effects',
-    'animate',
+    // (U5: Animate opens the right panel's Animate tab; ANI-023.)
     'position',
   ]);
   await check('example-paper', ['fill']);

@@ -627,8 +627,25 @@ export function mountEditorShell(
       revealed: () => workspace?.leftOpen ?? true,
     },
   );
+  // U5: the Animate presets live in the right panel's Animate tab; the
+  // toolbar's Animate button opens it there.
+  let animateShown = false;
+  const animateBody = document.createElement('div');
+  animateBody.className = 'right-animate-body';
+  animateBody.dataset.deepPanel = 'animate';
   const animatePanel = mountAnimatePanel(
-    sidePanels.register('animate', () => t('animate.title')),
+    {
+      body: animateBody,
+      get isOpen() {
+        return animateShown;
+      },
+      open: () => {
+        workspace?.setOpen('right', true);
+        setRightSection('Animate');
+      },
+      close: () => undefined,
+      toggle: () => animatePanel.open(),
+    },
     engine,
     session,
     reportError,
@@ -640,7 +657,10 @@ export function mountEditorShell(
     session,
     reportError,
     {
-      animate: () => animatePanel.toggle(),
+      animateBody: () => {
+        animatePanel.render();
+        return animateBody;
+      },
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
@@ -1136,7 +1156,7 @@ export function mountEditorShell(
     element('#composition-summary').textContent = t('canvas.summary', {
       width: formatNumber(source.composition.width),
       height: formatNumber(source.composition.height),
-      fps: formatNumber(source.composition.fps),
+      fps: formatNumber(Math.round(source.composition.fps * 100) / 100),
     });
     const selected = session.selectedId
       ? locateLayer(source.composition.layers, session.selectedId)
@@ -1912,6 +1932,7 @@ export function mountEditorShell(
 
   const setRightSection = (name: string) => {
     activeSection = name;
+    animateShown = name === 'Animate';
     syncRails();
     const isProperties = name === 'Properties';
     element('#inspector-content').hidden = !isProperties;
@@ -1936,6 +1957,33 @@ export function mountEditorShell(
   /** H4: the rail lists the sections that fit the selection (Clipchamp). */
   const syncRightRail = () => {
     const shown = sectionsFor(session);
+    // U5: with nothing selected there is no right panel content (the canvas
+    // bar holds the canvas's ratio, background and frame rate).
+    if (!shown.length) {
+      animateShown = false;
+      element('#inspector-content').hidden = true;
+      element('#animation-panel').hidden = true;
+      element('#right-section').hidden = true;
+      rightEmpty.hidden = false;
+      element('#right-panel-empty-title').textContent = t('right.emptyTitle');
+      element('#right-panel-empty-description').textContent =
+        t('right.emptyHint');
+      rightEmpty.querySelector<HTMLElement>('.quiet-tag')!.hidden = true;
+      element('#right-panel-title').textContent = t('right.emptyTitle');
+      element('#right-panel-count').hidden = true;
+      for (const el of root.querySelectorAll<HTMLElement>(
+        '.icon-rail-right button',
+      ))
+        el.hidden = true;
+      renderedRight = '';
+      return;
+    }
+    if (!rightEmpty.hidden)
+      setRightSection(
+        shown.includes(activeSection as RightSection)
+          ? activeSection
+          : shown[0]!,
+      );
     // J15: the rail lists the shown sections in the selection's order (the
     // keyboard order matches what is seen).
     const nav = element('#rail-right');
@@ -3082,6 +3130,7 @@ export function mountEditorShell(
     applyThemeControls();
     applyCategory(activeCategory);
     setRightSection(activeSection);
+    syncRightRail();
     refresh(true);
   });
 

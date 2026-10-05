@@ -374,7 +374,7 @@ test('[LAY-028] deep panels open in the left side panel with Back and never cove
   await selectLayer(page, 'example-badge');
   for (const [control, id] of [
     ['position', 'position'],
-    ['animate', 'animate'],
+    // (U5: Animate is a right-panel tab now; ANI-023.)
   ] as const) {
     await page.locator(`#context-toolbar [data-control="${control}"]`).click();
     const panel = page.locator(`[data-deep-panel="${id}"]`);
