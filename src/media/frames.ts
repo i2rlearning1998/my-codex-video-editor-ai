@@ -21,7 +21,12 @@ interface VideoDecoder {
   wanted: number | null;
   seekStarted: number;
   used: number;
+  /** U2: small frames already shown, by source time (ms), for scrubbing. */
+  cache: Map<number, HTMLCanvasElement>;
 }
+/** U2: frames kept per video while scrubbing, and their width. */
+const CACHE_FRAMES = 90;
+const CACHE_WIDTH = 480;
 
 /**
  * W4-B frame provider: one HTMLVideoElement per video layer and one decoded image
@@ -165,7 +170,7 @@ export class MediaFrames implements FrameProvider {
     request: MediaFrameRequest,
     url: string,
     playing: boolean,
-  ): HTMLVideoElement | null {
+  ): CanvasImageSource | null {
     let decoder = this.#videos.get(request.key);
     if (decoder && decoder.assetId !== request.assetId) {
       this.#release(decoder);
@@ -215,6 +220,20 @@ export class MediaFrames implements FrameProvider {
           element.seeking
         )
           this.#seek(decoder, target);
+        // U2: while a seek is still on its way, the nearest frame already
+        // seen (a small copy) shows at once instead of the stale one.
+        if (element.seeking && decoder.cache.size) {
+          let best: HTMLCanvasElement | null = null;
+          let distance = 0.5;
+          for (const [ms, frame] of decoder.cache) {
+            const d = Math.abs(ms / 1000 - target);
+            if (d < distance) {
+              distance = d;
+              best = frame;
+            }
+          }
+          if (best) return best;
+        }
       }
     }
     if (
@@ -260,9 +279,31 @@ export class MediaFrames implements FrameProvider {
       wanted: null,
       seekStarted: 0,
       used: this.#frame,
+      cache: new Map(),
     };
     element.addEventListener('loadeddata', () => this.changed());
     element.addEventListener('seeked', () => {
+      // U2: keep a small copy of each frame reached while paused.
+      if (element.paused && element.videoWidth) {
+        try {
+          const frame = document.createElement('canvas');
+          frame.width = Math.min(CACHE_WIDTH, element.videoWidth);
+          frame.height = Math.max(
+            1,
+            Math.round(
+              (frame.width * element.videoHeight) / element.videoWidth,
+            ),
+          );
+          frame
+            .getContext('2d')
+            ?.drawImage(element, 0, 0, frame.width, frame.height);
+          decoder.cache.set(Math.round(element.currentTime * 1000), frame);
+          if (decoder.cache.size > CACHE_FRAMES)
+            decoder.cache.delete(decoder.cache.keys().next().value!);
+        } catch {
+          // A frame that cannot be copied is simply not cached.
+        }
+      }
       if (decoder.wanted !== null) {
         const next = decoder.wanted;
         decoder.wanted = null;

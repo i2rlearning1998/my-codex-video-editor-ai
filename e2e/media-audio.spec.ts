@@ -160,7 +160,7 @@ test('[AUD-007] track mute and solo change what is heard', async ({ page }) => {
   await play(page);
 });
 
-test('[PB-011] scrubbing a paused playhead plays a short snippet of the clips under it', async ({
+test('[PB-011] scrubbing a paused playhead is silent: no snippet and no playing source (U2)', async ({
   page,
 }) => {
   // Audio starts on the first play (browsers need a user gesture); stop at once.
@@ -168,19 +168,11 @@ test('[PB-011] scrubbing a paused playhead plays a short snippet of the clips un
   await play(page);
   await expect.poll(async () => (await media(page)).audio.decoded).toBe(2);
   const before = (await media(page)).audio.snippets;
-  await seek(page, 1);
-  await expect
-    .poll(async () => (await media(page)).audio.snippets)
-    .toBe(before + 1);
-  expect((await media(page)).audio.lastSnippet).toEqual({
-    time: 1,
-    clipIds: ['clip-av', 'clip-tone'],
-  });
-  // Past the tone, only the video's sound is under the playhead.
-  await seek(page, 3.5);
-  await expect
-    .poll(async () => (await media(page)).audio.lastSnippet?.clipIds)
-    .toEqual(['clip-av']);
+  for (const time of [1, 2, 3.5]) {
+    await seek(page, time);
+    expect((await media(page)).audio.sources).toEqual([]);
+  }
+  expect((await media(page)).audio.snippets).toBe(before);
 });
 
 test('[MED-019] audio waveforms are made in the background and cached across reloads', async ({

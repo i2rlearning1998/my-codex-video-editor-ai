@@ -497,35 +497,21 @@ export function mountEditorShell(
     }),
   );
   let timeline: ReturnType<typeof mountTimeline> | undefined;
-  let lastAudio: {
-    time: number;
-    project: unknown;
-    composition: string;
-  } | null = null;
   const syncAudio = () => {
     const clock = timeline?.playback.clock ?? session.currentTime;
     const clips = audibleClips();
     audio.sync(session.playing, clock, clips);
-    // PB-011: a paused playhead that moved (and nothing else) plays a snippet.
-    if (
-      !session.playing &&
-      lastAudio &&
-      lastAudio.project === engine.state &&
-      lastAudio.composition === session.source.composition.id &&
-      lastAudio.time !== session.currentTime
-    )
-      audio.scrub(session.currentTime, clips);
-    lastAudio = {
-      time: session.currentTime,
-      project: engine.state,
-      composition: session.source.composition.id,
-    };
+    // U2 (D-177): audio sounds only while playing; a scrub, a ruler click,
+    // a frame step or a typed time stays silent (no snippets).
   };
   let selectionActions: ReturnType<typeof mountSelectionActions> | undefined;
   /** J4: the on-canvas text editor (mounted with the canvas interaction). */
   let textEditing: TextEditor | undefined;
+  // U2: how many times the canvas has been drawn (read by the test hook).
+  let drawCount = 0;
   const draw = () => {
     if (disposed) return;
+    drawCount++;
     syncAudio();
     frames.beginFrame(
       session.playing
@@ -3124,6 +3110,7 @@ export function mountEditorShell(
           session.selectedId,
           viewport().matrix,
         )?.corners ?? null,
+      draws: drawCount,
       // T6: text boxes whose fixed height clips their text (the editor
       // draws an overflow mark on them).
       textOverflow: deriveRenderItems(session.source)
