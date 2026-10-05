@@ -813,7 +813,12 @@ export function mountTimeline(
     originalTime: number;
     moved: boolean;
     /** T3: a single clip being moved follows the lane drop rules. */
-    laneMove?: { clipId: string; info: LaneDropInfo };
+    laneMove?: {
+      clipId: string;
+      info: LaneDropInfo;
+      /** U1: where the clip was grabbed, and its size (screen px). */
+      grab: { x: number; y: number; w: number; h: number };
+    };
   } | null = null;
   const safely = (action: () => void) => {
     try {
@@ -1010,9 +1015,30 @@ export function mountTimeline(
       header.className = 'timeline-row-header timeline-track-header';
       const label = document.createElement('span');
       label.className = 'track-name';
-      // Name only, so it stays readable beside four toggles; type in the tooltip.
-      label.textContent = row.track.name;
-      label.title = `${row.track.type.toUpperCase()} · ${row.track.name}`;
+      // U1: named by kind and number in display order ("Video 1", "Shape
+      // 2"), with a kind icon; the stored name is in the tooltip.
+      const sameKind = trackRows.filter(
+        (other) => other.track.type === row.track.type,
+      );
+      label.textContent = t('lane.name', {
+        kind: t(`lane.kind.${row.track.type}`),
+        n: sameKind.indexOf(row) + 1,
+      });
+      label.title = row.track.name;
+      const kindIcon = document.createElement('span');
+      kindIcon.className = 'track-kind-icon';
+      kindIcon.setAttribute('aria-hidden', 'true');
+      kindIcon.innerHTML = iconSvg(
+        row.track.type === 'video'
+          ? 'media'
+          : row.track.type === 'audio'
+            ? 'audio'
+            : row.track.type === 'text'
+              ? 'text'
+              : 'elements',
+        20,
+      );
+      header.append(kindIcon);
       // TL-059: every toggle exposes its state through aria-pressed.
       const toggle = (
         action: string,
@@ -1413,7 +1439,10 @@ export function mountTimeline(
       root.releasePointerCapture(id);
   };
   const cancel = () => {
-    if (pointer?.laneMove) clearAssetDropTarget();
+    if (pointer?.laneMove) {
+      hideFloat();
+      clearAssetDropTarget();
+    }
     const originalTime =
       pointer?.kind === 'playhead' ? pointer.originalTime : undefined;
     const originalIds = marquee?.originalIds;
@@ -1561,25 +1590,19 @@ export function mountTimeline(
               event.clientY < area.top ||
               event.clientY > area.bottom),
         );
-        // T3: a "+" line, the middle of another clip (Replace) and a lane of
-        // another group follow the lane drop rules; elsewhere the clip moves
-        // as before (grab offset, frame grid, snapping, insert preview).
+        // U1: one clip moves freely: a clip-size copy follows the pointer
+        // (keeping the grab offset), the original stays faint, and the lane
+        // under the pointer decides the drop (T3 rules, never Replace).
         if (pointer.laneMove) {
-          const target = laneDropAt(
-            pointer.laneMove.info,
+          const move = pointer.laneMove;
+          showFloat(move, event.clientX, event.clientY);
+          laneDropAt(
+            move.info,
             event.clientX,
             event.clientY,
+            event.clientX - move.grab.x,
           );
-          if (
-            target &&
-            (target.mode === 'new-lane' ||
-              target.mode === 'replace' ||
-              target.mode === 'refused')
-          ) {
-            controller.update(0, undefined);
-            return;
-          }
-          clearAssetDropTarget();
+          return;
         }
         const bounds = scroll.getBoundingClientRect();
         const offset = event.clientY - bounds.top + scroll.scrollTop - 28;
@@ -1716,8 +1739,21 @@ export function mountTimeline(
             session.source.composition.layers,
             found.clip.layerId,
           )?.layer;
+          // (The press may have re-rendered the timeline: measure the clip
+          // as drawn now.)
+          const box = (
+            root.querySelector<HTMLElement>(
+              `.timeline-clip[data-clip-id="${CSS.escape(found.clip.id)}"]`,
+            ) ?? clip
+          ).getBoundingClientRect();
           pointer.laneMove = {
             clipId: found.clip.id,
+            grab: {
+              x: event.clientX - box.left,
+              y: event.clientY - box.top,
+              w: box.width,
+              h: box.height,
+            },
             info: {
               group: laneGroupOfTrack(found.track.type) as LaneGroup,
               duration: found.clip.duration,
@@ -1781,11 +1817,12 @@ export function mountTimeline(
           event.clientY < area.top ||
           event.clientY > area.bottom);
       root.classList.remove('drag-outside');
-      if (kind === 'clip' && laneMove && laneDrop) {
-        const target = laneDrop.target;
+      if (kind === 'clip' && laneMove) {
+        const target = laneDrop?.target;
+        hideFloat();
         clearAssetDropTarget();
         controller.cancel();
-        if (moved && !outside && target.mode !== 'refused')
+        if (moved && !outside && target && target.mode !== 'refused')
           moveClipTo(laneMove.clipId, target);
         render();
       } else if (kind === 'clip' && outside) {
@@ -2392,17 +2429,48 @@ export function mountTimeline(
     }
     ghost.style.top = `${top}px`;
     ghost.style.height = `${height}px`;
-    ghost.dataset.shown = 'true';
-    content.append(ghost);
+    // U1: a moved clip shows its floating copy instead of a ghost.
+    if (info.moving) ghost.remove();
+    else {
+      ghost.dataset.shown = 'true';
+      content.append(ghost);
+    }
     dropLine.style.left = `${left}px`;
     dropLine.style.height = `${content.scrollHeight}px`;
     content.append(dropLine);
   };
   /** T3: the pointer of a drag is at `x`, `y`; returns the target. */
-  const laneDropAt = (info: LaneDropInfo, x: number, y: number) => {
+  const laneDropAt = (
+    info: LaneDropInfo,
+    x: number,
+    y: number,
+    /** U1: a moved clip's left edge (the time comes from it, not the pointer). */
+    startX?: number,
+  ) => {
     clearAssetDropTarget();
-    const time = dropTime(x, info.duration, info.moving);
-    const target = resolveLaneDrop({
+    const raw = dropTime(startX ?? x, info.duration, info.moving);
+    // A moved clip lands on the scene's frame grid.
+    const fps = session.source.composition.fps;
+    const time = info.moving ? Math.round(raw * fps) / fps : raw;
+    dropLine.dataset.time = String(time);
+    dropLine.classList.toggle(
+      'timeline-snap',
+      !!info.moving &&
+        Math.abs(
+          raw -
+            Math.max(
+              0,
+              pixelToTime(
+                (startX ?? x) -
+                  scroll.getBoundingClientRect().left +
+                  scroll.scrollLeft -
+                  headerWidth,
+                session.timelineZoom,
+              ),
+            ),
+        ) > 1e-9,
+    );
+    let target = resolveLaneDrop({
       x,
       y,
       time,
@@ -2412,6 +2480,16 @@ export function mountTimeline(
       ...(info.moving ? { exclude: new Set([info.moving]) } : {}),
     });
     if (!target) return null;
+    // U1: a clip already on the timeline never replaces: over another clip
+    // it goes before or after it, by the pointer's half.
+    if (info.moving && target.mode === 'replace') {
+      const replaced = target;
+      const over = dropClips().find((item) => item.clipId === replaced.clipId);
+      target = {
+        ...replaced,
+        mode: over && x < (over.left + over.right) / 2 ? 'before' : 'after',
+      };
+    }
     let start = time;
     if (target.mode !== 'refused')
       try {
@@ -2424,8 +2502,54 @@ export function mountTimeline(
       }
     laneDrop = { target, info, start };
     showAssetTarget();
+    // U1: a snapped move's guide sits on the edge that snapped (its start
+    // or its end).
+    if (info.moving && dropLine.classList.contains('timeline-snap')) {
+      const edges = [0, session.currentTime];
+      for (const track of session.source.composition.tracks)
+        for (const clip of track.clips)
+          if (clip.id !== info.moving)
+            edges.push(clip.startTime, clip.startTime + clip.duration);
+      const near = (value: number) =>
+        edges.some((edge) => Math.abs(edge - value) < 1e-6);
+      const edge = near(start)
+        ? start
+        : near(start + info.duration)
+          ? start + info.duration
+          : start;
+      dropLine.dataset.time = String(Math.round(edge * 1e6) / 1e6);
+      dropLine.style.left = `${headerWidth + timeToPixel(edge, session.timelineZoom)}px`;
+    }
     return target;
   };
+  // U1: the floating copy of a clip being moved.
+  const float = document.createElement('div');
+  float.className = 'timeline-clip timeline-drag-float';
+  float.setAttribute('aria-hidden', 'true');
+  const showFloat = (
+    move: {
+      clipId: string;
+      info: LaneDropInfo;
+      grab: { x: number; y: number; w: number; h: number };
+    },
+    x: number,
+    y: number,
+  ) => {
+    if (!float.isConnected) {
+      float.dataset.kind = move.info.kind;
+      float.textContent = move.info.name;
+      float.style.width = `${move.grab.w}px`;
+      float.style.height = `${move.grab.h}px`;
+      document.body.append(float);
+    }
+    float.style.transform = `translate(${x - move.grab.x}px, ${y - move.grab.y}px)`;
+    root
+      .querySelector(
+        `.timeline-clip[data-clip-id="${CSS.escape(move.clipId)}"]`,
+      )
+      ?.classList.add('drag-origin');
+  };
+  const hideFloat = () => float.remove();
   /** T3: moves one clip to a lane target as one undo step (a new lane,
    *  later clips pushed, a replaced clip removed). */
   const moveClipTo = (

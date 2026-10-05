@@ -178,17 +178,14 @@ test('[TL-020][TL-030] a drop onto occupied time inserts, previews the push and 
   await page.mouse.move(a.x + 30, a.y + 10);
   await page.mouse.down();
   await page.mouse.move(a.x + 30 + 200, a.y + 10, { steps: 12 });
-  const marker = page.locator(
-    '.timeline-track[data-track-id="video-1"] .timeline-insert',
-  );
+  // (U1, D-176: the clip floats with the pointer and a guide marks where it
+  // lands; the in-place push preview is gone. The drop still inserts and
+  // pushes, below.)
+  const marker = page.locator('#timeline-foundation .timeline-drop-line');
   await expect(marker).toBeVisible();
   await expect(marker).toHaveAttribute('data-time', '2.5');
-  await expect(clipEl(page, 'clip-b')).toHaveClass(/pushed/);
-  const ruler = await rulerBox(page);
-  expect((await clipEl(page, 'clip-b').boundingBox())!.x - ruler.x).toBeCloseTo(
-    4.5 * 80,
-    0,
-  );
+  await expect(page.locator('.timeline-drag-float')).toBeVisible();
+  await expect(clipEl(page, 'clip-a')).toHaveClass(/drag-origin/);
   await page.screenshot({ path: testInfo.outputPath('insert-push.png') });
   // Escape cancels the whole preview.
   await page.keyboard.press('Escape');

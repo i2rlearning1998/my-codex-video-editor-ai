@@ -1,9 +1,9 @@
 // CV-026 layer order: bring to front, bring forward, send backward, send to
 // back. Later layers in a sibling list paint on top. A run is one undo step.
-// J7: a top-level element's place is its lane (the top lane paints in front),
-// so it moves between the lanes of its group: forward and backward to the
-// next lane (a new lane when that one is busy at its time), front and back to
-// the group's top or bottom lane. Group children move among their siblings.
+// J7, U1: a top-level element's place is its lane (the top lane paints in
+// front). It moves past the next overlapping element of any kind (a lane of
+// its own kind there, or a new one); front and back pass every lane. Group
+// children move among their siblings.
 import {
   laneGroupOfTrack,
   nextTrackName,
@@ -147,26 +147,42 @@ function laneCommands(
     if (lane.locked) continue;
     const clip = lane.clips.find((item) => item.layerId === layerId)!;
     const group = laneGroupOfTrack(lane.type);
-    const members = lanes
-      .map((item, index) => ({ item, index }))
-      .filter(({ item }) => laneGroupOfTrack(item.type) === group)
-      .map(({ index }) => index);
-    const top = members[0]!,
-      bottom = members.at(-1)!;
     const up = action === 'forward' || action === 'front';
-    if ((up && from === top) || (!up && from === bottom)) continue;
-    // The lane to land on, and where a new lane goes when it is busy: above
-    // it when going up, below it when going down.
-    const target =
-      action === 'forward'
-        ? from - 1
-        : action === 'backward'
-          ? from + 1
-          : action === 'front'
-            ? top
-            : bottom;
-    let index = target;
-    if (!free(lanes[target]!, clip)) {
+    if ((up && from === 0) || (!up && from === lanes.length - 1)) continue;
+    // U1: one rule for every kind. Forward and backward pass the next lane
+    // (of any kind) holding a clip that overlaps this one in time, or the
+    // next lane when none does; front and back pass every lane. The clip
+    // lands on the lane just past it when that lane is of its own kind and
+    // free then, or on a new lane there.
+    const overlaps = (item: Lane) =>
+      item.clips.some(
+        (other) =>
+          other.id !== clip.id &&
+          other.start < clip.end - 1e-9 &&
+          other.end > clip.start + 1e-9,
+      );
+    let pass: number;
+    if (action === 'front') pass = 0;
+    else if (action === 'back') pass = lanes.length - 1;
+    else {
+      const step = up ? -1 : 1;
+      pass = from + step;
+      for (let at = from + step; at >= 0 && at < lanes.length; at += step)
+        if (overlaps(lanes[at]!)) {
+          pass = at;
+          break;
+        }
+    }
+    const landing =
+      action === 'front' || action === 'back' ? pass : up ? pass - 1 : pass + 1;
+    const candidate = lanes[landing];
+    let index = landing;
+    if (
+      !candidate ||
+      candidate === lane ||
+      laneGroupOfTrack(candidate.type) !== group ||
+      !free(candidate, clip)
+    ) {
       const type = trackTypeForLayer(
         composition.layers.find((layer) => layer.id === layerId) ?? 'shape',
       );
@@ -176,7 +192,14 @@ function laneCommands(
         locked: false,
         clips: [],
       };
-      index = up ? target : target + 1;
+      index =
+        action === 'front'
+          ? 0
+          : action === 'back'
+            ? lanes.length
+            : up
+              ? pass
+              : pass + 1;
       commands.push(
         {
           type: 'CREATE_TRACK',

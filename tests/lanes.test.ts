@@ -67,7 +67,10 @@ describe('[TL-061] lane groups (J7)', () => {
     expect(laneAccepts('video', { type: 'text' })).toBe(false);
     expect(laneAccepts('audio', { type: 'video' })).toBe(false);
   });
-  it('orders lanes text, visual, audio and inserts a new lane at the top of its group', () => {
+  // U1 (D-176): lanes keep their own order in any group order; a new lane
+  // opens above its group's top lane (with none yet: at the top, audio at
+  // the bottom).
+  it('[TL-084] keeps lanes in their own order and inserts a new lane at the top of its group', () => {
     const tracks = [
       lane('a', 'audio', 0),
       lane('v', 'video', 1),
@@ -75,15 +78,17 @@ describe('[TL-061] lane groups (J7)', () => {
       lane('o', 'object', 3),
     ];
     expect(sortedLanes(tracks).map((track) => track.id)).toEqual([
+      'a',
+      'v',
       't',
       'o',
-      'v',
-      'a',
     ]);
-    expect(laneInsertIndex(tracks, 'text')).toBe(0);
-    expect(laneInsertIndex(tracks, 'visual')).toBe(2);
-    expect(laneInsertIndex(tracks, 'visual', 'bottom')).toBe(3);
-    expect(laneInsertIndex(tracks, 'audio')).toBe(3);
+    expect(laneInsertIndex(tracks, 'text')).toBe(2);
+    expect(laneInsertIndex(tracks, 'visual')).toBe(1);
+    expect(laneInsertIndex(tracks, 'visual', 'bottom')).toBe(2);
+    expect(laneInsertIndex(tracks, 'audio')).toBe(0);
+    expect(laneInsertIndex([lane('v', 'video', 0)], 'audio')).toBe(1);
+    expect(laneInsertIndex([lane('a', 'audio', 0)], 'text')).toBe(0);
   });
   it('draws top-level layers by lane: the top lane in front', () => {
     const composition = {

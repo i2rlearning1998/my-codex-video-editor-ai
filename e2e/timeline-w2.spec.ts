@@ -249,14 +249,18 @@ test('[TL-058] a cross-track drag shows a ghost at the landing track and time, c
   await page.mouse.move(c.x + 30, c.y + 10);
   await page.mouse.down();
   await page.mouse.move(c.x + 30 + 40, c.y + 10 + 56, { steps: 10 });
-  const ghost = page.locator(
-    '.timeline-track[data-track-id="video-3"] .timeline-clip-ghost[data-ghost-for="clip-c"]',
-  );
+  // (U1, D-176: a clip-size copy floats with the pointer, keeping the grab
+  // offset; a guide marks the landing time.)
+  const ghost = page.locator('.timeline-drag-float');
   await expect(ghost).toBeVisible();
-  await expect(ghost).toHaveAttribute('data-start-time', '1.5');
-  const ghostBox = (await ghost.boundingBox())!;
+  const float = (await ghost.boundingBox())!;
+  expect(Math.abs(float.x - (c.x + 40))).toBeLessThan(2);
+  expect(Math.abs(float.y - (c.y + 56))).toBeLessThan(2);
+  const guide = page.locator('#timeline-foundation .timeline-drop-line');
+  await expect(guide).toHaveAttribute('data-time', '1.5');
   const ruler = await rulerBox(page);
-  expect(ghostBox.x - ruler.x).toBeCloseTo(1.5 * 80, 0);
+  const line = (await guide.boundingBox())!;
+  expect(line.x + line.width / 2 - ruler.x).toBeCloseTo(1.5 * 80, 0);
   // The original stays dimmed in its own track at its original time.
   await expect(
     page.locator(

@@ -13,7 +13,6 @@ import {
 } from '../core';
 
 export type LaneGroup = 'text' | 'visual' | 'audio';
-const RANK: Record<LaneGroup, number> = { text: 0, visual: 1, audio: 2 };
 /** Pixels from a lane's top or bottom edge that mean "a new lane here". */
 export const LANE_EDGE = 6;
 /** Height of the strip above the first lane and below the last that also
@@ -59,12 +58,11 @@ export function newLaneFits(
   index: number,
   group: LaneGroup,
 ): boolean {
-  const above = rows[index - 1];
-  const below = rows[index];
-  return (
-    (!above || RANK[above.group] <= RANK[group]) &&
-    (!below || RANK[group] <= RANK[below.group])
-  );
+  // U1: lanes of any group may sit in any order.
+  void rows;
+  void index;
+  void group;
+  return true;
 }
 
 /**

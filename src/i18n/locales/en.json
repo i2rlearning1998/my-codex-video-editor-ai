@@ -1010,5 +1010,10 @@
   "player.zoomIn": "Zoom in",
   "player.timecodeInvalid": "Type a time such as 1:05 or 65.5",
   "toolbar.autoHeight": "Auto height",
-  "toolbar.autoHeightTip": "On: the box grows with its text. Off: it keeps its height and clips the rest."
+  "toolbar.autoHeightTip": "On: the box grows with its text. Off: it keeps its height and clips the rest.",
+  "lane.name": "{kind} {n}",
+  "lane.kind.video": "Video",
+  "lane.kind.text": "Text",
+  "lane.kind.object": "Shape",
+  "lane.kind.audio": "Audio"
 }

@@ -6676,3 +6676,31 @@ input[type='range'] {
     flex-wrap: wrap;
   }
 }
+
+/* U1: a clip being moved floats with the pointer; lane headers show the
+   lane's kind icon. */
+.timeline-clip.timeline-drag-float {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-menu);
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--clip-fill, var(--clip-shape));
+  color: var(--clip-label);
+  font-size: var(--font-caption);
+  white-space: nowrap;
+  opacity: 0.92;
+  box-shadow: var(--shadow-2);
+  outline: 2px solid var(--color-accent);
+  pointer-events: none;
+}
+.track-kind-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-secondary);
+}

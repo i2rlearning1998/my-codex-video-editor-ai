@@ -1010,5 +1010,10 @@
   "player.zoomIn": "ज़ूम इन",
   "player.timecodeInvalid": "1:05 या 65.5 जैसा समय लिखें",
   "toolbar.autoHeight": "स्वतः ऊँचाई",
-  "toolbar.autoHeightTip": "चालू: बॉक्स अपने टेक्स्ट के साथ बढ़ता है। बंद: ऊँचाई वही रहती है और बाकी टेक्स्ट कट जाता है।"
+  "toolbar.autoHeightTip": "चालू: बॉक्स अपने टेक्स्ट के साथ बढ़ता है। बंद: ऊँचाई वही रहती है और बाकी टेक्स्ट कट जाता है।",
+  "lane.name": "{kind} {n}",
+  "lane.kind.video": "वीडियो",
+  "lane.kind.text": "टेक्स्ट",
+  "lane.kind.object": "आकार",
+  "lane.kind.audio": "ऑडियो"
 }
