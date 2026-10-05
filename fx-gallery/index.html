@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Original FX laboratory</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>Original FX laboratory</h1>
+      <p>
+        Engine previews. Images stay in this browser. App integration is
+        separate.
+      </p>
+      <div class="controls">
+        <label
+          >Category
+          <select id="category"></select></label
+        ><label
+          >Item
+          <select id="item"></select></label
+        ><label
+          >Sample
+          <select id="sample">
+            <option value="scene">Gradient scene</option>
+            <option value="portrait">Portrait tones</option>
+          </select></label
+        ><button id="reset">Reset parameters</button>
+      </div>
+      <div class="images">
+        <figure>
+          <canvas id="source"></canvas>
+          <figcaption>Source / From</figcaption>
+        </figure>
+        <figure>
+          <canvas id="result"></canvas>
+          <figcaption>Result</figcaption>
+        </figure>
+      </div>
+      <div id="params"></div>
+      <label
+        >Time / progress
+        <input
+          id="time"
+          type="range"
+          min="0"
+          max="1"
+          step="0.005"
+          value="0.35" /></label
+      ><output id="clock"></output><button id="play">Play</button>
+      <p id="drop" tabindex="0">
+        Drop an image here, or
+        <label
+          >choose image <input id="file" type="file" accept="image/*"
+        /></label>
+      </p>
+      <p id="status" role="status"></p>
+      <h2>Category thumbnails</h2>
+      <div id="grid"></div>
+    </main>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

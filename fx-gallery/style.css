@@ -1,0 +1,75 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #141821;
+  color: #eef1f8;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1300px;
+  margin: auto;
+  padding: 24px;
+}
+h1 {
+  margin-bottom: 4px;
+}
+.controls,
+#params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 20px 0;
+}
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+button,
+select,
+input {
+  font: inherit;
+}
+button,
+select {
+  padding: 8px;
+}
+.images {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+figure {
+  margin: 0;
+}
+canvas {
+  width: 100%;
+  background: repeating-conic-gradient(#333 0% 25%, #555 0% 50%) 0 / 16px 16px;
+}
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+#grid button {
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+#drop {
+  border: 2px dashed #8899bb;
+  padding: 24px;
+}
+#status {
+  min-height: 1.5em;
+}
+@media (max-width: 700px) {
+  .images {
+    grid-template-columns: 1fr;
+  }
+  main {
+    padding: 12px;
+  }
+}
