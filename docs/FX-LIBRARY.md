@@ -29,3 +29,9 @@ F1: npm run check passed, 398 tests in 37 files. First benchmark on AMD EPYC 9V7
 ## F2
 
 47 original filters, including 4 duotones and 9 overlays. Shared compiled channel curves, luma saturation and split-tone tables; optional radial vignette and seeded frame-grain. Overlay strength at full intensity is 45%, so the source remains visible. All B&W variants use zero chroma. Unit coverage includes all IDs, distinct look outputs, exact zero-intensity identity, B&W saturation, overlays and seeded grain. npm run check passed. Initial slowest median: 37.08 ms (filter.old-western). Final per-item results follow after the performance pass.
+
+## F3
+
+18 tier A effects implemented; npm run check passed, 469 tests in 39 files. Motion controls use clip-local normalized time; loop is opt-in for finite zooms/rotations, periodic Pulse/texture effects use seconds × speed. Random zoom picks a stable direction from the seed. Radii/offset/block sizes scale from a 720-high/1280-wide reference. Pixelation's 16-bit option means RGB565 (65,536 possible colours), not a 16-colour palette.
+
+FX-D07: Blur is a linear-time separable box blur, not a Gaussian claim; accumulates premultiplied colour then returns straight RGB, preserving original alpha. Blur fill overlays a scaled foreground (default .72) on an enlarged blurred background; it is an aesthetic framing operation, not automatic subject segmentation or aspect-ratio detection. Glow blurs isolated highlights and screens them; Diffusion mixes a softened image back into the original. Spatial transforms use transparent borders except zoomed/clamped texture backgrounds.

@@ -7,7 +7,7 @@ Branch codex/fx-library from main 9362645. One PR to main, never merge; do not t
 | F0   | Done; npm run check passed            | This checkpoint: git log -1 -- briefs/FX.md |
 | F1   | Done; check passed, 398 tests         | This checkpoint: git log -1 -- briefs/FX.md |
 | F2   | Done; npm run check passed, 447 tests | This checkpoint: git log -1 -- briefs/FX.md |
-| F3   | Pending                               | —                                           |
+| F3   | Done; check passed, 469 tests         | This checkpoint: git log -1 -- briefs/FX.md |
 | F4   | Pending; mark PR ready afterward      | —                                           |
 | F5   | Pending after F1–F4 green             | —                                           |
 

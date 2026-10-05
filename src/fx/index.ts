@@ -8,6 +8,8 @@ import type {
 } from './types';
 import { copy, resize, surface } from './surface';
 import { filters } from './filters';
+import { effects } from './effects';
+export { effects } from './effects';
 export { filters } from './filters';
 import { adjustments, blendModes } from './adjustments';
 export {
@@ -19,7 +21,7 @@ export {
 export * from './types';
 export { surface, copy, resize, random } from './surface';
 export { defaults, sanitize } from './definition';
-export const effects: readonly Definition[] = [];
+
 export const transitions: readonly Transition[] = [];
 export const getEffect = (id: string): Definition | undefined =>
   effects.find((d) => d.id === id);
