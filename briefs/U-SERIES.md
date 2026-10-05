@@ -8,5 +8,5 @@ Brief: owner U-series message (2026-10-05). Branch `claude/u-series` from `claud
 | U2 Scrub smoothness and audio   | done   | a90423b       |
 | U3 Menus and scrolling          | done   | b53cf80       |
 | U4 Scene strip, collapse, ratio | done   | 642b001       |
-| U5 Right panel, Animate, FPS    | done   | (this commit) |
-| U6 Frame panel                  | todo   |               |
+| U5 Right panel, Animate, FPS    | done   | 362958e       |
+| U6 Frame panel                  | done   | (this commit) |

@@ -112,6 +112,15 @@ export const commandSchema = z.discriminatedUnion('type', [
       fps: z.number().positive().max(240),
     })
     .strict(),
+  // U6: one scene's playback and export range (null end: the scene's end).
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION_RANGE'),
+      ...location,
+      start: z.number().finite().nonnegative(),
+      end: z.number().finite().positive().nullable(),
+    })
+    .strict(),
   // G5: scenes play in array order; this moves one to a new index.
   z
     .object({
@@ -432,6 +441,25 @@ export function applyCommand(project: Project, command: Command): void {
           }
         }
       for (const marker of composition.markers) marker.time = snap(marker.time);
+      if (composition.playRange) {
+        const start = snap(composition.playRange.start);
+        const end = composition.playRange.end;
+        composition.playRange = {
+          start,
+          end: end === null ? null : Math.max(start + 1 / fps, snap(end)),
+        };
+      }
+      return;
+    }
+    case 'SET_COMPOSITION_RANGE': {
+      const composition = compositionById(project, command.compositionId);
+      if (command.end !== null && command.end <= command.start)
+        throw new Error('The end must come after the start');
+      if (command.start >= composition.duration)
+        throw new Error('The start must lie inside the scene');
+      if (command.start <= 0 && command.end === null)
+        delete composition.playRange;
+      else composition.playRange = { start: command.start, end: command.end };
       return;
     }
     case 'MOVE_COMPOSITION': {

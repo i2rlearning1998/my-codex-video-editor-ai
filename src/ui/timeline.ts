@@ -12,6 +12,7 @@ import { assetDrag } from './drag-state';
 import { announceMenu, dismissMenuOn } from './context-menu';
 import {
   frameToTime,
+  playRangeOf,
   pixelToTime,
   timeToFrame,
   timeToPixel,
@@ -80,6 +81,7 @@ import {
   type TimingPreview,
 } from './timeline-model';
 import { iconSvg } from './icons';
+import { createNumberField, syncNumberField } from './components/number-field';
 
 /** TL-027/TL-032 menu actions labelled from the command catalog. */
 const CLIP_ACTIONS: readonly EditAction[] = [
@@ -917,6 +919,7 @@ export function mountTimeline(
       '--played',
       `${composition.duration ? (session.currentTime / composition.duration) * 100 : 0}%`,
     );
+    syncFramePanel();
     root.querySelector('[data-current-time]')!.textContent =
       `${session.currentTime.toFixed(3)}s / ${formatTimelineTime(composition.duration)}s · frame ${timeToFrame(session.currentTime, composition.fps)}`;
     root.querySelector('[data-derived-duration]')!.textContent =
@@ -989,6 +992,21 @@ export function mountTimeline(
         time: formatTimelineTime(Math.round(picked.clip.duration * 100) / 100),
       });
       ruler.append(pill);
+    }
+    // U6: the scene's playback range on the ruler; outside it is dimmed.
+    const range = playRangeOf(composition);
+    if (!range.full) {
+      const before = document.createElement('span');
+      before.className = 'ruler-range-dim';
+      before.dataset.side = 'before';
+      before.style.left = '0px';
+      before.style.width = `${timeToPixel(range.start, zoom)}px`;
+      const after = document.createElement('span');
+      after.className = 'ruler-range-dim';
+      after.dataset.side = 'after';
+      after.style.left = `${timeToPixel(range.end, zoom)}px`;
+      after.style.width = `${Math.max(0, width - timeToPixel(range.end, zoom))}px`;
+      ruler.append(before, after);
     }
     rulerBar.append(ruler);
     content.append(rulerBar);
@@ -2729,6 +2747,123 @@ export function mountTimeline(
     input.focus();
     input.select();
   };
+  // U6: the frame panel at the timeline's bottom right: Current (steps,
+  // types and scrubs the playhead; no history), then Start and End, the
+  // scene's playback range in frames (one undo step each).
+  const framePanel = document.createElement('div');
+  framePanel.className = 'frame-panel';
+  framePanel.setAttribute('role', 'group');
+  framePanel.setAttribute('aria-label', t('frames.label'));
+  const fps = () => session.source.composition.fps;
+  const lastFrame = () =>
+    timeToFrame(session.source.composition.duration, fps());
+  const seekFrame = (frame: number) => {
+    session.setPlaying(false);
+    session.setCurrentTime(
+      frameToTime(Math.max(0, Math.min(lastFrame(), Math.round(frame))), fps()),
+    );
+  };
+  const setRange = (start: number, end: number) =>
+    safely(() => {
+      const last = lastFrame();
+      if (end <= start) throw new RangeError(t('frames.order'));
+      engine.commands.transaction(t('frames.rangeLabel'), [
+        {
+          type: 'SET_COMPOSITION_RANGE',
+          compositionId: session.source.composition.id,
+          start: frameToTime(start, fps()),
+          end: end >= last ? null : frameToTime(end, fps()),
+        },
+      ]);
+    });
+  const rangeFrames = () => {
+    const range = playRangeOf(session.source.composition);
+    return {
+      start: timeToFrame(range.start, fps()),
+      end: timeToFrame(range.end, fps()),
+    };
+  };
+  const stepper = (
+    id: string,
+    key: string,
+    value: () => number,
+    commit: (frame: number) => void,
+    preview?: (frame: number) => void,
+  ) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'frame-stepper';
+    wrap.dataset.frame = id;
+    const step = (direction: number) => (event: MouseEvent) =>
+      commit(value() + direction * (event.shiftKey ? 10 : 1));
+    const prev = document.createElement('button');
+    prev.type = 'button';
+    prev.className = 'icon-button';
+    prev.dataset.action = `${id}-prev`;
+    prev.setAttribute('aria-label', t('frames.prev', { name: t(key) }));
+    prev.title = prev.getAttribute('aria-label')!;
+    prev.innerHTML = iconSvg('chevronLeft', 16);
+    prev.onclick = step(-1);
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'icon-button';
+    next.dataset.action = `${id}-next`;
+    next.setAttribute('aria-label', t('frames.next', { name: t(key) }));
+    next.title = next.getAttribute('aria-label')!;
+    next.innerHTML = iconSvg('chevronRight', 16);
+    next.onclick = step(1);
+    const field = createNumberField({
+      id: `frame-${id}`,
+      label: t(key),
+      value: value(),
+      decimals: 0,
+      step: 1,
+      min: 0,
+      compact: id === 'current',
+      className: 'frame-field',
+      onCommit: commit,
+      onPreview: preview ?? (() => undefined),
+    });
+    wrap.append(prev, field, next);
+    return wrap;
+  };
+  const watch = document.createElement('span');
+  watch.className = 'frame-stopwatch';
+  watch.setAttribute('aria-hidden', 'true');
+  watch.innerHTML = iconSvg('stopwatch', 20);
+  framePanel.append(
+    stepper(
+      'current',
+      'frames.current',
+      () => timeToFrame(session.currentTime, fps()),
+      seekFrame,
+      seekFrame,
+    ),
+    watch,
+    stepper(
+      'start',
+      'frames.start',
+      () => rangeFrames().start,
+      (frame) => setRange(Math.max(0, Math.round(frame)), rangeFrames().end),
+    ),
+    stepper(
+      'end',
+      'frames.end',
+      () => rangeFrames().end,
+      (frame) =>
+        setRange(rangeFrames().start, Math.min(lastFrame(), Math.round(frame))),
+    ),
+  );
+  root.append(framePanel);
+  function syncFramePanel() {
+    const { start, end } = rangeFrames();
+    syncNumberField(
+      framePanel,
+      'frame-current',
+      timeToFrame(session.currentTime, fps()),
+    );
+    syncNumberField(framePanel, 'frame-start', start);
+    syncNumberField(framePanel, 'frame-end', end);
+  }
   // U4: the collapsed player bar's scrubber (the U2 smooth scrub).
   const scrubInput = root.querySelector<HTMLInputElement>('.player-scrub')!;
   scrubInput.addEventListener('input', () => {

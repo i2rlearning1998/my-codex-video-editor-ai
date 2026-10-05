@@ -120,6 +120,8 @@ export function joinScenes(
   return {
     ...first,
     id: 'all-scenes',
+    // U6: each scene's own range applies to that scene's export only.
+    playRange: undefined,
     name: 'All scenes',
     duration: offset,
     layers,

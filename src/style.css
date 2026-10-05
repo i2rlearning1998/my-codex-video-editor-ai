@@ -6902,3 +6902,51 @@ input[type='range'] {
     animation: none !important;
   }
 }
+
+/* U6: the frame panel stays at the timeline's bottom right; the playback
+   range is drawn on the ruler with the outside dimmed. */
+#timeline-foundation {
+  position: relative;
+}
+.frame-panel {
+  position: absolute;
+  inset-inline-end: var(--space-3);
+  inset-block-end: var(--space-2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+.frame-stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.frame-stepper .frame-field {
+  inline-size: auto;
+}
+.frame-stepper .frame-field input {
+  inline-size: 5ch;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.frame-stopwatch {
+  display: inline-flex;
+  color: var(--color-text-muted, var(--color-text));
+}
+.editor-shell.timeline-collapsed .frame-panel {
+  display: none;
+}
+.ruler-range-dim {
+  position: absolute;
+  inset-block: 0;
+  background: var(--scrim);
+  pointer-events: none;
+}

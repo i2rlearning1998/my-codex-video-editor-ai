@@ -1023,5 +1023,13 @@
   "fps.tip": "Frames per second of this scene",
   "fps.custom": "Custom frame rate",
   "right.emptyTitle": "Nothing selected",
-  "right.emptyHint": "Select an element to edit it here. The canvas's ratio, background and frame rate are in the bar above the canvas."
+  "right.emptyHint": "Select an element to edit it here. The canvas's ratio, background and frame rate are in the bar above the canvas.",
+  "frames.label": "Frames",
+  "frames.current": "Current",
+  "frames.start": "Start",
+  "frames.end": "End",
+  "frames.prev": "{name}: previous frame (Shift: 10)",
+  "frames.next": "{name}: next frame (Shift: 10)",
+  "frames.order": "Start must come before End",
+  "frames.rangeLabel": "Playback range"
 }
