@@ -249,7 +249,7 @@ export function mountEditorShell(
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
           <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
@@ -469,6 +469,7 @@ export function mountEditorShell(
   };
   canvas.addEventListener('pointerdown', moveBrushCursor);
   canvas.addEventListener('pointerleave', () => (brushCursor.hidden = true));
+  let lastCanvasSize = '';
   const canvasView = mountCanvasView(
     stage,
     canvas,
@@ -1229,6 +1230,10 @@ export function mountEditorShell(
     element('#layer-count').textContent = formatNumber(count);
     mediaPanel.render();
     element('#canvas-empty').hidden = count !== 0;
+    // U4: every ratio or size change fits the new canvas in the view.
+    const size = `${source.composition.width}x${source.composition.height}`;
+    if (lastCanvasSize && size !== lastCanvasSize) canvasView.fit();
+    lastCanvasSize = size;
     renderInspector(
       element('#inspector-content'),
       source,
@@ -1845,9 +1850,18 @@ export function mountEditorShell(
   );
   // J13: Collapse leaves only the player bar under a large preview; Expand
   // brings the lanes back. UI state only (not saved, no history).
+  let collapseTimer = 0;
   const collapseTimeline = () => {
     const shellElement = element('.editor-shell');
     const collapsed = !shellElement.classList.contains('timeline-collapsed');
+    // U4: Collapse and Expand animate the row (240 ms; about 0 with reduced
+    // motion), but a height drag never does.
+    shellElement.classList.add('timeline-animating');
+    window.clearTimeout(collapseTimer);
+    collapseTimer = window.setTimeout(
+      () => shellElement.classList.remove('timeline-animating'),
+      300,
+    );
     shellElement.classList.toggle('timeline-collapsed', collapsed);
     const toggle = element<HTMLButtonElement>(
       '#timeline-foundation [data-action="collapse-timeline"]',

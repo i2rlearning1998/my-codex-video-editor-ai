@@ -6,7 +6,7 @@ Brief: owner U-series message (2026-10-05). Branch `claude/u-series` from `claud
 | ------------------------------- | ------ | ------------- |
 | U1 Free layers and free drag    | done   | 4879752       |
 | U2 Scrub smoothness and audio   | done   | a90423b       |
-| U3 Menus and scrolling          | done   | (this commit) |
-| U4 Scene strip, collapse, ratio | todo   |               |
+| U3 Menus and scrolling          | done   | b53cf80       |
+| U4 Scene strip, collapse, ratio | done   | (this commit) |
 | U5 Right panel, Animate, FPS    | todo   |               |
 | U6 Frame panel                  | todo   |               |

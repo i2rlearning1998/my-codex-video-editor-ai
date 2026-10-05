@@ -1006,6 +1006,7 @@
   "player.first": "First frame (Home)",
   "player.last": "Last frame (End)",
   "player.timecodeTip": "Click to type a time",
+  "player.scrub": "Scrub through the scene",
   "player.zoomOut": "Zoom out",
   "player.zoomIn": "Zoom in",
   "player.timecodeInvalid": "Type a time such as 1:05 or 65.5",

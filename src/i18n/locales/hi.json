@@ -1006,6 +1006,7 @@
   "player.first": "पहला फ़्रेम (Home)",
   "player.last": "अंतिम फ़्रेम (End)",
   "player.timecodeTip": "समय लिखने के लिए क्लिक करें",
+  "player.scrub": "दृश्य में आगे-पीछे जाएँ",
   "player.zoomOut": "ज़ूम आउट",
   "player.zoomIn": "ज़ूम इन",
   "player.timecodeInvalid": "1:05 या 65.5 जैसा समय लिखें",

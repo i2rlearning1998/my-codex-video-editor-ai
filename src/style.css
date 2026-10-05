@@ -6729,3 +6729,66 @@ input[type='range'] {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
 }
+
+/* U4: a collapsed timeline is the canvas plus one player bar: the wand,
+   First frame, Back 5 s, Play, Forward 5 s, the timecode, a full-width
+   scrubber and Expand. No scene strip, status row or lanes. */
+.player-scrub {
+  --played: 0%;
+  display: none;
+}
+.editor-shell.timeline-collapsed :is(#scene-strip, #canvas-footer) {
+  display: none;
+}
+.editor-shell.timeline-collapsed .timeline-controls {
+  display: flex;
+}
+.editor-shell.timeline-collapsed
+  :is(
+    .transport-clip-tools > :not([data-action='ai-tools']),
+    [data-action='frame-back'],
+    [data-action='frame-forward'],
+    [data-action='last-frame'],
+    [data-action='zoom-out'],
+    [data-action='zoom-in'],
+    [data-action='zoom-fit']
+  ) {
+  display: none;
+}
+.editor-shell.timeline-collapsed .transport-playback {
+  flex: 1;
+  min-inline-size: 0;
+}
+.editor-shell.timeline-collapsed .player-scrub {
+  display: block;
+  flex: 1;
+  min-inline-size: 80px;
+  block-size: 32px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.player-scrub::-webkit-slider-runnable-track {
+  block-size: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-text) 0 var(--played, 0%),
+    var(--color-border-strong, var(--color-border)) var(--played, 0%) 100%
+  );
+}
+.player-scrub::-webkit-slider-thumb {
+  appearance: none;
+  inline-size: 14px;
+  block-size: 14px;
+  margin-block-start: -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+}
+.editor-shell.timeline-animating {
+  transition:
+    grid-template-columns var(--motion-panel) var(--ease-panel),
+    grid-template-rows var(--motion-panel) var(--ease-panel);
+}

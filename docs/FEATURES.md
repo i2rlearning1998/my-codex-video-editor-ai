@@ -342,6 +342,7 @@ Everything the user does directly on the preview canvas.
 | CV-060 | P0 | W2 | Verified | Resize canvas to selection asks for confirmation naming the new size, gives the open scene the selection's size with every layer moved together in one undo step, and Fit then fits the whole artboard in view (J6 LCR) |
 | CV-061 | P0 | W2 | Verified | While a library or Media item is dragged over the canvas (only there), an outline of its real size and shape follows the pointer, snapping to the canvas centre and edges with a guide, and the canvas is highlighted; the drop places it exactly at the outline as one undo step (T2 LCR) |
 | CV-062 | P0 | W2 | Verified | Bring to front, Bring forward, Send backward and Send to back work between any two kinds (shape, picture, text, video, group): forward and backward pass the next overlapping layer, through a lane of the layer's kind or a new one, empty lanes go; children of a group reorder among themselves and a group moves as one unit (U1 LCR) |
+| CV-063 | P0 | W2 | Verified | Every ratio or size change fits the new canvas in the view (the artboard covers at least 80% of the stage's smaller side); no "This composition has no layers" text behind the canvas (U4 LCR) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -456,6 +457,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-083 | P0 | W2 | Verified | Previous cut and Stop are no longer on the Player bar and stay in the palette (Jump to previous cut; Stop (back to the start)) (T5 LCR) |
 | TL-084 | P0 | W2 | Verified | Lanes keep their own order (no group order: a text or shape lane may sit under a video lane, audio anywhere); a moved clip floats with the pointer in x and y keeping its grab offset, the original stays faint, Escape cancels, and the lane under the pointer decides the drop; lane headers read by kind and number (Video 1, Text 1, Shape 1, Audio 1) with a kind icon (U1 LCR) |
 | TL-085 | P0 | W2 | Verified | Replace (a label on the clip) shows only when a new item from the library or Media is dragged over the middle of a clip; a clip moved on the timeline never replaces: over another clip it goes before or after it by the pointer's half, rippling later clips (U1 LCR) |
+| TL-086 | P0 | W2 | Verified | Collapse leaves the canvas and one player bar: the wand (disabled), First frame, Back 5 s, Play/Pause, Forward 5 s, the timecode, a full-width scrubber (white knob, lighter played part, the smooth scrub) and Expand; no scene strip, status row or lanes; Collapse and Expand animate (240 ms, about 0 with reduced motion) (U4 LCR) |
 
 ## PB: Playback and transport
 
