@@ -52,3 +52,39 @@ execution, rather than silently falling back to main-thread execution.
 
 Node worker tests exercise actual termination and message/error behavior using a
 recording context. They do not rasterize pixels or prove browser containment.
+
+## Gallery and browser proof (B3)
+
+D-225: `npm run blocks:gallery` serves the isolated laboratory at
+`http://127.0.0.1:5175`. The same page is reachable at `/blocks-gallery/` on the
+existing dev server for Playwright. The editor and its export worker are untouched.
+The gallery has its own Vite config and TypeScript check:
+`npx tsc --noEmit -p blocks-gallery/tsconfig.json`;
+`npx vite build --config blocks-gallery/vite.config.ts`.
+The compiler is a lazy chunk (~3.58 MB uncompressed) because it uses the existing
+TypeScript parser. This is acceptable for the PoC; a production compiler service
+or smaller reviewed parser is a later decision, not a new dependency here.
+
+Export check compares all RGBA bytes at 0%, 25%, 50%, 75%, and 100% of the selected
+block duration with **zero-byte tolerance**. Starter blocks compare visible Canvas
+against both direct OffscreenCanvas and a real worker's OffscreenCanvas. Pasted
+code compares two fresh-worker renders, displaying one on the visible canvas.
+A result reports maximum channel difference, times, dimensions and pass/fail.
+This is an isolated export-path proxy, not integration with the existing exporter.
+Exact parity is scoped to the same browser, font installation, machine and Canvas
+implementation; cross-browser/font rasterization is not promised.
+
+Benchmark measures 120 evenly spaced frames including both endpoints at 720p and
+1080p. It reports arithmetic mean draw time and worker round-trip time separately.
+Canvas creation/readback are excluded from draw time; round trips include startup,
+allocation and transport. No pixel readback forces GPU completion in the timing
+loop, so these are Canvas command-submission costs, not encoder throughput.
+Pasted code is **never** executed on the main thread, including benchmarks; its
+main-thread result is null. Slow pasted frames still face the 250 ms watchdog.
+
+The single `e2e/code-layer-poc.spec.ts` contains nine cases: four five-time pixel
+comparisons, four 3→1→3 scrub checks, and hostile-code rejection/termination plus
+recovery. Existing ledger IDs describe the relevant proof area; this isolated
+suite does not promote or change any feature ledger row. Local browser launch
+was blocked by missing `/opt/microsoft/msedge/msedge`; no browser test passed
+locally and no speed or pixel result is fabricated.
