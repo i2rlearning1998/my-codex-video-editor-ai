@@ -117,3 +117,40 @@ fails, keep its displayed message and the selected block/params/time/seed.
    `npx playwright test e2e/code-layer-poc.spec.ts` in a supported installed browser,
    then inspect the latest PR CI run before accepting. Report any visual problems
    as well as the numbers. Do not merge until you accept the results. (B3/B5)
+
+## Owner bugs BLK-1 / BLK-2 follow-up
+
+- Added the four visible-alpha-at-thumbnail regressions and the prefilled Orbit
+  exact-parity regression **before changing implementation**. The inherited-size
+  unit regression failed with received `{}` versus expected width/height, then
+  passed with the explicit copy. There are now 14 cases in the same browser spec.
+- BLK-1 cause: spreading an HTMLCanvasElement drops its inherited width/height.
+  Preview/thumbnail geometry became nonfinite and native drawing ignored it.
+  Export check passed a plain size object and could miss that normal-preview bug.
+  The library now copies width/height explicitly; gallery context readback hints
+  also match the worker's default rendering policy instead of forcing CPU-only
+  main/direct rendering. No worker sandbox files were edited.
+- BLK-2: the old comparison read back uploaded preview pixels but compared them
+  against an untouched worker buffer. The Canvas standard permits precision loss
+  in that alpha round trip. The new comparison checks raw independent renders and
+  equally uploaded displays separately, both at **zero** tolerance. It exposes the
+  mixed-stage round-trip difference as a diagnostic. This explains why a reported
+  difference of 1 did not prove state leakage or different worker frames; exact
+  Windows reproduction remains to be confirmed by the new spec/owner run.
+- The prior B5 CI run 251 actually passed its nine code-layer cases but failed the
+  ledger gate because dynamic test titles were not literal strings. This follow-up
+  moves varying block names to describe suites and keeps literal ledger-prefixed
+  titles; it does not remove or weaken any assertion.
+- Local checks: `npm run check` passed with 434 tests; gallery TypeScript/build and
+  ledger checks passed. Browser attempts before/after the fix cannot launch Edge;
+  attempted Chromium installation also failed with invalid/truncated ZIP downloads.
+  Thus **no local browser assertion ran**. CI evidence for this correction is not
+  claimed before the pushed branch's run completes. No recurring monitoring.
+
+Owner retest: launch the gallery, select each of the four starter poses (including
+Orbital burst at 0.8 and 1.78 seconds), scrub/play, then Export check. All four
+should visibly draw and report pass true/maxDifference 0. Compile the unmodified
+Orbit sample and repeat Export check: raw worker and display comparisons must be
+0; a nonzero displayRoundTripMaxDifference only describes Canvas alpha conversion.
+Run `npx playwright test e2e/code-layer-poc.spec.ts` and preserve failures with
+browser/OS, selected params/seed and per-row results. No merge performed.

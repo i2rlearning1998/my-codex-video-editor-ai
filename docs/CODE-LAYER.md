@@ -282,3 +282,28 @@ not add undeclared fields to schema 5 or hide executable source in clip metadata
    layer, and block production untrusted imports until sandbox hardening is reviewed.
    Run real-browser pixel parity, scrub/reorder, cancellation, hostile-code and
    serialization/migration tests. The PoC tests alone do not verify this integration.
+
+## BLK-1 / BLK-2 correction
+
+D-229: Size is a structural contract, not necessarily an object with own fields.
+Canvas width/height accessors live on prototypes. Copy them explicitly when
+freezing the render input; object spread silently dropped both and native Canvas
+ignored the resulting nonfinite geometry. Preview and pose tiles passed canvases,
+while Export check used a plain size object, which explains why parity alone did
+not catch an empty normal preview. Four browser regressions now require nonzero
+alpha at each starter's thumbnail time before checking exact export parity.
+The gallery also requests `willReadFrequently:false` for both main/direct contexts
+instead of forcing them onto a CPU rasterizer while the worker uses its default
+context. This aligns context policy; hardware-specific equality still needs a
+real-browser run, especially the reported Windows configuration.
+
+D-230: For pasted blocks, compare the two independently rendered worker buffers
+before display upload. Also compare both buffers after the same Canvas upload and
+readback. Both comparisons retain zero tolerance and contribute to pass/fail.
+`displayRoundTripMaxDifference` is a separate diagnostic comparing a raw buffer
+with its displayed/read-back representation, not two different renders. Canvas
+uses premultiplied alpha internally, and upload/readback can round translucent
+RGB values ([HTML Canvas standard](https://html.spec.whatwg.org/multipage/canvas.html#pixel-manipulation)).
+The old Orbit check included this conversion on only the preview side, so its
+one-level mismatch alone did not establish nondeterministic worker rendering.
+No worker sandbox source, tolerance, shader, text or arc code was changed.

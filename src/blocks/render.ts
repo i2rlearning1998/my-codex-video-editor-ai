@@ -60,7 +60,13 @@ export function defineBlock(
       validateFrame(t, size, seed);
       const params = validateParams(info.params, raw);
       frame(ctx, size, () =>
-        draw(ctx, t, Object.freeze({ ...size }), params, seed),
+        draw(
+          ctx,
+          t,
+          Object.freeze({ width: size.width, height: size.height }),
+          params,
+          seed,
+        ),
       );
     },
   });

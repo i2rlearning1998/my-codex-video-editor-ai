@@ -8,7 +8,9 @@ import { sampleSource } from './sample';
 const $ = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('preview'),
-  ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  // Match the worker's default accelerated context; do not force only preview
+  // onto a different CPU rasterizer. Explicit false also avoids readback heuristics.
+  ctx = canvas.getContext('2d', { willReadFrequently: false })!;
 const blockSelect = $<HTMLSelectElement>('block'),
   time = $<HTMLInputElement>('time'),
   scrub = $<HTMLInputElement>('scrub'),
@@ -234,7 +236,7 @@ $('export-check').onclick = () =>
       s = Number(seed.value),
       size = { width: canvas.width, height: canvas.height };
     const offscreen = new OffscreenCanvas(size.width, size.height),
-      off = offscreen.getContext('2d', { willReadFrequently: true })!;
+      off = offscreen.getContext('2d', { willReadFrequently: false })!;
     const worker = createSandbox();
     const rows = [];
     let maxDifference = 0;
@@ -255,12 +257,18 @@ $('export-check').onclick = () =>
         if (!reply.ok || !reply.pixels)
           throw Error(reply.error ?? 'Worker readback failed');
         let directDiff: number | null = null;
+        let previewPixels: Uint8ClampedArray;
+        let displayRoundTripDifference: number | null = null;
+        let displayDifference: number | null = null;
         if (selectedCustom) {
           const previewWorker = createSandbox();
           try {
             const preview = await previewWorker.render(request);
             if (!preview.ok || !preview.pixels)
               throw Error(preview.error ?? 'Preview failed');
+            // Compare independent render buffers BEFORE either is uploaded.
+            // A putImageData/getImageData round trip can lose RGB precision at alpha edges.
+            previewPixels = preview.pixels;
             ctx.putImageData(
               new ImageData(
                 new Uint8ClampedArray(preview.pixels),
@@ -270,6 +278,26 @@ $('export-check').onclick = () =>
               0,
               0,
             );
+            const displayed = ctx.getImageData(
+              0,
+              0,
+              size.width,
+              size.height,
+            ).data;
+            displayRoundTripDifference = difference(displayed, previewPixels);
+            off.putImageData(
+              new ImageData(
+                new Uint8ClampedArray(reply.pixels),
+                size.width,
+                size.height,
+              ),
+              0,
+              0,
+            );
+            displayDifference = difference(
+              displayed,
+              off.getImageData(0, 0, size.width, size.height).data,
+            );
           } finally {
             previewWorker.dispose();
           }
@@ -277,20 +305,26 @@ $('export-check').onclick = () =>
           const block = getBlock(info.id)!;
           block.render(ctx, t, size, p, s);
           block.render(off, t, size, p, s);
+          previewPixels = ctx.getImageData(0, 0, size.width, size.height).data;
           directDiff = difference(
-            ctx.getImageData(0, 0, size.width, size.height).data,
+            previewPixels,
             off.getImageData(0, 0, size.width, size.height).data,
           );
         }
-        const workerDiff = difference(
-          ctx.getImageData(0, 0, size.width, size.height).data,
-          reply.pixels,
+        const workerDiff = difference(previewPixels, reply.pixels);
+        maxDifference = Math.max(
+          maxDifference,
+          directDiff ?? 0,
+          workerDiff,
+          displayDifference ?? 0,
         );
-        maxDifference = Math.max(maxDifference, directDiff ?? 0, workerDiff);
         rows.push({
           t,
           directOffscreenMaxDifference: directDiff,
           workerMaxDifference: workerDiff,
+          displayMaxDifference: displayDifference,
+          // Diagnostic only: this compares DIFFERENT representation stages, not two renders.
+          displayRoundTripMaxDifference: displayRoundTripDifference,
         });
         await nextPaint();
       }
@@ -303,7 +337,7 @@ $('export-check').onclick = () =>
           tolerance: 0,
           size,
           rows,
-          note: 'Same browser/device/fonts only. Isolated export-path proxy; not the editor export worker.',
+          note: 'Zero tolerance for raw render equality and matching display uploads. displayRoundTripMaxDifference separately measures lossy Canvas alpha conversion, not render divergence. Same browser/device/fonts only; isolated export-path proxy.',
         },
         null,
         2,

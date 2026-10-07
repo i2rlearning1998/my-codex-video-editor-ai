@@ -111,3 +111,25 @@ it('B0 frame wrapper clears/clips and balances state on success and error', () =
   ).toThrow('draw failed');
   expect(r.depth).toBe(0);
 });
+it('BLK-1 preserves inherited canvas dimensions when copying the size contract', () => {
+  const size = Object.create({ width: 960, height: 540 }) as {
+    width: number;
+    height: number;
+  };
+  let observed: unknown;
+  const block = defineBlock(
+    {
+      id: 'canvas-size',
+      version: '1.0.0',
+      name: 'Canvas size',
+      category: 'Test',
+      defaultDuration: 4,
+      params: [],
+    },
+    (_ctx, _t, received) => {
+      observed = received;
+    },
+  );
+  block.render(recording().ctx, 0, size, {}, 7);
+  expect(observed).toEqual({ width: 960, height: 540 });
+});

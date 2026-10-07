@@ -16,3 +16,9 @@ Allowed paths only: src/blocks, src/camera, tests/blocks, tests/camera, blocks-g
 PR #21: https://github.com/i2rlearning1998/my-codex-video-editor-ai/pull/21
 
 Browser proof remains unverified (no local Edge). One CI snapshot on B4 was in progress. No polling. See reports/CODE-LAYER-POC.md for evidence and the six owner steps. After final check/push, mark this same PR ready; never merge. On resume inspect current remote/head and this file first; do not repeat completed parts.
+
+BLK-1/BLK-2 follow-up: regression-first size-copy fix, matched gallery context
+policy and raw/display-stage export comparisons. Zero tolerance retained, worker
+sandbox unchanged. Local check: 434 tests; 14 browser cases cannot launch locally
+(missing Edge, Chromium download corrupt). Last fix commit: `git log -1 -- briefs/BLOCKS.md`.
+Same branch/PR; owner/CI browser confirmation required. See report follow-up.
