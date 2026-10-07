@@ -15,3 +15,40 @@ BlockModule: id, version, name, category, defaultDuration, params, render(ctx,t,
 ## Starter blocks (B1)
 
 Four original transparent compositions: Signal counter (easing, prefix/suffix, glow), Orbital burst (indexed random velocities; p0 + v*t + g*t²/2 and lifetime fade), Data relay (2–6 labelled nodes, flowing dots, counters), Neon arrival (per-code-point closed-form spring and glow). Each supplies thumbnailTime. System Arial is deliberate for this PoC; font rasterization/platform differences remain a browser verification question. Particle simulation stores nothing between frames. Params remain immutable; render-local arrays are disposable, not project state.
+
+## Worker sandbox (B2)
+
+D-223: `compileBlock` parses a deliberately small JavaScript subset with the
+existing TypeScript dependency. It reads literal metadata without evaluating
+source. It accepts one parenthesized object with a
+`render(ctx,t,size,params,seed)` method; the runtime also supplies `helpers`.
+Only scalar locals, arithmetic, loops, branches, approved drawing operations,
+Math operations and declared parameter reads are supported. Computed properties,
+constructors, nested functions, arbitrary calls and ambient capabilities are
+rejected. This is intentionally narrower than general JavaScript.
+
+D-224: Execution occurs only in a dedicated worker. Captured host hooks survive
+capability removal; submitted code sees a frozen drawing facade, frozen params
+and size, and deterministic helpers. Each frame gets a fresh canvas and function.
+The facade clips through the host wrapper, limits calls, hides the raw canvas,
+and enforces balanced save/restore. The main-thread 250 ms watchdog terminates
+an over-budget worker. A terminated worker must be recreated. Startup has a
+separate five-second deadline. Validation and frame errors are returned as values.
+
+This is defense in depth for a proof of concept, **not a hardened security
+boundary for arbitrary hostile JavaScript**. The validator and worker message
+protocol are trusted application code: callers must pass successful compiler
+results unchanged. Workers ordinarily have network and storage capabilities
+([MDN worker documentation](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Using_web_workers)).
+The deny list cannot promise isolation against every browser capability or
+engine vulnerability. Memory exhaustion can precede watchdog termination;
+workers can share a browser process. Parsing is bounded but happens on the host.
+No claim of protection from every host crash or denial of service is made.
+A later dedicated-origin sandboxed iframe with restrictive CSP, explicit
+capability transport and reviewed resource limits is required before accepting
+untrusted third-party code in production. The current runtime needs dynamic
+function construction inside its worker; a CSP that disallows it will reject
+execution, rather than silently falling back to main-thread execution.
+
+Node worker tests exercise actual termination and message/error behavior using a
+recording context. They do not rasterize pixels or prove browser containment.
