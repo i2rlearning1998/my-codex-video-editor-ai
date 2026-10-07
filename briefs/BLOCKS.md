@@ -4,8 +4,8 @@ Branch codex/code-layer-poc from main 9362645. One PR to main, draft until finis
 
 | Part | Status                                | Last commit                                     |
 | ---- | ------------------------------------- | ----------------------------------------------- |
-| B0   | Done; npm run check passed, 392 tests | This checkpoint: git log -1 -- briefs/BLOCKS.md |
-| B1   | Pending                               | —                                               |
+| B0   | Done; npm run check passed, 392 tests | f07955f                                         |
+| B1   | Done; check passed, 398 tests         | This checkpoint: git log -1 -- briefs/BLOCKS.md |
 | B2   | Pending                               | —                                               |
 | B3   | Pending                               | —                                               |
 | B4   | Pending                               | —                                               |

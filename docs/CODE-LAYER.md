@@ -11,3 +11,7 @@ Standalone engine/gallery, no editor wiring. Schema remains 5. Decisions begin a
 ## Contract
 
 BlockModule: id, version, name, category, defaultDuration, params, render(ctx,t,size,params,seed), optional thumbnailTime. Context is CanvasRenderingContext2D or OffscreenCanvasRenderingContext2D. ParamSpec supports number(min/max/step), color(hex RGB/RGBA), text, bool, select; all have name/label/default. Render depends only on its arguments. No wall clock, performance.now, Math.random, retained simulation state, IO or async work. Re-rendering 3 s after 1 s must reproduce the same output as the first 3 s frame. Save/restore must balance; all drawing is clipped to canvas bounds. Recording tests prove call determinism, not pixels.
+
+## Starter blocks (B1)
+
+Four original transparent compositions: Signal counter (easing, prefix/suffix, glow), Orbital burst (indexed random velocities; p0 + v*t + g*t²/2 and lifetime fade), Data relay (2–6 labelled nodes, flowing dots, counters), Neon arrival (per-code-point closed-form spring and glow). Each supplies thumbnailTime. System Arial is deliberate for this PoC; font rasterization/platform differences remain a browser verification question. Particle simulation stores nothing between frames. Params remain immutable; render-local arrays are disposable, not project state.
