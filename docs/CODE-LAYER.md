@@ -88,3 +88,22 @@ recovery. Existing ledger IDs describe the relevant proof area; this isolated
 suite does not promote or change any feature ledger row. Local browser launch
 was blocked by missing `/opt/microsoft/msedge/msedge`; no browser test passed
 locally and no speed or pixel result is fabricated.
+
+## Camera (B4)
+
+D-226: `src/camera` is a pure affine module, independent of the app. Defaults are
+x/y 0, zoom 1, rotation 0 degrees, shake amplitude 0, frequency 4 Hz, seed 0.
+x/y are world-space camera offsets from the viewport centre; the scene moves
+in the opposite direction. `cameraMatrix(camera,t,viewport,depth=1)` returns the
+Canvas tuple `[a,b,c,d,e,f]`, zooming/rotating around the centre. Depth 0 gives
+identity, depth 1 the full camera. Translation, angle and shake scale linearly
+with depth; zoom uses `zoom ** depth`. Shake is two seeded, smoothstep-interpolated
+noise channels, bounded per axis by amplitude; frequency 0 disables shake.
+
+`applyCamera(ctx,camera,viewport,depth,t=0)` multiplies the current transform.
+The requested four-argument API is supported; the optional fifth argument is
+necessary to animate deterministic shake without hidden time state. The caller
+owns save/restore and supplies the same composition time for all affected layers.
+Numeric inputs must be finite, zoom/viewport positive, depth in 0..1, amplitude
+nonnegative, frequency in 0..1000, seed a safe integer and |time| ≤ 86400 seconds.
+This is not a 3D camera or perspective projection. No editor code is wired to it.
