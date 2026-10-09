@@ -21,6 +21,7 @@ import {
   type SelectionHandle,
 } from './selection';
 import { brushCap, type DrawingPath } from './drawing';
+import { drawWithFx } from './fx';
 import { drawShape } from './shapes';
 import {
   deriveRenderItems,
@@ -388,141 +389,168 @@ export function drawComposition(
       viewport.height * viewport.pixelRatio,
     );
   }
-  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
-    for (const item of items) {
-      if (only && !only(item)) continue;
-      context.save();
-      try {
-        context.setTransform(...multiplyMatrices(view, item.matrix));
-        context.globalAlpha = item.opacity * fade;
-        // W5-C Wipe: only the revealed part of the box is drawn.
-        if (item.reveal !== undefined) {
-          context.beginPath();
-          const shown = item.size.width * item.reveal;
-          context.rect(
-            item.revealFrom === 'right' ? item.size.width - shown : 0,
-            0,
-            shown,
-            item.size.height,
-          );
-          context.clip();
-        }
-        // W4-B: decoded media replaces the placeholder once its frame is ready.
-        const frame = item.media
-          ? source.frames?.frame(item.media, source.playing ?? false)
-          : null;
-        // I1.7: deleted or missing media draws a clear hatched placeholder.
-        if (item.missing) {
-          drawMissing(
-            context,
-            item.size.width,
-            item.size.height,
-            source.missingLabel ?? 'Missing media',
-          );
-          continue;
-        }
-        // H3: cropping shows the whole source dimmed and the kept part bright.
-        if (item.cropView) {
-          const { source: full, frame: kept } = item.cropView;
-          const paint = (alpha: number) => {
-            context.globalAlpha = item.opacity * fade * alpha;
-            if (frame)
-              context.drawImage(frame, full.x, full.y, full.width, full.height);
-            else {
-              context.fillStyle = item.fill;
-              context.fillRect(full.x, full.y, full.width, full.height);
-            }
-          };
-          paint(0.35);
-          context.beginPath();
-          context.rect(kept.x, kept.y, kept.width, kept.height);
-          context.clip();
-          paint(1);
-          continue;
-        }
-        if (frame) {
-          if (item.picture)
-            drawPicture(
-              context,
-              item.picture,
-              frame,
-              item.size.width,
-              item.size.height,
-              item.fill,
-            );
-          else
-            context.drawImage(frame, 0, 0, item.size.width, item.size.height);
-          continue;
-        }
-        // H3: a placeholder with rounded corners or a border keeps them.
-        if (item.picture && (item.picture.radius > 0 || item.picture.border)) {
+  type Target = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+  /** Draws one item onto `context` (the canvas, or an FX scratch canvas). */
+  const paintItem = (context: Target, item: RenderItem, fade: number) => {
+    context.save();
+    try {
+      context.setTransform(...multiplyMatrices(view, item.matrix));
+      context.globalAlpha = item.opacity * fade;
+      // W5-C Wipe: only the revealed part of the box is drawn.
+      if (item.reveal !== undefined) {
+        context.beginPath();
+        const shown = item.size.width * item.reveal;
+        context.rect(
+          item.revealFrom === 'right' ? item.size.width - shown : 0,
+          0,
+          shown,
+          item.size.height,
+        );
+        context.clip();
+      }
+      // W4-B: decoded media replaces the placeholder once its frame is ready.
+      const frame = item.media
+        ? source.frames?.frame(item.media, source.playing ?? false)
+        : null;
+      // I1.7: deleted or missing media draws a clear hatched placeholder.
+      if (item.missing) {
+        drawMissing(
+          context,
+          item.size.width,
+          item.size.height,
+          source.missingLabel ?? 'Missing media',
+        );
+        return;
+      }
+      // H3: cropping shows the whole source dimmed and the kept part bright.
+      if (item.cropView) {
+        const { source: full, frame: kept } = item.cropView;
+        const paint = (alpha: number) => {
+          context.globalAlpha = item.opacity * fade * alpha;
+          if (frame)
+            context.drawImage(frame, full.x, full.y, full.width, full.height);
+          else {
+            context.fillStyle = item.fill;
+            context.fillRect(full.x, full.y, full.width, full.height);
+          }
+        };
+        paint(0.35);
+        context.beginPath();
+        context.rect(kept.x, kept.y, kept.width, kept.height);
+        context.clip();
+        paint(1);
+        return;
+      }
+      if (frame) {
+        if (item.picture)
           drawPicture(
             context,
             item.picture,
-            null,
+            frame,
             item.size.width,
             item.size.height,
             item.fill,
           );
-          continue;
-        }
-        // SHP-019: a drawing strokes its path; it has no box fill or clip.
-        if (item.path) {
-          strokePath(context, item.path);
-          continue;
-        }
-        // W5-D: shapes draw their own fill and stroke, unclipped.
-        if (item.shape) {
-          drawShape(context, item.shape, item.size.width, item.size.height);
-          continue;
-        }
-        context.fillStyle = item.fill;
-        if (item.kind !== 'text')
-          context.fillRect(0, 0, item.size.width, item.size.height);
-        context.beginPath();
-        context.rect(0, 0, item.size.width, item.size.height);
-        context.clip();
-        // J4: text being edited is drawn by the editor over the canvas.
-        if (item.editing) {
-          // Nothing: the box stays for its outline and handles.
-        } else if (item.kind === 'text' && item.richLayout) {
-          drawRich(
-            context,
-            item.richLayout,
-            item.textStyle ?? DEFAULT_TEXT_STYLE,
-            item.size.width,
-            item.size.height,
-          );
-        } else if (item.kind === 'text' && item.textLayout) {
-          drawText(context, item);
-        } else if (item.kind !== 'rectangle') {
-          context.textBaseline = 'top';
-          context.font =
-            item.kind === 'text'
-              ? TEXT_FONT(item.fontSize)
-              : '16px Arial, sans-serif';
-          context.fillStyle = item.kind === 'text' ? item.fill : '#ffffff';
-          const lineHeight = item.kind === 'text' ? item.fontSize * 1.2 : 22;
-          // Wrapped records supply lines; legacy text keeps explicit newlines. Cap drawing to visible lines.
-          const lines =
-            item.lines ??
-            item.text.split(
-              '\n',
-              Math.min(1000, Math.ceil(item.size.height / lineHeight)),
-            );
-          lines.forEach((line, index) =>
-            context.fillText(
-              line,
-              item.kind === 'text' ? 0 : 16,
-              (item.kind === 'text' ? 0 : 16) + index * lineHeight,
-            ),
-          );
-        }
-      } catch {
-        errors.push(`Could not draw layer ${item.id}.`);
-      } finally {
-        context.restore();
+        else context.drawImage(frame, 0, 0, item.size.width, item.size.height);
+        return;
       }
+      // H3: a placeholder with rounded corners or a border keeps them.
+      if (item.picture && (item.picture.radius > 0 || item.picture.border)) {
+        drawPicture(
+          context,
+          item.picture,
+          null,
+          item.size.width,
+          item.size.height,
+          item.fill,
+        );
+        return;
+      }
+      // SHP-019: a drawing strokes its path; it has no box fill or clip.
+      if (item.path) {
+        strokePath(context, item.path);
+        return;
+      }
+      // W5-D: shapes draw their own fill and stroke, unclipped.
+      if (item.shape) {
+        drawShape(context, item.shape, item.size.width, item.size.height);
+        return;
+      }
+      context.fillStyle = item.fill;
+      if (item.kind !== 'text')
+        context.fillRect(0, 0, item.size.width, item.size.height);
+      context.beginPath();
+      context.rect(0, 0, item.size.width, item.size.height);
+      context.clip();
+      // J4: text being edited is drawn by the editor over the canvas.
+      if (item.editing) {
+        // Nothing: the box stays for its outline and handles.
+      } else if (item.kind === 'text' && item.richLayout) {
+        drawRich(
+          context,
+          item.richLayout,
+          item.textStyle ?? DEFAULT_TEXT_STYLE,
+          item.size.width,
+          item.size.height,
+        );
+      } else if (item.kind === 'text' && item.textLayout) {
+        drawText(context, item);
+      } else if (item.kind !== 'rectangle') {
+        context.textBaseline = 'top';
+        context.font =
+          item.kind === 'text'
+            ? TEXT_FONT(item.fontSize)
+            : '16px Arial, sans-serif';
+        context.fillStyle = item.kind === 'text' ? item.fill : '#ffffff';
+        const lineHeight = item.kind === 'text' ? item.fontSize * 1.2 : 22;
+        // Wrapped records supply lines; legacy text keeps explicit newlines. Cap drawing to visible lines.
+        const lines =
+          item.lines ??
+          item.text.split(
+            '\n',
+            Math.min(1000, Math.ceil(item.size.height / lineHeight)),
+          );
+        lines.forEach((line, index) =>
+          context.fillText(
+            line,
+            item.kind === 'text' ? 0 : 16,
+            (item.kind === 'text' ? 0 : 16) + index * lineHeight,
+          ),
+        );
+      }
+    } catch {
+      errors.push(`Could not draw layer ${item.id}.`);
+    } finally {
+      context.restore();
+    }
+  };
+  // T-ALL P6: an item with an FX stack (or a pixel transition) is drawn to a
+  // scratch canvas at the output's pixel size, processed by the FX library
+  // and composited once. Preview and export share this path.
+  const byId = new Map(items.map((item) => [item.id, item]));
+  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
+    for (const item of items) {
+      if (only && !only(item)) continue;
+      if (item.fxFrom && byId.get(item.id)) {
+        // Drawn by the incoming item's transition when it is in this pass.
+        const partner = items.find(
+          (other) => other.fxTransition?.from === item.id,
+        );
+        if (partner && (!only || only(partner))) continue;
+      }
+      if (
+        (item.fx || item.fxTransition) &&
+        drawWithFx(
+          context,
+          item,
+          fade,
+          paintItem,
+          item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
+          errors,
+        )
+      )
+        continue;
+      paintItem(context, item, fade);
     }
   };
   // G3: in the editor (not export), what lies outside the composition shows

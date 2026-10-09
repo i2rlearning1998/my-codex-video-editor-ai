@@ -12,7 +12,6 @@ import {
   previousTouching,
   type Command,
   type EditorEngine,
-  type TransitionType,
 } from '../core';
 import { t } from '../i18n';
 import { createNumberField } from './components/number-field';
@@ -21,8 +20,9 @@ import type { EditorSession } from './session';
 
 interface Entry {
   readonly id: string;
-  /** A built transition, or null when it is planned. */
-  readonly type: TransitionType | null;
+  /** A built transition (a J12 type or an FX library id), or null when it
+   *  is planned. */
+  readonly type: string | null;
 }
 const GROUPS: readonly { readonly id: string; readonly items: Entry[] }[] = [
   {
@@ -31,7 +31,7 @@ const GROUPS: readonly { readonly id: string; readonly items: Entry[] }[] = [
       { id: 'crossfade', type: 'crossfade' },
       { id: 'fade-black', type: 'fade-black' },
       { id: 'fade-white', type: 'fade-white' },
-      { id: 'blur', type: null },
+      { id: 'blur', type: 'transition.cross-blur' },
     ],
   },
   {
@@ -39,8 +39,8 @@ const GROUPS: readonly { readonly id: string; readonly items: Entry[] }[] = [
     items: [
       { id: 'wipe-left', type: 'wipe-left' },
       { id: 'wipe-right', type: 'wipe-right' },
-      { id: 'wipe-up', type: null },
-      { id: 'iris', type: null },
+      { id: 'wipe-up', type: 'transition.soft-wipe-up' },
+      { id: 'iris', type: 'transition.iris-wipe' },
     ],
   },
   {
@@ -48,32 +48,53 @@ const GROUPS: readonly { readonly id: string; readonly items: Entry[] }[] = [
     items: [
       { id: 'slide-left', type: 'slide-left' },
       { id: 'slide-right', type: 'slide-right' },
-      { id: 'push-up', type: null },
+      { id: 'push-up', type: 'transition.push' },
     ],
   },
   {
     id: 'cartoon',
     items: [
-      { id: 'pop', type: null },
-      { id: 'zoom-burst', type: null },
+      { id: 'pop', type: 'transition.bloom' },
+      { id: 'zoom-burst', type: 'transition.zoom' },
     ],
   },
   {
     id: 'glitch',
     items: [
-      { id: 'glitch', type: null },
-      { id: 'rgb-split', type: null },
+      { id: 'glitch', type: 'transition.glitch' },
+      { id: 'rgb-split', type: 'transition.glitch-reveal' },
     ],
   },
   {
     id: '3d',
     items: [
-      { id: 'flip', type: null },
-      { id: 'cube', type: null },
-      { id: 'page-turn', type: null },
+      { id: 'flip', type: 'transition.spin' },
+      { id: 'cube', type: 'transition.cube-flip' },
+      { id: 'page-turn', type: 'transition.page-turn' },
+    ],
+  },
+  // T-ALL P6: the rest of the FX library's pixel transitions.
+  {
+    id: 'more',
+    items: [
+      { id: 'fx-burn', type: 'transition.burn' },
+      { id: 'fx-horizontal-banding', type: 'transition.horizontal-banding' },
+      { id: 'fx-tiles', type: 'transition.tiles' },
+      { id: 'fx-hard-wipe-up', type: 'transition.hard-wipe-up' },
+      { id: 'fx-hard-wipe-down', type: 'transition.hard-wipe-down' },
+      { id: 'fx-soft-wipe-down', type: 'transition.soft-wipe-down' },
+      { id: 'fx-soft-wipe-left', type: 'transition.soft-wipe-left' },
+      { id: 'fx-soft-wipe-right', type: 'transition.soft-wipe-right' },
+      { id: 'fx-diagonal-soft-wipe', type: 'transition.diagonal-soft-wipe' },
+      { id: 'fx-swirl', type: 'transition.swirl' },
     ],
   },
 ];
+
+const label = (item: Entry) =>
+  item.id.startsWith('fx-')
+    ? t(`fx.${item.type}`)
+    : t(`transition.type.${item.id}`);
 
 /** Builds the panel for the cut into `clipId`, or null when it no longer
  *  applies (the clips moved apart or went away). */
@@ -99,7 +120,7 @@ export function buildTransitionPanel(
   const limit = maxTransition(before, clip);
   const run = (
     label: string,
-    transition: { type: TransitionType; duration: number } | null,
+    transition: { type: string; duration: number } | null,
   ) => {
     try {
       engine.commands.transaction(label, [
@@ -129,7 +150,7 @@ export function buildTransitionPanel(
     groups.replaceChildren();
     for (const group of GROUPS) {
       const items = group.items.filter((item) =>
-        t(`transition.type.${item.id}`).toLowerCase().includes(query),
+        label(item).toLowerCase().includes(query),
       );
       if (!items.length) continue;
       const section = document.createElement('section');
@@ -146,7 +167,7 @@ export function buildTransitionPanel(
         button.type = 'button';
         button.className = 'transition-option';
         button.dataset.transition = item.id;
-        const name = t(`transition.type.${item.id}`);
+        const name = label(item);
         button.innerHTML = `<span class="transition-preview" data-kind="${item.id}">${iconSvg('transitions', 18)}</span><span></span>`;
         button.lastElementChild!.textContent = name;
         if (!item.type) {

@@ -37,9 +37,10 @@ const SIZES: Record<
   Layout,
   { rail: number; left: number; right: number; timeline: number }
 > = {
-  wide: { rail: 64, left: 320, right: 252, timeline: 280 },
-  medium: { rail: 56, left: 280, right: 280, timeline: 220 },
-  narrow: { rail: 56, left: 300, right: 300, timeline: 200 },
+  // T-ALL P4: +52 px for the frame row under the lanes (D-186).
+  wide: { rail: 64, left: 320, right: 252, timeline: 332 },
+  medium: { rail: 56, left: 280, right: 280, timeline: 272 },
+  narrow: { rail: 56, left: 300, right: 300, timeline: 252 },
   phone: { rail: 56, left: 0, right: 0, timeline: 180 },
 };
 const LIMITS = {

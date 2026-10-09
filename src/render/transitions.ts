@@ -105,6 +105,15 @@ const revealed = (
     },
   }) as unknown as SceneLayer;
 
+const marked = (layer: SceneLayer, key: string, value: string): SceneLayer =>
+  Object.freeze({
+    ...(layer as object),
+    properties: {
+      ...(layer.properties as object),
+      [key]: { type: 'string', value },
+    },
+  }) as unknown as SceneLayer;
+
 /** The composition as drawn at `time`, with the transitions in play. */
 export function applyTransitions<C extends Composition>(
   composition: C,
@@ -207,6 +216,22 @@ export function applyTransitions<C extends Composition>(
         A = scaled(A, 1, p * width);
         B = scaled(B, 1, -(1 - p) * width);
         break;
+      default:
+        // T-ALL P6: an FX library pixel transition. The renderer draws both
+        // clips to surfaces and mixes them where the incoming one is drawn.
+        if (transition.type.startsWith('transition.')) {
+          A = marked(A, 'presetFxFrom', '1');
+          B = marked(
+            B,
+            'presetFxTransition',
+            JSON.stringify({
+              id: transition.type,
+              params: transition.params ?? {},
+              progress: p,
+              from: outgoing.id,
+            }),
+          );
+        }
     }
     layers[ia] = A;
     layers[b] = B;
