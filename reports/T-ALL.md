@@ -49,7 +49,12 @@
 
 ## 3. Checks
 
-- `npm run verify`: running at the time of this commit; results follow in the next commit.
+- `npm run verify`: exit 0 (second full run; the first had 3 failures, LAY-035, MED-039 and MED-041, fixed in the last commit; see section 5).
+- Format, typecheck and build: passed.
+- Unit and jsdom tests: 643 passed in 49 files (233 of them are FX library tests from PR #19).
+- E2E: 356 passed (including the expected DEV-006 probe), sandbox Chromium (pre-installed, D-030).
+- Ledger: 652 items, Verified 330, Claimed 14, Todo 308, Ledger OK.
+- CI: not checked, by owner instruction.
 
 ## 4. Try-it script for the owner
 
@@ -69,6 +74,8 @@
 | 12 | Add a transition between two touching pictures › More › Burn; play across the cut; export | It darkens at the cut, in the preview and the export | TR-012, FX-010 | Y (e2e) | test-results/…/burn.png |
 
 ## 5. Deviations from the brief
+
+- Two full verify runs instead of one: the first was red on three tests (the closed outliner took 40 px of lane width; two tests still stated P1/P2's old rules), so a second run was needed before the PR could be ready.
 
 - **Lane headers kept (P5):** the outliner sits beside the lane headers, not in their place, and is closed by default. Removing the headers moved every timeline coordinate and broke many earlier tests (D-187).
 - **No FX thumbnails (P6):** the item names are shown instead. The FX item names are in English in the Hindi catalog too.
