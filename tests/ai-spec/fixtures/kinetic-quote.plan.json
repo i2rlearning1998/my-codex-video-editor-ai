@@ -1,0 +1,846 @@
+{
+  "version": 1,
+  "specId": "kinetic-quote",
+  "catalogVersion": "spec1-main9362645-blocks6a74c95-fx98a95f7-policy1",
+  "executable": false,
+  "duration": 6,
+  "scenes": [
+    {
+      "id": "quote",
+      "compositionId": "ais_kinetic-quote_s0",
+      "timelineStart": 0,
+      "duration": 6
+    }
+  ],
+  "editableParameters": [
+    {
+      "name": "quote",
+      "label": "Quote",
+      "type": "text",
+      "default": "MAKE ROOM FOR IDEAS",
+      "maxLength": 40
+    }
+  ],
+  "bindings": [
+    {
+      "path": "/scenes/0/items/0/params/text",
+      "param": "quote"
+    }
+  ],
+  "operations": [
+    {
+      "sequence": 0,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_COMPOSITION",
+        "composition": {
+          "id": "ais_kinetic-quote_s0",
+          "name": "Quote",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "duration": 6,
+          "layers": [],
+          "tracks": [],
+          "markers": [],
+          "audioTracks": []
+        }
+      }
+    },
+    {
+      "sequence": 1,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_kinetic-quote_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_kinetic-quote_s0_bg",
+          "name": "Scene background",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1280,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 720,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#101219",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_kinetic-quote_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_kinetic-quote_s0_i0_layer",
+          "name": "words",
+          "type": "code",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [0, 0],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 9,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 10,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 11,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_id"
+        },
+        "property": {
+          "type": "string",
+          "value": "kinetic-letters",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_version"
+        },
+        "property": {
+          "type": "string",
+          "value": "1.0.0",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_seed"
+        },
+        "property": {
+          "type": "number",
+          "value": 7,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 14,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_color"
+        },
+        "property": {
+          "type": "color",
+          "value": "#ffe29a",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 15,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_damping"
+        },
+        "property": {
+          "type": "number",
+          "value": 0.62,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 16,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_frequency"
+        },
+        "property": {
+          "type": "number",
+          "value": 2.4,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 17,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_glow"
+        },
+        "property": {
+          "type": "boolean",
+          "value": true,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 18,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_stagger"
+        },
+        "property": {
+          "type": "number",
+          "value": 0.065,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 19,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_text"
+        },
+        "property": {
+          "type": "string",
+          "value": "MAKE ROOM FOR IDEAS",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_kinetic-quote_s0",
+        "track": {
+          "id": "ais_kinetic-quote_s0_i0_track",
+          "name": "words",
+          "type": "object",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_kinetic-quote_s0",
+        "trackId": "ais_kinetic-quote_s0_i0_track",
+        "clip": {
+          "id": "ais_kinetic-quote_s0_i0_clip",
+          "name": "words",
+          "layerId": "ais_kinetic-quote_s0_i0_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 22,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_kinetic-quote_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_kinetic-quote_s0_i1_layer",
+          "name": "accent",
+          "type": "code",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 23,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [0, 0],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 24,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 25,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 26,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 27,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_id"
+        },
+        "property": {
+          "type": "string",
+          "value": "quote-dot",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 28,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_version"
+        },
+        "property": {
+          "type": "string",
+          "value": "1.0.0",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 29,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_seed"
+        },
+        "property": {
+          "type": "number",
+          "value": 7,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 30,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_kinetic-quote_s0",
+        "layerId": "ais_kinetic-quote_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "block_source"
+        },
+        "property": {
+          "type": "string",
+          "value": "({id:'quote-dot',version:'1.0.0',name:'Quote dot',category:'Accent',defaultDuration:6,params:[],render(ctx,t,size,params,seed){ctx.fillStyle='#ffe29a';ctx.beginPath();ctx.arc(size.width/2,size.height*0.8,8+4*Math.sin(t),0,Math.PI*2);ctx.fill();}})",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 31,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_kinetic-quote_s0",
+        "track": {
+          "id": "ais_kinetic-quote_s0_i1_track",
+          "name": "accent",
+          "type": "object",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 32,
+      "status": "blocked",
+      "reason": "Code layer type/command integration is absent on main",
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_kinetic-quote_s0",
+        "trackId": "ais_kinetic-quote_s0_i1_track",
+        "clip": {
+          "id": "ais_kinetic-quote_s0_i1_clip",
+          "name": "accent",
+          "layerId": "ais_kinetic-quote_s0_i1_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "path": "/scenes/0/items/0",
+      "reason": "Code layer type/command integration is absent on main"
+    },
+    {
+      "path": "/scenes/0/items/1",
+      "reason": "Code layer type/command integration is absent on main"
+    }
+  ],
+  "assets": [],
+  "itemMap": [
+    {
+      "sceneId": "quote",
+      "itemId": "words",
+      "layerId": "ais_kinetic-quote_s0_i0_layer",
+      "clipId": "ais_kinetic-quote_s0_i0_clip"
+    },
+    {
+      "sceneId": "quote",
+      "itemId": "accent",
+      "layerId": "ais_kinetic-quote_s0_i1_layer",
+      "clipId": "ais_kinetic-quote_s0_i1_clip"
+    }
+  ]
+}

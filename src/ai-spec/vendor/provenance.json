@@ -1,0 +1,23 @@
+{
+  "repository": "i2rlearning1998/my-codex-video-editor-ai",
+  "blocksCommit": "6a74c956f762dfa2c6bf64cb643a4f2afd3e6e97",
+  "fxCommit": "98a95f7eed67595ab8081976b60b0993fcc159b0",
+  "files": [
+    {
+      "path": "vendor/blocks/params.ts",
+      "sha256": "0dc68d85dab9edf0b9f28626a17d3dd8fa3111fd46837e320a100b5f35c9e1aa"
+    },
+    {
+      "path": "vendor/blocks/sandbox/compile.ts",
+      "sha256": "f26b06832d70607cf4b12425581dd61d21cf37a6c991e8ebcb4ed473870033a7"
+    },
+    {
+      "path": "vendor/blocks/sandbox/policy.ts",
+      "sha256": "1533286aff2f722882af46402664f4767332d0f9c661963757856f55bee52614"
+    },
+    {
+      "path": "vendor/blocks/types.ts",
+      "sha256": "8a5998b12201b585a95d9abd2fae09fba8c2cf038fc537cbaeb37e126a64e73c"
+    }
+  ]
+}

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
+    "ai-spec:check": "vitest run tests/ai-spec",
     "blocks:gallery": "vite --config blocks-gallery/vite.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
