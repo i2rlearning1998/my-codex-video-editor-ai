@@ -7148,9 +7148,27 @@ input[type='range'] {
   background: var(--color-bg-raised);
   overflow: hidden;
 }
+.timeline-body {
+  position: relative;
+}
+/* Closed, only its open button floats over the ruler's empty corner, so the
+   lanes keep their whole width (D-187). */
 .timeline-outliner.collapsed {
-  min-inline-size: 40px;
-  inline-size: 40px !important;
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 25;
+  min-inline-size: 0;
+  inline-size: auto !important;
+  border: 0;
+  background: transparent;
+}
+.timeline-outliner.collapsed .outliner-header {
+  padding: 0;
+  border: 0;
+}
+.timeline-outliner.collapsed .outliner-resizer {
+  display: none;
 }
 .timeline-outliner.collapsed .outliner-tree,
 .timeline-outliner.collapsed .outliner-header h3,

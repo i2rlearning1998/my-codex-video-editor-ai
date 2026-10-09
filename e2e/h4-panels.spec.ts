@@ -105,9 +105,10 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   await select(page, 'layer-c');
   await expect(section(page, 'Adjust')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
-  // U5: nothing selected has no tabs; the empty state shows.
+  // U5: nothing selected has no tabs; T-ALL P1 (D-183): the right panel
+  // itself is then not drawn.
   await expect.poll(() => shownSections(page)).toEqual([]);
-  await expect(page.locator('#right-panel-empty')).toBeVisible();
+  await expect(page.locator('#right-panel-empty')).toBeHidden();
 });
 
 test('[LAY-036] the Inspector stacks Position and size, Timing and Details, folded under the first tab; a header opens its section, the chevron folds it', async ({
