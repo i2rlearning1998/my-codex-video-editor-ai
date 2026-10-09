@@ -5,11 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
- codex/composition-spec
     "ai-spec:check": "vitest run tests/ai-spec",
-
     "blocks:gallery": "vite --config blocks-gallery/vite.config.ts",
- main
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
