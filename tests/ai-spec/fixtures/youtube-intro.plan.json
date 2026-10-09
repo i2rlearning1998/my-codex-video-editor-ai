@@ -1,0 +1,1466 @@
+{
+  "version": 1,
+  "specId": "youtube-intro",
+  "catalogVersion": "spec1-main9362645-blocks6a74c95-fx98a95f7-policy1",
+  "executable": false,
+  "duration": 9,
+  "scenes": [
+    {
+      "id": "welcome",
+      "compositionId": "ais_youtube-intro_s0",
+      "timelineStart": 0,
+      "duration": 6
+    },
+    {
+      "id": "episode",
+      "compositionId": "ais_youtube-intro_s1",
+      "timelineStart": 6,
+      "duration": 3
+    }
+  ],
+  "editableParameters": [
+    {
+      "name": "channel",
+      "label": "Channel name",
+      "type": "text",
+      "default": "IDEAS IN MOTION",
+      "maxLength": 40
+    }
+  ],
+  "bindings": [
+    {
+      "path": "/scenes/0/items/0/text",
+      "param": "channel"
+    }
+  ],
+  "operations": [
+    {
+      "sequence": 0,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_COMPOSITION",
+        "composition": {
+          "id": "ais_youtube-intro_s0",
+          "name": "Welcome",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "duration": 6,
+          "layers": [],
+          "tracks": [],
+          "markers": [],
+          "audioTracks": []
+        }
+      }
+    },
+    {
+      "sequence": 1,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_youtube-intro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_youtube-intro_s0_bg",
+          "name": "Scene background",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1280,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 720,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#101219",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_youtube-intro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_youtube-intro_s0_i0_layer",
+          "name": "headline",
+          "type": "text",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [100, 180],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 9,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 10,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 11,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "IDEAS IN MOTION",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 14,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 48,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 15,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 16,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#64e3c3",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 17,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_youtube-intro_s0",
+        "track": {
+          "id": "ais_youtube-intro_s0_i0_track",
+          "name": "headline",
+          "type": "text",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 18,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_youtube-intro_s0",
+        "trackId": "ais_youtube-intro_s0_i0_track",
+        "clip": {
+          "id": "ais_youtube-intro_s0_i0_clip",
+          "name": "headline",
+          "layerId": "ais_youtube-intro_s0_i0_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 19,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_youtube-intro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_youtube-intro_s0_i1_layer",
+          "name": "underline",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [100, 390],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 22,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 23,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 24,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 900,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 25,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 12,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 26,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 27,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#37cbb1",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 28,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_youtube-intro_s0",
+        "track": {
+          "id": "ais_youtube-intro_s0_i1_track",
+          "name": "underline",
+          "type": "object",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 29,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_youtube-intro_s0",
+        "trackId": "ais_youtube-intro_s0_i1_track",
+        "clip": {
+          "id": "ais_youtube-intro_s0_i1_clip",
+          "name": "underline",
+          "layerId": "ais_youtube-intro_s0_i1_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 30,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot music",
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_youtube-intro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_youtube-intro_s0_i2_layer",
+          "name": "Intro music",
+          "type": "audio",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 31,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot music",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [0, 0],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 32,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot music",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 33,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot music",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 34,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot music",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s0",
+        "layerId": "ais_youtube-intro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 35,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot music",
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_youtube-intro_s0",
+        "track": {
+          "id": "ais_youtube-intro_s0_i2_track",
+          "name": "Intro music",
+          "type": "audio",
+          "order": 2,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 36,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot music",
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_youtube-intro_s0",
+        "trackId": "ais_youtube-intro_s0_i2_track",
+        "clip": {
+          "id": "ais_youtube-intro_s0_i2_clip",
+          "name": "Intro music",
+          "layerId": "ais_youtube-intro_s0_i2_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 37,
+      "status": "blocked",
+      "reason": "CREATE_TRANSITION is documented future vocabulary; scene transition integration is absent on main",
+      "command": {
+        "type": "CREATE_TRANSITION",
+        "fromCompositionId": "ais_youtube-intro_s0",
+        "toCompositionId": "ais_youtube-intro_s1",
+        "boundary": 6,
+        "id": "crossfade",
+        "duration": 0.5
+      }
+    },
+    {
+      "sequence": 38,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_COMPOSITION",
+        "composition": {
+          "id": "ais_youtube-intro_s1",
+          "name": "Episode",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "duration": 3,
+          "layers": [],
+          "tracks": [],
+          "markers": [],
+          "audioTracks": []
+        }
+      }
+    },
+    {
+      "sequence": 39,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_youtube-intro_s1",
+        "parentId": null,
+        "layer": {
+          "id": "ais_youtube-intro_s1_bg",
+          "name": "Scene background",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 3,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 40,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_bg",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1280,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 41,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_bg",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 720,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 42,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_bg",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 43,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_bg",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#101219",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 44,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_youtube-intro_s1",
+        "parentId": null,
+        "layer": {
+          "id": "ais_youtube-intro_s1_i0_layer",
+          "name": "topic",
+          "type": "text",
+          "startTime": 0,
+          "duration": 3,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 45,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [100, 230],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 46,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 47,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 48,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 49,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 50,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 51,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "Build something worth sharing",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 52,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 48,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 53,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 54,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_youtube-intro_s1",
+        "layerId": "ais_youtube-intro_s1_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#ffffff",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 55,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_youtube-intro_s1",
+        "track": {
+          "id": "ais_youtube-intro_s1_i0_track",
+          "name": "topic",
+          "type": "text",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 56,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_youtube-intro_s1",
+        "trackId": "ais_youtube-intro_s1_i0_track",
+        "clip": {
+          "id": "ais_youtube-intro_s1_i0_clip",
+          "name": "topic",
+          "layerId": "ais_youtube-intro_s1_i0_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 3,
+          "sourceIn": 0,
+          "sourceOut": 3,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "path": "/scenes/0/items/2",
+      "reason": "Owner must supply a local asset for slot music",
+      "details": {
+        "slot": "music",
+        "description": "Owner-supplied licensed intro music"
+      }
+    },
+    {
+      "path": "/scenes/0/transition",
+      "reason": "CREATE_TRANSITION is documented future vocabulary; scene transition integration is absent on main"
+    }
+  ],
+  "assets": [
+    {
+      "id": "music",
+      "kind": "audio",
+      "description": "Owner-supplied licensed intro music"
+    }
+  ],
+  "itemMap": [
+    {
+      "sceneId": "welcome",
+      "itemId": "headline",
+      "layerId": "ais_youtube-intro_s0_i0_layer",
+      "clipId": "ais_youtube-intro_s0_i0_clip"
+    },
+    {
+      "sceneId": "welcome",
+      "itemId": "underline",
+      "layerId": "ais_youtube-intro_s0_i1_layer",
+      "clipId": "ais_youtube-intro_s0_i1_clip"
+    },
+    {
+      "sceneId": "welcome",
+      "itemId": "music",
+      "layerId": "ais_youtube-intro_s0_i2_layer",
+      "clipId": "ais_youtube-intro_s0_i2_clip"
+    },
+    {
+      "sceneId": "episode",
+      "itemId": "topic",
+      "layerId": "ais_youtube-intro_s1_i0_layer",
+      "clipId": "ais_youtube-intro_s1_i0_clip"
+    }
+  ]
+}

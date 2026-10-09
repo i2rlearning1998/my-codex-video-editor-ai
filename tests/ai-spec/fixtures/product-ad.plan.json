@@ -1,0 +1,1421 @@
+{
+  "version": 1,
+  "specId": "product-ad",
+  "catalogVersion": "spec1-main9362645-blocks6a74c95-fx98a95f7-policy1",
+  "executable": false,
+  "duration": 6,
+  "scenes": [
+    {
+      "id": "hero",
+      "compositionId": "ais_product-ad_s0",
+      "timelineStart": 0,
+      "duration": 6
+    }
+  ],
+  "editableParameters": [
+    {
+      "name": "promise",
+      "label": "Headline",
+      "type": "text",
+      "default": "TAKE THE LONG WAY HOME",
+      "maxLength": 60
+    }
+  ],
+  "bindings": [
+    {
+      "path": "/scenes/0/items/1/text",
+      "param": "promise"
+    }
+  ],
+  "operations": [
+    {
+      "sequence": 0,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_COMPOSITION",
+        "composition": {
+          "id": "ais_product-ad_s0",
+          "name": "Hero",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "duration": 6,
+          "layers": [],
+          "tracks": [],
+          "markers": [],
+          "audioTracks": []
+        }
+      }
+    },
+    {
+      "sequence": 1,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_product-ad_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_product-ad_s0_bg",
+          "name": "Scene background",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1280,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 720,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#101219",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_product-ad_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_product-ad_s0_i0_layer",
+          "name": "Uploaded product photograph",
+          "type": "image",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": "uploaded_product_photo",
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [0, 0],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 9,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 10,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 11,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1280,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 720,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "status": "blocked",
+      "reason": "Camera/parallax renderer integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "camera_depth"
+        },
+        "property": {
+          "type": "number",
+          "value": 0.35,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 14,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_product-ad_s0",
+        "track": {
+          "id": "ais_product-ad_s0_i0_track",
+          "name": "Uploaded product photograph",
+          "type": "video",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 15,
+      "status": "needs-asset",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_product-ad_s0",
+        "trackId": "ais_product-ad_s0_i0_track",
+        "clip": {
+          "id": "ais_product-ad_s0_i0_clip",
+          "name": "Uploaded product photograph",
+          "layerId": "ais_product-ad_s0_i0_layer",
+          "assetId": "uploaded_product_photo",
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 16,
+      "status": "blocked",
+      "reason": "ADD_EFFECT is documented future vocabulary; no command or FX wiring exists on main",
+      "command": {
+        "type": "ADD_EFFECT",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i0_layer",
+        "clipId": "ais_product-ad_s0_i0_clip",
+        "effect": {
+          "id": "adjust.contrast",
+          "params": {
+            "intensity": 1,
+            "amount": 0.1
+          },
+          "seed": 11
+        }
+      }
+    },
+    {
+      "sequence": 17,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_product-ad_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_product-ad_s0_i1_layer",
+          "name": "promise",
+          "type": "text",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 18,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [80, 100],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 19,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 22,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 23,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 24,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "TAKE THE LONG WAY HOME",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 25,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 48,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 26,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 27,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#ffffff",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 28,
+      "status": "blocked",
+      "reason": "Camera/parallax renderer integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "camera_depth"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 29,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_product-ad_s0",
+        "track": {
+          "id": "ais_product-ad_s0_i1_track",
+          "name": "promise",
+          "type": "text",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 30,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_product-ad_s0",
+        "trackId": "ais_product-ad_s0_i1_track",
+        "clip": {
+          "id": "ais_product-ad_s0_i1_clip",
+          "name": "promise",
+          "layerId": "ais_product-ad_s0_i1_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 31,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_product-ad_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_product-ad_s0_i2_layer",
+          "name": "price",
+          "type": "text",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 32,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [80, 590],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 33,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 34,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 35,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 36,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 37,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 38,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "Designed for everyday adventures",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 39,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 30,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 40,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 41,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#ffffff",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 42,
+      "status": "blocked",
+      "reason": "Camera/parallax renderer integration is absent on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "camera_depth"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 43,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_product-ad_s0",
+        "track": {
+          "id": "ais_product-ad_s0_i2_track",
+          "name": "price",
+          "type": "text",
+          "order": 2,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 44,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_product-ad_s0",
+        "trackId": "ais_product-ad_s0_i2_track",
+        "clip": {
+          "id": "ais_product-ad_s0_i2_clip",
+          "name": "price",
+          "layerId": "ais_product-ad_s0_i2_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 45,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_product-ad_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_product-ad_s0_camera0",
+          "name": "Camera push-in",
+          "type": "camera",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 46,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_camera0",
+        "target": {
+          "kind": "property",
+          "key": "camera_x"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": true,
+          "constraints": [],
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 0,
+              "easing": "ease-in-out"
+            },
+            {
+              "time": 6,
+              "value": 45
+            }
+          ]
+        }
+      }
+    },
+    {
+      "sequence": 47,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_camera0",
+        "target": {
+          "kind": "property",
+          "key": "camera_y"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": true,
+          "constraints": [],
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 0,
+              "easing": "ease-in-out"
+            },
+            {
+              "time": 6,
+              "value": 15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "sequence": 48,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_camera0",
+        "target": {
+          "kind": "property",
+          "key": "camera_zoom"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": true,
+          "constraints": [],
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 1,
+              "easing": "ease-in-out"
+            },
+            {
+              "time": 6,
+              "value": 1.15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "sequence": 49,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_camera0",
+        "target": {
+          "kind": "property",
+          "key": "camera_rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": true,
+          "constraints": [],
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 0,
+              "easing": "ease-in-out"
+            },
+            {
+              "time": 6,
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "sequence": 50,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_camera0",
+        "target": {
+          "kind": "property",
+          "key": "camera_shake_amplitude"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": true,
+          "constraints": [],
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 0,
+              "easing": "ease-in-out"
+            },
+            {
+              "time": 6,
+              "value": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "sequence": 51,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_camera0",
+        "target": {
+          "kind": "property",
+          "key": "camera_shake_frequency"
+        },
+        "property": {
+          "type": "number",
+          "value": 4,
+          "animated": true,
+          "constraints": [],
+          "keyframes": [
+            {
+              "time": 0,
+              "value": 4,
+              "easing": "ease-in-out"
+            },
+            {
+              "time": 6,
+              "value": 4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "sequence": 52,
+      "status": "blocked",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_product-ad_s0",
+        "layerId": "ais_product-ad_s0_camera0",
+        "target": {
+          "kind": "property",
+          "key": "camera_shake_seed"
+        },
+        "property": {
+          "type": "number",
+          "value": 17,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "path": "/scenes/0/items/0",
+      "reason": "Host must verify the uploaded asset id, kind, duration and local bytes",
+      "details": {
+        "slot": "product-photo",
+        "description": "Owner-uploaded product photo"
+      }
+    },
+    {
+      "path": "/scenes/0/items/0/depth",
+      "reason": "Camera/parallax renderer integration is absent on main"
+    },
+    {
+      "path": "/scenes/0/items/0/fx",
+      "reason": "ADD_EFFECT is documented future vocabulary; no command or FX wiring exists on main"
+    },
+    {
+      "path": "/scenes/0/items/1/depth",
+      "reason": "Camera/parallax renderer integration is absent on main"
+    },
+    {
+      "path": "/scenes/0/items/2/depth",
+      "reason": "Camera/parallax renderer integration is absent on main"
+    },
+    {
+      "path": "/scenes/0/cameraMoves/0",
+      "reason": "Camera layer, active-camera selection and shake are not wired on main"
+    }
+  ],
+  "assets": [
+    {
+      "id": "product-photo",
+      "kind": "image",
+      "description": "Owner-uploaded product photo",
+      "assetId": "uploaded_product_photo"
+    }
+  ],
+  "itemMap": [
+    {
+      "sceneId": "hero",
+      "itemId": "product",
+      "layerId": "ais_product-ad_s0_i0_layer",
+      "clipId": "ais_product-ad_s0_i0_clip"
+    },
+    {
+      "sceneId": "hero",
+      "itemId": "promise",
+      "layerId": "ais_product-ad_s0_i1_layer",
+      "clipId": "ais_product-ad_s0_i1_clip"
+    },
+    {
+      "sceneId": "hero",
+      "itemId": "price",
+      "layerId": "ais_product-ad_s0_i2_layer",
+      "clipId": "ais_product-ad_s0_i2_clip"
+    }
+  ]
+}
