@@ -370,6 +370,8 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 | LYR-013 | P1 | W2 | Todo | Arrow-key navigation in the list |
 | LYR-014 | P2 | W2 | Todo | Solo (isolate) a layer |
 | LYR-015 | P2 | W2 | Todo | Layer color labels |
+| LYR-016 | P0 | W2 | Verified | Layers outliner beside the lanes (closed by default, resizable 160 to 360 px, readable rows): nested collections per scene that can be created, renamed, dragged into each other and deleted, elements dragged into them; organisation only (the canvas and the layers never change); one undo step each; stored in the scene's optional `outliner` (schema 7) (T-ALL P5 LCR) |
+| LYR-017 | P0 | W2 | Verified | Selection follows both ways between the outliner, the canvas and the timeline; a selected element inside a closed collection opens it; a selected clip out of view is scrolled into view; each element row has eye, lock, solo and mute for its lane, and a collection row sets them for everything inside (T-ALL P5 LCR) |
 
 ## TL: Timeline (Wave 2 interactions; media visuals in Wave 4; animation in Wave 5)
 
@@ -491,7 +493,7 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | PB-013 | P1 | W7 | Todo | Master volume and mute with a level meter |
 | PB-014 | P1 | W2 | Todo | Fullscreen playback with minimal controls |
 | PB-015 | P0 | W4 | Verified | Dragging the playhead over video redraws the canvas continuously (at least 20 times over a 1 s scrub, the nearest cached frame shown while a seek is pending) and shows the exact frame on release (U2 LCR) |
-| PB-016 | P0 | W2 | Verified | Start and End set the scene's playback range (stored per scene, one undo step each, Start before End enforced; defaults the first and last frame, and End follows the scene's end while it is there): playback starts at Start and stops at End, export covers Start to End, and the ruler dims outside the range (U6 LCR) |
+| PB-016 | P0 | W2 | Verified | Start and End set the scene's playback range (stored per scene, one undo step each, Start before End enforced; defaults the first and last frame, and End follows the scene's end while it is there): playback starts at Start and stops at End, export covers Start to End, the ruler and the lanes dim outside the range, playback loops from End back to Start, First and Last frame go to Start and End, and the fields take five-digit frames (U6 LCR; T-ALL P4) |
 
 ## INS: Inspector and properties panel
 
@@ -685,17 +687,18 @@ Requires schema v5 (effects are currently blocked by the schema). GPU rendering 
 | FX-001 | P0 | W6 | Todo | Effects tab lists categories with live preview thumbnails and hover preview |
 | FX-002 | P0 | W6 | Todo | Apply an effect by click or drag to a clip or layer; effects stack, reorder, toggle, copy and remove |
 | FX-003 | P0 | W6 | Todo | Effect parameters appear in the inspector and can be keyframed |
-| FX-004 | P0 | W6 | Todo | Filters (looks): a set of one-click looks with an intensity slider |
+| FX-004 | P0 | W6 | Verified | Filters (looks): a set of one-click looks with an intensity slider |
 | FX-005 | P0 | W6 | Todo | Gaussian blur and background blur |
 | FX-006 | P0 | W6 | Todo | Vignette, film grain and glow |
 | FX-007 | P1 | W6 | Todo | Motion blur, radial blur, pixelate, mosaic, glitch, RGB split, chromatic aberration, wave, mirror, kaleidoscope, invert, sepia, duotone, halftone |
 | FX-008 | P1 | W6 | Todo | Adjustment layer applies effects to everything below it |
 | FX-009 | P1 | W6 | Todo | Effects can be applied to groups and compositions |
-| FX-010 | P0 | W6 | Todo | Effects render identically in preview and export (parity tests) |
+| FX-010 | P0 | W6 | Verified | Effects render identically in preview and export (parity tests) |
 | FX-011 | P0 | W6 | Todo | WebGL2 rendering with a safe fallback when the GPU or context is lost |
 | FX-012 | P1 | W6 | Todo | 1080p 30 fps stays real-time with three effects on the reference machine |
 | FX-013 | P2 | W6 | Todo | Save an effect stack as a preset |
 | FX-014 | P2 | W8 | Todo | Custom shader effects through a sandboxed plugin API |
+| FX-015 | P0 | W6 | Verified | The right panel's Filters, Effects and Adjust colors apply the FX library (filters with intensity, effects added and removed with intensity, exposure, contrast, saturation and temperature, blend mode, Reset) to the selected clips, one undo step each, saved with the project (T-ALL P6 LCR) |
 
 ## TR: Transitions (Wave 6)
 
@@ -706,20 +709,21 @@ Between clips and at clip edges.
 | TR-001 | P0 | W6 | Todo | Transitions tab with animated previews |
 | TR-002 | P0 | W6 | Todo | Apply by dropping between two adjacent clips or on a clip edge; default duration 1 s; drag handle adjusts duration |
 | TR-003 | P0 | W6 | Todo | Types: cross dissolve, fade to black, fade to white, slide (four directions), push, wipe, zoom |
-| TR-004 | P1 | W6 | Todo | More types: spin, blur, glitch, iris, and similar |
+| TR-004 | P1 | W6 | Verified | More types: spin, blur, glitch, iris, and similar |
 | TR-005 | P0 | W6 | Todo | Insufficient source handles are detected and handled with a clear message or automatic adjustment |
 | TR-006 | P0 | W6 | Todo | Replace or remove a transition; apply one to all cuts on a track |
 | TR-007 | P0 | W6 | Todo | Transitions render identically in preview and export |
 | TR-008 | P1 | W6 | Todo | Video cross dissolve also crossfades the audio |
 | TR-009 | P1 | W6 | Todo | Alignment choice: centered, start or end on the cut |
 | TR-010 | P1 | W6 | Verified | Transitions panel lists transitions by section (Fades & blurs, Wipes, Pushes, Cartoon, Glitches, 3D) with static posters, a tip and a Duration control; they are disabled with their wave until transitions are built |
-| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane, a + adds a transition and a cut with one shows a chip; both open a Transition panel with search, a grouped grid (Cross fade, Fade through black and white, Wipe left and right, Slide left and right live; the rest disabled with their wave) and Duration (default 1 s, clamped with a message to what the clips allow); each change and Remove is one undo step; the transition is drawn the same in the preview and the export (J12) |
+| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane, a + adds a transition and a cut with one shows a chip; both open a Transition panel with search, a grouped grid (Cross fade, Fade through black and white, Wipe left and right, Slide left and right live; the rest disabled with their wave; T-ALL P6: the FX library fills them) and Duration (default 1 s, clamped with a message to what the clips allow); each change and Remove is one undo step; the transition is drawn the same in the preview and the export (J12) |
+| TR-012 | P0 | W6 | Verified | The Transition panel's planned entries and a More group are the FX library's pixel transitions (cross blur, burn, wipes, iris, push, zoom, spin, swirl, glitch, bloom, page turn, cube flip and more), drawn across the cut the same in the preview and the export (T-ALL P6 LCR) |
 
 ## MSK: Masks, blend modes and compositing (Wave 6)
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| MSK-001 | P0 | W6 | Todo | Blend modes: Normal, Multiply, Screen, Overlay, Add, Darken, Lighten |
+| MSK-001 | P0 | W6 | Claimed | Blend modes: Normal, Multiply, Screen, Overlay, Add, Darken, Lighten |
 | MSK-002 | P1 | W6 | Todo | More blend modes: Soft Light, Hard Light, Difference, Color Dodge, Color Burn, and similar |
 | MSK-003 | P0 | W6 | Todo | Masks: rectangle and ellipse with feather, invert and opacity |
 | MSK-004 | P1 | W6 | Todo | Freehand bezier masks; animated mask paths |
@@ -730,7 +734,7 @@ Between clips and at clip edges.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| CLR-001 | P0 | W6 | Todo | Color panel: exposure, contrast, highlights, shadows, whites, blacks, saturation, vibrance, temperature, tint, sharpen |
+| CLR-001 | P0 | W6 | Claimed | Color panel: exposure, contrast, highlights, shadows, whites, blacks, saturation, vibrance, temperature, tint, sharpen |
 | CLR-002 | P1 | W6 | Todo | RGB and luma curves |
 | CLR-003 | P1 | W6 | Todo | Color wheels (lift, gamma, gain) |
 | CLR-004 | P2 | W6 | Todo | HSL secondary color selection |

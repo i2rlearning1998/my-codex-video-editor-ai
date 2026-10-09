@@ -1,6 +1,14 @@
 # Changelog
 
-> Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 6 (J-series).
+> Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 7 (T-ALL).
+
+## T-ALL (P1 to P6) — 2026-10-09
+
+- **Layout (P1):** Media opens first; new projects are white; the Media empty state has an illustration; the right panel follows the selection; panel toggles live in each panel's header; the left rail and panel run full height.
+- **Lanes (P2, P3):** the empty timeline and ghost lanes from the spec; the playhead is always on top; the ruler band follows a clip drag; the view pages while playing zoomed in; lanes are centred; the preview keeps a minimum height.
+- **Frame range (P4):** five-digit fields, the lanes dim outside the range, First and Last frame go to Start and End, playback loops in the range.
+- **Layers outliner (P5, schema 7):** nested collections per scene beside the lanes, selection sync both ways, reveal in the timeline, eye, lock, solo and mute per element; organisation only.
+- **FX (P6):** Codex's FX library is wired in: 47 filters, 28 effects, colour adjustments, blend modes and 21 pixel transitions, one undo step each, drawn the same in the preview and the export.
 
 ## T-series (T1 to T7) — 2026-10-04
 
