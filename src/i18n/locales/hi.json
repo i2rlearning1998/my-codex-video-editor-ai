@@ -1031,5 +1031,9 @@
   "frames.prev": "{name}: पिछला फ़्रेम (Shift: 10)",
   "frames.next": "{name}: अगला फ़्रेम (Shift: 10)",
   "frames.order": "शुरू, अंत से पहले होना चाहिए",
-  "frames.rangeLabel": "प्लेबैक सीमा"
+  "frames.rangeLabel": "प्लेबैक सीमा",
+  "timeline.dropMedia": "मीडिया यहाँ खींचकर छोड़ें",
+  "timeline.ghost.text": "टेक्स्ट जोड़ें",
+  "timeline.ghost.audio": "ऑडियो जोड़ें",
+  "timeline.ghost.hide": "छिपाएँ"
 }

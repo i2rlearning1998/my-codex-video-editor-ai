@@ -1031,5 +1031,9 @@
   "frames.prev": "{name}: previous frame (Shift: 10)",
   "frames.next": "{name}: next frame (Shift: 10)",
   "frames.order": "Start must come before End",
-  "frames.rangeLabel": "Playback range"
+  "frames.rangeLabel": "Playback range",
+  "timeline.dropMedia": "Drag & drop media here",
+  "timeline.ghost.text": "Add text",
+  "timeline.ghost.audio": "Add audio",
+  "timeline.ghost.hide": "HIDE"
 }

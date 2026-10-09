@@ -6987,3 +6987,109 @@ input[type='range'] {
 .editor-shell.right-empty .panel-resizer.right {
   visibility: hidden;
 }
+
+/* T-ALL P2 (spec 1-3): playhead on top of clips and sticky parts; a
+   refused lane only shows the blocked cursor; the "+" follows the pointer. */
+.timeline-playhead {
+  z-index: 20;
+}
+.timeline-nle-row.drop-refused .timeline-track {
+  background: none;
+}
+.timeline-lane-insert {
+  --plus-x: 50%;
+  block-size: 3px;
+}
+.timeline-lane-insert span {
+  inset-inline-start: calc(var(--plus-x, 50%) - 10px);
+}
+.timeline-empty .timeline-ruler-bar,
+.timeline-empty .timeline-playhead {
+  display: none;
+}
+.timeline-empty-drop {
+  display: flex;
+  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+  min-block-size: 52px;
+  background: var(--color-bg-sunken, var(--app));
+  border-radius: var(--radius-md);
+}
+.empty-drop-box {
+  inline-size: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted, var(--color-text));
+}
+.empty-drop-art {
+  inline-size: 120px;
+  block-size: 56px;
+}
+.empty-drop-box strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+.empty-drop-plus {
+  display: none;
+}
+.timeline-dragging .empty-drop-art,
+.timeline-dragging .empty-drop-box strong {
+  display: none;
+}
+.timeline-dragging .empty-drop-plus {
+  display: inline-flex;
+  color: var(--accent-text);
+}
+.timeline-empty-drop.ghost-target .empty-drop-box {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.timeline-ghost-lane {
+  --ghost-left: 0px;
+  --ghost-width: 40px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: calc(100% - var(--space-3));
+  block-size: 28px;
+  margin-block: 8px;
+  padding-inline: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted, var(--color-text));
+  font-size: 13px;
+  cursor: pointer;
+}
+.timeline-ghost-lane .ghost-hide {
+  margin-inline-start: auto;
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 600;
+  visibility: hidden;
+}
+.timeline-ghost-lane:hover {
+  border-color: var(--color-accent);
+}
+.timeline-ghost-lane:hover .ghost-hide {
+  visibility: visible;
+}
+.timeline-ghost-lane.ghost-target > * {
+  visibility: hidden;
+}
+.timeline-ghost-lane.ghost-target::after {
+  content: '';
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: var(--ghost-left, 0);
+  inline-size: var(--ghost-width, 40px);
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--radius-sm);
+}
