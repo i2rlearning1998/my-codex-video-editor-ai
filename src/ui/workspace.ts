@@ -100,7 +100,12 @@ export function mountWorkspace(
   const clampTimeline = (value: number) =>
     Math.max(
       LIMITS.timeline[0],
-      Math.min(window.innerHeight * LIMITS.timeline[1], value),
+      // T-ALL P3 (spec 6): the preview keeps at least 260 px.
+      Math.min(
+        window.innerHeight * LIMITS.timeline[1],
+        Math.max(LIMITS.timeline[0], window.innerHeight - 260 - 56),
+        value,
+      ),
     );
   // The canvas refits at most once per frame while a panel animates.
   let queued = false;

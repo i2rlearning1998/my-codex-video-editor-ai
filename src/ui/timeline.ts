@@ -742,13 +742,27 @@ export function mountTimeline(
       0,
       ...controller.previews.map((item) => item.startTime + item.duration),
     );
+    // T-ALL P3 (spec 5, supersedes D-036): the content is the larger of the
+    // project and the viewport, plus half a viewport; it never extends on
+    // its own while scrolling.
+    const viewport = pixelToTime(viewportPixels(), zoom);
     return Math.min(
       MAX_SPAN,
-      Math.max(session.source.composition.duration, reach, previewEnd) +
-        pixelToTime(viewportPixels(), zoom),
+      Math.max(session.source.composition.duration, previewEnd, viewport) +
+        viewport / 2,
     );
   };
   const playback = new Playback(session);
+  /** T-ALL P3 (spec 4): while playing zoomed in, the view pages: when the
+   *  playhead passes 92% of the visible lanes, their new left edge is the
+   *  playhead time (no animation); a jump before the view pages back. */
+  const pageToPlayhead = () => {
+    if (!session.playing) return;
+    const x = timeToPixel(session.currentTime, session.timelineZoom);
+    const visible = viewportPixels();
+    if (x > scroll.scrollLeft + visible * 0.92 || x < scroll.scrollLeft)
+      scroll.scrollLeft = x;
+  };
   let menuId: string | null = null;
   let menuMarker: string | undefined;
   let markerPreview: { id: string; time: number; origin: number } | undefined;
@@ -861,6 +875,8 @@ export function mountTimeline(
   };
   let renderedProject: unknown;
   let renderedIdentity = '';
+  /** T-ALL P3: the space above the vertically centred lanes. */
+  let laneOffset = 0;
   /** T-ALL P2: the ghost lanes' HIDE (for this session). */
   let ghostLanesHidden = false;
   const render = () => {
@@ -947,6 +963,7 @@ export function mountTimeline(
       const playhead = content.querySelector<HTMLElement>('.timeline-playhead');
       if (playhead)
         playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
+      pageToPlayhead();
       return;
     }
     renderedProject = engine.state;
@@ -1011,6 +1028,36 @@ export function mountTimeline(
     }
     rulerBar.append(ruler);
     content.append(rulerBar);
+    // T-ALL P3 (spec 6): lanes sit vertically centred under the ruler when
+    // the panel is taller than them; otherwise the first lane is at the top
+    // and the rest scroll.
+    // (The ghost lanes of a one-lane scene count too: 2 × 28 px + gaps.)
+    const ghostRoom =
+      composition.tracks.filter((track) => track.clips.length).length === 1 &&
+      !ghostLanesHidden
+        ? 2 * (28 + 16)
+        : 0;
+    const lanesHeight = rowSpans().total + ghostRoom;
+    const centreOffset =
+      lanesHeight > 0
+        ? Math.max(
+            0,
+            Math.floor(
+              (scroll.clientHeight - rulerBar.offsetHeight - lanesHeight) / 2,
+            ),
+          )
+        : 0;
+    laneOffset = centreOffset;
+    if (centreOffset > 0) {
+      const spacer = document.createElement('div');
+      spacer.className = 'timeline-lanes-centre';
+      spacer.style.height = `${centreOffset}px`;
+      content.append(spacer);
+    }
+    rulerBar.style.setProperty(
+      '--track-height',
+      `${lanesHeight + centreOffset}px`,
+    );
     const trackMoves = controller.trackMoves;
     for (const [trackIndex, row] of trackRows.entries()) {
       const line = document.createElement('div');
@@ -1438,9 +1485,13 @@ export function mountTimeline(
     );
     playhead.className = 'timeline-playhead';
     playhead.setAttribute('aria-label', 'Drag playhead');
-    playhead.style.setProperty('--track-height', `${rowSpans().total}px`);
+    playhead.style.setProperty(
+      '--track-height',
+      `${lanesHeight + centreOffset}px`,
+    );
     playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
     rulerBar.append(playhead);
+    pageToPlayhead();
     for (const marker of composition.markers) {
       const item = button(
         iconSvg('marker', 12),
@@ -1470,7 +1521,7 @@ export function mountTimeline(
       const box = document.createElement('div');
       box.className = 'timeline-marquee';
       box.style.left = `${headerWidth + Math.min(marquee.x, marquee.endX)}px`;
-      box.style.top = `${28 + Math.min(marquee.y, marquee.endY)}px`;
+      box.style.top = `${28 + laneOffset + Math.min(marquee.y, marquee.endY)}px`;
       box.style.width = `${Math.abs(marquee.endX - marquee.x)}px`;
       box.style.height = `${Math.abs(marquee.endY - marquee.y)}px`;
       content.append(box);
@@ -1592,7 +1643,7 @@ export function mountTimeline(
     } else if (pointer.kind === 'marquee') {
       const bounds = scroll.getBoundingClientRect();
       const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-        y = event.clientY - bounds.top + scroll.scrollTop - 28;
+        y = event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset;
       const { spans } = rowSpans();
       const selected = [
         ...nleTimelineRows(session.source, session.timelineZoom).flatMap(
@@ -1659,7 +1710,8 @@ export function mountTimeline(
           return;
         }
         const bounds = scroll.getBoundingClientRect();
-        const offset = event.clientY - bounds.top + scroll.scrollTop - 28;
+        const offset =
+          event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset;
         const index = rowSpans().spans.findIndex(
           (span) => offset >= span.top && offset < span.top + span.height,
         );
@@ -1737,9 +1789,9 @@ export function mountTimeline(
         const bounds = scroll.getBoundingClientRect();
         marquee = {
           x: event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-          y: event.clientY - bounds.top + scroll.scrollTop - 28,
+          y: event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset,
           endX: event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-          endY: event.clientY - bounds.top + scroll.scrollTop - 28,
+          endY: event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset,
           originalIds: session.selectedIds,
           ids: event.shiftKey ? session.selectedIds : [],
         };
@@ -2070,6 +2122,8 @@ export function mountTimeline(
         case 'first-frame':
           session.setPlaying(false);
           session.setCurrentTime(0);
+          // T-ALL P3 (spec 4): back to the first page.
+          scroll.scrollLeft = 0;
           break;
         case 'last-frame':
           session.setPlaying(false);
@@ -3317,9 +3371,11 @@ export function mountTimeline(
         scroll.scrollLeft + viewportPixels(),
         zoom,
       );
+      // T-ALL P3: no auto-extend (spec 5); `reach` stays 0.
       if (
+        false &&
         visibleEnd >=
-        renderedSpan - pixelToTime(viewportPixels(), zoom) / 2 - 1e-9
+          renderedSpan - pixelToTime(viewportPixels(), zoom) / 2 - 1e-9
       ) {
         reach = Math.min(MAX_SPAN, Math.max(reach, visibleEnd));
         if (spanTime() > renderedSpan + 1e-9) render();
