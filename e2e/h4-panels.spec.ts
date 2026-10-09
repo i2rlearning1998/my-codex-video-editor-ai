@@ -53,20 +53,9 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   page,
   openFixtureProject,
 }) => {
-  // I4 (D-148): tabs per selection; the first is named after it.
-  expect(await shownSections(page)).toEqual([
-    'Properties',
-    'Captions',
-    'Transitions',
-  ]);
-  await expect(section(page, 'Properties')).toHaveAttribute(
-    'aria-label',
-    'Canvas',
-  );
-  await expect(section(page, 'Captions')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  // I4 (D-148): tabs per selection; the first is named after it. U5: with
+  // nothing selected there are no tabs (no Canvas panel).
+  expect(await shownSections(page)).toEqual([]);
   await select(page, 'example-headline');
   expect(await shownSections(page)).toEqual([
     'Properties',
@@ -93,6 +82,7 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
     'Captions',
     'Audio',
     'Fade',
+    'Animate',
     'Filters',
     'Effects',
     'Adjust',
@@ -115,13 +105,9 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   await select(page, 'layer-c');
   await expect(section(page, 'Adjust')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
-  await expect
-    .poll(() => shownSections(page))
-    .toEqual(['Properties', 'Captions', 'Transitions']);
-  await expect(section(page, 'Properties')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  // U5: nothing selected has no tabs; the empty state shows.
+  await expect.poll(() => shownSections(page)).toEqual([]);
+  await expect(page.locator('#right-panel-empty')).toBeVisible();
 });
 
 test('[LAY-036] the Inspector stacks Position and size, Timing and Details, folded under the first tab; a header opens its section, the chevron folds it', async ({

@@ -128,6 +128,43 @@ test.beforeEach(async ({ page, openFixtureProject }) => {
   ).toBeVisible();
 });
 
+test('[PB-015] dragging the playhead over 1 s of video redraws the canvas at least 20 times and shows the exact frame on release; audio stays silent', async ({
+  page,
+}) => {
+  const draws = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __AIVE__: { getCanvas: () => { draws: number } };
+          }
+        ).__AIVE__.getCanvas().draws,
+    );
+  await seek(page, 1);
+  const box = await rulerBox(page);
+  const before = await draws();
+  // A scripted 1 s scrub: 1 s to 2 s of the scene, 30 pointer moves.
+  await page.mouse.move(box.x + 1 * 80, box.y + 8);
+  await page.mouse.down();
+  for (let step = 1; step <= 30; step++)
+    await page.mouse.move(box.x + (1 + step / 30) * 80, box.y + 8);
+  expect((await draws()) - before).toBeGreaterThanOrEqual(20);
+  await page.mouse.up();
+  const frame = await frameNow(page);
+  await expect
+    .poll(async () => Math.abs((await readCode(page))! - expected(frame)))
+    .toBeLessThanOrEqual(1);
+  const sources = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __AIVE__: { getMedia: () => { audio: { sources: unknown[] } } };
+        }
+      ).__AIVE__.getMedia().audio.sources,
+  );
+  expect(sources).toEqual([]);
+});
+
 test('[VID-001] seeking, frame steps, split and trim show the exact source frame', async ({
   page,
 }, testInfo) => {

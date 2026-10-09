@@ -9,8 +9,10 @@ import {
   type LaneGroup,
 } from './timeline-drop';
 import { assetDrag } from './drag-state';
+import { announceMenu, dismissMenuOn } from './context-menu';
 import {
   frameToTime,
+  playRangeOf,
   pixelToTime,
   timeToFrame,
   timeToPixel,
@@ -79,6 +81,7 @@ import {
   type TimingPreview,
 } from './timeline-model';
 import { iconSvg } from './icons';
+import { createNumberField, syncNumberField } from './components/number-field';
 
 /** TL-027/TL-032 menu actions labelled from the command catalog. */
 const CLIP_ACTIONS: readonly EditAction[] = [
@@ -603,7 +606,7 @@ export function mountTimeline(
   // zoom out, zoom in, fit and collapse.
   const player = (action: string, icon: string, key: string, size = 15) =>
     `<button class="icon-button" data-action="${action}" aria-label="${t(key)}" title="${t(key)}">${iconSvg(icon, size)}</button>`;
-  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
@@ -813,7 +816,12 @@ export function mountTimeline(
     originalTime: number;
     moved: boolean;
     /** T3: a single clip being moved follows the lane drop rules. */
-    laneMove?: { clipId: string; info: LaneDropInfo };
+    laneMove?: {
+      clipId: string;
+      info: LaneDropInfo;
+      /** U1: where the clip was grabbed, and its size (screen px). */
+      grab: { x: number; y: number; w: number; h: number };
+    };
   } | null = null;
   const safely = (action: () => void) => {
     try {
@@ -896,13 +904,22 @@ export function mountTimeline(
           }
         : null;
     root.querySelector('[data-composition-strip]')!.textContent =
-      `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${composition.fps} fps`;
+      `${composition.name} · ${formatTimelineTime(composition.duration)}s · ${Math.round(composition.fps * 100) / 100} fps`;
     const code = root.querySelector<HTMLElement>('[data-timecode]')!;
     if (!code.querySelector('input'))
       code.textContent = t('player.timecode', {
         current: shortTimecode(session.currentTime),
         total: shortTimecode(composition.duration),
       });
+    const scrub = root.querySelector<HTMLInputElement>('.player-scrub')!;
+    scrub.max = String(composition.duration);
+    if (document.activeElement !== scrub || !scrub.matches(':active'))
+      scrub.value = String(session.currentTime);
+    scrub.style.setProperty(
+      '--played',
+      `${composition.duration ? (session.currentTime / composition.duration) * 100 : 0}%`,
+    );
+    syncFramePanel();
     root.querySelector('[data-current-time]')!.textContent =
       `${session.currentTime.toFixed(3)}s / ${formatTimelineTime(composition.duration)}s · frame ${timeToFrame(session.currentTime, composition.fps)}`;
     root.querySelector('[data-derived-duration]')!.textContent =
@@ -976,6 +993,21 @@ export function mountTimeline(
       });
       ruler.append(pill);
     }
+    // U6: the scene's playback range on the ruler; outside it is dimmed.
+    const range = playRangeOf(composition);
+    if (!range.full) {
+      const before = document.createElement('span');
+      before.className = 'ruler-range-dim';
+      before.dataset.side = 'before';
+      before.style.left = '0px';
+      before.style.width = `${timeToPixel(range.start, zoom)}px`;
+      const after = document.createElement('span');
+      after.className = 'ruler-range-dim';
+      after.dataset.side = 'after';
+      after.style.left = `${timeToPixel(range.end, zoom)}px`;
+      after.style.width = `${Math.max(0, width - timeToPixel(range.end, zoom))}px`;
+      ruler.append(before, after);
+    }
     rulerBar.append(ruler);
     content.append(rulerBar);
     const trackMoves = controller.trackMoves;
@@ -1010,9 +1042,30 @@ export function mountTimeline(
       header.className = 'timeline-row-header timeline-track-header';
       const label = document.createElement('span');
       label.className = 'track-name';
-      // Name only, so it stays readable beside four toggles; type in the tooltip.
-      label.textContent = row.track.name;
-      label.title = `${row.track.type.toUpperCase()} · ${row.track.name}`;
+      // U1: named by kind and number in display order ("Video 1", "Shape
+      // 2"), with a kind icon; the stored name is in the tooltip.
+      const sameKind = trackRows.filter(
+        (other) => other.track.type === row.track.type,
+      );
+      label.textContent = t('lane.name', {
+        kind: t(`lane.kind.${row.track.type}`),
+        n: sameKind.indexOf(row) + 1,
+      });
+      label.title = row.track.name;
+      const kindIcon = document.createElement('span');
+      kindIcon.className = 'track-kind-icon';
+      kindIcon.setAttribute('aria-hidden', 'true');
+      kindIcon.innerHTML = iconSvg(
+        row.track.type === 'video'
+          ? 'media'
+          : row.track.type === 'audio'
+            ? 'audio'
+            : row.track.type === 'text'
+              ? 'text'
+              : 'elements',
+        20,
+      );
+      header.append(kindIcon);
       // TL-059: every toggle exposes its state through aria-pressed.
       const toggle = (
         action: string,
@@ -1413,7 +1466,10 @@ export function mountTimeline(
       root.releasePointerCapture(id);
   };
   const cancel = () => {
-    if (pointer?.laneMove) clearAssetDropTarget();
+    if (pointer?.laneMove) {
+      hideFloat();
+      clearAssetDropTarget();
+    }
     const originalTime =
       pointer?.kind === 'playhead' ? pointer.originalTime : undefined;
     const originalIds = marquee?.originalIds;
@@ -1561,25 +1617,19 @@ export function mountTimeline(
               event.clientY < area.top ||
               event.clientY > area.bottom),
         );
-        // T3: a "+" line, the middle of another clip (Replace) and a lane of
-        // another group follow the lane drop rules; elsewhere the clip moves
-        // as before (grab offset, frame grid, snapping, insert preview).
+        // U1: one clip moves freely: a clip-size copy follows the pointer
+        // (keeping the grab offset), the original stays faint, and the lane
+        // under the pointer decides the drop (T3 rules, never Replace).
         if (pointer.laneMove) {
-          const target = laneDropAt(
-            pointer.laneMove.info,
+          const move = pointer.laneMove;
+          showFloat(move, event.clientX, event.clientY);
+          laneDropAt(
+            move.info,
             event.clientX,
             event.clientY,
+            event.clientX - move.grab.x,
           );
-          if (
-            target &&
-            (target.mode === 'new-lane' ||
-              target.mode === 'replace' ||
-              target.mode === 'refused')
-          ) {
-            controller.update(0, undefined);
-            return;
-          }
-          clearAssetDropTarget();
+          return;
         }
         const bounds = scroll.getBoundingClientRect();
         const offset = event.clientY - bounds.top + scroll.scrollTop - 28;
@@ -1716,8 +1766,21 @@ export function mountTimeline(
             session.source.composition.layers,
             found.clip.layerId,
           )?.layer;
+          // (The press may have re-rendered the timeline: measure the clip
+          // as drawn now.)
+          const box = (
+            root.querySelector<HTMLElement>(
+              `.timeline-clip[data-clip-id="${CSS.escape(found.clip.id)}"]`,
+            ) ?? clip
+          ).getBoundingClientRect();
           pointer.laneMove = {
             clipId: found.clip.id,
+            grab: {
+              x: event.clientX - box.left,
+              y: event.clientY - box.top,
+              w: box.width,
+              h: box.height,
+            },
             info: {
               group: laneGroupOfTrack(found.track.type) as LaneGroup,
               duration: found.clip.duration,
@@ -1781,11 +1844,12 @@ export function mountTimeline(
           event.clientY < area.top ||
           event.clientY > area.bottom);
       root.classList.remove('drag-outside');
-      if (kind === 'clip' && laneMove && laneDrop) {
-        const target = laneDrop.target;
+      if (kind === 'clip' && laneMove) {
+        const target = laneDrop?.target;
+        hideFloat();
         clearAssetDropTarget();
         controller.cancel();
-        if (moved && !outside && target.mode !== 'refused')
+        if (moved && !outside && target && target.mode !== 'refused')
           moveClipTo(laneMove.clipId, target);
         render();
       } else if (kind === 'clip' && outside) {
@@ -2392,17 +2456,48 @@ export function mountTimeline(
     }
     ghost.style.top = `${top}px`;
     ghost.style.height = `${height}px`;
-    ghost.dataset.shown = 'true';
-    content.append(ghost);
+    // U1: a moved clip shows its floating copy instead of a ghost.
+    if (info.moving) ghost.remove();
+    else {
+      ghost.dataset.shown = 'true';
+      content.append(ghost);
+    }
     dropLine.style.left = `${left}px`;
     dropLine.style.height = `${content.scrollHeight}px`;
     content.append(dropLine);
   };
   /** T3: the pointer of a drag is at `x`, `y`; returns the target. */
-  const laneDropAt = (info: LaneDropInfo, x: number, y: number) => {
+  const laneDropAt = (
+    info: LaneDropInfo,
+    x: number,
+    y: number,
+    /** U1: a moved clip's left edge (the time comes from it, not the pointer). */
+    startX?: number,
+  ) => {
     clearAssetDropTarget();
-    const time = dropTime(x, info.duration, info.moving);
-    const target = resolveLaneDrop({
+    const raw = dropTime(startX ?? x, info.duration, info.moving);
+    // A moved clip lands on the scene's frame grid.
+    const fps = session.source.composition.fps;
+    const time = info.moving ? Math.round(raw * fps) / fps : raw;
+    dropLine.dataset.time = String(time);
+    dropLine.classList.toggle(
+      'timeline-snap',
+      !!info.moving &&
+        Math.abs(
+          raw -
+            Math.max(
+              0,
+              pixelToTime(
+                (startX ?? x) -
+                  scroll.getBoundingClientRect().left +
+                  scroll.scrollLeft -
+                  headerWidth,
+                session.timelineZoom,
+              ),
+            ),
+        ) > 1e-9,
+    );
+    let target = resolveLaneDrop({
       x,
       y,
       time,
@@ -2412,6 +2507,16 @@ export function mountTimeline(
       ...(info.moving ? { exclude: new Set([info.moving]) } : {}),
     });
     if (!target) return null;
+    // U1: a clip already on the timeline never replaces: over another clip
+    // it goes before or after it, by the pointer's half.
+    if (info.moving && target.mode === 'replace') {
+      const replaced = target;
+      const over = dropClips().find((item) => item.clipId === replaced.clipId);
+      target = {
+        ...replaced,
+        mode: over && x < (over.left + over.right) / 2 ? 'before' : 'after',
+      };
+    }
     let start = time;
     if (target.mode !== 'refused')
       try {
@@ -2424,8 +2529,54 @@ export function mountTimeline(
       }
     laneDrop = { target, info, start };
     showAssetTarget();
+    // U1: a snapped move's guide sits on the edge that snapped (its start
+    // or its end).
+    if (info.moving && dropLine.classList.contains('timeline-snap')) {
+      const edges = [0, session.currentTime];
+      for (const track of session.source.composition.tracks)
+        for (const clip of track.clips)
+          if (clip.id !== info.moving)
+            edges.push(clip.startTime, clip.startTime + clip.duration);
+      const near = (value: number) =>
+        edges.some((edge) => Math.abs(edge - value) < 1e-6);
+      const edge = near(start)
+        ? start
+        : near(start + info.duration)
+          ? start + info.duration
+          : start;
+      dropLine.dataset.time = String(Math.round(edge * 1e6) / 1e6);
+      dropLine.style.left = `${headerWidth + timeToPixel(edge, session.timelineZoom)}px`;
+    }
     return target;
   };
+  // U1: the floating copy of a clip being moved.
+  const float = document.createElement('div');
+  float.className = 'timeline-clip timeline-drag-float';
+  float.setAttribute('aria-hidden', 'true');
+  const showFloat = (
+    move: {
+      clipId: string;
+      info: LaneDropInfo;
+      grab: { x: number; y: number; w: number; h: number };
+    },
+    x: number,
+    y: number,
+  ) => {
+    if (!float.isConnected) {
+      float.dataset.kind = move.info.kind;
+      float.textContent = move.info.name;
+      float.style.width = `${move.grab.w}px`;
+      float.style.height = `${move.grab.h}px`;
+      document.body.append(float);
+    }
+    float.style.transform = `translate(${x - move.grab.x}px, ${y - move.grab.y}px)`;
+    root
+      .querySelector(
+        `.timeline-clip[data-clip-id="${CSS.escape(move.clipId)}"]`,
+      )
+      ?.classList.add('drag-origin');
+  };
+  const hideFloat = () => float.remove();
   /** T3: moves one clip to a lane target as one undo step (a new lane,
    *  later clips pushed, a replaced clip removed). */
   const moveClipTo = (
@@ -2596,6 +2747,129 @@ export function mountTimeline(
     input.focus();
     input.select();
   };
+  // U6: the frame panel at the timeline's bottom right: Current (steps,
+  // types and scrubs the playhead; no history), then Start and End, the
+  // scene's playback range in frames (one undo step each).
+  const framePanel = document.createElement('div');
+  framePanel.className = 'frame-panel';
+  framePanel.setAttribute('role', 'group');
+  framePanel.setAttribute('aria-label', t('frames.label'));
+  const fps = () => session.source.composition.fps;
+  const lastFrame = () =>
+    timeToFrame(session.source.composition.duration, fps());
+  const seekFrame = (frame: number) => {
+    session.setPlaying(false);
+    session.setCurrentTime(
+      frameToTime(Math.max(0, Math.min(lastFrame(), Math.round(frame))), fps()),
+    );
+  };
+  const setRange = (start: number, end: number) =>
+    safely(() => {
+      const last = lastFrame();
+      if (end <= start) throw new RangeError(t('frames.order'));
+      engine.commands.transaction(t('frames.rangeLabel'), [
+        {
+          type: 'SET_COMPOSITION_RANGE',
+          compositionId: session.source.composition.id,
+          start: frameToTime(start, fps()),
+          end: end >= last ? null : frameToTime(end, fps()),
+        },
+      ]);
+    });
+  const rangeFrames = () => {
+    const range = playRangeOf(session.source.composition);
+    return {
+      start: timeToFrame(range.start, fps()),
+      end: timeToFrame(range.end, fps()),
+    };
+  };
+  const stepper = (
+    id: string,
+    key: string,
+    value: () => number,
+    commit: (frame: number) => void,
+    preview?: (frame: number) => void,
+  ) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'frame-stepper';
+    wrap.dataset.frame = id;
+    const step = (direction: number) => (event: MouseEvent) =>
+      commit(value() + direction * (event.shiftKey ? 10 : 1));
+    const prev = document.createElement('button');
+    prev.type = 'button';
+    prev.className = 'icon-button';
+    prev.dataset.action = `${id}-prev`;
+    prev.setAttribute('aria-label', t('frames.prev', { name: t(key) }));
+    prev.title = prev.getAttribute('aria-label')!;
+    prev.innerHTML = iconSvg('chevronLeft', 16);
+    prev.onclick = step(-1);
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'icon-button';
+    next.dataset.action = `${id}-next`;
+    next.setAttribute('aria-label', t('frames.next', { name: t(key) }));
+    next.title = next.getAttribute('aria-label')!;
+    next.innerHTML = iconSvg('chevronRight', 16);
+    next.onclick = step(1);
+    const field = createNumberField({
+      id: `frame-${id}`,
+      label: t(key),
+      value: value(),
+      decimals: 0,
+      step: 1,
+      min: 0,
+      compact: id === 'current',
+      className: 'frame-field',
+      onCommit: commit,
+      onPreview: preview ?? (() => undefined),
+    });
+    wrap.append(prev, field, next);
+    return wrap;
+  };
+  const watch = document.createElement('span');
+  watch.className = 'frame-stopwatch';
+  watch.setAttribute('aria-hidden', 'true');
+  watch.innerHTML = iconSvg('stopwatch', 20);
+  framePanel.append(
+    stepper(
+      'current',
+      'frames.current',
+      () => timeToFrame(session.currentTime, fps()),
+      seekFrame,
+      seekFrame,
+    ),
+    watch,
+    stepper(
+      'start',
+      'frames.start',
+      () => rangeFrames().start,
+      (frame) => setRange(Math.max(0, Math.round(frame)), rangeFrames().end),
+    ),
+    stepper(
+      'end',
+      'frames.end',
+      () => rangeFrames().end,
+      (frame) =>
+        setRange(rangeFrames().start, Math.min(lastFrame(), Math.round(frame))),
+    ),
+  );
+  root.append(framePanel);
+  function syncFramePanel() {
+    const { start, end } = rangeFrames();
+    syncNumberField(
+      framePanel,
+      'frame-current',
+      timeToFrame(session.currentTime, fps()),
+    );
+    syncNumberField(framePanel, 'frame-start', start);
+    syncNumberField(framePanel, 'frame-end', end);
+  }
+  // U4: the collapsed player bar's scrubber (the U2 smooth scrub).
+  const scrubInput = root.querySelector<HTMLInputElement>('.player-scrub')!;
+  scrubInput.addEventListener('input', () => {
+    session.setPlaying(false);
+    session.setCurrentTime(Number(scrubInput.value));
+  });
   const timecodeButton = root.querySelector<HTMLElement>('[data-timecode]')!;
   timecodeButton.addEventListener('keydown', (event) => {
     if (
@@ -2711,7 +2985,71 @@ export function mountTimeline(
     items.push(commandItem('more-options'));
     return items;
   };
-  const showAudioMenu = () => {
+  // U3: Speed and Audio open as flyouts beside their entry: on hover after
+  // 150 ms (a 300 ms grace lets the pointer travel to the flyout), on click
+  // and on the Right arrow; Left or Escape closes the flyout.
+  let submenu: HTMLElement | null = null;
+  let subOpen = 0,
+    subClose = 0;
+  const closeSub = () => {
+    window.clearTimeout(subClose);
+    submenu?.remove();
+    submenu = null;
+    for (const item of menu.querySelectorAll('[aria-expanded="true"]'))
+      item.setAttribute('aria-expanded', 'false');
+  };
+  const openSub = (action: string, items: HTMLElement[], focus: boolean) => {
+    const parent = menu.querySelector<HTMLElement>(
+      `:scope > [data-action="${action}"]`,
+    );
+    closeSub();
+    if (!parent) return;
+    const list = document.createElement('div');
+    list.className = 'timeline-submenu';
+    list.setAttribute('role', 'menu');
+    list.append(...items);
+    menu.append(list);
+    const box = parent.getBoundingClientRect();
+    const width = list.offsetWidth || 180;
+    const left =
+      box.right + width + 8 > window.innerWidth
+        ? Math.max(8, box.left - width)
+        : box.right;
+    list.style.left = `${left}px`;
+    list.style.top = `${Math.max(8, Math.min(box.top - 4, window.innerHeight - list.offsetHeight - 8))}px`;
+    parent.setAttribute('aria-expanded', 'true');
+    list.onpointerenter = () => window.clearTimeout(subClose);
+    submenu = list;
+    if (focus)
+      list.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
+  };
+  dismissMenuOn(
+    menu,
+    () => !menu.hidden,
+    () => {
+      closeSub();
+      menu.hidden = true;
+    },
+  );
+  menu.addEventListener('pointerover', (event) => {
+    const item = (event.target as HTMLElement).closest<HTMLElement>('button');
+    if (!item || submenu?.contains(item)) return;
+    window.clearTimeout(subOpen);
+    const action = item.dataset.action;
+    if (action === 'audio-menu' || action === 'speed') {
+      window.clearTimeout(subClose);
+      if (item.getAttribute('aria-expanded') === 'true') return;
+      subOpen = window.setTimeout(
+        () =>
+          action === 'speed' ? showSpeedMenu(false) : showAudioMenu(false),
+        150,
+      );
+    } else if (submenu) {
+      window.clearTimeout(subClose);
+      subClose = window.setTimeout(closeSub, 300);
+    }
+  });
+  const showAudioMenu = (focus = true) => {
     const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
     const mute = commandItem('clip-mute', 'menuitemcheckbox');
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
@@ -2724,16 +3062,22 @@ export function mountTimeline(
       'aria-checked',
       String(clips.length > 0 && clips.every(({ track }) => track.muted)),
     );
-    const items: HTMLElement[] = [back, mute];
+    void back;
+    const items: HTMLElement[] = [mute];
     if (clipMenuKind() === 'video') items.push(commandItem('detach-audio'));
-    menu.replaceChildren(...items);
-    back.focus();
+    openSub('audio-menu', items, focus);
   };
   // J14: the menu works from the keyboard: Up and Down move (skipping
   // disabled entries), Home and End, Right opens Audio, Left goes back.
   menu.addEventListener('keydown', (event) => {
+    const list =
+      (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
+        '.timeline-submenu',
+      ) ?? menu;
     const items = [
-      ...menu.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+      ...list.querySelectorAll<HTMLButtonElement>(
+        ':scope > button:not(:disabled)',
+      ),
     ];
     const index = items.indexOf(document.activeElement as HTMLButtonElement);
     const focus = (at: number) =>
@@ -2751,11 +3095,17 @@ export function mountTimeline(
         'audio-menu'
     )
       showAudioMenu();
-    else if (
-      event.key === 'ArrowLeft' &&
-      menu.querySelector('[data-action="menu-back"]')
+    else if (event.key === 'ArrowLeft' && list !== menu) {
+      const parent = menu.querySelector<HTMLElement>(
+        ':scope > [aria-expanded="true"]',
+      );
+      closeSub();
+      parent?.focus();
+    } else if (
+      event.key === 'ArrowRight' &&
+      (document.activeElement as HTMLElement | null)?.dataset.action === 'speed'
     )
-      showMainMenu();
+      showSpeedMenu();
     else return;
     event.preventDefault();
     event.stopPropagation();
@@ -2827,14 +3177,13 @@ export function mountTimeline(
     menu.querySelector<HTMLButtonElement>('button')?.focus();
   };
   // VID-015: speed presets open in place of the main menu, with Back.
-  const showSpeedMenu = () => {
+  const showSpeedMenu = (focus = true) => {
     const current = selectionRoots(session.source, session.selectedIds)
       .map((layer) => findClipByLayer(session.source.composition, layer.id))
       .find(Boolean)?.clip.speed;
-    const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
-    menu.replaceChildren(
-      back,
-      ...SPEED_PRESETS.map((speed) => {
+    openSub(
+      'speed',
+      SPEED_PRESETS.map((speed) => {
         const item = menuItem(
           t('clip.speedValue', { speed: formatNumber(speed) }),
           'speed-preset',
@@ -2844,8 +3193,8 @@ export function mountTimeline(
         item.setAttribute('aria-checked', String(current === speed));
         return item;
       }),
+      focus,
     );
-    back.focus();
   };
   const contextmenu = (event: MouseEvent) => {
     event.preventDefault();
@@ -2863,6 +3212,7 @@ export function mountTimeline(
         session.selectKeyframes([item]);
       }
       showKeyframeMenu();
+      announceMenu(menu);
       menu.hidden = false;
       menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
       return;
@@ -2880,7 +3230,9 @@ export function mountTimeline(
       session.select(null);
       seek(event.clientX);
     }
+    closeSub();
     showMainMenu();
+    announceMenu(menu);
     menu.hidden = false;
     // J14: the first entry takes focus once the menu is shown.
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();

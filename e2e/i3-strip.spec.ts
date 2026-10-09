@@ -161,16 +161,18 @@ test('[PRJ-023] cards drag to reorder with an insertion line; double-click renam
   expect(await names(page)).toHaveLength(4);
 });
 
-test('[PRJ-023] the chevron collapses the strip; below 1024 px it is a "Scene n of m" button with a list', async ({
+test('[PRJ-023] the button left of Scenes hides the whole strip (no thin collapsed strip, U4); below 1024 px it is a "Scene n of m" button with a list', async ({
   page,
 }) => {
   await page.locator('#scene-strip-add').click();
   await page.locator('[data-action="strip-add-blank"]').click();
-  await page.locator('#scene-strip-toggle').click();
-  await expect(strip(page)).toHaveClass(/collapsed/);
-  await expect(page.locator('.scene-strip-list')).toBeHidden();
-  expect((await strip(page).boundingBox())!.height).toBeLessThan(40);
-  await page.locator('#scene-strip-toggle').click();
+  await expect(page.locator('#scene-strip-toggle')).toHaveCount(0);
+  await page.locator('#scene-strip-show').click();
+  await expect(strip(page)).toHaveClass(/strip-hidden/);
+  await expect
+    .poll(async () => (await strip(page).boundingBox())?.height ?? 0)
+    .toBeLessThan(1);
+  await page.locator('#scene-strip-show').click();
   await expect(page.locator('.scene-strip-list')).toBeVisible();
   // Narrow window.
   await page.setViewportSize({ width: 900, height: 900 });

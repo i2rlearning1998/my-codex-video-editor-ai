@@ -126,16 +126,12 @@ test('[AUD-018][VID-006] after Detach audio the new audio layer stays off the ca
     )
     .toEqual([detached.id, 'clip-tone'].sort());
   await page.locator('[data-action="play"]').click();
-  // Scrubbing: the snippet under the playhead has no video audio either.
+  // Scrubbing (U2): silent, so nothing plays at all.
   const before = (await media(page)).audio.snippets;
   const ruler = await rulerBox(page);
   await page.mouse.click(ruler.x + 80, ruler.y + 8);
-  await expect
-    .poll(async () => (await media(page)).audio.snippets)
-    .toBeGreaterThan(before);
-  expect((await media(page)).audio.lastSnippet!.clipIds).not.toContain(
-    'clip-av',
-  );
+  expect((await media(page)).audio.snippets).toBe(before);
+  expect((await media(page)).audio.sources).toEqual([]);
 });
 
 test('[AUD-018] an audio file dropped on the canvas becomes a clip on an audio track, not a box on the canvas', async ({

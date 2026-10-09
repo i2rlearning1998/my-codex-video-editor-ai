@@ -224,9 +224,27 @@ export const compositionSchema = z
         .strict(),
     ),
     audioTracks: z.tuple([]),
+    /**
+     * U6 (schema 6, optional): the scene's playback and export range in
+     * seconds. Missing means the whole scene; a null end follows the scene's
+     * end.
+     */
+    playRange: z
+      .object({ start: finite.nonnegative(), end: positive.nullable() })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((composition, ctx) => {
+    if (
+      composition.playRange &&
+      composition.playRange.end !== null &&
+      composition.playRange.end <= composition.playRange.start
+    )
+      ctx.addIssue({
+        code: 'custom',
+        message: 'The playback range must end after it starts',
+      });
     const checkTiming = (layers: Layer[]) => {
       for (const layer of layers) {
         if (!Number.isFinite(layer.startTime + layer.duration))

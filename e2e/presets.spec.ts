@@ -135,6 +135,8 @@ test('[ANI-007] one click fades a layer in; duration is adjustable; undo removes
   expect(near(await pixel(page, 250, 461), LAVENDER)).toBe(true);
   // A longer fade is less visible at the same time.
   await seek(page, 0.25);
+  // (U5: Escape deselected the badge, which closed the Animate tab.)
+  await select(page, 'example-badge');
   await openAnimate(page);
   await setNumber(page, 'animate-duration', '3');
   await page.keyboard.press('Escape');
@@ -167,6 +169,8 @@ test('[ANI-007] slide out, pulse loop and typewriter, and presets follow a trimm
   await seek(page, 5);
   expect(near(await pixel(page, 200, 495), LAVENDER)).toBe(true);
   // The Out preset follows the clip end when the clip is trimmed to 5 s.
+  // (U5: the Inspector is under the first tab; Animate is its own tab.)
+  await page.locator('#rail-right [data-section="Properties"]').click();
   await page.locator('[data-subtab="Timing"]').click();
   const duration = page.locator(
     '#inspector-content input[aria-label="Duration"]',

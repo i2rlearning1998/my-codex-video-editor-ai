@@ -14,8 +14,6 @@ import {
   clipTimeEffects,
   type Command,
   type EditorEngine,
-  IN_OUT_PRESETS,
-  LOOP_PRESETS,
   MAX_CLIP_SPEED,
   MIN_CLIP_SPEED,
 } from '../core';
@@ -106,13 +104,23 @@ export const firstTabKey = (kind: SelectionKind) =>
     : `right.tab.${kind === 'none' ? 'canvas' : kind === 'multi' ? 'arrange' : kind}`;
 /** J15: the rail's sections per selection, in rail order (Clipchamp). */
 const TABS: Record<SelectionKind, RightSection[]> = {
-  none: ['Properties', 'Captions', 'Transitions'],
+  // U5: nothing selected has no panel (the canvas bar holds the canvas).
+  none: [],
   text: ['Properties', 'Animate', 'Effects', 'Adjust'],
-  image: ['Fade', 'Filters', 'Effects', 'Adjust', 'Transitions', 'Properties'],
+  image: [
+    'Fade',
+    'Animate',
+    'Filters',
+    'Effects',
+    'Adjust',
+    'Transitions',
+    'Properties',
+  ],
   video: [
     'Captions',
     'Audio',
     'Fade',
+    'Animate',
     'Filters',
     'Effects',
     'Adjust',
@@ -158,7 +166,8 @@ const ALIGN_ICONS = {
 const folded = new Set<string>();
 
 export interface RightPanelHooks {
-  animate?: () => void;
+  /** U5: the Animate tab's presets (the former left Animate panel). */
+  animateBody?: () => HTMLElement;
   crop?: () => void;
   /** The toolbar's popover contents, for the same controls here. */
   build?: (
@@ -530,12 +539,6 @@ export function mountRightPanel(
           video ? null : hooks.build?.('border'),
         ],
       ),
-      // J15: Animate has no tab of its own for pictures; it lives here.
-      accordion(
-        video ? 'video-animate' : 'image-animate',
-        t('panel.animate'),
-        animateGrid(),
-      ),
     ];
   };
   const groupTab = () => {
@@ -761,13 +764,8 @@ export function mountRightPanel(
     ];
   };
   const animate = () => {
-    const open = document.createElement('button');
-    open.type = 'button';
-    open.className = 'primary';
-    open.dataset.action = 'right-open-animate';
-    open.textContent = t('right.openAnimate');
-    open.disabled = !hooks.animate || session.selectedIds.length !== 1;
-    open.onclick = () => hooks.animate?.();
+    // U5: the Animate tab holds the In, Out, Loop (and Ken Burns) presets
+    // with their durations; it replaced the left Animate side panel.
     const keyframes = document.createElement('button');
     keyframes.type = 'button';
     keyframes.className = 'secondary';
@@ -775,10 +773,12 @@ export function mountRightPanel(
     keyframes.textContent = t('mode.open2d');
     keyframes.hidden = session.mode === 'animation2d';
     keyframes.onclick = () => session.setMode('animation2d');
+    const clips = selectedClips(session.source, session.selectedIds);
     return [
       heading(t('panel.animate'), t('right.animateHint')),
-      ...animateGrid().filter((item) => item.tagName !== 'HEADER'),
-      open,
+      clips.length === 1
+        ? (hooks.animateBody?.() ?? null)
+        : plannedNoteText(t('right.fadeNeedsClip')),
       keyframes,
     ];
   };
@@ -973,73 +973,6 @@ export function mountRightPanel(
       accordion(`${kind}-effect-shadow`, t('right.effect.shadow'), [
         ...plannedFields('shadow', SHADOW, wave, ledger),
       ]),
-    ];
-  };
-  /** J15: In, Out and Loop presets as grids (the W5-C presets, one step). */
-  const animateGrid = () => {
-    const clips = selectedClips(session.source, session.selectedIds);
-    if (!clips.length)
-      return [heading(t('panel.animate'), t('right.fadeNeedsClip'))];
-    const current = clipAnimation(clips[0]!.clip);
-    const set = (slot: 'in' | 'out' | 'loop', value: unknown) =>
-      run(
-        'Animate',
-        clips.map(({ clip }) => ({
-          type: 'SET_CLIP_ANIMATION',
-          compositionId: session.source.composition.id,
-          clipId: clip.id,
-          slot,
-          value,
-        })) as Command[],
-      );
-    const group = (slot: 'in' | 'out') =>
-      choiceGrid(t(slot === 'in' ? 'right.animateIn' : 'right.animateOut'), [
-        {
-          id: `${slot}-none`,
-          label: t('right.animateNone'),
-          pressed: !current[slot],
-          action: () => set(slot, null),
-        },
-        ...IN_OUT_PRESETS.map((preset) => ({
-          id: `${slot}-${preset}`,
-          label: t(`animate.preset.${preset}`),
-          pressed: current[slot]?.preset === preset,
-          action: () =>
-            set(slot, {
-              preset,
-              duration: current[slot]?.duration ?? 0.6,
-            }),
-        })),
-      ]);
-    const titled = (key: string, element: HTMLElement) => {
-      const wrap = document.createElement('div');
-      wrap.className = 'right-grid-group';
-      const h = document.createElement('h4');
-      h.textContent = t(key);
-      wrap.append(h, element);
-      return wrap;
-    };
-    return [
-      titled('right.animateIn', group('in')),
-      titled('right.animateOut', group('out')),
-      titled(
-        'right.animateLoop',
-        choiceGrid(t('right.animateLoop'), [
-          {
-            id: 'loop-none',
-            label: t('right.animateNone'),
-            pressed: !current.loop,
-            action: () => set('loop', null),
-          },
-          ...LOOP_PRESETS.map((preset) => ({
-            id: `loop-${preset}`,
-            label: t(`animate.preset.${preset}`),
-            pressed: current.loop?.preset === preset,
-            action: () =>
-              set('loop', { preset, period: current.loop?.period ?? 2 }),
-          })),
-        ]),
-      ),
     ];
   };
   const transitionState = { query: '' };

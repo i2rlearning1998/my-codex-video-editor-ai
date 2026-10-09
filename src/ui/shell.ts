@@ -249,7 +249,7 @@ export function mountEditorShell(
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3><p>${t('canvas.emptyDescription')}</p></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
           <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
@@ -469,6 +469,7 @@ export function mountEditorShell(
   };
   canvas.addEventListener('pointerdown', moveBrushCursor);
   canvas.addEventListener('pointerleave', () => (brushCursor.hidden = true));
+  let lastCanvasSize = '';
   const canvasView = mountCanvasView(
     stage,
     canvas,
@@ -497,35 +498,21 @@ export function mountEditorShell(
     }),
   );
   let timeline: ReturnType<typeof mountTimeline> | undefined;
-  let lastAudio: {
-    time: number;
-    project: unknown;
-    composition: string;
-  } | null = null;
   const syncAudio = () => {
     const clock = timeline?.playback.clock ?? session.currentTime;
     const clips = audibleClips();
     audio.sync(session.playing, clock, clips);
-    // PB-011: a paused playhead that moved (and nothing else) plays a snippet.
-    if (
-      !session.playing &&
-      lastAudio &&
-      lastAudio.project === engine.state &&
-      lastAudio.composition === session.source.composition.id &&
-      lastAudio.time !== session.currentTime
-    )
-      audio.scrub(session.currentTime, clips);
-    lastAudio = {
-      time: session.currentTime,
-      project: engine.state,
-      composition: session.source.composition.id,
-    };
+    // U2 (D-177): audio sounds only while playing; a scrub, a ruler click,
+    // a frame step or a typed time stays silent (no snippets).
   };
   let selectionActions: ReturnType<typeof mountSelectionActions> | undefined;
   /** J4: the on-canvas text editor (mounted with the canvas interaction). */
   let textEditing: TextEditor | undefined;
+  // U2: how many times the canvas has been drawn (read by the test hook).
+  let drawCount = 0;
   const draw = () => {
     if (disposed) return;
+    drawCount++;
     syncAudio();
     frames.beginFrame(
       session.playing
@@ -640,8 +627,25 @@ export function mountEditorShell(
       revealed: () => workspace?.leftOpen ?? true,
     },
   );
+  // U5: the Animate presets live in the right panel's Animate tab; the
+  // toolbar's Animate button opens it there.
+  let animateShown = false;
+  const animateBody = document.createElement('div');
+  animateBody.className = 'right-animate-body';
+  animateBody.dataset.deepPanel = 'animate';
   const animatePanel = mountAnimatePanel(
-    sidePanels.register('animate', () => t('animate.title')),
+    {
+      body: animateBody,
+      get isOpen() {
+        return animateShown;
+      },
+      open: () => {
+        workspace?.setOpen('right', true);
+        setRightSection('Animate');
+      },
+      close: () => undefined,
+      toggle: () => animatePanel.open(),
+    },
     engine,
     session,
     reportError,
@@ -653,7 +657,10 @@ export function mountEditorShell(
     session,
     reportError,
     {
-      animate: () => animatePanel.toggle(),
+      animateBody: () => {
+        animatePanel.render();
+        return animateBody;
+      },
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
@@ -1149,7 +1156,7 @@ export function mountEditorShell(
     element('#composition-summary').textContent = t('canvas.summary', {
       width: formatNumber(source.composition.width),
       height: formatNumber(source.composition.height),
-      fps: formatNumber(source.composition.fps),
+      fps: formatNumber(Math.round(source.composition.fps * 100) / 100),
     });
     const selected = session.selectedId
       ? locateLayer(source.composition.layers, session.selectedId)
@@ -1243,6 +1250,10 @@ export function mountEditorShell(
     element('#layer-count').textContent = formatNumber(count);
     mediaPanel.render();
     element('#canvas-empty').hidden = count !== 0;
+    // U4: every ratio or size change fits the new canvas in the view.
+    const size = `${source.composition.width}x${source.composition.height}`;
+    if (lastCanvasSize && size !== lastCanvasSize) canvasView.fit();
+    lastCanvasSize = size;
     renderInspector(
       element('#inspector-content'),
       source,
@@ -1859,9 +1870,18 @@ export function mountEditorShell(
   );
   // J13: Collapse leaves only the player bar under a large preview; Expand
   // brings the lanes back. UI state only (not saved, no history).
+  let collapseTimer = 0;
   const collapseTimeline = () => {
     const shellElement = element('.editor-shell');
     const collapsed = !shellElement.classList.contains('timeline-collapsed');
+    // U4: Collapse and Expand animate the row (240 ms; about 0 with reduced
+    // motion), but a height drag never does.
+    shellElement.classList.add('timeline-animating');
+    window.clearTimeout(collapseTimer);
+    collapseTimer = window.setTimeout(
+      () => shellElement.classList.remove('timeline-animating'),
+      300,
+    );
     shellElement.classList.toggle('timeline-collapsed', collapsed);
     const toggle = element<HTMLButtonElement>(
       '#timeline-foundation [data-action="collapse-timeline"]',
@@ -1912,6 +1932,7 @@ export function mountEditorShell(
 
   const setRightSection = (name: string) => {
     activeSection = name;
+    animateShown = name === 'Animate';
     syncRails();
     const isProperties = name === 'Properties';
     element('#inspector-content').hidden = !isProperties;
@@ -1936,6 +1957,33 @@ export function mountEditorShell(
   /** H4: the rail lists the sections that fit the selection (Clipchamp). */
   const syncRightRail = () => {
     const shown = sectionsFor(session);
+    // U5: with nothing selected there is no right panel content (the canvas
+    // bar holds the canvas's ratio, background and frame rate).
+    if (!shown.length) {
+      animateShown = false;
+      element('#inspector-content').hidden = true;
+      element('#animation-panel').hidden = true;
+      element('#right-section').hidden = true;
+      rightEmpty.hidden = false;
+      element('#right-panel-empty-title').textContent = t('right.emptyTitle');
+      element('#right-panel-empty-description').textContent =
+        t('right.emptyHint');
+      rightEmpty.querySelector<HTMLElement>('.quiet-tag')!.hidden = true;
+      element('#right-panel-title').textContent = t('right.emptyTitle');
+      element('#right-panel-count').hidden = true;
+      for (const el of root.querySelectorAll<HTMLElement>(
+        '.icon-rail-right button',
+      ))
+        el.hidden = true;
+      renderedRight = '';
+      return;
+    }
+    if (!rightEmpty.hidden)
+      setRightSection(
+        shown.includes(activeSection as RightSection)
+          ? activeSection
+          : shown[0]!,
+      );
     // J15: the rail lists the shown sections in the selection's order (the
     // keyboard order matches what is seen).
     const nav = element('#rail-right');
@@ -3082,6 +3130,7 @@ export function mountEditorShell(
     applyThemeControls();
     applyCategory(activeCategory);
     setRightSection(activeSection);
+    syncRightRail();
     refresh(true);
   });
 
@@ -3124,6 +3173,7 @@ export function mountEditorShell(
           session.selectedId,
           viewport().matrix,
         )?.corners ?? null,
+      draws: drawCount,
       // T6: text boxes whose fixed height clips their text (the editor
       // draws an overflow mark on them).
       textOverflow: deriveRenderItems(session.source)

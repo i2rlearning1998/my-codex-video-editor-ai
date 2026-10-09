@@ -567,16 +567,19 @@ input[type='number'],
   text-overflow: ellipsis;
   line-height: 1.1;
 }
+/* U5: the right rail shows 24 px icons with their labels under them. */
 .icon-rail-right button {
-  min-block-size: 36px;
-  padding: 0;
+  min-block-size: 52px;
+  padding: var(--space-1) 2px;
 }
 .icon-rail-right button svg {
-  inline-size: 20px;
-  block-size: 20px;
+  inline-size: 24px;
+  block-size: 24px;
 }
 .icon-rail-right .icon-rail-label {
-  display: none;
+  display: block;
+  font-size: 12.5px;
+  white-space: nowrap;
 }
 .icon-rail button:hover {
   background-color: var(--hover);
@@ -6675,4 +6678,272 @@ input[type='range'] {
   #canvas-footer .canvas-zoom-controls {
     flex-wrap: wrap;
   }
+}
+
+/* U1: a clip being moved floats with the pointer; lane headers show the
+   lane's kind icon. */
+.timeline-clip.timeline-drag-float {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: var(--z-menu);
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--space-2);
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--clip-fill, var(--clip-shape));
+  color: var(--clip-label);
+  font-size: var(--font-caption);
+  white-space: nowrap;
+  opacity: 0.92;
+  box-shadow: var(--shadow-2);
+  outline: 2px solid var(--color-accent);
+  pointer-events: none;
+}
+.track-kind-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--text-secondary);
+}
+
+/* U3: menus taller than the window scroll with the wheel; the timeline
+   menu's Speed and Audio open as flyouts. */
+.timeline-menu,
+.canvas-context-menu,
+.menu-flyout,
+[role='menu'] {
+  max-block-size: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.timeline-menu {
+  max-block-size: calc(100vh - 96px);
+}
+.timeline-submenu {
+  position: fixed;
+  z-index: var(--z-menu);
+  display: grid;
+  min-inline-size: 160px;
+  padding: var(--space-2);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+/* U4: a collapsed timeline is the canvas plus one player bar: the wand,
+   First frame, Back 5 s, Play, Forward 5 s, the timecode, a full-width
+   scrubber and Expand. No scene strip, status row or lanes. */
+.player-scrub {
+  --played: 0%;
+  display: none;
+}
+.editor-shell.timeline-collapsed :is(#scene-strip, #canvas-footer) {
+  display: none;
+}
+.editor-shell.timeline-collapsed .timeline-controls {
+  display: flex;
+}
+.editor-shell.timeline-collapsed
+  :is(
+    .transport-clip-tools > :not([data-action='ai-tools']),
+    [data-action='frame-back'],
+    [data-action='frame-forward'],
+    [data-action='last-frame'],
+    [data-action='zoom-out'],
+    [data-action='zoom-in'],
+    [data-action='zoom-fit']
+  ) {
+  display: none;
+}
+.editor-shell.timeline-collapsed .transport-playback {
+  flex: 1;
+  min-inline-size: 0;
+}
+.editor-shell.timeline-collapsed .player-scrub {
+  display: block;
+  flex: 1;
+  min-inline-size: 80px;
+  block-size: 32px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.player-scrub::-webkit-slider-runnable-track {
+  block-size: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--color-text) 0 var(--played, 0%),
+    var(--color-border-strong, var(--color-border)) var(--played, 0%) 100%
+  );
+}
+.player-scrub::-webkit-slider-thumb {
+  appearance: none;
+  inline-size: 14px;
+  block-size: 14px;
+  margin-block-start: -5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+}
+.editor-shell.timeline-animating {
+  transition:
+    grid-template-columns var(--motion-panel) var(--ease-panel),
+    grid-template-rows var(--motion-panel) var(--ease-panel);
+}
+
+/* U5: Animate presets are thumbnails, three per row, None first; the
+   thumbnail plays the preset while hovered or chosen (a live preview). */
+.right-animate-body .animate-cards {
+  grid-template-columns: repeat(3, 1fr);
+}
+.animate-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 13px;
+}
+.animate-thumb {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+}
+.animate-thumb i {
+  inline-size: 40%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+}
+.animate-card[data-preset='none'] .animate-thumb i {
+  background: transparent;
+  border: 2px dashed var(--color-border);
+}
+.animate-card:is(:hover, [aria-pressed='true']) .animate-thumb i {
+  animation: 1.2s ease-in-out infinite alternate var(--thumb-motion, none);
+}
+.animate-card[data-preset='fade'] {
+  --thumb-motion: thumb-fade;
+}
+.animate-card[data-preset='slide'] {
+  --thumb-motion: thumb-slide;
+}
+.animate-card:is([data-preset='zoom'], [data-preset^='ken-burns']) {
+  --thumb-motion: thumb-zoom;
+}
+.animate-card:is([data-preset='pop'], [data-preset='pulse']) {
+  --thumb-motion: thumb-pop;
+}
+.animate-card:is([data-preset='wipe'], [data-preset='typewriter']) {
+  --thumb-motion: thumb-wipe;
+}
+.animate-card[data-preset='float'] {
+  --thumb-motion: thumb-float;
+}
+.animate-card[data-preset='spin'] {
+  --thumb-motion: thumb-spin;
+}
+.animate-card[data-preset='wiggle'] {
+  --thumb-motion: thumb-wiggle;
+}
+@keyframes thumb-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes thumb-slide {
+  from {
+    transform: translateY(120%);
+  }
+}
+@keyframes thumb-zoom {
+  from {
+    transform: scale(0.4);
+  }
+}
+@keyframes thumb-pop {
+  50% {
+    transform: scale(1.25);
+  }
+}
+@keyframes thumb-wipe {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes thumb-float {
+  to {
+    transform: translateY(-25%);
+  }
+}
+@keyframes thumb-spin {
+  to {
+    transform: rotate(180deg);
+  }
+}
+@keyframes thumb-wiggle {
+  from {
+    transform: rotate(-12deg);
+  }
+  to {
+    transform: rotate(12deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-thumb i {
+    animation: none !important;
+  }
+}
+
+/* U6: the frame panel stays at the timeline's bottom right; the playback
+   range is drawn on the ruler with the outside dimmed. */
+.frame-panel {
+  position: absolute;
+  inset-inline-end: var(--space-3);
+  inset-block-end: var(--space-2);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+}
+.frame-stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.frame-stepper .frame-field {
+  inline-size: auto;
+}
+.frame-stepper .frame-field input {
+  inline-size: 5ch;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.frame-stopwatch {
+  display: inline-flex;
+  color: var(--color-text-muted, var(--color-text));
+}
+.editor-shell.timeline-collapsed .frame-panel {
+  display: none;
+}
+.ruler-range-dim {
+  position: absolute;
+  inset-block: 0;
+  background: var(--scrim);
+  pointer-events: none;
 }

@@ -17,7 +17,6 @@ import { drawScenePoster } from './scene-poster';
 import { blankScene, duplicateScene } from './scenes';
 import type { EditorSession } from './session';
 
-const COLLAPSED_KEY = 'aive.sceneStrip.collapsed';
 const THUMB = { width: 176, height: 80 };
 const DRAG_TYPE = 'application/x-aive-scene-strip';
 
@@ -52,10 +51,6 @@ export function mountSceneStrip(options: {
   host.classList.add('scene-strip');
   host.id = 'scene-strip';
   host.setAttribute('aria-label', t('strip.label'));
-  const toggle = document.createElement('button');
-  toggle.type = 'button';
-  toggle.className = 'icon-button scene-strip-toggle';
-  toggle.id = 'scene-strip-toggle';
   const list = document.createElement('div');
   list.className = 'scene-strip-list';
   list.setAttribute('role', 'listbox');
@@ -98,24 +93,9 @@ export function mountSceneStrip(options: {
     menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
     menuElement.style.top = `${Math.max(8, Math.min(y - height, window.innerHeight - height - 8))}px`;
   };
-  host.replaceChildren(toggle, compact, list, add, insertLine);
-
-  let collapsed = false;
-  try {
-    collapsed = localStorage.getItem(COLLAPSED_KEY) === '1';
-  } catch {
-    // A view setting only.
-  }
-  const setCollapsed = (value: boolean) => {
-    collapsed = value;
-    try {
-      localStorage.setItem(COLLAPSED_KEY, value ? '1' : '0');
-    } catch {
-      // A view setting only.
-    }
-    render();
-  };
-  toggle.onclick = () => setCollapsed(!collapsed);
+  // U4: the thin collapsed strip and its chevron are gone; the footer
+  // button left of Scenes shows or hides the whole strip.
+  host.replaceChildren(compact, list, add, insertLine);
 
   const open = (id: string) => {
     if (id === session.source.composition.id) return;
@@ -398,11 +378,6 @@ export function mountSceneStrip(options: {
   const render = () => {
     const all = scenes();
     const index = indexOf(session.source.composition.id);
-    host.classList.toggle('collapsed', collapsed);
-    toggle.innerHTML = iconSvg(collapsed ? 'chevronRight' : 'chevronDown', 16);
-    toggle.title = t(collapsed ? 'strip.expand' : 'strip.collapse');
-    toggle.setAttribute('aria-label', toggle.title);
-    toggle.setAttribute('aria-expanded', String(!collapsed));
     compact.innerHTML = `<span></span>${iconSvg('chevronDown', 14)}`;
     compact.querySelector('span')!.textContent = t('strip.position', {
       n: formatNumber(index + 1),
@@ -452,7 +427,6 @@ export function mountSceneStrip(options: {
   const refresh = () => {
     const next = JSON.stringify([
       session.source.composition.id,
-      collapsed,
       scenes().map((scene) => [scene.id, scene.name, scene.duration]),
     ]);
     if (next !== shape) {

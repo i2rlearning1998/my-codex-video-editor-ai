@@ -51,18 +51,20 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[TL-061] lanes are grouped text and shapes, visuals, audio; the top lane is in front; audio has one lane', async ({
+test('[TL-061] lanes never mix groups and keep their own order; the top lane is in front; audio has one lane', async ({
   page,
 }, testInfo) => {
   await importMedia(page, JPG, WAV);
   const image = await addToScene(page, JPG);
   const tone = await addToScene(page, WAV);
   const tracks = await lanes(page);
-  // At least three lanes, one group after the other, top to bottom.
+  // (U1, D-176) Lanes keep their own order: no lane mixes groups, a new
+  // picture's lane opens at the top (there was no visual lane yet) and the
+  // sound's lane at the bottom.
   const ranks = tracks.map((track) => RANK[track.type]);
   expect(new Set(ranks)).toEqual(new Set([0, 1, 2]));
-  expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
-  // The timeline shows the same order, with a line where a group starts.
+  expect(tracks[0]!.type).toBe('video');
+  expect(tracks.at(-1)!.type).toBe('audio');
   const rows = page.locator('#timeline-foundation .timeline-nle-row');
   await expect(rows).toHaveCount(tracks.length);
   expect(
@@ -78,16 +80,13 @@ test('[TL-061] lanes are grouped text and shapes, visuals, audio; the top lane i
           : 'text',
     ),
   );
-  await expect(
-    page.locator('#timeline-foundation .timeline-nle-row.lane-group-start'),
-  ).toHaveCount(2);
-  // The stacking follows the lanes: the picture is behind every text and
-  // shape element, and the audio (no picture) is at the very back.
+  // The stacking follows the lanes: the picture on the top lane is in front
+  // of every text and shape element; the audio (no picture) is at the back.
   const layers = (await scene(page)).layers.map((layer) => layer.id);
   const textual = layers.filter((id) => id !== image && id !== tone);
   expect(layers.indexOf(tone)).toBe(0);
   for (const id of textual)
-    expect(layers.indexOf(image)).toBeLessThan(layers.indexOf(id));
+    expect(layers.indexOf(image)).toBeGreaterThan(layers.indexOf(id));
   await page.screenshot({ path: testInfo.outputPath('lanes.png') });
   // A second sound at the same time goes to the one audio lane, at the
   // nearest free time (after the first, 3 s long).
@@ -114,14 +113,13 @@ test('[TL-062] a clip dragged onto a lane of another group shows not-allowed and
   );
   await element.scrollIntoViewIfNeeded();
   const from = (await element.boundingBox())!;
-  // The lane just above it is the last text-and-shapes lane.
+  // A text-and-shapes lane (U1: lanes may sit in any order).
   const target = (await page
     .locator(
       '#timeline-foundation .timeline-nle-row[data-lane-group="text"] .timeline-track',
     )
     .last()
     .boundingBox())!;
-  expect(target.y).toBeLessThan(from.y);
   await page.mouse.move(from.x + 20, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + 60, target.y + target.height / 2, {

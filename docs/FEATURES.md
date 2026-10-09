@@ -131,7 +131,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-038 | P0 | W2 | Verified | The left and right side panels visibly animate (width and content fade, 240 ms; about 0 with reduced motion) when opened, collapsed or swapped from the rail, the top-bar toggle or a toolbar button, without the content reflowing mid-animation |
 | LAY-039 | P0 | W2 | Verified | A toolbar button that opens a side panel (Font, Effects, Position, Animate, Edit, Replace, Crop, Colour, Text colour, Fill) first opens a collapsed left or right panel, animated, then shows its content |
 | LAY-040 | P0 | W2 | Verified | One browse panel for the left-rail libraries: header with Back, title and Close; sticky search; sections with a title, See all and a horizontal strip; chips; a drill-down that slides in 180 ms; grids rendered in chunks with skeleton previews; empty and error states; arrow keys move between cards |
-| LAY-041 | P0 | W2 | Verified | Right panel per object: an always-visible icon rail whose tabs fit the selection; the first tab is named after it (Canvas, Shape, Drawing, Text, Image, Video, Audio, Group or Arrange); unbuilt tabs show disabled and name their wave; with nothing selected the Canvas tab sets size, background and scene length |
+| LAY-041 | P0 | W2 | Verified | Right panel per object: an always-visible icon rail whose tabs fit the selection; the first tab is named after it (Canvas, Shape, Drawing, Text, Image, Video, Audio, Group or Arrange); unbuilt tabs show disabled and name their wave; with nothing selected the Canvas tab sets size, background and scene length U5 LCR: nothing selected shows no Canvas panel (an empty state); the canvas bar holds the ratio, background and frame rate |
 | LAY-042 | P0 | W2 | Verified | Right panel for shapes: Color, Outline (colour, weight, dash, caps, joins), Corners and Combine as accordions; Adjust colors with Transparency live and Exposure, Contrast, Saturation, Temperature, Blend mode and Reset planned; Transform and Timing are folded accordions at the bottom of the first tab |
 | LAY-043 | P0 | W2 | Verified | Right panel for text: font, size, bold, italic, underline, strikethrough, case, alignment, colour and spacing, each one undo step and in step with the toolbar |
 | LAY-044 | P0 | W2 | Verified | Right panel for groups (Group: ungroup, align) and multi-selections (Arrange: group, align, distribute) |
@@ -146,6 +146,10 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-053 | P0 | W2 | Verified | The placeholder wordmark (src/brand/brand.ts, one place) shows in the top bar, the loading screen and page title, the empty canvas and right-panel empty states, and the export dialog; the icon family lives in src/brand/icons (T7 LCR) |
 | LAY-054 | P0 | W2 | Verified | In both themes a hovered clip shows an outline, a selected clip's label reads at 4.5:1, the gap trash button and the transition + and chip read at 4.5:1 (the + and chip are 24 px), and the canvas marquee's border reaches 3:1 on the stage (T7 LCR) |
 | LAY-055 | P0 | W2 | Verified | At the seven target window sizes in both themes the page never scrolls sideways and the Player bar, its timecode and the status row stay inside the window (narrow windows drop the planned 3D mode and labels first; a phone wraps the status row) (T7 LCR) |
+| LAY-056 | P0 | W2 | Verified | Only one context menu is open at a time (canvas, timeline, media, scenes); a press outside, Escape, a wheel outside, window blur and resize close it (U3 LCR) |
+| LAY-057 | P0 | W2 | Verified | Menus taller than the window scroll with the wheel; the wheel over a menu, the Draw panel or a floating popover scrolls it and never pans or zooms the canvas (U3 LCR) |
+| LAY-058 | P0 | W2 | Verified | The timeline menu's Speed and Audio open as flyouts beside their entry on hover (150 ms, with a 300 ms grace toward the flyout), on click and on the Right arrow; Left closes the flyout (U3 LCR) |
+| LAY-059 | P0 | W2 | Verified | The right rail shows 24 px icons with their labels under them (at least 12.5 px); nothing selected shows no Canvas panel, only an empty state (U5 LCR) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -222,6 +226,7 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-024 | P0 | W2 | Verified | Each scene owns its background colour (schema 6): changing it in one scene never changes another, and the canvas, the scene strip, the board and export show each scene's own colour (J1 LCR) |
 | PRJ-025 | P0 | W2 | Verified | A canvas size belongs to its scene: changing one scene's size changes no other scene and never rewrites a layer's position or scale, so changing it and back restores the scene exactly (J1 LCR) |
 | PRJ-026 | P0 | W2 | Verified | A new scene starts from the project's defaults (the background chosen for the project and the open scene's size and frame rate) and then owns its own settings (J1 LCR) |
+| PRJ-027 | P0 | W2 | Verified | The canvas bar's FPS chip sets the open scene's frame rate (6, 8, 12, 23.98, 24, 25, 29.97, 30, 50, 59.94, 60, 120, 240 or Custom); clip, layer, keyframe and marker times stay in seconds and re-snap to the new frame grid, as one undo step; the status text, timeline grid, playback and export follow (U5 LCR) |
 
 ## MED: Media library and stock (Wave 4)
 
@@ -338,6 +343,8 @@ Everything the user does directly on the preview canvas.
 | CV-059 | P0 | W2 | Verified | Alternative text is stored per layer in the project, saved with a visible confirmation, marked with an ALT badge in the scene list, and shown again when reopened (J6 LCR) |
 | CV-060 | P0 | W2 | Verified | Resize canvas to selection asks for confirmation naming the new size, gives the open scene the selection's size with every layer moved together in one undo step, and Fit then fits the whole artboard in view (J6 LCR) |
 | CV-061 | P0 | W2 | Verified | While a library or Media item is dragged over the canvas (only there), an outline of its real size and shape follows the pointer, snapping to the canvas centre and edges with a guide, and the canvas is highlighted; the drop places it exactly at the outline as one undo step (T2 LCR) |
+| CV-062 | P0 | W2 | Verified | Bring to front, Bring forward, Send backward and Send to back work between any two kinds (shape, picture, text, video, group): forward and backward pass the next overlapping layer, through a lane of the layer's kind or a new one, empty lanes go; children of a group reorder among themselves and a group moves as one unit (U1 LCR) |
+| CV-063 | P0 | W2 | Verified | Every ratio or size change fits the new canvas in the view (the artboard covers at least 80% of the stage's smaller side); no "This composition has no layers" text behind the canvas (U4 LCR) |
 
 ## LYR: Layers panel (Wave 2)
 
@@ -450,6 +457,10 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-081 | P0 | W2 | Verified | The Player bar: left, the AI wand (planned), Split, Duplicate and + Marker with 13 px labels and 20 px icons; centre, First frame, Back 5 s, Previous frame, Play (the largest button), Next frame, Forward 5 s and Last frame; right, zoom out, zoom in, fit and collapse with 20 px icons and 32 px hit areas; the composition summary and px/s are no longer shown (T5 LCR) |
 | TL-082 | P0 | W2 | Verified | The Player bar's timecode reads minutes and whole seconds in tabular digits (0:04 / 0:10); a click (or Enter on it) turns it into a field that takes seconds, m:ss(.cc) or h:mm:ss, Enter moves the playhead there (clamped to the scene) and Escape cancels; First and Last frame jump to the scene's ends; none of it is an undo step (T5 LCR) |
 | TL-083 | P0 | W2 | Verified | Previous cut and Stop are no longer on the Player bar and stay in the palette (Jump to previous cut; Stop (back to the start)) (T5 LCR) |
+| TL-084 | P0 | W2 | Verified | Lanes keep their own order (no group order: a text or shape lane may sit under a video lane, audio anywhere); a moved clip floats with the pointer in x and y keeping its grab offset, the original stays faint, Escape cancels, and the lane under the pointer decides the drop; lane headers read by kind and number (Video 1, Text 1, Shape 1, Audio 1) with a kind icon (U1 LCR) |
+| TL-085 | P0 | W2 | Verified | Replace (a label on the clip) shows only when a new item from the library or Media is dragged over the middle of a clip; a clip moved on the timeline never replaces: over another clip it goes before or after it by the pointer's half, rippling later clips (U1 LCR) |
+| TL-086 | P0 | W2 | Verified | Collapse leaves the canvas and one player bar: the wand (disabled), First frame, Back 5 s, Play/Pause, Forward 5 s, the timecode, a full-width scrubber (white knob, lighter played part, the smooth scrub) and Expand; no scene strip, status row or lanes; Collapse and Expand animate (240 ms, about 0 with reduced motion) (U4 LCR) |
+| TL-087 | P0 | W2 | Verified | A frame panel sticks to the timeline's bottom right: [‹ Current ›] [stopwatch] Start [‹ n ›] End [‹ n ›] in frames at the scene's frame rate, text at least 13 px; Current steps ±1 frame (Shift ×10), takes a typed frame and scrubs by drag, with no undo step (U6 LCR) |
 
 ## PB: Playback and transport
 
@@ -467,10 +478,12 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | PB-008 | P0 | W2 | Todo | Time is one shared source: canvas, timeline, inspector and timecode always agree |
 | PB-009 | P0 | W4 | Verified | Video decoding keeps up with playback; frames drop rather than slow motion; a buffering indicator appears when needed |
 | PB-010 | P0 | W4 | Verified | Audio plays in sync with video within one frame (fixture: video_av_sync_flash_beep_720p.mp4) |
-| PB-011 | P1 | W4 | Verified | Scrubbing the playhead plays short audio snippets |
+| PB-011 | P1 | W4 | Verified | Scrubbing the playhead, clicking the ruler and frame stepping stay silent; audio sounds only while playing (U2 LCR; was: short snippets) |
 | PB-012 | P0 | W4 | Todo | 1080p 30 fps H.264 plays back with at least 95 percent of frames on the reference machine |
 | PB-013 | P1 | W7 | Todo | Master volume and mute with a level meter |
 | PB-014 | P1 | W2 | Todo | Fullscreen playback with minimal controls |
+| PB-015 | P0 | W4 | Verified | Dragging the playhead over video redraws the canvas continuously (at least 20 times over a 1 s scrub, the nearest cached frame shown while a seek is pending) and shows the exact frame on release (U2 LCR) |
+| PB-016 | P0 | W2 | Verified | Start and End set the scene's playback range (stored per scene, one undo step each, Start before End enforced; defaults the first and last frame, and End follows the scene's end while it is there): playback starts at Start and stops at End, export covers Start to End, and the ruler dims outside the range (U6 LCR) |
 
 ## INS: Inspector and properties panel
 
@@ -628,6 +641,7 @@ Preview and export must evaluate animation with the same code.
 | ANI-020 | P1 | W8 | Todo | Scene (page) animation: one preset animates every layer of a scene |
 | ANI-021 | P0 | W5 | Verified | Editor and 2D Animation modes: stopwatches, keyframe diamonds and timeline keyframes show in 2D Animation only; the switch crossfades in 320 ms and keeps the selection; 3D Animation is shown as planned (H4 LCR) |
 | ANI-022 | P0 | W5 | Verified | In Editor mode a change to an animated property (canvas drag or nudge, Inspector, Position panel, toolbar) is refused with "Animated in 2D Animation" and a button that opens 2D Animation (H4 LCR) |
+| ANI-023 | P0 | W5 | Verified | Animate is a right-rail tab for every single element (text, shapes, drawings, groups, images, video): In, Out, Loop (and Ken Burns for images) as thumbnail grids, three per row, None first, the chosen one highlighted, each thumbnail playing its motion (live preview), with duration, direction and period fields; the toolbar's Animate button opens it; there is no left Animate side panel and no Animate section in the object panels (U5 LCR) |
 
 ## VID: Video and image clip operations
 

@@ -41,8 +41,51 @@ export interface MenuController {
 }
 
 /** Hover delay before a flyout opens, and the grace before it closes (H2). */
-export const SUBMENU_OPEN_DELAY = 120;
+export const SUBMENU_OPEN_DELAY = 150;
 const SUBMENU_CLOSE_GRACE = 200;
+
+/** U3: only one context menu is open at a time. A menu that opens says so;
+ *  every other menu closes. */
+export const MENU_OPEN_EVENT = 'aive-menu-open';
+export function announceMenu(owner: Element): void {
+  document.dispatchEvent(new CustomEvent(MENU_OPEN_EVENT, { detail: owner }));
+}
+/** U3: closes a menu when another opens, on a wheel outside it, on window
+ *  blur and on resize. Returns the cleanup. */
+export function dismissMenuOn(
+  container: HTMLElement,
+  isOpen: () => boolean,
+  close: () => void,
+): () => void {
+  const other = (event: Event) => {
+    if ((event as CustomEvent).detail !== container && isOpen()) close();
+  };
+  const away = (event: Event) => {
+    if (!isOpen()) return;
+    if (
+      event.type === 'wheel' &&
+      container.contains(event.target as Node | null)
+    )
+      return;
+    close();
+  };
+  // Any press outside it (left or right button) closes it too.
+  const press = (event: PointerEvent) => {
+    if (isOpen() && !container.contains(event.target as Node | null)) close();
+  };
+  document.addEventListener(MENU_OPEN_EVENT, other);
+  window.addEventListener('pointerdown', press, true);
+  window.addEventListener('wheel', away, { capture: true, passive: true });
+  window.addEventListener('blur', away);
+  window.addEventListener('resize', away);
+  return () => {
+    document.removeEventListener(MENU_OPEN_EVENT, other);
+    window.removeEventListener('pointerdown', press, true);
+    window.removeEventListener('wheel', away, { capture: true });
+    window.removeEventListener('blur', away);
+    window.removeEventListener('resize', away);
+  };
+}
 
 export function createMenu(
   container: HTMLElement,
@@ -268,10 +311,16 @@ export function createMenu(
     // Only a truly small area scrolls, with the thin themed scrollbar.
     if (height > area.height) container.style.maxBlockSize = `${area.height}px`;
   };
+  dismissMenuOn(
+    container,
+    () => !container.hidden,
+    () => close(),
+  );
   return {
     open(entries) {
       clearTimers();
       closeFrom(0);
+      announceMenu(container);
       container.hidden = false;
       fill(container, entries, 0);
       container

@@ -1,4 +1,4 @@
-import { frameToTime, timeToFrame } from '../core';
+import { frameToTime, playRangeOf, timeToFrame } from '../core';
 import type { EditorSession } from './session';
 
 /** Elapsed-time transport; only current session time changes, never project state. */
@@ -23,8 +23,13 @@ export class Playback {
   }
   play(): void {
     if (this.session.playing) return;
-    if (this.session.currentTime >= this.session.source.composition.duration)
-      this.session.setCurrentTime(0);
+    // U6: playback starts at the scene's Start when outside its range.
+    const range = playRangeOf(this.session.source.composition);
+    if (
+      this.session.currentTime >= range.end - 1e-9 ||
+      this.session.currentTime < range.start - 1e-9
+    )
+      this.session.setCurrentTime(range.start);
     this.#origin = this.now();
     this.#time = this.session.currentTime;
     this.session.setPlaying(true);
@@ -35,6 +40,13 @@ export class Playback {
     if (!this.session.playing) return;
     const { duration, fps } = this.session.source.composition;
     const time = this.#time + Math.max(0, timestamp - this.#origin) / 1000;
+    // U6: a range that ends before the scene stops playback at its End.
+    const range = playRangeOf(this.session.source.composition);
+    if (range.end < duration - 1e-9 && time >= range.end) {
+      this.session.setCurrentTime(range.end);
+      this.session.setPlaying(false);
+      return;
+    }
     if (time >= duration) {
       this.session.setCurrentTime(duration);
       this.session.setPlaying(false);

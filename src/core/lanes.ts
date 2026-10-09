@@ -29,7 +29,7 @@ const stringProperty = (layer: LaneLayer, key: string) => {
   return property?.type === 'string' ? String(property.value) : '';
 };
 /** A background (library backgrounds and template backdrops) is a visual. */
-const isBackground = (layer: LaneLayer) =>
+export const isBackground = (layer: LaneLayer) =>
   stringProperty(layer, 'role') === 'background';
 /**
  * The group a layer's clip belongs to. Video, image and backgrounds are
@@ -70,29 +70,26 @@ interface OrderedTrack {
   readonly type: Track['type'];
   readonly order: number;
 }
-/** Lanes top to bottom: by group, then by their order within the group. */
+/** Lanes top to bottom, in their own order (U1: no fixed group order). */
 export function sortedLanes<T extends OrderedTrack>(tracks: readonly T[]): T[] {
-  return [...tracks].sort(
-    (a, b) =>
-      LANE_GROUPS.indexOf(laneGroupOfTrack(a.type)) -
-        LANE_GROUPS.indexOf(laneGroupOfTrack(b.type)) || a.order - b.order,
-  );
+  return [...tracks].sort((a, b) => a.order - b.order);
 }
-/** Where a new lane of a group goes: the top of its group (an index for MOVE_TRACK). */
+/**
+ * Where a new lane of a group goes (an index for MOVE_TRACK): above the
+ * group's top lane ('top') or below its bottom lane ('bottom'); with no lane
+ * of the group yet, at the top (audio: at the bottom).
+ */
 export function laneInsertIndex(
   tracks: readonly OrderedTrack[],
   group: LaneGroup,
   position: 'top' | 'bottom' = 'top',
 ): number {
   const lanes = sortedLanes(tracks);
-  const rank = LANE_GROUPS.indexOf(group);
-  const before = lanes.filter(
-    (lane) => LANE_GROUPS.indexOf(laneGroupOfTrack(lane.type)) < rank,
-  ).length;
-  const inGroup = lanes.filter(
-    (lane) => laneGroupOfTrack(lane.type) === group,
-  ).length;
-  return position === 'top' ? before : before + inGroup;
+  const indices = lanes
+    .map((lane, index) => (laneGroupOfTrack(lane.type) === group ? index : -1))
+    .filter((index) => index >= 0);
+  if (!indices.length) return group === 'audio' ? lanes.length : 0;
+  return position === 'top' ? indices[0]! : indices.at(-1)! + 1;
 }
 
 interface ClipOf {
@@ -167,9 +164,9 @@ interface SyncComposition<L extends { readonly id: string }> {
   tracks: (OrderedTrack & { order: number; clips: readonly ClipOf[] })[];
 }
 /**
- * J7: keeps a composition's lanes grouped (text and shapes, visuals, audio,
- * top to bottom; the order within a group is kept) and its top-level layers
- * in lane order, so the top lane paints in front. Mutates a draft.
+ * J7, U1: keeps a composition's lane order numbers dense (lanes may sit in
+ * any order) and its top-level layers in lane order, so the top lane paints
+ * in front. Mutates a draft.
  */
 export function syncLanes<L extends { readonly id: string }>(
   composition: SyncComposition<L>,
@@ -263,4 +260,14 @@ export function packLanesByOrder<C extends PackClip, T extends PackTrack<C>>(
       lane.clips.sort((a, b) => a.startTime - b.startTime);
   }
   return changed;
+}
+
+/** U1: a background's new lane goes under every picture and text lane (above
+ *  audio), so the background stays behind everything. */
+export function backgroundLaneIndex(tracks: readonly OrderedTrack[]): number {
+  const lanes = sortedLanes(tracks);
+  let index = lanes.length;
+  while (index > 0 && laneGroupOfTrack(lanes[index - 1]!.type) === 'audio')
+    index--;
+  return index;
 }

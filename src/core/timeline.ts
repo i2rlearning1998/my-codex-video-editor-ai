@@ -1,7 +1,10 @@
 import {
+  LANE_GROUPS,
   laneAccepts,
   laneGroupOfLayer,
+  laneGroupOfTrack,
   packLanesByOrder,
+  sortedLanes,
   syncLanes,
   trackTypeForGroup,
   type LaneLayer,
@@ -369,6 +372,35 @@ export function adoptFreeLayers(
           clips: [],
         };
       });
+    // U1: lanes have no fixed group order, so a document without clips
+    // puts the group holding its frontmost layer on top (a template's text
+    // above its background); lanes keep their order within a group and
+    // audio stays at the bottom.
+    if (!hadClips) {
+      const z = new Map(
+        composition.layers.map((layer, index) => [layer.id, index]),
+      );
+      const front = (group: (typeof LANE_GROUPS)[number]) =>
+        group === 'audio'
+          ? -Infinity
+          : Math.max(
+              -1,
+              ...composition.tracks
+                .filter((track) => laneGroupOfTrack(track.type) === group)
+                .flatMap((track) =>
+                  track.clips.map((clip) => z.get(clip.layerId) ?? -1),
+                ),
+            );
+      const rank = [...LANE_GROUPS].sort((a, b) => front(b) - front(a));
+      sortedLanes(composition.tracks)
+        .map((track, index) => ({ track, index }))
+        .sort(
+          (a, b) =>
+            rank.indexOf(laneGroupOfTrack(a.track.type)) -
+              rank.indexOf(laneGroupOfTrack(b.track.type)) || a.index - b.index,
+        )
+        .forEach(({ track }, order) => (track.order = order));
+    }
     // Lanes that the moves emptied are left out.
     composition.tracks = composition.tracks.filter(
       (track) => track.clips.length || !occupied.has(track.id),

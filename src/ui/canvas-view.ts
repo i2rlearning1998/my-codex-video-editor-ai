@@ -138,6 +138,19 @@ export function mountCanvasView(
     if (event.button === 1) event.preventDefault();
   };
   const wheel = (event: WheelEvent) => {
+    // U3: menus, panels and toolbars floating over the stage scroll
+    // themselves; only the canvas and the bare stage pan and zoom.
+    const target = event.target as Element | null;
+    if (
+      target &&
+      target !== canvas &&
+      target !== stage &&
+      !target.closest('#composition-canvas, .artboard-shadow') &&
+      target.closest(
+        '[role="menu"], .draw-panel, .draw-palette, .draw-flyout, .context-toolbar, .popover, .toolbar-popover, .scene-board, [data-wheel-scroll]',
+      )
+    )
+      return;
     event.preventDefault();
     const lines = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 400 : 1;
     if (event.ctrlKey || event.metaKey) {

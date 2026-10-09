@@ -19,6 +19,11 @@ const scene = async (page: Page) => {
 };
 const layerCount = async (page: Page) => (await scene(page)).layers.length;
 const labels = async (page: Page) => (await hook(page)).history.labels;
+const textLane = async (page: Page) =>
+  (await page
+    .locator('#timeline-foundation .timeline-nle-row[data-lane-group="text"]')
+    .first()
+    .boundingBox())!;
 const mediaCard = (page: Page, name: string) =>
   page.locator(`.media-card[data-name="${name}"]`);
 
@@ -225,17 +230,17 @@ test('[MED-041] a click adds a media or library item; a drag onto the timeline s
   // lane, past the example's 10 s) starts there.
   await showCategory(page, 'Elements');
   const ruler = (await page.locator('.timeline-ruler').boundingBox())!;
-  const scroll = (await page
-    .locator('#timeline-foundation .timeline-scroll')
-    .boundingBox())!;
+  const ids = new Set((await scene(page)).layers.map((layer) => layer.id));
   await drag(
     page,
     page.locator('[data-shape="rectangle"]').first(),
     ruler.x + 12 * 80,
-    scroll.y + 46,
+    // (U1: the picture's lane is now on top; aim at a text lane.)
+    (await textLane(page)).y + 18,
   );
   expect((await labels(page)).at(-1)).toBe('Add shape');
-  const shape = (await scene(page)).layers.at(-1)!;
+  // (U1: the layers array is in lane order; find the new one.)
+  const shape = (await scene(page)).layers.find((layer) => !ids.has(layer.id))!;
   const clip = (await scene(page)).tracks
     .flatMap((track) => track.clips)
     .find((item) => item.layerId === shape.id)!;

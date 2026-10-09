@@ -67,6 +67,8 @@ test('[LAY-031] the right rail and its top-bar toggle share the same open state'
   page,
 }) => {
   expect(await rightOpen(page)).toBe(true);
+  // (U5: nothing selected shows no right rail tabs; select a layer.)
+  await page.locator('#scene-list [data-layer-id="example-headline"]').click();
   const active = page.locator('#rail-right button[aria-pressed="true"]');
   await expect(active).toHaveCount(1);
   const name = (await active.getAttribute('data-section'))!;

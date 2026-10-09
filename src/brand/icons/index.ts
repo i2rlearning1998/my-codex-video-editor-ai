@@ -108,6 +108,8 @@ const PATHS: Record<string, string> = {
   language:
     'M10 3a7 7 0 100 14 7 7 0 000-14z M3 10h14 M10 3c2 2 3 4.5 3 7s-1 5-3 7 M10 3c-2 2-3 4.5-3 7s1 5 3 7',
   scenes: 'M2 6h7v8H2z M11 6h7v8h-7z M5 3h10 M5 17h10',
+  // U6: the frame panel's stopwatch.
+  stopwatch: 'M10 6a6 6 0 100 12 6 6 0 000-12z M10 9v3l2 1 M8 2h4 M10 2v4',
   // T5: first and last frame.
   firstFrame: 'M4 4v12 M16 4l-9 6 9 6z',
   lastFrame: 'M16 4v12 M4 4l9 6-9 6z',

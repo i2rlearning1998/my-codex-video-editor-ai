@@ -1,3 +1,4 @@
+import { playRangeOf } from '../core/time';
 // Export settings and the plans derived from them (EXP-001, EXP-006). Pure: no DOM.
 
 export type ExportQuality = 'low' | 'medium' | 'high';
@@ -121,7 +122,14 @@ export function defaultResolution(canvas: {
 
 /** Default settings for a composition: its own size and rate, the whole length. */
 export function defaultSettings(
-  composition: { width: number; height: number; fps: number; duration: number },
+  composition: {
+    width: number;
+    height: number;
+    fps: number;
+    duration: number;
+    playRange?:
+      { readonly start: number; readonly end: number | null } | undefined;
+  },
   projectName: string,
 ): ExportSettings {
   return {
@@ -129,8 +137,9 @@ export function defaultSettings(
     height: evenSize(composition.height),
     fps: composition.fps,
     quality: 'high',
-    start: 0,
-    end: composition.duration,
+    // U6: the scene's playback range (the whole scene by default).
+    start: playRangeOf(composition).start,
+    end: playRangeOf(composition).end,
     fileName: safeFileName(projectName),
   };
 }

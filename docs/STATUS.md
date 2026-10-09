@@ -1,3 +1,8 @@
+- **U-series (U1 to U6)** is on `claude/u-series`, PR #20 stacked on PR #18 (`claude/t-series`), not merged; see reports/U-SERIES.md.
+  - **U1** free lane order, free clip drag, Replace only from the library, layer order across kinds (D-176). **U2** smooth scrubbing, audio only while playing (D-177). **U3** one menu at a time, scrolling menus, hover flyouts (D-178).
+  - **U4** strip without the chevron, a collapsed player bar with a scrubber, fit on every ratio change (D-179). **U5** labelled right rail, no Canvas panel, an FPS chip per scene, Animate as a right tab (D-180). **U6** frame panel and per-scene playback range (D-181); final-verify fixes in D-182.
+  - Schema is still 6 (one optional field, `playRange`); no new npm dependencies; PR #14 untouched.
+  - Last full verify: 407 unit tests, 344 e2e passes plus the DEV-006 probe; ledger 315 Verified, 12 Claimed, 313 Todo.
 - **T-series (T1 to T7)** is on `claude/t-series`, PR #18 stacked on PR #17 (`claude/j-series`), not merged; see reports/T-SERIES.md.
   - **T1** repairs drag and drop: one pointer drag controller for every library and Media source, an OS-file overlay that never sticks, files placed where dropped, click to add (D-169). **T2** draws a real-size drop outline on the canvas that snaps to the centre and edges (D-170).
   - **T3** brings Clipchamp's timeline drop rules (clip-sized ghost, before, after and Replace thirds, + lines for new lanes, refused groups) and removes a lane an edit empties, in the same undo step; visual lanes are 56 px, others 36 px (D-171).

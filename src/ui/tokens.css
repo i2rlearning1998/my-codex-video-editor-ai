@@ -203,11 +203,11 @@
   /* Layout (written by src/ui/workspace.ts) */
   --topbar-height: 48px;
   --rail-width: 64px;
-  --right-rail-width: 44px;
+  --right-rail-width: 72px;
   --left-panel: 320px;
-  --right-panel: 280px;
+  --right-panel: 252px;
   --left-open: 320px;
-  --right-open: 280px;
+  --right-open: 252px;
   --timeline-height: 280px;
   --statusbar-height: 0px;
   /* J13: the player bar left when the timeline is collapsed. */
