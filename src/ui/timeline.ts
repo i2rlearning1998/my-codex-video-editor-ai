@@ -1025,6 +1025,21 @@ export function mountTimeline(
       after.style.left = `${timeToPixel(range.end, zoom)}px`;
       after.style.width = `${Math.max(0, width - timeToPixel(range.end, zoom))}px`;
       ruler.append(before, after);
+      // T-ALL P4 (spec 9): the lanes are dimmed outside the range too.
+      for (const [left, w] of [
+        [0, timeToPixel(range.start, zoom)],
+        [
+          timeToPixel(range.end, zoom),
+          Math.max(0, width - timeToPixel(range.end, zoom)),
+        ],
+      ] as const) {
+        const dim = document.createElement('div');
+        dim.className = 'lanes-range-dim';
+        dim.style.left = `${headerWidth + left}px`;
+        dim.style.width = `${w}px`;
+        dim.style.height = '100%';
+        content.append(dim);
+      }
     }
     rulerBar.append(ruler);
     content.append(rulerBar);
@@ -1491,6 +1506,12 @@ export function mountTimeline(
     );
     playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
     rulerBar.append(playhead);
+    playhead.classList.toggle(
+      'outside-range',
+      !range.full &&
+        (session.currentTime < range.start - 1e-9 ||
+          session.currentTime > range.end + 1e-9),
+    );
     pageToPlayhead();
     for (const marker of composition.markers) {
       const item = button(
@@ -2121,13 +2142,16 @@ export function mountTimeline(
           break;
         case 'first-frame':
           session.setPlaying(false);
-          session.setCurrentTime(0);
+          // T-ALL P4 (spec 9): First and Last frame go to Start and End.
+          session.setCurrentTime(
+            playRangeOf(session.source.composition).start,
+          );
           // T-ALL P3 (spec 4): back to the first page.
           scroll.scrollLeft = 0;
           break;
         case 'last-frame':
           session.setPlaying(false);
-          session.setCurrentTime(session.source.composition.duration);
+          session.setCurrentTime(playRangeOf(session.source.composition).end);
           break;
         case 'timecode':
           editTimecode(target);

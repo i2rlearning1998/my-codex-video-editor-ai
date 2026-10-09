@@ -42,9 +42,13 @@ export class Playback {
     const time = this.#time + Math.max(0, timestamp - this.#origin) / 1000;
     // U6: a range that ends before the scene stops playback at its End.
     const range = playRangeOf(this.session.source.composition);
+    // T-ALL P4 (spec 9): a range that ends before the scene loops: at End
+    // playback wraps to Start and goes on.
     if (range.end < duration - 1e-9 && time >= range.end) {
-      this.session.setCurrentTime(range.end);
-      this.session.setPlaying(false);
+      this.#origin = timestamp;
+      this.#time = range.start;
+      this.session.setCurrentTime(range.start);
+      this.#request = this.request(this.#tick);
       return;
     }
     if (time >= duration) {

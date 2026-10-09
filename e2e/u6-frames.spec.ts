@@ -58,7 +58,7 @@ test('[TL-087] the frame panel steps, types and shows the current frame at the s
   );
 });
 
-test('[PB-016] Start and End set the playback and export range: playback stops at End, the ruler dims outside, Start < End, undoable', async ({
+test('[PB-016] Start and End set the playback and export range: playback loops from Start to End, the ruler dims outside, Start < End, undoable', async ({
   page,
 }) => {
   await typeFrame(page, 'start', '30');
@@ -74,12 +74,50 @@ test('[PB-016] Start and End set the playback and export range: playback stops a
   // Start must stay before End.
   await typeFrame(page, 'start', '75');
   expect((await scene(page)).playRange).toEqual({ start: 1, end: 2 });
-  // Play starts at Start and stops at End.
+  // Play starts at Start and loops inside the range (T-ALL P4, D-186).
   await page.locator('#timeline-foundation [data-action="play"]').click();
+  const seen: number[] = [];
   await expect
-    .poll(async () => (await hook(page)).session.playing, { timeout: 5000 })
-    .toBe(false);
-  expect((await hook(page)).session.time).toBeCloseTo(2, 3);
+    .poll(
+      async () => {
+        seen.push((await hook(page)).session.time);
+        return seen.some((time, i) => i > 0 && time < seen[i - 1]! - 0.3);
+      },
+      { timeout: 8000, intervals: [100] },
+    )
+    .toBe(true);
+  for (const time of seen) {
+    expect(time).toBeGreaterThanOrEqual(1 - 1e-6);
+    expect(time).toBeLessThanOrEqual(2 + 1e-6);
+  }
+  await page.locator('#timeline-foundation [data-action="play"]').click();
+  // The lanes are dimmed outside the range, not only the ruler.
+  await expect(
+    page.locator('#timeline-foundation .lanes-range-dim'),
+  ).toHaveCount(2);
+  // First and Last frame go to Start and End.
+  await page.locator('#timeline-foundation [data-action="last-frame"]').click();
+  await expect
+    .poll(async () => (await hook(page)).session.time)
+    .toBeCloseTo(2, 6);
+  await page
+    .locator('#timeline-foundation [data-action="first-frame"]')
+    .click();
+  await expect
+    .poll(async () => (await hook(page)).session.time)
+    .toBeCloseTo(1, 6);
+  // Five digits fit the fields.
+  const field = panel(page).locator('#frame-end');
+  await field.click();
+  await field.fill('12345');
+  expect(
+    await field.evaluate(
+      (input: HTMLInputElement) => input.scrollWidth <= input.clientWidth + 1,
+    ),
+  ).toBe(true);
+  await field.press('Escape');
+  for (const steps of await panel(page).locator('.number-field-steps').all())
+    await expect(steps).toBeHidden();
   // Export covers Start to End.
   await page.locator('#export').click();
   const more = page.locator('#export-more');

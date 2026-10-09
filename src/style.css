@@ -6931,7 +6931,9 @@ input[type='range'] {
   inline-size: auto;
 }
 .frame-stepper .frame-field input {
-  inline-size: 5ch;
+  /* T-ALL P4: five digits fit (spec 9). */
+  inline-size: 7ch;
+  min-inline-size: 7ch;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
@@ -7092,4 +7094,34 @@ input[type='range'] {
   inline-size: var(--ghost-width, 40px);
   border: 2px dashed var(--color-accent);
   border-radius: var(--radius-sm);
+}
+
+/* T-ALL P4 (spec 9): one step style (the ‹ › buttons), no stacked arrows;
+   outside the range the lanes are dimmed as well as the ruler; the
+   playhead beyond the range has its own colour. */
+.frame-panel .number-field-steps,
+.frame-panel .number-field-more {
+  display: none;
+}
+.frame-panel .number-field-label {
+  font-size: 13px;
+}
+.lanes-range-dim {
+  position: absolute;
+  top: 0;
+  z-index: 6;
+  background: var(--scrim);
+  pointer-events: none;
+}
+.timeline-playhead.outside-range {
+  --playhead-colour: var(--danger-text, #e5484d);
+  color: var(--playhead-colour);
+}
+.timeline-playhead.outside-range::after {
+  background: var(--playhead-colour);
+}
+.frame-panel .frame-field input {
+  inline-size: 9ch !important;
+  min-inline-size: 9ch;
+  padding-inline: 4px;
 }
