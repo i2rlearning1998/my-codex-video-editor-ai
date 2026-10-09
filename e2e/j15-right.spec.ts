@@ -125,12 +125,11 @@ test('[LAY-047] Speed has a slider from 0.1x to 16x with ticks; Effects and Filt
   });
   expect((await labels(page)).at(-1)).toBe('Change speed');
   expect((await clip(page, 'clip-b')).speed).toBe(2);
-  // Effects: a list of planned effects for a video.
+  // Effects: the FX library's effects for a video (T-ALL P6, D-189).
   await tab(page, 'Effects').click();
-  await expect(panel(page).locator('[data-choice="blur"]')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  await expect(
+    panel(page).locator('[data-choice="effect.blur"]'),
+  ).toHaveAttribute('aria-pressed', 'false');
   // Animate presets are thumbnail grids in the Animate tab (U5): In ›
   // Fade, one step.
   await tab(page, 'Animate').click();

@@ -184,7 +184,8 @@ export function mountNewProjectForm(
         width: '1920',
         height: '1080',
         fps: '30',
-        background: '#101219',
+        // T-ALL P1: a new project's canvas is white (spec 7).
+        background: '#ffffff',
       };
       for (const [key, control] of controls) {
         control.value = defaults[key];

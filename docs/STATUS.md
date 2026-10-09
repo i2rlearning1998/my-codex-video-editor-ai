@@ -1,3 +1,7 @@
+- **T-ALL (P1 to P6)** is on `claude/t-all`, draft PR #22 stacked on PR #20 (`claude/u-series`), not merged; see reports/T-ALL.md.
+  - **P1** layout (D-183), **P2** lanes (D-184), **P3** paging, scroll range and centring (D-185), **P4** frame range (D-186).
+  - **P5** Layers outliner with collections, **schema 7** (one optional composition field, `outliner`; D-187). **P6** FX library from PR #19 copied unchanged and wired (D-188, D-189).
+  - No new npm dependencies; PR #14 and PR #19 untouched.
 - **U-series (U1 to U6)** is on `claude/u-series`, PR #20 stacked on PR #18 (`claude/t-series`), not merged; see reports/U-SERIES.md.
   - **U1** free lane order, free clip drag, Replace only from the library, layer order across kinds (D-176). **U2** smooth scrubbing, audio only while playing (D-177). **U3** one menu at a time, scrolling menus, hover flyouts (D-178).
   - **U4** strip without the chevron, a collapsed player bar with a scrubber, fit on every ratio change (D-179). **U5** labelled right rail, no Canvas panel, an FPS chip per scene, Animate as a right tab (D-180). **U6** frame panel and per-scene playback range (D-181); final-verify fixes in D-182.

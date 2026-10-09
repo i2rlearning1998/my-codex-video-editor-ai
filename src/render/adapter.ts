@@ -1,5 +1,6 @@
 import { pictureOf, type PictureStyle } from './picture';
 import {
+  clipFx,
   activeAtTime,
   clipSourceTime,
   clipTimeEffects,
@@ -173,6 +174,34 @@ export interface RenderItem {
   readonly reveal?: number;
   /** J12: the side the reveal starts from (left unless set). */
   readonly revealFrom?: 'left' | 'right';
+  /** T-ALL P6: the clip's FX library stack, with its clip-local time. */
+  readonly fx?: RenderFx;
+  /** T-ALL P6: a pixel transition from the item `from` into this one. */
+  readonly fxTransition?: {
+    readonly id: string;
+    readonly params: Readonly<Record<string, number | boolean | string>>;
+    readonly progress: number;
+    readonly from: string;
+  };
+  /** T-ALL P6: drawn by the incoming item's pixel transition, not alone. */
+  readonly fxFrom?: true;
+}
+export interface RenderFx {
+  readonly stack: readonly {
+    readonly id: string;
+    readonly params: Readonly<Record<string, number | boolean | string>>;
+  }[];
+  readonly blendMode?: string;
+  readonly time: number;
+  readonly duration: number;
+  readonly seed: number;
+}
+/** A stable integer seed from a clip id (FNV-1a over UTF-16 code units). */
+export function fxSeed(id: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < id.length; i++)
+    hash = Math.imul(hash ^ id.charCodeAt(i), 0x01000193);
+  return hash >>> 0;
 }
 const defaults = {
   image: [320, 180],
@@ -263,6 +292,39 @@ export function deriveRenderItems(input: RenderSource): {
     : input;
   const items: RenderItem[] = [],
     warnings: string[] = [];
+  // T-ALL P6: each top-level layer's clip effects (drawing only).
+  const fxByLayer = new Map<string, RenderFx>();
+  if (input.animate)
+    for (const track of source.composition.tracks as unknown as readonly {
+      readonly clips: readonly {
+        readonly id: string;
+        readonly layerId: string;
+        readonly startTime: number;
+        readonly duration: number;
+        readonly metadata: Readonly<Record<string, unknown>>;
+      }[];
+    }[])
+      for (const clip of track.clips) {
+        const fx = clipFx(clip);
+        if (!fx) continue;
+        fxByLayer.set(clip.layerId, {
+          stack: fx.stack,
+          ...(fx.blendMode ? { blendMode: fx.blendMode } : {}),
+          time: Math.min(
+            clip.duration,
+            Math.max(0, (input.currentTime ?? 0) - clip.startTime),
+          ),
+          duration: clip.duration,
+          seed: fxSeed(clip.id),
+        });
+      }
+  const stringProperty = (layer: SceneLayer, key: string) => {
+    const value = (layer.properties as Record<string, unknown>)[key] as
+      { type?: string; value?: unknown } | undefined;
+    return value?.type === 'string' && typeof value.value === 'string'
+      ? value.value
+      : undefined;
+  };
   const visit = (
     layers: readonly SceneLayer[],
     ancestors: readonly string[],
@@ -406,6 +468,17 @@ export function deriveRenderItems(input: RenderSource): {
                     : {}),
                 }
               : {}),
+            ...(fxByLayer.has(ancestors[0] ?? layer.id)
+              ? { fx: fxByLayer.get(ancestors[0] ?? layer.id)! }
+              : {}),
+            ...(stringProperty(layer, 'presetFxTransition')
+              ? {
+                  fxTransition: JSON.parse(
+                    stringProperty(layer, 'presetFxTransition')!,
+                  ) as NonNullable<RenderItem['fxTransition']>,
+                }
+              : {}),
+            ...(stringProperty(layer, 'presetFxFrom') ? { fxFrom: true } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
             matrix: world.matrix,

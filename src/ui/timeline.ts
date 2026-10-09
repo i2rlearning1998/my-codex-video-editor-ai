@@ -1,6 +1,5 @@
 import { commands } from '../commands/registry';
 import {
-  groupOfTrack,
   laneDropPlan,
   resolveLaneDrop,
   type DropClip,
@@ -81,6 +80,7 @@ import {
   type TimingPreview,
 } from './timeline-model';
 import { iconSvg } from './icons';
+import { mountOutliner } from './outliner';
 import { createNumberField, syncNumberField } from './components/number-field';
 
 /** TL-027/TL-032 menu actions labelled from the command catalog. */
@@ -609,8 +609,18 @@ export function mountTimeline(
   root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
+  // T-ALL P5: the outliner column beside the lanes (never over them).
+  const outliner = mountOutliner(engine, session, report);
+  const body = document.createElement('div');
+  body.className = 'timeline-body';
+  scroll.before(body);
+  body.append(outliner.element, scroll);
+  let outlinerKey = '';
+  let revealedSelection = '';
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
   scroll.setAttribute('aria-label', t('timeline.keys'));
+  // T-ALL P5 (spec 8): lanes have no header; the outliner is its own
+  // column beside them.
   const headerWidth = 224;
   /** T3: lane heights (visual lanes taller, for their pictures). */
   const laneHeight = (group: string) => (group === 'visual' ? 56 : 36);
@@ -743,13 +753,49 @@ export function mountTimeline(
       0,
       ...controller.previews.map((item) => item.startTime + item.duration),
     );
+    // T-ALL P3 (spec 5, supersedes D-036): the content is the larger of the
+    // project and the viewport, plus half a viewport; it never extends on
+    // its own while scrolling.
+    const viewport = pixelToTime(viewportPixels(), zoom);
     return Math.min(
       MAX_SPAN,
-      Math.max(session.source.composition.duration, reach, previewEnd) +
-        pixelToTime(viewportPixels(), zoom),
+      Math.max(session.source.composition.duration, previewEnd, viewport) +
+        viewport / 2,
     );
   };
   const playback = new Playback(session);
+  /** T-ALL P5 (spec 13): brings the selected element's lane (and clip,
+   *  when off screen) into view, without moving the playhead or zoom. */
+  const revealSelection = () => {
+    if (pointer || document.querySelector('.timeline-drag-float')) return;
+    const id = session.selectedIds[0];
+    if (!id || typeof scroll.scrollTo !== 'function') return;
+    const clip = [
+      ...content.querySelectorAll<HTMLElement>('.timeline-clip'),
+    ].find((el) => el.dataset.id === id);
+    if (!clip) return;
+    const view = scroll.getBoundingClientRect();
+    const box = clip.getBoundingClientRect();
+    let top = scroll.scrollTop;
+    let left = scroll.scrollLeft;
+    // Only a clip entirely out of view is scrolled to.
+    if (box.bottom < view.top + 28) top -= view.top + 28 - box.top;
+    else if (box.top > view.bottom) top += box.bottom - view.bottom;
+    if (box.right < view.left || box.left > view.right)
+      left += box.left - view.left - view.width * 0.1;
+    if (top !== scroll.scrollTop || left !== scroll.scrollLeft)
+      scroll.scrollTo({ top, left: Math.max(0, left), behavior: 'smooth' });
+  };
+  /** T-ALL P3 (spec 4): while playing zoomed in, the view pages: when the
+   *  playhead passes 92% of the visible lanes, their new left edge is the
+   *  playhead time (no animation); a jump before the view pages back. */
+  const pageToPlayhead = () => {
+    if (!session.playing) return;
+    const x = timeToPixel(session.currentTime, session.timelineZoom);
+    const visible = viewportPixels();
+    if (x > scroll.scrollLeft + visible * 0.92 || x < scroll.scrollLeft)
+      scroll.scrollLeft = x;
+  };
   let menuId: string | null = null;
   let menuMarker: string | undefined;
   let markerPreview: { id: string; time: number; origin: number } | undefined;
@@ -862,6 +908,10 @@ export function mountTimeline(
   };
   let renderedProject: unknown;
   let renderedIdentity = '';
+  /** T-ALL P3: the space above the vertically centred lanes. */
+  let laneOffset = 0;
+  /** T-ALL P2: the ghost lanes' HIDE (for this session). */
+  let ghostLanesHidden = false;
   const render = () => {
     const { composition } = session.source;
     root.classList.toggle('lane-refused', controller.refused);
@@ -946,6 +996,7 @@ export function mountTimeline(
       const playhead = content.querySelector<HTMLElement>('.timeline-playhead');
       if (playhead)
         playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
+      pageToPlayhead();
       return;
     }
     renderedProject = engine.state;
@@ -1007,9 +1058,54 @@ export function mountTimeline(
       after.style.left = `${timeToPixel(range.end, zoom)}px`;
       after.style.width = `${Math.max(0, width - timeToPixel(range.end, zoom))}px`;
       ruler.append(before, after);
+      // T-ALL P4 (spec 9): the lanes are dimmed outside the range too.
+      for (const [left, w] of [
+        [0, timeToPixel(range.start, zoom)],
+        [
+          timeToPixel(range.end, zoom),
+          Math.max(0, width - timeToPixel(range.end, zoom)),
+        ],
+      ] as const) {
+        const dim = document.createElement('div');
+        dim.className = 'lanes-range-dim';
+        dim.style.left = `${headerWidth + left}px`;
+        dim.style.width = `${w}px`;
+        dim.style.height = '100%';
+        content.append(dim);
+      }
     }
     rulerBar.append(ruler);
     content.append(rulerBar);
+    // T-ALL P3 (spec 6): lanes sit vertically centred under the ruler when
+    // the panel is taller than them; otherwise the first lane is at the top
+    // and the rest scroll.
+    // (The ghost lanes of a one-lane scene count too: 2 × 28 px + gaps.)
+    const ghostRoom =
+      composition.tracks.filter((track) => track.clips.length).length === 1 &&
+      !ghostLanesHidden
+        ? 2 * (28 + 16)
+        : 0;
+    const lanesHeight = rowSpans().total + ghostRoom;
+    const centreOffset =
+      lanesHeight > 0
+        ? Math.max(
+            0,
+            Math.floor(
+              (scroll.clientHeight - rulerBar.offsetHeight - lanesHeight) / 2,
+            ),
+          )
+        : 0;
+    laneOffset = centreOffset;
+    if (centreOffset > 0) {
+      const spacer = document.createElement('div');
+      spacer.className = 'timeline-lanes-centre';
+      spacer.style.height = `${centreOffset}px`;
+      content.append(spacer);
+    }
+    rulerBar.style.setProperty(
+      '--track-height',
+      `${lanesHeight + centreOffset}px`,
+    );
     const trackMoves = controller.trackMoves;
     for (const [trackIndex, row] of trackRows.entries()) {
       const line = document.createElement('div');
@@ -1374,34 +1470,60 @@ export function mountTimeline(
       line.append(header, track);
       content.append(line);
     }
-    // J8, T3: a hint row stands in for each lane group that has no lane with
-    // clips yet; each adds that kind of element (the shell runs it).
-    const missing = (['text', 'video', 'audio'] as const).filter(
-      (kind) =>
-        !composition.tracks.some(
-          (track) =>
-            track.clips.length &&
-            groupOfTrack(track.type) === (kind === 'video' ? 'visual' : kind),
-        ),
-    );
-    if (!rows.length && missing.length) {
-      const hints = document.createElement('div');
-      hints.className = 'timeline-hints';
-      hints.style.marginLeft = `${headerWidth}px`;
-      for (const kind of missing) {
-        const hint = document.createElement('button');
-        hint.type = 'button';
-        hint.className = 'timeline-hint';
-        hint.dataset.hint = kind;
-        hint.innerHTML = `${iconSvg(kind === 'text' ? 'text' : kind === 'video' ? 'media' : 'audio', 15)}<span></span>`;
-        hint.querySelector('span')!.textContent = t(`timeline.hint.${kind}`);
-        hint.onclick = () =>
+    // T-ALL P2 (spec 2): an empty scene shows one drop lane with an
+    // illustration and no ruler or playhead; with exactly one lane, two
+    // dashed ghost lanes ("Add text" above, "Add audio" below) guide the
+    // next drop. They are guidance only: a drop on one opens a normal lane
+    // there, and a click adds text or opens Audio.
+    const laneCount = composition.tracks.filter(
+      (track) => track.clips.length,
+    ).length;
+    const empty = laneCount === 0 && !rows.length;
+    root.classList.toggle('timeline-empty', empty);
+    for (const control of root.querySelectorAll<HTMLButtonElement>(
+      '.transport-playback button',
+    ))
+      control.disabled = empty;
+    if (empty) {
+      const drop = document.createElement('div');
+      drop.className = 'timeline-empty-drop';
+      drop.style.marginLeft = `${headerWidth}px`;
+      drop.innerHTML = `<div class="empty-drop-box" data-empty-drop><svg class="empty-drop-art" viewBox="0 0 120 56" aria-hidden="true"><rect x="2" y="10" width="76" height="36" rx="4" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-width="2"/><path d="M8 10v36M72 10v36" stroke="currentColor" stroke-opacity="0.25" stroke-width="6" stroke-dasharray="3 3"/><rect x="58" y="4" width="40" height="28" rx="4" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-opacity="0.5"/><path d="M96 30c0-4 3-6 5-5l1 1v-8a3 3 0 016 0v9l4 1c2 1 3 3 2 5l-2 7h-12z" fill="currentColor" fill-opacity="0.6"/></svg><span class="empty-drop-plus" aria-hidden="true">${iconSvg('plus', 20)}</span><strong></strong></div>`;
+      drop.querySelector('strong')!.textContent = t('timeline.dropMedia');
+      content.append(drop);
+    } else if (laneCount === 1 && !ghostLanesHidden) {
+      const firstLane = content.querySelector('.timeline-nle-row');
+      const lastLane = [...content.querySelectorAll('.timeline-nle-row')].at(
+        -1,
+      );
+      for (const kind of ['text', 'audio'] as const) {
+        const ghostLane = document.createElement('button');
+        ghostLane.type = 'button';
+        ghostLane.className = 'timeline-ghost-lane';
+        ghostLane.dataset.ghost = kind === 'text' ? 'above' : 'below';
+        ghostLane.dataset.hint = kind;
+        ghostLane.style.marginLeft = `${headerWidth}px`;
+        ghostLane.innerHTML = `${iconSvg(kind === 'text' ? 'text' : 'audio', 14)}<span></span><em class="ghost-hide" role="button" tabindex="-1"></em>`;
+        ghostLane.querySelector('span')!.textContent = t(
+          `timeline.ghost.${kind}`,
+        );
+        ghostLane.querySelector('em')!.textContent = t('timeline.ghost.hide');
+        ghostLane.onclick = (event) => {
+          if ((event.target as HTMLElement).closest('.ghost-hide')) {
+            ghostLanesHidden = true;
+            render();
+            return;
+          }
           root.dispatchEvent(
-            new CustomEvent('timeline-hint', { detail: kind, bubbles: true }),
+            new CustomEvent('timeline-hint', {
+              detail: kind,
+              bubbles: true,
+            }),
           );
-        hints.append(hint);
+        };
+        if (kind === 'text' && firstLane) firstLane.before(ghostLane);
+        else if (lastLane) lastLane.after(ghostLane);
       }
-      content.append(hints);
     }
     const playhead = button(
       iconSvg('chevronDown', 12),
@@ -1411,9 +1533,44 @@ export function mountTimeline(
     );
     playhead.className = 'timeline-playhead';
     playhead.setAttribute('aria-label', 'Drag playhead');
-    playhead.style.setProperty('--track-height', `${rowSpans().total}px`);
+    playhead.style.setProperty(
+      '--track-height',
+      `${lanesHeight + centreOffset}px`,
+    );
     playhead.style.left = `${headerWidth + timeToPixel(session.currentTime, zoom)}px`;
     rulerBar.append(playhead);
+    playhead.classList.toggle(
+      'outside-range',
+      !range.full &&
+        (session.currentTime < range.start - 1e-9 ||
+          session.currentTime > range.end + 1e-9),
+    );
+    pageToPlayhead();
+    const nextOutliner = JSON.stringify([
+      composition.id,
+      composition.name,
+      composition.outliner,
+      composition.layers.map((layer) => [layer.id, layer.name]),
+      composition.tracks.map((track) => [
+        track.id,
+        track.enabled,
+        track.locked,
+        track.muted,
+        track.clips.map((clip) => clip.layerId),
+      ]),
+      session.selectedIds,
+      session.soloTrackIds,
+    ]);
+    if (nextOutliner !== outlinerKey) {
+      outlinerKey = nextOutliner;
+      outliner.render();
+      outliner.reveal();
+    }
+    const selection = session.selectedIds.join(',');
+    if (selection !== revealedSelection) {
+      revealedSelection = selection;
+      requestAnimationFrame(revealSelection);
+    }
     for (const marker of composition.markers) {
       const item = button(
         iconSvg('marker', 12),
@@ -1443,7 +1600,7 @@ export function mountTimeline(
       const box = document.createElement('div');
       box.className = 'timeline-marquee';
       box.style.left = `${headerWidth + Math.min(marquee.x, marquee.endX)}px`;
-      box.style.top = `${28 + Math.min(marquee.y, marquee.endY)}px`;
+      box.style.top = `${28 + laneOffset + Math.min(marquee.y, marquee.endY)}px`;
       box.style.width = `${Math.abs(marquee.endX - marquee.x)}px`;
       box.style.height = `${Math.abs(marquee.endY - marquee.y)}px`;
       content.append(box);
@@ -1565,7 +1722,7 @@ export function mountTimeline(
     } else if (pointer.kind === 'marquee') {
       const bounds = scroll.getBoundingClientRect();
       const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-        y = event.clientY - bounds.top + scroll.scrollTop - 28;
+        y = event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset;
       const { spans } = rowSpans();
       const selected = [
         ...nleTimelineRows(session.source, session.timelineZoom).flatMap(
@@ -1632,7 +1789,8 @@ export function mountTimeline(
           return;
         }
         const bounds = scroll.getBoundingClientRect();
-        const offset = event.clientY - bounds.top + scroll.scrollTop - 28;
+        const offset =
+          event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset;
         const index = rowSpans().spans.findIndex(
           (span) => offset >= span.top && offset < span.top + span.height,
         );
@@ -1658,6 +1816,7 @@ export function mountTimeline(
     safely(() => {
       if (pointer || event.button !== 0 || event.isPrimary === false) return;
       const target = event.target as HTMLElement;
+      if (target.closest('.timeline-outliner')) return;
       // ANI-004: a diamond selects its keyframes and starts a drag.
       const diamond = target.closest<HTMLElement>('[data-action="keyframe"]');
       if (diamond) {
@@ -1710,9 +1869,9 @@ export function mountTimeline(
         const bounds = scroll.getBoundingClientRect();
         marquee = {
           x: event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-          y: event.clientY - bounds.top + scroll.scrollTop - 28,
+          y: event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset,
           endX: event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-          endY: event.clientY - bounds.top + scroll.scrollTop - 28,
+          endY: event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset,
           originalIds: session.selectedIds,
           ids: event.shiftKey ? session.selectedIds : [],
         };
@@ -2042,11 +2201,14 @@ export function mountTimeline(
           break;
         case 'first-frame':
           session.setPlaying(false);
-          session.setCurrentTime(0);
+          // T-ALL P4 (spec 9): First and Last frame go to Start and End.
+          session.setCurrentTime(playRangeOf(session.source.composition).start);
+          // T-ALL P3 (spec 4): back to the first page.
+          scroll.scrollLeft = 0;
           break;
         case 'last-frame':
           session.setPlaying(false);
-          session.setCurrentTime(session.source.composition.duration);
+          session.setCurrentTime(playRangeOf(session.source.composition).end);
           break;
         case 'timecode':
           editTimecode(target);
@@ -2299,6 +2461,9 @@ export function mountTimeline(
   replaceLabel.title = t('timeline.replaceHint');
   const clearAssetDropTarget = () => {
     laneDrop = null;
+    root.classList.remove('timeline-dragging');
+    for (const item of root.querySelectorAll('.ghost-target'))
+      item.classList.remove('ghost-target');
     for (const item of [ghost, separator, dropLine, replaceLabel])
       item.remove();
     ghost.dataset.shown = separator.dataset.shown = 'false';
@@ -2439,6 +2604,8 @@ export function mountTimeline(
           : (rows.at(-1)?.bottom ?? contentBox.top + 28);
       separator.style.top = `${lineY - contentBox.top}px`;
       separator.style.left = `${headerWidth}px`;
+      // T-ALL P2: the "+" sits under the pointer's time, not at the centre.
+      separator.style.setProperty('--plus-x', `${left - headerWidth}px`);
       separator.dataset.shown = 'true';
       content.append(separator);
       // The "+" line is the mark; a ghost over it would hide it.
@@ -2497,15 +2664,48 @@ export function mountTimeline(
             ),
         ) > 1e-9,
     );
-    let target = resolveLaneDrop({
-      x,
-      y,
-      time,
-      group: info.group,
-      rows: dropRows(),
-      clips: dropClips(),
-      ...(info.moving ? { exclude: new Set([info.moving]) } : {}),
-    });
+    // T-ALL P2 (spec 2): the empty drop lane and the ghost lanes open a new
+    // lane where they are (above the first lane, below the last).
+    const within = (item: Element) => {
+      const box = item.getBoundingClientRect();
+      return x >= box.left && x <= box.right && y >= box.top && y <= box.bottom;
+    };
+    const ghostSlot = [
+      ...root.querySelectorAll<HTMLElement>('.timeline-ghost-lane'),
+    ].find(within);
+    const emptyDrop = root.querySelector<HTMLElement>('.timeline-empty-drop');
+    for (const item of root.querySelectorAll('.ghost-target'))
+      item.classList.remove('ghost-target');
+    root.classList.add('timeline-dragging');
+    let target: LaneDropTarget | null;
+    if (ghostSlot) {
+      ghostSlot.classList.add('ghost-target');
+      ghostSlot.style.setProperty(
+        '--ghost-width',
+        `${Math.max(8, timeToPixel(info.duration, session.timelineZoom))}px`,
+      );
+      ghostSlot.style.setProperty(
+        '--ghost-left',
+        `${timeToPixel(time, session.timelineZoom)}px`,
+      );
+      target = {
+        mode: 'new-lane',
+        index: ghostSlot.dataset.ghost === 'above' ? 0 : dropRows().length,
+        time,
+      };
+    } else if (emptyDrop && within(emptyDrop)) {
+      emptyDrop.classList.add('ghost-target');
+      target = { mode: 'new-lane', index: 0, time };
+    } else
+      target = resolveLaneDrop({
+        x,
+        y,
+        time,
+        group: info.group,
+        rows: dropRows(),
+        clips: dropClips(),
+        ...(info.moving ? { exclude: new Set([info.moving]) } : {}),
+      });
     if (!target) return null;
     // U1: a clip already on the timeline never replaces: over another clip
     // it goes before or after it, by the pointer's half.
@@ -2529,6 +2729,12 @@ export function mountTimeline(
       }
     laneDrop = { target, info, start };
     showAssetTarget();
+    // T-ALL P2 (spec 3): the selected clip's ruler band follows a move.
+    if (info.moving) {
+      const band = root.querySelector<HTMLElement>('.ruler-duration');
+      if (band)
+        band.style.left = `${timeToPixel(start, session.timelineZoom)}px`;
+    }
     // U1: a snapped move's guide sits on the edge that snapped (its start
     // or its end).
     if (info.moving && dropLine.classList.contains('timeline-snap')) {
@@ -3246,9 +3452,11 @@ export function mountTimeline(
         scroll.scrollLeft + viewportPixels(),
         zoom,
       );
+      // T-ALL P3: no auto-extend (spec 5); `reach` stays 0.
       if (
+        false &&
         visibleEnd >=
-        renderedSpan - pixelToTime(viewportPixels(), zoom) / 2 - 1e-9
+          renderedSpan - pixelToTime(viewportPixels(), zoom) / 2 - 1e-9
       ) {
         reach = Math.min(MAX_SPAN, Math.max(reach, visibleEnd));
         if (spanTime() > renderedSpan + 1e-9) render();

@@ -18,7 +18,6 @@ const rail = (page: Page, name: string) =>
 const rightRail = (page: Page, name: string) =>
   page.locator(`#rail-right [data-section="${name}"]`);
 const leftToggle = (page: Page) => page.locator('[data-panel="left"]');
-const rightToggle = (page: Page) => page.locator('[data-panel="right"]');
 
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
@@ -56,33 +55,35 @@ test('[LAY-031] the left rail opens, collapses and swaps its panel, and the top-
   await expect.poll(() => leftOpen(page)).toBe(true);
   await expect(rail(page, 'Text')).toHaveAttribute('aria-pressed', 'true');
   await expect(leftToggle(page)).toHaveAttribute('aria-expanded', 'true');
-  // The toggle reopens the last category.
+  // T-ALL (D-183): the toggle is in the panel's own header; it collapses the
+  // panel, and the last category's rail button reopens it.
   await leftToggle(page).click();
-  await leftToggle(page).click();
+  await expect.poll(() => leftOpen(page)).toBe(false);
+  await rail(page, 'Text').click();
   await expect.poll(() => leftOpen(page)).toBe(true);
   await expect(rail(page, 'Text')).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('[LAY-031] the right rail and its top-bar toggle share the same open state', async ({
+test('[LAY-031] the right rail and the panel collapse button share the same open state', async ({
   page,
 }) => {
-  expect(await rightOpen(page)).toBe(true);
-  // (U5: nothing selected shows no right rail tabs; select a layer.)
+  // T-ALL (D-183): the right panel shows on a selection; its collapse
+  // button is in its header (no top-bar toggle).
+  await expect(page.locator('.inspector')).toBeHidden();
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await expect.poll(() => rightOpen(page)).toBe(true);
   const active = page.locator('#rail-right button[aria-pressed="true"]');
   await expect(active).toHaveCount(1);
   const name = (await active.getAttribute('data-section'))!;
   await rightRail(page, name).click();
   await expect.poll(() => rightOpen(page)).toBe(false);
-  await expect(rightToggle(page)).toHaveAttribute('aria-expanded', 'false');
   await expect(
     page.locator('#rail-right button[aria-pressed="true"]'),
   ).toHaveCount(0);
   await rightRail(page, name).click();
   await expect.poll(() => rightOpen(page)).toBe(true);
-  await rightToggle(page).click();
+  await page.locator('#right-panel-collapse').click();
   await expect.poll(() => rightOpen(page)).toBe(false);
   await rightRail(page, name).click();
   await expect.poll(() => rightOpen(page)).toBe(true);
-  await expect(rightToggle(page)).toHaveAttribute('aria-expanded', 'true');
 });

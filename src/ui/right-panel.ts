@@ -8,10 +8,22 @@
 // builders (one implementation), so values, ratio lock and the 2D Animation
 // rules (guardCommands) are shared.
 import { buildTransitionPanel } from './transition-panel';
+import {
+  blendModes,
+  defaults as fxDefaults,
+  effects as fxEffectList,
+  filters as fxFilters,
+  getAdjustment,
+  getEffect,
+  getFilter,
+} from '../fx';
 import { resolvedTextStyle } from './text-editor';
 import {
   clipAnimation,
+  clipFx,
   clipTimeEffects,
+  type ClipFx,
+  MAX_FX_STACK,
   type Command,
   type EditorEngine,
   MAX_CLIP_SPEED,
@@ -782,48 +794,83 @@ export function mountRightPanel(
       keyframes,
     ];
   };
-  /** Adjust colors: Transparency works; the colour controls wait for W6. */
+  /** Adjust colors: Transparency and the FX library's colour adjustments. */
   const adjust = () => {
-    const planned = (key: string, id: string) => {
-      // J3: the shared NumberField with its slider, disabled until Wave 6.
-      const item = createNumberField({
+    // T-ALL P6: the colour adjustments of the FX library, one step each.
+    const clips = fxClips();
+    const fx = clips.length ? fxOf(clips[0]!.clip) : null;
+    const adjustField = (key: string) => {
+      const id = `adjust.${key}`;
+      const entry = fx?.stack.find((item) => item.id === id);
+      return createNumberField({
         id: `right-adjust-${key}`,
         label: t(`right.adjust.${key}`),
-        value: 0,
+        value: Math.round(Number(entry?.params.amount ?? 0) * 100),
         min: -100,
         max: 100,
         decimals: 0,
         slider: true,
-        disabled: true,
-        className: 'right-row right-row-planned',
-        onCommit: () => undefined,
+        disabled: !fx,
+        className: 'right-row',
+        onCommit: (value) =>
+          setFx('Adjust colors', (next) => {
+            const at = next.stack.findIndex((item) => item.id === id);
+            const replacement = {
+              id,
+              params: {
+                ...fxDefaults(getAdjustment(id)!),
+                amount: value / 100,
+              },
+            };
+            if (at >= 0) {
+              if (value === 0) next.stack.splice(at, 1);
+              else next.stack[at] = replacement;
+            } else if (value !== 0) next.stack.unshift(replacement);
+          }),
       });
-      item.title = t('toolbar.later', { wave: '6', id });
-      return item;
     };
     const blend = createSelect({
       id: 'right-blend-mode',
       label: t('right.adjust.blend'),
-      value: 'normal',
-      options: [{ value: 'normal', label: t('right.adjust.normal') }],
-      disabled: true,
-      onChange: () => undefined,
+      value: fx?.blendMode ?? 'blend.normal',
+      options: blendModes.map((mode) => ({
+        value: mode.id,
+        label: t(`fx.${mode.id}`),
+      })),
+      disabled: !fx,
+      onChange: (value) =>
+        safely(() =>
+          setFx('Blend mode', (next) => {
+            if (value === 'blend.normal') delete next.blendMode;
+            else next.blendMode = value;
+          }),
+        ),
     });
-    blend.title = t('toolbar.later', { wave: '6', id: 'MSK-001' });
     return [
       heading(t('panel.adjust'), t('right.adjustHint')),
       accordion('adjust-transparency', t('toolbar.transparency'), [
         hooks.build?.('transparency'),
       ]),
       accordion('adjust-colors', t('right.adjust.colors'), [
-        planned('exposure', 'CLR-001'),
-        planned('contrast', 'CLR-001'),
-        planned('saturation', 'CLR-001'),
-        planned('temperature', 'CLR-001'),
+        ...(['exposure', 'contrast', 'saturation', 'temperature'] as const).map(
+          adjustField,
+        ),
         blend,
-        button('right-adjust-reset', 'undo', t('right.adjust.reset'), null, {
-          reason: t('toolbar.later', { wave: '6', id: 'CLR-001' }),
-        }),
+        button(
+          'right-adjust-reset',
+          'undo',
+          t('right.adjust.reset'),
+          fx
+            ? () =>
+                setFx('Reset colors', (next) => {
+                  next.stack = next.stack.filter(
+                    (item) => !item.id.startsWith('adjust.'),
+                  );
+                  delete next.blendMode;
+                })
+            : null,
+          fx ? undefined : { reason: t('right.fadeNeedsClip') },
+        ),
       ]),
     ];
   };
@@ -911,32 +958,132 @@ export function mountRightPanel(
       field.title = t('toolbar.later', { wave, id: ledger });
       return field;
     });
-  const FILTERS = [
-    'original',
-    'vintage',
-    'mono',
-    'warm',
-    'cool',
-    'vivid',
-    'noir',
-    'dream',
-  ] as const;
-  const filters = () => [
-    heading(t('panel.filters'), t('right.filtersHint')),
-    choiceGrid(
-      t('panel.filters'),
-      FILTERS.map((id) =>
-        id === 'original'
-          ? { id, label: t(`right.filter.${id}`), pressed: true }
-          : {
-              id,
-              label: t(`right.filter.${id}`),
-              planned: ['6', 'FX-004'] as const,
-            },
+  // --- T-ALL P6: the FX library (filters, effects, adjustments) -------------
+  const fxClips = () => selectedClips(session.source, session.selectedIds);
+  const fxOf = (clip: unknown): ClipFx =>
+    structuredClone(
+      clipFx(clip as Parameters<typeof clipFx>[0]) ?? { version: 1, stack: [] },
+    ) as ClipFx;
+  /** Changes every selected clip's effect stack, one undo step. */
+  const setFx = (label: string, change: (fx: ClipFx) => void) => {
+    const clips = fxClips();
+    run(
+      label,
+      clips.map(({ clip }) => {
+        const next = fxOf(clip);
+        change(next);
+        return {
+          type: 'SET_CLIP_FX',
+          compositionId: session.source.composition.id,
+          clipId: clip.id,
+          fx: next,
+        } as Command;
+      }),
+    );
+  };
+  /** The items of a library list by category, as choice grids. */
+  const fxGrids = (
+    list: readonly { id: string; category: string }[],
+    pressed: (id: string) => boolean,
+    action: (id: string) => void,
+  ) => {
+    const categories = [...new Set(list.map((item) => item.category))];
+    return categories.flatMap((category) => {
+      const title = document.createElement('h4');
+      title.className = 'right-fx-category';
+      title.textContent = t(
+        `fx.category.${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+      );
+      return [
+        title,
+        choiceGrid(
+          title.textContent,
+          list
+            .filter((item) => item.category === category)
+            .map((item) => ({
+              id: item.id,
+              label: t(`fx.${item.id}`),
+              pressed: pressed(item.id),
+              action: () => action(item.id),
+            })),
+        ),
+      ];
+    });
+  };
+  /** The intensity of one stack entry (0 to 100 %). */
+  const intensityField = (id: string, intensity: number) =>
+    createNumberField({
+      id: `right-fx-intensity-${id.replace('.', '-')}`,
+      label: `${t(`fx.${id}`)} · ${t('fx.intensity')}`,
+      value: Math.round(intensity * 100),
+      unit: '%',
+      min: 0,
+      max: 100,
+      decimals: 0,
+      slider: true,
+      className: 'right-row',
+      onCommit: (value) =>
+        safely(() =>
+          setFx('Effect intensity', (next) => {
+            const entry = next.stack.find((item) => item.id === id);
+            if (entry)
+              entry.params = { ...entry.params, intensity: value / 100 };
+          }),
+        ),
+    });
+  const filters = () => {
+    const clips = fxClips();
+    if (!clips.length)
+      return [heading(t('panel.filters'), t('right.fadeNeedsClip'))];
+    const fx = fxOf(clips[0]!.clip);
+    const active = fx.stack.find((item) => item.id.startsWith('filter.'));
+    return [
+      heading(t('panel.filters'), t('right.filtersHint')),
+      ...(active
+        ? [intensityField(active.id, Number(active.params.intensity ?? 1))]
+        : []),
+      ...fxGrids(
+        fxFilters,
+        (id) => (active?.id ?? 'filter.none') === id,
+        (id) =>
+          setFx('Apply filter', (next) => {
+            const at = next.stack.findIndex((item) =>
+              item.id.startsWith('filter.'),
+            );
+            const entry = { id, params: fxDefaults(getFilter(id)!) };
+            if (id === 'filter.none') {
+              if (at >= 0) next.stack.splice(at, 1);
+            } else if (at >= 0) next.stack[at] = entry;
+            else next.stack.push(entry);
+          }),
       ),
-    ),
-    ...plannedFields('filter', [['intensity', 0, 100]], '6', 'FX-004'),
-  ];
+    ];
+  };
+  /** The FX library's effects: a click adds or removes one. */
+  const fxEffects = () => {
+    const clips = fxClips();
+    if (!clips.length) return [];
+    const fx = fxOf(clips[0]!.clip);
+    const on = new Set(fx.stack.map((item) => item.id));
+    return [
+      ...fx.stack
+        .filter((item) => item.id.startsWith('effect.'))
+        .map((item) =>
+          intensityField(item.id, Number(item.params.intensity ?? 1)),
+        ),
+      ...fxGrids(
+        fxEffectList,
+        (id) => on.has(id),
+        (id) =>
+          setFx(on.has(id) ? 'Remove effect' : 'Add effect', (next) => {
+            const at = next.stack.findIndex((item) => item.id === id);
+            if (at >= 0) next.stack.splice(at, 1);
+            else if (next.stack.length < MAX_FX_STACK)
+              next.stack.push({ id, params: fxDefaults(getEffect(id)!) });
+          }),
+      ),
+    ];
+  };
   const SHADOW: readonly (readonly [string, number, number])[] = [
     ['blur', 0, 100],
     ['distance', 0, 100],
@@ -947,16 +1094,7 @@ export function mountRightPanel(
     if (kind === 'video' || kind === 'image')
       return [
         heading(t('panel.effects'), t('right.effectsHint')),
-        choiceGrid(
-          t('panel.effects'),
-          ['blur', 'glow', 'vignette', 'chroma', 'pixelate', 'grain'].map(
-            (id) => ({
-              id,
-              label: t(`right.effect.${id}`),
-              planned: ['6', 'FX-001'] as const,
-            }),
-          ),
-        ),
+        ...fxEffects(),
       ];
     // Shapes: the outline is the stroke (live); shadows are planned. Text
     // outline and shadow come with the text effects (TXT-019, Wave 3).
@@ -973,6 +1111,7 @@ export function mountRightPanel(
       accordion(`${kind}-effect-shadow`, t('right.effect.shadow'), [
         ...plannedFields('shadow', SHADOW, wave, ledger),
       ]),
+      accordion(`${kind}-effect-fx`, t('panel.effects'), fxEffects()),
     ];
   };
   const transitionState = { query: '' };

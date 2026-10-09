@@ -31,6 +31,12 @@ type Fixtures = {
 export const test = base.extend<Fixtures>({
   errorGuard: [
     async ({ page }, use, testInfo) => {
+      // T-ALL P1 (D-183): the app opens Media first; earlier tests were
+      // written for the Scene panel, so the fixture keeps that start.
+      await page.addInitScript(() => {
+        (window as { __AIVE_E2E_START__?: string }).__AIVE_E2E_START__ =
+          'Scene';
+      });
       const errors: string[] = [];
       const allowed: ((message: string) => boolean)[] = [];
       // Shared per-test registry; exceptions must be declared explicitly in the test.

@@ -1,0 +1,711 @@
+{
+  "schemaVersion": 6,
+  "id": "g2-types",
+  "metadata": {
+    "name": "G2 types",
+    "createdAt": "2026-09-28T00:00:00.000Z",
+    "updatedAt": "2026-09-28T00:00:00.000Z"
+  },
+  "settings": {
+    "backgroundColor": "#f0eee7",
+    "audioSampleRate": 48000
+  },
+  "compositions": [
+    {
+      "id": "g2-composition",
+      "name": "G2 types",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "duration": 5,
+      "backgroundColor": "#f0eee7",
+      "layers": [
+        {
+          "id": "g2-text",
+          "name": "g2-text",
+          "type": "text",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                60,
+                60
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 360,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 60,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#222222"
+            },
+            "text": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "Glyph test",
+              "keyframes": []
+            },
+            "fontSize": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 40,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "g2-rect",
+          "name": "g2-rect",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                500,
+                60
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 200,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 120,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#e04040"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "g2-line",
+          "name": "g2-line",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                820,
+                100
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 240,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 24,
+              "keyframes": []
+            },
+            "shapeKind": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "line",
+              "keyframes": []
+            },
+            "stroke": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#2040e0"
+            },
+            "strokeWidth": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 8,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "g2-draw",
+          "name": "g2-draw",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                60,
+                250
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 292,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 82,
+              "keyframes": []
+            },
+            "path": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "6 6 146 76 286 16",
+              "keyframes": []
+            },
+            "brush": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "pen",
+              "keyframes": []
+            },
+            "stroke": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#e07020"
+            },
+            "strokeWidth": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 12,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "g2-group",
+          "name": "g2-group",
+          "type": "group",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                500,
+                300
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": [
+            {
+              "id": "g2-group-a",
+              "name": "g2-group-a",
+              "type": "shape",
+              "startTime": 0,
+              "duration": 5,
+              "transform": {
+                "position": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    0,
+                    0
+                  ],
+                  "keyframes": []
+                },
+                "rotation": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 0,
+                  "keyframes": []
+                },
+                "scale": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    1,
+                    1
+                  ],
+                  "keyframes": []
+                },
+                "opacity": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 1,
+                  "keyframes": []
+                }
+              },
+              "properties": {
+                "width": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 120,
+                  "keyframes": []
+                },
+                "height": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 80,
+                  "keyframes": []
+                },
+                "fill": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "color",
+                  "keyframes": [],
+                  "value": "#30a060"
+                }
+              },
+              "effects": [],
+              "masks": [],
+              "assetId": null,
+              "children": []
+            },
+            {
+              "id": "g2-group-b",
+              "name": "g2-group-b",
+              "type": "shape",
+              "startTime": 0,
+              "duration": 5,
+              "transform": {
+                "position": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    140,
+                    40
+                  ],
+                  "keyframes": []
+                },
+                "rotation": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 0,
+                  "keyframes": []
+                },
+                "scale": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    1,
+                    1
+                  ],
+                  "keyframes": []
+                },
+                "opacity": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 1,
+                  "keyframes": []
+                }
+              },
+              "properties": {
+                "width": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 120,
+                  "keyframes": []
+                },
+                "height": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 80,
+                  "keyframes": []
+                },
+                "fill": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "color",
+                  "keyframes": [],
+                  "value": "#a030a0"
+                }
+              },
+              "effects": [],
+              "masks": [],
+              "assetId": null,
+              "children": []
+            }
+          ]
+        },
+        {
+          "id": "g2-image",
+          "name": "g2-image",
+          "type": "image",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                860,
+                300
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 240,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 135,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#d0a020"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": "g2-image-asset",
+          "children": []
+        },
+        {
+          "id": "g2-video",
+          "name": "g2-video",
+          "type": "video",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                60,
+                500
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 240,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 135,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#20a0d0"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": "g2-video-asset",
+          "children": []
+        }
+      ],
+      "tracks": [],
+      "markers": [],
+      "audioTracks": []
+    }
+  ],
+  "assets": [
+    {
+      "id": "g2-image-asset",
+      "name": "Photo",
+      "type": "image",
+      "source": {
+        "kind": "local",
+        "reference": "media/g2-missing-image"
+      },
+      "metadata": {},
+      "duration": 5
+    },
+    {
+      "id": "g2-video-asset",
+      "name": "Footage",
+      "type": "video",
+      "source": {
+        "kind": "local",
+        "reference": "media/g2-missing-video"
+      },
+      "metadata": {},
+      "duration": 5
+    }
+  ]
+}

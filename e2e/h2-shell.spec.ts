@@ -105,7 +105,8 @@ test('[LAY-033][LAY-003][LAY-008] side panels open and close in 150 to 300 ms, a
   await page.locator('[data-panel="left"]').click();
   await expect.poll(stageLeft).toBeCloseTo(rail, 0);
   await expect(page.locator('.library')).toBeHidden();
-  await page.locator('[data-panel="left"]').click();
+  // T-ALL (D-183): the rail reopens a panel collapsed from its header.
+  await page.locator('#rail-left [data-category="Scene"]').click();
   await expect.poll(stageLeft).toBeCloseTo(open, 0);
   await expect(page.locator('.library')).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -139,6 +140,8 @@ test('[LAY-004] panel dividers drag within their limits: left 260 to 420, right 
   await expect.poll(() => size('.library', 'width')).toBeCloseTo(420, 0);
   await drag('.panel-resizer.left', -400, 0);
   await expect.poll(() => size('.library', 'width')).toBeCloseTo(260, 0);
+  // T-ALL (D-183): the right panel shows while something is selected.
+  await page.locator('#scene-list [data-layer-id="example-headline"]').click();
   await drag('.panel-resizer.right', 400, 0);
   await expect.poll(() => size('.inspector', 'width')).toBeCloseTo(240, 0);
   await drag('.panel-resizer.right', -400, 0);
@@ -245,9 +248,8 @@ test('[LAY-013] below 1440 the right panel is a drawer; below 1024 both panels a
   const canvasBefore = (await page
     .locator('#composition-canvas')
     .boundingBox())!;
-  // (U5: nothing selected shows no right rail tabs; select a layer.)
+  // T-ALL (D-183): a selection opens the right drawer.
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
-  await page.locator('#rail-right [data-section="Properties"]').click();
   await expect.poll(inspectorShown).toBe(true);
   // An overlay: the canvas keeps its size.
   expect(
@@ -269,7 +271,7 @@ test('[LAY-013] below 1440 the right panel is a drawer; below 1024 both panels a
     'data-layout',
     'phone',
   );
-  await page.locator('#rail-left [data-category="Media"]').click();
+  await page.locator('#rail-left [data-category="Text"]').click();
   // After its short slide-in the sheet sits on the bottom edge, full width.
   await expect
     .poll(async () => {
@@ -281,8 +283,9 @@ test('[LAY-013] below 1440 the right panel is a drawer; below 1024 both panels a
       ];
     })
     .toEqual([0, 844, 390]);
-  // Opening the right side closes the left sheet.
-  await page.locator('[data-panel="right"]').click();
+  // Opening the right side (a new selection, T-ALL D-183) closes the left
+  // sheet.
+  await page.locator('#add-text-box').click();
   await expect.poll(inspectorShown).toBe(true);
   await expect(page.locator('[data-panel="left"]')).toHaveAttribute(
     'aria-expanded',

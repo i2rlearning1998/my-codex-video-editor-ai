@@ -150,6 +150,9 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-057 | P0 | W2 | Verified | Menus taller than the window scroll with the wheel; the wheel over a menu, the Draw panel or a floating popover scrolls it and never pans or zooms the canvas (U3 LCR) |
 | LAY-058 | P0 | W2 | Verified | The timeline menu's Speed and Audio open as flyouts beside their entry on hover (150 ms, with a 300 ms grace toward the flyout), on click and on the Right arrow; Left closes the flyout (U3 LCR) |
 | LAY-059 | P0 | W2 | Verified | The right rail shows 24 px icons with their labels under them (at least 12.5 px); nothing selected shows no Canvas panel, only an empty state (U5 LCR) |
+| LAY-060 | P0 | W2 | Verified | The first load opens the Media panel; its empty state shows an illustration; a new project's canvas is white (T-ALL LCR) |
+| LAY-061 | P0 | W2 | Verified | No panel toggles in the top bar: the left panel's collapse button is in its own header (a rail category reopens it) and the right panel's in its header; the right panel shows only while something is selected, opens on each new selection and never moves the canvas (T-ALL LCR) |
+| LAY-062 | P0 | W2 | Verified | On the wide layout the left rail and panel run the full height and the timeline sits beside the panel (T-ALL LCR) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -367,6 +370,8 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 | LYR-013 | P1 | W2 | Todo | Arrow-key navigation in the list |
 | LYR-014 | P2 | W2 | Todo | Solo (isolate) a layer |
 | LYR-015 | P2 | W2 | Todo | Layer color labels |
+| LYR-016 | P0 | W2 | Verified | Layers outliner beside the lanes (closed by default, resizable 160 to 360 px, readable rows): nested collections per scene that can be created, renamed, dragged into each other and deleted, elements dragged into them; organisation only (the canvas and the layers never change); one undo step each; stored in the scene's optional `outliner` (schema 7) (T-ALL P5 LCR) |
+| LYR-017 | P0 | W2 | Verified | Selection follows both ways between the outliner, the canvas and the timeline; a selected element inside a closed collection opens it; a selected clip out of view is scrolled into view; each element row has eye, lock, solo and mute for its lane, and a collection row sets them for everything inside (T-ALL P5 LCR) |
 
 ## TL: Timeline (Wave 2 interactions; media visuals in Wave 4; animation in Wave 5)
 
@@ -428,7 +433,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-052 | P1 | W8 | Todo | Compound clip (nested composition) shows a badge and can be entered |
 | TL-053 | P1 | W9 | Todo | 200 clips scroll and zoom smoothly (virtualized rows) on the reference machine |
 | TL-054 | P2 | W9 | Todo | Timeline scroll and zoom are remembered per composition |
-| TL-055 | P0 | W2 | Verified | Infinite timeline: the ruler and track area always extend past the content end and keep extending while the user scrolls or zooms out near the end (no fixed content-length ceiling); the playhead still stops at the content end |
+| TL-055 | P0 | W2 | Verified | The scroll range is the larger of the project and the viewport plus half a viewport (the project end can sit at the viewport centre); it grows with the content but never extends on its own while scrolling; the playhead stops at the content end (T-ALL LCR, supersedes the infinite timeline) |
 | TL-056 | P0 | W2 | Verified | Every clip has dedicated left and right trim handles with a hit area of at least 8 CSS pixels, a resize cursor and a visible grip on hover or selection; the clip body keeps the move cursor |
 | TL-057 | P0 | W2 | Verified | While moving or trimming a clip, dragging the playhead or dragging a marker, edges snap within 8 CSS pixels to clip edges, the playhead and markers, and a visible snap-guide line spans the ruler and all tracks at the snapped time |
 | TL-058 | P0 | W2 | Verified | Dragging a clip onto another compatible track shows a ghost of the clip at its landing track and time while the original stays dimmed in place; releasing commits exactly the ghost position in one undo step; Escape cancels |
@@ -438,7 +443,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-062 | P0 | W2 | Verified | A clip dragged over a lane of another group shows a not-allowed cursor and a hatched lane, and the drop changes nothing (it snaps back); a lane's up and down buttons stay within its group (J7) |
 | TL-063 | P0 | W2 | Verified | Bring forward, Send backward, Bring to front and Send to back move a top-level element between the lanes of its own group (a new lane when the next one is busy at its time; a lane emptied by the move goes), one undo step each; group children still move among their siblings (J7) |
 | TL-064 | P1 | W2 | Verified | A shimmer skeleton of the editor (bar, panels, three timeline rows) shows from the first paint until the app has loaded, then goes (J8) |
-| TL-065 | P0 | W2 | Verified | An empty scene's timeline shows three hint rows, + Add text, + Add video and + Add audio: text adds a text box ready to type, video opens Media with the file picker, audio opens the Audio panel; from T3 each hint row stands in for a lane group that has no lane with clips yet, and goes once it has one (J8, T3 LCR) |
+| TL-065 | P0 | W2 | Verified | An empty scene shows one drop lane ("Drag & drop media here", dashed box) with no ruler or playhead; with exactly one lane, dashed ghost lanes "Add text" (above) and "Add audio" (below) add text or open Audio on click and open a new lane where they are on drop; two or more lanes hide them (T-ALL LCR) |
 | TL-066 | P0 | W2 | Verified | Media dragged from the Media panel shows where it lands: over the canvas only, a box at the picture's size centred on the pointer; over a lane, a clip-sized ghost (T3: name and length pill, the lane not outlined); at a lane's edge, a purple separator with + whose drop makes a new lane there (J9, T3 LCR) |
 | TL-067 | P0 | W2 | Verified | Media dragged over a lane of another group is refused (not-allowed, hatched lane, nothing on drop); over the middle third of a clip of the same group the clip shows a Replace label and the drop replaces it as one undo step (J9; the Replace menu is replaced by the T3 rule, T3 LCR) |
 | TL-068 | P0 | W2 | Verified | A timeline clip dragged and released outside the timeline stays where it was (it dims while outside), and Escape during a clip drag cancels it; neither adds history (J9) |
@@ -461,6 +466,11 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-085 | P0 | W2 | Verified | Replace (a label on the clip) shows only when a new item from the library or Media is dragged over the middle of a clip; a clip moved on the timeline never replaces: over another clip it goes before or after it by the pointer's half, rippling later clips (U1 LCR) |
 | TL-086 | P0 | W2 | Verified | Collapse leaves the canvas and one player bar: the wand (disabled), First frame, Back 5 s, Play/Pause, Forward 5 s, the timecode, a full-width scrubber (white knob, lighter played part, the smooth scrub) and Expand; no scene strip, status row or lanes; Collapse and Expand animate (240 ms, about 0 with reduced motion) (U4 LCR) |
 | TL-087 | P0 | W2 | Verified | A frame panel sticks to the timeline's bottom right: [‹ Current ›] [stopwatch] Start [‹ n ›] End [‹ n ›] in frames at the scene's frame rate, text at least 13 px; Current steps ±1 frame (Shift ×10), takes a typed frame and scrubs by drag, with no undo step (U6 LCR) |
+| TL-088 | P0 | W2 | Verified | Empty scene: one drop lane with an illustration and "Drag & drop media here", no ruler, no playhead, transport disabled; while dragging the hint gives way to a "+" and the box turns purple; with one lane, ghost lanes Add text above and Add audio below (HIDE hides them), a drop on one opens a lane there; two lanes hide them (T-ALL LCR) |
+| TL-089 | P0 | W2 | Verified | Every kind (shape, text, image, video, audio) opens a new lane above the first lane, between lanes or below the last; a lane of another group shows only the blocked cursor (no ghost, no + line, no highlight); the + on the insert line follows the pointer (T-ALL LCR) |
+| TL-090 | P0 | W2 | Verified | The playhead is drawn above the lanes and clips; the selected clip's ruler band follows a clip move live (T-ALL LCR) |
+| TL-091 | P0 | W2 | Verified | Playing while zoomed in pages the view: past 92% of the visible lanes the new left edge is the playhead time (no animation); the playhead never leaves the view; First frame returns to the first page (T-ALL LCR) |
+| TL-092 | P0 | W2 | Verified | Lanes sit vertically centred under the ruler when the panel is taller than them, else the first lane is at the top and the rest scroll; resizing the timeline keeps the preview at least 260 px tall (T-ALL LCR) |
 
 ## PB: Playback and transport
 
@@ -483,7 +493,7 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | PB-013 | P1 | W7 | Todo | Master volume and mute with a level meter |
 | PB-014 | P1 | W2 | Todo | Fullscreen playback with minimal controls |
 | PB-015 | P0 | W4 | Verified | Dragging the playhead over video redraws the canvas continuously (at least 20 times over a 1 s scrub, the nearest cached frame shown while a seek is pending) and shows the exact frame on release (U2 LCR) |
-| PB-016 | P0 | W2 | Verified | Start and End set the scene's playback range (stored per scene, one undo step each, Start before End enforced; defaults the first and last frame, and End follows the scene's end while it is there): playback starts at Start and stops at End, export covers Start to End, and the ruler dims outside the range (U6 LCR) |
+| PB-016 | P0 | W2 | Verified | Start and End set the scene's playback range (stored per scene, one undo step each, Start before End enforced; defaults the first and last frame, and End follows the scene's end while it is there): playback starts at Start and stops at End, export covers Start to End, the ruler and the lanes dim outside the range, playback loops from End back to Start, First and Last frame go to Start and End, and the fields take five-digit frames (U6 LCR; T-ALL P4) |
 
 ## INS: Inspector and properties panel
 
@@ -677,17 +687,18 @@ Requires schema v5 (effects are currently blocked by the schema). GPU rendering 
 | FX-001 | P0 | W6 | Todo | Effects tab lists categories with live preview thumbnails and hover preview |
 | FX-002 | P0 | W6 | Todo | Apply an effect by click or drag to a clip or layer; effects stack, reorder, toggle, copy and remove |
 | FX-003 | P0 | W6 | Todo | Effect parameters appear in the inspector and can be keyframed |
-| FX-004 | P0 | W6 | Todo | Filters (looks): a set of one-click looks with an intensity slider |
+| FX-004 | P0 | W6 | Verified | Filters (looks): a set of one-click looks with an intensity slider |
 | FX-005 | P0 | W6 | Todo | Gaussian blur and background blur |
 | FX-006 | P0 | W6 | Todo | Vignette, film grain and glow |
 | FX-007 | P1 | W6 | Todo | Motion blur, radial blur, pixelate, mosaic, glitch, RGB split, chromatic aberration, wave, mirror, kaleidoscope, invert, sepia, duotone, halftone |
 | FX-008 | P1 | W6 | Todo | Adjustment layer applies effects to everything below it |
 | FX-009 | P1 | W6 | Todo | Effects can be applied to groups and compositions |
-| FX-010 | P0 | W6 | Todo | Effects render identically in preview and export (parity tests) |
+| FX-010 | P0 | W6 | Verified | Effects render identically in preview and export (parity tests) |
 | FX-011 | P0 | W6 | Todo | WebGL2 rendering with a safe fallback when the GPU or context is lost |
 | FX-012 | P1 | W6 | Todo | 1080p 30 fps stays real-time with three effects on the reference machine |
 | FX-013 | P2 | W6 | Todo | Save an effect stack as a preset |
 | FX-014 | P2 | W8 | Todo | Custom shader effects through a sandboxed plugin API |
+| FX-015 | P0 | W6 | Verified | The right panel's Filters, Effects and Adjust colors apply the FX library (filters with intensity, effects added and removed with intensity, exposure, contrast, saturation and temperature, blend mode, Reset) to the selected clips, one undo step each, saved with the project (T-ALL P6 LCR) |
 
 ## TR: Transitions (Wave 6)
 
@@ -698,20 +709,21 @@ Between clips and at clip edges.
 | TR-001 | P0 | W6 | Todo | Transitions tab with animated previews |
 | TR-002 | P0 | W6 | Todo | Apply by dropping between two adjacent clips or on a clip edge; default duration 1 s; drag handle adjusts duration |
 | TR-003 | P0 | W6 | Todo | Types: cross dissolve, fade to black, fade to white, slide (four directions), push, wipe, zoom |
-| TR-004 | P1 | W6 | Todo | More types: spin, blur, glitch, iris, and similar |
+| TR-004 | P1 | W6 | Verified | More types: spin, blur, glitch, iris, and similar |
 | TR-005 | P0 | W6 | Todo | Insufficient source handles are detected and handled with a clear message or automatic adjustment |
 | TR-006 | P0 | W6 | Todo | Replace or remove a transition; apply one to all cuts on a track |
 | TR-007 | P0 | W6 | Todo | Transitions render identically in preview and export |
 | TR-008 | P1 | W6 | Todo | Video cross dissolve also crossfades the audio |
 | TR-009 | P1 | W6 | Todo | Alignment choice: centered, start or end on the cut |
 | TR-010 | P1 | W6 | Verified | Transitions panel lists transitions by section (Fades & blurs, Wipes, Pushes, Cartoon, Glitches, 3D) with static posters, a tip and a Duration control; they are disabled with their wave until transitions are built |
-| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane, a + adds a transition and a cut with one shows a chip; both open a Transition panel with search, a grouped grid (Cross fade, Fade through black and white, Wipe left and right, Slide left and right live; the rest disabled with their wave) and Duration (default 1 s, clamped with a message to what the clips allow); each change and Remove is one undo step; the transition is drawn the same in the preview and the export (J12) |
+| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane, a + adds a transition and a cut with one shows a chip; both open a Transition panel with search, a grouped grid (Cross fade, Fade through black and white, Wipe left and right, Slide left and right live; the rest disabled with their wave; T-ALL P6: the FX library fills them) and Duration (default 1 s, clamped with a message to what the clips allow); each change and Remove is one undo step; the transition is drawn the same in the preview and the export (J12) |
+| TR-012 | P0 | W6 | Verified | The Transition panel's planned entries and a More group are the FX library's pixel transitions (cross blur, burn, wipes, iris, push, zoom, spin, swirl, glitch, bloom, page turn, cube flip and more), drawn across the cut the same in the preview and the export (T-ALL P6 LCR) |
 
 ## MSK: Masks, blend modes and compositing (Wave 6)
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| MSK-001 | P0 | W6 | Todo | Blend modes: Normal, Multiply, Screen, Overlay, Add, Darken, Lighten |
+| MSK-001 | P0 | W6 | Claimed | Blend modes: Normal, Multiply, Screen, Overlay, Add, Darken, Lighten |
 | MSK-002 | P1 | W6 | Todo | More blend modes: Soft Light, Hard Light, Difference, Color Dodge, Color Burn, and similar |
 | MSK-003 | P0 | W6 | Todo | Masks: rectangle and ellipse with feather, invert and opacity |
 | MSK-004 | P1 | W6 | Todo | Freehand bezier masks; animated mask paths |
@@ -722,7 +734,7 @@ Between clips and at clip edges.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| CLR-001 | P0 | W6 | Todo | Color panel: exposure, contrast, highlights, shadows, whites, blacks, saturation, vibrance, temperature, tint, sharpen |
+| CLR-001 | P0 | W6 | Claimed | Color panel: exposure, contrast, highlights, shadows, whites, blacks, saturation, vibrance, temperature, tint, sharpen |
 | CLR-002 | P1 | W6 | Todo | RGB and luma curves |
 | CLR-003 | P1 | W6 | Todo | Color wheels (lift, gamma, gain) |
 | CLR-004 | P2 | W6 | Todo | HSL secondary color selection |

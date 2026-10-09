@@ -29,7 +29,7 @@ describe('[PRJ-024] [PRJ-025] [HIS-009] scene isolation (J1, schema 6)', () => {
     const text = readFileSync('tests/fixtures/projects/v5-scenes.json', 'utf8');
     const legacy = JSON.parse(text);
     const project = deserializeProject(text);
-    expect(project.schemaVersion).toBe(6);
+    expect(project.schemaVersion).toBe(7);
     expect(project.compositions.map((item) => item.backgroundColor)).toEqual([
       '#335577',
       '#335577',
@@ -48,7 +48,7 @@ describe('[PRJ-024] [PRJ-025] [HIS-009] scene isolation (J1, schema 6)', () => {
     );
     project.schemaVersion = 6;
     expect(() => deserializeProject(JSON.stringify(project))).toThrow();
-    project.schemaVersion = 7;
+    project.schemaVersion = 8;
     expect(() => deserializeProject(JSON.stringify(project))).toThrow(
       /newer than supported/,
     );

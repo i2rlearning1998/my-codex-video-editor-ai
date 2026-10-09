@@ -48,41 +48,37 @@ test('[TL-064] a shimmer skeleton of the editor shows until the app has loaded, 
   await expect(page.locator('#timeline-foundation')).toBeVisible();
 });
 
-test('[TL-065] an empty scene shows + Add text, + Add video and + Add audio rows that add or open the right thing', async ({
+test('[TL-065] an empty scene shows the drop lane; with one lane the ghost lanes Add text and Add audio add or open the right thing', async ({
   page,
 }) => {
+  // T-ALL P2 (D-184, spec 2): the J8/T3 hint rows are replaced by the
+  // empty drop lane and, with one lane, the ghost lanes.
   await page.goto('/');
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
-  // The example has only text-and-shape lanes: (T3) hints stand in for the
-  // missing video and audio lanes.
-  await expect(hints(page)).toHaveText(['+ Add video', '+ Add audio']);
+  // The example has several lanes: no ghost lanes.
+  await expect(page.locator('.timeline-ghost-lane')).toHaveCount(0);
   await blankScene(page);
-  await expect(hints(page)).toHaveText([
-    '+ Add text',
-    '+ Add video',
-    '+ Add audio',
-  ]);
-  // + Add text: a text box, ready to type; the hints go.
-  await hints(page).filter({ hasText: 'Add text' }).click();
+  await expect(page.locator('.timeline-empty-drop')).toBeVisible();
+  await expect(hints(page)).toHaveCount(0);
+  // One lane (a rectangle): Add text above, Add audio below.
+  await page.locator('#rail-left [data-category="Elements"]').click();
+  await page.locator('[data-shape="rectangle"]').first().click();
+  const ghosts = page.locator('.timeline-ghost-lane');
+  await expect(ghosts).toHaveText([/Add text/, /Add audio/]);
+  // Add text: a text box, ready to type.
+  await ghosts.filter({ hasText: 'Add text' }).click();
   const layers = (await scene(page)).layers;
-  expect(layers).toHaveLength(1);
-  expect(layers[0]!.type).toBe('text');
+  expect(layers.some((layer) => layer.type === 'text')).toBe(true);
   await expect(page.locator('.text-editor')).toBeVisible();
   await page.keyboard.press('Escape');
-  // (T3) The text lane exists now; video and audio still have none.
-  await expect(hints(page)).toHaveText(['+ Add video', '+ Add audio']);
-  // + Add video: the Media panel with the file picker.
-  await blankScene(page);
-  const chooser = page.waitForEvent('filechooser');
-  await hints(page).filter({ hasText: 'Add video' }).click();
-  await chooser;
-  await expect(
-    page.locator('#rail-left [data-category="Media"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
-  // + Add audio: the Audio panel.
-  await hints(page).filter({ hasText: 'Add audio' }).click();
+  // Two lanes now: the ghost lanes go.
+  await expect(ghosts).toHaveCount(0);
+  await page.locator('#composition-canvas').focus();
+  await page.keyboard.press('Control+z');
+  // Add audio: the Audio panel.
+  await ghosts.filter({ hasText: 'Add audio' }).click();
   await expect(
     page.locator('#rail-left [data-category="Audio"]'),
   ).toHaveAttribute('aria-pressed', 'true');

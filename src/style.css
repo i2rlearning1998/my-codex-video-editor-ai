@@ -6906,10 +6906,11 @@ input[type='range'] {
 /* U6: the frame panel stays at the timeline's bottom right; the playback
    range is drawn on the ruler with the outside dimmed. */
 .frame-panel {
-  position: absolute;
-  inset-inline-end: var(--space-3);
-  inset-block-end: var(--space-2);
-  z-index: 5;
+  /* T-ALL: a row under the lanes, never over them. */
+  position: static;
+  flex: none;
+  align-self: flex-end;
+  margin: var(--space-1) var(--space-3);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -6930,7 +6931,9 @@ input[type='range'] {
   inline-size: auto;
 }
 .frame-stepper .frame-field input {
-  inline-size: 5ch;
+  /* T-ALL P4: five digits fit (spec 9). */
+  inline-size: 7ch;
+  min-inline-size: 7ch;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
@@ -6946,4 +6949,314 @@ input[type='range'] {
   inset-block: 0;
   background: var(--scrim);
   pointer-events: none;
+}
+
+/* T-ALL P1 (spec 7): the left rail and panel run the full height; the
+   timeline sits beside the panel (wide layout; narrower layouts keep the
+   full-width timeline so the Player bar fits). The left panel's collapse
+   button is in its own header row. */
+.editor-shell[data-layout='wide'] {
+  grid-template-areas:
+    'top top top top top'
+    'rail-left library preview inspector rail-right'
+    'rail-left library timeline timeline timeline'
+    'rail-left library status status status';
+}
+.panel-collapse-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-1) var(--space-2) 0;
+}
+
+/* T-ALL P1: the Media empty state shows an illustration (spec 7). */
+.media-illustration {
+  inline-size: 160px;
+  max-inline-size: 100%;
+  block-size: auto;
+  margin-inline: auto;
+}
+
+/* T-ALL P1: right rail labels wrap instead of clipping (spec 10.10). */
+.icon-rail-right .icon-rail-label {
+  white-space: normal;
+  text-align: center;
+  overflow: visible;
+  letter-spacing: -0.02em;
+}
+
+/* T-ALL P1 (spec 7): no right panel while nothing is selected. */
+.editor-shell.right-empty .inspector,
+.editor-shell.right-empty .panel-resizer.right {
+  visibility: hidden;
+}
+
+/* T-ALL P2 (spec 1-3): playhead on top of clips and sticky parts; a
+   refused lane only shows the blocked cursor; the "+" follows the pointer. */
+.timeline-playhead {
+  z-index: 20;
+}
+.timeline-nle-row.drop-refused .timeline-track {
+  background: none;
+}
+.timeline-lane-insert {
+  --plus-x: 50%;
+  block-size: 3px;
+}
+.timeline-lane-insert span {
+  inset-inline-start: calc(var(--plus-x, 50%) - 10px);
+}
+.timeline-empty .timeline-ruler-bar,
+.timeline-empty .timeline-playhead {
+  display: none;
+}
+.timeline-empty-drop {
+  display: flex;
+  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+  min-block-size: 52px;
+  background: var(--color-bg-sunken, var(--app));
+  border-radius: var(--radius-md);
+}
+.empty-drop-box {
+  inline-size: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 2px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted, var(--color-text));
+}
+.empty-drop-art {
+  inline-size: 120px;
+  block-size: 56px;
+}
+.empty-drop-box strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+.empty-drop-plus {
+  display: none;
+}
+.timeline-dragging .empty-drop-art,
+.timeline-dragging .empty-drop-box strong {
+  display: none;
+}
+.timeline-dragging .empty-drop-plus {
+  display: inline-flex;
+  color: var(--accent-text);
+}
+.timeline-empty-drop.ghost-target .empty-drop-box {
+  border-style: solid;
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+.timeline-ghost-lane {
+  --ghost-left: 0px;
+  --ghost-width: 40px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: calc(100% - var(--space-3));
+  block-size: 28px;
+  margin-block: 8px;
+  padding-inline: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted, var(--color-text));
+  font-size: 13px;
+  cursor: pointer;
+}
+.timeline-ghost-lane .ghost-hide {
+  margin-inline-start: auto;
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 600;
+  visibility: hidden;
+}
+.timeline-ghost-lane:hover {
+  border-color: var(--color-accent);
+}
+.timeline-ghost-lane:hover .ghost-hide {
+  visibility: visible;
+}
+.timeline-ghost-lane.ghost-target > * {
+  visibility: hidden;
+}
+.timeline-ghost-lane.ghost-target::after {
+  content: '';
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: var(--ghost-left, 0);
+  inline-size: var(--ghost-width, 40px);
+  border: 2px dashed var(--color-accent);
+  border-radius: var(--radius-sm);
+}
+
+/* T-ALL P4 (spec 9): one step style (the ‹ › buttons), no stacked arrows;
+   outside the range the lanes are dimmed as well as the ruler; the
+   playhead beyond the range has its own colour. */
+.frame-panel .number-field-steps,
+.frame-panel .number-field-more {
+  display: none;
+}
+.frame-panel .number-field-label {
+  font-size: 13px;
+}
+.lanes-range-dim {
+  position: absolute;
+  top: 0;
+  z-index: 6;
+  background: var(--scrim);
+  pointer-events: none;
+}
+.timeline-playhead.outside-range {
+  --playhead-colour: var(--danger-text, #e5484d);
+  color: var(--playhead-colour);
+}
+.timeline-playhead.outside-range::after {
+  background: var(--playhead-colour);
+}
+.frame-panel .frame-field input {
+  inline-size: 9ch !important;
+  min-inline-size: 9ch;
+  padding-inline: 4px;
+}
+
+/* T-ALL P5 (spec 8, 12): the outliner is a column beside the lanes; it never
+   covers them. Rows are at least 28 px, icons 16 px, names readable. */
+.timeline-body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+}
+.timeline-body > .timeline-scroll {
+  flex: 1;
+  min-inline-size: 0;
+}
+.timeline-outliner {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 160px;
+  max-inline-size: 360px;
+  border-inline-end: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+  overflow: hidden;
+}
+.timeline-body {
+  position: relative;
+}
+/* Closed, only its open button floats over the ruler's empty corner, so the
+   lanes keep their whole width (D-187). */
+.timeline-outliner.collapsed {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 25;
+  min-inline-size: 0;
+  inline-size: auto !important;
+  border: 0;
+  background: transparent;
+}
+.timeline-outliner.collapsed .outliner-header {
+  padding: 0;
+  border: 0;
+}
+.timeline-outliner.collapsed .outliner-resizer {
+  display: none;
+}
+.timeline-outliner.collapsed .outliner-tree,
+.timeline-outliner.collapsed .outliner-header h3,
+.timeline-outliner.collapsed .outliner-header [data-ol='new-collection'] {
+  display: none;
+}
+.outliner-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-block-end: 1px solid var(--color-border);
+}
+.outliner-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.outliner-tree {
+  flex: 1;
+  overflow: auto;
+}
+.outliner-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: 32px;
+  padding-inline-end: var(--space-1);
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: default;
+  user-select: none;
+}
+.outliner-row:hover {
+  background: var(--hover);
+}
+.outliner-row[aria-selected='true'] {
+  background: var(--color-accent-soft);
+}
+.outliner-row.drop-into {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.outliner-icon,
+.outliner-disclosure {
+  display: inline-flex;
+  flex: none;
+  inline-size: 20px;
+  min-block-size: 32px;
+  justify-content: center;
+}
+.outliner-disclosure {
+  min-inline-size: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.outliner-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.outliner-rename {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 13px;
+}
+.outliner-toggle {
+  flex: none;
+  min-inline-size: 24px;
+  min-block-size: 24px;
+  padding: 2px;
+  opacity: 0;
+}
+.outliner-row:hover .outliner-toggle,
+.outliner-row:focus-within .outliner-toggle,
+.outliner-toggle.active {
+  opacity: 1;
+}
+.outliner-resizer {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -3px;
+  inline-size: 6px;
+  cursor: ew-resize;
 }

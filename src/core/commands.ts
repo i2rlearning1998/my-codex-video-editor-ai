@@ -21,6 +21,7 @@ import {
   previousTouching,
   transitionSchema,
 } from './transitions';
+import { clipFxSchema } from './fx';
 import { clipAnimation, clipAnimationSlots } from './clip-animation';
 import {
   childrenOf,
@@ -75,6 +76,15 @@ export const commandSchema = z.discriminatedUnion('type', [
       transition: transitionSchema.nullable(),
     })
     .strict(),
+  // T-ALL P6: a clip's effect stack and blend mode (null removes them).
+  z
+    .object({
+      type: z.literal('SET_CLIP_FX'),
+      ...location,
+      clipId: idSchema,
+      fx: clipFxSchema.nullable(),
+    })
+    .strict(),
   // J14: a layer's name, and its clips' names, in one step.
   z
     .object({
@@ -119,6 +129,14 @@ export const commandSchema = z.discriminatedUnion('type', [
       ...location,
       start: z.number().finite().nonnegative(),
       end: z.number().finite().positive().nullable(),
+    })
+    .strict(),
+  // T-ALL P5: one scene's outliner (organisation only; null clears it).
+  z
+    .object({
+      type: z.literal('SET_OUTLINER'),
+      ...location,
+      outliner: z.unknown(),
     })
     .strict(),
   // G5: scenes play in array order; this moves one to a new index.
@@ -462,6 +480,15 @@ export function applyCommand(project: Project, command: Command): void {
       else composition.playRange = { start: command.start, end: command.end };
       return;
     }
+    case 'SET_OUTLINER': {
+      const composition = compositionById(project, command.compositionId);
+      if (command.outliner === null) delete composition.outliner;
+      else
+        composition.outliner = structuredClone(
+          command.outliner,
+        ) as typeof composition.outliner;
+      return;
+    }
     case 'MOVE_COMPOSITION': {
       const from = project.compositions.findIndex(
         (item) => item.id === command.compositionId,
@@ -632,7 +659,7 @@ export function applyCommand(project: Project, command: Command): void {
         throw new Error('A transition needs a clip touching this one');
       if (command.transition.duration > maxTransition(before, clip) + 1e-9)
         throw new Error('The transition is longer than the clips allow');
-      clip.transitionMetadata.in = { ...command.transition };
+      clip.transitionMetadata.in = structuredClone(command.transition) as never;
       return;
     }
     case 'SET_CLIP_ENABLED': {
@@ -691,6 +718,18 @@ export function applyCommand(project: Project, command: Command): void {
       // Absent means unlinked, so link/unlink round-trips restore the document.
       if (command.linkId === null) delete clip.metadata.linkId;
       else clip.metadata.linkId = command.linkId;
+      return;
+    }
+    case 'SET_CLIP_FX': {
+      const { track, clip } = requireClip(command.clipId);
+      if (track.locked) throw new Error('Track is locked');
+      // Absent means no effects, so a set/remove round trip restores the document.
+      const empty =
+        !command.fx ||
+        (!command.fx.stack.length &&
+          (command.fx.blendMode ?? 'blend.normal') === 'blend.normal');
+      if (empty) delete clip.metadata.fx;
+      else clip.metadata.fx = structuredClone(command.fx) as never;
       return;
     }
     case 'SET_CLIP_ANIMATION': {

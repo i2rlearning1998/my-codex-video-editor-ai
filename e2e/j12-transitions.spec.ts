@@ -135,14 +135,13 @@ test('[TR-011] a + where two clips touch opens the Transition panel; a cross fad
   await add.click();
   const panel = page.locator('[data-deep-panel="transition"]');
   await expect(panel).toBeVisible();
-  await expect(panel.locator('.transition-group')).toHaveCount(6);
-  // Unbuilt ones are disabled and name their wave.
-  const blur = panel.locator('[data-transition="blur"]');
-  await expect(blur).toHaveAttribute('aria-disabled', 'true');
-  await expect(blur).toHaveAttribute('title', 'Planned: Wave 6 (TR-003)');
+  // T-ALL P6 (D-189): the FX library fills the planned ones and a More
+  // group, so every entry is live.
+  await expect(panel.locator('.transition-group')).toHaveCount(7);
+  await expect(panel.locator('[aria-disabled="true"]')).toHaveCount(0);
   // Search narrows the grid.
-  await panel.locator('.transition-search').fill('wipe');
-  await expect(panel.locator('.transition-option')).toHaveCount(4);
+  await panel.locator('.transition-search').fill('slide');
+  await expect(panel.locator('.transition-option')).toHaveCount(2);
   await panel.locator('.transition-search').fill('');
   // Cross fade: one step; a chip marks the cut.
   await panel.locator('[data-transition="crossfade"]').click();

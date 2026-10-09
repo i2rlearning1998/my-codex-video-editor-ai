@@ -118,16 +118,25 @@ async function session(page: Page) {
           `.timeline-nle-row[data-lane-group="${source <= 1 ? 'visual' : 'text'}"]`,
         )
         .last();
-      // A new project may have no such lane yet: then the empty timeline.
-      const box =
-        (await lane.count()) > 0
-          ? (await lane.scrollIntoViewIfNeeded(), await stableBox(lane))
+      // A new project may have no such lane yet: then the "+" line above the
+      // first lane, or the empty timeline's drop lane (T-ALL P2, D-184: the
+      // hint rows that took such drops are gone).
+      const any = timeline.locator('.timeline-nle-row').first();
+      const own = (await lane.count()) > 0;
+      const box = own
+        ? (await lane.scrollIntoViewIfNeeded(), await stableBox(lane))
+        : (await any.count()) > 0
+          ? await stableBox(any)
           : (await timeline.boundingBox())!;
       await drag(
         page,
         from,
         box.x + 600 + i * 4,
-        (await lane.count()) > 0 ? box.y + box.height - 2 : box.y + 18,
+        own
+          ? box.y + box.height - 2
+          : (await any.count()) > 0
+            ? box.y + 2
+            : box.y + box.height / 2,
       );
     } else
       await drag(

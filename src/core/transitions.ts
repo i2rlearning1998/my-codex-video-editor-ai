@@ -21,8 +21,18 @@ export const DEFAULT_TRANSITION = 1;
 
 export const transitionSchema = z
   .object({
-    type: z.enum(TRANSITION_TYPES),
+    // T-ALL P6: or a pixel transition of the FX library (`transition.*`).
+    type: z.union([
+      z.enum(TRANSITION_TYPES),
+      z.string().regex(/^transition\.[a-z0-9-]+$/),
+    ]),
     duration: z.number().finite().min(MIN_TRANSITION).max(MAX_TRANSITION),
+    params: z
+      .record(
+        z.string().max(32),
+        z.union([z.number().finite(), z.boolean(), z.string().max(64)]),
+      )
+      .optional(),
   })
   .strict();
 export type Transition = z.infer<typeof transitionSchema>;

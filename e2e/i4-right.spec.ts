@@ -38,7 +38,8 @@ test.beforeEach(async ({ page }) => {
 test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, background and frame rate (U5)', async ({
   page,
 }) => {
-  await expect(page.locator('#right-panel-empty')).toBeVisible();
+  // T-ALL (D-183): nothing selected shows no right panel at all.
+  await expect(page.locator('.inspector')).toBeHidden();
   await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(0);
   // The stage around the artboard shows the canvas bar (CV-057).
   const stage = (await page.locator('#canvas-stage').boundingBox())!;
@@ -94,7 +95,12 @@ test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and
   await expect(panel(page).locator('#right-blend-mode')).toBeDisabled();
   await expect(
     panel(page).locator('[data-action="right-adjust-reset"]'),
-  ).toHaveAttribute('title', 'Planned: Wave 6 (CLR-001)');
+    // T-ALL P6 (D-189): the colour controls are live for clips; a group's
+    // child has no clip of its own, so they say why they are off.
+  ).toHaveAttribute(
+    'title',
+    'Select elements that have clips on the timeline.',
+  );
   // J15: Effects opens: the outline is the stroke (live), shadows are
   // planned and say so.
   await tab(page, 'Effects').click();
@@ -173,16 +179,15 @@ test('[LAY-045] media: an image has Image (Crop, Flip, Corners, Border) and Filt
       .locator('#right-flip-horizontal, [data-control="flip-horizontal"]')
       .first(),
   ).toBeVisible();
-  // J15: Filters lists the looks; only Original works until Wave 6.
+  // J15: Filters lists the looks; T-ALL P6 (D-189): they are the FX
+  // library's filters, all live, Original first.
   await tab(page, 'Filters').click();
-  await expect(panel(page).locator('[data-choice="original"]')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(panel(page).locator('[data-choice="vintage"]')).toHaveAttribute(
-    'title',
-    'Planned: Wave 6 (FX-004)',
-  );
+  await expect(
+    panel(page).locator('[data-choice="filter.none"]'),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    panel(page).locator('[data-choice="filter.retro"]'),
+  ).not.toHaveAttribute('aria-disabled', 'true');
   await tab(page, 'Properties').click();
   await panel(page).locator('[data-action="right-crop"]').click();
   await expect(page.locator('[data-tool-panel="crop"]')).toBeVisible();

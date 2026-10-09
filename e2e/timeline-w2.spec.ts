@@ -68,27 +68,28 @@ const isBackground = (rgb: readonly (number | undefined)[]) =>
   Math.abs(rgb[1]! - 238) < 6 &&
   Math.abs(rgb[2]! - 231) < 6;
 
-test('[TL-055] scrolling or zooming out near the end keeps extending the ruler; the playhead stops at the content end', async ({
+test('[TL-055] the scroll range is the project or the viewport plus half a viewport and never grows while scrolling; the playhead stops at the content end', async ({
   page,
 }, testInfo) => {
+  // T-ALL P3 (D-185, spec 5): supersedes the D-036 infinite extension.
   const scroll = page.locator('.timeline-scroll');
   const first = await span(page);
-  expect(first).toBeGreaterThan(5); // content end plus an empty viewport
+  const zoom0 = (await hook(page)).session.timelinePxPerSecond;
+  const viewport = await scroll.evaluate(
+    (element, zoom) =>
+      (element.clientWidth -
+        (element.querySelector<HTMLElement>('.timeline-row-header')
+          ?.offsetWidth ?? 0)) /
+      zoom,
+    zoom0,
+  );
+  const duration = (await hook(page)).project.compositions[0]!.duration;
+  expect(first).toBeCloseTo(Math.max(duration, viewport) + viewport / 2, 0);
   const box = (await scroll.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  let previous = first;
-  for (let i = 0; i < 4; i++) {
-    await page.mouse.wheel(20000, 0);
-    await expect.poll(() => span(page)).toBeGreaterThan(previous);
-    previous = await span(page);
-  }
-  expect(previous).toBeGreaterThan(first * 2);
-  const lastLabel = await page
-    .locator('.timeline-ruler span')
-    .last()
-    .textContent();
-  expect(Number.parseFloat(lastLabel!)).toBeGreaterThan(first);
-  await page.screenshot({ path: testInfo.outputPath('infinite-scrolled.png') });
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(20000, 0);
+  await expect.poll(() => span(page)).toBeCloseTo(first, 6);
+  await page.screenshot({ path: testInfo.outputPath('scroll-limit.png') });
   // Zooming out keeps the ruler covering the whole visible track area.
   await page.mouse.wheel(-1e6, 0);
   for (let i = 0; i < 6; i++)
@@ -176,7 +177,9 @@ test('[TL-019][TL-018] trims stop at the neighbouring clip and at the end of the
   await drag('[data-clip-id="clip-b"] .timeline-trim.left', -200);
   state = await clips(page);
   expect([state('clip-b').startTime, state('clip-b').sourceIn]).toEqual([2, 0]);
-  await drag('[data-clip-id="clip-b"] .timeline-trim.right', 600);
+  // (T-ALL: the timeline sits beside the full-height left panel, so the
+  // drag stays inside it.)
+  await drag('[data-clip-id="clip-b"] .timeline-trim.right', 400);
   state = await clips(page);
   // Source 0..6 of a 6 s asset: the right edge stops at 2 + 6.
   expect(state('clip-b').startTime + state('clip-b').duration).toBe(8);

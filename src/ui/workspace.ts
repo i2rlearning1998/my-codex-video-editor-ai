@@ -37,9 +37,10 @@ const SIZES: Record<
   Layout,
   { rail: number; left: number; right: number; timeline: number }
 > = {
-  wide: { rail: 64, left: 320, right: 252, timeline: 280 },
-  medium: { rail: 56, left: 280, right: 280, timeline: 220 },
-  narrow: { rail: 56, left: 300, right: 300, timeline: 200 },
+  // T-ALL P4: +52 px for the frame row under the lanes (D-186).
+  wide: { rail: 64, left: 320, right: 252, timeline: 332 },
+  medium: { rail: 56, left: 280, right: 280, timeline: 272 },
+  narrow: { rail: 56, left: 300, right: 300, timeline: 252 },
   phone: { rail: 56, left: 0, right: 0, timeline: 180 },
 };
 const LIMITS = {
@@ -82,20 +83,30 @@ export function mountWorkspace(
     rightClosed = layout !== 'wide';
   const bar = shell.querySelector('.topbar')!;
   const leftToggle = document.createElement('div');
-  leftToggle.className = 'workspace-controls';
+  leftToggle.className = 'workspace-controls panel-collapse-row';
   leftToggle.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-controls="library-panel" aria-label="${t('workspace.toggleLibrary')}" title="${t('workspace.toggleLibrary')}">${iconSvg('panelLeft')}</button>`;
-  (bar.querySelector('#menu-trigger') ?? bar.firstElementChild)!.after(
-    leftToggle,
-  );
+  // T-ALL P1 (spec 7): the left panel's collapse button lives in its own
+  // header; the right panel uses its header's collapse button, so neither
+  // toggle is in the top bar any more. A rail category reopens the left
+  // panel; a selection opens the right one.
+  (
+    shell.querySelector('.library .panel-body') ??
+    shell.querySelector('.library') ??
+    bar
+  ).prepend(leftToggle);
   const rightToggle = document.createElement('div');
   rightToggle.className = 'workspace-controls';
   rightToggle.innerHTML = `<button type="button" class="icon-button" data-panel="right" aria-controls="inspector-panel" aria-label="${t('workspace.toggleInspector')}" title="${t('workspace.toggleInspector')}">${iconSvg('panelRight')}</button>`;
-  (bar.querySelector('.top-actions') ?? bar).prepend(rightToggle);
   const scrim = shell.querySelector<HTMLElement>('#drawer-scrim');
   const clampTimeline = (value: number) =>
     Math.max(
       LIMITS.timeline[0],
-      Math.min(window.innerHeight * LIMITS.timeline[1], value),
+      // T-ALL P3 (spec 6): the preview keeps at least 260 px.
+      Math.min(
+        window.innerHeight * LIMITS.timeline[1],
+        Math.max(LIMITS.timeline[0], window.innerHeight - 260 - 56),
+        value,
+      ),
     );
   // The canvas refits at most once per frame while a panel animates.
   let queued = false;
