@@ -437,3 +437,7 @@ for (const block of blocks) {
   $('poses').append(button);
 }
 select(info);
+
+// Isolated library selection; execution continues through the existing sandbox.
+import { mountLibrary } from './library';
+mountLibrary();
