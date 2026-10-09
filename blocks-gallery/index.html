@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:," />
+    <title>Code layers · PoC laboratory</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">ISOLATED ENGINE LABORATORY</p>
+        <h1>Code layers</h1>
+        <p>
+          Deterministic motion. Scrub any direction. Nothing is wired into the
+          editor.
+        </p>
+      </header>
+      <div class="layout">
+        <section>
+          <canvas
+            id="preview"
+            width="960"
+            height="540"
+            aria-label="Block preview"
+          ></canvas>
+          <p id="frame-status" role="status">Starting…</p>
+          <fieldset id="controls">
+            <legend>Block controls</legend>
+            <label
+              >Block
+              <select id="block"></select
+            ></label>
+            <div class="transport">
+              <button id="play" type="button">Play</button
+              ><label
+                >Time
+                <input
+                  id="time"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value="0" /></label
+              ><input
+                id="scrub"
+                aria-label="Scrub time"
+                type="range"
+                min="0"
+                step="0.01"
+                value="0"
+              /><label
+                >Seed <input id="seed" type="number" step="1" value="7"
+              /></label>
+            </div>
+            <div id="params"></div>
+          </fieldset>
+          <div class="actions">
+            <button id="benchmark">Benchmark</button
+            ><button id="export-check">Export check</button>
+          </div>
+          <p>
+            Benchmark: 120 frames per resolution and path. Pasted code is never
+            run on the main thread.
+          </p>
+          <pre id="results" aria-live="polite">No measurements yet.</pre>
+        </section>
+        <aside>
+          <h2>Paste code</h2>
+          <p>
+            One literal block object. Only the documented drawing subset is
+            accepted. This PoC is not a production security boundary.
+          </p>
+          <textarea
+            id="source"
+            aria-label="Block source"
+            spellcheck="false"
+            rows="23"
+          ></textarea
+          ><button id="compile">Compile in worker</button>
+          <pre id="code-status" aria-live="polite">Ready for a sample.</pre>
+          <h2>Starter poses</h2>
+          <div id="poses"></div>
+        </aside>
+      </div>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
