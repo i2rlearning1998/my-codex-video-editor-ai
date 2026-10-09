@@ -114,7 +114,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       <progress id="media-import-bar" max="100" value="0"></progress>
       <button type="button" class="button" id="media-import-cancel"></button>
     </div>
-    <div class="media-state" id="media-state" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('media', 22)}</div><h3 id="media-state-title"></h3><p id="media-state-description"></p></div>
+    <div class="media-state" id="media-state" hidden><svg class="media-illustration" data-media-illustration viewBox="0 0 160 110" aria-hidden="true"><rect x="6" y="18" width="148" height="86" rx="12" fill="none" stroke="var(--border-strong, var(--color-border))" stroke-width="2" stroke-dasharray="6 5"/><rect x="22" y="40" width="70" height="44" rx="6" fill="var(--surface-raised, var(--color-bg-raised))" stroke="var(--color-border)"/><path d="M28 78l16-18 12 12 8-8 22 14z" fill="var(--accent-soft, var(--color-accent-soft))" stroke="var(--accent-text)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="76" cy="52" r="5" fill="var(--accent-text)"/><rect x="70" y="26" width="70" height="44" rx="6" fill="var(--surface-raised, var(--color-bg-raised))" stroke="var(--color-border)" transform="rotate(8 105 48)"/><path d="M98 40l16 9-16 9z" fill="var(--accent-text)" transform="rotate(8 105 48)"/><path d="M118 74c0-6 4-9 8-7l2 1v-12a4 4 0 018 0v14l6 2c3 1 4 4 3 7l-3 10h-18z" fill="var(--color-bg)" stroke="var(--color-text)" stroke-width="1.5" stroke-linejoin="round"/></svg><h3 id="media-state-title"></h3><p id="media-state-description"></p></div>
     <div class="available-assets media-grid" id="media-grid"></div>`;
   const find = <T extends HTMLElement>(selector: string) =>
     container.querySelector<T>(selector)!;

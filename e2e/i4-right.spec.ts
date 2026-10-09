@@ -38,7 +38,8 @@ test.beforeEach(async ({ page }) => {
 test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, background and frame rate (U5)', async ({
   page,
 }) => {
-  await expect(page.locator('#right-panel-empty')).toBeVisible();
+  // T-ALL (D-183): nothing selected shows no right panel at all.
+  await expect(page.locator('.inspector')).toBeHidden();
   await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(0);
   // The stage around the artboard shows the canvas bar (CV-057).
   const stage = (await page.locator('#canvas-stage').boundingBox())!;

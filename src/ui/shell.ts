@@ -230,7 +230,7 @@ export function mountEditorShell(
           <button type="button" id="about" role="menuitem">${iconSvg('info')}${t('menu.about')}</button>
         </div>
       </div>
-      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], name === 'Scene')).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
+      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], false)).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
       <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
         <div class="library-search" data-rail-panel="Media" hidden>
           ${iconSvg('search')}
@@ -1573,7 +1573,10 @@ export function mountEditorShell(
     },
   );
   void libraryBrowsers;
-  let activeCategory = 'Scene';
+  // T-ALL P1: the first load opens Media (spec 7). The e2e fixture asks for
+  // Scene so earlier tests keep their start (D-183).
+  let activeCategory =
+    (window as { __AIVE_E2E_START__?: string }).__AIVE_E2E_START__ ?? 'Media';
   let activeSection = 'Properties';
   let workspace: Workspace | undefined;
   // H1.5: a rail button is pressed only while its panel is open.
@@ -2241,6 +2244,23 @@ export function mountEditorShell(
   workspace = mountWorkspace(element('.editor-shell'), session, resize);
   workspace.onChange(syncRails);
   syncRails();
+  // T-ALL P1 (spec 7): the right panel (a drawer below 1440 px) shows only while
+  // something is selected; it opens on a selection and closes on deselect.
+  // On the wide layout its column stays, so the canvas never moves; the
+  // panel is simply not drawn while nothing is selected (D-183).
+  let rightSelection: string | null = null;
+  const followSelection = () => {
+    const key = session.selectedIds.join(',');
+    const shell = element('.editor-shell');
+    shell.classList.toggle('right-empty', key === '');
+    if (key === rightSelection) return;
+    rightSelection = key;
+    if (key !== '') workspace?.setOpen('right', true);
+    else if (shell.dataset.layout !== 'wide')
+      workspace?.setOpen('right', false);
+  };
+  session.onChange(followSelection);
+  followSelection();
   for (const button of root.querySelectorAll<HTMLButtonElement>(
     '[data-canvas-zoom]',
   ))

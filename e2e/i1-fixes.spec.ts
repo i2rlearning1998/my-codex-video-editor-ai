@@ -25,7 +25,6 @@ const leftOpen = (page: Page) =>
 const rightOpen = (page: Page) =>
   shell(page).evaluate((s) => !s.classList.contains('inspector-collapsed'));
 const leftToggle = (page: Page) => page.locator('[data-panel="left"]');
-const rightToggle = (page: Page) => page.locator('[data-panel="right"]');
 const card = (page: Page, id: string) =>
   // I2: an item can show in more than one section.
   page.locator(`.library-card[data-item-id="${id}"]`).first();
@@ -153,9 +152,8 @@ test('[LAY-038] the left panel animates its real width when collapsed and opened
     await sampleWidth(page, '.library', () => leftToggle(page).click()),
   );
   expect(await leftOpen(page)).toBe(false);
-  expectMidway(
-    await sampleWidth(page, '.library', () => leftToggle(page).click()),
-  );
+  // T-ALL (D-183): the header toggle only collapses; the rail reopens.
+  expectMidway(await sampleWidth(page, '.library', () => rail.click()));
   expect(await leftOpen(page)).toBe(true);
   // The content keeps its open width while the panel narrows (no reflow).
   const body = page.locator('.library > .panel-body');
@@ -179,12 +177,13 @@ test('[LAY-038] the right panel animates its real width from its rail and its to
   expectMidway(await sampleWidth(page, '.inspector', () => rail.click()));
   expect(await rightOpen(page)).toBe(true);
   expectMidway(
-    await sampleWidth(page, '.inspector', () => rightToggle(page).click()),
+    await sampleWidth(page, '.inspector', () =>
+      page.locator('#right-panel-collapse').click(),
+    ),
   );
   expect(await rightOpen(page)).toBe(false);
-  expectMidway(
-    await sampleWidth(page, '.inspector', () => rightToggle(page).click()),
-  );
+  // T-ALL (D-183): the header button only collapses; the rail reopens.
+  expectMidway(await sampleWidth(page, '.inspector', () => rail.click()));
   expect(await rightOpen(page)).toBe(true);
 });
 

@@ -31,7 +31,8 @@ test('[LAY-059] the right rail shows 24 px icons with labels; nothing selected s
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([]);
-  await expect(page.locator('#right-panel-empty')).toBeVisible();
+  // T-ALL (D-183): nothing selected shows no right panel at all.
+  await expect(page.locator('.inspector')).toBeHidden();
   await expect(page.locator('#right-section')).toBeHidden();
   await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(0);
 });

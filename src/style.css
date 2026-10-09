@@ -6906,10 +6906,11 @@ input[type='range'] {
 /* U6: the frame panel stays at the timeline's bottom right; the playback
    range is drawn on the ruler with the outside dimmed. */
 .frame-panel {
-  position: absolute;
-  inset-inline-end: var(--space-3);
-  inset-block-end: var(--space-2);
-  z-index: 5;
+  /* T-ALL: a row under the lanes, never over them. */
+  position: static;
+  flex: none;
+  align-self: flex-end;
+  margin: var(--space-1) var(--space-3);
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -6946,4 +6947,43 @@ input[type='range'] {
   inset-block: 0;
   background: var(--scrim);
   pointer-events: none;
+}
+
+/* T-ALL P1 (spec 7): the left rail and panel run the full height; the
+   timeline sits beside the panel (wide layout; narrower layouts keep the
+   full-width timeline so the Player bar fits). The left panel's collapse
+   button is in its own header row. */
+.editor-shell[data-layout='wide'] {
+  grid-template-areas:
+    'top top top top top'
+    'rail-left library preview inspector rail-right'
+    'rail-left library timeline timeline timeline'
+    'rail-left library status status status';
+}
+.panel-collapse-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-1) var(--space-2) 0;
+}
+
+/* T-ALL P1: the Media empty state shows an illustration (spec 7). */
+.media-illustration {
+  inline-size: 160px;
+  max-inline-size: 100%;
+  block-size: auto;
+  margin-inline: auto;
+}
+
+/* T-ALL P1: right rail labels wrap instead of clipping (spec 10.10). */
+.icon-rail-right .icon-rail-label {
+  white-space: normal;
+  text-align: center;
+  overflow: visible;
+  letter-spacing: -0.02em;
+}
+
+/* T-ALL P1 (spec 7): no right panel while nothing is selected. */
+.editor-shell.right-empty .inspector,
+.editor-shell.right-empty .panel-resizer.right {
+  visibility: hidden;
 }

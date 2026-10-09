@@ -176,7 +176,9 @@ test('[TL-019][TL-018] trims stop at the neighbouring clip and at the end of the
   await drag('[data-clip-id="clip-b"] .timeline-trim.left', -200);
   state = await clips(page);
   expect([state('clip-b').startTime, state('clip-b').sourceIn]).toEqual([2, 0]);
-  await drag('[data-clip-id="clip-b"] .timeline-trim.right', 600);
+  // (T-ALL: the timeline sits beside the full-height left panel, so the
+  // drag stays inside it.)
+  await drag('[data-clip-id="clip-b"] .timeline-trim.right', 400);
   state = await clips(page);
   // Source 0..6 of a 6 s asset: the right edge stops at 2 + 6.
   expect(state('clip-b').startTime + state('clip-b').duration).toBe(8);

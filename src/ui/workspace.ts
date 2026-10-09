@@ -82,15 +82,20 @@ export function mountWorkspace(
     rightClosed = layout !== 'wide';
   const bar = shell.querySelector('.topbar')!;
   const leftToggle = document.createElement('div');
-  leftToggle.className = 'workspace-controls';
+  leftToggle.className = 'workspace-controls panel-collapse-row';
   leftToggle.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-controls="library-panel" aria-label="${t('workspace.toggleLibrary')}" title="${t('workspace.toggleLibrary')}">${iconSvg('panelLeft')}</button>`;
-  (bar.querySelector('#menu-trigger') ?? bar.firstElementChild)!.after(
-    leftToggle,
-  );
+  // T-ALL P1 (spec 7): the left panel's collapse button lives in its own
+  // header; the right panel uses its header's collapse button, so neither
+  // toggle is in the top bar any more. A rail category reopens the left
+  // panel; a selection opens the right one.
+  (
+    shell.querySelector('.library .panel-body') ??
+    shell.querySelector('.library') ??
+    bar
+  ).prepend(leftToggle);
   const rightToggle = document.createElement('div');
   rightToggle.className = 'workspace-controls';
   rightToggle.innerHTML = `<button type="button" class="icon-button" data-panel="right" aria-controls="inspector-panel" aria-label="${t('workspace.toggleInspector')}" title="${t('workspace.toggleInspector')}">${iconSvg('panelRight')}</button>`;
-  (bar.querySelector('.top-actions') ?? bar).prepend(rightToggle);
   const scrim = shell.querySelector<HTMLElement>('#drawer-scrim');
   const clampTimeline = (value: number) =>
     Math.max(
