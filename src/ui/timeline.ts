@@ -2143,9 +2143,7 @@ export function mountTimeline(
         case 'first-frame':
           session.setPlaying(false);
           // T-ALL P4 (spec 9): First and Last frame go to Start and End.
-          session.setCurrentTime(
-            playRangeOf(session.source.composition).start,
-          );
+          session.setCurrentTime(playRangeOf(session.source.composition).start);
           // T-ALL P3 (spec 4): back to the first page.
           scroll.scrollLeft = 0;
           break;

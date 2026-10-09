@@ -121,6 +121,14 @@ export const commandSchema = z.discriminatedUnion('type', [
       end: z.number().finite().positive().nullable(),
     })
     .strict(),
+  // T-ALL P5: one scene's outliner (organisation only; null clears it).
+  z
+    .object({
+      type: z.literal('SET_OUTLINER'),
+      ...location,
+      outliner: z.unknown(),
+    })
+    .strict(),
   // G5: scenes play in array order; this moves one to a new index.
   z
     .object({
@@ -460,6 +468,15 @@ export function applyCommand(project: Project, command: Command): void {
       if (command.start <= 0 && command.end === null)
         delete composition.playRange;
       else composition.playRange = { start: command.start, end: command.end };
+      return;
+    }
+    case 'SET_OUTLINER': {
+      const composition = compositionById(project, command.compositionId);
+      if (command.outliner === null) delete composition.outliner;
+      else
+        composition.outliner = structuredClone(
+          command.outliner,
+        ) as typeof composition.outliner;
       return;
     }
     case 'MOVE_COMPOSITION': {

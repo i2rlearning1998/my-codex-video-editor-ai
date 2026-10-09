@@ -34,6 +34,12 @@ function versionOf(document: unknown): number {
 export class MigrationRegistry {
   #migrations = new Map<number, Migration>();
   constructor() {
+    // Schema 7 (T-ALL P5): an optional outliner per scene; nothing to move.
+    this.register({
+      from: 6,
+      to: 7,
+      migrate: (input) => ({ ...(input as object), schemaVersion: 7 }),
+    });
     // Schema 6 (J1): every scene owns its background colour, starting from
     // the project's background (now the default for new scenes).
     this.register({

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { trackHolds } from './lanes';
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export const jsonSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -233,9 +233,65 @@ export const compositionSchema = z
       .object({ start: finite.nonnegative(), end: positive.nullable() })
       .strict()
       .optional(),
+    /**
+     * Schema 7 (T-ALL P5, optional): the outliner's organisation only.
+     * Collections (nested by `parentId`), which collection holds a
+     * top-level layer (`items`, layer id to collection id; missing means
+     * the Scene Collection) and the row order of top-level layers. It never
+     * changes stacking, transforms, groups, lanes, timing or export.
+     */
+    outliner: z
+      .object({
+        collections: z.array(
+          z
+            .object({
+              id: idSchema,
+              name: nameSchema,
+              parentId: idSchema.nullable(),
+              collapsed: z.boolean().optional(),
+            })
+            .strict(),
+        ),
+        items: z.record(idSchema, idSchema),
+        order: z.array(idSchema),
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((composition, ctx) => {
+    if (composition.outliner) {
+      const ids = new Set(
+        composition.outliner.collections.map((item) => item.id),
+      );
+      const parent = new Map(
+        composition.outliner.collections.map((item) => [
+          item.id,
+          item.parentId,
+        ]),
+      );
+      if (ids.size !== composition.outliner.collections.length)
+        ctx.addIssue({ code: 'custom', message: 'Duplicate collection id' });
+      for (const item of composition.outliner.collections) {
+        if (item.parentId !== null && !ids.has(item.parentId))
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Unknown parent collection',
+          });
+        // No cycles.
+        let at: string | null = item.parentId;
+        for (let depth = 0; at !== null; depth++) {
+          if (at === item.id || depth > ids.size) {
+            ctx.addIssue({ code: 'custom', message: 'Collection cycle' });
+            break;
+          }
+          at = parent.get(at) ?? null;
+        }
+      }
+      for (const collection of Object.values(composition.outliner.items))
+        if (!ids.has(collection))
+          ctx.addIssue({ code: 'custom', message: 'Unknown collection' });
+    }
     if (
       composition.playRange &&
       composition.playRange.end !== null &&
