@@ -7125,3 +7125,120 @@ input[type='range'] {
   min-inline-size: 9ch;
   padding-inline: 4px;
 }
+
+/* T-ALL P5 (spec 8, 12): the outliner is a column beside the lanes; it never
+   covers them. Rows are at least 28 px, icons 16 px, names readable. */
+.timeline-body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+}
+.timeline-body > .timeline-scroll {
+  flex: 1;
+  min-inline-size: 0;
+}
+.timeline-outliner {
+  position: relative;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 160px;
+  max-inline-size: 360px;
+  border-inline-end: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+  overflow: hidden;
+}
+.timeline-outliner.collapsed {
+  min-inline-size: 40px;
+  inline-size: 40px !important;
+}
+.timeline-outliner.collapsed .outliner-tree,
+.timeline-outliner.collapsed .outliner-header h3,
+.timeline-outliner.collapsed .outliner-header [data-ol='new-collection'] {
+  display: none;
+}
+.outliner-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-block-end: 1px solid var(--color-border);
+}
+.outliner-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.outliner-tree {
+  flex: 1;
+  overflow: auto;
+}
+.outliner-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: 32px;
+  padding-inline-end: var(--space-1);
+  font-size: 13px;
+  color: var(--color-text);
+  cursor: default;
+  user-select: none;
+}
+.outliner-row:hover {
+  background: var(--hover);
+}
+.outliner-row[aria-selected='true'] {
+  background: var(--color-accent-soft);
+}
+.outliner-row.drop-into {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.outliner-icon,
+.outliner-disclosure {
+  display: inline-flex;
+  flex: none;
+  inline-size: 20px;
+  min-block-size: 32px;
+  justify-content: center;
+}
+.outliner-disclosure {
+  min-inline-size: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.outliner-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.outliner-rename {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 13px;
+}
+.outliner-toggle {
+  flex: none;
+  min-inline-size: 24px;
+  min-block-size: 24px;
+  padding: 2px;
+  opacity: 0;
+}
+.outliner-row:hover .outliner-toggle,
+.outliner-row:focus-within .outliner-toggle,
+.outliner-toggle.active {
+  opacity: 1;
+}
+.outliner-resizer {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: -3px;
+  inline-size: 6px;
+  cursor: ew-resize;
+}

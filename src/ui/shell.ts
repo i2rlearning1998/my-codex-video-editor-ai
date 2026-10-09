@@ -2255,8 +2255,11 @@ export function mountEditorShell(
     shell.classList.toggle('right-empty', key === '');
     if (key === rightSelection) return;
     rightSelection = key;
-    if (key !== '') workspace?.setOpen('right', true);
-    else if (shell.dataset.layout !== 'wide')
+    // Only a real change repaints the workspace: a repaint mid-press would
+    // cancel the canvas gesture that made the selection.
+    if (key !== '') {
+      if (!workspace?.rightOpen) workspace?.setOpen('right', true);
+    } else if (shell.dataset.layout !== 'wide' && workspace?.rightOpen)
       workspace?.setOpen('right', false);
   };
   session.onChange(followSelection);

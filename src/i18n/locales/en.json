@@ -1035,5 +1035,17 @@
   "timeline.dropMedia": "Drag & drop media here",
   "timeline.ghost.text": "Add text",
   "timeline.ghost.audio": "Add audio",
-  "timeline.ghost.hide": "HIDE"
+  "timeline.ghost.hide": "HIDE",
+  "outliner.title": "Layers",
+  "outliner.newCollection": "New collection",
+  "outliner.collapse": "Collapse the Layers panel",
+  "outliner.toggle": "Open or close",
+  "outliner.hideAll": "Hide or show everything in this collection",
+  "outliner.lockAll": "Lock or unlock everything in this collection",
+  "outliner.muteAll": "Mute or unmute everything in this collection",
+  "outliner.collectionName": "Collection {n}",
+  "outliner.collectionState": "Collection state",
+  "outliner.rename": "Rename",
+  "outliner.deleteCollection": "Delete collection",
+  "outliner.move": "Move in Layers"
 }

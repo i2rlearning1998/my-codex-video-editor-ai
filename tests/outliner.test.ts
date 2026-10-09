@@ -9,7 +9,7 @@ import {
 const v6 = () =>
   readFileSync('tests/fixtures/projects/v6-outliner.json', 'utf8');
 
-describe('[LYR-020] outliner collections (schema 7, T-ALL P5)', () => {
+describe('[LYR-016] outliner collections (schema 7, T-ALL P5)', () => {
   it('migrates a schema 6 file to 7 with nothing else changed', () => {
     const legacy = JSON.parse(v6());
     const project = deserializeProject(v6());

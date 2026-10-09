@@ -80,6 +80,7 @@ import {
   type TimingPreview,
 } from './timeline-model';
 import { iconSvg } from './icons';
+import { mountOutliner } from './outliner';
 import { createNumberField, syncNumberField } from './components/number-field';
 
 /** TL-027/TL-032 menu actions labelled from the command catalog. */
@@ -608,8 +609,18 @@ export function mountTimeline(
   root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
+  // T-ALL P5: the outliner column beside the lanes (never over them).
+  const outliner = mountOutliner(engine, session, report);
+  const body = document.createElement('div');
+  body.className = 'timeline-body';
+  scroll.before(body);
+  body.append(outliner.element, scroll);
+  let outlinerKey = '';
+  let revealedSelection = '';
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
   scroll.setAttribute('aria-label', t('timeline.keys'));
+  // T-ALL P5 (spec 8): lanes have no header; the outliner is its own
+  // column beside them.
   const headerWidth = 224;
   /** T3: lane heights (visual lanes taller, for their pictures). */
   const laneHeight = (group: string) => (group === 'visual' ? 56 : 36);
@@ -753,6 +764,28 @@ export function mountTimeline(
     );
   };
   const playback = new Playback(session);
+  /** T-ALL P5 (spec 13): brings the selected element's lane (and clip,
+   *  when off screen) into view, without moving the playhead or zoom. */
+  const revealSelection = () => {
+    if (pointer || document.querySelector('.timeline-drag-float')) return;
+    const id = session.selectedIds[0];
+    if (!id || typeof scroll.scrollTo !== 'function') return;
+    const clip = [
+      ...content.querySelectorAll<HTMLElement>('.timeline-clip'),
+    ].find((el) => el.dataset.id === id);
+    if (!clip) return;
+    const view = scroll.getBoundingClientRect();
+    const box = clip.getBoundingClientRect();
+    let top = scroll.scrollTop;
+    let left = scroll.scrollLeft;
+    // Only a clip entirely out of view is scrolled to.
+    if (box.bottom < view.top + 28) top -= view.top + 28 - box.top;
+    else if (box.top > view.bottom) top += box.bottom - view.bottom;
+    if (box.right < view.left || box.left > view.right)
+      left += box.left - view.left - view.width * 0.1;
+    if (top !== scroll.scrollTop || left !== scroll.scrollLeft)
+      scroll.scrollTo({ top, left: Math.max(0, left), behavior: 'smooth' });
+  };
   /** T-ALL P3 (spec 4): while playing zoomed in, the view pages: when the
    *  playhead passes 92% of the visible lanes, their new left edge is the
    *  playhead time (no animation); a jump before the view pages back. */
@@ -1513,6 +1546,31 @@ export function mountTimeline(
           session.currentTime > range.end + 1e-9),
     );
     pageToPlayhead();
+    const nextOutliner = JSON.stringify([
+      composition.id,
+      composition.name,
+      composition.outliner,
+      composition.layers.map((layer) => [layer.id, layer.name]),
+      composition.tracks.map((track) => [
+        track.id,
+        track.enabled,
+        track.locked,
+        track.muted,
+        track.clips.map((clip) => clip.layerId),
+      ]),
+      session.selectedIds,
+      session.soloTrackIds,
+    ]);
+    if (nextOutliner !== outlinerKey) {
+      outlinerKey = nextOutliner;
+      outliner.render();
+      outliner.reveal();
+    }
+    const selection = session.selectedIds.join(',');
+    if (selection !== revealedSelection) {
+      revealedSelection = selection;
+      requestAnimationFrame(revealSelection);
+    }
     for (const marker of composition.markers) {
       const item = button(
         iconSvg('marker', 12),
@@ -1758,6 +1816,7 @@ export function mountTimeline(
     safely(() => {
       if (pointer || event.button !== 0 || event.isPrimary === false) return;
       const target = event.target as HTMLElement;
+      if (target.closest('.timeline-outliner')) return;
       // ANI-004: a diamond selects its keyframes and starts a drag.
       const diamond = target.closest<HTMLElement>('[data-action="keyframe"]');
       if (diamond) {

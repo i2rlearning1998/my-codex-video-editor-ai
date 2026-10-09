@@ -1035,5 +1035,17 @@
   "timeline.dropMedia": "मीडिया यहाँ खींचकर छोड़ें",
   "timeline.ghost.text": "टेक्स्ट जोड़ें",
   "timeline.ghost.audio": "ऑडियो जोड़ें",
-  "timeline.ghost.hide": "छिपाएँ"
+  "timeline.ghost.hide": "छिपाएँ",
+  "outliner.title": "परतें",
+  "outliner.newCollection": "नया संग्रह",
+  "outliner.collapse": "परतें पैनल छोटा करें",
+  "outliner.toggle": "खोलें या बंद करें",
+  "outliner.hideAll": "इस संग्रह में सब छिपाएँ या दिखाएँ",
+  "outliner.lockAll": "इस संग्रह में सब लॉक या अनलॉक करें",
+  "outliner.muteAll": "इस संग्रह में सब म्यूट या अनम्यूट करें",
+  "outliner.collectionName": "संग्रह {n}",
+  "outliner.collectionState": "संग्रह की स्थिति",
+  "outliner.rename": "नाम बदलें",
+  "outliner.deleteCollection": "संग्रह हटाएँ",
+  "outliner.move": "परतों में ले जाएँ"
 }
