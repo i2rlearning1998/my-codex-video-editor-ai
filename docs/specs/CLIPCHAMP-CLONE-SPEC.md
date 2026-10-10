@@ -4,7 +4,7 @@ Revision 3, 2026-10-10. Owner direction: the whole editor must look and behave l
 
 Sources (all reviewed frame by frame, 2026-10-10): owner's bug recording "Bugs of video project" (573 s), Clipchamp timeline recording (381 s), Blender collections recording (143 s), owner's PDF "New bugs" (3 pages), Clipchamp filters/effects recording (303 s), Clipchamp transitions recording (60 s). SEEN = visible in frames. INFERRED = deduced. NOT SEEN = not in any recording (rule given as a decision, marked D).
 
-Authority: this file supersedes docs/specs/TIMELINE-SPEC-T.md where they conflict. Specifically REMOVED from the timeline: the lane-header column ("Sha..." + lock/eye/mute/up/down), the Layers/outliner column and its toggle, and the old sticky scenes panel. Schema stays at 7 (the `outliner` record from T-ALL P5 is kept and reused by section 4); no schema change is authorised in this series.
+Authority: this file supersedes docs/specs/timeline-spec-T-series.md where they conflict. Specifically REMOVED from the timeline: the lane-header column ("Sha..." + lock/eye/mute/up/down), the Layers/outliner column and its toggle, and the old sticky scenes panel. Schema stays at 7 (the `outliner` record from T-ALL P5 is kept and reused by section 4); no schema change is authorised in this series.
 
 ## 1. Shell layout (owner PDF pages 1-3, Clipchamp screenshots)
 1. Regions, left to right: left rail | left panel | stage (canvas + stage footer) | right panel | right rail. Below the stage: the timeline card. Every region is a separate card on a darker page background; between regions is an 8 px gutter showing the page colour (the "black strip" the owner asked for). No two neighbouring regions share a background colour.
