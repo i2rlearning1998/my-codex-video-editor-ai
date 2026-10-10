@@ -796,7 +796,7 @@
   "text.boxName": "Text box",
   "text.boxText": "Add your text",
   "transitions.search": "Search transitions",
-  "transitions.tip": "Drag a transition between two clips on the timeline. Transitions are listed now and work from Wave 6.",
+  "transitions.tip": "Pick a transition for the selected cut: click a cut's + on the timeline (or its marker), then a tile here.",
   "transitions.duration": "Duration",
   "transitions.section.fades": "Fades & blurs",
   "transitions.section.wipes": "Wipes",
@@ -1289,5 +1289,8 @@
   "fx.option.left": "Left",
   "fx.option.right": "Right",
   "fx.option.up": "Up",
-  "fx.option.down": "Down"
+  "fx.option.down": "Down",
+  "transition.group.fadesBlurs": "Fades & blurs",
+  "transition.group.tiles": "Tiles",
+  "transitions.pickCut": "Select a cut on the timeline first: click its + or its marker."
 }

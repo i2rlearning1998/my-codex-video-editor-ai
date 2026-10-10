@@ -241,6 +241,35 @@ export function tileSource(canvas: HTMLCanvasElement | null): TileSource {
     key: `${canvas.width}x${canvas.height}:${hash >>> 0}`,
   };
 }
+/** Spec 5: a built-in sample picture (sky, sun, hills and a figure) for
+ *  tiles when the selection has no frame. */
+export function sampleCanvas() {
+  const canvas = document.createElement('canvas');
+  canvas.width = THUMB_W;
+  canvas.height = THUMB_H;
+  const context = canvas.getContext('2d');
+  if (!context) return null;
+  const sky = context.createLinearGradient(0, 0, 0, THUMB_H);
+  sky.addColorStop(0, '#3a7bd5');
+  sky.addColorStop(1, '#f6c26b');
+  context.fillStyle = sky;
+  context.fillRect(0, 0, THUMB_W, THUMB_H);
+  context.fillStyle = '#ffd34d';
+  context.beginPath();
+  context.arc(118, 30, 14, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = '#2f8f4e';
+  context.beginPath();
+  context.moveTo(0, 70);
+  context.quadraticCurveTo(50, 40, 100, 66);
+  context.quadraticCurveTo(130, 80, 160, 60);
+  context.lineTo(160, 90);
+  context.lineTo(0, 90);
+  context.fill();
+  context.fillStyle = '#e84a5f';
+  context.fillRect(40, 48, 14, 26);
+  return canvas;
+}
 const scratch = () => {
   const canvas = document.createElement('canvas');
   canvas.width = THUMB_W;
@@ -248,6 +277,29 @@ const scratch = () => {
   return canvas;
 };
 let drawCanvas: HTMLCanvasElement | null = null;
+/** A tile drawn on the source at a phase (0 to 1 of a 3 s sample), as a
+ *  data URL. */
+function drawTile(source: Surface, tile: Tile, phase: number) {
+  if (!tile.draw) return drawThumb(source, tile.stack, phase * 3);
+  return toUrl(tile.draw(source, phase));
+}
+function toUrl(out: Surface) {
+  drawCanvas ??= scratch();
+  drawCanvas.width = out.width;
+  drawCanvas.height = out.height;
+  drawCanvas
+    .getContext('2d')!
+    .putImageData(
+      new ImageData(
+        out.data as Uint8ClampedArray<ArrayBuffer>,
+        out.width,
+        out.height,
+      ),
+      0,
+      0,
+    );
+  return drawCanvas.toDataURL('image/png');
+}
 /** The stack drawn on the source at a time, as a data URL. */
 function drawThumb(source: Surface, stack: readonly Entry[], time: number) {
   const ready = stack.flatMap((entry) => {
@@ -263,19 +315,7 @@ function drawThumb(source: Surface, stack: readonly Entry[], time: number) {
     width: source.width,
     height: source.height,
   });
-  drawCanvas ??= scratch();
-  drawCanvas
-    .getContext('2d')!
-    .putImageData(
-      new ImageData(
-        out.data as Uint8ClampedArray<ArrayBuffer>,
-        out.width,
-        out.height,
-      ),
-      0,
-      0,
-    );
-  return drawCanvas.toDataURL('image/png');
+  return toUrl(out);
 }
 
 // --- The tile grid ---------------------------------------------------------------
@@ -289,6 +329,10 @@ export interface Tile {
   /** A small slider badge (a selected tile with settings). */
   readonly badge?: boolean;
   readonly group?: string | undefined;
+  /** A custom drawing (transitions): the picture at a phase, 0 to 1. */
+  readonly draw?: ((source: Surface, phase: number) => Surface) | undefined;
+  /** The phase the still thumbnail shows (default 0.8). */
+  readonly still?: number | undefined;
 }
 export interface TileGridOptions {
   readonly name: string;
@@ -420,7 +464,7 @@ function tileElement(tile: Tile, options: TileGridOptions) {
       thumb.classList.add('fx-tile-loading');
       observe(item, () => {
         // Late in the 3 s sample, where build-up effects (zooms) show.
-        const url = drawThumb(source, tile.stack, 2.4);
+        const url = drawTile(source, tile, tile.still ?? 0.8);
         remember(key, url);
         image.src = url;
         thumb.classList.remove('fx-tile-loading');
@@ -441,7 +485,7 @@ function tileElement(tile: Tile, options: TileGridOptions) {
             return;
           }
           frame = (frame + 1) % 15;
-          image.src = drawThumb(source, tile.stack, frame * 0.08);
+          image.src = drawTile(source, tile, frame / 15);
         }, 80);
       });
       item.addEventListener('pointerleave', () => {

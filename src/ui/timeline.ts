@@ -28,6 +28,9 @@ import {
   findClip,
   nextTrackName,
   clipTransition,
+  DEFAULT_TRANSITION,
+  maxTransition,
+  previousTouching,
   type EditorEngine,
   type Command,
   clipAnimation,
@@ -80,6 +83,7 @@ import {
   type TimingPreview,
 } from './timeline-model';
 import { iconSvg } from './icons';
+import { transitionFocus } from './transition-focus';
 import { createNumberField, syncNumberField } from './components/number-field';
 
 /** TL-027/TL-032 menu actions labelled from the command catalog. */
@@ -1263,11 +1267,24 @@ export function mountTimeline(
         const transition = clipTransition(
           after as unknown as { transitionMetadata: Record<string, unknown> },
         );
+        // V5 (spec 6): a transition is a translucent band straddling the
+        // cut (its duration, half on each clip) with a line at the cut and
+        // a lavender marker; a bare cut has a "+" that shows on hover.
+        if (transition) {
+          const band = document.createElement('div');
+          band.className = 'transition-band';
+          band.dataset.id = after.id;
+          band.style.left = `${timeToPixel(after.startTime - transition.duration / 2, zoom)}px`;
+          band.style.width = `${timeToPixel(transition.duration, zoom)}px`;
+          track.append(band);
+        }
         const cut = document.createElement('button');
         cut.type = 'button';
         cut.dataset.action = 'transition';
         cut.dataset.id = after.id;
         cut.className = transition ? 'transition-chip' : 'transition-add';
+        if (transition && transitionFocus.clipId === after.id)
+          cut.setAttribute('aria-pressed', 'true');
         cut.style.left = `${timeToPixel(after.startTime, zoom)}px`;
         const label = transition
           ? t('transition.chip', {
@@ -1277,7 +1294,7 @@ export function mountTimeline(
           : t('transition.add');
         cut.setAttribute('aria-label', label);
         cut.title = label;
-        cut.innerHTML = iconSvg(transition ? 'transitions' : 'plus', 12);
+        cut.innerHTML = iconSvg(transition ? 'bowtie' : 'plus', 12);
         if (row.track.locked) cut.disabled = true;
         track.append(cut);
       }
@@ -2139,7 +2156,47 @@ export function mountTimeline(
         case 'speed-preset':
           setClipSpeed(engine, session, Number(target.dataset.speed));
           break;
+        case 'transition-remove':
+          menu.hidden = true;
+          removeTransition(target.dataset.id!);
+          return;
         case 'transition':
+          // V5 (spec 6): "+" adds Fade through black at once; the marker
+          // (or the new one) then opens its Transition panel.
+          if (target.classList.contains('transition-add')) {
+            const found = findClip(
+              session.source.composition,
+              target.dataset.id!,
+            );
+            const before =
+              found &&
+              previousTouching(
+                found.track.clips as unknown as Parameters<
+                  typeof previousTouching
+                >[0],
+                found.clip as unknown as Parameters<typeof previousTouching>[1],
+              );
+            if (!found || !before) return;
+            engine.commands.transaction('Add transition', [
+              {
+                type: 'SET_CLIP_TRANSITION',
+                compositionId: session.source.composition.id,
+                clipId: target.dataset.id!,
+                transition: {
+                  type: 'fade-black',
+                  duration: Math.min(
+                    DEFAULT_TRANSITION,
+                    maxTransition(
+                      before,
+                      found.clip as unknown as Parameters<
+                        typeof maxTransition
+                      >[1],
+                    ),
+                  ),
+                },
+              } as Command,
+            ]);
+          }
           root.dispatchEvent(
             new CustomEvent('timeline-transition', {
               detail: target.dataset.id,
@@ -3485,6 +3542,24 @@ export function mountTimeline(
     event.preventDefault();
     // V2: the menu pauses playback; every playback tick would close it.
     session.setPlaying(false);
+    // V5 (spec 6): a transition marker's menu: Remove transition.
+    const chip = (event.target as HTMLElement).closest<HTMLElement>(
+      '.transition-chip',
+    );
+    if (chip) {
+      const remove = document.createElement('button');
+      remove.setAttribute('role', 'menuitem');
+      remove.dataset.action = 'transition-remove';
+      remove.dataset.id = chip.dataset.id!;
+      remove.textContent = t('transition.remove');
+      closeSub();
+      menu.replaceChildren(remove);
+      announceMenu(menu);
+      menu.hidden = false;
+      remove.focus();
+      placeMenu(event.clientX);
+      return;
+    }
     const diamond = (event.target as HTMLElement).closest<HTMLElement>(
       '[data-action="keyframe"]',
     );
@@ -3531,6 +3606,34 @@ export function mountTimeline(
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
     placeMenu(event.clientX);
   };
+  /** V5 (spec 6): removes the transition into a clip (one step). */
+  function removeTransition(clipId: string) {
+    if (transitionFocus.clipId === clipId) transitionFocus.clipId = null;
+    engine.commands.transaction('Remove transition', [
+      {
+        type: 'SET_CLIP_TRANSITION',
+        compositionId: session.source.composition.id,
+        clipId,
+        transition: null,
+      } as Command,
+    ]);
+  }
+  /** V5: Delete or Backspace on a focused marker removes its transition
+   *  (before the shell's shortcuts, which would delete the clip). */
+  const markerKey = (event: KeyboardEvent) => {
+    const chip = document.activeElement;
+    if (
+      !(chip instanceof HTMLElement) ||
+      !chip.classList.contains('transition-chip') ||
+      !root.contains(chip) ||
+      (event.key !== 'Delete' && event.key !== 'Backspace')
+    )
+      return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    safely(() => removeTransition(chip.dataset.id!));
+  };
+  document.addEventListener('keydown', markerKey, true);
   /** V1: the timeline is a clipped card, so its menu is fixed to the
    *  window, rising from 12 px above the card's bottom at the pointer. */
   function placeMenu(clientX: number) {
@@ -3731,6 +3834,7 @@ export function mountTimeline(
       cancel();
       unsubscribe();
       controller.dispose();
+      document.removeEventListener('keydown', markerKey, true);
       playback.dispose();
       unsubscribePreviews?.();
       unsubscribeWaveforms?.();

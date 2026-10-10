@@ -332,11 +332,10 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
     `#timeline-foundation .timeline-nle-row[data-track-id="${lane.id}"]`,
   );
   await row.hover();
+  // (V5: "+" adds Fade through black and opens the right panel's tiles.)
   await row.locator('.transition-add').click();
-  const transitions = page.locator('[data-deep-panel="transition"]');
-  await transitions.locator('[data-transition="fx-burn"]').click();
-  expect((await labels(page)).at(-1)).toBe('Add transition');
-  await page.keyboard.press('Escape');
+  await panel(page).locator('.fx-tile[data-tile="transition.burn"]').click();
+  expect((await labels(page)).at(-1)).toBe('Change transition');
   await seek(page, 6);
   const onlyB = await pixel(page, at);
   await seek(page, 5);

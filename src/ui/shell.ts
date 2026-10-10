@@ -1,4 +1,4 @@
-import { buildTransitionPanel } from './transition-panel';
+import { transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
 import { mountFonts } from './fonts';
@@ -12,6 +12,10 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   findClip,
+  clipTransition,
+  DEFAULT_TRANSITION,
+  maxTransition,
+  previousTouching,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -1570,6 +1574,46 @@ export function mountEditorShell(
     libraryActions,
     {
       close: () => workspace?.setOpen('left', false),
+      // V5 (spec 6): a left Transitions tile applies to the selected marker.
+      applyTransition: (type) =>
+        safely(() => {
+          const clipId = transitionFocus.clipId;
+          const found = clipId
+            ? findClip(session.source.composition, clipId)
+            : null;
+          if (!found) {
+            showToast(t('transitions.pickCut'), 'info', 3000);
+            return;
+          }
+          const clip = found.clip as unknown as Parameters<
+            typeof maxTransition
+          >[1] & { transitionMetadata: Record<string, unknown> };
+          const before = previousTouching(
+            found.track.clips as unknown as Parameters<
+              typeof previousTouching
+            >[0],
+            clip,
+          );
+          if (!before) return;
+          const current = clipTransition(clip);
+          engine.commands.transaction(
+            current ? 'Change transition' : 'Add transition',
+            [
+              {
+                type: 'SET_CLIP_TRANSITION',
+                compositionId: session.source.composition.id,
+                clipId: clipId!,
+                transition: {
+                  type,
+                  duration: Math.min(
+                    current?.duration ?? DEFAULT_TRANSITION,
+                    maxTransition(before, clip),
+                  ),
+                },
+              } as Command,
+            ],
+          );
+        }),
       // SHP-001: the five W5-D shapes and the I2 lines.
       addPreset: (preset) => safely(() => addShape(engine, session, preset)),
       addTextBox: () => {
@@ -1911,31 +1955,27 @@ export function mountEditorShell(
     'timeline-collapse',
     collapseTimeline,
   );
-  // J12: a cut's + or chip opens the Transition panel for that cut.
-  const transitionState = { query: '' };
+  // V5 (spec 6): a cut's marker (or its "+", which adds one first) selects
+  // the incoming clip and opens the right Transition panel.
   const openTransition = (event: Event) =>
     safely(() => {
       const clipId = (event as CustomEvent<string>).detail;
-      transitionState.query = '';
-      sidePanels.show('transition', t('transition.title'), () =>
-        buildTransitionPanel(
-          clipId,
-          engine,
-          session,
-          reportError,
-          transitionState,
-        ),
-      );
+      const found = findClip(session.source.composition, clipId);
+      if (!found) return;
+      transitionFocus.clipId = clipId;
+      session.select(found.clip.layerId);
+      transitionFocus.clipId = clipId;
+      workspace?.setEmpty(false);
+      syncRightRail();
+      setRightSection('Transitions');
+      workspace?.setOpen('right', true);
+      timeline?.render?.();
     });
   element('#timeline-foundation').addEventListener(
     'timeline-transition',
     openTransition,
   );
-  // It shows the cut's current transition after every change (and closes
-  // when the clips no longer touch).
-  const unsubscribeTransition = session.onChange(() => {
-    if (sidePanels.openId === 'transition') sidePanels.refresh();
-  });
+  const unsubscribeTransition = () => undefined;
   mediaInput.onchange = () => {
     const files = [...(mediaInput.files ?? [])];
     mediaInput.value = '';

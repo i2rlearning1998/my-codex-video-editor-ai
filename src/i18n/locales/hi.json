@@ -796,7 +796,7 @@
   "text.boxName": "टेक्स्ट बॉक्स",
   "text.boxText": "अपना टेक्स्ट जोड़ें",
   "transitions.search": "ट्रांज़िशन खोजें",
-  "transitions.tip": "टाइमलाइन पर दो क्लिप के बीच ट्रांज़िशन खींचें। ट्रांज़िशन अभी सूचीबद्ध हैं और वेव 6 से काम करेंगे।",
+  "transitions.tip": "चुने गए कट के लिए ट्रांज़िशन चुनें: टाइमलाइन पर कट का + (या उसका मार्कर) क्लिक करें, फिर यहाँ एक टाइल।",
   "transitions.duration": "अवधि",
   "transitions.section.fades": "फ़ेड और धुंधलापन",
   "transitions.section.wipes": "वाइप",
@@ -1289,5 +1289,8 @@
   "fx.option.left": "बाएँ",
   "fx.option.right": "दाएँ",
   "fx.option.up": "ऊपर",
-  "fx.option.down": "नीचे"
+  "fx.option.down": "नीचे",
+  "transition.group.fadesBlurs": "फ़ेड और ब्लर",
+  "transition.group.tiles": "टाइलें",
+  "transitions.pickCut": "पहले टाइमलाइन पर एक कट चुनें: उसका + या मार्कर क्लिक करें।"
 }

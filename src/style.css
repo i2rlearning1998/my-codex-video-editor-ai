@@ -7771,3 +7771,63 @@ input[type='range'] {
   background: linear-gradient(90deg, #3b82f6, #f59e0b);
   border-radius: 999px;
 }
+
+/* ===== V5 (spec 6): the "+" shows only with the pointer within about
+   20 px of the cut (its own 40 px hit area), a 14 px purple rounded square;
+   a transition is a lavender band straddling the cut with a dark line at the
+   cut and a lavender marker with a bow-tie glyph. ===== */
+.editor-shell .transition-add {
+  inline-size: 40px;
+  block-size: 100%;
+  inset-block: 0;
+  margin: 0 0 0 -20px;
+  background: transparent;
+  border-radius: 0;
+  opacity: 1;
+  transition: none;
+}
+.editor-shell .transition-add svg {
+  inline-size: 14px;
+  block-size: 14px;
+  padding: 1px;
+  border-radius: 4px;
+  background: var(--region-accent);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.editor-shell .transition-add:hover svg,
+.editor-shell .transition-add:focus-visible svg {
+  opacity: 1;
+}
+.editor-shell .timeline-track:hover .transition-add {
+  opacity: 1;
+}
+.transition-band {
+  position: absolute;
+  inset-block: 0;
+  z-index: 3;
+  background: color-mix(in srgb, #c4a8ff 35%, transparent);
+  pointer-events: none;
+}
+.transition-band::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(50% - 0.5px);
+  inline-size: 1px;
+  background: #1d1b26;
+}
+.editor-shell .transition-chip {
+  inline-size: 20px;
+  block-size: 20px;
+  margin-inline-start: -10px;
+  margin-block-start: -10px;
+  border-radius: 5px;
+  background: #c4a8ff;
+  color: #1d1b26;
+  box-shadow: none;
+}
+.editor-shell .transition-chip[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--region-accent);
+}

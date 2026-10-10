@@ -3,7 +3,6 @@
 // Starter Pack 1, with drawn previews; a click or a drop adds the item
 // through the Command Bus.
 import { drags } from './drag-controller';
-import { createNumberField } from './components/number-field';
 import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
 import { loadLibrary } from '../library/loader';
@@ -317,14 +316,9 @@ const TEXT_SECTIONS = [
   'titles',
   'two-line',
 ] as const;
-const TRANSITION_SECTIONS = [
-  'fades',
-  'wipes',
-  'pushes',
-  'cartoon',
-  'glitches',
-  '3d',
-] as const;
+
+import { sampleCanvas, tileGrid, tileSource } from './right-panel/fx-panels';
+import { transitionTiles } from './right-panel/transition-tiles';
 
 export function mountLibraryPanels(
   hosts: LibraryHosts,
@@ -337,6 +331,8 @@ export function mountLibraryPanels(
     close(): void;
     addPreset(preset: ShapePreset): void;
     addTextBox(): void;
+    /** V5: applies a transition to the selected cut marker. */
+    applyTransition?(type: string): void;
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
@@ -890,53 +886,41 @@ export function mountLibraryPanels(
   };
 
   // --- Transitions ----------------------------------------------------------
+  // V5 (spec 6): the same transition tiles as the right Transition panel;
+  // a click applies one to the selected cut marker.
+  const transitionQuery = { value: '' };
   const transitionsRoot: BrowsePage = {
     id: 'transitions',
     title: t('library.transitions'),
     search: t('transitions.search'),
-    status: () => status,
-    sections: ({ query }) => {
-      const all = of('transition');
-      if (query) return searchResults(all.map(libraryCard), query);
-      return [
-        {
-          id: 'tip',
-          layout: 'list',
-          render: (host) => {
-            const tip = document.createElement('div');
-            tip.className = 'browse-tip';
-            tip.innerHTML = iconSvg('info', 16);
-            const text = document.createElement('p');
-            text.textContent = t('transitions.tip');
-            tip.append(text);
-            // J3: the shared NumberField, disabled until transitions work.
-            const duration = createNumberField({
-              id: 'transition-duration',
-              label: t('transitions.duration'),
-              value: 1,
-              unit: 's',
-              min: 0.1,
-              max: 5,
-              step: 0.1,
-              decimals: 1,
-              disabled: true,
-              className: 'browse-duration',
-              onCommit: () => undefined,
-            });
-            duration.title = later(6, 'TR-002');
-            host.append(tip, duration);
-          },
+    sections: () => [
+      {
+        id: 'tiles',
+        layout: 'list',
+        render: (host) => {
+          const tip = document.createElement('div');
+          tip.className = 'browse-tip';
+          tip.innerHTML = iconSvg('info', 16);
+          const text = document.createElement('p');
+          text.textContent = t('transitions.tip');
+          tip.append(text);
+          host.append(
+            tip,
+            tileGrid({
+              name: t('library.transitions'),
+              search: t('transition.search'),
+              query: transitionQuery,
+              source: tileSource(sampleCanvas()),
+              tiles: transitionTiles().filter((tile) => tile.key !== 'none'),
+              selected: () => false,
+              onClick: (key) => options.applyTransition?.(key),
+              settingsFor: null,
+              settings: () => null,
+            }),
+          );
         },
-        ...TRANSITION_SECTIONS.map((section): BrowseSection => ({
-          id: section,
-          title: t(`transitions.section.${section}`),
-          layout: 'grid',
-          cards: () =>
-            all.filter((item) => item.section === section).map(libraryCard),
-          empty: null,
-        })),
-      ];
-    },
+      },
+    ],
   };
 
   const panels = {

@@ -7,7 +7,8 @@
 // shown disabled and name their wave. The controls are the toolbar's own
 // builders (one implementation), so values, ratio lock and the 2D Animation
 // rules (guardCommands) are shared.
-import { buildTransitionPanel } from './transition-panel';
+import { transitionTiles } from './right-panel/transition-tiles';
+import { transitionFocus } from './transition-focus';
 import {
   blendModes,
   defaults as fxDefaults,
@@ -18,6 +19,12 @@ import { resolvedTextStyle } from './text-editor';
 import {
   clipAnimation,
   clipFx,
+  clipTransition,
+  DEFAULT_TRANSITION,
+  findClip,
+  maxTransition,
+  MIN_TRANSITION,
+  previousTouching,
   clipTimeEffects,
   type ClipFx,
   type Command,
@@ -57,6 +64,7 @@ import {
   intensitySlider,
   isFilterEntry,
   presetEntries,
+  sampleCanvas,
   selectedEffects,
   tileGrid,
   tileSource,
@@ -145,9 +153,29 @@ const TABS: Record<SelectionKind, RightSection[]> = {
   group: ['Properties', 'Fade', 'Animate'],
   multi: ['Properties', 'Fade', 'Animate'],
 };
+/**
+ * V5 (spec 6): the cut marker whose Transition panel is open (the clip the
+ * transition leads into). The rail adds Transition while that clip is the
+ * selection; selecting anything else drops it.
+ */
+const focusedClip = (session: EditorSession) => {
+  const id = transitionFocus.clipId;
+  if (!id) return null;
+  const found = findClip(session.source.composition, id);
+  if (
+    !found ||
+    session.selectedIds.length !== 1 ||
+    session.selectedIds[0] !== found.clip.layerId
+  ) {
+    transitionFocus.clipId = null;
+    return null;
+  }
+  return found;
+};
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
-  return TABS[kindOf(session)];
+  const tabs = TABS[kindOf(session)];
+  return focusedClip(session) ? [...tabs, 'Transitions'] : tabs;
 }
 /**
  * A shown tab that cannot be used yet: its ledger item and wave. Audio fades
@@ -977,7 +1005,7 @@ export function mountRightPanel(
     effects: null,
   };
   const tileQuery = { filters: { value: '' }, effects: { value: '' } };
-  const source = () => tileSource(hooks.sample?.(160, 90) ?? null);
+  const source = () => tileSource(hooks.sample?.(160, 90) ?? sampleCanvas());
   /** Spec 5: Filters, one at a time, with an Intensity slider. */
   const filters = () => {
     const clips = fxClips();
@@ -1124,23 +1152,90 @@ export function mountRightPanel(
       accordion(`${kind}-effect-fx`, t('panel.effects'), fxEffects()),
     ];
   };
-  const transitionState = { query: '' };
-  /** J15: the transition into the selected clip (the J12 panel). */
+  const transitionQuery = { value: '' };
+  /** V5 (spec 6): the Transition panel of the selected cut marker. */
   const transitions = () => {
-    const clips = selectedClips(session.source, session.selectedIds);
-    const panel =
-      clips.length === 1
-        ? buildTransitionPanel(
-            clips[0]!.clip.id,
-            engine,
-            session,
-            report,
-            transitionState,
-          )
-        : null;
+    const found = focusedClip(session);
+    if (!found)
+      return [
+        heading(t('panel.transitions')),
+        plannedNoteText(t('right.transitionNeedsCut')),
+      ];
+    const composition = session.source.composition;
+    const clip = found.clip as unknown as Parameters<
+      typeof maxTransition
+    >[1] & {
+      id: string;
+      transitionMetadata: Record<string, unknown>;
+    };
+    const before = previousTouching(
+      found.track.clips as unknown as Parameters<typeof previousTouching>[0],
+      clip,
+    );
+    const current = clipTransition(clip);
+    const limit = before ? maxTransition(before, clip) : DEFAULT_TRANSITION;
+    const set = (
+      label: string,
+      transition: { type: string; duration: number } | null,
+    ) =>
+      safely(() =>
+        run(label, [
+          {
+            type: 'SET_CLIP_TRANSITION',
+            compositionId: composition.id,
+            clipId: clip.id,
+            transition,
+          } as Command,
+        ]),
+      );
     return [
-      heading(t('panel.transitions'), t('right.transitionHint')),
-      panel ?? plannedNoteText(t('right.transitionNeedsCut')),
+      heading(t('transition.title')),
+      tileGrid({
+        name: t('transition.title'),
+        search: t('transition.search'),
+        query: transitionQuery,
+        source: source(),
+        tiles: transitionTiles(),
+        selected: (key) => key === (current?.type ?? 'none'),
+        onClick: (key) => {
+          if (key === 'none') {
+            if (current) set('Remove transition', null);
+            return;
+          }
+          if (key === current?.type) return;
+          set(current ? 'Change transition' : 'Add transition', {
+            type: key,
+            duration: Math.min(current?.duration ?? DEFAULT_TRANSITION, limit),
+          });
+        },
+        settingsFor: current?.type ?? null,
+        settings: () => {
+          if (!current) return null;
+          const block = document.createElement('div');
+          block.append(
+            createNumberField({
+              id: 'transition-duration',
+              label: t('transition.duration'),
+              value: Math.round(current.duration * 100) / 100,
+              unit: 's',
+              min: MIN_TRANSITION,
+              max: Math.round(limit * 100) / 100,
+              step: 0.1,
+              decimals: 1,
+              slider: true,
+              onCommit: (value) => {
+                if (value !== current.duration)
+                  set('Transition duration', {
+                    type: current.type,
+                    duration: value,
+                  });
+              },
+              onInvalid: (message) => report(new RangeError(message)),
+            }),
+          );
+          return block;
+        },
+      }),
     ];
   };
   const plannedNoteText = (text: string) => {

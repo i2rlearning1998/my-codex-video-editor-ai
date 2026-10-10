@@ -93,7 +93,7 @@ async function exportedPixel(
 const near = (a: number[], b: number[], tolerance: number) =>
   a.every((value, index) => Math.abs(value - b[index]!) <= tolerance);
 
-test('[TR-011] a + where two clips touch opens the Transition panel; a cross fade mixes them across the cut, in the preview and the export', async ({
+test('[TR-011] a + where two clips touch adds a transition and opens its panel; a cross fade mixes them across the cut, in the preview and the export', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
@@ -128,28 +128,29 @@ test('[TR-011] a + where two clips touch opens the Transition panel; a cross fad
   await row.hover();
   const add = row.locator('.transition-add');
   await expect(add).toHaveAttribute('aria-label', 'Add transition');
+  // V5 (spec 6, D-194): "+" adds Fade through black at once and opens the
+  // right Transition panel for the cut.
   await add.click();
-  const panel = page.locator('[data-deep-panel="transition"]');
-  await expect(panel).toBeVisible();
-  // T-ALL P6 (D-189): the FX library fills the planned ones and a More
-  // group, so every entry is live.
-  await expect(panel.locator('.transition-group')).toHaveCount(7);
+  expect((await labels(page)).at(-1)).toBe('Add transition');
+  const panel = page.locator('#right-section');
+  await expect(panel.locator('.fx-tiles')).toBeVisible();
+  // Fades & blurs, Tiles, Wipes and More: every tile is live.
+  await expect(panel.locator('.fx-tiles-group')).toHaveCount(4);
   await expect(panel.locator('[aria-disabled="true"]')).toHaveCount(0);
   // Search narrows the grid.
-  await panel.locator('.transition-search').fill('slide');
-  await expect(panel.locator('.transition-option')).toHaveCount(2);
-  await panel.locator('.transition-search').fill('');
-  // Cross fade: one step; a chip marks the cut.
-  await panel.locator('[data-transition="crossfade"]').click();
-  expect((await labels(page)).at(-1)).toBe('Add transition');
+  await panel.locator('.fx-tiles-search').fill('slide');
+  await expect(panel.locator('.fx-tile')).toHaveCount(2);
+  await panel.locator('.fx-tiles-search').fill('');
+  // Cross fade: one step; the marker names it.
+  await panel.locator('.fx-tile[data-tile="crossfade"]').click();
+  expect((await labels(page)).at(-1)).toBe('Change transition');
   await expect(row.locator('.transition-chip')).toHaveAttribute(
     'aria-label',
     'Cross fade, 1 s',
   );
-  await expect(panel.locator('[data-transition="crossfade"]')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(
+    panel.locator('.fx-tile[data-tile="crossfade"]'),
+  ).toHaveAttribute('aria-selected', 'true');
   // Duration: clamped to what the clips allow (5 s here), with a message.
   const duration = panel.locator('#transition-duration');
   await duration.fill('9');
@@ -203,10 +204,9 @@ test('[TR-011] a + where two clips touch opens the Transition panel; a cross fad
     ),
   ).toBe(true);
   // Remove: one step; the + is back.
+  // (V5: the marker opens the right panel; None removes it.)
   await row.locator('.transition-chip').click();
-  await page
-    .locator('[data-deep-panel="transition"] [data-action="transition-remove"]')
-    .click();
+  await page.locator('#right-section .fx-tile[data-tile="none"]').click();
   expect((await labels(page)).at(-1)).toBe('Remove transition');
   await expect(row.locator('.transition-chip')).toHaveCount(0);
   await expect(row.locator('.transition-add')).toHaveCount(1);
