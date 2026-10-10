@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, openInspector } from './fixtures';
+import { test, expect, hook, openInspector, settledView } from './fixtures';
 import { pickColor, reveal } from './controls';
 
 // G3: marquee with a live highlight, pan and zoom, objects outside the
@@ -99,6 +99,7 @@ test('[CV-003][CV-046] a marquee from empty space outlines the layers it will se
 test('[CV-018][CV-047] Space-drag, the middle button, the hand tool and the wheel pan the view; Space alone still plays; Fit resets', async ({
   page,
 }) => {
+  await settledView(page);
   const initial = await view(page);
   // H1.4 (CV-050): an artboard that fits never pans, so zoom in first.
   for (let i = 0; i < 3; i++)
@@ -176,6 +177,7 @@ test('[CV-018][CV-047] Space-drag, the middle button, the hand tool and the whee
 test('[CV-016][CV-017] Ctrl+wheel zooms toward the pointer; buttons, the % field, 100%, Fill and the shortcuts zoom around the center', async ({
   page,
 }) => {
+  await settledView(page);
   const initial = await view(page);
   const pointer = await screen(page, 300, 200);
   await page.mouse.move(pointer.x, pointer.y);

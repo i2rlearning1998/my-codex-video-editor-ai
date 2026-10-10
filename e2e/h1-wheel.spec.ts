@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect } from './fixtures';
+import { test, expect, settledView } from './fixtures';
 
 // H1.4: wheel, trackpad and pan rules. Ctrl or Cmd with the wheel zooms
 // toward the pointer. A plain wheel never moves an artboard that fits; when
@@ -48,6 +48,7 @@ test.beforeEach(async ({ page }) => {
 test('[CV-050] at Fit the artboard never moves: wheel, Shift+wheel, Space-drag and the hand tool leave it in place', async ({
   page,
 }) => {
+  await settledView(page);
   const start = await view(page);
   const middle = await center(page);
   await page.mouse.move(middle.x, middle.y);

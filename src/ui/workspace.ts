@@ -79,6 +79,12 @@ export function mountWorkspace(
   resize: () => void,
 ): Workspace {
   const listeners = new Set<() => void>();
+  // V-series: the first layout is drawn in place, not animated from the
+  // stylesheet's defaults (the canvas would refit a moment after load).
+  shell.classList.add('shell-booting');
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => shell.classList.remove('shell-booting')),
+  );
   let layout = layoutFor(window.innerWidth);
   let left = SIZES[layout].left || SIZES.wide.left,
     right = SIZES[layout].right || SIZES.wide.right,

@@ -320,3 +320,33 @@ export async function seekKeep(page: Page, seconds: number) {
     )
     .toBeCloseTo(seconds, 2);
 }
+/**
+ * V-series: the canvas view once the layout has settled (panels that slide
+ * in after load, the timeline's centring re-render), so tests that compare
+ * a view with the starting one do not start mid-change.
+ */
+export async function settledView(page: Page) {
+  await settled(page);
+  const read = () =>
+    page.evaluate(() =>
+      JSON.stringify(
+        (
+          window as unknown as {
+            __AIVE__: { getCanvas(): { view: unknown } };
+          }
+        ).__AIVE__.getCanvas().view,
+      ),
+    );
+  let last = '';
+  await expect
+    .poll(
+      async () => {
+        const now = await read();
+        const same = now === last;
+        last = now;
+        return same;
+      },
+      { intervals: [300] },
+    )
+    .toBe(true);
+}
