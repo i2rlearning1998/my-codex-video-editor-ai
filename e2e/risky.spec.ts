@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, rulerBox } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  toScreen,
+  rulerBox,
+  openInspector,
+} from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
 test.beforeEach(async ({ page }) => {
@@ -77,6 +84,7 @@ async function seek(page: Page, seconds: number) {
 const field = (page: Page, name: string) =>
   page.getByRole('spinbutton', { name, exact: true });
 async function setField(page: Page, name: string, value: string) {
+  await openInspector(page);
   await field(page, name).fill(value);
   await field(page, name).press('Enter');
 }
@@ -287,7 +295,8 @@ test('[PRJ-012] switching the active composition shows its canvas and timeline a
   await openFixtureProject('two-scenes.json');
   await clipEl(page, 'clip-a').click({ position: { x: 30, y: 10 } });
   expect((await hook(page)).session.selectedIds).toEqual(['layer-a']);
-  await page.locator('#composition').selectOption('scene-2');
+  // I3: the scene strip replaces the composition select.
+  await page.locator('#scene-strip [data-scene-id="scene-2"]').click();
   const session = (await hook(page)).session;
   expect(session.compositionId).toBe('scene-2');
   expect(session.selectedIds).toEqual([]);
@@ -299,8 +308,8 @@ test('[PRJ-012] switching the active composition shows its canvas and timeline a
   expect(await isBackground(page, 300, 200)).toBe(true);
   expect((await hook(page)).history.canUndo).toBe(false);
   await page
-    .locator('#composition')
-    .selectOption({ label: 'Main composition' });
+    .locator('#scene-strip .scene-strip-card', { hasText: 'Main composition' })
+    .click();
   await expect(clipEl(page, 'clip-a')).toBeVisible();
   await expect.poll(() => isBackground(page, 1000, 500)).toBe(true);
 });

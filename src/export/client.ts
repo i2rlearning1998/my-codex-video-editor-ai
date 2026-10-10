@@ -72,6 +72,14 @@ export async function missingMedia(
   )) {
     const asset = input.assets.find((item) => item.id === id);
     if (!asset || !['video', 'audio', 'image'].includes(asset.type)) continue;
+    // I1.7: media deleted from the library counts as missing.
+    if (
+      (asset as unknown as { metadata: Record<string, unknown> }).metadata
+        .removed === true
+    ) {
+      missing.push(asset.name);
+      continue;
+    }
     const source = soundSource(asset as unknown as PreviewAsset, assets);
     const present =
       store && source ? (await bytesOf(store, source)) !== null : false;

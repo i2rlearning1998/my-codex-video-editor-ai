@@ -7,6 +7,7 @@ import {
   artboard,
   rulerBox,
   mode2d,
+  openInspector,
 } from './fixtures';
 
 // W2-B proof debt: Claimed Wave 2 items proven the way a user does them.
@@ -490,6 +491,7 @@ test.describe('layers and inspector', () => {
     await page
       .locator('#scene-list [data-layer-id="example-headline"]')
       .click();
+    await openInspector(page);
     await page.getByRole('button', { name: 'Add Position X keyframe' }).click();
     let property = (await layer(page, 'example-headline')).transform.position;
     expect(property.keyframes.map((frame: any) => frame.time)).toEqual([0]);

@@ -379,6 +379,7 @@ export interface ToolbarHooks {
 /** H3: the kinds of toolbar, from the selection. */
 export type ToolbarMode =
   | 'scene'
+  | 'canvas'
   | 'image'
   | 'video'
   | 'text'
@@ -393,6 +394,7 @@ const PLANNED: Record<string, readonly [string, string, string, number]> = {
   transition: ['toolbar.transition', 'transitions', 'TR-001', 6],
   list: ['toolbar.list', 'list', 'TXT-024', 3],
   'scene-animate': ['toolbar.animate', 'animate', 'ANI-020', 8],
+  'auto-captions': ['toolbar.autoCaptions', 'captions', 'TXT-035', 8],
 };
 
 export function mountContextToolbar(
@@ -791,77 +793,83 @@ export function mountContextToolbar(
     return item;
   };
   /** Transparency: the layer opacity (all selected layers for several). */
-  const transparencyTool = (extra?: () => HTMLElement | null) =>
-    popTool('transparency', 'transparency', t('toolbar.transparency'), () => {
-      const layer = selected();
-      const opacity = layer
-        ? layer.transform.opacity.value
-        : (selectionRoots(session.source, session.selectedIds)[0]?.transform
-            .opacity.value ?? 1);
-      const slider = field(
-        'opacity',
-        t('toolbar.opacity'),
-        round(opacity * 100, 1),
-        (value) => {
-          if (!(value >= 0 && value <= 100))
-            throw new RangeError(t('toolbar.opacityRange'));
-          if (layer) edit('Opacity', value / 100);
-          else
-            run(
-              'Set opacity',
-              selectionRoots(session.source, session.selectedIds).flatMap(
-                (root) =>
-                  buildTransformCommands(
-                    session.source.composition.id,
-                    root,
-                    {
-                      ...(root.transform as TransformValues),
-                      opacity: { value: value / 100 },
-                    },
-                    undefined,
-                    session.currentTime,
-                  ),
-              ),
-            );
-        },
-        '%',
-        '',
-        { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
-      );
-      const more = extra?.();
-      return form(t('toolbar.transparency'), slider, ...(more ? [more] : []));
-    });
-  const flipTool = (layer: SceneLayer) =>
-    popTool('flip', 'flipH', t('toolbar.flip'), () => {
-      const compositionId = session.source.composition.id;
-      const flip = (axis: 'horizontal' | 'vertical') =>
-        tool(
-          `flip-${axis}`,
-          axis === 'horizontal' ? 'flipH' : 'flipV',
-          t(axis === 'horizontal' ? 'toolbar.flipH' : 'toolbar.flipV'),
-          () => {
-            const current = selected() ?? layer;
-            const bounds = selectionBounds(session.source, current.id)?.bounds;
-            if (!bounds) return;
-            run(
-              axis === 'horizontal' ? 'Flip horizontal' : 'Flip vertical',
-              buildTransformCommands(
-                compositionId,
-                current,
-                flipTransform(
-                  current.transform as TransformValues,
-                  [bounds.x + bounds.width / 2, bounds.y + bounds.height / 2],
-                  axis,
+  // I4: the popover contents are named builders, so the right panel shows
+  // the same controls (one implementation).
+  const transparencyContent = (extra?: () => HTMLElement | null) => {
+    const layer = selected();
+    const opacity = layer
+      ? layer.transform.opacity.value
+      : (selectionRoots(session.source, session.selectedIds)[0]?.transform
+          .opacity.value ?? 1);
+    const slider = field(
+      'opacity',
+      t('toolbar.opacity'),
+      round(opacity * 100, 1),
+      (value) => {
+        if (!(value >= 0 && value <= 100))
+          throw new RangeError(t('toolbar.opacityRange'));
+        if (layer) edit('Opacity', value / 100);
+        else
+          run(
+            'Set opacity',
+            selectionRoots(session.source, session.selectedIds).flatMap(
+              (root) =>
+                buildTransformCommands(
+                  session.source.composition.id,
+                  root,
+                  {
+                    ...(root.transform as TransformValues),
+                    opacity: { value: value / 100 },
+                  },
+                  undefined,
+                  session.currentTime,
                 ),
-                undefined,
-                session.currentTime,
+            ),
+          );
+      },
+      '%',
+      '',
+      { min: 0, max: 100, slider: true, presets: [0, 25, 50, 75, 100] },
+    );
+    const more = extra?.();
+    return form(t('toolbar.transparency'), slider, ...(more ? [more] : []));
+  };
+  const transparencyTool = (extra?: () => HTMLElement | null) =>
+    popTool('transparency', 'transparency', t('toolbar.transparency'), () =>
+      transparencyContent(extra),
+    );
+  const flipContent = (layer: SceneLayer) => {
+    const compositionId = session.source.composition.id;
+    const flip = (axis: 'horizontal' | 'vertical') =>
+      tool(
+        `flip-${axis}`,
+        axis === 'horizontal' ? 'flipH' : 'flipV',
+        t(axis === 'horizontal' ? 'toolbar.flipH' : 'toolbar.flipV'),
+        () => {
+          const current = selected() ?? layer;
+          const bounds = selectionBounds(session.source, current.id)?.bounds;
+          if (!bounds) return;
+          run(
+            axis === 'horizontal' ? 'Flip horizontal' : 'Flip vertical',
+            buildTransformCommands(
+              compositionId,
+              current,
+              flipTransform(
+                current.transform as TransformValues,
+                [bounds.x + bounds.width / 2, bounds.y + bounds.height / 2],
+                axis,
               ),
-            );
-          },
-          { text: true },
-        );
-      return form(t('toolbar.flip'), flip('horizontal'), flip('vertical'));
-    });
+              undefined,
+              session.currentTime,
+            ),
+          );
+        },
+        { text: true },
+      );
+    return form(t('toolbar.flip'), flip('horizontal'), flip('vertical'));
+  };
+  const flipTool = (layer: SceneLayer) =>
+    popTool('flip', 'flipH', t('toolbar.flip'), () => flipContent(layer));
   /** Stroke (shapes) or border (pictures): colour, width, style, ends. */
   const strokeContent = (picture: boolean) => {
     const layer = selected();
@@ -1035,42 +1043,45 @@ export function mountContextToolbar(
     }
     return form(t('toolbar.strokeStyle'), ...children);
   };
-  const cornersTool = (layer: SceneLayer, picture: boolean) =>
-    popTool('corners-menu', 'corners', t('toolbar.corners'), () => {
-      const current = selected() ?? layer;
-      const compositionId = session.source.composition.id;
-      const shape = shapeOf(current);
-      const value = picture
-        ? (pictureOf(current)?.radius ?? 0)
-        : (shape?.radius ?? 0);
-      const item = field(
-        'corners',
-        t('toolbar.corners'),
-        round(value, 2),
-        (next) =>
-          run('Set corner radius', [
-            picture
-              ? setProperty(
-                  compositionId,
+  const cornersContent = (layer: SceneLayer, picture: boolean) => {
+    const current = selected() ?? layer;
+    const compositionId = session.source.composition.id;
+    const shape = shapeOf(current);
+    const value = picture
+      ? (pictureOf(current)?.radius ?? 0)
+      : (shape?.radius ?? 0);
+    const item = field(
+      'corners',
+      t('toolbar.corners'),
+      round(value, 2),
+      (next) =>
+        run('Set corner radius', [
+          picture
+            ? setProperty(
+                compositionId,
+                selected() ?? current,
+                'cornerRadius',
+                withValue(
                   selected() ?? current,
                   'cornerRadius',
-                  withValue(
-                    selected() ?? current,
-                    'cornerRadius',
-                    next,
-                    'number',
-                  ),
-                )
-              : shapeCommandFor(selected() ?? current, 'cornerRadius', next),
-          ]),
-        'px',
-        '',
-        { min: 0, max: 500, slider: true, presets: [0, 8, 16, 32, 64] },
-      );
-      if (!picture && shape?.kind !== 'rectangle')
-        item.querySelector('input')!.disabled = true;
-      return form(t('toolbar.corners'), item);
-    });
+                  next,
+                  'number',
+                ),
+              )
+            : shapeCommandFor(selected() ?? current, 'cornerRadius', next),
+        ]),
+      'px',
+      '',
+      { min: 0, max: 500, slider: true, presets: [0, 8, 16, 32, 64] },
+    );
+    if (!picture && shape?.kind !== 'rectangle')
+      item.querySelector('input')!.disabled = true;
+    return form(t('toolbar.corners'), item);
+  };
+  const cornersTool = (layer: SceneLayer, picture: boolean) =>
+    popTool('corners-menu', 'corners', t('toolbar.corners'), () =>
+      cornersContent(layer, picture),
+    );
   const shapeCommandFor = (
     layer: SceneLayer,
     key: ShapeKey,
@@ -1127,10 +1138,32 @@ export function mountContextToolbar(
     ];
   };
 
+  // --- The sticky canvas bar (I1.5) --------------------------------------
+  const renderCanvas = () => {
+    const source = session.source;
+    const ratio = sizeChip();
+    ratio.classList.add('labelled');
+    const label = document.createElement('span');
+    label.className = 'toolbar-chip-label';
+    label.textContent = t('toolbar.ratio');
+    ratio.prepend(label);
+    return [
+      ratio,
+      divider(),
+      colorField(
+        'canvas-background',
+        t('toolbar.canvasBackground'),
+        source.background,
+        (color) =>
+          run('Set background', [{ type: 'SET_PROJECT_BACKGROUND', color }]),
+      ),
+      divider(),
+      planned('auto-captions'),
+    ];
+  };
+
   // --- Per type -------------------------------------------------------------
   const imageControls = (layer: SceneLayer, video: boolean) => [
-    sizeChip(),
-    divider(),
     ...(video
       ? []
       : [
@@ -1262,8 +1295,6 @@ export function mountContextToolbar(
     align.id = 'toolbar-align';
     align.dataset.value = style.align;
     return [
-      sizeChip(),
-      divider(),
       font,
       sizeGroup,
       colorField(
@@ -1652,8 +1683,6 @@ export function mountContextToolbar(
     });
     combine.title = t('shape.combineHint');
     return [
-      sizeChip(),
-      divider(),
       fill,
       popTool('stroke-style', 'strokeStyle', t('toolbar.strokeStyle'), () =>
         strokeContent(false),
@@ -1672,8 +1701,6 @@ export function mountContextToolbar(
     const drawing = drawingOf(layer);
     const stroke = layer.properties.stroke;
     return [
-      sizeChip(),
-      divider(),
       colorField(
         'color',
         t('toolbar.color'),
@@ -1740,8 +1767,6 @@ export function mountContextToolbar(
       grouping.title = blocker;
     } else if (!isGroup && !actions.includes('group')) grouping.disabled = true;
     return [
-      sizeChip(),
-      divider(),
       grouping,
       divider(),
       positionTool(),
@@ -1775,7 +1800,9 @@ export function mountContextToolbar(
   /** H3: which toolbar the selection shows (null hides it). */
   const modeOf = (): ToolbarMode | null => {
     const ids = session.selectedIds;
-    if (!ids.length) return session.canvasSelected ? 'scene' : null;
+    // I1.5: the artboard selected shows the scene bar; the stage around it
+    // (or nothing selected after Escape) shows the sticky canvas bar.
+    if (!ids.length) return session.canvasSelected ? 'scene' : 'canvas';
     if (ids.length > 1) return 'multi';
     const layer = selected();
     if (!layer) return null;
@@ -1812,11 +1839,10 @@ export function mountContextToolbar(
       return;
     }
     // H3 (CV-051): a locked selection offers only Unlock (Canva).
-    const locked = mode !== 'scene' && selectionLocked(session);
+    const locked =
+      mode !== 'scene' && mode !== 'canvas' && selectionLocked(session);
     const controls = locked
       ? [
-          sizeChip(),
-          divider(),
           tool(
             'unlock',
             'unlock',
@@ -1827,20 +1853,22 @@ export function mountContextToolbar(
         ]
       : mode === 'scene'
         ? renderScene()
-        : mode === 'image' || mode === 'video'
-          ? imageControls(layer!, mode === 'video')
-          : mode === 'text'
-            ? textControls(layer!)
-            : mode === 'shape'
-              ? shapeControls(layer!)
-              : mode === 'drawing'
-                ? drawingControls(layer!)
-                : groupControls(mode === 'multi');
+        : mode === 'canvas'
+          ? renderCanvas()
+          : mode === 'image' || mode === 'video'
+            ? imageControls(layer!, mode === 'video')
+            : mode === 'text'
+              ? textControls(layer!)
+              : mode === 'shape'
+                ? shapeControls(layer!)
+                : mode === 'drawing'
+                  ? drawingControls(layer!)
+                  : groupControls(mode === 'multi');
     overflow = [];
     bar.replaceChildren(...controls);
     fit();
     restoreFieldFocus(bar);
-    refreshAttached(mode === 'scene' ? null : layer);
+    refreshAttached(mode === 'scene' || mode === 'canvas' ? null : layer);
   };
   /**
    * H3: the row never scrolls. When it is wider than the stage, labelled
@@ -1888,7 +1916,64 @@ export function mountContextToolbar(
       if (!bar.hidden) fit();
     }).observe(bar.parentElement);
   render();
-  return { render };
+  /**
+   * I4: the same controls as the toolbar's popovers, for the right panel.
+   * Ids are renamed from toolbar-* to right-* so both can be on screen.
+   */
+  const build = (
+    id:
+      | 'transparency'
+      | 'flip'
+      | 'corners'
+      | 'stroke'
+      | 'border'
+      | 'spacing'
+      | 'canvas-size',
+  ): HTMLElement | null => {
+    const layer = selected();
+    const content =
+      id === 'canvas-size'
+        ? canvasSizeContent()
+        : id === 'transparency'
+          ? transparencyContent()
+          : !layer
+            ? null
+            : id === 'flip'
+              ? flipContent(layer)
+              : id === 'corners'
+                ? cornersContent(layer, layer.type !== 'shape')
+                : id === 'stroke'
+                  ? strokeContent(false)
+                  : id === 'border'
+                    ? strokeContent(true)
+                    : advancedContent();
+    if (!content) return null;
+    // Every id in the copy is renamed (toolbar-x to right-x, any other id to
+    // right-id), and references follow, so no id is on the page twice.
+    const renamed = new Map<string, string>();
+    for (const element of content.querySelectorAll<HTMLElement>('[id]')) {
+      const next = element.id.startsWith('toolbar-')
+        ? `right-${element.id.slice('toolbar-'.length)}`
+        : `right-${element.id}`;
+      renamed.set(element.id, next);
+      element.id = next;
+    }
+    for (const name of ['aria-labelledby', 'aria-controls', 'for'])
+      for (const element of content.querySelectorAll<HTMLElement>(
+        `[${name}]`,
+      )) {
+        const value = element.getAttribute(name)!;
+        element.setAttribute(
+          name,
+          value
+            .split(' ')
+            .map((id) => renamed.get(id) ?? id)
+            .join(' '),
+        );
+      }
+    return content;
+  };
+  return { render, build };
 }
 
 /** Formats a percentage for display (no raw floats in the UI). */

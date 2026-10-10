@@ -303,7 +303,7 @@ export function mountToolPanels(
   };
   return {
     open(id: ToolPanelId) {
-      if (panels.openId === id) return panels.close();
+      if (panels.openId === id && panels.visible) return panels.close();
       panels.show(id, t(titles[id]), builders[id]);
     },
     startCrop,

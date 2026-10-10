@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  artboard,
+  showCategory,
+  openInspector,
+} from './fixtures';
 import { choose, pickColor, reveal } from './controls';
 
 // G1: shared UI foundation. Rail categories, number fields, selects, colour
@@ -25,13 +32,13 @@ test('[LAY-002] each rail category shows only its own panel, on first load, afte
   await expect(page.locator('#import-media')).toBeHidden();
   const expected: Record<string, string> = {
     Media: 'Media',
-    Draw: 'Draw',
     Elements: 'Elements',
-    // H5: Text, Templates and Graphics hold the library; Audio is still a
-    // placeholder.
+    // H5: Text and Templates hold the library; I2: Graphics live inside
+    // Elements, Transitions is a browse panel, Draw is a palette over the
+    // canvas (no left panel); Audio is still a placeholder.
     Text: 'Text',
     Templates: 'Templates',
-    Graphics: 'Graphics',
+    Transitions: 'Transitions',
     Audio: 'placeholder',
     Scene: 'Scene',
   };
@@ -39,6 +46,12 @@ test('[LAY-002] each rail category shows only its own panel, on first load, afte
     await showCategory(page, category);
     expect(await visiblePanels(page)).toEqual([panel]);
   }
+  // I2: Draw opens the palette over the canvas and collapses the panel.
+  await showCategory(page, 'Draw');
+  await expect(page.locator('#draw-palette')).toBeVisible();
+  await expect(page.locator('.editor-shell')).toHaveClass(/library-collapsed/);
+  await page.locator('#draw-palette-close').click();
+  await expect(page.locator('#draw-palette')).toBeHidden();
   // After a reload (the reported bug showed Media and Scene mixed).
   await showCategory(page, 'Media');
   await page.reload();
@@ -144,6 +157,7 @@ test('[INS-006][INS-007][LAY-023] number fields scrub, type, step with arrows, r
   await page.goto('/');
   await ready(page);
   await selectLayer(page, 'example-badge');
+  await openInspector(page);
   const x = page.getByRole('spinbutton', { name: 'Position X', exact: true });
   await expect(x).toHaveValue('76');
   // Scrub: drag the label right; the value previews and commits once.

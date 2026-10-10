@@ -198,6 +198,71 @@ export class EditorEngine {
     });
   }
 
+  /**
+   * I1.6: library changes that are not project edits (a media import,
+   * rename or delete, or the project's name) and so are not undoable. Only
+   * ADD_ASSET, REPLACE_ASSET and SET_PROJECT_NAME are accepted. They apply to the current document and are
+   * carried into every stored undo and redo snapshot, so undoing a later
+   * edit never removes or restores media. History is left as it is.
+   */
+  library(label: string, inputs: readonly EditorCommand[]): void {
+    this.#exclusive(() => {
+      if (!label.trim() || label.length > 256)
+        throw new Error('Library label must contain 1–256 characters');
+      if (!inputs.length) throw new Error('No library change given');
+      assertJson(inputs);
+      const commands = structuredClone(inputs).map((raw) => {
+        const command = validateCommand(raw);
+        if (
+          command.type !== 'ADD_ASSET' &&
+          command.type !== 'REPLACE_ASSET' &&
+          command.type !== 'SET_PROJECT_NAME'
+        )
+          throw new Error(
+            `${command.type} is a project edit, not a library change`,
+          );
+        return command;
+      });
+      const apply = (
+        snapshot: DeepReadonly<Project>,
+        strict: boolean,
+      ): DeepReadonly<Project> => {
+        const draft = structuredClone(snapshot) as unknown as Project;
+        for (const command of commands) {
+          if (command.type === 'SET_PROJECT_NAME') {
+            applyCommand(draft, command);
+            continue;
+          }
+          const exists = draft.assets.some((asset) =>
+            command.type === 'ADD_ASSET'
+              ? asset.id === command.asset.id
+              : asset.id === command.assetId,
+          );
+          // Snapshots that already (or never) hold the asset stay as they are.
+          if (!strict && (command.type === 'ADD_ASSET') === exists) continue;
+          applyCommand(draft, command);
+        }
+        try {
+          return freeze(validateProject(draft));
+        } catch (error) {
+          if (strict) throw error;
+          return snapshot;
+        }
+      };
+      const next = apply(this.#state, true);
+      if (JSON.stringify(next) === JSON.stringify(this.#state)) return;
+      const rebase = (entries: HistoryEntry[]) =>
+        entries.forEach((entry) => {
+          entry.before = apply(entry.before, false);
+          entry.after = apply(entry.after, false);
+        });
+      rebase(this.#undo);
+      rebase(this.#redo);
+      this.#state = next;
+      this.#notify('library');
+    });
+  }
+
   /** Explicit document/session boundary, never an edit or an undoable command. */
   load(project: unknown): void {
     this.#exclusive(() => {

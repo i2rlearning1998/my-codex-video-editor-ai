@@ -304,7 +304,8 @@ test('[LAY-034] on a window under 800 px tall the rail shows six categories and 
   expect(visible).toBe(6);
   await page.locator('#rail-more').click();
   const menu = page.locator('.rail-more-menu');
-  await expect(menu.locator('[data-more-category]')).toHaveCount(3);
+  // I2: eight categories (Graphics moved into Elements): six shown, two in More.
+  await expect(menu.locator('[data-more-category]')).toHaveCount(2);
   await menu.locator('[data-more-category="Audio"]').click();
   await expect(page.locator('[data-category="Audio"]')).toHaveAttribute(
     'aria-pressed',

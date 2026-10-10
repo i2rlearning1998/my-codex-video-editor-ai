@@ -15,6 +15,7 @@ export interface HookSnapshot {
     timelinePxPerSecond: number;
     soloTrackIds: string[];
     selectedKeyframes: { layerId: string; time: number }[];
+    drawBrush: string | null;
   };
   getHistory(): { canUndo: boolean; canRedo: boolean; labels: string[] };
   getConsoleErrors(): readonly unknown[];
@@ -171,6 +172,28 @@ export async function showCategory(page: Page, name: string) {
   if ((await button.getAttribute('aria-pressed')) !== 'true')
     await button.click();
   await expect(button).toHaveAttribute('aria-pressed', 'true');
+}
+/**
+ * I2: Graphics live inside Elements: opens the Elements panel's Graphics
+ * page (backgrounds and gradients).
+ */
+export async function showGraphics(page: Page) {
+  await showCategory(page, 'Elements');
+  const back = page.locator('#library-elements [data-action="browse-back"]');
+  while (await back.isVisible()) await back.click();
+  await page.locator('#library-elements [data-tile="graphics"]').click();
+  await expect(page.locator('#library-elements')).toHaveAttribute(
+    'data-page',
+    'elements-graphics',
+  );
+}
+/**
+ * I4: the Inspector's Position and size, Timing and Details start folded at
+ * the bottom of the right panel's first tab; this opens them.
+ */
+export async function openInspector(page: Page) {
+  for (const tab of ['Transform', 'Timing', 'Dimensions'])
+    await page.locator(`#inspector-content [data-subtab="${tab}"]`).click();
 }
 /** H4: keyframes are shown and edited in 2D Animation mode. */
 export async function mode2d(page: Page) {

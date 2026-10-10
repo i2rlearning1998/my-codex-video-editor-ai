@@ -1,5 +1,13 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox, mode2d } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  artboard,
+  rulerBox,
+  mode2d,
+  openInspector,
+} from './fixtures';
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced), text
 // "example-headline"; composition 1280×720 at 30 fps, 10 s long.
@@ -64,6 +72,7 @@ async function animateBadge(page: Page) {
   await seek(page, 0);
   await row(page, 'position').locator('[data-action="stopwatch"]').click();
   await seek(page, 2);
+  await openInspector(page);
   // ANI-006: an Inspector edit at the playhead adds the keyframe there.
   await inspectorX(page).fill('276');
   await inspectorX(page).press('Enter');
@@ -293,6 +302,7 @@ test('[ANI-009] children follow an animated group and inherit its opacity', asyn
   for (const property of ['position', 'opacity'])
     await row(page, property).locator('[data-action="stopwatch"]').click();
   await seek(page, 2);
+  await openInspector(page);
   await page
     .locator('#inspector-content input[aria-label="Position X"]')
     .fill('725');

@@ -21,6 +21,7 @@ const PATHS: Record<string, string> = {
   export: 'M10 3v9 M6 8l4-4 4 4 M4 15h12',
   save: 'M4 4h9l3 3v9H4z M7 4v4h6V4 M7 12h6v4H7z',
   open: 'M3 6h5l2 2h7v8H3z',
+  folder: 'M3 5h5l2 2h7v9H3z M3 9h14',
   play: 'M6 4l10 6-10 6z',
   pause: 'M6 4h3v12H6z M11 4h3v12h-3z',
   stop: 'M5 5h10v10H5z',

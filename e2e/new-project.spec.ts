@@ -1,9 +1,10 @@
-import { menuAction, test, expect, hook } from './fixtures';
+import { menuAction, test, expect, hook, openInspector } from './fixtures';
 test('[PRJ-001][PRJ-002][PRJ-003][PRJ-004][PRJ-005][PRJ-006] validate custom size and create a portrait project with a solid background', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
   await page.locator('[data-layer-id="example-headline"]').first().click();
+  await openInspector(page);
   await page
     .getByRole('spinbutton', { name: 'Position X', exact: true })
     .fill('321');

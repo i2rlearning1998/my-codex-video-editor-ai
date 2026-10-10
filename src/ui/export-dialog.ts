@@ -35,6 +35,8 @@ export interface ExportDialogOptions {
   decoder: AudioDecoder;
   /** The playhead frame as a PNG, drawn like the export (EXP-009). */
   renderFrame(): Promise<Blob>;
+  /** I2: keeps the frame in Project Media as a Design. */
+  saveFrame?(blob: Blob, name: string): Promise<void>;
   toast(text: string, kind: 'info' | 'success' | 'error'): void;
 }
 
@@ -119,6 +121,7 @@ export function openExportDialog(options: ExportDialogOptions) {
           </div>
           <div class="export-actions">
             <button type="button" class="button" id="export-png">${t('export.png')}</button>
+            <button type="button" class="button" id="export-png-media"${options.saveFrame ? '' : ' hidden'}>${t('export.saveToMedia')}</button>
             <button type="button" class="button" id="export-cancel" hidden>${t('media.cancel')}</button>
             <button type="submit" class="button primary" id="export-start-button">${t('export.start.button')}</button>
           </div>
@@ -307,6 +310,16 @@ export function openExportDialog(options: ExportDialogOptions) {
       (blob) => download(blob, `${settings.fileName || 'frame'}.png`),
       (error: unknown) => options.toast(String(error), 'error'),
     );
+  find<HTMLButtonElement>('export-png-media').onclick = () =>
+    void options
+      .renderFrame()
+      .then((blob) =>
+        options.saveFrame?.(blob, `${settings.fileName || 'frame'}.png`),
+      )
+      .then(
+        () => options.toast(t('export.savedToMedia'), 'success'),
+        (error: unknown) => options.toast(String(error), 'error'),
+      );
   show();
   describeFormat();
   void checkMissing();

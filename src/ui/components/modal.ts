@@ -144,3 +144,82 @@ export function confirmDialog(
       });
   });
 }
+
+/** I1.7: a one-field text dialog. Resolves to the trimmed text, or null when
+ *  cancelled or left empty. Enter confirms, Escape cancels. */
+export function promptDialog(
+  titleText: string,
+  value: string,
+  options: {
+    label: string;
+    confirmLabel: string;
+    cancelLabel: string;
+    maxLength?: number;
+  },
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (result: string | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    let input!: HTMLInputElement;
+    const handle = openModal({
+      titleText: escapeHtml(titleText),
+      onClose: () => settle(null),
+      bodyBuilder: (body) => {
+        input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'modal-input';
+        input.dataset.role = 'prompt-input';
+        input.value = value;
+        input.maxLength = options.maxLength ?? 256;
+        input.setAttribute('aria-label', options.label);
+        const actions = document.createElement('div');
+        actions.className = 'modal-actions';
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'button';
+        cancel.dataset.role = 'cancel';
+        cancel.textContent = options.cancelLabel;
+        const ok = document.createElement('button');
+        ok.type = 'button';
+        ok.className = 'button primary';
+        ok.dataset.role = 'confirm';
+        ok.textContent = options.confirmLabel;
+        actions.append(cancel, ok);
+        body.append(input, actions);
+        const confirm = () => {
+          const text = input.value.trim();
+          settle(text ? text : null);
+          handle.close();
+        };
+        cancel.onclick = () => handle.close();
+        ok.onclick = confirm;
+        input.onkeydown = (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            confirm();
+          }
+        };
+      },
+    });
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        input.focus();
+        input.select();
+      }),
+    );
+  });
+}
+
+export function escapeHtml(text: string) {
+  return text.replace(
+    /[&<>"']/g,
+    (char) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[
+        char
+      ]!,
+  );
+}

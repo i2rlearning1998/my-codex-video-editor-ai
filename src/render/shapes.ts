@@ -45,6 +45,8 @@ export interface ShapeStyle {
   readonly polygons?: MultiPolygon;
   /** H5: a gradient that replaces the fill colour (closed shapes). */
   readonly gradient?: Gradient;
+  /** I2: an arrow with a head at its start too (property `arrowStart`). */
+  readonly arrowStart?: boolean;
 }
 
 const COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -143,6 +145,11 @@ export function shapeOf(layer: SceneLayer): ShapeStyle | null {
         ? radius
         : 0,
     ...(polygons ? { polygons } : {}),
+    ...(kind === 'arrow' &&
+    p.arrowStart?.type === 'boolean' &&
+    p.arrowStart.value === true
+      ? { arrowStart: true }
+      : {}),
     ...(gradient ? { gradient } : {}),
   };
 }
@@ -204,8 +211,9 @@ export function drawShape(
     const head =
       shape.kind === 'arrow' ? Math.min(ARROW_HEAD(w), width / 2) : 0;
     const end = width - (shape.kind === 'arrow' ? head * 0.8 : 0);
+    const start = shape.arrowStart ? head * 0.8 : 0;
     context.beginPath();
-    context.moveTo(0, y);
+    context.moveTo(start, y);
     context.lineTo(end, y);
     if (shape.stroke) context.stroke();
     if (shape.kind === 'arrow' && shape.stroke) {
@@ -217,6 +225,14 @@ export function drawShape(
       context.lineTo(width - head, y + head / 2);
       context.closePath();
       context.fill();
+      if (shape.arrowStart) {
+        context.beginPath();
+        context.moveTo(0, y);
+        context.lineTo(head, y - head / 2);
+        context.lineTo(head, y + head / 2);
+        context.closePath();
+        context.fill();
+      }
     }
     return;
   }

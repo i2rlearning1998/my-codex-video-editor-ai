@@ -1,3 +1,9 @@
+- **I-series (I1 to I5)** is on `claude/i-series`, PR #16 to `main`, not merged; see reports/I-SERIES.md.
+  - **I1** fixes the H-series test findings: panels animate their real width, toolbar buttons open a collapsed panel, library cards drag onto the canvas, templates ask Replace, Add or New scene, the canvas bar, undo rules (docs/UNDO-RULES.md, `engine.library`), and a media menu with soft delete and Restore.
+  - **I2** brings browse panels for Templates, Elements, Text and Transitions; Graphics moves into Elements; Media tabs, folders and designs; My Templates; and the Draw palette.
+  - **I3** puts a scene strip under the canvas. **I4** makes the right panel per object, with tabs, accordions and planned tabs disabled. **I5** adds flowchart shapes and animated titles.
+  - Schema is still 5; no new dependencies. PR #14 (audio engine) is still unmerged; the right panel's Audio tab is its own module (`src/ui/right-panel/audio-tab.ts`) for it.
+  - Last full verify and ledger counts: reports/I-SERIES.md, section 3.
 - **H-series (H1 to H6)** is on `claude/h-series`, PR #15 to `main`, not merged; see reports/H-SERIES.md.
   - **H1** fixes canvas and panel bugs. **H2** adds design tokens with dark and light themes, the new shell and the responsive layouts.
   - **H3** brings the Canva floating toolbar and tool panels, crop, border and corners, lock, per-type menus, canvas size and the simpler export dialog.
