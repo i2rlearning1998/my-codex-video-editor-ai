@@ -153,6 +153,8 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-060 | P0 | W2 | Verified | The first load opens the Media panel; its empty state shows an illustration; a new project's canvas is white (T-ALL LCR) |
 | LAY-061 | P0 | W2 | Verified | No panel toggles in the top bar: the left panel's collapse button is in its own header (a rail category reopens it) and the right panel's in its header; the right panel shows only while something is selected, opens on each new selection and never moves the canvas (T-ALL LCR) |
 | LAY-062 | P0 | W2 | Verified | On the wide layout the left rail and panel run the full height and the timeline sits beside the panel (T-ALL LCR) |
+| LAY-063 | P0 | W2 | Verified | With nothing selected there is no right rail, panel or reserved column; a selection animates them in (panel 300 px, rail 65 px) and deselecting removes them fully; the canvas stays centred (V-series LCR) |
+| LAY-064 | P0 | W2 | Verified | The shell's regions are separate cards: 8 px gutters of the page colour, opaque 1 px borders, each region its own tone (stage, footer, scene strip, timeline, lanes) (V-series LCR) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -370,8 +372,8 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 | LYR-013 | P1 | W2 | Todo | Arrow-key navigation in the list |
 | LYR-014 | P2 | W2 | Todo | Solo (isolate) a layer |
 | LYR-015 | P2 | W2 | Todo | Layer color labels |
-| LYR-016 | P0 | W2 | Verified | Layers outliner beside the lanes (closed by default, resizable 160 to 360 px, readable rows): nested collections per scene that can be created, renamed, dragged into each other and deleted, elements dragged into them; organisation only (the canvas and the layers never change); one undo step each; stored in the scene's optional `outliner` (schema 7) (T-ALL P5 LCR) |
-| LYR-017 | P0 | W2 | Verified | Selection follows both ways between the outliner, the canvas and the timeline; a selected element inside a closed collection opens it; a selected clip out of view is scrolled into view; each element row has eye, lock, solo and mute for its lane, and a collection row sets them for everything inside (T-ALL P5 LCR) |
+| LYR-016 | P0 | W2 | Verified | Blender-style outliner in the left Scene category: collections per scene that can be created, renamed, nested and deleted (contents move up), Delete hierarchy, duplicate, copy and paste, rows dragged in and out (several at once); organisation only (the canvas and the layers never change); one undo step each; stored in the scene's optional `outliner` (schema 7) (T-ALL P5 LCR; moved to the Scene category by V-series LCR) |
+| LYR-017 | P0 | W2 | Verified | Selection follows both ways between the outliner, the canvas and the timeline; a selected element inside a closed collection or group opens it; search keeps parents; rubber band; context menus; eye, lock and mute for an element's lane and for everything in a collection (T-ALL P5 LCR; V-series LCR) |
 
 ## TL: Timeline (Wave 2 interactions; media visuals in Wave 4; animation in Wave 5)
 
@@ -470,7 +472,15 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-089 | P0 | W2 | Verified | Every kind (shape, text, image, video, audio) opens a new lane above the first lane, between lanes or below the last; a lane of another group shows only the blocked cursor (no ghost, no + line, no highlight); the + on the insert line follows the pointer (T-ALL LCR) |
 | TL-090 | P0 | W2 | Verified | The playhead is drawn above the lanes and clips; the selected clip's ruler band follows a clip move live (T-ALL LCR) |
 | TL-091 | P0 | W2 | Verified | Playing while zoomed in pages the view: past 92% of the visible lanes the new left edge is the playhead time (no animation); the playhead never leaves the view; First frame returns to the first page (T-ALL LCR) |
-| TL-092 | P0 | W2 | Verified | Lanes sit vertically centred under the ruler when the panel is taller than them, else the first lane is at the top and the rest scroll; resizing the timeline keeps the preview at least 260 px tall (T-ALL LCR) |
+| TL-092 | P0 | W2 | Verified | Lanes sit vertically centred under the ruler when they fit with 23 px above and below, else the first lane is 23 px under the ruler and the rest scroll; the preview keeps a minimum height (T-ALL LCR; V-series formula) |
+| TL-093 | P0 | W2 | Verified | A click on any empty part of the lane area, the ruler, the canvas background or the stage clears the selection; on the lanes and the ruler it also seeks; a clip click only selects (V-series LCR, B1) |
+| TL-094 | P0 | W2 | Verified | A marquee starts from any empty point of the lanes, selects the clips it touches live, clears when empty and scrolls the lanes at their edges (V-series LCR, B2) |
+| TL-095 | P0 | W2 | Verified | The lane group is centred live by the spec formula (ResizeObserver and pointer moves) while the timeline is resized, ghost lanes included (V-series LCR, B3, B9) |
+| TL-096 | P0 | W2 | Verified | Dragging the timeline's edge down: free, a snap at the default height, a short follow, then the collapsed player; never half a lane; back up with hysteresis; the preview keeps at least 160 px (V-series LCR, B5, B7, B19) |
+| TL-097 | P0 | W2 | Verified | Outside Start and End the ruler and the lanes are dimmed from the default values and live on every digit, wheel step and arrow (V-series LCR, B20) |
+| TL-098 | P0 | W2 | Verified | A gap before a lane's first clip has the hatched ghost with its trash button; deleting it moves the clip to 0 in one step (V-series LCR, B22) |
+| TL-099 | P0 | W2 | Verified | Duplicate and Copy/Paste put the copy on a new lane directly above its original's, at the same start (paste at the playhead), selected, the playhead unchanged (V-series LCR, B23) |
+| TL-100 | P0 | W2 | Verified | Lanes have no headers or labels; lock, hide, solo, mute and lane moves are in the lane's right-click menu; toasts are plain sentences; the hover hairline sits at the pointer; the ruler and clips scroll together (V-series LCR, B4, B6, B11, B12, B18) |
 
 ## PB: Playback and transport
 
@@ -699,6 +709,9 @@ Requires schema v5 (effects are currently blocked by the schema). GPU rendering 
 | FX-013 | P2 | W6 | Todo | Save an effect stack as a preset |
 | FX-014 | P2 | W8 | Todo | Custom shader effects through a sandboxed plugin API |
 | FX-015 | P0 | W6 | Verified | The right panel's Filters, Effects and Adjust colors apply the FX library (filters with intensity, effects added and removed with intensity, exposure, contrast, saturation and temperature, blend mode, Reset) to the selected clips, one undo step each, saved with the project (T-ALL P6 LCR) |
+| FX-016 | P0 | W6 | Verified | Filters is a 3-column tile grid (80 px tiles, sticky search, None first and selected): 49 Clipchamp-named filters as preset bundles over the FX library, thumbnails of the selected picture through the library (lazy, cached, one job a frame), hover never changes the canvas, a click applies one step, Intensity opens under the tile's row (V-series LCR) |
+| FX-017 | P0 | W6 | Verified | Effects is the same tile grid: the Clipchamp effect names mapped to the library (the library's extra under More), several at once, a click toggles, None clears all, the selected effect's own settings under its row, hover animates the tile but not the canvas (V-series LCR) |
+| FX-018 | P0 | W6 | Verified | Every filter, effect and transition tile changes the preview and the exported PNG frame of a test picture and neither is blank; a contact sheet of every tile is written for review (V-series LCR) |
 
 ## TR: Transitions (Wave 6)
 
@@ -715,9 +728,13 @@ Between clips and at clip edges.
 | TR-007 | P0 | W6 | Todo | Transitions render identically in preview and export |
 | TR-008 | P1 | W6 | Todo | Video cross dissolve also crossfades the audio |
 | TR-009 | P1 | W6 | Todo | Alignment choice: centered, start or end on the cut |
-| TR-010 | P1 | W6 | Verified | Transitions panel lists transitions by section (Fades & blurs, Wipes, Pushes, Cartoon, Glitches, 3D) with static posters, a tip and a Duration control; they are disabled with their wave until transitions are built |
-| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane, a + adds a transition and a cut with one shows a chip; both open a Transition panel with search, a grouped grid (Cross fade, Fade through black and white, Wipe left and right, Slide left and right live; the rest disabled with their wave; T-ALL P6: the FX library fills them) and Duration (default 1 s, clamped with a message to what the clips allow); each change and Remove is one undo step; the transition is drawn the same in the preview and the export (J12) |
+| TR-010 | P1 | W6 | Verified | The left Transitions category lists the transition tiles in groups with drawn thumbnails and search; a click applies one to the selected cut (TR-015) (V-series LCR) |
+| TR-011 | P0 | W2 | Verified | Where two clips touch on a lane a + adds a transition and opens its panel; a cross fade mixes them across the cut in the preview and the export; None removes it (J12; V-series LCR) |
 | TR-012 | P0 | W6 | Verified | The Transition panel's planned entries and a More group are the FX library's pixel transitions (cross blur, burn, wipes, iris, push, zoom, spin, swirl, glitch, bloom, page turn, cube flip and more), drawn across the cut the same in the preview and the export (T-ALL P6 LCR) |
+| TR-013 | P0 | W2 | Verified | A "+" shows with the pointer near a cut between two touching clips (tooltip Add transition); a click adds Fade through black (one step, clips unchanged) and shows a lavender marker over a band as wide as the transition; the marker opens the right Transition panel (None, Fades & blurs, Tiles, Wipes, More) where a tile swaps it, Duration under its row sets it and None removes it; Delete and the marker's menu remove it (V-series LCR) |
+| TR-014 | P0 | W2 | Verified | At its midpoint Fade through black draws black and Fade through white white, in the canvas and the exported frame (V-series LCR) |
+| TR-015 | P1 | W2 | Verified | The left Transitions category shows the same tiles; a click applies one to the selected cut marker, otherwise it says to pick a cut (V-series LCR) |
+| TR-016 | P0 | W6 | Verified | Every transition tile changes the canvas and the exported frame inside its window and neither is blank; contact sheet (V-series LCR) |
 
 ## MSK: Masks, blend modes and compositing (Wave 6)
 

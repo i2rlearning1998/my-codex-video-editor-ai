@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { Page } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 import {
   contactSheet,
   exported,
@@ -205,63 +205,77 @@ test('[FX-017] Effects: several at once, a click toggles one, None clears all; a
   expect((await labels(page)).at(-1)).toBe('Remove effects');
 });
 
-for (const kind of ['Filters', 'Effects'] as const)
-  test(`[FX-018] sweep: every ${kind === 'Filters' ? 'filter' : 'effect'} tile changes the preview and the exported PNG frame and neither is blank; contact sheet`, async ({
-    page,
-  }, testInfo) => {
-    test.setTimeout(480_000);
-    await onePicture(page);
-    await tab(page, kind).click();
-    const plainPreview = await preview(page, true);
-    const plainExport = await exported(page, testInfo);
-    expect(spread(plainPreview)).toBeGreaterThan(10);
-    // The plain picture near the clip's end too (a still picture: the same).
-    await seekKeep(page, 4.6);
-    const latePreview: number[] | null = await preview(page);
-    const lateExport: number[] | null = await exported(page, testInfo);
-    await seekKeep(page, 1.3);
-    await contactSheet(page, testInfo, `contact-${kind.toLowerCase()}`);
-    const keys = await tiles(page).evaluateAll((items) =>
-      items.map((item) => (item as HTMLElement).dataset.tile!),
-    );
-    const failures: string[] = [];
-    for (const key of keys.filter((item) => item !== 'none')) {
-      await tileOf(page, key).click();
-      // The test picture has white but no black: remove white.
-      if (key === 'effect.black-white-removal') {
-        await panel(page)
-          .locator('#right-fx-effect-black-white-removal-color')
-          .click();
-        await page.getByRole('option', { name: 'White', exact: true }).click();
-        // Near-white paper shows through where white goes: remove more of
-        // the light colours, so the removal shows.
-        const threshold = panel(page).locator(
-          '#right-fx-effect-black-white-removal-threshold',
-        );
-        await threshold.fill('80');
-        await threshold.press('Enter');
-      }
-      let shown = await preview(page);
-      // Some effects build up over the clip (Crash zoom hits at its end):
-      // an unchanged frame at 1.3 s is checked again near the end.
-      const late = meanDiff(shown, plainPreview) <= 0.5;
-      if (late) {
-        await seekKeep(page, 4.6);
-        shown = await preview(page);
-      }
-      const file = await exported(page, testInfo);
-      const plainFile = late ? lateExport! : plainExport;
-      const problems = [
-        meanDiff(shown, late ? latePreview! : plainPreview) <= 0.5 &&
-          'preview unchanged',
-        spread(shown) <= 1 && 'preview blank',
-        meanDiff(file, plainFile) <= 0.5 && 'export unchanged',
-        spread(file) <= 1 && 'export blank',
-      ].filter(Boolean);
-      if (problems.length) failures.push(`${key}: ${problems.join(', ')}`);
-      // Back to the plain picture (Effects toggle; Filters choose None).
-      await tileOf(page, kind === 'Effects' ? key : 'none').click();
-      if (late) await seekKeep(page, 1.3);
+/** Applies every tile of a panel and checks the canvas and the export. */
+async function sweep(
+  page: Page,
+  testInfo: TestInfo,
+  kind: 'Filters' | 'Effects',
+) {
+  await onePicture(page);
+  await tab(page, kind).click();
+  const plainPreview = await preview(page, true);
+  const plainExport = await exported(page, testInfo);
+  expect(spread(plainPreview)).toBeGreaterThan(10);
+  // The plain picture near the clip's end too (a still picture: the same).
+  await seekKeep(page, 4.6);
+  const latePreview: number[] | null = await preview(page);
+  const lateExport: number[] | null = await exported(page, testInfo);
+  await seekKeep(page, 1.3);
+  await contactSheet(page, testInfo, `contact-${kind.toLowerCase()}`);
+  const keys = await tiles(page).evaluateAll((items) =>
+    items.map((item) => (item as HTMLElement).dataset.tile!),
+  );
+  const failures: string[] = [];
+  for (const key of keys.filter((item) => item !== 'none')) {
+    await tileOf(page, key).click();
+    // The test picture has white but no black: remove white.
+    if (key === 'effect.black-white-removal') {
+      await panel(page)
+        .locator('#right-fx-effect-black-white-removal-color')
+        .click();
+      await page.getByRole('option', { name: 'White', exact: true }).click();
+      // Near-white paper shows through where white goes: remove more of
+      // the light colours, so the removal shows.
+      const threshold = panel(page).locator(
+        '#right-fx-effect-black-white-removal-threshold',
+      );
+      await threshold.fill('80');
+      await threshold.press('Enter');
     }
-    expect(failures).toEqual([]);
-  });
+    let shown = await preview(page);
+    // Some effects build up over the clip (Crash zoom hits at its end):
+    // an unchanged frame at 1.3 s is checked again near the end.
+    const late = meanDiff(shown, plainPreview) <= 0.5;
+    if (late) {
+      await seekKeep(page, 4.6);
+      shown = await preview(page);
+    }
+    const file = await exported(page, testInfo);
+    const plainFile = late ? lateExport! : plainExport;
+    const problems = [
+      meanDiff(shown, late ? latePreview! : plainPreview) <= 0.5 &&
+        'preview unchanged',
+      spread(shown) <= 1 && 'preview blank',
+      meanDiff(file, plainFile) <= 0.5 && 'export unchanged',
+      spread(file) <= 1 && 'export blank',
+    ].filter(Boolean);
+    if (problems.length) failures.push(`${key}: ${problems.join(', ')}`);
+    // Back to the plain picture (Effects toggle; Filters choose None).
+    await tileOf(page, kind === 'Effects' ? key : 'none').click();
+    if (late) await seekKeep(page, 1.3);
+  }
+  expect(failures).toEqual([]);
+}
+
+test('[FX-018] sweep: every filter tile changes the preview and the exported PNG frame and neither is blank; contact sheet', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(480_000);
+  await sweep(page, testInfo, 'Filters');
+});
+test('[FX-018] sweep: every effect tile changes the preview and the exported PNG frame and neither is blank; contact sheet', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(480_000);
+  await sweep(page, testInfo, 'Effects');
+});
