@@ -312,7 +312,11 @@ export function mountSceneOutliner(
     element.setAttribute('aria-level', String(row.depth + 1));
     element.dataset.rowKind = row.kind;
     element.classList.toggle('zebra', index % 2 === 1);
-    if (row.kind === 'layer') element.dataset.layerId = row.id;
+    if (row.kind === 'layer') {
+      element.dataset.layerId = row.id;
+      // (The class earlier scene-list rows had; other code finds rows by it.)
+      element.classList.add('scene-row');
+    }
     if (row.kind === 'collection') element.dataset.collectionId = row.id;
     element.style.setProperty('--depth', String(row.depth));
     const selected =
@@ -442,6 +446,7 @@ export function mountSceneOutliner(
         row.name,
         row.depth,
         row.children.length,
+        row.layer ? altTextOf(row.layer as never) : '',
       ]),
       [...collapsed],
       scene().tracks.map((track) => [

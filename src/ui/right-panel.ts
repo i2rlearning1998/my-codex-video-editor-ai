@@ -11,11 +11,8 @@ import { buildTransitionPanel } from './transition-panel';
 import {
   blendModes,
   defaults as fxDefaults,
-  effects as fxEffectList,
-  filters as fxFilters,
   getAdjustment,
   getEffect,
-  getFilter,
 } from '../fx';
 import { resolvedTextStyle } from './text-editor';
 import {
@@ -23,7 +20,6 @@ import {
   clipFx,
   clipTimeEffects,
   type ClipFx,
-  MAX_FX_STACK,
   type Command,
   type EditorEngine,
   MAX_CLIP_SPEED,
@@ -52,6 +48,20 @@ import { guardCommands } from './editor-mode';
 import { iconSvg } from './icons';
 import { documentColors } from './palette';
 import { audioTab } from './right-panel/audio-tab';
+import {
+  activePreset,
+  applyPreset,
+  EFFECT_TILES,
+  effectSettings,
+  FILTER_PRESETS,
+  intensitySlider,
+  isFilterEntry,
+  presetEntries,
+  selectedEffects,
+  tileGrid,
+  tileSource,
+  toggleEffect,
+} from './right-panel/fx-panels';
 import { sceneLengthCommands } from './scene-length';
 import { describeSelection, selectionRoots } from './selection-context';
 import type { EditorSession } from './session';
@@ -109,42 +119,31 @@ export function kindOf(session: EditorSession): SelectionKind {
 }
 /** The first tab's name for the selection. */
 export const firstTabKey = (kind: SelectionKind) =>
-  // J15: a picture's own controls, the Inspector and Animate are Advanced,
-  // after the Clipchamp sections.
-  kind === 'video' || kind === 'image'
-    ? 'right.tab.advanced'
-    : `right.tab.${kind === 'none' ? 'canvas' : kind === 'multi' ? 'arrange' : kind}`;
-/** J15: the rail's sections per selection, in rail order (Clipchamp). */
+  `right.tab.${kind === 'none' ? 'canvas' : kind === 'multi' ? 'arrange' : kind}`;
+/** V4 (spec 5): the rail's sections per selection, in rail order
+ *  (Clipchamp's, with our Properties first). */
 const TABS: Record<SelectionKind, RightSection[]> = {
   // U5: nothing selected has no panel (the canvas bar holds the canvas).
   none: [],
   text: ['Properties', 'Animate', 'Effects', 'Adjust'],
-  image: [
-    'Fade',
-    'Animate',
-    'Filters',
-    'Effects',
-    'Adjust',
-    'Transitions',
-    'Properties',
-  ],
+  image: ['Properties', 'Fade', 'Filters', 'Effects', 'Adjust', 'Animate'],
   video: [
-    'Captions',
-    'Audio',
+    'Properties',
     'Fade',
-    'Animate',
     'Filters',
     'Effects',
     'Adjust',
     'Speed',
-    'Transitions',
-    'Properties',
+    'Audio',
+    // (Not in Clipchamp's video rail; kept so the presets stay reachable.)
+    'Animate',
+    'Captions',
   ],
-  audio: ['Properties', 'Speed', 'Fade'],
+  audio: ['Properties', 'Audio', 'Fade', 'Speed'],
   shape: ['Properties', 'Animate', 'Effects', 'Adjust'],
   drawing: ['Properties', 'Animate', 'Effects', 'Adjust'],
-  group: ['Properties', 'Animate'],
-  multi: ['Properties'],
+  group: ['Properties', 'Fade', 'Animate'],
+  multi: ['Properties', 'Fade', 'Animate'],
 };
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
@@ -192,6 +191,8 @@ export interface RightPanelHooks {
       | 'spacing'
       | 'canvas-size',
   ) => HTMLElement | null;
+  /** V4: the selection alone, without effects, fitted on black. */
+  sample?: (width: number, height: number) => HTMLCanvasElement | null;
 }
 
 export function mountRightPanel(
@@ -801,20 +802,34 @@ export function mountRightPanel(
     const fx = clips.length ? fxOf(clips[0]!.clip) : null;
     const adjustField = (key: string) => {
       const id = `adjust.${key}`;
-      const entry = fx?.stack.find((item) => item.id === id);
-      return createNumberField({
-        id: `right-adjust-${key}`,
-        label: t(`right.adjust.${key}`),
-        value: Math.round(Number(entry?.params.amount ?? 0) * 100),
-        min: -100,
-        max: 100,
-        decimals: 0,
-        slider: true,
-        disabled: !fx,
-        className: 'right-row',
-        onCommit: (value) =>
+      // (A filter preset's own adjustments are not these sliders.)
+      const entry = fx?.stack.find(
+        (item) => item.id === id && !isFilterEntry(item),
+      );
+      // Spec 5: a label over a slider, no number box; bipolar sliders keep
+      // their thumb centred at 0.
+      const block = document.createElement('div');
+      block.className = 'fx-adjust';
+      const label = document.createElement('label');
+      label.className = 'fx-setting-label';
+      label.htmlFor = `right-adjust-${key}`;
+      label.textContent = t(`right.adjust.${key}`);
+      const range = document.createElement('input');
+      range.type = 'range';
+      range.id = `right-adjust-${key}`;
+      range.className = `fx-slider fx-slider-${key}`;
+      range.min = '-100';
+      range.max = '100';
+      range.step = '1';
+      range.disabled = !fx;
+      range.value = String(Math.round(Number(entry?.params.amount ?? 0) * 100));
+      range.addEventListener('change', () => {
+        const value = Number(range.value);
+        safely(() =>
           setFx('Adjust colors', (next) => {
-            const at = next.stack.findIndex((item) => item.id === id);
+            const at = next.stack.findIndex(
+              (item) => item.id === id && !isFilterEntry(item),
+            );
             const replacement = {
               id,
               params: {
@@ -827,16 +842,31 @@ export function mountRightPanel(
               else next.stack[at] = replacement;
             } else if (value !== 0) next.stack.unshift(replacement);
           }),
+        );
       });
+      block.append(label, range);
+      return block;
     };
     const blend = createSelect({
       id: 'right-blend-mode',
       label: t('right.adjust.blend'),
       value: fx?.blendMode ?? 'blend.normal',
-      options: blendModes.map((mode) => ({
-        value: mode.id,
-        label: t(`fx.${mode.id}`),
-      })),
+      // Spec 5: Clipchamp's six blend modes.
+      options: blendModes
+        .filter((mode) =>
+          [
+            'blend.normal',
+            'blend.darken',
+            'blend.multiply',
+            'blend.lighten',
+            'blend.screen',
+            'blend.overlay',
+          ].includes(mode.id),
+        )
+        .map((mode) => ({
+          value: mode.id,
+          label: t(`fx.${mode.id}`),
+        })),
       disabled: !fx,
       onChange: (value) =>
         safely(() =>
@@ -864,7 +894,8 @@ export function mountRightPanel(
             ? () =>
                 setFx('Reset colors', (next) => {
                   next.stack = next.stack.filter(
-                    (item) => !item.id.startsWith('adjust.'),
+                    (item) =>
+                      !item.id.startsWith('adjust.') || isFilterEntry(item),
                   );
                   delete next.blendMode;
                 })
@@ -893,47 +924,6 @@ export function mountRightPanel(
     tag.className = 'quiet-tag';
     tag.textContent = t('toolbar.later', { wave, id });
     return tag;
-  };
-  /** A grid of choices; planned ones are disabled and name their wave. */
-  const choiceGrid = (
-    name: string,
-    items: readonly {
-      id: string;
-      label: string;
-      pressed?: boolean;
-      action?: () => void;
-      planned?: readonly [string, string];
-    }[],
-  ) => {
-    const grid = document.createElement('div');
-    grid.className = 'right-choice-grid';
-    grid.setAttribute('role', 'group');
-    grid.setAttribute('aria-label', name);
-    for (const item of items) {
-      const choice = document.createElement('button');
-      choice.type = 'button';
-      choice.className = 'right-choice';
-      choice.dataset.choice = item.id;
-      choice.innerHTML = `<span class="right-choice-preview" data-preview="${item.id}"></span><span></span>`;
-      choice.lastElementChild!.textContent = item.label;
-      if (item.pressed !== undefined)
-        choice.setAttribute('aria-pressed', String(item.pressed));
-      if (item.planned) {
-        choice.setAttribute('aria-disabled', 'true');
-        choice.title = t('toolbar.later', {
-          wave: item.planned[0],
-          id: item.planned[1],
-        });
-      } else {
-        choice.title = item.label;
-        if (item.action) {
-          const action = item.action;
-          choice.onclick = () => safely(action);
-        }
-      }
-      grid.append(choice);
-    }
-    return grid;
   };
   /** Disabled settings of a planned effect (the shared NumberField). */
   const plannedFields = (
@@ -981,107 +971,127 @@ export function mountRightPanel(
       }),
     );
   };
-  /** The items of a library list by category, as choice grids. */
-  const fxGrids = (
-    list: readonly { id: string; category: string }[],
-    pressed: (id: string) => boolean,
-    action: (id: string) => void,
-  ) => {
-    const categories = [...new Set(list.map((item) => item.category))];
-    return categories.flatMap((category) => {
-      const title = document.createElement('h4');
-      title.className = 'right-fx-category';
-      title.textContent = t(
-        `fx.category.${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-      );
-      return [
-        title,
-        choiceGrid(
-          title.textContent,
-          list
-            .filter((item) => item.category === category)
-            .map((item) => ({
-              id: item.id,
-              label: t(`fx.${item.id}`),
-              pressed: pressed(item.id),
-              action: () => action(item.id),
-            })),
-        ),
-      ];
-    });
+  /** V4: the last clicked tile per panel (its settings open under it). */
+  const lastTile: { filters: string | null; effects: string | null } = {
+    filters: null,
+    effects: null,
   };
-  /** The intensity of one stack entry (0 to 100 %). */
-  const intensityField = (id: string, intensity: number) =>
-    createNumberField({
-      id: `right-fx-intensity-${id.replace('.', '-')}`,
-      label: `${t(`fx.${id}`)} · ${t('fx.intensity')}`,
-      value: Math.round(intensity * 100),
-      unit: '%',
-      min: 0,
-      max: 100,
-      decimals: 0,
-      slider: true,
-      className: 'right-row',
-      onCommit: (value) =>
-        safely(() =>
-          setFx('Effect intensity', (next) => {
-            const entry = next.stack.find((item) => item.id === id);
-            if (entry)
-              entry.params = { ...entry.params, intensity: value / 100 };
-          }),
-        ),
-    });
+  const tileQuery = { filters: { value: '' }, effects: { value: '' } };
+  const source = () => tileSource(hooks.sample?.(160, 90) ?? null);
+  /** Spec 5: Filters, one at a time, with an Intensity slider. */
   const filters = () => {
     const clips = fxClips();
     if (!clips.length)
       return [heading(t('panel.filters'), t('right.fadeNeedsClip'))];
     const fx = fxOf(clips[0]!.clip);
-    const active = fx.stack.find((item) => item.id.startsWith('filter.'));
+    const active = activePreset(fx);
+    const current = active?.preset.key ?? 'none';
+    const intensity = active?.intensity ?? 1;
     return [
-      heading(t('panel.filters'), t('right.filtersHint')),
-      ...(active
-        ? [intensityField(active.id, Number(active.params.intensity ?? 1))]
-        : []),
-      ...fxGrids(
-        fxFilters,
-        (id) => (active?.id ?? 'filter.none') === id,
-        (id) =>
-          setFx('Apply filter', (next) => {
-            const at = next.stack.findIndex((item) =>
-              item.id.startsWith('filter.'),
+      heading(t('panel.filters')),
+      tileGrid({
+        name: t('panel.filters'),
+        search: t('fx.searchFilters'),
+        query: tileQuery.filters,
+        source: source(),
+        tiles: [
+          { key: 'none', label: t('fx.none'), stack: [] },
+          ...FILTER_PRESETS.map((preset) => ({
+            key: preset.key,
+            label: t(`fx.preset.${preset.key}`),
+            stack: presetEntries(preset, 1),
+          })),
+        ],
+        selected: (key) => key === current,
+        onClick: (key) =>
+          safely(() => {
+            lastTile.filters = key;
+            if (key === current) {
+              rerender();
+              return;
+            }
+            setFx(key === 'none' ? 'Remove filter' : 'Apply filter', (next) =>
+              applyPreset(next, key, intensity),
             );
-            const entry = { id, params: fxDefaults(getFilter(id)!) };
-            if (id === 'filter.none') {
-              if (at >= 0) next.stack.splice(at, 1);
-            } else if (at >= 0) next.stack[at] = entry;
-            else next.stack.push(entry);
           }),
-      ),
+        settingsFor: current === 'none' ? null : current,
+        settings: () =>
+          intensitySlider(intensity, (value) =>
+            safely(() =>
+              setFx('Filter intensity', (next) => {
+                for (const entry of next.stack)
+                  if (isFilterEntry(entry))
+                    entry.params = { ...entry.params, intensity: value };
+              }),
+            ),
+          ),
+      }),
     ];
   };
-  /** The FX library's effects: a click adds or removes one. */
+  /** Spec 5: Effects, several at once; a click toggles one. */
   const fxEffects = () => {
     const clips = fxClips();
     if (!clips.length) return [];
     const fx = fxOf(clips[0]!.clip);
-    const on = new Set(fx.stack.map((item) => item.id));
+    const on = selectedEffects(fx);
+    const pictures = ['video', 'image'].includes(kindOf(session));
+    const tiles = EFFECT_TILES.filter((tile) => pictures || !tile.pictures);
+    const shown =
+      lastTile.effects && on.has(lastTile.effects)
+        ? lastTile.effects
+        : ([...on].at(-1) ?? null);
     return [
-      ...fx.stack
-        .filter((item) => item.id.startsWith('effect.'))
-        .map((item) =>
-          intensityField(item.id, Number(item.params.intensity ?? 1)),
-        ),
-      ...fxGrids(
-        fxEffectList,
-        (id) => on.has(id),
-        (id) =>
-          setFx(on.has(id) ? 'Remove effect' : 'Add effect', (next) => {
-            const at = next.stack.findIndex((item) => item.id === id);
-            if (at >= 0) next.stack.splice(at, 1);
-            else if (next.stack.length < MAX_FX_STACK)
-              next.stack.push({ id, params: fxDefaults(getEffect(id)!) });
+      tileGrid({
+        name: t('panel.effects'),
+        search: t('fx.searchEffects'),
+        query: tileQuery.effects,
+        source: source(),
+        tiles: [
+          { key: 'none', label: t('fx.none'), stack: [] },
+          ...tiles.map((tile) => ({
+            key: tile.id,
+            label: t(`fx.${tile.id}`),
+            stack: [{ id: tile.id, params: fxDefaults(getEffect(tile.id)!) }],
+            animated: true,
+            badge: getEffect(tile.id)!.params.length > 1,
+            group: tile.more ? t('fx.more') : undefined,
+          })),
+        ],
+        selected: (key) => (key === 'none' ? on.size === 0 : on.has(key)),
+        onClick: (key) =>
+          safely(() => {
+            lastTile.effects = key === 'none' ? null : key;
+            if (key === 'none') {
+              if (on.size)
+                setFx('Remove effects', (next) => {
+                  next.stack = next.stack.filter(
+                    (item) => !item.id.startsWith('effect.'),
+                  );
+                });
+              return;
+            }
+            setFx(on.has(key) ? 'Remove effect' : 'Add effect', (next) =>
+              toggleEffect(next, key),
+            );
           }),
-      ),
+        settingsFor: shown,
+        settings: () => {
+          const entry = fx.stack.find((item) => item.id === shown);
+          return entry
+            ? effectSettings(entry.id, entry.params, (name, value) =>
+                safely(() =>
+                  setFx('Effect settings', (next) => {
+                    const target = next.stack.find(
+                      (item) => item.id === entry.id,
+                    );
+                    if (target)
+                      target.params = { ...target.params, [name]: value };
+                  }),
+                ),
+              )
+            : null;
+        },
+      }),
     ];
   };
   const SHADOW: readonly (readonly [string, number, number])[] = [
@@ -1140,8 +1150,11 @@ export function mountRightPanel(
     return p;
   };
 
-  return {
+  let lastSection: RightSection = 'Properties';
+  const rerender = () => api.render(lastSection);
+  const api = {
     render(section: RightSection) {
+      lastSection = section;
       host.dataset.section = section;
       host.dataset.kind = kindOf(session);
       const content =
@@ -1174,4 +1187,5 @@ export function mountRightPanel(
       );
     },
   };
+  return api;
 }

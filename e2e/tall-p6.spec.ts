@@ -177,22 +177,21 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   expect(grey(plain)).toBe(false);
   // Filters: Black and white makes the picture grey; Original is pressed first.
   await tab(page, 'Filters').click();
+  // (V4: tiles, spec 5; Black & white 1 is the library's Black and white.)
   await expect(
-    panel(page).locator('[data-choice="filter.none"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
-  await panel(page).locator('[data-choice="filter.black-white"]').click();
+    panel(page).locator('.fx-tile[data-tile="none"]'),
+  ).toHaveAttribute('aria-selected', 'true');
+  await panel(page).locator('.fx-tile[data-tile="black-white-1"]').click();
   expect((await labels(page)).at(-1)).toBe('Apply filter');
   expect((await fxOf(page, first))!.stack.map((item) => item.id)).toEqual([
     'filter.black-white',
   ]);
   expect(grey(await pixel(page, at))).toBe(true);
   // Intensity 0 is the original picture.
-  const intensity = panel(page).locator(
-    '#right-fx-intensity-filter-black-white',
-  );
+  const intensity = panel(page).locator('#right-filter-intensity');
   await intensity.fill('0');
-  await intensity.press('Enter');
-  expect((await labels(page)).at(-1)).toBe('Effect intensity');
+  await intensity.dispatchEvent('change');
+  expect((await labels(page)).at(-1)).toBe('Filter intensity');
   expect(near(await pixel(page, at), plain, 2)).toBe(true);
   await page.keyboard.press('Control+z');
   expect(grey(await pixel(page, at))).toBe(true);
@@ -207,11 +206,12 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   // checks that exposure -100 darkens.)
   // Adjust colors: exposure -100 darkens; a blend mode is stored; Reset
   // removes both and keeps the filter.
-  await panel(page).locator('[data-choice="filter.none"]').click();
+  await panel(page).locator('.fx-tile[data-tile="none"]').click();
   await tab(page, 'Adjust').click();
+  // (V4: a plain slider, spec 5; it commits on release.)
   const exposure = panel(page).locator('#right-adjust-exposure');
   await exposure.fill('-100');
-  await exposure.press('Enter');
+  await exposure.dispatchEvent('change');
   expect((await labels(page)).at(-1)).toBe('Adjust colors');
   const dark = await pixel(page, at);
   expect(dark.reduce((a, b) => a + b, 0)).toBeLessThan(
@@ -226,11 +226,11 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   expect(near(await pixel(page, at), plain, 2)).toBe(true);
   // Effects: Pixelation is added (one step) and changes the picture.
   await tab(page, 'Effects').click();
-  await panel(page).locator('[data-choice="effect.pixelation"]').click();
+  await panel(page).locator('.fx-tile[data-tile="effect.pixelation"]').click();
   expect((await labels(page)).at(-1)).toBe('Add effect');
   await expect(
-    panel(page).locator('[data-choice="effect.pixelation"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
+    panel(page).locator('.fx-tile[data-tile="effect.pixelation"]'),
+  ).toHaveAttribute('aria-selected', 'true');
   // Saved with the project: a reload keeps the stack.
   await expect
     .poll(async () => (await fxOf(page, first))?.stack[0]?.id)
@@ -274,7 +274,7 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
     .first()
     .click();
   await tab(page, 'Filters').click();
-  await panel(page).locator('[data-choice="filter.black-white"]').click();
+  await panel(page).locator('.fx-tile[data-tile="black-white-1"]').click();
   await settled(page);
   const at = await toScreen(page, 520, 360);
   const preview = await pixel(page, at);

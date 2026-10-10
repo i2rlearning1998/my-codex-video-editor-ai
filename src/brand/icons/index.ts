@@ -30,6 +30,7 @@ const PATHS: Record<string, string> = {
   folder: 'M3 5h5l2 2h7v9H3z M3 9h14',
   // V3: New collection (a box with a plus).
   folderPlus: 'M3 5h5l2 2h7v9H3z M10 9.5v5 M7.5 12h5',
+  ban: 'M10 3a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M5 5l10 10',
   play: 'M6 4l10 6-10 6z',
   pause: 'M6 4h3v12H6z M11 4h3v12h-3z',
   stop: 'M5 5h10v10H5z',

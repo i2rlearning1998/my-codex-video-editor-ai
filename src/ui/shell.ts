@@ -669,6 +669,7 @@ export function mountEditorShell(
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
+      sample: (width, height) => selectionSample(width, height),
     },
   );
   // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
@@ -786,6 +787,76 @@ export function mountEditorShell(
       queueMicrotask(() => area.focus());
       return wrap;
     });
+  };
+  /**
+   * V4 (spec 5): the FX tiles' source picture: the selected elements alone
+   * at the playhead, without their effects, fitted on black at the given
+   * size. Null when nothing visible is selected.
+   */
+
+  const selectionSample = (width: number, height: number) => {
+    const source = session.source;
+    const roots = selectionRoots(source, session.selectedIds);
+    const boxes = roots
+      .map((layer) => worldBox(source, layer.id))
+      .filter((box): box is NonNullable<typeof box> => !!box);
+    if (!boxes.length) return null;
+    const left = Math.min(...boxes.map((box) => box.x)),
+      top = Math.min(...boxes.map((box) => box.y)),
+      right = Math.max(...boxes.map((box) => box.x + box.width)),
+      bottom = Math.max(...boxes.map((box) => box.y + box.height));
+    const scale = Math.min(
+      width / Math.max(1, right - left),
+      height / Math.max(1, bottom - top),
+    );
+    const ids = new Set(roots.map((layer) => layer.id));
+    // A plain copy of the lanes, the selection's clips without effects.
+    const plain = JSON.parse(JSON.stringify(source.composition.tracks)) as {
+      clips: { layerId: string; metadata: Record<string, unknown> }[];
+    }[];
+    for (const track of plain)
+      for (const clip of track.clips)
+        if (ids.has(clip.layerId)) delete clip.metadata.fx;
+    const tracks = plain as unknown as typeof source.composition.tracks;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    drawComposition(
+      context,
+      {
+        ...source,
+        composition: {
+          ...source.composition,
+          layers: source.composition.layers.filter((layer) =>
+            ids.has(layer.id),
+          ),
+          // The effects are what the tiles show, so the source has none.
+          tracks,
+        },
+        background: '#000000',
+        frames,
+        playing: false,
+        animate: true,
+      },
+      {
+        width,
+        height,
+        pixelRatio: 1,
+        matrix: [
+          scale,
+          0,
+          0,
+          scale,
+          (width - (right - left) * scale) / 2 - left * scale,
+          (height - (bottom - top) * scale) / 2 - top * scale,
+        ],
+      },
+      null,
+      { overlays: false },
+    );
+    return canvas;
   };
   /** Download selection: the selected elements alone, as a PNG. */
   const downloadSelection = () => {
