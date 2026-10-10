@@ -1874,9 +1874,15 @@ export function mountEditorShell(
   // J13: Collapse leaves only the player bar under a large preview; Expand
   // brings the lanes back. UI state only (not saved, no history).
   let collapseTimer = 0;
-  const collapseTimeline = () => {
+  const collapseTimeline = (event?: Event) => {
     const shellElement = element('.editor-shell');
-    const collapsed = !shellElement.classList.contains('timeline-collapsed');
+    // V2 (spec 2): a drag of the timeline's edge asks for a given state.
+    const wanted = (event as CustomEvent<{ collapsed?: boolean }> | undefined)
+      ?.detail?.collapsed;
+    const collapsed =
+      wanted ?? !shellElement.classList.contains('timeline-collapsed');
+    if (collapsed === shellElement.classList.contains('timeline-collapsed'))
+      return;
     // U4: Collapse and Expand animate the row (240 ms; about 0 with reduced
     // motion), but a height drag never does.
     shellElement.classList.add('timeline-animating');
@@ -2269,8 +2275,10 @@ export function mountEditorShell(
   );
   window.addEventListener('pointercancel', () => (pressing = false), true);
   const followSelection = () => {
+    if (disposed) return;
     const key = session.selectedIds.join(',');
-    const shell = element('.editor-shell');
+    const shell = root.querySelector<HTMLElement>('.editor-shell');
+    if (!shell) return;
     shell.classList.toggle('right-empty', key === '');
     if (!pressing) workspace?.setEmpty(key === '');
     if (key === rightSelection) return;
@@ -2466,10 +2474,10 @@ export function mountEditorShell(
           : Math.max(
               0,
               pixelToTime(
+                // V2: lanes start at the scroll area's left edge.
                 event.clientX -
                   track.getBoundingClientRect().left +
-                  track.scrollLeft -
-                  224,
+                  track.scrollLeft,
                 session.timelineZoom,
               ),
             );
@@ -2767,7 +2775,7 @@ export function mountEditorShell(
     return Math.max(
       0,
       pixelToTime(
-        x - track.getBoundingClientRect().left + track.scrollLeft - 224,
+        x - track.getBoundingClientRect().left + track.scrollLeft,
         session.timelineZoom,
       ),
     );

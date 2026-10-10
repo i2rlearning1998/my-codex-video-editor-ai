@@ -115,7 +115,8 @@ export function mountWorkspace(
       // T-ALL P3 (spec 6): the preview keeps at least 260 px.
       Math.min(
         window.innerHeight * LIMITS.timeline[1],
-        Math.max(LIMITS.timeline[0], window.innerHeight - 260 - 56),
+        // V2 (spec 2): the preview keeps at least 160 px.
+        Math.max(LIMITS.timeline[0], window.innerHeight - 160 - 56),
         value,
       ),
     );
@@ -269,8 +270,54 @@ export function mountWorkspace(
           LIMITS.right[0],
           Math.min(LIMITS.right[1], (gesture?.right ?? right) - delta),
         );
+      else if (gesture && axis === 'height') detent(gesture.height - delta);
       else height = clampTimeline((gesture?.height ?? current()) - delta);
       paint();
+    };
+    /** V2 (spec 2): dragging the timeline's edge. Up is free; down, the
+     *  panel snaps to its default height (where the ruler and every lane
+     *  fit) within 40 px of it, follows the pointer for a short travel past
+     *  that, and then collapses to the player-only layout; back up, it
+     *  leaves the collapsed layout 60 px above it (hysteresis). There is no
+     *  state in between. */
+    const COLLAPSED = 56;
+    const detent = (raw: number) => {
+      const timeline = shell.querySelector<HTMLElement>('#timeline-foundation');
+      const fit = Number(timeline?.dataset.fitHeight) || 0;
+      // The default height fits the ruler and the lanes, at least one video
+      // lane and at most the standard panel height.
+      const defaultHeight = clampTimeline(
+        Math.max(186, Math.min(fit, SIZES[layout].timeline)),
+      );
+      const collapsed = shell.classList.contains('timeline-collapsed');
+      const start = gesture?.height ?? raw;
+      const setCollapsed = (value: boolean) => {
+        if (value !== shell.classList.contains('timeline-collapsed'))
+          timeline?.dispatchEvent(
+            new CustomEvent('timeline-collapse', {
+              bubbles: true,
+              detail: { collapsed: value },
+            }),
+          );
+      };
+      if (collapsed && raw <= COLLAPSED + 60) return;
+      // Only a drag downwards collapses it.
+      if (raw < defaultHeight - 100 && raw < start) {
+        setCollapsed(true);
+        return;
+      }
+      setCollapsed(false);
+      height = clampTimeline(
+        raw >= defaultHeight + 40 || raw < defaultHeight - 40
+          ? raw
+          : defaultHeight,
+      );
+      shell.dataset.timelineZone =
+        raw >= defaultHeight + 40
+          ? 'free'
+          : raw >= defaultHeight - 40
+            ? 'snapped'
+            : 'follow';
     };
     handle.onpointerdown = (event) => {
       if (event.button !== 0 || gesture) return;
@@ -281,7 +328,7 @@ export function mountWorkspace(
         y: event.clientY,
         left,
         right,
-        height: current(),
+        height: shell.classList.contains('timeline-collapsed') ? 56 : current(),
       };
       try {
         handle.setPointerCapture(event.pointerId);
@@ -314,8 +361,7 @@ export function mountWorkspace(
           !target.closest('[data-resize-grip]') ||
           target.closest(
             'button, input, select, textarea, a, [role="button"], [role="group"], [contenteditable], .number-field',
-          ) ||
-          shell.classList.contains('timeline-collapsed')
+          )
         )
           return;
         handle.onpointerdown?.(event);

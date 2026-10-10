@@ -80,7 +80,6 @@ import {
   type TimingPreview,
 } from './timeline-model';
 import { iconSvg } from './icons';
-import { mountOutliner } from './outliner';
 import { createNumberField, syncNumberField } from './components/number-field';
 
 /** TL-027/TL-032 menu actions labelled from the command catalog. */
@@ -609,21 +608,19 @@ export function mountTimeline(
   root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
-  // T-ALL P5: the outliner column beside the lanes (never over them).
-  const outliner = mountOutliner(engine, session, report);
-  const body = document.createElement('div');
-  body.className = 'timeline-body';
-  scroll.before(body);
-  body.append(outliner.element, scroll);
-  let outlinerKey = '';
+  // V2 (Clipchamp clone spec 2, 4): no outliner column and no lane headers in
+  // the timeline; the outliner lives in the left Scene panel.
   let revealedSelection = '';
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
   scroll.setAttribute('aria-label', t('timeline.keys'));
-  // T-ALL P5 (spec 8): lanes have no header; the outliner is its own
-  // column beside them.
-  const headerWidth = 224;
-  /** T3: lane heights (visual lanes taller, for their pictures). */
-  const laneHeight = (group: string) => (group === 'visual' ? 56 : 36);
+  const headerWidth = 0;
+  /** V2 (spec 2): lane heights: video and pictures 52 px, text and shapes
+   *  28 px, audio 36 px, with an 8 px gap between lanes. */
+  const laneHeight = (group: string) =>
+    group === 'visual' ? 52 : group === 'audio' ? 36 : 28;
+  const LANE_GAP = 8;
+  /** V2: padding above the first and below the last lane when they scroll. */
+  const LANE_PAD = 23;
   /** Row index → top and height (content pixels below the ruler), for every
    *  lane then every unlinked layer row, as drawn. */
   const rowSpans = () => {
@@ -631,6 +628,7 @@ export function mountTimeline(
     let top = 0;
     for (const row of nleTimelineRows(session.source, session.timelineZoom)) {
       const height = laneHeight(laneGroupOfTrack(row.track.type));
+      if (spans.length) top += LANE_GAP;
       spans.push({ top, height });
       top += height;
     }
@@ -906,6 +904,21 @@ export function mountTimeline(
       clip.append(grip);
     }
   };
+  /** V2 (spec 2b): positions the dims for a range in seconds. */
+  const placeRangeDim = (start: number, end: number, width?: number) => {
+    const zoom = session.timelineZoom;
+    const span = width ?? timeToPixel(renderedSpan, zoom);
+    const before = timeToPixel(Math.max(0, start), zoom);
+    const after = timeToPixel(Math.max(start, end), zoom);
+    for (const element of content.querySelectorAll<HTMLElement>(
+      '.ruler-range-dim, .lanes-range-dim',
+    )) {
+      const lane = element.classList.contains('lanes-range-dim');
+      const isBefore = element.dataset.side === 'before';
+      element.style.left = `${(lane ? headerWidth : 0) + (isBefore ? 0 : after)}px`;
+      element.style.width = `${Math.max(0, isBefore ? before : span - after)}px`;
+    }
+  };
   let renderedProject: unknown;
   let renderedIdentity = '';
   /** T-ALL P3: the space above the vertically centred lanes. */
@@ -1004,6 +1017,10 @@ export function mountTimeline(
       controller.preview || markerPreview || marquee || keyframeDrag
         ? ''
         : identity;
+    // V2: rebuilding the lanes must not lose the vertical scroll (the
+    // content's height collapses for a moment while it is rebuilt).
+    const keepTop = scroll.scrollTop;
+    content.style.minHeight = `${content.offsetHeight}px`;
     content.replaceChildren();
     renderedSpan = span;
     const width = timeToPixel(span, zoom);
@@ -1044,58 +1061,58 @@ export function mountTimeline(
       });
       ruler.append(pill);
     }
-    // U6: the scene's playback range on the ruler; outside it is dimmed.
+    // U6, V2 (spec 2b): outside the playback range the ruler and every lane
+    // are dimmed, from the default Start and End on (End is the scene's end
+    // until the user sets it).
     const range = playRangeOf(composition);
-    if (!range.full) {
-      const before = document.createElement('span');
-      before.className = 'ruler-range-dim';
-      before.dataset.side = 'before';
-      before.style.left = '0px';
-      before.style.width = `${timeToPixel(range.start, zoom)}px`;
-      const after = document.createElement('span');
-      after.className = 'ruler-range-dim';
-      after.dataset.side = 'after';
-      after.style.left = `${timeToPixel(range.end, zoom)}px`;
-      after.style.width = `${Math.max(0, width - timeToPixel(range.end, zoom))}px`;
-      ruler.append(before, after);
-      // T-ALL P4 (spec 9): the lanes are dimmed outside the range too.
-      for (const [left, w] of [
-        [0, timeToPixel(range.start, zoom)],
-        [
-          timeToPixel(range.end, zoom),
-          Math.max(0, width - timeToPixel(range.end, zoom)),
-        ],
-      ] as const) {
-        const dim = document.createElement('div');
-        dim.className = 'lanes-range-dim';
-        dim.style.left = `${headerWidth + left}px`;
-        dim.style.width = `${w}px`;
-        dim.style.height = '100%';
-        content.append(dim);
-      }
+    for (const side of ['before', 'after'] as const) {
+      const dim = document.createElement('span');
+      dim.className = 'ruler-range-dim';
+      dim.dataset.side = side;
+      ruler.append(dim);
+      const lanes = document.createElement('div');
+      lanes.className = 'lanes-range-dim';
+      lanes.dataset.side = side;
+      lanes.style.height = '100%';
+      content.append(lanes);
     }
     rulerBar.append(ruler);
     content.append(rulerBar);
+    placeRangeDim(range.start, range.end, width);
     // T-ALL P3 (spec 6): lanes sit vertically centred under the ruler when
     // the panel is taller than them; otherwise the first lane is at the top
     // and the rest scroll.
     // (The ghost lanes of a one-lane scene count too: 2 × 28 px + gaps.)
+    // V2 (spec 2): h = lane heights + 8 px gaps (ghost lanes count too);
+    // H = the scroll area under the ruler. If h + 46 <= H the group is
+    // centred, else it starts 23 px under the ruler and the area scrolls.
     const ghostRoom =
       composition.tracks.filter((track) => track.clips.length).length === 1 &&
       !ghostLanesHidden
-        ? 2 * (28 + 16)
+        ? 2 * (28 + LANE_GAP)
         : 0;
     const lanesHeight = rowSpans().total + ghostRoom;
+    const areaHeight = scroll.clientHeight - rulerBar.offsetHeight;
     const centreOffset =
-      lanesHeight > 0
-        ? Math.max(
-            0,
-            Math.floor(
-              (scroll.clientHeight - rulerBar.offsetHeight - lanesHeight) / 2,
-            ),
-          )
-        : 0;
-    laneOffset = centreOffset;
+      lanesHeight <= 0
+        ? 0
+        : lanesHeight + 2 * LANE_PAD <= areaHeight
+          ? Math.floor((areaHeight - lanesHeight) / 2)
+          : LANE_PAD;
+    laneOffset = centreOffset + (ghostRoom ? 28 + LANE_GAP : 0);
+    content.dataset.laneTop = String(centreOffset);
+    content.dataset.lanesHeight = String(lanesHeight);
+    // V2 (spec 2): the panel's default height: the ruler and every lane fit.
+    const card = root.parentElement ?? root;
+    root.dataset.fitHeight = String(
+      Math.round(
+        card.clientHeight -
+          scroll.clientHeight +
+          rulerBar.offsetHeight +
+          Math.max(52, lanesHeight) +
+          2 * LANE_PAD,
+      ),
+    );
     if (centreOffset > 0) {
       const spacer = document.createElement('div');
       spacer.className = 'timeline-lanes-centre';
@@ -1134,93 +1151,8 @@ export function mountTimeline(
         'selected',
         row.clips.some((item) => session.selectedIds.includes(item.layer.id)),
       );
-      const header = document.createElement('div');
-      header.className = 'timeline-row-header timeline-track-header';
-      const label = document.createElement('span');
-      label.className = 'track-name';
-      // U1: named by kind and number in display order ("Video 1", "Shape
-      // 2"), with a kind icon; the stored name is in the tooltip.
-      const sameKind = trackRows.filter(
-        (other) => other.track.type === row.track.type,
-      );
-      label.textContent = t('lane.name', {
-        kind: t(`lane.kind.${row.track.type}`),
-        n: sameKind.indexOf(row) + 1,
-      });
-      label.title = row.track.name;
-      const kindIcon = document.createElement('span');
-      kindIcon.className = 'track-kind-icon';
-      kindIcon.setAttribute('aria-hidden', 'true');
-      kindIcon.innerHTML = iconSvg(
-        row.track.type === 'video'
-          ? 'media'
-          : row.track.type === 'audio'
-            ? 'audio'
-            : row.track.type === 'text'
-              ? 'text'
-              : 'elements',
-        20,
-      );
-      header.append(kindIcon);
-      // TL-059: every toggle exposes its state through aria-pressed.
-      const toggle = (
-        action: string,
-        icon: string,
-        pressed: boolean,
-        label: string,
-      ) => {
-        const item = button(iconSvg(icon, 14), action, row.track.id, true);
-        item.classList.add('track-toggle');
-        item.setAttribute('aria-pressed', String(pressed));
-        item.setAttribute('aria-label', label);
-        item.title = label;
-        return item;
-      };
-      const name = { name: row.track.name };
-      const soloed = session.soloTrackIds.includes(row.track.id);
-      const lock = toggle(
-        'track-lock',
-        row.track.locked ? 'lock' : 'unlock',
-        row.track.locked,
-        t(row.track.locked ? 'track.unlock' : 'track.lock', name),
-      );
-      const enable = toggle(
-        'track-enable',
-        row.track.enabled ? 'eye' : 'eyeOff',
-        !row.track.enabled,
-        t(row.track.enabled ? 'track.hide' : 'track.show', name),
-      );
-      const solo = toggle(
-        'track-solo',
-        'solo',
-        soloed,
-        t(soloed ? 'track.unsolo' : 'track.solo', name),
-      );
-      const mute = toggle(
-        'track-mute',
-        row.track.muted ? 'mute' : 'speaker',
-        row.track.muted,
-        t(row.track.muted ? 'track.unmute' : 'track.mute', name),
-      );
-      const up = button(iconSvg('arrowUp', 13), 'track-up', row.track.id, true);
-      const down = button(
-        iconSvg('arrowDown', 13),
-        'track-down',
-        row.track.id,
-        true,
-      );
-      // J7: a lane moves only within its group.
-      const group = laneGroupOfTrack(row.track.type);
-      const sameGroup = (index: number) =>
-        !!trackRows[index] &&
-        laneGroupOfTrack(trackRows[index]!.track.type) === group;
-      up.disabled = !sameGroup(trackIndex - 1);
-      down.disabled = !sameGroup(trackIndex + 1);
-      up.setAttribute('aria-label', `Move ${row.track.name} track up`);
-      down.setAttribute('aria-label', `Move ${row.track.name} track down`);
-      up.title = up.getAttribute('aria-label')!;
-      down.title = down.getAttribute('aria-label')!;
-      header.append(label, lock, enable, solo, mute, up, down);
+      // V2 (spec 4): lanes have no header; lock, hide, solo, mute and the
+      // lane moves are in the lane's right-click menu and the Scene outliner.
       const track = document.createElement('div');
       track.className = 'timeline-track';
       track.dataset.trackId = row.track.id;
@@ -1352,8 +1284,13 @@ export function mountTimeline(
       // J11: a gap between two clips is hatched; its trash button closes it
       // (the later clips on the lane move left, one step).
       const frame = frameToTime(1, composition.fps);
-      for (let index = 1; index < spans.length; index++) {
-        const end = spans[index - 1]!.startTime + spans[index - 1]!.duration;
+      // V2 (spec 2c, B22): the span from 0 to the lane's first clip is a gap
+      // too; the tail after the last clip is not.
+      for (let index = 0; index < spans.length; index++) {
+        const end =
+          index === 0
+            ? 0
+            : spans[index - 1]!.startTime + spans[index - 1]!.duration;
         const next = spans[index]!.startTime;
         if (next - end < frame - 1e-9) continue;
         const gap = document.createElement('div');
@@ -1395,8 +1332,14 @@ export function mountTimeline(
           ghost.style.width = `${timeToPixel(item.duration, zoom)}px`;
           track.append(ghost);
         }
-      line.append(header, track);
+      line.append(track);
       content.append(line);
+    }
+    if (centreOffset === LANE_PAD) {
+      const bottom = document.createElement('div');
+      bottom.className = 'timeline-lanes-centre';
+      bottom.style.height = `${LANE_PAD}px`;
+      content.append(bottom);
     }
     for (const row of rows) {
       const line = document.createElement('div');
@@ -1546,26 +1489,6 @@ export function mountTimeline(
           session.currentTime > range.end + 1e-9),
     );
     pageToPlayhead();
-    const nextOutliner = JSON.stringify([
-      composition.id,
-      composition.name,
-      composition.outliner,
-      composition.layers.map((layer) => [layer.id, layer.name]),
-      composition.tracks.map((track) => [
-        track.id,
-        track.enabled,
-        track.locked,
-        track.muted,
-        track.clips.map((clip) => clip.layerId),
-      ]),
-      session.selectedIds,
-      session.soloTrackIds,
-    ]);
-    if (nextOutliner !== outlinerKey) {
-      outlinerKey = nextOutliner;
-      outliner.render();
-      outliner.reveal();
-    }
     const selection = session.selectedIds.join(',');
     if (selection !== revealedSelection) {
       revealedSelection = selection;
@@ -1596,7 +1519,7 @@ export function mountTimeline(
       guide.style.height = `${28 + rowSpans().total}px`;
       content.append(guide);
     }
-    if (marquee) {
+    if (marquee && pointer?.moved) {
       const box = document.createElement('div');
       box.className = 'timeline-marquee';
       box.style.left = `${headerWidth + Math.min(marquee.x, marquee.endX)}px`;
@@ -1615,6 +1538,8 @@ export function mountTimeline(
         ?.focus({ preventScroll: true });
     // J9: a media drag in progress keeps its marks across re-renders.
     showAssetTarget();
+    content.style.minHeight = '';
+    if (scroll.scrollTop !== keepTop) scroll.scrollTop = keepTop;
   };
   const release = () => {
     const id = pointer?.id;
@@ -1658,6 +1583,52 @@ export function mountTimeline(
       session.currentTime +
         frameToTime(direction * (big ? 10 : 1), session.source.composition.fps),
     );
+  };
+  /** V2 (spec 3): near the lane area's edge the marquee scrolls the lanes. */
+  let lastMarqueeEvent: { clientX: number; clientY: number } | null = null;
+  let autoScrolling = false;
+  const autoScrollMarquee = () => {
+    if (autoScrolling) return;
+    const step = () => {
+      if (pointer?.kind !== 'marquee' || !lastMarqueeEvent) {
+        autoScrolling = false;
+        return;
+      }
+      const bounds = scroll.getBoundingClientRect();
+      const edge = 24;
+      const { clientX, clientY } = lastMarqueeEvent;
+      const dx =
+        clientX > bounds.right - edge
+          ? 12
+          : clientX < bounds.left + edge
+            ? -12
+            : 0;
+      const dy =
+        clientY > bounds.bottom - edge
+          ? 8
+          : clientY < bounds.top + 28 + edge
+            ? -8
+            : 0;
+      if (!dx && !dy) {
+        autoScrolling = false;
+        return;
+      }
+      const before = [scroll.scrollLeft, scroll.scrollTop];
+      scroll.scrollLeft += dx;
+      scroll.scrollTop += dy;
+      if (before[0] === scroll.scrollLeft && before[1] === scroll.scrollTop) {
+        autoScrolling = false;
+        return;
+      }
+      update({
+        pointerId: pointer.id,
+        clientX,
+        clientY,
+      } as PointerEvent);
+      requestAnimationFrame(step);
+    };
+    autoScrolling = true;
+    requestAnimationFrame(step);
   };
   const update = (event: PointerEvent) => {
     if (!pointer || pointer.id !== event.pointerId) return;
@@ -1720,6 +1691,17 @@ export function mountTimeline(
         render();
       }
     } else if (pointer.kind === 'marquee') {
+      if (
+        !pointer.moved &&
+        Math.hypot(
+          event.clientX - pointer.start,
+          event.clientY - pointer.startY,
+        ) < 4
+      )
+        return;
+      pointer.moved = true;
+      lastMarqueeEvent = { clientX: event.clientX, clientY: event.clientY };
+      autoScrollMarquee();
       const bounds = scroll.getBoundingClientRect();
       const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
         y = event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset;
@@ -1756,7 +1738,7 @@ export function mountTimeline(
         .map((item) => item.id);
       marquee!.endX = x;
       marquee!.endY = y;
-      session.selectMany([...marquee!.ids, ...selected]);
+      session.selectMany([...new Set([...marquee!.ids, ...selected])]);
       render();
     } else {
       const delta =
@@ -1816,7 +1798,6 @@ export function mountTimeline(
     safely(() => {
       if (pointer || event.button !== 0 || event.isPrimary === false) return;
       const target = event.target as HTMLElement;
-      if (target.closest('.timeline-outliner')) return;
       // ANI-004: a diamond selects its keyframes and starts a drag.
       const diamond = target.closest<HTMLElement>('[data-action="keyframe"]');
       if (diamond) {
@@ -1853,7 +1834,15 @@ export function mountTimeline(
       const marker = target.closest<HTMLElement>(
         '[data-action="marker-handle"]',
       );
-      const empty = target.classList.contains('timeline-track');
+      // V2 (spec 3): every pixel of the lane area that is not a clip, a
+      // handle, a button or the ruler is empty space: a click there clears
+      // the selection and seeks, a drag draws the marquee.
+      const empty =
+        !clip &&
+        !ruler &&
+        !marker &&
+        !!target.closest('.timeline-scroll') &&
+        !target.closest('button, input, [data-action], .timeline-menu');
       if (!clip && !ruler && !marker && !empty) return;
       if (!Number.isFinite(event.clientX) || !Number.isFinite(event.clientY))
         throw new RangeError('Invalid pointer coordinate');
@@ -1875,8 +1864,16 @@ export function mountTimeline(
           originalIds: session.selectedIds,
           ids: event.shiftKey ? session.selectedIds : [],
         };
-        if (!event.shiftKey) session.select(null);
+        if (!(event.shiftKey || event.ctrlKey || event.metaKey))
+          session.select(null);
       }
+      // A press on the ruler (not on the playhead's head) seeks and clears.
+      if (
+        ruler &&
+        target.closest('.timeline-ruler') &&
+        !(event.shiftKey || event.ctrlKey || event.metaKey)
+      )
+        session.select(null);
       if (marker) {
         const found = session.source.composition.markers.find(
           (item) => item.id === marker.dataset.id,
@@ -2038,6 +2035,10 @@ export function mountTimeline(
         // A click with no drag selects the marker (for keyboard delete) instead of moving it.
         if (!moved) selectedMarkerId = markerId;
       }
+      // V2 (spec 3): a click (no drag) on empty space also moves the playhead
+      // there, as in Clipchamp.
+      if (kind === 'marquee' && !moved) seek(event.clientX);
+      lastMarqueeEvent = null;
       suppressClick = kind === 'marquee' || (kind === 'keyframe' && moved);
       marquee = undefined;
       render();
@@ -3060,6 +3061,28 @@ export function mountTimeline(
     ),
   );
   root.append(framePanel);
+  // V2 (spec 2b): the dim follows the Start and End fields on every digit,
+  // wheel step and arrow, never waiting for Enter or blur; an unfinished or
+  // inverted value leaves it as it was.
+  const liveDim = () => {
+    const read = (id: string) => {
+      const input = framePanel.querySelector<HTMLInputElement>(`#frame-${id}`);
+      const value = input ? Number(input.value.trim()) : NaN;
+      return input && input.value.trim() !== '' && Number.isFinite(value)
+        ? value
+        : null;
+    };
+    const start = read('start'),
+      end = read('end');
+    if (start === null || end === null || end <= start) return;
+    placeRangeDim(frameToTime(start, fps()), frameToTime(end, fps()));
+  };
+  for (const id of ['start', 'end']) {
+    const input = framePanel.querySelector<HTMLInputElement>(`#frame-${id}`);
+    input?.addEventListener('input', liveDim);
+    input?.addEventListener('wheel', () => queueMicrotask(liveDim));
+    input?.addEventListener('keydown', () => queueMicrotask(liveDim));
+  }
   function syncFramePanel() {
     const { start, end } = rangeFrames();
     syncNumberField(
@@ -3341,6 +3364,9 @@ export function mountTimeline(
     const divider = document.createElement('div');
     divider.className = 'timeline-menu-divider';
     divider.setAttribute('role', 'separator');
+    // V2 (spec 4): the lane's own actions (the lane headers are gone).
+    const lane = laneSection();
+    const laneDivider = divider.cloneNode() as HTMLElement;
     menu.replaceChildren(
       ...section,
       ...(section.length && earlier.length ? [divider] : []),
@@ -3379,8 +3405,57 @@ export function mountTimeline(
           action,
         );
       }),
+      ...(lane.length ? [laneDivider, ...lane] : []),
     );
     menu.querySelector<HTMLButtonElement>('button')?.focus();
+  };
+  /** The lane under the right-click (or the clicked clip's lane). */
+  let menuTrackId: string | null = null;
+  const laneSection = (): HTMLElement[] => {
+    const tracks = [...session.source.composition.tracks].sort(
+      (a, b) => a.order - b.order,
+    );
+    const index = tracks.findIndex((track) => track.id === menuTrackId);
+    const track = tracks[index];
+    if (!track) return [];
+    const name = {
+      name: t('lane.name', {
+        kind: t(`lane.kind.${track.type}`),
+        n:
+          tracks.filter((other) => other.type === track.type).indexOf(track) +
+          1,
+      }),
+    };
+    const item = (label: string, action: string, disabled = false) => {
+      const entry = menuItem(label, action);
+      entry.dataset.id = track.id;
+      entry.disabled = disabled;
+      return entry;
+    };
+    const group = laneGroupOfTrack(track.type);
+    const sameGroup = (at: number) =>
+      !!tracks[at] && laneGroupOfTrack(tracks[at]!.type) === group;
+    const soloed = session.soloTrackIds.includes(track.id);
+    const items = [
+      item(t(track.locked ? 'track.unlock' : 'track.lock', name), 'track-lock'),
+      item(
+        t(track.enabled ? 'track.hide' : 'track.show', name),
+        'track-enable',
+      ),
+    ];
+    if (track.type === 'video' || track.type === 'audio')
+      items.push(
+        item(t(soloed ? 'track.unsolo' : 'track.solo', name), 'track-solo'),
+        item(
+          t(track.muted ? 'track.unmute' : 'track.mute', name),
+          'track-mute',
+        ),
+      );
+    items.push(
+      item(t('lane.moveUp', name), 'track-up', !sameGroup(index - 1)),
+      item(t('lane.moveDown', name), 'track-down', !sameGroup(index + 1)),
+    );
+    return items;
   };
   // VID-015: speed presets open in place of the main menu, with Back.
   const showSpeedMenu = (focus = true) => {
@@ -3431,6 +3506,13 @@ export function mountTimeline(
         ? target.dataset.id
         : undefined;
     menuId = menuMarker ? null : (target?.dataset.id ?? null);
+    menuTrackId =
+      (event.target as HTMLElement).closest<HTMLElement>('.timeline-nle-row')
+        ?.dataset.trackId ??
+      (menuId
+        ? (findClipByLayer(session.source.composition, menuId)?.track.id ??
+          null)
+        : null);
     if (menuId && !session.selectedIds.includes(menuId)) session.select(menuId);
     if (!target) {
       session.select(null);
@@ -3463,6 +3545,21 @@ export function mountTimeline(
       }
     });
   scroll.addEventListener('scroll', onScroll);
+  // V2 (spec 2, B3): the lanes re-centre on every frame the panel's size
+  // changes (a resize drag included), not only on a click.
+  let recentre = 0;
+  const lanesObserver =
+    typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(() => {
+          if (recentre) return;
+          recentre = requestAnimationFrame(() => {
+            recentre = 0;
+            renderedProject = undefined;
+            safely(render);
+          });
+        });
+  lanesObserver?.observe(scroll);
   const listeners = {
     pointerdown,
     pointermove,
@@ -3630,6 +3727,8 @@ export function mountTimeline(
       document.removeEventListener('dragend', clearAssetDropTarget);
       window.removeEventListener('resize', cancel);
       scroll.removeEventListener('scroll', onScroll);
+      lanesObserver?.disconnect();
+      cancelAnimationFrame(recentre);
       root.replaceChildren();
     },
   };

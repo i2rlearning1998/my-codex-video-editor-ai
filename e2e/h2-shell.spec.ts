@@ -147,8 +147,10 @@ test('[LAY-004] panel dividers drag within their limits: left 260 to 420, right 
   await expect.poll(() => size('.inspector', 'width')).toBeCloseTo(240, 0);
   await drag('.panel-resizer.right', -400, 0);
   await expect.poll(() => size('.inspector', 'width')).toBeCloseTo(360, 0);
+  // V2 (spec 2, D-191): far down, the timeline collapses to the player
+  // (there is no half-lane minimum any more); far up it opens to 60%.
   await drag('.panel-resizer.height', 0, 600);
-  await expect.poll(() => size('.timeline', 'height')).toBeCloseTo(160, 0);
+  await expect(page.locator('.editor-shell')).toHaveClass(/timeline-collapsed/);
   await drag('.panel-resizer.height', 0, -900);
   await expect.poll(() => size('.timeline', 'height')).toBeCloseTo(600, 0);
 });

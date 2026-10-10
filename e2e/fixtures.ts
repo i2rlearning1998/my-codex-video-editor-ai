@@ -226,3 +226,43 @@ export async function showSceneStrip(page: Page) {
     .poll(async () => strip.evaluate((item) => getComputedStyle(item).opacity))
     .toBe('1');
 }
+/**
+ * V2 (D-191): lanes have no header; their lock, hide, solo, mute and move
+ * actions are in the lane's right-click menu. Right-clicks an empty part of
+ * the lane (after its last clip, inside the visible lanes) and runs one.
+ */
+export async function laneAction(
+  page: Page,
+  trackId: string,
+  action:
+    | 'track-lock'
+    | 'track-enable'
+    | 'track-mute'
+    | 'track-solo'
+    | 'track-up'
+    | 'track-down',
+) {
+  const row = page.locator(
+    `#timeline-foundation .timeline-nle-row[data-track-id="${trackId}"]`,
+  );
+  await row.scrollIntoViewIfNeeded();
+  const area = (await page
+    .locator('#timeline-foundation .timeline-scroll')
+    .boundingBox())!;
+  const lane = (await row.boundingBox())!;
+  // The emptiest visible spot: after the lane's last clip, or its far end.
+  const end = await row.evaluate((element) =>
+    Math.max(
+      0,
+      ...[...element.querySelectorAll('.timeline-clip')].map(
+        (clip) => clip.getBoundingClientRect().right,
+      ),
+    ),
+  );
+  const x = Math.min(area.x + area.width - 12, Math.max(area.x + 12, end + 12));
+  await page.mouse.click(x, lane.y + lane.height / 2, { button: 'right' });
+  const item = page.locator(
+    `#timeline-foundation .timeline-menu [data-action="${action}"]`,
+  );
+  await item.click();
+}

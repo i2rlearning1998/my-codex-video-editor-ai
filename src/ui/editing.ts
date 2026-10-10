@@ -594,67 +594,23 @@ export function performEdit(
       selected.push(copy.id);
     }
   if (duplicates.length) {
-    // Sequentially per track: each copy lands at its original's (pushed) end.
-    const lanes = new Map<
-      string,
-      { id: string; startTime: number; duration: number }[]
-    >();
-    const final = new Map<string, number>();
-    for (const item of [...duplicates].sort(
-      (a, b) => a.original.startTime - b.original.startTime,
-    )) {
-      const track = source.composition.tracks.find(
-        (entry) => entry.id === item.trackId,
-      )!;
-      const lane =
-        lanes.get(item.trackId) ??
-        track.clips.map((clip) => ({
-          id: clip.id,
-          startTime: clip.startTime,
-          duration: clip.duration,
-        }));
-      lanes.set(item.trackId, lane);
-      const original = lane.find((clip) => clip.id === item.original.id)!;
-      const plan = planInsert(lane, [
-        {
-          id: item.copy.id,
-          startTime: original.startTime + original.duration,
-          duration: item.copy.duration,
-        },
-      ]);
-      for (const clip of lane)
-        if (plan.pushed.has(clip.id))
-          clip.startTime = plan.pushed.get(clip.id)!;
-      const at = plan.placed.get(item.copy.id)!;
-      lane.push({
-        id: item.copy.id,
-        startTime: at,
-        duration: item.copy.duration,
-      });
-      item.copy.startTime = at;
-    }
-    for (const [trackId, lane] of lanes)
-      for (const clip of lane) {
-        const current = source.composition.tracks
-          .find((entry) => entry.id === trackId)!
-          .clips.find((entry) => entry.id === clip.id);
-        if (current && current.startTime !== clip.startTime)
-          final.set(clip.id, clip.startTime);
-      }
-    final.forEach((startTime, clipId) =>
-      commands.push({
-        type: 'SET_CLIP_TIMING',
-        compositionId,
-        clipId,
-        startTime,
-        duration: findClip(source.composition, clipId)!.clip.duration,
-      }),
+    // V2 (spec 2c, B23): each copy keeps its original's time and goes to a
+    // new lane directly above the original's lane.
+    const { commands: laneCommands, lane } = lanesAbove(
+      source.composition,
+      duplicates.map((item) => ({
+        trackId: item.trackId,
+        type: source.composition.tracks.find(
+          (track) => track.id === item.trackId,
+        )!.type,
+      })),
     );
+    commands.push(...laneCommands);
     for (const item of duplicates)
       commands.push({
         type: 'CREATE_CLIP',
         compositionId,
-        trackId: item.trackId,
+        trackId: lane.get(item.trackId)!,
         clip: item.copy,
       });
   }
@@ -865,6 +821,54 @@ export function jumpToCut(session: EditorSession, direction: -1 | 1): void {
     );
 }
 
+/** V2 (spec 2c, B23): one new lane of the given type directly above each
+ *  original lane, in one go; returns the commands and the new lane per
+ *  original. A copy never lands beside its original. */
+export function lanesAbove(
+  composition: DeepReadonly<Composition>,
+  wanted: readonly { trackId: string; type: Track['type'] }[],
+): { commands: Command[]; lane: Map<string, string> } {
+  const order = [...composition.tracks]
+    .sort((a, b) => a.order - b.order)
+    .map((track) => track.id);
+  const commands: Command[] = [];
+  const lane = new Map<string, string>();
+  const names: { type: Track['type'] }[] = composition.tracks.map((track) => ({
+    type: track.type,
+  }));
+  for (const item of [...wanted].sort(
+    (a, b) => order.indexOf(a.trackId) - order.indexOf(b.trackId),
+  )) {
+    if (lane.has(item.trackId)) continue;
+    const id = crypto.randomUUID();
+    commands.push(
+      {
+        type: 'CREATE_TRACK',
+        compositionId: composition.id,
+        track: {
+          id,
+          name: nextTrackName({ tracks: names }, item.type),
+          type: item.type,
+          order: order.length,
+          enabled: true,
+          locked: false,
+          muted: false,
+          clips: [],
+        },
+      },
+      {
+        type: 'MOVE_TRACK',
+        compositionId: composition.id,
+        trackId: id,
+        index: Math.max(0, order.indexOf(item.trackId)),
+      },
+    );
+    names.push({ type: item.type });
+    order.splice(Math.max(0, order.indexOf(item.trackId)), 0, id);
+    lane.set(item.trackId, id);
+  }
+  return { commands, lane };
+}
 /** Land brand-new clips (paste, detach) under the insert rule; returns push commands. */
 function landNewClips(
   composition: DeepReadonly<Composition>,
@@ -956,10 +960,12 @@ function clipAction(
     const singleTrack =
       new Set(clipboard.map((item) => item.trackId)).size === 1;
     const relinked = new Map<string, string>();
-    const created = new Map<string, string>();
     const landings: { clip: Clip; trackId: string }[] = [];
     const selected: string[] = [];
-    for (const item of clipboard) {
+    // V2 (spec 2c, B23): each pasted clip goes to a new lane directly above
+    // the selected clip's lane (one clipboard lane) or above its own lane;
+    // when that lane is gone or of another kind, to a lane by the usual rule.
+    const items = clipboard.map((item) => {
       const layer = cloneLayer(item.layer);
       layer.startTime = session.currentTime + item.offset;
       const clip = clipSchema.parse(item.clip);
@@ -971,17 +977,24 @@ function clipAction(
         if (!relinked.has(link)) relinked.set(link, crypto.randomUUID());
         clip.metadata.linkId = relinked.get(link)!;
       }
-      const usable = (track: DeepReadonly<Track> | undefined) =>
-        track && !track.locked && trackAcceptsLayer(track.type, layer);
+      const fits = (track: DeepReadonly<Track> | undefined) =>
+        track && trackAcceptsLayer(track.type, layer);
       const original = composition.tracks.find(
         (track) => track.id === item.trackId,
       );
-      let trackId =
-        singleTrack && usable(target)
-          ? target!.id
-          : usable(original)
-            ? original!.id
-            : created.get(trackTypeForLayer(layer));
+      const anchor =
+        singleTrack && fits(target) ? target : fits(original) ? original : null;
+      return { layer, clip, anchor };
+    });
+    const above = lanesAbove(
+      composition,
+      items.flatMap(({ anchor }) =>
+        anchor ? [{ trackId: anchor.id, type: anchor.type }] : [],
+      ),
+    );
+    commands.push(...above.commands);
+    for (const { layer, clip, anchor } of items) {
+      let trackId = anchor ? above.lane.get(anchor.id) : undefined;
       if (!trackId) {
         const fresh = trackForNewClip(
           composition,
@@ -991,8 +1004,6 @@ function clipAction(
         );
         trackId = fresh.trackId;
         commands.push(...fresh.commands);
-        if (fresh.commands.length)
-          created.set(trackTypeForLayer(layer), trackId);
       }
       commands.push({
         type: 'CREATE_LAYER',

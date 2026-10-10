@@ -7077,7 +7077,8 @@ input[type='range'] {
   font-weight: 600;
   visibility: hidden;
 }
-.timeline-ghost-lane:hover {
+/* V2 (B8): the ghost lanes light up only while something is dragged. */
+.timeline-dragging .timeline-ghost-lane:hover {
   border-color: var(--color-accent);
 }
 .timeline-ghost-lane:hover .ghost-hide {
@@ -7376,6 +7377,8 @@ input[type='range'] {
   background: var(--region-accent);
 }
 .editor-shell > .inspector {
+  /* The panel itself scrolls (the card rule above hides overflow). */
+  overflow: hidden auto;
   scrollbar-width: thin;
   scrollbar-color: var(--region-scrollbar) transparent;
 }
@@ -7395,4 +7398,206 @@ input[type='range'] {
 .editor-shell[data-layout='phone'] > .inspector {
   margin: 0;
   border-radius: 12px 12px 0 0;
+}
+
+/* ===== V2 timeline (Clipchamp clone spec 2): no lane headers; lanes are
+   52 / 28 / 36 px with 8 px gaps showing the card colour; clips fill their
+   lane. ===== */
+.timeline-nle-row {
+  border-bottom: 0;
+  background: var(--region-lanes);
+}
+.timeline-nle-row + .timeline-nle-row {
+  margin-top: 8px;
+}
+.editor-shell .timeline-scroll {
+  background: var(--region-timeline);
+}
+.timeline-nle-row .timeline-clip.nle-clip {
+  top: 0;
+  height: 100%;
+  min-height: 0;
+}
+.timeline-ghost-lane {
+  box-sizing: border-box;
+  block-size: 28px;
+  min-block-size: 28px;
+}
+.timeline-ghost-lane[data-ghost='above'] {
+  margin-block: 0 8px;
+}
+.timeline-ghost-lane[data-ghost='below'] {
+  margin-block: 8px 0;
+}
+/* V2: the edge stays draggable while collapsed (back up, with hysteresis). */
+.editor-shell.timeline-collapsed .timeline > .panel-resizer {
+  display: block;
+}
+.timeline-content {
+  min-block-size: 100%;
+}
+
+/* ===== V3 Scene outliner (spec 4): Blender-like rows, the same in both
+   themes. ===== */
+.scene-outliner {
+  --ol-row: #474747;
+  --ol-zebra: #4f4f4f;
+  --ol-selected: #575757;
+  --ol-active: #666666;
+  --ol-target: #333333;
+  --ol-text: #bcbcbc;
+  --ol-active-text: #e6d800;
+  --ol-selected-text: #38a0d6;
+  --ol-layer-icon: #e8964a;
+  --depth: 0;
+  outline: none;
+  overflow: auto;
+  padding: var(--space-1) 0;
+}
+#scene-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+#scene-heading .outliner-search {
+  flex: 1 0 100%;
+  min-block-size: 32px;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--region-border);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  color: var(--text);
+  font-size: 13px;
+}
+.outliner-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-block-size: 24px;
+  padding-inline: calc(6px + var(--depth) * 20px) 6px;
+  background: var(--ol-row);
+  color: var(--ol-text);
+  font-size: 13px;
+  cursor: default;
+  user-select: none;
+}
+.outliner-row.zebra {
+  background: var(--ol-zebra);
+}
+.outliner-row[aria-selected='true'] {
+  background: var(--ol-selected);
+  color: var(--ol-selected-text);
+}
+.outliner-row.active {
+  background: var(--ol-active);
+  color: var(--ol-active-text);
+}
+.outliner-row.drop-into {
+  background: var(--ol-target);
+}
+.outliner-row::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(11px + (var(--depth) - 1) * 20px);
+  inline-size: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.outliner-row[data-row-kind='root']::before {
+  display: none;
+}
+.outliner-arrow {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 14px;
+  block-size: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+.outliner-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--ol-layer-icon);
+}
+.outliner-icon[data-kind='collection'],
+.outliner-icon[data-kind='root'] {
+  color: #d8d8d8;
+}
+.outliner-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.outliner-strip {
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0.5;
+}
+.outliner-toggles {
+  display: inline-flex;
+  gap: 2px;
+}
+.outliner-toggle {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  opacity: 0;
+}
+.outliner-row:hover .outliner-toggle,
+.outliner-row:focus-within .outliner-toggle {
+  opacity: 0.9;
+}
+.outliner-toggle.active {
+  opacity: 0.55;
+}
+.outliner-rename {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 13px;
+}
+.outliner-band {
+  position: fixed;
+  z-index: 50;
+  border: 1px dashed #d8d8d8;
+  pointer-events: none;
+}
+.outliner-drag-tip {
+  position: fixed;
+  z-index: 60;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #222;
+  color: #e6e6e6;
+  font-size: 12.5px;
+  pointer-events: none;
+}
+.outliner-ghost {
+  position: fixed;
+  top: -100px;
+  left: -100px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #333;
+  color: #e6e6e6;
+  font-size: 13px;
+}
+.outliner-menu {
+  position: fixed;
+  z-index: 70;
 }

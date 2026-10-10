@@ -285,10 +285,12 @@ describe('canonical NLE tracks and clips', () => {
     session.setCurrentTime(2);
     performEdit(engine, session, 'split');
     expect(engine.state.compositions[0]!.tracks[1]!.clips).toHaveLength(2);
+    // V2 (spec 2c, B23): the duplicate goes to a new lane directly above.
+    const lanesBefore = engine.state.compositions[0]!.tracks.length;
     performEdit(engine, session, 'duplicate');
-    expect(engine.state.compositions[0]!.tracks[1]!.clips).toHaveLength(3);
+    expect(engine.state.compositions[0]!.tracks).toHaveLength(lanesBefore + 1);
     performEdit(engine, session, 'delete');
-    expect(engine.state.compositions[0]!.tracks[1]!.clips).toHaveLength(2);
+    expect(engine.state.compositions[0]!.tracks).toHaveLength(lanesBefore);
   });
 
   it('moves multiple selected clips in time and to one compatible track atomically', () => {

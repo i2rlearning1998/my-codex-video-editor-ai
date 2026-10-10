@@ -295,34 +295,50 @@ test('[TL-058] a cross-track drag shows a ghost at the landing track and time, c
 test('[TL-059] Lock, Hide, Solo and Mute toggles show pressed state; Solo previews only soloed tracks without history', async ({
   page,
 }, testInfo) => {
-  for (const [action, field, name] of [
-    ['track-lock', 'locked', 'Lock Video 2'],
-    ['track-enable', 'enabled', 'Hide Video 2'],
-    ['track-mute', 'muted', 'Mute Video 2'],
+  // V2 (D-191): the lane menu holds Lock, Hide, Solo and Mute; each label
+  // says what the next click does.
+  const laneMenu = async (trackId: string) => {
+    const row = page.locator(
+      `#timeline-foundation .timeline-nle-row[data-track-id="${trackId}"]`,
+    );
+    const area = (await page
+      .locator('#timeline-foundation .timeline-scroll')
+      .boundingBox())!;
+    const lane = (await row.boundingBox())!;
+    await page.mouse.click(area.x + area.width - 12, lane.y + lane.height / 2, {
+      button: 'right',
+    });
+    return page.locator('#timeline-foundation .timeline-menu');
+  };
+  for (const [action, field, name, undone] of [
+    ['track-lock', 'locked', /^Lock Video/, /^Unlock Video/],
+    ['track-enable', 'enabled', /^Hide Video/, /^Show Video/],
+    ['track-mute', 'muted', /^Mute Video/, /^Unmute Video/],
   ] as const) {
-    const toggle = page.locator(`[data-action="${action}"][data-id="video-2"]`);
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    await expect(toggle).toHaveAttribute('aria-label', name);
-    await expect(toggle).toHaveAttribute('title', name);
+    let item = (await laneMenu('video-2')).locator(`[data-action="${action}"]`);
+    await expect(item).toHaveText(name);
     const initial = (await hook(page)).project.compositions[0]!.tracks[1]![
       field
     ];
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    await item.click();
     expect((await hook(page)).project.compositions[0]!.tracks[1]![field]).toBe(
       !initial,
     );
+    item = (await laneMenu('video-2')).locator(`[data-action="${action}"]`);
+    await expect(item).toHaveText(undone);
+    await page.keyboard.press('Escape');
     await page.locator('#undo').click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   }
   // Solo: layer-c (Video 2) is drawn at 1.5 s until Video 1 is soloed.
   await seek(page, 1.5);
   expect(isBackground(await pixel(page, 320, 420))).toBe(false);
   const history = (await hook(page)).history;
-  const solo = page.locator('[data-action="track-solo"][data-id="video-1"]');
-  await expect(solo).toHaveAttribute('aria-label', 'Solo Video 1');
-  await solo.click();
-  await expect(solo).toHaveAttribute('aria-pressed', 'true');
+  const solo = async () =>
+    (await laneMenu('video-1')).locator('[data-action="track-solo"]');
+  await expect(await solo()).toHaveText(/^Solo Video/);
+  await (await solo()).click();
+  await expect(await solo()).toHaveText(/^Unsolo Video/);
+  await page.keyboard.press('Escape');
   expect((await hook(page)).session.soloTrackIds).toEqual(['video-1']);
   await expect
     .poll(async () => isBackground(await pixel(page, 320, 420)))
@@ -331,8 +347,8 @@ test('[TL-059] Lock, Hide, Solo and Mute toggles show pressed state; Solo previe
   expect(isBackground(await pixel(page, 120, 120))).toBe(false);
   expect((await hook(page)).history).toEqual(history);
   await page.screenshot({ path: testInfo.outputPath('track-solo.png') });
-  await solo.click();
-  await expect(solo).toHaveAttribute('aria-pressed', 'false');
+  await (await solo()).click();
+  expect((await hook(page)).session.soloTrackIds).toEqual([]);
   await expect
     .poll(async () => isBackground(await pixel(page, 320, 420)))
     .toBe(false);

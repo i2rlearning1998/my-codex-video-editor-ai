@@ -115,7 +115,7 @@ describe('timeline foundation', () => {
     expect(s.engine.history.undo).toHaveLength(1);
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
-    ).toBe('1208px');
+    ).toBe('984px');
     expect(s.root.querySelector('.timeline-ruler')!.textContent).toContain(
       '12s',
     );
@@ -222,7 +222,7 @@ describe('timeline foundation', () => {
     s.engine.load(project);
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
-    ).toBe('6248px');
+    ).toBe('6024px');
     expect(s.root.querySelector('.timeline-ruler')!.textContent).toContain(
       '75s',
     );
@@ -230,10 +230,10 @@ describe('timeline foundation', () => {
     scroll.scrollLeft = 1600;
     s.event(
       'pointerdown',
-      384,
+      160,
       s.root.querySelector<HTMLElement>('.timeline-ruler')!,
     );
-    s.event('pointerup', 384);
+    s.event('pointerup', 160);
     expect(s.shell.session.currentTime).toBe(22);
     s.controller.begin('a', 'move');
     s.controller.update(1600);
@@ -243,7 +243,7 @@ describe('timeline foundation', () => {
     expect(s.clip().style.left).toBe('3360px');
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
-    ).toBe('12248px');
+    ).toBe('12024px');
   });
   it('combines pointer X timing and Y sibling reorder in one history entry and cancels safely', () => {
     const s = setup();
@@ -260,13 +260,15 @@ describe('timeline foundation', () => {
       toJSON: () => ({}),
     });
     const before = s.engine.state;
-    s.event('pointerdown', 320, s.clip(), 45);
-    s.event('pointermove', 400, s.timeline, 79);
+    // V2 (D-191): no header (x - 224) and the rows start 23 px under the
+    // ruler when they do not fit (y + 23).
+    s.event('pointerdown', 96, s.clip(), 68);
+    s.event('pointermove', 176, s.timeline, 102);
     expect(
       s.root.querySelector('.drop-target')?.getAttribute('data-row-id'),
     ).toBe('b');
     expect(s.engine.state).toBe(before);
-    s.event('pointerup', 400, s.timeline, 79);
+    s.event('pointerup', 176, s.timeline, 102);
     expect(s.engine.state.compositions[0]!.layers.map((l) => l.id)).toEqual([
       'b',
       'a',
@@ -303,7 +305,7 @@ describe('timeline foundation', () => {
     const s = setup();
     s.event(
       'pointerdown',
-      384,
+      160,
       s.root.querySelector<HTMLElement>('.timeline-ruler')!,
     );
     expect(s.captures.size).toBe(1);
@@ -398,7 +400,7 @@ describe('timeline foundation', () => {
     expect(s.clip().style.width).toBe('320px');
     expect(
       s.root.querySelector<HTMLElement>('.timeline-playhead')!.style.left,
-    ).toBe('544px');
+    ).toBe('320px');
     s.shell.session.setTimelineZoom(999);
     expect(s.shell.session.timelineZoom).toBe(400);
     s.shell.session.setTimelineZoom(0);
@@ -413,21 +415,21 @@ describe('timeline foundation', () => {
     const before = s.engine.state;
     s.event(
       'pointerdown',
-      384,
+      160,
       s.root.querySelector<HTMLElement>('.timeline-ruler')!,
     );
     expect(s.shell.session.currentTime).toBe(2);
-    s.event('pointermove', 464);
+    s.event('pointermove', 240);
     expect(s.shell.session.currentTime).toBe(3);
-    s.event('pointercancel', 464);
+    s.event('pointercancel', 240);
     expect(s.shell.session.currentTime).toBe(0);
     expect(s.captures.size).toBe(0);
     s.event(
       'pointerdown',
-      384,
+      160,
       s.root.querySelector<HTMLElement>('.timeline-ruler')!,
     );
-    s.event('pointerup', 384);
+    s.event('pointerup', 160);
     s.timeline.dispatchEvent(
       new KeyboardEvent('keydown', {
         key: 'ArrowRight',

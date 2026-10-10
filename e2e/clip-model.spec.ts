@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, rulerBox, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  laneAction,
+  rulerBox,
+  showCategory,
+} from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2, clip-b 3..5 · Video 2: clip-c 1..4 · Video 3: empty
@@ -68,8 +75,9 @@ test('[TL-001] every layer is a clip on a track: example, canvas drops and group
   await expect(page.locator('.timeline-nle-row').first()).toBeVisible();
   await expect(legacy).toHaveCount(0);
   expect(await unclipped()).toEqual([]);
+  // V2 (D-191): lanes have no labels; a text lane is there.
   await expect(
-    page.locator('.timeline-track-header .track-name', { hasText: 'Text 1' }),
+    page.locator('.timeline-nle-row[data-lane-group="text"]').first(),
   ).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('example-as-clips.png') });
   // A media drop on the canvas becomes a clip on a free video track.
@@ -127,7 +135,7 @@ test('[TL-004] a locked track blocks delete, drag, trim, split and keyboard edit
   openFixtureProject,
 }) => {
   await openFixtureProject('nle-example.json');
-  await page.locator('[data-action="track-lock"][data-id="video-1"]').click();
+  await laneAction(page, 'video-1', 'track-lock');
   await expect(clipEl(page, 'clip-a')).toHaveClass(/locked/);
   expect(
     await clipEl(page, 'clip-a').evaluate((el) => getComputedStyle(el).cursor),

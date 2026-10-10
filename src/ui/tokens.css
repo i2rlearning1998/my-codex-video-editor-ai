@@ -226,6 +226,11 @@
   --topbar-height: 48px;
   --rail-width: 64px;
   --right-rail-width: 65px;
+  /* V1: grid columns (card plus its 8 px gutter), set by workspace.ts. */
+  --rail-col: 72px;
+  --left-col: 328px;
+  --right-col: 0px;
+  --right-rail-col: 0px;
   --left-panel: 320px;
   --right-panel: 252px;
   --left-open: 320px;
