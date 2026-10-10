@@ -35,7 +35,12 @@
 
 ## 3. Checks
 
-See the end of this report (filled after the one full `npm run verify`).
+- `npm run verify`: exit 0 (third run; the first two runs found 6 and then 1 failure, each fixed: the first layout no longer animates, a 24 px transition marker, layout-settled view tests, the Export More options test).
+- Format: OK. Typecheck: OK. Build: OK (built in 4.99 s). Test hook absent from the production build.
+- Unit and jsdom tests: 650 passed in 52 files.
+- E2E tests: 374 passed (29.0 min), 0 failed, in the sandbox Chromium (Playwright's pre-installed build; not Chrome or Edge, so MP4 export falls back to WebM).
+- Ledger validation: 669 items, Verified 347, Claimed 14, Todo 308, Ledger OK.
+- CI: not checked (owner rule: no CI polling).
 
 ## 4. Try-it script for the owner (about 10 minutes)
 
