@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, artboard, seekKeep } from './fixtures';
 
 // W2-F2: resizing and rotating a multi-selection from its shared box
 // (CV-041, interaction contract revision 6) and the corner-scaling fix (CV-007).
@@ -49,12 +49,7 @@ async function drag(
   if (key) await page.keyboard.up(key);
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 
 test.describe('default example', () => {

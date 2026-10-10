@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, rulerBox } from './fixtures';
+import { test, expect, hook, toScreen, rulerBox, seekKeep } from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2 (source 0..2 of 6 s), clip-b 3..5 (source 1..3)
@@ -26,11 +26,7 @@ async function clips(page: Page) {
   return (id: string) => map.get(id)!;
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 async function selectClip(page: Page, id: string) {
   await clipEl(page, id).click({ position: { x: 30, y: 10 } });
@@ -335,8 +331,9 @@ test('[TL-059] Lock, Hide, Solo and Mute toggles show pressed state; Solo previe
   const history = (await hook(page)).history;
   const solo = async () =>
     (await laneMenu('video-1')).locator('[data-action="track-solo"]');
-  await expect(await solo()).toHaveText(/^Solo Video/);
-  await (await solo()).click();
+  const soloItem = await solo();
+  await expect(soloItem).toHaveText(/^Solo Video/);
+  await soloItem.click();
   await expect(await solo()).toHaveText(/^Unsolo Video/);
   await page.keyboard.press('Escape');
   expect((await hook(page)).session.soloTrackIds).toEqual(['video-1']);

@@ -5,10 +5,10 @@ import {
   test,
   expect,
   hook,
-  rulerBox,
   showCategory,
   toScreen,
   showSceneStrip,
+  seekKeep,
 } from './fixtures';
 
 // J12: transitions. Two pictures touch on one lane; a + at the cut opens the
@@ -26,11 +26,7 @@ const scene = async (page: Page) => {
 };
 const labels = async (page: Page) => (await hook(page)).history.labels;
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 async function addToScene(page: Page, name: string) {
   const item = page.locator(

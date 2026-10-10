@@ -7318,14 +7318,18 @@ input[type='range'] {
 .editor-shell .scene-strip {
   background: var(--region-footer);
 }
-/* Columns of width 0 hold no card (no border, no gutter). */
-.editor-shell.library-collapsed:not(.left-drawer) > .library,
+/* Columns of width 0 hold no card (no border, no gutter). A collapsing
+   side panel keeps its gutter while its column animates, so its width never
+   jumps by the gutter when the collapse starts; it fades out instead. */
 .editor-shell.right-gone > .inspector,
 .editor-shell.right-gone > #rail-right,
-.editor-shell.right-gone > .panel-resizer.right,
-.editor-shell.inspector-collapsed:not(.right-drawer) > .inspector {
+.editor-shell.right-gone > .panel-resizer.right {
   margin-inline: 0;
   border-inline-width: 0;
+  opacity: 0;
+}
+.editor-shell.library-collapsed:not(.left-drawer) > .library,
+.editor-shell.inspector-collapsed:not(.right-drawer) > .inspector {
   opacity: 0;
 }
 .editor-shell.right-gone > .inspector,
@@ -7380,6 +7384,9 @@ input[type='range'] {
   /* The panel itself scrolls (the card rule above hides overflow). */
   overflow: hidden auto;
   scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.editor-shell > .inspector:hover {
   scrollbar-color: var(--region-scrollbar) transparent;
 }
 @media (max-width: 767px) {

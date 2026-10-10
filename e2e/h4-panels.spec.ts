@@ -5,8 +5,8 @@ import {
   hook,
   mode2d,
   openInspector,
-  rulerBox,
   toScreen,
+  seekKeep,
 } from './fixtures';
 
 // H4: the right panel (Clipchamp) and the Editor | 2D Animation switch.
@@ -20,12 +20,7 @@ async function select(page: Page, id: string) {
     .toEqual([id]);
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 const layerOf = async (page: Page, id: string) =>
   (await hook(page)).project.compositions[0]!.layers.find(

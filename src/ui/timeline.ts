@@ -2040,6 +2040,9 @@ export function mountTimeline(
       if (kind === 'marquee' && !moved) seek(event.clientX);
       lastMarqueeEvent = null;
       suppressClick = kind === 'marquee' || (kind === 'keyframe' && moved);
+      // The click that follows this release (if the browser sends one) comes
+      // before any timer; a later, real click is never swallowed.
+      if (suppressClick) setTimeout(() => (suppressClick = false));
       marquee = undefined;
       render();
     });
@@ -2619,8 +2622,9 @@ export function mountTimeline(
       separator.remove();
       const lane = row(target.trackId)!;
       const box = lane.getBoundingClientRect();
-      top = box.top - contentBox.top + 4;
-      height = Math.max(28, box.height - 8);
+      // V2: clips fill their lane, and so does the ghost.
+      top = box.top - contentBox.top;
+      height = box.height;
     }
     ghost.style.top = `${top}px`;
     ghost.style.height = `${height}px`;
@@ -3479,6 +3483,8 @@ export function mountTimeline(
   };
   const contextmenu = (event: MouseEvent) => {
     event.preventDefault();
+    // V2: the menu pauses playback; every playback tick would close it.
+    session.setPlaying(false);
     const diamond = (event.target as HTMLElement).closest<HTMLElement>(
       '[data-action="keyframe"]',
     );
@@ -3495,7 +3501,7 @@ export function mountTimeline(
       showKeyframeMenu();
       announceMenu(menu);
       menu.hidden = false;
-      menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
+      placeMenu(event.clientX);
       return;
     }
     const target = (event.target as HTMLElement).closest<HTMLElement>(
@@ -3514,18 +3520,26 @@ export function mountTimeline(
           null)
         : null);
     if (menuId && !session.selectedIds.includes(menuId)) session.select(menuId);
-    if (!target) {
-      session.select(null);
-      seek(event.clientX);
-    }
+    // V2: a right-click on empty lane space opens the lane menu; it clears
+    // the selection but leaves the playhead where it is.
+    if (!target) session.select(null);
     closeSub();
     showMainMenu();
     announceMenu(menu);
     menu.hidden = false;
     // J14: the first entry takes focus once the menu is shown.
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-    menu.style.left = `${Math.max(0, Math.min(root.clientWidth - 140, event.clientX - root.getBoundingClientRect().left))}px`;
+    placeMenu(event.clientX);
   };
+  /** V1: the timeline is a clipped card, so its menu is fixed to the
+   *  window, rising from 12 px above the card's bottom at the pointer. */
+  function placeMenu(clientX: number) {
+    const box = root.getBoundingClientRect();
+    menu.style.position = 'fixed';
+    menu.style.left = `${Math.max(box.left, Math.min(box.right - 140, clientX))}px`;
+    menu.style.bottom = `${Math.max(0, window.innerHeight - box.bottom + 12)}px`;
+    menu.style.zIndex = 'var(--z-menu)';
+  }
   // TL-055: scrolling within half a viewport of the end extends the timeline.
   const onScroll = () =>
     safely(() => {

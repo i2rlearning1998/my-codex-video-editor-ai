@@ -5,9 +5,9 @@ import {
   hook,
   laneAction,
   toScreen,
-  rulerBox,
   openInspector,
   showSceneStrip,
+  seekKeep,
 } from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
@@ -76,12 +76,7 @@ async function drag(
   await page.mouse.up();
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 const field = (page: Page, name: string) =>
   page.getByRole('spinbutton', { name, exact: true });

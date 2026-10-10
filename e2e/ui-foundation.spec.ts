@@ -6,6 +6,7 @@ import {
   artboard,
   showCategory,
   openInspector,
+  settled,
 } from './fixtures';
 import { choose, pickColor, reveal } from './controls';
 
@@ -366,12 +367,15 @@ test('[LAY-028] deep panels open in the left side panel with Back and never cove
 }) => {
   await page.goto('/');
   await ready(page);
+  // V1 (spec 1): the right side slides in with the selection; the canvas
+  // is measured once it has settled.
+  await selectLayer(page, 'example-badge');
+  await settled(page);
   const canvas = (await page.locator('#composition-canvas').boundingBox())!;
   const outsideCanvas = async (selector: string) => {
     const box = (await page.locator(selector).boundingBox())!;
     return box.x + box.width <= canvas.x + 1;
   };
-  await selectLayer(page, 'example-badge');
   for (const [control, id] of [
     ['position', 'position'],
     // (U5: Animate is a right-panel tab now; ANI-023.)

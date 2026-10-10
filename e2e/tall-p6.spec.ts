@@ -5,10 +5,11 @@ import {
   test,
   expect,
   hook,
-  rulerBox,
   showCategory,
   toScreen,
   showSceneStrip,
+  seekKeep,
+  settled,
 } from './fixtures';
 
 // T-ALL P6: the FX library wired into the right panel and the transition
@@ -43,11 +44,7 @@ const fxOf = async (page: Page, layerId: string) =>
     }
   ).fx;
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 async function addToScene(page: Page, name: string) {
   const item = page.locator(
@@ -174,7 +171,8 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
     .locator(`.timeline-clip[data-action="clip"][data-id="${first}"]`)
     .first()
     .click();
-  const at = await toScreen(page, 640, 360);
+  await settled(page);
+  const at = await toScreen(page, 520, 360);
   const plain = await pixel(page, at);
   expect(grey(plain)).toBe(false);
   // Filters: Black and white makes the picture grey; Original is pressed first.
@@ -204,17 +202,20 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   expect(await fxOf(page, first)).toBeUndefined();
   await page.keyboard.press('Control+Shift+z');
   expect(grey(await pixel(page, at))).toBe(true);
-  // Adjust colors: exposure +100 brightens; a blend mode is stored; Reset
+  // (V2: the sample sits inside the picture's yellow stripe, not on the
+  // stripe edge at the centre; saturated colours cannot brighten, so this
+  // checks that exposure -100 darkens.)
+  // Adjust colors: exposure -100 darkens; a blend mode is stored; Reset
   // removes both and keeps the filter.
   await panel(page).locator('[data-choice="filter.none"]').click();
   await tab(page, 'Adjust').click();
   const exposure = panel(page).locator('#right-adjust-exposure');
-  await exposure.fill('100');
+  await exposure.fill('-100');
   await exposure.press('Enter');
   expect((await labels(page)).at(-1)).toBe('Adjust colors');
-  const bright = await pixel(page, at);
-  expect(bright.reduce((a, b) => a + b, 0)).toBeGreaterThan(
-    plain.reduce((a, b) => a + b, 0) + 30,
+  const dark = await pixel(page, at);
+  expect(dark.reduce((a, b) => a + b, 0)).toBeLessThan(
+    plain.reduce((a, b) => a + b, 0) - 30,
   );
   await panel(page).locator('#right-blend-mode').click();
   await page.getByRole('option', { name: 'Multiply' }).click();
@@ -274,10 +275,11 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
     .click();
   await tab(page, 'Filters').click();
   await panel(page).locator('[data-choice="filter.black-white"]').click();
-  const at = await toScreen(page, 640, 360);
+  await settled(page);
+  const at = await toScreen(page, 520, 360);
   const preview = await pixel(page, at);
   expect(grey(preview)).toBe(true);
-  const png = await exportedPixel(page, testInfo, 640, 360);
+  const png = await exportedPixel(page, testInfo, 520, 360);
   expect(grey(png)).toBe(true);
   // The exported video frame (the export worker) is grey too.
   await page.locator('#export').click();
@@ -315,7 +317,7 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
       );
       const context = canvas.getContext('2d')!;
       context.drawImage(element, 0, 0);
-      const x = Math.round((640 / 1280) * element.videoWidth);
+      const x = Math.round((520 / 1280) * element.videoWidth);
       const y = Math.round((360 / 720) * element.videoHeight);
       return [...context.getImageData(x, y, 1, 1).data.slice(0, 3)];
     },
@@ -345,7 +347,7 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
       preview.reduce((a, b) => a + b, 0),
     ) - 60,
   );
-  const exported = await exportedPixel(page, testInfo, 640, 360);
+  const exported = await exportedPixel(page, testInfo, 520, 360);
   expect(near(exported, middle, 24)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('burn.png') });
 });

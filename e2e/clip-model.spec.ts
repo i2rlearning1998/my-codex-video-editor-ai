@@ -4,8 +4,8 @@ import {
   expect,
   hook,
   laneAction,
-  rulerBox,
   showCategory,
+  seekKeep,
 } from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
@@ -41,11 +41,7 @@ async function selectClip(page: Page, id: string) {
   await expect(clipEl(page, id)).toHaveAttribute('aria-pressed', 'true');
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -214,18 +210,24 @@ test('[TL-020][TL-030] a drop onto occupied time inserts, previews the push and 
   expect((await hook(page)).history.labels).toEqual(['Move clip']);
   await page.locator('#undo').click();
   expect((await hook(page)).project).toEqual(before);
-  // Duplicate lands right after the original and pushes clip-b.
+  // V2 (spec 2c, B23, D-191): Duplicate keeps the time and opens a new lane
+  // directly above the original's; the original lane is unchanged.
   await selectClip(page, 'clip-a');
   await page.keyboard.press('Control+d');
-  const video1 = (await hook(page)).project.compositions[0]!.tracks[0]!.clips;
+  const tracks = [...(await hook(page)).project.compositions[0]!.tracks].sort(
+    (x, y) => x.order - y.order,
+  );
+  const video1 = tracks.findIndex((track) => track.id === 'video-1');
   expect(
-    video1
+    tracks[video1 - 1]!.clips.map((clip) => [clip.startTime, clip.duration]),
+  ).toEqual([[0, 2]]);
+  expect(
+    tracks[video1]!.clips
       .map((clip) => [clip.startTime, clip.duration])
       .sort((x, y) => x[0]! - y[0]!),
   ).toEqual([
     [0, 2],
-    [2, 2],
-    [4, 2],
+    [3, 2],
   ]);
   expect(await overlaps(page)).toEqual([]);
   await page.locator('#undo').click();

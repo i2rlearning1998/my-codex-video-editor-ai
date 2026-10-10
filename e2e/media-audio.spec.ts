@@ -5,8 +5,8 @@ import {
   expect,
   hook,
   laneAction,
-  rulerBox,
   showCategory,
+  seekKeep,
 } from './fixtures';
 
 // W4-C: audio playback, sync, mute and solo, scrub snippets and waveforms.
@@ -46,11 +46,7 @@ const sourceIds = async (page: Page) =>
   (await media(page)).audio.sources.map((source) => source.clipId).sort();
 const play = (page: Page) => page.locator('[data-action="play"]').click();
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 const clipEl = (page: Page, id: string) =>
   page.locator(`.timeline-clip[data-clip-id="${id}"]`);
@@ -159,10 +155,13 @@ test('[AUD-007] track mute and solo change what is heard', async ({ page }) => {
   await expect.poll(() => sourceIds(page)).toEqual([]);
   await play(page);
   await expect.poll(() => sourceIds(page)).toEqual(['clip-av', 'clip-tone']);
-  // Solo is session-only (D-034), so it changes what is heard while playing.
+  // Solo is session-only (D-034). (V2, D-191: it is in the lane menu, and
+  // opening a menu pauses playback; play again to hear it.)
   await laneAction(page, 'audio-1', 'track-solo');
+  await play(page);
   await expect.poll(() => sourceIds(page)).toEqual(['clip-tone']);
   await laneAction(page, 'audio-1', 'track-solo');
+  await play(page);
   await expect.poll(() => sourceIds(page)).toEqual(['clip-av', 'clip-tone']);
   await play(page);
 });

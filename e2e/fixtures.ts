@@ -202,8 +202,34 @@ export async function showGraphics(page: Page) {
  * the bottom of the right panel's first tab; this opens them.
  */
 export async function openInspector(page: Page) {
+  await settled(page);
   for (const tab of ['Transform', 'Timing', 'Dimensions'])
     await page.locator(`#inspector-content [data-subtab="${tab}"]`).click();
+  await settled(page);
+  // V1: the right card is shorter now; bring Position and size into view.
+  await page
+    .locator('#inspector-content [data-subtab="Transform"]')
+    .evaluate((header) => header.scrollIntoView({ block: 'start' }));
+}
+/**
+ * V1 (spec 1): the right rail and panel slide in when something is
+ * selected; tests that measure the panel wait until no transition runs.
+ */
+export async function settled(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document
+            .getAnimations()
+            .filter(
+              (animation) =>
+                animation.playState === 'running' &&
+                animation.effect?.getComputedTiming().iterations !== Infinity,
+            ).length,
+      ),
+    )
+    .toBe(0);
 }
 /** H4: keyframes are shown and edited in 2D Animation mode. */
 export async function mode2d(page: Page) {
@@ -242,27 +268,55 @@ export async function laneAction(
     | 'track-up'
     | 'track-down',
 ) {
-  const row = page.locator(
-    `#timeline-foundation .timeline-nle-row[data-track-id="${trackId}"]`,
-  );
-  await row.scrollIntoViewIfNeeded();
-  const area = (await page
-    .locator('#timeline-foundation .timeline-scroll')
-    .boundingBox())!;
-  const lane = (await row.boundingBox())!;
-  // The emptiest visible spot: after the lane's last clip, or its far end.
-  const end = await row.evaluate((element) =>
-    Math.max(
+  // Rows are rebuilt on every render (e.g. while playing), so the spot is
+  // measured in one go inside the page.
+  const spot = await page.evaluate((trackId) => {
+    const row = document.querySelector<HTMLElement>(
+      `#timeline-foundation .timeline-nle-row[data-track-id="${trackId}"]`,
+    )!;
+    row.scrollIntoView({ block: 'nearest' });
+    const area = document
+      .querySelector('#timeline-foundation .timeline-scroll')!
+      .getBoundingClientRect();
+    const lane = row.getBoundingClientRect();
+    // The emptiest visible spot: after the lane's last clip, or its far end.
+    const end = Math.max(
       0,
-      ...[...element.querySelectorAll('.timeline-clip')].map(
+      ...[...row.querySelectorAll('.timeline-clip')].map(
         (clip) => clip.getBoundingClientRect().right,
       ),
-    ),
-  );
-  const x = Math.min(area.x + area.width - 12, Math.max(area.x + 12, end + 12));
-  await page.mouse.click(x, lane.y + lane.height / 2, { button: 'right' });
+    );
+    return {
+      x: Math.min(area.right - 12, Math.max(area.left + 12, end + 12)),
+      y: lane.top + lane.height / 2,
+    };
+  }, trackId);
+  await page.mouse.click(spot.x, spot.y, { button: 'right' });
   const item = page.locator(
     `#timeline-foundation .timeline-menu [data-action="${action}"]`,
   );
   await item.click();
+}
+/**
+ * V2 (spec 2): a ruler click now clears the selection, so tests that seek
+ * with something selected type the time into the Player bar's timecode
+ * instead (a user path that leaves the selection alone).
+ */
+export async function seekKeep(page: Page, seconds: number) {
+  await page.locator('#timeline-foundation [data-timecode]').click();
+  const input = page.locator('#timeline-foundation .player-timecode-input');
+  await input.fill(String(Math.round(seconds * 1e6) / 1e6));
+  await input.press('Enter');
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              __AIVE__: { getSession(): { time: number } };
+            }
+          ).__AIVE__.getSession().time,
+      ),
+    )
+    .toBeCloseTo(seconds, 2);
 }
