@@ -77,7 +77,8 @@ test('[LAY-062] the left rail and panel run the full height; the timeline sits b
   const library = await box(page, '.library');
   const timeline = await box(page, '.timeline');
   const viewport = page.viewportSize()!;
-  expect(rail.y + rail.height).toBeGreaterThan(viewport.height - 4);
-  expect(library.y + library.height).toBeGreaterThan(viewport.height - 4);
+  // V1 (D-190): cards sit 8 px inside the window edge.
+  expect(rail.y + rail.height).toBeGreaterThan(viewport.height - 10);
+  expect(library.y + library.height).toBeGreaterThan(viewport.height - 10);
   expect(timeline.x).toBeGreaterThanOrEqual(library.x + library.width - 1);
 });

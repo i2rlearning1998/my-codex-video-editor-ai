@@ -7260,3 +7260,139 @@ input[type='range'] {
   inline-size: 6px;
   cursor: ew-resize;
 }
+
+/* ===== V1 shell (spec 1): separate cards on a darker page, 8 px gutters,
+   opaque 1 px borders, each region its own tone. The right rail and panel
+   take no space while nothing is selected (workspace.ts sets their columns
+   to 0); their columns animate in and out. ===== */
+.editor-shell {
+  background: var(--region-page);
+  padding: 0 4px 4px;
+  grid-template-columns:
+    var(--rail-col, 72px) var(--left-col, 328px) minmax(0, 1fr)
+    var(--right-col, 0px) var(--right-rail-col, 0px);
+  grid-template-rows:
+    var(--topbar-height) minmax(0, 1fr) calc(var(--timeline-height) + 8px)
+    var(--statusbar-height);
+}
+.editor-shell > .topbar {
+  background: var(--region-page);
+}
+.editor-shell > #rail-left,
+.editor-shell > .library,
+.editor-shell > .preview-panel,
+.editor-shell > .inspector,
+.editor-shell > #rail-right,
+.editor-shell > .timeline {
+  margin: 4px;
+  border: 1px solid var(--region-border);
+  border-radius: 12px;
+  overflow: hidden;
+  min-inline-size: 0;
+}
+.editor-shell > #rail-left,
+.editor-shell > #rail-right {
+  background: var(--region-rail);
+}
+.editor-shell > .library,
+.editor-shell > .inspector {
+  background: var(--region-panel);
+}
+.editor-shell > .preview-panel {
+  background: var(--region-stage);
+}
+.editor-shell > .preview-panel .canvas-stage {
+  background: var(--region-stage);
+}
+.editor-shell > .preview-panel #canvas-footer {
+  background: var(--region-footer);
+  border-block-start: 1px solid var(--region-border);
+}
+.editor-shell > .timeline {
+  background: var(--region-timeline);
+}
+.editor-shell .timeline-scroll {
+  background: var(--region-lanes);
+}
+.editor-shell .scene-strip {
+  background: var(--region-footer);
+}
+/* Columns of width 0 hold no card (no border, no gutter). */
+.editor-shell.library-collapsed:not(.left-drawer) > .library,
+.editor-shell.right-gone > .inspector,
+.editor-shell.right-gone > #rail-right,
+.editor-shell.right-gone > .panel-resizer.right,
+.editor-shell.inspector-collapsed:not(.right-drawer) > .inspector {
+  margin-inline: 0;
+  border-inline-width: 0;
+  opacity: 0;
+}
+.editor-shell.right-gone > .inspector,
+.editor-shell.right-gone > #rail-right {
+  visibility: hidden;
+  transition:
+    opacity var(--motion-panel) var(--ease-exit),
+    visibility 0s linear var(--motion-panel);
+}
+.editor-shell > .inspector,
+.editor-shell > #rail-right {
+  transition: opacity var(--motion-panel) var(--ease-enter);
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-shell,
+  .editor-shell > .inspector,
+  .editor-shell > #rail-right {
+    transition: none !important;
+  }
+}
+/* Right rail (spec 1.5): 65 px, 24 px icons, 10 px labels, ~62 px pitch;
+   the active item is a 56 x 58 rounded box with a 3 px accent bar at the
+   far right edge. */
+.editor-shell > #rail-right {
+  padding: var(--space-2) 0;
+  gap: 4px;
+  align-items: center;
+}
+#rail-right button {
+  position: relative;
+  inline-size: 56px;
+  min-block-size: 58px;
+  border-radius: 10px;
+}
+#rail-right button .icon-rail-label {
+  font-size: 10px;
+  line-height: 1.15;
+}
+#rail-right button[aria-pressed='true'] {
+  background: var(--region-panel);
+}
+#rail-right button[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset-block: 14px;
+  inset-inline-end: -4px;
+  inline-size: 3px;
+  border-radius: 2px;
+  background: var(--region-accent);
+}
+.editor-shell > .inspector {
+  scrollbar-width: thin;
+  scrollbar-color: var(--region-scrollbar) transparent;
+}
+@media (max-width: 767px) {
+  .editor-shell {
+    grid-template-columns: var(--rail-col, 64px) 0 minmax(0, 1fr) 0 0;
+  }
+}
+.editor-shell:not([data-layout='phone']).right-drawer > .inspector {
+  inset-inline-end: var(--right-rail-col);
+}
+.editor-shell:not([data-layout='phone']).left-drawer > .library {
+  inset-inline-start: var(--rail-col);
+}
+/* A phone's bottom sheets stay edge to edge. */
+.editor-shell[data-layout='phone'] > .library,
+.editor-shell[data-layout='phone'] > .inspector {
+  margin: 0;
+  border-radius: 12px 12px 0 0;
+}

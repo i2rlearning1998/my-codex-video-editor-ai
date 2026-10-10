@@ -2249,10 +2249,30 @@ export function mountEditorShell(
   // On the wide layout its column stays, so the canvas never moves; the
   // panel is simply not drawn while nothing is selected (D-183).
   let rightSelection: string | null = null;
+  // V1 (spec 1.3): a selection made by a press waits for the release before
+  // the right side moves the stage, so the press's gesture is not cancelled.
+  let pressing = false;
+  window.addEventListener(
+    'pointerdown',
+    () => {
+      pressing = true;
+    },
+    true,
+  );
+  window.addEventListener(
+    'pointerup',
+    () => {
+      pressing = false;
+      requestAnimationFrame(followSelection);
+    },
+    true,
+  );
+  window.addEventListener('pointercancel', () => (pressing = false), true);
   const followSelection = () => {
     const key = session.selectedIds.join(',');
     const shell = element('.editor-shell');
     shell.classList.toggle('right-empty', key === '');
+    if (!pressing) workspace?.setEmpty(key === '');
     if (key === rightSelection) return;
     rightSelection = key;
     // Only a real change repaints the workspace: a repaint mid-press would

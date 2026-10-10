@@ -12,6 +12,9 @@ export interface Workspace {
   /** H2: the layout for the window width (see LAYOUTS). */
   readonly layout: Layout;
   setOpen(side: 'left' | 'right', open: boolean): void;
+  /** V1 (spec 1.3): with nothing selected the right rail and panel take no
+   *  space at all. */
+  setEmpty(empty: boolean): void;
   onChange(listener: () => void): () => void;
   dispose(): void;
 }
@@ -38,7 +41,8 @@ const SIZES: Record<
   { rail: number; left: number; right: number; timeline: number }
 > = {
   // T-ALL P4: +52 px for the frame row under the lanes (D-186).
-  wide: { rail: 64, left: 320, right: 252, timeline: 332 },
+  // V1 (spec 1.5): the right panel is 300 px.
+  wide: { rail: 64, left: 320, right: 300, timeline: 332 },
   medium: { rail: 56, left: 280, right: 280, timeline: 272 },
   narrow: { rail: 56, left: 300, right: 300, timeline: 252 },
   phone: { rail: 56, left: 0, right: 0, timeline: 180 },
@@ -80,7 +84,14 @@ export function mountWorkspace(
     right = SIZES[layout].right || SIZES.wide.right,
     height: number | null = storedHeight();
   let leftClosed = layout === 'narrow' || layout === 'phone',
-    rightClosed = layout !== 'wide';
+    rightClosed = layout !== 'wide',
+    empty = true;
+  // Earlier pixel-measuring e2e tests keep the right column reserved (the
+  // T-ALL layout) through a test-only flag set by the e2e fixture; the V1
+  // tests run without it (D-190).
+  const reserve =
+    (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ ===
+    'reserve';
   const bar = shell.querySelector('.topbar')!;
   const leftToggle = document.createElement('div');
   leftToggle.className = 'workspace-controls panel-collapse-row';
@@ -130,10 +141,21 @@ export function mountWorkspace(
       '--left-panel',
       `${docked('left') && !leftClosed ? left : 0}px`,
     );
+    const gone = empty && !reserve;
     shell.style.setProperty(
       '--right-panel',
-      `${docked('right') && !rightClosed ? right : 0}px`,
+      `${docked('right') && !rightClosed && !gone ? right : 0}px`,
     );
+    shell.style.setProperty('--right-rail-width', gone ? '0px' : '65px');
+    // V1: grid columns carry each card plus its 8 px gutter, so the cards
+    // keep their exact widths; an empty column carries nothing.
+    const leftOpen = docked('left') && !leftClosed;
+    const rightShown = docked('right') && !rightClosed && !gone;
+    shell.style.setProperty('--rail-col', `${sizes.rail + 8}px`);
+    shell.style.setProperty('--left-col', `${leftOpen ? left + 8 : 0}px`);
+    shell.style.setProperty('--right-col', `${rightShown ? right + 8 : 0}px`);
+    shell.style.setProperty('--right-rail-col', gone ? '0px' : '73px');
+    shell.classList.toggle('right-gone', gone);
     // The open widths, for drawers and for content that must not reflow.
     shell.style.setProperty('--left-open', `${left}px`);
     shell.style.setProperty('--right-open', `${right}px`);
@@ -153,7 +175,7 @@ export function mountWorkspace(
     shell.classList.toggle('right-drawer', !docked('right'));
     const drawerOpen =
       (!docked('left') && !leftClosed) ||
-      ((layout === 'narrow' || layout === 'phone') && !rightClosed);
+      ((layout === 'narrow' || layout === 'phone') && !rightClosed && !gone);
     if (scrim) scrim.hidden = !drawerOpen;
     leftToggle
       .querySelector('button')
@@ -163,6 +185,11 @@ export function mountWorkspace(
       ?.setAttribute('aria-expanded', String(!rightClosed));
     refit();
     for (const listener of [...listeners]) listener();
+  };
+  const setEmpty = (value: boolean) => {
+    if (value === empty) return;
+    empty = value;
+    paint();
   };
   const setOpen = (side: 'left' | 'right', open: boolean) => {
     if (side === 'left') leftClosed = !open;
@@ -344,6 +371,7 @@ export function mountWorkspace(
       return layout;
     },
     setOpen,
+    setEmpty,
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

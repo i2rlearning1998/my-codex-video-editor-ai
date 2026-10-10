@@ -36,6 +36,10 @@ export const test = base.extend<Fixtures>({
       await page.addInitScript(() => {
         (window as { __AIVE_E2E_START__?: string }).__AIVE_E2E_START__ =
           'Scene';
+        // V1 (D-190): the earlier pixel-measuring tests keep the right
+        // column reserved; V1's own tests switch this off.
+        (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ =
+          'reserve';
       });
       const errors: string[] = [];
       const allowed: ((message: string) => boolean)[] = [];
