@@ -7603,6 +7603,8 @@ input[type='range'] {
   background: #333;
   color: #e6e6e6;
   font-size: 13px;
+  pointer-events: none;
+  z-index: var(--z-menu);
 }
 .outliner-menu {
   position: fixed;

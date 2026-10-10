@@ -124,8 +124,8 @@ describe('editor shell integration', () => {
     expect(render.mock.calls.at(-1)![3]).toBe('child');
     expect(
       root
-        .querySelector('[data-layer-id="child"]')!
-        .getAttribute('aria-pressed'),
+        .querySelector('#scene-list [data-layer-id="child"]')!
+        .getAttribute('aria-selected'),
     ).toBe('true');
     expect(root.querySelector('.selected-name')!.textContent).toBe(
       '<b>Canonical name</b>',

@@ -630,7 +630,9 @@ describe('timeline foundation', () => {
     s.clip().click();
     expect(s.shell.session.selectedId).toBe('a');
     expect(
-      s.root.querySelector('[data-layer-id="a"]')!.getAttribute('aria-pressed'),
+      s.root
+        .querySelector('#scene-list [data-layer-id="a"]')!
+        .getAttribute('aria-selected'),
     ).toBe('true');
     s.shell.session.setCurrentTime(5);
     s.root

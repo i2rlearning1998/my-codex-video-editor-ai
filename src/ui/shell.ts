@@ -36,7 +36,8 @@ import {
 import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
 import { clampPan, mountCanvasView } from './canvas-view';
-import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
+import { mountSceneBoard } from './scene-board';
+import { mountSceneOutliner, type SceneOutliner } from './scene-outliner';
 import {
   createNumberField,
   setFieldPreview,
@@ -286,6 +287,10 @@ export function mountEditorShell(
   const canvas = element<HTMLCanvasElement>('#composition-canvas');
   const stage = element('#canvas-stage');
   let disposed = false;
+  let sceneOutliner: SceneOutliner = {
+    render: () => undefined,
+    dispose: () => undefined,
+  };
   const message = (text: string) => {
     element('#status').textContent = text;
   };
@@ -1167,86 +1172,16 @@ export function mountEditorShell(
         : selected
           ? t('selection.one', { name: selected.layer.name })
           : t('selection.none');
-    const list = element('#scene-list');
-    const focusedId =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement.dataset.layerId
-        : undefined;
-    list.replaceChildren();
+    // V3 (spec 4): the Scene panel is the outliner.
     let count = 0;
-    // Front-first (owner decision, LYR-002): the topmost layer is the first row;
-    // layers later in the array paint on top, so each sibling level is reversed.
-    const appendLayers = (layers: readonly SceneLayer[], depth: number) => {
-      for (const layer of [...layers].reverse()) {
+    const countLayers = (layers: readonly SceneLayer[]) => {
+      for (const layer of layers) {
         count++;
-        const button = document.createElement('button');
-        button.className = 'scene-row';
-        button.dataset.layerId = layer.id;
-        button.style.paddingLeft = `${14 + depth * 14}px`;
-        // G5: a top-level layer can be dragged onto a scene on the board.
-        if (depth === 0) {
-          button.draggable = true;
-          button.ondragstart = (event) => {
-            event.dataTransfer?.setData(LAYER_DRAG_TYPE, layer.id);
-            if (event.dataTransfer)
-              event.dataTransfer.effectAllowed = 'copyMove';
-          };
-        }
-        button.setAttribute(
-          'aria-pressed',
-          String(session.selectedIds.includes(layer.id)),
-        );
-        button.title = `${layer.name} (${layer.type})`;
-        const icon = document.createElement('span');
-        icon.className = 'layer-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = iconSvg(
-          layer.type === 'group'
-            ? 'group'
-            : layer.type === 'text'
-              ? 'text'
-              : layer.type === 'audio'
-                ? 'audio'
-                : layer.type === 'image'
-                  ? 'image'
-                  : layer.type === 'shape'
-                    ? 'elements'
-                    : 'media',
-          14,
-        );
-        const label = document.createElement('span');
-        label.className = 'scene-name';
-        label.textContent = layer.name;
-        button.append(icon, label);
-        // J6: a layer with alternative text shows an ALT badge.
-        if (altTextOf(layer)) {
-          const badge = document.createElement('span');
-          badge.className = 'alt-badge';
-          badge.textContent = t('altText.short');
-          badge.title = t('altText.badge');
-          badge.setAttribute('aria-label', t('altText.badge'));
-          button.append(badge);
-        }
-        button.onclick = (event) =>
-          session.select(
-            layer.id,
-            event.shiftKey || event.ctrlKey || event.metaKey,
-          );
-        list.append(button);
-        appendLayers(layer.children, depth + 1);
+        countLayers(layer.children);
       }
     };
-    appendLayers(source.composition.layers, 0);
-    if (!count) {
-      const empty = document.createElement('p');
-      empty.className = 'scene-empty';
-      empty.textContent = t('scene.empty');
-      list.append(empty);
-    }
-    if (focusedId)
-      [...list.querySelectorAll<HTMLButtonElement>('button')]
-        .find((button) => button.dataset.layerId === focusedId)
-        ?.focus({ preventScroll: true });
+    countLayers(source.composition.layers);
+    sceneOutliner.render();
     element('#layer-count').textContent = formatNumber(count);
     mediaPanel.render();
     element('#canvas-empty').hidden = count !== 0;
@@ -2248,6 +2183,16 @@ export function mountEditorShell(
     panel.append(body);
   }
   workspace = mountWorkspace(element('.editor-shell'), session, resize);
+  sceneOutliner = mountSceneOutliner(
+    element('#scene-list'),
+    element('#scene-heading'),
+    engine,
+    session,
+    reportError,
+  );
+  element('#scene-list').addEventListener('outliner-reveal', (event) =>
+    session.select((event as CustomEvent<string>).detail),
+  );
   workspace.onChange(syncRails);
   syncRails();
   // T-ALL P1 (spec 7): the right panel (a drawer below 1440 px) shows only while
@@ -3249,6 +3194,7 @@ export function mountEditorShell(
       if (disposed) return;
       disposed = true;
       disposeShortcuts();
+      sceneOutliner?.dispose();
       shortcutSheet.dispose();
       palette.dispose();
       newProjectForm.dispose();

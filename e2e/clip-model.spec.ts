@@ -222,9 +222,9 @@ test('[TL-020][TL-030] a drop onto occupied time inserts, previews the push and 
     tracks[video1 - 1]!.clips.map((clip) => [clip.startTime, clip.duration]),
   ).toEqual([[0, 2]]);
   expect(
-    tracks[video1]!.clips
-      .map((clip) => [clip.startTime, clip.duration])
-      .sort((x, y) => x[0]! - y[0]!),
+    tracks[video1]!.clips.map((clip) => [clip.startTime, clip.duration]).sort(
+      (x, y) => x[0]! - y[0]!,
+    ),
   ).toEqual([
     [0, 2],
     [3, 2],

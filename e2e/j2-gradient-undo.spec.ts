@@ -107,9 +107,7 @@ test('[SHP-029] Solid, Linear and Radial share one stop list: red and yellow sur
       // (Off the side handles, which sit at the edges' middles.)
       const left = await pixel(page, 524, 330),
         right = await pixel(page, 756, 330);
-      return (
-        left[0]! > 200 && right[0]! > 200 && right[1]! - left[1]! > 100
-      );
+      return left[0]! > 200 && right[0]! > 200 && right[1]! - left[1]! > 100;
     })
     .toBe(true);
   // Solid, then a new solid colour, then Linear: the new colour leads.
