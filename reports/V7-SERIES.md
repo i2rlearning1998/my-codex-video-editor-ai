@@ -39,7 +39,13 @@
 
 ## 3. Checks (paste the real output tails, not a description)
 
-VERIFY_RESULTS
+- `npm run verify`: exit 0 (the second run; the first failed on three tests, fixed in 89edd18: two older tests still named the left Transitions category and the planned scene chip, and the recording meter read 0 between the fake microphone's beeps; it now holds its peak).
+- Format: all files pass. Typecheck: pass. Build: built in 4.97 s.
+- Unit and jsdom tests: 660 passed in 57 files.
+- E2E tests: 397 passed (31.3 min), 0 failed, in Chromium 141.0.7390.37 (sandbox fallback, D-030), one worker.
+- Test hook: `assert-no-test-hook: OK (no __AIVE__ in production build)`.
+- Ledger validation: `Ledger: 684 items | Verified 367 | Claimed 16 | Todo 299 | Dropped 2` · `Ledger OK`.
+- CI: not polled (owner rule).
 
 ## 4. Try-it script for the owner (max 15 steps, about 10 minutes)
 
