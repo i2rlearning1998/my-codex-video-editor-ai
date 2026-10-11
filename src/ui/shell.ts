@@ -19,6 +19,7 @@ import {
   hasAnimation,
   laneAccepts,
   nextTrackName,
+  laneInsertIndex,
   trackTypeForLayer,
 } from '../core';
 import {
@@ -83,6 +84,7 @@ import { addShape, addShapeCommands, type ShapePreset } from './shapes';
 import { myTemplates } from './my-templates';
 import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
+import { mountSoundPack } from './sound-pack-panel';
 import { wordmarkHtml } from '../brand/brand';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
@@ -250,6 +252,7 @@ export function mountEditorShell(
         <div id="library-elements" data-rail-panel="Elements" hidden></div>
         <div id="library-templates" data-rail-panel="Templates" hidden></div>
         <div id="library-text" data-rail-panel="Text" hidden></div>
+        <div id="library-audio" data-rail-panel="Audio" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -712,6 +715,7 @@ export function mountEditorShell(
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
+      audioDecoder: decoder,
       sample: (width, height) => selectionSample(width, height),
     },
   );
@@ -1560,6 +1564,7 @@ export function mountEditorShell(
     'Elements',
     'Templates',
     'Text',
+    'Audio',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
@@ -2104,7 +2109,8 @@ export function mountEditorShell(
       !shown.includes(activeSection as RightSection) ||
       plannedSection(activeSection as RightSection, session)
     )
-      setRightSection('Properties');
+      // (V7: an audio clip's rail starts with Audio, not Properties.)
+      setRightSection(shown.includes('Properties') ? 'Properties' : shown[0]!);
     else if (
       rightKey() !== renderedRight ||
       engine.state !== renderedRightState
@@ -2440,6 +2446,57 @@ export function mountEditorShell(
     engine.commands.transaction(built.label, built.commands);
     session.select(built.layerId);
   };
+  // V7 (spec 11.3): the left Audio category, the built-in sound pack. A
+  // sound goes in at the playhead on a new audio lane, one step.
+  const soundPack = mountSoundPack(element('#library-audio'), {
+    importSound: (file) =>
+      mediaPanel.importFiles([file]).then((ids) => ids[0] ?? null),
+    existing: (fileName) =>
+      (
+        engine.state.assets as unknown as readonly {
+          id: string;
+          metadata: { fileName?: unknown; removed?: unknown };
+        }[]
+      ).find(
+        (asset) =>
+          asset.metadata.fileName === fileName &&
+          asset.metadata.removed !== true,
+      )?.id ?? null,
+    add: (assetId) =>
+      safely(() => {
+        const asset = session.source.assets.find((item) => item.id === assetId);
+        if (!asset) return;
+        const composition = session.source.composition;
+        const trackId = crypto.randomUUID();
+        placeAsset(asset, {
+          time: session.currentTime,
+          trackId,
+          newTrack: [
+            {
+              type: 'CREATE_TRACK',
+              compositionId: composition.id,
+              track: {
+                id: trackId,
+                name: nextTrackName(composition, 'audio'),
+                type: 'audio',
+                order: composition.tracks.length,
+                enabled: true,
+                locked: false,
+                muted: false,
+                clips: [],
+              },
+            },
+            {
+              type: 'MOVE_TRACK',
+              compositionId: composition.id,
+              trackId,
+              index: laneInsertIndex(composition.tracks, 'audio', 'bottom'),
+            },
+          ],
+        });
+      }),
+    report: reportError,
+  });
   /** The commands adding an asset as a layer with a clip, at a composition
    *  point or the centre (canvas), or on a timeline track (the insert rule). */
   const assetCommands = (
@@ -3386,6 +3443,7 @@ export function mountEditorShell(
       unsubscribeTheme();
       sceneBoard.dispose();
       mediaPanel.dispose();
+      soundPack.dispose();
       positionPanel.dispose();
       frames.dispose();
       previews.dispose();

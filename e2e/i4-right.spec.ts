@@ -196,7 +196,8 @@ test('[LAY-045] media: an image has Image (Crop, Flip, Corners, Border) and Filt
   await select(page, 'layer-a');
   await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Video');
   await tab(page, 'Audio').click();
-  await expect(panel(page).locator('#right-volume')).toBeDisabled();
+  // V7 (spec 11.3): clip volume works now.
+  await expect(panel(page).locator('#right-volume')).toBeEnabled();
   await panel(page).locator('[data-action="right-mute"]').click();
   expect((await labels(page)).at(-1)).toBe('Mute track');
   await panel(page).locator('[data-action="right-detach-audio"]').click();

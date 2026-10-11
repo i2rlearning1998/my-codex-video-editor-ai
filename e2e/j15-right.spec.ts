@@ -64,7 +64,7 @@ test('[LAY-046] the right panel has a header with the title, a count badge and c
     'Effects',
     'Adjust colors',
     'Speed',
-    'Sound',
+    'Audio',
     'Animate',
     'Auto Caption',
   ]);

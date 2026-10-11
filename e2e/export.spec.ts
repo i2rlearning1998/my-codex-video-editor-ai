@@ -514,6 +514,146 @@ test('[EXP-020] the exported audio covers exactly the frame range: frames 20 to 
   expect(Math.abs(seconds - 1)).toBeLessThan(0.03);
 });
 
+test('[AUD-002][AUD-003] preview == export: Volume 50 % and Fade in 1 s from the right Audio panel give the same sample RMS in the export as in the preview graph', async ({
+  page,
+  openFixtureProject,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openWithMedia(
+    page,
+    'av-sync.json',
+    ['video_av_sync_flash_beep_720p.webm', 'audio_tone_440hz_3s.wav'],
+    openFixtureProject,
+  );
+  const clipOn = (layer: string) =>
+    page.locator(
+      `#timeline-foundation .timeline-clip[data-action="clip"][data-id="${layer}"]`,
+    );
+  // The video's own sound off (Mute clip), so only the tone is measured.
+  await clipOn('layer-av').click({ position: { x: 30, y: 10 } });
+  await openRight(page, 'Audio');
+  await page.locator('#right-section [data-action="right-clip-mute"]').click();
+  // The tone: Volume 50 %, Fade in 1 s.
+  await clipOn('layer-tone').click({ position: { x: 30, y: 10 } });
+  await openRight(page, 'Audio');
+  const volume = page.locator('#right-volume');
+  await volume.fill('50');
+  await volume.press('Enter');
+  await page.locator('#rail-right [data-section="Fade"]').click();
+  const fadeIn = page.locator('#right-fade-in');
+  await fadeIn.fill('1');
+  await fadeIn.press('Enter');
+  const settings = async () =>
+    (await hook(page)).project.compositions[0]!.tracks.find(
+      (track) => track.id === 'audio-1',
+    )!.clips[0]!.metadata.audio as { gainDb: number; fadeIn: number };
+  expect((await settings()).gainDb).toBeCloseTo(20 * Math.log10(0.5), 3);
+  expect((await settings()).fadeIn).toBe(1);
+  expect((await hook(page)).history.labels.slice(-3)).toEqual([
+    'Mute clip',
+    'Volume',
+    'Fade in',
+  ]);
+  await openExport(page);
+  const { bytes } = await runExport(page, testInfo);
+  const wav = readFileSync(
+    path.join('tests/fixtures/media', 'audio_tone_440hz_3s.wav'),
+  ).toString('base64');
+  const project = (await hook(page)).project.compositions[0]!;
+  const tone = JSON.parse(
+    JSON.stringify(
+      project.tracks.find((track) => track.id === 'audio-1')!.clips[0],
+    ),
+  ) as {
+    startTime: number;
+    duration: number;
+    sourceIn: number;
+    sourceOut: number;
+    speed: number;
+    metadata: Record<string, unknown>;
+  };
+  const result = await page.evaluate(
+    async ({ file, wav, tone }) => {
+      const decode = async (base64: string) => {
+        const binary = atob(base64);
+        const data = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+        return new OfflineAudioContext(1, 1, 48_000).decodeAudioData(
+          data.buffer.slice(0),
+        );
+      };
+      const graphPath = '/src/audio/graph.ts',
+        settingsPath = '/src/audio/settings.ts';
+      const { scheduleAudioClip } = await import(graphPath);
+      const { readAudioSettings, defaultAudioSettings } = await import(
+        settingsPath
+      );
+      const source = await decode(wav);
+      const preview = async (audio: unknown) => {
+        const context = new OfflineAudioContext(2, 48_000 * 3, 48_000);
+        scheduleAudioClip(
+          context,
+          context.destination,
+          {
+            clipId: 'tone',
+            trackId: 'audio-1',
+            sourceAssetId: 'tone',
+            startTime: tone.startTime,
+            duration: tone.duration,
+            sourceIn: tone.sourceIn,
+            sourceOut: tone.sourceOut,
+            speed: tone.speed,
+            reversed: false,
+            audio,
+          },
+          source,
+          0,
+          0,
+        );
+        return context.startRendering();
+      };
+      const rms = (buffer: AudioBuffer, from: number, to: number) => {
+        const data = buffer.getChannelData(0);
+        const rate = buffer.sampleRate;
+        let sum = 0;
+        for (let i = Math.floor(from * rate); i < to * rate; i++)
+          sum += data[i]! ** 2;
+        return Math.sqrt(sum / ((to - from) * rate));
+      };
+      const exported = await decode(file);
+      const shaped = await preview(readAudioSettings(tone));
+      const plain = await preview(defaultAudioSettings());
+      const windows = [
+        [0.0, 0.2],
+        [0.4, 0.6],
+        [1.5, 2.5],
+      ] as const;
+      return windows.map(([from, to]) => ({
+        exported: rms(exported, from, to),
+        preview: rms(shaped, from, to),
+        plain: rms(plain, from, to),
+      }));
+    },
+    { file: bytes.toString('base64'), wav, tone },
+  );
+  // After the fade the level is half the unprocessed tone.
+  const [start, middle, steady] = result as {
+    exported: number;
+    preview: number;
+    plain: number;
+  }[];
+  expect(steady!.preview / steady!.plain).toBeCloseTo(0.5, 2);
+  // The export matches the preview graph within the codec's error.
+  for (const window of [start!, middle!, steady!])
+    expect(Math.abs(window.exported - window.preview)).toBeLessThan(
+      0.05 * steady!.preview + 0.002,
+    );
+  // The fade: quiet at the start, rising, full after a second.
+  expect(start!.exported).toBeLessThan(0.25 * steady!.exported);
+  expect(middle!.exported).toBeGreaterThan(start!.exported);
+  expect(middle!.exported).toBeLessThan(steady!.exported);
+});
+
 test('[TR-018] a scene-to-scene Fade through black is exported across the joined cut: dark at the cut, each scene whole outside the window', async ({
   page,
 }, testInfo) => {

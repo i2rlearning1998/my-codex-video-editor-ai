@@ -8052,3 +8052,98 @@ input[type='range'] {
   background: var(--accent-fill);
   color: var(--text-on-accent);
 }
+
+/* V7 (spec 11.3): the left Audio category's sound pack and the right Audio
+   panel's groups. */
+.sound-pack {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+.sound-pack-title {
+  margin: 0;
+  font-size: 15px;
+}
+.sound-pack-search {
+  block-size: 32px;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--region-border);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  color: var(--text);
+}
+.sound-pack-list {
+  display: grid;
+  gap: var(--space-2);
+}
+.sound-tile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--region-panel);
+}
+.sound-tile[hidden] {
+  display: none;
+}
+.sound-tile:hover {
+  border-color: var(--accent);
+}
+.sound-tile-add {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 44px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+  cursor: grab;
+}
+.sound-tile-name {
+  flex: 1;
+}
+.sound-tile-length {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.sound-tile-play[aria-pressed='true'] {
+  color: var(--accent-text);
+}
+.sound-pack-empty {
+  color: var(--text-secondary);
+}
+.sound-pack-stock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+}
+.right-audio-group {
+  border-block-start: 1px solid var(--border-subtle);
+  padding-block: var(--space-2);
+}
+.right-audio-group > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: 32px;
+  cursor: pointer;
+  font-weight: var(--weight-medium, 500);
+}
+.right-audio-reset {
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.right-audio-actions {
+  display: flex;
+  gap: var(--space-2);
+}

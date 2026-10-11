@@ -1124,6 +1124,13 @@ function clipAction(
     }
     const metadata: Clip['metadata'] = { detachedFrom: clip.id };
     if (clipTimeEffects(clip).reversed) metadata.reversed = true;
+    // V7 (spec 11.3): the sound's settings, its fades included, move to the
+    // audio clip in the same step; the video keeps its picture fades.
+    const sound = JSON.stringify(
+      (clip.metadata as unknown as { audio?: unknown }).audio ?? null,
+    );
+    if (sound !== 'null')
+      (metadata as unknown as { audio: unknown }).audio = JSON.parse(sound);
     landings.push({
       trackId: audioTrack,
       clip: {

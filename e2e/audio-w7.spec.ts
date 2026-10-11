@@ -7,6 +7,8 @@ import { test, expect } from './fixtures';
 test('[AUD-015][AUD-017][AUD-009][AUD-003] preview graph and export render identical stereo samples and measured downmix', async ({
   page,
 }) => {
+  // (Heavy offline rendering: generous under parallel load.)
+  test.setTimeout(120_000);
   await page.goto('/');
   const result = await page.evaluate(async () => {
     const graphPath = '/src/audio/graph.ts',
@@ -94,6 +96,8 @@ test('[AUD-015][AUD-017][AUD-009][AUD-003] preview graph and export render ident
 test('[AUD-011][AUD-015] EQ, compressor and normalization have measured effect and export parity', async ({
   page,
 }) => {
+  // (Heavy offline rendering: generous under parallel load.)
+  test.setTimeout(120_000);
   await page.goto('/');
   const result = await page.evaluate(async () => {
     const p = '/src/audio/graph.ts',
@@ -210,6 +214,8 @@ test('[AUD-011][AUD-015] EQ, compressor and normalization have measured effect a
 test('[AUD-012][AUD-015] measured speech-driven ducking and seeking match export waveform', async ({
   page,
 }) => {
+  // (Heavy offline rendering: generous under parallel load.)
+  test.setTimeout(120_000);
   await page.goto('/');
   const result = await page.evaluate(async () => {
     const d = '/src/audio/ducking.ts',

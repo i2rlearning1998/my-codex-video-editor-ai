@@ -10,6 +10,6 @@ Branch `claude/v7-series` from `claude/v-series`. Resume from the first unticked
 | V7d | Scene outliner redesign (10.4), B33 B34 | done (LYR-018) | |
 | V7e | Transitions in one place, scene-to-scene transitions, left rail order (10.5, 11.4), B36 B37 | done (TR-017, TR-018; TR-010 and TR-015 to be Dropped by LCR; rail order gains Record & create in V7h) | |
 | V7f | Audio engine port from PR #14 (11.3) | done (engine, mixdown, preview; parity, EQ/compressor/normalization and ducking e2e green; Sound panel UI not ported, rebuilt in V7g) | |
-| V7g | Audio UI, sound pack, preview == export (11.3), B38 | todo | |
+| V7g | Audio UI, sound pack, preview == export (11.3), B38 | done (AUD-019, AUD-020, AUD-021, AUD-002/003 export RMS) | |
 | V7h | Record & create, text to speech (11.4, 11.5) | todo | |
 | V7i | Docs, one full verify, PR ready | todo | |

@@ -24,6 +24,7 @@ import {
   clipAnimation,
   clipFx,
   clipTransition,
+  clipAudioDetached,
   sceneTransitionOf,
   type Transition,
   DEFAULT_TRANSITION,
@@ -60,7 +61,10 @@ import {
 import { guardCommands } from './editor-mode';
 import { iconSvg } from './icons';
 import { documentColors } from './palette';
-import { audioTab } from './right-panel/audio-tab';
+import { audioCommand, audioTab } from './right-panel/audio-tab';
+import { readAudioSettings, registerAudioCommands } from '../audio/settings';
+import type { AudioDecoder } from '../media/audio';
+import { locateLayer } from '../render/adapter';
 import {
   activePreset,
   applyPreset,
@@ -153,7 +157,8 @@ const TABS: Record<SelectionKind, RightSection[]> = {
     'Animate',
     'Captions',
   ],
-  audio: ['Properties', 'Audio', 'Fade', 'Speed'],
+  // V7 (spec 11.3): an audio clip has no position, size or timing here.
+  audio: ['Audio', 'Fade', 'Speed'],
   shape: ['Properties', 'Animate', 'Effects', 'Adjust'],
   drawing: ['Properties', 'Animate', 'Effects', 'Adjust'],
   group: ['Properties', 'Fade', 'Animate'],
@@ -207,8 +212,6 @@ export function plannedSection(
   section: RightSection,
   session?: EditorSession,
 ): readonly [string, number] | undefined {
-  if (section === 'Fade' && session && kindOf(session) === 'audio')
-    return ['AUD-003', 7];
   if (
     section === 'Transitions' &&
     (!session || (kindOf(session) === 'none' && !focusedScene(session)))
@@ -243,6 +246,8 @@ export interface RightPanelHooks {
       | 'spacing'
       | 'canvas-size',
   ) => HTMLElement | null;
+  /** V7: decodes clip sound for the Audio tab's loudness analysis. */
+  audioDecoder?: AudioDecoder;
   /** V4: the selection alone, without effects, fitted on black. */
   sample?: (width: number, height: number) => HTMLCanvasElement | null;
 }
@@ -690,7 +695,14 @@ export function mountRightPanel(
           accordion(
             'audio-audio',
             t('right.tab.audio'),
-            audioTab(engine, session, run, report),
+            audioTab(
+              engine,
+              session,
+              run,
+              report,
+              hooks.audioDecoder,
+              rerender,
+            ),
           ),
         ];
       default:
@@ -703,6 +715,39 @@ export function mountRightPanel(
     const clips = selectedClips(session.source, session.selectedIds);
     if (!clips.length)
       return [heading(t('panel.fade'), t('right.fadeNeedsClip'))];
+    // V7 (spec 11.3): an audio clip's fades are its sound's, 0 to 5 s.
+    if (kindOf(session) === 'audio') {
+      registerAudioCommands(engine);
+      const { clip } = clips[0]!;
+      const settings = readAudioSettings(clip);
+      const audioField = (slot: 'fadeIn' | 'fadeOut') =>
+        createNumberField({
+          id: `right-fade-${slot === 'fadeIn' ? 'in' : 'out'}`,
+          label: t(slot === 'fadeIn' ? 'right.fadeIn' : 'right.fadeOut'),
+          value: Math.min(5, settings[slot]),
+          unit: 's',
+          decimals: 1,
+          step: 0.1,
+          min: 0,
+          max: 5,
+          slider: true,
+          presets: [0, 0.5, 1, 2],
+          onCommit: (seconds) =>
+            safely(() =>
+              run(slot === 'fadeIn' ? 'Fade in' : 'Fade out', [
+                audioCommand(session.source.composition.id, clip.id, {
+                  ...settings,
+                  [slot]: Math.max(0, seconds),
+                }),
+              ]),
+            ),
+        });
+      return [
+        heading(t('panel.fade'), t('audio.fadeHint')),
+        audioField('fadeIn'),
+        audioField('fadeOut'),
+      ];
+    }
     const first = clipAnimation(clips[0]!.clip);
     const field = (slot: 'in' | 'out') => {
       const current = first[slot];
@@ -721,16 +766,39 @@ export function mountRightPanel(
           safely(() =>
             run(
               slot === 'in' ? 'Fade in' : 'Fade out',
-              clips.map(({ clip }) => ({
-                type: 'SET_CLIP_ANIMATION',
-                compositionId: session.source.composition.id,
-                clipId: clip.id,
-                slot,
-                value:
-                  seconds <= 0
-                    ? null
-                    : { preset: 'fade', duration: Math.max(0.1, seconds) },
-              })) as Command[],
+              clips.flatMap(({ clip }) => {
+                const commands = [
+                  {
+                    type: 'SET_CLIP_ANIMATION',
+                    compositionId: session.source.composition.id,
+                    clipId: clip.id,
+                    slot,
+                    value:
+                      seconds <= 0
+                        ? null
+                        : { preset: 'fade', duration: Math.max(0.1, seconds) },
+                  } as Command,
+                ];
+                // V7 (spec 11.3): a video's Fade is one control for its
+                // picture and its sound, in the same step.
+                const layer = locateLayer(
+                  session.source.composition.layers,
+                  clip.layerId,
+                )?.layer;
+                if (layer?.type === 'video' && !clipAudioDetached(clip)) {
+                  registerAudioCommands(engine);
+                  commands.push(
+                    audioCommand(session.source.composition.id, clip.id, {
+                      ...readAudioSettings(clip),
+                      [slot === 'in' ? 'fadeIn' : 'fadeOut']: Math.max(
+                        0,
+                        seconds,
+                      ),
+                    }),
+                  );
+                }
+                return commands;
+              }),
             ),
           ),
       });
@@ -821,7 +889,12 @@ export function mountRightPanel(
     }
     slider.append(range, readout, ticks);
     return [
-      heading(t('panel.speed'), t('right.speedHint')),
+      heading(
+        t('panel.speed'),
+        kindOf(session) === 'audio' || kindOf(session) === 'video'
+          ? `${t('right.speedHint')} ${t('audio.speedHint')}`
+          : t('right.speedHint'),
+      ),
       slider,
       list,
       toggle('reverse'),
@@ -1359,7 +1432,14 @@ export function mountRightPanel(
                           : section === 'Audio'
                             ? [
                                 heading(t('panel.audio'), t('right.audioHint')),
-                                ...audioTab(engine, session, run, report),
+                                ...audioTab(
+                                  engine,
+                                  session,
+                                  run,
+                                  report,
+                                  hooks.audioDecoder,
+                                  rerender,
+                                ),
                               ]
                             : [];
       host.replaceChildren(
