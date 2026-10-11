@@ -634,7 +634,7 @@
   "panel.animate": "एनिमेट",
   "panel.filters": "फ़िल्टर",
   "panel.adjust": "रंग समायोजित करें",
-  "panel.captions": "कैप्शन",
+  "panel.captions": "ऑटो कैप्शन",
   "right.colorHint": "टेक्स्ट और आकृतियों का भराव, ड्रॉइंग की स्याही।",
   "right.fadeHint": "चुनी गई क्लिप को पारदर्शी से धीरे-धीरे दिखाएँ और छिपाएँ।",
   "right.fadeIn": "फ़ेड इन",
@@ -1292,5 +1292,6 @@
   "fx.option.down": "नीचे",
   "transition.group.fadesBlurs": "फ़ेड और ब्लर",
   "transition.group.tiles": "टाइलें",
-  "transitions.pickCut": "पहले टाइमलाइन पर एक कट चुनें: उसका + या मार्कर क्लिक करें।"
+  "transitions.pickCut": "पहले टाइमलाइन पर एक कट चुनें: उसका + या मार्कर क्लिक करें।",
+  "right.planned": "योजना में"
 }

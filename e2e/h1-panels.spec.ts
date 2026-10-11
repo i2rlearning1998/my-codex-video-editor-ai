@@ -67,10 +67,12 @@ test('[LAY-031] the left rail opens, collapses and swaps its panel, and the top-
 test('[LAY-031] the right rail and the panel collapse button share the same open state', async ({
   page,
 }) => {
-  // T-ALL (D-183): the right panel shows on a selection; its collapse
-  // button is in its header (no top-bar toggle).
+  // V7 (spec 10.1): a selection only changes the rail; a rail click opens
+  // the panel; its collapse button is in its header (no top-bar toggle).
   await expect(page.locator('.inspector')).toBeHidden();
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await expect.poll(() => rightOpen(page)).toBe(false);
+  await rightRail(page, 'Properties').click();
   await expect.poll(() => rightOpen(page)).toBe(true);
   const active = page.locator('#rail-right button[aria-pressed="true"]');
   await expect(active).toHaveCount(1);

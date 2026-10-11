@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, showCategory } from './fixtures';
+import { test, expect, hook, showCategory, settled } from './fixtures';
 
 // H2: themes, motion, the responsive shell, tooltips and toasts.
 const ready = async (page: Page) =>
@@ -141,8 +141,10 @@ test('[LAY-004] panel dividers drag within their limits: left 260 to 420, right 
   await expect.poll(() => size('.library', 'width')).toBeCloseTo(420, 0);
   await drag('.panel-resizer.left', -400, 0);
   await expect.poll(() => size('.library', 'width')).toBeCloseTo(260, 0);
-  // T-ALL (D-183): the right panel shows while something is selected.
+  // V7 (spec 10.1): the right panel opens from its rail.
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await page.locator('#rail-right [data-section="Properties"]').click();
+  await settled(page);
   await drag('.panel-resizer.right', 400, 0);
   await expect.poll(() => size('.inspector', 'width')).toBeCloseTo(240, 0);
   await drag('.panel-resizer.right', -400, 0);
@@ -251,8 +253,10 @@ test('[LAY-013] below 1440 the right panel is a drawer; below 1024 both panels a
   const canvasBefore = (await page
     .locator('#composition-canvas')
     .boundingBox())!;
-  // T-ALL (D-183): a selection opens the right drawer.
+  // V7 (spec 10.1): a selection changes the rail; the rail opens the drawer.
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await expect.poll(inspectorShown).toBe(false);
+  await page.locator('#rail-right [data-section="Properties"]').click();
   await expect.poll(inspectorShown).toBe(true);
   // An overlay: the canvas keeps its size.
   expect(
@@ -286,8 +290,8 @@ test('[LAY-013] below 1440 the right panel is a drawer; below 1024 both panels a
       ];
     })
     .toEqual([0, 844, 390]);
-  // Opening the right side (a new selection, T-ALL D-183) closes the left
-  // sheet.
+  // Opening the right side closes the left sheet. A phone has no right
+  // rail, so there a new selection opens the sheet (V7, D-196).
   await page.locator('#add-text-box').click();
   await expect.poll(inspectorShown).toBe(true);
   await expect(page.locator('[data-panel="left"]')).toHaveAttribute(

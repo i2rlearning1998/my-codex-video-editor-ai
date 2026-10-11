@@ -10,6 +10,7 @@ import {
   showCategory,
   mode2d,
   openInspector,
+  openRight,
   seekKeep,
 } from './fixtures';
 
@@ -565,6 +566,7 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
   // The badge (x 76, 224 wide) moves to x 276 between 0 s and 2 s.
   await mode2d(page);
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  await openRight(page);
   await seek(0);
   await page
     .locator(

@@ -439,8 +439,9 @@ test('[LAY-024][LAY-027][LAY-029] buttons show hover, pressed and focus states; 
   });
   expect(focusedOutline).toBe('solid');
   // Thin, themed scrollbars; hidden in side panels until hover.
-  // T-ALL (D-183): the right panel shows while something is selected.
+  // V7 (spec 10.1): the right panel opens from its rail.
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await page.locator('#rail-right [data-section="Properties"]').click();
   const inspector = page.locator('.inspector');
   expect(
     await inspector.evaluate(

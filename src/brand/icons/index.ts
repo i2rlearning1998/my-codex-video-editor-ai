@@ -160,9 +160,12 @@ const PATHS: Record<string, string> = {
  * H2: every icon is drawn on one 24-unit grid with a 1.75 stroke. The paths
  * are authored in the central 20 units (2 units of padding each side).
  */
-export function iconSvg(name: keyof typeof PATHS | string, size = 18): string {
+/** V7 (spec 10.5): the icon scale; no icon is drawn below 16 px. */
+export const ICON_SIZES = { sm: 16, md: 20, lg: 24 } as const;
+export function iconSvg(name: keyof typeof PATHS | string, size = 20): string {
   const d = PATHS[name];
   if (!d) return '';
+  size = Math.max(ICON_SIZES.sm, size);
   return `<svg class="icon" width="${size}" height="${size}" viewBox="-2 -2 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d
     .split(' M')
     .map((seg, i) => `<path d="${i === 0 ? seg : 'M' + seg}" />`)

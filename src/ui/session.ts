@@ -2,6 +2,7 @@ import type { TextMeasurer } from '../render/text-layout';
 import {
   clampTime,
   compositionAt,
+  playRangeOf,
   type DeepReadonly,
   type EditorEngine,
   type Project,
@@ -158,10 +159,10 @@ export class EditorSession {
         }),
       );
       this.#playing = false;
-      this.#currentTime = clampTime(
-        this.#currentTime,
-        this.source.composition.duration,
-      );
+      const range = playRangeOf(this.source.composition);
+      this.#currentTime = range.manual
+        ? Math.min(range.end, Math.max(range.start, this.#currentTime))
+        : clampTime(this.#currentTime, this.source.composition.duration);
       this.#notify();
     });
   }
@@ -172,7 +173,15 @@ export class EditorSession {
     return this.#timelineZoom;
   }
   setCurrentTime(value: number): void {
-    const next = clampTime(value, this.source.composition.duration);
+    // V7 (spec 11.1): in Manual mode the playhead lives inside [Start, End]
+    // (a time outside goes to the nearest edge; End may pass the content).
+    const range = playRangeOf(this.source.composition);
+    const next = range.manual
+      ? Math.min(
+          range.end,
+          Math.max(range.start, Number.isFinite(value) ? value : range.start),
+        )
+      : clampTime(value, this.source.composition.duration);
     if (next === this.#currentTime) return;
     this.#currentTime = next;
     this.#notify();

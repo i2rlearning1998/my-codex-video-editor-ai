@@ -6,6 +6,7 @@ import {
   artboard,
   mode2d,
   openInspector,
+  openRight,
   seekKeep,
 } from './fixtures';
 import { choose as chooseOption, sidePanel } from './controls';
@@ -80,7 +81,15 @@ async function select(page: Page, id: string) {
 const panel = (page: Page) => sidePanel(page, 'animate');
 async function openAnimate(page: Page) {
   // G1.5: the side panel stays open while working; the button toggles it.
-  if (!(await panel(page).isVisible()))
+  // (V7: a collapsed right panel keeps its body's width, so ask the shell.)
+  const open =
+    (await page
+      .locator('#rail-right [data-section="Animate"]')
+      .getAttribute('aria-pressed')) === 'true' &&
+    !(await page
+      .locator('.editor-shell')
+      .evaluate((shell) => shell.classList.contains('inspector-collapsed')));
+  if (!open)
     await page.locator('#context-toolbar [data-control="animate"]').click();
   await expect(panel(page)).toBeVisible();
 }
@@ -235,6 +244,7 @@ test('[ANI-010] the easing library previews named curves and applies one to the 
 }, testInfo) => {
   await mode2d(page);
   await select(page, 'example-badge');
+  await openRight(page);
   await seek(page, 0);
   await page
     .locator(

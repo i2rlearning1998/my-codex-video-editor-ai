@@ -7,6 +7,7 @@ import {
   openInspector,
   toScreen,
   seekKeep,
+  openRightPanel,
 } from './fixtures';
 
 // H4: the right panel (Clipchamp) and the Editor | 2D Animation switch.
@@ -18,6 +19,8 @@ async function select(page: Page, id: string) {
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([id]);
+  // V7 (spec 10.1): a selection never opens the panel; its rail does.
+  await openRightPanel(page);
 }
 async function seek(page: Page, seconds: number) {
   await seekKeep(page, seconds);
@@ -50,7 +53,8 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
 }) => {
   // I4 (D-148): tabs per selection; the first is named after it. U5: with
   // nothing selected there are no tabs (no Canvas panel).
-  expect(await shownSections(page)).toEqual([]);
+  // V7 (spec 10.1): the rail stays, with a disabled Auto Caption only.
+  expect(await shownSections(page)).toEqual(['Captions']);
   await select(page, 'example-headline');
   expect(await shownSections(page)).toEqual([
     'Properties',
@@ -87,7 +91,7 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   // An unbuilt tab is disabled with its wave; clicking it changes nothing.
   await expect(section(page, 'Captions')).toHaveAttribute(
     'title',
-    'Captions: Planned: Wave 8 (TXT-035)',
+    'Auto Caption: Planned: Wave 8 (TXT-035)',
   );
   await section(page, 'Captions').click({ force: true });
   await expect(section(page, 'Properties')).toHaveAttribute(
@@ -101,7 +105,7 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   await page.keyboard.press('Escape');
   // U5: nothing selected has no tabs; T-ALL P1 (D-183): the right panel
   // itself is then not drawn.
-  await expect.poll(() => shownSections(page)).toEqual([]);
+  await expect.poll(() => shownSections(page)).toEqual(['Captions']);
   await expect(page.locator('#right-panel-empty')).toBeHidden();
 });
 

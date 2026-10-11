@@ -115,7 +115,7 @@ describe('timeline foundation', () => {
     expect(s.engine.history.undo).toHaveLength(1);
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
-    ).toBe('984px');
+    ).toBe('996px'); // V7: 18 px padding each side (D-196)
     expect(s.root.querySelector('.timeline-ruler')!.textContent).toContain(
       '12s',
     );
@@ -222,7 +222,7 @@ describe('timeline foundation', () => {
     s.engine.load(project);
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
-    ).toBe('6024px');
+    ).toBe('6036px');
     expect(s.root.querySelector('.timeline-ruler')!.textContent).toContain(
       '75s',
     );
@@ -230,10 +230,10 @@ describe('timeline foundation', () => {
     scroll.scrollLeft = 1600;
     s.event(
       'pointerdown',
-      160,
+      178,
       s.root.querySelector<HTMLElement>('.timeline-ruler')!,
     );
-    s.event('pointerup', 160);
+    s.event('pointerup', 178);
     expect(s.shell.session.currentTime).toBe(22);
     s.controller.begin('a', 'move');
     s.controller.update(1600);
@@ -243,7 +243,7 @@ describe('timeline foundation', () => {
     expect(s.clip().style.left).toBe('3360px');
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
-    ).toBe('12024px');
+    ).toBe('12036px');
   });
   it('combines pointer X timing and Y sibling reorder in one history entry and cancels safely', () => {
     const s = setup();
@@ -400,7 +400,7 @@ describe('timeline foundation', () => {
     expect(s.clip().style.width).toBe('320px');
     expect(
       s.root.querySelector<HTMLElement>('.timeline-playhead')!.style.left,
-    ).toBe('320px');
+    ).toBe('338px'); // V7: time 0 sits 18 px in
     s.shell.session.setTimelineZoom(999);
     expect(s.shell.session.timelineZoom).toBe(400);
     s.shell.session.setTimelineZoom(0);
@@ -413,23 +413,24 @@ describe('timeline foundation', () => {
   it('seeks with ruler/captured playhead, keyboard and cancellation without project changes', () => {
     const s = setup();
     const before = s.engine.state;
+    // V7 (D-196): time 0 sits 18 px into the timeline.
     s.event(
       'pointerdown',
-      160,
+      178,
       s.root.querySelector<HTMLElement>('.timeline-ruler')!,
     );
     expect(s.shell.session.currentTime).toBe(2);
-    s.event('pointermove', 240);
+    s.event('pointermove', 258);
     expect(s.shell.session.currentTime).toBe(3);
-    s.event('pointercancel', 240);
+    s.event('pointercancel', 258);
     expect(s.shell.session.currentTime).toBe(0);
     expect(s.captures.size).toBe(0);
     s.event(
       'pointerdown',
-      160,
+      178,
       s.root.querySelector<HTMLElement>('.timeline-ruler')!,
     );
-    s.event('pointerup', 160);
+    s.event('pointerup', 178);
     s.timeline.dispatchEvent(
       new KeyboardEvent('keydown', {
         key: 'ArrowRight',

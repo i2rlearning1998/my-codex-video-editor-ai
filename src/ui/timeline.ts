@@ -97,6 +97,8 @@ const CLIP_ACTIONS: readonly EditAction[] = [
 ];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
 /** J13: minutes, seconds and hundredths (01:05.40). */
+/** V7 (spec 10.3): the timeline's left and right padding (CSS px). */
+export const TIMELINE_PAD = 18;
 const timecode = (time: number) => {
   const hundredths = Math.round(Math.max(0, time) * 100);
   const minutes = Math.floor(hundredths / 6000);
@@ -617,7 +619,9 @@ export function mountTimeline(
   let revealedSelection = '';
   const menu = root.querySelector<HTMLElement>('.timeline-menu')!;
   scroll.setAttribute('aria-label', t('timeline.keys'));
-  const headerWidth = 0;
+  // V7 (spec 10.3, B27): the lanes, ruler and playhead start 18 px inside
+  // the card, so time 0 and the playhead at 0 are fully visible.
+  const headerWidth = TIMELINE_PAD;
   /** V2 (spec 2): lane heights: video and pictures 52 px, text and shapes
    *  28 px, audio 36 px, with an 8 px gap between lanes. */
   const laneHeight = (group: string) =>
@@ -761,7 +765,13 @@ export function mountTimeline(
     const viewport = pixelToTime(viewportPixels(), zoom);
     return Math.min(
       MAX_SPAN,
-      Math.max(session.source.composition.duration, previewEnd, viewport) +
+      Math.max(
+        session.source.composition.duration,
+        // V7 (spec 11.1): a Manual End past the content stays in view.
+        playRangeOf(session.source.composition).end,
+        previewEnd,
+        viewport,
+      ) +
         viewport / 2,
     );
   };
@@ -1029,7 +1039,7 @@ export function mountTimeline(
     renderedSpan = span;
     const width = timeToPixel(span, zoom);
     content.dataset.span = String(span);
-    content.style.width = `${headerWidth + width + 24}px`;
+    content.style.width = `${headerWidth + width + TIMELINE_PAD}px`;
     const ruler = document.createElement('div');
     ruler.className = 'timeline-ruler';
     ruler.dataset.action = 'seek';
@@ -1083,6 +1093,11 @@ export function mountTimeline(
     rulerBar.append(ruler);
     content.append(rulerBar);
     placeRangeDim(range.start, range.end, width);
+    // V7 (spec 11.1, B29): Auto mode has no range and no dim at all.
+    for (const dim of content.querySelectorAll<HTMLElement>(
+      '.ruler-range-dim, .lanes-range-dim',
+    ))
+      dim.hidden = !range.manual;
     // T-ALL P3 (spec 6): lanes sit vertically centred under the ruler when
     // the panel is taller than them; otherwise the first lane is at the top
     // and the rest scroll.
@@ -1161,6 +1176,7 @@ export function mountTimeline(
       track.className = 'timeline-track';
       track.dataset.trackId = row.track.id;
       track.style.width = `${width}px`;
+      track.style.marginLeft = `${headerWidth}px`;
       const crossTrack = controller.destinationId?.startsWith('track:');
       // TL-030 preview: where the drop inserts and which clips it pushes.
       for (const insertion of landing?.insertions ?? []) {
@@ -1604,39 +1620,70 @@ export function mountTimeline(
   /** V2 (spec 3): near the lane area's edge the marquee scrolls the lanes. */
   let lastMarqueeEvent: { clientX: number; clientY: number } | null = null;
   let autoScrolling = false;
+  /** V7 (spec 10.3, B32): while a marquee's pointer is within 24 px of the
+   *  lane area's edges, the lanes scroll toward it at up to 300 px/s (faster
+   *  the deeper into the band), never past the content; leaving the band,
+   *  releasing, cancelling or losing focus stops it at once. */
   const autoScrollMarquee = () => {
     if (autoScrolling) return;
-    const step = () => {
+    let last = performance.now();
+    const step = (now: number) => {
       if (pointer?.kind !== 'marquee' || !lastMarqueeEvent) {
         autoScrolling = false;
         return;
       }
+      const elapsed = Math.min(0.05, Math.max(0, (now - last) / 1000));
+      last = now;
       const bounds = scroll.getBoundingClientRect();
-      const edge = 24;
+      const top =
+        bounds.top +
+        (content.querySelector<HTMLElement>('.timeline-ruler-bar')
+          ?.offsetHeight ?? 0);
+      const band = 24;
       const { clientX, clientY } = lastMarqueeEvent;
-      const dx =
-        clientX > bounds.right - edge
-          ? 12
-          : clientX < bounds.left + edge
-            ? -12
+      const depth = (inside: number) =>
+        Math.max(0, Math.min(1, (band - inside) / band));
+      const vx =
+        clientX > bounds.right - band
+          ? depth(bounds.right - clientX)
+          : clientX < bounds.left + band
+            ? -depth(clientX - bounds.left)
             : 0;
-      const dy =
-        clientY > bounds.bottom - edge
-          ? 8
-          : clientY < bounds.top + 28 + edge
-            ? -8
+      const vy =
+        clientY > bounds.bottom - band
+          ? depth(bounds.bottom - clientY)
+          : clientY < top + band
+            ? -depth(clientY - top)
             : 0;
-      if (!dx && !dy) {
+      if (!vx && !vy) {
         autoScrolling = false;
         return;
       }
-      const before = [scroll.scrollLeft, scroll.scrollTop];
-      scroll.scrollLeft += dx;
-      scroll.scrollTop += dy;
-      if (before[0] === scroll.scrollLeft && before[1] === scroll.scrollTop) {
+      const maxLeft = Math.max(0, scroll.scrollWidth - scroll.clientWidth);
+      const maxTop = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+      const nextLeft = Math.max(
+        0,
+        Math.min(maxLeft, scroll.scrollLeft + vx * 300 * elapsed),
+      );
+      const nextTop = Math.max(
+        0,
+        Math.min(maxTop, scroll.scrollTop + vy * 300 * elapsed),
+      );
+      if (
+        Math.abs(nextLeft - scroll.scrollLeft) < 0.01 &&
+        Math.abs(nextTop - scroll.scrollTop) < 0.01 &&
+        ((vx > 0 && scroll.scrollLeft >= maxLeft) ||
+          (vx < 0 && scroll.scrollLeft <= 0) ||
+          vx === 0) &&
+        ((vy > 0 && scroll.scrollTop >= maxTop) ||
+          (vy < 0 && scroll.scrollTop <= 0) ||
+          vy === 0)
+      ) {
         autoScrolling = false;
         return;
       }
+      scroll.scrollLeft = nextLeft;
+      scroll.scrollTop = nextTop;
       update({
         pointerId: pointer.id,
         clientX,
@@ -1720,9 +1767,23 @@ export function mountTimeline(
       lastMarqueeEvent = { clientX: event.clientX, clientY: event.clientY };
       autoScrollMarquee();
       const bounds = scroll.getBoundingClientRect();
-      const x = event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
-        y = event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset;
-      const { spans } = rowSpans();
+      const { spans, total } = rowSpans();
+      // V7 (spec 10.3): the rectangle stays inside the lanes' content (below
+      // the last lane it selects down to the last lane only).
+      const x = Math.max(
+          0,
+          Math.min(
+            scroll.scrollWidth - headerWidth - TIMELINE_PAD,
+            event.clientX - bounds.left + scroll.scrollLeft - headerWidth,
+          ),
+        ),
+        y = Math.max(
+          0,
+          Math.min(
+            total,
+            event.clientY - bounds.top + scroll.scrollTop - 28 - laneOffset,
+          ),
+        );
       const selected = [
         ...nleTimelineRows(session.source, session.timelineZoom).flatMap(
           (row, index) =>
@@ -3015,42 +3076,46 @@ export function mountTimeline(
     input.focus();
     input.select();
   };
-  // U6: the frame panel at the timeline's bottom right: Current (steps,
-  // types and scrubs the playhead; no history), then Start and End, the
-  // scene's playback range in frames (one undo step each).
+  // U6, V7 (spec 11.1): the frame row at the timeline's bottom. Auto mode
+  // (the default, Clipchamp): Current and "Control timeline: Manual mode".
+  // Manual mode: Current, "Control timeline: Auto mode", Start and End, a
+  // fixed range in frames that no clip edit changes (one undo step each).
   const framePanel = document.createElement('div');
   framePanel.className = 'frame-panel';
   framePanel.setAttribute('role', 'group');
   framePanel.setAttribute('aria-label', t('frames.label'));
   const fps = () => session.source.composition.fps;
-  const lastFrame = () =>
-    timeToFrame(session.source.composition.duration, fps());
+  const range = () => playRangeOf(session.source.composition);
   const seekFrame = (frame: number) => {
     session.setPlaying(false);
     session.setCurrentTime(
-      frameToTime(Math.max(0, Math.min(lastFrame(), Math.round(frame))), fps()),
+      frameToTime(
+        Math.max(
+          0,
+          Math.min(timeToFrame(range().end, fps()), Math.round(frame)),
+        ),
+        fps(),
+      ),
     );
   };
   const setRange = (start: number, end: number) =>
     safely(() => {
-      const last = lastFrame();
+      start = Math.max(0, Math.round(start));
+      end = Math.round(end);
       if (end <= start) throw new RangeError(t('frames.order'));
       engine.commands.transaction(t('frames.rangeLabel'), [
         {
           type: 'SET_COMPOSITION_RANGE',
           compositionId: session.source.composition.id,
           start: frameToTime(start, fps()),
-          end: end >= last ? null : frameToTime(end, fps()),
+          end: frameToTime(end, fps()),
         },
       ]);
     });
-  const rangeFrames = () => {
-    const range = playRangeOf(session.source.composition);
-    return {
-      start: timeToFrame(range.start, fps()),
-      end: timeToFrame(range.end, fps()),
-    };
-  };
+  const rangeFrames = () => ({
+    start: timeToFrame(range().start, fps()),
+    end: timeToFrame(range().end, fps()),
+  });
   const stepper = (
     id: string,
     key: string,
@@ -3098,6 +3163,56 @@ export function mountTimeline(
   watch.className = 'frame-stopwatch';
   watch.setAttribute('aria-hidden', 'true');
   watch.innerHTML = iconSvg('stopwatch', 20);
+  const modeButton = document.createElement('button');
+  modeButton.type = 'button';
+  modeButton.className = 'frame-mode';
+  modeButton.dataset.action = 'range-mode';
+  modeButton.onclick = () =>
+    safely(() => {
+      const manual = range().manual;
+      engine.commands.transaction(
+        t(manual ? 'frames.autoLabel' : 'frames.manualLabel'),
+        [
+          manual
+            ? {
+                type: 'SET_COMPOSITION_RANGE',
+                compositionId: session.source.composition.id,
+                start: 0,
+                end: null,
+                auto: true,
+              }
+            : {
+                // Entering Manual mode: Start 0 and End the project end,
+                // once; from then on the user owns them.
+                type: 'SET_COMPOSITION_RANGE',
+                compositionId: session.source.composition.id,
+                start: 0,
+                end: Math.max(
+                  frameToTime(1, fps()),
+                  session.source.composition.duration,
+                ),
+              },
+        ],
+      );
+    });
+  const manualFields = document.createElement('div');
+  manualFields.className = 'frame-manual';
+  manualFields.append(
+    stepper(
+      'start',
+      'frames.start',
+      () => rangeFrames().start,
+      (frame) => setRange(frame, rangeFrames().end),
+      (frame) => liveDimFrames(frame, null),
+    ),
+    stepper(
+      'end',
+      'frames.end',
+      () => rangeFrames().end,
+      (frame) => setRange(rangeFrames().start, frame),
+      (frame) => liveDimFrames(null, frame),
+    ),
+  );
   framePanel.append(
     stepper(
       'current',
@@ -3107,45 +3222,62 @@ export function mountTimeline(
       seekFrame,
     ),
     watch,
-    stepper(
-      'start',
-      'frames.start',
-      () => rangeFrames().start,
-      (frame) => setRange(Math.max(0, Math.round(frame)), rangeFrames().end),
-    ),
-    stepper(
-      'end',
-      'frames.end',
-      () => rangeFrames().end,
-      (frame) =>
-        setRange(rangeFrames().start, Math.min(lastFrame(), Math.round(frame))),
-    ),
+    modeButton,
+    manualFields,
   );
   root.append(framePanel);
-  // V2 (spec 2b): the dim follows the Start and End fields on every digit,
-  // wheel step and arrow, never waiting for Enter or blur; an unfinished or
-  // inverted value leaves it as it was.
-  const liveDim = () => {
-    const read = (id: string) => {
-      const input = framePanel.querySelector<HTMLInputElement>(`#frame-${id}`);
-      const value = input ? Number(input.value.trim()) : NaN;
-      return input && input.value.trim() !== '' && Number.isFinite(value)
-        ? value
-        : null;
-    };
-    const start = read('start'),
-      end = read('end');
-    if (start === null || end === null || end <= start) return;
-    placeRangeDim(frameToTime(start, fps()), frameToTime(end, fps()));
-  };
-  for (const id of ['start', 'end']) {
+  // V2, V7 (spec 10.2, 11.1, B30): the dim follows Start and End on every
+  // digit, wheel step, arrow and scrub, never waiting for Enter or blur; an
+  // unfinished or inverted value leaves it as it was.
+  const readFrame = (id: string) => {
     const input = framePanel.querySelector<HTMLInputElement>(`#frame-${id}`);
-    input?.addEventListener('input', liveDim);
-    input?.addEventListener('wheel', () => queueMicrotask(liveDim));
-    input?.addEventListener('keydown', () => queueMicrotask(liveDim));
+    const value = input ? Number(input.value.trim()) : NaN;
+    return input && input.value.trim() !== '' && Number.isFinite(value)
+      ? value
+      : null;
+  };
+  const liveDimFrames = (start: number | null, end: number | null) => {
+    const from = start ?? readFrame('start'),
+      to = end ?? readFrame('end');
+    if (from === null || to === null || to <= from || from < 0) return;
+    placeRangeDim(frameToTime(from, fps()), frameToTime(to, fps()));
+  };
+  const liveDim = () => liveDimFrames(null, null);
+  for (const id of ['start', 'end'] as const) {
+    const input = framePanel.querySelector<HTMLInputElement>(`#frame-${id}`)!;
+    input.addEventListener('input', liveDim);
+    input.addEventListener('keydown', () => queueMicrotask(liveDim));
+    // The wheel steps the field when hovered, focused or not, and moves the
+    // dim on every step; it commits once, when the wheel rests.
+    let rest = 0;
+    framePanel
+      .querySelector<HTMLElement>(`[data-frame="${id}"]`)!
+      .addEventListener(
+        'wheel',
+        (event) => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          const current = readFrame(id) ?? rangeFrames()[id];
+          const next = Math.max(
+            0,
+            current + (event.deltaY < 0 ? 1 : -1) * (event.shiftKey ? 10 : 1),
+          );
+          input.value = String(next);
+          liveDim();
+          window.clearTimeout(rest);
+          rest = window.setTimeout(() => {
+            const value = readFrame(id);
+            if (value === null) return;
+            if (id === 'start') setRange(value, rangeFrames().end);
+            else setRange(rangeFrames().start, value);
+          }, 350);
+        },
+        { passive: false, capture: true },
+      );
   }
   function syncFramePanel() {
     const { start, end } = rangeFrames();
+    const manual = range().manual;
     syncNumberField(
       framePanel,
       'frame-current',
@@ -3153,6 +3285,13 @@ export function mountTimeline(
     );
     syncNumberField(framePanel, 'frame-start', start);
     syncNumberField(framePanel, 'frame-end', end);
+    manualFields.hidden = !manual;
+    framePanel.dataset.mode = manual ? 'manual' : 'auto';
+    modeButton.textContent = t(manual ? 'frames.toAuto' : 'frames.toManual');
+    // Spec 10.2: the row shows only when the project has a clip.
+    framePanel.hidden = !session.source.composition.tracks.some(
+      (track) => track.clips.length,
+    );
   }
   // U4: the collapsed player bar's scrubber (the U2 smooth scrub).
   const scrubInput = root.querySelector<HTMLInputElement>('.player-scrub')!;

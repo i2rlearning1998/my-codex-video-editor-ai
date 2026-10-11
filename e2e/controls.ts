@@ -29,10 +29,13 @@ const HOST: Record<string, string> = {
 };
 /** A toolbar button, opening the More overflow first when it is in there. */
 export async function toolbarButton(page: Page, control: string) {
+  // (V7: the right panel holds hidden copies of some controls; use the
+  // one the user can see.)
   const button = page
     .locator(control.startsWith('#') ? control : `[data-control="${control}"]`)
+    .filter({ visible: true })
     .first();
-  if (!(await button.isVisible())) {
+  if (!(await button.count())) {
     const more = page.locator('#context-toolbar [data-control="toolbar-more"]');
     if (await more.isVisible()) await more.click();
   }
@@ -45,8 +48,11 @@ export async function toolbarButton(page: Page, control: string) {
  * data-control of a button.
  */
 export async function reveal(page: Page, id: string) {
-  const target = page.locator(`#${id}, [data-control="${id}"]`).first();
-  if (await target.isVisible()) return target;
+  const target = page
+    .locator(`#${id}, [data-control="${id}"]`)
+    .filter({ visible: true })
+    .first();
+  if (await target.count()) return target;
   const host = HOST[id];
   if (host) await (await toolbarButton(page, host)).click();
   else await toolbarButton(page, id);

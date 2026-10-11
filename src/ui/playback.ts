@@ -40,15 +40,17 @@ export class Playback {
     if (!this.session.playing) return;
     const { duration, fps } = this.session.source.composition;
     const time = this.#time + Math.max(0, timestamp - this.#origin) / 1000;
-    // U6: a range that ends before the scene stops playback at its End.
+    // V7 (spec 11.1): a Manual range plays from Start and stops at End
+    // (End may pass the content: the tail plays as black and silence).
     const range = playRangeOf(this.session.source.composition);
-    // T-ALL P4 (spec 9): a range that ends before the scene loops: at End
-    // playback wraps to Start and goes on.
-    if (range.end < duration - 1e-9 && time >= range.end) {
-      this.#origin = timestamp;
-      this.#time = range.start;
-      this.session.setCurrentTime(range.start);
-      this.#request = this.request(this.#tick);
+    if (range.manual) {
+      if (time >= range.end) {
+        this.session.setCurrentTime(range.end);
+        this.session.setPlaying(false);
+        return;
+      }
+      this.session.setCurrentTime(frameToTime(timeToFrame(time, fps), fps));
+      if (this.session.playing) this.#request = this.request(this.#tick);
       return;
     }
     if (time >= duration) {
@@ -71,7 +73,7 @@ export class Playback {
   get clock(): number {
     if (!this.session.playing) return this.session.currentTime;
     return Math.min(
-      this.session.source.composition.duration,
+      playRangeOf(this.session.source.composition).end,
       this.#time + Math.max(0, this.now() - this.#origin) / 1000,
     );
   }
