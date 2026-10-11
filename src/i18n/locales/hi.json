@@ -1293,5 +1293,13 @@
   "transition.group.fadesBlurs": "फ़ेड और ब्लर",
   "transition.group.tiles": "टाइलें",
   "transitions.pickCut": "पहले टाइमलाइन पर एक कट चुनें: उसका + या मार्कर क्लिक करें।",
-  "right.planned": "योजना में"
+  "right.planned": "योजना में",
+  "export.startFrame": "शुरुआती फ़्रेम",
+  "export.endFrame": "अंतिम फ़्रेम",
+  "export.range.end": "अंत सीन के अंत से आगे था; इसे {end} s पर रखा गया है।",
+  "export.range.order": "शुरुआत अंत से पहले होनी चाहिए; अंत को शुरुआत के एक फ़्रेम बाद रखा गया है।",
+  "frames.toManual": "टाइमलाइन नियंत्रण: मैनुअल मोड",
+  "frames.toAuto": "टाइमलाइन नियंत्रण: ऑटो मोड",
+  "frames.manualLabel": "मैनुअल रेंज",
+  "frames.autoLabel": "ऑटो रेंज"
 }

@@ -7903,3 +7903,34 @@ input[type='range'] {
 .editor-shell.right-reserved .inspector {
   visibility: hidden;
 }
+
+/* V7 (spec 10.2, 11.1): the frame row's Auto / Manual switch; Start and End
+   show only in Manual mode; no clips, no row. */
+.frame-panel[hidden],
+.frame-manual[hidden] {
+  display: none !important;
+}
+.frame-manual {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.frame-mode {
+  min-block-size: var(--hit-min);
+  padding-inline: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.frame-mode:hover {
+  background: var(--hover);
+}
+.frame-panel[data-mode='manual'] .frame-mode {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}

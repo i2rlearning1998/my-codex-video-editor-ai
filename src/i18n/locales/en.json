@@ -1293,5 +1293,13 @@
   "transition.group.fadesBlurs": "Fades & blurs",
   "transition.group.tiles": "Tiles",
   "transitions.pickCut": "Select a cut on the timeline first: click its + or its marker.",
-  "right.planned": "Planned"
+  "right.planned": "Planned",
+  "export.startFrame": "Start frame",
+  "export.endFrame": "End frame",
+  "export.range.end": "End was past the end of the scene; it is set to {end} s.",
+  "export.range.order": "Start must be before End; End is set one frame after Start.",
+  "frames.toManual": "Control timeline: Manual mode",
+  "frames.toAuto": "Control timeline: Auto mode",
+  "frames.manualLabel": "Manual range",
+  "frames.autoLabel": "Auto range"
 }

@@ -115,6 +115,11 @@ export function openExportDialog(options: ExportDialogOptions) {
               <div class="export-field" id="export-start-slot"></div>
               <div class="export-field" id="export-end-slot"></div>
             </div>
+            <div class="export-row">
+              <div class="export-field" id="export-start-frame-slot"></div>
+              <div class="export-field" id="export-end-frame-slot"></div>
+            </div>
+            <p class="export-range-note" id="export-range-note" role="alert" hidden></p>
           </details>
           <p class="export-format" id="export-format" role="status"></p>
           <div class="export-missing" id="export-missing" role="alert" hidden></div>
@@ -135,6 +140,8 @@ export function openExportDialog(options: ExportDialogOptions) {
   const find = <T extends HTMLElement>(id: string) =>
     root.querySelector<T>(`#${id}`)!;
   // J3: the range uses the shared NumberField (steppers, wheel, arrow keys).
+  // V7 (spec 11.2): seconds and frames, linked through the scene's frame
+  // rate (frame = round(seconds × fps)); editing one updates the other.
   for (const [id, key] of [
     ['export-start', 'export.start'],
     ['export-end', 'export.end'],
@@ -147,9 +154,30 @@ export function openExportDialog(options: ExportDialogOptions) {
         unit: 's',
         min: 0,
         step: 0.1,
-        decimals: 2,
+        decimals: 3,
         className: 'export-field',
         onCommit: () => changed(),
+      }),
+    );
+  for (const [id, key, seconds] of [
+    ['export-start-frame', 'export.startFrame', 'export-start'],
+    ['export-end-frame', 'export.endFrame', 'export-end'],
+  ] as const)
+    find(`${id}-slot`).replaceWith(
+      createNumberField({
+        id,
+        label: t(key),
+        value: 0,
+        min: 0,
+        step: 1,
+        decimals: 0,
+        className: 'export-field',
+        onCommit: (frame) => {
+          find<HTMLInputElement>(seconds).value = String(
+            Math.round(frame) / composition.fps,
+          );
+          changed();
+        },
       }),
     );
   const inputs = {
@@ -168,18 +196,53 @@ export function openExportDialog(options: ExportDialogOptions) {
     inputs.fps.value = String(settings.fps);
     syncNumberField(root, 'export-start', settings.start);
     syncNumberField(root, 'export-end', settings.end);
+    syncNumberField(
+      root,
+      'export-start-frame',
+      Math.round(settings.start * composition.fps),
+    );
+    syncNumberField(
+      root,
+      'export-end-frame',
+      Math.round(settings.end * composition.fps),
+    );
     inputs.name.value = settings.fileName;
     find('export-size').textContent = t('export.sizeNote', {
       width: formatNumber(settings.width),
       height: formatNumber(settings.height),
     });
   };
+  /**
+   * V7 (spec 11.2): the range is clamped to the scene with an inline
+   * message, never silently; it applies to this export only.
+   */
+  const clampRange = (rawStart: number, rawEnd: number) => {
+    const frame = 1 / composition.fps;
+    const notes: string[] = [];
+    let start = Math.max(0, Number.isFinite(rawStart) ? rawStart : 0);
+    let end = Number.isFinite(rawEnd) ? rawEnd : composition.duration;
+    if (end > composition.duration + 1e-9) {
+      end = composition.duration;
+      notes.push(
+        t('export.range.end', { end: formatNumber(composition.duration) }),
+      );
+    }
+    if (start > composition.duration - frame)
+      start = Math.max(0, composition.duration - frame);
+    if (end <= start + 1e-9) {
+      end = Math.min(composition.duration, start + frame);
+      notes.push(t('export.range.order'));
+    }
+    const note = find('export-range-note');
+    note.hidden = !notes.length;
+    note.textContent = notes.join(' ');
+    return { start, end };
+  };
   const read = (): ExportSettings => ({
     ...resolutionSize(composition, resolution),
     fps: Number(inputs.fps.value),
     quality: 'high',
-    start: Math.max(0, Number(inputs.start.value) || 0),
-    end: Math.min(composition.duration, Number(inputs.end.value) || 0),
+    ...clampRange(Number(inputs.start.value), Number(inputs.end.value)),
     fileName: inputs.name.value,
     container: inputs.container.value === 'webm' ? 'webm' : 'auto',
   });
