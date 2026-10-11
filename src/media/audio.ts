@@ -1,3 +1,6 @@
+import { prepareDucking, type DuckEnvelope } from '../audio/ducking';
+import { readAudioSettings, type AudioSettings } from '../audio/settings';
+import { scheduleAudioClip } from '../audio/graph';
 import { clipAudioDetached, clipTimeEffects } from '../core';
 import { locateLayer } from '../render/adapter';
 import { assetFingerprint, mediaKey } from './import';
@@ -23,6 +26,8 @@ export interface AudibleClip {
   readonly sourceOut: number;
   readonly speed: number;
   readonly reversed: boolean;
+  readonly audio?: AudioSettings;
+  readonly duckEnvelope?: DuckEnvelope;
 }
 
 /**
@@ -227,6 +232,7 @@ export interface AudioDebug {
 interface Playing {
   node: AudioBufferSourceNode;
   clip: AudibleClip;
+  dispose(): void;
 }
 
 /**
@@ -243,6 +249,8 @@ export class AudioEngine {
   /** Transport `clock` was scheduled at context time `context`; heard `latency` later. */
   #anchor: { clock: number; context: number; latency: number } | null = null;
   #signature = '';
+  #duckSignature = '';
+  #duckClips: AudibleClip[] = [];
   #snippets = 0;
   #lastSnippet: AudioDebug['lastSnippet'] = null;
   #lastSnippetAt = -Infinity;
@@ -282,25 +290,24 @@ export class AudioEngine {
     const latency = context.baseLatency + (context.outputLatency || 0);
     const start = context.currentTime;
     this.#anchor = { clock, context: start, latency };
-    clips.forEach((clip, index) => {
+    this.#prepare(clips).forEach((clip, index) => {
       const buffer = buffers[index];
       if (!buffer) return;
       const source = clip.reversed ? this.#reverse(buffer) : buffer;
-      const plan = clipSchedule(clip, clock, source.duration);
-      if (!plan) return;
-      const node = context.createBufferSource();
-      node.buffer = source;
-      node.playbackRate.value = clip.speed;
-      node.connect(this.#master!);
-      // Starting `latency` early in the clip makes the heard sound match the clock.
-      const early = plan.delay > latency ? 0 : latency - plan.delay;
-      node.start(
-        start + Math.max(0, plan.delay - latency),
-        plan.offset + early * clip.speed,
-        Math.max(0, plan.length - early * clip.speed),
+      const scheduled = scheduleAudioClip(
+        context,
+        this.#master!,
+        clip,
+        source,
+        clock,
+        start,
+        latency,
       );
-      this.#playing.push({ node, clip });
+      if (!scheduled) return;
+      const { node, dispose } = scheduled;
+      this.#playing.push({ node, clip, dispose });
       node.onended = () => {
+        dispose();
         this.#playing = this.#playing.filter((item) => item.node !== node);
       };
     });
@@ -317,7 +324,8 @@ export class AudioEngine {
       this.#trailing = setTimeout(() => this.scrub(time, clips), wait);
       return;
     }
-    const under = clips.filter(
+    for (const clip of clips) this.#buffer(clip.sourceAssetId);
+    const under = this.#prepare(clips).filter(
       (clip) => time >= clip.startTime && time < clip.startTime + clip.duration,
     );
     if (!under.length) return;
@@ -328,17 +336,17 @@ export class AudioEngine {
       const buffer = this.#buffer(clip.sourceAssetId);
       if (!buffer) continue;
       const source = clip.reversed ? this.#reverse(buffer) : buffer;
-      const plan = clipSchedule(clip, time, source.duration);
-      if (!plan) continue;
-      const node = context.createBufferSource();
-      node.buffer = source;
-      node.playbackRate.value = clip.speed;
-      node.connect(this.#master!);
-      node.start(
+      const scheduled = scheduleAudioClip(
+        context,
+        this.#master!,
+        clip,
+        source,
+        time,
         context.currentTime,
-        plan.offset,
-        Math.min(plan.length, SNIPPET_SECONDS * clip.speed),
+        0,
+        SNIPPET_SECONDS,
       );
+      if (!scheduled) continue;
       clipIds.push(clip.clipId);
     }
     if (clipIds.length) {
@@ -388,7 +396,10 @@ export class AudioEngine {
 
   #ensureContext(): AudioContext {
     if (!this.#context) {
-      this.#context = new AudioContext({ latencyHint: 'interactive' });
+      this.#context = new AudioContext({
+        latencyHint: 'interactive',
+        sampleRate: DECODE_RATE,
+      });
       this.#master = this.#context.createGain();
       this.#analyser = this.#context.createAnalyser();
       this.#master.connect(this.#analyser);
@@ -424,16 +435,22 @@ export class AudioEngine {
     return reversed;
   }
 
-  #stopAll(): void {
-    for (const { node } of this.#playing) {
-      node.onended = null;
-      try {
-        node.stop();
-      } catch {
-        // Already stopped.
-      }
-      node.disconnect();
+  #prepare(clips: readonly AudibleClip[]): AudibleClip[] {
+    const buffers = new Map<string, AudioBuffer>();
+    for (const clip of clips) {
+      const buffer = this.#ready.get(clip.sourceAssetId);
+      if (buffer) buffers.set(clip.sourceAssetId, buffer);
     }
+    const signature = JSON.stringify([clips, [...buffers.keys()]]);
+    if (signature !== this.#duckSignature) {
+      this.#duckSignature = signature;
+      this.#duckClips = prepareDucking(clips, buffers);
+    }
+    return this.#duckClips;
+  }
+
+  #stopAll(): void {
+    for (const { dispose } of this.#playing) dispose();
     this.#playing = [];
     this.#anchor = null;
     this.#signature = '';
@@ -507,6 +524,7 @@ export function listAudibleClips(
         sourceOut: clip.sourceOut,
         speed: clip.speed,
         reversed: effects.reversed,
+        audio: readAudioSettings(clip),
       });
     }
   }
