@@ -201,8 +201,46 @@ export async function showGraphics(page: Page) {
  * I4: the Inspector's Position and size, Timing and Details start folded at
  * the bottom of the right panel's first tab; this opens them.
  */
-export async function openInspector(page: Page) {
+/**
+ * V7 (spec 10.1): a selection never opens the right panel; this opens it on
+ * a rail section (a click on a closed panel or another section opens it).
+ */
+export async function openRight(page: Page, section = 'Properties') {
+  const button = page.locator(`#rail-right [data-section="${section}"]`);
+  await expect(button).toBeVisible();
+  const closed = await page
+    .locator('.editor-shell')
+    .evaluate((shell) => shell.classList.contains('inspector-collapsed'));
+  if (closed || (await button.getAttribute('aria-pressed')) !== 'true')
+    await button.click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /inspector-collapsed/,
+  );
   await settled(page);
+}
+/**
+ * V7 (spec 10.1): opens a closed right panel the way a user does, from the
+ * rail, keeping the section the rail already shows as active.
+ */
+export async function openRightPanel(page: Page) {
+  const shell = page.locator('.editor-shell');
+  if (
+    !(await shell.evaluate((element) =>
+      element.classList.contains('inspector-collapsed'),
+    ))
+  )
+    return;
+  const active = page.locator('#rail-right button[aria-pressed="true"]');
+  await (
+    (await active.count())
+      ? active.first()
+      : page.locator('#rail-right [data-section="Properties"]')
+  ).click();
+  await expect(shell).not.toHaveClass(/inspector-collapsed/);
+  await settled(page);
+}
+export async function openInspector(page: Page) {
+  await openRight(page, 'Properties');
   for (const tab of ['Transform', 'Timing', 'Dimensions'])
     await page.locator(`#inspector-content [data-subtab="${tab}"]`).click();
   await settled(page);

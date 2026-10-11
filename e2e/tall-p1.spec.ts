@@ -32,7 +32,7 @@ test('[LAY-060] the first load opens Media with an illustrated empty state; a ne
   await context.close();
 });
 
-test('[LAY-061] no panel toggles in the top bar; the right panel shows only while something is selected; collapse buttons sit in the panels', async ({
+test('[LAY-061] no panel toggles in the top bar; the right panel opens from its rail; collapse buttons sit in the panels', async ({
   page,
 }) => {
   await page.goto('/');
@@ -45,7 +45,10 @@ test('[LAY-061] no panel toggles in the top bar; the right panel shows only whil
   const shell = page.locator('.editor-shell');
   const canvas = await box(page, '#composition-canvas');
   await expect(page.locator('.inspector')).toBeHidden();
+  // V7 (spec 10.1): a selection leaves the panel closed; the rail opens it.
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await expect(page.locator('.inspector')).toBeHidden();
+  await page.locator('#rail-right [data-section="Properties"]').click();
   await expect(page.locator('.inspector')).toBeVisible();
   await expect(page.locator('#right-panel-collapse')).toBeVisible();
   // The canvas does not move when the panel appears.
@@ -53,12 +56,13 @@ test('[LAY-061] no panel toggles in the top bar; the right panel shows only whil
   await page.locator('#composition-canvas').focus();
   await page.keyboard.press('Escape');
   await expect(page.locator('.inspector')).toBeHidden();
-  // Collapsed from its header, it opens again on the next selection.
+  // Collapsed from its header, it stays closed on the next selection.
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await page.locator('#rail-right [data-section="Properties"]').click();
   await page.locator('#right-panel-collapse').click();
   await expect(shell).toHaveClass(/inspector-collapsed/);
   await page.locator('#scene-list [data-layer-id="example-subtitle"]').click();
-  await expect(shell).not.toHaveClass(/inspector-collapsed/);
+  await expect(shell).toHaveClass(/inspector-collapsed/);
   // The left panel collapses from its own header and reopens from the rail.
   await page.locator('.library [data-panel="left"]').click();
   await expect(shell).toHaveClass(/library-collapsed/);

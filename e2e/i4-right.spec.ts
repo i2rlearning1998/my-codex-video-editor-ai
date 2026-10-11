@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, openRightPanel } from './fixtures';
 
 // I4: the right panel per object.
 const tab = (page: Page, name: string) =>
@@ -21,6 +21,8 @@ async function select(page: Page, id: string) {
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([id]);
+  // V7 (spec 10.1): a selection never opens the panel; its rail does.
+  await openRightPanel(page);
 }
 const accordions = (page: Page) =>
   panel(page)
@@ -40,7 +42,8 @@ test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, ba
 }) => {
   // T-ALL (D-183): nothing selected shows no right panel at all.
   await expect(page.locator('.inspector')).toBeHidden();
-  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(0);
+  // V7 (spec 10.1): the rail stays, holding a disabled Auto Caption.
+  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(1);
   // The stage around the artboard shows the canvas bar (CV-057).
   const stage = (await page.locator('#canvas-stage').boundingBox())!;
   await page.mouse.click(stage.x + 6, stage.y + stage.height - 60);

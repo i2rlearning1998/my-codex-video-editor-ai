@@ -204,6 +204,10 @@
   --control-md: 32px;
   --control-lg: 40px;
   --hit-min: 32px;
+  /* V7 (spec 10.5): one icon scale, 16 / 20 / 24 px. */
+  --icon-sm: 16px;
+  --icon-md: 20px;
+  --icon-lg: 24px;
   --icon-size: 20px;
   --icon-size-rail: 24px;
   /* Layers (z-index) */

@@ -70,7 +70,12 @@ import { bindCanvasInteraction } from './canvas-interaction';
 import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
-import { mountTimeline, type AssetTarget, type LaneDropInfo } from './timeline';
+import {
+  mountTimeline,
+  TIMELINE_PAD,
+  type AssetTarget,
+  type LaneDropInfo,
+} from './timeline';
 import { laneDropPlan, type LaneGroup } from './timeline-drop';
 import { laneGroupOfLayer } from '../core';
 import { mountWorkspace, type Workspace } from './workspace';
@@ -272,7 +277,7 @@ export function mountEditorShell(
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
-        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('chevronRight', 16)}</button></header>
+        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('panelRight', 20)}</button></header>
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
@@ -646,7 +651,8 @@ export function mountEditorShell(
     {
       body: animateBody,
       get isOpen() {
-        return animateShown;
+        // (A collapsed right panel keeps its section but is not open.)
+        return animateShown && Boolean(workspace?.rightOpen);
       },
       open: () => {
         workspace?.setOpen('right', true);
@@ -2014,7 +2020,7 @@ export function mountEditorShell(
     const shown = sectionsFor(session);
     // U5: with nothing selected there is no right panel content (the canvas
     // bar holds the canvas's ratio, background and frame rate).
-    if (!shown.length) {
+    if (!shown.length || kindOf(session) === 'none') {
       animateShown = false;
       element('#inspector-content').hidden = true;
       element('#animation-panel').hidden = true;
@@ -2026,10 +2032,21 @@ export function mountEditorShell(
       rightEmpty.querySelector<HTMLElement>('.quiet-tag')!.hidden = true;
       element('#right-panel-title').textContent = t('right.emptyTitle');
       element('#right-panel-count').hidden = true;
+      // V7 (spec 10.1): the rail stays, holding only Auto Caption, disabled
+      // (planned) until captions exist.
       for (const el of root.querySelectorAll<HTMLElement>(
         '.icon-rail-right button',
-      ))
-        el.hidden = true;
+      )) {
+        const caption = el.dataset.section === 'Captions';
+        el.hidden = !caption;
+        if (!caption) continue;
+        const label = t('panel.captions');
+        el.title = `${label}: ${t('right.planned')}`;
+        el.setAttribute('aria-label', el.title);
+        el.setAttribute('aria-disabled', 'true');
+        el.setAttribute('aria-pressed', 'false');
+        el.querySelector('.icon-rail-label')!.textContent = label;
+      }
       renderedRight = '';
       return;
     }
@@ -2336,15 +2353,29 @@ export function mountEditorShell(
     const shell = root.querySelector<HTMLElement>('.editor-shell');
     if (!shell) return;
     shell.classList.toggle('right-empty', key === '');
-    if (!pressing) workspace?.setEmpty(key === '');
+    // (A press waits for its release, so its gesture is never cancelled.)
+    if (pressing) return;
+    workspace?.setEmpty(key === '');
     if (key === rightSelection) return;
     rightSelection = key;
-    // Only a real change repaints the workspace: a repaint mid-press would
-    // cancel the canvas gesture that made the selection.
-    if (key !== '') {
-      if (!workspace?.rightOpen) workspace?.setOpen('right', true);
-    } else if (shell.dataset.layout !== 'wide' && workspace?.rightOpen)
-      workspace?.setOpen('right', false);
+    // V7 (spec 10.1): a selection only changes the rail's categories; it
+    // never opens the panel. Deselecting closes an open panel, since its
+    // category is gone (the rail stays).
+    // (Checked a frame later: an edit such as Ungroup clears the selection
+    // for a moment before selecting its result, which must not close it.)
+    if (key === '')
+      requestAnimationFrame(() => {
+        if (!disposed && !session.selectedIds.length && workspace?.rightOpen)
+          workspace.setOpen('right', false);
+      });
+    // A phone has no right rail (D-120), so there a selection still opens
+    // the bottom sheet; otherwise nothing could reach it (D-196).
+    else if (
+      key !== '' &&
+      workspace?.layout === 'phone' &&
+      !workspace.rightOpen
+    )
+      workspace.setOpen('right', true);
   };
   session.onChange(followSelection);
   followSelection();
@@ -2530,10 +2561,11 @@ export function mountEditorShell(
           : Math.max(
               0,
               pixelToTime(
-                // V2: lanes start at the scroll area's left edge.
+                // V7: lanes start TIMELINE_PAD inside the scroll area.
                 event.clientX -
                   track.getBoundingClientRect().left +
-                  track.scrollLeft,
+                  track.scrollLeft -
+                  TIMELINE_PAD,
                 session.timelineZoom,
               ),
             );
@@ -2831,7 +2863,10 @@ export function mountEditorShell(
     return Math.max(
       0,
       pixelToTime(
-        x - track.getBoundingClientRect().left + track.scrollLeft,
+        x -
+          track.getBoundingClientRect().left +
+          track.scrollLeft -
+          TIMELINE_PAD,
         session.timelineZoom,
       ),
     );

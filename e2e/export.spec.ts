@@ -10,6 +10,7 @@ import {
   showCategory,
   mode2d,
   openInspector,
+  openRight,
   seekKeep,
 } from './fixtures';
 
@@ -428,6 +429,90 @@ test.describe('frame code', () => {
   });
 });
 
+/** V7 (spec 11.2): types a frame field and commits it. */
+async function typeFrameField(page: Page, id: string, value: string) {
+  const field = dialog(page).locator(`#${id}`);
+  await field.click();
+  await field.fill(value);
+  await field.press('Enter');
+}
+
+test('[EXP-020] Start frame and End frame export exactly [Start, End): 30 frames from frame 40, the first equal to the preview there; seconds follow; out-of-range values are clamped with a message', async ({
+  page,
+  openFixtureProject,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openWithMedia(page, 'frame-code.json', [CODE], openFixtureProject);
+  await openExport(page);
+  await moreOptions(page);
+  // Linked to the seconds through the scene's 30 fps.
+  await expect(dialog(page).locator('#export-start-frame')).toHaveValue('0');
+  await expect(dialog(page).locator('#export-end-frame')).toHaveValue('120');
+  // Out of range: clamped with an inline message, never silently.
+  await typeFrameField(page, 'export-end-frame', '9999');
+  await expect(dialog(page).locator('#export-range-note')).toBeVisible();
+  await expect(dialog(page).locator('#export-end-frame')).toHaveValue('120');
+  await typeFrameField(page, 'export-start-frame', '40');
+  await typeFrameField(page, 'export-end-frame', '70');
+  await expect(dialog(page).locator('#export-range-note')).toBeHidden();
+  await expect(dialog(page).locator('#export-start')).toHaveValue('1.333');
+  await expect(dialog(page).locator('#export-end')).toHaveValue('2.333');
+  // Editing seconds updates the frames.
+  await dialog(page).locator('#export-end').fill('2.5');
+  await dialog(page).locator('#export-end').press('Enter');
+  await expect(dialog(page).locator('#export-end-frame')).toHaveValue('75');
+  await typeFrameField(page, 'export-end-frame', '70');
+  const { bytes } = await runExport(page, testInfo);
+  const info = await readBack(bytes);
+  expect(info.video.frames).toBe(30);
+  expect(info.duration).toBeCloseTo(1, 1);
+  const codecs = expectedCodecs(container());
+  // The file's first frame is the preview's frame 40 (source frame 25), its
+  // last is frame 69.
+  expect(await exportedCodes(page, bytes, codecs.type, [0, 29])).toEqual([
+    25, 54,
+  ]);
+  // The export's range never changes the timeline's.
+  expect((await hook(page)).project.compositions[0]!.playRange).toBeUndefined();
+});
+
+test('[EXP-020] the exported audio covers exactly the frame range: frames 20 to 50 give 1.000 s of sound', async ({
+  page,
+  openFixtureProject,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openWithMedia(
+    page,
+    'av-sync.json',
+    ['video_av_sync_flash_beep_720p.webm', 'audio_tone_440hz_3s.wav'],
+    openFixtureProject,
+  );
+  await openExport(page);
+  await moreOptions(page);
+  await typeFrameField(page, 'export-start-frame', '20');
+  await typeFrameField(page, 'export-end-frame', '50');
+  await expect(dialog(page).locator('#export-start')).toHaveValue('0.667');
+  await expect(dialog(page).locator('#export-end')).toHaveValue('1.667');
+  const { bytes } = await runExport(page, testInfo);
+  const info = await readBack(bytes);
+  expect(info.video.frames).toBe(30);
+  expect(info.audio).not.toBeNull();
+  const seconds = await page.evaluate(
+    async ({ base64 }) => {
+      const binary = atob(base64);
+      const data = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+      const audio = await new OfflineAudioContext(1, 1, 48_000).decodeAudioData(
+        data.buffer.slice(0),
+      );
+      return audio.duration;
+    },
+    { base64: bytes.toString('base64') },
+  );
+  // The encoder may pad by a frame of audio at most.
+  expect(Math.abs(seconds - 1)).toBeLessThan(0.03);
+});
+
 test('[EXP-004] the audio mix is in the file and in sync with the picture', async ({
   page,
   openFixtureProject,
@@ -565,6 +650,7 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
   // The badge (x 76, 224 wide) moves to x 276 between 0 s and 2 s.
   await mode2d(page);
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  await openRight(page);
   await seek(0);
   await page
     .locator(

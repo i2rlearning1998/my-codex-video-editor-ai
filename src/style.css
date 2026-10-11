@@ -6548,8 +6548,9 @@ button svg.icon,
 .number-field-step svg.icon,
 .select-trigger > svg.icon,
 .clip-kind-icon svg.icon {
-  inline-size: 12px;
-  block-size: 12px;
+  /* V7 (spec 10.5): never below the 16 px step of the icon scale. */
+  inline-size: var(--icon-sm);
+  block-size: var(--icon-sm);
 }
 /* Every icon-only control is at least 32 × 32 to hit. */
 .icon-button,
@@ -7322,7 +7323,6 @@ input[type='range'] {
    side panel keeps its gutter while its column animates, so its width never
    jumps by the gutter when the collapse starts; it fades out instead. */
 .editor-shell.right-gone > .inspector,
-.editor-shell.right-gone > #rail-right,
 .editor-shell.right-gone > .panel-resizer.right {
   margin-inline: 0;
   border-inline-width: 0;
@@ -7332,8 +7332,7 @@ input[type='range'] {
 .editor-shell.inspector-collapsed:not(.right-drawer) > .inspector {
   opacity: 0;
 }
-.editor-shell.right-gone > .inspector,
-.editor-shell.right-gone > #rail-right {
+.editor-shell.right-gone > .inspector {
   visibility: hidden;
   transition:
     opacity var(--motion-panel) var(--ease-exit),
@@ -7365,7 +7364,7 @@ input[type='range'] {
   border-radius: 10px;
 }
 #rail-right button .icon-rail-label {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.15;
 }
 #rail-right button[aria-pressed='true'] {
@@ -7444,22 +7443,16 @@ input[type='range'] {
   min-block-size: 100%;
 }
 
-/* ===== V3 Scene outliner (spec 4): Blender-like rows, the same in both
-   themes. ===== */
+/* ===== V3 Scene outliner (spec 4), restyled in V7 (spec 10.4): themed
+   32 px rows with a 6 px hover fill, an accent-tinted selection with a 3 px
+   bar, 18 px icons in 28 px targets, a 20 px indent with a guide line, a
+   header row for the scene with a count pill. ===== */
 .scene-outliner {
-  --ol-row: #474747;
-  --ol-zebra: #4f4f4f;
-  --ol-selected: #575757;
-  --ol-active: #666666;
-  --ol-target: #333333;
-  --ol-text: #bcbcbc;
-  --ol-active-text: #e6d800;
-  --ol-selected-text: #38a0d6;
-  --ol-layer-icon: #e8964a;
+  --ol-selected: rgba(135, 45, 252, 0.22);
   --depth: 0;
   outline: none;
   overflow: auto;
-  padding: var(--space-1) 0;
+  padding: var(--space-1) var(--space-1);
 }
 #scene-heading {
   display: flex;
@@ -7467,9 +7460,13 @@ input[type='range'] {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+#scene-heading h2,
+#scene-heading h3 {
+  font-size: 15px;
+}
 #scene-heading .outliner-search {
   flex: 1 0 100%;
-  min-block-size: 32px;
+  block-size: 32px;
   padding-inline: var(--space-2);
   border: 1px solid var(--region-border);
   border-radius: var(--radius-sm);
@@ -7482,58 +7479,122 @@ input[type='range'] {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-block-size: 24px;
-  padding-inline: calc(6px + var(--depth) * 20px) 6px;
-  background: var(--ol-row);
-  color: var(--ol-text);
+  box-sizing: border-box;
+  block-size: 32px;
+  min-block-size: 32px;
+  padding-inline: calc(2px + var(--depth) * 20px) 4px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: default;
   user-select: none;
 }
-.outliner-row.zebra {
-  background: var(--ol-zebra);
+.outliner-row:hover {
+  background: var(--hover);
 }
 .outliner-row[aria-selected='true'] {
   background: var(--ol-selected);
-  color: var(--ol-selected-text);
+  color: var(--text);
+}
+.outliner-row[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset-block: 4px;
+  inset-inline-start: 0;
+  inline-size: 3px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 .outliner-row.active {
-  background: var(--ol-active);
-  color: var(--ol-active-text);
+  color: var(--text);
+  font-weight: var(--weight-medium, 500);
 }
 .outliner-row.drop-into {
-  background: var(--ol-target);
+  outline: 1.5px dashed var(--accent);
+  outline-offset: -2px;
+  background: var(--ol-selected);
 }
 .outliner-row::before {
   content: '';
   position: absolute;
   inset-block: 0;
-  inset-inline-start: calc(11px + (var(--depth) - 1) * 20px);
+  inset-inline-start: calc(16px + (var(--depth) - 1) * 20px);
   inline-size: 1px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--border-subtle);
 }
-.outliner-row[data-row-kind='root']::before {
+.outliner-row[data-row-kind='root']::before,
+.outliner-row[data-row-kind='root'][aria-selected='true']::after {
   display: none;
+}
+.outliner-row[data-row-kind='root'] {
+  margin-block-end: 4px;
+  border-radius: 6px 6px 0 0;
+  border-block-end: 1px solid var(--border-subtle);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: var(--weight-semibold, 600);
+}
+.outliner-count {
+  flex: none;
+  min-inline-size: 22px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--hover);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: var(--weight-regular, 400);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 .outliner-arrow {
   display: inline-grid;
   place-items: center;
   flex: none;
-  inline-size: 14px;
-  block-size: 20px;
+  inline-size: 28px;
+  block-size: 28px;
   padding: 0;
   border: 0;
+  border-radius: 4px;
   background: none;
-  color: inherit;
+  color: var(--text-secondary);
+}
+.outliner-arrow svg {
+  inline-size: 18px;
+  block-size: 18px;
 }
 .outliner-icon {
   display: inline-flex;
   flex: none;
-  color: var(--ol-layer-icon);
+  color: var(--text-secondary);
 }
-.outliner-icon[data-kind='collection'],
+.outliner-icon svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-icon[data-kind='collection'] {
+  color: var(--accent-text);
+}
 .outliner-icon[data-kind='root'] {
-  color: #d8d8d8;
+  color: var(--text);
+}
+.outliner-icon[data-type='text'] {
+  color: var(--clip-text);
+}
+.outliner-icon[data-type='shape'] {
+  color: var(--clip-shape);
+}
+.outliner-icon[data-type='group'] {
+  color: var(--clip-group);
+}
+.outliner-icon[data-type='video'] {
+  color: var(--clip-video);
+}
+.outliner-icon[data-type='image'] {
+  color: var(--clip-image);
+}
+.outliner-icon[data-type='audio'] {
+  color: var(--clip-audio);
 }
 .outliner-name {
   flex: 1;
@@ -7549,13 +7610,14 @@ input[type='range'] {
 }
 .outliner-toggles {
   display: inline-flex;
-  gap: 2px;
+  flex: none;
+  gap: 0;
 }
 .outliner-toggle {
   display: inline-grid;
   place-items: center;
-  inline-size: 20px;
-  block-size: 20px;
+  inline-size: 28px;
+  block-size: 28px;
   padding: 0;
   border: 0;
   border-radius: 4px;
@@ -7563,31 +7625,43 @@ input[type='range'] {
   color: inherit;
   opacity: 0;
 }
+.outliner-toggle svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-toggle:hover {
+  background: var(--hover);
+}
 .outliner-row:hover .outliner-toggle,
 .outliner-row:focus-within .outliner-toggle {
   opacity: 0.9;
 }
 .outliner-toggle.active {
-  opacity: 0.55;
+  opacity: 1;
+  color: var(--accent-text);
 }
 .outliner-rename {
   flex: 1;
   min-inline-size: 0;
+  block-size: 26px;
   font-size: 13px;
 }
 .outliner-band {
   position: fixed;
   z-index: 50;
-  border: 1px dashed #d8d8d8;
+  border: 1px dashed var(--accent);
+  background: var(--ol-selected);
   pointer-events: none;
 }
 .outliner-drag-tip {
   position: fixed;
   z-index: 60;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #222;
-  color: #e6e6e6;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--overlay);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
   font-size: 12.5px;
   pointer-events: none;
 }
@@ -7598,10 +7672,11 @@ input[type='range'] {
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #333;
-  color: #e6e6e6;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--overlay);
+  border: 1px solid var(--accent);
+  color: var(--text);
   font-size: 13px;
   pointer-events: none;
   z-index: var(--z-menu);
@@ -7609,6 +7684,19 @@ input[type='range'] {
 .outliner-menu {
   position: fixed;
   z-index: 70;
+  min-inline-size: 200px;
+  max-inline-size: 240px;
+}
+.outliner-menu .menu-icon {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-menu .menu-icon svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-menu kbd {
+  margin-inline-start: auto;
 }
 
 /* ===== V4 (spec 5): FX tile panels. Three columns of 80 px tiles with a
@@ -7787,8 +7875,8 @@ input[type='range'] {
   transition: none;
 }
 .editor-shell .transition-add svg {
-  inline-size: 14px;
-  block-size: 14px;
+  inline-size: var(--icon-sm);
+  block-size: var(--icon-sm);
   padding: 1px;
   border-radius: 4px;
   background: var(--region-accent);
@@ -7837,4 +7925,101 @@ input[type='range'] {
 .editor-shell.shell-booting,
 .editor-shell.shell-booting > * {
   transition: none !important;
+}
+
+/* ===== V7 (spec 10.5): rail icons are 24 px; rail labels (11-12 px) wrap to
+   two lines instead of being cut ("Templates", "Record & create"). ===== */
+.icon-rail button svg {
+  inline-size: var(--icon-lg);
+  block-size: var(--icon-lg);
+}
+.icon-rail-label {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  text-align: center;
+  overflow-wrap: break-word;
+  font-size: 11.5px;
+  line-height: 1.15;
+}
+
+/* ===== V7 (spec 10.3, B28): an empty timeline is just the dashed drop box,
+   centred both ways in the whole card: no ruler, playhead, dim, frame row
+   or scrollbar, and nothing can scroll it away. ===== */
+.timeline-empty .timeline-scroll {
+  overflow: hidden !important;
+}
+.timeline-empty .timeline-content {
+  inline-size: 100% !important;
+  block-size: 100%;
+  min-block-size: 100%;
+}
+.timeline-empty .ruler-range-dim,
+.timeline-empty .lanes-range-dim,
+.timeline-empty .frame-panel,
+.timeline-empty .timeline-lanes-centre,
+.timeline-empty .timeline-hover-head {
+  display: none !important;
+}
+.timeline-empty .timeline-empty-drop {
+  position: absolute;
+  inset: 0;
+  margin: 0 !important;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+}
+.timeline-empty .empty-drop-box {
+  inline-size: min(560px, calc(100% - 2 * 18px));
+}
+
+/* V7 (spec 10.3, B35): the collapsed player keeps its 8 px gutter under the
+   card, 12 px of padding inside it and room for the 8 px padded bar, so the transport row and the seek
+   slider are never cut by the window's bottom. */
+.editor-shell.timeline-collapsed {
+  grid-template-rows:
+    var(--topbar-height) minmax(0, 1fr)
+    calc(var(--player-bar-height) + 16px + 8px + 12px)
+    var(--statusbar-height);
+}
+.editor-shell.timeline-collapsed > .timeline {
+  padding-block-end: 12px;
+  box-sizing: border-box;
+}
+
+/* Legacy e2e reserve (D-190): a closed right panel keeps its column, empty. */
+.editor-shell.right-reserved .inspector {
+  visibility: hidden;
+}
+
+/* V7 (spec 10.2, 11.1): the frame row's Auto / Manual switch; Start and End
+   show only in Manual mode; no clips, no row. */
+.frame-panel[hidden],
+.frame-manual[hidden] {
+  display: none !important;
+}
+.frame-manual {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.frame-mode {
+  min-block-size: var(--hit-min);
+  padding-inline: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.frame-mode:hover {
+  background: var(--hover);
+}
+.frame-panel[data-mode='manual'] .frame-mode {
+  border-color: var(--accent);
+  color: var(--accent-text);
 }

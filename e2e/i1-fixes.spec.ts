@@ -119,7 +119,8 @@ function expectMidway(result: Awaited<ReturnType<typeof sampleWidth>>) {
   // fails: the next frame is already at the end width.
   const startAt =
     [...result.samples]
-      .filter(([, width]) => Math.abs(width - result.before) < 1)
+      // (V7: a card's 1 px borders appear with its first frame.)
+      .filter(([, width]) => Math.abs(width - result.before) < 3)
       .at(-1)?.[0] ?? 0;
   let window = result.samples.filter(
     ([time]) => time >= startAt + 60 && time <= startAt + 120,
@@ -168,10 +169,19 @@ test('[LAY-038] the right panel animates its real width from its rail and its to
   page,
 }) => {
   // (U5: nothing selected shows no right rail tabs; select a layer.)
+  // V7 (spec 10.1): the selection leaves the panel closed; its rail opens
+  // it. (The real layout, without the fixture's reserved column.)
+  await page.addInitScript(() => {
+    (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ = 'off';
+  });
+  await page.reload();
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
   await page.locator('#scene-list [data-layer-id="example-headline"]').click();
-  const active = page.locator('#rail-right button[aria-pressed="true"]');
-  const name = (await active.getAttribute('data-section'))!;
-  const rail = page.locator(`#rail-right [data-section="${name}"]`);
+  const rail = page.locator('#rail-right [data-section="Properties"]');
+  expectMidway(await sampleWidth(page, '.inspector', () => rail.click()));
+  expect(await rightOpen(page)).toBe(true);
   expectMidway(await sampleWidth(page, '.inspector', () => rail.click()));
   expect(await rightOpen(page)).toBe(false);
   expectMidway(await sampleWidth(page, '.inspector', () => rail.click()));

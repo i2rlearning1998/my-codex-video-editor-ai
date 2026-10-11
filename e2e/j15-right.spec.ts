@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, openRightPanel } from './fixtures';
 
 // J15: the right panel: a labelled icon rail in the selection's order, a
 // header with the title, a count badge and collapse; sections per type with
@@ -33,6 +33,8 @@ async function select(page: Page, id: string) {
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([id]);
+  // V7 (spec 10.1): a selection never opens the panel; its rail does.
+  await openRightPanel(page);
 }
 
 test.beforeEach(async ({ page, openFixtureProject }) => {
@@ -64,7 +66,7 @@ test('[LAY-046] the right panel has a header with the title, a count badge and c
     'Speed',
     'Sound',
     'Animate',
-    'Captions',
+    'Auto Caption',
   ]);
   await select(page, 'layer-c');
   await expect(title).toHaveText('Image');
