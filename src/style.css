@@ -7443,22 +7443,16 @@ input[type='range'] {
   min-block-size: 100%;
 }
 
-/* ===== V3 Scene outliner (spec 4): Blender-like rows, the same in both
-   themes. ===== */
+/* ===== V3 Scene outliner (spec 4), restyled in V7 (spec 10.4): themed
+   32 px rows with a 6 px hover fill, an accent-tinted selection with a 3 px
+   bar, 18 px icons in 28 px targets, a 20 px indent with a guide line, a
+   header row for the scene with a count pill. ===== */
 .scene-outliner {
-  --ol-row: #474747;
-  --ol-zebra: #4f4f4f;
-  --ol-selected: #575757;
-  --ol-active: #666666;
-  --ol-target: #333333;
-  --ol-text: #bcbcbc;
-  --ol-active-text: #e6d800;
-  --ol-selected-text: #38a0d6;
-  --ol-layer-icon: #e8964a;
+  --ol-selected: rgba(135, 45, 252, 0.22);
   --depth: 0;
   outline: none;
   overflow: auto;
-  padding: var(--space-1) 0;
+  padding: var(--space-1) var(--space-1);
 }
 #scene-heading {
   display: flex;
@@ -7466,9 +7460,13 @@ input[type='range'] {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+#scene-heading h2,
+#scene-heading h3 {
+  font-size: 15px;
+}
 #scene-heading .outliner-search {
   flex: 1 0 100%;
-  min-block-size: 32px;
+  block-size: 32px;
   padding-inline: var(--space-2);
   border: 1px solid var(--region-border);
   border-radius: var(--radius-sm);
@@ -7481,58 +7479,122 @@ input[type='range'] {
   display: flex;
   align-items: center;
   gap: 4px;
-  min-block-size: 24px;
-  padding-inline: calc(6px + var(--depth) * 20px) 6px;
-  background: var(--ol-row);
-  color: var(--ol-text);
+  box-sizing: border-box;
+  block-size: 32px;
+  min-block-size: 32px;
+  padding-inline: calc(2px + var(--depth) * 20px) 4px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: default;
   user-select: none;
 }
-.outliner-row.zebra {
-  background: var(--ol-zebra);
+.outliner-row:hover {
+  background: var(--hover);
 }
 .outliner-row[aria-selected='true'] {
   background: var(--ol-selected);
-  color: var(--ol-selected-text);
+  color: var(--text);
+}
+.outliner-row[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  inset-block: 4px;
+  inset-inline-start: 0;
+  inline-size: 3px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 .outliner-row.active {
-  background: var(--ol-active);
-  color: var(--ol-active-text);
+  color: var(--text);
+  font-weight: var(--weight-medium, 500);
 }
 .outliner-row.drop-into {
-  background: var(--ol-target);
+  outline: 1.5px dashed var(--accent);
+  outline-offset: -2px;
+  background: var(--ol-selected);
 }
 .outliner-row::before {
   content: '';
   position: absolute;
   inset-block: 0;
-  inset-inline-start: calc(11px + (var(--depth) - 1) * 20px);
+  inset-inline-start: calc(16px + (var(--depth) - 1) * 20px);
   inline-size: 1px;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--border-subtle);
 }
-.outliner-row[data-row-kind='root']::before {
+.outliner-row[data-row-kind='root']::before,
+.outliner-row[data-row-kind='root'][aria-selected='true']::after {
   display: none;
+}
+.outliner-row[data-row-kind='root'] {
+  margin-block-end: 4px;
+  border-radius: 6px 6px 0 0;
+  border-block-end: 1px solid var(--border-subtle);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: var(--weight-semibold, 600);
+}
+.outliner-count {
+  flex: none;
+  min-inline-size: 22px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--hover);
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-weight: var(--weight-regular, 400);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 .outliner-arrow {
   display: inline-grid;
   place-items: center;
   flex: none;
-  inline-size: 14px;
-  block-size: 20px;
+  inline-size: 28px;
+  block-size: 28px;
   padding: 0;
   border: 0;
+  border-radius: 4px;
   background: none;
-  color: inherit;
+  color: var(--text-secondary);
+}
+.outliner-arrow svg {
+  inline-size: 18px;
+  block-size: 18px;
 }
 .outliner-icon {
   display: inline-flex;
   flex: none;
-  color: var(--ol-layer-icon);
+  color: var(--text-secondary);
 }
-.outliner-icon[data-kind='collection'],
+.outliner-icon svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-icon[data-kind='collection'] {
+  color: var(--accent-text);
+}
 .outliner-icon[data-kind='root'] {
-  color: #d8d8d8;
+  color: var(--text);
+}
+.outliner-icon[data-type='text'] {
+  color: var(--clip-text);
+}
+.outliner-icon[data-type='shape'] {
+  color: var(--clip-shape);
+}
+.outliner-icon[data-type='group'] {
+  color: var(--clip-group);
+}
+.outliner-icon[data-type='video'] {
+  color: var(--clip-video);
+}
+.outliner-icon[data-type='image'] {
+  color: var(--clip-image);
+}
+.outliner-icon[data-type='audio'] {
+  color: var(--clip-audio);
 }
 .outliner-name {
   flex: 1;
@@ -7548,13 +7610,14 @@ input[type='range'] {
 }
 .outliner-toggles {
   display: inline-flex;
-  gap: 2px;
+  flex: none;
+  gap: 0;
 }
 .outliner-toggle {
   display: inline-grid;
   place-items: center;
-  inline-size: 20px;
-  block-size: 20px;
+  inline-size: 28px;
+  block-size: 28px;
   padding: 0;
   border: 0;
   border-radius: 4px;
@@ -7562,31 +7625,43 @@ input[type='range'] {
   color: inherit;
   opacity: 0;
 }
+.outliner-toggle svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-toggle:hover {
+  background: var(--hover);
+}
 .outliner-row:hover .outliner-toggle,
 .outliner-row:focus-within .outliner-toggle {
   opacity: 0.9;
 }
 .outliner-toggle.active {
-  opacity: 0.55;
+  opacity: 1;
+  color: var(--accent-text);
 }
 .outliner-rename {
   flex: 1;
   min-inline-size: 0;
+  block-size: 26px;
   font-size: 13px;
 }
 .outliner-band {
   position: fixed;
   z-index: 50;
-  border: 1px dashed #d8d8d8;
+  border: 1px dashed var(--accent);
+  background: var(--ol-selected);
   pointer-events: none;
 }
 .outliner-drag-tip {
   position: fixed;
   z-index: 60;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #222;
-  color: #e6e6e6;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--overlay);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
   font-size: 12.5px;
   pointer-events: none;
 }
@@ -7597,10 +7672,11 @@ input[type='range'] {
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: #333;
-  color: #e6e6e6;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--overlay);
+  border: 1px solid var(--accent);
+  color: var(--text);
   font-size: 13px;
   pointer-events: none;
   z-index: var(--z-menu);
@@ -7608,6 +7684,19 @@ input[type='range'] {
 .outliner-menu {
   position: fixed;
   z-index: 70;
+  min-inline-size: 200px;
+  max-inline-size: 240px;
+}
+.outliner-menu .menu-icon {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-menu .menu-icon svg {
+  inline-size: 18px;
+  block-size: 18px;
+}
+.outliner-menu kbd {
+  margin-inline-start: auto;
 }
 
 /* ===== V4 (spec 5): FX tile panels. Three columns of 80 px tiles with a
