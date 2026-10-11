@@ -3,6 +3,7 @@
 // on the Undo stack. Media stay references: their bytes are already in the
 // media store (D-004). When the media a scene uses are larger than
 // MEDIA_LIMIT, the media layers are left out and the user is told.
+import { isSceneTransitionMarker } from '../core';
 import type {
   Asset,
   Command,
@@ -231,7 +232,9 @@ export function myTemplateCommands(
     }) as Composition;
     scene.layers = copy.layers;
     scene.tracks = copy.tracks;
-    scene.markers = copy.markers;
+    scene.markers = copy.markers.filter(
+      (marker) => !isSceneTransitionMarker(marker),
+    );
     const placed = placeScene(project as never, composition.id, scene);
     commands.push(...placed.commands);
     return { label: 'Add template', commands, sceneId: placed.id, scaled };

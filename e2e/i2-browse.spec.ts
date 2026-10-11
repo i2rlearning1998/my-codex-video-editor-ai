@@ -341,39 +341,6 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   );
 });
 
-test('[TR-010] Transitions: a tip and the transition tiles in groups with drawn thumbnails; search narrows them', async ({
-  page,
-}) => {
-  // V5 (spec 6, D-194): the left category shows the right panel's tiles;
-  // a click applies one to the selected cut marker (TR-015).
-  await showCategory(page, 'Transitions');
-  const host = panel(page, 'transitions');
-  await expect(host.locator('.browse-tip')).toContainText('cut');
-  await expect(host.locator('.fx-tiles-group')).toHaveText([
-    'Fades & blurs',
-    'Tiles',
-    'Wipes',
-    'More',
-  ]);
-  await expect(host.locator('.fx-tile')).toHaveCount(28);
-  const fade = host.locator('.fx-tile[data-tile="crossfade"]');
-  await expect
-    .poll(() =>
-      fade.locator('img').evaluate((image: HTMLImageElement) => image.src),
-    )
-    .toMatch(/^data:image\/png/);
-  // With no cut selected a click changes nothing.
-  const steps = (await labels(page)).length;
-  await fade.click();
-  expect((await labels(page)).length).toBe(steps);
-  // Search: "glitch" finds the two glitches.
-  await host.locator('.fx-tiles-search').fill('glitch');
-  await expect(host.locator('.fx-tile')).toHaveText([
-    'Glitch',
-    'Glitch reveal',
-  ]);
-});
-
 test('[MED-038] Media: type tabs, sort, folders with drag in, Designs from Save frame to Media, and a drop zone', async ({
   page,
 }) => {

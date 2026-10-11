@@ -8,8 +8,10 @@ import {
   hook,
   rulerBox,
   showCategory,
+  showSceneStrip,
   mode2d,
   openInspector,
+  openRight,
   seekKeep,
 } from './fixtures';
 
@@ -428,6 +430,308 @@ test.describe('frame code', () => {
   });
 });
 
+/** V7 (spec 11.2): types a frame field and commits it. */
+async function typeFrameField(page: Page, id: string, value: string) {
+  const field = dialog(page).locator(`#${id}`);
+  await field.click();
+  await field.fill(value);
+  await field.press('Enter');
+}
+
+test('[EXP-020] Start frame and End frame export exactly [Start, End): 30 frames from frame 40, the first equal to the preview there; seconds follow; out-of-range values are clamped with a message', async ({
+  page,
+  openFixtureProject,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openWithMedia(page, 'frame-code.json', [CODE], openFixtureProject);
+  await openExport(page);
+  await moreOptions(page);
+  // Linked to the seconds through the scene's 30 fps.
+  await expect(dialog(page).locator('#export-start-frame')).toHaveValue('0');
+  await expect(dialog(page).locator('#export-end-frame')).toHaveValue('120');
+  // Out of range: clamped with an inline message, never silently.
+  await typeFrameField(page, 'export-end-frame', '9999');
+  await expect(dialog(page).locator('#export-range-note')).toBeVisible();
+  await expect(dialog(page).locator('#export-end-frame')).toHaveValue('120');
+  await typeFrameField(page, 'export-start-frame', '40');
+  await typeFrameField(page, 'export-end-frame', '70');
+  await expect(dialog(page).locator('#export-range-note')).toBeHidden();
+  await expect(dialog(page).locator('#export-start')).toHaveValue('1.333');
+  await expect(dialog(page).locator('#export-end')).toHaveValue('2.333');
+  // Editing seconds updates the frames.
+  await dialog(page).locator('#export-end').fill('2.5');
+  await dialog(page).locator('#export-end').press('Enter');
+  await expect(dialog(page).locator('#export-end-frame')).toHaveValue('75');
+  await typeFrameField(page, 'export-end-frame', '70');
+  const { bytes } = await runExport(page, testInfo);
+  const info = await readBack(bytes);
+  expect(info.video.frames).toBe(30);
+  expect(info.duration).toBeCloseTo(1, 1);
+  const codecs = expectedCodecs(container());
+  // The file's first frame is the preview's frame 40 (source frame 25), its
+  // last is frame 69.
+  expect(await exportedCodes(page, bytes, codecs.type, [0, 29])).toEqual([
+    25, 54,
+  ]);
+  // The export's range never changes the timeline's.
+  expect((await hook(page)).project.compositions[0]!.playRange).toBeUndefined();
+});
+
+test('[EXP-020] the exported audio covers exactly the frame range: frames 20 to 50 give 1.000 s of sound', async ({
+  page,
+  openFixtureProject,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openWithMedia(
+    page,
+    'av-sync.json',
+    ['video_av_sync_flash_beep_720p.webm', 'audio_tone_440hz_3s.wav'],
+    openFixtureProject,
+  );
+  await openExport(page);
+  await moreOptions(page);
+  await typeFrameField(page, 'export-start-frame', '20');
+  await typeFrameField(page, 'export-end-frame', '50');
+  await expect(dialog(page).locator('#export-start')).toHaveValue('0.667');
+  await expect(dialog(page).locator('#export-end')).toHaveValue('1.667');
+  const { bytes } = await runExport(page, testInfo);
+  const info = await readBack(bytes);
+  expect(info.video.frames).toBe(30);
+  expect(info.audio).not.toBeNull();
+  const seconds = await page.evaluate(
+    async ({ base64 }) => {
+      const binary = atob(base64);
+      const data = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+      const audio = await new OfflineAudioContext(1, 1, 48_000).decodeAudioData(
+        data.buffer.slice(0),
+      );
+      return audio.duration;
+    },
+    { base64: bytes.toString('base64') },
+  );
+  // The encoder may pad by a frame of audio at most.
+  expect(Math.abs(seconds - 1)).toBeLessThan(0.03);
+});
+
+test('[AUD-002][AUD-003][AUD-015] preview == export: Volume 50 % and Fade in 1 s from the right Audio panel give the same sample RMS in the export as in the preview graph', async ({
+  page,
+  openFixtureProject,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await openWithMedia(
+    page,
+    'av-sync.json',
+    ['video_av_sync_flash_beep_720p.webm', 'audio_tone_440hz_3s.wav'],
+    openFixtureProject,
+  );
+  const clipOn = (layer: string) =>
+    page.locator(
+      `#timeline-foundation .timeline-clip[data-action="clip"][data-id="${layer}"]`,
+    );
+  // The video's own sound off (Mute clip), so only the tone is measured.
+  await clipOn('layer-av').click({ position: { x: 30, y: 10 } });
+  await openRight(page, 'Audio');
+  await page.locator('#right-section [data-action="right-clip-mute"]').click();
+  // The tone: Volume 50 %, Fade in 1 s.
+  await clipOn('layer-tone').click({ position: { x: 30, y: 10 } });
+  await openRight(page, 'Audio');
+  const volume = page.locator('#right-volume');
+  await volume.fill('50');
+  await volume.press('Enter');
+  await page.locator('#rail-right [data-section="Fade"]').click();
+  const fadeIn = page.locator('#right-fade-in');
+  await fadeIn.fill('1');
+  await fadeIn.press('Enter');
+  const settings = async () =>
+    (await hook(page)).project.compositions[0]!.tracks.find(
+      (track) => track.id === 'audio-1',
+    )!.clips[0]!.metadata.audio as { gainDb: number; fadeIn: number };
+  expect((await settings()).gainDb).toBeCloseTo(20 * Math.log10(0.5), 3);
+  expect((await settings()).fadeIn).toBe(1);
+  expect((await hook(page)).history.labels.slice(-3)).toEqual([
+    'Mute clip',
+    'Volume',
+    'Fade in',
+  ]);
+  await openExport(page);
+  const { bytes } = await runExport(page, testInfo);
+  const wav = readFileSync(
+    path.join('tests/fixtures/media', 'audio_tone_440hz_3s.wav'),
+  ).toString('base64');
+  const project = (await hook(page)).project.compositions[0]!;
+  const tone = JSON.parse(
+    JSON.stringify(
+      project.tracks.find((track) => track.id === 'audio-1')!.clips[0],
+    ),
+  ) as {
+    startTime: number;
+    duration: number;
+    sourceIn: number;
+    sourceOut: number;
+    speed: number;
+    metadata: Record<string, unknown>;
+  };
+  const result = await page.evaluate(
+    async ({ file, wav, tone }) => {
+      const decode = async (base64: string) => {
+        const binary = atob(base64);
+        const data = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+        return new OfflineAudioContext(1, 1, 48_000).decodeAudioData(
+          data.buffer.slice(0),
+        );
+      };
+      const graphPath = '/src/audio/graph.ts',
+        settingsPath = '/src/audio/settings.ts';
+      const { scheduleAudioClip } = await import(graphPath);
+      const { readAudioSettings, defaultAudioSettings } = await import(
+        settingsPath
+      );
+      const source = await decode(wav);
+      const preview = async (audio: unknown) => {
+        const context = new OfflineAudioContext(2, 48_000 * 3, 48_000);
+        scheduleAudioClip(
+          context,
+          context.destination,
+          {
+            clipId: 'tone',
+            trackId: 'audio-1',
+            sourceAssetId: 'tone',
+            startTime: tone.startTime,
+            duration: tone.duration,
+            sourceIn: tone.sourceIn,
+            sourceOut: tone.sourceOut,
+            speed: tone.speed,
+            reversed: false,
+            audio,
+          },
+          source,
+          0,
+          0,
+        );
+        return context.startRendering();
+      };
+      const rms = (buffer: AudioBuffer, from: number, to: number) => {
+        const data = buffer.getChannelData(0);
+        const rate = buffer.sampleRate;
+        let sum = 0;
+        for (let i = Math.floor(from * rate); i < to * rate; i++)
+          sum += data[i]! ** 2;
+        return Math.sqrt(sum / ((to - from) * rate));
+      };
+      const exported = await decode(file);
+      const shaped = await preview(readAudioSettings(tone));
+      const plain = await preview(defaultAudioSettings());
+      const windows = [
+        [0.0, 0.2],
+        [0.4, 0.6],
+        [1.5, 2.5],
+      ] as const;
+      return windows.map(([from, to]) => ({
+        exported: rms(exported, from, to),
+        preview: rms(shaped, from, to),
+        plain: rms(plain, from, to),
+      }));
+    },
+    { file: bytes.toString('base64'), wav, tone },
+  );
+  // After the fade the level is half the unprocessed tone.
+  const [start, middle, steady] = result as {
+    exported: number;
+    preview: number;
+    plain: number;
+  }[];
+  expect(steady!.preview / steady!.plain).toBeCloseTo(0.5, 2);
+  // The export matches the preview graph within the codec's error.
+  for (const window of [start!, middle!, steady!])
+    expect(Math.abs(window.exported - window.preview)).toBeLessThan(
+      0.05 * steady!.preview + 0.002,
+    );
+  // The fade: quiet at the start, rising, full after a second.
+  expect(start!.exported).toBeLessThan(0.25 * steady!.exported);
+  expect(middle!.exported).toBeGreaterThan(start!.exported);
+  expect(middle!.exported).toBeLessThan(steady!.exported);
+});
+
+test('[TR-018] a scene-to-scene Fade through black is exported across the joined cut: dark at the cut, each scene whole outside the window', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  await installVideoLoader(page);
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await showSceneStrip(page);
+  await page.locator('#scene-strip-add').click();
+  await page.locator('[data-action="strip-add-blank"]').click();
+  const all = () => hook(page).then((state) => state.project.compositions);
+  await expect.poll(async () => (await all()).length).toBe(2);
+  const [first, second] = await all();
+  await page
+    .locator(
+      `#scene-strip [data-action="scene-transition-add"][data-scene-id="${second!.id}"]`,
+    )
+    .click();
+  await openExport(page);
+  await dialog(page).locator('#export-resolution').selectOption('720');
+  const { bytes } = await runExport(page, testInfo);
+  const info = await readBack(bytes);
+  // No scene is shortened.
+  expect(info.duration).toBeCloseTo(first!.duration + second!.duration, 0);
+  const cut = first!.duration;
+  const brightness = await page.evaluate(
+    async ({ base64, mime, times }) => {
+      const binary = atob(base64);
+      const data = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+      const video = await (
+        window as unknown as {
+          __loadVideo(
+            data: Uint8Array,
+            type: string,
+          ): Promise<HTMLVideoElement>;
+        }
+      ).__loadVideo(data, mime);
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 36;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      const values: number[] = [];
+      for (const time of times) {
+        await new Promise((resolve) => {
+          video.onseeked = resolve;
+          video.currentTime = time;
+        });
+        context.drawImage(video, 0, 0, 64, 36);
+        const pixels = context.getImageData(0, 0, 64, 36).data;
+        let sum = 0;
+        for (let i = 0; i < pixels.length; i += 4)
+          sum += (pixels[i]! + pixels[i + 1]! + pixels[i + 2]!) / 3;
+        values.push(sum / (pixels.length / 4));
+      }
+      URL.revokeObjectURL(video.src);
+      return values;
+    },
+    {
+      base64: bytes.toString('base64'),
+      mime: expectedCodecs(container()).type,
+      times: [cut - 1.2, cut - 0.02, cut + 0.02, cut + 1.2],
+    },
+  );
+  const [before, atEnd, atStart, after] = brightness as [
+    number,
+    number,
+    number,
+    number,
+  ];
+  expect(atEnd).toBeLessThan(40);
+  expect(atStart).toBeLessThan(40);
+  expect(before).toBeGreaterThan(120);
+  expect(after).toBeGreaterThan(120);
+});
+
 test('[EXP-004] the audio mix is in the file and in sync with the picture', async ({
   page,
   openFixtureProject,
@@ -565,6 +869,7 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
   // The badge (x 76, 224 wide) moves to x 276 between 0 s and 2 s.
   await mode2d(page);
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  await openRight(page);
   await seek(0);
   await page
     .locator(

@@ -91,7 +91,8 @@ export function mountSceneOutliner(
   add.innerHTML = iconSvg('folderPlus', 18);
   heading.append(add, search);
   const menuElement = document.createElement('div');
-  menuElement.className = 'context-menu outliner-menu';
+  // V7 (spec 10.4, S1 to S5): the shared vertical menu's look.
+  menuElement.className = 'context-menu media-menu outliner-menu';
   menuElement.hidden = true;
   document.body.append(menuElement);
   const menu = createMenu(menuElement, { report });
@@ -301,7 +302,7 @@ export function mountSceneOutliner(
     button.setAttribute('aria-pressed', String(pressed));
     button.setAttribute('aria-label', label);
     button.title = label;
-    button.innerHTML = iconSvg(icon, 16);
+    button.innerHTML = iconSvg(icon, 18);
     return button;
   };
 
@@ -341,19 +342,30 @@ export function mountSceneOutliner(
       arrow.setAttribute('aria-label', t('outliner.toggle'));
       arrow.innerHTML = iconSvg(
         collapsed.has(row.id) ? 'chevronRight' : 'chevronDown',
-        12,
+        18,
       );
     } else arrow.setAttribute('aria-hidden', 'true');
     const icon = document.createElement('span');
     icon.className = 'outliner-icon';
     icon.dataset.kind = row.kind;
     icon.setAttribute('aria-hidden', 'true');
-    icon.innerHTML = iconSvg(row.icon, 16);
+    icon.innerHTML = iconSvg(row.icon, 18);
+    // V7: a layer's icon is coloured by its kind.
+    if (row.layer) icon.dataset.type = row.layer.type;
     const name = document.createElement('span');
     name.className = 'outliner-name';
     name.textContent = row.name;
     name.title = row.name;
     element.append(arrow, icon, name);
+    // V7 (spec 10.4): the scene root is a header with a count pill.
+    if (row.kind === 'root') {
+      const count = document.createElement('span');
+      count.className = 'outliner-count';
+      const total = scene().layers.length;
+      count.textContent = String(total);
+      count.title = t('outliner.objects', { count: total });
+      element.append(count);
+    }
     // J6: a layer with alternative text shows an ALT badge.
     if (row.layer && altTextOf(row.layer as never)) {
       const badge = document.createElement('span');
@@ -371,7 +383,7 @@ export function mountSceneOutliner(
       for (const kind of [
         ...new Set(row.children.map((child) => child.icon)),
       ].slice(0, 6))
-        strip.insertAdjacentHTML('beforeend', iconSvg(kind, 12));
+        strip.insertAdjacentHTML('beforeend', iconSvg(kind, 16));
       element.append(strip);
     }
     const toggles = document.createElement('span');
@@ -665,14 +677,41 @@ export function mountSceneOutliner(
         true,
       );
       const copies = createdLayers(commands);
-      // The copies come out in the order the originals were selected.
+      // V7 (S6): each copy goes into the copy of its original's collection,
+      // matched by content (the order the edit creates them in is not the
+      // layers' order), so the tree keeps its shape.
+      const created = commands.flatMap((command) =>
+        command.type === 'CREATE_LAYER' && command.parentId === null
+          ? [command.layer]
+          : [],
+      );
+      const signature = (layer: {
+        type: string;
+        name: string;
+        transform: unknown;
+        properties: unknown;
+      }) =>
+        JSON.stringify([
+          layer.type,
+          layer.name,
+          layer.transform,
+          layer.properties,
+        ]);
+      const unused = new Set(created.map((layer) => layer.id));
       const ordered = scene().layers.filter((layer) =>
         layers.includes(layer.id),
       );
       ordered.forEach((layer, index) => {
-        const copy = copies[index];
+        const wanted = signature(layer as never);
+        const match =
+          created.find(
+            (copy) =>
+              unused.has(copy.id) && signature(copy as never) === wanted,
+          ) ?? created.find((copy, at) => at >= index && unused.has(copy.id));
+        if (!match) return;
+        unused.delete(match.id);
         const owner = collectionOf(outliner, layer.id);
-        if (copy && owner) next.items[copy] = map.get(owner) ?? map.get(id)!;
+        next.items[match.id] = (owner && map.get(owner)) || map.get(id)!;
       });
       engine.commands.transaction(t('outliner.duplicateCollection'), [
         ...commands,
@@ -970,7 +1009,21 @@ export function mountSceneOutliner(
       rowOf(document.activeElement) ??
       host.querySelector<HTMLElement>('.outliner-row.active');
     let handled = true;
-    if (event.key === 'F2' && row) rename(row);
+    if (
+      row &&
+      (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))
+    ) {
+      // V7 (spec 10.4): the context menu from the keyboard.
+      const box = row.getBoundingClientRect();
+      row.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          cancelable: true,
+          clientX: box.left + 24,
+          clientY: box.bottom,
+        }),
+      );
+    } else if (event.key === 'F2' && row) rename(row);
     else if (event.key === 'Delete' || event.key === 'x' || event.key === 'X') {
       if (ctrl) handled = false;
       else deleteSelection();
@@ -1196,17 +1249,22 @@ export function mountSceneOutliner(
     const row = rowOf(event.target);
     if (!row) return;
     event.preventDefault();
+    // (Measured now: selecting the row below may redraw it.)
+    const box = row.getBoundingClientRect();
     const kind = row.dataset.rowKind;
     let entries: MenuEntry[] = [];
     if (kind === 'root')
       entries = [
         {
           id: 'ol-new',
+          icon: 'folderPlus',
           label: t('outliner.newCollection'),
           run: () => newCollection(null),
         },
         {
           id: 'ol-paste',
+          icon: 'paste',
+          shortcut: 'Ctrl+V',
           label: t('outliner.paste'),
           ...(clipboard
             ? { run: () => paste(null) }
@@ -1220,17 +1278,28 @@ export function mountSceneOutliner(
       entries = [
         {
           id: 'ol-new',
+          icon: 'folderPlus',
           label: t('outliner.new'),
           run: () => newCollection(id),
         },
         {
           id: 'ol-duplicate',
+          icon: 'duplicate',
+          shortcut: 'Ctrl+D',
           label: t('outliner.duplicateCollection'),
           run: () => duplicateCollection(id),
         },
-        { id: 'ol-copy', label: t('outliner.copy'), run: copy },
+        {
+          id: 'ol-copy',
+          icon: 'copy',
+          shortcut: 'Ctrl+C',
+          label: t('outliner.copy'),
+          run: copy,
+        },
         {
           id: 'ol-paste',
+          icon: 'paste',
+          shortcut: 'Ctrl+V',
           label: t('outliner.paste'),
           ...(clipboard
             ? { run: () => paste(id) }
@@ -1238,23 +1307,28 @@ export function mountSceneOutliner(
         },
         {
           id: 'ol-delete',
+          icon: 'delete',
+          shortcut: 'Del',
           label: t('outliner.delete'),
           divider: true,
           run: () => deleteCollections([id]),
         },
         {
           id: 'ol-delete-hierarchy',
+          icon: 'layers',
           label: t('outliner.deleteHierarchy'),
           run: () => deleteHierarchy(id),
         },
         {
           id: 'ol-select',
+          icon: 'check',
           label: t('outliner.selectObjects'),
           divider: true,
           run: () => session.selectMany(layers()),
         },
         {
           id: 'ol-deselect',
+          icon: 'close',
           label: t('outliner.deselectObjects'),
           run: () =>
             session.selectMany(
@@ -1263,11 +1337,13 @@ export function mountSceneOutliner(
         },
         {
           id: 'ol-visibility',
+          icon: 'eye',
           label: t('outliner.visibility'),
           divider: true,
           submenu: () => [
             {
               id: 'ol-hide-all',
+              icon: 'eyeOff',
               label: t('outliner.hideAllShort'),
               run: () =>
                 setLanes(t('outliner.collectionState'), layers(), {
@@ -1276,6 +1352,7 @@ export function mountSceneOutliner(
             },
             {
               id: 'ol-show-all',
+              icon: 'eye',
               label: t('outliner.showAll'),
               run: () =>
                 setLanes(t('outliner.collectionState'), layers(), {
@@ -1286,12 +1363,14 @@ export function mountSceneOutliner(
         },
         {
           id: 'ol-lock-all',
+          icon: 'lock',
           label: t('outliner.lockAllShort'),
           run: () =>
             setLanes(t('outliner.collectionState'), layers(), { locked: true }),
         },
         {
           id: 'ol-unlock-all',
+          icon: 'unlock',
           label: t('outliner.unlockAll'),
           run: () =>
             setLanes(t('outliner.collectionState'), layers(), {
@@ -1305,6 +1384,8 @@ export function mountSceneOutliner(
       entries = [
         {
           id: 'ol-rename',
+          icon: 'edit',
+          shortcut: 'F2',
           label: t('outliner.rename'),
           run: () =>
             rename(
@@ -1315,17 +1396,28 @@ export function mountSceneOutliner(
         },
         {
           id: 'ol-duplicate',
+          icon: 'duplicate',
+          shortcut: 'Ctrl+D',
           label: t('outliner.duplicate'),
           run: () => safely(() => performEdit(engine, session, 'duplicate')),
         },
-        { id: 'ol-copy', label: t('outliner.copy'), run: copy },
+        {
+          id: 'ol-copy',
+          icon: 'copy',
+          shortcut: 'Ctrl+C',
+          label: t('outliner.copy'),
+          run: copy,
+        },
         {
           id: 'ol-delete',
+          icon: 'delete',
+          shortcut: 'Del',
           label: t('outliner.delete'),
           run: () => safely(() => performEdit(engine, session, 'delete')),
         },
         {
           id: 'ol-show-in-timeline',
+          icon: 'timing',
           label: t('outliner.showInTimeline'),
           divider: true,
           run: () =>
@@ -1335,11 +1427,20 @@ export function mountSceneOutliner(
         },
       ];
     }
+    // V7 (spec 10.4): at the pointer, but below the clicked row (above it
+    // when there is no room), so its name stays readable; inside the window.
     menuElement.style.left = `${event.clientX}px`;
-    menuElement.style.top = `${event.clientY}px`;
+    menuElement.style.top = `${Math.max(event.clientY, box.bottom) + 2}px`;
     announceMenu(menuElement);
     menu.open(() => entries);
     menu.fit();
+    const placed = menuElement.getBoundingClientRect();
+    if (placed.bottom > window.innerHeight - 8 && box.top - placed.height > 8)
+      menuElement.style.top = `${box.top - placed.height - 2}px`;
+    menuElement.style.left = `${Math.max(
+      8,
+      Math.min(event.clientX, window.innerWidth - placed.width - 8),
+    )}px`;
   });
 
   return {

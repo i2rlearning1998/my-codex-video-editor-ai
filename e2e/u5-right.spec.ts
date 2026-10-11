@@ -24,8 +24,8 @@ test('[LAY-059] the right rail shows 24 px icons with labels; nothing selected s
   await expect(label).toBeVisible();
   expect(
     await label.evaluate((item) => parseFloat(getComputedStyle(item).fontSize)),
-    // V1 (spec 1, D-190): 10 px labels under the 24 px icons.
-  ).toBe(10);
+    // V7 (spec 10.5, D-196): 11 px labels under the 24 px icons.
+  ).toBe(11);
   // Nothing selected: an empty state, no Canvas tab, no rail buttons.
   await page.locator('#composition-canvas').focus();
   await page.keyboard.press('Escape');
@@ -35,7 +35,8 @@ test('[LAY-059] the right rail shows 24 px icons with labels; nothing selected s
   // T-ALL (D-183): nothing selected shows no right panel at all.
   await expect(page.locator('.inspector')).toBeHidden();
   await expect(page.locator('#right-section')).toBeHidden();
-  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(0);
+  // V7 (spec 10.1): the rail stays, holding a disabled Auto Caption.
+  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(1);
 });
 
 test('[PRJ-027] the canvas bar sets the scene frame rate; times re-snap to the new grid; one undo step', async ({

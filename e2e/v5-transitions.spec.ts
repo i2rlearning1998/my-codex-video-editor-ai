@@ -21,7 +21,7 @@ import {
 // adds Fade through black; the cut then shows a lavender marker over a band
 // as wide as the transition. The marker opens the right Transition panel
 // (None, Fades & blurs, Tiles, Wipes, More) with Duration under the chosen
-// tile; the left Transitions category applies to the selected marker.
+// tile (V7: the left Transitions category is gone; spec 10.5, TR-017).
 // Delete or the marker's menu removes it. The canvas and the PNG export draw
 // it the same.
 const MEDIA = 'tests/fixtures/media';
@@ -204,22 +204,6 @@ test('[TR-014] the canvas and the exported frame show the transition at its midp
   // A quarter in, the outgoing picture shows through.
   await seekKeep(page, 4.75);
   expect(spread(await preview(page))).toBeGreaterThan(5);
-});
-
-test('[TR-015] the left Transitions category shows the same tiles; a tile applies to the selected marker', async ({
-  page,
-}) => {
-  const { second, clip } = await twoPictures(page);
-  await showCategory(page, 'Transitions');
-  const left = page.locator('#library-transitions');
-  // Nothing selected on the timeline: a hint, nothing changes.
-  await left.locator('.fx-tile[data-tile="transition.tiles"]').click();
-  await expect(page.locator('.toast').last()).toContainText('Select a cut');
-  expect(await transitionOf(page, second)).toBeNull();
-  await plus(page, clip).click();
-  await left.locator('.fx-tile[data-tile="transition.tiles"]').click();
-  expect((await transitionOf(page, second))!.type).toBe('transition.tiles');
-  expect((await labels(page)).at(-1)).toBe('Change transition');
 });
 
 test('[TR-016] sweep: every transition changes the canvas and the exported frame inside its window and neither is blank; contact sheet', async ({

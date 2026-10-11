@@ -1,3 +1,4 @@
+import { isSceneTransitionMarker } from './scene-transitions';
 import { z } from 'zod';
 import { trackHolds } from './lanes';
 
@@ -536,7 +537,12 @@ export function validateProject(value: unknown): Project {
     for (const track of composition.tracks)
       for (const clip of track.clips)
         endpoints.push(clip.startTime + clip.duration);
-    endpoints.push(...composition.markers.map((marker) => marker.time));
+    // (V7: a scene transition's reserved marker never sets the length.)
+    endpoints.push(
+      ...composition.markers
+        .filter((marker) => !isSceneTransitionMarker(marker))
+        .map((marker) => marker.time),
+    );
     composition.duration = endpoints.length
       ? Math.max(1 / composition.fps, ...endpoints)
       : 10;

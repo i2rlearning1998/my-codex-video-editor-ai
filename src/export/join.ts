@@ -3,6 +3,7 @@
 // single-composition: each scene's clips, layer times, keyframes and markers
 // move by the length of the scenes before it, and its ids get a scene prefix
 // so nothing collides. Nothing here touches the project.
+import { isSceneTransitionMarker } from '../core';
 import type { Composition, DeepReadonly } from '../core';
 
 type Json = unknown;
@@ -109,7 +110,9 @@ export function joinScenes(
           };
         }),
       });
-    for (const marker of scene.markers)
+    for (const marker of scene.markers.filter(
+      (item) => !isSceneTransitionMarker(item as unknown as { label: string }),
+    ))
       markers.push({
         ...marker,
         id: id(marker.id),

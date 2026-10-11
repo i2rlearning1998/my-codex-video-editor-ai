@@ -1,4 +1,4 @@
-import { transitionFocus } from './transition-focus';
+import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
 import { mountFonts } from './fonts';
@@ -12,10 +12,6 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   findClip,
-  clipTransition,
-  DEFAULT_TRANSITION,
-  maxTransition,
-  previousTouching,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -23,6 +19,7 @@ import {
   hasAnimation,
   laneAccepts,
   nextTrackName,
+  laneInsertIndex,
   trackTypeForLayer,
 } from '../core';
 import {
@@ -70,9 +67,16 @@ import { bindCanvasInteraction } from './canvas-interaction';
 import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
-import { mountTimeline, type AssetTarget, type LaneDropInfo } from './timeline';
+import {
+  mountTimeline,
+  TIMELINE_PAD,
+  type AssetTarget,
+  type LaneDropInfo,
+} from './timeline';
 import { laneDropPlan, type LaneGroup } from './timeline-drop';
 import { laneGroupOfLayer } from '../core';
+import { activeCut, compositionAt, cutsAround } from '../core';
+import { drawSceneTransition } from '../render/scene-transitions';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
@@ -80,6 +84,14 @@ import { addShape, addShapeCommands, type ShapePreset } from './shapes';
 import { myTemplates } from './my-templates';
 import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
+import { mountSoundPack } from './sound-pack-panel';
+import { mountRecordPanel } from './record-panel';
+import { newTts, ttsState } from './right-panel/tts-panel';
+import {
+  registerTtsCommands,
+  ttsCommand,
+  type TtsSettings,
+} from '../audio/tts/commands';
 import { wordmarkHtml } from '../brand/brand';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
@@ -101,6 +113,7 @@ import {
   mountRightPanel,
   plannedSection,
   sectionsFor,
+  focusedScene,
   type RightSection,
 } from './right-panel';
 import { applyCanvasSize } from './canvas-size';
@@ -153,8 +166,9 @@ const RAIL_CATEGORIES = [
   'Media',
   'Draw',
   'Scene',
+  // V7 (spec 11.4): Record & create, before Audio.
+  'Record',
   'Audio',
-  'Transitions',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -163,8 +177,8 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Audio: 'audio',
   Elements: 'elements',
   Draw: 'pen',
-  Transitions: 'transitions',
   Scene: 'layers',
+  Record: 'mic',
 };
 export interface ShellActions {
   save?: () => void;
@@ -248,7 +262,8 @@ export function mountEditorShell(
         <div id="library-elements" data-rail-panel="Elements" hidden></div>
         <div id="library-templates" data-rail-panel="Templates" hidden></div>
         <div id="library-text" data-rail-panel="Text" hidden></div>
-        <div id="library-transitions" data-rail-panel="Transitions" hidden></div>
+        <div id="library-audio" data-rail-panel="Audio" hidden></div>
+        <div id="library-record" data-rail-panel="Record" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -272,7 +287,7 @@ export function mountEditorShell(
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
-        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('chevronRight', 16)}</button></header>
+        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('panelRight', 20)}</button></header>
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
@@ -519,6 +534,42 @@ export function mountEditorShell(
   let textEditing: TextEditor | undefined;
   // U2: how many times the canvas has been drawn (read by the test hook).
   let drawCount = 0;
+  /**
+   * V7 (spec 10.5): while playing across a scene cut, the canvas shows the
+   * transition: the open scene with the neighbour's boundary frame, mixed.
+   */
+  const drawSceneCut = (drawn: RenderSource) => {
+    const scenes = engine.state.compositions;
+    const open = drawn.composition;
+    const active = activeCut(cutsAround(scenes, open.id), session.currentTime);
+    if (!active) return;
+    const index = scenes.findIndex((scene) => scene.id === open.id);
+    const other = active.cut.time === 0 ? scenes[index - 1] : scenes[index + 1];
+    if (!other) return;
+    const at = active.cut.time === 0 ? other.duration - 1 / other.fps : 0;
+    const neighbour: RenderSource = {
+      composition: compositionAt(other, at),
+      assets: drawn.assets,
+      background: other.backgroundColor,
+      currentTime: at,
+      frames,
+      playing: false,
+      animate: true,
+      ...(drawn.measureText ? { measureText: drawn.measureText } : {}),
+    };
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const view = viewport();
+    drawSceneTransition(context, active.cut, active.p, (target, side) =>
+      drawComposition(
+        target,
+        (side === 'from') === (active.cut.time === 0) ? neighbour : drawn,
+        view,
+        null,
+        { overlays: false },
+      ),
+    );
+  };
   const draw = () => {
     if (disposed) return;
     drawCount++;
@@ -581,6 +632,7 @@ export function mountEditorShell(
       viewport(),
       session.selectedId,
     );
+    if (session.playing) drawSceneCut(drawn);
     frames.endFrame();
     if (textEditing?.layerId) textEditing.sync();
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
@@ -646,7 +698,8 @@ export function mountEditorShell(
     {
       body: animateBody,
       get isOpen() {
-        return animateShown;
+        // (A collapsed right panel keeps its section but is not open.)
+        return animateShown && Boolean(workspace?.rightOpen);
       },
       open: () => {
         workspace?.setOpen('right', true);
@@ -673,6 +726,55 @@ export function mountEditorShell(
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
+      audioDecoder: decoder,
+      // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
+      tts: {
+        report: reportError,
+        save: async (file, name, settings, clipId) => {
+          const assetId = await importMade(file);
+          const found = clipId
+            ? findClip(session.source.composition, clipId)
+            : null;
+          if (!found) {
+            const created = addOnNewAudioLane(assetId, {
+              name,
+              tts: settings,
+            });
+            ttsState.clipId = created;
+            openCategory('Media');
+            return;
+          }
+          // Replace: the new audio, its length, the same clip (volume and
+          // fades kept), one step.
+          registerTtsCommands(engine);
+          const asset = session.source.assets.find(
+            (item) => item.id === assetId,
+          );
+          const length =
+            asset?.duration && asset.duration > 0
+              ? asset.duration
+              : found.clip.duration;
+          const composition = session.source.composition;
+          engine.commands.transaction('Replace text to speech', [
+            {
+              type: 'SET_LAYER_ASSET',
+              compositionId: composition.id,
+              layerId: found.clip.layerId,
+              assetId,
+            },
+            {
+              type: 'SET_CLIP_TIMING',
+              compositionId: composition.id,
+              clipId: found.clip.id,
+              startTime: found.clip.startTime,
+              duration: length,
+              sourceIn: 0,
+              sourceOut: length,
+            },
+            ttsCommand(composition.id, found.clip.id, settings),
+          ]);
+        },
+      },
       sample: (width, height) => selectionSample(width, height),
     },
   );
@@ -1507,7 +1609,7 @@ export function mountEditorShell(
     Templates: ['library.templatesTitle', 'library.templatesDescription'],
     Audio: ['library.audioTitle', 'library.audioDescription'],
     Elements: ['library.elementsTitle', 'library.elementsDescription'],
-    Transitions: ['library.transitionsTitle', 'library.transitionsDescription'],
+    Record: ['library.recordTitle', 'library.recordDescription'],
   };
   // G1.7: every rail category shows only its own panels. The markup tags each
   // panel with data-rail-panel; this is the one place that decides visibility,
@@ -1521,7 +1623,8 @@ export function mountEditorShell(
     'Elements',
     'Templates',
     'Text',
-    'Transitions',
+    'Audio',
+    'Record',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
@@ -1565,7 +1668,6 @@ export function mountEditorShell(
       Templates: element('#library-templates'),
       Elements: element('#library-elements'),
       Text: element('#library-text'),
-      Transitions: element('#library-transitions'),
     },
     engine,
     session,
@@ -1574,46 +1676,6 @@ export function mountEditorShell(
     libraryActions,
     {
       close: () => workspace?.setOpen('left', false),
-      // V5 (spec 6): a left Transitions tile applies to the selected marker.
-      applyTransition: (type) =>
-        safely(() => {
-          const clipId = transitionFocus.clipId;
-          const found = clipId
-            ? findClip(session.source.composition, clipId)
-            : null;
-          if (!found) {
-            showToast(t('transitions.pickCut'), 'info', 3000);
-            return;
-          }
-          const clip = found.clip as unknown as Parameters<
-            typeof maxTransition
-          >[1] & { transitionMetadata: Record<string, unknown> };
-          const before = previousTouching(
-            found.track.clips as unknown as Parameters<
-              typeof previousTouching
-            >[0],
-            clip,
-          );
-          if (!before) return;
-          const current = clipTransition(clip);
-          engine.commands.transaction(
-            current ? 'Change transition' : 'Add transition',
-            [
-              {
-                type: 'SET_CLIP_TRANSITION',
-                compositionId: session.source.composition.id,
-                clipId: clipId!,
-                transition: {
-                  type,
-                  duration: Math.min(
-                    current?.duration ?? DEFAULT_TRANSITION,
-                    maxTransition(before, clip),
-                  ),
-                },
-              } as Command,
-            ],
-          );
-        }),
       // SHP-001: the five W5-D shapes and the I2 lines.
       addPreset: (preset) => safely(() => addShape(engine, session, preset)),
       addTextBox: () => {
@@ -1699,6 +1761,8 @@ export function mountEditorShell(
         workspace.setOpen('left', false);
         return;
       }
+      // V7 (spec 11.4): leaving Record & create while recording asks first.
+      if (activeCategory === 'Record' && category !== 'Record') leaveRecord?.();
       activeCategory = category;
       sidePanels.close();
       applyCategory(activeCategory);
@@ -1832,7 +1896,7 @@ export function mountEditorShell(
       resize();
   });
   // I3: the scene strip under the canvas.
-  mountSceneStrip({
+  const sceneStrip = mountSceneStrip({
     host: element('#scene-strip'),
     engine,
     session,
@@ -1889,8 +1953,11 @@ export function mountEditorShell(
     mediaInput.click();
   // J8: the empty timeline's hint rows add text, or open Media (with the file
   // picker) or Audio.
+  let leaveRecord: (() => void) | undefined;
   const openCategory = (category: string) => {
     if (drawPalette?.open) drawPalette.close();
+    // V7 (spec 11.4): leaving Record & create while recording asks first.
+    if (activeCategory === 'Record' && category !== 'Record') leaveRecord?.();
     activeCategory = category;
     sidePanels.close();
     applyCategory(category);
@@ -2014,7 +2081,10 @@ export function mountEditorShell(
     const shown = sectionsFor(session);
     // U5: with nothing selected there is no right panel content (the canvas
     // bar holds the canvas's ratio, background and frame rate).
-    if (!shown.length) {
+    if (
+      !shown.length ||
+      (kindOf(session) === 'none' && !focusedScene(session) && !ttsState.open)
+    ) {
       animateShown = false;
       element('#inspector-content').hidden = true;
       element('#animation-panel').hidden = true;
@@ -2026,10 +2096,21 @@ export function mountEditorShell(
       rightEmpty.querySelector<HTMLElement>('.quiet-tag')!.hidden = true;
       element('#right-panel-title').textContent = t('right.emptyTitle');
       element('#right-panel-count').hidden = true;
+      // V7 (spec 10.1): the rail stays, holding only Auto Caption, disabled
+      // (planned) until captions exist.
       for (const el of root.querySelectorAll<HTMLElement>(
         '.icon-rail-right button',
-      ))
-        el.hidden = true;
+      )) {
+        const caption = el.dataset.section === 'Captions';
+        el.hidden = !caption;
+        if (!caption) continue;
+        const label = t('panel.captions');
+        el.title = `${label}: ${t('right.planned')}`;
+        el.setAttribute('aria-label', el.title);
+        el.setAttribute('aria-disabled', 'true');
+        el.setAttribute('aria-pressed', 'false');
+        el.querySelector('.icon-rail-label')!.textContent = label;
+      }
       renderedRight = '';
       return;
     }
@@ -2056,9 +2137,13 @@ export function mountEditorShell(
     // the selection's order.
     const kind = kindOf(session);
     element('#right-panel-title').textContent = t(
-      kind === 'video' || kind === 'image'
-        ? `right.tab.${kind}`
-        : firstTabKey(kind),
+      kind === 'none'
+        ? ttsState.open
+          ? 'tts.title'
+          : 'transition.title'
+        : kind === 'video' || kind === 'image'
+          ? `right.tab.${kind}`
+          : firstTabKey(kind),
     );
     const count = element('#right-panel-count');
     count.hidden = session.selectedIds.length === 0;
@@ -2091,7 +2176,8 @@ export function mountEditorShell(
       !shown.includes(activeSection as RightSection) ||
       plannedSection(activeSection as RightSection, session)
     )
-      setRightSection('Properties');
+      // (V7: an audio clip's rail starts with Audio, not Properties.)
+      setRightSection(shown.includes('Properties') ? 'Properties' : shown[0]!);
     else if (
       rightKey() !== renderedRight ||
       engine.state !== renderedRightState
@@ -2103,6 +2189,60 @@ export function mountEditorShell(
   };
   session.onChange(syncRightRail);
   syncRightRail();
+  // V7 (spec 10.5): a scene card's "+" or transition marker opens the right
+  // Transition panel for it; a press on the stage or a selection leaves it.
+  const openSceneTransition = (event: Event) =>
+    safely(() => {
+      transitionFocus.sceneId = (event as CustomEvent<string>).detail;
+      transitionFocus.clipId = null;
+      session.select(null);
+      root.querySelector('.editor-shell')?.classList.remove('right-empty');
+      workspace?.setEmpty(false);
+      renderedRight = '';
+      syncRightRail();
+      setRightSection('Transitions');
+      workspace?.setOpen('right', true);
+      sceneStrip.render();
+      sceneBoard.render?.();
+    });
+  document.addEventListener(SCENE_TRANSITION_EVENT, openSceneTransition);
+  // V7 (spec 11.5): Create > Text to speech opens the right panel (the one
+  // left action that does).
+  const openTextToSpeech = () =>
+    safely(() => {
+      newTts();
+      transitionFocus.sceneId = null;
+      transitionFocus.clipId = null;
+      session.select(null);
+      root.querySelector('.editor-shell')?.classList.remove('right-empty');
+      renderedRight = '';
+      syncRightRail();
+      setRightSection('Speech');
+      workspace?.setOpen('right', true);
+    });
+  stage.addEventListener(
+    'pointerdown',
+    () => {
+      if (ttsState.open && !session.selectedIds.length) {
+        ttsState.open = false;
+        root.querySelector('.editor-shell')?.classList.add('right-empty');
+        renderedRight = '';
+        syncRightRail();
+        if (workspace?.rightOpen) workspace.setOpen('right', false);
+      }
+      if (!transitionFocus.sceneId) return;
+      transitionFocus.sceneId = null;
+      if (!session.selectedIds.length)
+        root.querySelector('.editor-shell')?.classList.add('right-empty');
+      renderedRight = '';
+      syncRightRail();
+      if (workspace?.rightOpen && !session.selectedIds.length)
+        workspace.setOpen('right', false);
+      sceneStrip.render();
+      sceneBoard.render?.();
+    },
+    true,
+  );
   element<HTMLButtonElement>('#right-panel-collapse').onclick = () =>
     workspace?.setOpen('right', false);
   for (const el of root.querySelectorAll<HTMLElement>(
@@ -2335,16 +2475,40 @@ export function mountEditorShell(
     const key = session.selectedIds.join(',');
     const shell = root.querySelector<HTMLElement>('.editor-shell');
     if (!shell) return;
-    shell.classList.toggle('right-empty', key === '');
-    if (!pressing) workspace?.setEmpty(key === '');
+    // (A scene transition's panel shows with nothing selected; V7.)
+    shell.classList.toggle(
+      'right-empty',
+      key === '' && !transitionFocus.sceneId && !ttsState.open,
+    );
+    // (A press waits for its release, so its gesture is never cancelled.)
+    if (pressing) return;
+    workspace?.setEmpty(key === '');
     if (key === rightSelection) return;
     rightSelection = key;
-    // Only a real change repaints the workspace: a repaint mid-press would
-    // cancel the canvas gesture that made the selection.
-    if (key !== '') {
-      if (!workspace?.rightOpen) workspace?.setOpen('right', true);
-    } else if (shell.dataset.layout !== 'wide' && workspace?.rightOpen)
-      workspace?.setOpen('right', false);
+    // V7 (spec 10.1): a selection only changes the rail's categories; it
+    // never opens the panel. Deselecting closes an open panel, since its
+    // category is gone (the rail stays).
+    // (Checked a frame later: an edit such as Ungroup clears the selection
+    // for a moment before selecting its result, which must not close it.)
+    if (key === '')
+      requestAnimationFrame(() => {
+        if (
+          !disposed &&
+          !session.selectedIds.length &&
+          !transitionFocus.sceneId &&
+          !ttsState.open &&
+          workspace?.rightOpen
+        )
+          workspace.setOpen('right', false);
+      });
+    // A phone has no right rail (D-120), so there a selection still opens
+    // the bottom sheet; otherwise nothing could reach it (D-217).
+    else if (
+      key !== '' &&
+      workspace?.layout === 'phone' &&
+      !workspace.rightOpen
+    )
+      workspace.setOpen('right', true);
   };
   session.onChange(followSelection);
   followSelection();
@@ -2371,6 +2535,104 @@ export function mountEditorShell(
     engine.commands.transaction(built.label, built.commands);
     session.select(built.layerId);
   };
+  /**
+   * V7 (spec 11.3 to 11.5): an audio asset at the playhead on a new audio
+   * lane, one step; a recording or speech names the lane, layer and clip,
+   * and speech keeps its settings on the clip.
+   */
+  const addOnNewAudioLane = (
+    assetId: string,
+    named: { name?: string; tts?: TtsSettings } = {},
+  ) => {
+    const asset = session.source.assets.find((item) => item.id === assetId);
+    if (!asset) throw new Error(t('media.missing'));
+    const composition = session.source.composition;
+    const trackId = crypto.randomUUID();
+    const built = assetCommands(
+      named.name ? { ...asset, name: named.name } : asset,
+      {
+        time: session.currentTime,
+        trackId,
+        newTrack: [
+          {
+            type: 'CREATE_TRACK',
+            compositionId: composition.id,
+            track: {
+              id: trackId,
+              name: named.name ?? nextTrackName(composition, 'audio'),
+              type: 'audio',
+              order: composition.tracks.length,
+              enabled: true,
+              locked: false,
+              muted: false,
+              clips: [],
+            },
+          },
+          {
+            type: 'MOVE_TRACK',
+            compositionId: composition.id,
+            trackId,
+            index: laneInsertIndex(composition.tracks, 'audio', 'bottom'),
+          },
+        ],
+      },
+    );
+    let clipId = '';
+    for (const command of built.commands)
+      if (command.type === 'CREATE_CLIP') {
+        clipId = command.clip.id;
+        if (named.tts)
+          (command.clip.metadata as Record<string, unknown>).tts = {
+            ...named.tts,
+          };
+      }
+    engine.commands.transaction(
+      named.tts ? 'Add text to speech' : built.label,
+      built.commands,
+    );
+    session.select(built.layerId);
+    return clipId;
+  };
+  /** Imports a file made here (a recording, speech); its asset id. */
+  const importMade = async (file: File) => {
+    const [id] = await mediaPanel.importFiles([file]);
+    if (!id) throw new Error(t('record.importFailed'));
+    return id;
+  };
+  // V7 (spec 11.4): Record & create.
+  const recordPanel = mountRecordPanel(element('#library-record'), {
+    addRecording: async (file) => {
+      const assetId = await importMade(file);
+      const taken = new Set(
+        session.source.composition.tracks.map((track) => track.name),
+      );
+      let n = 1;
+      while (taken.has(t('record.name', { n: String(n) }))) n++;
+      addOnNewAudioLane(assetId, { name: t('record.name', { n: String(n) }) });
+    },
+    openTextToSpeech: () => openTextToSpeech(),
+    report: reportError,
+  });
+  leaveRecord = () => recordPanel.leave();
+  // V7 (spec 11.3): the left Audio category, the built-in sound pack. A
+  // sound goes in at the playhead on a new audio lane, one step.
+  const soundPack = mountSoundPack(element('#library-audio'), {
+    importSound: (file) =>
+      mediaPanel.importFiles([file]).then((ids) => ids[0] ?? null),
+    existing: (fileName) =>
+      (
+        engine.state.assets as unknown as readonly {
+          id: string;
+          metadata: { fileName?: unknown; removed?: unknown };
+        }[]
+      ).find(
+        (asset) =>
+          asset.metadata.fileName === fileName &&
+          asset.metadata.removed !== true,
+      )?.id ?? null,
+    add: (assetId) => safely(() => void addOnNewAudioLane(assetId)),
+    report: reportError,
+  });
   /** The commands adding an asset as a layer with a clip, at a composition
    *  point or the centre (canvas), or on a timeline track (the insert rule). */
   const assetCommands = (
@@ -2530,10 +2792,11 @@ export function mountEditorShell(
           : Math.max(
               0,
               pixelToTime(
-                // V2: lanes start at the scroll area's left edge.
+                // V7: lanes start TIMELINE_PAD inside the scroll area.
                 event.clientX -
                   track.getBoundingClientRect().left +
-                  track.scrollLeft,
+                  track.scrollLeft -
+                  TIMELINE_PAD,
                 session.timelineZoom,
               ),
             );
@@ -2831,7 +3094,10 @@ export function mountEditorShell(
     return Math.max(
       0,
       pixelToTime(
-        x - track.getBoundingClientRect().left + track.scrollLeft,
+        x -
+          track.getBoundingClientRect().left +
+          track.scrollLeft -
+          TIMELINE_PAD,
         session.timelineZoom,
       ),
     );
@@ -3313,6 +3579,8 @@ export function mountEditorShell(
       unsubscribeTheme();
       sceneBoard.dispose();
       mediaPanel.dispose();
+      soundPack.dispose();
+      recordPanel.dispose();
       positionPanel.dispose();
       frames.dispose();
       previews.dispose();

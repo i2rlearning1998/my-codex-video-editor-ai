@@ -104,9 +104,14 @@ test('[TXT-044] with Auto height off the box keeps its height, clips the text pa
   const stored = property(await layer(page), 'height') as number;
   // Auto height off (Spacing popover), one undo step.
   await page.locator('[data-control="spacing"]').first().click();
-  const toggle = page.locator('[data-action="auto-height"]').first();
+  const toggle = page
+    .locator('[data-action="auto-height"]')
+    .filter({ visible: true })
+    .first();
   await expect(toggle).toHaveAttribute('aria-checked', 'true');
   await toggle.click();
+  // (V7: close the popover, so the keys go to the canvas.)
+  await page.keyboard.press('Escape');
   expect((await hook(page)).history.labels.at(-1)).toBe('Fixed height');
   expect(property(await layer(page), 'textFixedHeight')).toBe(true);
   expect((await hook(page)).session.selectedIds).toHaveLength(1);
@@ -140,7 +145,11 @@ test('[TXT-044] with Auto height off the box keeps its height, clips the text pa
   expect(overflow).toContain((await layer(page)).id);
   // Auto height on again: the box grows to its four lines in one step.
   await page.locator('[data-control="spacing"]').first().click();
-  await page.locator('[data-action="auto-height"]').first().click();
+  await page
+    .locator('[data-action="auto-height"]')
+    .filter({ visible: true })
+    .first()
+    .click();
   expect((await hook(page)).history.labels.at(-1)).toBe('Auto height');
   expect(property(await layer(page), 'height') as number).toBeGreaterThan(
     stored,

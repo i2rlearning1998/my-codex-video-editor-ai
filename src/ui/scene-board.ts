@@ -12,6 +12,7 @@ import { drawComposition, fitViewport } from '../render/canvas';
 import type { RenderSource } from '../render/adapter';
 import { closePopover, openPopover } from './components/popover';
 import { iconSvg } from './icons';
+import { sceneTransitionButton } from './scene-transition-actions';
 import {
   blankScene,
   duplicateScene,
@@ -236,17 +237,6 @@ export function mountSceneBoard(
     input.focus();
     input.select();
   };
-  const transition = () => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'scene-transition';
-    chip.setAttribute('aria-disabled', 'true');
-    chip.innerHTML = iconSvg('transitions', 14);
-    const later = t('toolbar.later', { wave: '6', id: 'TR-001' });
-    chip.title = later;
-    chip.setAttribute('aria-label', `${t('scene.transition')}: ${later}`);
-    return chip;
-  };
   const addButton = () => {
     const add = document.createElement('button');
     add.type = 'button';
@@ -307,7 +297,11 @@ export function mountSceneBoard(
     const row = document.createElement('div');
     row.className = 'scene-board-row';
     engine.state.compositions.forEach((_, index) => {
-      if (index) row.append(transition());
+      // V7 (spec 10.5): "+" or the transition marker between scenes.
+      if (index)
+        row.append(
+          sceneTransitionButton(engine, engine.state.compositions[index]!.id),
+        );
       row.append(card(index));
     });
     row.append(addButton());
@@ -334,6 +328,8 @@ export function mountSceneBoard(
   return {
     open: show,
     close,
+    /** V7: redraws an open board (a scene transition changed). */
+    render: () => render(true),
     get isOpen() {
       return !board.hidden;
     },

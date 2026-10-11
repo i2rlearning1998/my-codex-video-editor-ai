@@ -8,6 +8,7 @@ import {
   rulerBox,
   mode2d,
   openInspector,
+  openRight,
 } from './fixtures';
 
 /** T5: Stop left the Player bar; the palette runs it. */
@@ -530,6 +531,7 @@ test.describe('layers and inspector', () => {
   }) => {
     await openFixtureProject('nle-example.json');
     await clipEl(page, 'clip-b').click({ position: { x: 30, y: 10 } });
+    await openRight(page);
     await page.locator('[data-subtab="Timing"]').click();
     await expect(
       page.getByRole('spinbutton', { name: 'Start time' }),
@@ -546,6 +548,7 @@ test.describe('layers and inspector', () => {
     await openFixtureProject('nle-example.json');
     await clipEl(page, 'clip-b').click({ position: { x: 30, y: 10 } });
     await page.keyboard.press('Alt+ArrowLeft'); // one frame: 3 − 1/30 s
+    await openRight(page);
     await page.locator('[data-subtab="Timing"]').click();
     await expect(
       page.getByRole('spinbutton', { name: 'Start time' }),

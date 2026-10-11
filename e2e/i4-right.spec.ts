@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, openRightPanel } from './fixtures';
 
 // I4: the right panel per object.
 const tab = (page: Page, name: string) =>
@@ -21,6 +21,8 @@ async function select(page: Page, id: string) {
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([id]);
+  // V7 (spec 10.1): a selection never opens the panel; its rail does.
+  await openRightPanel(page);
 }
 const accordions = (page: Page) =>
   panel(page)
@@ -40,7 +42,8 @@ test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, ba
 }) => {
   // T-ALL (D-183): nothing selected shows no right panel at all.
   await expect(page.locator('.inspector')).toBeHidden();
-  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(0);
+  // V7 (spec 10.1): the rail stays, holding a disabled Auto Caption.
+  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(1);
   // The stage around the artboard shows the canvas bar (CV-057).
   const stage = (await page.locator('#canvas-stage').boundingBox())!;
   await page.mouse.click(stage.x + 6, stage.y + stage.height - 60);
@@ -193,7 +196,8 @@ test('[LAY-045] media: an image has Image (Crop, Flip, Corners, Border) and Filt
   await select(page, 'layer-a');
   await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Video');
   await tab(page, 'Audio').click();
-  await expect(panel(page).locator('#right-volume')).toBeDisabled();
+  // V7 (spec 11.3): clip volume works now.
+  await expect(panel(page).locator('#right-volume')).toBeEnabled();
   await panel(page).locator('[data-action="right-mute"]').click();
   expect((await labels(page)).at(-1)).toBe('Mute track');
   await panel(page).locator('[data-action="right-detach-audio"]').click();

@@ -4,12 +4,8 @@
 // library under More. Each tile's thumbnail mixes a colour-shifted copy of
 // the selected picture (the outgoing clip) into the picture itself (the
 // incoming one) through the same transition; hovering loops it.
-import {
-  defaults as fxDefaults,
-  getTransition,
-  surface,
-  type Surface,
-} from '../../fx';
+import { surface, type Surface } from '../../fx';
+import { mixFrames as mix } from '../../render/scene-transitions';
 import { t } from '../../i18n';
 import type { Tile } from './fx-panels';
 
@@ -67,66 +63,8 @@ function shifted(source: Surface): Surface {
   }
   return out;
 }
-/** The transition `type` from `a` to `b` at progress `p`. */
-export function mix(type: string, a: Surface, b: Surface, p: number) {
-  const { width, height } = b;
-  const out = surface(width, height);
-  const library = getTransition(type);
-  if (library) {
-    library.apply(a, b, out, p, fxDefaults(library), {
-      time: 0,
-      duration: 1,
-      seed: 7,
-      width,
-      height,
-    });
-    return out;
-  }
-  for (let y = 0; y < height; y++)
-    for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      for (let c = 0; c < 4; c++) {
-        const from = a.data[i + c]!,
-          to = b.data[i + c]!;
-        let value: number;
-        switch (type) {
-          case 'fade-black':
-          case 'fade-white': {
-            const veil = type === 'fade-black' ? 0 : 255;
-            value =
-              c === 3
-                ? 255
-                : p < 0.5
-                  ? from + (veil - from) * (p * 2)
-                  : veil + (to - veil) * (p * 2 - 1);
-            break;
-          }
-          case 'wipe-left':
-            value = x >= width * (1 - p) ? to : from;
-            break;
-          case 'wipe-right':
-            value = x < width * p ? to : from;
-            break;
-          case 'slide-left':
-          case 'slide-right': {
-            const shift =
-              Math.round(p * width) * (type === 'slide-left' ? 1 : -1);
-            const at = x + shift;
-            const j =
-              at >= 0 && at < width
-                ? (y * width + at) * 4
-                : (y * width + (at < 0 ? at + width : at - width)) * 4;
-            value = at >= 0 && at < width ? a.data[j + c]! : b.data[j + c]!;
-            break;
-          }
-          default:
-            value = from + (to - from) * p;
-        }
-        out.data[i + c] = value;
-      }
-    }
-  return out;
-}
+/** (V7: the mix is shared with scene transitions; see src/render.) */
+export { mixFrames as mix } from '../../render/scene-transitions';
 
 /** The tiles for a tile grid (None first). */
 export function transitionTiles(): Tile[] {

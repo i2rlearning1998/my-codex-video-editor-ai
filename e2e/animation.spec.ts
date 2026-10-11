@@ -6,6 +6,7 @@ import {
   artboard,
   mode2d,
   openInspector,
+  openRightPanel,
   seekKeep,
 } from './fixtures';
 
@@ -45,6 +46,8 @@ async function select(page: Page, id: string) {
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([id]);
+  // V7 (spec 10.1): the panel opens from its rail.
+  await openRightPanel(page);
 }
 const row = (page: Page, property: string) =>
   page.locator(`#animation-panel [data-property="${property}"]`);

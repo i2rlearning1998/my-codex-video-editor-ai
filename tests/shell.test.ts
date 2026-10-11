@@ -87,8 +87,9 @@ describe('editor shell integration', () => {
       'Media',
       'Draw',
       'Scene',
+      // V7 (spec 11.4): Record & create.
+      'Record',
       'Audio',
-      'Transitions',
     ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();
     expect(root.querySelector('.timeline canvas')).toBeNull();
@@ -238,7 +239,9 @@ describe('editor shell integration', () => {
     expect(root.querySelector('[data-field="Width"]')!.textContent).toBe('—');
     // I3: the scene strip replaces the composition select (D-147).
     root
-      .querySelector<HTMLElement>('#scene-strip [data-scene-id="second"]')!
+      .querySelector<HTMLElement>(
+        '#scene-strip .scene-strip-card[data-scene-id="second"]',
+      )!
       .click();
     expect(shell.session.source.composition.id).toBe('second');
     expect(shell.session.selectedId).toBeNull();

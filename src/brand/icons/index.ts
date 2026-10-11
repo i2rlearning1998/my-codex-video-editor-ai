@@ -48,6 +48,9 @@ const PATHS: Record<string, string> = {
   eyeOff:
     'M3 3l14 14 M9 5.1A8.6 8.6 0 0110 5c5 0 8 5 8 5a13 13 0 01-2.6 3 M6.7 6.7A8.3 8.3 0 002 10s3 5 8 5c1 0 2-.2 2.9-.5 M8.1 11.9a2 2 0 002.8-2.8',
   mute: 'M3 8v4h3l4 3V5L6 8z M13.5 7.5l3 5 M16.5 7.5l-3 5',
+  mic: 'M10 3a2.5 2.5 0 012.5 2.5v4a2.5 2.5 0 01-5 0v-4A2.5 2.5 0 0110 3z M5.5 9.5a4.5 4.5 0 009 0 M10 14v3 M7 17h6',
+  screen: 'M3 4h14v10H3z M7 17h6 M10 14v3',
+  camera: 'M3 6h10v8H3z M13 9l4-2v6l-4-2',
   speaker: 'M3 8v4h3l4 3V5L6 8z M13 7.3a4 4 0 010 5.4 M15.3 5a7.3 7.3 0 010 10',
   arrowUp: 'M10 15V5 M5.5 9.5L10 5l4.5 4.5',
   arrowDown: 'M10 5v10 M5.5 10.5L10 15l4.5-4.5',
@@ -160,9 +163,12 @@ const PATHS: Record<string, string> = {
  * H2: every icon is drawn on one 24-unit grid with a 1.75 stroke. The paths
  * are authored in the central 20 units (2 units of padding each side).
  */
-export function iconSvg(name: keyof typeof PATHS | string, size = 18): string {
+/** V7 (spec 10.5): the icon scale; no icon is drawn below 16 px. */
+export const ICON_SIZES = { sm: 16, md: 20, lg: 24 } as const;
+export function iconSvg(name: keyof typeof PATHS | string, size = 20): string {
   const d = PATHS[name];
   if (!d) return '';
+  size = Math.max(ICON_SIZES.sm, size);
   return `<svg class="icon" width="${size}" height="${size}" viewBox="-2 -2 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d
     .split(' M')
     .map((seg, i) => `<path d="${i === 0 ? seg : 'M' + seg}" />`)

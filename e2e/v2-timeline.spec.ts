@@ -299,7 +299,7 @@ test('[TL-096] dragging the timeline edge down: free, a snap at the default heig
   await page.mouse.up();
 });
 
-test('[TL-097] outside Start and End the ruler and lanes are dimmed from the default values, and live on every digit and wheel step', async ({
+test('[TL-097] Auto mode has no dim; in Manual mode the ruler and lanes are dimmed outside Start and End, live on every digit, wheel step (field hovered, not focused) and step arrow', async ({
   page,
 }) => {
   const zoom = (await hook(page)).session.timelinePxPerSecond;
@@ -310,30 +310,40 @@ test('[TL-097] outside Start and End the ruler and lanes are dimmed from the def
   const laneDim = page.locator(
     '#timeline-foundation .lanes-range-dim[data-side="after"]',
   );
-  // Default: End is the scene's end (10 s): the dim starts exactly there.
+  const at = async () => (await box(after)).x - ruler.x;
+  // V7 (spec 10.2): Auto mode dims nothing.
+  await expect(after).toBeHidden();
+  await expect(laneDim).toBeHidden();
+  await page.locator('#timeline-foundation [data-action="range-mode"]').click();
+  // Manual: End is the project end; the dim starts exactly there.
   const duration = (await hook(page)).project.compositions[0]!.duration;
-  await expect
-    .poll(async () => (await box(after)).x - ruler.x)
-    .toBeCloseTo(duration * zoom, 0);
+  await expect.poll(at).toBeCloseTo(duration * zoom, 0);
   expect((await box(laneDim)).width).toBeGreaterThan(0);
   // Typing a digit moves the dim with no Enter or blur.
   const end = page.locator('#frame-end');
   await end.click();
   await end.fill('15');
-  await expect
-    .poll(async () => (await box(after)).x - ruler.x)
-    .toBeCloseTo(0.5 * zoom, 0);
+  await expect.poll(at).toBeCloseTo(0.5 * zoom, 0);
   await end.fill('150');
-  await expect
-    .poll(async () => (await box(after)).x - ruler.x)
-    .toBeCloseTo(5 * zoom, 0);
-  // A wheel step updates it too.
+  await expect.poll(at).toBeCloseTo(5 * zoom, 0);
+  await end.press('Enter');
+  // The wheel over the unfocused field steps it, and the dim, every step.
+  await page.locator('#composition-canvas').focus();
   await end.hover();
-  await page.mouse.wheel(0, -100);
+  for (const frame of [149, 148, 147]) {
+    await page.mouse.wheel(0, 100);
+    await expect.poll(at).toBeCloseTo((frame / 30) * zoom, 0);
+    expect(
+      await end.evaluate((input) => input === document.activeElement),
+    ).toBe(false);
+  }
+  // It commits once when the wheel rests.
   await expect
-    .poll(async () => (await box(after)).x - ruler.x)
-    .not.toBeCloseTo(5 * zoom, 0);
-  await page.keyboard.press('Escape');
+    .poll(async () => (await hook(page)).project.compositions[0]!.playRange)
+    .toEqual({ start: 0, end: 147 / 30 });
+  // A step arrow moves it too.
+  await page.locator('#timeline-foundation [data-action="end-prev"]').click();
+  await expect.poll(at).toBeCloseTo((146 / 30) * zoom, 0);
 });
 
 test("[TL-098] a gap before a lane's first clip has the hatched ghost with its trash button; deleting it moves the clip to 0 in one step", async ({

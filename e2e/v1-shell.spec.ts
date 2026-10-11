@@ -20,15 +20,26 @@ const width = (page: Page, selector: string) =>
     .locator(selector)
     .evaluate((element) => element.getBoundingClientRect().width);
 
-test('[LAY-063] nothing selected: no right rail or panel and no reserved column; a selection animates them in (300 and 65 px), deselect removes them fully; the canvas stays centred', async ({
+test('[LAY-063] the right rail is always shown (Auto Caption alone and disabled with nothing selected); a selection changes its categories but never opens the panel; a rail click toggles the panel; the drawer icon closes it', async ({
   page,
 }) => {
+  // V7 (spec 10.1, B24, B25): fresh project: rail with a disabled Auto
+  // Caption, no panel.
+  const shown = () =>
+    page
+      .locator('#rail-right button:not([hidden])')
+      .evaluateAll((items) =>
+        items.map((item) => (item as HTMLElement).dataset.section),
+      );
+  await expect.poll(() => width(page, '#rail-right')).toBeCloseTo(65, 0);
+  await expect.poll(shown).toEqual(['Captions']);
+  const caption = page.locator('#rail-right [data-section="Captions"]');
+  await expect(caption).toHaveAttribute('aria-disabled', 'true');
+  await expect(caption).toContainText('Auto Caption');
+  await expect(caption).toHaveAttribute('title', /Planned/);
+  await caption.click({ force: true });
   await expect.poll(() => width(page, '#inspector-panel')).toBe(0);
-  await expect.poll(() => width(page, '#rail-right')).toBe(0);
   const stage = await box(page, '.preview-panel');
-  const viewport = page.viewportSize()!;
-  // The stage reaches the right gutter (8 px from the window edge).
-  expect(viewport.width - (stage.x + stage.width)).toBeLessThanOrEqual(10);
   const centred = async () => {
     const stageBox = await box(page, '.canvas-stage');
     const canvas = await box(page, '#composition-canvas');
@@ -37,30 +48,101 @@ test('[LAY-063] nothing selected: no right rail or panel and no reserved column;
     );
   };
   expect(await centred()).toBeLessThanOrEqual(2);
-  // A selection: rail 65 px, panel 300 px plus its border.
+  // Select a picture-less shape layer: the rail changes, the panel stays shut
+  // and nothing moves.
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
-  await expect.poll(() => width(page, '#rail-right')).toBeCloseTo(65, 0);
+  await expect.poll(shown).toContain('Animate');
+  await page.waitForTimeout(300);
+  expect(await width(page, '#inspector-panel')).toBe(0);
+  expect((await box(page, '.preview-panel')).width).toBeCloseTo(stage.width, 0);
+  // A rail click opens the panel (300 px); the same click again closes it.
+  const effects = page.locator('#rail-right [data-section="Effects"]');
+  await effects.click();
   await expect.poll(() => width(page, '#inspector-panel')).toBeCloseTo(300, 0);
-  await expect.poll(centred).toBeLessThanOrEqual(2);
-  // Deselect: both are gone within 400 ms, no column is left.
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
+  await expect(effects).toHaveAttribute('aria-pressed', 'true');
+  await effects.click();
+  await expect.poll(() => width(page, '#inspector-panel')).toBe(0);
+  // Select text: the rail changes; open, then the drawer icon closes it.
+  await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  await expect.poll(shown).toContain('Properties');
+  await page.locator('#rail-right [data-section="Effects"]').click();
+  await expect.poll(() => width(page, '#inspector-panel')).toBeCloseTo(300, 0);
+  const drawer = page.locator('#right-panel-collapse');
+  await expect(drawer.locator('svg path').first()).toHaveAttribute('d', /./);
+  await drawer.click();
+  await expect.poll(() => width(page, '#inspector-panel')).toBe(0);
+  // Open again, then a click on the empty canvas deselects: the panel
+  // closes, the rail stays with Auto Caption only.
+  await page.locator('#rail-right [data-section="Effects"]').click();
+  await expect.poll(() => width(page, '#inspector-panel')).toBeCloseTo(300, 0);
+  const stageBox = await box(page, '.canvas-stage');
+  await page.mouse.click(stageBox.x + 6, stageBox.y + stageBox.height - 6);
   await expect
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([]);
-  await page.waitForTimeout(400);
-  expect(await width(page, '#inspector-panel')).toBe(0);
-  expect(await width(page, '#rail-right')).toBe(0);
-  await expect(page.locator('#inspector-panel')).toBeHidden();
-  const after = await box(page, '.preview-panel');
-  expect(after.width).toBeCloseTo(stage.width, 0);
+  await expect.poll(() => width(page, '#inspector-panel')).toBe(0);
+  await expect.poll(shown).toEqual(['Captions']);
+  expect(await width(page, '#rail-right')).toBeCloseTo(65, 0);
   expect(await centred()).toBeLessThanOrEqual(2);
+});
+
+test('[LAY-065] no rendered icon is smaller than 16 px; rail icons are 24 px and rail labels are never cut', async ({
+  page,
+}) => {
+  // V7 (spec 10.5, B26): measure every visible icon in three states.
+  const small = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('svg.icon')]
+        .filter((icon) => {
+          const box = icon.getBoundingClientRect();
+          const style = getComputedStyle(icon);
+          return (
+            box.width > 0 &&
+            box.height > 0 &&
+            style.visibility !== 'hidden' &&
+            !icon.closest('[hidden], .sr-only') &&
+            Math.min(box.width, box.height) < 15.5
+          );
+        })
+        .map(
+          (icon) =>
+            `${(icon.parentElement as HTMLElement).className || icon.parentElement!.tagName}`,
+        ),
+    );
+  expect(await small()).toEqual([]);
+  await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  await page.locator('#rail-right [data-section="Effects"]').click();
+  expect(await small()).toEqual([]);
+  // Rail icons 24 px; labels fit (no ellipsis, nothing wider than its box).
+  const rails = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.icon-rail button')]
+      .filter((button) => button.getBoundingClientRect().width > 0)
+      .map((button) => {
+        const icon = button.querySelector('svg')!.getBoundingClientRect();
+        const label = button.querySelector<HTMLElement>('.icon-rail-label');
+        return {
+          name: label?.textContent ?? '',
+          icon: Math.round(icon.width),
+          cut: label
+            ? label.scrollWidth > label.clientWidth + 1 ||
+              getComputedStyle(label).textOverflow === 'ellipsis'
+            : false,
+        };
+      }),
+  );
+  for (const rail of rails) {
+    expect(rail.icon, rail.name).toBe(24);
+    expect(rail.cut, rail.name).toBe(false);
+  }
+  expect(rails.map((rail) => rail.name)).toContain('Templates');
 });
 
 test('[LAY-064] regions are separate cards: 8 px gutters of the page colour, opaque 1 px borders, neighbours of different tones', async ({
   page,
 }) => {
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();
+  // (V7: the panel opens from its rail.)
+  await page.locator('#rail-right [data-section="Effects"]').click();
   await expect.poll(() => width(page, '#inspector-panel')).toBeGreaterThan(290);
   const regions = [
     '#rail-left',

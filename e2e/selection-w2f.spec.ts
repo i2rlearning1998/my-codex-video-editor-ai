@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, seekKeep } from './fixtures';
+import { test, expect, hook, artboard, seekKeep, openRight } from './fixtures';
 
 // W2-F1: multi-selection box and action cluster, capability-based menus,
 // Ungroup, layer order and the media-card drop regression.
@@ -198,6 +198,7 @@ test.describe('default example', () => {
     // menu shows Ungroup disabled with the reason.
     await page.locator('#undo').click();
     await page.locator('#scene-list [data-layer-id="example-cards"]').click();
+    await openRight(page);
     await page.locator('[data-subtab="Transform"]').click();
     const scaleX = page.locator(
       '#inspector-content input[aria-label="Scale X"]',

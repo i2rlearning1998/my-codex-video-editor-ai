@@ -7,12 +7,14 @@
 // Delete, Save as template, Move left and Move right. A chevron collapses
 // the strip (a view setting). Below 1024 px wide it becomes a "Scene 2 of 5"
 // button with a list. Every change is one existing scene command.
-import type { Command, EditorEngine } from '../core';
+import { sceneTransitionOf, type Command, type EditorEngine } from '../core';
 import { formatNumber, t } from '../i18n';
 import type { FrameProvider } from '../render/adapter';
 import { closePopover, openPopover } from './components/popover';
 import { createMenu, type MenuEntry } from './context-menu';
 import { iconSvg } from './icons';
+import { sceneTransitionButton } from './scene-transition-actions';
+import { transitionFocus } from './transition-focus';
 import { drawScenePoster } from './scene-poster';
 import { blankScene, duplicateScene } from './scenes';
 import type { EditorSession } from './session';
@@ -226,7 +228,7 @@ export function mountSceneStrip(options: {
   // --- Rename (inline) ------------------------------------------------------
   const rename = (id: string) => {
     const card = list.querySelector<HTMLElement>(
-      `[data-scene-id="${CSS.escape(id)}"]`,
+      `.scene-strip-card[data-scene-id="${CSS.escape(id)}"]`,
     );
     const scene = scenes().find((item) => item.id === id);
     if (!card || !scene) return;
@@ -416,7 +418,12 @@ export function mountSceneStrip(options: {
               } else visible.delete(canvas);
             }
           });
-    list.replaceChildren(...all.map((_, i) => card(i)));
+    // V7 (spec 10.5): "+" or the transition marker between two scenes.
+    list.replaceChildren(
+      ...all.flatMap((scene, i) =>
+        i ? [sceneTransitionButton(engine, scene.id), card(i)] : [card(i)],
+      ),
+    );
     list
       .querySelector<HTMLElement>('[aria-selected="true"]')
       ?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
@@ -427,7 +434,13 @@ export function mountSceneStrip(options: {
   const refresh = () => {
     const next = JSON.stringify([
       session.source.composition.id,
-      scenes().map((scene) => [scene.id, scene.name, scene.duration]),
+      scenes().map((scene) => [
+        scene.id,
+        scene.name,
+        scene.duration,
+        sceneTransitionOf(scene)?.type ?? '',
+      ]),
+      transitionFocus.sceneId,
     ]);
     if (next !== shape) {
       shape = next;

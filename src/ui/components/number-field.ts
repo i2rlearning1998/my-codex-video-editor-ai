@@ -147,11 +147,14 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
   };
   setShown(committed);
   // G2: the owner shows a live value (a drag on the canvas) without a rebuild.
+  let committing = false;
   input.addEventListener('number-field-sync', (event) => {
     const value = (event as CustomEvent<number>).detail;
+    // (While its own commit runs, the owner may correct the value, e.g. a
+    // clamp with a message; V7.)
     if (
-      document.activeElement === input ||
-      wrap.classList.contains('scrubbing')
+      !committing &&
+      (document.activeElement === input || wrap.classList.contains('scrubbing'))
     )
       return;
     committed = value;
@@ -171,7 +174,12 @@ export function createNumberField(options: NumberFieldOptions): HTMLElement {
     endPreview();
     if (round(next) === round(committed)) return;
     committed = next;
-    options.onCommit(next);
+    committing = true;
+    try {
+      options.onCommit(next);
+    } finally {
+      committing = false;
+    }
   };
   // J3: a live preview of the value being dragged (no history).
   let previewing = false;

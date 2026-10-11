@@ -1,3 +1,4 @@
+import { isSceneTransitionMarker } from './scene-transitions';
 import { z } from 'zod';
 import {
   assertJson,
@@ -129,6 +130,8 @@ export const commandSchema = z.discriminatedUnion('type', [
       ...location,
       start: z.number().finite().nonnegative(),
       end: z.number().finite().positive().nullable(),
+      /** V7 (spec 11.1): back to Auto mode (the range is removed). */
+      auto: z.literal(true).optional(),
     })
     .strict(),
   // T-ALL P5: one scene's outliner (organisation only; null clears it).
@@ -471,13 +474,15 @@ export function applyCommand(project: Project, command: Command): void {
     }
     case 'SET_COMPOSITION_RANGE': {
       const composition = compositionById(project, command.compositionId);
+      // V7 (spec 11.1): Auto removes the range; any other value is a fixed
+      // Manual range that no clip edit changes (End may pass the content).
+      if (command.auto) {
+        delete composition.playRange;
+        return;
+      }
       if (command.end !== null && command.end <= command.start)
         throw new Error('The end must come after the start');
-      if (command.start >= composition.duration)
-        throw new Error('The start must lie inside the scene');
-      if (command.start <= 0 && command.end === null)
-        delete composition.playRange;
-      else composition.playRange = { start: command.start, end: command.end };
+      composition.playRange = { start: command.start, end: command.end };
       return;
     }
     case 'SET_OUTLINER': {
@@ -508,6 +513,13 @@ export function applyCommand(project: Project, command: Command): void {
       if (project.compositions.length === 1)
         throw new Error('A project keeps at least one scene');
       project.compositions.splice(index, 1);
+      // V7 (spec 10.5): removing a scene removes its transitions: its own
+      // incoming one goes with it, and the next scene's leads from it.
+      const next = project.compositions[index];
+      if (next)
+        next.markers = next.markers.filter(
+          (marker) => !isSceneTransitionMarker(marker),
+        );
       return;
     }
     case 'CREATE_COMPOSITION':

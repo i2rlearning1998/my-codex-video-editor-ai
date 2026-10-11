@@ -2,6 +2,16 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 7 (T-ALL).
 
+## V7 series (V7a to V7h) — 2026-10-11
+
+- **Right rail and icons (V7a):** the right rail is always shown (Auto Caption alone, planned, with nothing selected); a selection never opens the panel; a rail click toggles it; the drawer icon closes it; one icon scale (16/20/24), no icon under 16 px.
+- **Timeline (V7b):** 18 px padding so time 0 and the playhead are whole; an empty project is just the centred drop box; a bounded 300 px/s marquee auto-scroll; the collapsed player always fits.
+- **Range (V7c):** Auto mode (Clipchamp) or a fixed Manual range that no clip edit changes, with a live dim on every input; export Start frame and End frame, frames and audio exactly in range.
+- **Scene outliner (V7d):** the shared vertical menus (also Shift+F10), themed 32 px rows, Duplicate collection keeps the tree, Delete keeps the layers.
+- **Transitions (V7e):** one place, the right Transition panel; transitions between scenes from a "+" in the scene strip and board, played and exported across the cut.
+- **Audio (V7f, V7g):** the PR #14 engine ported (EQ, compressor, loudness, ducking, preview equals export); the right Audio panel (Volume 0 to 200 %, Mute, Pan, Equalizer, Compressor, Loudness, Voice / Music and ducking); sound fades; a built-in sound pack in the left Audio category.
+- **Record & create (V7h):** voiceover recording with countdown, meter, pause and review; Text to speech panel with Save and replace (browser voices preview only; no neural engine, see D-214).
+
 ## V-series (V1 to V5) — 2026-10-10
 
 - **Shell (V1):** separate region cards with 8 px gutters and their own tones; the right rail and panel exist only while something is selected and slide in and out; the canvas stays centred.

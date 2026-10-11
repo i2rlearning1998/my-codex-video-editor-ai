@@ -90,7 +90,8 @@ export function mountWorkspace(
     right = SIZES[layout].right || SIZES.wide.right,
     height: number | null = storedHeight();
   let leftClosed = layout === 'narrow' || layout === 'phone',
-    rightClosed = layout !== 'wide',
+    // V7 (spec 10.1): the right panel opens only from its rail.
+    rightClosed = true,
     empty = true;
   // Earlier pixel-measuring e2e tests keep the right column reserved (the
   // T-ALL layout) through a test-only flag set by the e2e fixture; the V1
@@ -148,21 +149,27 @@ export function mountWorkspace(
       '--left-panel',
       `${docked('left') && !leftClosed ? left : 0}px`,
     );
-    const gone = empty && !reserve;
+    // V7 (spec 10.1): the right rail is always a column; the panel beside
+    // it takes room only while open (the legacy e2e reserve keeps it).
+    const gone = rightClosed && !reserve;
     shell.style.setProperty(
       '--right-panel',
-      `${docked('right') && !rightClosed && !gone ? right : 0}px`,
+      `${docked('right') && !rightClosed ? right : 0}px`,
     );
-    shell.style.setProperty('--right-rail-width', gone ? '0px' : '65px');
+    shell.style.setProperty('--right-rail-width', '65px');
     // V1: grid columns carry each card plus its 8 px gutter, so the cards
     // keep their exact widths; an empty column carries nothing.
     const leftOpen = docked('left') && !leftClosed;
-    const rightShown = docked('right') && !rightClosed && !gone;
+    const rightShown = docked('right') && (!rightClosed || reserve);
     shell.style.setProperty('--rail-col', `${sizes.rail + 8}px`);
     shell.style.setProperty('--left-col', `${leftOpen ? left + 8 : 0}px`);
     shell.style.setProperty('--right-col', `${rightShown ? right + 8 : 0}px`);
-    shell.style.setProperty('--right-rail-col', gone ? '0px' : '73px');
+    shell.style.setProperty('--right-rail-col', '73px');
     shell.classList.toggle('right-gone', gone);
+    // (The legacy e2e reserve keeps a closed panel's column but not its
+    // content.)
+    shell.classList.toggle('right-reserved', reserve && rightClosed);
+    void empty;
     // The open widths, for drawers and for content that must not reflow.
     shell.style.setProperty('--left-open', `${left}px`);
     shell.style.setProperty('--right-open', `${right}px`);
@@ -182,7 +189,7 @@ export function mountWorkspace(
     shell.classList.toggle('right-drawer', !docked('right'));
     const drawerOpen =
       (!docked('left') && !leftClosed) ||
-      ((layout === 'narrow' || layout === 'phone') && !rightClosed && !gone);
+      ((layout === 'narrow' || layout === 'phone') && !rightClosed);
     if (scrim) scrim.hidden = !drawerOpen;
     leftToggle
       .querySelector('button')
@@ -404,7 +411,7 @@ export function mountWorkspace(
       // A new layout starts from its own defaults.
       layout = next;
       leftClosed = layout === 'narrow' || layout === 'phone';
-      rightClosed = layout !== 'wide';
+      rightClosed = true;
       left = Math.max(LIMITS.left[0], SIZES[layout].left || left);
       right = Math.max(LIMITS.right[0], SIZES[layout].right || right);
     }
