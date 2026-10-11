@@ -158,6 +158,7 @@ describe('[TL-004] locked tracks', () => {
 
 interface ClipRow {
   id: string;
+  layerId: string;
   name: string;
   trackId: string;
   assetId: string | null;
@@ -185,26 +186,41 @@ describe('[TL-027][TL-032] clipboard, links and detach', () => {
       );
     return { engine, session, editing, clips };
   };
-  it('pastes copies at the playhead with the insert rule, repeatedly', async () => {
+  it('pastes copies at the playhead on a new lane directly above, repeatedly', async () => {
     const { engine, session, editing, clips } = await setup();
     session.select('layer-a'); // clip-a 0..2 on Video 1
     editing.performEdit(engine, session, 'copy');
     expect(engine.canUndo).toBe(false);
     session.setCurrentTime(2);
     editing.performEdit(engine, session, 'paste');
+    const order = () =>
+      [...engine.state.compositions[0]!.tracks]
+        .sort((x, y) => x.order - y.order)
+        .map((track) => track.id);
     const video1 = () =>
       clips()
         .filter((clip) => clip.trackId === 'video-1')
-        .map((clip) => [clip.startTime, clip.duration])
-        .sort((a, b) => a[0]! - b[0]!);
-    // The copy lands at 2 s on Video 1 and pushes clip-b (3..5) to 4 s.
+        .map((clip) => [clip.startTime, clip.duration]);
+    // V2 (spec 2c, B23): Video 1 is unchanged; the copy starts at the
+    // playhead on a new lane directly above it, and is selected.
     expect(video1()).toEqual([
       [0, 2],
-      [2, 2],
-      [4, 2],
+      [3, 2],
     ]);
+    const first = clips().find(
+      (clip) => clip.layerId === session.selectedIds[0],
+    )!;
+    expect(first.startTime).toBe(2);
+    expect(order().indexOf(first.trackId)).toBe(order().indexOf('video-1') - 1);
+    expect(session.currentTime).toBe(2);
+    // A second paste goes above the selected copy's lane.
     editing.performEdit(engine, session, 'paste');
-    expect(video1()).toHaveLength(4);
+    const second = clips().find(
+      (clip) => clip.layerId === session.selectedIds[0],
+    )!;
+    expect(order().indexOf(second.trackId)).toBe(
+      order().indexOf(first.trackId) - 1,
+    );
     expect(overlaps(engine.state as unknown as Project)).toEqual([]);
     expect(engine.history.undo.map((step) => step.label)).toEqual([
       'Paste',

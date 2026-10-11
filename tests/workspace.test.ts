@@ -348,7 +348,8 @@ describe('T3 editing workspace', () => {
       setData: (key: string, value: string) => data.set(key, value),
       types: ['application/x-editor-row'],
     };
-    const drag = (type: string, target: Element, x = 384) => {
+    // V2 (D-191): the lanes start at x = 0 (no 224 px header any more).
+    const drag = (type: string, target: Element, x = 160) => {
       const e = new MouseEvent(type, { bubbles: true, clientX: x });
       Object.defineProperty(e, 'dataTransfer', { value: transfer });
       target.dispatchEvent(e);
@@ -413,7 +414,7 @@ describe('T3 editing workspace', () => {
       }) as DOMRect;
     const over = new MouseEvent('dragover', {
       bubbles: true,
-      clientX: 464,
+      clientX: 240,
       clientY: 56,
     });
     Object.defineProperty(over, 'dataTransfer', { value: transfer });
@@ -422,13 +423,13 @@ describe('T3 editing workspace', () => {
       root.querySelector('.timeline-asset-ghost[data-shown="true"]'),
     ).not.toBeNull();
     expect(root.querySelector('.asset-drop-target')).toBeNull();
-    drag('drop', trackBody, 464);
+    drag('drop', trackBody, 240);
     setAssetDrag(null);
     expect(root.querySelector('.timeline-asset-ghost')).toBeNull();
     const secondLayer = s.engine.state.compositions[0]!.layers.at(-1)!;
     const selectedAfterSecond = shell.session.selectedId;
     expect(selectedAfterSecond).toBe(secondLayer.id);
-    drag('drop', root.querySelector('[data-track-id] .timeline-track')!, 704);
+    drag('drop', root.querySelector('[data-track-id] .timeline-track')!, 480);
     const composition = s.engine.state.compositions[0]!;
     const clips = composition.tracks[0]!.clips;
     expect(clips).toHaveLength(3);

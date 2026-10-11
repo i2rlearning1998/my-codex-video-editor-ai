@@ -165,27 +165,40 @@ test.describe('timeline', () => {
       (await hook(page)).project.compositions[0]!.layers.map((item) => item.id);
     await clipEl(page, 'clip-c').click({ position: { x: 30, y: 10 } });
     await page.keyboard.press('Control+d');
-    const video2 = async () =>
-      (await hook(page)).project.compositions[0]!.tracks[1]!.clips;
+    // V2 (spec 2c, B23, D-191): the copy keeps its time on a new lane
+    // directly above the original's.
+    const lanes = async () =>
+      [...(await hook(page)).project.compositions[0]!.tracks].sort(
+        (x, y) => x.order - y.order,
+      );
+    const all = async () => (await lanes()).flatMap((track) => track.clips);
+    let order = await lanes();
+    const at = order.findIndex((track) => track.id === 'video-2');
     expect(
-      (await video2()).map((item) => [item.startTime, item.duration]),
-    ).toEqual([
-      [1, 3],
-      [4, 3],
-    ]);
-    const copy = (await video2()).find((item) => item.id !== 'clip-c')!;
+      order[at]!.clips.map((item) => [item.id, item.startTime, item.duration]),
+    ).toEqual([['clip-c', 1, 3]]);
+    expect(
+      order[at - 1]!.clips.map((item) => [item.startTime, item.duration]),
+    ).toEqual([[1, 3]]);
+    const copy = order[at - 1]!.clips[0]!;
     expect(copy.layerId).not.toBe('layer-c');
     expect(await layerIds()).toContain(copy.layerId);
     // Independent: deleting the original leaves the copy and its layer intact.
     await clipEl(page, 'clip-c').click({ position: { x: 30, y: 10 } });
     await page.keyboard.press('Delete');
-    expect((await video2()).map((item) => item.id)).toEqual([copy.id]);
+    expect((await all()).map((item) => item.id)).toContain(copy.id);
+    expect((await all()).map((item) => item.id)).not.toContain('clip-c');
     expect(await layerIds()).toContain(copy.layerId);
     await page.locator('#undo').click();
     await page.locator('#undo').click();
     await clipEl(page, 'clip-c').click({ position: { x: 30, y: 10 } });
+    const count = (await all()).length;
     await page.getByRole('button', { name: 'Duplicate', exact: true }).click();
-    expect(await video2()).toHaveLength(2);
+    expect(await all()).toHaveLength(count + 1);
+    order = await lanes();
+    expect(
+      order[order.findIndex((track) => track.id === 'video-2') - 1]!.clips,
+    ).toHaveLength(1);
   });
 
   test('[TL-028] clip moves land on the frame grid; snapping to the playhead shows a line', async ({
@@ -252,11 +265,13 @@ test('[TL-014] wheel, Shift+wheel and trackpad scroll horizontally; vertical scr
   page,
 }) => {
   // The example opens with seven tracks, taller than the timeline panel.
+  // V2 (spec 2, D-191): there are no lane headers any more; the ruler stays
+  // pinned at the top and lanes and ruler scroll together sideways.
   const scroll = page.locator('.timeline-scroll');
   const box = (await scroll.boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  const header = page.locator('.timeline-track-header').first();
-  const headerX = (await header.boundingBox())!.x;
+  const ruler = page.locator('.timeline-ruler').first();
+  const rulerY = (await ruler.boundingBox())!.y;
   const left = () => scroll.evaluate((el) => el.scrollLeft);
   await page.mouse.wheel(300, 0); // trackpad / horizontal wheel
   await expect.poll(left).toBeGreaterThan(0);
@@ -265,19 +280,15 @@ test('[TL-014] wheel, Shift+wheel and trackpad scroll horizontally; vertical scr
   await page.mouse.wheel(0, 300); // Shift+wheel
   await page.keyboard.up('Shift');
   await expect.poll(left).toBeGreaterThan(afterTrackpad);
-  expect((await header.boundingBox())!.x).toBeCloseTo(headerX, 0);
+  // The ruler and the lanes stay aligned in time.
+  const rulerX = (await ruler.boundingBox())!.x;
+  const lane = (await page.locator('.timeline-track').first().boundingBox())!;
+  expect(rulerX).toBeCloseTo(lane.x, 0);
   await page.mouse.wheel(0, 120); // plain vertical wheel
   await expect
     .poll(() => scroll.evaluate((el) => el.scrollTop))
     .toBeGreaterThan(0);
-  const rows = page.locator('.timeline-nle-row');
-  for (let i = 0; i < (await rows.count()); i++) {
-    const row = rows.nth(i);
-    const head = (await row.locator('.timeline-track-header').boundingBox())!;
-    const lane = (await row.locator('.timeline-track').boundingBox())!;
-    expect(head.y).toBeCloseTo(lane.y, 0);
-    expect(head.x).toBeCloseTo(headerX, 0);
-  }
+  expect((await ruler.boundingBox())!.y).toBeCloseTo(rulerY, 0);
 });
 
 test.describe('canvas', () => {
@@ -445,12 +456,13 @@ test.describe('layers and inspector', () => {
       page.locator('.timeline-clip[data-id="example-headline"]'),
     ).toHaveAttribute('aria-pressed', 'true');
     await canvasClick(page, 300, 600); // supporting line on the canvas
+    // V3 (spec 4): the Scene outliner is a tree; rows use aria-selected.
     await expect(row('example-subtitle')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true',
     );
     await expect(row('example-headline')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'false',
     );
   });
@@ -482,7 +494,10 @@ test.describe('layers and inspector', () => {
       parseFloat(
         await page
           .locator(`#scene-list [data-layer-id="${id}"]`)
-          .evaluate((el) => (el as HTMLElement).style.paddingLeft),
+          // V3: the outliner indents rows by their --depth.
+          .evaluate((el) =>
+            (el as HTMLElement).style.getPropertyValue('--depth'),
+          ),
       );
     expect(await indent('example-front')).toBeGreaterThan(
       await indent('example-cards'),

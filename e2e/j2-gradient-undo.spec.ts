@@ -100,12 +100,16 @@ test('[SHP-029] Solid, Linear and Radial share one stop list: red and yellow sur
   expect(gradient.type).toBe('linear');
   expect(gradient.stops).toEqual(redYellow);
   // Left is red and right is yellow.
-  const left = await pixel(page, 524, 360),
-    right = await pixel(page, 756, 360);
-  // The gradient runs corner to corner, so the edges are nearly pure.
-  expect(left[0]).toBeGreaterThan(200);
-  expect(right[0]).toBeGreaterThan(200);
-  expect(right[1]! - left[1]!).toBeGreaterThan(100);
+  // The gradient runs corner to corner, so the edges are nearly pure. (V1:
+  // the canvas refits while the right panel slides in, so this polls.)
+  await expect
+    .poll(async () => {
+      // (Off the side handles, which sit at the edges' middles.)
+      const left = await pixel(page, 524, 330),
+        right = await pixel(page, 756, 330);
+      return left[0]! > 200 && right[0]! > 200 && right[1]! - left[1]! > 100;
+    })
+    .toBe(true);
   // Solid, then a new solid colour, then Linear: the new colour leads.
   await page.locator('[data-gradient-type="solid"]').click();
   shape = await layer(page, id);

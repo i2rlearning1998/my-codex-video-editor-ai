@@ -8,6 +8,7 @@ import {
   rulerBox,
   showCategory,
   openInspector,
+  seekKeep,
 } from './fixtures';
 
 // W4-B: decoded video and images on the canvas and in playback.
@@ -84,11 +85,7 @@ async function readCode(page: Page, t: Transform = FULL) {
 const expected = (k: number) => k - 15;
 
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 const frameNow = async (page: Page) =>
   Math.round((await hook(page)).session.time * 30);

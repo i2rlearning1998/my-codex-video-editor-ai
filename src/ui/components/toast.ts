@@ -20,6 +20,27 @@ function ensureContainer(): HTMLElement {
   return container;
 }
 
+/** V2 (B6): a toast is always a plain sentence. Raw JSON (a validation
+ *  report) shows its first message, or a general sentence. */
+export function plainMessage(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) return text;
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    const first = Array.isArray(parsed) ? parsed[0] : parsed;
+    const message = (first as { message?: unknown } | undefined)?.message;
+    if (
+      typeof message === 'string' &&
+      message.trim() &&
+      !/^[[{]/.test(message.trim())
+    )
+      return message.trim();
+  } catch {
+    // Not JSON after all: fall through to the general sentence.
+  }
+  return t('error.generic');
+}
+
 export function showToast(
   text: string,
   kind: ToastKind = 'info',
@@ -32,7 +53,7 @@ export function showToast(
   item.setAttribute('role', kind === 'error' ? 'alert' : 'status');
   const label = document.createElement('span');
   label.className = 'toast-text';
-  label.textContent = text;
+  label.textContent = plainMessage(text);
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'toast-close';

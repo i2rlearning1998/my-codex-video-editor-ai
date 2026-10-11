@@ -1,7 +1,14 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  laneAction,
+  toScreen,
+  showCategory,
+} from './fixtures';
 
 // W4-A: media import, browser media storage and the Project Media tab.
 // Fixtures come from tests/fixtures/media (DEV-008). The sandbox Chromium cannot
@@ -389,7 +396,7 @@ test.describe('NLE fixture', () => {
       }),
     ).toBeVisible();
     // A locked track refuses too.
-    await page.locator('[data-action="track-lock"][data-id="video-3"]').click();
+    await laneAction(page, 'video-3', 'track-lock');
     await card(page, WEBM).dragTo(
       page.locator('.timeline-track[data-track-id="video-3"]'),
       { targetPosition: { x: 400, y: 12 } },

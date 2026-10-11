@@ -226,7 +226,9 @@ test('[TL-079] a "+" line at a lane edge makes a new lane; a lane of another gro
   await addRectangle(page);
   const lane = rows(page).first();
   const laneBox = (await lane.boundingBox())!;
-  expect(Math.abs(laneBox.height - 36)).toBeLessThan(1);
+  // V2 (spec 2, D-191): text and shape lanes are 28 px and their clips fill
+  // them (visual lanes 52 px, audio 36 px).
+  expect(Math.abs(laneBox.height - 28)).toBeLessThan(1);
   const clipBox = (await lane.locator('.timeline-clip').first().boundingBox())!;
   expect(clipBox.height).toBeGreaterThanOrEqual(28);
   const ruler = (await page.locator('.timeline-ruler').boundingBox())!;

@@ -837,7 +837,7 @@ input[type='number'],
   gap: 1px;
   padding: 0 var(--space-3);
 }
-.scene-row {
+.scene-row:not(.outliner-row) {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -849,11 +849,11 @@ input[type='number'],
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
 }
-.scene-row[aria-pressed='true'] {
+.scene-row:not(.outliner-row)[aria-pressed='true'] {
   background: var(--color-accent-soft);
   color: var(--color-text);
 }
-.scene-row:hover {
+.scene-row:not(.outliner-row):hover {
   background: var(--color-bg-hover);
 }
 .layer-icon {
@@ -4134,7 +4134,7 @@ button.color-swatch:hover {
 .scene-list {
   padding: 0 var(--space-2) var(--space-3);
 }
-.scene-row {
+.scene-row:not(.outliner-row) {
   min-block-size: 32px;
   padding: 0 var(--space-2);
   justify-content: flex-start;
@@ -4144,15 +4144,15 @@ button.color-swatch:hover {
   color: var(--text-secondary);
   font-weight: var(--weight-regular);
 }
-.scene-row:hover {
+.scene-row:not(.outliner-row):hover {
   background-color: var(--hover);
   color: var(--text);
 }
-.scene-row[aria-pressed='true'] {
+.scene-row:not(.outliner-row)[aria-pressed='true'] {
   background-color: var(--accent-soft);
   color: var(--text);
 }
-.scene-row:active:not(:disabled) {
+.scene-row:not(.outliner-row):active:not(:disabled) {
   transform: none;
 }
 .deep-panel {
@@ -7077,7 +7077,8 @@ input[type='range'] {
   font-weight: 600;
   visibility: hidden;
 }
-.timeline-ghost-lane:hover {
+/* V2 (B8): the ghost lanes light up only while something is dragged. */
+.timeline-dragging .timeline-ghost-lane:hover {
   border-color: var(--color-accent);
 }
 .timeline-ghost-lane:hover .ghost-hide {
@@ -7259,4 +7260,581 @@ input[type='range'] {
   inset-inline-end: -3px;
   inline-size: 6px;
   cursor: ew-resize;
+}
+
+/* ===== V1 shell (spec 1): separate cards on a darker page, 8 px gutters,
+   opaque 1 px borders, each region its own tone. The right rail and panel
+   take no space while nothing is selected (workspace.ts sets their columns
+   to 0); their columns animate in and out. ===== */
+.editor-shell {
+  background: var(--region-page);
+  padding: 0 4px 4px;
+  grid-template-columns:
+    var(--rail-col, 72px) var(--left-col, 328px) minmax(0, 1fr)
+    var(--right-col, 0px) var(--right-rail-col, 0px);
+  grid-template-rows:
+    var(--topbar-height) minmax(0, 1fr) calc(var(--timeline-height) + 8px)
+    var(--statusbar-height);
+}
+.editor-shell > .topbar {
+  background: var(--region-page);
+}
+.editor-shell > #rail-left,
+.editor-shell > .library,
+.editor-shell > .preview-panel,
+.editor-shell > .inspector,
+.editor-shell > #rail-right,
+.editor-shell > .timeline {
+  margin: 4px;
+  border: 1px solid var(--region-border);
+  border-radius: 12px;
+  overflow: hidden;
+  min-inline-size: 0;
+}
+.editor-shell > #rail-left,
+.editor-shell > #rail-right {
+  background: var(--region-rail);
+}
+.editor-shell > .library,
+.editor-shell > .inspector {
+  background: var(--region-panel);
+}
+.editor-shell > .preview-panel {
+  background: var(--region-stage);
+}
+.editor-shell > .preview-panel .canvas-stage {
+  background: var(--region-stage);
+}
+.editor-shell > .preview-panel #canvas-footer {
+  background: var(--region-footer);
+  border-block-start: 1px solid var(--region-border);
+}
+.editor-shell > .timeline {
+  background: var(--region-timeline);
+}
+.editor-shell .timeline-scroll {
+  background: var(--region-lanes);
+}
+.editor-shell .scene-strip {
+  background: var(--region-footer);
+}
+/* Columns of width 0 hold no card (no border, no gutter). A collapsing
+   side panel keeps its gutter while its column animates, so its width never
+   jumps by the gutter when the collapse starts; it fades out instead. */
+.editor-shell.right-gone > .inspector,
+.editor-shell.right-gone > #rail-right,
+.editor-shell.right-gone > .panel-resizer.right {
+  margin-inline: 0;
+  border-inline-width: 0;
+  opacity: 0;
+}
+.editor-shell.library-collapsed:not(.left-drawer) > .library,
+.editor-shell.inspector-collapsed:not(.right-drawer) > .inspector {
+  opacity: 0;
+}
+.editor-shell.right-gone > .inspector,
+.editor-shell.right-gone > #rail-right {
+  visibility: hidden;
+  transition:
+    opacity var(--motion-panel) var(--ease-exit),
+    visibility 0s linear var(--motion-panel);
+}
+.editor-shell > .inspector,
+.editor-shell > #rail-right {
+  transition: opacity var(--motion-panel) var(--ease-enter);
+}
+@media (prefers-reduced-motion: reduce) {
+  .editor-shell,
+  .editor-shell > .inspector,
+  .editor-shell > #rail-right {
+    transition: none !important;
+  }
+}
+/* Right rail (spec 1.5): 65 px, 24 px icons, 10 px labels, ~62 px pitch;
+   the active item is a 56 x 58 rounded box with a 3 px accent bar at the
+   far right edge. */
+.editor-shell > #rail-right {
+  padding: var(--space-2) 0;
+  gap: 4px;
+  align-items: center;
+}
+#rail-right button {
+  position: relative;
+  inline-size: 56px;
+  min-block-size: 58px;
+  border-radius: 10px;
+}
+#rail-right button .icon-rail-label {
+  font-size: 10px;
+  line-height: 1.15;
+}
+#rail-right button[aria-pressed='true'] {
+  background: var(--region-panel);
+}
+#rail-right button[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset-block: 14px;
+  inset-inline-end: -4px;
+  inline-size: 3px;
+  border-radius: 2px;
+  background: var(--region-accent);
+}
+.editor-shell > .inspector {
+  /* The panel itself scrolls (the card rule above hides overflow). */
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.editor-shell > .inspector:hover {
+  scrollbar-color: var(--region-scrollbar) transparent;
+}
+@media (max-width: 767px) {
+  .editor-shell {
+    grid-template-columns: var(--rail-col, 64px) 0 minmax(0, 1fr) 0 0;
+  }
+}
+.editor-shell:not([data-layout='phone']).right-drawer > .inspector {
+  inset-inline-end: var(--right-rail-col);
+}
+.editor-shell:not([data-layout='phone']).left-drawer > .library {
+  inset-inline-start: var(--rail-col);
+}
+/* A phone's bottom sheets stay edge to edge. */
+.editor-shell[data-layout='phone'] > .library,
+.editor-shell[data-layout='phone'] > .inspector {
+  margin: 0;
+  border-radius: 12px 12px 0 0;
+}
+
+/* ===== V2 timeline (Clipchamp clone spec 2): no lane headers; lanes are
+   52 / 28 / 36 px with 8 px gaps showing the card colour; clips fill their
+   lane. ===== */
+.timeline-nle-row {
+  border-bottom: 0;
+  background: var(--region-lanes);
+}
+.timeline-nle-row + .timeline-nle-row {
+  margin-top: 8px;
+}
+.editor-shell .timeline-scroll {
+  background: var(--region-timeline);
+}
+.timeline-nle-row .timeline-clip.nle-clip {
+  top: 0;
+  height: 100%;
+  min-height: 0;
+}
+.timeline-ghost-lane {
+  box-sizing: border-box;
+  block-size: 28px;
+  min-block-size: 28px;
+}
+.timeline-ghost-lane[data-ghost='above'] {
+  margin-block: 0 8px;
+}
+.timeline-ghost-lane[data-ghost='below'] {
+  margin-block: 8px 0;
+}
+/* V2: the edge stays draggable while collapsed (back up, with hysteresis). */
+.editor-shell.timeline-collapsed .timeline > .panel-resizer {
+  display: block;
+}
+.timeline-content {
+  min-block-size: 100%;
+}
+
+/* ===== V3 Scene outliner (spec 4): Blender-like rows, the same in both
+   themes. ===== */
+.scene-outliner {
+  --ol-row: #474747;
+  --ol-zebra: #4f4f4f;
+  --ol-selected: #575757;
+  --ol-active: #666666;
+  --ol-target: #333333;
+  --ol-text: #bcbcbc;
+  --ol-active-text: #e6d800;
+  --ol-selected-text: #38a0d6;
+  --ol-layer-icon: #e8964a;
+  --depth: 0;
+  outline: none;
+  overflow: auto;
+  padding: var(--space-1) 0;
+}
+#scene-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+#scene-heading .outliner-search {
+  flex: 1 0 100%;
+  min-block-size: 32px;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--region-border);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  color: var(--text);
+  font-size: 13px;
+}
+.outliner-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-block-size: 24px;
+  padding-inline: calc(6px + var(--depth) * 20px) 6px;
+  background: var(--ol-row);
+  color: var(--ol-text);
+  font-size: 13px;
+  cursor: default;
+  user-select: none;
+}
+.outliner-row.zebra {
+  background: var(--ol-zebra);
+}
+.outliner-row[aria-selected='true'] {
+  background: var(--ol-selected);
+  color: var(--ol-selected-text);
+}
+.outliner-row.active {
+  background: var(--ol-active);
+  color: var(--ol-active-text);
+}
+.outliner-row.drop-into {
+  background: var(--ol-target);
+}
+.outliner-row::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(11px + (var(--depth) - 1) * 20px);
+  inline-size: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.outliner-row[data-row-kind='root']::before {
+  display: none;
+}
+.outliner-arrow {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 14px;
+  block-size: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+}
+.outliner-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--ol-layer-icon);
+}
+.outliner-icon[data-kind='collection'],
+.outliner-icon[data-kind='root'] {
+  color: #d8d8d8;
+}
+.outliner-name {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.outliner-strip {
+  display: inline-flex;
+  gap: 2px;
+  opacity: 0.5;
+}
+.outliner-toggles {
+  display: inline-flex;
+  gap: 2px;
+}
+.outliner-toggle {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  opacity: 0;
+}
+.outliner-row:hover .outliner-toggle,
+.outliner-row:focus-within .outliner-toggle {
+  opacity: 0.9;
+}
+.outliner-toggle.active {
+  opacity: 0.55;
+}
+.outliner-rename {
+  flex: 1;
+  min-inline-size: 0;
+  font-size: 13px;
+}
+.outliner-band {
+  position: fixed;
+  z-index: 50;
+  border: 1px dashed #d8d8d8;
+  pointer-events: none;
+}
+.outliner-drag-tip {
+  position: fixed;
+  z-index: 60;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #222;
+  color: #e6e6e6;
+  font-size: 12.5px;
+  pointer-events: none;
+}
+.outliner-ghost {
+  position: fixed;
+  top: -100px;
+  left: -100px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #333;
+  color: #e6e6e6;
+  font-size: 13px;
+  pointer-events: none;
+  z-index: var(--z-menu);
+}
+.outliner-menu {
+  position: fixed;
+  z-index: 70;
+}
+
+/* ===== V4 (spec 5): FX tile panels. Three columns of 80 px tiles with a
+   12 px gap, a sticky search box, a label under each tile; the selected
+   tile has a 4 px accent border and an accent label block; its settings
+   open inline under its row. ===== */
+.fx-tiles {
+  display: grid;
+  gap: var(--space-3);
+}
+.fx-tiles-search {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  inline-size: 100%;
+  block-size: 30px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--region-border);
+  border-radius: 8px;
+  background: var(--region-panel);
+  color: var(--text);
+  font-size: var(--font-size-sm);
+}
+.fx-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 80px);
+  justify-content: space-between;
+  gap: 12px;
+}
+.fx-tiles-group {
+  grid-column: 1 / -1;
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.fx-tile {
+  display: grid;
+  grid-template-rows: 80px auto;
+  gap: 4px;
+  inline-size: 80px;
+  min-block-size: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+}
+.fx-tile:hover,
+.fx-tile[data-hovering] {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+}
+.fx-tile-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: 80px;
+  block-size: 80px;
+  overflow: hidden;
+  border: 4px solid transparent;
+  border-radius: 8px;
+  background: #000;
+}
+.fx-tile-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.fx-tile-none {
+  background: var(--region-lanes);
+  color: var(--text-secondary);
+}
+.fx-tile-loading::after {
+  content: '';
+  position: absolute;
+  inset: calc(50% - 10px);
+  border: 2px solid color-mix(in srgb, var(--region-accent) 30%, transparent);
+  border-top-color: var(--region-accent);
+  border-radius: 50%;
+  animation: fx-spin 0.8s linear infinite;
+}
+@keyframes fx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.fx-tile-label {
+  display: -webkit-box;
+  overflow: hidden;
+  padding: 2px 4px;
+  border-radius: 0 0 8px 8px;
+  font-size: 12.5px;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.fx-tile[aria-selected='true'] .fx-tile-thumb {
+  border-color: var(--region-accent);
+}
+.fx-tile[aria-selected='true'] .fx-tile-label {
+  background: var(--region-accent);
+  color: #fff;
+}
+.fx-tile-badge {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
+  display: grid;
+  place-items: center;
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 50%;
+  background: var(--region-accent);
+  color: #fff;
+}
+.fx-tiles-settings {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+.fx-setting-label,
+.fx-setting-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.fx-setting-check {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+.fx-slider {
+  --fill: 50%;
+  inline-size: 240px;
+  max-inline-size: 100%;
+  accent-color: var(--region-accent);
+}
+.fx-adjust {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-end: var(--space-3);
+}
+.fx-adjust .fx-slider {
+  inline-size: 100%;
+}
+.fx-slider-exposure,
+.fx-slider-contrast {
+  background: linear-gradient(90deg, #111, #fff);
+  border-radius: 999px;
+}
+.fx-slider-saturation {
+  background: linear-gradient(90deg, #8a8a8a, #2bd46a);
+  border-radius: 999px;
+}
+.fx-slider-temperature {
+  background: linear-gradient(90deg, #3b82f6, #f59e0b);
+  border-radius: 999px;
+}
+
+/* ===== V5 (spec 6): the "+" shows only with the pointer within about
+   20 px of the cut (its own 40 px hit area), a 14 px purple rounded square;
+   a transition is a lavender band straddling the cut with a dark line at the
+   cut and a lavender marker with a bow-tie glyph. ===== */
+.editor-shell .transition-add {
+  inline-size: 40px;
+  block-size: 100%;
+  inset-block: 0;
+  margin: 0 0 0 -20px;
+  background: transparent;
+  border-radius: 0;
+  opacity: 1;
+  transition: none;
+}
+.editor-shell .transition-add svg {
+  inline-size: 14px;
+  block-size: 14px;
+  padding: 1px;
+  border-radius: 4px;
+  background: var(--region-accent);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.editor-shell .transition-add:hover svg,
+.editor-shell .transition-add:focus-visible svg {
+  opacity: 1;
+}
+.editor-shell .timeline-track:hover .transition-add {
+  opacity: 1;
+}
+.transition-band {
+  position: absolute;
+  inset-block: 0;
+  z-index: 3;
+  background: color-mix(in srgb, #c4a8ff 35%, transparent);
+  pointer-events: none;
+}
+.transition-band::after {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(50% - 0.5px);
+  inline-size: 1px;
+  background: #1d1b26;
+}
+.editor-shell .transition-chip {
+  /* (24 px: T7's minimum for the marker, LAY-054.) */
+  inline-size: 24px;
+  block-size: 24px;
+  margin-inline-start: -12px;
+  margin-block-start: -12px;
+  border-radius: 5px;
+  background: #c4a8ff;
+  color: #1d1b26;
+  box-shadow: none;
+}
+.editor-shell .transition-chip[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--region-accent);
+}
+
+/* V-series: no transition while the shell lays itself out the first time. */
+.editor-shell.shell-booting,
+.editor-shell.shell-booting > * {
+  transition: none !important;
 }

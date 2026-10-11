@@ -1,4 +1,4 @@
-import { test, expect, hook, toScreen, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, toScreen, artboard, seekKeep } from './fixtures';
 import type { Page } from '@playwright/test';
 
 /** T5: Stop left the Player bar; the palette runs it. */
@@ -16,12 +16,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 async function drag(
   page: Page,

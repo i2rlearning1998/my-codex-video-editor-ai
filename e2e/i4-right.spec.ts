@@ -168,11 +168,8 @@ test('[LAY-045] media: an image has Image (Crop, Flip, Corners, Border) and Filt
 }) => {
   await openFixtureProject('nle-example.json');
   await select(page, 'layer-c');
-  // J15: a picture's own controls are under Advanced.
-  await expect(tab(page, 'Properties')).toHaveAttribute(
-    'aria-label',
-    'Advanced',
-  );
+  // V4 (spec 5): the first tab is named after the picture.
+  await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Image');
   await expect(panel(page).locator('[data-action="right-crop"]')).toBeVisible();
   await expect(
     panel(page)
@@ -182,21 +179,19 @@ test('[LAY-045] media: an image has Image (Crop, Flip, Corners, Border) and Filt
   // J15: Filters lists the looks; T-ALL P6 (D-189): they are the FX
   // library's filters, all live, Original first.
   await tab(page, 'Filters').click();
+  // V4: tiles (spec 5), None first and selected.
   await expect(
-    panel(page).locator('[data-choice="filter.none"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
+    panel(page).locator('.fx-tile[data-tile="none"]'),
+  ).toHaveAttribute('aria-selected', 'true');
   await expect(
-    panel(page).locator('[data-choice="filter.retro"]'),
+    panel(page).locator('.fx-tile[data-tile="retro"]'),
   ).not.toHaveAttribute('aria-disabled', 'true');
   await tab(page, 'Properties').click();
   await panel(page).locator('[data-action="right-crop"]').click();
   await expect(page.locator('[data-tool-panel="crop"]')).toBeVisible();
   await page.keyboard.press('Escape');
   await select(page, 'layer-a');
-  await expect(tab(page, 'Properties')).toHaveAttribute(
-    'aria-label',
-    'Advanced',
-  );
+  await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Video');
   await tab(page, 'Audio').click();
   await expect(panel(page).locator('#right-volume')).toBeDisabled();
   await panel(page).locator('[data-action="right-mute"]').click();

@@ -74,6 +74,17 @@
   --snap-guide: #5eead4;
   --ghost-soft: rgba(94, 234, 212, 0.18);
   --playhead: #f0616d;
+  /* V1 (spec 1.2): region cards, Clipchamp tones. Gutters show the page. */
+  --region-page: #080710;
+  --region-rail: #0b0a12;
+  --region-panel: #13121b;
+  --region-stage: #0d0c15;
+  --region-footer: #17161f;
+  --region-timeline: #1d1d29;
+  --region-lanes: #11111b;
+  --region-border: #2a2935;
+  --region-accent: #872dfc;
+  --region-scrollbar: #737279;
 }
 :root[data-theme='light'] {
   color-scheme: light;
@@ -138,6 +149,17 @@
   --snap-guide: #0f9f8a;
   --ghost-soft: rgba(15, 159, 138, 0.16);
   --playhead: #d93545;
+  /* V1 (spec 1.2): region cards, light tones. */
+  --region-page: #c9ccd6;
+  --region-rail: #e6e8ee;
+  --region-panel: #ffffff;
+  --region-stage: #dcdfe6;
+  --region-footer: #f2f3f6;
+  --region-timeline: #f7f8fa;
+  --region-lanes: #e9ebf0;
+  --region-border: #b7bbc7;
+  --region-accent: #872dfc;
+  --region-scrollbar: #8e919c;
 }
 :root {
   /* Spacing */
@@ -203,7 +225,12 @@
   /* Layout (written by src/ui/workspace.ts) */
   --topbar-height: 48px;
   --rail-width: 64px;
-  --right-rail-width: 72px;
+  --right-rail-width: 65px;
+  /* V1: grid columns (card plus its 8 px gutter), set by workspace.ts. */
+  --rail-col: 72px;
+  --left-col: 328px;
+  --right-col: 0px;
+  --right-rail-col: 0px;
   --left-panel: 320px;
   --right-panel: 252px;
   --left-open: 320px;

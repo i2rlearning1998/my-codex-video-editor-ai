@@ -5,8 +5,8 @@ import {
   hook,
   mode2d,
   openInspector,
-  rulerBox,
   toScreen,
+  seekKeep,
 } from './fixtures';
 
 // H4: the right panel (Clipchamp) and the Editor | 2D Animation switch.
@@ -20,12 +20,7 @@ async function select(page: Page, id: string) {
     .toEqual([id]);
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 const layerOf = async (page: Page, id: string) =>
   (await hook(page)).project.compositions[0]!.layers.find(
@@ -76,19 +71,18 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   ]);
   await openFixtureProject('nle-example.json');
   await select(page, 'layer-a');
-  // J15: a video's sections in Clipchamp's order; its own controls, the
-  // Inspector and Animate are Advanced, last.
+  // V4 (spec 5, D-192): a video's sections in Clipchamp's order with our
+  // Properties first (Animate kept before Captions).
   expect(await shownSections(page)).toEqual([
-    'Captions',
-    'Audio',
+    'Properties',
     'Fade',
-    'Animate',
     'Filters',
     'Effects',
     'Adjust',
     'Speed',
-    'Transitions',
-    'Properties',
+    'Audio',
+    'Animate',
+    'Captions',
   ]);
   // An unbuilt tab is disabled with its wave; clicking it changes nothing.
   await expect(section(page, 'Captions')).toHaveAttribute(

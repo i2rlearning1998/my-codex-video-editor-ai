@@ -24,7 +24,8 @@ test('[LAY-059] the right rail shows 24 px icons with labels; nothing selected s
   await expect(label).toBeVisible();
   expect(
     await label.evaluate((item) => parseFloat(getComputedStyle(item).fontSize)),
-  ).toBeGreaterThanOrEqual(12.5);
+    // V1 (spec 1, D-190): 10 px labels under the 24 px icons.
+  ).toBe(10);
   // Nothing selected: an empty state, no Canvas tab, no rail buttons.
   await page.locator('#composition-canvas').focus();
   await page.keyboard.press('Escape');

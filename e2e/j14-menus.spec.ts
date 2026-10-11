@@ -83,8 +83,9 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
     'Auto cut',
     'More options',
   ]);
-  // The earlier entries follow a divider (none of them repeated).
-  await expect(menu(page).locator('.timeline-menu-divider')).toHaveCount(1);
+  // The earlier entries follow a divider (none of them repeated); V2
+  // (D-191): the lane's own actions follow a second one.
+  await expect(menu(page).locator('.timeline-menu-divider')).toHaveCount(2);
   expect(shown).toContain('Cut');
   expect(shown.filter((item) => item === 'Duplicate')).toHaveLength(1);
   // Detach audio stays where it was (in the earlier entries) and is also in

@@ -3,10 +3,11 @@ import {
   test,
   expect,
   hook,
+  laneAction,
   toScreen,
-  rulerBox,
   openInspector,
   showSceneStrip,
+  seekKeep,
 } from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
@@ -75,12 +76,7 @@ async function drag(
   await page.mouse.up();
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 const field = (page: Page, name: string) =>
   page.getByRole('spinbutton', { name, exact: true });
@@ -112,10 +108,15 @@ test('[HIS-002] canvas, inspector and timeline edits all undo back to the start 
     .click({ position: { x: 30, y: 10 } });
   await page.keyboard.press(']');
   await page.getByRole('button', { name: '+ Marker' }).click();
-  await page
-    .locator('.timeline-track-header [data-action="track-lock"]')
-    .last()
-    .click();
+  // V2 (D-191): the lane menu locks the last lane.
+  await laneAction(
+    page,
+    (await page
+      .locator('#timeline-foundation .timeline-nle-row')
+      .last()
+      .getAttribute('data-track-id'))!,
+    'track-lock',
+  );
   await page.locator('.timeline-clip[data-id="example-headline"]').click({
     button: 'right',
     position: { x: 30, y: 10 },

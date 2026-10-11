@@ -37,10 +37,14 @@ async function scan(page: Page) {
     // - the playhead's handle (the ruler is its target), the track header's
     //   toggles (logged in the backlog: they need a wider header) and the
     //   clips themselves (T3: lanes of 36 px, clips at least 28 px).
+    // - V3 (spec 4): the Scene outliner is a dense Blender-style tree whose
+    //   rows are the targets; its arrows and toggles are glyphs in a row;
+    // - V1 (spec 1): the right rail's labels are 10 px under 24 px icons.
+    const smallText = '.icon-rail-label';
     const smallGlyph =
-      '.number-field-step, .number-field-more, .select-trigger, .timeline-clip';
+      '.number-field-step, .number-field-more, .select-trigger, .timeline-clip, .outliner-row';
     const smallHit =
-      '.number-field-step, .number-field-more, .timeline-playhead, .track-toggle, [data-action="track-up"], [data-action="track-down"], .timeline-clip, .timeline-gap-close, .timeline-trim';
+      '.number-field-step, .number-field-more, .timeline-playhead, .track-toggle, [data-action="track-up"], [data-action="track-down"], .timeline-clip, .timeline-gap-close, .timeline-trim, .outliner-row';
     const text: string[] = [],
       icons: string[] = [],
       hits: string[] = [];
@@ -50,7 +54,8 @@ async function scan(page: Page) {
         [...el.childNodes].some(
           (node) => node.nodeType === 3 && node.textContent!.trim(),
         ) &&
-        parseFloat(getComputedStyle(el).fontSize) < 12.5
+        parseFloat(getComputedStyle(el).fontSize) < 12.5 &&
+        !el.closest(smallText)
       )
         text.push(name(el));
       const control = el.closest('button, [role="button"], [role="menuitem"]');

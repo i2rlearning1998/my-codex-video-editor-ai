@@ -131,7 +131,13 @@ test('[PB-016] Start and End set the playback and export range: playback loops f
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
   expect((await scene(page)).playRange).toBeUndefined();
-  await expect(
-    page.locator('#timeline-foundation .ruler-range-dim'),
-  ).toHaveCount(0);
+  // V2 (spec 2b, D-191): the dims always exist; with the whole scene as the
+  // range, nothing before the scene's start is dimmed.
+  await expect
+    .poll(() =>
+      page
+        .locator('#timeline-foundation .ruler-range-dim[data-side="before"]')
+        .evaluate((element) => element.getBoundingClientRect().width),
+    )
+    .toBeLessThan(1);
 });

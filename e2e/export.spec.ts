@@ -10,6 +10,7 @@ import {
   showCategory,
   mode2d,
   openInspector,
+  seekKeep,
 } from './fixtures';
 
 // W5-A: export v1. The sandbox Chromium has no H.264/AAC encoder, so exports here are
@@ -559,13 +560,8 @@ test('[ANI-003] an exported animated frame matches the preview at the same time'
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
-  const seek = async (seconds: number) => {
-    const box = await rulerBox(page);
-    await page.mouse.click(box.x + seconds * 80, box.y + 8);
-    await expect
-      .poll(async () => (await hook(page)).session.time)
-      .toBeCloseTo(seconds, 2);
-  };
+  // (V2: a ruler click clears the selection; the timecode keeps it.)
+  const seek = (seconds: number) => seekKeep(page, seconds);
   // The badge (x 76, 224 wide) moves to x 276 between 0 s and 2 s.
   await mode2d(page);
   await page.locator('#scene-list [data-layer-id="example-badge"]').click();

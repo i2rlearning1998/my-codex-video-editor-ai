@@ -69,13 +69,21 @@ test('[LAY-048] the Player bar is the top edge of the timeline and its resize gr
   await page.mouse.move(playBox.x + 4, playBox.y - 60, { steps: 4 });
   await page.mouse.up();
   expect(await height(page)).toBeCloseTo(taller, 0);
-  // Clamped: at least 160 px, at most 60% of the window.
+  // V2 (spec 2, D-191): a drag far down no longer stops at 160 px; it
+  // collapses to the Player bar. Expand brings it back.
   let from = await emptySpot(page);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x, from.y + 900, { steps: 8 });
   await page.mouse.up();
-  await expect.poll(() => height(page)).toBeCloseTo(160, 0);
+  await expect(page.locator('.editor-shell')).toHaveClass(/timeline-collapsed/);
+  await page
+    .locator('#timeline-foundation [data-action="collapse-timeline"]')
+    .click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-collapsed/,
+  );
+  // At most 60% of the window.
   from = await emptySpot(page);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();

@@ -36,6 +36,10 @@ export const test = base.extend<Fixtures>({
       await page.addInitScript(() => {
         (window as { __AIVE_E2E_START__?: string }).__AIVE_E2E_START__ =
           'Scene';
+        // V1 (D-190): the earlier pixel-measuring tests keep the right
+        // column reserved; V1's own tests switch this off.
+        (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ =
+          'reserve';
       });
       const errors: string[] = [];
       const allowed: ((message: string) => boolean)[] = [];
@@ -198,8 +202,34 @@ export async function showGraphics(page: Page) {
  * the bottom of the right panel's first tab; this opens them.
  */
 export async function openInspector(page: Page) {
+  await settled(page);
   for (const tab of ['Transform', 'Timing', 'Dimensions'])
     await page.locator(`#inspector-content [data-subtab="${tab}"]`).click();
+  await settled(page);
+  // V1: the right card is shorter now; bring Position and size into view.
+  await page
+    .locator('#inspector-content [data-subtab="Transform"]')
+    .evaluate((header) => header.scrollIntoView({ block: 'start' }));
+}
+/**
+ * V1 (spec 1): the right rail and panel slide in when something is
+ * selected; tests that measure the panel wait until no transition runs.
+ */
+export async function settled(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document
+            .getAnimations()
+            .filter(
+              (animation) =>
+                animation.playState === 'running' &&
+                animation.effect?.getComputedTiming().iterations !== Infinity,
+            ).length,
+      ),
+    )
+    .toBe(0);
 }
 /** H4: keyframes are shown and edited in 2D Animation mode. */
 export async function mode2d(page: Page) {
@@ -221,4 +251,102 @@ export async function showSceneStrip(page: Page) {
   await expect
     .poll(async () => strip.evaluate((item) => getComputedStyle(item).opacity))
     .toBe('1');
+}
+/**
+ * V2 (D-191): lanes have no header; their lock, hide, solo, mute and move
+ * actions are in the lane's right-click menu. Right-clicks an empty part of
+ * the lane (after its last clip, inside the visible lanes) and runs one.
+ */
+export async function laneAction(
+  page: Page,
+  trackId: string,
+  action:
+    | 'track-lock'
+    | 'track-enable'
+    | 'track-mute'
+    | 'track-solo'
+    | 'track-up'
+    | 'track-down',
+) {
+  // Rows are rebuilt on every render (e.g. while playing), so the spot is
+  // measured in one go inside the page.
+  const spot = await page.evaluate((trackId) => {
+    const row = document.querySelector<HTMLElement>(
+      `#timeline-foundation .timeline-nle-row[data-track-id="${trackId}"]`,
+    )!;
+    row.scrollIntoView({ block: 'nearest' });
+    const area = document
+      .querySelector('#timeline-foundation .timeline-scroll')!
+      .getBoundingClientRect();
+    const lane = row.getBoundingClientRect();
+    // The emptiest visible spot: after the lane's last clip, or its far end.
+    const end = Math.max(
+      0,
+      ...[...row.querySelectorAll('.timeline-clip')].map(
+        (clip) => clip.getBoundingClientRect().right,
+      ),
+    );
+    return {
+      x: Math.min(area.right - 12, Math.max(area.left + 12, end + 12)),
+      y: lane.top + lane.height / 2,
+    };
+  }, trackId);
+  await page.mouse.click(spot.x, spot.y, { button: 'right' });
+  const item = page.locator(
+    `#timeline-foundation .timeline-menu [data-action="${action}"]`,
+  );
+  await item.click();
+}
+/**
+ * V2 (spec 2): a ruler click now clears the selection, so tests that seek
+ * with something selected type the time into the Player bar's timecode
+ * instead (a user path that leaves the selection alone).
+ */
+export async function seekKeep(page: Page, seconds: number) {
+  await page.locator('#timeline-foundation [data-timecode]').click();
+  const input = page.locator('#timeline-foundation .player-timecode-input');
+  await input.fill(String(Math.round(seconds * 1e6) / 1e6));
+  await input.press('Enter');
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as {
+              __AIVE__: { getSession(): { time: number } };
+            }
+          ).__AIVE__.getSession().time,
+      ),
+    )
+    .toBeCloseTo(seconds, 2);
+}
+/**
+ * V-series: the canvas view once the layout has settled (panels that slide
+ * in after load, the timeline's centring re-render), so tests that compare
+ * a view with the starting one do not start mid-change.
+ */
+export async function settledView(page: Page) {
+  await settled(page);
+  const read = () =>
+    page.evaluate(() =>
+      JSON.stringify(
+        (
+          window as unknown as {
+            __AIVE__: { getCanvas(): { view: unknown } };
+          }
+        ).__AIVE__.getCanvas().view,
+      ),
+    );
+  let last = '';
+  await expect
+    .poll(
+      async () => {
+        const now = await read();
+        const same = now === last;
+        last = now;
+        return same;
+      },
+      { intervals: [300] },
+    )
+    .toBe(true);
 }

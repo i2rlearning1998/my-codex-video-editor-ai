@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, rulerBox, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  laneAction,
+  showCategory,
+  seekKeep,
+} from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2, clip-b 3..5 · Video 2: clip-c 1..4 · Video 3: empty
@@ -34,11 +41,7 @@ async function selectClip(page: Page, id: string) {
   await expect(clipEl(page, id)).toHaveAttribute('aria-pressed', 'true');
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -68,8 +71,9 @@ test('[TL-001] every layer is a clip on a track: example, canvas drops and group
   await expect(page.locator('.timeline-nle-row').first()).toBeVisible();
   await expect(legacy).toHaveCount(0);
   expect(await unclipped()).toEqual([]);
+  // V2 (D-191): lanes have no labels; a text lane is there.
   await expect(
-    page.locator('.timeline-track-header .track-name', { hasText: 'Text 1' }),
+    page.locator('.timeline-nle-row[data-lane-group="text"]').first(),
   ).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('example-as-clips.png') });
   // A media drop on the canvas becomes a clip on a free video track.
@@ -127,7 +131,7 @@ test('[TL-004] a locked track blocks delete, drag, trim, split and keyboard edit
   openFixtureProject,
 }) => {
   await openFixtureProject('nle-example.json');
-  await page.locator('[data-action="track-lock"][data-id="video-1"]').click();
+  await laneAction(page, 'video-1', 'track-lock');
   await expect(clipEl(page, 'clip-a')).toHaveClass(/locked/);
   expect(
     await clipEl(page, 'clip-a').evaluate((el) => getComputedStyle(el).cursor),
@@ -206,18 +210,24 @@ test('[TL-020][TL-030] a drop onto occupied time inserts, previews the push and 
   expect((await hook(page)).history.labels).toEqual(['Move clip']);
   await page.locator('#undo').click();
   expect((await hook(page)).project).toEqual(before);
-  // Duplicate lands right after the original and pushes clip-b.
+  // V2 (spec 2c, B23, D-191): Duplicate keeps the time and opens a new lane
+  // directly above the original's; the original lane is unchanged.
   await selectClip(page, 'clip-a');
   await page.keyboard.press('Control+d');
-  const video1 = (await hook(page)).project.compositions[0]!.tracks[0]!.clips;
+  const tracks = [...(await hook(page)).project.compositions[0]!.tracks].sort(
+    (x, y) => x.order - y.order,
+  );
+  const video1 = tracks.findIndex((track) => track.id === 'video-1');
   expect(
-    video1
-      .map((clip) => [clip.startTime, clip.duration])
-      .sort((x, y) => x[0]! - y[0]!),
+    tracks[video1 - 1]!.clips.map((clip) => [clip.startTime, clip.duration]),
+  ).toEqual([[0, 2]]);
+  expect(
+    tracks[video1]!.clips.map((clip) => [clip.startTime, clip.duration]).sort(
+      (x, y) => x[0]! - y[0]!,
+    ),
   ).toEqual([
     [0, 2],
-    [2, 2],
-    [4, 2],
+    [3, 2],
   ]);
   expect(await overlaps(page)).toEqual([]);
   await page.locator('#undo').click();

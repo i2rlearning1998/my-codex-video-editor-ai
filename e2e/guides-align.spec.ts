@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, artboard, seekKeep } from './fixtures';
 
 // The artboard never moves in these tests: scan the canvas once per page, not
 // on every coordinate (full-canvas readbacks are expensive for the browser).
@@ -32,12 +32,7 @@ async function guides(page: Page) {
   );
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 /** Presses at composition `from`, moves by a composition delta, and holds. */
 async function press(

@@ -54,8 +54,12 @@ test('[TL-092] lanes sit vertically centred when the panel is taller; the previe
   const bottom = (await lanes.last().boundingBox())!;
   const above = top.y - (ruler.y + ruler.height);
   const below = scroll.y + scroll.height - (bottom.y + bottom.height);
-  if (above > 1) expect(Math.abs(above - below)).toBeLessThan(3);
-  else expect(below).toBeLessThanOrEqual(1);
+  // V2 (spec 2, D-191): lanes that fit with 23 px above and below are
+  // centred; taller lanes start 23 px under the ruler and scroll.
+  const area = scroll.y + scroll.height - (ruler.y + ruler.height);
+  const lanesHeight = bottom.y + bottom.height - top.y;
+  if (lanesHeight + 46 <= area) expect(Math.abs(above - below)).toBeLessThan(3);
+  else expect(Math.abs(above - 23)).toBeLessThan(2);
   // Dragging the Player bar up as far as it goes keeps the preview usable.
   const grip = (await page
     .locator('#timeline-foundation .timeline-controls')

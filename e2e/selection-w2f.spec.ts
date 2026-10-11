@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, rulerBox } from './fixtures';
+import { test, expect, hook, artboard, seekKeep } from './fixtures';
 
 // W2-F1: multi-selection box and action cluster, capability-based menus,
 // Ungroup, layer order and the media-card drop regression.
@@ -68,12 +68,7 @@ const cluster = (page: Page) => page.locator('#selection-actions');
 const layers = async (page: Page) =>
   (await hook(page)).project.compositions[0]!.layers;
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 
 test.describe('default example', () => {

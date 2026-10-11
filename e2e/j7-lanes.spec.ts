@@ -153,7 +153,21 @@ test('[TL-062] a clip dragged onto a lane of another group shows not-allowed and
   const row = page.locator(
     `#timeline-foundation .timeline-nle-row[data-track-id="${clip.track.id}"]`,
   );
-  await expect(row.locator('[data-action="track-up"]')).toBeDisabled();
+  // V2 (D-191): in the lane's right-click menu.
+  await row.scrollIntoViewIfNeeded();
+  const area = (await page
+    .locator('#timeline-foundation .timeline-scroll')
+    .boundingBox())!;
+  const lane = (await row.boundingBox())!;
+  await page.mouse.click(area.x + area.width - 12, lane.y + lane.height / 2, {
+    button: 'right',
+  });
+  await expect(
+    page.locator(
+      '#timeline-foundation .timeline-menu [data-action="track-up"]',
+    ),
+  ).toBeDisabled();
+  await page.keyboard.press('Escape');
 });
 
 test('[TL-063] Bring forward and Send backward move an element between the lanes of its group, and the canvas stacking follows', async ({

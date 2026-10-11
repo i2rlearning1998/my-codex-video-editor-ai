@@ -5,10 +5,11 @@ import {
   test,
   expect,
   hook,
-  rulerBox,
   showCategory,
   toScreen,
   showSceneStrip,
+  seekKeep,
+  settled,
 } from './fixtures';
 
 // T-ALL P6: the FX library wired into the right panel and the transition
@@ -43,11 +44,7 @@ const fxOf = async (page: Page, layerId: string) =>
     }
   ).fx;
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 async function addToScene(page: Page, name: string) {
   const item = page.locator(
@@ -174,27 +171,27 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
     .locator(`.timeline-clip[data-action="clip"][data-id="${first}"]`)
     .first()
     .click();
-  const at = await toScreen(page, 640, 360);
+  await settled(page);
+  const at = await toScreen(page, 520, 360);
   const plain = await pixel(page, at);
   expect(grey(plain)).toBe(false);
   // Filters: Black and white makes the picture grey; Original is pressed first.
   await tab(page, 'Filters').click();
+  // (V4: tiles, spec 5; Black & white 1 is the library's Black and white.)
   await expect(
-    panel(page).locator('[data-choice="filter.none"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
-  await panel(page).locator('[data-choice="filter.black-white"]').click();
+    panel(page).locator('.fx-tile[data-tile="none"]'),
+  ).toHaveAttribute('aria-selected', 'true');
+  await panel(page).locator('.fx-tile[data-tile="black-white-1"]').click();
   expect((await labels(page)).at(-1)).toBe('Apply filter');
   expect((await fxOf(page, first))!.stack.map((item) => item.id)).toEqual([
     'filter.black-white',
   ]);
   expect(grey(await pixel(page, at))).toBe(true);
   // Intensity 0 is the original picture.
-  const intensity = panel(page).locator(
-    '#right-fx-intensity-filter-black-white',
-  );
+  const intensity = panel(page).locator('#right-filter-intensity');
   await intensity.fill('0');
-  await intensity.press('Enter');
-  expect((await labels(page)).at(-1)).toBe('Effect intensity');
+  await intensity.dispatchEvent('change');
+  expect((await labels(page)).at(-1)).toBe('Filter intensity');
   expect(near(await pixel(page, at), plain, 2)).toBe(true);
   await page.keyboard.press('Control+z');
   expect(grey(await pixel(page, at))).toBe(true);
@@ -204,17 +201,21 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   expect(await fxOf(page, first)).toBeUndefined();
   await page.keyboard.press('Control+Shift+z');
   expect(grey(await pixel(page, at))).toBe(true);
-  // Adjust colors: exposure +100 brightens; a blend mode is stored; Reset
+  // (V2: the sample sits inside the picture's yellow stripe, not on the
+  // stripe edge at the centre; saturated colours cannot brighten, so this
+  // checks that exposure -100 darkens.)
+  // Adjust colors: exposure -100 darkens; a blend mode is stored; Reset
   // removes both and keeps the filter.
-  await panel(page).locator('[data-choice="filter.none"]').click();
+  await panel(page).locator('.fx-tile[data-tile="none"]').click();
   await tab(page, 'Adjust').click();
+  // (V4: a plain slider, spec 5; it commits on release.)
   const exposure = panel(page).locator('#right-adjust-exposure');
-  await exposure.fill('100');
-  await exposure.press('Enter');
+  await exposure.fill('-100');
+  await exposure.dispatchEvent('change');
   expect((await labels(page)).at(-1)).toBe('Adjust colors');
-  const bright = await pixel(page, at);
-  expect(bright.reduce((a, b) => a + b, 0)).toBeGreaterThan(
-    plain.reduce((a, b) => a + b, 0) + 30,
+  const dark = await pixel(page, at);
+  expect(dark.reduce((a, b) => a + b, 0)).toBeLessThan(
+    plain.reduce((a, b) => a + b, 0) - 30,
   );
   await panel(page).locator('#right-blend-mode').click();
   await page.getByRole('option', { name: 'Multiply' }).click();
@@ -225,11 +226,11 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   expect(near(await pixel(page, at), plain, 2)).toBe(true);
   // Effects: Pixelation is added (one step) and changes the picture.
   await tab(page, 'Effects').click();
-  await panel(page).locator('[data-choice="effect.pixelation"]').click();
+  await panel(page).locator('.fx-tile[data-tile="effect.pixelation"]').click();
   expect((await labels(page)).at(-1)).toBe('Add effect');
   await expect(
-    panel(page).locator('[data-choice="effect.pixelation"]'),
-  ).toHaveAttribute('aria-pressed', 'true');
+    panel(page).locator('.fx-tile[data-tile="effect.pixelation"]'),
+  ).toHaveAttribute('aria-selected', 'true');
   // Saved with the project: a reload keeps the stack.
   await expect
     .poll(async () => (await fxOf(page, first))?.stack[0]?.id)
@@ -273,11 +274,12 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
     .first()
     .click();
   await tab(page, 'Filters').click();
-  await panel(page).locator('[data-choice="filter.black-white"]').click();
-  const at = await toScreen(page, 640, 360);
+  await panel(page).locator('.fx-tile[data-tile="black-white-1"]').click();
+  await settled(page);
+  const at = await toScreen(page, 520, 360);
   const preview = await pixel(page, at);
   expect(grey(preview)).toBe(true);
-  const png = await exportedPixel(page, testInfo, 640, 360);
+  const png = await exportedPixel(page, testInfo, 520, 360);
   expect(grey(png)).toBe(true);
   // The exported video frame (the export worker) is grey too.
   await page.locator('#export').click();
@@ -315,7 +317,7 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
       );
       const context = canvas.getContext('2d')!;
       context.drawImage(element, 0, 0);
-      const x = Math.round((640 / 1280) * element.videoWidth);
+      const x = Math.round((520 / 1280) * element.videoWidth);
       const y = Math.round((360 / 720) * element.videoHeight);
       return [...context.getImageData(x, y, 1, 1).data.slice(0, 3)];
     },
@@ -330,11 +332,10 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
     `#timeline-foundation .timeline-nle-row[data-track-id="${lane.id}"]`,
   );
   await row.hover();
+  // (V5: "+" adds Fade through black and opens the right panel's tiles.)
   await row.locator('.transition-add').click();
-  const transitions = page.locator('[data-deep-panel="transition"]');
-  await transitions.locator('[data-transition="fx-burn"]').click();
-  expect((await labels(page)).at(-1)).toBe('Add transition');
-  await page.keyboard.press('Escape');
+  await panel(page).locator('.fx-tile[data-tile="transition.burn"]').click();
+  expect((await labels(page)).at(-1)).toBe('Change transition');
   await seek(page, 6);
   const onlyB = await pixel(page, at);
   await seek(page, 5);
@@ -345,7 +346,7 @@ test('[FX-010][TR-004][TR-012] a filter and an FX pixel transition draw the same
       preview.reduce((a, b) => a + b, 0),
     ) - 60,
   );
-  const exported = await exportedPixel(page, testInfo, 640, 360);
+  const exported = await exportedPixel(page, testInfo, 520, 360);
   expect(near(exported, middle, 24)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('burn.png') });
 });

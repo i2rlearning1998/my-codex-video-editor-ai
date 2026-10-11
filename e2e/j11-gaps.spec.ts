@@ -38,7 +38,7 @@ test('[TL-071] a gap between clips is hatched; its trash button closes it, movin
   expect((await gap.boundingBox())!.width).toBeCloseTo(80, 0);
   await gap.hover();
   const trash = gap.locator('[data-action="close-gap"]');
-  await expect(trash).toHaveAttribute('aria-label', 'Close the 1 s gap');
+  await expect(trash).toHaveAttribute('aria-label', 'Delete this gap (1 s)');
   await page.screenshot({ path: testInfo.outputPath('gap.png') });
   await trash.click();
   expect((await labels(page)).at(-1)).toBe('Close gap');

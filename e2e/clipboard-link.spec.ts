@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, rulerBox } from './fixtures';
+import { test, expect, hook, toScreen, seekKeep } from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2, clip-b 3..5 (asset-video) · Video 2: clip-c 1..4 · Video 3: empty
@@ -57,11 +57,7 @@ async function select(page: Page, id: string, add = false) {
   });
 }
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 async function menu(page: Page, clipId: string, name: string) {
   await clipEl(page, clipId).click({
@@ -77,7 +73,8 @@ async function menu(page: Page, clipId: string, name: string) {
 test('[TL-027] copy, cut and paste clips at the playhead onto the selected track', async ({
   page,
 }, testInfo) => {
-  // Ctrl+C / Ctrl+V: the copy lands at the playhead and pushes clip-b.
+  // Ctrl+C / Ctrl+V: V2 (spec 2c, B23, D-191): the copy lands at the
+  // playhead on a new lane directly above Video 1, which is unchanged.
   await select(page, 'clip-a');
   await page.keyboard.press('Control+c');
   expect((await hook(page)).history.canUndo).toBe(false);
@@ -89,23 +86,35 @@ test('[TL-027] copy, cut and paste clips at the playhead onto the selected track
       .filter((item) => item.trackId === 'video-1')
       .map((item) => [item.startTime, item.duration])
       .sort((a, b) => a[0]! - b[0]!);
+  const order = async () =>
+    [...(await hook(page)).project.compositions[0]!.tracks]
+      .sort((a, b) => a.order - b.order)
+      .map((item) => item.id);
   expect(await video1()).toEqual([
     [0, 2],
-    [2, 2],
-    [4, 2],
+    [3, 2],
   ]);
   expect(await overlaps(page)).toEqual([]);
   // The pasted clip is selected and independent (new layer and clip ids).
   const pasted = (await rows(page)).find(
     (item) => item.name === 'clip-a' && item.id !== 'clip-a',
   )!;
+  expect([pasted.startTime, pasted.duration]).toEqual([2, 2]);
+  expect((await order()).indexOf(pasted.trackId)).toBe(
+    (await order()).indexOf('video-1') - 1,
+  );
   expect((await hook(page)).session.selectedIds).toEqual([pasted.layerId]);
   await page.screenshot({ path: testInfo.outputPath('pasted.png') });
-  // Paste again from the keyboard: a second independent copy.
+  // Paste again from the keyboard: a second independent copy, above it.
   await page.keyboard.press('Control+v');
-  expect(await video1()).toHaveLength(4);
+  expect(
+    (await rows(page)).filter((item) => item.name === 'clip-a'),
+  ).toHaveLength(3);
   await page.locator('#undo').click();
   await page.locator('#undo').click();
+  expect(
+    (await rows(page)).filter((item) => item.name === 'clip-a'),
+  ).toHaveLength(1);
   expect(await video1()).toEqual([
     [0, 2],
     [3, 2],
@@ -172,8 +181,9 @@ test('[TL-032] linked clips move, split, delete and copy together; unlink and de
   await page.locator('#undo').click();
   await page.locator('#undo').click();
   // Split at 1.5 s from clip-a alone cuts clip-c too; the new pieces stay linked.
-  await select(page, 'clip-a');
+  // V2 (D-191): a ruler click clears the selection, so seek first.
   await seek(page, 1.5);
+  await select(page, 'clip-a');
   await page.keyboard.press('s');
   const pieces = (await rows(page)).filter((item) => item.startTime === 1.5);
   expect(pieces.map((item) => item.trackId).sort()).toEqual([
@@ -195,10 +205,16 @@ test('[TL-032] linked clips move, split, delete and copy together; unlink and de
   const copies = (await rows(page)).filter(
     (item) => !['clip-a', 'clip-b', 'clip-c'].includes(item.id),
   );
-  expect(copies.map((item) => [item.trackId, item.startTime]).sort()).toEqual([
-    ['video-1', 5],
-    ['video-2', 5.5],
-  ]);
+  // V2 (spec 2c, B23): each copy on a new lane directly above its
+  // original's lane, at the playhead (keeping their offset).
+  const order = [...(await hook(page)).project.compositions[0]!.tracks]
+    .sort((x, y) => x.order - y.order)
+    .map((item) => item.id);
+  const copyA = copies.find((item) => item.name === 'clip-a')!;
+  const copyC = copies.find((item) => item.name === 'clip-c')!;
+  expect([copyA.startTime, copyC.startTime]).toEqual([4.5, 5.5]);
+  expect(order.indexOf(copyA.trackId)).toBe(order.indexOf('video-1') - 1);
+  expect(order.indexOf(copyC.trackId)).toBe(order.indexOf('video-2') - 1);
   expect(copies[0]!.metadata.linkId).toBe(copies[1]!.metadata.linkId);
   expect(copies[0]!.metadata.linkId).not.toBe(await linkOf('clip-a'));
   expect(await overlaps(page)).toEqual([]);

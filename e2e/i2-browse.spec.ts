@@ -341,34 +341,36 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   );
 });
 
-test('[TR-010] Transitions: a tip, a Duration control and sections of transitions with posters, planned for Wave 6', async ({
+test('[TR-010] Transitions: a tip and the transition tiles in groups with drawn thumbnails; search narrows them', async ({
   page,
 }) => {
+  // V5 (spec 6, D-194): the left category shows the right panel's tiles;
+  // a click applies one to the selected cut marker (TR-015).
   await showCategory(page, 'Transitions');
   const host = panel(page, 'transitions');
-  await expect(host.locator('.browse-tip')).toContainText('Wave 6');
-  await expect(host.locator('#transition-duration')).toBeDisabled();
-  await expect(host.locator('.browse-section-head h3')).toHaveText([
+  await expect(host.locator('.browse-tip')).toContainText('cut');
+  await expect(host.locator('.fx-tiles-group')).toHaveText([
     'Fades & blurs',
+    'Tiles',
     'Wipes',
-    'Pushes',
-    'Cartoon',
-    'Glitches',
-    '3D',
+    'More',
   ]);
-  const fade = host.locator('.library-card[data-item-id="transition-fade"]');
-  await expect(fade).toHaveAttribute('aria-disabled', 'true');
-  await expect(fade).toHaveAttribute('title', 'Planned: Wave 6 (TR-003)');
-  await expect(fade.locator('img')).toHaveAttribute('src', /^data:image\/png/);
-  // A click does nothing (the card is aria-disabled, so force the click).
+  await expect(host.locator('.fx-tile')).toHaveCount(28);
+  const fade = host.locator('.fx-tile[data-tile="crossfade"]');
+  await expect
+    .poll(() =>
+      fade.locator('img').evaluate((image: HTMLImageElement) => image.src),
+    )
+    .toMatch(/^data:image\/png/);
+  // With no cut selected a click changes nothing.
   const steps = (await labels(page)).length;
-  await fade.click({ force: true });
+  await fade.click();
   expect((await labels(page)).length).toBe(steps);
-  // Search: the Glitches section's two transitions match "glitch".
-  await host.locator('#browse-search-transitions').fill('glitch');
-  await expect(host.locator('.library-card')).toHaveText([
+  // Search: "glitch" finds the two glitches.
+  await host.locator('.fx-tiles-search').fill('glitch');
+  await expect(host.locator('.fx-tile')).toHaveText([
     'Glitch',
-    'RGB split',
+    'Glitch reveal',
   ]);
 });
 

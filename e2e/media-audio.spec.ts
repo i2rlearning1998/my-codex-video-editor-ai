@@ -1,6 +1,13 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, rulerBox, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  laneAction,
+  showCategory,
+  seekKeep,
+} from './fixtures';
 
 // W4-C: audio playback, sync, mute and solo, scrub snippets and waveforms.
 // av-sync.json: Video 1 holds clip-av (0..4 s) of video_av_sync_flash_beep_720p.webm,
@@ -39,11 +46,7 @@ const sourceIds = async (page: Page) =>
   (await media(page)).audio.sources.map((source) => source.clipId).sort();
 const play = (page: Page) => page.locator('[data-action="play"]').click();
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  await page.mouse.click(box.x + seconds * 80, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 const clipEl = (page: Page, id: string) =>
   page.locator(`.timeline-clip[data-clip-id="${id}"]`);
@@ -144,18 +147,21 @@ test('[VID-006] detached audio plays from its own clip and the video clip goes s
 });
 
 test('[AUD-007] track mute and solo change what is heard', async ({ page }) => {
-  await page.locator('[data-action="track-mute"][data-id="audio-1"]').click();
+  await laneAction(page, 'audio-1', 'track-mute');
   await play(page);
   await expect.poll(() => sourceIds(page)).toEqual(['clip-av']);
   // Muting is a project edit, and edits pause playback (existing behaviour).
-  await page.locator('[data-action="track-mute"][data-id="audio-1"]').click();
+  await laneAction(page, 'audio-1', 'track-mute');
   await expect.poll(() => sourceIds(page)).toEqual([]);
   await play(page);
   await expect.poll(() => sourceIds(page)).toEqual(['clip-av', 'clip-tone']);
-  // Solo is session-only (D-034), so it changes what is heard while playing.
-  await page.locator('[data-action="track-solo"][data-id="audio-1"]').click();
+  // Solo is session-only (D-034). (V2, D-191: it is in the lane menu, and
+  // opening a menu pauses playback; play again to hear it.)
+  await laneAction(page, 'audio-1', 'track-solo');
+  await play(page);
   await expect.poll(() => sourceIds(page)).toEqual(['clip-tone']);
-  await page.locator('[data-action="track-solo"][data-id="audio-1"]').click();
+  await laneAction(page, 'audio-1', 'track-solo');
+  await play(page);
   await expect.poll(() => sourceIds(page)).toEqual(['clip-av', 'clip-tone']);
   await play(page);
 });

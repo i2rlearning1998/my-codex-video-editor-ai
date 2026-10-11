@@ -47,6 +47,12 @@ export function mountTooltips(root: Document = document): () => void {
     const width = tip.offsetWidth,
       height = tip.offsetHeight;
     const margin = 8;
+    // V1 (spec 1.5): a right-rail item's tooltip sits to its left.
+    if (target.closest('#rail-right')) {
+      tip.style.left = `${Math.round(Math.max(margin, box.left - 8 - width))}px`;
+      tip.style.top = `${Math.round(Math.max(margin, box.top + box.height / 2 - height / 2))}px`;
+      return;
+    }
     let top = box.bottom + 6;
     if (top + height + margin > innerHeight) top = box.top - 6 - height;
     const left = Math.min(

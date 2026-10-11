@@ -101,9 +101,10 @@ test('[LAY-033][LAY-003][LAY-008] side panels open and close in 150 to 300 ms, a
     .locator('#rail-left')
     .evaluate((element) => element.getBoundingClientRect().right);
   const open = await stageLeft();
-  expect(open - rail).toBeCloseTo(320, 0);
+  // V1 (D-190): the 320 px panel plus an 8 px gutter on each side.
+  expect(open - rail).toBeCloseTo(336, 0);
   await page.locator('[data-panel="left"]').click();
-  await expect.poll(stageLeft).toBeCloseTo(rail, 0);
+  await expect.poll(stageLeft).toBeCloseTo(rail + 8, 0);
   await expect(page.locator('.library')).toBeHidden();
   // T-ALL (D-183): the rail reopens a panel collapsed from its header.
   await page.locator('#rail-left [data-category="Scene"]').click();
@@ -146,8 +147,10 @@ test('[LAY-004] panel dividers drag within their limits: left 260 to 420, right 
   await expect.poll(() => size('.inspector', 'width')).toBeCloseTo(240, 0);
   await drag('.panel-resizer.right', -400, 0);
   await expect.poll(() => size('.inspector', 'width')).toBeCloseTo(360, 0);
+  // V2 (spec 2, D-191): far down, the timeline collapses to the player
+  // (there is no half-lane minimum any more); far up it opens to 60%.
   await drag('.panel-resizer.height', 0, 600);
-  await expect.poll(() => size('.timeline', 'height')).toBeCloseTo(160, 0);
+  await expect(page.locator('.editor-shell')).toHaveClass(/timeline-collapsed/);
   await drag('.panel-resizer.height', 0, -900);
   await expect.poll(() => size('.timeline', 'height')).toBeCloseTo(600, 0);
 });

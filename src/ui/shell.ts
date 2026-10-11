@@ -1,4 +1,4 @@
-import { buildTransitionPanel } from './transition-panel';
+import { transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
 import { mountFonts } from './fonts';
@@ -12,6 +12,10 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   findClip,
+  clipTransition,
+  DEFAULT_TRANSITION,
+  maxTransition,
+  previousTouching,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -36,7 +40,8 @@ import {
 import { renderInspector } from './inspector';
 import { syncGeometryFields } from './geometry-fields';
 import { clampPan, mountCanvasView } from './canvas-view';
-import { LAYER_DRAG_TYPE, mountSceneBoard } from './scene-board';
+import { mountSceneBoard } from './scene-board';
+import { mountSceneOutliner, type SceneOutliner } from './scene-outliner';
 import {
   createNumberField,
   setFieldPreview,
@@ -286,6 +291,10 @@ export function mountEditorShell(
   const canvas = element<HTMLCanvasElement>('#composition-canvas');
   const stage = element('#canvas-stage');
   let disposed = false;
+  let sceneOutliner: SceneOutliner = {
+    render: () => undefined,
+    dispose: () => undefined,
+  };
   const message = (text: string) => {
     element('#status').textContent = text;
   };
@@ -664,6 +673,7 @@ export function mountEditorShell(
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
+      sample: (width, height) => selectionSample(width, height),
     },
   );
   // W2-F3: the Position panel (Arrange and Layers), from the toolbar and the
@@ -781,6 +791,76 @@ export function mountEditorShell(
       queueMicrotask(() => area.focus());
       return wrap;
     });
+  };
+  /**
+   * V4 (spec 5): the FX tiles' source picture: the selected elements alone
+   * at the playhead, without their effects, fitted on black at the given
+   * size. Null when nothing visible is selected.
+   */
+
+  const selectionSample = (width: number, height: number) => {
+    const source = session.source;
+    const roots = selectionRoots(source, session.selectedIds);
+    const boxes = roots
+      .map((layer) => worldBox(source, layer.id))
+      .filter((box): box is NonNullable<typeof box> => !!box);
+    if (!boxes.length) return null;
+    const left = Math.min(...boxes.map((box) => box.x)),
+      top = Math.min(...boxes.map((box) => box.y)),
+      right = Math.max(...boxes.map((box) => box.x + box.width)),
+      bottom = Math.max(...boxes.map((box) => box.y + box.height));
+    const scale = Math.min(
+      width / Math.max(1, right - left),
+      height / Math.max(1, bottom - top),
+    );
+    const ids = new Set(roots.map((layer) => layer.id));
+    // A plain copy of the lanes, the selection's clips without effects.
+    const plain = JSON.parse(JSON.stringify(source.composition.tracks)) as {
+      clips: { layerId: string; metadata: Record<string, unknown> }[];
+    }[];
+    for (const track of plain)
+      for (const clip of track.clips)
+        if (ids.has(clip.layerId)) delete clip.metadata.fx;
+    const tracks = plain as unknown as typeof source.composition.tracks;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    drawComposition(
+      context,
+      {
+        ...source,
+        composition: {
+          ...source.composition,
+          layers: source.composition.layers.filter((layer) =>
+            ids.has(layer.id),
+          ),
+          // The effects are what the tiles show, so the source has none.
+          tracks,
+        },
+        background: '#000000',
+        frames,
+        playing: false,
+        animate: true,
+      },
+      {
+        width,
+        height,
+        pixelRatio: 1,
+        matrix: [
+          scale,
+          0,
+          0,
+          scale,
+          (width - (right - left) * scale) / 2 - left * scale,
+          (height - (bottom - top) * scale) / 2 - top * scale,
+        ],
+      },
+      null,
+      { overlays: false },
+    );
+    return canvas;
   };
   /** Download selection: the selected elements alone, as a PNG. */
   const downloadSelection = () => {
@@ -1167,86 +1247,16 @@ export function mountEditorShell(
         : selected
           ? t('selection.one', { name: selected.layer.name })
           : t('selection.none');
-    const list = element('#scene-list');
-    const focusedId =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement.dataset.layerId
-        : undefined;
-    list.replaceChildren();
+    // V3 (spec 4): the Scene panel is the outliner.
     let count = 0;
-    // Front-first (owner decision, LYR-002): the topmost layer is the first row;
-    // layers later in the array paint on top, so each sibling level is reversed.
-    const appendLayers = (layers: readonly SceneLayer[], depth: number) => {
-      for (const layer of [...layers].reverse()) {
+    const countLayers = (layers: readonly SceneLayer[]) => {
+      for (const layer of layers) {
         count++;
-        const button = document.createElement('button');
-        button.className = 'scene-row';
-        button.dataset.layerId = layer.id;
-        button.style.paddingLeft = `${14 + depth * 14}px`;
-        // G5: a top-level layer can be dragged onto a scene on the board.
-        if (depth === 0) {
-          button.draggable = true;
-          button.ondragstart = (event) => {
-            event.dataTransfer?.setData(LAYER_DRAG_TYPE, layer.id);
-            if (event.dataTransfer)
-              event.dataTransfer.effectAllowed = 'copyMove';
-          };
-        }
-        button.setAttribute(
-          'aria-pressed',
-          String(session.selectedIds.includes(layer.id)),
-        );
-        button.title = `${layer.name} (${layer.type})`;
-        const icon = document.createElement('span');
-        icon.className = 'layer-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = iconSvg(
-          layer.type === 'group'
-            ? 'group'
-            : layer.type === 'text'
-              ? 'text'
-              : layer.type === 'audio'
-                ? 'audio'
-                : layer.type === 'image'
-                  ? 'image'
-                  : layer.type === 'shape'
-                    ? 'elements'
-                    : 'media',
-          14,
-        );
-        const label = document.createElement('span');
-        label.className = 'scene-name';
-        label.textContent = layer.name;
-        button.append(icon, label);
-        // J6: a layer with alternative text shows an ALT badge.
-        if (altTextOf(layer)) {
-          const badge = document.createElement('span');
-          badge.className = 'alt-badge';
-          badge.textContent = t('altText.short');
-          badge.title = t('altText.badge');
-          badge.setAttribute('aria-label', t('altText.badge'));
-          button.append(badge);
-        }
-        button.onclick = (event) =>
-          session.select(
-            layer.id,
-            event.shiftKey || event.ctrlKey || event.metaKey,
-          );
-        list.append(button);
-        appendLayers(layer.children, depth + 1);
+        countLayers(layer.children);
       }
     };
-    appendLayers(source.composition.layers, 0);
-    if (!count) {
-      const empty = document.createElement('p');
-      empty.className = 'scene-empty';
-      empty.textContent = t('scene.empty');
-      list.append(empty);
-    }
-    if (focusedId)
-      [...list.querySelectorAll<HTMLButtonElement>('button')]
-        .find((button) => button.dataset.layerId === focusedId)
-        ?.focus({ preventScroll: true });
+    countLayers(source.composition.layers);
+    sceneOutliner.render();
     element('#layer-count').textContent = formatNumber(count);
     mediaPanel.render();
     element('#canvas-empty').hidden = count !== 0;
@@ -1564,6 +1574,46 @@ export function mountEditorShell(
     libraryActions,
     {
       close: () => workspace?.setOpen('left', false),
+      // V5 (spec 6): a left Transitions tile applies to the selected marker.
+      applyTransition: (type) =>
+        safely(() => {
+          const clipId = transitionFocus.clipId;
+          const found = clipId
+            ? findClip(session.source.composition, clipId)
+            : null;
+          if (!found) {
+            showToast(t('transitions.pickCut'), 'info', 3000);
+            return;
+          }
+          const clip = found.clip as unknown as Parameters<
+            typeof maxTransition
+          >[1] & { transitionMetadata: Record<string, unknown> };
+          const before = previousTouching(
+            found.track.clips as unknown as Parameters<
+              typeof previousTouching
+            >[0],
+            clip,
+          );
+          if (!before) return;
+          const current = clipTransition(clip);
+          engine.commands.transaction(
+            current ? 'Change transition' : 'Add transition',
+            [
+              {
+                type: 'SET_CLIP_TRANSITION',
+                compositionId: session.source.composition.id,
+                clipId: clipId!,
+                transition: {
+                  type,
+                  duration: Math.min(
+                    current?.duration ?? DEFAULT_TRANSITION,
+                    maxTransition(before, clip),
+                  ),
+                },
+              } as Command,
+            ],
+          );
+        }),
       // SHP-001: the five W5-D shapes and the I2 lines.
       addPreset: (preset) => safely(() => addShape(engine, session, preset)),
       addTextBox: () => {
@@ -1874,9 +1924,15 @@ export function mountEditorShell(
   // J13: Collapse leaves only the player bar under a large preview; Expand
   // brings the lanes back. UI state only (not saved, no history).
   let collapseTimer = 0;
-  const collapseTimeline = () => {
+  const collapseTimeline = (event?: Event) => {
     const shellElement = element('.editor-shell');
-    const collapsed = !shellElement.classList.contains('timeline-collapsed');
+    // V2 (spec 2): a drag of the timeline's edge asks for a given state.
+    const wanted = (event as CustomEvent<{ collapsed?: boolean }> | undefined)
+      ?.detail?.collapsed;
+    const collapsed =
+      wanted ?? !shellElement.classList.contains('timeline-collapsed');
+    if (collapsed === shellElement.classList.contains('timeline-collapsed'))
+      return;
     // U4: Collapse and Expand animate the row (240 ms; about 0 with reduced
     // motion), but a height drag never does.
     shellElement.classList.add('timeline-animating');
@@ -1899,31 +1955,27 @@ export function mountEditorShell(
     'timeline-collapse',
     collapseTimeline,
   );
-  // J12: a cut's + or chip opens the Transition panel for that cut.
-  const transitionState = { query: '' };
+  // V5 (spec 6): a cut's marker (or its "+", which adds one first) selects
+  // the incoming clip and opens the right Transition panel.
   const openTransition = (event: Event) =>
     safely(() => {
       const clipId = (event as CustomEvent<string>).detail;
-      transitionState.query = '';
-      sidePanels.show('transition', t('transition.title'), () =>
-        buildTransitionPanel(
-          clipId,
-          engine,
-          session,
-          reportError,
-          transitionState,
-        ),
-      );
+      const found = findClip(session.source.composition, clipId);
+      if (!found) return;
+      transitionFocus.clipId = clipId;
+      session.select(found.clip.layerId);
+      transitionFocus.clipId = clipId;
+      workspace?.setEmpty(false);
+      syncRightRail();
+      setRightSection('Transitions');
+      workspace?.setOpen('right', true);
+      timeline?.render?.();
     });
   element('#timeline-foundation').addEventListener(
     'timeline-transition',
     openTransition,
   );
-  // It shows the cut's current transition after every change (and closes
-  // when the clips no longer touch).
-  const unsubscribeTransition = session.onChange(() => {
-    if (sidePanels.openId === 'transition') sidePanels.refresh();
-  });
+  const unsubscribeTransition = () => undefined;
   mediaInput.onchange = () => {
     const files = [...(mediaInput.files ?? [])];
     mediaInput.value = '';
@@ -2242,6 +2294,16 @@ export function mountEditorShell(
     panel.append(body);
   }
   workspace = mountWorkspace(element('.editor-shell'), session, resize);
+  sceneOutliner = mountSceneOutliner(
+    element('#scene-list'),
+    element('#scene-heading'),
+    engine,
+    session,
+    reportError,
+  );
+  element('#scene-list').addEventListener('outliner-reveal', (event) =>
+    session.select((event as CustomEvent<string>).detail),
+  );
   workspace.onChange(syncRails);
   syncRails();
   // T-ALL P1 (spec 7): the right panel (a drawer below 1440 px) shows only while
@@ -2249,10 +2311,32 @@ export function mountEditorShell(
   // On the wide layout its column stays, so the canvas never moves; the
   // panel is simply not drawn while nothing is selected (D-183).
   let rightSelection: string | null = null;
+  // V1 (spec 1.3): a selection made by a press waits for the release before
+  // the right side moves the stage, so the press's gesture is not cancelled.
+  let pressing = false;
+  window.addEventListener(
+    'pointerdown',
+    () => {
+      pressing = true;
+    },
+    true,
+  );
+  window.addEventListener(
+    'pointerup',
+    () => {
+      pressing = false;
+      requestAnimationFrame(followSelection);
+    },
+    true,
+  );
+  window.addEventListener('pointercancel', () => (pressing = false), true);
   const followSelection = () => {
+    if (disposed) return;
     const key = session.selectedIds.join(',');
-    const shell = element('.editor-shell');
+    const shell = root.querySelector<HTMLElement>('.editor-shell');
+    if (!shell) return;
     shell.classList.toggle('right-empty', key === '');
+    if (!pressing) workspace?.setEmpty(key === '');
     if (key === rightSelection) return;
     rightSelection = key;
     // Only a real change repaints the workspace: a repaint mid-press would
@@ -2446,10 +2530,10 @@ export function mountEditorShell(
           : Math.max(
               0,
               pixelToTime(
+                // V2: lanes start at the scroll area's left edge.
                 event.clientX -
                   track.getBoundingClientRect().left +
-                  track.scrollLeft -
-                  224,
+                  track.scrollLeft,
                 session.timelineZoom,
               ),
             );
@@ -2747,7 +2831,7 @@ export function mountEditorShell(
     return Math.max(
       0,
       pixelToTime(
-        x - track.getBoundingClientRect().left + track.scrollLeft - 224,
+        x - track.getBoundingClientRect().left + track.scrollLeft,
         session.timelineZoom,
       ),
     );
@@ -3221,6 +3305,7 @@ export function mountEditorShell(
       if (disposed) return;
       disposed = true;
       disposeShortcuts();
+      sceneOutliner?.dispose();
       shortcutSheet.dispose();
       palette.dispose();
       newProjectForm.dispose();

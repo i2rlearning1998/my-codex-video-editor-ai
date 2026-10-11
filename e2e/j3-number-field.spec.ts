@@ -152,7 +152,11 @@ test('[INS-018] the export range, new project size and keyframe time use the sam
   page,
 }) => {
   await page.locator('#export').click();
-  await page.locator('#export-more').click();
+  // (Open More options only when it is closed: a click on an open one
+  // closes it.)
+  const more = page.locator('#export-more');
+  if ((await more.getAttribute('open')) === null)
+    await more.locator('summary').click();
   await expect(page.locator('#export-start-up')).toBeVisible();
   const end = page.locator('#export-end');
   const value = Number(await end.inputValue());

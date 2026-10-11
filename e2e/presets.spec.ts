@@ -4,9 +4,9 @@ import {
   expect,
   hook,
   artboard,
-  rulerBox,
   mode2d,
   openInspector,
+  seekKeep,
 } from './fixtures';
 import { choose as chooseOption, sidePanel } from './controls';
 
@@ -69,12 +69,7 @@ const near = (actual: number[], expected: number[], tolerance = 6) =>
 const LAVENDER = [0xcb, 0xbb, 0xed];
 const PAPER = [0xf0, 0xee, 0xe7];
 async function seek(page: Page, seconds: number) {
-  const box = await rulerBox(page);
-  const zoom = (await hook(page)).session.timelinePxPerSecond;
-  await page.mouse.click(box.x + seconds * zoom, box.y + 8);
-  await expect
-    .poll(async () => (await hook(page)).session.time)
-    .toBeCloseTo(seconds, 2);
+  await seekKeep(page, seconds);
 }
 async function select(page: Page, id: string) {
   await page.locator(`#scene-list [data-layer-id="${id}"]`).click();

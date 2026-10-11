@@ -2,6 +2,14 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 7 (T-ALL).
 
+## V-series (V1 to V5) — 2026-10-10
+
+- **Shell (V1):** separate region cards with 8 px gutters and their own tones; the right rail and panel exist only while something is selected and slide in and out; the canvas stays centred.
+- **Timeline (V2):** no lane headers or labels (their toggles are in the lane menu); a click on any empty space deselects and seeks; a marquee from anywhere; lanes centred live; the edge drag snaps, follows and collapses; the range dim is always live; a gap before the first clip can be deleted; duplicates and pastes go on a new lane above; plain-sentence error toasts.
+- **Scene outliner (V3):** a Blender-style outliner in the left Scene category with collections (create, rename, nest, drag, delete, duplicate, copy and paste), search, rubber band, context menus and eye, lock and mute; it never changes the canvas.
+- **FX panels (V4):** Clipchamp-style tile grids for Filters (49 looks) and Effects with live thumbnails of the selected picture, hover previews, inline settings; simpler Adjust colors.
+- **Transitions (V5):** a "+" on a cut adds Fade through black; a lavender marker and band; the right Transition panel swaps it and sets its duration; the left Transitions category applies to the selected cut.
+
 ## T-ALL (P1 to P6) — 2026-10-09
 
 - **Layout (P1):** Media opens first; new projects are white; the Media empty state has an illustration; the right panel follows the selection; panel toggles live in each panel's header; the left rail and panel run full height.

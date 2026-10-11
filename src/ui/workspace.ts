@@ -12,6 +12,9 @@ export interface Workspace {
   /** H2: the layout for the window width (see LAYOUTS). */
   readonly layout: Layout;
   setOpen(side: 'left' | 'right', open: boolean): void;
+  /** V1 (spec 1.3): with nothing selected the right rail and panel take no
+   *  space at all. */
+  setEmpty(empty: boolean): void;
   onChange(listener: () => void): () => void;
   dispose(): void;
 }
@@ -38,7 +41,8 @@ const SIZES: Record<
   { rail: number; left: number; right: number; timeline: number }
 > = {
   // T-ALL P4: +52 px for the frame row under the lanes (D-186).
-  wide: { rail: 64, left: 320, right: 252, timeline: 332 },
+  // V1 (spec 1.5): the right panel is 300 px.
+  wide: { rail: 64, left: 320, right: 300, timeline: 332 },
   medium: { rail: 56, left: 280, right: 280, timeline: 272 },
   narrow: { rail: 56, left: 300, right: 300, timeline: 252 },
   phone: { rail: 56, left: 0, right: 0, timeline: 180 },
@@ -75,12 +79,25 @@ export function mountWorkspace(
   resize: () => void,
 ): Workspace {
   const listeners = new Set<() => void>();
+  // V-series: the first layout is drawn in place, not animated from the
+  // stylesheet's defaults (the canvas would refit a moment after load).
+  shell.classList.add('shell-booting');
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => shell.classList.remove('shell-booting')),
+  );
   let layout = layoutFor(window.innerWidth);
   let left = SIZES[layout].left || SIZES.wide.left,
     right = SIZES[layout].right || SIZES.wide.right,
     height: number | null = storedHeight();
   let leftClosed = layout === 'narrow' || layout === 'phone',
-    rightClosed = layout !== 'wide';
+    rightClosed = layout !== 'wide',
+    empty = true;
+  // Earlier pixel-measuring e2e tests keep the right column reserved (the
+  // T-ALL layout) through a test-only flag set by the e2e fixture; the V1
+  // tests run without it (D-190).
+  const reserve =
+    (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ ===
+    'reserve';
   const bar = shell.querySelector('.topbar')!;
   const leftToggle = document.createElement('div');
   leftToggle.className = 'workspace-controls panel-collapse-row';
@@ -104,7 +121,8 @@ export function mountWorkspace(
       // T-ALL P3 (spec 6): the preview keeps at least 260 px.
       Math.min(
         window.innerHeight * LIMITS.timeline[1],
-        Math.max(LIMITS.timeline[0], window.innerHeight - 260 - 56),
+        // V2 (spec 2): the preview keeps at least 160 px.
+        Math.max(LIMITS.timeline[0], window.innerHeight - 160 - 56),
         value,
       ),
     );
@@ -130,10 +148,21 @@ export function mountWorkspace(
       '--left-panel',
       `${docked('left') && !leftClosed ? left : 0}px`,
     );
+    const gone = empty && !reserve;
     shell.style.setProperty(
       '--right-panel',
-      `${docked('right') && !rightClosed ? right : 0}px`,
+      `${docked('right') && !rightClosed && !gone ? right : 0}px`,
     );
+    shell.style.setProperty('--right-rail-width', gone ? '0px' : '65px');
+    // V1: grid columns carry each card plus its 8 px gutter, so the cards
+    // keep their exact widths; an empty column carries nothing.
+    const leftOpen = docked('left') && !leftClosed;
+    const rightShown = docked('right') && !rightClosed && !gone;
+    shell.style.setProperty('--rail-col', `${sizes.rail + 8}px`);
+    shell.style.setProperty('--left-col', `${leftOpen ? left + 8 : 0}px`);
+    shell.style.setProperty('--right-col', `${rightShown ? right + 8 : 0}px`);
+    shell.style.setProperty('--right-rail-col', gone ? '0px' : '73px');
+    shell.classList.toggle('right-gone', gone);
     // The open widths, for drawers and for content that must not reflow.
     shell.style.setProperty('--left-open', `${left}px`);
     shell.style.setProperty('--right-open', `${right}px`);
@@ -153,7 +182,7 @@ export function mountWorkspace(
     shell.classList.toggle('right-drawer', !docked('right'));
     const drawerOpen =
       (!docked('left') && !leftClosed) ||
-      ((layout === 'narrow' || layout === 'phone') && !rightClosed);
+      ((layout === 'narrow' || layout === 'phone') && !rightClosed && !gone);
     if (scrim) scrim.hidden = !drawerOpen;
     leftToggle
       .querySelector('button')
@@ -163,6 +192,11 @@ export function mountWorkspace(
       ?.setAttribute('aria-expanded', String(!rightClosed));
     refit();
     for (const listener of [...listeners]) listener();
+  };
+  const setEmpty = (value: boolean) => {
+    if (value === empty) return;
+    empty = value;
+    paint();
   };
   const setOpen = (side: 'left' | 'right', open: boolean) => {
     if (side === 'left') leftClosed = !open;
@@ -242,8 +276,54 @@ export function mountWorkspace(
           LIMITS.right[0],
           Math.min(LIMITS.right[1], (gesture?.right ?? right) - delta),
         );
+      else if (gesture && axis === 'height') detent(gesture.height - delta);
       else height = clampTimeline((gesture?.height ?? current()) - delta);
       paint();
+    };
+    /** V2 (spec 2): dragging the timeline's edge. Up is free; down, the
+     *  panel snaps to its default height (where the ruler and every lane
+     *  fit) within 40 px of it, follows the pointer for a short travel past
+     *  that, and then collapses to the player-only layout; back up, it
+     *  leaves the collapsed layout 60 px above it (hysteresis). There is no
+     *  state in between. */
+    const COLLAPSED = 56;
+    const detent = (raw: number) => {
+      const timeline = shell.querySelector<HTMLElement>('#timeline-foundation');
+      const fit = Number(timeline?.dataset.fitHeight) || 0;
+      // The default height fits the ruler and the lanes, at least one video
+      // lane and at most the standard panel height.
+      const defaultHeight = clampTimeline(
+        Math.max(186, Math.min(fit, SIZES[layout].timeline)),
+      );
+      const collapsed = shell.classList.contains('timeline-collapsed');
+      const start = gesture?.height ?? raw;
+      const setCollapsed = (value: boolean) => {
+        if (value !== shell.classList.contains('timeline-collapsed'))
+          timeline?.dispatchEvent(
+            new CustomEvent('timeline-collapse', {
+              bubbles: true,
+              detail: { collapsed: value },
+            }),
+          );
+      };
+      if (collapsed && raw <= COLLAPSED + 60) return;
+      // Only a drag downwards collapses it.
+      if (raw < defaultHeight - 100 && raw < start) {
+        setCollapsed(true);
+        return;
+      }
+      setCollapsed(false);
+      height = clampTimeline(
+        raw >= defaultHeight + 40 || raw < defaultHeight - 40
+          ? raw
+          : defaultHeight,
+      );
+      shell.dataset.timelineZone =
+        raw >= defaultHeight + 40
+          ? 'free'
+          : raw >= defaultHeight - 40
+            ? 'snapped'
+            : 'follow';
     };
     handle.onpointerdown = (event) => {
       if (event.button !== 0 || gesture) return;
@@ -254,7 +334,7 @@ export function mountWorkspace(
         y: event.clientY,
         left,
         right,
-        height: current(),
+        height: shell.classList.contains('timeline-collapsed') ? 56 : current(),
       };
       try {
         handle.setPointerCapture(event.pointerId);
@@ -287,8 +367,7 @@ export function mountWorkspace(
           !target.closest('[data-resize-grip]') ||
           target.closest(
             'button, input, select, textarea, a, [role="button"], [role="group"], [contenteditable], .number-field',
-          ) ||
-          shell.classList.contains('timeline-collapsed')
+          )
         )
           return;
         handle.onpointerdown?.(event);
@@ -344,6 +423,7 @@ export function mountWorkspace(
       return layout;
     },
     setOpen,
+    setEmpty,
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

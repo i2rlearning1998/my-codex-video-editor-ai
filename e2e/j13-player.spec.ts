@@ -69,8 +69,9 @@ test('[TL-073] the player bar: wand planned, scissors split; previous cut, back 
     .locator('#timeline-foundation .timeline-scroll')
     .boundingBox())!;
   const zoom = (await hook(page)).session.timelinePxPerSecond;
-  expect(224 + 10 * zoom).toBeLessThanOrEqual(scroll.width);
-  expect(224 + 10 * zoom).toBeGreaterThan(scroll.width * 0.8);
+  // V2 (D-191): no lane header in front of the lanes.
+  expect(10 * zoom).toBeLessThanOrEqual(scroll.width);
+  expect(10 * zoom).toBeGreaterThan(scroll.width * 0.8);
   // None of this is an undo step.
   expect((await hook(page)).history.labels.length).toBe(steps);
   await page.screenshot({ path: testInfo.outputPath('player.png') });

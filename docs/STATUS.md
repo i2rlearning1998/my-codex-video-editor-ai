@@ -1,3 +1,7 @@
+- **V-series (V1 to V5)** is on `claude/v-series`, a draft PR stacked on PR #22 (`claude/t-all`), not merged; see reports/V-SERIES.md.
+  - **V1** region cards and a right side that exists only with a selection (D-190). **V2** the Clipchamp timeline: no headers, one empty-space surface, marquee, live centring, edge detents, live range dim, leading gap, duplicate and paste above (D-191).
+  - **V3** the Blender-style Scene outliner in the left Scene category over the schema-7 `outliner` (D-192). **V4** Filters and Effects tile panels with live thumbnails, Adjust colors sliders (D-193). **V5** cut "+", marker and band, the right Transition panel (D-194); FX sweeps and contact sheets (D-195).
+  - Schema is still 7; no new npm dependencies; PR #14 and PR #19 untouched.
 - **T-ALL (P1 to P6)** is on `claude/t-all`, draft PR #22 stacked on PR #20 (`claude/u-series`), not merged; see reports/T-ALL.md.
   - **P1** layout (D-183), **P2** lanes (D-184), **P3** paging, scroll range and centring (D-185), **P4** frame range (D-186).
   - **P5** Layers outliner with collections, **schema 7** (one optional composition field, `outliner`; D-187). **P6** FX library from PR #19 copied unchanged and wired (D-188, D-189).

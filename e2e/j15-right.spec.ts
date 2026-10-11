@@ -54,32 +54,31 @@ test('[LAY-046] the right panel has a header with the title, a count badge and c
   await select(page, 'layer-a');
   await expect(title).toHaveText('Video');
   await expect(count).toHaveText('1');
+  // V4 (spec 5, D-192): Clipchamp's order with our Properties first.
   expect(await shown(page)).toEqual([
-    'Captions',
-    'Sound',
+    'Video',
     'Fade',
-    'Animate',
     'Filters',
     'Effects',
     'Adjust colors',
     'Speed',
-    'Transitions',
-    'Advanced',
+    'Sound',
+    'Animate',
+    'Captions',
   ]);
   await select(page, 'layer-c');
   await expect(title).toHaveText('Image');
   expect(await shown(page)).toEqual([
+    'Image',
     'Fade',
-    'Animate',
     'Filters',
     'Effects',
     'Adjust colors',
-    'Transitions',
-    'Advanced',
+    'Animate',
   ]);
-  // Advanced holds the picture's own controls (it is already the open
+  // The first tab holds the picture's own controls (it is already the open
   // section: clicking it again would collapse the panel). U5: Animate is
-  // its own tab, not an Advanced section.
+  // its own tab, not a section there.
   await expect(tab(page, 'Properties')).toHaveAttribute('aria-pressed', 'true');
   await expect(panel(page).locator('[data-action="right-crop"]')).toBeVisible();
   await expect(
@@ -97,7 +96,7 @@ test('[LAY-046] the right panel has a header with the title, a count badge and c
     .toBe(true);
 });
 
-test('[LAY-047] Speed has a slider from 0.1x to 16x with ticks; Effects and Filters list their items; Animate presets are grids; a touching clip shows its Transition', async ({
+test('[LAY-047] Speed has a slider from 0.1x to 16x with ticks; Effects and Filters list their items; Animate presets are grids; the clip rail has no Transitions tab', async ({
   page,
 }) => {
   await select(page, 'layer-b');
@@ -126,10 +125,11 @@ test('[LAY-047] Speed has a slider from 0.1x to 16x with ticks; Effects and Filt
   expect((await labels(page)).at(-1)).toBe('Change speed');
   expect((await clip(page, 'clip-b')).speed).toBe(2);
   // Effects: the FX library's effects for a video (T-ALL P6, D-189).
+  // V4: tiles (spec 5).
   await tab(page, 'Effects').click();
   await expect(
-    panel(page).locator('[data-choice="effect.blur"]'),
-  ).toHaveAttribute('aria-pressed', 'false');
+    panel(page).locator('.fx-tile[data-tile="effect.blur"]'),
+  ).toHaveAttribute('aria-selected', 'false');
   // Animate presets are thumbnail grids in the Animate tab (U5): In ›
   // Fade, one step.
   await tab(page, 'Animate').click();
@@ -143,7 +143,7 @@ test('[LAY-047] Speed has a slider from 0.1x to 16x with ticks; Effects and Filt
     'aria-pressed',
     'true',
   );
-  // Transitions: clip-b does not touch clip-a, so it says how to get one.
-  await tab(page, 'Transitions').click();
-  await expect(panel(page).locator('.right-note')).toBeVisible();
+  // V4 (spec 5): a clip's rail has no Transitions tab; a transition is
+  // picked from the cut's marker (spec 6, TR-013).
+  await expect(tab(page, 'Transitions')).toBeHidden();
 });
