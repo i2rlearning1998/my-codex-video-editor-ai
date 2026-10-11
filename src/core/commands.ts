@@ -1,3 +1,4 @@
+import { isSceneTransitionMarker } from './scene-transitions';
 import { z } from 'zod';
 import {
   assertJson,
@@ -512,6 +513,13 @@ export function applyCommand(project: Project, command: Command): void {
       if (project.compositions.length === 1)
         throw new Error('A project keeps at least one scene');
       project.compositions.splice(index, 1);
+      // V7 (spec 10.5): removing a scene removes its transitions: its own
+      // incoming one goes with it, and the next scene's leads from it.
+      const next = project.compositions[index];
+      if (next)
+        next.markers = next.markers.filter(
+          (marker) => !isSceneTransitionMarker(marker),
+        );
       return;
     }
     case 'CREATE_COMPOSITION':

@@ -1,7 +1,7 @@
 // W5-A main-thread side of export: pre-flight, media and audio preparation, the
 // worker's lifetime, progress, cancel and the download. No engine access: it reads
 // the composition snapshot it is given.
-import type { Asset, Composition, DeepReadonly } from '../core';
+import type { Asset, Composition, DeepReadonly, SceneCut } from '../core';
 import {
   assetFingerprint,
   listAudibleClips,
@@ -26,6 +26,8 @@ export interface ExportInput {
   background: string;
   /** J1: joined scenes keep their own backgrounds (start times in seconds). */
   backgrounds?: readonly { start: number; color: string }[];
+  /** V7: transitions across the cuts of joined scenes. */
+  sceneCuts?: readonly SceneCut[];
   settings: ExportSettings;
 }
 export interface ExportProgress {
@@ -165,6 +167,7 @@ export function startExport(
       assets: input.assets,
       background: input.background,
       ...(input.backgrounds ? { backgrounds: input.backgrounds } : {}),
+      ...(input.sceneCuts?.length ? { sceneCuts: input.sceneCuts } : {}),
       settings,
       videos,
       images,

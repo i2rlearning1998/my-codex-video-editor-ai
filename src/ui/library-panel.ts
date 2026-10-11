@@ -17,7 +17,6 @@ import {
   type BrowsePage,
   type BrowseSection,
 } from './browse-panel';
-import { iconSvg } from './icons';
 import { confirmDialog, escapeHtml } from './components/modal';
 import { itemName, libraryCommands } from './library-insert';
 import { recent, type LibraryActions } from './library-actions';
@@ -278,7 +277,6 @@ export interface LibraryHosts {
   Templates: HTMLElement;
   Elements: HTMLElement;
   Text: HTMLElement;
-  Transitions: HTMLElement;
 }
 export interface LibraryBrowsers {
   /** Back to every panel's first page. */
@@ -317,9 +315,6 @@ const TEXT_SECTIONS = [
   'two-line',
 ] as const;
 
-import { sampleCanvas, tileGrid, tileSource } from './right-panel/fx-panels';
-import { transitionTiles } from './right-panel/transition-tiles';
-
 export function mountLibraryPanels(
   hosts: LibraryHosts,
   engine: EditorEngine,
@@ -331,8 +326,6 @@ export function mountLibraryPanels(
     close(): void;
     addPreset(preset: ShapePreset): void;
     addTextBox(): void;
-    /** V5: applies a transition to the selected cut marker. */
-    applyTransition?(type: string): void;
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
@@ -885,44 +878,6 @@ export function mountLibraryPanels(
     },
   };
 
-  // --- Transitions ----------------------------------------------------------
-  // V5 (spec 6): the same transition tiles as the right Transition panel;
-  // a click applies one to the selected cut marker.
-  const transitionQuery = { value: '' };
-  const transitionsRoot: BrowsePage = {
-    id: 'transitions',
-    title: t('library.transitions'),
-    search: t('transitions.search'),
-    sections: () => [
-      {
-        id: 'tiles',
-        layout: 'list',
-        render: (host) => {
-          const tip = document.createElement('div');
-          tip.className = 'browse-tip';
-          tip.innerHTML = iconSvg('info', 16);
-          const text = document.createElement('p');
-          text.textContent = t('transitions.tip');
-          tip.append(text);
-          host.append(
-            tip,
-            tileGrid({
-              name: t('library.transitions'),
-              search: t('transition.search'),
-              query: transitionQuery,
-              source: tileSource(sampleCanvas()),
-              tiles: transitionTiles().filter((tile) => tile.key !== 'none'),
-              selected: () => false,
-              onClick: (key) => options.applyTransition?.(key),
-              settingsFor: null,
-              settings: () => null,
-            }),
-          );
-        },
-      },
-    ],
-  };
-
   const panels = {
     Templates: createBrowsePanel(hosts.Templates, templatesRoot, {
       id: 'templates',
@@ -934,10 +889,6 @@ export function mountLibraryPanels(
     }),
     Text: createBrowsePanel(hosts.Text, textRoot, {
       id: 'text',
-      close: options.close,
-    }),
-    Transitions: createBrowsePanel(hosts.Transitions, transitionsRoot, {
-      id: 'transitions',
       close: options.close,
     }),
   };

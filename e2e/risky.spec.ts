@@ -299,7 +299,9 @@ test('[PRJ-012] switching the active composition shows its canvas and timeline a
   expect((await hook(page)).session.selectedIds).toEqual(['layer-a']);
   // I3: the scene strip replaces the composition select.
   await showSceneStrip(page);
-  await page.locator('#scene-strip [data-scene-id="scene-2"]').click();
+  await page
+    .locator('#scene-strip .scene-strip-card[data-scene-id="scene-2"]')
+    .click();
   const session = (await hook(page)).session;
   expect(session.compositionId).toBe('scene-2');
   expect(session.selectedIds).toEqual([]);

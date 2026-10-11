@@ -8023,3 +8023,32 @@ input[type='range'] {
   border-color: var(--accent);
   color: var(--accent-text);
 }
+
+/* V7 (spec 10.5): "+" between two scenes adds a transition; the transition
+   marker opens its panel (strip and board alike). */
+.scene-transition.scene-transition-add,
+.scene-transition.scene-transition-marker {
+  flex: none;
+  align-self: center;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.scene-transition.scene-transition-add {
+  border: 1px dashed var(--border-strong);
+  color: var(--text-secondary);
+}
+.scene-transition.scene-transition-add:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.scene-transition.scene-transition-marker {
+  border: 1px solid var(--accent);
+  background: var(--ol-selected, rgba(135, 45, 252, 0.22));
+  color: var(--accent-text);
+}
+.scene-transition.scene-transition-marker[aria-pressed='true'] {
+  background: var(--accent-fill);
+  color: var(--text-on-accent);
+}

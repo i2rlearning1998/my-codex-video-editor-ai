@@ -1301,5 +1301,8 @@
   "frames.toManual": "Control timeline: Manual mode",
   "frames.toAuto": "Control timeline: Auto mode",
   "frames.manualLabel": "Manual range",
-  "frames.autoLabel": "Auto range"
+  "frames.autoLabel": "Auto range",
+  "transition.sceneHint": "Into {name}",
+  "transition.addBetween": "Add transition",
+  "transition.sceneMarker": "Transition: {name}"
 }

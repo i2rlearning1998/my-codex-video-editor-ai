@@ -1,4 +1,4 @@
-import { transitionFocus } from './transition-focus';
+import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
 import { mountFonts } from './fonts';
@@ -12,10 +12,6 @@ import {
   effectiveLayerTiming,
   findClipByLayer,
   findClip,
-  clipTransition,
-  DEFAULT_TRANSITION,
-  maxTransition,
-  previousTouching,
   type EditorEngine,
   type AffineMatrix,
   type Command,
@@ -78,6 +74,8 @@ import {
 } from './timeline';
 import { laneDropPlan, type LaneGroup } from './timeline-drop';
 import { laneGroupOfLayer } from '../core';
+import { activeCut, compositionAt, cutsAround } from '../core';
+import { drawSceneTransition } from '../render/scene-transitions';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
@@ -106,6 +104,7 @@ import {
   mountRightPanel,
   plannedSection,
   sectionsFor,
+  focusedScene,
   type RightSection,
 } from './right-panel';
 import { applyCanvasSize } from './canvas-size';
@@ -159,7 +158,6 @@ const RAIL_CATEGORIES = [
   'Draw',
   'Scene',
   'Audio',
-  'Transitions',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -168,7 +166,6 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Audio: 'audio',
   Elements: 'elements',
   Draw: 'pen',
-  Transitions: 'transitions',
   Scene: 'layers',
 };
 export interface ShellActions {
@@ -253,7 +250,6 @@ export function mountEditorShell(
         <div id="library-elements" data-rail-panel="Elements" hidden></div>
         <div id="library-templates" data-rail-panel="Templates" hidden></div>
         <div id="library-text" data-rail-panel="Text" hidden></div>
-        <div id="library-transitions" data-rail-panel="Transitions" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -524,6 +520,42 @@ export function mountEditorShell(
   let textEditing: TextEditor | undefined;
   // U2: how many times the canvas has been drawn (read by the test hook).
   let drawCount = 0;
+  /**
+   * V7 (spec 10.5): while playing across a scene cut, the canvas shows the
+   * transition: the open scene with the neighbour's boundary frame, mixed.
+   */
+  const drawSceneCut = (drawn: RenderSource) => {
+    const scenes = engine.state.compositions;
+    const open = drawn.composition;
+    const active = activeCut(cutsAround(scenes, open.id), session.currentTime);
+    if (!active) return;
+    const index = scenes.findIndex((scene) => scene.id === open.id);
+    const other = active.cut.time === 0 ? scenes[index - 1] : scenes[index + 1];
+    if (!other) return;
+    const at = active.cut.time === 0 ? other.duration - 1 / other.fps : 0;
+    const neighbour: RenderSource = {
+      composition: compositionAt(other, at),
+      assets: drawn.assets,
+      background: other.backgroundColor,
+      currentTime: at,
+      frames,
+      playing: false,
+      animate: true,
+      ...(drawn.measureText ? { measureText: drawn.measureText } : {}),
+    };
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const view = viewport();
+    drawSceneTransition(context, active.cut, active.p, (target, side) =>
+      drawComposition(
+        target,
+        (side === 'from') === (active.cut.time === 0) ? neighbour : drawn,
+        view,
+        null,
+        { overlays: false },
+      ),
+    );
+  };
   const draw = () => {
     if (disposed) return;
     drawCount++;
@@ -586,6 +618,7 @@ export function mountEditorShell(
       viewport(),
       session.selectedId,
     );
+    if (session.playing) drawSceneCut(drawn);
     frames.endFrame();
     if (textEditing?.layerId) textEditing.sync();
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
@@ -1527,7 +1560,6 @@ export function mountEditorShell(
     'Elements',
     'Templates',
     'Text',
-    'Transitions',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
@@ -1571,7 +1603,6 @@ export function mountEditorShell(
       Templates: element('#library-templates'),
       Elements: element('#library-elements'),
       Text: element('#library-text'),
-      Transitions: element('#library-transitions'),
     },
     engine,
     session,
@@ -1580,46 +1611,6 @@ export function mountEditorShell(
     libraryActions,
     {
       close: () => workspace?.setOpen('left', false),
-      // V5 (spec 6): a left Transitions tile applies to the selected marker.
-      applyTransition: (type) =>
-        safely(() => {
-          const clipId = transitionFocus.clipId;
-          const found = clipId
-            ? findClip(session.source.composition, clipId)
-            : null;
-          if (!found) {
-            showToast(t('transitions.pickCut'), 'info', 3000);
-            return;
-          }
-          const clip = found.clip as unknown as Parameters<
-            typeof maxTransition
-          >[1] & { transitionMetadata: Record<string, unknown> };
-          const before = previousTouching(
-            found.track.clips as unknown as Parameters<
-              typeof previousTouching
-            >[0],
-            clip,
-          );
-          if (!before) return;
-          const current = clipTransition(clip);
-          engine.commands.transaction(
-            current ? 'Change transition' : 'Add transition',
-            [
-              {
-                type: 'SET_CLIP_TRANSITION',
-                compositionId: session.source.composition.id,
-                clipId: clipId!,
-                transition: {
-                  type,
-                  duration: Math.min(
-                    current?.duration ?? DEFAULT_TRANSITION,
-                    maxTransition(before, clip),
-                  ),
-                },
-              } as Command,
-            ],
-          );
-        }),
       // SHP-001: the five W5-D shapes and the I2 lines.
       addPreset: (preset) => safely(() => addShape(engine, session, preset)),
       addTextBox: () => {
@@ -1838,7 +1829,7 @@ export function mountEditorShell(
       resize();
   });
   // I3: the scene strip under the canvas.
-  mountSceneStrip({
+  const sceneStrip = mountSceneStrip({
     host: element('#scene-strip'),
     engine,
     session,
@@ -2020,7 +2011,10 @@ export function mountEditorShell(
     const shown = sectionsFor(session);
     // U5: with nothing selected there is no right panel content (the canvas
     // bar holds the canvas's ratio, background and frame rate).
-    if (!shown.length || kindOf(session) === 'none') {
+    if (
+      !shown.length ||
+      (kindOf(session) === 'none' && !focusedScene(session))
+    ) {
       animateShown = false;
       element('#inspector-content').hidden = true;
       element('#animation-panel').hidden = true;
@@ -2073,9 +2067,11 @@ export function mountEditorShell(
     // the selection's order.
     const kind = kindOf(session);
     element('#right-panel-title').textContent = t(
-      kind === 'video' || kind === 'image'
-        ? `right.tab.${kind}`
-        : firstTabKey(kind),
+      kind === 'none'
+        ? 'transition.title'
+        : kind === 'video' || kind === 'image'
+          ? `right.tab.${kind}`
+          : firstTabKey(kind),
     );
     const count = element('#right-panel-count');
     count.hidden = session.selectedIds.length === 0;
@@ -2120,6 +2116,39 @@ export function mountEditorShell(
   };
   session.onChange(syncRightRail);
   syncRightRail();
+  // V7 (spec 10.5): a scene card's "+" or transition marker opens the right
+  // Transition panel for it; a press on the stage or a selection leaves it.
+  const openSceneTransition = (event: Event) =>
+    safely(() => {
+      transitionFocus.sceneId = (event as CustomEvent<string>).detail;
+      transitionFocus.clipId = null;
+      session.select(null);
+      root.querySelector('.editor-shell')?.classList.remove('right-empty');
+      workspace?.setEmpty(false);
+      renderedRight = '';
+      syncRightRail();
+      setRightSection('Transitions');
+      workspace?.setOpen('right', true);
+      sceneStrip.render();
+      sceneBoard.render?.();
+    });
+  document.addEventListener(SCENE_TRANSITION_EVENT, openSceneTransition);
+  stage.addEventListener(
+    'pointerdown',
+    () => {
+      if (!transitionFocus.sceneId) return;
+      transitionFocus.sceneId = null;
+      if (!session.selectedIds.length)
+        root.querySelector('.editor-shell')?.classList.add('right-empty');
+      renderedRight = '';
+      syncRightRail();
+      if (workspace?.rightOpen && !session.selectedIds.length)
+        workspace.setOpen('right', false);
+      sceneStrip.render();
+      sceneBoard.render?.();
+    },
+    true,
+  );
   element<HTMLButtonElement>('#right-panel-collapse').onclick = () =>
     workspace?.setOpen('right', false);
   for (const el of root.querySelectorAll<HTMLElement>(
@@ -2352,7 +2381,11 @@ export function mountEditorShell(
     const key = session.selectedIds.join(',');
     const shell = root.querySelector<HTMLElement>('.editor-shell');
     if (!shell) return;
-    shell.classList.toggle('right-empty', key === '');
+    // (A scene transition's panel shows with nothing selected; V7.)
+    shell.classList.toggle(
+      'right-empty',
+      key === '' && !transitionFocus.sceneId,
+    );
     // (A press waits for its release, so its gesture is never cancelled.)
     if (pressing) return;
     workspace?.setEmpty(key === '');
@@ -2365,7 +2398,12 @@ export function mountEditorShell(
     // for a moment before selecting its result, which must not close it.)
     if (key === '')
       requestAnimationFrame(() => {
-        if (!disposed && !session.selectedIds.length && workspace?.rightOpen)
+        if (
+          !disposed &&
+          !session.selectedIds.length &&
+          !transitionFocus.sceneId &&
+          workspace?.rightOpen
+        )
           workspace.setOpen('right', false);
       });
     // A phone has no right rail (D-120), so there a selection still opens

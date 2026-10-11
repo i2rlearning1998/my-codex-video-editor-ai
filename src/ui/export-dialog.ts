@@ -25,6 +25,7 @@ import type { AudioDecoder, MediaStore } from '../media';
 import { formatDuration, formatNumber, t } from '../i18n';
 import { openModal } from './components/modal';
 import { joinScenes } from '../export/join';
+import { sceneCuts } from '../core';
 
 export interface ExportDialogOptions {
   composition: DeepReadonly<Composition>;
@@ -344,6 +345,8 @@ export function openExportDialog(options: ExportDialogOptions) {
                   .reduce((sum, item) => sum + item.duration, 0),
                 color: scene.backgroundColor,
               })),
+              // V7 (spec 10.5): transitions across the scene cuts.
+              sceneCuts: sceneCuts(scenes),
             }
           : {}),
         settings,

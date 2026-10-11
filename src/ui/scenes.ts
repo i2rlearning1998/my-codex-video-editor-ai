@@ -1,6 +1,7 @@
 // G5 scenes: commands that add, duplicate, reorder, rename and delete scenes
 // (compositions) and move or copy a layer between them. Everything goes
 // through the Command Bus as one undo step per action; no schema change.
+import { isSceneTransitionMarker } from '../core';
 import {
   adoptFreeLayers,
   createComposition,
@@ -57,6 +58,10 @@ export function cloneScene(
         metadata.detachedFrom =
           clipIds.get(metadata.detachedFrom) ?? metadata.detachedFrom;
     }
+  // (V7: a copy starts without the original's scene transition.)
+  copy.markers = copy.markers.filter(
+    (marker) => !isSceneTransitionMarker(marker),
+  );
   for (const marker of copy.markers) marker.id = newId();
   return { ...copy, id: newId(), name };
 }

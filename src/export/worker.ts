@@ -28,7 +28,9 @@ import {
   type VideoSample,
 } from 'mediabunny';
 import {
+  activeCut,
   compositionAt,
+  type SceneCut,
   type Asset,
   type Composition,
   type DeepReadonly,
@@ -40,6 +42,7 @@ import {
   type RenderSource,
 } from '../render/adapter';
 import { drawComposition } from '../render/canvas';
+import { drawSceneTransition } from '../render/scene-transitions';
 import { measureWithContext } from '../render/text-style';
 import type { TextMeasurer } from '../render/text-layout';
 import { fitMatrix, frameTimes, type ExportSettings } from './settings';
@@ -58,6 +61,8 @@ export interface ExportJob {
   images: Record<string, ImageBitmap>;
   /** The pre-mixed stereo audio of the range, or null when silent. */
   audio: { sampleRate: number; channels: Float32Array[] } | null;
+  /** V7: transitions across the cuts of joined scenes (composition time). */
+  sceneCuts?: readonly SceneCut[];
 }
 export type WorkerRequest =
   | { type: 'start'; job: ExportJob }
@@ -150,18 +155,33 @@ async function run(job: ExportJob): Promise<void> {
     ...(frames ? { frames } : {}),
   });
 
-  // Plan: which video layers need which source times, frame by frame.
+  // V7 (spec 10.5): inside a scene cut's window a frame draws both scenes,
+  // the outgoing one up to its last frame and the incoming from its first.
+  const frame = 1 / job.composition.fps;
+  const drawsAt = (time: number): number[] => {
+    const active = activeCut(job.sceneCuts ?? [], time);
+    if (!active) return [time];
+    return [
+      Math.min(time, active.cut.time - frame),
+      Math.max(time, active.cut.time),
+    ];
+  };
+  // Plan: which video layers need which source times, frame by frame (and
+  // draw by draw).
   const plan = times.map((time) =>
-    deriveRenderItems(sourceAt(time)).items.flatMap((item) =>
-      item.media?.kind === 'video' ? [item.media] : [],
+    drawsAt(time).map((at) =>
+      deriveRenderItems(sourceAt(at)).items.flatMap((item) =>
+        item.media?.kind === 'video' ? [item.media] : [],
+      ),
     ),
   );
   const decoders = new Map<
     string,
     { input: Input; samples: AsyncGenerator<VideoSample | null, void, unknown> }
   >();
-  for (const key of new Set(plan.flat().map((request) => request.key))) {
-    const requests = plan.flat().filter((request) => request.key === key);
+  const flat = plan.flat(2);
+  for (const key of new Set(flat.map((request) => request.key))) {
+    const requests = flat.filter((request) => request.key === key);
     const blob = job.videos[requests[0]!.assetId];
     if (!blob) continue;
     const input = new Input({
@@ -255,26 +275,47 @@ async function run(job: ExportJob): Promise<void> {
     for (const [index, time] of times.entries()) {
       if (cancelled) throw new DOMException('Export cancelled', 'AbortError');
       // Fetch this frame's decoded source frames, in the planned order.
-      const ready = new Map<string, CanvasImageSource>();
-      for (const request of plan[index]!) {
-        const decoder = decoders.get(request.key);
-        const next = decoder ? await decoder.samples.next() : null;
-        const sample = next && !next.done ? next.value : null;
-        if (sample) {
-          open.push(sample);
-          ready.set(request.key, sample.toCanvasImageSource());
+      const providers: FrameProvider[] = [];
+      for (const requests of plan[index]!) {
+        const ready = new Map<string, CanvasImageSource>();
+        for (const request of requests) {
+          const decoder = decoders.get(request.key);
+          const next = decoder ? await decoder.samples.next() : null;
+          const sample = next && !next.done ? next.value : null;
+          if (sample) {
+            open.push(sample);
+            ready.set(request.key, sample.toCanvasImageSource());
+          }
         }
+        const frames: FrameProvider = {
+          frame: (request) =>
+            request.kind === 'image'
+              ? (job.images[request.assetId] ?? null)
+              : (ready.get(request.key) ?? null),
+        };
+        providers.push(frames);
       }
-      const frames: FrameProvider = {
-        frame: (request) =>
-          request.kind === 'image'
-            ? (job.images[request.assetId] ?? null)
-            : (ready.get(request.key) ?? null),
-      };
-      drawComposition(context, sourceAt(time, frames), view, null, {
-        overlays: false,
-        surround: '#000000',
-      });
+      const draws = drawsAt(time);
+      const active = activeCut(job.sceneCuts ?? [], time);
+      const paint = (
+        target: Parameters<typeof drawComposition>[0],
+        at: number,
+        frames: FrameProvider,
+      ) =>
+        drawComposition(target, sourceAt(at, frames), view, null, {
+          overlays: false,
+          surround: '#000000',
+        });
+      if (
+        !active ||
+        draws.length < 2 ||
+        !drawSceneTransition(context, active.cut, active.p, (target, side) =>
+          side === 'from'
+            ? paint(target, draws[0]!, providers[0]!)
+            : paint(target, draws[1]!, providers[1]!),
+        )
+      )
+        paint(context, draws.at(-1)!, providers.at(-1)!);
       const timestamp = index / settings.fps;
       await pushAudioUntil(timestamp + 1);
       await video.add(timestamp, 1 / settings.fps);

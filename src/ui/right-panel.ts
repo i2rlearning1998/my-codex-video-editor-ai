@@ -10,6 +10,10 @@
 import { transitionTiles } from './right-panel/transition-tiles';
 import { transitionFocus } from './transition-focus';
 import {
+  sceneTransitionLimit,
+  setSceneTransition,
+} from './scene-transition-actions';
+import {
   blendModes,
   defaults as fxDefaults,
   getAdjustment,
@@ -20,6 +24,8 @@ import {
   clipAnimation,
   clipFx,
   clipTransition,
+  sceneTransitionOf,
+  type Transition,
   DEFAULT_TRANSITION,
   findClip,
   maxTransition,
@@ -172,8 +178,23 @@ const focusedClip = (session: EditorSession) => {
   }
   return found;
 };
+/**
+ * V7 (spec 10.5): the scene whose incoming transition's panel is open; it
+ * holds only while nothing is selected.
+ */
+export const focusedScene = (session: EditorSession) => {
+  const id = transitionFocus.sceneId;
+  if (!id) return null;
+  if (session.selectedIds.length) {
+    transitionFocus.sceneId = null;
+    return null;
+  }
+  return id;
+};
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
+  if (kindOf(session) === 'none' && focusedScene(session))
+    return ['Transitions'];
   const tabs = TABS[kindOf(session)];
   return focusedClip(session) ? [...tabs, 'Transitions'] : tabs;
 }
@@ -188,7 +209,10 @@ export function plannedSection(
 ): readonly [string, number] | undefined {
   if (section === 'Fade' && session && kindOf(session) === 'audio')
     return ['AUD-003', 7];
-  if (section === 'Transitions' && (!session || kindOf(session) === 'none'))
+  if (
+    section === 'Transitions' &&
+    (!session || (kindOf(session) === 'none' && !focusedScene(session)))
+  )
     return ['TR-001', 6];
   return PLANNED[section];
 }
@@ -1154,7 +1178,68 @@ export function mountRightPanel(
   };
   const transitionQuery = { value: '' };
   /** V5 (spec 6): the Transition panel of the selected cut marker. */
+  /** V7: the Transition panel of a scene-to-scene transition. */
+  const sceneTransitionPanel = (sceneId: string) => {
+    const scene = engine.state.compositions.find((item) => item.id === sceneId);
+    if (!scene) return [heading(t('transition.title'))];
+    const current = sceneTransitionOf(scene);
+    const limit = sceneTransitionLimit(engine, sceneId);
+    const set = (label: string, transition: Transition | null) =>
+      safely(() => setSceneTransition(engine, sceneId, transition, label));
+    return [
+      heading(
+        t('transition.title'),
+        t('transition.sceneHint', { name: scene.name }),
+      ),
+      tileGrid({
+        name: t('transition.title'),
+        search: t('transition.search'),
+        query: transitionQuery,
+        source: source(),
+        tiles: transitionTiles(),
+        selected: (key) => key === (current?.type ?? 'none'),
+        onClick: (key) => {
+          if (key === 'none') {
+            if (current) set('Remove transition', null);
+            return;
+          }
+          if (key === current?.type) return;
+          set(current ? 'Change transition' : 'Add transition', {
+            type: key as Transition['type'],
+            duration: Math.min(current?.duration ?? DEFAULT_TRANSITION, limit),
+          });
+        },
+        settingsFor: current?.type ?? null,
+        settings: () => {
+          if (!current) return null;
+          const block = document.createElement('div');
+          block.append(
+            createNumberField({
+              id: 'transition-duration',
+              label: t('transition.duration'),
+              value: Math.round(current.duration * 100) / 100,
+              unit: 's',
+              min: MIN_TRANSITION,
+              max: Math.round(limit * 100) / 100,
+              step: 0.1,
+              decimals: 1,
+              slider: true,
+              onCommit: (value) => {
+                if (value !== current.duration)
+                  set('Transition duration', { ...current, duration: value });
+              },
+              onInvalid: (message) => report(new RangeError(message)),
+            }),
+          );
+          return block;
+        },
+      }),
+    ];
+  };
   const transitions = () => {
+    const sceneId = focusedScene(session);
+    if (sceneId && kindOf(session) === 'none')
+      return sceneTransitionPanel(sceneId);
     const found = focusedClip(session);
     if (!found)
       return [

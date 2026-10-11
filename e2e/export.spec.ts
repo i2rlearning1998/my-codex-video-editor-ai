@@ -8,6 +8,7 @@ import {
   hook,
   rulerBox,
   showCategory,
+  showSceneStrip,
   mode2d,
   openInspector,
   openRight,
@@ -511,6 +512,84 @@ test('[EXP-020] the exported audio covers exactly the frame range: frames 20 to 
   );
   // The encoder may pad by a frame of audio at most.
   expect(Math.abs(seconds - 1)).toBeLessThan(0.03);
+});
+
+test('[TR-018] a scene-to-scene Fade through black is exported across the joined cut: dark at the cut, each scene whole outside the window', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  await installVideoLoader(page);
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await showSceneStrip(page);
+  await page.locator('#scene-strip-add').click();
+  await page.locator('[data-action="strip-add-blank"]').click();
+  const all = () => hook(page).then((state) => state.project.compositions);
+  await expect.poll(async () => (await all()).length).toBe(2);
+  const [first, second] = await all();
+  await page
+    .locator(
+      `#scene-strip [data-action="scene-transition-add"][data-scene-id="${second!.id}"]`,
+    )
+    .click();
+  await openExport(page);
+  await dialog(page).locator('#export-resolution').selectOption('720');
+  const { bytes } = await runExport(page, testInfo);
+  const info = await readBack(bytes);
+  // No scene is shortened.
+  expect(info.duration).toBeCloseTo(first!.duration + second!.duration, 0);
+  const cut = first!.duration;
+  const brightness = await page.evaluate(
+    async ({ base64, mime, times }) => {
+      const binary = atob(base64);
+      const data = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
+      const video = await (
+        window as unknown as {
+          __loadVideo(
+            data: Uint8Array,
+            type: string,
+          ): Promise<HTMLVideoElement>;
+        }
+      ).__loadVideo(data, mime);
+      const canvas = document.createElement('canvas');
+      canvas.width = 64;
+      canvas.height = 36;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      const values: number[] = [];
+      for (const time of times) {
+        await new Promise((resolve) => {
+          video.onseeked = resolve;
+          video.currentTime = time;
+        });
+        context.drawImage(video, 0, 0, 64, 36);
+        const pixels = context.getImageData(0, 0, 64, 36).data;
+        let sum = 0;
+        for (let i = 0; i < pixels.length; i += 4)
+          sum += (pixels[i]! + pixels[i + 1]! + pixels[i + 2]!) / 3;
+        values.push(sum / (pixels.length / 4));
+      }
+      URL.revokeObjectURL(video.src);
+      return values;
+    },
+    {
+      base64: bytes.toString('base64'),
+      mime: expectedCodecs(container()).type,
+      times: [cut - 1.2, cut - 0.02, cut + 0.02, cut + 1.2],
+    },
+  );
+  const [before, atEnd, atStart, after] = brightness as [
+    number,
+    number,
+    number,
+    number,
+  ];
+  expect(atEnd).toBeLessThan(40);
+  expect(atStart).toBeLessThan(40);
+  expect(before).toBeGreaterThan(120);
+  expect(after).toBeGreaterThan(120);
 });
 
 test('[EXP-004] the audio mix is in the file and in sync with the picture', async ({

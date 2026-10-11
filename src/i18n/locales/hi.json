@@ -1301,5 +1301,8 @@
   "frames.toManual": "टाइमलाइन नियंत्रण: मैनुअल मोड",
   "frames.toAuto": "टाइमलाइन नियंत्रण: ऑटो मोड",
   "frames.manualLabel": "मैनुअल रेंज",
-  "frames.autoLabel": "ऑटो रेंज"
+  "frames.autoLabel": "ऑटो रेंज",
+  "transition.sceneHint": "{name} में",
+  "transition.addBetween": "ट्रांज़िशन जोड़ें",
+  "transition.sceneMarker": "ट्रांज़िशन: {name}"
 }
