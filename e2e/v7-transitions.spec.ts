@@ -39,7 +39,7 @@ async function secondScene(page: Page) {
   return (await scenes(page))[1]!.id;
 }
 
-test('[TR-017] one Transitions place: no left Transitions category (rail order Templates, Elements, Text, Media, Draw, Scene, Audio); the right Transition panel has the groups, 28 drawn tiles and search', async ({
+test('[TR-017] one Transitions place: no left Transitions category (rail order Templates, Elements, Text, Media, Draw, Scene, Record & create, Audio); the right Transition panel has the groups, 28 drawn tiles and search', async ({
   page,
 }) => {
   const rail = await page
@@ -56,7 +56,8 @@ test('[TR-017] one Transitions place: no left Transitions category (rail order T
     'Draw',
     'Scene',
   ]);
-  expect(rail).toContain('Audio');
+  // V7 (spec 11.4): Record & create, then Audio.
+  expect(rail.slice(6)).toEqual(['Record', 'Audio']);
   await expect(page.locator('#library-transitions')).toHaveCount(0);
   // The right panel (opened here from a scene "+") holds every tile.
   const id = await secondScene(page);

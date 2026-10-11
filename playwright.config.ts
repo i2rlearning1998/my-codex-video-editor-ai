@@ -57,6 +57,15 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     ...browser,
+    // V7 (spec 11.4): Chromium's fake microphone, so the voiceover
+    // recording flow runs without a device or a permission prompt.
+    launchOptions: {
+      ...('launchOptions' in browser ? browser.launchOptions : {}),
+      args: [
+        '--use-fake-ui-for-media-stream',
+        '--use-fake-device-for-media-stream',
+      ],
+    },
     // H2: wide enough for the desktop layout (docked left and right panels)
     // with the canvas at least as large as before the H2 shell.
     // I3 (D-150): 72 px taller for the scene strip, so the canvas keeps the

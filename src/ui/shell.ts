@@ -85,6 +85,13 @@ import { myTemplates } from './my-templates';
 import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
+import { mountRecordPanel } from './record-panel';
+import { newTts, ttsState } from './right-panel/tts-panel';
+import {
+  registerTtsCommands,
+  ttsCommand,
+  type TtsSettings,
+} from '../audio/tts/commands';
 import { wordmarkHtml } from '../brand/brand';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
 import { openSaveTemplate } from './save-template';
@@ -159,6 +166,8 @@ const RAIL_CATEGORIES = [
   'Media',
   'Draw',
   'Scene',
+  // V7 (spec 11.4): Record & create, before Audio.
+  'Record',
   'Audio',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
@@ -169,6 +178,7 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Elements: 'elements',
   Draw: 'pen',
   Scene: 'layers',
+  Record: 'mic',
 };
 export interface ShellActions {
   save?: () => void;
@@ -253,6 +263,7 @@ export function mountEditorShell(
         <div id="library-templates" data-rail-panel="Templates" hidden></div>
         <div id="library-text" data-rail-panel="Text" hidden></div>
         <div id="library-audio" data-rail-panel="Audio" hidden></div>
+        <div id="library-record" data-rail-panel="Record" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -716,6 +727,54 @@ export function mountEditorShell(
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
       audioDecoder: decoder,
+      // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
+      tts: {
+        report: reportError,
+        save: async (file, name, settings, clipId) => {
+          const assetId = await importMade(file);
+          const found = clipId
+            ? findClip(session.source.composition, clipId)
+            : null;
+          if (!found) {
+            const created = addOnNewAudioLane(assetId, {
+              name,
+              tts: settings,
+            });
+            ttsState.clipId = created;
+            openCategory('Media');
+            return;
+          }
+          // Replace: the new audio, its length, the same clip (volume and
+          // fades kept), one step.
+          registerTtsCommands(engine);
+          const asset = session.source.assets.find(
+            (item) => item.id === assetId,
+          );
+          const length =
+            asset?.duration && asset.duration > 0
+              ? asset.duration
+              : found.clip.duration;
+          const composition = session.source.composition;
+          engine.commands.transaction('Replace text to speech', [
+            {
+              type: 'SET_LAYER_ASSET',
+              compositionId: composition.id,
+              layerId: found.clip.layerId,
+              assetId,
+            },
+            {
+              type: 'SET_CLIP_TIMING',
+              compositionId: composition.id,
+              clipId: found.clip.id,
+              startTime: found.clip.startTime,
+              duration: length,
+              sourceIn: 0,
+              sourceOut: length,
+            },
+            ttsCommand(composition.id, found.clip.id, settings),
+          ]);
+        },
+      },
       sample: (width, height) => selectionSample(width, height),
     },
   );
@@ -1550,7 +1609,7 @@ export function mountEditorShell(
     Templates: ['library.templatesTitle', 'library.templatesDescription'],
     Audio: ['library.audioTitle', 'library.audioDescription'],
     Elements: ['library.elementsTitle', 'library.elementsDescription'],
-    Transitions: ['library.transitionsTitle', 'library.transitionsDescription'],
+    Record: ['library.recordTitle', 'library.recordDescription'],
   };
   // G1.7: every rail category shows only its own panels. The markup tags each
   // panel with data-rail-panel; this is the one place that decides visibility,
@@ -1565,6 +1624,7 @@ export function mountEditorShell(
     'Templates',
     'Text',
     'Audio',
+    'Record',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
@@ -1701,6 +1761,8 @@ export function mountEditorShell(
         workspace.setOpen('left', false);
         return;
       }
+      // V7 (spec 11.4): leaving Record & create while recording asks first.
+      if (activeCategory === 'Record' && category !== 'Record') leaveRecord?.();
       activeCategory = category;
       sidePanels.close();
       applyCategory(activeCategory);
@@ -1891,8 +1953,11 @@ export function mountEditorShell(
     mediaInput.click();
   // J8: the empty timeline's hint rows add text, or open Media (with the file
   // picker) or Audio.
+  let leaveRecord: (() => void) | undefined;
   const openCategory = (category: string) => {
     if (drawPalette?.open) drawPalette.close();
+    // V7 (spec 11.4): leaving Record & create while recording asks first.
+    if (activeCategory === 'Record' && category !== 'Record') leaveRecord?.();
     activeCategory = category;
     sidePanels.close();
     applyCategory(category);
@@ -2018,7 +2083,7 @@ export function mountEditorShell(
     // bar holds the canvas's ratio, background and frame rate).
     if (
       !shown.length ||
-      (kindOf(session) === 'none' && !focusedScene(session))
+      (kindOf(session) === 'none' && !focusedScene(session) && !ttsState.open)
     ) {
       animateShown = false;
       element('#inspector-content').hidden = true;
@@ -2073,7 +2138,9 @@ export function mountEditorShell(
     const kind = kindOf(session);
     element('#right-panel-title').textContent = t(
       kind === 'none'
-        ? 'transition.title'
+        ? ttsState.open
+          ? 'tts.title'
+          : 'transition.title'
         : kind === 'video' || kind === 'image'
           ? `right.tab.${kind}`
           : firstTabKey(kind),
@@ -2139,9 +2206,30 @@ export function mountEditorShell(
       sceneBoard.render?.();
     });
   document.addEventListener(SCENE_TRANSITION_EVENT, openSceneTransition);
+  // V7 (spec 11.5): Create > Text to speech opens the right panel (the one
+  // left action that does).
+  const openTextToSpeech = () =>
+    safely(() => {
+      newTts();
+      transitionFocus.sceneId = null;
+      transitionFocus.clipId = null;
+      session.select(null);
+      root.querySelector('.editor-shell')?.classList.remove('right-empty');
+      renderedRight = '';
+      syncRightRail();
+      setRightSection('Speech');
+      workspace?.setOpen('right', true);
+    });
   stage.addEventListener(
     'pointerdown',
     () => {
+      if (ttsState.open && !session.selectedIds.length) {
+        ttsState.open = false;
+        root.querySelector('.editor-shell')?.classList.add('right-empty');
+        renderedRight = '';
+        syncRightRail();
+        if (workspace?.rightOpen) workspace.setOpen('right', false);
+      }
       if (!transitionFocus.sceneId) return;
       transitionFocus.sceneId = null;
       if (!session.selectedIds.length)
@@ -2390,7 +2478,7 @@ export function mountEditorShell(
     // (A scene transition's panel shows with nothing selected; V7.)
     shell.classList.toggle(
       'right-empty',
-      key === '' && !transitionFocus.sceneId,
+      key === '' && !transitionFocus.sceneId && !ttsState.open,
     );
     // (A press waits for its release, so its gesture is never cancelled.)
     if (pressing) return;
@@ -2408,6 +2496,7 @@ export function mountEditorShell(
           !disposed &&
           !session.selectedIds.length &&
           !transitionFocus.sceneId &&
+          !ttsState.open &&
           workspace?.rightOpen
         )
           workspace.setOpen('right', false);
@@ -2446,6 +2535,85 @@ export function mountEditorShell(
     engine.commands.transaction(built.label, built.commands);
     session.select(built.layerId);
   };
+  /**
+   * V7 (spec 11.3 to 11.5): an audio asset at the playhead on a new audio
+   * lane, one step; a recording or speech names the lane, layer and clip,
+   * and speech keeps its settings on the clip.
+   */
+  const addOnNewAudioLane = (
+    assetId: string,
+    named: { name?: string; tts?: TtsSettings } = {},
+  ) => {
+    const asset = session.source.assets.find((item) => item.id === assetId);
+    if (!asset) throw new Error(t('media.missing'));
+    const composition = session.source.composition;
+    const trackId = crypto.randomUUID();
+    const built = assetCommands(
+      named.name ? { ...asset, name: named.name } : asset,
+      {
+        time: session.currentTime,
+        trackId,
+        newTrack: [
+          {
+            type: 'CREATE_TRACK',
+            compositionId: composition.id,
+            track: {
+              id: trackId,
+              name: named.name ?? nextTrackName(composition, 'audio'),
+              type: 'audio',
+              order: composition.tracks.length,
+              enabled: true,
+              locked: false,
+              muted: false,
+              clips: [],
+            },
+          },
+          {
+            type: 'MOVE_TRACK',
+            compositionId: composition.id,
+            trackId,
+            index: laneInsertIndex(composition.tracks, 'audio', 'bottom'),
+          },
+        ],
+      },
+    );
+    let clipId = '';
+    for (const command of built.commands)
+      if (command.type === 'CREATE_CLIP') {
+        clipId = command.clip.id;
+        if (named.tts)
+          (command.clip.metadata as Record<string, unknown>).tts = {
+            ...named.tts,
+          };
+      }
+    engine.commands.transaction(
+      named.tts ? 'Add text to speech' : built.label,
+      built.commands,
+    );
+    session.select(built.layerId);
+    return clipId;
+  };
+  /** Imports a file made here (a recording, speech); its asset id. */
+  const importMade = async (file: File) => {
+    const [id] = await mediaPanel.importFiles([file]);
+    if (!id) throw new Error(t('record.importFailed'));
+    return id;
+  };
+  // V7 (spec 11.4): Record & create.
+  const recordPanel = mountRecordPanel(element('#library-record'), {
+    addRecording: async (file) => {
+      const assetId = await importMade(file);
+      const taken = new Set(
+        session.source.composition.tracks.map((track) => track.name),
+      );
+      let n = 1;
+      while (taken.has(t('record.name', { n: String(n) }))) n++;
+      addOnNewAudioLane(assetId, { name: t('record.name', { n: String(n) }) });
+    },
+    openTextToSpeech: () => openTextToSpeech(),
+    report: reportError,
+  });
+  leaveRecord = () => recordPanel.leave();
   // V7 (spec 11.3): the left Audio category, the built-in sound pack. A
   // sound goes in at the playhead on a new audio lane, one step.
   const soundPack = mountSoundPack(element('#library-audio'), {
@@ -2462,39 +2630,7 @@ export function mountEditorShell(
           asset.metadata.fileName === fileName &&
           asset.metadata.removed !== true,
       )?.id ?? null,
-    add: (assetId) =>
-      safely(() => {
-        const asset = session.source.assets.find((item) => item.id === assetId);
-        if (!asset) return;
-        const composition = session.source.composition;
-        const trackId = crypto.randomUUID();
-        placeAsset(asset, {
-          time: session.currentTime,
-          trackId,
-          newTrack: [
-            {
-              type: 'CREATE_TRACK',
-              compositionId: composition.id,
-              track: {
-                id: trackId,
-                name: nextTrackName(composition, 'audio'),
-                type: 'audio',
-                order: composition.tracks.length,
-                enabled: true,
-                locked: false,
-                muted: false,
-                clips: [],
-              },
-            },
-            {
-              type: 'MOVE_TRACK',
-              compositionId: composition.id,
-              trackId,
-              index: laneInsertIndex(composition.tracks, 'audio', 'bottom'),
-            },
-          ],
-        });
-      }),
+    add: (assetId) => safely(() => void addOnNewAudioLane(assetId)),
     report: reportError,
   });
   /** The commands adding an asset as a layer with a clip, at a composition
@@ -3444,6 +3580,7 @@ export function mountEditorShell(
       sceneBoard.dispose();
       mediaPanel.dispose();
       soundPack.dispose();
+      recordPanel.dispose();
       positionPanel.dispose();
       frames.dispose();
       previews.dispose();

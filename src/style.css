@@ -8147,3 +8147,119 @@ input[type='range'] {
   display: flex;
   gap: var(--space-2);
 }
+
+/* V7 (spec 11.4, 11.5): Record & create and Text to speech. */
+.record-panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  align-content: start;
+}
+.record-heading {
+  margin: 0;
+  font-size: 15px;
+}
+.record-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  block-size: 56px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    135deg,
+    var(--ol-selected, rgba(135, 45, 252, 0.22)),
+    var(--region-panel)
+  );
+  color: var(--text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.record-card[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.record-meter {
+  --level: 0%;
+  position: relative;
+  block-size: 8px;
+  border-radius: 999px;
+  background: var(--hover);
+  overflow: hidden;
+}
+.record-meter > span {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: var(--level);
+  background: var(--accent);
+}
+.record-big {
+  min-block-size: 44px;
+}
+.record-countdown {
+  font-size: 48px;
+  font-weight: var(--weight-semibold, 600);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.record-time {
+  font-size: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.record-problem {
+  color: var(--danger-text);
+}
+.record-wave {
+  inline-size: 100%;
+  block-size: 64px;
+  stroke: var(--accent-text);
+  stroke-width: 0.6;
+}
+.tts-field {
+  display: grid;
+  gap: 4px;
+}
+.tts-label {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+}
+.tts-search,
+.tts-field select,
+.tts-text {
+  inline-size: 100%;
+  min-block-size: 32px;
+  padding: 4px var(--space-2);
+  border: 1px solid var(--region-border);
+  border-radius: var(--radius-sm);
+  background: var(--input);
+  color: var(--text);
+  font: inherit;
+}
+.tts-text {
+  resize: vertical;
+}
+.tts-text-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tts-count {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+.tts-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--warning-text);
+  border-radius: var(--radius-md);
+}
+.tts-banner[hidden] {
+  display: none;
+}

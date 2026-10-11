@@ -87,6 +87,8 @@ describe('editor shell integration', () => {
       'Media',
       'Draw',
       'Scene',
+      // V7 (spec 11.4): Record & create.
+      'Record',
       'Audio',
     ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();

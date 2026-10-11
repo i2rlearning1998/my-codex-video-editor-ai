@@ -24,6 +24,7 @@ import {
   clipAnimation,
   clipFx,
   clipTransition,
+  findClipByLayer,
   clipAudioDetached,
   sceneTransitionOf,
   type Transition,
@@ -62,6 +63,13 @@ import { guardCommands } from './editor-mode';
 import { iconSvg } from './icons';
 import { documentColors } from './palette';
 import { audioCommand, audioTab } from './right-panel/audio-tab';
+import {
+  editTtsClip,
+  ttsPanel,
+  ttsState,
+  type TtsHooks,
+} from './right-panel/tts-panel';
+import { readTtsSettings } from '../audio/tts/commands';
 import { readAudioSettings, registerAudioCommands } from '../audio/settings';
 import type { AudioDecoder } from '../media/audio';
 import { locateLayer } from '../render/adapter';
@@ -96,6 +104,7 @@ export const RIGHT_SECTIONS = [
   'Filters',
   'Captions',
   'Transitions',
+  'Speech',
 ] as const;
 export type RightSection = (typeof RIGHT_SECTIONS)[number];
 export const RIGHT_ICONS: Record<RightSection, string> = {
@@ -109,6 +118,7 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Audio: 'audio',
   Captions: 'captions',
   Transitions: 'transitions',
+  Speech: 'text',
 };
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
  *  Effects open, listing what they will hold; Transitions is the J12 panel
@@ -196,10 +206,22 @@ export const focusedScene = (session: EditorSession) => {
   }
   return id;
 };
+/** The selected text to speech clip, if any. */
+export const ttsClip = (session: EditorSession) => {
+  const roots = selectionRoots(session.source, session.selectedIds);
+  if (roots.length !== 1 || roots[0]!.type !== 'audio') return null;
+  const found = findClipByLayer(session.source.composition, roots[0]!.id);
+  return found && readTtsSettings(found.clip) ? found.clip : null;
+};
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
+  // V7 (spec 11.5): Text to speech, opened from Record & create.
+  if (session.selectedIds.length) ttsState.open = false;
+  if (kindOf(session) === 'none' && ttsState.open) return ['Speech'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
+  if (kindOf(session) === 'audio' && ttsClip(session))
+    return [...TABS.audio, 'Speech'];
   const tabs = TABS[kindOf(session)];
   return focusedClip(session) ? [...tabs, 'Transitions'] : tabs;
 }
@@ -246,6 +268,8 @@ export interface RightPanelHooks {
       | 'spacing'
       | 'canvas-size',
   ) => HTMLElement | null;
+  /** V7: Text to speech's Save. */
+  tts?: TtsHooks;
   /** V7: decodes clip sound for the Audio tab's loudness analysis. */
   audioDecoder?: AudioDecoder;
   /** V4: the selection alone, without effects, fitted on black. */
@@ -1396,6 +1420,20 @@ export function mountRightPanel(
       }),
     ];
   };
+  /** V7 (spec 11.5): Text to speech, for a new clip or the selected one. */
+  const speech = () => {
+    const clip = ttsClip(session);
+    if (clip) editTtsClip(clip);
+    else if (!ttsState.open) return [heading(t('tts.title'))];
+    else if (ttsState.clipId) {
+      ttsState.clipId = null;
+      ttsState.draft = null;
+      ttsState.saved = null;
+    }
+    return hooks.tts
+      ? ttsPanel(hooks.tts, rerender)
+      : [heading(t('tts.title'))];
+  };
   const plannedNoteText = (text: string) => {
     const p = document.createElement('p');
     p.className = 'right-note';
@@ -1427,21 +1465,26 @@ export function mountRightPanel(
                       ? filters()
                       : section === 'Effects'
                         ? effects()
-                        : section === 'Transitions'
-                          ? transitions()
-                          : section === 'Audio'
-                            ? [
-                                heading(t('panel.audio'), t('right.audioHint')),
-                                ...audioTab(
-                                  engine,
-                                  session,
-                                  run,
-                                  report,
-                                  hooks.audioDecoder,
-                                  rerender,
-                                ),
-                              ]
-                            : [];
+                        : section === 'Speech'
+                          ? speech()
+                          : section === 'Transitions'
+                            ? transitions()
+                            : section === 'Audio'
+                              ? [
+                                  heading(
+                                    t('panel.audio'),
+                                    t('right.audioHint'),
+                                  ),
+                                  ...audioTab(
+                                    engine,
+                                    session,
+                                    run,
+                                    report,
+                                    hooks.audioDecoder,
+                                    rerender,
+                                  ),
+                                ]
+                              : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );
