@@ -71,12 +71,17 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
     stopMeter();
     if (!analyser) return;
     const data = new Float32Array(analyser.fftSize);
+    let held = 0;
     const tick = () => {
       if (!analyser) return;
+      if (audioContext?.state === 'suspended')
+        void audioContext.resume().catch(() => undefined);
       analyser.getFloatTimeDomainData(data);
       let peak = 0;
       for (const value of data) peak = Math.max(peak, Math.abs(value));
-      const level = Math.round(Math.min(1, peak * 1.5) * 100);
+      // A meter's peak hold: it falls back over about a second and a half.
+      held = Math.max(peak, held * 0.97);
+      const level = Math.round(Math.min(1, held * 1.5) * 100);
       for (const bar of host.querySelectorAll<HTMLElement>('.record-meter')) {
         bar.setAttribute('aria-valuenow', String(level));
         bar.style.setProperty('--level', `${level}%`);
@@ -117,7 +122,7 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
       render();
       return false;
     }
-    audioContext = new AudioContext();
+    audioContext ??= new AudioContext();
     void audioContext.resume().catch(() => undefined);
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 1024;
@@ -125,6 +130,9 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
     return true;
   };
   const begin = async () => {
+    // (Made in the click itself, so the browser lets it run; the meter
+    // reads the microphone through it.)
+    audioContext ??= new AudioContext();
     if (!stream && !(await openMic())) return;
     phase = 'countdown';
     render();

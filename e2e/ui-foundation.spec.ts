@@ -36,11 +36,12 @@ test('[LAY-002] each rail category shows only its own panel, on first load, afte
     Elements: 'Elements',
     // H5: Text and Templates hold the library; I2: Graphics live inside
     // Elements, Transitions is a browse panel, Draw is a palette over the
-    // canvas (no left panel); Audio is still a placeholder.
+    // canvas (no left panel). V7: Transitions moved to the right panel;
+    // Audio is the sound pack; Record & create is its own panel.
     Text: 'Text',
     Templates: 'Templates',
-    Transitions: 'Transitions',
-    Audio: 'placeholder',
+    Audio: 'Audio',
+    Record: 'Record',
     Scene: 'Scene',
   };
   for (const [category, panel] of Object.entries(expected)) {

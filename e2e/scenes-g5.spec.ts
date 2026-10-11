@@ -58,11 +58,11 @@ test('[PRJ-014][PRJ-020] the board shows every scene in playback order with a po
       return seen.size;
     });
   expect(colours).toBeGreaterThan(2);
-  // Between the scenes: a transition chip that names its wave.
+  // Between the scenes: the transition "+" (V7, spec 10.5; TR-018).
   await expect(board(page).locator('.scene-transition')).toHaveCount(1);
   await expect(board(page).locator('.scene-transition')).toHaveAttribute(
     'title',
-    'Planned: Wave 6 (TR-001)',
+    'Add transition',
   );
   await page.screenshot({ path: testInfo.outputPath('board.png') });
   // Double-click opens scene 2; the timeline shows only its clips.
