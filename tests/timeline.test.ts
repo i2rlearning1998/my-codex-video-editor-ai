@@ -115,7 +115,7 @@ describe('timeline foundation', () => {
     expect(s.engine.history.undo).toHaveLength(1);
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
-    ).toBe('996px'); // V7: 18 px padding each side (D-196)
+    ).toBe('996px'); // V7: 18 px padding each side (D-197)
     expect(s.root.querySelector('.timeline-ruler')!.textContent).toContain(
       '12s',
     );
@@ -413,7 +413,7 @@ describe('timeline foundation', () => {
   it('seeks with ruler/captured playhead, keyboard and cancellation without project changes', () => {
     const s = setup();
     const before = s.engine.state;
-    // V7 (D-196): time 0 sits 18 px into the timeline.
+    // V7 (D-197): time 0 sits 18 px into the timeline.
     s.event(
       'pointerdown',
       178,

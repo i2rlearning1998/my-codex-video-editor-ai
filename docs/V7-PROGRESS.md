@@ -2,14 +2,14 @@
 
 Branch `claude/v7-series` from `claude/v-series`. Resume from the first unticked part.
 
-| Part | Scope | Status | Last commit |
-| ---- | ----- | ------ | ----------- |
-| V7a | Right rail and panel (10.1), icon sizes (10.5), B24 B25 B26 | done (LAY-063, LAY-065; 40 earlier tests moved to rail clicks) | |
-| V7b | Timeline padding, empty state, marquee auto-scroll, collapsed player (10.3), B27 B28 B32 B35 | done (TL-101 to TL-104) | |
-| V7c | Auto/Manual range (11.1), export frame range (11.2), B29 B30 B31 | done (PB-016, PB-017, TL-087, TL-097 reworded, EXP-020) | |
-| V7d | Scene outliner redesign (10.4), B33 B34 | done (LYR-018) | |
-| V7e | Transitions in one place, scene-to-scene transitions, left rail order (10.5, 11.4), B36 B37 | done (TR-017, TR-018; TR-010 and TR-015 to be Dropped by LCR; rail order gains Record & create in V7h) | |
-| V7f | Audio engine port from PR #14 (11.3) | done (engine, mixdown, preview; parity, EQ/compressor/normalization and ducking e2e green; Sound panel UI not ported, rebuilt in V7g) | |
-| V7g | Audio UI, sound pack, preview == export (11.3), B38 | done (AUD-019, AUD-020, AUD-021, AUD-002/003 export RMS) | |
-| V7h | Record & create, text to speech (11.4, 11.5) | done (AUD-022, AUD-023; neural offline voices not shipped: Piper needs GPL espeak-ng; browser voices preview only; tests use a fake provider) | |
-| V7i | Docs, one full verify, PR ready | todo | |
+| Part | Scope                                                                                        | Status                                                                                                                                        | Last commit |
+| ---- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| V7a  | Right rail and panel (10.1), icon sizes (10.5), B24 B25 B26                                  | done (LAY-063, LAY-065; 40 earlier tests moved to rail clicks)                                                                                |             |
+| V7b  | Timeline padding, empty state, marquee auto-scroll, collapsed player (10.3), B27 B28 B32 B35 | done (TL-101 to TL-104)                                                                                                                       |             |
+| V7c  | Auto/Manual range (11.1), export frame range (11.2), B29 B30 B31                             | done (PB-016, PB-017, TL-087, TL-097 reworded, EXP-020)                                                                                       |             |
+| V7d  | Scene outliner redesign (10.4), B33 B34                                                      | done (LYR-018)                                                                                                                                |             |
+| V7e  | Transitions in one place, scene-to-scene transitions, left rail order (10.5, 11.4), B36 B37  | done (TR-017, TR-018; TR-010 and TR-015 to be Dropped by LCR; rail order gains Record & create in V7h)                                        |             |
+| V7f  | Audio engine port from PR #14 (11.3)                                                         | done (engine, mixdown, preview; parity, EQ/compressor/normalization and ducking e2e green; Sound panel UI not ported, rebuilt in V7g)         |             |
+| V7g  | Audio UI, sound pack, preview == export (11.3), B38                                          | done (AUD-019, AUD-020, AUD-021, AUD-002/003 export RMS)                                                                                      |             |
+| V7h  | Record & create, text to speech (11.4, 11.5)                                                 | done (AUD-022, AUD-023; neural offline voices not shipped: Piper needs GPL espeak-ng; browser voices preview only; tests use a fake provider) |             |
+| V7i  | Docs, one full verify, PR ready                                                              | todo                                                                                                                                          |             |

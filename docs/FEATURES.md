@@ -151,10 +151,11 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-058 | P0 | W2 | Verified | The timeline menu's Speed and Audio open as flyouts beside their entry on hover (150 ms, with a 300 ms grace toward the flyout), on click and on the Right arrow; Left closes the flyout (U3 LCR) |
 | LAY-059 | P0 | W2 | Verified | The right rail shows 24 px icons with their labels under them (at least 12.5 px); nothing selected shows no Canvas panel, only an empty state (U5 LCR) |
 | LAY-060 | P0 | W2 | Verified | The first load opens the Media panel; its empty state shows an illustration; a new project's canvas is white (T-ALL LCR) |
-| LAY-061 | P0 | W2 | Verified | No panel toggles in the top bar: the left panel's collapse button is in its own header (a rail category reopens it) and the right panel's in its header; the right panel shows only while something is selected, opens on each new selection and never moves the canvas (T-ALL LCR) |
+| LAY-061 | P0 | W2 | Verified | No panel toggles in the top bar: the left panel's collapse button is in its own header (a rail category reopens it) and the right panel's in its header; the right panel opens from its rail only and never moves the canvas (T-ALL LCR; V7 LCR) |
 | LAY-062 | P0 | W2 | Verified | On the wide layout the left rail and panel run the full height and the timeline sits beside the panel (T-ALL LCR) |
-| LAY-063 | P0 | W2 | Verified | With nothing selected there is no right rail, panel or reserved column; a selection animates them in (panel 300 px, rail 65 px) and deselecting removes them fully; the canvas stays centred (V-series LCR) |
+| LAY-063 | P0 | W2 | Verified | The right rail is always shown; with nothing selected it holds only Auto Caption, disabled (Planned); a selection changes its categories but never opens the panel; a rail click toggles the panel; the drawer icon closes it; deselecting closes it (V7 LCR, spec 10.1) |
 | LAY-064 | P0 | W2 | Verified | The shell's regions are separate cards: 8 px gutters of the page colour, opaque 1 px borders, each region its own tone (stage, footer, scene strip, timeline, lanes) (V-series LCR) |
+| LAY-065 | P0 | W2 | Verified | One icon scale (16/20/24 in tokens); no rendered icon is under 16 px; rail icons are 24 px and rail labels are never cut (V7 LCR, spec 10.5) |
 
 ## LOC: Localization of the UI (Wave 1 infrastructure, packs later)
 
@@ -374,6 +375,7 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 | LYR-015 | P2 | W2 | Todo | Layer color labels |
 | LYR-016 | P0 | W2 | Verified | Blender-style outliner in the left Scene category: collections per scene that can be created, renamed, nested and deleted (contents move up), Delete hierarchy, duplicate, copy and paste, rows dragged in and out (several at once); organisation only (the canvas and the layers never change); one undo step each; stored in the scene's optional `outliner` (schema 7) (T-ALL P5 LCR; moved to the Scene category by V-series LCR) |
 | LYR-017 | P0 | W2 | Verified | Selection follows both ways between the outliner, the canvas and the timeline; a selected element inside a closed collection or group opens it; search keeps parents; rubber band; context menus; eye, lock and mute for an element's lane and for everything in a collection (T-ALL P5 LCR; V-series LCR) |
+| LYR-018 | P0 | W2 | Verified | Outliner menus are the shared vertical menu (keyboard too), rows are themed 32 px; Duplicate collection keeps the tree; Delete keeps layers, clips and pixels; rename by F2, double-click and menu (V7 LCR, spec 10.4) |
 
 ## TL: Timeline (Wave 2 interactions; media visuals in Wave 4; animation in Wave 5)
 
@@ -467,7 +469,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-084 | P0 | W2 | Verified | Lanes keep their own order (no group order: a text or shape lane may sit under a video lane, audio anywhere); a moved clip floats with the pointer in x and y keeping its grab offset, the original stays faint, Escape cancels, and the lane under the pointer decides the drop; lane headers read by kind and number (Video 1, Text 1, Shape 1, Audio 1) with a kind icon (U1 LCR) |
 | TL-085 | P0 | W2 | Verified | Replace (a label on the clip) shows only when a new item from the library or Media is dragged over the middle of a clip; a clip moved on the timeline never replaces: over another clip it goes before or after it by the pointer's half, rippling later clips (U1 LCR) |
 | TL-086 | P0 | W2 | Verified | Collapse leaves the canvas and one player bar: the wand (disabled), First frame, Back 5 s, Play/Pause, Forward 5 s, the timecode, a full-width scrubber (white knob, lighter played part, the smooth scrub) and Expand; no scene strip, status row or lanes; Collapse and Expand animate (240 ms, about 0 with reduced motion) (U4 LCR) |
-| TL-087 | P0 | W2 | Verified | A frame panel sticks to the timeline's bottom right: [‹ Current ›] [stopwatch] Start [‹ n ›] End [‹ n ›] in frames at the scene's frame rate, text at least 13 px; Current steps ±1 frame (Shift ×10), takes a typed frame and scrubs by drag, with no undo step (U6 LCR) |
+| TL-087 | P0 | W2 | Verified | The frame row at the timeline's bottom steps, types and shows the current frame at the scene fps with no history; Auto mode shows only Current and the Manual switch (V7 LCR) |
 | TL-088 | P0 | W2 | Verified | Empty scene: one drop lane with an illustration and "Drag & drop media here", no ruler, no playhead, transport disabled; while dragging the hint gives way to a "+" and the box turns purple; with one lane, ghost lanes Add text above and Add audio below (HIDE hides them), a drop on one opens a lane there; two lanes hide them (T-ALL LCR) |
 | TL-089 | P0 | W2 | Verified | Every kind (shape, text, image, video, audio) opens a new lane above the first lane, between lanes or below the last; a lane of another group shows only the blocked cursor (no ghost, no + line, no highlight); the + on the insert line follows the pointer (T-ALL LCR) |
 | TL-090 | P0 | W2 | Verified | The playhead is drawn above the lanes and clips; the selected clip's ruler band follows a clip move live (T-ALL LCR) |
@@ -477,10 +479,14 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-094 | P0 | W2 | Verified | A marquee starts from any empty point of the lanes, selects the clips it touches live, clears when empty and scrolls the lanes at their edges (V-series LCR, B2) |
 | TL-095 | P0 | W2 | Verified | The lane group is centred live by the spec formula (ResizeObserver and pointer moves) while the timeline is resized, ghost lanes included (V-series LCR, B3, B9) |
 | TL-096 | P0 | W2 | Verified | Dragging the timeline's edge down: free, a snap at the default height, a short follow, then the collapsed player; never half a lane; back up with hysteresis; the preview keeps at least 160 px (V-series LCR, B5, B7, B19) |
-| TL-097 | P0 | W2 | Verified | Outside Start and End the ruler and the lanes are dimmed from the default values and live on every digit, wheel step and arrow (V-series LCR, B20) |
+| TL-097 | P0 | W2 | Verified | Auto mode dims nothing; in Manual mode the ruler and lanes are dimmed outside Start and End, live on every digit, wheel step (field hovered, not focused) and step arrow (V7 LCR, spec 10.2) |
 | TL-098 | P0 | W2 | Verified | A gap before a lane's first clip has the hatched ghost with its trash button; deleting it moves the clip to 0 in one step (V-series LCR, B22) |
 | TL-099 | P0 | W2 | Verified | Duplicate and Copy/Paste put the copy on a new lane directly above its original's, at the same start (paste at the playhead), selected, the playhead unchanged (V-series LCR, B23) |
 | TL-100 | P0 | W2 | Verified | Lanes have no headers or labels; lock, hide, solo, mute and lane moves are in the lane's right-click menu; toasts are plain sentences; the hover hairline sits at the pointer; the ruler and clips scroll together (V-series LCR, B4, B6, B11, B12, B18) |
+| TL-101 | P0 | W2 | Verified | Time 0 sits 18 px inside the timeline card and the content ends 18 px after it; the playhead at 0 is whole (V7 LCR, spec 10.3) |
+| TL-102 | P0 | W2 | Verified | An empty project shows only the drop box, centred both ways: no ruler, playhead, dim, frame row or scrolling (V7 LCR) |
+| TL-103 | P0 | W2 | Verified | A marquee held at the lanes' edge scrolls at most 300 px/s, never past the content, and stops on release (V7 LCR) |
+| TL-104 | P0 | W2 | Verified | The collapsed player ends at least 8 px above the window and its controls are whole at 800, 900 and 1080 px (V7 LCR) |
 
 ## PB: Playback and transport
 
@@ -503,7 +509,8 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | PB-013 | P1 | W7 | Todo | Master volume and mute with a level meter |
 | PB-014 | P1 | W2 | Todo | Fullscreen playback with minimal controls |
 | PB-015 | P0 | W4 | Verified | Dragging the playhead over video redraws the canvas continuously (at least 20 times over a 1 s scrub, the nearest cached frame shown while a seek is pending) and shows the exact frame on release (U2 LCR) |
-| PB-016 | P0 | W2 | Verified | Start and End set the scene's playback range (stored per scene, one undo step each, Start before End enforced; defaults the first and last frame, and End follows the scene's end while it is there): playback starts at Start and stops at End, export covers Start to End, the ruler and the lanes dim outside the range, playback loops from End back to Start, First and Last frame go to Start and End, and the fields take five-digit frames (U6 LCR; T-ALL P4) |
+| PB-016 | P0 | W2 | Verified | Manual mode: Start and End set the playback and export range (one undo step each, Start before End); play runs from Start and stops at End; the ruler and lanes dim outside; Auto removes it (V7 LCR, spec 11.1) |
+| PB-017 | P0 | W2 | Verified | A Manual range is fixed: moving, stretching or adding clips never changes Start or End; ruler clicks, stepping, first and last frame and play stay inside it (V7 LCR, spec 11.1) |
 
 ## INS: Inspector and properties panel
 
@@ -728,13 +735,15 @@ Between clips and at clip edges.
 | TR-007 | P0 | W6 | Todo | Transitions render identically in preview and export |
 | TR-008 | P1 | W6 | Todo | Video cross dissolve also crossfades the audio |
 | TR-009 | P1 | W6 | Todo | Alignment choice: centered, start or end on the cut |
-| TR-010 | P1 | W6 | Verified | The left Transitions category lists the transition tiles in groups with drawn thumbnails and search; a click applies one to the selected cut (TR-015) (V-series LCR) |
+| TR-010 | P1 | W6 | Dropped | The left Transitions category lists the transition tiles in groups with drawn thumbnails and search; a click applies one to the selected cut (TR-015) (V-series LCR) |
 | TR-011 | P0 | W2 | Verified | Where two clips touch on a lane a + adds a transition and opens its panel; a cross fade mixes them across the cut in the preview and the export; None removes it (J12; V-series LCR) |
 | TR-012 | P0 | W6 | Verified | The Transition panel's planned entries and a More group are the FX library's pixel transitions (cross blur, burn, wipes, iris, push, zoom, spin, swirl, glitch, bloom, page turn, cube flip and more), drawn across the cut the same in the preview and the export (T-ALL P6 LCR) |
 | TR-013 | P0 | W2 | Verified | A "+" shows with the pointer near a cut between two touching clips (tooltip Add transition); a click adds Fade through black (one step, clips unchanged) and shows a lavender marker over a band as wide as the transition; the marker opens the right Transition panel (None, Fades & blurs, Tiles, Wipes, More) where a tile swaps it, Duration under its row sets it and None removes it; Delete and the marker's menu remove it (V-series LCR) |
 | TR-014 | P0 | W2 | Verified | At its midpoint Fade through black draws black and Fade through white white, in the canvas and the exported frame (V-series LCR) |
-| TR-015 | P1 | W2 | Verified | The left Transitions category shows the same tiles; a click applies one to the selected cut marker, otherwise it says to pick a cut (V-series LCR) |
+| TR-015 | P1 | W2 | Dropped | The left Transitions category shows the same tiles; a click applies one to the selected cut marker, otherwise it says to pick a cut (V-series LCR) |
 | TR-016 | P0 | W6 | Verified | Every transition tile changes the canvas and the exported frame inside its window and neither is blank; contact sheet (V-series LCR) |
+| TR-017 | P0 | W2 | Verified | One Transitions place: no left category; the right Transition panel has the groups, every drawn tile and search (V7 LCR, spec 10.5) |
+| TR-018 | P0 | W2 | Verified | "+" between two scenes adds a transition (one step, no scene shortened) that plays and exports across the cut; its marker opens the right panel; deleting a scene removes its transitions (V7 LCR, spec 10.5) |
 
 ## MSK: Masks, blend modes and compositing (Wave 6)
 
@@ -768,23 +777,28 @@ Real audio engine. Currently mute is only metadata.
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | AUD-001 | P0 | W7 | Todo | Multiple audio tracks with waveforms |
-| AUD-002 | P0 | W7 | Todo | Clip volume in dB, keyframeable; clip mute; master volume |
-| AUD-003 | P0 | W7 | Todo | Fade in and fade out handles |
+| AUD-002 | P0 | W7 | Claimed | Clip volume in dB, keyframeable; clip mute; master volume |
+| AUD-003 | P0 | W7 | Verified | Fade in and fade out handles |
 | AUD-004 | P0 | W7 | Todo | Detach or extract audio from video into an audio track |
 | AUD-005 | P0 | W4 | Verified | Audio plays during preview and scrubbing and stays in sync |
 | AUD-006 | P0 | W7 | Todo | Peak meters on master and per track |
 | AUD-007 | P0 | W4 | Verified | Track mute and solo work audibly |
-| AUD-008 | P0 | W7 | Todo | Voiceover recording from the microphone with countdown and level monitor onto a new audio track |
-| AUD-009 | P1 | W7 | Todo | Pan left and right |
+| AUD-008 | P0 | W7 | Verified | Voiceover recording from the microphone with countdown and level monitor onto a new audio track |
+| AUD-009 | P1 | W7 | Verified | Pan left and right |
 | AUD-010 | P1 | W7 | Todo | Speed change with pitch preservation |
-| AUD-011 | P1 | W7 | Todo | EQ, compressor and loudness normalization |
-| AUD-012 | P1 | W7 | Todo | Auto ducking of music under speech (algorithmic) |
-| AUD-013 | P1 | W7 | Todo | Royalty-free music and sound effects library with clear licenses |
+| AUD-011 | P1 | W7 | Verified | EQ, compressor and loudness normalization |
+| AUD-012 | P1 | W7 | Verified | Auto ducking of music under speech (algorithmic) |
+| AUD-013 | P1 | W7 | Claimed | Royalty-free music and sound effects library with clear licenses |
 | AUD-014 | P1 | W7 | Todo | Audio envelope drawing directly on the clip |
-| AUD-015 | P0 | W7 | Todo | Audio mixdown in export equals the preview mix (48 kHz stereo) |
+| AUD-015 | P0 | W7 | Verified | Audio mixdown in export equals the preview mix (48 kHz stereo) |
 | AUD-016 | P2 | W7 | Todo | Beat detection markers |
-| AUD-017 | P2 | W7 | Todo | Multichannel to stereo downmix |
+| AUD-017 | P2 | W7 | Verified | Multichannel to stereo downmix |
 | AUD-018 | P0 | W4 | Verified | Audio layers are never drawn, picked, boxed or snapped to on the canvas; they exist as clips on audio tracks, in the Scene list and in the side panel (also after Detach audio and when an audio file is dropped on the canvas) |
+| AUD-019 | P0 | W7 | Verified | An audio clip's rail is Audio, Fade and Speed; the Audio panel has Volume 0 to 200 % and Mute, then Pan, Equalizer, Compressor, Loudness and Voice / Music with ducking in closed groups with Reset; one step each (V7 LCR, spec 11.3) |
+| AUD-020 | P0 | W7 | Verified | Fade sets an audio clip's sound fades (0 to 5 s); a video's Fade is one control for picture and sound; Detach audio gives the audio clip the fades, in one step (V7 LCR) |
+| AUD-021 | P1 | W7 | Verified | The left Audio category is a built-in sound pack of twelve generated sounds with hover preview, search and click or drag to add on a new audio lane; Stock music is Planned (V7 LCR) |
+| AUD-022 | P0 | W7 | Verified | Record & create: Screen and camera, Camera and Screen planned; voiceover recording with countdown, level meter, Pause / Resume, review and Add to timeline; a refused microphone is explained with Retry; leaving asks Keep or Discard (V7 LCR, spec 11.4) |
+| AUD-023 | P1 | W7 | Verified | Text to speech panel: language search, voices with descriptions, speed, text with count and Add pause, Preview and Save; unsaved changes with Discard; a speech clip's Save replaces its audio in one step (tested with the test voice provider; neural voices not shipped, D-214) (V7 LCR, spec 11.5) |
 
 ## TPL: Templates, components and nesting (Wave 8)
 
@@ -831,6 +845,7 @@ Offline frame-accurate render, never realtime capture.
 | EXP-017 | P2 | W9 | Todo | Export queue in the background |
 | EXP-018 | P2 | W9 | Todo | PNG sequence export |
 | EXP-019 | P0 | W5 | Verified | Export joins every scene one after another, with an option to export the current scene only |
+| EXP-020 | P0 | W5 | Verified | Export Start frame and End frame, linked to the seconds by the fps; video and audio cover exactly [Start, End); out-of-range values are clamped with a message (V7 LCR, spec 11.2) |
 
 ## REL: Performance, reliability and platform (Wave 9 unless noted)
 

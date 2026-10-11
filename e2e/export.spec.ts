@@ -514,7 +514,7 @@ test('[EXP-020] the exported audio covers exactly the frame range: frames 20 to 
   expect(Math.abs(seconds - 1)).toBeLessThan(0.03);
 });
 
-test('[AUD-002][AUD-003] preview == export: Volume 50 % and Fade in 1 s from the right Audio panel give the same sample RMS in the export as in the preview graph', async ({
+test('[AUD-002][AUD-003][AUD-015] preview == export: Volume 50 % and Fade in 1 s from the right Audio panel give the same sample RMS in the export as in the preview graph', async ({
   page,
   openFixtureProject,
 }, testInfo) => {

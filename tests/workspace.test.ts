@@ -348,7 +348,7 @@ describe('T3 editing workspace', () => {
       setData: (key: string, value: string) => data.set(key, value),
       types: ['application/x-editor-row'],
     };
-    // V2 (D-191): no 224 px header any more; V7 (D-196): time 0 sits 18 px in.
+    // V2 (D-191): no 224 px header any more; V7 (D-197): time 0 sits 18 px in.
     const drag = (type: string, target: Element, x = 178) => {
       const e = new MouseEvent(type, { bubbles: true, clientX: x });
       Object.defineProperty(e, 'dataTransfer', { value: transfer });

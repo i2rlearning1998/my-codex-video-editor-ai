@@ -291,7 +291,7 @@ test('[LAY-013] below 1440 the right panel is a drawer; below 1024 both panels a
     })
     .toEqual([0, 844, 390]);
   // Opening the right side closes the left sheet. A phone has no right
-  // rail, so there a new selection opens the sheet (V7, D-196).
+  // rail, so there a new selection opens the sheet (V7, D-217).
   await page.locator('#add-text-box').click();
   await expect.poll(inspectorShown).toBe(true);
   await expect(page.locator('[data-panel="left"]')).toHaveAttribute(

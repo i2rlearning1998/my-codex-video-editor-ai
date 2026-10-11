@@ -25,7 +25,7 @@ const record = (page: Page) => page.locator('#library-record');
 const labels = async (page: Page) => (await hook(page)).history.labels;
 const scene = async (page: Page) => (await hook(page)).project.compositions[0]!;
 
-test('[AUD-022] Record & create: Screen and camera, Camera and Screen planned; Audio records with a countdown, level meter, Pause / Resume and Stop, then review (waveform, Play, Redo) and Add puts "Recording 1" on a new audio lane at the playhead, one step', async ({
+test('[AUD-008][AUD-022] Record & create: Screen and camera, Camera and Screen planned; Audio records with a countdown, level meter, Pause / Resume and Stop, then review (waveform, Play, Redo) and Add puts "Recording 1" on a new audio lane at the playhead, one step', async ({
   page,
 }) => {
   await showCategory(page, 'Record');

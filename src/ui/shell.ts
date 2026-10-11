@@ -2502,7 +2502,7 @@ export function mountEditorShell(
           workspace.setOpen('right', false);
       });
     // A phone has no right rail (D-120), so there a selection still opens
-    // the bottom sheet; otherwise nothing could reach it (D-196).
+    // the bottom sheet; otherwise nothing could reach it (D-217).
     else if (
       key !== '' &&
       workspace?.layout === 'phone' &&
