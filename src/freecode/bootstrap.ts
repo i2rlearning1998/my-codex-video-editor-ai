@@ -26,6 +26,40 @@ export function sandboxBootstrap(config: BootstrapConfig): void {
     x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
     return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
   };
+  let allocatedBytes = 0;
+  const allocate = (name: string, args: unknown[]): unknown => {
+    const first = args[0];
+    const length =
+      typeof first === 'number'
+        ? first
+        : first && typeof first === 'object' && 'length' in first
+          ? Number(first.length)
+          : 0;
+    const bytes =
+      length *
+      (name === 'Array'
+        ? 8
+        : name.includes('64')
+          ? 8
+          : name.includes('32')
+            ? 4
+            : name.includes('16')
+              ? 2
+              : 1);
+    if (
+      !Number.isFinite(bytes) ||
+      bytes < 0 ||
+      bytes > 64 * 1024 * 1024 ||
+      (allocatedBytes += bytes) > 64 * 1024 * 1024
+    )
+      throw Error(
+        'Allocation budget exceeded: at most 64 MiB of explicit array allocations per session.',
+      );
+    const ctor = (window as unknown as Record<string, unknown>)[name];
+    if (typeof ctor !== 'function')
+      throw Error('Unsupported array constructor.');
+    return Reflect.construct(ctor, args);
+  };
   const guard = () => {
     if (++ticks > 1000000 || realNow() > deadline)
       throw Error(
@@ -197,7 +231,11 @@ export function sandboxBootstrap(config: BootstrapConfig): void {
       // Bundles and helper code are trusted local artifacts; user code runs only here.
       new Function(config.librarySource)();
       const helpers: unknown = new Function(config.helperSource)();
-      new Function('helpers', '__fcGuard', config.source)(helpers, guard);
+      new Function('helpers', '__fcGuard', '__fcAllocate', config.source)(
+        helpers,
+        guard,
+        allocate,
+      );
       animation = global.__block as Animation;
       const libs = {
         three: global.THREE,

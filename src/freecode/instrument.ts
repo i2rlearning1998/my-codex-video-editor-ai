@@ -5,7 +5,7 @@ export function instrument(source: string): string {
     fileName: 'animation.js',
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
-      module: ts.ModuleKind.None,
+      module: ts.ModuleKind.ESNext,
       allowJs: true,
     },
     transformers: {
@@ -23,6 +23,35 @@ export function instrument(source: string): string {
           const body = (s: ts.Statement) => f.createBlock([tick(), s], true);
           const visitor: ts.Visitor = (node) => {
             const n = ts.visitEachChild(node, visitor, context);
+            if (
+              ts.isNewExpression(n) &&
+              ts.isIdentifier(n.expression) &&
+              [
+                'Array',
+                'ArrayBuffer',
+                'Uint8Array',
+                'Uint8ClampedArray',
+                'Int8Array',
+                'Uint16Array',
+                'Int16Array',
+                'Uint32Array',
+                'Int32Array',
+                'Float32Array',
+                'Float64Array',
+                'BigInt64Array',
+                'BigUint64Array',
+              ].includes(n.expression.text)
+            ) {
+              return f.createCallExpression(
+                f.createIdentifier('__fcAllocate'),
+                undefined,
+                [
+                  f.createStringLiteral(n.expression.text),
+                  f.createArrayLiteralExpression(n.arguments ?? []),
+                ],
+              );
+            }
+
             if (ts.isExportAssignment(n))
               return f.createExpressionStatement(
                 f.createBinaryExpression(

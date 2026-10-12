@@ -3,6 +3,8 @@ import { validateInfo } from '../blocks/params';
 import type { FreeCodeMeta, ValidationError, ValidationResult } from './types';
 export const SOURCE_LIMIT = 1024 * 1024;
 const denied = new Set([
+  '__fcGuard',
+  '__fcAllocate',
   'fetch',
   'XMLHttpRequest',
   'WebSocket',
