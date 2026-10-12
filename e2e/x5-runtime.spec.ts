@@ -176,6 +176,165 @@ async function compare(
   );
 }
 
+async function checkSample(
+  page: Page,
+  id: (typeof SAMPLES)[number],
+  testInfo: TestInfo,
+) {
+  test.setTimeout(600_000);
+  await newProject(page);
+  await addCode(page, sample(id));
+  await baked(page);
+  const before = (await codeDebug(page))[0]!;
+  expect(before.stored).toBe(before.total);
+  expect(before.total).toBe(Math.ceil(4 * 24));
+  // Play, then pause.
+  await page.locator('[data-action="play"]').click();
+  await expect
+    .poll(async () => (await hook(page)).session.time)
+    .toBeGreaterThan(0.3);
+  await page.locator('[data-action="play"]').click();
+  // Scrub: two times draw two different frames.
+  await seekKeep(page, 0.5);
+  const early = await previewRegion(page);
+  await seekKeep(page, 3);
+  const late = await previewRegion(page);
+  expect(early.hash).not.toBe(late.hash);
+  // A param change (Apply re-bakes, one step).
+  await page.locator('.timeline-clip[data-code="true"]').click();
+  await openRight(page, 'Code');
+  const speed = panel(page).locator('#code-setting-speed');
+  await speed.fill('1.5');
+  await speed.press('Enter');
+  await panel(page).locator('#code-apply').click();
+  await expect
+    .poll(async () => (await hook(page)).history.labels.at(-1))
+    .toBe('Animation settings');
+  await baked(page);
+  // Fade in over 1 s and an effect.
+  await openRight(page, 'Fade');
+  const fade = panel(page).locator('#right-fade-in');
+  await fade.fill('1');
+  await fade.press('Enter');
+  await openRight(page, 'Effects');
+  await panel(page).locator('.fx-tile[data-tile="effect.color-shift"]').click();
+  // Preview at 100 % against the exported frame (PNG, the export's own
+  // drawing of the same baked frames) at 2 s.
+  await seekKeep(page, 2);
+  // No selection box or hover outline over the measured picture.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds.length)
+    .toBe(0);
+  await page.locator('#canvas-zoom-percent').fill('100');
+  await page.locator('#canvas-zoom-percent').press('Enter');
+  // At 100 % one composition pixel is one canvas pixel; a pan by the
+  // fraction puts the artboard on whole pixels, so nothing is resampled.
+  const view = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __AIVE__: { getCanvas(): { view: number[] } };
+          }
+        ).__AIVE__.getCanvas().view,
+    );
+  const [, , , , e0, f0] = await view();
+  const box = (await page.locator('#composition-canvas').boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(e0! - Math.floor(e0!), f0! - Math.floor(f0!));
+  await page.mouse.move(2, 2);
+  await expect
+    .poll(async () => {
+      const [a, , , , e, f] = await view();
+      return [a, e! % 1, f! % 1].map((v) =>
+        Math.abs(Math.round(v! * 1000) / 1000),
+      );
+    })
+    .toEqual([1, 0, 0]);
+  const region = await previewRegion(page);
+  expect(region.w * region.h).toBeGreaterThan(100_000);
+  const png = await exportFrame(page, testInfo);
+  const still = await compare(page, png, region);
+  // The video export of a short range (lossy codec): frame at 2 s.
+  const more = page.locator('.modal-dialog #export-more');
+  if ((await more.getAttribute('open')) === null)
+    await more.locator('summary').click();
+  for (const [field, value] of [
+    ['#export-start', '1.5'],
+    ['#export-end', '2.5'],
+  ] as const) {
+    await page.locator(`.modal-dialog ${field}`).fill(value);
+    await page.locator(`.modal-dialog ${field}`).press('Enter');
+  }
+  const downloading = page.waitForEvent('download', { timeout: 300_000 });
+  await page.locator('.modal-dialog #export-start-button').click();
+  const download = await downloading;
+  const file = testInfo.outputPath(download.suggestedFilename());
+  await download.saveAs(file);
+  const fps = (await hook(page)).project.compositions[0]!.fps;
+  const video = await page.evaluate(
+    async ({ video64, png64, fps }) => {
+      const decode = (base64: string) =>
+        Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+      const element = document.createElement('video');
+      element.muted = true;
+      element.preload = 'auto';
+      element.src = URL.createObjectURL(new Blob([decode(video64)]));
+      await new Promise((resolve) => (element.onloadeddata = resolve));
+      const started = performance.now();
+      while (
+        !(
+          element.buffered.length &&
+          element.buffered.end(element.buffered.length - 1) >=
+            element.duration - 0.05
+        ) &&
+        performance.now() - started < 10_000
+      )
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise((resolve) => {
+        element.onseeked = resolve;
+        // 2 s is half a second into the range (the middle of its frame).
+        element.currentTime = (Math.round(0.5 * fps) + 0.5) / fps;
+      });
+      const draw = (source: CanvasImageSource) => {
+        const canvas = new OffscreenCanvas(480, 270);
+        const context = canvas.getContext('2d')!;
+        context.drawImage(source, 0, 0, 480, 270);
+        return context.getImageData(0, 0, 480, 270).data;
+      };
+      const exported = draw(element);
+      const still = draw(await createImageBitmap(new Blob([decode(png64)])));
+      element.removeAttribute('src');
+      element.load();
+      let total = 0;
+      for (let i = 0; i < exported.length; i += 4)
+        for (let c = 0; c < 3; c++)
+          total += Math.abs(exported[i + c]! - still[i + c]!);
+      return { mean: total / ((exported.length / 4) * 3) };
+    },
+    {
+      video64: readFileSync(file).toString('base64'),
+      png64: png.toString('base64'),
+      fps,
+    },
+  );
+  const measured = {
+    id,
+    webgl: WEBGL.has(id),
+    frames: before.total,
+    previewVsExportFrame: still,
+    videoVsExportFrameMean: video.mean,
+  };
+  console.log(`X5-MEASURE ${JSON.stringify(measured)}`);
+  writeFileSync(testInfo.outputPath('measure.json'), JSON.stringify(measured));
+  // Spec section 6: within 1/255 (2/255 for WebGL) per channel.
+  expect(still.max).toBeLessThanOrEqual(WEBGL.has(id) ? 2 : 1);
+  // A lossy codec: a small mean difference.
+  expect(video.mean).toBeLessThan(8);
+}
+
 test.describe('X5 real Tier C runtime', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -184,168 +343,34 @@ test.describe('X5 real Tier C runtime', () => {
       .toBe(true);
   });
 
-  for (const id of SAMPLES)
-    test(`[CODE-011] ${id}: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview`, async ({
-      page,
-    }, testInfo) => {
-      test.setTimeout(600_000);
-      await newProject(page);
-      await addCode(page, sample(id));
-      await baked(page);
-      const before = (await codeDebug(page))[0]!;
-      expect(before.stored).toBe(before.total);
-      expect(before.total).toBe(Math.ceil(4 * 24));
-      // Play, then pause.
-      await page.locator('[data-action="play"]').click();
-      await expect
-        .poll(async () => (await hook(page)).session.time)
-        .toBeGreaterThan(0.3);
-      await page.locator('[data-action="play"]').click();
-      // Scrub: two times draw two different frames.
-      await seekKeep(page, 0.5);
-      const early = await previewRegion(page);
-      await seekKeep(page, 3);
-      const late = await previewRegion(page);
-      expect(early.hash).not.toBe(late.hash);
-      // A param change (Apply re-bakes, one step).
-      await page.locator('.timeline-clip[data-code="true"]').click();
-      await openRight(page, 'Code');
-      const speed = panel(page).locator('#code-setting-speed');
-      await speed.fill('1.5');
-      await speed.press('Enter');
-      await panel(page).locator('#code-apply').click();
-      await expect
-        .poll(async () => (await hook(page)).history.labels.at(-1))
-        .toBe('Animation settings');
-      await baked(page);
-      // Fade in over 1 s and an effect.
-      await openRight(page, 'Fade');
-      const fade = panel(page).locator('#right-fade-in');
-      await fade.fill('1');
-      await fade.press('Enter');
-      await openRight(page, 'Effects');
-      await panel(page)
-        .locator('.fx-tile[data-tile="effect.color-shift"]')
-        .click();
-      // Preview at 100 % against the exported frame (PNG, the export's own
-      // drawing of the same baked frames) at 2 s.
-      await seekKeep(page, 2);
-      // No selection box or hover outline over the measured picture.
-      await page.keyboard.press('Escape');
-      await page.keyboard.press('Escape');
-      await expect
-        .poll(async () => (await hook(page)).session.selectedIds.length)
-        .toBe(0);
-      await page.locator('#canvas-zoom-percent').fill('100');
-      await page.locator('#canvas-zoom-percent').press('Enter');
-      // At 100 % one composition pixel is one canvas pixel; a pan by the
-      // fraction puts the artboard on whole pixels, so nothing is resampled.
-      const view = () =>
-        page.evaluate(
-          () =>
-            (
-              window as unknown as {
-                __AIVE__: { getCanvas(): { view: number[] } };
-              }
-            ).__AIVE__.getCanvas().view,
-        );
-      const [, , , , e0, f0] = await view();
-      const box = (await page.locator('#composition-canvas').boundingBox())!;
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-      await page.mouse.wheel(e0! - Math.floor(e0!), f0! - Math.floor(f0!));
-      await page.mouse.move(2, 2);
-      await expect
-        .poll(async () => {
-          const [a, , , , e, f] = await view();
-          return [a, e! % 1, f! % 1].map((v) =>
-            Math.abs(Math.round(v! * 1000) / 1000),
-          );
-        })
-        .toEqual([1, 0, 0]);
-      const region = await previewRegion(page);
-      expect(region.w * region.h).toBeGreaterThan(100_000);
-      const png = await exportFrame(page, testInfo);
-      const still = await compare(page, png, region);
-      // The video export of a short range (lossy codec): frame at 2 s.
-      const more = page.locator('.modal-dialog #export-more');
-      if ((await more.getAttribute('open')) === null)
-        await more.locator('summary').click();
-      for (const [field, value] of [
-        ['#export-start', '1.5'],
-        ['#export-end', '2.5'],
-      ] as const) {
-        await page.locator(`.modal-dialog ${field}`).fill(value);
-        await page.locator(`.modal-dialog ${field}`).press('Enter');
-      }
-      const downloading = page.waitForEvent('download', { timeout: 300_000 });
-      await page.locator('.modal-dialog #export-start-button').click();
-      const download = await downloading;
-      const file = testInfo.outputPath(download.suggestedFilename());
-      await download.saveAs(file);
-      const fps = (await hook(page)).project.compositions[0]!.fps;
-      const video = await page.evaluate(
-        async ({ video64, png64, fps }) => {
-          const decode = (base64: string) =>
-            Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-          const element = document.createElement('video');
-          element.muted = true;
-          element.preload = 'auto';
-          element.src = URL.createObjectURL(new Blob([decode(video64)]));
-          await new Promise((resolve) => (element.onloadeddata = resolve));
-          const started = performance.now();
-          while (
-            !(
-              element.buffered.length &&
-              element.buffered.end(element.buffered.length - 1) >=
-                element.duration - 0.05
-            ) &&
-            performance.now() - started < 10_000
-          )
-            await new Promise((resolve) => setTimeout(resolve, 20));
-          await new Promise((resolve) => {
-            element.onseeked = resolve;
-            // 2 s is half a second into the range (the middle of its frame).
-            element.currentTime = (Math.round(0.5 * fps) + 0.5) / fps;
-          });
-          const draw = (source: CanvasImageSource) => {
-            const canvas = new OffscreenCanvas(480, 270);
-            const context = canvas.getContext('2d')!;
-            context.drawImage(source, 0, 0, 480, 270);
-            return context.getImageData(0, 0, 480, 270).data;
-          };
-          const exported = draw(element);
-          const still = draw(
-            await createImageBitmap(new Blob([decode(png64)])),
-          );
-          element.removeAttribute('src');
-          element.load();
-          let total = 0;
-          for (let i = 0; i < exported.length; i += 4)
-            for (let c = 0; c < 3; c++)
-              total += Math.abs(exported[i + c]! - still[i + c]!);
-          return { mean: total / ((exported.length / 4) * 3) };
-        },
-        {
-          video64: readFileSync(file).toString('base64'),
-          png64: png.toString('base64'),
-          fps,
-        },
-      );
-      const measured = {
-        id,
-        webgl: WEBGL.has(id),
-        frames: before.total,
-        previewVsExportFrame: still,
-        videoVsExportFrameMean: video.mean,
-      };
-      console.log(`X5-MEASURE ${JSON.stringify(measured)}`);
-      writeFileSync(
-        testInfo.outputPath('measure.json'),
-        JSON.stringify(measured),
-      );
-      // Spec section 6: within 1/255 (2/255 for WebGL) per channel.
-      expect(still.max).toBeLessThanOrEqual(WEBGL.has(id) ? 2 : 1);
-      // A lossy codec: a small mean difference.
-      expect(video.mean).toBeLessThan(8);
-    });
+  test('[CODE-011] particles: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'particles', testInfo));
+  test('[CODE-011] three-scene: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'three-scene', testInfo));
+  test('[CODE-011] pixi-field: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'pixi-field', testInfo));
+  test('[CODE-011] lottie-mark: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'lottie-mark', testInfo));
+  test('[CODE-011] aurora: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'aurora', testInfo));
+  test('[CODE-011] shader: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'shader', testInfo));
+  test('[CODE-011] typography: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'typography', testInfo));
+  test('[CODE-011] svg-infographic: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'svg-infographic', testInfo));
+  test('[CODE-011] chart: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'chart', testInfo));
+  test('[CODE-011] parallax: import, bake, play, scrub, a param change, Fade and an effect, export matches the preview', async ({
+    page,
+  }, testInfo) => checkSample(page, 'parallax', testInfo));
 });

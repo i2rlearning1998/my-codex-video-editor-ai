@@ -1,6 +1,14 @@
 # Changelog
 
-> Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 7 (T-ALL).
+> Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
+
+## X-series (X1 to X6) — 2026-10-12
+
+- **Code layer (X1, schema 8):** a code animation is a full-canvas transparent layer on a visual lane with every clip tool; its frames are baked in order into a lossless PNG cache (OPFS, IndexedDB fallback) with memory and disk budgets, Draft and Full quality and partial playback; preview and export read the same frames; the clip shows "Rendering n %" with Cancel and Resume.
+- **Import (X2):** Media › Import › Import code animation, a dropped .json, .js, .mjs or .html file, or a paste; classified as a Composition Spec (A), a block (B) or free code (C), with line-numbered plain-language errors, tier badge, live thumbnail, params and duration. Edit code reuses the dialog.
+- **Animation settings (X3):** one control per declared param; blocks re-render as you change them, free code with Apply; one undo step per change. Fade, Speed, Reverse, Filters, Effects, Adjust colors and Transitions work on code layers in the preview and the export.
+- **Code templates (X4):** Save as template (on by default) keeps it in My Templates › Code animations with a thumbnail and a hover preview; click or drag inserts it; rename, duplicate, delete with Restore, export and import as .json. The Scene outliner shows code layers with a code icon.
+- **Real runtime (X5):** Codex's sandboxed Tier C runtime is connected; the ten reference samples import, bake, play, scrub, take param changes, Fade and an effect, and export with the same pixels as the preview; hostile code is refused or stopped, heavy bakes can be cancelled, templates survive a reload.
 
 ## V7 series (V7a to V7h) — 2026-10-11
 

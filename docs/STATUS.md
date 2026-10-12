@@ -1,3 +1,8 @@
+- **X-series (X1 to X6)** is on `claude/x-series`, draft PR #28 stacked on `claude/v7-series` (PR #26), not merged; see reports/X-SERIES.md.
+  - **X1** the code layer (**schema 8**, one optional layer field `code`; D-218), a PNG frame cache in OPFS with budgets and LRU (D-219), one render path for preview and export (D-231), the runtime interface and a FakeRuntime (D-232).
+  - **X2** the import dialog (A, B or C; plain-language errors; D-233). **X3** Animation settings in the right rail (D-234). **X4** code templates in My Templates (D-235).
+  - **X5** Codex's sandboxed Tier C runtime (`origin/codex/free-code-runtime`) merged unchanged and connected (D-236): all ten reference samples bake, play, scrub and export; preview vs. Export frame max difference 0/255 on all ten.
+  - No new npm dependencies. PR #14, #19, #22 and #25 untouched.
 - **V7 series (V7a to V7h)** is on `claude/v7-series`, draft PR #26 stacked on `claude/v-series` (PR #25), not merged; see reports/V7-SERIES.md and docs/V7-PROGRESS.md.
   - **V7a** an always-shown right rail that only opens from a click (D-196, D-217); icon scale (D-196). **V7b** timeline padding, empty state, bounded marquee scroll, collapsed player (D-197). **V7c** Auto / Manual range and export frame range (D-198).
   - **V7d** the outliner redesign (D-200). **V7e** one Transitions place and scene-to-scene transitions as a reserved marker (D-199, D-212).

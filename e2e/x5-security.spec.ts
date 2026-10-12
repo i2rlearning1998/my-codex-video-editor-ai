@@ -50,6 +50,8 @@ function outside(page: Page) {
   const seen: string[] = [];
   page.on('request', (request) => {
     const url = new URL(request.url());
+    // blob: and data: URLs are made by the page itself.
+    if (!/^(https?|wss?):$/.test(url.protocol)) return;
     if (!['127.0.0.1', 'localhost'].includes(url.hostname)) seen.push(url.href);
   });
   return seen;
@@ -114,10 +116,17 @@ test.describe('X5 hostile and heavy free code', () => {
       await dialog(page).locator('#code-cancel').click();
       await expect(dialog(page)).toBeHidden();
     }
-    // No sandbox is left behind and the editor still works.
+    // No sandbox is left behind, and the runtime still renders valid code.
     await expect(page.locator('iframe[sandbox]')).toHaveCount(0);
-    await page.locator('[data-action="play"]').click();
-    await page.locator('[data-action="play"]').click();
+    await openImport(page);
+    await dialog(page).locator('#code-source').fill(free(''));
+    await expect(dialog(page).locator('#code-thumb')).toHaveAttribute(
+      'data-ready',
+      'true',
+      { timeout: 60_000 },
+    );
+    await dialog(page).locator('#code-cancel').click();
+    expect((await hook(page)).project.compositions[0]!.layers).toEqual([]);
     expect(requests).toEqual([]);
   });
 
