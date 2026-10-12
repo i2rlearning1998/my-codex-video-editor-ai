@@ -1,0 +1,66 @@
+let c,p,w,h;
+
+export default {
+ meta: {
+  "id": "aurora",
+  "name": "05 / Boreal currents",
+  "version": "1.0.0",
+  "category": "Original studies",
+  "duration": 4,
+  "fps": 24,
+  "seekable": true,
+  "keepFrame": false,
+  "thumbnailTime": 2,
+  "libs": [],
+  "params": [
+    {
+      "name": "accent",
+      "label": "Accent",
+      "type": "color",
+      "default": "#62f5d0"
+    },
+    {
+      "name": "secondary",
+      "label": "Secondary",
+      "type": "color",
+      "default": "#8976ff"
+    },
+    {
+      "name": "speed",
+      "label": "Motion speed",
+      "type": "number",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1
+    },
+    {
+      "name": "count",
+      "label": "Detail count",
+      "type": "number",
+      "min": 8,
+      "max": 100,
+      "step": 1,
+      "default": 40
+    },
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "text",
+      "default": "FORM / MOTION",
+      "maxLength": 36
+    }
+  ]
+},
+ async init({canvas, ctx, params, size, fps, seed, libs, rng}) {
+c=ctx;p=params;w=size.width;h=size.height;
+ },
+ renderFrame({t, frame, dt}) {
+c.save();c.scale(w/1920,h/1080);
+ c.globalCompositeOperation='screen';
+ for(let j=0;j<5;j++){const color=j%2?p.accent:p.secondary;c.strokeStyle=color;c.shadowColor=color;c.shadowBlur=55;c.lineWidth=30+j*10;c.globalAlpha=.1+j*.025;c.beginPath();for(let i=0;i<=Math.round(p.count)*3;i++){const x=100+i/(Math.round(p.count)*3)*1720;const y=540+Math.sin(x*.004+t*p.speed*.6+j*.8)*150+Math.sin(x*.0018-t*.3+j)*100;if(i===0)c.moveTo(x,y);else c.lineTo(x,y);}c.stroke();}
+ c.shadowBlur=0;c.globalAlpha=1;c.globalCompositeOperation='source-over';
+ const g=c.createLinearGradient(120,0,1800,0);g.addColorStop(0,p.accent);g.addColorStop(1,p.secondary);c.fillStyle=g;c.font='700 80px Arial';c.fillText(p.title,110,870);c.fillStyle='#8598b4';c.font='22px Arial';c.fillText('LIGHT STUDY  /  005',115,930);
+c.restore();
+ }
+};

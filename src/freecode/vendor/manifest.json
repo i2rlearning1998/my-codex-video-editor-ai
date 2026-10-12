@@ -1,0 +1,29 @@
+[
+  {
+    "name": "three",
+    "package": "three",
+    "version": "0.170.0",
+    "released": "2024-10-31T07:08:27.705Z",
+    "bytes": 684980,
+    "gzipBytes": 175921,
+    "sha256": "c6f0d8fa452692ab9ae95e4efdcfc3cf3db09b7a1281c9d4f6a7e3c4d3de0137"
+  },
+  {
+    "name": "pixi",
+    "package": "pixi.js",
+    "version": "7.4.3",
+    "released": "2025-03-06T15:00:18.351Z",
+    "bytes": 456168,
+    "gzipBytes": 136581,
+    "sha256": "6481e0da9d16efda2f0ff8aeb1e80d80eabee65fdba89b90397a92590237089c"
+  },
+  {
+    "name": "lottie",
+    "package": "lottie-web",
+    "version": "5.12.2",
+    "released": "2023-06-13T12:10:02.060Z",
+    "bytes": 265947,
+    "gzipBytes": 67803,
+    "sha256": "f7df7138061ab06142055ed5fcf15e4abc68765bd9443b2a9b19107a06c28794"
+  }
+]
