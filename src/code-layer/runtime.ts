@@ -1,7 +1,8 @@
 // X1: the code runtimes. Tier B blocks render through the `src/blocks`
 // sandbox worker; Tier C free code through a FreeCodeRuntime. Both are
 // opened as a FreeCodeSession, so the bake path is one.
-import { blockMeta } from './meta';
+import { blockMeta, setCodeLibraryVersions } from './meta';
+import libraryManifest from '../freecode/vendor/manifest.json';
 import { createSandbox } from '../blocks/sandbox/client';
 import { FakeRuntime } from './fake-runtime';
 import { STARTER_PREFIX } from './tier-a';
@@ -13,13 +14,29 @@ import type {
 } from './runtime-types';
 import type { CodeTier } from './meta';
 
-let realRuntime: (() => Promise<FreeCodeRuntime>) | null = null;
+/**
+ * X5: Codex's sandboxed runtime (`src/freecode`), loaded on first use (its
+ * validator carries the TypeScript parser and its libraries load per
+ * `meta.libs`). Its types match runtime-types.ts structurally. A bake keeps
+ * one session open for every frame, so the total budget is generous (20
+ * minutes); each frame still has the runtime's 5 s watchdog.
+ */
+let loaded: Promise<FreeCodeRuntime> | null = null;
+const sandboxed = () =>
+  (loaded ??= import('../freecode/runtime').then((module): FreeCodeRuntime =>
+    module.createFreeCodeRuntime({ totalTimeoutMs: 20 * 60 * 1000 }),
+  ));
+let realRuntime: (() => Promise<FreeCodeRuntime>) | null = sandboxed;
 /** X5 connects the real sandboxed runtime here. */
 export function setFreeCodeRuntime(
   load: (() => Promise<FreeCodeRuntime>) | null,
 ): void {
   realRuntime = load;
 }
+// The bundled library versions are part of every bake key (D-219).
+setCodeLibraryVersions(
+  libraryManifest.map((lib) => `${lib.name}@${lib.version}`).join(','),
+);
 const fake = new FakeRuntime();
 /** The Tier C runtime, or null when none is available. */
 export async function freeCodeRuntime(): Promise<FreeCodeRuntime | null> {
