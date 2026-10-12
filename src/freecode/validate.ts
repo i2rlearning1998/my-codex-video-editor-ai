@@ -79,6 +79,7 @@ export function parse(source: string): ts.SourceFile {
 /** Static diagnostics only. This deny scan is NOT a complete JavaScript security proof. */
 export function validate(source: string): ValidationResult {
   const errors: ValidationError[] = [];
+  let metadataLine = 1;
   if (
     typeof source !== 'string' ||
     new TextEncoder().encode(source).byteLength > SOURCE_LIMIT
@@ -189,6 +190,8 @@ export function validate(source: string): ValidationResult {
     if (metas.length !== 1 || !ts.isPropertyAssignment(metas[0]!))
       throw Error('Provide exactly one literal meta object.');
     const metaNode = metas[0];
+    metadataLine =
+      file.getLineAndCharacterOfPosition(metaNode.getStart(file)).line + 1;
     const raw = literal(metaNode.initializer) as Record<string, unknown>;
     if (!raw || typeof raw !== 'object' || Array.isArray(raw))
       throw Error('meta must be an object.');
@@ -237,7 +240,7 @@ export function validate(source: string): ValidationResult {
       errors: [
         ...errors,
         {
-          line: 1,
+          line: metadataLine,
           message:
             e instanceof Error ? e.message : 'Invalid JavaScript source.',
         },

@@ -8,7 +8,7 @@ export default {
   "duration": 4,
   "fps": 24,
   "seekable": true,
-  "keepFrame": false,
+  "keepFrame": true,
   "thumbnailTime": 2,
   "libs": [
     "lottie"

@@ -92,7 +92,12 @@ function options(
   };
 }
 async function open(height?: number) {
+  const started = epoch;
   const s = await runtime.open(code.value, options(height));
+  if (started !== epoch) {
+    s.dispose();
+    throw Error('Cancelled while opening sandbox.');
+  }
   active.add(s);
   return s;
 }

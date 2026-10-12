@@ -105,9 +105,8 @@ export function sandboxBootstrap(config: BootstrapConfig): void {
   ]) {
     try {
       Object.defineProperty(window, name, {
-        get() {
-          throw Error(name + ' is unavailable in Free code.');
-        },
+        value: undefined,
+        writable: false,
         configurable: false,
       });
     } catch {

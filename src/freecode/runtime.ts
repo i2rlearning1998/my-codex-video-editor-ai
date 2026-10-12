@@ -80,9 +80,12 @@ export function createFreeCodeRuntime(
         timer: ReturnType<typeof setTimeout>;
       };
       const pending = new Map<number, Pending>();
+      const children = new Set<FreeCodeSession>();
       const close = (message = 'Session disposed.') => {
         if (disposed) return;
         disposed = true;
+        for (const child of children) child.dispose();
+        children.clear();
         iframe.remove();
         window.removeEventListener('message', receive);
         clearTimeout(total);
@@ -167,6 +170,11 @@ export function createFreeCodeRuntime(
         async thumbnail() {
           if (disposed) throw Error('Session is disposed.');
           const fresh = await createFreeCodeRuntime(limits).open(source, opts);
+          if (disposed) {
+            fresh.dispose();
+            throw Error('Session is disposed.');
+          }
+          children.add(fresh);
           try {
             const target = Math.min(
               Math.ceil(opts.duration * opts.fps) - 1,
@@ -178,6 +186,7 @@ export function createFreeCodeRuntime(
             return await fresh.renderFrame(target);
           } finally {
             fresh.dispose();
+            children.delete(fresh);
           }
         },
         dispose() {
