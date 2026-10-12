@@ -18,3 +18,15 @@ Resume: inspect newest CI for this branch, fix any freecode failures within scop
 D-240: Owner's explicit isolated task overrides generic wave bookkeeping. Only requested paths plus explicitly required spec, progress, report and gallery npm script. No editor or schema edits.
 D-241: Terminal push has no GitHub credentials; publish each part with GitHub Git Data API, then fast-forward local checkout. No force push.
 D-242: AST scan is diagnostic defense in depth, not a proof against obfuscated JavaScript. Same-process iframe resource exhaustion is an honest security gap requiring production isolation.
+
+## PR #27 CI repair
+
+The two verify runs 38288476502 and 38288473650 failed in `Run npm run verify`:
+515 unit/jsdom tests passed; 19 gallery e2e tests failed with `Unexpected token 'export'`.
+Root cause: TypeScript's module emitter appended `export {};` after the default
+export was rewritten for classic-script execution. Direct AST transformation and
+printing fixes that mismatch. New regression tests reproduce the old failure and
+compile all ten samples, then execute both supported module forms with guards.
+Local checks now pass 517 unit/jsdom tests. Browser rerun pending; no measurements
+claimed yet. Browser proof now explicitly attaches screenshots and hostile-case
+outcomes, and records first/second bake render-and-capture totals separately.

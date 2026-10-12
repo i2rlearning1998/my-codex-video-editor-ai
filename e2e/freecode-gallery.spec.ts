@@ -46,9 +46,12 @@ for (const id of ids)
       expect(thumbnail.height).toBe(1080);
       expect(thumbnail.visible).toBeGreaterThan(500);
       expect(thumbnail.transparent).toBeGreaterThan(1000);
-      await page
-        .locator('#canvas')
-        .screenshot({ path: testInfo.outputPath(id + '.png') });
+      const screenshot = testInfo.outputPath(id + '.png');
+      await page.locator('#canvas').screenshot({ path: screenshot });
+      await testInfo.attach(id + '-1080p', {
+        path: screenshot,
+        contentType: 'image/png',
+      });
       const box = await page.locator('#stage').boundingBox();
       expect(box!.width).toBeLessThanOrEqual(1600);
       await page.locator('#benchmark').click();
@@ -59,6 +62,7 @@ for (const id of ids)
         },
       );
       const raw = (await page.locator('#proof-data').textContent())!;
+      console.log('FREECODE_MEASURED ' + id + ' ' + raw);
       const results = JSON.parse(raw) as {
         height: number;
         frames: number;
@@ -95,7 +99,7 @@ for (const attack of [
   test.describe(attack, () => {
     test('[DEV-001] Free code fails safely and host remains usable', async ({
       page,
-    }) => {
+    }, testInfo) => {
       await page.goto('/freecode-gallery/');
       await expect(page.locator('#validate')).toBeEnabled({ timeout: 15000 });
       await page.locator('#hostile').selectOption(attack);
@@ -104,10 +108,17 @@ for (const attack of [
         /Safely (rejected|stopped)/,
         { timeout: 10000 },
       );
+      const message = await page.locator('#status').textContent();
       await expect(page.locator('h1')).toHaveText('Motion laboratory');
       await page.locator('#sample').selectOption('chart');
       await expect(page.locator('#status')).toContainText('Valid ·', {
         timeout: 15000,
+      });
+      const result = JSON.stringify({ attack, message, hostRecovered: true });
+      console.log('FREECODE_HOSTILE ' + result);
+      await testInfo.attach(attack + '-hostile.json', {
+        body: result,
+        contentType: 'application/json',
       });
     });
   });

@@ -327,7 +327,8 @@ async function compare(run: number, height: number) {
     xb = cb.getContext('2d', { willReadFrequently: true })!;
   let maximum = 0,
     visible = false,
-    peak = 0;
+    peak = 0,
+    secondBakeMs = 0;
   const times: number[] = [];
   const start = now();
   try {
@@ -337,8 +338,11 @@ async function compare(run: number, height: number) {
       const ia = await a.renderFrame(f);
       times.push(now() - tick);
       peak = Math.max(peak, times[times.length - 1]!);
+      const secondTick = now();
+      const ib = await b.renderFrame(f);
+      secondBakeMs += now() - secondTick;
       const da = pixels(ia, xa),
-        db = pixels(await b.renderFrame(f), xb);
+        db = pixels(ib, xb);
       for (let i = 0; i < da.length; i++) {
         maximum = Math.max(maximum, Math.abs(da[i]! - db[i]!));
         if (i % 4 === 3 && da[i]! > 0) visible = true;
@@ -354,6 +358,8 @@ async function compare(run: number, height: number) {
       visible,
       frameMeanMs: times.reduce((a, b) => a + b, 0) / times.length,
       framePeakMs: peak,
+      firstBakeMs: times.reduce((a, b) => a + b, 0),
+      secondBakeMs,
       twoBakeMs: now() - start,
       workingPixelBytes: opts.width * opts.height * 4 * 6,
       browser: navigator.userAgent,
