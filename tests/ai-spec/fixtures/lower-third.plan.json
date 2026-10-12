@@ -1,0 +1,1086 @@
+{
+  "version": 1,
+  "specId": "lower-third",
+  "catalogVersion": "spec1-main9362645-blocks6a74c95-fx98a95f7-policy1",
+  "executable": false,
+  "duration": 5,
+  "scenes": [
+    {
+      "id": "speaker",
+      "compositionId": "ais_lower-third_s0",
+      "timelineStart": 0,
+      "duration": 5
+    }
+  ],
+  "editableParameters": [
+    {
+      "name": "speaker",
+      "label": "Speaker",
+      "type": "text",
+      "default": "Sam Rivera",
+      "maxLength": 60
+    }
+  ],
+  "bindings": [
+    {
+      "path": "/scenes/0/items/1/text",
+      "param": "speaker"
+    }
+  ],
+  "operations": [
+    {
+      "sequence": 0,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_COMPOSITION",
+        "composition": {
+          "id": "ais_lower-third_s0",
+          "name": "Speaker",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "duration": 5,
+          "layers": [],
+          "tracks": [],
+          "markers": [],
+          "audioTracks": []
+        }
+      }
+    },
+    {
+      "sequence": 1,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_lower-third_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_lower-third_s0_bg",
+          "name": "Scene background",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1280,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 720,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#101219",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_lower-third_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_lower-third_s0_i0_layer",
+          "name": "bar",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [60, 520],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 9,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 10,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 11,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 760,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 140,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 14,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#10242c",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 15,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_lower-third_s0",
+        "track": {
+          "id": "ais_lower-third_s0_i0_track",
+          "name": "bar",
+          "type": "object",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 16,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_lower-third_s0",
+        "trackId": "ais_lower-third_s0_i0_track",
+        "clip": {
+          "id": "ais_lower-third_s0_i0_clip",
+          "name": "bar",
+          "layerId": "ais_lower-third_s0_i0_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 5,
+          "sourceIn": 0,
+          "sourceOut": 5,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 17,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_lower-third_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_lower-third_s0_i1_layer",
+          "name": "speaker",
+          "type": "text",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 18,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [90, 550],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 19,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 22,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 23,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 24,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "Sam Rivera",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 25,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 42,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 26,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 27,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#ffffff",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 28,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_lower-third_s0",
+        "track": {
+          "id": "ais_lower-third_s0_i1_track",
+          "name": "speaker",
+          "type": "text",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 29,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_lower-third_s0",
+        "trackId": "ais_lower-third_s0_i1_track",
+        "clip": {
+          "id": "ais_lower-third_s0_i1_clip",
+          "name": "speaker",
+          "layerId": "ais_lower-third_s0_i1_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 5,
+          "sourceIn": 0,
+          "sourceOut": 5,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 30,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_lower-third_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_lower-third_s0_i2_layer",
+          "name": "role",
+          "type": "text",
+          "startTime": 0,
+          "duration": 5,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 31,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [90, 610],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 32,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 33,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 34,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 35,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 36,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 37,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "Creative technologist",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 38,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 26,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 39,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 40,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_lower-third_s0",
+        "layerId": "ais_lower-third_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#64e3c3",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 41,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_lower-third_s0",
+        "track": {
+          "id": "ais_lower-third_s0_i2_track",
+          "name": "role",
+          "type": "text",
+          "order": 2,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 42,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_lower-third_s0",
+        "trackId": "ais_lower-third_s0_i2_track",
+        "clip": {
+          "id": "ais_lower-third_s0_i2_clip",
+          "name": "role",
+          "layerId": "ais_lower-third_s0_i2_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 5,
+          "sourceIn": 0,
+          "sourceOut": 5,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    }
+  ],
+  "requirements": [],
+  "assets": [],
+  "itemMap": [
+    {
+      "sceneId": "speaker",
+      "itemId": "bar",
+      "layerId": "ais_lower-third_s0_i0_layer",
+      "clipId": "ais_lower-third_s0_i0_clip"
+    },
+    {
+      "sceneId": "speaker",
+      "itemId": "speaker",
+      "layerId": "ais_lower-third_s0_i1_layer",
+      "clipId": "ais_lower-third_s0_i1_clip"
+    },
+    {
+      "sceneId": "speaker",
+      "itemId": "role",
+      "layerId": "ais_lower-third_s0_i2_layer",
+      "clipId": "ais_lower-third_s0_i2_clip"
+    }
+  ]
+}

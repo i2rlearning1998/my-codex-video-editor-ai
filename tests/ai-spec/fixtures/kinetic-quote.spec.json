@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "id": "kinetic-quote",
+  "title": "Kinetic quote",
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "scenes": [
+    {
+      "id": "quote",
+      "name": "Quote",
+      "duration": 6,
+      "items": [
+        {
+          "id": "words",
+          "name": "words",
+          "kind": "code-block",
+          "start": 0,
+          "duration": 6,
+          "blockId": "kinetic-letters",
+          "blockVersion": "1.0.0",
+          "params": {
+            "text": {
+              "$param": "quote"
+            },
+            "color": "#ffe29a"
+          },
+          "seed": 7
+        },
+        {
+          "id": "accent",
+          "name": "accent",
+          "kind": "code-block",
+          "start": 0,
+          "duration": 6,
+          "blockId": "quote-dot",
+          "blockVersion": "1.0.0",
+          "params": {},
+          "seed": 7
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "quote",
+      "label": "Quote",
+      "type": "text",
+      "default": "MAKE ROOM FOR IDEAS",
+      "maxLength": 40
+    }
+  ],
+  "blocks": [
+    {
+      "id": "quote-dot",
+      "source": "({id:'quote-dot',version:'1.0.0',name:'Quote dot',category:'Accent',defaultDuration:6,params:[],render(ctx,t,size,params,seed){ctx.fillStyle='#ffe29a';ctx.beginPath();ctx.arc(size.width/2,size.height*0.8,8+4*Math.sin(t),0,Math.PI*2);ctx.fill();}})"
+    }
+  ]
+}

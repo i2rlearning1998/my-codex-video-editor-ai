@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "fx:gallery": "vite --config fx-gallery/vite.config.ts",
+    "ai-spec:check": "vitest run tests/ai-spec",
+    "blocks:gallery": "vite --config blocks-gallery/vite.config.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",

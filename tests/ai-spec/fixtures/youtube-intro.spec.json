@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "id": "youtube-intro",
+  "title": "Channel launch",
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "scenes": [
+    {
+      "id": "welcome",
+      "name": "Welcome",
+      "duration": 6,
+      "items": [
+        {
+          "id": "headline",
+          "name": "headline",
+          "kind": "text",
+          "start": 0,
+          "duration": 6,
+          "text": {
+            "$param": "channel"
+          },
+          "width": 1000,
+          "height": 160,
+          "transform": {
+            "x": 100,
+            "y": 180
+          },
+          "fill": "#64e3c3"
+        },
+        {
+          "id": "underline",
+          "name": "underline",
+          "kind": "shape",
+          "start": 0,
+          "duration": 6,
+          "shape": "rectangle",
+          "fill": "#37cbb1",
+          "width": 900,
+          "height": 12,
+          "transform": {
+            "x": 100,
+            "y": 390
+          }
+        },
+        {
+          "id": "music",
+          "name": "Intro music",
+          "kind": "audio-slot",
+          "slot": "music",
+          "start": 0,
+          "duration": 6
+        }
+      ],
+      "transition": {
+        "id": "crossfade",
+        "duration": 0.5
+      }
+    },
+    {
+      "id": "episode",
+      "name": "Episode",
+      "duration": 3,
+      "items": [
+        {
+          "id": "topic",
+          "name": "topic",
+          "kind": "text",
+          "start": 0,
+          "duration": 3,
+          "text": "Build something worth sharing",
+          "width": 1000,
+          "height": 160,
+          "transform": {
+            "x": 100,
+            "y": 230
+          }
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "channel",
+      "label": "Channel name",
+      "type": "text",
+      "default": "IDEAS IN MOTION",
+      "maxLength": 40
+    }
+  ],
+  "assets": [
+    {
+      "id": "music",
+      "kind": "audio",
+      "description": "Owner-supplied licensed intro music"
+    }
+  ]
+}
