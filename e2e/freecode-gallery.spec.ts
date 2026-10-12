@@ -46,6 +46,48 @@ for (const id of ids)
       expect(thumbnail.height).toBe(1080);
       expect(thumbnail.visible).toBeGreaterThan(500);
       expect(thumbnail.transparent).toBeGreaterThan(1000);
+      if (id === 'shader') {
+        // Read-only compositing probe catches RGB leaking through zero alpha.
+        // Raw getImageData alpha alone misses invalid premultiplied WebGL RGB.
+        const edgeColour = await page
+          .locator('#canvas')
+          .evaluate((source: HTMLCanvasElement) => {
+            const probe = document.createElement('canvas');
+            probe.width = source.width;
+            probe.height = source.height;
+            const drawing = probe.getContext('2d', { alpha: false })!;
+            drawing.drawImage(source, 0, 0);
+            const { data } = drawing.getImageData(
+              0,
+              0,
+              probe.width,
+              probe.height,
+            );
+            let maximum = 0;
+            for (let y = 0; y < probe.height; y++)
+              for (let x = 0; x < probe.width; x++) {
+                if (
+                  x > 0 &&
+                  x < probe.width - 1 &&
+                  y > 0 &&
+                  y < probe.height - 1
+                )
+                  continue;
+                const offset = (y * probe.width + x) * 4;
+                maximum = Math.max(
+                  maximum,
+                  data[offset]!,
+                  data[offset + 1]!,
+                  data[offset + 2]!,
+                );
+              }
+            return maximum;
+          });
+        expect(
+          edgeColour,
+          'transparent WebGL border must composite as black',
+        ).toBe(0);
+      }
       const screenshot = testInfo.outputPath(id + '.png');
       await page.locator('#canvas').screenshot({ path: screenshot });
       await testInfo.attach(id + '-1080p', {
@@ -68,6 +110,7 @@ for (const id of ids)
         frames: number;
         maxChannelDifference: number;
         visible: boolean;
+        minVisiblePixels: number;
         framePeakMs: number;
         twoBakeMs: number;
       }[];
@@ -75,6 +118,10 @@ for (const id of ids)
       for (const r of results) {
         expect(r.frames).toBe(96);
         expect(r.visible).toBe(true);
+        expect(
+          r.minVisiblePixels,
+          'no blank frame in either bake',
+        ).toBeGreaterThan(500);
         expect(r.maxChannelDifference).toBe(0);
         expect(r.framePeakMs).toBeLessThan(5000);
         expect(r.twoBakeMs).toBeLessThan(120000);

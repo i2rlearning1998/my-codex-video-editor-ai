@@ -4,8 +4,10 @@
 
 The isolated Tier C runtime, ten original source studies and standalone gallery
 are implemented on codex/free-code-runtime. No editor integration is included.
-Local static/unit checks pass. Browser launch is blocked locally, so visual quality,
-pixel determinism, timing and hostile-code recovery remain **Claimed**, pending CI.
+Local static/unit checks pass. CI run 38292445233 passed all 517 unit/jsdom tests
+and 268 browser tests with zero flaky/skipped cases. Real measurements and
+screenshots are available. Screenshot review then caught a WebGL alpha defect;
+its sample fix and stronger browser assertions are awaiting the next CI run.
 The absolute hostile-code guarantee in the spec is **Not done**: a same-process
 srcdoc iframe cannot provide hard memory/CPU/egress isolation for arbitrary JS.
 GSAP is deliberately omitted under the current licence uncertainty.
@@ -28,6 +30,55 @@ GSAP is deliberately omitted under the current licence uncertainty.
   visual review and measured browser performance until a real run is available.
 - Outside scope and untouched: editor UI, engine, renderer, export, schema, PR #14,
   PR #19, root dependencies/lockfile, global ledger/status/changelog.
+
+## PR #27 CI failure diagnosis
+
+Both runs [38288476502](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/38288476502)
+and [38288473650](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/38288473650)
+failed in the **verify / Run npm run verify** step. Format, strict typechecks,
+515 unit/jsdom tests and the build passed. Browser totals: **19 failed, 249 passed**.
+Both Windows export-mp4 jobs passed.
+
+All 19 failures are in e2e/freecode-gallery.spec.ts:
+
+- `[EXP-007] Free code: visible 1080p thumbnail and two deterministic bakes`:
+  particles, three-scene, pixi-field, lottie-mark, aurora, shader, typography,
+  svg-infographic, chart, parallax (10 tests).
+- `[DEV-001] Free code fails safely and host remains usable`:
+  fetch, WebSocket, parent, storage, loop, allocation, import, timeout (8 tests).
+- `[EXP-007] Free code bakes PNG cache, scrubs and applies exposed parameters`
+  (1 test).
+
+Every failure encountered **Unexpected token 'export'**. The TypeScript
+transpileModule emitter retained external-module identity and appended
+`export {};` after the before-transformer replaced the default export with
+window.__block. The sandbox evaluates a classic script function, where that
+synthetic export is invalid. Recovery tests also failed when they tried to open
+the chart after rejecting hostile source. The initial sample never rendered,
+so the failures did not provide performance or determinism evidence.
+
+Fix b44f5e9 transforms and prints the parsed JavaScript AST directly, avoiding
+the module emitter while preserving the loop/function/allocation instrumentation.
+Two new regression tests fail on the original implementation, then pass with
+the fix: compile every emitted sample as a classic script, and execute both
+supported module forms with guard calls. No thresholds, test cases, or console
+checks were relaxed. Local npm run check passes **517 tests in 48 files**.
+Screenshots and hostile outcomes are now explicit browser-proof attachments;
+benchmark JSON also records firstBakeMs and secondBakeMs independently.
+
+The first repair run [38292445233](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/38292445233)
+is **green**, including export-mp4, the production test-hook assertion and ledger.
+268 browser tests passed with zero flaky, skipped or unexpected results.
+Its [browser-proof](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/38292445233/artifacts/11766839024)
+contains ten screenshots, ten measurement attachments, eight hostile-case
+attachments and the PNG bake report. All measured channel differences were zero.
+
+Screenshot review found the shader's non-premultiplied RGB visibly leaking across
+transparent canvas pixels. Its fragment shader now multiplies RGB by alpha. An
+opaque-black compositing probe asserts the transparent border contributes zero
+colour; raw alpha counts did not catch this. Every sample now also checks the
+minimum visible-pixel count across every frame in both bakes, preventing blank
+frames from being hidden by the old any-visible-frame aggregate. Rerun pending.
 
 ## 3. Checks (real output tails)
 

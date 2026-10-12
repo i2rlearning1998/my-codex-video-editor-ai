@@ -525,3 +525,11 @@ export default {
   },
 };
 ```
+
+## WebGL transparency
+
+The host canvas uses alpha and the browser's default premultiplied-alpha
+compositing. Write premultiplied fragment colours: `vec4(rgb * alpha, alpha)`.
+Writing nonzero RGB with zero alpha leaks colour over the host background,
+even when a raw alpha-count test reports transparent pixels. The shader reference
+sample and its browser compositing regression demonstrate the correct output.

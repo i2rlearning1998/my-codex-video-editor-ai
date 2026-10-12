@@ -328,7 +328,8 @@ async function compare(run: number, height: number) {
   let maximum = 0,
     visible = false,
     peak = 0,
-    secondBakeMs = 0;
+    secondBakeMs = 0,
+    minVisiblePixels = Infinity;
   const times: number[] = [];
   const start = now();
   try {
@@ -343,10 +344,17 @@ async function compare(run: number, height: number) {
       secondBakeMs += now() - secondTick;
       const da = pixels(ia, xa),
         db = pixels(ib, xb);
+      let visibleA = 0,
+        visibleB = 0;
       for (let i = 0; i < da.length; i++) {
         maximum = Math.max(maximum, Math.abs(da[i]! - db[i]!));
-        if (i % 4 === 3 && da[i]! > 0) visible = true;
+        if (i % 4 === 3) {
+          if (da[i]! > 0) visibleA++;
+          if (db[i]! > 0) visibleB++;
+        }
       }
+      minVisiblePixels = Math.min(minVisiblePixels, visibleA, visibleB);
+      visible ||= visibleA > 0;
       progress.value = (f + 1) / count;
       status.textContent = `Two-bake comparison ${f + 1} / ${count} at ${height}p`;
     }
@@ -355,6 +363,7 @@ async function compare(run: number, height: number) {
       width: opts.width,
       frames: count,
       maxChannelDifference: maximum,
+      minVisiblePixels,
       visible,
       frameMeanMs: times.reduce((a, b) => a + b, 0) / times.length,
       framePeakMs: peak,

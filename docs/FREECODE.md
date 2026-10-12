@@ -149,7 +149,9 @@ closing bitmaps immediately rather than retaining two full uncompressed movies.
 
 Benchmark measures both 720p and 1080p; reported per-frame time includes await,
 capture and transfer for the first bake, excludes initialization, pixel comparison
-and PNG encoding. The two-bake total includes readback and comparison. All numbers
+and PNG encoding. firstBakeMs and secondBakeMs sum those render/capture/transport
+round trips independently; initialization and PNG encoding are excluded. The
+two-bake total includes readback and comparison. All numbers
 come from actual performance.now calls on the host. The browser suite attaches
 JSON measurements and thumbnail screenshots to the existing browser-proof artifact.
 Local browser launch was blocked; see the current report for CI status and measured
@@ -175,3 +177,8 @@ numbers (if available). A passing alpha count is not a professional visual revie
   procedural three.js and inline Lottie. They are complete source copies from samples.
 - D-247: Scope stays isolated. Browser tests reuse EXP-007 and DEV-001 as proof areas,
   following the existing Block gallery pattern; no ledger rows are promoted.
+
+- D-248: Use the TypeScript parser, AST transform and printer directly for the
+  JavaScript sandbox contract. The module transpiler appends an export marker
+  incompatible with classic-script evaluation; regressions compile every sample
+  and execute both supported module forms.

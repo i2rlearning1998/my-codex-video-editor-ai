@@ -30,3 +30,11 @@ compile all ten samples, then execute both supported module forms with guards.
 Local checks now pass 517 unit/jsdom tests. Browser rerun pending; no measurements
 claimed yet. Browser proof now explicitly attaches screenshots and hostile-case
 outcomes, and records first/second bake render-and-capture totals separately.
+
+Run 38292445233 at b44f5e9 passed npm run verify: 517 unit/jsdom tests and 268
+browser tests, zero flaky/skipped. All 10 samples matched at both resolutions;
+all 8 hostile cases recovered. Artifact 11766839024 inspected. Visual review
+caught a shader alpha-compositing defect despite passing raw-alpha checks:
+non-premultiplied RGB leaked outside its transparent circle. Fixed fragment output,
+added an opaque-black border compositing assertion, and strengthened every bake
+comparison to reject any blank frame. Final browser rerun pending.
