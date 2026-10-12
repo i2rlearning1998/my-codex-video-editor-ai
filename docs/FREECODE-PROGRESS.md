@@ -11,6 +11,8 @@ Branch: codex/free-code-runtime. Base: origin/main at task start.
 - F5: 38 unit/jsdom tests pass; 19 browser tests added for all samples at both resolutions, hostile cases and PNG playback. Local Chromium launch blocked by socket policy; escalation also rejected. CI proof pending.
 - F6: architecture/limits, AI authoring prompt with three complete examples, licence record and honest report written. Browser/CI proof remains pending.
 
+Draft PR: https://github.com/i2rlearning1998/my-codex-video-editor-ai/pull/27 (not merged).
+
 Resume: inspect newest CI for this branch, fix any freecode failures within scope, update the report and the single draft PR. Do not merge.
 
 D-240: Owner's explicit isolated task overrides generic wave bookkeeping. Only requested paths plus explicitly required spec, progress, report and gallery npm script. No editor or schema edits.

@@ -75,12 +75,13 @@ No browser passed locally; no screenshots, max pixel differences, frame times or
 bake times are invented. Native timing and memory fields remain unmeasured.
 
 CI: [F5 run](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/38287002395)
-was running when this report was authored. The final draft PR shows subsequent
-runs. Existing CI discovers the gallery e2e file without workflow changes and
+was running when this report was authored. [Draft PR #27](https://github.com/i2rlearning1998/my-codex-video-editor-ai/pull/27)
+shows subsequent runs. [F6 browser run](https://github.com/i2rlearning1998/my-codex-video-editor-ai/actions/runs/38287886298) was also in progress. Existing CI discovers the gallery e2e file without workflow changes and
 attaches per-sample JSON measurements/screenshots to browser-proof. Final status
 is recorded in the PR; do not interpret this link as a passing run.
 
-Ledger: unchanged. Standalone tests use existing EXP-007 / DEV-001 proof areas,
+Ledger: standalone structural validation passed after using literal test titles.
+No ledger rows changed. Tests use existing EXP-007 / DEV-001 proof areas,
 following the Block gallery precedent. Full ledger verification awaits browser CI.
 
 ## 4. Try-it script for the owner
