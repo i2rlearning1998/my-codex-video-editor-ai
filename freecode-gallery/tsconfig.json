@@ -1,0 +1,5 @@
+{
+  "extends": "../tsconfig.json",
+  "include": ["../src/freecode", "../src/blocks", "./*.ts"],
+  "compilerOptions": { "types": ["vite/client"] }
+}

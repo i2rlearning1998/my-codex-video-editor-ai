@@ -1,0 +1,67 @@
+let c,p,w,h;
+
+export default {
+ meta: {
+  "id": "chart",
+  "name": "09 / Growth observatory",
+  "version": "1.0.0",
+  "category": "Original studies",
+  "duration": 4,
+  "fps": 24,
+  "seekable": true,
+  "keepFrame": false,
+  "thumbnailTime": 2,
+  "libs": [],
+  "params": [
+    {
+      "name": "accent",
+      "label": "Accent",
+      "type": "color",
+      "default": "#62f5d0"
+    },
+    {
+      "name": "secondary",
+      "label": "Secondary",
+      "type": "color",
+      "default": "#8976ff"
+    },
+    {
+      "name": "speed",
+      "label": "Motion speed",
+      "type": "number",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1
+    },
+    {
+      "name": "count",
+      "label": "Detail count",
+      "type": "number",
+      "min": 8,
+      "max": 100,
+      "step": 1,
+      "default": 40
+    },
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "text",
+      "default": "FORM / MOTION",
+      "maxLength": 36
+    }
+  ]
+},
+ async init({canvas, ctx, params, size, fps, seed, libs, rng}) {
+c=ctx;p=params;w=size.width;h=size.height;
+ },
+ renderFrame({t, frame, dt}) {
+c.save();c.scale(w/1920,h/1080);c.fillStyle='#dce8fa';c.font='600 24px Arial';c.fillText(p.title,110,120);c.fillStyle=p.accent;c.fillRect(110,144,64,3);
+ const values=[.35,.49,.42,.67,.76,.94],q=helpers.ease('ease-out',t*p.speed/2.5),x0=200,y0=850,bw=140,step=260;
+ c.font='18px Arial';c.fillStyle='#8295b0';c.strokeStyle='#26354c';c.lineWidth=1;
+ for(let i=0;i<=4;i++){const y=y0-i*145;c.beginPath();c.moveTo(180,y);c.lineTo(1750,y);c.stroke();c.fillText(String(i*25),120,y+6);}
+ for(let i=0;i<values.length;i++){const v=values[i]*570*q,g=c.createLinearGradient(0,y0-v,0,y0);g.addColorStop(0,p.accent);g.addColorStop(1,p.secondary);c.fillStyle=g;c.beginPath();c.roundRect(x0+i*step,y0-v,bw,v,8);c.fill();c.fillStyle='#edf3ff';c.font='600 26px Arial';c.fillText(String(Math.round(values[i]*p.count*q)),x0+i*step,y0-v-22);c.fillStyle='#8b9eb8';c.font='20px Arial';c.fillText('Q'+(i+1),x0+i*step+48,900);}
+ c.strokeStyle='#f4ce8b';c.lineWidth=4;c.beginPath();for(let i=0;i<values.length;i++){const x=x0+i*step+bw/2,y=y0-values[i]*570*q-45;if(i===0)c.moveTo(x,y);else c.lineTo(x,y);}c.stroke();
+c.restore();
+ }
+};
