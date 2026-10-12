@@ -1414,5 +1414,11 @@
   "tts.preview": "पूर्वावलोकन",
   "tts.save": "सहेजें",
   "tts.generating": "आवाज़ बन रही है…",
-  "tts.defaultName": "नया टेक्स्ट से आवाज़"
+  "tts.defaultName": "नया टेक्स्ट से आवाज़",
+  "export.rendering": "कोड एनिमेशन रेंडर हो रहे हैं: {percent} %",
+  "code.bakeProgress": "रेंडर हो रहा है {percent} %",
+  "code.bakeCancelled": "रेंडरिंग {percent} % पर रुकी",
+  "code.bakeError": "रेंडर नहीं हो सका: {reason}",
+  "code.bakeCancel": "रद्द करें",
+  "code.bakeResume": "फिर शुरू करें"
 }

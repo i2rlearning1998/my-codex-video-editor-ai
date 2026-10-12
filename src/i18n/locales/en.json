@@ -1414,5 +1414,11 @@
   "tts.preview": "Preview",
   "tts.save": "Save",
   "tts.generating": "Generating speech…",
-  "tts.defaultName": "New text to speech"
+  "tts.defaultName": "New text to speech",
+  "export.rendering": "Rendering code animations: {percent} %",
+  "code.bakeProgress": "Rendering {percent} %",
+  "code.bakeCancelled": "Rendering paused at {percent} %",
+  "code.bakeError": "Cannot render: {reason}",
+  "code.bakeCancel": "Cancel",
+  "code.bakeResume": "Resume"
 }

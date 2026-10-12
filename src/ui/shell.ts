@@ -1,3 +1,17 @@
+import { FrameCache } from '../code-layer/cache';
+import { CodeBaker } from '../code-layer/baker';
+import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
+import { openCodeSession } from '../code-layer/runtime';
+import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
+import {
+  codeFps,
+  codeMeta,
+  frameCount,
+  type CodeData,
+} from '../code-layer/meta';
+import type { CodeClipStatus } from './timeline';
+import type { FrameProvider } from '../render/adapter';
+import type { DeepReadonly, Layer as CoreLayer } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
@@ -406,6 +420,87 @@ export function mountEditorShell(
       });
     },
   );
+  // X1 (spec section 5): code animations play from a frame cache that the
+  // preview and the export share; the baker fills it one job at a time.
+  const codeCache = new FrameCache(mediaStore);
+  const codeBaker = new CodeBaker(codeCache, openCodeSession);
+  const codeOf = (layerId: string): CodeData | null => {
+    const find = (
+      layers: readonly DeepReadonly<CoreLayer>[],
+    ): CodeData | null => {
+      for (const layer of layers) {
+        if (layer.id === layerId)
+          return (layer.code as unknown as CodeData | undefined) ?? null;
+        const inner = find(layer.children);
+        if (inner) return inner;
+      }
+      return null;
+    };
+    for (const composition of engine.state.compositions) {
+      const found = find(composition.layers);
+      if (found) return found;
+    }
+    return null;
+  };
+  const codeFrames = new CodeFrames(codeCache, codeBaker, codeOf, () => {
+    if (redrawQueued || disposed) return;
+    redrawQueued = true;
+    requestAnimationFrame(() => {
+      redrawQueued = false;
+      safely(draw);
+    });
+  });
+  frames.code = codeFrames;
+  codeBaker.onChange(() => {
+    if (redrawQueued || disposed) return;
+    redrawQueued = true;
+    requestAnimationFrame(() => {
+      redrawQueued = false;
+      safely(draw);
+    });
+  });
+  /** The bake spec of a code layer in the open scene at its quality. */
+  const codeSpec = (layerId: string) => {
+    const code = codeOf(layerId);
+    if (!code) return null;
+    const composition = session.source.composition;
+    const fps = codeFps(code, composition.fps);
+    return bakeSpecOf(
+      code,
+      {
+        tier: code.tier,
+        bakeKey: code.bakeKey,
+        width: composition.width,
+        height: composition.height,
+        fps,
+        frames: frameCount(codeMeta(code).duration, fps),
+        frame: 0,
+      },
+      codeFrames.qualityOf(layerId),
+    );
+  };
+  const codeStatus: CodeClipStatus = {
+    status(layerId) {
+      const spec = codeSpec(layerId);
+      if (!spec) return null;
+      const job = codeBaker.job(spec.cacheKey);
+      const complete = codeCache.complete(spec.cacheKey);
+      return {
+        state: complete ? 'done' : (job?.state ?? 'queued'),
+        progress: codeBaker.progress(spec.cacheKey),
+        error: job?.error,
+      };
+    },
+    onChange: (listener) => codeBaker.onChange(listener),
+    cancel(layerId) {
+      const spec = codeSpec(layerId);
+      if (spec) codeBaker.cancel(spec.cacheKey);
+    },
+    resume(layerId) {
+      const spec = codeSpec(layerId);
+      if (spec) codeBaker.ensure(spec, true);
+    },
+  };
   // G3: Fit, then the zoom about the view's center, then the pan.
   const viewportFor = (z: number, requested: readonly [number, number]) => {
     const view = fitViewport(
@@ -1459,6 +1554,7 @@ export function mountEditorShell(
     true,
     previews,
     waveforms,
+    codeStatus,
   );
   // H4: Editor | 2D Animation (3D is planned). The switch crossfades the
   // panels and the timeline in 320 ms and keeps the selection.
@@ -1527,16 +1623,55 @@ export function mountEditorShell(
         : stage.requestFullscreen(),
     );
   // APP-015 / W5-A: the primary Export button opens the Export dialog.
-  const renderFrame = () => {
+  /**
+   * X1: a frame provider whose code animations answer with their Full
+   * quality baked frame at `time` (baked and loaded first), as the export.
+   */
+  const fullCodeFrames = async (
+    composition: typeof session.source.composition,
+    time: number,
+  ): Promise<FrameProvider> => {
+    await bakeForExport(
+      codeBaker,
+      composition,
+      () => undefined,
+      () => false,
+    );
+    const loaded = new Map<string, CanvasImageSource>();
+    for (const item of deriveRenderItems({
+      ...session.source,
+      composition: compositionAt(composition, time),
+      currentTime: time,
+      animate: true,
+    }).items) {
+      const request = item.media;
+      const code = request?.code ? codeOf(request.key) : null;
+      if (!request?.code || !code) continue;
+      const spec = bakeSpecOf(code, request.code, 'full');
+      const image = await codeCache.load(spec.cacheKey, request.code.frame);
+      if (image) loaded.set(request.key, image);
+    }
+    return {
+      frame: (request, playing) =>
+        request.kind === 'code'
+          ? (loaded.get(request.key) ?? null)
+          : frames.frame(request, playing),
+    };
+  };
+  const renderFrame = async () => {
     const { width, height } = session.source.composition;
     const frameCanvas = document.createElement('canvas');
     frameCanvas.width = width;
     frameCanvas.height = height;
     const context = frameCanvas.getContext('2d');
-    if (!context) return Promise.reject(new Error('Canvas 2D is unavailable'));
+    if (!context) throw new Error('Canvas 2D is unavailable');
+    const provider = await fullCodeFrames(
+      session.source.composition,
+      session.currentTime,
+    );
     drawComposition(
       context,
-      { ...session.source, frames, playing: false, animate: true },
+      { ...session.source, frames: provider, playing: false, animate: true },
       { width, height, pixelRatio: 1, matrix: [1, 0, 0, 1, 0, 0] },
       null,
       { overlays: false },
@@ -1574,6 +1709,9 @@ export function mountEditorShell(
           )
           .then(() => undefined),
       toast: (text, kind) => showToast(text, kind),
+      // X1: code animations are baked at Full quality first.
+      prepareCode: (composition, progress, cancelled) =>
+        bakeForExport(codeBaker, composition, progress, cancelled),
     });
   };
   element<HTMLButtonElement>('#export').onclick = () => safely(openExport);
@@ -3512,6 +3650,23 @@ export function mountEditorShell(
     session,
     /** Dev/test-only read-only snapshot (the test hook's getMedia). */
     mediaDebug: () => ({
+      // X1: each code layer's bake (state, frames stored and total).
+      code: codeLayersOf(session.source.composition).map((layer) => {
+        const spec = codeSpec(layer.id);
+        const job = spec ? codeBaker.job(spec.cacheKey) : undefined;
+        return {
+          layerId: layer.id,
+          cacheKey: spec?.cacheKey ?? '',
+          quality: codeFrames.qualityOf(layer.id),
+          state:
+            spec && codeCache.complete(spec.cacheKey)
+              ? 'done'
+              : (job?.state ?? 'none'),
+          stored: spec ? codeCache.stored(spec.cacheKey) : 0,
+          total: spec?.frames ?? 0,
+          error: job?.error ?? null,
+        };
+      }),
       audio: audio.debug,
       video: frames.debug,
       transport: timeline?.playback.clock ?? session.currentTime,
@@ -3583,6 +3738,7 @@ export function mountEditorShell(
       recordPanel.dispose();
       positionPanel.dispose();
       frames.dispose();
+      codeBaker.dispose();
       previews.dispose();
       audio.dispose();
       waveforms.dispose();

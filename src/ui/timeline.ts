@@ -22,6 +22,7 @@ import {
   clipSourceTime,
   clipLinkId,
   clipTrimBounds,
+  clipSourceDuration,
   retimeClip,
   trackAcceptsLayer,
   laneGroupOfTrack,
@@ -338,9 +339,12 @@ export class TimelineInteraction {
         ? clipTrimBounds(
             this.session.source.composition,
             location.clip.id,
-            this.session.source.assets.find(
-              (asset) => asset.id === location.clip.assetId,
-            )?.duration,
+            // X1: a code clip stops at its animation's end.
+            clipSourceDuration(
+              this.session.source.composition,
+              this.session.source.assets,
+              location.clip,
+            ),
           )
         : undefined;
     const roots = new Set(
@@ -595,6 +599,17 @@ export class TimelineInteraction {
   }
 }
 
+/** X1: a code clip's bake state, from the shell's baker. */
+export interface CodeClipStatus {
+  status(layerId: string): {
+    state: 'queued' | 'running' | 'done' | 'cancelled' | 'error';
+    progress: number;
+    error?: string | undefined;
+  } | null;
+  onChange(listener: () => void): () => void;
+  cancel(layerId: string): void;
+  resume(layerId: string): void;
+}
 /** Stable event/capture surface; all row nodes below it are disposable projections. */
 export function mountTimeline(
   root: HTMLElement,
@@ -605,6 +620,7 @@ export function mountTimeline(
   externalKeyboard = false,
   previews?: MediaPreviews,
   waveforms?: WaveformCache,
+  code?: CodeClipStatus,
 ) {
   // J13: the Player panel. Left: the AI wand (planned) and the clip tools
   // (Split as scissors). Centre: previous cut, back 5 s, play, forward 5 s
@@ -739,6 +755,51 @@ export function mountTimeline(
     }
     element.prepend(canvas);
   };
+  /**
+   * X1 (spec section 5): a code clip still rendering shows "Rendering n %"
+   * with Cancel; a cancelled one offers Resume; a failed one its reason.
+   * The bar is updated in place as frames arrive.
+   */
+  const paintBake = (bar: HTMLElement) => {
+    const status = code?.status(bar.dataset.layer!);
+    bar.hidden = !status || status.state === 'done';
+    if (!status || bar.hidden) return;
+    const percent = Math.floor(status.progress * 100);
+    bar.dataset.state = status.state;
+    bar.style.setProperty('--bake', `${percent}%`);
+    const label = bar.querySelector<HTMLElement>('.clip-bake-label')!;
+    const action = bar.querySelector<HTMLButtonElement>('.clip-bake-action')!;
+    label.textContent =
+      status.state === 'error'
+        ? t('code.bakeError', { reason: status.error ?? '' })
+        : status.state === 'cancelled'
+          ? t('code.bakeCancelled', { percent: formatNumber(percent) })
+          : t('code.bakeProgress', { percent: formatNumber(percent) });
+    bar.title = label.textContent;
+    action.hidden = status.state === 'error';
+    action.textContent =
+      status.state === 'cancelled'
+        ? t('code.bakeResume')
+        : t('code.bakeCancel');
+  };
+  const appendBake = (element: HTMLElement, layerId: string) => {
+    const bar = document.createElement('div');
+    bar.className = 'clip-bake';
+    bar.dataset.layer = layerId;
+    bar.innerHTML = `<span class="clip-bake-label" role="status"></span><button type="button" class="clip-bake-action"></button>`;
+    const action = bar.querySelector<HTMLButtonElement>('.clip-bake-action')!;
+    action.addEventListener('pointerdown', (event) => event.stopPropagation());
+    action.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (bar.dataset.state === 'cancelled') code?.resume(layerId);
+      else code?.cancel(layerId);
+    });
+    paintBake(bar);
+    element.append(bar);
+  };
+  const unsubscribeCode = code?.onChange(() =>
+    root.querySelectorAll<HTMLElement>('.clip-bake').forEach(paintBake),
+  );
   const redrawForMedia = () => {
     // A filmstrip, thumbnail or waveform arrived: redraw though the project is unchanged.
     renderedProject = undefined;
@@ -1211,7 +1272,11 @@ export function mountTimeline(
         const icon = document.createElement('span');
         icon.className = 'clip-kind-icon';
         icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = iconSvg(CLIP_ICONS[kind], 12);
+        icon.innerHTML = iconSvg(
+          entry.layer.code ? 'code' : CLIP_ICONS[kind],
+          12,
+        );
+        if (entry.layer.code) clip.dataset.code = 'true';
         clip.prepend(icon);
         if (highlighted === entry.layer.id)
           clip.classList.add('timing-highlight');
@@ -1252,7 +1317,8 @@ export function mountTimeline(
           badge.setAttribute('aria-label', label);
           clip.append(badge);
         }
-        if (entry.layer.type === 'audio')
+        if (entry.layer.code) appendBake(clip, entry.layer.id);
+        else if (entry.layer.type === 'audio')
           appendWaveform(clip, entry.clip, zoom);
         else appendFilmstrip(clip, entry.clip, zoom);
         appendTrimHandles(clip);
@@ -3980,6 +4046,7 @@ export function mountTimeline(
       document.removeEventListener('keydown', markerKey, true);
       playback.dispose();
       unsubscribePreviews?.();
+      unsubscribeCode?.();
       unsubscribeWaveforms?.();
       for (const [name, listener] of Object.entries(listeners))
         root.removeEventListener(name, listener as EventListener);

@@ -34,6 +34,12 @@ function versionOf(document: unknown): number {
 export class MigrationRegistry {
   #migrations = new Map<number, Migration>();
   constructor() {
+    // Schema 8 (X1): an optional code field on layers; nothing to move.
+    this.register({
+      from: 7,
+      to: 8,
+      migrate: (input) => ({ ...(input as object), schemaVersion: 8 }),
+    });
     // Schema 7 (T-ALL P5): an optional outliner per scene; nothing to move.
     this.register({
       from: 6,

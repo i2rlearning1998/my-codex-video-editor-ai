@@ -41,6 +41,12 @@ export interface ExportDialogOptions {
   /** I2: keeps the frame in Project Media as a Design. */
   saveFrame?(blob: Blob, name: string): Promise<void>;
   toast(text: string, kind: 'info' | 'success' | 'error'): void;
+  /** X1: bakes code animations at Full quality first. */
+  prepareCode?(
+    composition: DeepReadonly<Composition>,
+    progress: (done: number, total: number) => void,
+    cancelled: () => boolean,
+  ): Promise<void>;
 }
 
 const field = (id: string, label: string, control: string) =>
@@ -354,6 +360,14 @@ export function openExportDialog(options: ExportDialogOptions) {
       {
         store: options.store,
         decoder: options.decoder,
+        ...(options.prepareCode ? { prepareCode: options.prepareCode } : {}),
+        onCodeProgress: ({ done, total }) => {
+          const percent = Math.round((done / Math.max(1, total)) * 100);
+          find<HTMLProgressElement>('export-bar').value = percent;
+          status.textContent = t('export.rendering', {
+            percent: formatNumber(percent),
+          });
+        },
         onProgress: ({ done, total }) => {
           const percent = Math.round((done / total) * 100);
           find<HTMLProgressElement>('export-bar').value = percent;

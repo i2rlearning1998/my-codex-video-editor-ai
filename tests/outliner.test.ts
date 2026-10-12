@@ -14,7 +14,7 @@ describe('[LYR-016] outliner collections (schema 7, T-ALL P5)', () => {
     const legacy = JSON.parse(v6());
     const project = deserializeProject(v6());
     expect(legacy.schemaVersion).toBe(6);
-    expect(project.schemaVersion).toBe(7);
+    expect(project.schemaVersion).toBe(8);
     expect(project.compositions.map((item) => item.outliner)).toEqual(
       legacy.compositions.map(() => undefined),
     );

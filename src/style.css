@@ -8263,3 +8263,50 @@ input[type='range'] {
 .tts-banner[hidden] {
   display: none;
 }
+
+/* X1 (spec section 5): a code clip still rendering its frames. */
+.timeline-clip .clip-bake {
+  --bake: 0%;
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--accent-fill) var(--bake),
+    var(--color-bg-sunken) var(--bake)
+  );
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  text-indent: 0;
+  pointer-events: auto;
+  z-index: 2;
+}
+.timeline-clip .clip-bake[hidden] {
+  display: none;
+}
+.timeline-clip .clip-bake[data-state='error'] {
+  background: var(--danger-fill);
+  color: var(--text-on-accent);
+}
+.clip-bake-label {
+  overflow: hidden;
+  flex: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.clip-bake-action {
+  min-height: 0;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
