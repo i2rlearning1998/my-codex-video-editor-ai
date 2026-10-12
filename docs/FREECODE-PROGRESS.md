@@ -38,3 +38,9 @@ caught a shader alpha-compositing defect despite passing raw-alpha checks:
 non-premultiplied RGB leaked outside its transparent circle. Fixed fragment output,
 added an opaque-black border compositing assertion, and strengthened every bake
 comparison to reject any blank frame. Final browser rerun pending.
+
+Final implementation a8fc478 verified: run 38294250329 is green (517 unit/jsdom,
+268 browser, zero flaky/skipped). Artifact 11768386544 downloaded; corrected shader
+screenshot inspected. All 20 comparisons max difference 0; every frame nonblank;
+all eight hostile cases recover. Measured tables and the unrelated duplicate-run
+CV-054 flake are recorded in reports/FREECODE-CODEX.md. One draft PR, not merged.
