@@ -18,6 +18,8 @@ export interface TierAOptions {
   readonly mode: 'new' | 'current';
   /** The param values the user chose (the spec's parameters). */
   readonly overrides?: Readonly<Record<string, number | string | boolean>>;
+  /** Mode 'current': where the spec's time 0 lands (seconds). */
+  readonly at?: number;
   /** Fresh id suffix (tests pass a fixed one). */
   readonly suffix?: string;
 }
@@ -109,7 +111,10 @@ export async function tierACommands(
       (item) => item.id === options.current.id,
     ) + 1;
   const offsetOf = (compositionId: unknown) =>
-    current ? (scenes.get(String(compositionId))?.timelineStart ?? 0) : 0;
+    current
+      ? (options.at ?? 0) +
+        (scenes.get(String(compositionId))?.timelineStart ?? 0)
+      : 0;
   for (const op of plan.operations) {
     const c = structuredClone(op.command) as PlannedCommand;
     const layerId = (c.layer as { id?: string } | undefined)?.id ?? c.layerId;

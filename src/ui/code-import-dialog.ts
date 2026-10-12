@@ -28,6 +28,9 @@ export type CodeImport =
       overrides: ParamValues;
       mode: 'new' | 'current';
       name: string;
+      duration: number;
+      scenes: number;
+      paramSpecs: readonly ParamSpec[];
     }
   | {
       tier: 'B' | 'C';
@@ -326,6 +329,9 @@ export function openCodeImportDialog(options: CodeImportOptions) {
                 ? 'current'
                 : 'new',
             name: current.name,
+            duration: current.duration,
+            scenes: current.scenes,
+            paramSpecs: current.params,
           }
         : {
             tier: current.tier,

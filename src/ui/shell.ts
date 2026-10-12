@@ -4,16 +4,25 @@ import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
 import { freeCodeRuntime, openCodeSession } from '../code-layer/runtime';
 import { tierACommands } from '../code-layer/tier-a';
 import { codeLayerCommands, codeRecord } from '../code-layer/layer';
-import { openCodeImportDialog } from './code-import-dialog';
+import { openCodeImportDialog, type CodeImport } from './code-import-dialog';
 import { codeLayerSelected } from './right-panel';
+import {
+  codeTemplates,
+  exportCodeTemplate,
+  importCodeTemplate,
+  isCodeTemplateFile,
+  type CodeTemplate,
+} from './code-templates';
 import { createParamsForm } from './code-params';
 import { stableJson } from '../code-layer/hash';
+import { download } from '../export/client';
 import type { ParamValues } from './code-params';
 import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
 import {
   codeFps,
   codeMeta,
   codeParams,
+  codeSeedOf,
   frameCount,
   type CodeData,
 } from '../code-layer/meta';
@@ -161,7 +170,7 @@ import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
-import { confirmDialog, openModal } from './components/modal';
+import { confirmDialog, openModal, promptDialog } from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
@@ -1763,8 +1772,14 @@ export function mountEditorShell(
         );
         return scene ? codeThumbnailOf(scene, scene.duration / 2) : null;
       },
-      onConfirm: async ({ item }) => {
+      onConfirm: async ({ item, saveTemplate, thumbnail }) => {
         const current = session.source.composition;
+        // X4: Save as template (checked by default) keeps a copy in My
+        // Templates; the layer remembers which template it came from.
+        const template =
+          saveTemplate && !edit
+            ? await saveCodeTemplate(item, thumbnail)
+            : null;
         if (item.tier === 'A') {
           const built = await tierACommands(item.spec, {
             project: engine.state,
@@ -1827,7 +1842,11 @@ export function mountEditorShell(
           showToast(t('code.applied'), 'success');
           return;
         }
-        const built = codeLayerCommands(current, input, session.currentTime);
+        const built = codeLayerCommands(
+          current,
+          { ...input, ...(template ? { templateId: template.id } : {}) },
+          session.currentTime,
+        );
         engine.commands.transaction('Add code animation', built.commands);
         session.select(built.layerId);
         showToast(t('code.added'), 'success');
@@ -2104,6 +2123,268 @@ export function mountEditorShell(
   });
   // H5: Starter Pack 1 in Templates, Elements, Text and Graphics.
   // I2: browse panels; Graphics lives inside Elements.
+  // X4 (spec section 5): code animation templates in My Templates (this
+  // browser, not the project, not an undo step).
+  const dataUrlOf = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  const saveCodeTemplate = async (
+    item: CodeImport,
+    thumbnail: Blob | null,
+  ): Promise<CodeTemplate | null> => {
+    const template: CodeTemplate = {
+      kind: 'code',
+      id: crypto.randomUUID(),
+      name: item.name,
+      category:
+        item.tier === 'A'
+          ? 'spec'
+          : typeof item.meta.category === 'string' && item.meta.category
+            ? item.meta.category
+            : 'code',
+      createdAt: new Date().toISOString(),
+      tier: item.tier,
+      source: item.tier === 'A' ? JSON.stringify(item.spec) : item.source,
+      meta:
+        item.tier === 'A'
+          ? {
+              duration: item.duration,
+              scenes: item.scenes,
+              params: item.paramSpecs as unknown as Record<string, unknown>[],
+            }
+          : (item.meta as unknown as Record<string, unknown>),
+      params: item.tier === 'A' ? item.overrides : item.params,
+      ...(thumbnail ? { thumbnail: await dataUrlOf(thumbnail) } : {}),
+    };
+    try {
+      codeTemplates.save(template);
+      return template;
+    } catch {
+      showToast(t('code.templateFull'), 'error');
+      return null;
+    }
+  };
+  /** Inserts a code template at `time` on a new lane, one undo step. */
+  const insertCodeTemplate = async (template: CodeTemplate, time: number) => {
+    session.setPlaying(false);
+    const current = session.source.composition;
+    if (template.tier === 'A') {
+      const built = await tierACommands(JSON.parse(template.source), {
+        project: engine.state,
+        current,
+        mode: 'current',
+        at: time,
+        overrides: template.params as ParamValues,
+      });
+      engine.commands.transaction('Insert code template', built.commands);
+      if (built.notBuilt.length)
+        showToast(
+          t('code.notBuilt', { items: built.notBuilt.join('; ') }),
+          'warning',
+        );
+      return;
+    }
+    const built = codeLayerCommands(
+      current,
+      {
+        tier: template.tier,
+        source: template.source,
+        meta: template.meta,
+        params: template.params,
+        templateId: template.id,
+        name: template.name,
+      },
+      time,
+    );
+    engine.commands.transaction('Insert code template', built.commands);
+    session.select(built.layerId);
+  };
+  /** Hover: the first two seconds play at 12 frames a second. */
+  let hovering: { id: string; stop: () => void } | null = null;
+  const codeHover = (
+    template: CodeTemplate,
+    thumb: HTMLElement,
+    on: boolean,
+  ) => {
+    if (hovering && (!on || hovering.id !== template.id)) {
+      hovering.stop();
+      hovering = null;
+    }
+    if (!on || template.tier === 'A' || hovering) return;
+    let stopped = false;
+    const image = document.createElement('img');
+    image.className = 'code-hover';
+    image.alt = '';
+    let url = '';
+    const stop = () => {
+      stopped = true;
+      image.remove();
+      thumb.removeAttribute('data-playing');
+      if (url) URL.revokeObjectURL(url);
+    };
+    hovering = { id: template.id, stop };
+    void (async () => {
+      const meta = codeMeta(template);
+      const fps = 12;
+      const duration = Math.min(2, meta.duration);
+      const width = 160;
+      const height = Math.max(
+        1,
+        Math.round(
+          (width * session.source.composition.height) /
+            session.source.composition.width,
+        ),
+      );
+      const codeSession = await openCodeSession(
+        template.tier as 'B' | 'C',
+        template.source,
+        {
+          width,
+          height,
+          fps,
+          duration,
+          params: codeParams(template) as ParamValues,
+          seed: codeSeedOf(template),
+        },
+      );
+      try {
+        thumb.append(image);
+        const frames = Math.max(1, Math.floor(duration * fps));
+        for (let frame = 0; frame < frames && !stopped; frame++) {
+          const bitmap = await codeSession.renderFrame(frame);
+          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+          canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+          bitmap.close();
+          const blob = await canvas.convertToBlob({ type: 'image/png' });
+          if (stopped) break;
+          if (url) URL.revokeObjectURL(url);
+          url = URL.createObjectURL(blob);
+          image.src = url;
+          thumb.dataset.playing = String(frame + 1);
+          await new Promise((resolve) => setTimeout(resolve, 1000 / fps));
+        }
+      } finally {
+        codeSession.dispose();
+      }
+    })().catch(() => stop());
+  };
+  const codeTemplateInput = document.createElement('input');
+  codeTemplateInput.type = 'file';
+  codeTemplateInput.accept = '.json,application/json';
+  codeTemplateInput.hidden = true;
+  codeTemplateInput.id = 'code-template-file';
+  root.append(codeTemplateInput);
+  const importCodeTemplateText = (text: string) => {
+    try {
+      const template = importCodeTemplate(text);
+      codeTemplates.save(template);
+      showToast(t('code.templateImported', { name: template.name }), 'success');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : String(error),
+        'error',
+      );
+    }
+  };
+  codeTemplateInput.onchange = async () => {
+    const file = codeTemplateInput.files?.[0];
+    codeTemplateInput.value = '';
+    if (file) importCodeTemplateText(await file.text());
+  };
+  const codeMenuElement = document.createElement('div');
+  codeMenuElement.className = 'media-menu';
+  codeMenuElement.id = 'code-template-menu';
+  codeMenuElement.hidden = true;
+  document.body.append(codeMenuElement);
+  const codeMenu = createMenu(codeMenuElement, { report: reportError });
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (
+        !codeMenuElement.hidden &&
+        !codeMenuElement.contains(event.target as Node)
+      )
+        codeMenu.close();
+    },
+    true,
+  );
+  const codeTemplateMenu = (template: CodeTemplate, x: number, y: number) => {
+    codeMenu.open(() => [
+      {
+        id: 'code-template-insert',
+        label: t('code.templateInsert'),
+        icon: 'plus',
+        run: () =>
+          void insertCodeTemplate(template, session.currentTime).catch(
+            reportError,
+          ),
+      },
+      {
+        id: 'code-template-rename',
+        label: t('code.templateRename'),
+        icon: 'edit',
+        run: () =>
+          void promptDialog(t('code.templateRename'), template.name, {
+            label: t('myTemplates.name'),
+            confirmLabel: t('code.templateRename'),
+            cancelLabel: t('code.cancel'),
+            maxLength: 100,
+          }).then((name) => {
+            if (name?.trim())
+              codeTemplates.update(template.id, { name: name.trim() });
+          }),
+      },
+      {
+        id: 'code-template-duplicate',
+        label: t('code.templateDuplicate'),
+        icon: 'duplicate',
+        run: () =>
+          codeTemplates.duplicate(
+            template.id,
+            t('code.templateCopy', { name: template.name }),
+          ),
+      },
+      {
+        id: 'code-template-export',
+        label: t('code.templateExport'),
+        icon: 'export',
+        run: () =>
+          download(
+            new Blob([exportCodeTemplate(template)], {
+              type: 'application/json',
+            }),
+            `${template.name.replace(/[^\w.-]+/g, '-')}.aive-template.json`,
+          ),
+      },
+      {
+        id: 'code-template-delete',
+        label: t('code.templateDelete'),
+        icon: 'delete',
+        divider: true,
+        run: () => {
+          const removed = codeTemplates.remove(template.id);
+          if (!removed) return;
+          showToast(
+            t('code.templateDeleted', { name: template.name }),
+            'info',
+            8000,
+            {
+              label: t('code.templateRestore'),
+              run: () => codeTemplates.restore(removed.template, removed.index),
+            },
+          );
+        },
+      },
+    ]);
+    const width = codeMenuElement.offsetWidth,
+      height = codeMenuElement.offsetHeight;
+    codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
+    codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  };
   const libraryBrowsers = mountLibraryPanels(
     {
       Templates: element('#library-templates'),
@@ -2122,6 +2403,15 @@ export function mountEditorShell(
       addTextBox: () => {
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
+      },
+      code: {
+        insert: (template) =>
+          void insertCodeTemplate(template, session.currentTime).catch(
+            reportError,
+          ),
+        menu: codeTemplateMenu,
+        hover: codeHover,
+        importFile: () => codeTemplateInput.click(),
       },
     },
   );
@@ -2873,7 +3163,12 @@ export function mountEditorShell(
     if (code[0])
       void code[0]
         .text()
-        .then((text) => openCodeImport({ text, fileName: code[0]!.name }))
+        .then((text) =>
+          // X4: an exported code template file imports into My Templates.
+          isCodeTemplateFile(text)
+            ? importCodeTemplateText(text)
+            : openCodeImport({ text, fileName: code[0]!.name }),
+        )
         .catch(reportError);
     if (!files.length) return;
     const over = event.target instanceof Element ? event.target : null;
@@ -3331,7 +3626,7 @@ export function mountEditorShell(
         ? { label: 'Add shape', commands, layerId: created.layer.id }
         : null;
     }
-    if (payload.kind === 'mine') return null;
+    if (payload.kind === 'mine' || payload.kind === 'code') return null;
     const item =
       payload.kind === 'textbox'
         ? ('textbox' as const)
@@ -3609,6 +3904,9 @@ export function mountEditorShell(
     else if (payload.kind === 'mine') {
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
+    } else if (payload.kind === 'code') {
+      const template = codeTemplates.find(payload.id);
+      if (template) void insertCodeTemplate(template, time).catch(reportError);
     } else if (payload.kind === 'preset') {
       const commands = addShapeCommands(
         session.source,
@@ -3661,7 +3959,7 @@ export function mountEditorShell(
               ? { width: aw * fit, height: ah * fit, dx: 0, dy: 0 }
               : { width: 240, height: 135, dx: 120, dy: 67.5 };
         }
-      } else if (payload.kind === 'mine')
+      } else if (payload.kind === 'mine' || payload.kind === 'code')
         value = { width: w, height: h, dx: 0, dy: 0, whole: true };
       else {
         let commands: Command[] | null = null;

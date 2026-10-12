@@ -1455,5 +1455,19 @@
   "code.fullTip": "Full: rendered at the scene size (export always uses Full)",
   "code.draftTip": "Draft: rendered at half size for faster editing; export still uses Full",
   "code.noParams": "This animation has no settings to change.",
-  "code.applyTip": "Render the animation again with these settings (one undo step)"
+  "code.applyTip": "Render the animation again with these settings (one undo step)",
+  "code.templates": "Code animations",
+  "code.templatesEmpty": "No code animations yet",
+  "code.templatesHint": "Import a code animation with Save as template checked, or import a template file.",
+  "code.templateImport": "Import template file…",
+  "code.templateFull": "The template could not be saved: this browser's storage is full.",
+  "code.templateImported": "Template \"{name}\" imported",
+  "code.templateInsert": "Insert at playhead",
+  "code.templateRename": "Rename",
+  "code.templateDuplicate": "Duplicate",
+  "code.templateCopy": "{name} copy",
+  "code.templateExport": "Export as .json",
+  "code.templateDelete": "Delete",
+  "code.templateDeleted": "Template \"{name}\" deleted",
+  "code.templateRestore": "Restore"
 }

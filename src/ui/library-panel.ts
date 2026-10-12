@@ -21,6 +21,8 @@ import { confirmDialog, escapeHtml } from './components/modal';
 import { itemName, libraryCommands } from './library-insert';
 import { recent, type LibraryActions } from './library-actions';
 import { myTemplates, type MyTemplate } from './my-templates';
+import { codeTemplates, type CodeTemplate } from './code-templates';
+import { iconSvg } from './icons';
 import type { EditorSession } from './session';
 import {
   addShapeCommands,
@@ -326,6 +328,13 @@ export function mountLibraryPanels(
     close(): void;
     addPreset(preset: ShapePreset): void;
     addTextBox(): void;
+    /** X4: code animation templates (My Templates > Code animations). */
+    code?: {
+      insert(template: CodeTemplate): void;
+      menu(template: CodeTemplate, x: number, y: number): void;
+      hover(template: CodeTemplate, thumb: HTMLElement, on: boolean): void;
+      importFile(): void;
+    };
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
@@ -444,6 +453,58 @@ export function mountLibraryPanels(
         },
       ).then((yes) => yes && myTemplates.remove(template.id)),
   });
+  // X4: a code animation template card (click inserts it at the playhead).
+  const codeCard = (template: CodeTemplate): BrowseCard => ({
+    id: template.id,
+    label: template.name,
+    keywords: [template.name, template.category, 'code', template.tier],
+    preview: () => template.thumbnail ?? null,
+    icon: 'code',
+    className: 'library-card code-template-card',
+    badge: template.tier,
+    data: { codeTemplate: template.id },
+    activate: () => options.code?.insert(template),
+    hover: (thumb, on) => options.code?.hover(template, thumb, on),
+    drag: () => ({
+      kind: 'code',
+      id: template.id,
+      name: template.name,
+      thumb: template.thumbnail ?? null,
+    }),
+    menu: (x, y) => options.code?.menu(template, x, y),
+  });
+  const codeImportRow = (host: HTMLElement) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'button code-template-import';
+    button.id = 'code-template-import';
+    button.innerHTML = `${iconSvg('export', 16)}<span></span>`;
+    button.querySelector('span')!.textContent = t('code.templateImport');
+    button.onclick = () => options.code?.importFile();
+    host.append(button);
+  };
+  const codeEmpty = {
+    title: t('code.templatesEmpty'),
+    hint: t('code.templatesHint'),
+  };
+  const codePage = (): BrowsePage => ({
+    id: 'templates-code',
+    title: t('code.templates'),
+    search: t('library.search.template'),
+    sections: ({ query }) => {
+      const cards = codeTemplates.list().map(codeCard);
+      if (query) return searchResults(cards, query);
+      return [
+        { id: 'code-import', layout: 'list', render: codeImportRow },
+        {
+          id: 'code-templates',
+          layout: 'grid',
+          cards: () => cards,
+          empty: codeEmpty,
+        },
+      ];
+    },
+  });
   const searchResults = (
     cards: readonly BrowseCard[],
     query: string,
@@ -555,13 +616,22 @@ export function mountLibraryPanels(
     search: t('library.search.template'),
     sections: ({ query }) => {
       const cards = myTemplates.list().map(mineCard);
-      if (query) return searchResults(cards, query);
+      const code = codeTemplates.list().map(codeCard);
+      if (query) return searchResults([...cards, ...code], query);
       return [
         {
           id: 'mine',
           layout: 'grid',
           cards: () => cards,
           empty: { title: t('templates.myEmpty'), hint: t('templates.myHint') },
+        },
+        {
+          id: 'code',
+          title: t('code.templates'),
+          layout: 'grid',
+          cards: () => code,
+          seeAll: codePage,
+          empty: codeEmpty,
         },
       ];
     },
@@ -574,7 +644,11 @@ export function mountLibraryPanels(
     sections: ({ query }) => {
       if (query)
         return searchResults(
-          [...allTemplates(), ...myTemplates.list().map(mineCard)],
+          [
+            ...allTemplates(),
+            ...myTemplates.list().map(mineCard),
+            ...codeTemplates.list().map(codeCard),
+          ],
           query,
         );
       return [
@@ -594,6 +668,14 @@ export function mountLibraryPanels(
           cards: () => myTemplates.list().map(mineCard),
           seeAll: minePage,
           empty: { title: t('templates.myEmpty'), hint: t('templates.myHint') },
+        },
+        {
+          id: 'code',
+          title: t('code.templates'),
+          layout: 'strip',
+          cards: () => codeTemplates.list().map(codeCard),
+          seeAll: codePage,
+          empty: codeEmpty,
         },
       ];
     },

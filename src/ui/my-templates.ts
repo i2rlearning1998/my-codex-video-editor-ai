@@ -45,29 +45,42 @@ export interface MyTemplate {
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
-function read(): MyTemplate[] {
+/** Every stored entry (X4: code templates share the key, `kind: 'code'`). */
+export function readTemplateEntries(): unknown[] {
   try {
     const raw = localStorage.getItem(MY_TEMPLATES_KEY);
     const value = raw ? (JSON.parse(raw) as unknown) : [];
-    return Array.isArray(value)
-      ? (value.filter(
-          (item) =>
-            item &&
-            typeof item === 'object' &&
-            typeof (item as MyTemplate).id === 'string' &&
-            typeof (item as MyTemplate).name === 'string' &&
-            (item as MyTemplate).scene &&
-            Array.isArray((item as MyTemplate).scene.layers),
-        ) as MyTemplate[])
-      : [];
+    return Array.isArray(value) ? value : [];
   } catch {
     return [];
   }
 }
-function write(list: readonly MyTemplate[]) {
-  // A full storage throws: the caller reports it.
+const isScene = (item: unknown): item is MyTemplate =>
+  !!item &&
+  typeof item === 'object' &&
+  (item as { kind?: string }).kind !== 'code' &&
+  typeof (item as MyTemplate).id === 'string' &&
+  typeof (item as MyTemplate).name === 'string' &&
+  !!(item as MyTemplate).scene &&
+  Array.isArray((item as MyTemplate).scene.layers);
+function read(): MyTemplate[] {
+  return readTemplateEntries().filter(isScene);
+}
+/** Writes every entry (a full storage throws: the caller reports it). */
+export function writeTemplateEntries(list: readonly unknown[]) {
   localStorage.setItem(MY_TEMPLATES_KEY, JSON.stringify(list));
   listeners.forEach((listener) => listener());
+}
+/** Replaces the scene templates, keeping the other kinds of entry. */
+function write(list: readonly MyTemplate[]) {
+  writeTemplateEntries([
+    ...list,
+    ...readTemplateEntries().filter((item) => !isScene(item)),
+  ]);
+}
+export function onTemplatesChange(listener: Listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
 
 export const myTemplates = {
@@ -84,8 +97,7 @@ export const myTemplates = {
     write(read().filter((item) => item.id !== id));
   },
   onChange(listener: Listener) {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
+    return onTemplatesChange(listener);
   },
 };
 

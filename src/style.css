@@ -7597,7 +7597,8 @@ input[type='range'] {
 .outliner-icon[data-type='group'] {
   color: var(--clip-group);
 }
-.outliner-icon[data-type='video'] {
+.outliner-icon[data-type='video'],
+.outliner-icon[data-type='code'] {
   color: var(--clip-video);
 }
 .outliner-icon[data-type='image'] {
@@ -8470,4 +8471,17 @@ input[type='range'] {
   gap: var(--space-1);
   margin-inline-end: auto;
   font-size: var(--font-size-sm);
+}
+/* X4: a code template's hover preview plays over its thumbnail. */
+.code-template-card .code-hover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.code-template-import {
+  width: 100%;
+  justify-content: center;
 }
