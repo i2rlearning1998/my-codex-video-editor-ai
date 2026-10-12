@@ -85,6 +85,14 @@ export function codeParams(code: Pick<CodeData, 'meta' | 'params'>): Params {
 export function codeSeed(source: string): number {
   return parseInt(contentHash(source).slice(0, 7), 16);
 }
+/** The seed of a stored code record: `meta.seed` (a Composition Spec
+ *  item's seed) when set, else the source's. */
+export function codeSeedOf(code: Pick<CodeData, 'source' | 'meta'>): number {
+  const seed = code.meta.seed;
+  return typeof seed === 'number' && Number.isSafeInteger(seed) && seed >= 0
+    ? seed
+    : codeSeed(code.source);
+}
 /**
  * The project's bake key: the source, params, duration, seed and library
  * versions. Size, frame rate and quality are added by `cacheKeyOf`.
@@ -99,7 +107,7 @@ export function bakeKeyOf(
       source: code.source,
       params: codeParams(code),
       duration: meta.duration,
-      seed: codeSeed(code.source),
+      seed: codeSeedOf(code),
       libs: meta.libs.length ? libraryVersions : '',
     }),
   );

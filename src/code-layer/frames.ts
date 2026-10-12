@@ -10,7 +10,7 @@ import {
   cacheKeyOf,
   codeMeta,
   codeParams,
-  codeSeed,
+  codeSeedOf,
   type CodeData,
   type CodeQuality,
 } from './meta';
@@ -40,7 +40,7 @@ export function bakeSpecOf(
     fps: request.fps,
     duration: codeMeta(code).duration,
     params: codeParams(code),
-    seed: codeSeed(code.source),
+    seed: codeSeedOf(code),
   };
 }
 

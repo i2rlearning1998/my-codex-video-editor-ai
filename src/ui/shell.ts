@@ -1,17 +1,26 @@
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
-import { openCodeSession } from '../code-layer/runtime';
+import { freeCodeRuntime, openCodeSession } from '../code-layer/runtime';
+import { tierACommands } from '../code-layer/tier-a';
+import { codeLayerCommands, codeRecord } from '../code-layer/layer';
+import { openCodeImportDialog } from './code-import-dialog';
+import { codeLayerSelected } from './right-panel';
+import { createParamsForm } from './code-params';
+import { stableJson } from '../code-layer/hash';
+import type { ParamValues } from './code-params';
 import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
 import {
   codeFps,
   codeMeta,
+  codeParams,
   frameCount,
   type CodeData,
 } from '../code-layer/meta';
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
-import type { DeepReadonly, Layer as CoreLayer } from '../core';
+import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
+import { retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
@@ -269,7 +278,7 @@ export function mountEditorShell(
           ${iconSvg('search')}
           <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
         </div>
-        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
+        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><button type="button" class="button import-menu-button" id="import-menu" aria-haspopup="menu" aria-expanded="false" aria-label="${t('code.importMenu')}" title="${t('code.importMenu')}">${iconSvg('chevronDown', 16)}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
         <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" hidden></div>
@@ -821,6 +830,8 @@ export function mountEditorShell(
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
+      // X2: the selected code layer's Animation settings.
+      codeBody: () => codeBody(),
       audioDecoder: decoder,
       // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
       tts: {
@@ -1683,6 +1694,298 @@ export function mountEditorShell(
       ),
     );
   };
+  // X2 (spec section 2): Import code animation, and Edit code for a code
+  // layer. Tier A becomes ordinary layers (one step, new scenes or this
+  // one); Tiers B and C become a code layer at the playhead on a new lane.
+  const codeThumbnailOf = async (
+    composition: DeepReadonly<Composition>,
+    time: number,
+  ) => {
+    const width = 320;
+    const height = Math.max(
+      1,
+      Math.round((width * composition.height) / composition.width),
+    );
+    const canvas = new OffscreenCanvas(width, height);
+    const context = canvas.getContext('2d')!;
+    drawComposition(
+      context,
+      {
+        composition: compositionAt(composition, time),
+        assets: session.source.assets,
+        background: composition.backgroundColor,
+        currentTime: time,
+        animate: true,
+        ...(session.source.measureText
+          ? { measureText: session.source.measureText }
+          : {}),
+      },
+      fitViewport(width, height, composition, 1, { padding: 0 }),
+      null,
+      { overlays: false },
+    );
+    return canvas.convertToBlob({ type: 'image/png' });
+  };
+  const openCodeImport = (
+    initial: { text?: string; fileName?: string } = {},
+    edit?: { layerId: string },
+  ) => {
+    session.setPlaying(false);
+    const editCode = edit ? codeOf(edit.layerId) : null;
+    const composition = session.source.composition;
+    openCodeImportDialog({
+      ...(initial.text !== undefined ? { text: initial.text } : {}),
+      ...(initial.fileName ? { fileName: initial.fileName } : {}),
+      ...(editCode
+        ? {
+            edit: {
+              source: editCode.source,
+              params: codeParams(editCode) as ParamValues,
+            },
+          }
+        : {}),
+      canvas: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+      },
+      runtime: freeCodeRuntime,
+      previewA: async (spec, overrides) => {
+        const built = await tierACommands(spec, {
+          project: engine.state,
+          current: session.source.composition,
+          mode: 'new',
+          overrides,
+        });
+        const project = engine.preview(built.commands);
+        const scene = project.compositions.find(
+          (item) => item.id === built.compositionIds[0],
+        );
+        return scene ? codeThumbnailOf(scene, scene.duration / 2) : null;
+      },
+      onConfirm: async ({ item }) => {
+        const current = session.source.composition;
+        if (item.tier === 'A') {
+          const built = await tierACommands(item.spec, {
+            project: engine.state,
+            current,
+            mode: item.mode,
+            overrides: item.overrides,
+          });
+          engine.commands.transaction('Import code animation', built.commands);
+          if (built.compositionIds[0])
+            session.selectComposition(built.compositionIds[0]);
+          if (built.notBuilt.length)
+            showToast(
+              t('code.notBuilt', { items: built.notBuilt.join('; ') }),
+              'warning',
+            );
+          else showToast(t('code.added'), 'success');
+          return;
+        }
+        const input = {
+          tier: item.tier,
+          source: item.source,
+          meta: item.meta as unknown as Record<string, unknown>,
+          params: item.params,
+          name: item.name,
+        };
+        if (edit && editCode) {
+          const code = codeRecord({
+            ...input,
+            ...(editCode.templateId ? { templateId: editCode.templateId } : {}),
+          });
+          const commands: Command[] = [
+            {
+              type: 'SET_LAYER_CODE',
+              compositionId: current.id,
+              layerId: edit.layerId,
+              code,
+            },
+          ];
+          // A shorter animation trims its clip to the new end.
+          const found = findClipByLayer(current, edit.layerId);
+          const duration = codeMeta(code).duration;
+          if (found && found.clip.sourceOut > duration + 1e-9) {
+            const timing = retimeClip(
+              found.clip,
+              found.clip.startTime,
+              Math.max(
+                1 / current.fps,
+                (duration - found.clip.sourceIn) / found.clip.speed,
+              ),
+              'right',
+            );
+            commands.push({
+              type: 'SET_CLIP_TIMING',
+              compositionId: current.id,
+              clipId: found.clip.id,
+              ...timing,
+            } as Command);
+          }
+          engine.commands.transaction('Edit code', commands);
+          showToast(t('code.applied'), 'success');
+          return;
+        }
+        const built = codeLayerCommands(current, input, session.currentTime);
+        engine.commands.transaction('Add code animation', built.commands);
+        session.select(built.layerId);
+        showToast(t('code.added'), 'success');
+      },
+    });
+  };
+  /** X2: the Animation settings panel of the selected code layer. */
+  const codeBody = (): HTMLElement[] => {
+    const layer = codeLayerSelected(session);
+    const code = layer ? codeOf(layer.id) : null;
+    if (!layer || !code) return [];
+    const meta = codeMeta(code);
+    const info = document.createElement('div');
+    info.className = 'code-info';
+    const tier = document.createElement('span');
+    tier.className = 'code-tier';
+    tier.dataset.tier = code.tier;
+    tier.textContent = t(`code.tier${code.tier}`);
+    const duration = document.createElement('span');
+    duration.className = 'code-muted';
+    duration.textContent = t('code.duration', {
+      seconds: formatNumber(meta.duration),
+    });
+    info.append(tier, duration);
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'button';
+    edit.id = 'code-edit';
+    edit.innerHTML = `${iconSvg('code', 16)}<span></span>`;
+    edit.querySelector('span')!.textContent = t('code.editButton');
+    edit.title = t('code.editTitle');
+    edit.onclick = () =>
+      safely(() => openCodeImport({}, { layerId: layer.id }));
+    const parts: HTMLElement[] = [info, edit];
+    if (code.tier === 'C') {
+      const notice = document.createElement('p');
+      notice.className = 'code-notice';
+      notice.textContent = t('code.fullMode');
+      parts.push(notice);
+    }
+    // X3: Full (scene size) or Draft (half) while editing; export is Full.
+    const quality = document.createElement('div');
+    quality.className = 'segmented code-quality';
+    quality.setAttribute('role', 'radiogroup');
+    quality.setAttribute('aria-label', t('code.quality'));
+    for (const value of ['full', 'draft'] as const) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'radio');
+      item.dataset.quality = value;
+      item.setAttribute(
+        'aria-checked',
+        String(codeFrames.qualityOf(layer.id) === value),
+      );
+      item.textContent = t(value === 'full' ? 'code.full' : 'code.draft');
+      item.title = t(value === 'full' ? 'code.fullTip' : 'code.draftTip');
+      item.onclick = () =>
+        safely(() => {
+          codeFrames.quality.set(layer.id, value);
+          rightPanel.render('Code');
+          draw();
+          timeline?.render();
+        });
+      quality.append(item);
+    }
+    const qualityLabel = document.createElement('span');
+    qualityLabel.className = 'code-param-label';
+    qualityLabel.textContent = t('code.quality');
+    const qualityRow = document.createElement('div');
+    qualityRow.className = 'code-param';
+    qualityRow.append(qualityLabel, quality);
+    parts.push(qualityRow);
+    // X3: one control per declared param. Tier B re-renders as it changes
+    // (debounced); Tier C waits for Apply (a heavy re-bake). One undo step
+    // per applied change.
+    if (!meta.params.length) {
+      const none = document.createElement('p');
+      none.className = 'code-notice';
+      none.textContent = t('code.noParams');
+      parts.push(none);
+      return parts;
+    }
+    const stored = codeParams(code) as ParamValues;
+    const staged =
+      pendingCode?.layerId === layer.id ? pendingCode.values : null;
+    const values = { ...stored, ...(staged ?? {}) };
+    const changed = !!staged && stableJson(values) !== stableJson(stored);
+    parts.push(
+      createParamsForm({
+        idPrefix: 'code-setting',
+        specs: meta.params,
+        values,
+        onChange: (name, value) =>
+          safely(() => {
+            pendingCode = {
+              layerId: layer.id,
+              values: { ...values, [name]: value },
+            };
+            if (code.tier === 'B') {
+              clearTimeout(codeApplyTimer);
+              codeApplyTimer = setTimeout(
+                () => safely(() => applyCodeParams(layer.id)),
+                200,
+              );
+            }
+            rightPanel.render('Code');
+          }),
+        onInvalid: (text) => showToast(text, 'error'),
+      }),
+    );
+    if (code.tier === 'C') {
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.className = 'button primary';
+      apply.id = 'code-apply';
+      apply.textContent = t('code.apply');
+      apply.title = t('code.applyTip');
+      apply.disabled = !changed;
+      apply.onclick = () => safely(() => applyCodeParams(layer.id));
+      parts.push(apply);
+    }
+    return parts;
+  };
+  /** X3: staged param values of one code layer (not yet applied). */
+  let pendingCode: { layerId: string; values: ParamValues } | null = null;
+  let codeApplyTimer: ReturnType<typeof setTimeout> | undefined;
+  const applyCodeParams = (layerId: string) => {
+    clearTimeout(codeApplyTimer);
+    const staged = pendingCode?.layerId === layerId ? pendingCode : null;
+    pendingCode = null;
+    const code = codeOf(layerId);
+    if (!staged || !code) return;
+    const next = codeRecord({
+      tier: code.tier,
+      source: code.source,
+      meta: code.meta,
+      params: staged.values,
+      ...(code.templateId ? { templateId: code.templateId } : {}),
+    });
+    if (next.bakeKey === code.bakeKey) {
+      rightPanel.render('Code');
+      return;
+    }
+    const found = findLayerScene(layerId);
+    if (!found) return;
+    engine.commands.transaction('Animation settings', [
+      {
+        type: 'SET_LAYER_CODE',
+        compositionId: found,
+        layerId,
+        code: next,
+      },
+    ]);
+  };
+  const findLayerScene = (layerId: string) =>
+    engine.state.compositions.find((composition) =>
+      JSON.stringify(composition.layers).includes(`"id":"${layerId}"`),
+    )?.id;
   const openExport = () => {
     session.setPlaying(false);
     openExportDialog({
@@ -2089,6 +2392,42 @@ export function mountEditorShell(
   const mediaInput = element<HTMLInputElement>('#import-media-input');
   element<HTMLButtonElement>('#import-media').onclick = () =>
     mediaInput.click();
+  // X2: the Import menu: media, or a code animation.
+  const importMenuButton = element<HTMLButtonElement>('#import-menu');
+  importMenuButton.onclick = () => {
+    const menu = document.createElement('div');
+    menu.className = 'import-menu';
+    menu.setAttribute('role', 'menu');
+    const entry = (
+      id: string,
+      label: string,
+      icon: string,
+      run: () => void,
+    ) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = id;
+      button.setAttribute('role', 'menuitem');
+      button.innerHTML = `${iconSvg(icon, 16)}<span></span>`;
+      button.querySelector('span')!.textContent = label;
+      button.onclick = () => {
+        popover.close();
+        safely(run);
+      };
+      menu.append(button);
+    };
+    entry('import-media-item', t('code.importMedia'), 'media', () =>
+      mediaInput.click(),
+    );
+    entry('import-code', t('code.importCode'), 'code', () => openCodeImport());
+    importMenuButton.setAttribute('aria-expanded', 'true');
+    const popover = openPopover(importMenuButton, menu, {
+      label: t('code.importMenu'),
+      className: 'import-menu-popover',
+      onClose: () => importMenuButton.setAttribute('aria-expanded', 'false'),
+    });
+    menu.querySelector<HTMLButtonElement>('button')?.focus();
+  };
   // J8: the empty timeline's hint rows add text, or open Media (with the file
   // picker) or Audio.
   let leaveRecord: (() => void) | undefined;
@@ -2489,6 +2828,7 @@ export function mountEditorShell(
   // Project Media card or library card drag that a test or browser still
   // sends as HTML5 data is a reference, never a file (MED-015 regression).
   const dropOverlay = element('#drop-overlay');
+  const CODE_FILE = /\.(json|js|mjs|html?)$/i;
   let dragDepth = 0;
   const isFileDrag = (event: DragEvent) =>
     !!event.dataTransfer?.types.includes('Files') &&
@@ -2526,7 +2866,15 @@ export function mountEditorShell(
     if (!isFileDrag(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    const files = [...(event.dataTransfer?.files ?? [])];
+    const dropped = [...(event.dataTransfer?.files ?? [])];
+    // X2: code files open the import dialog; media files import as before.
+    const code = dropped.filter((file) => CODE_FILE.test(file.name));
+    const files = dropped.filter((file) => !CODE_FILE.test(file.name));
+    if (code[0])
+      void code[0]
+        .text()
+        .then((text) => openCodeImport({ text, fileName: code[0]!.name }))
+        .catch(reportError);
     if (!files.length) return;
     const over = event.target instanceof Element ? event.target : null;
     const onCanvas = over === canvas;

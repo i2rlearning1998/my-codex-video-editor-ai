@@ -4,6 +4,8 @@
 import { blockMeta } from './meta';
 import { createSandbox } from '../blocks/sandbox/client';
 import { FakeRuntime } from './fake-runtime';
+import { STARTER_PREFIX } from './tier-a';
+import type { CompiledBlock } from '../blocks/sandbox/compile';
 import type {
   FreeCodeOpenOptions,
   FreeCodeRuntime,
@@ -35,15 +37,30 @@ export async function openBlockSession(
   source: string,
   opts: FreeCodeOpenOptions,
 ): Promise<FreeCodeSession> {
-  // The compiler carries the TypeScript parser: loaded on first use only.
-  const { compileBlock } = await import('../blocks/sandbox/compile');
-  const compiled = compileBlock(source);
-  if (!compiled.ok) throw new Error(compiled.error);
-  const meta = blockMeta(compiled.value.info);
+  // A starter block named by a Composition Spec (`@block:<id>`).
+  const starterId = source.startsWith(STARTER_PREFIX)
+    ? source.slice(STARTER_PREFIX.length)
+    : null;
+  let request: { compiled: CompiledBlock } | { blockId: string };
+  let meta: ReturnType<typeof blockMeta>;
+  if (starterId) {
+    const { getBlock } = await import('../blocks/starters');
+    const block = getBlock(starterId);
+    if (!block) throw new Error(`The block "${starterId}" is not available.`);
+    request = { blockId: starterId };
+    meta = blockMeta(block);
+  } else {
+    // The compiler carries the TypeScript parser: loaded on first use only.
+    const { compileBlock } = await import('../blocks/sandbox/compile');
+    const compiled = compileBlock(source);
+    if (!compiled.ok) throw new Error(compiled.error);
+    request = { compiled: compiled.value };
+    meta = blockMeta(compiled.value.info);
+  }
   const client = createSandbox(2000);
   const frame = async (index: number) => {
     const reply = await client.render({
-      compiled: compiled.value,
+      ...request,
       t: index / opts.fps,
       size: { width: opts.width, height: opts.height },
       params: opts.params,
