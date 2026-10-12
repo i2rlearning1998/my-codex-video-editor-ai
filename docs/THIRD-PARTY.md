@@ -43,3 +43,26 @@ Build uses the repository's existing esbuild dependency through Vite. TypeScript
 5.7.x (existing, Apache-2.0) parses/instruments source; no new parser is installed.
 The helper bundle reuses src/blocks/helpers.ts, with original vector/noise/emitter,
 text/path/colour helpers. No third-party simplex implementation is copied.
+
+## Bundled subcomponents
+
+A source-map and distributed-source audit also found the following licences
+inside the approved distributions. Their upstream full notices and embedded
+attributions are retained in `vendor/THIRD-PARTY-NOTICES.txt`; these are not
+additional dynamically loaded packages.
+
+| Embedded component                                  | Used by      | Licence            |
+| --------------------------------------------------- | ------------ | ------------------ |
+| earcut (three identifies its port as 2.2.4)         | three / PIXI | ISC                |
+| eventemitter3                                       | PIXI         | MIT                |
+| ismobilejs                                          | PIXI         | MIT                |
+| url, querystring (Joyent / Node contributors)       | PIXI         | MIT                |
+| punycode (Mathias Bynens)                           | PIXI         | MIT                |
+| FXAA shader (Armin Ronacher)                        | PIXI         | BSD-3-Clause       |
+| BezierEasing (Gaëtan Renaudeau)                     | Lottie       | MIT                |
+| Transformation Matrix (Epistemex / Ken Fyrstenberg) | Lottie       | MIT, retain header |
+| seeded random helper (David Bau)                    | Lottie       | MIT                |
+
+The reconstruction script preserves library inline notices, while the accompanying
+notice file retains notices stripped by upstream minification. Keep this file
+with the bundles when integrating them into a distributed product.

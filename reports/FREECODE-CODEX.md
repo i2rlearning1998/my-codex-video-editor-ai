@@ -150,6 +150,8 @@ Block params/helpers/types, not editor/engine/render/export code.
 | lottie-web (MIT) | 5.12.2 | 265947 / 67803 | Inline animation JSON / own timeline |
 
 All older than two weeks; registry publication dates and full licences are retained.
+Bundled-component audit also records ISC (earcut), BSD-3-Clause (PIXI FXAA),
+and MIT helper notices in vendor/THIRD-PARTY-NOTICES.txt.
 GSAP **not added**: current official terms restrict competing visual animation
 builders; this editor's use is not clearly permitted. See docs/THIRD-PARTY.md.
 
