@@ -1469,5 +1469,10 @@
   "code.templateExport": ".json के रूप में एक्सपोर्ट करें",
   "code.templateDelete": "हटाएँ",
   "code.templateDeleted": "टेम्पलेट \"{name}\" हटाया गया",
-  "code.templateRestore": "वापस लाएँ"
+  "code.templateRestore": "वापस लाएँ",
+  "command.codeEdit": "कोड संपादित करें",
+  "command.codeSettings": "एनिमेशन सेटिंग्स",
+  "command.codeSaveTemplate": "टेम्पलेट के रूप में सहेजें",
+  "command.codeRerender": "फिर से रेंडर करें",
+  "code.savedTemplate": "\"{name}\" मेरे टेम्पलेट में सहेजा गया"
 }

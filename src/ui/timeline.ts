@@ -609,6 +609,8 @@ export interface CodeClipStatus {
   onChange(listener: () => void): () => void;
   cancel(layerId: string): void;
   resume(layerId: string): void;
+  /** P1: the clip's picture before and while it bakes (an object URL). */
+  poster?(layerId: string): string | null;
 }
 /** Stable event/capture surface; all row nodes below it are disposable projections. */
 export function mountTimeline(
@@ -761,6 +763,15 @@ export function mountTimeline(
    * The bar is updated in place as frames arrive.
    */
   const paintBake = (bar: HTMLElement) => {
+    // P1: the poster is the clip's picture, so it is never a blank clip.
+    const poster = bar.parentElement?.querySelector<HTMLImageElement>(
+      ':scope > .clip-code-poster',
+    );
+    const url = code?.poster?.(bar.dataset.layer!) ?? null;
+    if (poster && url && poster.getAttribute('src') !== url) {
+      poster.src = url;
+      poster.hidden = false;
+    }
     const status = code?.status(bar.dataset.layer!);
     bar.hidden = !status || status.state === 'done';
     if (!status || bar.hidden) return;
@@ -794,8 +805,13 @@ export function mountTimeline(
       if (bar.dataset.state === 'cancelled') code?.resume(layerId);
       else code?.cancel(layerId);
     });
+    const poster = document.createElement('img');
+    poster.className = 'clip-code-poster';
+    poster.alt = '';
+    poster.hidden = true;
+    poster.draggable = false;
+    element.append(poster, bar);
     paintBake(bar);
-    element.append(bar);
   };
   const unsubscribeCode = code?.onChange(() =>
     root.querySelectorAll<HTMLElement>('.clip-bake').forEach(paintBake),
@@ -3414,10 +3430,14 @@ export function mountTimeline(
   // J14: a Clipchamp section for the kind of clip first (each entry a
   // registered command with its shortcut), then a divider and the earlier
   // entries that are not already in it.
+  // The shell runs a menu's command (a 'run-command' event); this context
+  // only answers isEnabled. The code hooks stand for the shell's.
+  const noop = () => undefined;
   const commandContext = {
     engine,
     session,
-    togglePlayback: () => undefined,
+    togglePlayback: noop,
+    code: { edit: noop, settings: noop, saveTemplate: noop, rerender: noop },
   };
   const commandItem = (id: string, role = 'menuitem') => {
     const command = commands.find((item) => item.id === id)!;
@@ -3437,11 +3457,13 @@ export function mountTimeline(
     const kinds = new Set(
       selectionRoots(session.source, session.selectedIds).map((layer) =>
         findClipByLayer(session.source.composition, layer.id)
-          ? layer.type === 'video' ||
-            layer.type === 'image' ||
-            layer.type === 'audio'
-            ? layer.type
-            : 'element'
+          ? layer.code
+            ? 'code'
+            : layer.type === 'video' ||
+                layer.type === 'image' ||
+                layer.type === 'audio'
+              ? layer.type
+              : 'element'
           : 'none',
       ),
     );
@@ -3455,7 +3477,7 @@ export function mountTimeline(
       'delete',
       'split',
     ].map((id) => commandItem(id));
-    if (kind === 'video') {
+    if (kind === 'video' || kind === 'code') {
       const freeze = commandItem('freeze', 'menuitemcheckbox');
       freeze.setAttribute(
         'aria-checked',
@@ -3469,6 +3491,16 @@ export function mountTimeline(
       items.push(freeze);
     }
     items.push(commandItem('edit-duration'), commandItem('rename-clip'));
+    // P1: a code clip's own entries (no Audio, Detach audio or Auto cut).
+    if (kind === 'code')
+      items.push(
+        ...[
+          'code-edit',
+          'code-settings',
+          'code-save-template',
+          'code-rerender',
+        ].map((id) => commandItem(id)),
+      );
     if (kind === 'video' || kind === 'audio') {
       const audio = menuItem(`${t('menu.audio')} ›`, 'audio-menu');
       audio.setAttribute('aria-haspopup', 'menu');

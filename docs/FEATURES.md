@@ -899,6 +899,28 @@ Imported code animations: Tier A becomes ordinary layers; Tiers B and C are bake
 | CODE-012 | P1 | W8 | Verified | A hostile source (network, parent access, storage, endless loop, import()) is refused or stopped with a clear message and the editor is untouched; a heavy bake can be cancelled (X5) |
 | CODE-013 | P1 | W8 | Verified | A code template survives a page reload and renders when inserted into a new project (X5) |
 
+## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
+
+Creator Pack items imported, checked and registered in the user's library, and their controls.
+
+| ID | Pri | Wave | Status | Item |
+|---|---|---|---|---|
+| CP-001 | P1 | W8 | Verified | A code layer's right-click menus (canvas and timeline) offer Edit code, Animation settings, Save as template and Re-render, and leave out picture and sound items that mean nothing for it (Set as background, Detach audio, Audio, Auto cut) (P1) |
+| CP-002 | P1 | W8 | Verified | A code layer is never blank: its thumbnail frame shows on the canvas and on its clip before the bake has a frame, the canvas shows "Rendering n %", the last frame stays across a re-bake, and playback starts from the first baked frames (P1) |
+| CP-003 | P1 | W8 | Verified | Live settings: while a number control is dragged the frame at the playhead renders at Draft with the dragged value (Blocks and seekable code); the release applies and re-bakes automatically after a short pause in one undo step; a stateful Tier C animation keeps Apply (P1) |
+| CP-004 | P1 | W8 | Todo | Import creator pack: from the Import menu, a paste dialog or by dropping a .creatorpack.txt or .json file; checked by `checkPack` with the real FX ids and library ids; nothing runs before the user confirms (P2, CREATOR-PACK-SPEC 2, 6) |
+| CP-005 | P1 | W8 | Todo | The review dialog lists every item with a thumbnail, its status (OK, warning, rejected with the reason) and a checkbox, with Add selected to library and Copy report; the runtime checks (three frames rendered, blank or throwing items rejected, motion baked twice byte for byte, controls change the render) are shown; rejected items never block the rest (P2, spec 6) |
+| CP-006 | P1 | W8 | Todo | Accepted items are kept in My library (this browser, key pack/item, not an undo step); the same pack version is skipped, a higher version replaces after a confirm; a project keeps its own copy of what it uses (P2, spec 4) |
+| CP-007 | P1 | W8 | Todo | Creator items appear in their panels with a Creator pack badge (shapes in Elements > Shapes, text in Text > Styles, backgrounds in Elements > Backgrounds, motion in Elements > Animations and My Templates > Code animations, templates in Templates > Creator packs), insert in one undo step, and can be renamed, exported, deleted and restored (P2, spec 4) |
+| CP-008 | P1 | W8 | Todo | Kinds not built yet (composition, adjust, filter, effect, transition, font) show "Not supported yet" in the review dialog and are never silently dropped (P2) |
+| CP-009 | P1 | W8 | Todo | A creator preset appears in Animate > Creator; applying it writes ordinary keyframes and layer.metadata.preset {id, params} in one undo step (P3, spec 5.3) |
+| CP-010 | P1 | W8 | Todo | The right rail's Controls category shows only what the selected layer really has: a preset's controls grouped by animated property (a Move preset shows only Move controls), a motion layer's params, or for hand or AI keyframes a simple From, To, Duration, Delay, Easing, Loop group per keyframed property; basic first, advanced under More (P3, spec 5.1b) |
+| CP-011 | P1 | W8 | Todo | Changing a control regenerates the preset's keyframes in one undo step; editing those keyframes by hand marks the layer Edited manually: the controls grey out with a note and Reset to controls (with a confirm) (P3, spec 5.3) |
+| CP-012 | P1 | W8 | Todo | Add animation adds one more property animation from the Animate presets; only its controls appear (P3, spec 5.1b) |
+| CP-013 | P1 | W8 | Todo | Copy library index for AI (Import menu) copies a compact text (under 40 KB) of library and creator items, Blocks, Animate presets, effect, filter and transition ids, fonts, canvas size and frame rate (P4, spec 8) |
+| CP-014 | P1 | W8 | Todo | Bad creator packs (endless loop, fetch, NaN expression, missing field, oversized source, unused control) are rejected with their exact reasons and leave the editor and library untouched (P2, spec 10) |
+| CP-015 | P1 | W8 | Todo | Re-importing a pack is idempotent, and deleting a library item does not break a project that used it (P2, spec 10) |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.

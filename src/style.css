@@ -8322,6 +8322,43 @@ input[type='range'] {
   cursor: pointer;
 }
 
+.timeline-clip .clip-code-poster {
+  position: absolute;
+  inset-block: 2px;
+  inset-inline-end: 2px;
+  block-size: calc(100% - 4px);
+  inline-size: auto;
+  max-inline-size: 40%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.timeline-clip .clip-code-poster[hidden] {
+  display: none;
+}
+/* P1: a code layer still baking shows its progress over the canvas too. */
+.code-render-status {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  box-shadow: var(--shadow-1);
+  pointer-events: none;
+}
+.code-render-status[hidden] {
+  display: none;
+}
+
 /* X2: Import code animation. */
 .import-menu {
   display: flex;

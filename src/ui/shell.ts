@@ -1,6 +1,8 @@
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
+import { CodePosters } from '../code-layer/poster';
+import { CodeLive } from '../code-layer/live';
 import { freeCodeRuntime, openCodeSession } from '../code-layer/runtime';
 import { tierACommands } from '../code-layer/tier-a';
 import { codeLayerCommands, codeRecord } from '../code-layer/layer';
@@ -301,7 +303,7 @@ export function mountEditorShell(
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div><div class="code-render-status" id="code-render-status" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
           <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
@@ -460,14 +462,27 @@ export function mountEditorShell(
     }
     return null;
   };
-  const codeFrames = new CodeFrames(codeCache, codeBaker, codeOf, () => {
+  const queueCodeDraw = () => {
     if (redrawQueued || disposed) return;
     redrawQueued = true;
     requestAnimationFrame(() => {
       redrawQueued = false;
       safely(draw);
     });
-  });
+  };
+  // P1: the thumbnail frame before a bake has a frame, and the frame rendered
+  // directly while a control is dragged.
+  const codePosters = new CodePosters(openCodeSession);
+  codePosters.onChange(queueCodeDraw);
+  const codeLive = new CodeLive(openCodeSession, queueCodeDraw);
+  const codeFrames = new CodeFrames(
+    codeCache,
+    codeBaker,
+    codeOf,
+    queueCodeDraw,
+    codePosters,
+    codeLive,
+  );
   frames.code = codeFrames;
   codeBaker.onChange(() => {
     if (redrawQueued || disposed) return;
@@ -478,7 +493,7 @@ export function mountEditorShell(
     });
   });
   /** The bake spec of a code layer in the open scene at its quality. */
-  const codeSpec = (layerId: string) => {
+  const codeSpec = (layerId: string, quality?: 'full' | 'draft') => {
     const code = codeOf(layerId);
     if (!code) return null;
     const composition = session.source.composition;
@@ -494,7 +509,7 @@ export function mountEditorShell(
         frames: frameCount(codeMeta(code).duration, fps),
         frame: 0,
       },
-      codeFrames.qualityOf(layerId),
+      quality ?? codeFrames.qualityOf(layerId),
     );
   };
   const codeStatus: CodeClipStatus = {
@@ -509,7 +524,18 @@ export function mountEditorShell(
         error: job?.error,
       };
     },
-    onChange: (listener) => codeBaker.onChange(listener),
+    onChange: (listener) => {
+      const off = [
+        codeBaker.onChange(listener),
+        codePosters.onChange(listener),
+      ];
+      return () => off.forEach((stop) => stop());
+    },
+    poster(layerId) {
+      const code = codeOf(layerId);
+      const spec = codeSpec(layerId, 'full');
+      return code && spec ? codePosters.url(code.bakeKey, spec) : null;
+    },
     cancel(layerId) {
       const spec = codeSpec(layerId);
       if (spec) codeBaker.cancel(spec.cacheKey);
@@ -519,6 +545,48 @@ export function mountEditorShell(
       if (spec) codeBaker.ensure(spec, true);
     },
   };
+  /**
+   * P1: Re-render. Drops the layer's stored frames (and its poster) and
+   * bakes it again from frame 0.
+   */
+  const rerenderCode = async (layerId: string) => {
+    const spec = codeSpec(layerId);
+    if (!spec) return;
+    codeBaker.cancel(spec.cacheKey);
+    // Wait for a cancelled running bake to stop before its frames go.
+    while (codeBaker.running === spec.cacheKey)
+      await new Promise((resolve) => setTimeout(resolve, 16));
+    await codeCache.remove(spec.cacheKey);
+    codeBaker.forget(spec.cacheKey);
+    codeBaker.ensure(spec, true);
+    queueCodeDraw();
+  };
+  // P1: while a code layer of the open scene bakes, the canvas says so.
+  const codeRenderStatus = element<HTMLElement>('#code-render-status');
+  const paintCodeStatus = () => {
+    const visit = (layers: readonly SceneLayer[]): string | null => {
+      for (const layer of layers) {
+        if (layer.code) {
+          const status = codeStatus.status(layer.id);
+          if (
+            status &&
+            (status.state === 'queued' || status.state === 'running')
+          )
+            return t('code.bakeProgress', {
+              percent: formatNumber(Math.floor(status.progress * 100)),
+            });
+        }
+        const inner = visit(layer.children);
+        if (inner) return inner;
+      }
+      return null;
+    };
+    const text = visit(session.source.composition.layers);
+    codeRenderStatus.hidden = !text;
+    if (text && codeRenderStatus.textContent !== text)
+      codeRenderStatus.textContent = text;
+  };
+  codeBaker.onChange(paintCodeStatus);
   // G3: Fit, then the zoom about the view's center, then the pan.
   const viewportFor = (z: number, requested: readonly [number, number]) => {
     const view = fitViewport(
@@ -1143,6 +1211,14 @@ export function mountEditorShell(
     }, 'image/png');
   };
   const menuHooks = {
+    // P1: the code layer's entries run the same hooks as the commands.
+    code: {
+      edit: (layerId: string) => commandContext.code?.edit(layerId),
+      settings: (layerId: string) => commandContext.code?.settings(layerId),
+      saveTemplate: (layerId: string) =>
+        commandContext.code?.saveTemplate(layerId),
+      rerender: (layerId: string) => commandContext.code?.rerender(layerId),
+    },
     showTiming: () => {
       const layer = selectedLayer();
       if (!layer) return;
@@ -1379,6 +1455,17 @@ export function mountEditorShell(
       if (session.selectedId) timeline?.renameClip(session.selectedId);
     },
     moreOptions: () => workspace?.setOpen('right', true),
+    // P1: a code layer's own actions.
+    code: {
+      edit: (layerId) => safely(() => openCodeImport({}, { layerId })),
+      settings: () =>
+        safely(() => {
+          workspace?.setOpen('right', true);
+          setRightSection('Code');
+        }),
+      saveTemplate: (layerId) => void saveLayerAsTemplate(layerId),
+      rerender: (layerId) => void rerenderCode(layerId),
+    },
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -1939,17 +2026,36 @@ export function mountEditorShell(
         idPrefix: 'code-setting',
         specs: meta.params,
         values,
+        // P1: while a number is dragged the frame at the playhead renders
+        // at Draft with the dragged value (Blocks and seekable code); on
+        // release the change is applied and re-baked after a short pause
+        // (a stateful Tier C animation keeps Apply).
+        onPreview: (name, value) =>
+          safely(() => {
+            if (!CodeLive.canRender(code.tier, meta.seekable)) return;
+            const request = codeFrames.requestOf(layer.id);
+            if (!request?.code) return;
+            const spec = bakeSpecOf(
+              { ...code, params: { ...values, [name]: value } },
+              request.code,
+              'draft',
+            );
+            codeLive.request(layer.id, spec, request.code.frame);
+          }),
         onChange: (name, value) =>
           safely(() => {
             pendingCode = {
               layerId: layer.id,
               values: { ...values, [name]: value },
             };
-            if (code.tier === 'B') {
+            codeLive.release(layer.id);
+            // A stateful Tier C animation is a heavy re-bake: it waits
+            // for Apply.
+            if (CodeLive.canRender(code.tier, meta.seekable)) {
               clearTimeout(codeApplyTimer);
               codeApplyTimer = setTimeout(
                 () => safely(() => applyCodeParams(layer.id)),
-                200,
+                CODE_APPLY_DELAY,
               );
             }
             rightPanel.render('Code');
@@ -1970,6 +2076,8 @@ export function mountEditorShell(
     }
     return parts;
   };
+  /** P1: the pause after a released control before its re-bake. */
+  const CODE_APPLY_DELAY = 300;
   /** X3: staged param values of one code layer (not yet applied). */
   let pendingCode: { layerId: string; values: ParamValues } | null = null;
   let codeApplyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1987,6 +2095,7 @@ export function mountEditorShell(
       ...(code.templateId ? { templateId: code.templateId } : {}),
     });
     if (next.bakeKey === code.bakeKey) {
+      codeLive.clear(layerId);
       rightPanel.render('Code');
       return;
     }
@@ -2167,6 +2276,33 @@ export function mountEditorShell(
       showToast(t('code.templateFull'), 'error');
       return null;
     }
+  };
+  /** P1: Save as template from a code layer (its source, meta and values). */
+  const saveLayerAsTemplate = async (layerId: string) => {
+    const code = codeOf(layerId);
+    if (!code) return;
+    const meta = codeMeta(code);
+    const spec = codeSpec(layerId, 'full');
+    const poster = spec ? codePosters.image(code.bakeKey, spec) : null;
+    let thumbnail: Blob | null = null;
+    if (poster) {
+      const canvas = new OffscreenCanvas(poster.width, poster.height);
+      canvas.getContext('2d')!.drawImage(poster, 0, 0);
+      thumbnail = await canvas.convertToBlob({ type: 'image/png' });
+    }
+    const layer = locateLayer(session.source.composition.layers, layerId);
+    const template = await saveCodeTemplate(
+      {
+        tier: code.tier,
+        source: code.source,
+        meta,
+        params: codeParams(code) as ParamValues,
+        name: layer?.layer.name || meta.name,
+      } as CodeImport,
+      thumbnail,
+    );
+    if (template)
+      showToast(t('code.savedTemplate', { name: template.name }), 'success');
   };
   /** Inserts a code template at `time` on a new lane, one undo step. */
   const insertCodeTemplate = async (template: CodeTemplate, time: number) => {

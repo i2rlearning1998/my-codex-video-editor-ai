@@ -1469,5 +1469,10 @@
   "code.templateExport": "Export as .json",
   "code.templateDelete": "Delete",
   "code.templateDeleted": "Template \"{name}\" deleted",
-  "code.templateRestore": "Restore"
+  "code.templateRestore": "Restore",
+  "command.codeEdit": "Edit code",
+  "command.codeSettings": "Animation settings",
+  "command.codeSaveTemplate": "Save as template",
+  "command.codeRerender": "Re-render",
+  "code.savedTemplate": "Saved \"{name}\" to My Templates"
 }
