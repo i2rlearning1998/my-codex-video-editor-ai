@@ -182,7 +182,8 @@ export function mountSceneOutliner(
     id: layer.id,
     name: layer.name,
     depth,
-    icon: ICONS[layer.type] ?? 'elements',
+    // X4: a code animation shows the code icon.
+    icon: layer.code ? 'code' : (ICONS[layer.type] ?? 'elements'),
     layer,
     children: [...layer.children]
       .reverse()
@@ -351,7 +352,7 @@ export function mountSceneOutliner(
     icon.setAttribute('aria-hidden', 'true');
     icon.innerHTML = iconSvg(row.icon, 18);
     // V7: a layer's icon is coloured by its kind.
-    if (row.layer) icon.dataset.type = row.layer.type;
+    if (row.layer) icon.dataset.type = row.layer.code ? 'code' : row.layer.type;
     const name = document.createElement('span');
     name.className = 'outliner-name';
     name.textContent = row.name;

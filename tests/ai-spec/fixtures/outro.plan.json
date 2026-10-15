@@ -1,0 +1,1070 @@
+{
+  "version": 1,
+  "specId": "outro",
+  "catalogVersion": "spec1-main9362645-blocks6a74c95-fx98a95f7-policy1",
+  "executable": false,
+  "duration": 6,
+  "scenes": [
+    {
+      "id": "thanks",
+      "compositionId": "ais_outro_s0",
+      "timelineStart": 0,
+      "duration": 6
+    }
+  ],
+  "editableParameters": [],
+  "bindings": [],
+  "operations": [
+    {
+      "sequence": 0,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_COMPOSITION",
+        "composition": {
+          "id": "ais_outro_s0",
+          "name": "Thanks",
+          "width": 1280,
+          "height": 720,
+          "fps": 30,
+          "duration": 6,
+          "layers": [],
+          "tracks": [],
+          "markers": [],
+          "audioTracks": []
+        }
+      }
+    },
+    {
+      "sequence": 1,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_outro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_outro_s0_bg",
+          "name": "Scene background",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 2,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1280,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 3,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 720,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 4,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "shapeKind"
+        },
+        "property": {
+          "type": "string",
+          "value": "rectangle",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 5,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_bg",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#101219",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 6,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_outro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_outro_s0_i0_layer",
+          "name": "thanks",
+          "type": "text",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 7,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [90, 100],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 8,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 9,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 10,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 11,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 12,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 13,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "THANKS FOR WATCHING",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 14,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 48,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 15,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 16,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#64e3c3",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 17,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_outro_s0",
+        "track": {
+          "id": "ais_outro_s0_i0_track",
+          "name": "thanks",
+          "type": "text",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 18,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_outro_s0",
+        "trackId": "ais_outro_s0_i0_track",
+        "clip": {
+          "id": "ais_outro_s0_i0_clip",
+          "name": "thanks",
+          "layerId": "ais_outro_s0_i0_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 19,
+      "status": "blocked",
+      "reason": "ADD_EFFECT is documented future vocabulary; no command or FX wiring exists on main",
+      "command": {
+        "type": "ADD_EFFECT",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i0_layer",
+        "clipId": "ais_outro_s0_i0_clip",
+        "effect": {
+          "id": "effect.glow",
+          "params": {
+            "intensity": 0.2,
+            "radius": 6
+          },
+          "seed": 21
+        }
+      }
+    },
+    {
+      "sequence": 20,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_outro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_outro_s0_i1_layer",
+          "name": "Channel portrait request",
+          "type": "image",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 21,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [80, 300],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 22,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 23,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 24,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i1_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 25,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 220,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 26,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i1_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 220,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 27,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_outro_s0",
+        "track": {
+          "id": "ais_outro_s0_i1_track",
+          "name": "Channel portrait request",
+          "type": "video",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 28,
+      "status": "needs-asset",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_outro_s0",
+        "trackId": "ais_outro_s0_i1_track",
+        "clip": {
+          "id": "ais_outro_s0_i1_clip",
+          "name": "Channel portrait request",
+          "layerId": "ais_outro_s0_i1_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    },
+    {
+      "sequence": 29,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_LAYER",
+        "compositionId": "ais_outro_s0",
+        "parentId": null,
+        "layer": {
+          "id": "ais_outro_s0_i2_layer",
+          "name": "cta",
+          "type": "text",
+          "startTime": 0,
+          "duration": 6,
+          "transform": {
+            "position": {
+              "type": "vector2",
+              "value": [0, 0],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "scale": {
+              "type": "vector2",
+              "value": [1, 1],
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "rotation": {
+              "type": "number",
+              "value": 0,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            },
+            "opacity": {
+              "type": "number",
+              "value": 1,
+              "animated": false,
+              "keyframes": [],
+              "constraints": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      }
+    },
+    {
+      "sequence": 30,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "position"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [360, 380],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 31,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "scale"
+        },
+        "property": {
+          "type": "vector2",
+          "value": [1, 1],
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 32,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "rotation"
+        },
+        "property": {
+          "type": "number",
+          "value": 0,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 33,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "transform",
+          "key": "opacity"
+        },
+        "property": {
+          "type": "number",
+          "value": 1,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 34,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "width"
+        },
+        "property": {
+          "type": "number",
+          "value": 1000,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 35,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "height"
+        },
+        "property": {
+          "type": "number",
+          "value": 160,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 36,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "text"
+        },
+        "property": {
+          "type": "string",
+          "value": "Subscribe for the next idea",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 37,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontSize"
+        },
+        "property": {
+          "type": "number",
+          "value": 36,
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 38,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fontFamily"
+        },
+        "property": {
+          "type": "string",
+          "value": "Arial",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 39,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "SET_PROPERTY",
+        "compositionId": "ais_outro_s0",
+        "layerId": "ais_outro_s0_i2_layer",
+        "target": {
+          "kind": "property",
+          "key": "fill"
+        },
+        "property": {
+          "type": "color",
+          "value": "#ffffff",
+          "animated": false,
+          "keyframes": [],
+          "constraints": []
+        }
+      }
+    },
+    {
+      "sequence": 40,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_TRACK",
+        "compositionId": "ais_outro_s0",
+        "track": {
+          "id": "ais_outro_s0_i2_track",
+          "name": "cta",
+          "type": "text",
+          "order": 2,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": []
+        }
+      }
+    },
+    {
+      "sequence": 41,
+      "status": "mapped",
+      "reason": null,
+      "command": {
+        "type": "CREATE_CLIP",
+        "compositionId": "ais_outro_s0",
+        "trackId": "ais_outro_s0_i2_track",
+        "clip": {
+          "id": "ais_outro_s0_i2_clip",
+          "name": "cta",
+          "layerId": "ais_outro_s0_i2_layer",
+          "assetId": null,
+          "startTime": 0,
+          "duration": 6,
+          "sourceIn": 0,
+          "sourceOut": 6,
+          "enabled": true,
+          "speed": 1,
+          "transitionMetadata": {},
+          "effectMetadata": {},
+          "metadata": {}
+        }
+      }
+    }
+  ],
+  "requirements": [
+    {
+      "path": "/scenes/0/items/0/fx",
+      "reason": "ADD_EFFECT is documented future vocabulary; no command or FX wiring exists on main"
+    },
+    {
+      "path": "/scenes/0/items/1",
+      "reason": "Owner must supply a local asset for slot avatar-photo",
+      "details": {
+        "slot": "avatar-photo",
+        "description": "A channel portrait still needed from the owner",
+        "prompt": "Ask the owner for a square channel portrait; do not invent an image URL"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "avatar-photo",
+      "kind": "image",
+      "description": "A channel portrait still needed from the owner"
+    }
+  ],
+  "itemMap": [
+    {
+      "sceneId": "thanks",
+      "itemId": "thanks",
+      "layerId": "ais_outro_s0_i0_layer",
+      "clipId": "ais_outro_s0_i0_clip"
+    },
+    {
+      "sceneId": "thanks",
+      "itemId": "avatar",
+      "layerId": "ais_outro_s0_i1_layer",
+      "clipId": "ais_outro_s0_i1_clip"
+    },
+    {
+      "sceneId": "thanks",
+      "itemId": "cta",
+      "layerId": "ais_outro_s0_i2_layer",
+      "clipId": "ais_outro_s0_i2_clip"
+    }
+  ]
+}

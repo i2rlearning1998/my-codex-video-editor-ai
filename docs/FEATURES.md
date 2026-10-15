@@ -879,6 +879,26 @@ Offline frame-accurate render, never realtime capture.
 | QA-001 | P1 | W9 | Todo | Preflight before export: missing media or fonts, text overflow, clips outside the canvas, empty tracks, low-resolution upscaling, audio clipping, safe zones |
 | QA-002 | P1 | W9 | Todo | Warnings panel lists issues and jumps to the affected item |
 
+## CODE: Code animations (X-series, CODE-TIERS-SPEC)
+
+Imported code animations: Tier A becomes ordinary layers; Tiers B and C are baked to frames.
+
+| ID | Pri | Wave | Status | Item |
+|---|---|---|---|---|
+| CODE-001 | P1 | W8 | Verified | A code animation is a schema 8 layer (`code`: tier, source, meta, params, bake key, template id): a full-canvas transparent video layer without media on a visual lane, moved, trimmed (up to the animation's end), sped, reversed, faded and given effects, transitions and presets like a video clip (X1, CODE-TIERS-SPEC 5) |
+| CODE-002 | P1 | W8 | Verified | Baked frames: frames are rendered in order into a lossless PNG frame cache (OPFS, IndexedDB fallback) keyed by source, params, size, frame rate, duration, seed and library versions, with memory and disk budgets and least-recently-used eviction; a partly baked clip plays its baked part and shows Rendering n % with Cancel, then Resume; Full or Draft (50 %) quality per layer (X1) |
+| CODE-003 | P1 | W8 | Verified | Preview and export read the same baked frames: Export frame and the video export bake at Full quality first, the export worker draws code layers from the cache, and the export Start/End range is respected (X1) |
+| CODE-004 | P1 | W8 | Verified | Import code animation: from the Media panel's Import menu, by dropping a .json, .js, .mjs or .html file, or by pasting; classified A (Composition Spec, applied in one undo step into a new or the current scene), else B (block), else C (free code), else plain errors with line, what and how to fix; 1 MB and 120 s limits (X2) |
+| CODE-005 | P1 | W8 | Verified | The import dialog shows the tier badge, a live thumbnail, the params form and the duration, with Add to timeline, Save as template (checked) and Cancel; a Tier C result says it runs in a sandbox and is rendered to frames; a code layer's Code button opens it as Edit code (X2) |
+| CODE-006 | P1 | W8 | Verified | Animation settings: one control per declared param (number with slider, colour, text, switch, select); Tier B re-renders as it changes, Tier C applies with Apply (re-bake); one undo step per applied change (X3) |
+| CODE-007 | P1 | W8 | Verified | Fade, Speed, Reverse, Filters, Effects, Adjust colors and Transitions change a code layer in the preview and in the export (X3) |
+| CODE-008 | P1 | W8 | Verified | Code templates: Save as template keeps name, category, tier, source, meta, default params and thumbnail in My Templates (not an undo step); Templates > My Templates > Code animations shows them with a hover preview; click or drag inserts a code layer at the playhead on a new lane in one undo step; the project keeps its own copy of the source (X4) |
+| CODE-009 | P1 | W8 | Verified | Code templates can be renamed, duplicated, deleted (with Restore), exported to and imported from a .json file (X4) |
+| CODE-010 | P1 | W8 | Verified | The Scene outliner shows code layers with a code icon; hide and lock work on them (X4) |
+| CODE-011 | P1 | W8 | Verified | The real sandboxed Tier C runtime runs the ten reference samples end to end: import, bake, play, scrub, a param change, Fade and an effect, a short export whose frames match the preview (measured maximum channel difference recorded) (X5) |
+| CODE-012 | P1 | W8 | Verified | A hostile source (network, parent access, storage, endless loop, import()) is refused or stopped with a clear message and the editor is untouched; a heavy bake can be cancelled (X5) |
+| CODE-013 | P1 | W8 | Verified | A code template survives a page reload and renders when inserted into a new project (X5) |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.

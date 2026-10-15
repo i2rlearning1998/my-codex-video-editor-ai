@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "id": "outro",
+  "title": "End card with requested avatar",
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "scenes": [
+    {
+      "id": "thanks",
+      "name": "Thanks",
+      "duration": 6,
+      "items": [
+        {
+          "id": "thanks",
+          "name": "thanks",
+          "kind": "text",
+          "start": 0,
+          "duration": 6,
+          "text": "THANKS FOR WATCHING",
+          "width": 1000,
+          "height": 160,
+          "fill": "#64e3c3",
+          "transform": {
+            "x": 90,
+            "y": 100
+          },
+          "fx": [
+            {
+              "id": "effect.glow",
+              "params": {
+                "intensity": 0.2
+              },
+              "seed": 21
+            }
+          ]
+        },
+        {
+          "id": "avatar",
+          "name": "Channel portrait request",
+          "kind": "image-placeholder",
+          "slot": "avatar-photo",
+          "prompt": "Ask the owner for a square channel portrait; do not invent an image URL",
+          "start": 0,
+          "duration": 6,
+          "width": 220,
+          "height": 220,
+          "transform": {
+            "x": 80,
+            "y": 300
+          }
+        },
+        {
+          "id": "cta",
+          "name": "cta",
+          "kind": "text",
+          "start": 0,
+          "duration": 6,
+          "text": "Subscribe for the next idea",
+          "width": 1000,
+          "height": 160,
+          "fontSize": 36,
+          "transform": {
+            "x": 360,
+            "y": 380
+          }
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "avatar-photo",
+      "kind": "image",
+      "description": "A channel portrait still needed from the owner"
+    }
+  ]
+}

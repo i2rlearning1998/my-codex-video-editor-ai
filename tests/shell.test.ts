@@ -289,6 +289,6 @@ describe('editor shell integration', () => {
     session.select('example-paper');
     expect(session.selectedId).toBe('example-paper');
     expect(engine.state).toBe(before);
-    expect(JSON.parse(serializeProject(before)).schemaVersion).toBe(7);
+    expect(JSON.parse(serializeProject(before)).schemaVersion).toBe(8);
   });
 });

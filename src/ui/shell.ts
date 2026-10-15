@@ -1,3 +1,35 @@
+import { FrameCache } from '../code-layer/cache';
+import { CodeBaker } from '../code-layer/baker';
+import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
+import { freeCodeRuntime, openCodeSession } from '../code-layer/runtime';
+import { tierACommands } from '../code-layer/tier-a';
+import { codeLayerCommands, codeRecord } from '../code-layer/layer';
+import { openCodeImportDialog, type CodeImport } from './code-import-dialog';
+import { codeLayerSelected } from './right-panel';
+import {
+  codeTemplates,
+  exportCodeTemplate,
+  importCodeTemplate,
+  isCodeTemplateFile,
+  type CodeTemplate,
+} from './code-templates';
+import { createParamsForm } from './code-params';
+import { stableJson } from '../code-layer/hash';
+import { download } from '../export/client';
+import type { ParamValues } from './code-params';
+import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
+import {
+  codeFps,
+  codeMeta,
+  codeParams,
+  codeSeedOf,
+  frameCount,
+  type CodeData,
+} from '../code-layer/meta';
+import type { CodeClipStatus } from './timeline';
+import type { FrameProvider } from '../render/adapter';
+import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
+import { retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
@@ -138,7 +170,7 @@ import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
-import { confirmDialog, openModal } from './components/modal';
+import { confirmDialog, openModal, promptDialog } from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
@@ -255,7 +287,7 @@ export function mountEditorShell(
           ${iconSvg('search')}
           <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
         </div>
-        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
+        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><button type="button" class="button import-menu-button" id="import-menu" aria-haspopup="menu" aria-expanded="false" aria-label="${t('code.importMenu')}" title="${t('code.importMenu')}">${iconSvg('chevronDown', 16)}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
         <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" hidden></div>
@@ -406,6 +438,87 @@ export function mountEditorShell(
       });
     },
   );
+  // X1 (spec section 5): code animations play from a frame cache that the
+  // preview and the export share; the baker fills it one job at a time.
+  const codeCache = new FrameCache(mediaStore);
+  const codeBaker = new CodeBaker(codeCache, openCodeSession);
+  const codeOf = (layerId: string): CodeData | null => {
+    const find = (
+      layers: readonly DeepReadonly<CoreLayer>[],
+    ): CodeData | null => {
+      for (const layer of layers) {
+        if (layer.id === layerId)
+          return (layer.code as unknown as CodeData | undefined) ?? null;
+        const inner = find(layer.children);
+        if (inner) return inner;
+      }
+      return null;
+    };
+    for (const composition of engine.state.compositions) {
+      const found = find(composition.layers);
+      if (found) return found;
+    }
+    return null;
+  };
+  const codeFrames = new CodeFrames(codeCache, codeBaker, codeOf, () => {
+    if (redrawQueued || disposed) return;
+    redrawQueued = true;
+    requestAnimationFrame(() => {
+      redrawQueued = false;
+      safely(draw);
+    });
+  });
+  frames.code = codeFrames;
+  codeBaker.onChange(() => {
+    if (redrawQueued || disposed) return;
+    redrawQueued = true;
+    requestAnimationFrame(() => {
+      redrawQueued = false;
+      safely(draw);
+    });
+  });
+  /** The bake spec of a code layer in the open scene at its quality. */
+  const codeSpec = (layerId: string) => {
+    const code = codeOf(layerId);
+    if (!code) return null;
+    const composition = session.source.composition;
+    const fps = codeFps(code, composition.fps);
+    return bakeSpecOf(
+      code,
+      {
+        tier: code.tier,
+        bakeKey: code.bakeKey,
+        width: composition.width,
+        height: composition.height,
+        fps,
+        frames: frameCount(codeMeta(code).duration, fps),
+        frame: 0,
+      },
+      codeFrames.qualityOf(layerId),
+    );
+  };
+  const codeStatus: CodeClipStatus = {
+    status(layerId) {
+      const spec = codeSpec(layerId);
+      if (!spec) return null;
+      const job = codeBaker.job(spec.cacheKey);
+      const complete = codeCache.complete(spec.cacheKey);
+      return {
+        state: complete ? 'done' : (job?.state ?? 'queued'),
+        progress: codeBaker.progress(spec.cacheKey),
+        error: job?.error,
+      };
+    },
+    onChange: (listener) => codeBaker.onChange(listener),
+    cancel(layerId) {
+      const spec = codeSpec(layerId);
+      if (spec) codeBaker.cancel(spec.cacheKey);
+    },
+    resume(layerId) {
+      const spec = codeSpec(layerId);
+      if (spec) codeBaker.ensure(spec, true);
+    },
+  };
   // G3: Fit, then the zoom about the view's center, then the pan.
   const viewportFor = (z: number, requested: readonly [number, number]) => {
     const view = fitViewport(
@@ -726,6 +839,8 @@ export function mountEditorShell(
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
+      // X2: the selected code layer's Animation settings.
+      codeBody: () => codeBody(),
       audioDecoder: decoder,
       // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
       tts: {
@@ -1459,6 +1574,7 @@ export function mountEditorShell(
     true,
     previews,
     waveforms,
+    codeStatus,
   );
   // H4: Editor | 2D Animation (3D is planned). The switch crossfades the
   // panels and the timeline in 320 ms and keeps the selection.
@@ -1527,16 +1643,55 @@ export function mountEditorShell(
         : stage.requestFullscreen(),
     );
   // APP-015 / W5-A: the primary Export button opens the Export dialog.
-  const renderFrame = () => {
+  /**
+   * X1: a frame provider whose code animations answer with their Full
+   * quality baked frame at `time` (baked and loaded first), as the export.
+   */
+  const fullCodeFrames = async (
+    composition: typeof session.source.composition,
+    time: number,
+  ): Promise<FrameProvider> => {
+    await bakeForExport(
+      codeBaker,
+      composition,
+      () => undefined,
+      () => false,
+    );
+    const loaded = new Map<string, CanvasImageSource>();
+    for (const item of deriveRenderItems({
+      ...session.source,
+      composition: compositionAt(composition, time),
+      currentTime: time,
+      animate: true,
+    }).items) {
+      const request = item.media;
+      const code = request?.code ? codeOf(request.key) : null;
+      if (!request?.code || !code) continue;
+      const spec = bakeSpecOf(code, request.code, 'full');
+      const image = await codeCache.load(spec.cacheKey, request.code.frame);
+      if (image) loaded.set(request.key, image);
+    }
+    return {
+      frame: (request, playing) =>
+        request.kind === 'code'
+          ? (loaded.get(request.key) ?? null)
+          : frames.frame(request, playing),
+    };
+  };
+  const renderFrame = async () => {
     const { width, height } = session.source.composition;
     const frameCanvas = document.createElement('canvas');
     frameCanvas.width = width;
     frameCanvas.height = height;
     const context = frameCanvas.getContext('2d');
-    if (!context) return Promise.reject(new Error('Canvas 2D is unavailable'));
+    if (!context) throw new Error('Canvas 2D is unavailable');
+    const provider = await fullCodeFrames(
+      session.source.composition,
+      session.currentTime,
+    );
     drawComposition(
       context,
-      { ...session.source, frames, playing: false, animate: true },
+      { ...session.source, frames: provider, playing: false, animate: true },
       { width, height, pixelRatio: 1, matrix: [1, 0, 0, 1, 0, 0] },
       null,
       { overlays: false },
@@ -1548,6 +1703,308 @@ export function mountEditorShell(
       ),
     );
   };
+  // X2 (spec section 2): Import code animation, and Edit code for a code
+  // layer. Tier A becomes ordinary layers (one step, new scenes or this
+  // one); Tiers B and C become a code layer at the playhead on a new lane.
+  const codeThumbnailOf = async (
+    composition: DeepReadonly<Composition>,
+    time: number,
+  ) => {
+    const width = 320;
+    const height = Math.max(
+      1,
+      Math.round((width * composition.height) / composition.width),
+    );
+    const canvas = new OffscreenCanvas(width, height);
+    const context = canvas.getContext('2d')!;
+    drawComposition(
+      context,
+      {
+        composition: compositionAt(composition, time),
+        assets: session.source.assets,
+        background: composition.backgroundColor,
+        currentTime: time,
+        animate: true,
+        ...(session.source.measureText
+          ? { measureText: session.source.measureText }
+          : {}),
+      },
+      fitViewport(width, height, composition, 1, { padding: 0 }),
+      null,
+      { overlays: false },
+    );
+    return canvas.convertToBlob({ type: 'image/png' });
+  };
+  const openCodeImport = (
+    initial: { text?: string; fileName?: string } = {},
+    edit?: { layerId: string },
+  ) => {
+    session.setPlaying(false);
+    const editCode = edit ? codeOf(edit.layerId) : null;
+    const composition = session.source.composition;
+    openCodeImportDialog({
+      ...(initial.text !== undefined ? { text: initial.text } : {}),
+      ...(initial.fileName ? { fileName: initial.fileName } : {}),
+      ...(editCode
+        ? {
+            edit: {
+              source: editCode.source,
+              params: codeParams(editCode) as ParamValues,
+            },
+          }
+        : {}),
+      canvas: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+      },
+      runtime: freeCodeRuntime,
+      previewA: async (spec, overrides) => {
+        const built = await tierACommands(spec, {
+          project: engine.state,
+          current: session.source.composition,
+          mode: 'new',
+          overrides,
+        });
+        const project = engine.preview(built.commands);
+        const scene = project.compositions.find(
+          (item) => item.id === built.compositionIds[0],
+        );
+        return scene ? codeThumbnailOf(scene, scene.duration / 2) : null;
+      },
+      onConfirm: async ({ item, saveTemplate, thumbnail }) => {
+        const current = session.source.composition;
+        // X4: Save as template (checked by default) keeps a copy in My
+        // Templates; the layer remembers which template it came from.
+        const template =
+          saveTemplate && !edit
+            ? await saveCodeTemplate(item, thumbnail)
+            : null;
+        if (item.tier === 'A') {
+          const built = await tierACommands(item.spec, {
+            project: engine.state,
+            current,
+            mode: item.mode,
+            overrides: item.overrides,
+          });
+          engine.commands.transaction('Import code animation', built.commands);
+          if (built.compositionIds[0])
+            session.selectComposition(built.compositionIds[0]);
+          if (built.notBuilt.length)
+            showToast(
+              t('code.notBuilt', { items: built.notBuilt.join('; ') }),
+              'warning',
+            );
+          else showToast(t('code.added'), 'success');
+          return;
+        }
+        const input = {
+          tier: item.tier,
+          source: item.source,
+          meta: item.meta as unknown as Record<string, unknown>,
+          params: item.params,
+          name: item.name,
+        };
+        if (edit && editCode) {
+          const code = codeRecord({
+            ...input,
+            ...(editCode.templateId ? { templateId: editCode.templateId } : {}),
+          });
+          const commands: Command[] = [
+            {
+              type: 'SET_LAYER_CODE',
+              compositionId: current.id,
+              layerId: edit.layerId,
+              code,
+            },
+          ];
+          // A shorter animation trims its clip to the new end.
+          const found = findClipByLayer(current, edit.layerId);
+          const duration = codeMeta(code).duration;
+          if (found && found.clip.sourceOut > duration + 1e-9) {
+            const timing = retimeClip(
+              found.clip,
+              found.clip.startTime,
+              Math.max(
+                1 / current.fps,
+                (duration - found.clip.sourceIn) / found.clip.speed,
+              ),
+              'right',
+            );
+            commands.push({
+              type: 'SET_CLIP_TIMING',
+              compositionId: current.id,
+              clipId: found.clip.id,
+              ...timing,
+            } as Command);
+          }
+          engine.commands.transaction('Edit code', commands);
+          showToast(t('code.applied'), 'success');
+          return;
+        }
+        const built = codeLayerCommands(
+          current,
+          { ...input, ...(template ? { templateId: template.id } : {}) },
+          session.currentTime,
+        );
+        engine.commands.transaction('Add code animation', built.commands);
+        session.select(built.layerId);
+        showToast(t('code.added'), 'success');
+      },
+    });
+  };
+  /** X2: the Animation settings panel of the selected code layer. */
+  const codeBody = (): HTMLElement[] => {
+    const layer = codeLayerSelected(session);
+    const code = layer ? codeOf(layer.id) : null;
+    if (!layer || !code) return [];
+    const meta = codeMeta(code);
+    const info = document.createElement('div');
+    info.className = 'code-info';
+    const tier = document.createElement('span');
+    tier.className = 'code-tier';
+    tier.dataset.tier = code.tier;
+    tier.textContent = t(`code.tier${code.tier}`);
+    const duration = document.createElement('span');
+    duration.className = 'code-muted';
+    duration.textContent = t('code.duration', {
+      seconds: formatNumber(meta.duration),
+    });
+    info.append(tier, duration);
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'button';
+    edit.id = 'code-edit';
+    edit.innerHTML = `${iconSvg('code', 16)}<span></span>`;
+    edit.querySelector('span')!.textContent = t('code.editButton');
+    edit.title = t('code.editTitle');
+    edit.onclick = () =>
+      safely(() => openCodeImport({}, { layerId: layer.id }));
+    const parts: HTMLElement[] = [info, edit];
+    if (code.tier === 'C') {
+      const notice = document.createElement('p');
+      notice.className = 'code-notice';
+      notice.textContent = t('code.fullMode');
+      parts.push(notice);
+    }
+    // X3: Full (scene size) or Draft (half) while editing; export is Full.
+    const quality = document.createElement('div');
+    quality.className = 'segmented code-quality';
+    quality.setAttribute('role', 'radiogroup');
+    quality.setAttribute('aria-label', t('code.quality'));
+    for (const value of ['full', 'draft'] as const) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.setAttribute('role', 'radio');
+      item.dataset.quality = value;
+      item.setAttribute(
+        'aria-checked',
+        String(codeFrames.qualityOf(layer.id) === value),
+      );
+      item.textContent = t(value === 'full' ? 'code.full' : 'code.draft');
+      item.title = t(value === 'full' ? 'code.fullTip' : 'code.draftTip');
+      item.onclick = () =>
+        safely(() => {
+          codeFrames.quality.set(layer.id, value);
+          rightPanel.render('Code');
+          draw();
+          timeline?.render();
+        });
+      quality.append(item);
+    }
+    const qualityLabel = document.createElement('span');
+    qualityLabel.className = 'code-param-label';
+    qualityLabel.textContent = t('code.quality');
+    const qualityRow = document.createElement('div');
+    qualityRow.className = 'code-param';
+    qualityRow.append(qualityLabel, quality);
+    parts.push(qualityRow);
+    // X3: one control per declared param. Tier B re-renders as it changes
+    // (debounced); Tier C waits for Apply (a heavy re-bake). One undo step
+    // per applied change.
+    if (!meta.params.length) {
+      const none = document.createElement('p');
+      none.className = 'code-notice';
+      none.textContent = t('code.noParams');
+      parts.push(none);
+      return parts;
+    }
+    const stored = codeParams(code) as ParamValues;
+    const staged =
+      pendingCode?.layerId === layer.id ? pendingCode.values : null;
+    const values = { ...stored, ...(staged ?? {}) };
+    const changed = !!staged && stableJson(values) !== stableJson(stored);
+    parts.push(
+      createParamsForm({
+        idPrefix: 'code-setting',
+        specs: meta.params,
+        values,
+        onChange: (name, value) =>
+          safely(() => {
+            pendingCode = {
+              layerId: layer.id,
+              values: { ...values, [name]: value },
+            };
+            if (code.tier === 'B') {
+              clearTimeout(codeApplyTimer);
+              codeApplyTimer = setTimeout(
+                () => safely(() => applyCodeParams(layer.id)),
+                200,
+              );
+            }
+            rightPanel.render('Code');
+          }),
+        onInvalid: (text) => showToast(text, 'error'),
+      }),
+    );
+    if (code.tier === 'C') {
+      const apply = document.createElement('button');
+      apply.type = 'button';
+      apply.className = 'button primary';
+      apply.id = 'code-apply';
+      apply.textContent = t('code.apply');
+      apply.title = t('code.applyTip');
+      apply.disabled = !changed;
+      apply.onclick = () => safely(() => applyCodeParams(layer.id));
+      parts.push(apply);
+    }
+    return parts;
+  };
+  /** X3: staged param values of one code layer (not yet applied). */
+  let pendingCode: { layerId: string; values: ParamValues } | null = null;
+  let codeApplyTimer: ReturnType<typeof setTimeout> | undefined;
+  const applyCodeParams = (layerId: string) => {
+    clearTimeout(codeApplyTimer);
+    const staged = pendingCode?.layerId === layerId ? pendingCode : null;
+    pendingCode = null;
+    const code = codeOf(layerId);
+    if (!staged || !code) return;
+    const next = codeRecord({
+      tier: code.tier,
+      source: code.source,
+      meta: code.meta,
+      params: staged.values,
+      ...(code.templateId ? { templateId: code.templateId } : {}),
+    });
+    if (next.bakeKey === code.bakeKey) {
+      rightPanel.render('Code');
+      return;
+    }
+    const found = findLayerScene(layerId);
+    if (!found) return;
+    engine.commands.transaction('Animation settings', [
+      {
+        type: 'SET_LAYER_CODE',
+        compositionId: found,
+        layerId,
+        code: next,
+      },
+    ]);
+  };
+  const findLayerScene = (layerId: string) =>
+    engine.state.compositions.find((composition) =>
+      JSON.stringify(composition.layers).includes(`"id":"${layerId}"`),
+    )?.id;
   const openExport = () => {
     session.setPlaying(false);
     openExportDialog({
@@ -1574,6 +2031,9 @@ export function mountEditorShell(
           )
           .then(() => undefined),
       toast: (text, kind) => showToast(text, kind),
+      // X1: code animations are baked at Full quality first.
+      prepareCode: (composition, progress, cancelled) =>
+        bakeForExport(codeBaker, composition, progress, cancelled),
     });
   };
   element<HTMLButtonElement>('#export').onclick = () => safely(openExport);
@@ -1663,6 +2123,268 @@ export function mountEditorShell(
   });
   // H5: Starter Pack 1 in Templates, Elements, Text and Graphics.
   // I2: browse panels; Graphics lives inside Elements.
+  // X4 (spec section 5): code animation templates in My Templates (this
+  // browser, not the project, not an undo step).
+  const dataUrlOf = (blob: Blob) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  const saveCodeTemplate = async (
+    item: CodeImport,
+    thumbnail: Blob | null,
+  ): Promise<CodeTemplate | null> => {
+    const template: CodeTemplate = {
+      kind: 'code',
+      id: crypto.randomUUID(),
+      name: item.name,
+      category:
+        item.tier === 'A'
+          ? 'spec'
+          : typeof item.meta.category === 'string' && item.meta.category
+            ? item.meta.category
+            : 'code',
+      createdAt: new Date().toISOString(),
+      tier: item.tier,
+      source: item.tier === 'A' ? JSON.stringify(item.spec) : item.source,
+      meta:
+        item.tier === 'A'
+          ? {
+              duration: item.duration,
+              scenes: item.scenes,
+              params: item.paramSpecs as unknown as Record<string, unknown>[],
+            }
+          : (item.meta as unknown as Record<string, unknown>),
+      params: item.tier === 'A' ? item.overrides : item.params,
+      ...(thumbnail ? { thumbnail: await dataUrlOf(thumbnail) } : {}),
+    };
+    try {
+      codeTemplates.save(template);
+      return template;
+    } catch {
+      showToast(t('code.templateFull'), 'error');
+      return null;
+    }
+  };
+  /** Inserts a code template at `time` on a new lane, one undo step. */
+  const insertCodeTemplate = async (template: CodeTemplate, time: number) => {
+    session.setPlaying(false);
+    const current = session.source.composition;
+    if (template.tier === 'A') {
+      const built = await tierACommands(JSON.parse(template.source), {
+        project: engine.state,
+        current,
+        mode: 'current',
+        at: time,
+        overrides: template.params as ParamValues,
+      });
+      engine.commands.transaction('Insert code template', built.commands);
+      if (built.notBuilt.length)
+        showToast(
+          t('code.notBuilt', { items: built.notBuilt.join('; ') }),
+          'warning',
+        );
+      return;
+    }
+    const built = codeLayerCommands(
+      current,
+      {
+        tier: template.tier,
+        source: template.source,
+        meta: template.meta,
+        params: template.params,
+        templateId: template.id,
+        name: template.name,
+      },
+      time,
+    );
+    engine.commands.transaction('Insert code template', built.commands);
+    session.select(built.layerId);
+  };
+  /** Hover: the first two seconds play at 12 frames a second. */
+  let hovering: { id: string; stop: () => void } | null = null;
+  const codeHover = (
+    template: CodeTemplate,
+    thumb: HTMLElement,
+    on: boolean,
+  ) => {
+    if (hovering && (!on || hovering.id !== template.id)) {
+      hovering.stop();
+      hovering = null;
+    }
+    if (!on || template.tier === 'A' || hovering) return;
+    let stopped = false;
+    const image = document.createElement('img');
+    image.className = 'code-hover';
+    image.alt = '';
+    let url = '';
+    const stop = () => {
+      stopped = true;
+      image.remove();
+      thumb.removeAttribute('data-playing');
+      if (url) URL.revokeObjectURL(url);
+    };
+    hovering = { id: template.id, stop };
+    void (async () => {
+      const meta = codeMeta(template);
+      const fps = 12;
+      const duration = Math.min(2, meta.duration);
+      const width = 160;
+      const height = Math.max(
+        1,
+        Math.round(
+          (width * session.source.composition.height) /
+            session.source.composition.width,
+        ),
+      );
+      const codeSession = await openCodeSession(
+        template.tier as 'B' | 'C',
+        template.source,
+        {
+          width,
+          height,
+          fps,
+          duration,
+          params: codeParams(template) as ParamValues,
+          seed: codeSeedOf(template),
+        },
+      );
+      try {
+        thumb.append(image);
+        const frames = Math.max(1, Math.floor(duration * fps));
+        for (let frame = 0; frame < frames && !stopped; frame++) {
+          const bitmap = await codeSession.renderFrame(frame);
+          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+          canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+          bitmap.close();
+          const blob = await canvas.convertToBlob({ type: 'image/png' });
+          if (stopped) break;
+          if (url) URL.revokeObjectURL(url);
+          url = URL.createObjectURL(blob);
+          image.src = url;
+          thumb.dataset.playing = String(frame + 1);
+          await new Promise((resolve) => setTimeout(resolve, 1000 / fps));
+        }
+      } finally {
+        codeSession.dispose();
+      }
+    })().catch(() => stop());
+  };
+  const codeTemplateInput = document.createElement('input');
+  codeTemplateInput.type = 'file';
+  codeTemplateInput.accept = '.json,application/json';
+  codeTemplateInput.hidden = true;
+  codeTemplateInput.id = 'code-template-file';
+  root.append(codeTemplateInput);
+  const importCodeTemplateText = (text: string) => {
+    try {
+      const template = importCodeTemplate(text);
+      codeTemplates.save(template);
+      showToast(t('code.templateImported', { name: template.name }), 'success');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : String(error),
+        'error',
+      );
+    }
+  };
+  codeTemplateInput.onchange = async () => {
+    const file = codeTemplateInput.files?.[0];
+    codeTemplateInput.value = '';
+    if (file) importCodeTemplateText(await file.text());
+  };
+  const codeMenuElement = document.createElement('div');
+  codeMenuElement.className = 'media-menu';
+  codeMenuElement.id = 'code-template-menu';
+  codeMenuElement.hidden = true;
+  document.body.append(codeMenuElement);
+  const codeMenu = createMenu(codeMenuElement, { report: reportError });
+  document.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (
+        !codeMenuElement.hidden &&
+        !codeMenuElement.contains(event.target as Node)
+      )
+        codeMenu.close();
+    },
+    true,
+  );
+  const codeTemplateMenu = (template: CodeTemplate, x: number, y: number) => {
+    codeMenu.open(() => [
+      {
+        id: 'code-template-insert',
+        label: t('code.templateInsert'),
+        icon: 'plus',
+        run: () =>
+          void insertCodeTemplate(template, session.currentTime).catch(
+            reportError,
+          ),
+      },
+      {
+        id: 'code-template-rename',
+        label: t('code.templateRename'),
+        icon: 'edit',
+        run: () =>
+          void promptDialog(t('code.templateRename'), template.name, {
+            label: t('myTemplates.name'),
+            confirmLabel: t('code.templateRename'),
+            cancelLabel: t('code.cancel'),
+            maxLength: 100,
+          }).then((name) => {
+            if (name?.trim())
+              codeTemplates.update(template.id, { name: name.trim() });
+          }),
+      },
+      {
+        id: 'code-template-duplicate',
+        label: t('code.templateDuplicate'),
+        icon: 'duplicate',
+        run: () =>
+          codeTemplates.duplicate(
+            template.id,
+            t('code.templateCopy', { name: template.name }),
+          ),
+      },
+      {
+        id: 'code-template-export',
+        label: t('code.templateExport'),
+        icon: 'export',
+        run: () =>
+          download(
+            new Blob([exportCodeTemplate(template)], {
+              type: 'application/json',
+            }),
+            `${template.name.replace(/[^\w.-]+/g, '-')}.aive-template.json`,
+          ),
+      },
+      {
+        id: 'code-template-delete',
+        label: t('code.templateDelete'),
+        icon: 'delete',
+        divider: true,
+        run: () => {
+          const removed = codeTemplates.remove(template.id);
+          if (!removed) return;
+          showToast(
+            t('code.templateDeleted', { name: template.name }),
+            'info',
+            8000,
+            {
+              label: t('code.templateRestore'),
+              run: () => codeTemplates.restore(removed.template, removed.index),
+            },
+          );
+        },
+      },
+    ]);
+    const width = codeMenuElement.offsetWidth,
+      height = codeMenuElement.offsetHeight;
+    codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
+    codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  };
   const libraryBrowsers = mountLibraryPanels(
     {
       Templates: element('#library-templates'),
@@ -1681,6 +2403,15 @@ export function mountEditorShell(
       addTextBox: () => {
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
+      },
+      code: {
+        insert: (template) =>
+          void insertCodeTemplate(template, session.currentTime).catch(
+            reportError,
+          ),
+        menu: codeTemplateMenu,
+        hover: codeHover,
+        importFile: () => codeTemplateInput.click(),
       },
     },
   );
@@ -1951,6 +2682,42 @@ export function mountEditorShell(
   const mediaInput = element<HTMLInputElement>('#import-media-input');
   element<HTMLButtonElement>('#import-media').onclick = () =>
     mediaInput.click();
+  // X2: the Import menu: media, or a code animation.
+  const importMenuButton = element<HTMLButtonElement>('#import-menu');
+  importMenuButton.onclick = () => {
+    const menu = document.createElement('div');
+    menu.className = 'import-menu';
+    menu.setAttribute('role', 'menu');
+    const entry = (
+      id: string,
+      label: string,
+      icon: string,
+      run: () => void,
+    ) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.id = id;
+      button.setAttribute('role', 'menuitem');
+      button.innerHTML = `${iconSvg(icon, 16)}<span></span>`;
+      button.querySelector('span')!.textContent = label;
+      button.onclick = () => {
+        popover.close();
+        safely(run);
+      };
+      menu.append(button);
+    };
+    entry('import-media-item', t('code.importMedia'), 'media', () =>
+      mediaInput.click(),
+    );
+    entry('import-code', t('code.importCode'), 'code', () => openCodeImport());
+    importMenuButton.setAttribute('aria-expanded', 'true');
+    const popover = openPopover(importMenuButton, menu, {
+      label: t('code.importMenu'),
+      className: 'import-menu-popover',
+      onClose: () => importMenuButton.setAttribute('aria-expanded', 'false'),
+    });
+    menu.querySelector<HTMLButtonElement>('button')?.focus();
+  };
   // J8: the empty timeline's hint rows add text, or open Media (with the file
   // picker) or Audio.
   let leaveRecord: (() => void) | undefined;
@@ -2351,6 +3118,7 @@ export function mountEditorShell(
   // Project Media card or library card drag that a test or browser still
   // sends as HTML5 data is a reference, never a file (MED-015 regression).
   const dropOverlay = element('#drop-overlay');
+  const CODE_FILE = /\.(json|js|mjs|html?)$/i;
   let dragDepth = 0;
   const isFileDrag = (event: DragEvent) =>
     !!event.dataTransfer?.types.includes('Files') &&
@@ -2388,7 +3156,20 @@ export function mountEditorShell(
     if (!isFileDrag(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    const files = [...(event.dataTransfer?.files ?? [])];
+    const dropped = [...(event.dataTransfer?.files ?? [])];
+    // X2: code files open the import dialog; media files import as before.
+    const code = dropped.filter((file) => CODE_FILE.test(file.name));
+    const files = dropped.filter((file) => !CODE_FILE.test(file.name));
+    if (code[0])
+      void code[0]
+        .text()
+        .then((text) =>
+          // X4: an exported code template file imports into My Templates.
+          isCodeTemplateFile(text)
+            ? importCodeTemplateText(text)
+            : openCodeImport({ text, fileName: code[0]!.name }),
+        )
+        .catch(reportError);
     if (!files.length) return;
     const over = event.target instanceof Element ? event.target : null;
     const onCanvas = over === canvas;
@@ -2845,7 +3626,7 @@ export function mountEditorShell(
         ? { label: 'Add shape', commands, layerId: created.layer.id }
         : null;
     }
-    if (payload.kind === 'mine') return null;
+    if (payload.kind === 'mine' || payload.kind === 'code') return null;
     const item =
       payload.kind === 'textbox'
         ? ('textbox' as const)
@@ -3123,6 +3904,9 @@ export function mountEditorShell(
     else if (payload.kind === 'mine') {
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
+    } else if (payload.kind === 'code') {
+      const template = codeTemplates.find(payload.id);
+      if (template) void insertCodeTemplate(template, time).catch(reportError);
     } else if (payload.kind === 'preset') {
       const commands = addShapeCommands(
         session.source,
@@ -3175,7 +3959,7 @@ export function mountEditorShell(
               ? { width: aw * fit, height: ah * fit, dx: 0, dy: 0 }
               : { width: 240, height: 135, dx: 120, dy: 67.5 };
         }
-      } else if (payload.kind === 'mine')
+      } else if (payload.kind === 'mine' || payload.kind === 'code')
         value = { width: w, height: h, dx: 0, dy: 0, whole: true };
       else {
         let commands: Command[] | null = null;
@@ -3512,6 +4296,23 @@ export function mountEditorShell(
     session,
     /** Dev/test-only read-only snapshot (the test hook's getMedia). */
     mediaDebug: () => ({
+      // X1: each code layer's bake (state, frames stored and total).
+      code: codeLayersOf(session.source.composition).map((layer) => {
+        const spec = codeSpec(layer.id);
+        const job = spec ? codeBaker.job(spec.cacheKey) : undefined;
+        return {
+          layerId: layer.id,
+          cacheKey: spec?.cacheKey ?? '',
+          quality: codeFrames.qualityOf(layer.id),
+          state:
+            spec && codeCache.complete(spec.cacheKey)
+              ? 'done'
+              : (job?.state ?? 'none'),
+          stored: spec ? codeCache.stored(spec.cacheKey) : 0,
+          total: spec?.frames ?? 0,
+          error: job?.error ?? null,
+        };
+      }),
       audio: audio.debug,
       video: frames.debug,
       transport: timeline?.playback.clock ?? session.currentTime,
@@ -3583,6 +4384,7 @@ export function mountEditorShell(
       recordPanel.dispose();
       positionPanel.dispose();
       frames.dispose();
+      codeBaker.dispose();
       previews.dispose();
       audio.dispose();
       waveforms.dispose();

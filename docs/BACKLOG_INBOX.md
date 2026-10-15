@@ -76,3 +76,6 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - J9: the drag image and J8's clip-loading shimmer are built but have no automated proof.
 - T1: the scene strip, scenes board and Layers rows still use HTML5 drag and drop for reordering (not in the T1 source list); they could move to the drag controller too.
 - T7 (D-175): the timeline track header's toggles (lock, eye, solo, mute, up, down) are 20 × 32 px; 32 × 32 hit areas need a wider track header, which moves every timeline coordinate (headerWidth). Planned with a track header redesign.
+- X5: noise and spatial effects (Vaporwave, VHS, Glitch, blurs, chromatic aberration) are computed on a scratch canvas the size of the editor's canvas, so their pattern in the preview differs from the export (which uses the output size); measured on a code layer at 100 % zoom: max 63/255 for Vaporwave, 0 for Color shift. Rendering effects at composition size in the preview would make them match.
+- X5: rotated vector shapes rasterize with slightly different anti-aliased edges in the editor view and in the export frame (up to 31/255 on the example cards' edges at 100 % zoom), independent of code layers.
+- X3: code layers have no live (unbaked) render while scrubbing for seekable or Tier B code (the spec's "may"); they show the nearest baked frame until the bake reaches the playhead.

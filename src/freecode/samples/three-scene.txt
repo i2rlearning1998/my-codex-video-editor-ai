@@ -1,0 +1,71 @@
+let scene,camera,renderer,group,p;
+export default {
+ meta: {
+  "id": "three-scene",
+  "name": "02 / Orbital sculpture",
+  "version": "1.0.0",
+  "category": "Original studies",
+  "duration": 4,
+  "fps": 24,
+  "seekable": true,
+  "keepFrame": false,
+  "thumbnailTime": 2,
+  "libs": [
+    "three"
+  ],
+  "params": [
+    {
+      "name": "accent",
+      "label": "Accent",
+      "type": "color",
+      "default": "#62f5d0"
+    },
+    {
+      "name": "secondary",
+      "label": "Secondary",
+      "type": "color",
+      "default": "#8976ff"
+    },
+    {
+      "name": "speed",
+      "label": "Motion speed",
+      "type": "number",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1
+    },
+    {
+      "name": "count",
+      "label": "Detail count",
+      "type": "number",
+      "min": 8,
+      "max": 100,
+      "step": 1,
+      "default": 40
+    },
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "text",
+      "default": "FORM / MOTION",
+      "maxLength": 36
+    }
+  ]
+},
+ async init({canvas, params, size, fps, seed, libs, rng}) {
+
+ p=params;const T=libs.three;scene=new T.Scene();camera=new T.PerspectiveCamera(38,size.width/size.height,.1,100);camera.position.set(0,0,10);
+ renderer=new T.WebGLRenderer(helpers.rendererOptions(canvas));renderer.setSize(size.width,size.height,false);renderer.setClearColor(0x000000,0);
+ scene.add(new T.AmbientLight(0xffffff,1.2));const key=new T.DirectionalLight(0xffffff,4);key.position.set(4,5,6);scene.add(key);const rim=new T.PointLight(p.secondary,55);rim.position.set(-3,-2,3);scene.add(rim);
+ group=new T.Group();scene.add(group);const material=new T.MeshStandardMaterial({color:p.accent,metalness:.65,roughness:.23});
+ const center=new T.Mesh(new T.TorusKnotGeometry(1,.29,180,24),material);group.add(center);
+ for(let i=0;i<Math.round(p.count);i++){const a=i/p.count*Math.PI*2;const mesh=new T.Mesh(new T.IcosahedronGeometry(.06+(i%4)*.022,1),new T.MeshStandardMaterial({color:i%2?p.accent:p.secondary,metalness:.35,roughness:.3}));mesh.position.set(Math.cos(a)*2.8,Math.sin(a)*2.8,Math.sin(a*3)*.5);group.add(mesh);}
+
+ },
+ renderFrame({t, frame, dt}) {
+
+ const q=t*p.speed;group.rotation.set(.25+Math.sin(q*.4)*.2,q*.35,.08*Math.sin(q));camera.position.x=Math.sin(q*.3)*.5;camera.lookAt(0,0,0);renderer.render(scene,camera);
+
+ }
+};

@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "id": "lower-third",
+  "title": "Speaker identification",
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "scenes": [
+    {
+      "id": "speaker",
+      "name": "Speaker",
+      "duration": 5,
+      "items": [
+        {
+          "id": "bar",
+          "name": "bar",
+          "kind": "shape",
+          "start": 0,
+          "duration": 5,
+          "shape": "rectangle",
+          "fill": "#10242c",
+          "width": 760,
+          "height": 140,
+          "transform": {
+            "x": 60,
+            "y": 520
+          }
+        },
+        {
+          "id": "speaker",
+          "name": "speaker",
+          "kind": "text",
+          "start": 0,
+          "duration": 5,
+          "text": {
+            "$param": "speaker"
+          },
+          "width": 1000,
+          "height": 160,
+          "fontSize": 42,
+          "transform": {
+            "x": 90,
+            "y": 550
+          }
+        },
+        {
+          "id": "role",
+          "name": "role",
+          "kind": "text",
+          "start": 0,
+          "duration": 5,
+          "text": "Creative technologist",
+          "width": 1000,
+          "height": 160,
+          "fontSize": 26,
+          "transform": {
+            "x": 90,
+            "y": 610
+          },
+          "fill": "#64e3c3"
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "speaker",
+      "label": "Speaker",
+      "type": "text",
+      "default": "Sam Rivera",
+      "maxLength": 60
+    }
+  ]
+}

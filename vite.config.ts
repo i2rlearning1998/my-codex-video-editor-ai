@@ -41,6 +41,8 @@ export default defineConfig({
   },
   // The export worker imports mediabunny; pre-bundling it at startup avoids the dev
   // server reloading the page when it first discovers the dependency (W5-A).
-  optimizeDeps: { include: ['mediabunny'] },
+  // X1: the block compiler loads TypeScript lazily; pre-bundled so its first
+  // use never makes the dev server reload the page.
+  optimizeDeps: { include: ['mediabunny', 'typescript'] },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 });

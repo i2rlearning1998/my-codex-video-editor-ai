@@ -66,11 +66,16 @@ export class MediaFrames implements FrameProvider {
     this.#buffering = false;
   }
 
+  /** X1: code animations answer from their frame cache (set by the shell). */
+  code: FrameProvider | null = null;
+
   frame(
     request: MediaFrameRequest,
     playing: boolean,
   ): CanvasImageSource | null {
     if (this.#disposed) return null;
+    if (request.kind === 'code')
+      return this.code?.frame(request, playing) ?? null;
     const url = this.#url(request.assetId);
     if (!url) return null;
     return request.kind === 'image'

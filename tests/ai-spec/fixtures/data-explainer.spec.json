@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "id": "data-explainer",
+  "title": "Pipeline progress",
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "scenes": [
+    {
+      "id": "numbers",
+      "name": "Numbers",
+      "duration": 8,
+      "items": [
+        {
+          "id": "total",
+          "name": "total",
+          "kind": "code-block",
+          "start": 0,
+          "duration": 8,
+          "blockId": "counter",
+          "blockVersion": "1.0.0",
+          "params": {
+            "to": {
+              "$param": "count"
+            },
+            "suffix": " records"
+          },
+          "seed": 7,
+          "transform": {
+            "scale": 0.65,
+            "x": 60,
+            "y": 0
+          }
+        },
+        {
+          "id": "pipeline",
+          "name": "pipeline",
+          "kind": "code-block",
+          "start": 0,
+          "duration": 8,
+          "blockId": "data-pipeline",
+          "blockVersion": "1.0.0",
+          "params": {
+            "labels": "LOAD,CLEAN,CHECK,SEND"
+          },
+          "seed": 7,
+          "transform": {
+            "scale": 0.65,
+            "x": 60,
+            "y": 280
+          }
+        },
+        {
+          "id": "caption",
+          "name": "caption",
+          "kind": "text",
+          "start": 0,
+          "duration": 8,
+          "text": "From raw input to useful output",
+          "width": 1000,
+          "height": 160,
+          "fontSize": 30,
+          "transform": {
+            "x": 180,
+            "y": 610
+          }
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "count",
+      "label": "Record count",
+      "type": "number",
+      "min": 0,
+      "max": 1000000,
+      "step": 1,
+      "default": 1200
+    }
+  ]
+}

@@ -4,7 +4,12 @@
 // the new end (as far as their media allows), and a shorter length trims every
 // clip that runs past it. Nothing is deleted; a length that would cut a clip
 // away entirely is refused with a message. One undo step.
-import { clipTrimBounds, retimeClip, type Command } from '../core';
+import {
+  clipSourceDuration,
+  clipTrimBounds,
+  retimeClip,
+  type Command,
+} from '../core';
 import { formatNumber, t } from '../i18n';
 import type { RenderSource } from '../render/adapter';
 
@@ -37,7 +42,9 @@ export function sceneLengthCommands(
       const bounds = clipTrimBounds(
         composition,
         clip.id,
-        mediaDuration(clip.assetId),
+        clip.assetId
+          ? mediaDuration(clip.assetId)
+          : clipSourceDuration(composition, source.assets, clip),
       );
       next = Math.min(bounds.maxEnd, length);
     } else {

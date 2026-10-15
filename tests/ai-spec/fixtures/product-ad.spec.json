@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "id": "product-ad",
+  "title": "Uploaded product image with parallax",
+  "canvas": {
+    "width": 1280,
+    "height": 720,
+    "fps": 30
+  },
+  "scenes": [
+    {
+      "id": "hero",
+      "name": "Hero",
+      "duration": 6,
+      "items": [
+        {
+          "id": "product",
+          "name": "Uploaded product photograph",
+          "kind": "media-slot",
+          "slot": "product-photo",
+          "start": 0,
+          "duration": 6,
+          "width": 1280,
+          "height": 720,
+          "depth": 0.35,
+          "fx": [
+            {
+              "id": "adjust.contrast",
+              "params": {
+                "amount": 0.1
+              },
+              "seed": 11
+            }
+          ]
+        },
+        {
+          "id": "promise",
+          "name": "promise",
+          "kind": "text",
+          "start": 0,
+          "duration": 6,
+          "text": {
+            "$param": "promise"
+          },
+          "width": 1000,
+          "height": 160,
+          "fill": "#ffffff",
+          "transform": {
+            "x": 80,
+            "y": 100
+          }
+        },
+        {
+          "id": "price",
+          "name": "price",
+          "kind": "text",
+          "start": 0,
+          "duration": 6,
+          "text": "Designed for everyday adventures",
+          "width": 1000,
+          "height": 160,
+          "fontSize": 30,
+          "transform": {
+            "x": 80,
+            "y": 590
+          }
+        }
+      ],
+      "cameraMoves": [
+        {
+          "id": "push-in",
+          "start": 0,
+          "duration": 6,
+          "from": {
+            "x": 0,
+            "y": 0,
+            "zoom": 1,
+            "rotation": 0,
+            "shake": {
+              "amplitude": 0,
+              "frequency": 4,
+              "seed": 17
+            }
+          },
+          "to": {
+            "x": 45,
+            "y": 15,
+            "zoom": 1.15,
+            "rotation": 0,
+            "shake": {
+              "amplitude": 0,
+              "frequency": 4,
+              "seed": 17
+            }
+          },
+          "easing": "ease-in-out"
+        }
+      ]
+    }
+  ],
+  "parameters": [
+    {
+      "name": "promise",
+      "label": "Headline",
+      "type": "text",
+      "default": "TAKE THE LONG WAY HOME",
+      "maxLength": 60
+    }
+  ],
+  "assets": [
+    {
+      "id": "product-photo",
+      "kind": "image",
+      "description": "Owner-uploaded product photo",
+      "assetId": "uploaded_product_photo"
+    }
+  ]
+}

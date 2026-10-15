@@ -1,0 +1,67 @@
+let c,p,w,h;
+let stars;
+export default {
+ meta: {
+  "id": "parallax",
+  "name": "10 / Quiet horizons",
+  "version": "1.0.0",
+  "category": "Original studies",
+  "duration": 4,
+  "fps": 24,
+  "seekable": true,
+  "keepFrame": false,
+  "thumbnailTime": 2,
+  "libs": [],
+  "params": [
+    {
+      "name": "accent",
+      "label": "Accent",
+      "type": "color",
+      "default": "#62f5d0"
+    },
+    {
+      "name": "secondary",
+      "label": "Secondary",
+      "type": "color",
+      "default": "#8976ff"
+    },
+    {
+      "name": "speed",
+      "label": "Motion speed",
+      "type": "number",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1
+    },
+    {
+      "name": "count",
+      "label": "Detail count",
+      "type": "number",
+      "min": 8,
+      "max": 100,
+      "step": 1,
+      "default": 40
+    },
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "text",
+      "default": "FORM / MOTION",
+      "maxLength": 36
+    }
+  ]
+},
+ async init({canvas, ctx, params, size, fps, seed, libs, rng}) {
+c=ctx;p=params;w=size.width;h=size.height;stars=Array.from({length:Math.round(p.count)},()=>({x:110+rng()*1700,y:220+rng()*440,r:.8+rng()*2}));
+ },
+ renderFrame({t, frame, dt}) {
+c.save();c.scale(w/1920,h/1080);
+ c.save();c.beginPath();c.roundRect(100,190,1720,720,30);c.clip();
+ const sky=c.createLinearGradient(0,190,0,910);sky.addColorStop(0,'#10192d');sky.addColorStop(1,p.secondary);c.fillStyle=sky;c.fillRect(100,190,1720,720);
+ for(const star of stars){c.fillStyle='#d9e8ff';c.globalAlpha=.45+.2*Math.sin(t*.3+star.x);c.beginPath();c.arc(star.x,star.y,star.r,0,Math.PI*2);c.fill();}c.globalAlpha=1;
+ c.fillStyle=p.accent;c.shadowColor=p.accent;c.shadowBlur=45;c.beginPath();c.arc(1390-Math.sin(t*p.speed*.2)*20,365,70,0,Math.PI*2);c.fill();c.shadowBlur=0;
+ for(let layer=0;layer<4;layer++){c.fillStyle=['#465071','#303c60','#202c48','#121f35'][layer];const offset=Math.sin(t*p.speed*.25)*(layer+1)*25;c.beginPath();c.moveTo(60,1000);for(let x=60;x<=1900;x+=20){const y=620+layer*85+Math.sin((x+offset)*(.004+layer*.001)+layer)*55+helpers.valueNoise(14+layer,(x+offset)/200,0)*70;c.lineTo(x,y);}c.lineTo(1900,1000);c.closePath();c.fill();}c.restore();
+c.fillStyle='#dce8fa';c.font='600 24px Arial';c.fillText(p.title,110,120);c.fillStyle=p.accent;c.fillRect(110,144,64,3);c.fillStyle='#8b9eb8';c.font='20px Arial';c.fillText('PROCEDURAL LANDSCAPES    /    DEPTH STUDY',110,970);c.restore();
+ }
+};

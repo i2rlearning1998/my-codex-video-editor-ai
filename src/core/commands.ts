@@ -4,6 +4,7 @@ import {
   assertJson,
   assetSchema,
   compositionSchema,
+  codeLayerSchema,
   clipSchema,
   createLayer,
   idSchema,
@@ -313,6 +314,16 @@ export const commandSchema = z.discriminatedUnion('type', [
       layerId: idSchema,
       startTime: z.number().finite().nonnegative(),
       duration: z.number().finite().positive(),
+    })
+    .strict(),
+  // X1: an imported code animation's source, params and bake key (null
+  // removes the code; the layer then shows its placeholder).
+  z
+    .object({
+      type: z.literal('SET_LAYER_CODE'),
+      ...location,
+      layerId: idSchema,
+      code: codeLayerSchema.nullable(),
     })
     .strict(),
   // H3: Replace swaps the picture or footage behind a layer (and its clip).
@@ -866,6 +877,14 @@ export function applyCommand(project: Project, command: Command): void {
         shiftKeyframes(layer, command.startTime - layer.startTime);
       layer.startTime = command.startTime;
       layer.duration = command.duration;
+      return;
+    }
+    case 'SET_LAYER_CODE': {
+      const { layer } = requireLayer(composition, command.layerId);
+      if (layer.type !== 'video' || layer.assetId !== null)
+        throw new Error('Only a code animation layer can hold code');
+      if (command.code === null) delete layer.code;
+      else layer.code = structuredClone(command.code);
       return;
     }
     case 'SET_LAYER_ASSET': {

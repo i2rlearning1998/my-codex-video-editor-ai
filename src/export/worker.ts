@@ -46,6 +46,9 @@ import { drawSceneTransition } from '../render/scene-transitions';
 import { measureWithContext } from '../render/text-style';
 import type { TextMeasurer } from '../render/text-layout';
 import { fitMatrix, frameTimes, type ExportSettings } from './settings';
+import { openMediaStore } from '../media/store';
+import { frameKey, pngCodec } from '../code-layer/cache';
+import { cacheKeyOf } from '../code-layer/meta';
 
 export interface ExportJob {
   id: string;
@@ -171,7 +174,9 @@ async function run(job: ExportJob): Promise<void> {
   const plan = times.map((time) =>
     drawsAt(time).map((at) =>
       deriveRenderItems(sourceAt(at)).items.flatMap((item) =>
-        item.media?.kind === 'video' ? [item.media] : [],
+        item.media?.kind === 'video' || item.media?.kind === 'code'
+          ? [item.media]
+          : [],
       ),
     ),
   );
@@ -180,7 +185,29 @@ async function run(job: ExportJob): Promise<void> {
     { input: Input; samples: AsyncGenerator<VideoSample | null, void, unknown> }
   >();
   const flat = plan.flat(2);
-  for (const key of new Set(flat.map((request) => request.key))) {
+  // X1: code animations read their baked Full-quality frames from the same
+  // frame cache the preview draws (the main thread baked them first).
+  const codeStore = flat.some((request) => request.kind === 'code')
+    ? await openMediaStore()
+    : null;
+  const codeFrame = async (request: MediaFrameRequest) => {
+    const code = request.code;
+    if (!code || !codeStore) return null;
+    const blob = await codeStore.read(
+      frameKey(
+        cacheKeyOf(code.bakeKey, code.width, code.height, code.fps, 'full'),
+        code.frame,
+      ),
+    );
+    if (!blob)
+      throw new Error(
+        'A code animation frame is missing from the cache; export again.',
+      );
+    return pngCodec.decode(blob);
+  };
+  for (const key of new Set(
+    flat.filter((request) => request.kind === 'video').map((r) => r.key),
+  )) {
     const requests = flat.filter((request) => request.key === key);
     const blob = job.videos[requests[0]!.assetId];
     if (!blob) continue;
@@ -271,6 +298,7 @@ async function run(job: ExportJob): Promise<void> {
     matrix: fitMatrix(job.composition, settings.width, settings.height),
   };
   const open: VideoSample[] = [];
+  const codeImages: ImageBitmap[] = [];
   try {
     for (const [index, time] of times.entries()) {
       if (cancelled) throw new DOMException('Export cancelled', 'AbortError');
@@ -279,6 +307,14 @@ async function run(job: ExportJob): Promise<void> {
       for (const requests of plan[index]!) {
         const ready = new Map<string, CanvasImageSource>();
         for (const request of requests) {
+          if (request.kind === 'code') {
+            const image = await codeFrame(request);
+            if (image) {
+              codeImages.push(image);
+              ready.set(request.key, image);
+            }
+            continue;
+          }
           const decoder = decoders.get(request.key);
           const next = decoder ? await decoder.samples.next() : null;
           const sample = next && !next.done ? next.value : null;
@@ -320,12 +356,14 @@ async function run(job: ExportJob): Promise<void> {
       await pushAudioUntil(timestamp + 1);
       await video.add(timestamp, 1 / settings.fps);
       for (const sample of open.splice(0)) sample.close();
+      for (const image of codeImages.splice(0)) image.close();
       post({ type: 'progress', done: index + 1, total: times.length });
     }
     await pushAudioUntil(Infinity);
     await output.finalize();
   } catch (error) {
     for (const sample of open.splice(0)) sample.close();
+    for (const image of codeImages.splice(0)) image.close();
     await output.cancel().catch(() => undefined);
     if (folder) await folder.removeEntry(name).catch(() => undefined);
     if ((error as { name?: string }).name === 'AbortError') {

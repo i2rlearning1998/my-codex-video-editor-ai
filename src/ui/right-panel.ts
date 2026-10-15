@@ -105,6 +105,7 @@ export const RIGHT_SECTIONS = [
   'Captions',
   'Transitions',
   'Speech',
+  'Code',
 ] as const;
 export type RightSection = (typeof RIGHT_SECTIONS)[number];
 export const RIGHT_ICONS: Record<RightSection, string> = {
@@ -119,6 +120,7 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Captions: 'captions',
   Transitions: 'transitions',
   Speech: 'text',
+  Code: 'code',
 };
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
  *  Effects open, listing what they will hold; Transitions is the J12 panel
@@ -213,6 +215,25 @@ export const ttsClip = (session: EditorSession) => {
   const found = findClipByLayer(session.source.composition, roots[0]!.id);
   return found && readTtsSettings(found.clip) ? found.clip : null;
 };
+/** X2: the selected code animation layer, if exactly one is selected. */
+export const codeLayerSelected = (session: EditorSession) => {
+  const roots = selectionRoots(session.source, session.selectedIds);
+  return roots.length === 1 && roots[0]!.type === 'video' && roots[0]!.code
+    ? roots[0]!
+    : null;
+};
+/** X2 and X3: a code layer's rail: Animation settings after Properties, the
+ *  picture tools of a video, and no sound or captions (it has none). */
+const CODE_TABS: RightSection[] = [
+  'Properties',
+  'Code',
+  'Fade',
+  'Filters',
+  'Effects',
+  'Adjust',
+  'Speed',
+  'Animate',
+];
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
   // V7 (spec 11.5): Text to speech, opened from Record & create.
@@ -222,7 +243,7 @@ export function sectionsFor(session: EditorSession): RightSection[] {
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session))
     return [...TABS.audio, 'Speech'];
-  const tabs = TABS[kindOf(session)];
+  const tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
   return focusedClip(session) ? [...tabs, 'Transitions'] : tabs;
 }
 /**
@@ -268,6 +289,8 @@ export interface RightPanelHooks {
       | 'spacing'
       | 'canvas-size',
   ) => HTMLElement | null;
+  /** X2: the Animation settings of the selected code layer. */
+  codeBody?: () => readonly (HTMLElement | null)[];
   /** V7: Text to speech's Save. */
   tts?: TtsHooks;
   /** V7: decodes clip sound for the Audio tab's loudness analysis. */
@@ -809,7 +832,11 @@ export function mountRightPanel(
                   session.source.composition.layers,
                   clip.layerId,
                 )?.layer;
-                if (layer?.type === 'video' && !clipAudioDetached(clip)) {
+                if (
+                  layer?.type === 'video' &&
+                  layer.assetId &&
+                  !clipAudioDetached(clip)
+                ) {
                   registerAudioCommands(engine);
                   commands.push(
                     audioCommand(session.source.composition.id, clip.id, {
@@ -1465,26 +1492,31 @@ export function mountRightPanel(
                       ? filters()
                       : section === 'Effects'
                         ? effects()
-                        : section === 'Speech'
-                          ? speech()
-                          : section === 'Transitions'
-                            ? transitions()
-                            : section === 'Audio'
-                              ? [
-                                  heading(
-                                    t('panel.audio'),
-                                    t('right.audioHint'),
-                                  ),
-                                  ...audioTab(
-                                    engine,
-                                    session,
-                                    run,
-                                    report,
-                                    hooks.audioDecoder,
-                                    rerender,
-                                  ),
-                                ]
-                              : [];
+                        : section === 'Code'
+                          ? [
+                              heading(t('panel.code')),
+                              ...(hooks.codeBody?.() ?? []),
+                            ]
+                          : section === 'Speech'
+                            ? speech()
+                            : section === 'Transitions'
+                              ? transitions()
+                              : section === 'Audio'
+                                ? [
+                                    heading(
+                                      t('panel.audio'),
+                                      t('right.audioHint'),
+                                    ),
+                                    ...audioTab(
+                                      engine,
+                                      session,
+                                      run,
+                                      report,
+                                      hooks.audioDecoder,
+                                      rerender,
+                                    ),
+                                  ]
+                                : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

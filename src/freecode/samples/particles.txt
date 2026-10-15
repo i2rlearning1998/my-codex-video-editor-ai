@@ -1,0 +1,68 @@
+let c,p,w,h;
+let particles;
+export default {
+ meta: {
+  "id": "particles",
+  "name": "01 / Collision field",
+  "version": "1.0.0",
+  "category": "Original studies",
+  "duration": 4,
+  "fps": 24,
+  "seekable": false,
+  "keepFrame": true,
+  "thumbnailTime": 2,
+  "libs": [],
+  "params": [
+    {
+      "name": "accent",
+      "label": "Accent",
+      "type": "color",
+      "default": "#62f5d0"
+    },
+    {
+      "name": "secondary",
+      "label": "Secondary",
+      "type": "color",
+      "default": "#8976ff"
+    },
+    {
+      "name": "speed",
+      "label": "Motion speed",
+      "type": "number",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1
+    },
+    {
+      "name": "count",
+      "label": "Detail count",
+      "type": "number",
+      "min": 8,
+      "max": 100,
+      "step": 1,
+      "default": 40
+    },
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "text",
+      "default": "FORM / MOTION",
+      "maxLength": 36
+    }
+  ]
+},
+ async init({canvas, ctx, params, size, fps, seed, libs, rng}) {
+c=ctx;p=params;w=size.width;h=size.height;particles=helpers.emitter(seed,Math.round(p.count),{x:960,y:540},180).map((v,i)=>({...v,x:160+rng()*1600,y:230+rng()*610,r:6+rng()*12}));
+ },
+ renderFrame({t, frame, dt}) {
+c.save();c.scale(w/1920,h/1080);
+ c.globalCompositeOperation='destination-out';c.fillStyle='rgba(0,0,0,0.12)';c.fillRect(0,0,1920,1080);c.globalCompositeOperation='source-over';
+ for(const a of particles){a.x+=a.vx*dt*p.speed;a.y+=a.vy*dt*p.speed;if(a.x<a.r+110||a.x>1810-a.r){a.vx*=-1;a.x=helpers.clamp(a.x,110+a.r,1810-a.r);}if(a.y<210+a.r||a.y>900-a.r){a.vy*=-1;a.y=helpers.clamp(a.y,210+a.r,900-a.r);}}
+ for(let i=0;i<particles.length;i++)for(let j=i+1;j<particles.length;j++){const a=particles[i],b=particles[j],dx=b.x-a.x,dy=b.y-a.y,d=Math.hypot(dx,dy),r=a.r+b.r;if(d>0&&d<r){const nx=dx/d,ny=dy/d,impulse=(a.vx-b.vx)*nx+(a.vy-b.vy)*ny;if(impulse>0){a.vx-=impulse*nx;a.vy-=impulse*ny;b.vx+=impulse*nx;b.vy+=impulse*ny;}const k=(r-d)/2;a.x-=nx*k;a.y-=ny*k;b.x+=nx*k;b.y+=ny*k;}}
+ c.lineWidth=1;c.strokeStyle=p.secondary;c.globalAlpha=.16;c.strokeRect(110,210,1700,690);c.globalAlpha=1;
+ for(const a of particles){c.shadowBlur=18;c.shadowColor=p.accent;c.fillStyle=p.accent;c.beginPath();c.arc(a.x,a.y,a.r,0,Math.PI*2);c.fill();}c.shadowBlur=0;
+ c.clearRect(0,0,1920,180);
+c.fillStyle='#dce8fa';c.font='600 24px Arial';c.fillText(p.title,110,120);c.fillStyle=p.accent;c.fillRect(110,144,64,3);c.fillStyle='#8398b3';c.font='20px Arial';c.fillText('KINETIC SYSTEMS     /     ELASTIC COLLISIONS',110,980);c.restore();
+ }
+};

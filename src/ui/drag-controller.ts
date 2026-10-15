@@ -10,7 +10,7 @@ import { setAssetDrag } from './drag-state';
 
 /** What a drag carries. */
 export interface DragPayload {
-  readonly kind: 'asset' | 'library' | 'preset' | 'mine' | 'textbox';
+  readonly kind: 'asset' | 'library' | 'preset' | 'mine' | 'textbox' | 'code';
   /** The asset id, library item id, shape preset or My Template id. */
   readonly id: string;
   readonly name: string;

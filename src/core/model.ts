@@ -2,7 +2,7 @@ import { isSceneTransitionMarker } from './scene-transitions';
 import { z } from 'zod';
 import { trackHolds } from './lanes';
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export const jsonSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -126,6 +126,24 @@ export const layerTypeSchema = z.enum([
   'text',
   'shape',
 ]);
+/**
+ * Schema 8 (X1, CODE-TIERS-SPEC section 5): an imported code animation. Only
+ * a picture-less `video` layer (assetId null) may carry it; it plays from a
+ * frame cache keyed by `bakeKey`. `meta` is the validated block metadata and
+ * `params` the current values of its declared params.
+ */
+export const CODE_SOURCE_LIMIT = 1_048_576;
+export const codeLayerSchema = z
+  .object({
+    tier: z.enum(['B', 'C']),
+    source: z.string().min(1).max(CODE_SOURCE_LIMIT),
+    meta: z.record(jsonSchema),
+    params: z.record(jsonSchema),
+    bakeKey: z.string().regex(/^[a-z0-9]{8,64}$/),
+    templateId: idSchema.optional(),
+  })
+  .strict();
+export type CodeLayer = z.infer<typeof codeLayerSchema>;
 export interface Layer {
   id: string;
   name: string;
@@ -138,6 +156,8 @@ export interface Layer {
   masks: [];
   assetId: string | null;
   children: Layer[];
+  /** Schema 8 (optional): an imported code animation (X1). */
+  code?: CodeLayer | undefined;
 }
 export const layerSchema: z.ZodType<Layer> = z.lazy(() =>
   z
@@ -153,9 +173,15 @@ export const layerSchema: z.ZodType<Layer> = z.lazy(() =>
       masks: z.tuple([]),
       assetId: idSchema.nullable(),
       children: z.array(layerSchema),
+      code: codeLayerSchema.optional(),
     })
     .strict()
     .superRefine((layer, ctx) => {
+      if (layer.code && (layer.type !== 'video' || layer.assetId !== null))
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Only a video layer without media can hold code',
+        });
       if (layer.type !== 'group' && layer.children.length)
         ctx.addIssue({
           code: 'custom',

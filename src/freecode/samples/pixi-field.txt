@@ -1,0 +1,68 @@
+let renderer,stage,p,objects=[];
+export default {
+ meta: {
+  "id": "pixi-field",
+  "name": "03 / Prism constellation",
+  "version": "1.0.0",
+  "category": "Original studies",
+  "duration": 4,
+  "fps": 24,
+  "seekable": true,
+  "keepFrame": false,
+  "thumbnailTime": 2,
+  "libs": [
+    "pixi"
+  ],
+  "params": [
+    {
+      "name": "accent",
+      "label": "Accent",
+      "type": "color",
+      "default": "#62f5d0"
+    },
+    {
+      "name": "secondary",
+      "label": "Secondary",
+      "type": "color",
+      "default": "#8976ff"
+    },
+    {
+      "name": "speed",
+      "label": "Motion speed",
+      "type": "number",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.1,
+      "default": 1
+    },
+    {
+      "name": "count",
+      "label": "Detail count",
+      "type": "number",
+      "min": 8,
+      "max": 100,
+      "step": 1,
+      "default": 40
+    },
+    {
+      "name": "title",
+      "label": "Title",
+      "type": "text",
+      "default": "FORM / MOTION",
+      "maxLength": 36
+    }
+  ]
+},
+ async init({canvas, params, size, fps, seed, libs, rng}) {
+
+ p=params;const P=libs.PIXI;renderer=new P.Renderer(helpers.rendererOptions(canvas));stage=new P.Container();stage.scale.set(size.width/1920,size.height/1080);
+ for(let i=0;i<Math.round(p.count);i++){const g=new P.Graphics();g.beginFill(Number((i%2?p.accent:p.secondary).replace('#','0x')),.8);g.drawPolygon([0,-24,20,0,0,24,-20,0]);g.endFill();stage.addChild(g);objects.push({g,a:rng()*Math.PI*2,r:110+rng()*590,s:.4+rng()});}
+ const text=new P.Text(p.title,{fontFamily:'Arial',fontSize:30,fill:0xdce8fa,letterSpacing:6});text.position.set(110,115);stage.addChild(text);
+
+ },
+ renderFrame({t, frame, dt}) {
+
+ const q=t*p.speed;for(const item of objects){const a=item.a+q*.16*item.s;item.g.position.set(960+Math.cos(a)*item.r,570+Math.sin(a)*item.r*.5);item.g.rotation=a+q*.3;item.g.scale.set(item.s*(.8+.2*Math.sin(q+item.a)));}renderer.render(stage);
+
+ }
+};

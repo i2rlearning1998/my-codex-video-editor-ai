@@ -6,6 +6,7 @@ import {
   clipSourceTime,
   clipTimeEffects,
   clipTrimBounds,
+  clipSourceDuration,
   effectiveLayerTiming,
   clipLinkId,
   createLayer,
@@ -664,8 +665,6 @@ export function stepClipSpeed(
       : [...SPEED_PRESETS].reverse().find((value) => value < clip.speed - 1e-9);
   if (next !== undefined) setClipSpeed(engine, session, next);
 }
-const assetDuration = (source: RenderSource, assetId: string | null) =>
-  source.assets.find((asset) => asset.id === assetId)?.duration;
 /** Keyboard move: shift selected clips by whole frames (one undo step). */
 export function nudgeClips(
   engine: EditorEngine,
@@ -768,7 +767,7 @@ export function trimClipToPlayhead(
   const bounds = clipTrimBounds(
     source.composition,
     clip.id,
-    assetDuration(source, clip.assetId),
+    clipSourceDuration(source.composition, source.assets, clip),
   );
   const time = session.currentTime;
   const timing =

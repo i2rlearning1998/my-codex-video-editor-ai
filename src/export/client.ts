@@ -119,7 +119,17 @@ export function startExport(
     store: Promise<MediaStore | null>;
     decoder: AudioDecoder;
     onProgress(progress: ExportProgress): void;
-    onPhase?(phase: 'preparing' | 'encoding'): void;
+    onPhase?(phase: 'preparing' | 'rendering' | 'encoding'): void;
+    /**
+     * X1: bakes the composition's code animations at Full quality before
+     * the worker reads their frames (progress over all their frames).
+     */
+    prepareCode?(
+      composition: DeepReadonly<Composition>,
+      progress: (done: number, total: number) => void,
+      cancelled: () => boolean,
+    ): Promise<void>;
+    onCodeProgress?(progress: ExportProgress): void;
   },
 ): ExportRun {
   let worker: Worker | null = null;
@@ -133,6 +143,15 @@ export function startExport(
     const store = await deps.store;
     const missing = await missingMedia(input, store);
     if (missing.length) throw new Error(`Missing media: ${missing.join(', ')}`);
+    if (deps.prepareCode) {
+      deps.onPhase?.('rendering');
+      await deps.prepareCode(
+        input.composition,
+        (done, total) => deps.onCodeProgress?.({ done, total }),
+        () => cancelled,
+      );
+      if (cancelled) return null;
+    }
     deps.onPhase?.('preparing');
     // Only one finished export is kept in storage at a time.
     if (store)

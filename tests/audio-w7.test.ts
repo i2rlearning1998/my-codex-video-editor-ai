@@ -24,7 +24,7 @@ test('[AUD-002][AUD-009] validated audio commands preserve schema, unrelated met
   };
   setClipAudio(engine, 'av-main', 'clip-tone', settings, 'Audio');
   expect(readAudioSettings(state())).toEqual(settings);
-  expect(engine.state.schemaVersion).toBe(7); // V7: ported onto schema 7
+  expect(engine.state.schemaVersion).toBe(8); // V7: ported onto schema 7
   expect(engine.history.undo).toHaveLength(1);
   engine.undo();
   expect(serializeProject(engine.state)).toBe(before);

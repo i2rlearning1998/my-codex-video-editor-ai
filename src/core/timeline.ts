@@ -144,6 +144,37 @@ export function retimeClip(
     sourceOut: Math.max(Math.max(0, sourceIn) + 1e-9, sourceOut),
   };
 }
+/**
+ * X1: the length of a clip's source in seconds: its media's duration, or a
+ * code animation's own duration; undefined for generated clips.
+ */
+export function clipSourceDuration(
+  composition: { readonly layers: readonly unknown[] },
+  assets: readonly {
+    readonly id: string;
+    readonly duration?: number | undefined;
+  }[],
+  clip: { readonly layerId: string; readonly assetId: string | null },
+): number | undefined {
+  if (clip.assetId)
+    return assets.find((asset) => asset.id === clip.assetId)?.duration;
+  interface Walk {
+    readonly id: string;
+    readonly children: readonly Walk[];
+    readonly code?: { readonly meta: Readonly<Record<string, unknown>> };
+  }
+  const find = (layers: readonly Walk[]): Walk | undefined => {
+    for (const layer of layers) {
+      if (layer.id === clip.layerId) return layer;
+      const inner = find(layer.children);
+      if (inner) return inner;
+    }
+    return undefined;
+  };
+  const duration = find(composition.layers as readonly Walk[])?.code?.meta
+    .duration;
+  return typeof duration === 'number' && duration > 0 ? duration : undefined;
+}
 /** Timeline limits for trimming: never into a neighbour on the same track, never
  * past the source media. `sourceDuration` is undefined for generated clips. */
 export function clipTrimBounds(

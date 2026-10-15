@@ -454,6 +454,8 @@ export function drawComposition(
         else context.drawImage(frame, 0, 0, item.size.width, item.size.height);
         return;
       }
+      // X1: a code layer is transparent until its frame is baked.
+      if (item.code) return;
       // H3: a placeholder with rounded corners or a border keeps them.
       if (item.picture && (item.picture.radius > 0 || item.picture.border)) {
         drawPicture(

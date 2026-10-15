@@ -47,12 +47,24 @@ export interface MediaFrameRequest {
   /** Stable per-layer key: each layer gets its own decoder. */
   readonly key: string;
   readonly assetId: string;
-  readonly kind: 'image' | 'video';
+  readonly kind: 'image' | 'video' | 'code';
   /** Source-media seconds, after speed, reverse and freeze (clipSourceTime). */
   readonly sourceTime: number;
   readonly speed: number;
   readonly reversed: boolean;
   readonly frozen: boolean;
+  /** X1: a code animation's baked frames (kind 'code'; assetId is unused). */
+  readonly code?: CodeFrameRequest;
+}
+export interface CodeFrameRequest {
+  readonly tier: 'B' | 'C';
+  readonly bakeKey: string;
+  /** The project canvas the bake fills (Full quality). */
+  readonly width: number;
+  readonly height: number;
+  readonly fps: number;
+  readonly frames: number;
+  readonly frame: number;
 }
 /**
  * Injected, read-only frame lookup. The renderer asks and draws; decoding and
@@ -164,6 +176,8 @@ export interface RenderItem {
   readonly media?: MediaFrameRequest;
   /** I1.7: the layer's media was deleted (or never imported here). */
   readonly missing?: boolean;
+  /** X1: a code animation; transparent until its frame is baked. */
+  readonly code?: boolean;
   /** SHP-019: a freehand drawing's stroke in local coordinates. */
   readonly path?: DrawingPath;
   /** H3: a picture's crop, rounded corners and border. */
@@ -435,7 +449,9 @@ export function deriveRenderItems(input: RenderSource): {
           layer.assetId &&
           !missing
             ? mediaRequest(source, layer, layer.type, layer.assetId)
-            : undefined;
+            : layer.code
+              ? codeRequest(source, layer)
+              : undefined;
         items.push(
           Object.freeze({
             ...(wrapped ? { lines: wrapped.lines } : {}),
@@ -449,6 +465,7 @@ export function deriveRenderItems(input: RenderSource): {
               ? { shape: shapeOf(layer)! }
               : {}),
             ...(media ? { media } : {}),
+            ...(layer.code ? { code: true } : {}),
             ...(missing ? { missing: true } : {}),
             ...(pictureOf(layer) ? { picture: pictureOf(layer)! } : {}),
             ...(source.cropView?.layerId === layer.id
@@ -519,6 +536,49 @@ export function isMissingAsset(
 ): boolean {
   const asset = assets.find((item) => item.id === id);
   return !asset || (asset.metadata as Record<string, unknown>).removed === true;
+}
+/** X1: the baked frame a code layer shows now (after speed and reverse). */
+function codeRequest(
+  source: RenderSource,
+  layer: SceneLayer,
+): MediaFrameRequest {
+  const code = layer.code as unknown as {
+    readonly tier: 'B' | 'C';
+    readonly bakeKey: string;
+    readonly meta: Readonly<Record<string, unknown>>;
+  };
+  const meta = code.meta;
+  const duration = Math.min(
+    120,
+    Math.max(
+      0.1,
+      typeof meta.duration === 'number' && Number.isFinite(meta.duration)
+        ? meta.duration
+        : 5,
+    ),
+  );
+  const fps =
+    typeof meta.fps === 'number' && meta.fps > 0
+      ? meta.fps
+      : source.composition.fps;
+  const frames = Math.max(1, Math.ceil(duration * fps - 1e-6));
+  const timed = mediaRequest(source, layer, 'video', layer.id);
+  return Object.freeze({
+    ...timed,
+    kind: 'code' as const,
+    code: Object.freeze({
+      tier: code.tier,
+      bakeKey: code.bakeKey,
+      width: source.composition.width,
+      height: source.composition.height,
+      fps,
+      frames,
+      frame: Math.min(
+        frames - 1,
+        Math.max(0, Math.floor(Math.max(0, timed.sourceTime) * fps + 1e-6)),
+      ),
+    }),
+  });
 }
 function mediaRequest(
   source: RenderSource,
