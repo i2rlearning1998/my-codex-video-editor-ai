@@ -36,7 +36,20 @@
 
 ## 3. Checks
 
-VERIFY_RESULTS
+- `npm run verify` was run twice, on Node 20 (CI's major).
+  - **Run 1** stopped in unit tests. KEY-001 required every registered command to run, and the P1 code commands had no code layer in that test. The test now builds one (8a89c52).
+  - **Run 2** (the one rerun): **exit 1**.
+    - Format, typecheck and build passed.
+    - Unit and jsdom: **881 passed in 76 files**.
+    - e2e: **466 passed, 5 failed** (1.2 h, one worker).
+- The 5 failures:
+  - **LAY-038** (right panel width animation) passes alone, so it is a timing flake.
+  - **ANI-003 ×4** (`e2e/code-layer-poc.spec.ts`, the blocks gallery scrub) time out at 30 s every time, alone too. The gallery page and its test reading the canvas pixels are unchanged since the X-series. They fail the same way on `claude/x-series` (checked in a clean worktree). They passed in the X-series verify, so this is environment drift in this sandbox, not a P-series change. It is recorded here and not hidden.
+- E2E browser: Chromium 141 (sandbox fallback, D-030).
+- Ledger (run alone, because verify stops at the e2e failure): `Ledger: 712 items | Verified 394 | Claimed 17 | Todo 299 | Dropped 2` · `Ledger OK`.
+- The targeted P specs all pass:
+  - p1 ×3, p2 ×4, p3 ×3, p4 ×1
+  - tests/p-series.test.ts ×4
 
 ## 4. Try-it script for the owner (about 10 minutes)
 
