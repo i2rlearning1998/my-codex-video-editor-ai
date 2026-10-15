@@ -2,6 +2,16 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## QT-series (Q1 to Q5, T1, T2) — 2026-10-15
+
+- **Groups (Q1):** lengthening, trimming or moving a group clip carries its children; Ungroup works on normal groups by baking the group's transform; a background group is one block; a refused Ungroup shows one toast.
+- **Presets and Controls (Q2):** Animate › Creator starts with None and highlights only the applied preset; Controls say what is animated ("Animating: Scale - 0.0s to 1.0s"); Remove animation; no orphan controls after deleting keyframes; Delete removes only the clicked keyframe.
+- **Keyframes and pivot (Q3):** bigger, clearer keyframe diamonds; an Anchor grid for every layer; Spin and other presets turn about it.
+- **AI import (Q4):** an AI category grouped by kind, AI chips, checks that run on their own and a result card that opens the AI tab.
+- **Animations setting (Q5):** Settings › Animations Auto, On or Off, so panels animate even when the system asks for reduced motion.
+- **Themes (T1):** a Theme panel with 8 built-in themes, one-step apply, palette slots, My themes and theme items in Creator Packs.
+- **Copy AI brief (T2):** one block to paste into Claude: the task, the project, the live library, the rules and your request.
+
 ## P-series (P1 to P4), Creator Pack in the editor — 2026-10-15
 
 - **Code-layer usability (P1):** a code layer's own canvas and timeline menus (Edit code, Controls, Save as template, Re-render; no picture or sound items); its thumbnail and "Rendering n %" before the first frames, never a blank clip, and playback from the first baked frames; live Draft render while a control is dragged, re-bake on release.
