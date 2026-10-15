@@ -1,3 +1,8 @@
+- **P-series (P1 to P4)** is on `claude/p-series`, draft PR #30 stacked on `claude/x-series` (PR #28), not merged; see reports/P-SERIES.md.
+  - Codex's `origin/codex/creator-pack` (PR #29) is merged unchanged; its parser, schemas and preset engine are only called.
+  - **P1** code-layer menus, poster before the first frames, live Draft render (D-237). **P2** Import creator pack, render checks, My library, panels (D-238).
+  - **P3** Creator presets as keyframes, Controls (only what the layer has), Edited manually, Add animation (D-239). **P4** Copy library index for AI (D-250).
+  - Schema is still 8 (presets are a `preset` string property); no new npm dependencies.
 - **X-series (X1 to X6)** is on `claude/x-series`, draft PR #28 stacked on `claude/v7-series` (PR #26), not merged; see reports/X-SERIES.md.
   - **X1** the code layer (**schema 8**, one optional layer field `code`; D-218), a PNG frame cache in OPFS with budgets and LRU (D-219), one render path for preview and export (D-231), the runtime interface and a FakeRuntime (D-232).
   - **X2** the import dialog (A, B or C; plain-language errors; D-233). **X3** Animation settings in the right rail (D-234). **X4** code templates in My Templates (D-235).
