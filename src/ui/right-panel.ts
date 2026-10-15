@@ -60,6 +60,7 @@ import {
   SPEED_PRESETS,
 } from './editing';
 import { guardCommands } from './editor-mode';
+import { controlledLayer, hasControls } from './controls-panel';
 import { iconSvg } from './icons';
 import { documentColors } from './palette';
 import { audioCommand, audioTab } from './right-panel/audio-tab';
@@ -243,7 +244,12 @@ export function sectionsFor(session: EditorSession): RightSection[] {
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session))
     return [...TABS.audio, 'Speech'];
-  const tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
+  let tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
+  // P3 (spec 5.1b): Controls follow Properties when the layer has keyframes
+  // or a Creator preset (only what it really has).
+  const controlled = controlledLayer(session);
+  if (controlled && hasControls(controlled) && !tabs.includes('Code'))
+    tabs = [tabs[0]!, 'Code', ...tabs.slice(1)];
   return focusedClip(session) ? [...tabs, 'Transitions'] : tabs;
 }
 /**

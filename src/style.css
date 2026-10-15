@@ -8597,3 +8597,35 @@ input[type='range'] {
   width: 100%;
   justify-content: center;
 }
+/* P3: Controls (presets, the simple view and Add animation). */
+.controls-preset,
+.controls-simple,
+.controls-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--color-border);
+}
+.controls-preset-name,
+.controls-group-name {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+.controls-group-name {
+  color: var(--color-text-muted);
+}
+.controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.controls-group .is-disabled,
+.controls-more .is-disabled {
+  opacity: 0.5;
+}
+.controls-add-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}

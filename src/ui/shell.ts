@@ -18,7 +18,23 @@ import {
 import { createParamsForm } from './code-params';
 import { stableJson } from '../code-layer/hash';
 import { download } from '../export/client';
-import { CreatorLibrary, creatorLibraryId } from './creator-library';
+import {
+  CreatorLibrary,
+  creatorLibraryId,
+  type CreatorEntry,
+} from './creator-library';
+import { libraryIndex } from './library-index';
+import { presetControls } from '../creator-pack/preset';
+import { blocks } from '../blocks/starters';
+import { SYSTEM_FONTS } from '../render/text-style';
+import {
+  controlledLayer,
+  controlsBody,
+  presetFits,
+  type ControlsDeps,
+  type CreatorPresetChoice,
+} from './controls-panel';
+import { presetCommands, readPresets } from './creator-presets';
 import {
   openCreatorPackDialog,
   type CreatorPackAdd,
@@ -38,7 +54,7 @@ import {
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
 import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
-import { retimeClip } from '../core';
+import { IN_OUT_PRESETS, LOOP_PRESETS, retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
@@ -906,6 +922,14 @@ export function mountEditorShell(
     engine,
     session,
     reportError,
+    {
+      list: () => creatorPresets(),
+      applied: (layerId) => {
+        const found = locateLayer(session.source.composition.layers, layerId);
+        return found ? readPresets(found.layer).map((item) => item.id) : [];
+      },
+      apply: (id) => applyCreatorPreset(id),
+    },
   );
   // H4: the right panel's sections other than Properties.
   const rightPanel = mountRightPanel(
@@ -2039,11 +2063,86 @@ export function mountEditorShell(
       },
     });
   };
+  /** P4: "Copy library index for AI" (plain text under 40 KB). */
+  const copyLibraryIndex = async () => {
+    await creatorLibrary.ready;
+    const manifest = await loadLibrary().catch(() => null);
+    const composition = session.source.composition;
+    const packs = new Map<string, CreatorEntry[]>();
+    for (const entry of creatorLibrary.list())
+      packs.set(entry.packId, [...(packs.get(entry.packId) ?? []), entry]);
+    const controlsOf = (entry: CreatorEntry): string[] => {
+      const item = entry.item;
+      if (item.type === 'preset')
+        return presetControls(item.data).map((control) => control.name);
+      if (item.type === 'motion')
+        return (entry.motionMeta?.params ?? []).map((param) => param.name);
+      return (item.controls ?? []).map((control) => control.name);
+    };
+    const text = libraryIndex({
+      canvas: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+      },
+      fonts: SYSTEM_FONTS.map(([name]) => name),
+      animate: {
+        in: IN_OUT_PRESETS,
+        out: IN_OUT_PRESETS,
+        loop: LOOP_PRESETS,
+        creator: creatorPresets().map((item) => item.id),
+      },
+      fx: {
+        filters: filters.map((item) => item.id),
+        effects: effects.map((item) => item.id),
+        adjust: adjustments.map((item) => item.id),
+        transitions: transitions.map((item) => item.id),
+      },
+      blocks: blocks.map((block) => ({
+        id: block.id,
+        name: block.name,
+        kind: 'block',
+        controls: block.params.map((param) => param.name),
+      })),
+      groups: [
+        {
+          title: 'Built-in library',
+          items: (manifest?.items ?? []).map((item) => ({
+            id: item.id,
+            name: item.name.en,
+            kind: item.type,
+            tags: item.tags,
+          })),
+        },
+        ...[...packs].map(([packId, entries]) => ({
+          title: `Creator pack ${packId} v${entries[0]!.packVersion} "${entries[0]!.packName.en}"`,
+          items: entries.map((entry) => ({
+            id: creatorLibraryId(entry.key),
+            name: entry.item.name.en,
+            kind: entry.item.type,
+            tags: entry.item.tags,
+            controls: controlsOf(entry),
+          })),
+        })),
+      ],
+    });
+    await navigator.clipboard.writeText(text).then(
+      () =>
+        showToast(
+          t('creator.indexCopied', {
+            size: formatNumber(Math.ceil(new Blob([text]).size / 1024)),
+          }),
+          'success',
+        ),
+      () => showToast(t('creator.reportCopyFailed'), 'error'),
+    );
+  };
   /** X2: the Animation settings panel of the selected code layer. */
   const codeBody = (): HTMLElement[] => {
     const layer = codeLayerSelected(session);
     const code = layer ? codeOf(layer.id) : null;
-    if (!layer || !code) return [];
+    // P3: any other layer's Controls (presets and keyframes it has).
+    if (!layer || !code) return controlsBody(controlsDeps);
     const meta = codeMeta(code);
     const info = document.createElement('div');
     info.className = 'code-info';
@@ -2175,6 +2274,51 @@ export function mountEditorShell(
     }
     return parts;
   };
+  /** P3: the Creator presets of My library (Animate > Creator, Add animation). */
+  const creatorPresets = (): CreatorPresetChoice[] =>
+    creatorLibrary.presets().flatMap((entry) =>
+      entry.item.type === 'preset'
+        ? [
+            {
+              id: creatorLibraryId(entry.key),
+              name: entry.name,
+              preset: entry.item.data,
+            },
+          ]
+        : [],
+    );
+  const controlsDeps: ControlsDeps = {
+    engine,
+    session,
+    presets: creatorPresets,
+    report: (error) => reportError(error),
+    confirm: (text) =>
+      confirmDialog(escapeHtml(text), {
+        titleText: escapeHtml(t('controls.reset')),
+        confirmLabel: t('controls.reset'),
+        cancelLabel: t('code.cancel'),
+      }),
+    rerender: () => rightPanel.render(activeSection as RightSection),
+  };
+  /** P3: applies a Creator preset to the selected layer (one undo step). */
+  const applyCreatorPreset = (id: string) =>
+    safely(() => {
+      const choice = creatorPresets().find((item) => item.id === id);
+      const layer = controlledLayer(session) ?? codeLayerSelected(session);
+      if (!choice || !layer) return;
+      const found = locateLayer(session.source.composition.layers, layer.id);
+      if (!found) return;
+      if (!presetFits(choice.preset, found.layer))
+        throw new Error(t('controls.notFor', { name: choice.name }));
+      session.setPlaying(false);
+      engine.commands.transaction(
+        t('controls.applyStep'),
+        presetCommands(session.source.composition, found.layer, {
+          ...choice,
+          params: {},
+        }),
+      );
+    });
   /** P1: the pause after a released control before its re-bake. */
   const CODE_APPLY_DELAY = 300;
   /** X3: staged param values of one code layer (not yet applied). */
@@ -3044,6 +3188,9 @@ export function mountEditorShell(
     entry('import-code', t('code.importCode'), 'code', () => openCodeImport());
     entry('import-creator', t('creator.importMenu'), 'elements', () =>
       openCreatorImport(),
+    );
+    entry('import-index', t('creator.copyIndex'), 'copy', () =>
+      copyLibraryIndex(),
     );
     importMenuButton.setAttribute('aria-expanded', 'true');
     const popover = openPopover(importMenuButton, menu, {

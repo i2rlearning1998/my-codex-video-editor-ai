@@ -16,7 +16,14 @@ import type { DeepPanelHandle } from './side-panel';
 import { createNumberField } from './components/number-field';
 import { createSelect } from './components/select';
 
-type Tab = 'in' | 'out' | 'loop' | 'kenBurns';
+type Tab = 'in' | 'out' | 'loop' | 'kenBurns' | 'creator';
+/** P3: Animate > Creator, the Creator presets of My library. */
+export interface CreatorAnimate {
+  list(): readonly { id: string; name: string }[];
+  /** The preset ids the layer has applied. */
+  applied(layerId: string): readonly string[];
+  apply(id: string): void;
+}
 const DEFAULT_DURATION = 0.5;
 const DEFAULT_PERIOD = 1.5;
 
@@ -25,6 +32,7 @@ export function mountAnimatePanel(
   engine: EditorEngine,
   session: EditorSession,
   report: (error: unknown) => void,
+  creator?: CreatorAnimate,
 ) {
   // U5: rendered in the right panel's Animate tab (it was the G1.5 left
   // side panel).
@@ -131,6 +139,8 @@ export function mountAnimatePanel(
     const animation = clipAnimation(clip);
     const isImage = layer.type === 'image';
     if (tab === 'kenBurns' && !isImage) tab = 'in';
+    const creators = creator?.list() ?? [];
+    if (tab === 'creator' && !creators.length) tab = 'in';
     const tabs = document.createElement('div');
     tabs.className = 'animate-tabs';
     tabs.setAttribute('role', 'tablist');
@@ -139,6 +149,7 @@ export function mountAnimatePanel(
       'out',
       'loop',
       ...(isImage ? ['kenBurns'] : []),
+      ...(creators.length ? ['creator'] : []),
     ] as Tab[]) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -156,9 +167,10 @@ export function mountAnimatePanel(
     cards.className = 'animate-cards';
     const extras: HTMLElement[] = [];
     if (tab === 'in' || tab === 'out') {
-      const current = animation[tab];
+      const slot: 'in' | 'out' = tab;
+      const current = animation[slot];
       cards.append(
-        card(t('animate.none'), !current, () => set(tab, null), {
+        card(t('animate.none'), !current, () => set(slot, null), {
           preset: 'none',
         }),
         ...IN_OUT_PRESETS.map((preset) =>
@@ -166,7 +178,7 @@ export function mountAnimatePanel(
             t(`animate.preset.${preset}`),
             current?.preset === preset,
             () =>
-              set(tab, {
+              set(slot, {
                 preset,
                 duration: current?.duration ?? DEFAULT_DURATION,
                 ...(preset === 'slide' ? { direction: 'up' } : {}),
@@ -184,7 +196,7 @@ export function mountAnimatePanel(
             current.duration,
             0.1,
             5,
-            (duration) => set(tab, { ...current, duration }),
+            (duration) => set(slot, { ...current, duration }),
           ),
         );
         if (current.preset === 'slide') {
@@ -196,7 +208,7 @@ export function mountAnimatePanel(
               value: direction,
               label: t(`animate.direction.${direction}`),
             })),
-            onChange: (direction) => set(tab, { ...current, direction }),
+            onChange: (direction) => set(slot, { ...current, direction }),
           });
           extras.push(wrap);
         }
@@ -231,6 +243,18 @@ export function mountAnimatePanel(
             (period) => set('loop', { ...current, period }),
           ),
         );
+    } else if (tab === 'creator') {
+      const applied = new Set(creator?.applied(layer.id) ?? []);
+      cards.append(
+        ...creators.map((item) =>
+          card(
+            item.name,
+            applied.has(item.id),
+            () => safely(() => creator?.apply(item.id)),
+            { preset: item.id, creator: 'true' },
+          ),
+        ),
+      );
     } else {
       const current = animation.kenBurns;
       cards.append(
