@@ -4231,16 +4231,26 @@ button.color-swatch-trigger {
   padding: var(--space-3) var(--space-4);
 }
 
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-motion='on']) *,
+  :root:not([data-motion='on']) *::before,
+  :root:not([data-motion='on']) *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }
-  .skeleton {
+  :root:not([data-motion='on']) .skeleton {
     animation: none;
   }
+}
+:root[data-motion='off'] *,
+:root[data-motion='off'] *::before,
+:root[data-motion='off'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+}
+:root[data-motion='off'] .skeleton {
+  animation: none;
 }
 
 #composition-canvas:focus-visible {
@@ -4854,11 +4864,16 @@ button.color-swatch-trigger {
     opacity: 0;
   }
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .scene-crossfade {
+  :root:not([data-motion='on']) .scene-crossfade {
     display: none;
   }
 }
+:root[data-motion='off'] .scene-crossfade {
+  display: none;
+}
+
 .toolbar-chip-label {
   color: var(--text-secondary);
   font-weight: var(--weight-medium);
@@ -5280,12 +5295,18 @@ button.color-swatch-trigger {
     opacity: 1;
   }
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .browse-enter-forward,
-  .browse-enter-back,
-  .browse-thumb.title-preview img {
+  :root:not([data-motion='on']) .browse-enter-forward,
+  :root:not([data-motion='on']) .browse-enter-back,
+  :root:not([data-motion='on']) .browse-thumb.title-preview img {
     animation: none;
   }
+}
+:root[data-motion='off'] .browse-enter-forward,
+:root[data-motion='off'] .browse-enter-back,
+:root[data-motion='off'] .browse-thumb.title-preview img {
+  animation: none;
 }
 
 /* I2: the Save as template dialog. */
@@ -5912,10 +5933,14 @@ button.number-field-step:focus-visible {
   background-size: 400% 100%;
   animation: skeleton 1.4s ease infinite;
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .timeline-clip.clip-loading {
+  :root:not([data-motion='on']) .timeline-clip.clip-loading {
     animation: none;
   }
+}
+:root[data-motion='off'] .timeline-clip.clip-loading {
+  animation: none;
 }
 
 /* J9: drag and drop. The drag image, the canvas drop box, the timeline's
@@ -6935,10 +6960,14 @@ input[type='range'] {
     transform: rotate(12deg);
   }
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .animate-thumb i {
+  :root:not([data-motion='on']) .animate-thumb i {
     animation: none !important;
   }
+}
+:root[data-motion='off'] .animate-thumb i {
+  animation: none !important;
 }
 
 /* U6: the frame panel stays at the timeline's bottom right; the playback
@@ -7379,13 +7408,20 @@ input[type='range'] {
 .editor-shell > #rail-right {
   transition: opacity var(--motion-panel) var(--ease-enter);
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .editor-shell,
-  .editor-shell > .inspector,
-  .editor-shell > #rail-right {
+  :root:not([data-motion='on']) .editor-shell,
+  :root:not([data-motion='on']) .editor-shell > .inspector,
+  :root:not([data-motion='on']) .editor-shell > #rail-right {
     transition: none !important;
   }
 }
+:root[data-motion='off'] .editor-shell,
+:root[data-motion='off'] .editor-shell > .inspector,
+:root[data-motion='off'] .editor-shell > #rail-right {
+  transition: none !important;
+}
+
 /* Right rail (spec 1.5): 65 px, 24 px icons, 10 px labels, ~62 px pitch;
    the active item is a 56 x 58 rounded box with a 3 px accent bar at the
    far right edge. */
@@ -8744,7 +8780,7 @@ input[type='range'] {
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
   background: var(--color-accent);
-  color: var(--text-on);
+  color: var(--text-on-accent);
   font-size: var(--font-size-xs);
   font-weight: 600;
 }
@@ -8760,4 +8796,18 @@ input[type='range'] {
 }
 .creator-result p {
   margin: 0;
+}
+/* Q5: Settings. */
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.settings-label {
+  font-weight: 600;
+}
+.settings-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
 }

@@ -251,13 +251,20 @@
     color-scheme: light;
   }
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  :root {
+  :root:not([data-motion='on']) {
     --motion-fast: 1ms;
     --motion-base: 1ms;
     --motion-panel: 1ms;
     --motion-slow: 1ms;
   }
+}
+:root[data-motion='off'] {
+  --motion-fast: 1ms;
+  --motion-base: 1ms;
+  --motion-panel: 1ms;
+  --motion-slow: 1ms;
 }
 
 /* Legacy names (Waves 1 to G): every earlier rule keeps working and follows

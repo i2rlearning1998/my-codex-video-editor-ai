@@ -1564,5 +1564,13 @@
   "creator.resultAdded": "Added {count} items to My library. Open the AI tab to use them.",
   "creator.resultSame": "Nothing new: this pack version is already in My library.",
   "creator.done": "Done",
-  "creator.openAi": "Open AI tab"
+  "creator.openAi": "Open AI tab",
+  "settings.title": "Settings",
+  "settings.motion": "Animations",
+  "settings.motion.auto": "Auto",
+  "settings.motion.on": "On",
+  "settings.motion.off": "Off",
+  "settings.motionSystem": "System reduce-motion: {value}",
+  "settings.yes": "yes",
+  "settings.no": "no"
 }

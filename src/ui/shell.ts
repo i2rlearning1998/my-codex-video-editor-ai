@@ -25,6 +25,13 @@ import {
 } from './creator-library';
 import { libraryIndex } from './library-index';
 import { mountAiPanel } from './ai-panel';
+import {
+  MOTION_SETTINGS,
+  applyMotion,
+  readMotion,
+  reducedNow,
+  systemReducesMotion,
+} from './motion';
 import { presetControls } from '../creator-pack/preset';
 import { blocks } from '../blocks/starters';
 import { SYSTEM_FONTS } from '../render/text-style';
@@ -312,6 +319,7 @@ export function mountEditorShell(
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
           <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
           <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
+          <button type="button" id="open-settings" role="menuitem">${iconSvg('adjust')}${t('settings.title')}</button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.help')}">
           <div class="app-menu-label">${t('menu.help')}</div>
@@ -2474,7 +2482,7 @@ export function mountEditorShell(
   );
   // I1.3, I1.4: adding library items by click, drop and the template dialog.
   const crossfade = () => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    if (reducedNow()) return;
     try {
       const snapshot = document.createElement('img');
       snapshot.className = 'scene-crossfade';
@@ -4802,6 +4810,45 @@ export function mountEditorShell(
   themeButton.onclick = () => cycleThemePreference();
   element<HTMLButtonElement>('#theme-menu').onclick = () =>
     cycleThemePreference();
+  // Q5: Settings › Animations (Auto, On, Off) with the system signal shown.
+  applyMotion(readMotion());
+  element<HTMLButtonElement>('#open-settings').onclick = () => {
+    element('#app-menu').hidden = true;
+    const handle = openModal({
+      titleText: t('settings.title'),
+      bodyHtml: `
+        <div class="settings-row">
+          <span class="settings-label" id="motion-label">${t('settings.motion')}</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="motion-label" id="motion-setting">
+            ${MOTION_SETTINGS.map((value) => `<button type="button" role="radio" data-motion-value="${value}">${t(`settings.motion.${value}`)}</button>`).join('')}
+          </div>
+          <p class="settings-note" id="motion-system">${t('settings.motionSystem', { value: t(systemReducesMotion() ? 'settings.yes' : 'settings.no') })}</p>
+        </div>
+        <div class="modal-actions"><button type="button" class="button primary" id="settings-done">${t('creator.done')}</button></div>`,
+    });
+    const sync = () => {
+      const current = readMotion();
+      for (const button of handle.root.querySelectorAll<HTMLElement>(
+        '[data-motion-value]',
+      ))
+        button.setAttribute(
+          'aria-checked',
+          String(button.dataset.motionValue === current),
+        );
+    };
+    for (const button of handle.root.querySelectorAll<HTMLButtonElement>(
+      '[data-motion-value]',
+    ))
+      button.onclick = () => {
+        applyMotion(
+          button.dataset.motionValue as (typeof MOTION_SETTINGS)[number],
+        );
+        sync();
+      };
+    handle.root.querySelector<HTMLButtonElement>('#settings-done')!.onclick =
+      () => handle.close();
+    sync();
+  };
   const unsubscribeTheme = onThemeChange(() => {
     applyThemeControls();
     // The canvas overlays and stage follow the theme.

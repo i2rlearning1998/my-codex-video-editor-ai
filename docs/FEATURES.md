@@ -920,7 +920,7 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-013 | P1 | W8 | Claimed | AI-made items show a small AI chip in every library panel and the Media panel (Q4) |
 | QT-014 | P1 | W8 | Verified | The creator pack dialog checks a pasted or chosen pack automatically; Add selected to library is enabled as soon as one item passed; each item says pass, warning or rejected with a plain reason (Q4) |
 | QT-015 | P1 | W8 | Verified | After an import a result card says how many items were added and opens the AI category (Q4) |
-| QT-016 | P1 | W8 | Todo | Settings > Animations (Auto, On, Off; default Auto) controls panel transitions, with a system reduce-motion diagnostic; On animates even when the system asks for reduced motion (Q5) |
+| QT-016 | P1 | W8 | Verified | Settings > Animations (Auto, On, Off; default Auto) controls panel transitions, with a system reduce-motion diagnostic; On animates even when the system asks for reduced motion (Q5) |
 | QT-017 | P1 | W8 | Todo | A Theme panel (right tab and left rail) lists 8 built-in themes with previews (T1) |
 | QT-018 | P1 | W8 | Todo | Apply theme recolours text, fonts, palette-slot fills, the background and the default easing in one undo step; manual colours stay unless Also override manual colors is ticked (T1) |
 | QT-019 | P1 | W8 | Todo | Layers made from a theme or an AI item remember their palette slot, so a theme switch recolours them (T1) |

@@ -1564,5 +1564,13 @@
   "creator.resultAdded": "{count} आइटम मेरी लाइब्रेरी में जोड़े गए। उन्हें इस्तेमाल करने के लिए AI टैब खोलें।",
   "creator.resultSame": "कुछ नया नहीं: यह पैक संस्करण पहले से मेरी लाइब्रेरी में है।",
   "creator.done": "हो गया",
-  "creator.openAi": "AI टैब खोलें"
+  "creator.openAi": "AI टैब खोलें",
+  "settings.title": "सेटिंग्स",
+  "settings.motion": "एनिमेशन",
+  "settings.motion.auto": "स्वचालित",
+  "settings.motion.on": "चालू",
+  "settings.motion.off": "बंद",
+  "settings.motionSystem": "सिस्टम में गति कम करें: {value}",
+  "settings.yes": "हाँ",
+  "settings.no": "नहीं"
 }
