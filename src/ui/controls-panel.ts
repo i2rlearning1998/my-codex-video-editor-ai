@@ -43,6 +43,8 @@ export interface ControlsDeps {
   readonly report: (error: unknown) => void;
   readonly confirm: (text: string) => Promise<boolean>;
   readonly rerender: () => void;
+  /** T1: default control values from the current theme's motion style. */
+  readonly defaults?: (preset: Preset) => Record<string, unknown>;
 }
 
 const safeId = (text: string) => text.replace(/[^A-Za-z0-9_-]/g, '_');
@@ -261,7 +263,7 @@ export function controlsBody(deps: ControlsDeps): HTMLElement[] {
           t('controls.addStep'),
           presetCommands(session.source.composition, current, {
             ...choice,
-            params: {},
+            params: deps.defaults?.(choice.preset) ?? {},
           }),
         );
       } catch (error) {

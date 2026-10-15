@@ -147,7 +147,17 @@ export function checkPack(input: unknown, options: CheckOptions): PackResult {
           `Tier ${item.data.tier}: static checks passed; render, determinism and control-use checks are still required.`,
         );
       } else if (item.type === 'preset') validatePreset(item.data);
-      else if (item.type === 'composition') {
+      else if (item.type === 'theme') {
+        // T1: the text colour must read on the background (WCAG AA, 4.5:1).
+        const ratio = contrast(
+          item.data.palette.text,
+          item.data.palette.background,
+        );
+        if (ratio < 4.5)
+          throw Error(
+            `Low contrast: text ${item.data.palette.text} on background ${item.data.palette.background} is ${ratio.toFixed(2)}:1; use at least 4.5:1.`,
+          );
+      } else if (item.type === 'composition') {
         result.reasons.push(...checkComposition(item.data.spec, fullIds));
         result.needsRuntimeCheck = true;
         result.reasons.push(
@@ -248,4 +258,19 @@ export function checkPack(input: unknown, options: CheckOptions): PackResult {
     reasons,
     report: `Creator pack ${pack.pack.id}: ${items.filter((i) => i.status !== 'rejected').length}/${items.length} items pass offline checks.\n${reasons.map((r) => 'Warning: ' + r + '\n').join('')}${summary}\nOffline only: no code executed, rendered, registered or applied.`,
   };
+}
+
+/** WCAG relative-luminance contrast of two #rrggbb colours. */
+function contrast(a: string, b: string): number {
+  const luminance = (hex: string) => {
+    const [r, g, bl] = [1, 3, 5].map((index) => {
+      const value = parseInt(hex.slice(index, index + 2), 16) / 255;
+      return value <= 0.03928
+        ? value / 12.92
+        : Math.pow((value + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * bl!;
+  };
+  const [high, low] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (high! + 0.05) / (low! + 0.05);
 }

@@ -26,6 +26,13 @@ interface SceneLike {
 
 export const isSceneTransitionMarker = (marker: { readonly label: string }) =>
   marker.label.startsWith(SCENE_TRANSITION_PREFIX);
+/**
+ * T1: every reserved marker ('aive:' labels: scene transitions and the
+ * project's themes) is data, never a marker the user sees, snaps to or that
+ * sets a scene's length.
+ */
+export const isReservedMarker = (marker: { readonly label: string }) =>
+  marker.label.startsWith('aive:');
 
 /** The reserved marker of a scene's incoming transition, if any. */
 export function sceneTransitionMarker<M extends MarkerLike>(scene: {

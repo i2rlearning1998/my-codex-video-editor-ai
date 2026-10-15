@@ -44,6 +44,8 @@ test('[LAY-002] each rail category shows only its own panel, on first load, afte
     Record: 'Record',
     // Q4: the AI category is its own panel.
     AI: 'AI',
+    // T1: the Theme panel.
+    Theme: 'Theme',
     Scene: 'Scene',
   };
   for (const [category, panel] of Object.entries(expected)) {

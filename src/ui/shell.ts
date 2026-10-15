@@ -25,6 +25,19 @@ import {
 } from './creator-library';
 import { libraryIndex } from './library-index';
 import { mountAiPanel } from './ai-panel';
+import { mountThemePanel } from './theme-panel';
+import {
+  BUILT_IN_THEMES,
+  MOTION_STYLES,
+  applyThemeCommands,
+  projectThemes,
+  saveThemeCommand,
+  themeSchema,
+  updateThemeCommands,
+  withPaletteSlots,
+  type Theme,
+  type ThemeScene,
+} from '../themes/themes';
 import {
   MOTION_SETTINGS,
   applyMotion,
@@ -156,6 +169,7 @@ import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
 import { mountRecordPanel } from './record-panel';
 import { newTts, ttsState } from './right-panel/tts-panel';
+import { themeState } from './right-panel';
 import {
   registerTtsCommands,
   ttsCommand,
@@ -245,6 +259,8 @@ const RAIL_CATEGORIES = [
   'Audio',
   // Q4: everything imported from Creator Packs.
   'AI',
+  // T1: one-click themes.
+  'Theme',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -256,6 +272,7 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Scene: 'layers',
   Record: 'mic',
   AI: 'magic',
+  Theme: 'color',
 };
 export interface ShellActions {
   save?: () => void;
@@ -343,6 +360,7 @@ export function mountEditorShell(
         <div id="library-audio" data-rail-panel="Audio" hidden></div>
         <div id="library-record" data-rail-panel="Record" hidden></div>
         <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div>
+        <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -964,6 +982,13 @@ export function mountEditorShell(
       build: (id) => contextToolbar.build(id),
       // X2: the selected code layer's Animation settings.
       codeBody: () => codeBody(),
+      themeBody: () => {
+        const host = document.createElement('div');
+        host.className = 'theme-panel';
+        host.id = 'right-theme';
+        mountThemePanel(host, { ...themeOptions, onChange: () => () => {} });
+        return host;
+      },
       audioDecoder: decoder,
       // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
       tts: {
@@ -2321,8 +2346,36 @@ export function mountEditorShell(
         cancelLabel: t('code.cancel'),
       }),
     rerender: () => rightPanel.render(activeSection as RightSection),
+    defaults: (preset) => themeMotionParams(preset),
   };
   /** P3: applies a Creator preset to the selected layer (one undo step). */
+  /** T1: the current theme's motion style sets a preset's default easing
+   *  and scales its default duration. */
+  const themeMotionParams = (preset: CreatorPresetChoice['preset']) => {
+    const theme = currentTheme();
+    if (!theme) return {};
+    const style = MOTION_STYLES[theme.motion];
+    const duration = presetControls(preset).find(
+      (control) => control.name === 'duration',
+    );
+    return {
+      easing: style.easing,
+      ...(duration?.type === 'number'
+        ? {
+            duration:
+              Math.round(
+                Math.min(
+                  duration.max,
+                  Math.max(
+                    duration.min,
+                    duration.default * style.durationScale,
+                  ),
+                ) * 100,
+              ) / 100,
+          }
+        : {}),
+    };
+  };
   const applyCreatorPreset = (id: string | null) =>
     safely(() => {
       const layer = controlledLayer(session) ?? codeLayerSelected(session);
@@ -2349,7 +2402,7 @@ export function mountEditorShell(
         presetCommands(
           session.source.composition,
           found.layer,
-          { ...choice, params: {} },
+          { ...choice, params: themeMotionParams(choice.preset) },
           true,
         ),
       );
@@ -2473,6 +2526,7 @@ export function mountEditorShell(
     'Audio',
     'Record',
     'AI',
+    'Theme',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
@@ -2815,7 +2869,32 @@ export function mountEditorShell(
       return;
     }
     const item = libraryActions.find(id);
-    if (item) libraryActions.insert(item, undefined, time);
+    if (!item) return;
+    // T1: an AI item's layers remember their palette slot (background, text
+    // or primary), so a theme recolours them; one step as before.
+    const built =
+      item.type === 'template'
+        ? null
+        : libraryActions.commandsFor(item, undefined, time);
+    if (!built) {
+      libraryActions.insert(item, undefined, time);
+      return;
+    }
+    session.setPlaying(false);
+    engine.commands.transaction(
+      built.label,
+      built.commands.map((command) =>
+        command.type === 'CREATE_LAYER'
+          ? ({
+              ...command,
+              layer: withPaletteSlots(
+                command.layer as unknown as CoreLayer,
+              ) as never,
+            } as Command)
+          : command,
+      ),
+    );
+    if (built.layerId) session.select(built.layerId);
   };
   // Q4: the AI category (everything from Creator Packs).
   mountAiPanel(element('#library-ai'), {
@@ -2825,6 +2904,149 @@ export function mountEditorShell(
     importPack: () => openCreatorImport(),
     copyBrief: () => void copyAiBrief(),
   });
+  // T1: themes. Built-in, the project's own (reserved markers on the first
+  // scene) and My library's (saved themes under theme/<id>, and Creator Pack
+  // theme items).
+  let libraryThemes: Theme[] = [];
+  const themeListeners = new Set<() => void>();
+  const themeChanged = () => {
+    for (const listener of [...themeListeners]) listener();
+  };
+  void mediaStore.then(async (store) => {
+    if (!store) return;
+    const keys = (await store.keys()).filter((key) => key.startsWith('theme/'));
+    const found: Theme[] = [];
+    for (const key of keys)
+      try {
+        const blob = await store.read(key);
+        const parsed = themeSchema.safeParse(
+          blob ? JSON.parse(await blob.text()) : null,
+        );
+        if (parsed.success) found.push(parsed.data);
+      } catch {
+        // A damaged file is skipped.
+      }
+    libraryThemes = found;
+    themeChanged();
+  });
+  const creatorThemes = (): Theme[] =>
+    creatorLibrary.list().flatMap((entry): Theme[] =>
+      entry.item.type === 'theme'
+        ? [
+            {
+              id: creatorLibraryId(entry.key),
+              name: entry.name.slice(0, 40),
+              ...(entry.item.data as Omit<Theme, 'id' | 'name'>),
+            },
+          ]
+        : [],
+    );
+  const firstScene = () =>
+    engine.state.compositions[0] as unknown as ThemeScene;
+  const themeLists = () => {
+    const saved = projectThemes(firstScene().markers).saved;
+    const savedIds = new Set(saved.map((item) => item.id));
+    return {
+      builtIn: BUILT_IN_THEMES,
+      saved,
+      library: [...libraryThemes, ...creatorThemes()].filter(
+        (item) => !savedIds.has(item.id),
+      ),
+    };
+  };
+  const currentThemeId = () => projectThemes(firstScene().markers).current;
+  const themeById = (id: string | null) => {
+    if (!id) return null;
+    const lists = themeLists();
+    return (
+      [...lists.builtIn, ...lists.saved, ...lists.library].find(
+        (item) => item.id === id,
+      ) ?? null
+    );
+  };
+  const currentTheme = () => themeById(currentThemeId());
+  const writeLibraryTheme = async (theme: Theme | null, id: string) => {
+    const store = await mediaStore;
+    if (!store) return;
+    if (theme)
+      await store.write(
+        `theme/${id}`,
+        new Blob([JSON.stringify(theme)], { type: 'application/json' }),
+      );
+    else await store.remove(`theme/${id}`);
+    libraryThemes = [
+      ...libraryThemes.filter((item) => item.id !== id),
+      ...(theme ? [theme] : []),
+    ];
+    themeChanged();
+  };
+  const applyTheme = (theme: Theme, override: boolean) =>
+    safely(() => {
+      session.setPlaying(false);
+      engine.commands.transaction(t('theme.applyStep'), [
+        {
+          type: 'SET_PROJECT_BACKGROUND',
+          color: theme.palette.background,
+        } as Command,
+        ...(applyThemeCommands(
+          engine.state.compositions as unknown as ThemeScene[],
+          theme,
+          { previous: currentTheme(), override },
+        ) as unknown as Command[]),
+      ]);
+      showToast(t('theme.applied', { name: theme.name }), 'success');
+    });
+  const themeOptions = {
+    themes: themeLists,
+    current: currentThemeId,
+    apply: applyTheme,
+    save: (name: string) =>
+      safely(() => {
+        const base = currentTheme();
+        if (!base) return;
+        const theme: Theme = {
+          ...base,
+          id: `my-${Date.now().toString(36)}`,
+          name: name.slice(0, 40),
+        };
+        engine.commands.transaction(t('theme.saveStep'), [
+          saveThemeCommand(firstScene().id, theme) as unknown as Command,
+        ]);
+        void writeLibraryTheme(theme, theme.id).catch(reportError);
+      }),
+    rename: (id: string, name: string) =>
+      safely(() => {
+        const theme = projectThemes(firstScene().markers).saved.find(
+          (item) => item.id === id,
+        );
+        if (!theme) return;
+        const next = { ...theme, name: name.slice(0, 40) };
+        engine.commands.transaction(
+          t('theme.renameStep'),
+          updateThemeCommands(firstScene(), id, next) as unknown as Command[],
+        );
+        void writeLibraryTheme(next, id).catch(reportError);
+      }),
+    remove: (id: string) =>
+      safely(() => {
+        engine.commands.transaction(
+          t('theme.deleteStep'),
+          updateThemeCommands(firstScene(), id, null) as unknown as Command[],
+        );
+        void writeLibraryTheme(null, id).catch(reportError);
+      }),
+    onChange: (listener: () => void) => {
+      themeListeners.add(listener);
+      const offEngine = engine.on('state:changed', listener);
+      const offLibrary = creatorLibrary.onChange(listener);
+      return () => {
+        themeListeners.delete(listener);
+        offEngine();
+        offLibrary();
+      };
+    },
+  };
+  mountThemePanel(element('#library-theme'), themeOptions);
   const creatorMenu = (id: string, x: number, y: number) => {
     const entry = creatorEntryOf(id);
     if (!entry) return;
@@ -3376,7 +3598,10 @@ export function mountEditorShell(
     // bar holds the canvas's ratio, background and frame rate).
     if (
       !shown.length ||
-      (kindOf(session) === 'none' && !focusedScene(session) && !ttsState.open)
+      (kindOf(session) === 'none' &&
+        !focusedScene(session) &&
+        !ttsState.open &&
+        !themeState.open)
     ) {
       animateShown = false;
       element('#inspector-content').hidden = true;
@@ -3395,7 +3620,13 @@ export function mountEditorShell(
         '.icon-rail-right button',
       )) {
         const caption = el.dataset.section === 'Captions';
-        el.hidden = !caption;
+        // T1: Theme is the one tab that works with nothing selected.
+        const theme = el.dataset.section === 'Theme';
+        el.hidden = !caption && !theme;
+        if (theme) {
+          el.removeAttribute('aria-disabled');
+          el.setAttribute('aria-pressed', 'false');
+        }
         if (!caption) continue;
         const label = t('panel.captions');
         el.title = `${label}: ${t('right.planned')}`;
@@ -3433,7 +3664,9 @@ export function mountEditorShell(
       kind === 'none'
         ? ttsState.open
           ? 'tts.title'
-          : 'transition.title'
+          : themeState.open
+            ? 'panel.theme'
+            : 'transition.title'
         : kind === 'video' || kind === 'image'
           ? `right.tab.${kind}`
           : firstTabKey(kind),
@@ -3516,6 +3749,13 @@ export function mountEditorShell(
   stage.addEventListener(
     'pointerdown',
     () => {
+      if (themeState.open && !session.selectedIds.length) {
+        themeState.open = false;
+        root.querySelector('.editor-shell')?.classList.add('right-empty');
+        renderedRight = '';
+        syncRightRail();
+        if (workspace?.rightOpen) workspace.setOpen('right', false);
+      }
       if (ttsState.open && !session.selectedIds.length) {
         ttsState.open = false;
         root.querySelector('.editor-shell')?.classList.add('right-empty');
@@ -3544,6 +3784,17 @@ export function mountEditorShell(
     el.onclick = () => {
       const name = el.dataset.section!;
       if (el.getAttribute('aria-disabled') === 'true') return;
+      // T1: the Theme tab with nothing selected.
+      if (name === 'Theme' && !session.selectedIds.length && !themeState.open) {
+        themeState.open = true;
+        transitionFocus.sceneId = null;
+        root.querySelector('.editor-shell')?.classList.remove('right-empty');
+        renderedRight = '';
+        syncRightRail();
+        setRightSection('Theme');
+        workspace?.setOpen('right', true);
+        return;
+      }
       if (name === activeSection && workspace?.rightOpen) {
         workspace.setOpen('right', false);
         return;
@@ -3793,7 +4044,10 @@ export function mountEditorShell(
     // (A scene transition's panel shows with nothing selected; V7.)
     shell.classList.toggle(
       'right-empty',
-      key === '' && !transitionFocus.sceneId && !ttsState.open,
+      key === '' &&
+        !transitionFocus.sceneId &&
+        !ttsState.open &&
+        !themeState.open,
     );
     // (A press waits for its release, so its gesture is never cancelled.)
     if (pressing) return;
@@ -3812,6 +4066,7 @@ export function mountEditorShell(
           !session.selectedIds.length &&
           !transitionFocus.sceneId &&
           !ttsState.open &&
+          !themeState.open &&
           workspace?.rightOpen
         )
           workspace.setOpen('right', false);

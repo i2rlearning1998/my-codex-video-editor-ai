@@ -1,4 +1,4 @@
-import { isSceneTransitionMarker } from '../core';
+import { isReservedMarker } from '../core';
 import { commands } from '../commands/registry';
 import {
   laneDropPlan,
@@ -1615,7 +1615,7 @@ export function mountTimeline(
     }
     // (V7: scene transitions are reserved markers, never shown.)
     for (const marker of composition.markers.filter(
-      (item) => !isSceneTransitionMarker(item),
+      (item) => !isReservedMarker(item),
     )) {
       const item = button(
         iconSvg('marker', 12),

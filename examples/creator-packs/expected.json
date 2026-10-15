@@ -60,5 +60,18 @@
     "ok": false,
     "statuses": ["rejected"],
     "reason": "1 MiB"
+  },
+  "theme-sunny.json": {
+    "ok": true,
+    "statuses": ["ok"]
+  },
+  "theme-midnight.json": {
+    "ok": true,
+    "statuses": ["ok"]
+  },
+  "bad-theme-contrast.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "Low contrast"
   }
 }

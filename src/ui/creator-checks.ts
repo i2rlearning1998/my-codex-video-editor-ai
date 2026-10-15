@@ -6,6 +6,7 @@
 // for byte; each number control is set to its minimum and its maximum and
 // must change the middle frame (a warning for motion, a rejection for a
 // preset). Nothing touches the project.
+import { SYSTEM_FONTS } from '../render/text-style';
 import type { CreatorItem } from '../creator-pack';
 import type { LibraryItem } from '../library/schema';
 import type { RenderSource } from '../render/adapter';
@@ -410,6 +411,7 @@ export async function runtimeCheck(
   try {
     if (item.type === 'motion') return await checkMotion(item, deps);
     if (item.type === 'preset') return await checkPreset(item);
+    if (item.type === 'theme') return checkTheme(item.data);
     if (
       item.type === 'shape' ||
       item.type === 'text' ||
@@ -433,4 +435,43 @@ export async function runtimeCheck(
     };
   }
   return { status: 'unsupported', reasons: ['Not supported yet.'] };
+}
+
+/**
+ * T1: a theme item: its fonts must be ones the editor has, and it gets a
+ * swatch thumbnail (background with the other slots as bars).
+ */
+function checkTheme(data: {
+  palette: Record<string, string | undefined>;
+  fonts: { heading: string; body: string };
+}): RuntimeResult {
+  const available = SYSTEM_FONTS.map(([name]) => name as string);
+  const missing = [data.fonts.heading, data.fonts.body].filter(
+    (font) => !available.includes(font),
+  );
+  if (missing.length)
+    return {
+      status: 'rejected',
+      reasons: [
+        `Unknown font ${missing.join(', ')}: use one of ${available.join(', ')}.`,
+      ],
+    };
+  const canvas = document.createElement('canvas');
+  canvas.width = 160;
+  canvas.height = 90;
+  const context = canvas.getContext('2d')!;
+  context.fillStyle = data.palette.background!;
+  context.fillRect(0, 0, 160, 90);
+  const slots = (['primary', 'accent', 'text', 'extra'] as const).filter(
+    (slot) => data.palette[slot],
+  );
+  slots.forEach((slot, index) => {
+    context.fillStyle = data.palette[slot]!;
+    context.fillRect(16 + index * 34, 30, 28, 30);
+  });
+  return {
+    status: 'ok',
+    reasons: ['Theme: fonts available; contrast checked.'],
+    thumbnail: canvas.toDataURL('image/png'),
+  };
 }

@@ -78,6 +78,13 @@ items reject those items. Known IDs are a caller-supplied existence assertion.
   infinite loops and forbidden words are diagnostics, not a security proof.
   Font/audio-preset/textStyle are not v1 kinds (use text for text styles).
 
+- T1 (D-254): `theme` is a v1 kind: palette slots (background, primary, accent,
+  text, optional extra), heading and body fonts, a motion style (calm, snappy,
+  bouncy, cinematic) and an optional caption style; no controls. The offline
+  gate rejects a text colour under 4.5:1 contrast on the background; the
+  editor also checks the fonts exist. Examples: theme-sunny.json,
+  theme-midnight.json (valid) and bad-theme-contrast.json (rejected).
+
 ## Honest limits
 
 No rendering, determinism measurements, FX input/alpha/endpoint verification,

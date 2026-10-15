@@ -1,0 +1,39 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "theme-pack-midnight",
+    "name": {
+      "en": "theme-pack-midnight",
+      "hi": "थीम संग्रह"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "claude-chat",
+    "notes": "Original palettes; no external assets."
+  },
+  "items": [
+    {
+      "id": "theme-midnight",
+      "name": {
+        "en": "Midnight Lab",
+        "hi": "आधी रात की प्रयोगशाला"
+      },
+      "tags": ["dark", "tech"],
+      "type": "theme",
+      "data": {
+        "palette": {
+          "background": "#020617",
+          "primary": "#38bdf8",
+          "accent": "#a3e635",
+          "text": "#e2e8f0"
+        },
+        "fonts": {
+          "heading": "Inter",
+          "body": "Inter"
+        },
+        "motion": "cinematic"
+      }
+    }
+  ]
+}

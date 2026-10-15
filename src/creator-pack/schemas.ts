@@ -111,6 +111,29 @@ const code = z
     kind: z.enum(['adjust', 'filter', 'effect', 'transition']),
   })
   .strict();
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+/** T1: a theme (palette slots, fonts, motion style, caption style). */
+export const themeDataSchema = z
+  .object({
+    palette: z
+      .object({
+        background: hexColor,
+        primary: hexColor,
+        accent: hexColor,
+        text: hexColor,
+        extra: hexColor.optional(),
+      })
+      .strict(),
+    fonts: z
+      .object({
+        heading: z.string().min(1).max(40),
+        body: z.string().min(1).max(40),
+      })
+      .strict(),
+    motion: z.enum(['calm', 'snappy', 'bouncy', 'cinematic']),
+    caption: z.string().max(40).optional(),
+  })
+  .strict();
 const native = libraryItemSchema.options.map((s) => s.extend({ ...common }));
 const v1ItemSchema = z
   .union([
@@ -134,6 +157,14 @@ const v1ItemSchema = z
         type: z.literal('preset'),
         controls: z.never().optional(),
         data: presetSchema,
+      })
+      .strict(),
+    z
+      .object({
+        ...common,
+        type: z.literal('theme'),
+        controls: z.never().optional(),
+        data: themeDataSchema,
       })
       .strict(),
     z

@@ -108,6 +108,8 @@ export const RIGHT_SECTIONS = [
   'Transitions',
   'Speech',
   'Code',
+  // T1: themes (opened from the rail with nothing selected).
+  'Theme',
 ] as const;
 export type RightSection = (typeof RIGHT_SECTIONS)[number];
 export const RIGHT_ICONS: Record<RightSection, string> = {
@@ -122,6 +124,7 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Captions: 'captions',
   Transitions: 'transitions',
   Speech: 'text',
+  Theme: 'color',
   Code: 'code',
 };
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
@@ -217,6 +220,8 @@ export const ttsClip = (session: EditorSession) => {
   const found = findClipByLayer(session.source.composition, roots[0]!.id);
   return found && readTtsSettings(found.clip) ? found.clip : null;
 };
+/** T1: the right panel's Theme tab is open (with nothing selected). */
+export const themeState = { open: false };
 /** X2: the selected code animation layer, if exactly one is selected. */
 export const codeLayerSelected = (session: EditorSession) => {
   const roots = selectionRoots(session.source, session.selectedIds);
@@ -239,8 +244,12 @@ const CODE_TABS: RightSection[] = [
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
   // V7 (spec 11.5): Text to speech, opened from Record & create.
-  if (session.selectedIds.length) ttsState.open = false;
+  if (session.selectedIds.length) {
+    ttsState.open = false;
+    themeState.open = false;
+  }
   if (kindOf(session) === 'none' && ttsState.open) return ['Speech'];
+  if (kindOf(session) === 'none' && themeState.open) return ['Theme'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session))
@@ -298,6 +307,8 @@ export interface RightPanelHooks {
   ) => HTMLElement | null;
   /** X2: the Animation settings of the selected code layer. */
   codeBody?: () => readonly (HTMLElement | null)[];
+  /** T1: the Theme panel. */
+  themeBody?: () => HTMLElement;
   /** V7: Text to speech's Save. */
   tts?: TtsHooks;
   /** V7: decodes clip sound for the Audio tab's loudness analysis. */
@@ -1550,26 +1561,30 @@ export function mountRightPanel(
                               heading(t('panel.code')),
                               ...(hooks.codeBody?.() ?? []),
                             ]
-                          : section === 'Speech'
-                            ? speech()
-                            : section === 'Transitions'
-                              ? transitions()
-                              : section === 'Audio'
-                                ? [
-                                    heading(
-                                      t('panel.audio'),
-                                      t('right.audioHint'),
-                                    ),
-                                    ...audioTab(
-                                      engine,
-                                      session,
-                                      run,
-                                      report,
-                                      hooks.audioDecoder,
-                                      rerender,
-                                    ),
-                                  ]
-                                : [];
+                          : section === 'Theme'
+                            ? [hooks.themeBody?.() ?? null].filter(
+                                (item): item is HTMLElement => !!item,
+                              )
+                            : section === 'Speech'
+                              ? speech()
+                              : section === 'Transitions'
+                                ? transitions()
+                                : section === 'Audio'
+                                  ? [
+                                      heading(
+                                        t('panel.audio'),
+                                        t('right.audioHint'),
+                                      ),
+                                      ...audioTab(
+                                        engine,
+                                        session,
+                                        run,
+                                        report,
+                                        hooks.audioDecoder,
+                                        rerender,
+                                      ),
+                                    ]
+                                  : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

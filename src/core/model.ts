@@ -1,4 +1,4 @@
-import { isSceneTransitionMarker } from './scene-transitions';
+import { isReservedMarker } from './scene-transitions';
 import { z } from 'zod';
 import { trackHolds } from './lanes';
 
@@ -566,7 +566,7 @@ export function validateProject(value: unknown): Project {
     // (V7: a scene transition's reserved marker never sets the length.)
     endpoints.push(
       ...composition.markers
-        .filter((marker) => !isSceneTransitionMarker(marker))
+        .filter((marker) => !isReservedMarker(marker))
         .map((marker) => marker.time),
     );
     composition.duration = endpoints.length

@@ -184,6 +184,22 @@ catalog IDs passed to the checker; no hidden global FX catalog is consulted.
 {"format":"creator-pack","version":1,"pack":{"id":"transition-pack","name":{"en":"transition-pack","hi":"निर्माता संग्रह"},"version":1,"author":"ai","createdWith":"codex","notes":"Original geometry and code; no external assets."},"items":[{"id":"transition-fade","name":{"en":"Original transition-fade","hi":"मौलिक transition-fade"},"tags":["original"],"type":"transition","data":{"mode":"recipe","from":"crossfade"},"controls":[{"name":"intensity","label":{"en":"Strength","hi":"प्रभाव"},"type":"number","default":1,"min":0,"max":1,"step":0.1}]}]}
 ```
 
+### Theme
+
+A theme is one-click styling: `palette` (background, primary, accent, text and
+an optional extra colour, all `#rrggbb`), `fonts` (heading and body, from the
+editor's fonts: Inter, Poppins, Noto Sans Devanagari, Arial, Verdana, Tahoma,
+Trebuchet MS, Georgia, Times New Roman, Courier New), `motion` (calm, snappy,
+bouncy or cinematic: the default easing and preset speed) and an optional
+`caption` style id. No controls. The text colour must read on the background
+(at least 4.5:1 contrast) or the item is rejected. Worked example
+(`examples/creator-packs/theme-sunny.json`):
+
+<!-- prettier-ignore -->
+```json
+{"format":"creator-pack","version":1,"pack":{"id":"theme-pack-sunny","name":{"en":"theme-pack-sunny","hi":"थीम संग्रह"},"version":1,"author":"ai","createdWith":"claude-chat","notes":"Original palettes; no external assets."},"items":[{"id":"theme-sunny","name":{"en":"Sunny Morning","hi":"धूप भरी सुबह"},"tags":["bright","warm"],"type":"theme","data":{"palette":{"background":"#fffbeb","primary":"#f59e0b","accent":"#0ea5e9","text":"#1f2937","extra":"#fde68a"},"fonts":{"heading":"Poppins","body":"Inter"},"motion":"bouncy"}}]}
+```
+
 ## Quality gate before delivery
 
 - Check required fields, unique IDs, both languages, valid source references/limits.
