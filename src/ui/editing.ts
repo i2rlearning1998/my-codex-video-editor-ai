@@ -333,6 +333,13 @@ export function performEdit(
   session.setPlaying(false);
   const source = session.source,
     compositionId = source.composition.id;
+  // Q1: a blocked Ungroup reports its reason (ungroupCommands throws it).
+  if (
+    action === 'ungroup' &&
+    session.selectedIds.length &&
+    describeSelection(source, session.selectedIds).every('group')
+  )
+    ungroupCommands(source, session.selectedIds);
   if (
     !contextActions(
       source,

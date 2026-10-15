@@ -1529,5 +1529,7 @@
   "controls.easing": "Easing",
   "controls.notFor": "{name} cannot be applied to this kind of layer.",
   "creator.copyIndex": "Copy library index for AI",
-  "creator.indexCopied": "Library index copied ({size} KB). Paste it into your AI chat."
+  "creator.indexCopied": "Library index copied ({size} KB). Paste it into your AI chat.",
+  "ungroup.background": "Background is one block",
+  "ungroup.locked": "The group is locked"
 }

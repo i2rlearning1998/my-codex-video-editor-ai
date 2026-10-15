@@ -48,6 +48,13 @@ export function showToast(
   action?: ToastAction,
 ): () => void {
   const stack = ensureContainer();
+  // Q1: the same message is shown once; a repeat replaces the visible one
+  // instead of stacking (e.g. a refused Ungroup pressed again).
+  for (const old of stack.querySelectorAll<HTMLElement>(
+    `.toast.toast-${kind}:not(.toast-leaving)`,
+  ))
+    if (old.querySelector('.toast-text')?.textContent === plainMessage(text))
+      old.remove();
   const item = document.createElement('div');
   item.className = `toast toast-${kind}`;
   item.setAttribute('role', kind === 'error' ? 'alert' : 'status');

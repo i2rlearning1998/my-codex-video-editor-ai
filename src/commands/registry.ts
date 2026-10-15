@@ -102,6 +102,11 @@ const edit = (id: EditAction, shortcut: string): RegisteredCommand => ({
   shortcut,
   isEnabled: ({ session }) =>
     (!!KEYFRAME_EDITS[id] && session.selectedKeyframes.length > 0) ||
+    // Q1: a group that cannot be ungrouped still takes the shortcut, which
+    // then says why (one toast).
+    (id === 'ungroup' &&
+      session.selectedIds.length > 0 &&
+      describeSelection(session.source, session.selectedIds).every('group')) ||
     contextActions(
       session.source,
       session.selectedIds,

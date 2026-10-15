@@ -899,6 +899,35 @@ Imported code animations: Tier A becomes ordinary layers; Tiers B and C are bake
 | CODE-012 | P1 | W8 | Verified | A hostile source (network, parent access, storage, endless loop, import()) is refused or stopped with a clear message and the editor is untouched; a heavy bake can be cancelled (X5) |
 | CODE-013 | P1 | W8 | Verified | A code template survives a page reload and renders when inserted into a new project (X5) |
 
+## QT: Q-series fixes and T-series themes and AI brief
+
+Group timing, presets and controls, keyframes and pivot, AI import, motion setting, themes and the AI brief.
+
+| ID | Pri | Wave | Status | Item |
+| --- | --- | --- | --- | --- |
+| QT-001 | P1 | W8 | Verified | Lengthening, trimming or moving a group clip carries its children in time (the same shift and the same edge change), in the model; a lengthened background group still draws to its new end (Q1) |
+| QT-002 | P1 | W8 | Verified | Ungroup works for normal groups by baking the group's position, scale, rotation and opacity into each child; a refused Ungroup shows one toast, never a stack (Q1) |
+| QT-003 | P1 | W8 | Verified | A background group (from Use as background or a library background) cannot be ungrouped; Ungroup is disabled with the tooltip "Background is one block" (Q1) |
+| QT-004 | P1 | W8 | Todo | Animate > Creator starts with None and highlights only the preset the layer really has (Q2) |
+| QT-005 | P1 | W8 | Todo | The Controls panel opens with a line that says what is animated, e.g. "Animating: Scale - 0.0s to 1.0s", listing every animated property (Q2) |
+| QT-006 | P1 | W8 | Todo | Remove animation in the Controls panel removes a preset's record, its keyframes and its controls in one undo step (Q2) |
+| QT-007 | P1 | W8 | Todo | When a preset's keyframes are deleted by hand no orphan controls stay: the panel shows Edited manually with Reset to controls, or drops the preset when nothing of it is left (Q2) |
+| QT-008 | P1 | W8 | Todo | Delete on a selected keyframe removes only that keyframe, never other keyframes at nearby times (Q2) |
+| QT-009 | P1 | W8 | Todo | Timeline keyframe diamonds are at least 10 px, contrast on dark and light, highlight on hover and fill when selected (Q3) |
+| QT-010 | P1 | W8 | Todo | Every layer has an Anchor (pivot) control in Properties, a 9-point grid with the centre by default; rotation and scale turn about it (Q3) |
+| QT-011 | P1 | W8 | Todo | The Spin preset rotates about the anchor (the centre by default), so a rectangle spun 90 degrees keeps its centre fixed (Q3) |
+| QT-012 | P1 | W8 | Todo | The left rail has an AI category that lists everything imported from Creator Packs, grouped by kind (Q4) |
+| QT-013 | P1 | W8 | Todo | AI-made items show a small AI chip in every library panel and the Media panel (Q4) |
+| QT-014 | P1 | W8 | Todo | The creator pack dialog checks a pasted or chosen pack automatically; Add selected to library is enabled as soon as one item passed; each item says pass, warning or rejected with a plain reason (Q4) |
+| QT-015 | P1 | W8 | Todo | After an import a result card says how many items were added and opens the AI category (Q4) |
+| QT-016 | P1 | W8 | Todo | Settings > Animations (Auto, On, Off; default Auto) controls panel transitions, with a system reduce-motion diagnostic; On animates even when the system asks for reduced motion (Q5) |
+| QT-017 | P1 | W8 | Todo | A Theme panel (right tab and left rail) lists 8 built-in themes with previews (T1) |
+| QT-018 | P1 | W8 | Todo | Apply theme recolours text, fonts, palette-slot fills, the background and the default easing in one undo step; manual colours stay unless Also override manual colors is ticked (T1) |
+| QT-019 | P1 | W8 | Todo | Layers made from a theme or an AI item remember their palette slot, so a theme switch recolours them (T1) |
+| QT-020 | P1 | W8 | Todo | My themes: save the current theme, rename and delete; stored in the project and in My library (T1) |
+| QT-021 | P1 | W8 | Todo | Creator Packs accept a theme item kind with the same schema, checked by the quality gate and documented with examples (T1) |
+| QT-022 | P1 | W8 | Todo | Copy AI brief copies one plain-text block (task header, project facts, the live library index, the authoring rules and an optional request) under 40 KB, with a fallback box when the clipboard is blocked (T2) |
+
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
 Creator Pack items imported, checked and registered in the user's library, and their controls.
