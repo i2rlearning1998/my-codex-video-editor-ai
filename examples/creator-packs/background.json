@@ -1,0 +1,48 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "background-pack",
+    "name": {
+      "en": "background-pack",
+      "hi": "निर्माता संग्रह"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "codex",
+    "notes": "Original geometry and code; no external assets."
+  },
+  "items": [
+    {
+      "id": "background-night",
+      "name": {
+        "en": "Original background-night",
+        "hi": "मौलिक background-night"
+      },
+      "tags": ["original"],
+      "type": "background",
+      "data": {
+        "elements": [
+          {
+            "kind": "shape",
+            "shape": "rectangle",
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1,
+            "fill": "#101a30"
+          },
+          {
+            "kind": "shape",
+            "shape": "ellipse",
+            "x": 0.65,
+            "y": 0.1,
+            "w": 0.25,
+            "h": 0.45,
+            "fill": "#4ddbc5"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "text-pack",
+    "name": {
+      "en": "text-pack",
+      "hi": "निर्माता संग्रह"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "codex",
+    "notes": "Original geometry and code; no external assets."
+  },
+  "items": [
+    {
+      "id": "text-title",
+      "name": {
+        "en": "Original text-title",
+        "hi": "मौलिक text-title"
+      },
+      "tags": ["original"],
+      "type": "text",
+      "data": {
+        "elements": [
+          {
+            "kind": "text",
+            "x": 0.1,
+            "y": 0.3,
+            "w": 0.8,
+            "h": 0.3,
+            "text": {
+              "en": "MAKE SOMETHING",
+              "hi": "कुछ बनाएं"
+            },
+            "size": 0.08,
+            "color": "#e8eefb",
+            "weight": 700
+          }
+        ]
+      }
+    }
+  ]
+}
