@@ -18,6 +18,13 @@ import {
 import { createParamsForm } from './code-params';
 import { stableJson } from '../code-layer/hash';
 import { download } from '../export/client';
+import { CreatorLibrary, creatorLibraryId } from './creator-library';
+import {
+  openCreatorPackDialog,
+  type CreatorPackAdd,
+} from './creator-pack-dialog';
+import { loadLibrary } from '../library/loader';
+import { adjustments, effects, filters, transitions } from '../fx';
 import type { ParamValues } from './code-params';
 import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
 import {
@@ -172,7 +179,12 @@ import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
-import { confirmDialog, openModal, promptDialog } from './components/modal';
+import {
+  confirmDialog,
+  escapeHtml,
+  openModal,
+  promptDialog,
+} from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
@@ -443,6 +455,8 @@ export function mountEditorShell(
   // X1 (spec section 5): code animations play from a frame cache that the
   // preview and the export share; the baker fills it one job at a time.
   const codeCache = new FrameCache(mediaStore);
+  // P2: My library (Creator Pack items), beside My Templates.
+  const creatorLibrary = new CreatorLibrary(mediaStore);
   const codeBaker = new CodeBaker(codeCache, openCodeSession);
   const codeOf = (layerId: string): CodeData | null => {
     const find = (
@@ -1940,6 +1954,91 @@ export function mountEditorShell(
       },
     });
   };
+  // P2: Import creator pack: the review dialog, then My library.
+  let builtInIds: readonly string[] = [];
+  void loadLibrary().then(
+    (manifest) => (builtInIds = manifest.items.map((item) => item.id)),
+    () => undefined,
+  );
+  const addCreatorItems = async (add: CreatorPackAdd): Promise<boolean> => {
+    await creatorLibrary.ready;
+    const existing = creatorLibrary.packVersion(add.packId);
+    if (existing === add.packVersion) {
+      // Re-importing the same version changes nothing (idempotent).
+      showToast(
+        t('creator.sameVersion', {
+          name: add.packName.en,
+          version: String(add.packVersion),
+        }),
+        'info',
+      );
+      return true;
+    }
+    if (existing !== null) {
+      const newer = add.packVersion > existing;
+      const yes = await confirmDialog(
+        escapeHtml(
+          t(newer ? 'creator.replaceNewer' : 'creator.replaceOlder', {
+            name: add.packName.en,
+            from: String(existing),
+            to: String(add.packVersion),
+          }),
+        ),
+        {
+          titleText: escapeHtml(t('creator.replaceTitle')),
+          confirmLabel: t('creator.replace'),
+          cancelLabel: t('code.cancel'),
+          danger: !newer,
+        },
+      );
+      if (!yes) return false;
+    }
+    const now = new Date().toISOString();
+    await creatorLibrary.add(
+      add.items.map((checked) => ({
+        key: `${add.packId}/${checked.id}`,
+        packId: add.packId,
+        packName: add.packName,
+        packVersion: add.packVersion,
+        item: checked.item,
+        name: checked.item.name.en,
+        addedAt: now,
+        ...(checked.thumbnail ? { thumbnail: checked.thumbnail } : {}),
+        ...(checked.motionMeta ? { motionMeta: checked.motionMeta } : {}),
+      })),
+      existing !== null ? add.packId : undefined,
+    );
+    showToast(
+      t('creator.added', {
+        count: String(add.items.length),
+        name: add.packName.en,
+      }),
+      'success',
+    );
+    return true;
+  };
+  const openCreatorImport = (
+    initial: { text?: string; fileName?: string } = {},
+  ) => {
+    session.setPlaying(false);
+    openCreatorPackDialog({
+      ...initial,
+      fxCatalog: FX_CATALOG,
+      knownLibraryIds: () => [
+        ...builtInIds,
+        ...creatorLibrary.list().map((entry) => entry.key),
+      ],
+      ...(renderer.measureText ? { measureText: renderer.measureText } : {}),
+      runtime: freeCodeRuntime,
+      onAdd: addCreatorItems,
+      copy: (text) => {
+        void navigator.clipboard
+          .writeText(text)
+          .then(() => showToast(t('creator.reportCopied'), 'success'))
+          .catch(() => showToast(t('creator.reportCopyFailed'), 'error'));
+      },
+    });
+  };
   /** X2: the Animation settings panel of the selected code layer. */
   const codeBody = (): HTMLElement[] => {
     const layer = codeLayerSelected(session);
@@ -2521,6 +2620,102 @@ export function mountEditorShell(
     codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
     codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
   };
+  // P2: a Creator Pack item's menu: Insert, Rename, Export item, Delete
+  // (soft, with Restore). None of it is an undo step.
+  const creatorEntryOf = (id: string) =>
+    creatorLibrary.list().find((entry) => creatorLibraryId(entry.key) === id);
+  const insertCreatorItem = (id: string, time = session.currentTime) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    if (entry.item.type === 'motion') {
+      const template = creatorLibrary
+        .motionTemplates()
+        .find((item) => item.id === id);
+      if (template) void insertCodeTemplate(template, time).catch(reportError);
+      return;
+    }
+    const item = libraryActions.find(id);
+    if (item) libraryActions.insert(item, undefined, time);
+  };
+  const creatorMenu = (id: string, x: number, y: number) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    codeMenu.open(() => [
+      {
+        id: 'creator-insert',
+        label: t('code.templateInsert'),
+        icon: 'plus',
+        run: () => insertCreatorItem(id),
+      },
+      {
+        id: 'creator-rename',
+        label: t('code.templateRename'),
+        icon: 'edit',
+        run: () =>
+          void promptDialog(t('code.templateRename'), entry.name, {
+            label: t('myTemplates.name'),
+            confirmLabel: t('code.templateRename'),
+            cancelLabel: t('code.cancel'),
+            maxLength: 80,
+          }).then((name) => {
+            if (name?.trim())
+              void creatorLibrary.rename(entry.key, name.trim());
+          }),
+      },
+      {
+        id: 'creator-export',
+        label: t('creator.exportItem'),
+        icon: 'export',
+        run: () =>
+          download(
+            new Blob(
+              [
+                `${JSON.stringify(
+                  {
+                    format: 'creator-pack',
+                    version: 1,
+                    pack: {
+                      id: entry.packId,
+                      name: entry.packName,
+                      version: entry.packVersion,
+                      author: 'ai',
+                      createdWith: 'claude-chat',
+                    },
+                    items: [entry.item],
+                  },
+                  null,
+                  2,
+                )}\n`,
+              ],
+              { type: 'application/json' },
+            ),
+            `${entry.item.id}.creatorpack.json`,
+          ),
+      },
+      {
+        id: 'creator-delete',
+        label: t('code.templateDelete'),
+        icon: 'delete',
+        divider: true,
+        run: () => {
+          void creatorLibrary.remove(entry.key);
+          showToast(
+            t('code.templateDeleted', { name: entry.name }),
+            'info',
+            8000,
+            {
+              label: t('code.templateRestore'),
+              run: () => void creatorLibrary.restore(entry.key),
+            },
+          );
+        },
+      },
+    ]);
+    const width = codeMenuElement.offsetWidth,
+      height = codeMenuElement.offsetHeight;
+    codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
+    codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  };
   const libraryBrowsers = mountLibraryPanels(
     {
       Templates: element('#library-templates'),
@@ -2549,6 +2744,7 @@ export function mountEditorShell(
         hover: codeHover,
         importFile: () => codeTemplateInput.click(),
       },
+      creator: { library: creatorLibrary, menu: creatorMenu },
     },
   );
   void libraryBrowsers;
@@ -2846,6 +3042,9 @@ export function mountEditorShell(
       mediaInput.click(),
     );
     entry('import-code', t('code.importCode'), 'code', () => openCodeImport());
+    entry('import-creator', t('creator.importMenu'), 'elements', () =>
+      openCreatorImport(),
+    );
     importMenuButton.setAttribute('aria-expanded', 'true');
     const popover = openPopover(importMenuButton, menu, {
       label: t('code.importMenu'),
@@ -3294,16 +3493,24 @@ export function mountEditorShell(
     event.stopPropagation();
     const dropped = [...(event.dataTransfer?.files ?? [])];
     // X2: code files open the import dialog; media files import as before.
-    const code = dropped.filter((file) => CODE_FILE.test(file.name));
-    const files = dropped.filter((file) => !CODE_FILE.test(file.name));
+    // P2: a creator pack (.creatorpack.txt or .json, or JSON that says it is
+    // one) opens the Creator Pack import.
+    const isText = (file: File) =>
+      CODE_FILE.test(file.name) || /\.txt$/i.test(file.name);
+    const code = dropped.filter(isText);
+    const files = dropped.filter((file) => !isText(file));
     if (code[0])
       void code[0]
         .text()
         .then((text) =>
-          // X4: an exported code template file imports into My Templates.
-          isCodeTemplateFile(text)
-            ? importCodeTemplateText(text)
-            : openCodeImport({ text, fileName: code[0]!.name }),
+          isCreatorPackText(code[0]!.name, text)
+            ? openCreatorImport({ text, fileName: code[0]!.name })
+            : // X4: an exported code template file imports into My Templates.
+              isCodeTemplateFile(text)
+              ? importCodeTemplateText(text)
+              : /\.txt$/i.test(code[0]!.name)
+                ? showToast(t('creator.notAPack'), 'error')
+                : openCodeImport({ text, fileName: code[0]!.name }),
         )
         .catch(reportError);
     if (!files.length) return;
@@ -4041,7 +4248,9 @@ export function mountEditorShell(
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
     } else if (payload.kind === 'code') {
-      const template = codeTemplates.find(payload.id);
+      const template =
+        codeTemplates.find(payload.id) ??
+        creatorLibrary.motionTemplates().find((item) => item.id === payload.id);
       if (template) void insertCodeTemplate(template, time).catch(reportError);
     } else if (payload.kind === 'preset') {
       const commands = addShapeCommands(
@@ -4564,3 +4773,17 @@ export function mountEditorShell(
     },
   };
 }
+
+/** P2: a dropped or pasted file is a Creator Pack (by name or content). */
+function isCreatorPackText(fileName: string, text: string): boolean {
+  if (/\.creatorpack\.(txt|json)$/i.test(fileName)) return true;
+  const head = text.replace(/^\uFEFF/, '').trimStart();
+  return (
+    head.startsWith('=== PACK ===') ||
+    /^\{[\s\S]{0,200}"format"\s*:\s*"creator-pack"/.test(head)
+  );
+}
+/** P2: the FX catalog's ids (checkPack checks recipes against them). */
+const FX_CATALOG = [...filters, ...effects, ...adjustments, ...transitions].map(
+  (item) => item.id,
+);
