@@ -916,10 +916,10 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-009 | P1 | W8 | Verified | Timeline keyframe diamonds are at least 10 px, contrast on dark and light, highlight on hover and fill when selected (Q3) |
 | QT-010 | P1 | W8 | Verified | Every layer has an Anchor (pivot) control in Properties, a 9-point grid with the centre by default; rotation and scale turn about it (Q3) |
 | QT-011 | P1 | W8 | Verified | The Spin preset rotates about the anchor (the centre by default), so a rectangle spun 90 degrees keeps its centre fixed (Q3) |
-| QT-012 | P1 | W8 | Todo | The left rail has an AI category that lists everything imported from Creator Packs, grouped by kind (Q4) |
-| QT-013 | P1 | W8 | Todo | AI-made items show a small AI chip in every library panel and the Media panel (Q4) |
-| QT-014 | P1 | W8 | Todo | The creator pack dialog checks a pasted or chosen pack automatically; Add selected to library is enabled as soon as one item passed; each item says pass, warning or rejected with a plain reason (Q4) |
-| QT-015 | P1 | W8 | Todo | After an import a result card says how many items were added and opens the AI category (Q4) |
+| QT-012 | P1 | W8 | Verified | The left rail has an AI category that lists everything imported from Creator Packs, grouped by kind (Q4) |
+| QT-013 | P1 | W8 | Claimed | AI-made items show a small AI chip in every library panel and the Media panel (Q4) |
+| QT-014 | P1 | W8 | Verified | The creator pack dialog checks a pasted or chosen pack automatically; Add selected to library is enabled as soon as one item passed; each item says pass, warning or rejected with a plain reason (Q4) |
+| QT-015 | P1 | W8 | Verified | After an import a result card says how many items were added and opens the AI category (Q4) |
 | QT-016 | P1 | W8 | Todo | Settings > Animations (Auto, On, Off; default Auto) controls panel transitions, with a system reduce-motion diagnostic; On animates even when the system asks for reduced motion (Q5) |
 | QT-017 | P1 | W8 | Todo | A Theme panel (right tab and left rail) lists 8 built-in themes with previews (T1) |
 | QT-018 | P1 | W8 | Todo | Apply theme recolours text, fonts, palette-slot fills, the background and the default easing in one undo step; manual colours stay unless Also override manual colors is ticked (T1) |

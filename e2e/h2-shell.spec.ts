@@ -317,8 +317,8 @@ test('[LAY-034] on a window under 800 px tall the rail shows six categories and 
   await page.locator('#rail-more').click();
   const menu = page.locator('.rail-more-menu');
   // I2: Graphics moved into Elements; V7: Transitions moved to the right
-  // panel and Record & create came in: six shown, two in More.
-  await expect(menu.locator('[data-more-category]')).toHaveCount(2);
+  // panel and Record & create came in; Q4 adds AI: six shown, three in More.
+  await expect(menu.locator('[data-more-category]')).toHaveCount(3);
   await menu.locator('[data-more-category="Audio"]').click();
   await expect(page.locator('[data-category="Audio"]')).toHaveAttribute(
     'aria-pressed',

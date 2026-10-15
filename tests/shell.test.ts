@@ -90,6 +90,8 @@ describe('editor shell integration', () => {
       // V7 (spec 11.4): Record & create.
       'Record',
       'Audio',
+      // Q4: everything from Creator Packs.
+      'AI',
     ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();
     expect(root.querySelector('.timeline canvas')).toBeNull();

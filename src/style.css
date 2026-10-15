@@ -8669,3 +8669,95 @@ input[type='range'] {
   justify-content: space-between;
   gap: var(--space-2);
 }
+/* Q4: the AI category, the AI chip and the import result card. */
+.ai-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+.ai-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ai-panel-header h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+.ai-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ai-group h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.ai-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: start;
+}
+.ai-card:hover {
+  border-color: var(--color-accent);
+}
+.ai-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  overflow: hidden;
+}
+.ai-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.ai-name {
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-chip,
+.creator-card .browse-badge {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--text-on);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+.ai-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+.creator-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.creator-result p {
+  margin: 0;
+}

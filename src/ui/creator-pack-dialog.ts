@@ -32,9 +32,14 @@ export interface CreatorPackOptions extends CheckDeps {
   readonly fileName?: string;
   readonly fxCatalog: readonly string[];
   readonly knownLibraryIds: () => readonly string[];
-  /** Registers the chosen items (asks about versions); resolves when done. */
-  readonly onAdd: (add: CreatorPackAdd) => Promise<boolean>;
+  /**
+   * Registers the chosen items (asks about versions). Resolves with how many
+   * were added (0: that version is already there), or false when cancelled.
+   */
+  readonly onAdd: (add: CreatorPackAdd) => Promise<number | false>;
   readonly copy: (text: string) => void;
+  /** Q4: opens the AI category (from the result card). */
+  readonly openAi?: () => void;
 }
 
 type Status = 'ok' | 'warning' | 'rejected' | 'unsupported' | 'checking';
@@ -80,7 +85,6 @@ export function openCreatorPackDialog(options: CreatorPackOptions) {
       <div class="modal-actions">
         <button type="button" class="button" id="creator-report" disabled>${t('creator.copyReport')}</button>
         <button type="button" class="button" id="creator-cancel">${t('code.cancel')}</button>
-        <button type="button" class="button" id="creator-check" disabled>${t('creator.runChecks')}</button>
         <button type="button" class="button primary" id="creator-add" disabled>${t('creator.addSelected')}</button>
       </div>`,
     onClose: () => {
@@ -95,7 +99,6 @@ export function openCreatorPackDialog(options: CreatorPackOptions) {
   const list = $<HTMLUListElement>('creator-items');
   const summary = $<HTMLElement>('creator-summary');
   const add = $<HTMLButtonElement>('creator-add');
-  const check = $<HTMLButtonElement>('creator-check');
   const report = $<HTMLButtonElement>('creator-report');
 
   const selected = () =>
@@ -179,7 +182,6 @@ export function openCreatorPackDialog(options: CreatorPackOptions) {
   const classify = async () => {
     const mine = ++run;
     checked = false;
-    check.disabled = true;
     add.disabled = true;
     const text = source.value;
     if (!text.trim()) {
@@ -239,16 +241,16 @@ export function openCreatorPackDialog(options: CreatorPackOptions) {
         total: String(rows.length),
       });
     report.disabled = false;
-    check.disabled = !rows.some(
-      (row) => row.status === 'ok' || row.status === 'warning',
-    );
     paint();
+    // Q4: the render checks run on their own (nothing is registered until
+    // Add selected to library).
+    if (rows.some((row) => row.status === 'ok' || row.status === 'warning'))
+      void runChecks();
   };
 
   /** Spec 6 steps 3 to 5, item by item (a failure never stops the rest). */
   const runChecks = async () => {
     const mine = ++run;
-    check.disabled = true;
     for (const row of rows) {
       if (mine !== run) return;
       if (!row.item || (row.status !== 'ok' && row.status !== 'warning'))
@@ -292,7 +294,6 @@ export function openCreatorPackDialog(options: CreatorPackOptions) {
     source.value = await file.text();
     void classify();
   };
-  check.onclick = () => void runChecks();
   report.onclick = () => options.copy(reportText());
   $<HTMLButtonElement>('creator-cancel').onclick = () => handle.close();
   add.onclick = async () => {
@@ -312,8 +313,45 @@ export function openCreatorPackDialog(options: CreatorPackOptions) {
           : {}),
       })),
     });
-    if (done) handle.close();
-    else add.disabled = false;
+    if (done === false) {
+      add.disabled = false;
+      return;
+    }
+    // Q4: a result card, so the user is never left without a message.
+    showResult(done);
+  };
+  const showResult = (count: number) => {
+    const card = document.createElement('div');
+    card.className = 'creator-result';
+    card.id = 'creator-result';
+    card.setAttribute('role', 'status');
+    const text = document.createElement('p');
+    text.textContent =
+      count > 0
+        ? t('creator.resultAdded', { count: String(count) })
+        : t('creator.resultSame');
+    const actions = document.createElement('div');
+    actions.className = 'modal-actions';
+    const done = document.createElement('button');
+    done.type = 'button';
+    done.className = 'button';
+    done.id = 'creator-done';
+    done.textContent = t('creator.done');
+    done.onclick = () => handle.close();
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'button primary';
+    open.id = 'creator-open-ai';
+    open.textContent = t('creator.openAi');
+    open.onclick = () => {
+      handle.close();
+      options.openAi?.();
+    };
+    actions.append(done, open);
+    card.append(text, actions);
+    root.querySelector('.creator-import + .modal-actions')?.remove();
+    root.querySelector('.creator-import')!.replaceWith(card);
+    open.focus();
   };
   if (options.fileName)
     $<HTMLElement>('creator-file-name').textContent = options.fileName;

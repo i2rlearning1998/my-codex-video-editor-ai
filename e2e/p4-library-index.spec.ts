@@ -23,13 +23,13 @@ test('[CP-013] Copy library index for AI copies a compact index of every library
   await openImportMenu(page);
   await page.locator('#import-creator').click();
   await dialog(page).locator('#creator-source').fill(MOVE);
-  await expect(dialog(page).locator('#creator-check')).toBeEnabled();
-  await dialog(page).locator('#creator-check').click();
   await expect(dialog(page).locator('#creator-summary')).toHaveText(
     /passed the checks/,
     { timeout: 60_000 },
   );
   await dialog(page).locator('#creator-add').click();
+  // Q4: the result card, then Done.
+  await dialog(page).locator('#creator-done').click();
   await expect(dialog(page)).toBeHidden();
   await openImportMenu(page);
   await expect(page.locator('#import-index')).toHaveText(

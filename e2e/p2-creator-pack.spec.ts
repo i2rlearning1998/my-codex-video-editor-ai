@@ -21,9 +21,8 @@ async function paste(page: Page, text: string) {
   await dialog(page).locator('#creator-source').fill(text);
   await expect(dialog(page).locator('#creator-report')).toBeEnabled();
 }
-/** Runs the render checks and waits until no item is still checking. */
+/** Q4: the render checks run on their own; this waits until they end. */
 async function runChecks(page: Page) {
-  await dialog(page).locator('#creator-check').click();
   await expect(dialog(page).locator('#creator-summary')).toHaveText(
     /passed the checks/,
     { timeout: 60_000 },
@@ -34,6 +33,12 @@ async function importPack(page: Page, text: string) {
   await paste(page, text);
   await runChecks(page);
   await dialog(page).locator('#creator-add').click();
+  await finish(page);
+}
+/** Q4: the result card, then Done. */
+async function finish(page: Page) {
+  await expect(dialog(page).locator('#creator-result')).toBeVisible();
+  await dialog(page).locator('#creator-done').click();
   await expect(dialog(page)).toBeHidden();
 }
 /** The keys in My library (read from the store, like the shell does). */
@@ -84,14 +89,9 @@ test.describe('P2 creator packs', () => {
     page,
   }) => {
     test.setTimeout(180_000);
-    // The review: offline first (nothing runs), then the render checks.
+    // The review: the offline checks, then the render checks on their own.
     await openImport(page);
     await paste(page, read('motion-c.json'));
-    await expect(row(page, 'motion-particles')).toHaveAttribute(
-      'data-status',
-      'warning',
-    );
-    await expect(dialog(page).locator('#creator-add')).toBeDisabled();
     await runChecks(page);
     const motion = row(page, 'motion-particles');
     await expect(motion).toHaveAttribute('data-status', 'ok');
@@ -100,7 +100,7 @@ test.describe('P2 creator packs', () => {
     );
     await expect(motion.locator('.creator-thumb')).toBeVisible();
     await dialog(page).locator('#creator-add').click();
-    await expect(dialog(page)).toBeHidden();
+    await finish(page);
     // The rest of the valid examples, each a pack of its own.
     for (const file of [
       'shape.json',
@@ -123,7 +123,7 @@ test.describe('P2 creator packs', () => {
       'text-pack/text-title',
     ]);
     // Panels, each card badged.
-    const badge = 'Creator pack';
+    const badge = 'AI';
     await showCategory(page, 'Elements');
     const elements = page.locator('#library-elements');
     await elements.locator('[data-tile="shapes"]').click();
@@ -207,7 +207,7 @@ test.describe('P2 creator packs', () => {
       await expect(
         rows.first().locator('input[type="checkbox"]'),
       ).toBeDisabled();
-      await expect(dialog(page).locator('#creator-check')).toBeDisabled();
+      await expect(dialog(page).locator('#creator-add')).toBeDisabled();
     }
     // Render checks reject what the offline checks cannot see.
     const motion = (id: string, body: string) =>
@@ -308,6 +308,7 @@ test.describe('P2 creator packs', () => {
     await runChecks(page);
     await dialog(page).locator('#creator-add').click();
     await page.locator('.modal-dialog [data-role="confirm"]').click();
+    await finish(page);
     await expect
       .poll(() => libraryKeys(page))
       .toEqual(['shape-pack/shape-kite-two']);
@@ -372,7 +373,6 @@ test.describe('P2 creator packs', () => {
 });
 
 async function runChecksExpectReject(page: Page, id: string, reason: RegExp) {
-  await dialog(page).locator('#creator-check').click();
   await expect(row(page, id)).toHaveAttribute('data-status', 'rejected', {
     timeout: 30_000,
   });

@@ -71,13 +71,13 @@ async function importPack(page: Page, text: string) {
   await page.locator('#import-menu').click();
   await page.locator('#import-creator').click();
   await dialog(page).locator('#creator-source').fill(text);
-  await expect(dialog(page).locator('#creator-check')).toBeEnabled();
-  await dialog(page).locator('#creator-check').click();
   await expect(dialog(page).locator('#creator-summary')).toHaveText(
     /passed the checks/,
     { timeout: 60_000 },
   );
   await dialog(page).locator('#creator-add').click();
+  // Q4: the result card, then Done.
+  await dialog(page).locator('#creator-done').click();
   await expect(dialog(page)).toBeHidden();
 }
 async function selectBadge(page: Page) {

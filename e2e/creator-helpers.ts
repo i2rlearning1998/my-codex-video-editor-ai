@@ -61,18 +61,15 @@ export async function importPack(page: Page, text: string) {
   await page.locator('#import-menu').click();
   await page.locator('#import-creator').click();
   await dialog(page).locator('#creator-source').fill(text);
-  const check = dialog(page).locator('#creator-check');
-  // Q4: checks run on their own; earlier builds had a Run checks button.
-  if (await check.count()) {
-    await expect(check).toBeEnabled();
-    await check.click();
-  }
   await expect(dialog(page).locator('#creator-summary')).toHaveText(
     /passed the checks/,
     { timeout: 60_000 },
   );
   await dialog(page).locator('#creator-add').click();
-  await expect(dialog(page).locator('#creator-items')).toBeHidden();
+  // Q4: a result card says what was added; Done closes it.
+  await expect(dialog(page).locator('#creator-result')).toBeVisible();
+  await dialog(page).locator('#creator-done').click();
+  await expect(dialog(page)).toBeHidden();
 }
 export async function selectBadge(page: Page) {
   await showCategory(page, 'Scene');

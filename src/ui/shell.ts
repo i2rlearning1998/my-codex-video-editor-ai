@@ -24,6 +24,7 @@ import {
   type CreatorEntry,
 } from './creator-library';
 import { libraryIndex } from './library-index';
+import { mountAiPanel } from './ai-panel';
 import { presetControls } from '../creator-pack/preset';
 import { blocks } from '../blocks/starters';
 import { SYSTEM_FONTS } from '../render/text-style';
@@ -235,6 +236,8 @@ const RAIL_CATEGORIES = [
   // V7 (spec 11.4): Record & create, before Audio.
   'Record',
   'Audio',
+  // Q4: everything imported from Creator Packs.
+  'AI',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -245,6 +248,7 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Draw: 'pen',
   Scene: 'layers',
   Record: 'mic',
+  AI: 'magic',
 };
 export interface ShellActions {
   save?: () => void;
@@ -330,6 +334,7 @@ export function mountEditorShell(
         <div id="library-text" data-rail-panel="Text" hidden></div>
         <div id="library-audio" data-rail-panel="Audio" hidden></div>
         <div id="library-record" data-rail-panel="Record" hidden></div>
+        <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -1988,7 +1993,9 @@ export function mountEditorShell(
     (manifest) => (builtInIds = manifest.items.map((item) => item.id)),
     () => undefined,
   );
-  const addCreatorItems = async (add: CreatorPackAdd): Promise<boolean> => {
+  const addCreatorItems = async (
+    add: CreatorPackAdd,
+  ): Promise<number | false> => {
     await creatorLibrary.ready;
     const existing = creatorLibrary.packVersion(add.packId);
     if (existing === add.packVersion) {
@@ -2000,7 +2007,7 @@ export function mountEditorShell(
         }),
         'info',
       );
-      return true;
+      return 0;
     }
     if (existing !== null) {
       const newer = add.packVersion > existing;
@@ -2043,7 +2050,7 @@ export function mountEditorShell(
       }),
       'success',
     );
-    return true;
+    return add.items.length;
   };
   const openCreatorImport = (
     initial: { text?: string; fileName?: string } = {},
@@ -2059,6 +2066,7 @@ export function mountEditorShell(
       ...(renderer.measureText ? { measureText: renderer.measureText } : {}),
       runtime: freeCodeRuntime,
       onAdd: addCreatorItems,
+      openAi: () => openCategory('AI'),
       copy: (text) => {
         void navigator.clipboard
           .writeText(text)
@@ -2067,6 +2075,8 @@ export function mountEditorShell(
       },
     });
   };
+  /** T2: Copy AI brief (replaced by the full brief in src/ai-brief). */
+  const copyAiBrief = () => copyLibraryIndex();
   /** P4: "Copy library index for AI" (plain text under 40 KB). */
   const copyLibraryIndex = async () => {
     await creatorLibrary.ready;
@@ -2454,6 +2464,7 @@ export function mountEditorShell(
     'Text',
     'Audio',
     'Record',
+    'AI',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
@@ -2798,6 +2809,14 @@ export function mountEditorShell(
     const item = libraryActions.find(id);
     if (item) libraryActions.insert(item, undefined, time);
   };
+  // Q4: the AI category (everything from Creator Packs).
+  mountAiPanel(element('#library-ai'), {
+    library: creatorLibrary,
+    insert: (id) => safely(() => insertCreatorItem(id)),
+    applyPreset: (id) => applyCreatorPreset(id),
+    importPack: () => openCreatorImport(),
+    copyBrief: () => void copyAiBrief(),
+  });
   const creatorMenu = (id: string, x: number, y: number) => {
     const entry = creatorEntryOf(id);
     if (!entry) return;

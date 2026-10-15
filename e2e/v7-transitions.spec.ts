@@ -57,7 +57,8 @@ test('[TR-017] one Transitions place: no left Transitions category (rail order T
     'Scene',
   ]);
   // V7 (spec 11.4): Record & create, then Audio.
-  expect(rail.slice(6)).toEqual(['Record', 'Audio']);
+  // Q4: then AI (everything from Creator Packs).
+  expect(rail.slice(6)).toEqual(['Record', 'Audio', 'AI']);
   await expect(page.locator('#library-transitions')).toHaveCount(0);
   // The right panel (opened here from a scene "+") holds every tile.
   const id = await secondScene(page);
