@@ -641,6 +641,19 @@ export function applyCommand(project: Project, command: Command): void {
         if (found)
           shiftKeyframes(found.layer, command.startTime - clip.startTime);
       }
+      // Q1: a group's children live inside its clip (no clips of their own),
+      // so they follow it: a move shifts them (and their keyframes), a trim
+      // or lengthening moves the edges that sat on the clip's edges.
+      const group = findLayer(composition.layers, clip.layerId)?.layer;
+      if (group?.type === 'group')
+        retimeChildren(
+          group,
+          clip.startTime,
+          clip.startTime + clip.duration,
+          command.startTime,
+          command.startTime + command.duration,
+          1 / composition.fps,
+        );
       clip.startTime = command.startTime;
       clip.duration = command.duration;
       if (command.sourceIn !== undefined && command.sourceOut !== undefined) {
@@ -972,6 +985,40 @@ export function applyCommand(project: Project, command: Command): void {
  * W5-B: moves every keyframe of one layer by `delta` seconds. Times below 0
  * clamp to 0; when two land on the same time the later keyframe wins.
  */
+/** Q1: retimes a group's descendants with its clip (D-251). */
+function retimeChildren(
+  group: Layer,
+  oldStart: number,
+  oldEnd: number,
+  newStart: number,
+  newEnd: number,
+  frame: number,
+): void {
+  const moved = Math.abs(newEnd - newStart - (oldEnd - oldStart)) < 1e-9;
+  const delta = newStart - oldStart;
+  const near = (a: number, b: number) => Math.abs(a - b) <= frame / 2 + 1e-9;
+  group.startTime = newStart;
+  group.duration = newEnd - newStart;
+  const visit = (layers: Layer[]) => {
+    for (const layer of layers) {
+      if (moved) {
+        layer.startTime = Math.max(0, layer.startTime + delta);
+        shiftKeyframes(layer, delta);
+      } else {
+        const start = layer.startTime,
+          end = layer.startTime + layer.duration;
+        let nextStart = near(start, oldStart) ? newStart : start;
+        let nextEnd = near(end, oldEnd) || end > oldEnd ? newEnd : end;
+        nextStart = Math.min(Math.max(nextStart, newStart), newEnd - frame);
+        nextEnd = Math.max(Math.min(nextEnd, newEnd), nextStart + frame);
+        layer.startTime = nextStart;
+        layer.duration = nextEnd - nextStart;
+      }
+      visit(layer.children);
+    }
+  };
+  visit(group.children);
+}
 function shiftKeyframes(layer: Layer, delta: number): void {
   const shift = (property: Property): Property => {
     if (!property.keyframes.length) return property;

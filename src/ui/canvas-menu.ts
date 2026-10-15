@@ -62,6 +62,13 @@ export interface CanvasMenuHooks {
   readonly deleteScene?: () => void;
   /** I2: saves this scene to My Templates (in this browser). */
   readonly saveAsTemplate?: () => void;
+  /** P1: a code layer's own actions. */
+  readonly code?: {
+    readonly edit: (layerId: string) => void;
+    readonly settings: (layerId: string) => void;
+    readonly saveTemplate: (layerId: string) => void;
+    readonly rerender: (layerId: string) => void;
+  };
 }
 const planned = (wave: number | string, id: string) =>
   t('toolbar.later', { wave: String(wave), id });
@@ -142,9 +149,49 @@ export function canvasMenuEntries(
     source,
     session.selectedIds,
     session.currentTime,
-  ).filter((action) => !TIMELINE_ONLY.has(action));
+  ).filter(
+    (action) =>
+      !TIMELINE_ONLY.has(action) &&
+      !(action === 'detach-audio' && isCodeSelection(session)),
+  );
   const clips = selectedClips(source, session.selectedIds);
   const entries: MenuEntry[] = [];
+  // P1: a code layer has its own section first; picture and sound items that
+  // mean nothing for it (Set as background, Detach audio) are left out.
+  const selection0 = describeSelection(source, session.selectedIds);
+  const codeLayer =
+    selection0.items.length === 1 && selection0.items[0]!.layer.code
+      ? selection0.items[0]!.id
+      : null;
+  if (codeLayer && hooks.code) {
+    const code = hooks.code;
+    entries.push(
+      {
+        id: 'code-edit',
+        label: t('command.codeEdit'),
+        icon: 'code',
+        run: () => code.edit(codeLayer),
+      },
+      {
+        id: 'code-settings',
+        label: t('command.codeSettings'),
+        icon: 'adjust',
+        run: () => code.settings(codeLayer),
+      },
+      {
+        id: 'code-save-template',
+        label: t('command.codeSaveTemplate'),
+        icon: 'templates',
+        run: () => code.saveTemplate(codeLayer),
+      },
+      {
+        id: 'code-rerender',
+        label: t('command.codeRerender'),
+        icon: 'replace',
+        run: () => code.rerender(codeLayer),
+      },
+    );
+  }
   const edit = (action: EditAction) =>
     entries.push({
       id: action,
@@ -153,6 +200,7 @@ export function canvasMenuEntries(
       ...(SHORTCUTS[action] ? { shortcut: SHORTCUTS[action] } : {}),
       run: () => performEdit(engine, session, action),
     });
+  const firstEdit = entries.length;
   for (const action of available) {
     if (action === 'speed')
       entries.push({
@@ -189,6 +237,8 @@ export function canvasMenuEntries(
       });
     else if (action !== 'ungroup') edit(action);
   }
+  if (codeLayer && firstEdit > 0 && entries[firstEdit])
+    entries[firstEdit] = { ...entries[firstEdit]!, divider: true };
   // Ungroup shows for groups even when it cannot run, with the reason.
   const selection = describeSelection(source, session.selectedIds);
   if (selection.every('group')) {
@@ -315,7 +365,7 @@ export function canvasMenuEntries(
       icon: 'text',
       run: hooks.altText,
     });
-  if (canSetBackground(session))
+  if (canSetBackground(session) && !codeLayer)
     entries.push({
       id: 'set-background',
       label: t('command.setBackground'),
@@ -472,4 +522,10 @@ function sceneMenuEntries(
       ],
     },
   ];
+}
+
+/** P1: the selection is one code layer. */
+function isCodeSelection(session: EditorSession): boolean {
+  const items = describeSelection(session.source, session.selectedIds).items;
+  return items.length === 1 && !!items[0]!.layer.code;
 }

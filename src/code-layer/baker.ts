@@ -127,6 +127,18 @@ export class CodeBaker {
     this.#emit();
   }
 
+  /** The key being baked right now (a cancelled one until it stops). */
+  get running(): string | null {
+    return this.#running?.key ?? null;
+  }
+  /** Forgets a key's job (after its frames were removed): it bakes anew. */
+  forget(cacheKey: string): void {
+    if (this.#running?.key === cacheKey) return;
+    this.#jobs.delete(cacheKey);
+    this.#specs.delete(cacheKey);
+    this.#emit();
+  }
+
   #settle(cacheKey: string) {
     for (const resolve of this.#waiters.get(cacheKey) ?? []) resolve();
     this.#waiters.delete(cacheKey);

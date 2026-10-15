@@ -48,8 +48,20 @@ export interface CommandContext {
   renameClip?: () => void;
   /** J14: More options opens the right panel for the selection. */
   moreOptions?: () => void;
+  /** P1: a code layer's own actions (Edit code, Animation settings, ...). */
+  code?: {
+    edit: (layerId: string) => void;
+    settings: (layerId: string) => void;
+    saveTemplate: (layerId: string) => void;
+    rerender: (layerId: string) => void;
+  };
   /** G3: the canvas view (zoom and pan); absent outside the full shell. */
   view?: CanvasView;
+}
+/** P1: the one selected top-level code layer's id, or null. */
+export function selectedCodeLayer(session: EditorSession): string | null {
+  const roots = describeSelection(session.source, session.selectedIds).items;
+  return roots.length === 1 && roots[0]!.layer.code ? roots[0]!.id : null;
 }
 export interface RegisteredCommand {
   id: string;
@@ -90,6 +102,11 @@ const edit = (id: EditAction, shortcut: string): RegisteredCommand => ({
   shortcut,
   isEnabled: ({ session }) =>
     (!!KEYFRAME_EDITS[id] && session.selectedKeyframes.length > 0) ||
+    // Q1: a group that cannot be ungrouped still takes the shortcut, which
+    // then says why (one toast).
+    (id === 'ungroup' &&
+      session.selectedIds.length > 0 &&
+      describeSelection(session.source, session.selectedIds).every('group')) ||
     contextActions(
       session.source,
       session.selectedIds,
@@ -229,6 +246,24 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     isEnabled: ({ session }) => session.selectedIds.length > 0,
     run: (context) => context.moreOptions?.(),
   },
+  // P1: the code layer's menu entries (canvas, timeline and palette).
+  ...(
+    [
+      ['code-edit', 'command.codeEdit', 'edit'],
+      ['code-settings', 'command.codeSettings', 'settings'],
+      ['code-save-template', 'command.codeSaveTemplate', 'saveTemplate'],
+      ['code-rerender', 'command.codeRerender', 'rerender'],
+    ] as const
+  ).map(([id, labelKey, hook]): RegisteredCommand => ({
+    id,
+    labelKey,
+    shortcut: '',
+    isEnabled: ({ session, code }) => !!code && !!selectedCodeLayer(session),
+    run: ({ session, code }) => {
+      const layerId = selectedCodeLayer(session);
+      if (layerId) code?.[hook](layerId);
+    },
+  })),
   // CV-025: align and distribute (palette, canvas Align submenu).
   ...ALIGN_EDGES.map((edge): RegisteredCommand => ({
     id: `align-${edge}`,

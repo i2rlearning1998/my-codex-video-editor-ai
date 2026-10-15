@@ -3,6 +3,7 @@
 // time, and a composition whose animated values are evaluated at that time.
 // The spatial contract then applies to these values unchanged.
 import type { DeepReadonly, Easing, Property } from './model';
+import { aroundPivot, pivotPoint } from './pivot';
 
 type ReadonlyProperty = DeepReadonly<Property>;
 type Keyframe = ReadonlyProperty['keyframes'][number];
@@ -182,9 +183,37 @@ function layerAt<L extends AnimatedNode>(layer: L, time: number): L {
         ),
       ),
     );
+  const transform = { ...map(layer.transform) } as Record<
+    string,
+    ReadonlyProperty
+  >;
+  // Q3: animated rotation or scale turns about the layer's pivot (D-252):
+  // the position moves so the pivot stays where the resting rotation and
+  // scale put it.
+  const pivot = pivotPoint(layer.properties);
+  const stored = layer.transform as Record<string, ReadonlyProperty>;
+  if (pivot && (isAnimated(stored.rotation!) || isAnimated(stored.scale!))) {
+    const value = (record: Record<string, ReadonlyProperty>, key: string) =>
+      record[key]!.value as never;
+    const placed = aroundPivot(
+      {
+        position: { value: value(transform, 'position') },
+        rotation: { value: value(stored, 'rotation') },
+        scale: { value: value(stored, 'scale') },
+        opacity: { value: 1 },
+      },
+      pivot,
+      value(transform, 'rotation'),
+      value(transform, 'scale'),
+    );
+    transform.position = Object.freeze({
+      ...(transform.position as object),
+      value: placed.position.value,
+    }) as unknown as ReadonlyProperty;
+  }
   return Object.freeze({
     ...layer,
-    transform: map(layer.transform),
+    transform: Object.freeze(transform),
     properties: map(layer.properties),
     children: Object.freeze(
       layer.children.map((child) => layerAt(child, time)),

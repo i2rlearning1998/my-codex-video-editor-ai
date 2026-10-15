@@ -1,4 +1,4 @@
-import { isSceneTransitionMarker } from '../core';
+import { isReservedMarker } from '../core';
 import {
   frameToTime,
   pixelToTime,
@@ -132,8 +132,7 @@ export function snapCandidates(
       : [source.currentTime]),
     ...source.composition.markers
       .filter(
-        (marker) =>
-          marker.id !== options.markerId && !isSceneTransitionMarker(marker),
+        (marker) => marker.id !== options.markerId && !isReservedMarker(marker),
       )
       .map((marker) => marker.time),
     ...source.composition.tracks.flatMap((track) =>

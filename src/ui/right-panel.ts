@@ -60,6 +60,8 @@ import {
   SPEED_PRESETS,
 } from './editing';
 import { guardCommands } from './editor-mode';
+import { PIVOT_NAMES, pivotName } from '../core';
+import { controlledLayer, hasControls } from './controls-panel';
 import { iconSvg } from './icons';
 import { documentColors } from './palette';
 import { audioCommand, audioTab } from './right-panel/audio-tab';
@@ -106,6 +108,8 @@ export const RIGHT_SECTIONS = [
   'Transitions',
   'Speech',
   'Code',
+  // T1: themes (opened from the rail with nothing selected).
+  'Theme',
 ] as const;
 export type RightSection = (typeof RIGHT_SECTIONS)[number];
 export const RIGHT_ICONS: Record<RightSection, string> = {
@@ -120,6 +124,7 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Captions: 'captions',
   Transitions: 'transitions',
   Speech: 'text',
+  Theme: 'color',
   Code: 'code',
 };
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
@@ -215,6 +220,8 @@ export const ttsClip = (session: EditorSession) => {
   const found = findClipByLayer(session.source.composition, roots[0]!.id);
   return found && readTtsSettings(found.clip) ? found.clip : null;
 };
+/** T1: the right panel's Theme tab is open (with nothing selected). */
+export const themeState = { open: false };
 /** X2: the selected code animation layer, if exactly one is selected. */
 export const codeLayerSelected = (session: EditorSession) => {
   const roots = selectionRoots(session.source, session.selectedIds);
@@ -237,13 +244,22 @@ const CODE_TABS: RightSection[] = [
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
   // V7 (spec 11.5): Text to speech, opened from Record & create.
-  if (session.selectedIds.length) ttsState.open = false;
+  if (session.selectedIds.length) {
+    ttsState.open = false;
+    themeState.open = false;
+  }
   if (kindOf(session) === 'none' && ttsState.open) return ['Speech'];
+  if (kindOf(session) === 'none' && themeState.open) return ['Theme'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session))
     return [...TABS.audio, 'Speech'];
-  const tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
+  let tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
+  // P3 (spec 5.1b): Controls follow Properties when the layer has keyframes
+  // or a Creator preset (only what it really has).
+  const controlled = controlledLayer(session);
+  if (controlled && hasControls(controlled) && !tabs.includes('Code'))
+    tabs = [tabs[0]!, 'Code', ...tabs.slice(1)];
   return focusedClip(session) ? [...tabs, 'Transitions'] : tabs;
 }
 /**
@@ -291,6 +307,8 @@ export interface RightPanelHooks {
   ) => HTMLElement | null;
   /** X2: the Animation settings of the selected code layer. */
   codeBody?: () => readonly (HTMLElement | null)[];
+  /** T1: the Theme panel. */
+  themeBody?: () => HTMLElement;
   /** V7: Text to speech's Save. */
   tts?: TtsHooks;
   /** V7: decodes clip sound for the Audio tab's loudness analysis. */
@@ -755,6 +773,52 @@ export function mountRightPanel(
       default:
         return groupTab();
     }
+  };
+
+  /** Q3: the anchor (pivot) of the selected layer, a 9-point grid. */
+  const anchorAccordion = () => {
+    const roots = selectionRoots(session.source, session.selectedIds);
+    if (roots.length !== 1 || roots[0]!.type === 'audio') return null;
+    const layer = roots[0]!;
+    const current = pivotName(layer.properties) ?? 'center';
+    const grid = document.createElement('div');
+    grid.className = 'anchor-grid';
+    grid.id = 'right-anchor';
+    grid.setAttribute('role', 'radiogroup');
+    grid.setAttribute('aria-label', t('right.anchor'));
+    for (const name of PIVOT_NAMES) {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'anchor-cell';
+      cell.dataset.pivot = name;
+      cell.setAttribute('role', 'radio');
+      cell.setAttribute('aria-checked', String(name === current));
+      cell.title = t(`right.anchor.${name}`);
+      cell.setAttribute('aria-label', cell.title);
+      cell.onclick = () =>
+        safely(() =>
+          run(t('right.anchorStep'), [
+            {
+              type: 'SET_PROPERTY',
+              compositionId: session.source.composition.id,
+              layerId: layer.id,
+              target: { kind: 'property', key: 'pivot' },
+              property: {
+                type: 'string',
+                value: name,
+                animated: false,
+                keyframes: [],
+                constraints: [],
+              },
+            } as Command,
+          ]),
+        );
+      grid.append(cell);
+    }
+    const note = document.createElement('p');
+    note.className = 'right-note';
+    note.textContent = t('right.anchorHint');
+    return accordion('layer-anchor', t('right.anchor'), [grid, note]);
   };
 
   // --- Other tabs --------------------------------------------------------------
@@ -1477,7 +1541,7 @@ export function mountRightPanel(
       host.dataset.kind = kindOf(session);
       const content =
         section === 'Properties'
-          ? firstTab()
+          ? [...firstTab(), anchorAccordion()]
           : plannedSection(section, session)
             ? planned(section)
             : section === 'Fade'
@@ -1497,26 +1561,30 @@ export function mountRightPanel(
                               heading(t('panel.code')),
                               ...(hooks.codeBody?.() ?? []),
                             ]
-                          : section === 'Speech'
-                            ? speech()
-                            : section === 'Transitions'
-                              ? transitions()
-                              : section === 'Audio'
-                                ? [
-                                    heading(
-                                      t('panel.audio'),
-                                      t('right.audioHint'),
-                                    ),
-                                    ...audioTab(
-                                      engine,
-                                      session,
-                                      run,
-                                      report,
-                                      hooks.audioDecoder,
-                                      rerender,
-                                    ),
-                                  ]
-                                : [];
+                          : section === 'Theme'
+                            ? [hooks.themeBody?.() ?? null].filter(
+                                (item): item is HTMLElement => !!item,
+                              )
+                            : section === 'Speech'
+                              ? speech()
+                              : section === 'Transitions'
+                                ? transitions()
+                                : section === 'Audio'
+                                  ? [
+                                      heading(
+                                        t('panel.audio'),
+                                        t('right.audioHint'),
+                                      ),
+                                      ...audioTab(
+                                        engine,
+                                        session,
+                                        run,
+                                        report,
+                                        hooks.audioDecoder,
+                                        rerender,
+                                      ),
+                                    ]
+                                  : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

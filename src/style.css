@@ -1814,27 +1814,54 @@ input[type='number'],
 .nle-clip {
   isolation: isolate;
 }
-/* ANI-004 keyframe diamonds on the clip row (above the clip). */
+/* ANI-004 keyframe diamonds on the clip row (above the clip). Q3: a 14 px
+   glyph in a 20 px target, outlined against the clip in both themes, lit on
+   hover and filled with the accent when selected. */
 .timeline-keyframe {
   position: absolute;
   z-index: 2;
-  top: calc(50% - 8px);
-  inline-size: 16px;
-  block-size: 16px;
+  top: calc(50% - 10px);
+  inline-size: 20px;
+  block-size: 20px;
   padding: 0;
-  margin-inline-start: -8px;
+  margin-inline-start: -10px;
   display: grid;
   place-items: center;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   background: transparent;
   border: 0;
   cursor: grab;
+  filter: drop-shadow(0 0 1px var(--color-bg-app))
+    drop-shadow(0 0 1px var(--color-bg-app));
 }
-.timeline-keyframe:hover {
-  color: var(--color-text);
+.timeline-keyframe:hover,
+.timeline-keyframe:focus-visible {
+  z-index: 3;
+  color: var(--color-accent-text);
+  transform: scale(1.2);
 }
 .timeline-keyframe.selected {
-  color: var(--color-accent-hover);
+  z-index: 3;
+  color: var(--color-accent);
+  filter: drop-shadow(0 0 1px var(--color-text))
+    drop-shadow(0 0 1px var(--color-text));
+}
+.anchor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  gap: var(--space-1);
+}
+.anchor-cell {
+  inline-size: 32px;
+  block-size: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  cursor: pointer;
+}
+.anchor-cell[aria-checked='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
 }
 .timeline-menu-divider {
   border-top: 1px solid var(--color-border) !important;
@@ -4204,16 +4231,26 @@ button.color-swatch-trigger {
   padding: var(--space-3) var(--space-4);
 }
 
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-motion='on']) *,
+  :root:not([data-motion='on']) *::before,
+  :root:not([data-motion='on']) *::after {
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }
-  .skeleton {
+  :root:not([data-motion='on']) .skeleton {
     animation: none;
   }
+}
+:root[data-motion='off'] *,
+:root[data-motion='off'] *::before,
+:root[data-motion='off'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+}
+:root[data-motion='off'] .skeleton {
+  animation: none;
 }
 
 #composition-canvas:focus-visible {
@@ -4827,11 +4864,16 @@ button.color-swatch-trigger {
     opacity: 0;
   }
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .scene-crossfade {
+  :root:not([data-motion='on']) .scene-crossfade {
     display: none;
   }
 }
+:root[data-motion='off'] .scene-crossfade {
+  display: none;
+}
+
 .toolbar-chip-label {
   color: var(--text-secondary);
   font-weight: var(--weight-medium);
@@ -5253,12 +5295,18 @@ button.color-swatch-trigger {
     opacity: 1;
   }
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .browse-enter-forward,
-  .browse-enter-back,
-  .browse-thumb.title-preview img {
+  :root:not([data-motion='on']) .browse-enter-forward,
+  :root:not([data-motion='on']) .browse-enter-back,
+  :root:not([data-motion='on']) .browse-thumb.title-preview img {
     animation: none;
   }
+}
+:root[data-motion='off'] .browse-enter-forward,
+:root[data-motion='off'] .browse-enter-back,
+:root[data-motion='off'] .browse-thumb.title-preview img {
+  animation: none;
 }
 
 /* I2: the Save as template dialog. */
@@ -5885,10 +5933,14 @@ button.number-field-step:focus-visible {
   background-size: 400% 100%;
   animation: skeleton 1.4s ease infinite;
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .timeline-clip.clip-loading {
+  :root:not([data-motion='on']) .timeline-clip.clip-loading {
     animation: none;
   }
+}
+:root[data-motion='off'] .timeline-clip.clip-loading {
+  animation: none;
 }
 
 /* J9: drag and drop. The drag image, the canvas drop box, the timeline's
@@ -6908,10 +6960,14 @@ input[type='range'] {
     transform: rotate(12deg);
   }
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .animate-thumb i {
+  :root:not([data-motion='on']) .animate-thumb i {
     animation: none !important;
   }
+}
+:root[data-motion='off'] .animate-thumb i {
+  animation: none !important;
 }
 
 /* U6: the frame panel stays at the timeline's bottom right; the playback
@@ -7352,13 +7408,20 @@ input[type='range'] {
 .editor-shell > #rail-right {
   transition: opacity var(--motion-panel) var(--ease-enter);
 }
+/* Q5: reduced motion follows Settings > Animations (D-253). */
 @media (prefers-reduced-motion: reduce) {
-  .editor-shell,
-  .editor-shell > .inspector,
-  .editor-shell > #rail-right {
+  :root:not([data-motion='on']) .editor-shell,
+  :root:not([data-motion='on']) .editor-shell > .inspector,
+  :root:not([data-motion='on']) .editor-shell > #rail-right {
     transition: none !important;
   }
 }
+:root[data-motion='off'] .editor-shell,
+:root[data-motion='off'] .editor-shell > .inspector,
+:root[data-motion='off'] .editor-shell > #rail-right {
+  transition: none !important;
+}
+
 /* Right rail (spec 1.5): 65 px, 24 px icons, 10 px labels, ~62 px pitch;
    the active item is a 56 x 58 rounded box with a 3 px accent bar at the
    far right edge. */
@@ -8322,6 +8385,118 @@ input[type='range'] {
   cursor: pointer;
 }
 
+.timeline-clip .clip-code-poster {
+  position: absolute;
+  inset-block: 2px;
+  inset-inline-end: 2px;
+  block-size: calc(100% - 4px);
+  inline-size: auto;
+  max-inline-size: 40%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  opacity: 0.85;
+  pointer-events: none;
+}
+.timeline-clip .clip-code-poster[hidden] {
+  display: none;
+}
+/* P1: a code layer still baking shows its progress over the canvas too. */
+.code-render-status {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-end: var(--space-2);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  box-shadow: var(--shadow-1);
+  pointer-events: none;
+}
+.code-render-status[hidden] {
+  display: none;
+}
+
+/* P2: Import creator pack. */
+.creator-pack-dialog {
+  width: min(820px, calc(100vw - 32px));
+}
+.creator-import {
+  display: grid;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+.creator-source textarea {
+  inline-size: 100%;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+}
+.creator-summary {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.creator-items {
+  display: grid;
+  gap: var(--space-2);
+  max-block-size: 40vh;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+.creator-item {
+  display: grid;
+  grid-template-columns: auto 80px 1fr;
+  gap: var(--space-2);
+  align-items: start;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.creator-thumb {
+  inline-size: 80px;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-raised);
+  object-fit: contain;
+}
+.creator-thumb[hidden] {
+  visibility: hidden;
+  display: block;
+}
+.creator-item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: baseline;
+}
+.creator-status {
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-raised);
+  font-size: var(--font-size-xs);
+}
+.creator-status[data-status='ok'] {
+  color: var(--success-text);
+}
+.creator-status[data-status='warning'] {
+  color: var(--warning-text);
+}
+.creator-status[data-status='rejected'] {
+  color: var(--danger-text);
+}
+.creator-reasons {
+  margin: var(--space-1) 0 0;
+  padding-inline-start: var(--space-4);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
 /* X2: Import code animation. */
 .import-menu {
   display: flex;
@@ -8484,4 +8659,263 @@ input[type='range'] {
 .code-template-import {
   width: 100%;
   justify-content: center;
+}
+/* P3: Controls (presets, the simple view and Add animation). */
+.controls-preset,
+.controls-simple,
+.controls-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-block: var(--space-2);
+  border-block-end: 1px solid var(--color-border);
+}
+.controls-preset-name,
+.controls-group-name {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+.controls-group-name {
+  color: var(--color-text-muted);
+}
+.controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.controls-group .is-disabled,
+.controls-more .is-disabled {
+  opacity: 0.5;
+}
+.controls-add-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+/* Q2: what is animated, and a preset's Remove animation. */
+.controls-summary {
+  margin: 0;
+  padding-block: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.controls-preset-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+/* Q4: the AI category, the AI chip and the import result card. */
+.ai-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+.ai-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ai-panel-header h2 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+.ai-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.ai-group h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.ai-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.ai-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: start;
+}
+.ai-card:hover {
+  border-color: var(--color-accent);
+}
+.ai-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  overflow: hidden;
+}
+.ai-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.ai-name {
+  font-size: var(--font-size-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-chip,
+.creator-card .browse-badge {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+.ai-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+.creator-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.creator-result p {
+  margin: 0;
+}
+/* Q5: Settings. */
+.settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.settings-label {
+  font-weight: 600;
+}
+.settings-note {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+/* T1: the Theme panel. */
+.theme-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+.theme-title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+.theme-current,
+.theme-override {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.theme-override {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.theme-group h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+}
+.theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.theme-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.theme-apply {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  cursor: pointer;
+  text-align: start;
+}
+.theme-apply[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.theme-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  aspect-ratio: 16 / 9;
+}
+.theme-sample {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+.theme-bars {
+  display: flex;
+  gap: var(--space-1);
+}
+.theme-bars i {
+  inline-size: 10px;
+  block-size: 28px;
+  border-radius: var(--radius-sm);
+}
+.theme-name {
+  font-size: var(--font-size-xs);
+}
+.theme-save {
+  display: flex;
+  gap: var(--space-2);
+}
+.theme-save input {
+  flex: 1;
+  min-inline-size: 0;
+}
+/* T2: the Copy AI brief dialog. */
+.brief-dialog textarea {
+  inline-size: 100%;
+  box-sizing: border-box;
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-sm);
+}
+.brief-label {
+  display: block;
+  margin-block-end: var(--space-1);
+  font-weight: 600;
+}
+.brief-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+.brief-fallback p {
+  margin: 0;
 }

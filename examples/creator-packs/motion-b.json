@@ -1,0 +1,51 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "motion-b-pack",
+    "name": {
+      "en": "motion-b-pack",
+      "hi": "निर्माता संग्रह"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "codex",
+    "notes": "Original geometry and code; no external assets."
+  },
+  "items": [
+    {
+      "id": "motion-orbit",
+      "name": {
+        "en": "Original motion-orbit",
+        "hi": "मौलिक motion-orbit"
+      },
+      "tags": ["original"],
+      "type": "motion",
+      "data": {
+        "tier": "B",
+        "meta": {
+          "id": "motion-orbit",
+          "name": "Orbit dot",
+          "version": "1.0.0",
+          "category": "Accent",
+          "defaultDuration": 3,
+          "params": [
+            {
+              "name": "speed",
+              "label": {
+                "en": "Speed",
+                "hi": "गति"
+              },
+              "type": "number",
+              "default": 1,
+              "min": 0.2,
+              "max": 2,
+              "step": 0.1
+            }
+          ]
+        },
+        "source": "({id:'motion-orbit',name:'Orbit dot',version:'1.0.0',category:'Accent',defaultDuration:3,params:[{name:'speed',label:'Speed',type:'number',min:0.2,max:2,step:0.1,default:1}],render(ctx,t,size,params,seed){ctx.fillStyle='#4ddbc5';ctx.beginPath();ctx.arc(size.width/2+Math.cos(t*params.speed)*80,size.height/2+Math.sin(t*params.speed)*80,12,0,Math.PI*2);ctx.fill();}})"
+      }
+    }
+  ]
+}

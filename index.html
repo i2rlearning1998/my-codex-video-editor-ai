@@ -17,6 +17,13 @@
               : 'dark';
         } catch (error) {}
         document.documentElement.dataset.theme = theme;
+        // Q5: Settings › Animations (auto, on or off), before first paint.
+        var motion = 'auto';
+        try {
+          var chosen = localStorage.getItem('aive.motion');
+          if (chosen === 'on' || chosen === 'off') motion = chosen;
+        } catch (error) {}
+        document.documentElement.dataset.motion = motion;
       })();
     </script>
     <style>
@@ -107,8 +114,8 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        .boot-skeleton > *,
-        .boot-skeleton .boot-row {
+        :root:not([data-motion='on']) .boot-skeleton > *,
+        :root:not([data-motion='on']) .boot-skeleton .boot-row {
           animation: none;
         }
       }

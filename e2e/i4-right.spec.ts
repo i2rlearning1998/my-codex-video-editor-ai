@@ -43,7 +43,8 @@ test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, ba
   // T-ALL (D-183): nothing selected shows no right panel at all.
   await expect(page.locator('.inspector')).toBeHidden();
   // V7 (spec 10.1): the rail stays, holding a disabled Auto Caption.
-  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(1);
+  // T1: Theme is the one tab that works with nothing selected.
+  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(2);
   // The stage around the artboard shows the canvas bar (CV-057).
   const stage = (await page.locator('#canvas-stage').boundingBox())!;
   await page.mouse.click(stage.x + 6, stage.y + stage.height - 60);
@@ -71,6 +72,8 @@ test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and
     'Outline',
     'Corners',
     'Boolean',
+    // Q3: every layer has an Anchor (pivot) accordion last.
+    'Anchor',
   ]);
   // Outline weight, one step.
   const width = panel(page).locator('#right-width');
@@ -118,7 +121,11 @@ test('[LAY-043] text: font, size, B I U S, case, align, colour and spacing in th
   page,
 }) => {
   await select(page, 'example-headline');
-  expect(await accordions(page)).toEqual(['Text', 'Spacing and more']);
+  expect(await accordions(page)).toEqual([
+    'Text',
+    'Spacing and more',
+    'Anchor',
+  ]);
   await panel(page).locator('[data-action="right-italic"]').click();
   let layer = await layerOf(page, 'example-headline');
   expect(layer.properties.fontStyle.value).toBe('italic');
@@ -150,7 +157,7 @@ test('[LAY-044] a group: Group with Ungroup and Align; a multi-selection: Arrang
 }) => {
   await select(page, 'example-cards');
   await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Group');
-  expect(await accordions(page)).toEqual(['Group', 'Align']);
+  expect(await accordions(page)).toEqual(['Group', 'Align', 'Anchor']);
   await panel(page).locator('[data-action="right-ungroup"]').click();
   expect((await labels(page)).at(-1)).toBe('Ungroup');
   // Now several layers are selected: Arrange.

@@ -32,7 +32,7 @@ test('[LAY-063] the right rail is always shown (Auto Caption alone and disabled 
         items.map((item) => (item as HTMLElement).dataset.section),
       );
   await expect.poll(() => width(page, '#rail-right')).toBeCloseTo(65, 0);
-  await expect.poll(shown).toEqual(['Captions']);
+  await expect.poll(shown).toEqual(['Captions', 'Theme']);
   const caption = page.locator('#rail-right [data-section="Captions"]');
   await expect(caption).toHaveAttribute('aria-disabled', 'true');
   await expect(caption).toContainText('Auto Caption');
@@ -81,7 +81,7 @@ test('[LAY-063] the right rail is always shown (Auto Caption alone and disabled 
     .poll(async () => (await hook(page)).session.selectedIds)
     .toEqual([]);
   await expect.poll(() => width(page, '#inspector-panel')).toBe(0);
-  await expect.poll(shown).toEqual(['Captions']);
+  await expect.poll(shown).toEqual(['Captions', 'Theme']);
   expect(await width(page, '#rail-right')).toBeCloseTo(65, 0);
   expect(await centred()).toBeLessThanOrEqual(2);
 });

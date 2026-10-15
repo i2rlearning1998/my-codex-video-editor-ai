@@ -5,6 +5,7 @@ export * from './engine';
 export * from './events';
 export * from './serialization';
 export * from './transforms';
+export * from './pivot';
 export * from './time';
 export * from './timeline';
 export * from './lanes';

@@ -1,0 +1,40 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "theme-pack-sunny",
+    "name": {
+      "en": "theme-pack-sunny",
+      "hi": "थीम संग्रह"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "claude-chat",
+    "notes": "Original palettes; no external assets."
+  },
+  "items": [
+    {
+      "id": "theme-sunny",
+      "name": {
+        "en": "Sunny Morning",
+        "hi": "धूप भरी सुबह"
+      },
+      "tags": ["bright", "warm"],
+      "type": "theme",
+      "data": {
+        "palette": {
+          "background": "#fffbeb",
+          "primary": "#f59e0b",
+          "accent": "#0ea5e9",
+          "text": "#1f2937",
+          "extra": "#fde68a"
+        },
+        "fonts": {
+          "heading": "Poppins",
+          "body": "Inter"
+        },
+        "motion": "bouncy"
+      }
+    }
+  ]
+}

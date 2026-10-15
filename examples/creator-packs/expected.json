@@ -1,0 +1,77 @@
+{
+  "shape.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "text.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "background.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "template.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "motion-b.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "motion-c.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "move-preset.json": {
+    "ok": true,
+    "statuses": ["ok"]
+  },
+  "composition.json": {
+    "ok": true,
+    "statuses": ["warning", "warning"]
+  },
+  "bad-infinite-loop.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "infinite loop"
+  },
+  "bad-fetch.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "fetch"
+  },
+  "bad-nan.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "NaN or Infinity"
+  },
+  "bad-unused-control.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "Unused control"
+  },
+  "bad-missing-field.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "width"
+  },
+  "bad-oversized-source.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "1 MiB"
+  },
+  "theme-sunny.json": {
+    "ok": true,
+    "statuses": ["ok"]
+  },
+  "theme-midnight.json": {
+    "ok": true,
+    "statuses": ["ok"]
+  },
+  "bad-theme-contrast.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "Low contrast"
+  }
+}

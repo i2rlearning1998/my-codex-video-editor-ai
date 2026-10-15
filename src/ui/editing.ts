@@ -1,4 +1,4 @@
-import { isSceneTransitionMarker } from '../core';
+import { isReservedMarker } from '../core';
 import { isLocked } from '../render/transform-capabilities';
 import {
   layerSchema,
@@ -333,6 +333,13 @@ export function performEdit(
   session.setPlaying(false);
   const source = session.source,
     compositionId = source.composition.id;
+  // Q1: a blocked Ungroup reports its reason (ungroupCommands throws it).
+  if (
+    action === 'ungroup' &&
+    session.selectedIds.length &&
+    describeSelection(source, session.selectedIds).every('group')
+  )
+    ungroupCommands(source, session.selectedIds);
   if (
     !contextActions(
       source,
@@ -808,7 +815,7 @@ export function jumpToCut(session: EditorSession, direction: -1 | 1): void {
     0,
     composition.duration,
     ...composition.markers
-      .filter((marker) => !isSceneTransitionMarker(marker))
+      .filter((marker) => !isReservedMarker(marker))
       .map((marker) => marker.time),
     ...composition.tracks.flatMap((track) =>
       track.clips.flatMap((clip) => [

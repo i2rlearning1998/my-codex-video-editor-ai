@@ -16,10 +16,16 @@ import {
   trackTypeForLayer,
   type Command,
   type Composition,
+  type Layer,
   type TransformValues,
 } from '../core';
-import type { RenderSource, SceneLayer } from '../render/adapter';
+import {
+  locateLayer,
+  type RenderSource,
+  type SceneLayer,
+} from '../render/adapter';
 import { selectionRoots } from './selection-context';
+import { t } from '../i18n';
 
 const IDENTITY = createLayer('identity', 'group', 'Identity').transform;
 const TRANSFORM_KEYS = ['position', 'rotation', 'scale', 'opacity'] as const;
@@ -65,16 +71,15 @@ export function ungroupBlocker(
   if (!groups.length || groups.some((layer) => layer.type !== 'group'))
     return 'Select a group to ungroup it';
   for (const group of groups) {
-    // J7: a background's `role` marker is not a setting (its pieces carry it).
-    if (Object.keys(group.properties).some((key) => key !== 'role'))
-      return 'This group has its own settings, so it cannot be ungrouped yet';
+    // Q1: a background is one block (D-251); other group settings (its box
+    // size, a preset record) are dropped with the group.
+    const role = group.properties.role;
+    if (role?.type === 'string' && role.value === 'background')
+      return t('ungroup.background');
+    const locked = group.properties.locked;
+    if (locked?.type === 'boolean' && locked.value) return t('ungroup.locked');
     const clip = findClipByLayer(source.composition, group.id);
     if (clip?.track.locked) return 'The group is on a locked track';
-    const metadata =
-      (clip?.clip as unknown as { metadata?: object } | undefined)?.metadata ??
-      {};
-    if (Object.keys(metadata).length)
-      return 'Remove the group’s animation or clip effects before ungrouping';
     if (isIdentity(group)) continue;
     if (animated(group))
       return 'The group is animated, so it cannot be ungrouped';
@@ -145,7 +150,37 @@ export function ungroupCommands(
       for (const track of draft.tracks)
         track.clips = track.clips.filter((item) => item.id !== clip.clip.id);
     }
-    commands.push({ type: 'UNGROUP', compositionId, groupId: group.id });
+    // Q1: the core UNGROUP keeps its frozen rule (identity transform, no
+    // group properties). A group with settings of its own (its box size, a
+    // preset record) is dissolved instead: the group goes and its children
+    // come back at its place with the group's transform baked in (D-251).
+    if (Object.keys(group.properties).length) {
+      const place = locateLayer(source.composition.layers, group.id)!;
+      const siblings = place.parent
+        ? place.parent.children
+        : source.composition.layers;
+      const index = siblings.findIndex((item) => item.id === group.id);
+      commands.push({ type: 'DELETE_LAYER', compositionId, layerId: group.id });
+      group.children.forEach((child, offset) => {
+        const copy = structuredClone(child) as unknown as Layer;
+        if (!isIdentity(group)) {
+          const baked = bakeTransform(
+            group.transform as TransformValues,
+            child.transform as TransformValues,
+          )!;
+          for (const key of TRANSFORM_KEYS)
+            (copy.transform[key] as { value: unknown }).value =
+              baked[key].value;
+        }
+        commands.push({
+          type: 'CREATE_LAYER',
+          compositionId,
+          parentId: place.parent?.id ?? null,
+          index: index + offset,
+          layer: copy,
+        } as Command);
+      });
+    } else commands.push({ type: 'UNGROUP', compositionId, groupId: group.id });
     // TL-001: children of a top-level group become top-level layers with clips.
     // J7: each gets a new lane where the group's lane was (or at the top of
     // its own group), back child first, so the front child is on the top
@@ -155,6 +190,12 @@ export function ungroupCommands(
     const home = clip
       ? sortedLanes(draft.tracks).findIndex((item) => item.id === clip.track.id)
       : -1;
+    const carried = Object.fromEntries(
+      Object.entries(
+        (clip?.clip as unknown as { metadata?: Record<string, unknown> })
+          ?.metadata ?? {},
+      ).filter(([key]) => key === 'animation' || key === 'fx'),
+    );
     if (clip)
       for (const child of group.children) {
         const lanes = sortedLanes(draft.tracks);
@@ -202,7 +243,8 @@ export function ungroupCommands(
           speed: 1,
           transitionMetadata: {},
           effectMetadata: {},
-          metadata: {},
+          // Q1: each child keeps the group clip's presets and effects.
+          metadata: structuredClone(carried) as never,
         };
         track.clips.push(structuredClone(created));
         later.push({

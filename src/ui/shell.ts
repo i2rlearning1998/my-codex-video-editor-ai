@@ -1,6 +1,8 @@
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
+import { CodePosters } from '../code-layer/poster';
+import { CodeLive } from '../code-layer/live';
 import { freeCodeRuntime, openCodeSession } from '../code-layer/runtime';
 import { tierACommands } from '../code-layer/tier-a';
 import { codeLayerCommands, codeRecord } from '../code-layer/layer';
@@ -16,6 +18,54 @@ import {
 import { createParamsForm } from './code-params';
 import { stableJson } from '../code-layer/hash';
 import { download } from '../export/client';
+import {
+  CreatorLibrary,
+  creatorLibraryId,
+  type CreatorEntry,
+} from './creator-library';
+import { libraryIndex } from './library-index';
+import { mountAiPanel } from './ai-panel';
+import { mountThemePanel } from './theme-panel';
+import {
+  BUILT_IN_THEMES,
+  MOTION_STYLES,
+  applyThemeCommands,
+  projectThemes,
+  saveThemeCommand,
+  themeSchema,
+  updateThemeCommands,
+  withPaletteSlots,
+  type Theme,
+  type ThemeScene,
+} from '../themes/themes';
+import {
+  MOTION_SETTINGS,
+  applyMotion,
+  readMotion,
+  reducedNow,
+  systemReducesMotion,
+} from './motion';
+import { presetControls } from '../creator-pack/preset';
+import { blocks } from '../blocks/starters';
+import { SYSTEM_FONTS } from '../render/text-style';
+import {
+  controlledLayer,
+  controlsBody,
+  presetFits,
+  type ControlsDeps,
+  type CreatorPresetChoice,
+} from './controls-panel';
+import {
+  livePresets,
+  presetCommands,
+  removePresetCommands,
+} from './creator-presets';
+import {
+  openCreatorPackDialog,
+  type CreatorPackAdd,
+} from './creator-pack-dialog';
+import { loadLibrary } from '../library/loader';
+import { adjustments, effects, filters, transitions } from '../fx';
 import type { ParamValues } from './code-params';
 import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
 import {
@@ -29,7 +79,7 @@ import {
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
 import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
-import { retimeClip } from '../core';
+import { IN_OUT_PRESETS, LOOP_PRESETS, retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
@@ -119,6 +169,7 @@ import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
 import { mountRecordPanel } from './record-panel';
 import { newTts, ttsState } from './right-panel/tts-panel';
+import { themeState } from './right-panel';
 import {
   registerTtsCommands,
   ttsCommand,
@@ -170,7 +221,12 @@ import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
-import { confirmDialog, openModal, promptDialog } from './components/modal';
+import {
+  confirmDialog,
+  escapeHtml,
+  openModal,
+  promptDialog,
+} from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
@@ -201,6 +257,10 @@ const RAIL_CATEGORIES = [
   // V7 (spec 11.4): Record & create, before Audio.
   'Record',
   'Audio',
+  // Q4: everything imported from Creator Packs.
+  'AI',
+  // T1: one-click themes.
+  'Theme',
 ] as const;
 const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Media: 'media',
@@ -211,6 +271,8 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Draw: 'pen',
   Scene: 'layers',
   Record: 'mic',
+  AI: 'magic',
+  Theme: 'color',
 };
 export interface ShellActions {
   save?: () => void;
@@ -274,6 +336,8 @@ export function mountEditorShell(
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
           <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
           <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
+          <button type="button" id="open-brief" role="menuitem">${iconSvg('copy')}${t('brief.copy')}</button>
+          <button type="button" id="open-settings" role="menuitem">${iconSvg('adjust')}${t('settings.title')}</button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.help')}">
           <div class="app-menu-label">${t('menu.help')}</div>
@@ -296,12 +360,14 @@ export function mountEditorShell(
         <div id="library-text" data-rail-panel="Text" hidden></div>
         <div id="library-audio" data-rail-panel="Audio" hidden></div>
         <div id="library-record" data-rail-panel="Record" hidden></div>
+        <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div>
+        <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div><div class="code-render-status" id="code-render-status" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
           <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
@@ -441,6 +507,8 @@ export function mountEditorShell(
   // X1 (spec section 5): code animations play from a frame cache that the
   // preview and the export share; the baker fills it one job at a time.
   const codeCache = new FrameCache(mediaStore);
+  // P2: My library (Creator Pack items), beside My Templates.
+  const creatorLibrary = new CreatorLibrary(mediaStore);
   const codeBaker = new CodeBaker(codeCache, openCodeSession);
   const codeOf = (layerId: string): CodeData | null => {
     const find = (
@@ -460,14 +528,27 @@ export function mountEditorShell(
     }
     return null;
   };
-  const codeFrames = new CodeFrames(codeCache, codeBaker, codeOf, () => {
+  const queueCodeDraw = () => {
     if (redrawQueued || disposed) return;
     redrawQueued = true;
     requestAnimationFrame(() => {
       redrawQueued = false;
       safely(draw);
     });
-  });
+  };
+  // P1: the thumbnail frame before a bake has a frame, and the frame rendered
+  // directly while a control is dragged.
+  const codePosters = new CodePosters(openCodeSession);
+  codePosters.onChange(queueCodeDraw);
+  const codeLive = new CodeLive(openCodeSession, queueCodeDraw);
+  const codeFrames = new CodeFrames(
+    codeCache,
+    codeBaker,
+    codeOf,
+    queueCodeDraw,
+    codePosters,
+    codeLive,
+  );
   frames.code = codeFrames;
   codeBaker.onChange(() => {
     if (redrawQueued || disposed) return;
@@ -478,7 +559,7 @@ export function mountEditorShell(
     });
   });
   /** The bake spec of a code layer in the open scene at its quality. */
-  const codeSpec = (layerId: string) => {
+  const codeSpec = (layerId: string, quality?: 'full' | 'draft') => {
     const code = codeOf(layerId);
     if (!code) return null;
     const composition = session.source.composition;
@@ -494,7 +575,7 @@ export function mountEditorShell(
         frames: frameCount(codeMeta(code).duration, fps),
         frame: 0,
       },
-      codeFrames.qualityOf(layerId),
+      quality ?? codeFrames.qualityOf(layerId),
     );
   };
   const codeStatus: CodeClipStatus = {
@@ -509,7 +590,18 @@ export function mountEditorShell(
         error: job?.error,
       };
     },
-    onChange: (listener) => codeBaker.onChange(listener),
+    onChange: (listener) => {
+      const off = [
+        codeBaker.onChange(listener),
+        codePosters.onChange(listener),
+      ];
+      return () => off.forEach((stop) => stop());
+    },
+    poster(layerId) {
+      const code = codeOf(layerId);
+      const spec = codeSpec(layerId, 'full');
+      return code && spec ? codePosters.url(code.bakeKey, spec) : null;
+    },
     cancel(layerId) {
       const spec = codeSpec(layerId);
       if (spec) codeBaker.cancel(spec.cacheKey);
@@ -519,6 +611,48 @@ export function mountEditorShell(
       if (spec) codeBaker.ensure(spec, true);
     },
   };
+  /**
+   * P1: Re-render. Drops the layer's stored frames (and its poster) and
+   * bakes it again from frame 0.
+   */
+  const rerenderCode = async (layerId: string) => {
+    const spec = codeSpec(layerId);
+    if (!spec) return;
+    codeBaker.cancel(spec.cacheKey);
+    // Wait for a cancelled running bake to stop before its frames go.
+    while (codeBaker.running === spec.cacheKey)
+      await new Promise((resolve) => setTimeout(resolve, 16));
+    await codeCache.remove(spec.cacheKey);
+    codeBaker.forget(spec.cacheKey);
+    codeBaker.ensure(spec, true);
+    queueCodeDraw();
+  };
+  // P1: while a code layer of the open scene bakes, the canvas says so.
+  const codeRenderStatus = element<HTMLElement>('#code-render-status');
+  const paintCodeStatus = () => {
+    const visit = (layers: readonly SceneLayer[]): string | null => {
+      for (const layer of layers) {
+        if (layer.code) {
+          const status = codeStatus.status(layer.id);
+          if (
+            status &&
+            (status.state === 'queued' || status.state === 'running')
+          )
+            return t('code.bakeProgress', {
+              percent: formatNumber(Math.floor(status.progress * 100)),
+            });
+        }
+        const inner = visit(layer.children);
+        if (inner) return inner;
+      }
+      return null;
+    };
+    const text = visit(session.source.composition.layers);
+    codeRenderStatus.hidden = !text;
+    if (text && codeRenderStatus.textContent !== text)
+      codeRenderStatus.textContent = text;
+  };
+  codeBaker.onChange(paintCodeStatus);
   // G3: Fit, then the zoom about the view's center, then the pan.
   const viewportFor = (z: number, requested: readonly [number, number]) => {
     const view = fitViewport(
@@ -824,6 +958,14 @@ export function mountEditorShell(
     engine,
     session,
     reportError,
+    {
+      list: () => creatorPresets(),
+      applied: (layerId) => {
+        const found = locateLayer(session.source.composition.layers, layerId);
+        return found ? livePresets(found.layer).map((item) => item.id) : [];
+      },
+      apply: (id) => applyCreatorPreset(id),
+    },
   );
   // H4: the right panel's sections other than Properties.
   const rightPanel = mountRightPanel(
@@ -841,6 +983,13 @@ export function mountEditorShell(
       build: (id) => contextToolbar.build(id),
       // X2: the selected code layer's Animation settings.
       codeBody: () => codeBody(),
+      themeBody: () => {
+        const host = document.createElement('div');
+        host.className = 'theme-panel';
+        host.id = 'right-theme';
+        mountThemePanel(host, { ...themeOptions, onChange: () => () => {} });
+        return host;
+      },
       audioDecoder: decoder,
       // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
       tts: {
@@ -1143,6 +1292,14 @@ export function mountEditorShell(
     }, 'image/png');
   };
   const menuHooks = {
+    // P1: the code layer's entries run the same hooks as the commands.
+    code: {
+      edit: (layerId: string) => commandContext.code?.edit(layerId),
+      settings: (layerId: string) => commandContext.code?.settings(layerId),
+      saveTemplate: (layerId: string) =>
+        commandContext.code?.saveTemplate(layerId),
+      rerender: (layerId: string) => commandContext.code?.rerender(layerId),
+    },
     showTiming: () => {
       const layer = selectedLayer();
       if (!layer) return;
@@ -1379,6 +1536,17 @@ export function mountEditorShell(
       if (session.selectedId) timeline?.renameClip(session.selectedId);
     },
     moreOptions: () => workspace?.setOpen('right', true),
+    // P1: a code layer's own actions.
+    code: {
+      edit: (layerId) => safely(() => openCodeImport({}, { layerId })),
+      settings: () =>
+        safely(() => {
+          workspace?.setOpen('right', true);
+          setRightSection('Code');
+        }),
+      saveTemplate: (layerId) => void saveLayerAsTemplate(layerId),
+      rerender: (layerId) => void rerenderCode(layerId),
+    },
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -1853,11 +2021,282 @@ export function mountEditorShell(
       },
     });
   };
+  // P2: Import creator pack: the review dialog, then My library.
+  let builtInIds: readonly string[] = [];
+  void loadLibrary().then(
+    (manifest) => (builtInIds = manifest.items.map((item) => item.id)),
+    () => undefined,
+  );
+  const addCreatorItems = async (
+    add: CreatorPackAdd,
+  ): Promise<number | false> => {
+    await creatorLibrary.ready;
+    const existing = creatorLibrary.packVersion(add.packId);
+    if (existing === add.packVersion) {
+      // Re-importing the same version changes nothing (idempotent).
+      showToast(
+        t('creator.sameVersion', {
+          name: add.packName.en,
+          version: String(add.packVersion),
+        }),
+        'info',
+      );
+      return 0;
+    }
+    if (existing !== null) {
+      const newer = add.packVersion > existing;
+      const yes = await confirmDialog(
+        escapeHtml(
+          t(newer ? 'creator.replaceNewer' : 'creator.replaceOlder', {
+            name: add.packName.en,
+            from: String(existing),
+            to: String(add.packVersion),
+          }),
+        ),
+        {
+          titleText: escapeHtml(t('creator.replaceTitle')),
+          confirmLabel: t('creator.replace'),
+          cancelLabel: t('code.cancel'),
+          danger: !newer,
+        },
+      );
+      if (!yes) return false;
+    }
+    const now = new Date().toISOString();
+    await creatorLibrary.add(
+      add.items.map((checked) => ({
+        key: `${add.packId}/${checked.id}`,
+        packId: add.packId,
+        packName: add.packName,
+        packVersion: add.packVersion,
+        item: checked.item,
+        name: checked.item.name.en,
+        addedAt: now,
+        ...(checked.thumbnail ? { thumbnail: checked.thumbnail } : {}),
+        ...(checked.motionMeta ? { motionMeta: checked.motionMeta } : {}),
+      })),
+      existing !== null ? add.packId : undefined,
+    );
+    showToast(
+      t('creator.added', {
+        count: String(add.items.length),
+        name: add.packName.en,
+      }),
+      'success',
+    );
+    return add.items.length;
+  };
+  const openCreatorImport = (
+    initial: { text?: string; fileName?: string } = {},
+  ) => {
+    session.setPlaying(false);
+    openCreatorPackDialog({
+      ...initial,
+      fxCatalog: FX_CATALOG,
+      knownLibraryIds: () => [
+        ...builtInIds,
+        ...creatorLibrary.list().map((entry) => entry.key),
+      ],
+      ...(renderer.measureText ? { measureText: renderer.measureText } : {}),
+      runtime: freeCodeRuntime,
+      onAdd: addCreatorItems,
+      openAi: () => openCategory('AI'),
+      copy: (text) => {
+        void navigator.clipboard
+          .writeText(text)
+          .then(() => showToast(t('creator.reportCopied'), 'success'))
+          .catch(() => showToast(t('creator.reportCopyFailed'), 'error'));
+      },
+    });
+  };
+  /** T2: Copy AI brief, built from the live registries (src/ai-brief). */
+  const briefText = async (request: string) => {
+    await creatorLibrary.ready;
+    const manifest = await loadLibrary().catch(() => null);
+    const { aiBrief } = await import('../ai-brief');
+    const { ITEM_KINDS } = await import('../creator-pack/schemas');
+    const composition = session.source.composition;
+    const entries: Record<string, { id: string; label: string }[]> = {};
+    const push = (kind: string, id: string, label: string) =>
+      (entries[kind] ??= []).push({ id, label });
+    for (const item of manifest?.items ?? [])
+      push(item.type, item.id, item.name.en);
+    for (const entry of creatorLibrary.list())
+      push(
+        entry.item.type,
+        `${entry.packId}/${entry.key.split('/')[1]}`,
+        `${entry.name} (My library)`,
+      );
+    for (const template of codeTemplates.list())
+      if (!creatorEntryOf(template.id))
+        push('motion', template.id, `${template.name} (My Templates)`);
+    const lists = themeLists();
+    for (const theme of [...lists.builtIn, ...lists.saved, ...lists.library])
+      push('theme', theme.id, theme.name);
+    for (const [kind, list] of [
+      ['adjust', adjustments],
+      ['filter', filters],
+      ['effect', effects],
+      ['transition', transitions],
+    ] as const)
+      for (const item of list) push(kind, item.id, item.name);
+    const theme = currentTheme();
+    return aiBrief({
+      project: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+        duration: composition.duration,
+        theme: theme
+          ? {
+              name: theme.name,
+              palette: theme.palette,
+              fonts: theme.fonts,
+              motion: theme.motion,
+            }
+          : null,
+      },
+      kinds: ITEM_KINDS,
+      entries,
+      blocks: blocks.map((block) => ({ id: block.id, label: block.name })),
+      animate: {
+        in: IN_OUT_PRESETS,
+        out: IN_OUT_PRESETS,
+        loop: LOOP_PRESETS,
+      },
+      fonts: SYSTEM_FONTS.map(([name]) => name),
+      request,
+    });
+  };
+  const copyAiBrief = () => {
+    const handle = openModal({
+      titleText: t('brief.title'),
+      bodyHtml: `
+        <label class="brief-label" for="brief-request">${t('brief.request')}</label>
+        <textarea id="brief-request" rows="3" maxlength="2000" placeholder="${t('brief.requestPlaceholder')}"></textarea>
+        <div class="brief-fallback" id="brief-fallback" hidden>
+          <p>${t('brief.fallback')}</p>
+          <textarea id="brief-text" rows="10" readonly></textarea>
+          <button type="button" class="button" id="brief-copy-text">${t('brief.copyText')}</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="button" id="brief-cancel">${t('code.cancel')}</button>
+          <button type="button" class="button primary" id="brief-copy">${t('brief.copy')}</button>
+        </div>`,
+    });
+    handle.root.classList.add('brief-dialog');
+    const $ = <T extends HTMLElement>(id: string) =>
+      handle.root.querySelector<T>(`#${id}`)!;
+    $('brief-cancel').onclick = () => handle.close();
+    $<HTMLButtonElement>('brief-copy').onclick = () =>
+      safely(async () => {
+        const { text, count } = await briefText(
+          $<HTMLTextAreaElement>('brief-request').value,
+        );
+        try {
+          await navigator.clipboard.writeText(text);
+          handle.close();
+          showToast(t('brief.copied', { count: String(count) }), 'success');
+        } catch {
+          // The clipboard is blocked: show the text to copy by hand.
+          const box = $<HTMLTextAreaElement>('brief-text');
+          box.value = text;
+          $('brief-fallback').hidden = false;
+          box.focus();
+          box.select();
+        }
+      });
+    $<HTMLButtonElement>('brief-copy-text').onclick = () => {
+      const box = $<HTMLTextAreaElement>('brief-text');
+      box.focus();
+      box.select();
+      void navigator.clipboard
+        .writeText(box.value)
+        .then(() => showToast(t('brief.copiedPlain'), 'success'))
+        .catch(() => showToast(t('brief.selectHint'), 'info'));
+    };
+    $<HTMLTextAreaElement>('brief-request').focus();
+  };
+  /** P4: "Copy library index for AI" (plain text under 40 KB). */
+  const copyLibraryIndex = async () => {
+    await creatorLibrary.ready;
+    const manifest = await loadLibrary().catch(() => null);
+    const composition = session.source.composition;
+    const packs = new Map<string, CreatorEntry[]>();
+    for (const entry of creatorLibrary.list())
+      packs.set(entry.packId, [...(packs.get(entry.packId) ?? []), entry]);
+    const controlsOf = (entry: CreatorEntry): string[] => {
+      const item = entry.item;
+      if (item.type === 'preset')
+        return presetControls(item.data).map((control) => control.name);
+      if (item.type === 'motion')
+        return (entry.motionMeta?.params ?? []).map((param) => param.name);
+      return (item.controls ?? []).map((control) => control.name);
+    };
+    const text = libraryIndex({
+      canvas: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+      },
+      fonts: SYSTEM_FONTS.map(([name]) => name),
+      animate: {
+        in: IN_OUT_PRESETS,
+        out: IN_OUT_PRESETS,
+        loop: LOOP_PRESETS,
+        creator: creatorPresets().map((item) => item.id),
+      },
+      fx: {
+        filters: filters.map((item) => item.id),
+        effects: effects.map((item) => item.id),
+        adjust: adjustments.map((item) => item.id),
+        transitions: transitions.map((item) => item.id),
+      },
+      blocks: blocks.map((block) => ({
+        id: block.id,
+        name: block.name,
+        kind: 'block',
+        controls: block.params.map((param) => param.name),
+      })),
+      groups: [
+        {
+          title: 'Built-in library',
+          items: (manifest?.items ?? []).map((item) => ({
+            id: item.id,
+            name: item.name.en,
+            kind: item.type,
+            tags: item.tags,
+          })),
+        },
+        ...[...packs].map(([packId, entries]) => ({
+          title: `Creator pack ${packId} v${entries[0]!.packVersion} "${entries[0]!.packName.en}"`,
+          items: entries.map((entry) => ({
+            id: creatorLibraryId(entry.key),
+            name: entry.item.name.en,
+            kind: entry.item.type,
+            tags: entry.item.tags,
+            controls: controlsOf(entry),
+          })),
+        })),
+      ],
+    });
+    await navigator.clipboard.writeText(text).then(
+      () =>
+        showToast(
+          t('creator.indexCopied', {
+            size: formatNumber(Math.ceil(new Blob([text]).size / 1024)),
+          }),
+          'success',
+        ),
+      () => showToast(t('creator.reportCopyFailed'), 'error'),
+    );
+  };
   /** X2: the Animation settings panel of the selected code layer. */
   const codeBody = (): HTMLElement[] => {
     const layer = codeLayerSelected(session);
     const code = layer ? codeOf(layer.id) : null;
-    if (!layer || !code) return [];
+    // P3: any other layer's Controls (presets and keyframes it has).
+    if (!layer || !code) return controlsBody(controlsDeps);
     const meta = codeMeta(code);
     const info = document.createElement('div');
     info.className = 'code-info';
@@ -1939,17 +2378,36 @@ export function mountEditorShell(
         idPrefix: 'code-setting',
         specs: meta.params,
         values,
+        // P1: while a number is dragged the frame at the playhead renders
+        // at Draft with the dragged value (Blocks and seekable code); on
+        // release the change is applied and re-baked after a short pause
+        // (a stateful Tier C animation keeps Apply).
+        onPreview: (name, value) =>
+          safely(() => {
+            if (!CodeLive.canRender(code.tier, meta.seekable)) return;
+            const request = codeFrames.requestOf(layer.id);
+            if (!request?.code) return;
+            const spec = bakeSpecOf(
+              { ...code, params: { ...values, [name]: value } },
+              request.code,
+              'draft',
+            );
+            codeLive.request(layer.id, spec, request.code.frame);
+          }),
         onChange: (name, value) =>
           safely(() => {
             pendingCode = {
               layerId: layer.id,
               values: { ...values, [name]: value },
             };
-            if (code.tier === 'B') {
+            codeLive.release(layer.id);
+            // A stateful Tier C animation is a heavy re-bake: it waits
+            // for Apply.
+            if (CodeLive.canRender(code.tier, meta.seekable)) {
               clearTimeout(codeApplyTimer);
               codeApplyTimer = setTimeout(
                 () => safely(() => applyCodeParams(layer.id)),
-                200,
+                CODE_APPLY_DELAY,
               );
             }
             rightPanel.render('Code');
@@ -1970,6 +2428,94 @@ export function mountEditorShell(
     }
     return parts;
   };
+  /** P3: the Creator presets of My library (Animate > Creator, Add animation). */
+  const creatorPresets = (): CreatorPresetChoice[] =>
+    creatorLibrary.presets().flatMap((entry) =>
+      entry.item.type === 'preset'
+        ? [
+            {
+              id: creatorLibraryId(entry.key),
+              name: entry.name,
+              preset: entry.item.data,
+            },
+          ]
+        : [],
+    );
+  const controlsDeps: ControlsDeps = {
+    engine,
+    session,
+    presets: creatorPresets,
+    report: (error) => reportError(error),
+    confirm: (text) =>
+      confirmDialog(escapeHtml(text), {
+        titleText: escapeHtml(t('controls.reset')),
+        confirmLabel: t('controls.reset'),
+        cancelLabel: t('code.cancel'),
+      }),
+    rerender: () => rightPanel.render(activeSection as RightSection),
+    defaults: (preset) => themeMotionParams(preset),
+  };
+  /** P3: applies a Creator preset to the selected layer (one undo step). */
+  /** T1: the current theme's motion style sets a preset's default easing
+   *  and scales its default duration. */
+  const themeMotionParams = (preset: CreatorPresetChoice['preset']) => {
+    const theme = currentTheme();
+    if (!theme) return {};
+    const style = MOTION_STYLES[theme.motion];
+    const duration = presetControls(preset).find(
+      (control) => control.name === 'duration',
+    );
+    return {
+      easing: style.easing,
+      ...(duration?.type === 'number'
+        ? {
+            duration:
+              Math.round(
+                Math.min(
+                  duration.max,
+                  Math.max(
+                    duration.min,
+                    duration.default * style.durationScale,
+                  ),
+                ) * 100,
+              ) / 100,
+          }
+        : {}),
+    };
+  };
+  const applyCreatorPreset = (id: string | null) =>
+    safely(() => {
+      const layer = controlledLayer(session) ?? codeLayerSelected(session);
+      if (!layer) return;
+      const found = locateLayer(session.source.composition.layers, layer.id);
+      if (!found) return;
+      // Q2: None removes every Creator preset of the layer (one step).
+      if (id === null) {
+        if (!livePresets(found.layer).length) return;
+        session.setPlaying(false);
+        engine.commands.transaction(
+          t('controls.removeStep'),
+          removePresetCommands(session.source.composition, found.layer),
+        );
+        return;
+      }
+      const choice = creatorPresets().find((item) => item.id === id);
+      if (!choice) return;
+      if (!presetFits(choice.preset, found.layer))
+        throw new Error(t('controls.notFor', { name: choice.name }));
+      session.setPlaying(false);
+      engine.commands.transaction(
+        t('controls.applyStep'),
+        presetCommands(
+          session.source.composition,
+          found.layer,
+          { ...choice, params: themeMotionParams(choice.preset) },
+          true,
+        ),
+      );
+    });
+  /** P1: the pause after a released control before its re-bake. */
+  const CODE_APPLY_DELAY = 300;
   /** X3: staged param values of one code layer (not yet applied). */
   let pendingCode: { layerId: string; values: ParamValues } | null = null;
   let codeApplyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1987,6 +2533,7 @@ export function mountEditorShell(
       ...(code.templateId ? { templateId: code.templateId } : {}),
     });
     if (next.bakeKey === code.bakeKey) {
+      codeLive.clear(layerId);
       rightPanel.render('Code');
       return;
     }
@@ -2085,6 +2632,8 @@ export function mountEditorShell(
     'Text',
     'Audio',
     'Record',
+    'AI',
+    'Theme',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
   const drawPanel = mountDrawPanel(
@@ -2094,7 +2643,7 @@ export function mountEditorShell(
   );
   // I1.3, I1.4: adding library items by click, drop and the template dialog.
   const crossfade = () => {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    if (reducedNow()) return;
     try {
       const snapshot = document.createElement('img');
       snapshot.className = 'scene-crossfade';
@@ -2167,6 +2716,33 @@ export function mountEditorShell(
       showToast(t('code.templateFull'), 'error');
       return null;
     }
+  };
+  /** P1: Save as template from a code layer (its source, meta and values). */
+  const saveLayerAsTemplate = async (layerId: string) => {
+    const code = codeOf(layerId);
+    if (!code) return;
+    const meta = codeMeta(code);
+    const spec = codeSpec(layerId, 'full');
+    const poster = spec ? codePosters.image(code.bakeKey, spec) : null;
+    let thumbnail: Blob | null = null;
+    if (poster) {
+      const canvas = new OffscreenCanvas(poster.width, poster.height);
+      canvas.getContext('2d')!.drawImage(poster, 0, 0);
+      thumbnail = await canvas.convertToBlob({ type: 'image/png' });
+    }
+    const layer = locateLayer(session.source.composition.layers, layerId);
+    const template = await saveCodeTemplate(
+      {
+        tier: code.tier,
+        source: code.source,
+        meta,
+        params: codeParams(code) as ParamValues,
+        name: layer?.layer.name || meta.name,
+      } as CodeImport,
+      thumbnail,
+    );
+    if (template)
+      showToast(t('code.savedTemplate', { name: template.name }), 'success');
   };
   /** Inserts a code template at `time` on a new lane, one undo step. */
   const insertCodeTemplate = async (template: CodeTemplate, time: number) => {
@@ -2385,6 +2961,278 @@ export function mountEditorShell(
     codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
     codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
   };
+  // P2: a Creator Pack item's menu: Insert, Rename, Export item, Delete
+  // (soft, with Restore). None of it is an undo step.
+  const creatorEntryOf = (id: string) =>
+    creatorLibrary.list().find((entry) => creatorLibraryId(entry.key) === id);
+  const insertCreatorItem = (id: string, time = session.currentTime) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    if (entry.item.type === 'motion') {
+      const template = creatorLibrary
+        .motionTemplates()
+        .find((item) => item.id === id);
+      if (template) void insertCodeTemplate(template, time).catch(reportError);
+      return;
+    }
+    const item = libraryActions.find(id);
+    if (!item) return;
+    // T1: an AI item's layers remember their palette slot (background, text
+    // or primary), so a theme recolours them; one step as before.
+    const built =
+      item.type === 'template'
+        ? null
+        : libraryActions.commandsFor(item, undefined, time);
+    if (!built) {
+      libraryActions.insert(item, undefined, time);
+      return;
+    }
+    session.setPlaying(false);
+    engine.commands.transaction(
+      built.label,
+      built.commands.map((command) =>
+        command.type === 'CREATE_LAYER'
+          ? ({
+              ...command,
+              layer: withPaletteSlots(
+                command.layer as unknown as CoreLayer,
+              ) as never,
+            } as Command)
+          : command,
+      ),
+    );
+    if (built.layerId) session.select(built.layerId);
+  };
+  // Q4: the AI category (everything from Creator Packs).
+  mountAiPanel(element('#library-ai'), {
+    library: creatorLibrary,
+    insert: (id) => safely(() => insertCreatorItem(id)),
+    applyPreset: (id) => applyCreatorPreset(id),
+    importPack: () => openCreatorImport(),
+    copyBrief: () => void copyAiBrief(),
+  });
+  // T1: themes. Built-in, the project's own (reserved markers on the first
+  // scene) and My library's (saved themes under theme/<id>, and Creator Pack
+  // theme items).
+  let libraryThemes: Theme[] = [];
+  const themeListeners = new Set<() => void>();
+  const themeChanged = () => {
+    for (const listener of [...themeListeners]) listener();
+  };
+  void mediaStore.then(async (store) => {
+    if (!store) return;
+    const keys = (await store.keys()).filter((key) => key.startsWith('theme/'));
+    const found: Theme[] = [];
+    for (const key of keys)
+      try {
+        const blob = await store.read(key);
+        const parsed = themeSchema.safeParse(
+          blob ? JSON.parse(await blob.text()) : null,
+        );
+        if (parsed.success) found.push(parsed.data);
+      } catch {
+        // A damaged file is skipped.
+      }
+    libraryThemes = found;
+    themeChanged();
+  });
+  const creatorThemes = (): Theme[] =>
+    creatorLibrary.list().flatMap((entry): Theme[] =>
+      entry.item.type === 'theme'
+        ? [
+            {
+              id: creatorLibraryId(entry.key),
+              name: entry.name.slice(0, 40),
+              ...(entry.item.data as Omit<Theme, 'id' | 'name'>),
+            },
+          ]
+        : [],
+    );
+  const firstScene = () =>
+    engine.state.compositions[0] as unknown as ThemeScene;
+  const themeLists = () => {
+    const saved = projectThemes(firstScene().markers).saved;
+    const savedIds = new Set(saved.map((item) => item.id));
+    return {
+      builtIn: BUILT_IN_THEMES,
+      saved,
+      library: [...libraryThemes, ...creatorThemes()].filter(
+        (item) => !savedIds.has(item.id),
+      ),
+    };
+  };
+  const currentThemeId = () => projectThemes(firstScene().markers).current;
+  const themeById = (id: string | null) => {
+    if (!id) return null;
+    const lists = themeLists();
+    return (
+      [...lists.builtIn, ...lists.saved, ...lists.library].find(
+        (item) => item.id === id,
+      ) ?? null
+    );
+  };
+  const currentTheme = () => themeById(currentThemeId());
+  const writeLibraryTheme = async (theme: Theme | null, id: string) => {
+    const store = await mediaStore;
+    if (!store) return;
+    if (theme)
+      await store.write(
+        `theme/${id}`,
+        new Blob([JSON.stringify(theme)], { type: 'application/json' }),
+      );
+    else await store.remove(`theme/${id}`);
+    libraryThemes = [
+      ...libraryThemes.filter((item) => item.id !== id),
+      ...(theme ? [theme] : []),
+    ];
+    themeChanged();
+  };
+  const applyTheme = (theme: Theme, override: boolean) =>
+    safely(() => {
+      session.setPlaying(false);
+      engine.commands.transaction(t('theme.applyStep'), [
+        {
+          type: 'SET_PROJECT_BACKGROUND',
+          color: theme.palette.background,
+        } as Command,
+        ...(applyThemeCommands(
+          engine.state.compositions as unknown as ThemeScene[],
+          theme,
+          { previous: currentTheme(), override },
+        ) as unknown as Command[]),
+      ]);
+      showToast(t('theme.applied', { name: theme.name }), 'success');
+    });
+  const themeOptions = {
+    themes: themeLists,
+    current: currentThemeId,
+    apply: applyTheme,
+    save: (name: string) =>
+      safely(() => {
+        const base = currentTheme();
+        if (!base) return;
+        const theme: Theme = {
+          ...base,
+          id: `my-${Date.now().toString(36)}`,
+          name: name.slice(0, 40),
+        };
+        engine.commands.transaction(t('theme.saveStep'), [
+          saveThemeCommand(firstScene().id, theme) as unknown as Command,
+        ]);
+        void writeLibraryTheme(theme, theme.id).catch(reportError);
+      }),
+    rename: (id: string, name: string) =>
+      safely(() => {
+        const theme = projectThemes(firstScene().markers).saved.find(
+          (item) => item.id === id,
+        );
+        if (!theme) return;
+        const next = { ...theme, name: name.slice(0, 40) };
+        engine.commands.transaction(
+          t('theme.renameStep'),
+          updateThemeCommands(firstScene(), id, next) as unknown as Command[],
+        );
+        void writeLibraryTheme(next, id).catch(reportError);
+      }),
+    remove: (id: string) =>
+      safely(() => {
+        engine.commands.transaction(
+          t('theme.deleteStep'),
+          updateThemeCommands(firstScene(), id, null) as unknown as Command[],
+        );
+        void writeLibraryTheme(null, id).catch(reportError);
+      }),
+    onChange: (listener: () => void) => {
+      themeListeners.add(listener);
+      const offEngine = engine.on('state:changed', listener);
+      const offLibrary = creatorLibrary.onChange(listener);
+      return () => {
+        themeListeners.delete(listener);
+        offEngine();
+        offLibrary();
+      };
+    },
+  };
+  mountThemePanel(element('#library-theme'), themeOptions);
+  const creatorMenu = (id: string, x: number, y: number) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    codeMenu.open(() => [
+      {
+        id: 'creator-insert',
+        label: t('code.templateInsert'),
+        icon: 'plus',
+        run: () => insertCreatorItem(id),
+      },
+      {
+        id: 'creator-rename',
+        label: t('code.templateRename'),
+        icon: 'edit',
+        run: () =>
+          void promptDialog(t('code.templateRename'), entry.name, {
+            label: t('myTemplates.name'),
+            confirmLabel: t('code.templateRename'),
+            cancelLabel: t('code.cancel'),
+            maxLength: 80,
+          }).then((name) => {
+            if (name?.trim())
+              void creatorLibrary.rename(entry.key, name.trim());
+          }),
+      },
+      {
+        id: 'creator-export',
+        label: t('creator.exportItem'),
+        icon: 'export',
+        run: () =>
+          download(
+            new Blob(
+              [
+                `${JSON.stringify(
+                  {
+                    format: 'creator-pack',
+                    version: 1,
+                    pack: {
+                      id: entry.packId,
+                      name: entry.packName,
+                      version: entry.packVersion,
+                      author: 'ai',
+                      createdWith: 'claude-chat',
+                    },
+                    items: [entry.item],
+                  },
+                  null,
+                  2,
+                )}\n`,
+              ],
+              { type: 'application/json' },
+            ),
+            `${entry.item.id}.creatorpack.json`,
+          ),
+      },
+      {
+        id: 'creator-delete',
+        label: t('code.templateDelete'),
+        icon: 'delete',
+        divider: true,
+        run: () => {
+          void creatorLibrary.remove(entry.key);
+          showToast(
+            t('code.templateDeleted', { name: entry.name }),
+            'info',
+            8000,
+            {
+              label: t('code.templateRestore'),
+              run: () => void creatorLibrary.restore(entry.key),
+            },
+          );
+        },
+      },
+    ]);
+    const width = codeMenuElement.offsetWidth,
+      height = codeMenuElement.offsetHeight;
+    codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
+    codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  };
   const libraryBrowsers = mountLibraryPanels(
     {
       Templates: element('#library-templates'),
@@ -2413,6 +3261,7 @@ export function mountEditorShell(
         hover: codeHover,
         importFile: () => codeTemplateInput.click(),
       },
+      creator: { library: creatorLibrary, menu: creatorMenu },
     },
   );
   void libraryBrowsers;
@@ -2710,6 +3559,12 @@ export function mountEditorShell(
       mediaInput.click(),
     );
     entry('import-code', t('code.importCode'), 'code', () => openCodeImport());
+    entry('import-creator', t('creator.importMenu'), 'elements', () =>
+      openCreatorImport(),
+    );
+    entry('import-index', t('creator.copyIndex'), 'copy', () =>
+      copyLibraryIndex(),
+    );
     importMenuButton.setAttribute('aria-expanded', 'true');
     const popover = openPopover(importMenuButton, menu, {
       label: t('code.importMenu'),
@@ -2850,7 +3705,10 @@ export function mountEditorShell(
     // bar holds the canvas's ratio, background and frame rate).
     if (
       !shown.length ||
-      (kindOf(session) === 'none' && !focusedScene(session) && !ttsState.open)
+      (kindOf(session) === 'none' &&
+        !focusedScene(session) &&
+        !ttsState.open &&
+        !themeState.open)
     ) {
       animateShown = false;
       element('#inspector-content').hidden = true;
@@ -2869,7 +3727,13 @@ export function mountEditorShell(
         '.icon-rail-right button',
       )) {
         const caption = el.dataset.section === 'Captions';
-        el.hidden = !caption;
+        // T1: Theme is the one tab that works with nothing selected.
+        const theme = el.dataset.section === 'Theme';
+        el.hidden = !caption && !theme;
+        if (theme) {
+          el.removeAttribute('aria-disabled');
+          el.setAttribute('aria-pressed', 'false');
+        }
         if (!caption) continue;
         const label = t('panel.captions');
         el.title = `${label}: ${t('right.planned')}`;
@@ -2907,7 +3771,9 @@ export function mountEditorShell(
       kind === 'none'
         ? ttsState.open
           ? 'tts.title'
-          : 'transition.title'
+          : themeState.open
+            ? 'panel.theme'
+            : 'transition.title'
         : kind === 'video' || kind === 'image'
           ? `right.tab.${kind}`
           : firstTabKey(kind),
@@ -2990,6 +3856,13 @@ export function mountEditorShell(
   stage.addEventListener(
     'pointerdown',
     () => {
+      if (themeState.open && !session.selectedIds.length) {
+        themeState.open = false;
+        root.querySelector('.editor-shell')?.classList.add('right-empty');
+        renderedRight = '';
+        syncRightRail();
+        if (workspace?.rightOpen) workspace.setOpen('right', false);
+      }
       if (ttsState.open && !session.selectedIds.length) {
         ttsState.open = false;
         root.querySelector('.editor-shell')?.classList.add('right-empty');
@@ -3018,6 +3891,17 @@ export function mountEditorShell(
     el.onclick = () => {
       const name = el.dataset.section!;
       if (el.getAttribute('aria-disabled') === 'true') return;
+      // T1: the Theme tab with nothing selected.
+      if (name === 'Theme' && !session.selectedIds.length && !themeState.open) {
+        themeState.open = true;
+        transitionFocus.sceneId = null;
+        root.querySelector('.editor-shell')?.classList.remove('right-empty');
+        renderedRight = '';
+        syncRightRail();
+        setRightSection('Theme');
+        workspace?.setOpen('right', true);
+        return;
+      }
       if (name === activeSection && workspace?.rightOpen) {
         workspace.setOpen('right', false);
         return;
@@ -3158,16 +4042,24 @@ export function mountEditorShell(
     event.stopPropagation();
     const dropped = [...(event.dataTransfer?.files ?? [])];
     // X2: code files open the import dialog; media files import as before.
-    const code = dropped.filter((file) => CODE_FILE.test(file.name));
-    const files = dropped.filter((file) => !CODE_FILE.test(file.name));
+    // P2: a creator pack (.creatorpack.txt or .json, or JSON that says it is
+    // one) opens the Creator Pack import.
+    const isText = (file: File) =>
+      CODE_FILE.test(file.name) || /\.txt$/i.test(file.name);
+    const code = dropped.filter(isText);
+    const files = dropped.filter((file) => !isText(file));
     if (code[0])
       void code[0]
         .text()
         .then((text) =>
-          // X4: an exported code template file imports into My Templates.
-          isCodeTemplateFile(text)
-            ? importCodeTemplateText(text)
-            : openCodeImport({ text, fileName: code[0]!.name }),
+          isCreatorPackText(code[0]!.name, text)
+            ? openCreatorImport({ text, fileName: code[0]!.name })
+            : // X4: an exported code template file imports into My Templates.
+              isCodeTemplateFile(text)
+              ? importCodeTemplateText(text)
+              : /\.txt$/i.test(code[0]!.name)
+                ? showToast(t('creator.notAPack'), 'error')
+                : openCodeImport({ text, fileName: code[0]!.name }),
         )
         .catch(reportError);
     if (!files.length) return;
@@ -3259,7 +4151,10 @@ export function mountEditorShell(
     // (A scene transition's panel shows with nothing selected; V7.)
     shell.classList.toggle(
       'right-empty',
-      key === '' && !transitionFocus.sceneId && !ttsState.open,
+      key === '' &&
+        !transitionFocus.sceneId &&
+        !ttsState.open &&
+        !themeState.open,
     );
     // (A press waits for its release, so its gesture is never cancelled.)
     if (pressing) return;
@@ -3278,6 +4173,7 @@ export function mountEditorShell(
           !session.selectedIds.length &&
           !transitionFocus.sceneId &&
           !ttsState.open &&
+          !themeState.open &&
           workspace?.rightOpen
         )
           workspace.setOpen('right', false);
@@ -3905,7 +4801,9 @@ export function mountEditorShell(
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
     } else if (payload.kind === 'code') {
-      const template = codeTemplates.find(payload.id);
+      const template =
+        codeTemplates.find(payload.id) ??
+        creatorLibrary.motionTemplates().find((item) => item.id === payload.id);
       if (template) void insertCodeTemplate(template, time).catch(reportError);
     } else if (payload.kind === 'preset') {
       const commands = addShapeCommands(
@@ -4274,6 +5172,50 @@ export function mountEditorShell(
   themeButton.onclick = () => cycleThemePreference();
   element<HTMLButtonElement>('#theme-menu').onclick = () =>
     cycleThemePreference();
+  // T2: Copy AI brief from the main menu.
+  element<HTMLButtonElement>('#open-brief').onclick = () => {
+    element('#app-menu').hidden = true;
+    copyAiBrief();
+  };
+  // Q5: Settings › Animations (Auto, On, Off) with the system signal shown.
+  applyMotion(readMotion());
+  element<HTMLButtonElement>('#open-settings').onclick = () => {
+    element('#app-menu').hidden = true;
+    const handle = openModal({
+      titleText: t('settings.title'),
+      bodyHtml: `
+        <div class="settings-row">
+          <span class="settings-label" id="motion-label">${t('settings.motion')}</span>
+          <div class="segmented" role="radiogroup" aria-labelledby="motion-label" id="motion-setting">
+            ${MOTION_SETTINGS.map((value) => `<button type="button" role="radio" data-motion-value="${value}">${t(`settings.motion.${value}`)}</button>`).join('')}
+          </div>
+          <p class="settings-note" id="motion-system">${t('settings.motionSystem', { value: t(systemReducesMotion() ? 'settings.yes' : 'settings.no') })}</p>
+        </div>
+        <div class="modal-actions"><button type="button" class="button primary" id="settings-done">${t('creator.done')}</button></div>`,
+    });
+    const sync = () => {
+      const current = readMotion();
+      for (const button of handle.root.querySelectorAll<HTMLElement>(
+        '[data-motion-value]',
+      ))
+        button.setAttribute(
+          'aria-checked',
+          String(button.dataset.motionValue === current),
+        );
+    };
+    for (const button of handle.root.querySelectorAll<HTMLButtonElement>(
+      '[data-motion-value]',
+    ))
+      button.onclick = () => {
+        applyMotion(
+          button.dataset.motionValue as (typeof MOTION_SETTINGS)[number],
+        );
+        sync();
+      };
+    handle.root.querySelector<HTMLButtonElement>('#settings-done')!.onclick =
+      () => handle.close();
+    sync();
+  };
   const unsubscribeTheme = onThemeChange(() => {
     applyThemeControls();
     // The canvas overlays and stage follow the theme.
@@ -4428,3 +5370,17 @@ export function mountEditorShell(
     },
   };
 }
+
+/** P2: a dropped or pasted file is a Creator Pack (by name or content). */
+function isCreatorPackText(fileName: string, text: string): boolean {
+  if (/\.creatorpack\.(txt|json)$/i.test(fileName)) return true;
+  const head = text.replace(/^\uFEFF/, '').trimStart();
+  return (
+    head.startsWith('=== PACK ===') ||
+    /^\{[\s\S]{0,200}"format"\s*:\s*"creator-pack"/.test(head)
+  );
+}
+/** P2: the FX catalog's ids (checkPack checks recipes against them). */
+const FX_CATALOG = [...filters, ...effects, ...adjustments, ...transitions].map(
+  (item) => item.id,
+);
