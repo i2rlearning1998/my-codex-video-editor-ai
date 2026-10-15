@@ -43,7 +43,8 @@ test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, ba
   // T-ALL (D-183): nothing selected shows no right panel at all.
   await expect(page.locator('.inspector')).toBeHidden();
   // V7 (spec 10.1): the rail stays, holding a disabled Auto Caption.
-  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(1);
+  // T1: Theme is the one tab that works with nothing selected.
+  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(2);
   // The stage around the artboard shows the canvas bar (CV-057).
   const stage = (await page.locator('#canvas-stage').boundingBox())!;
   await page.mouse.click(stage.x + 6, stage.y + stage.height - 60);
