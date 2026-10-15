@@ -23,7 +23,6 @@ const bounded = {
 };
 export const easingSchema = z.enum([
   'linear',
-  'ease',
   'ease-in',
   'ease-out',
   'ease-in-out',

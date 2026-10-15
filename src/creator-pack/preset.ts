@@ -50,6 +50,7 @@ export function presetControls(preset: Preset): ParamSpec[] {
 }
 export interface KeyframeTrack {
   property: string;
+  loop?: { mode: 'none' | 'repeat' | 'pingpong' };
   keys: { t: number; v: number; ease: string }[];
 }
 export function generatePreset(
@@ -80,6 +81,7 @@ export function generatePreset(
     let previous = -1;
     return {
       property: track.property,
+      ...(preset.loop ? { loop: preset.loop } : {}),
       keys: track.keys.map((key) => {
         if (key.t <= previous)
           throw Error(`Track ${track.property}: key times must increase.`);

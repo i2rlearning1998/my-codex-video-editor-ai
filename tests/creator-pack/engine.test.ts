@@ -167,3 +167,38 @@ it('validates native composition and same-pack/supplied references without dispa
   ).toThrow();
   expect(spec.scenes[0]!.items[0]).toEqual({ library: 'demo/shape' });
 });
+it.each([
+  { type: 'color', default: '#aabbcc' },
+  { type: 'text', default: 'Title', maxLength: 40 },
+  { type: 'bool', default: true },
+  { type: 'select', default: 'one', options: ['one', 'two'] },
+  { type: 'angle', min: -180, max: 180, step: 1, default: 90 },
+  { type: 'point', default: { x: 0.5, y: 0.25 } },
+  { type: 'range', min: 0, max: 10, step: 1, default: [2, 8] },
+  { type: 'easing', default: 'ease-in-out' },
+  { type: 'media', default: 'photo', kind: 'image' },
+])('accepts control vocabulary $type', (fields) =>
+  expect(
+    controlsSchema.safeParse([
+      { name: 'value', label: { en: 'Value', hi: 'मान' }, ...fields },
+    ]).success,
+  ).toBe(true),
+);
+it.each([
+  { type: 'color', default: 'red' },
+  { type: 'text', default: 'long', maxLength: 2 },
+  { type: 'bool', default: 1 },
+  { type: 'select', default: 'gone', options: ['one'] },
+  { type: 'select', default: 'one', options: ['one', 'one'] },
+  { type: 'angle', min: 0, max: 90, step: 1, default: 100 },
+  { type: 'point', default: { x: 2, y: 0.5 } },
+  { type: 'range', min: 0, max: 10, step: 1, default: [8, 2] },
+  { type: 'easing', default: 'bounce' },
+  { type: 'media', default: 'https://example.com' },
+])('rejects invalid control $type', (fields) =>
+  expect(
+    controlsSchema.safeParse([
+      { name: 'value', label: { en: 'Value', hi: 'मान' }, ...fields },
+    ]).success,
+  ).toBe(false),
+);

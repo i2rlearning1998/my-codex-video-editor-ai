@@ -44,7 +44,6 @@ export const presetSchema = z
                     ease: z
                       .enum([
                         'linear',
-                        'ease',
                         'ease-in',
                         'ease-out',
                         'ease-in-out',
@@ -113,7 +112,7 @@ const code = z
   })
   .strict();
 const native = libraryItemSchema.options.map((s) => s.extend({ ...common }));
-export const itemSchema = z
+const v1ItemSchema = z
   .union([
     native[0]!,
     native[1]!,
@@ -205,6 +204,21 @@ export const itemSchema = z
         message: 'Motion metadata id must match item id.',
       });
   });
+export const itemSchema = z.preprocess((value, context) => {
+  if (
+    value &&
+    typeof value === 'object' &&
+    'type' in value &&
+    value.type === 'font'
+  ) {
+    context.addIssue({
+      code: 'custom',
+      message: 'Font is not supported in Creator Pack v1; fonts are phase 2.',
+    });
+    return z.NEVER;
+  }
+  return value;
+}, v1ItemSchema);
 export const packEnvelopeSchema = z
   .object({
     format: z.literal('creator-pack'),
