@@ -1592,5 +1592,13 @@
   "theme.saveStep": "Save theme",
   "theme.renameStep": "Rename theme",
   "theme.deleteStep": "Delete theme",
-  "theme.applied": "{name} applied"
+  "theme.applied": "{name} applied",
+  "brief.title": "Copy AI brief",
+  "brief.request": "What do you want? (optional)",
+  "brief.requestPlaceholder": "For example: a 30 second explainer intro with my brand colours",
+  "brief.fallback": "The clipboard is blocked. Select the text below and copy it.",
+  "brief.copyText": "Copy",
+  "brief.copied": "AI brief copied ({count} items listed)",
+  "brief.copiedPlain": "AI brief copied",
+  "brief.selectHint": "The text is selected: press Ctrl+C to copy it."
 }

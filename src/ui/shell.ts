@@ -336,6 +336,7 @@ export function mountEditorShell(
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
           <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
           <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
+          <button type="button" id="open-brief" role="menuitem">${iconSvg('copy')}${t('brief.copy')}</button>
           <button type="button" id="open-settings" role="menuitem">${iconSvg('adjust')}${t('settings.title')}</button>
         </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.help')}">
@@ -2108,8 +2109,114 @@ export function mountEditorShell(
       },
     });
   };
-  /** T2: Copy AI brief (replaced by the full brief in src/ai-brief). */
-  const copyAiBrief = () => copyLibraryIndex();
+  /** T2: Copy AI brief, built from the live registries (src/ai-brief). */
+  const briefText = async (request: string) => {
+    await creatorLibrary.ready;
+    const manifest = await loadLibrary().catch(() => null);
+    const { aiBrief } = await import('../ai-brief');
+    const { ITEM_KINDS } = await import('../creator-pack/schemas');
+    const composition = session.source.composition;
+    const entries: Record<string, { id: string; label: string }[]> = {};
+    const push = (kind: string, id: string, label: string) =>
+      (entries[kind] ??= []).push({ id, label });
+    for (const item of manifest?.items ?? [])
+      push(item.type, item.id, item.name.en);
+    for (const entry of creatorLibrary.list())
+      push(
+        entry.item.type,
+        `${entry.packId}/${entry.key.split('/')[1]}`,
+        `${entry.name} (My library)`,
+      );
+    for (const template of codeTemplates.list())
+      if (!creatorEntryOf(template.id))
+        push('motion', template.id, `${template.name} (My Templates)`);
+    const lists = themeLists();
+    for (const theme of [...lists.builtIn, ...lists.saved, ...lists.library])
+      push('theme', theme.id, theme.name);
+    for (const [kind, list] of [
+      ['adjust', adjustments],
+      ['filter', filters],
+      ['effect', effects],
+      ['transition', transitions],
+    ] as const)
+      for (const item of list) push(kind, item.id, item.name);
+    const theme = currentTheme();
+    return aiBrief({
+      project: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+        duration: composition.duration,
+        theme: theme
+          ? {
+              name: theme.name,
+              palette: theme.palette,
+              fonts: theme.fonts,
+              motion: theme.motion,
+            }
+          : null,
+      },
+      kinds: ITEM_KINDS,
+      entries,
+      blocks: blocks.map((block) => ({ id: block.id, label: block.name })),
+      animate: {
+        in: IN_OUT_PRESETS,
+        out: IN_OUT_PRESETS,
+        loop: LOOP_PRESETS,
+      },
+      fonts: SYSTEM_FONTS.map(([name]) => name),
+      request,
+    });
+  };
+  const copyAiBrief = () => {
+    const handle = openModal({
+      titleText: t('brief.title'),
+      bodyHtml: `
+        <label class="brief-label" for="brief-request">${t('brief.request')}</label>
+        <textarea id="brief-request" rows="3" maxlength="2000" placeholder="${t('brief.requestPlaceholder')}"></textarea>
+        <div class="brief-fallback" id="brief-fallback" hidden>
+          <p>${t('brief.fallback')}</p>
+          <textarea id="brief-text" rows="10" readonly></textarea>
+          <button type="button" class="button" id="brief-copy-text">${t('brief.copyText')}</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="button" id="brief-cancel">${t('code.cancel')}</button>
+          <button type="button" class="button primary" id="brief-copy">${t('brief.copy')}</button>
+        </div>`,
+    });
+    handle.root.classList.add('brief-dialog');
+    const $ = <T extends HTMLElement>(id: string) =>
+      handle.root.querySelector<T>(`#${id}`)!;
+    $('brief-cancel').onclick = () => handle.close();
+    $<HTMLButtonElement>('brief-copy').onclick = () =>
+      safely(async () => {
+        const { text, count } = await briefText(
+          $<HTMLTextAreaElement>('brief-request').value,
+        );
+        try {
+          await navigator.clipboard.writeText(text);
+          handle.close();
+          showToast(t('brief.copied', { count: String(count) }), 'success');
+        } catch {
+          // The clipboard is blocked: show the text to copy by hand.
+          const box = $<HTMLTextAreaElement>('brief-text');
+          box.value = text;
+          $('brief-fallback').hidden = false;
+          box.focus();
+          box.select();
+        }
+      });
+    $<HTMLButtonElement>('brief-copy-text').onclick = () => {
+      const box = $<HTMLTextAreaElement>('brief-text');
+      box.focus();
+      box.select();
+      void navigator.clipboard
+        .writeText(box.value)
+        .then(() => showToast(t('brief.copiedPlain'), 'success'))
+        .catch(() => showToast(t('brief.selectHint'), 'info'));
+    };
+    $<HTMLTextAreaElement>('brief-request').focus();
+  };
   /** P4: "Copy library index for AI" (plain text under 40 KB). */
   const copyLibraryIndex = async () => {
     await creatorLibrary.ready;
@@ -5065,6 +5172,11 @@ export function mountEditorShell(
   themeButton.onclick = () => cycleThemePreference();
   element<HTMLButtonElement>('#theme-menu').onclick = () =>
     cycleThemePreference();
+  // T2: Copy AI brief from the main menu.
+  element<HTMLButtonElement>('#open-brief').onclick = () => {
+    element('#app-menu').hidden = true;
+    copyAiBrief();
+  };
   // Q5: Settings › Animations (Auto, On, Off) with the system signal shown.
   applyMotion(readMotion());
   element<HTMLButtonElement>('#open-settings').onclick = () => {

@@ -926,7 +926,7 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-019 | P1 | W8 | Verified | Layers made from a theme or an AI item remember their palette slot, so a theme switch recolours them (T1) |
 | QT-020 | P1 | W8 | Verified | My themes: save the current theme, rename and delete; stored in the project and in My library (T1) |
 | QT-021 | P1 | W8 | Verified | Creator Packs accept a theme item kind with the same schema, checked by the quality gate and documented with examples (T1) |
-| QT-022 | P1 | W8 | Todo | Copy AI brief copies one plain-text block (task header, project facts, the live library index, the authoring rules and an optional request) under 40 KB, with a fallback box when the clipboard is blocked (T2) |
+| QT-022 | P1 | W8 | Verified | Copy AI brief copies one plain-text block (task header, project facts, the live library index, the authoring rules and an optional request) under 40 KB, with a fallback box when the clipboard is blocked (T2) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 

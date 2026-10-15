@@ -235,6 +235,12 @@ const v1ItemSchema = z
         message: 'Motion metadata id must match item id.',
       });
   });
+/** T2: every item kind the schema accepts, read from the schema itself. */
+export const ITEM_KINDS: readonly string[] = (
+  v1ItemSchema as unknown as {
+    _def: { schema: { options: { shape: { type: { value: string } } }[] } };
+  }
+)._def.schema.options.map((option) => option.shape.type.value);
 export const itemSchema = z.preprocess((value, context) => {
   if (
     value &&
