@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "pack:check": "node scripts/pack-check.mjs",
     "dev": "vite --host 127.0.0.1",
     "ai-spec:check": "vitest run tests/ai-spec",
     "blocks:gallery": "vite --config blocks-gallery/vite.config.ts",

@@ -1,0 +1,41 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "shape-pack",
+    "name": {
+      "en": "shape-pack",
+      "hi": "निर्माता संग्रह"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "codex",
+    "notes": "Original geometry and code; no external assets."
+  },
+  "items": [
+    {
+      "id": "shape-kite",
+      "name": {
+        "en": "Original shape-kite",
+        "hi": "मौलिक shape-kite"
+      },
+      "tags": ["original"],
+      "type": "shape",
+      "data": {
+        "polygons": [
+          [
+            [
+              [50, 0],
+              [100, 40],
+              [50, 100],
+              [0, 40]
+            ]
+          ]
+        ],
+        "width": 180,
+        "height": 180,
+        "fill": "#4ddbc5"
+      }
+    }
+  ]
+}
