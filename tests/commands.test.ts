@@ -7,6 +7,9 @@ import { clearClipboard, hasClipboard } from '../src/ui/editing';
 import { hasStyle } from '../src/ui/style-clipboard';
 import { addShape } from '../src/ui/shapes';
 import { t, setLanguage } from '../src/i18n';
+import { codeLayerCommands } from '../src/code-layer/layer';
+import { compileBlock } from '../src/blocks/sandbox/compile';
+import { blockMeta } from '../src/code-layer/meta';
 test('[KEY-001] every registered action has translated labels, enablement and an executable handler', () => {
   expect(new Set(commands.map((command) => command.id)).size).toBe(
     commands.length,
@@ -69,7 +72,35 @@ test('[KEY-001] every registered action has translated labels, enablement and an
         scale: 1,
         dispose: vi.fn(),
       },
+      // P1: a code layer's own commands.
+      code: {
+        edit: vi.fn(),
+        settings: vi.fn(),
+        saveTemplate: vi.fn(),
+        rerender: vi.fn(),
+      },
     };
+    if (command.id.startsWith('code-')) {
+      const compiled = compileBlock(
+        readFileSync('tests/fixtures/code/pulse-block.js', 'utf8'),
+      );
+      if (!compiled.ok) throw new Error(compiled.error);
+      const built = codeLayerCommands(
+        engine.state.compositions[0]!,
+        {
+          tier: 'B',
+          source: readFileSync('tests/fixtures/code/pulse-block.js', 'utf8'),
+          meta: blockMeta(compiled.value.info) as unknown as Record<
+            string,
+            unknown
+          >,
+          params: {},
+        },
+        0,
+      );
+      engine.commands.transaction('Add code animation', built.commands);
+      session.select(built.layerId);
+    }
     if (command.id === 'undo' || command.id === 'redo')
       runCommand('duplicate', context);
     if (command.id === 'redo') engine.undo();
