@@ -21,7 +21,9 @@ import {
   formSpec,
   presetCommands,
   presetGroups,
-  readPresets,
+  animatingSummary,
+  livePresets,
+  removePresetCommands,
   simpleCommand,
   simpleTracks,
   type SimpleTrack,
@@ -58,7 +60,7 @@ export function controlledLayer(session: EditorSession): SceneLayer | null {
 /** True when the layer has something the Controls show (spec 5.1b). */
 export function hasControls(layer: SceneLayer): boolean {
   return (
-    readPresets(layer).length > 0 ||
+    livePresets(layer).length > 0 ||
     (['position', 'scale', 'rotation', 'opacity'] as const).some(
       (key) =>
         layer.transform[key].animated &&
@@ -89,14 +91,51 @@ export function controlsBody(deps: ControlsDeps): HTMLElement[] {
     deps.rerender();
   };
   const parts: HTMLElement[] = [];
-  readPresets(layer).forEach((record, index) => {
+  // Q2: one line that says what is animated, e.g. "Animating: Scale -
+  // 0.0s to 1.0s" (every animated property).
+  const summary = animatingSummary(composition, layer);
+  if (summary.length) {
+    const line = document.createElement('p');
+    line.className = 'controls-summary';
+    line.id = 'controls-summary';
+    line.textContent = t('controls.animating', {
+      list: summary
+        .map((item) =>
+          t('controls.span', {
+            name: t(`controls.group.${GROUP_OF[item.key]}`),
+            from: item.from.toFixed(1),
+            to: item.to.toFixed(1),
+          }),
+        )
+        .join(', '),
+    });
+    parts.push(line);
+  }
+  livePresets(layer).forEach((record, index) => {
     const box = document.createElement('section');
     box.className = 'controls-preset';
     box.dataset.preset = record.id;
     const title = document.createElement('h4');
     title.className = 'controls-preset-name';
     title.textContent = record.name;
-    box.append(title);
+    // Q2: Remove animation: the record, its keyframes and its controls.
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'button controls-remove';
+    remove.dataset.action = 'controls-remove';
+    remove.textContent = t('controls.remove');
+    remove.onclick = () => {
+      const current = controlledLayer(session);
+      if (!current) return;
+      run(
+        t('controls.removeStep'),
+        removePresetCommands(session.source.composition, current, record.id),
+      );
+    };
+    const head = document.createElement('div');
+    head.className = 'controls-preset-head';
+    head.append(title, remove);
+    box.append(head);
     const edited = editedManually(layer, record);
     if (edited) {
       box.dataset.edited = 'true';

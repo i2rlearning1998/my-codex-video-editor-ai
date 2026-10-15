@@ -1531,5 +1531,9 @@
   "creator.copyIndex": "AI के लिए लाइब्रेरी सूची कॉपी करें",
   "creator.indexCopied": "लाइब्रेरी सूची कॉपी हो गई ({size} KB)। इसे अपनी AI चैट में चिपकाएँ।",
   "ungroup.background": "पृष्ठभूमि एक ही खंड है",
-  "ungroup.locked": "समूह लॉक है"
+  "ungroup.locked": "समूह लॉक है",
+  "controls.animating": "एनिमेशन: {list}",
+  "controls.span": "{name} - {from}s से {to}s",
+  "controls.remove": "एनिमेशन हटाएँ",
+  "controls.removeStep": "एनिमेशन हटाएँ"
 }

@@ -40,7 +40,7 @@ import {
 } from '../core';
 import { t, formatNumber } from '../i18n';
 import { locateLayer, type SceneLayer } from '../render/adapter';
-import type { EditorSession } from './session';
+import type { EditorSession, SelectedKeyframe } from './session';
 import { keyframeTimes } from './keyframes';
 import {
   hasCopiedKeyframes,
@@ -906,6 +906,7 @@ export function mountTimeline(
   let highlighted: string | null = null;
   /** ANI-004: the frame-quantized offset of a keyframe drag in progress. */
   let keyframeDrag: { delta: number } | undefined;
+  let keyframeClick: SelectedKeyframe | null = null;
   const isSelectedKeyframe = (layerId: string, time: number) =>
     session.selectedKeyframes.some(
       (item) => item.layerId === layerId && item.time === time,
@@ -1089,6 +1090,8 @@ export function mountTimeline(
       guideTime,
       session.soloTrackIds,
       session.selectedKeyframes,
+      // Q2: diamonds show in 2D Animation only, so a mode switch redraws.
+      session.mode,
     ]);
     if (
       renderedProject === engine.state &&
@@ -1979,6 +1982,7 @@ export function mountTimeline(
             session.select(item.layerId);
           session.selectKeyframes([item]);
         }
+        keyframeClick = additive ? null : item;
         pointer = {
           id: event.pointerId,
           kind: 'keyframe',
@@ -2180,6 +2184,10 @@ export function mountTimeline(
         const delta = keyframeDrag?.delta ?? 0;
         keyframeDrag = undefined;
         if (moved && delta !== 0) moveSelectedKeyframes(engine, session, delta);
+        // Q2: a plain click (no drag) leaves only that keyframe selected, so
+        // Delete never takes a neighbour selected before (or overlapping).
+        if (!moved && keyframeClick) session.selectKeyframes([keyframeClick]);
+        keyframeClick = null;
       }
       if (kind === 'marker' && markerPreview) {
         const marker = session.source.composition.markers.find(

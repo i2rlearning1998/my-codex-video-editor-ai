@@ -238,23 +238,25 @@ const transformCommand = (
   layer: SceneLayer,
   key: TransformKey,
   frames: Frame[],
+  rest?: number | readonly number[],
 ): Command =>
   ({
     type: 'SET_PROPERTY',
     compositionId,
     layerId: layer.id,
     target: { kind: 'transform', key },
-    property: transformProperty(layer, key, frames),
+    property: transformProperty(layer, key, frames, rest),
   }) as Command;
 function transformProperty(
   layer: SceneLayer,
   key: TransformKey,
   frames: Frame[],
+  rest?: number | readonly number[],
 ): Property {
   const current = layer.transform[key] as unknown as Record<string, unknown>;
   return {
     ...current,
-    value: frames[0]?.value ?? current.value,
+    value: frames[0]?.value ?? rest ?? current.value,
     animated: frames.length > 0,
     keyframes: frames,
   } as unknown as Property;
@@ -309,6 +311,8 @@ export function presetCommands(
     preset: Preset;
     params: Record<string, unknown>;
   },
+  /** Q2: Animate › Creator is one choice: every other preset goes. */
+  exclusive = false,
 ): Command[] {
   const unsupported = unsupportedTracks(apply.preset);
   if (unsupported.length)
@@ -320,9 +324,20 @@ export function presetCommands(
   const previous = records.find((item) => item.id === apply.id);
   const others = records.filter(
     (item) =>
+      !exclusive &&
       item.id !== apply.id &&
       !keysOf(item.preset).some((key) => keys.includes(key)),
   );
+  // Q2: the transforms of the presets this one replaces, and that it does
+  // not animate itself, go back to rest (no orphan keyframes).
+  const resets: Command[] = [];
+  for (const dropped of records)
+    if (dropped.id !== apply.id && !others.includes(dropped))
+      for (const key of keysOf(dropped.preset))
+        if (!keys.includes(key))
+          resets.push(
+            transformCommand(composition.id, layer, key, [], dropped.base[key]),
+          );
   // Resting values: kept from the first application, so re-generating with
   // new control values never compounds the offsets.
   const base: Record<string, number | [number, number]> = {};
@@ -361,11 +376,68 @@ export function presetCommands(
     fingerprint,
   };
   return [
+    ...resets,
     ...keys.map((key) =>
       transformCommand(composition.id, layer, key, frames[key] ?? []),
     ),
     presetCommand(composition.id, layer, [...others, record]),
   ];
+}
+
+/**
+ * Q2: removes one preset (or, without an id, every preset): its record, its
+ * keyframes (the transform goes back to the value it had before) and so its
+ * controls, in one step.
+ */
+export function removePresetCommands(
+  composition: Composition,
+  layer: SceneLayer,
+  id?: string,
+): Command[] {
+  const records = readPresets(layer);
+  const removed = records.filter((item) => id === undefined || item.id === id);
+  const kept = records.filter((item) => !removed.includes(item));
+  return [
+    ...removed.flatMap((record) =>
+      keysOf(record.preset).map((key) =>
+        transformCommand(composition.id, layer, key, [], record.base[key]),
+      ),
+    ),
+    presetCommand(composition.id, layer, kept),
+  ];
+}
+
+/** Q2: presets that still have keyframes (deleted by hand: gone, no orphans). */
+export function livePresets(layer: SceneLayer): PresetRecord[] {
+  return readPresets(layer).filter((record) =>
+    keysOf(record.preset).some(
+      (key) =>
+        layer.transform[key].animated &&
+        layer.transform[key].keyframes.length > 0,
+    ),
+  );
+}
+
+/** Q2: what the layer animates, per transform, in clip seconds. */
+export function animatingSummary(
+  composition: Composition,
+  layer: SceneLayer,
+): { key: TransformKey; from: number; to: number }[] {
+  const start = startOf(composition, layer);
+  return (['position', 'scale', 'rotation', 'opacity'] as const).flatMap(
+    (key) => {
+      const property = layer.transform[key];
+      if (!property.animated || !property.keyframes.length) return [];
+      const times = property.keyframes.map((frame) => frame.time - start);
+      return [
+        {
+          key,
+          from: Math.max(0, Math.min(...times)),
+          to: Math.max(0, Math.max(...times)),
+        },
+      ];
+    },
+  );
 }
 
 /** Controls of a preset per heading group (spec 5.1b), plus the advanced. */
@@ -483,7 +555,7 @@ export function simpleTracks(
   layer: SceneLayer,
 ): SimpleTrack[] {
   const covered = new Set(
-    readPresets(layer)
+    livePresets(layer)
       .filter((record) => !editedManually(layer, record))
       .flatMap((record) => keysOf(record.preset)),
   );

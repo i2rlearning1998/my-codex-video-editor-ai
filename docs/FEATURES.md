@@ -908,11 +908,11 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-001 | P1 | W8 | Verified | Lengthening, trimming or moving a group clip carries its children in time (the same shift and the same edge change), in the model; a lengthened background group still draws to its new end (Q1) |
 | QT-002 | P1 | W8 | Verified | Ungroup works for normal groups by baking the group's position, scale, rotation and opacity into each child; a refused Ungroup shows one toast, never a stack (Q1) |
 | QT-003 | P1 | W8 | Verified | A background group (from Use as background or a library background) cannot be ungrouped; Ungroup is disabled with the tooltip "Background is one block" (Q1) |
-| QT-004 | P1 | W8 | Todo | Animate > Creator starts with None and highlights only the preset the layer really has (Q2) |
-| QT-005 | P1 | W8 | Todo | The Controls panel opens with a line that says what is animated, e.g. "Animating: Scale - 0.0s to 1.0s", listing every animated property (Q2) |
-| QT-006 | P1 | W8 | Todo | Remove animation in the Controls panel removes a preset's record, its keyframes and its controls in one undo step (Q2) |
-| QT-007 | P1 | W8 | Todo | When a preset's keyframes are deleted by hand no orphan controls stay: the panel shows Edited manually with Reset to controls, or drops the preset when nothing of it is left (Q2) |
-| QT-008 | P1 | W8 | Todo | Delete on a selected keyframe removes only that keyframe, never other keyframes at nearby times (Q2) |
+| QT-004 | P1 | W8 | Verified | Animate > Creator starts with None and highlights only the preset the layer really has (Q2) |
+| QT-005 | P1 | W8 | Verified | The Controls panel opens with a line that says what is animated, e.g. "Animating: Scale - 0.0s to 1.0s", listing every animated property (Q2) |
+| QT-006 | P1 | W8 | Verified | Remove animation in the Controls panel removes a preset's record, its keyframes and its controls in one undo step (Q2) |
+| QT-007 | P1 | W8 | Verified | When a preset's keyframes are deleted by hand no orphan controls stay: the panel shows Edited manually with Reset to controls, or drops the preset when nothing of it is left (Q2) |
+| QT-008 | P1 | W8 | Verified | Delete on a selected keyframe removes only that keyframe, never other keyframes at nearby times (Q2) |
 | QT-009 | P1 | W8 | Todo | Timeline keyframe diamonds are at least 10 px, contrast on dark and light, highlight on hover and fill when selected (Q3) |
 | QT-010 | P1 | W8 | Todo | Every layer has an Anchor (pivot) control in Properties, a 9-point grid with the centre by default; rotation and scale turn about it (Q3) |
 | QT-011 | P1 | W8 | Todo | The Spin preset rotates about the anchor (the centre by default), so a rectangle spun 90 degrees keeps its centre fixed (Q3) |

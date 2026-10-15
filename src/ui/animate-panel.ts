@@ -22,7 +22,8 @@ export interface CreatorAnimate {
   list(): readonly { id: string; name: string }[];
   /** The preset ids the layer has applied. */
   applied(layerId: string): readonly string[];
-  apply(id: string): void;
+  /** null: None (no Creator preset). */
+  apply(id: string | null): void;
 }
 const DEFAULT_DURATION = 0.5;
 const DEFAULT_PERIOD = 1.5;
@@ -245,6 +246,15 @@ export function mountAnimatePanel(
         );
     } else if (tab === 'creator') {
       const applied = new Set(creator?.applied(layer.id) ?? []);
+      // Q2: None first; only the preset the layer really has is pressed.
+      cards.append(
+        card(
+          t('animate.none'),
+          !applied.size,
+          () => safely(() => creator?.apply(null)),
+          { preset: 'none', creator: 'true' },
+        ),
+      );
       cards.append(
         ...creators.map((item) =>
           card(

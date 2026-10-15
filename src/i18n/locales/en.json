@@ -1531,5 +1531,9 @@
   "creator.copyIndex": "Copy library index for AI",
   "creator.indexCopied": "Library index copied ({size} KB). Paste it into your AI chat.",
   "ungroup.background": "Background is one block",
-  "ungroup.locked": "The group is locked"
+  "ungroup.locked": "The group is locked",
+  "controls.animating": "Animating: {list}",
+  "controls.span": "{name} - {from}s to {to}s",
+  "controls.remove": "Remove animation",
+  "controls.removeStep": "Remove animation"
 }

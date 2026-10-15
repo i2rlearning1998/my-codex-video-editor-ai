@@ -34,7 +34,11 @@ import {
   type ControlsDeps,
   type CreatorPresetChoice,
 } from './controls-panel';
-import { presetCommands, readPresets } from './creator-presets';
+import {
+  livePresets,
+  presetCommands,
+  removePresetCommands,
+} from './creator-presets';
 import {
   openCreatorPackDialog,
   type CreatorPackAdd,
@@ -926,7 +930,7 @@ export function mountEditorShell(
       list: () => creatorPresets(),
       applied: (layerId) => {
         const found = locateLayer(session.source.composition.layers, layerId);
-        return found ? readPresets(found.layer).map((item) => item.id) : [];
+        return found ? livePresets(found.layer).map((item) => item.id) : [];
       },
       apply: (id) => applyCreatorPreset(id),
     },
@@ -2301,22 +2305,35 @@ export function mountEditorShell(
     rerender: () => rightPanel.render(activeSection as RightSection),
   };
   /** P3: applies a Creator preset to the selected layer (one undo step). */
-  const applyCreatorPreset = (id: string) =>
+  const applyCreatorPreset = (id: string | null) =>
     safely(() => {
-      const choice = creatorPresets().find((item) => item.id === id);
       const layer = controlledLayer(session) ?? codeLayerSelected(session);
-      if (!choice || !layer) return;
+      if (!layer) return;
       const found = locateLayer(session.source.composition.layers, layer.id);
       if (!found) return;
+      // Q2: None removes every Creator preset of the layer (one step).
+      if (id === null) {
+        if (!livePresets(found.layer).length) return;
+        session.setPlaying(false);
+        engine.commands.transaction(
+          t('controls.removeStep'),
+          removePresetCommands(session.source.composition, found.layer),
+        );
+        return;
+      }
+      const choice = creatorPresets().find((item) => item.id === id);
+      if (!choice) return;
       if (!presetFits(choice.preset, found.layer))
         throw new Error(t('controls.notFor', { name: choice.name }));
       session.setPlaying(false);
       engine.commands.transaction(
         t('controls.applyStep'),
-        presetCommands(session.source.composition, found.layer, {
-          ...choice,
-          params: {},
-        }),
+        presetCommands(
+          session.source.composition,
+          found.layer,
+          { ...choice, params: {} },
+          true,
+        ),
       );
     });
   /** P1: the pause after a released control before its re-bake. */
