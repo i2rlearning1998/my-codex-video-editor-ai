@@ -4,6 +4,8 @@ import {
   decomposeMatrix,
   multiplyMatrices,
   rotateAroundCenter,
+  aroundPivot,
+  pivotPoint,
   resizePointer,
   resizeTextWidth,
   localTransformMatrix,
@@ -406,11 +408,16 @@ export class TransformInteraction {
         );
         const value = gesture.layer.transform.rotation.value + gesture.angle;
         if (!Number.isFinite(value)) throw new RangeError('Invalid rotation');
-        gesture.value = rotateAroundCenter(
-          gesture.layer.transform,
-          gesture.bounds,
-          value,
-        );
+        // Q3: a named pivot is the centre of turning (D-252).
+        const pivot = pivotPoint(gesture.layer.properties);
+        gesture.value = pivot
+          ? aroundPivot(
+              gesture.layer.transform,
+              pivot,
+              value,
+              gesture.layer.transform.scale.value,
+            )
+          : rotateAroundCenter(gesture.layer.transform, gesture.bounds, value);
         gesture.guides = [];
       } else if (
         snap !== undefined &&

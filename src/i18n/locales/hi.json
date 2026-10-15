@@ -1535,5 +1535,17 @@
   "controls.animating": "एनिमेशन: {list}",
   "controls.span": "{name} - {from}s से {to}s",
   "controls.remove": "एनिमेशन हटाएँ",
-  "controls.removeStep": "एनिमेशन हटाएँ"
+  "controls.removeStep": "एनिमेशन हटाएँ",
+  "right.anchor": "एंकर",
+  "right.anchorStep": "एंकर सेट करें",
+  "right.anchorHint": "घुमाव और आकार इसी बिंदु के चारों ओर बदलते हैं।",
+  "right.anchor.top-left": "ऊपर बाएँ",
+  "right.anchor.top": "ऊपर",
+  "right.anchor.top-right": "ऊपर दाएँ",
+  "right.anchor.left": "बाएँ",
+  "right.anchor.center": "बीच",
+  "right.anchor.right": "दाएँ",
+  "right.anchor.bottom-left": "नीचे बाएँ",
+  "right.anchor.bottom": "नीचे",
+  "right.anchor.bottom-right": "नीचे दाएँ"
 }

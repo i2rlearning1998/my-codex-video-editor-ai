@@ -913,9 +913,9 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-006 | P1 | W8 | Verified | Remove animation in the Controls panel removes a preset's record, its keyframes and its controls in one undo step (Q2) |
 | QT-007 | P1 | W8 | Verified | When a preset's keyframes are deleted by hand no orphan controls stay: the panel shows Edited manually with Reset to controls, or drops the preset when nothing of it is left (Q2) |
 | QT-008 | P1 | W8 | Verified | Delete on a selected keyframe removes only that keyframe, never other keyframes at nearby times (Q2) |
-| QT-009 | P1 | W8 | Todo | Timeline keyframe diamonds are at least 10 px, contrast on dark and light, highlight on hover and fill when selected (Q3) |
-| QT-010 | P1 | W8 | Todo | Every layer has an Anchor (pivot) control in Properties, a 9-point grid with the centre by default; rotation and scale turn about it (Q3) |
-| QT-011 | P1 | W8 | Todo | The Spin preset rotates about the anchor (the centre by default), so a rectangle spun 90 degrees keeps its centre fixed (Q3) |
+| QT-009 | P1 | W8 | Verified | Timeline keyframe diamonds are at least 10 px, contrast on dark and light, highlight on hover and fill when selected (Q3) |
+| QT-010 | P1 | W8 | Verified | Every layer has an Anchor (pivot) control in Properties, a 9-point grid with the centre by default; rotation and scale turn about it (Q3) |
+| QT-011 | P1 | W8 | Verified | The Spin preset rotates about the anchor (the centre by default), so a rectangle spun 90 degrees keeps its centre fixed (Q3) |
 | QT-012 | P1 | W8 | Todo | The left rail has an AI category that lists everything imported from Creator Packs, grouped by kind (Q4) |
 | QT-013 | P1 | W8 | Todo | AI-made items show a small AI chip in every library panel and the Media panel (Q4) |
 | QT-014 | P1 | W8 | Todo | The creator pack dialog checks a pasted or chosen pack automatically; Add selected to library is enabled as soon as one item passed; each item says pass, warning or rejected with a plain reason (Q4) |

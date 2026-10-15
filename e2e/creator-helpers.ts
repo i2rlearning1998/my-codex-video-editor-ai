@@ -107,3 +107,47 @@ export const badge = async (page: Page) => {
 };
 export const frames = async (page: Page, key = 'position') =>
   (await badge(page)).layer.transform[key]!.keyframes;
+export const SPIN_ID = 'spin-pack--preset-spin';
+/** An inline pack with one rotation preset (Spin, 90 degrees by default). */
+export const SPIN = JSON.stringify({
+  format: 'creator-pack',
+  version: 1,
+  pack: {
+    id: 'spin-pack',
+    name: { en: 'Spin pack' },
+    version: 1,
+    author: 'ai',
+    createdWith: 'codex',
+  },
+  items: [
+    {
+      id: 'preset-spin',
+      name: { en: 'Spin' },
+      tags: ['original'],
+      type: 'preset',
+      data: {
+        appliesTo: ['any'],
+        controls: [
+          {
+            name: 'angle',
+            label: { en: 'Angle' },
+            type: 'number',
+            default: 90,
+            min: -360,
+            max: 360,
+            step: 1,
+          },
+        ],
+        tracks: [
+          {
+            property: 'rotation',
+            keys: [
+              { t: 0, v: 0 },
+              { t: 1, v: '$angle' },
+            ],
+          },
+        ],
+      },
+    },
+  ],
+});

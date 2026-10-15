@@ -60,6 +60,7 @@ import {
   SPEED_PRESETS,
 } from './editing';
 import { guardCommands } from './editor-mode';
+import { PIVOT_NAMES, pivotName } from '../core';
 import { controlledLayer, hasControls } from './controls-panel';
 import { iconSvg } from './icons';
 import { documentColors } from './palette';
@@ -761,6 +762,52 @@ export function mountRightPanel(
       default:
         return groupTab();
     }
+  };
+
+  /** Q3: the anchor (pivot) of the selected layer, a 9-point grid. */
+  const anchorAccordion = () => {
+    const roots = selectionRoots(session.source, session.selectedIds);
+    if (roots.length !== 1 || roots[0]!.type === 'audio') return null;
+    const layer = roots[0]!;
+    const current = pivotName(layer.properties) ?? 'center';
+    const grid = document.createElement('div');
+    grid.className = 'anchor-grid';
+    grid.id = 'right-anchor';
+    grid.setAttribute('role', 'radiogroup');
+    grid.setAttribute('aria-label', t('right.anchor'));
+    for (const name of PIVOT_NAMES) {
+      const cell = document.createElement('button');
+      cell.type = 'button';
+      cell.className = 'anchor-cell';
+      cell.dataset.pivot = name;
+      cell.setAttribute('role', 'radio');
+      cell.setAttribute('aria-checked', String(name === current));
+      cell.title = t(`right.anchor.${name}`);
+      cell.setAttribute('aria-label', cell.title);
+      cell.onclick = () =>
+        safely(() =>
+          run(t('right.anchorStep'), [
+            {
+              type: 'SET_PROPERTY',
+              compositionId: session.source.composition.id,
+              layerId: layer.id,
+              target: { kind: 'property', key: 'pivot' },
+              property: {
+                type: 'string',
+                value: name,
+                animated: false,
+                keyframes: [],
+                constraints: [],
+              },
+            } as Command,
+          ]),
+        );
+      grid.append(cell);
+    }
+    const note = document.createElement('p');
+    note.className = 'right-note';
+    note.textContent = t('right.anchorHint');
+    return accordion('layer-anchor', t('right.anchor'), [grid, note]);
   };
 
   // --- Other tabs --------------------------------------------------------------
@@ -1483,7 +1530,7 @@ export function mountRightPanel(
       host.dataset.kind = kindOf(session);
       const content =
         section === 'Properties'
-          ? firstTab()
+          ? [...firstTab(), anchorAccordion()]
           : plannedSection(section, session)
             ? planned(section)
             : section === 'Fade'

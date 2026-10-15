@@ -71,6 +71,8 @@ test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and
     'Outline',
     'Corners',
     'Boolean',
+    // Q3: every layer has an Anchor (pivot) accordion last.
+    'Anchor',
   ]);
   // Outline weight, one step.
   const width = panel(page).locator('#right-width');
@@ -118,7 +120,11 @@ test('[LAY-043] text: font, size, B I U S, case, align, colour and spacing in th
   page,
 }) => {
   await select(page, 'example-headline');
-  expect(await accordions(page)).toEqual(['Text', 'Spacing and more']);
+  expect(await accordions(page)).toEqual([
+    'Text',
+    'Spacing and more',
+    'Anchor',
+  ]);
   await panel(page).locator('[data-action="right-italic"]').click();
   let layer = await layerOf(page, 'example-headline');
   expect(layer.properties.fontStyle.value).toBe('italic');
@@ -150,7 +156,7 @@ test('[LAY-044] a group: Group with Ungroup and Align; a multi-selection: Arrang
 }) => {
   await select(page, 'example-cards');
   await expect(tab(page, 'Properties')).toHaveAttribute('aria-label', 'Group');
-  expect(await accordions(page)).toEqual(['Group', 'Align']);
+  expect(await accordions(page)).toEqual(['Group', 'Align', 'Anchor']);
   await panel(page).locator('[data-action="right-ungroup"]').click();
   expect((await labels(page)).at(-1)).toBe('Ungroup');
   // Now several layers are selected: Arrange.

@@ -159,12 +159,16 @@ test('[QT-008] Delete removes only the selected keyframe, not one at a nearby ti
       `.timeline-keyframe[data-id="example-badge"][data-time="${time}"]`,
     );
   // Both selected, then a plain click on one: only it stays selected.
-  await diamond(1).click({ position: { x: 2, y: 8 } });
-  await diamond(1.1).click({ modifiers: ['Shift'] });
+  await diamond(1).click({ position: { x: 2, y: 10 } });
+  // Q3 diamonds are 20 px: click the edges they do not share.
+  await diamond(1.1).click({
+    modifiers: ['Shift'],
+    position: { x: 18, y: 10 },
+  });
   await expect
     .poll(async () => (await hook(page)).session.selectedKeyframes.length)
     .toBe(2);
-  await diamond(1.1).click();
+  await diamond(1.1).click({ position: { x: 18, y: 10 } });
   await expect
     .poll(async () => (await hook(page)).session.selectedKeyframes)
     .toEqual([{ layerId: 'example-badge', time: 1.1 }]);

@@ -927,7 +927,7 @@ export function mountTimeline(
           ? Math.max(0, time + keyframeDrag.delta)
           : time;
       const diamond = button(
-        iconSvg('diamondFilled', 12),
+        iconSvg('diamondFilled', 14),
         'keyframe',
         layerId,
         true,

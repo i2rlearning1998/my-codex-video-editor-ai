@@ -1535,5 +1535,17 @@
   "controls.animating": "Animating: {list}",
   "controls.span": "{name} - {from}s to {to}s",
   "controls.remove": "Remove animation",
-  "controls.removeStep": "Remove animation"
+  "controls.removeStep": "Remove animation",
+  "right.anchor": "Anchor",
+  "right.anchorStep": "Set anchor",
+  "right.anchorHint": "Rotation and scale turn about this point.",
+  "right.anchor.top-left": "Top left",
+  "right.anchor.top": "Top",
+  "right.anchor.top-right": "Top right",
+  "right.anchor.left": "Left",
+  "right.anchor.center": "Centre",
+  "right.anchor.right": "Right",
+  "right.anchor.bottom-left": "Bottom left",
+  "right.anchor.bottom": "Bottom",
+  "right.anchor.bottom-right": "Bottom right"
 }

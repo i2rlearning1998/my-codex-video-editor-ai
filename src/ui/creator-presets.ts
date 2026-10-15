@@ -7,7 +7,7 @@
 // string property `preset` (JSON, read defensively, D-239). When the
 // keyframes no longer match the fingerprint they were edited by hand, and the
 // controls step aside ("Edited manually") until "Reset to controls".
-import type { Command, Easing, Property } from '../core';
+import { pivotName, type Command, type Easing, type Property } from '../core';
 import { generatePreset, presetControls } from '../creator-pack/preset';
 import {
   expressionReferences,
@@ -375,7 +375,29 @@ export function presetCommands(
     base,
     fingerprint,
   };
+  // Q3: a preset that turns or scales does so about the layer's pivot (the
+  // centre unless the user chose another; D-252).
+  const pivot: Command[] =
+    (keys.includes('rotation') || keys.includes('scale')) &&
+    !pivotName(layer.properties)
+      ? [
+          {
+            type: 'SET_PROPERTY',
+            compositionId: composition.id,
+            layerId: layer.id,
+            target: { kind: 'property', key: 'pivot' },
+            property: {
+              type: 'string',
+              value: 'center',
+              animated: false,
+              keyframes: [],
+              constraints: [],
+            },
+          } as Command,
+        ]
+      : [];
   return [
+    ...pivot,
     ...resets,
     ...keys.map((key) =>
       transformCommand(composition.id, layer, key, frames[key] ?? []),

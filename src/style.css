@@ -1814,27 +1814,54 @@ input[type='number'],
 .nle-clip {
   isolation: isolate;
 }
-/* ANI-004 keyframe diamonds on the clip row (above the clip). */
+/* ANI-004 keyframe diamonds on the clip row (above the clip). Q3: a 14 px
+   glyph in a 20 px target, outlined against the clip in both themes, lit on
+   hover and filled with the accent when selected. */
 .timeline-keyframe {
   position: absolute;
   z-index: 2;
-  top: calc(50% - 8px);
-  inline-size: 16px;
-  block-size: 16px;
+  top: calc(50% - 10px);
+  inline-size: 20px;
+  block-size: 20px;
   padding: 0;
-  margin-inline-start: -8px;
+  margin-inline-start: -10px;
   display: grid;
   place-items: center;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   background: transparent;
   border: 0;
   cursor: grab;
+  filter: drop-shadow(0 0 1px var(--color-bg-app))
+    drop-shadow(0 0 1px var(--color-bg-app));
 }
-.timeline-keyframe:hover {
-  color: var(--color-text);
+.timeline-keyframe:hover,
+.timeline-keyframe:focus-visible {
+  z-index: 3;
+  color: var(--color-accent-text);
+  transform: scale(1.2);
 }
 .timeline-keyframe.selected {
-  color: var(--color-accent-hover);
+  z-index: 3;
+  color: var(--color-accent);
+  filter: drop-shadow(0 0 1px var(--color-text))
+    drop-shadow(0 0 1px var(--color-text));
+}
+.anchor-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 32px);
+  gap: var(--space-1);
+}
+.anchor-cell {
+  inline-size: 32px;
+  block-size: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  cursor: pointer;
+}
+.anchor-cell[aria-checked='true'] {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
 }
 .timeline-menu-divider {
   border-top: 1px solid var(--color-border) !important;

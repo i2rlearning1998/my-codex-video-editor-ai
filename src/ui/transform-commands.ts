@@ -1,4 +1,6 @@
 import {
+  aroundPivot,
+  pivotPoint,
   propertySchema,
   number,
   rotateAroundCenter,
@@ -25,16 +27,23 @@ export function inspectorTransform(
       'Enter a finite value; opacity must be between 0 and 1.',
     );
   const base = layer.transform;
+  // Q3: with a named pivot, rotation and scale turn about it (D-252).
+  const pivot = pivotPoint(layer.properties);
+  const scaleAround = (scale: readonly [number, number]) =>
+    pivot
+      ? aroundPivot(base, pivot, base.rotation.value, scale)
+      : { ...base, scale: { value: scale } };
   switch (field) {
     case 'Position X':
       return { ...base, position: { value: [value, base.position.value[1]] } };
     case 'Position Y':
       return { ...base, position: { value: [base.position.value[0], value] } };
     case 'Scale X':
-      return { ...base, scale: { value: [value, base.scale.value[1]] } };
+      return scaleAround([value, base.scale.value[1]]);
     case 'Scale Y':
-      return { ...base, scale: { value: [base.scale.value[0], value] } };
+      return scaleAround([base.scale.value[0], value]);
     case 'Rotation':
+      if (pivot) return aroundPivot(base, pivot, value, base.scale.value);
       if (!bounds) throw new RangeError('Rotation requires visual bounds');
       return rotateAroundCenter(base, bounds, value);
     case 'Opacity':
