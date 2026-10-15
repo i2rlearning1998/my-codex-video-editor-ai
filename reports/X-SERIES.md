@@ -47,7 +47,14 @@ Measured on the ten reference samples. Setup: 1080p, 24 fps, 96 frames. Each sam
 
 ## 3. Checks
 
-VERIFY_PLACEHOLDER
+- `npm run verify` (Node 20.20.0, CI's major; under the sandbox's default Node 22 the two `tests/blocks/worker.test.ts` tests from main fail before e2e, on main too):
+  - Run 1: unit and build green; e2e 440 passed, 20 failed. 19 were Codex's `e2e/freecode-gallery.spec.ts`: the gallery page had no favicon link, so the console guard caught the browser's `/favicon.ico` 404. 1 was `e2e/new-project.spec.ts`, which still asserted schema 7. Fixed in eb90597; those 20 then passed alone.
+  - Run 2 (the one rerun): **exit 1**. Format, typecheck and build passed; unit and jsdom 802 passed in 72 files; e2e **459 passed, 1 failed** (46.4 min, one worker).
+- The one failure is TL-103 (the V7 marquee auto-scroll), which this series does not touch: one sample stepped 40 px against a 39.6 px limit. It passed in run 1 and passes 5 of 5 alone (`--repeat-each=5`). It is a sandbox timing flake, recorded here and not hidden; the PR stays draft because the full run was not green.
+- E2E browser: Chromium 141.0.7390.37 (sandbox fallback, D-030).
+- Test hook: `assert-no-test-hook: OK (no __AIVE__ in production build)`.
+- Ledger (run on its own, because verify stops at the e2e failure): `Ledger: 697 items | Verified 380 | Claimed 16 | Todo 299 | Dropped 2` · `Ledger OK`.
+- CI: not polled (owner rule).
 
 ## 4. Try-it script for the owner (about 10 minutes)
 
@@ -69,7 +76,7 @@ VERIFY_PLACEHOLDER
 
 - Quality (Full/Draft) is transient session state per layer and is not saved. Schema 8 authorises one field only (D-219). Export always uses Full.
 - The Tier A adapter builds layers, text, shapes, keyframes and code blocks. Media slots, effects, transitions and camera moves are named in a warning, not built (D-233).
-- The sandboxed runtime is used unchanged; a 20-minute session budget covers one bake (D-236).
+- The sandboxed runtime is used unchanged; a 20-minute session budget covers one bake (D-236). One line was added to Codex's `freecode-gallery/index.html` (a favicon link) so his gallery e2e passes the console guard.
 
 ## 6. Decisions made
 
@@ -102,7 +109,7 @@ D-218, D-219 and D-231 to D-236 in docs/DECISIONS.md (D-220 to D-230 are used in
 
 ## 10. Git
 
-- Branch `claude/x-series`, draft PR #28 to `claude/v7-series`. One commit per part (X1 to X5, docs).
+- Branch `claude/x-series`, draft PR #28 to `claude/v7-series` (still draft: the final full verify had one flaky failure). One commit per part (X1 to X5, docs, the verify fixes).
 
 ## Owner tick-list (owner fills this in and sends it to Claude)
 

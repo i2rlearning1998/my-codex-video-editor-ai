@@ -18,3 +18,4 @@ Branch `claude/x-series` (from `claude/v7-series`, with `origin/main` merged). O
 - Ledger: the new CODE section (CODE-001 to CODE-013) was added as Todo in X1; statuses are set in X6.
 - `tests/blocks/worker.test.ts` (2 tests, from main) fails in this sandbox on Node 22 before any X change too (`Cannot read properties of undefined (reading 'instantiate')`: Node's own worker internals need WebAssembly after the runtime removes it); CI uses Node 20.
 - E2E for Tier C before X5 uses the FakeRuntime through `window.__AIVE_E2E_FREECODE__ = 'fake'`.
+- Final verify (Node 20): unit 802 passed, e2e 459 passed and 1 failed (TL-103, a V7 timing flake that passes 5/5 alone). The PR stays draft; see reports/X-SERIES.md section 3.
