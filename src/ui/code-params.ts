@@ -16,6 +16,8 @@ export interface ParamsFormOptions {
   readonly values: Readonly<ParamValues>;
   /** A value was committed (a release, Enter, a pick or a toggle). */
   readonly onChange: (name: string, value: ParamValue) => void;
+  /** P1: a number is being dragged (before its release). */
+  readonly onPreview?: (name: string, value: ParamValue) => void;
   readonly onInvalid?: (message: string) => void;
 }
 
@@ -47,7 +49,7 @@ export function createParamsForm(options: ParamsFormOptions): HTMLElement {
           decimals,
           slider: true,
           onCommit: (next) => options.onChange(spec.name, next),
-          onPreview: () => undefined,
+          onPreview: (next) => options.onPreview?.(spec.name, next),
           onInvalid: (message) => options.onInvalid?.(message),
         }),
       );

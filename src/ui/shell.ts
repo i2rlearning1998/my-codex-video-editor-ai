@@ -1,6 +1,8 @@
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
+import { CodePosters } from '../code-layer/poster';
+import { CodeLive } from '../code-layer/live';
 import { freeCodeRuntime, openCodeSession } from '../code-layer/runtime';
 import { tierACommands } from '../code-layer/tier-a';
 import { codeLayerCommands, codeRecord } from '../code-layer/layer';
@@ -16,6 +18,29 @@ import {
 import { createParamsForm } from './code-params';
 import { stableJson } from '../code-layer/hash';
 import { download } from '../export/client';
+import {
+  CreatorLibrary,
+  creatorLibraryId,
+  type CreatorEntry,
+} from './creator-library';
+import { libraryIndex } from './library-index';
+import { presetControls } from '../creator-pack/preset';
+import { blocks } from '../blocks/starters';
+import { SYSTEM_FONTS } from '../render/text-style';
+import {
+  controlledLayer,
+  controlsBody,
+  presetFits,
+  type ControlsDeps,
+  type CreatorPresetChoice,
+} from './controls-panel';
+import { presetCommands, readPresets } from './creator-presets';
+import {
+  openCreatorPackDialog,
+  type CreatorPackAdd,
+} from './creator-pack-dialog';
+import { loadLibrary } from '../library/loader';
+import { adjustments, effects, filters, transitions } from '../fx';
 import type { ParamValues } from './code-params';
 import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
 import {
@@ -29,7 +54,7 @@ import {
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
 import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
-import { retimeClip } from '../core';
+import { IN_OUT_PRESETS, LOOP_PRESETS, retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
@@ -170,7 +195,12 @@ import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
 import { performEdit, planLanding, trackForNewClip } from './editing';
 import { iconSvg } from './icons';
-import { confirmDialog, openModal, promptDialog } from './components/modal';
+import {
+  confirmDialog,
+  escapeHtml,
+  openModal,
+  promptDialog,
+} from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
@@ -301,7 +331,7 @@ export function mountEditorShell(
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
-        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div></div>
+        <div class="canvas-stage" id="canvas-stage"><div class="stage-toolbar-row" id="toolbar-row"><div class="context-toolbar" id="context-toolbar" hidden></div></div><div class="artboard-shadow" id="artboard-shadow" aria-hidden="true"></div><canvas id="composition-canvas" tabindex="0" aria-label="${t('canvas.help')}">${t('canvas.fallback')}</canvas><div class="canvas-empty" id="canvas-empty" hidden>${wordmarkHtml()}<h3>${t('canvas.emptyTitle')}</h3></div><div class="selection-actions" id="selection-actions" hidden></div><div class="canvas-context-menu" id="canvas-context-menu" role="menu" hidden></div><div class="buffering-indicator" id="buffering-indicator" role="status" hidden>${t('canvas.buffering')}</div><div class="brush-cursor" id="brush-cursor" aria-hidden="true" hidden></div><div class="canvas-chip" id="canvas-chip" role="status" hidden></div><div class="code-render-status" id="code-render-status" role="status" hidden></div></div>
         <div id="scene-strip"></div>
         <div class="preview-toolbar" id="canvas-footer">
           <div class="composition-picker"><button type="button" class="icon-button" id="scene-strip-show" aria-pressed="false" aria-controls="scene-strip" aria-label="${t('scene.stripShow')}" title="${t('scene.stripShow')}">${iconSvg('filmstrip', 20)}</button><button type="button" class="button sm" id="scene-board-toggle" aria-pressed="false" title="${t('scene.boardTip')}">${iconSvg('scenes', 20)}<span>${t('scene.board')}</span></button></div>
@@ -441,6 +471,8 @@ export function mountEditorShell(
   // X1 (spec section 5): code animations play from a frame cache that the
   // preview and the export share; the baker fills it one job at a time.
   const codeCache = new FrameCache(mediaStore);
+  // P2: My library (Creator Pack items), beside My Templates.
+  const creatorLibrary = new CreatorLibrary(mediaStore);
   const codeBaker = new CodeBaker(codeCache, openCodeSession);
   const codeOf = (layerId: string): CodeData | null => {
     const find = (
@@ -460,14 +492,27 @@ export function mountEditorShell(
     }
     return null;
   };
-  const codeFrames = new CodeFrames(codeCache, codeBaker, codeOf, () => {
+  const queueCodeDraw = () => {
     if (redrawQueued || disposed) return;
     redrawQueued = true;
     requestAnimationFrame(() => {
       redrawQueued = false;
       safely(draw);
     });
-  });
+  };
+  // P1: the thumbnail frame before a bake has a frame, and the frame rendered
+  // directly while a control is dragged.
+  const codePosters = new CodePosters(openCodeSession);
+  codePosters.onChange(queueCodeDraw);
+  const codeLive = new CodeLive(openCodeSession, queueCodeDraw);
+  const codeFrames = new CodeFrames(
+    codeCache,
+    codeBaker,
+    codeOf,
+    queueCodeDraw,
+    codePosters,
+    codeLive,
+  );
   frames.code = codeFrames;
   codeBaker.onChange(() => {
     if (redrawQueued || disposed) return;
@@ -478,7 +523,7 @@ export function mountEditorShell(
     });
   });
   /** The bake spec of a code layer in the open scene at its quality. */
-  const codeSpec = (layerId: string) => {
+  const codeSpec = (layerId: string, quality?: 'full' | 'draft') => {
     const code = codeOf(layerId);
     if (!code) return null;
     const composition = session.source.composition;
@@ -494,7 +539,7 @@ export function mountEditorShell(
         frames: frameCount(codeMeta(code).duration, fps),
         frame: 0,
       },
-      codeFrames.qualityOf(layerId),
+      quality ?? codeFrames.qualityOf(layerId),
     );
   };
   const codeStatus: CodeClipStatus = {
@@ -509,7 +554,18 @@ export function mountEditorShell(
         error: job?.error,
       };
     },
-    onChange: (listener) => codeBaker.onChange(listener),
+    onChange: (listener) => {
+      const off = [
+        codeBaker.onChange(listener),
+        codePosters.onChange(listener),
+      ];
+      return () => off.forEach((stop) => stop());
+    },
+    poster(layerId) {
+      const code = codeOf(layerId);
+      const spec = codeSpec(layerId, 'full');
+      return code && spec ? codePosters.url(code.bakeKey, spec) : null;
+    },
     cancel(layerId) {
       const spec = codeSpec(layerId);
       if (spec) codeBaker.cancel(spec.cacheKey);
@@ -519,6 +575,48 @@ export function mountEditorShell(
       if (spec) codeBaker.ensure(spec, true);
     },
   };
+  /**
+   * P1: Re-render. Drops the layer's stored frames (and its poster) and
+   * bakes it again from frame 0.
+   */
+  const rerenderCode = async (layerId: string) => {
+    const spec = codeSpec(layerId);
+    if (!spec) return;
+    codeBaker.cancel(spec.cacheKey);
+    // Wait for a cancelled running bake to stop before its frames go.
+    while (codeBaker.running === spec.cacheKey)
+      await new Promise((resolve) => setTimeout(resolve, 16));
+    await codeCache.remove(spec.cacheKey);
+    codeBaker.forget(spec.cacheKey);
+    codeBaker.ensure(spec, true);
+    queueCodeDraw();
+  };
+  // P1: while a code layer of the open scene bakes, the canvas says so.
+  const codeRenderStatus = element<HTMLElement>('#code-render-status');
+  const paintCodeStatus = () => {
+    const visit = (layers: readonly SceneLayer[]): string | null => {
+      for (const layer of layers) {
+        if (layer.code) {
+          const status = codeStatus.status(layer.id);
+          if (
+            status &&
+            (status.state === 'queued' || status.state === 'running')
+          )
+            return t('code.bakeProgress', {
+              percent: formatNumber(Math.floor(status.progress * 100)),
+            });
+        }
+        const inner = visit(layer.children);
+        if (inner) return inner;
+      }
+      return null;
+    };
+    const text = visit(session.source.composition.layers);
+    codeRenderStatus.hidden = !text;
+    if (text && codeRenderStatus.textContent !== text)
+      codeRenderStatus.textContent = text;
+  };
+  codeBaker.onChange(paintCodeStatus);
   // G3: Fit, then the zoom about the view's center, then the pan.
   const viewportFor = (z: number, requested: readonly [number, number]) => {
     const view = fitViewport(
@@ -824,6 +922,14 @@ export function mountEditorShell(
     engine,
     session,
     reportError,
+    {
+      list: () => creatorPresets(),
+      applied: (layerId) => {
+        const found = locateLayer(session.source.composition.layers, layerId);
+        return found ? readPresets(found.layer).map((item) => item.id) : [];
+      },
+      apply: (id) => applyCreatorPreset(id),
+    },
   );
   // H4: the right panel's sections other than Properties.
   const rightPanel = mountRightPanel(
@@ -1143,6 +1249,14 @@ export function mountEditorShell(
     }, 'image/png');
   };
   const menuHooks = {
+    // P1: the code layer's entries run the same hooks as the commands.
+    code: {
+      edit: (layerId: string) => commandContext.code?.edit(layerId),
+      settings: (layerId: string) => commandContext.code?.settings(layerId),
+      saveTemplate: (layerId: string) =>
+        commandContext.code?.saveTemplate(layerId),
+      rerender: (layerId: string) => commandContext.code?.rerender(layerId),
+    },
     showTiming: () => {
       const layer = selectedLayer();
       if (!layer) return;
@@ -1379,6 +1493,17 @@ export function mountEditorShell(
       if (session.selectedId) timeline?.renameClip(session.selectedId);
     },
     moreOptions: () => workspace?.setOpen('right', true),
+    // P1: a code layer's own actions.
+    code: {
+      edit: (layerId) => safely(() => openCodeImport({}, { layerId })),
+      settings: () =>
+        safely(() => {
+          workspace?.setOpen('right', true);
+          setRightSection('Code');
+        }),
+      saveTemplate: (layerId) => void saveLayerAsTemplate(layerId),
+      rerender: (layerId) => void rerenderCode(layerId),
+    },
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -1853,11 +1978,171 @@ export function mountEditorShell(
       },
     });
   };
+  // P2: Import creator pack: the review dialog, then My library.
+  let builtInIds: readonly string[] = [];
+  void loadLibrary().then(
+    (manifest) => (builtInIds = manifest.items.map((item) => item.id)),
+    () => undefined,
+  );
+  const addCreatorItems = async (add: CreatorPackAdd): Promise<boolean> => {
+    await creatorLibrary.ready;
+    const existing = creatorLibrary.packVersion(add.packId);
+    if (existing === add.packVersion) {
+      // Re-importing the same version changes nothing (idempotent).
+      showToast(
+        t('creator.sameVersion', {
+          name: add.packName.en,
+          version: String(add.packVersion),
+        }),
+        'info',
+      );
+      return true;
+    }
+    if (existing !== null) {
+      const newer = add.packVersion > existing;
+      const yes = await confirmDialog(
+        escapeHtml(
+          t(newer ? 'creator.replaceNewer' : 'creator.replaceOlder', {
+            name: add.packName.en,
+            from: String(existing),
+            to: String(add.packVersion),
+          }),
+        ),
+        {
+          titleText: escapeHtml(t('creator.replaceTitle')),
+          confirmLabel: t('creator.replace'),
+          cancelLabel: t('code.cancel'),
+          danger: !newer,
+        },
+      );
+      if (!yes) return false;
+    }
+    const now = new Date().toISOString();
+    await creatorLibrary.add(
+      add.items.map((checked) => ({
+        key: `${add.packId}/${checked.id}`,
+        packId: add.packId,
+        packName: add.packName,
+        packVersion: add.packVersion,
+        item: checked.item,
+        name: checked.item.name.en,
+        addedAt: now,
+        ...(checked.thumbnail ? { thumbnail: checked.thumbnail } : {}),
+        ...(checked.motionMeta ? { motionMeta: checked.motionMeta } : {}),
+      })),
+      existing !== null ? add.packId : undefined,
+    );
+    showToast(
+      t('creator.added', {
+        count: String(add.items.length),
+        name: add.packName.en,
+      }),
+      'success',
+    );
+    return true;
+  };
+  const openCreatorImport = (
+    initial: { text?: string; fileName?: string } = {},
+  ) => {
+    session.setPlaying(false);
+    openCreatorPackDialog({
+      ...initial,
+      fxCatalog: FX_CATALOG,
+      knownLibraryIds: () => [
+        ...builtInIds,
+        ...creatorLibrary.list().map((entry) => entry.key),
+      ],
+      ...(renderer.measureText ? { measureText: renderer.measureText } : {}),
+      runtime: freeCodeRuntime,
+      onAdd: addCreatorItems,
+      copy: (text) => {
+        void navigator.clipboard
+          .writeText(text)
+          .then(() => showToast(t('creator.reportCopied'), 'success'))
+          .catch(() => showToast(t('creator.reportCopyFailed'), 'error'));
+      },
+    });
+  };
+  /** P4: "Copy library index for AI" (plain text under 40 KB). */
+  const copyLibraryIndex = async () => {
+    await creatorLibrary.ready;
+    const manifest = await loadLibrary().catch(() => null);
+    const composition = session.source.composition;
+    const packs = new Map<string, CreatorEntry[]>();
+    for (const entry of creatorLibrary.list())
+      packs.set(entry.packId, [...(packs.get(entry.packId) ?? []), entry]);
+    const controlsOf = (entry: CreatorEntry): string[] => {
+      const item = entry.item;
+      if (item.type === 'preset')
+        return presetControls(item.data).map((control) => control.name);
+      if (item.type === 'motion')
+        return (entry.motionMeta?.params ?? []).map((param) => param.name);
+      return (item.controls ?? []).map((control) => control.name);
+    };
+    const text = libraryIndex({
+      canvas: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+      },
+      fonts: SYSTEM_FONTS.map(([name]) => name),
+      animate: {
+        in: IN_OUT_PRESETS,
+        out: IN_OUT_PRESETS,
+        loop: LOOP_PRESETS,
+        creator: creatorPresets().map((item) => item.id),
+      },
+      fx: {
+        filters: filters.map((item) => item.id),
+        effects: effects.map((item) => item.id),
+        adjust: adjustments.map((item) => item.id),
+        transitions: transitions.map((item) => item.id),
+      },
+      blocks: blocks.map((block) => ({
+        id: block.id,
+        name: block.name,
+        kind: 'block',
+        controls: block.params.map((param) => param.name),
+      })),
+      groups: [
+        {
+          title: 'Built-in library',
+          items: (manifest?.items ?? []).map((item) => ({
+            id: item.id,
+            name: item.name.en,
+            kind: item.type,
+            tags: item.tags,
+          })),
+        },
+        ...[...packs].map(([packId, entries]) => ({
+          title: `Creator pack ${packId} v${entries[0]!.packVersion} "${entries[0]!.packName.en}"`,
+          items: entries.map((entry) => ({
+            id: creatorLibraryId(entry.key),
+            name: entry.item.name.en,
+            kind: entry.item.type,
+            tags: entry.item.tags,
+            controls: controlsOf(entry),
+          })),
+        })),
+      ],
+    });
+    await navigator.clipboard.writeText(text).then(
+      () =>
+        showToast(
+          t('creator.indexCopied', {
+            size: formatNumber(Math.ceil(new Blob([text]).size / 1024)),
+          }),
+          'success',
+        ),
+      () => showToast(t('creator.reportCopyFailed'), 'error'),
+    );
+  };
   /** X2: the Animation settings panel of the selected code layer. */
   const codeBody = (): HTMLElement[] => {
     const layer = codeLayerSelected(session);
     const code = layer ? codeOf(layer.id) : null;
-    if (!layer || !code) return [];
+    // P3: any other layer's Controls (presets and keyframes it has).
+    if (!layer || !code) return controlsBody(controlsDeps);
     const meta = codeMeta(code);
     const info = document.createElement('div');
     info.className = 'code-info';
@@ -1939,17 +2224,36 @@ export function mountEditorShell(
         idPrefix: 'code-setting',
         specs: meta.params,
         values,
+        // P1: while a number is dragged the frame at the playhead renders
+        // at Draft with the dragged value (Blocks and seekable code); on
+        // release the change is applied and re-baked after a short pause
+        // (a stateful Tier C animation keeps Apply).
+        onPreview: (name, value) =>
+          safely(() => {
+            if (!CodeLive.canRender(code.tier, meta.seekable)) return;
+            const request = codeFrames.requestOf(layer.id);
+            if (!request?.code) return;
+            const spec = bakeSpecOf(
+              { ...code, params: { ...values, [name]: value } },
+              request.code,
+              'draft',
+            );
+            codeLive.request(layer.id, spec, request.code.frame);
+          }),
         onChange: (name, value) =>
           safely(() => {
             pendingCode = {
               layerId: layer.id,
               values: { ...values, [name]: value },
             };
-            if (code.tier === 'B') {
+            codeLive.release(layer.id);
+            // A stateful Tier C animation is a heavy re-bake: it waits
+            // for Apply.
+            if (CodeLive.canRender(code.tier, meta.seekable)) {
               clearTimeout(codeApplyTimer);
               codeApplyTimer = setTimeout(
                 () => safely(() => applyCodeParams(layer.id)),
-                200,
+                CODE_APPLY_DELAY,
               );
             }
             rightPanel.render('Code');
@@ -1970,6 +2274,53 @@ export function mountEditorShell(
     }
     return parts;
   };
+  /** P3: the Creator presets of My library (Animate > Creator, Add animation). */
+  const creatorPresets = (): CreatorPresetChoice[] =>
+    creatorLibrary.presets().flatMap((entry) =>
+      entry.item.type === 'preset'
+        ? [
+            {
+              id: creatorLibraryId(entry.key),
+              name: entry.name,
+              preset: entry.item.data,
+            },
+          ]
+        : [],
+    );
+  const controlsDeps: ControlsDeps = {
+    engine,
+    session,
+    presets: creatorPresets,
+    report: (error) => reportError(error),
+    confirm: (text) =>
+      confirmDialog(escapeHtml(text), {
+        titleText: escapeHtml(t('controls.reset')),
+        confirmLabel: t('controls.reset'),
+        cancelLabel: t('code.cancel'),
+      }),
+    rerender: () => rightPanel.render(activeSection as RightSection),
+  };
+  /** P3: applies a Creator preset to the selected layer (one undo step). */
+  const applyCreatorPreset = (id: string) =>
+    safely(() => {
+      const choice = creatorPresets().find((item) => item.id === id);
+      const layer = controlledLayer(session) ?? codeLayerSelected(session);
+      if (!choice || !layer) return;
+      const found = locateLayer(session.source.composition.layers, layer.id);
+      if (!found) return;
+      if (!presetFits(choice.preset, found.layer))
+        throw new Error(t('controls.notFor', { name: choice.name }));
+      session.setPlaying(false);
+      engine.commands.transaction(
+        t('controls.applyStep'),
+        presetCommands(session.source.composition, found.layer, {
+          ...choice,
+          params: {},
+        }),
+      );
+    });
+  /** P1: the pause after a released control before its re-bake. */
+  const CODE_APPLY_DELAY = 300;
   /** X3: staged param values of one code layer (not yet applied). */
   let pendingCode: { layerId: string; values: ParamValues } | null = null;
   let codeApplyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -1987,6 +2338,7 @@ export function mountEditorShell(
       ...(code.templateId ? { templateId: code.templateId } : {}),
     });
     if (next.bakeKey === code.bakeKey) {
+      codeLive.clear(layerId);
       rightPanel.render('Code');
       return;
     }
@@ -2167,6 +2519,33 @@ export function mountEditorShell(
       showToast(t('code.templateFull'), 'error');
       return null;
     }
+  };
+  /** P1: Save as template from a code layer (its source, meta and values). */
+  const saveLayerAsTemplate = async (layerId: string) => {
+    const code = codeOf(layerId);
+    if (!code) return;
+    const meta = codeMeta(code);
+    const spec = codeSpec(layerId, 'full');
+    const poster = spec ? codePosters.image(code.bakeKey, spec) : null;
+    let thumbnail: Blob | null = null;
+    if (poster) {
+      const canvas = new OffscreenCanvas(poster.width, poster.height);
+      canvas.getContext('2d')!.drawImage(poster, 0, 0);
+      thumbnail = await canvas.convertToBlob({ type: 'image/png' });
+    }
+    const layer = locateLayer(session.source.composition.layers, layerId);
+    const template = await saveCodeTemplate(
+      {
+        tier: code.tier,
+        source: code.source,
+        meta,
+        params: codeParams(code) as ParamValues,
+        name: layer?.layer.name || meta.name,
+      } as CodeImport,
+      thumbnail,
+    );
+    if (template)
+      showToast(t('code.savedTemplate', { name: template.name }), 'success');
   };
   /** Inserts a code template at `time` on a new lane, one undo step. */
   const insertCodeTemplate = async (template: CodeTemplate, time: number) => {
@@ -2385,6 +2764,102 @@ export function mountEditorShell(
     codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
     codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
   };
+  // P2: a Creator Pack item's menu: Insert, Rename, Export item, Delete
+  // (soft, with Restore). None of it is an undo step.
+  const creatorEntryOf = (id: string) =>
+    creatorLibrary.list().find((entry) => creatorLibraryId(entry.key) === id);
+  const insertCreatorItem = (id: string, time = session.currentTime) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    if (entry.item.type === 'motion') {
+      const template = creatorLibrary
+        .motionTemplates()
+        .find((item) => item.id === id);
+      if (template) void insertCodeTemplate(template, time).catch(reportError);
+      return;
+    }
+    const item = libraryActions.find(id);
+    if (item) libraryActions.insert(item, undefined, time);
+  };
+  const creatorMenu = (id: string, x: number, y: number) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    codeMenu.open(() => [
+      {
+        id: 'creator-insert',
+        label: t('code.templateInsert'),
+        icon: 'plus',
+        run: () => insertCreatorItem(id),
+      },
+      {
+        id: 'creator-rename',
+        label: t('code.templateRename'),
+        icon: 'edit',
+        run: () =>
+          void promptDialog(t('code.templateRename'), entry.name, {
+            label: t('myTemplates.name'),
+            confirmLabel: t('code.templateRename'),
+            cancelLabel: t('code.cancel'),
+            maxLength: 80,
+          }).then((name) => {
+            if (name?.trim())
+              void creatorLibrary.rename(entry.key, name.trim());
+          }),
+      },
+      {
+        id: 'creator-export',
+        label: t('creator.exportItem'),
+        icon: 'export',
+        run: () =>
+          download(
+            new Blob(
+              [
+                `${JSON.stringify(
+                  {
+                    format: 'creator-pack',
+                    version: 1,
+                    pack: {
+                      id: entry.packId,
+                      name: entry.packName,
+                      version: entry.packVersion,
+                      author: 'ai',
+                      createdWith: 'claude-chat',
+                    },
+                    items: [entry.item],
+                  },
+                  null,
+                  2,
+                )}\n`,
+              ],
+              { type: 'application/json' },
+            ),
+            `${entry.item.id}.creatorpack.json`,
+          ),
+      },
+      {
+        id: 'creator-delete',
+        label: t('code.templateDelete'),
+        icon: 'delete',
+        divider: true,
+        run: () => {
+          void creatorLibrary.remove(entry.key);
+          showToast(
+            t('code.templateDeleted', { name: entry.name }),
+            'info',
+            8000,
+            {
+              label: t('code.templateRestore'),
+              run: () => void creatorLibrary.restore(entry.key),
+            },
+          );
+        },
+      },
+    ]);
+    const width = codeMenuElement.offsetWidth,
+      height = codeMenuElement.offsetHeight;
+    codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
+    codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  };
   const libraryBrowsers = mountLibraryPanels(
     {
       Templates: element('#library-templates'),
@@ -2413,6 +2888,7 @@ export function mountEditorShell(
         hover: codeHover,
         importFile: () => codeTemplateInput.click(),
       },
+      creator: { library: creatorLibrary, menu: creatorMenu },
     },
   );
   void libraryBrowsers;
@@ -2710,6 +3186,12 @@ export function mountEditorShell(
       mediaInput.click(),
     );
     entry('import-code', t('code.importCode'), 'code', () => openCodeImport());
+    entry('import-creator', t('creator.importMenu'), 'elements', () =>
+      openCreatorImport(),
+    );
+    entry('import-index', t('creator.copyIndex'), 'copy', () =>
+      copyLibraryIndex(),
+    );
     importMenuButton.setAttribute('aria-expanded', 'true');
     const popover = openPopover(importMenuButton, menu, {
       label: t('code.importMenu'),
@@ -3158,16 +3640,24 @@ export function mountEditorShell(
     event.stopPropagation();
     const dropped = [...(event.dataTransfer?.files ?? [])];
     // X2: code files open the import dialog; media files import as before.
-    const code = dropped.filter((file) => CODE_FILE.test(file.name));
-    const files = dropped.filter((file) => !CODE_FILE.test(file.name));
+    // P2: a creator pack (.creatorpack.txt or .json, or JSON that says it is
+    // one) opens the Creator Pack import.
+    const isText = (file: File) =>
+      CODE_FILE.test(file.name) || /\.txt$/i.test(file.name);
+    const code = dropped.filter(isText);
+    const files = dropped.filter((file) => !isText(file));
     if (code[0])
       void code[0]
         .text()
         .then((text) =>
-          // X4: an exported code template file imports into My Templates.
-          isCodeTemplateFile(text)
-            ? importCodeTemplateText(text)
-            : openCodeImport({ text, fileName: code[0]!.name }),
+          isCreatorPackText(code[0]!.name, text)
+            ? openCreatorImport({ text, fileName: code[0]!.name })
+            : // X4: an exported code template file imports into My Templates.
+              isCodeTemplateFile(text)
+              ? importCodeTemplateText(text)
+              : /\.txt$/i.test(code[0]!.name)
+                ? showToast(t('creator.notAPack'), 'error')
+                : openCodeImport({ text, fileName: code[0]!.name }),
         )
         .catch(reportError);
     if (!files.length) return;
@@ -3905,7 +4395,9 @@ export function mountEditorShell(
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
     } else if (payload.kind === 'code') {
-      const template = codeTemplates.find(payload.id);
+      const template =
+        codeTemplates.find(payload.id) ??
+        creatorLibrary.motionTemplates().find((item) => item.id === payload.id);
       if (template) void insertCodeTemplate(template, time).catch(reportError);
     } else if (payload.kind === 'preset') {
       const commands = addShapeCommands(
@@ -4428,3 +4920,17 @@ export function mountEditorShell(
     },
   };
 }
+
+/** P2: a dropped or pasted file is a Creator Pack (by name or content). */
+function isCreatorPackText(fileName: string, text: string): boolean {
+  if (/\.creatorpack\.(txt|json)$/i.test(fileName)) return true;
+  const head = text.replace(/^\uFEFF/, '').trimStart();
+  return (
+    head.startsWith('=== PACK ===') ||
+    /^\{[\s\S]{0,200}"format"\s*:\s*"creator-pack"/.test(head)
+  );
+}
+/** P2: the FX catalog's ids (checkPack checks recipes against them). */
+const FX_CATALOG = [...filters, ...effects, ...adjustments, ...transitions].map(
+  (item) => item.id,
+);

@@ -2,6 +2,13 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## P-series (P1 to P4), Creator Pack in the editor — 2026-10-15
+
+- **Code-layer usability (P1):** a code layer's own canvas and timeline menus (Edit code, Controls, Save as template, Re-render; no picture or sound items); its thumbnail and "Rendering n %" before the first frames, never a blank clip, and playback from the first baked frames; live Draft render while a control is dragged, re-bake on release.
+- **Import creator pack (P2):** Media › Import › Import creator pack, a paste box or a dropped .creatorpack.txt/.json file; offline `checkPack`, then render checks (three frames, blank or throwing rejected, motion baked twice byte for byte, controls must change the render); a review list with thumbnails, statuses, reasons, checkboxes and Copy report; My library (not an undo step) with versions, Creator pack badges in Elements, Text, Templates and My Templates, rename, export, delete and Restore. Kinds not built yet say "Not supported yet".
+- **Presets and Controls (P3):** Animate › Creator applies a Creator preset as ordinary keyframes in one step; the rail's Animation settings is now Controls and shows only what the layer has (a Move preset shows only Move); hand-made keyframes get a simple From/To/Duration/Delay/Easing view; Edited manually with Reset to controls; Add animation.
+- **Library index (P4):** Media › Import › Copy library index for AI copies a compact text (under 40 KB) of every id an AI may use.
+
 ## X-series (X1 to X6) — 2026-10-12
 
 - **Code layer (X1, schema 8):** a code animation is a full-canvas transparent layer on a visual lane with every clip tool; its frames are baked in order into a lossless PNG cache (OPFS, IndexedDB fallback) with memory and disk budgets, Draft and Full quality and partial playback; preview and export read the same frames; the clip shows "Rendering n %" with Cancel and Resume.

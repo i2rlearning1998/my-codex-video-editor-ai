@@ -22,6 +22,7 @@ import { itemName, libraryCommands } from './library-insert';
 import { recent, type LibraryActions } from './library-actions';
 import { myTemplates, type MyTemplate } from './my-templates';
 import { codeTemplates, type CodeTemplate } from './code-templates';
+import { isCreatorLibraryId, type CreatorLibrary } from './creator-library';
 import { iconSvg } from './icons';
 import type { EditorSession } from './session';
 import {
@@ -335,6 +336,11 @@ export function mountLibraryPanels(
       hover(template: CodeTemplate, thumb: HTMLElement, on: boolean): void;
       importFile(): void;
     };
+    /** P2: Creator Pack items in My library (badged, with their menu). */
+    creator?: {
+      library: CreatorLibrary;
+      menu(id: string, x: number, y: number): void;
+    };
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
@@ -344,11 +350,21 @@ export function mountLibraryPanels(
     kind: 'loading',
     text: t('library.loading'),
   };
+  // P2: the built-in items and the user's Creator Pack items, one list.
+  const creator = options.creator;
+  const allItems = (): readonly LibraryItem[] =>
+    creator ? [...items, ...creator.library.libraryItems()] : items;
   const of = <T extends LibraryItem['type']>(type: T) =>
-    items.filter(
+    allItems().filter(
       (item): item is Extract<LibraryItem, { type: T }> => item.type === type,
     );
-  const byId = (id: string) => items.find((item) => item.id === id);
+  const byId = (id: string) => allItems().find((item) => item.id === id);
+  const fromCreator = (id: string) => !!creator && isCreatorLibraryId(id);
+  /** P2: Creator Pack motion items with the user's code templates. */
+  const codeList = (): CodeTemplate[] => [
+    ...codeTemplates.list(),
+    ...(creator?.library.motionTemplates() ?? []),
+  ];
   const name = (value: { en: string; hi: string }) =>
     getLanguage() === 'hi' ? value.hi : value.en;
 
@@ -359,15 +375,22 @@ export function mountLibraryPanels(
         ? item.data.width / item.data.height
         : 16 / 9;
     const transition = item.type === 'transition';
+    const own = fromCreator(item.id);
     return {
       id: item.id,
       label: itemName(item),
       keywords: [item.name.en, item.name.hi, ...item.tags],
       preview: () => preview(item.id, item),
+      ...(own
+        ? {
+            badge: t('creator.badge'),
+            menu: (x: number, y: number) => creator!.menu(item.id, x, y),
+          }
+        : {}),
       aspect:
         item.type === 'template' ? Math.max(0.6, Math.min(2, aspect)) : 16 / 9,
-      className: 'library-card',
-      data: { itemId: item.id },
+      className: own ? 'library-card creator-card' : 'library-card',
+      data: { itemId: item.id, ...(own ? { creator: 'true' } : {}) },
       ...(transition
         ? { disabled: later(6, item.data.planned) }
         : {
@@ -460,9 +483,16 @@ export function mountLibraryPanels(
     keywords: [template.name, template.category, 'code', template.tier],
     preview: () => template.thumbnail ?? null,
     icon: 'code',
-    className: 'library-card code-template-card',
-    badge: template.tier,
-    data: { codeTemplate: template.id },
+    className: fromCreator(template.id)
+      ? 'library-card code-template-card creator-card'
+      : 'library-card code-template-card',
+    badge: fromCreator(template.id)
+      ? `${t('creator.badge')} · ${template.tier}`
+      : template.tier,
+    data: {
+      codeTemplate: template.id,
+      ...(fromCreator(template.id) ? { creator: 'true' } : {}),
+    },
     activate: () => options.code?.insert(template),
     hover: (thumb, on) => options.code?.hover(template, thumb, on),
     drag: () => ({
@@ -471,7 +501,10 @@ export function mountLibraryPanels(
       name: template.name,
       thumb: template.thumbnail ?? null,
     }),
-    menu: (x, y) => options.code?.menu(template, x, y),
+    menu: (x, y) =>
+      fromCreator(template.id)
+        ? creator!.menu(template.id, x, y)
+        : options.code?.menu(template, x, y),
   });
   const codeImportRow = (host: HTMLElement) => {
     const button = document.createElement('button');
@@ -492,7 +525,7 @@ export function mountLibraryPanels(
     title: t('code.templates'),
     search: t('library.search.template'),
     sections: ({ query }) => {
-      const cards = codeTemplates.list().map(codeCard);
+      const cards = codeList().map(codeCard);
       if (query) return searchResults(cards, query);
       return [
         { id: 'code-import', layout: 'list', render: codeImportRow },
@@ -616,7 +649,7 @@ export function mountLibraryPanels(
     search: t('library.search.template'),
     sections: ({ query }) => {
       const cards = myTemplates.list().map(mineCard);
-      const code = codeTemplates.list().map(codeCard);
+      const code = codeList().map(codeCard);
       if (query) return searchResults([...cards, ...code], query);
       return [
         {
@@ -647,7 +680,7 @@ export function mountLibraryPanels(
           [
             ...allTemplates(),
             ...myTemplates.list().map(mineCard),
-            ...codeTemplates.list().map(codeCard),
+            ...codeList().map(codeCard),
           ],
           query,
         );
@@ -661,6 +694,17 @@ export function mountLibraryPanels(
           seeAll: () => categoryPage(category),
           empty: noTemplates,
         })),
+        // P2: templates from Creator Packs.
+        {
+          id: 'creator',
+          title: t('creator.templates'),
+          layout: 'strip',
+          cards: () =>
+            of('template')
+              .filter((item) => fromCreator(item.id))
+              .map(libraryCard),
+          empty: null,
+        },
         {
           id: 'my',
           title: t('templates.my'),
@@ -673,7 +717,7 @@ export function mountLibraryPanels(
           id: 'code',
           title: t('code.templates'),
           layout: 'strip',
-          cards: () => codeTemplates.list().map(codeCard),
+          cards: () => codeList().map(codeCard),
           seeAll: codePage,
           empty: codeEmpty,
         },
@@ -718,6 +762,15 @@ export function mountLibraryPanels(
           layout: 'grid',
           columns: 3,
           cards: () => LINE_PRESETS.map(presetCard),
+        },
+        // P2: shapes from Creator Packs.
+        {
+          id: 'creator',
+          title: t('creator.section'),
+          layout: 'grid',
+          columns: 3,
+          cards: () => shapeCards('creator'),
+          empty: null,
         },
         ...SHAPE_SECTIONS.map((section): BrowseSection => ({
           id: section,
@@ -778,6 +831,26 @@ export function mountLibraryPanels(
       ];
     },
   });
+  const animationsPage = (): BrowsePage => ({
+    id: 'elements-animations',
+    title: t('elements.tile.animations'),
+    search: t('elements.search'),
+    sections: ({ query }) => {
+      const cards = (creator?.library.motionTemplates() ?? []).map(codeCard);
+      if (query) return searchResults(cards, query);
+      return [
+        {
+          id: 'animations',
+          layout: 'grid',
+          cards: () => cards,
+          empty: {
+            title: t('creator.animationsEmpty'),
+            hint: t('creator.animationsHint'),
+          },
+        },
+      ];
+    },
+  });
   const elementsRoot: BrowsePage = {
     id: 'elements',
     title: t('library.elements'),
@@ -826,14 +899,26 @@ export function mountLibraryPanels(
               data: { tile: 'graphics' },
               activate: () => panels.Elements.push(graphicsPage()),
             },
-            ...PLANNED_TILES.map(([key, icon, ledger, wave]): BrowseCard => ({
-              id: `tile-${key}`,
-              label: t(`elements.tile.${key}`),
-              icon,
-              className: 'browse-tile',
-              data: { tile: key },
-              disabled: later(wave, ledger),
-            })),
+            // P2: Animations (in its place) lists the Creator Pack motions.
+            ...PLANNED_TILES.map(([key, icon, ledger, wave]): BrowseCard =>
+              key === 'animations'
+                ? {
+                    id: 'tile-animations',
+                    label: t('elements.tile.animations'),
+                    icon: 'animate',
+                    className: 'browse-tile',
+                    data: { tile: 'animations' },
+                    activate: () => panels.Elements.push(animationsPage()),
+                  }
+                : {
+                    id: `tile-${key}`,
+                    label: t(`elements.tile.${key}`),
+                    icon,
+                    className: 'browse-tile',
+                    data: { tile: key },
+                    disabled: later(wave, ledger),
+                  },
+            ),
           ],
         },
         {
@@ -983,12 +1068,16 @@ export function mountLibraryPanels(
   };
   recent.onChange(refreshAll);
   myTemplates.onChange(() => panels.Templates.refresh());
+  creator?.library.onChange(() => {
+    actions.setItems(allItems());
+    refreshAll();
+  });
   loadLibrary().then(
     (manifest) => {
       items = manifest.items;
       taxonomy = manifest.templates ?? [];
       status = null;
-      actions.setItems(items);
+      actions.setItems(allItems());
       refreshAll();
     },
     (error: unknown) => {
