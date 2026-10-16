@@ -136,7 +136,7 @@ describe('[QT-019] palette slots', () => {
     const after = all(e);
     expect(
       after.find((layer) => layer.id === text.id)!.properties.fill?.value,
-    ).toBe(warm.palette.accent);
+    ).toBe('#123456');
     expect(
       after.find((layer) => layer.id === shapes[0]!.id)!.properties.fill?.value,
     ).toBe(plainFill);

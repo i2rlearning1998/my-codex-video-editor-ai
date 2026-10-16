@@ -1,0 +1,10 @@
+# Thumbnail service
+1. Import `getThumbnail`, `getPreviewFrames`, `createThumbnailService`, `thumbnailKey`, `thumbnailSize`, `placeholder`, `renderThumbnail` from `src/thumbnails`.
+2. `getThumbnail(item, {width,height,signal?}): Promise<Blob>`; `getPreviewFrames(item, {count,width,height,signal?}): Promise<Blob[]>`; sizes 1–2048, count clamped to 1–24, progress i/count.
+3. `ThumbnailItem`: `{id,type,data?,revision?,blob?,poster?,bakedFrames?,frameAt?}`; ordinary library items retain their name/tags; `ThumbnailOptions`, `PreviewOptions`, `ThumbnailSize`, `RenderRequest`, `ThumbnailRender`, `ThumbnailCache` are exported.
+4. Shapes/backgrounds/text/templates use library data; themes use palette/fonts/motion data; presets use Creator Pack tracks on a rounded rectangle (position/scale/rotation/opacity); composition `data.project` renders scene one, or `data.spec` renders resolved text/shape scenes.
+5. Motion/code and compositions with media/code/FX/cameras supply bakedFrames/poster Blobs or `frameAt(progress,size,signal): Promise<Blob>`; a live provider requires revision, must honour abort and release its own runtime frames; no source code is executed by thumbnails.
+6. Image/video use blob bytes (video needs a browser decoder); audio uses optional `data.peaks` numbers or a music icon; frame providers also override the default poster for any kind.
+7. OffscreenCanvas is preferred, then detached hidden canvas; rendering is serial and identical pending requests share work; each caller can abort independently and receives a placeholder; default render deadline is 5 seconds.
+8. OPFS/IndexedDB cache reuses the media store; SHA-256 keys include id, content/blob bytes, revision, size and progress; content changes remove older cache entries; bump revision for changed external fonts/assets; cache failures never block returned images.
+9. `createThumbnailService({cache?,render?,timeoutMs?})` injects storage/renderer for tests; bad content, missing assets/decoder/canvas, unsupported tracks and cancellation return a neutral SVG Blob; normal output is PNG; tests use fakes, not browser pixel proof.
