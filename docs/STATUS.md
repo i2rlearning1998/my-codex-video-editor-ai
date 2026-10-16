@@ -1,3 +1,8 @@
+- **R-ALL (R1 to R7)** is on `claude/r-all`, a draft PR stacked on `claude/qt-series` (PR #31), not merged; see reports/R-ALL.md.
+  - **R1** Group and Ungroup in the timeline menu, names kept on regroup, toasts (D-256). **R2** one AI importer, AI items only in AI (D-257).
+  - **R3/R4** a shared Clipchamp-style library panel for Media and AI (D-258, D-259). **R5** My Templates rail category and Save to My Templates (D-260).
+  - **R6** Codex's `codex/theme-thumbs` merged: theme library and thumbnail service wired (D-261). **R7** the Animations setting covers the new panels (D-262).
+  - Schema is still 8; no new npm dependencies. Dropped by the brief: QT-004, CP-013, CODE-009.
 - **QT-series (Q1 to Q5, T1, T2)** is on `claude/qt-series`, a draft PR stacked on `claude/p-series` (PR #30), not merged; see reports/QT-SERIES.md.
   - **Q1** group clips carry their children, Ungroup bakes transforms, background is one block (D-251). **Q2** Animate › Creator one choice with None, the Animating line, Remove animation, no orphan controls, Delete only the clicked keyframe.
   - **Q3** readable diamonds, a per-layer Anchor, rotation and scale about the pivot (D-252). **Q4** AI category and chips, automatic checks, result card. **Q5** Settings › Animations (D-253).

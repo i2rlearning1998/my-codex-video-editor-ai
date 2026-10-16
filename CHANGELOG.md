@@ -2,6 +2,15 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## R-ALL (R1 to R7) — 2026-10-16
+
+- **Groups (R1):** Group and Ungroup in the timeline menu; regrouping keeps the group's name; a toast says what happened.
+- **One AI importer (R2):** AI › Import takes a code animation or a Creator Pack, checks it on its own and shows every controller before adding; the Media Import menu holds media only; AI items appear only in the AI category.
+- **Shared library panel (R3, R4):** Media and AI share one Clipchamp-style panel: search with New folder, tabs only for what exists, big cards with "⋯" and "+", folders, thumbnails and hover previews; library changes are never undo steps.
+- **My Templates (R5):** a left-rail category; Save to My Templates by kind from the canvas and timeline menus, scenes too; Add to scene places a copy.
+- **Themes (R6):** one My themes list on the theme library, unique names, Rename and Delete in "⋯", toasts that say how many hand-picked colours were kept.
+- **Animations setting (R7):** the new panels follow Settings › Animations.
+
 ## QT-series (Q1 to Q5, T1, T2) — 2026-10-15
 
 - **Groups (Q1):** lengthening, trimming or moving a group clip carries its children; Ungroup works on normal groups by baking the group's transform; a background group is one block; a refused Ungroup shows one toast.

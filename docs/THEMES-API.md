@@ -1,0 +1,25 @@
+# Theme API
+
+Import public library functions from `src/themes/library.ts`, and palette helpers from `src/themes/themes.ts`.
+
+- `listThemes(): Promise<Theme[]>`: built-ins plus saved library themes, each once.
+- `saveTheme(name: string, fromProject: DeepReadonly<Project>): Promise<Theme>`: captures the first scene background, first actual text colour, first two distinct shape fills, heading/body fonts actually used, and current theme motion style (calm fallback). No automatic copy names. No editor mutation.
+- `renameTheme(id: string, name: string): Promise<Theme>` and `deleteTheme(id: string): Promise<void>`: library only, no history. Delete is idempotent.
+- `applyTheme(project: EditorEngine, themeId: string, options?: ApplyThemeOptions): Promise<ThemeApplyResult>`: one transaction, including project/scene backgrounds, fonts and current theme label. `ApplyThemeOptions = { overrideManual?: boolean }`; result `{ changed: number; keptManual: number; overridden: number }` counts layer fill properties, not fonts/backgrounds. Overriding clears manual flags even if the colour already matches.
+- `migrateThemes(project: EditorEngine): Promise<number>`: call once after loading each project, outside engine callbacks. Writes old marker themes to `theme/<id>` first; existing library values win; strips payload markers from current state AND undo/redo snapshots only after successful writes. Repeated calls are harmless. Current-theme label marker remains an undoable project attribute, not theme storage.
+- `createThemeLibrary(store): ThemeLibrary`: same methods with injected `read/write/remove/keys` Blob storage (the existing MediaStore interface); keep one instance per storage. Default exports open OPFS/IndexedDB through the media store. Storage failures reject, never silently discard saves.
+- `ThemeError extends Error` has `code: ThemeErrorCode`: `NAME_REQUIRED`, `NAME_TAKEN` (trimmed, case-insensitive; includes built-ins), `NAME_TOO_LONG` (>40), `NOT_FOUND`, `STORAGE_UNAVAILABLE`. Other storage failures retain their original error.
+- `Theme`, `MotionStyle`, `PaletteSlot`, `themeSchema`, `BUILT_IN_THEMES`, `slotOf`, `colorOf`, `withPaletteSlots` remain in themes.ts.
+- `markManualColor(layer: Pick<Layer,'properties'>, prop: string): void`, `isManualColor(layer, prop): boolean` also export from core. Mutate drafts only. Flags use existing boolean properties `manualColor_fill`, `manualColor_stroke`, etc. Text uses `fill`, not a separate `text` property. No schema change.
+
+## Required UI integration (UI files deliberately untouched)
+
+1. `src/ui/shell.ts` theme block (`themeLists`, `writeLibraryTheme`, `themeOptions.save/rename/remove`): replace marker commands and parallel `libraryThemes` cache with these async library functions. Refresh lists after successful writes. Merge Creator Pack themes by id in the presentation list; register their data in the library before using the id-based apply API. Do not dispatch editor commands for library CRUD.
+2. `themeOptions.apply`: await `applyTheme(engine, theme.id, { overrideManual: override })`; stop playback first. Use returned counts for feedback. Current label still comes from `projectThemes(markers).current` and updates on undo/redo. Never use `projectThemes(...).saved` as a catalogue (legacy migration data only).
+3. After project open/load, await migration before listing themes. Never launch migration synchronously from `state:changed` listeners; call at the load boundary after `engine.load` returns.
+4. `src/ui/theme-panel.ts` save onclick: pass the entered name unchanged; remove the `|| current.name + ' copy'` fallback. Present typed errors. Rename input's Enter/blur commit must be once-only (detach blur before committing). Currently render replaces the focused input while the command bus is notifying; blur triggers rename again inside the active mutation. Library APIs remove engine writes from this path; the once-only guard avoids duplicate requests.
+5. Colour picker, property inspector and text toolbar already converge on core `SET_PROPERTY`. Changed colour commands now automatically mark the property manual; no UI flag mutation needed. Programmatic theme commands carry `colorSource: 'theme'` and clear the flag. Other automatic recolouring callers must explicitly set that source; do not tag user edits as theme edits. No-op edits preserve existing flags.
+
+`applyThemeCommands` remains compatible with `{override, previous}`; `previous` is ignored. It never saves per-theme colour snapshots. The old previous-colour heuristic is removed: explicit flags are the sole authority. The old marker write helpers `saveThemeCommand` / `updateThemeCommands` throw migration guidance rather than creating duplicate storage. `encodeTheme` / `decodeTheme` remain only for legacy migration. Unslotted shapes keep their fill unless override is requested. Motion style is captured as theme metadata; applying motion timing is unchanged and not added here.
+
+No browser interaction was run. UI wiring, empty-name fallback and blur guard require the UI agent; engine APIs alone do not replace those callbacks.

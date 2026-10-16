@@ -172,13 +172,15 @@ test.describe('X3 code animation settings', () => {
     page,
   }) => {
     await showCategory(page, 'Media');
-    await page.locator('#import-menu').click();
-    await page.locator('#import-code').click();
+    await showCategory(page, 'AI');
+    await page.locator('#ai-import').click();
     await page
-      .locator('.code-import-dialog #code-source')
+      .locator('.code-import-dialog #ai-import-source')
       .fill(readFileSync('tests/fixtures/code/orbit-free.js', 'utf8'));
-    await expect(page.locator('.code-import-dialog #code-add')).toBeEnabled();
-    await page.locator('.code-import-dialog #code-add').click();
+    await expect(
+      page.locator('.code-import-dialog #ai-import-add'),
+    ).toBeEnabled();
+    await page.locator('.code-import-dialog #ai-import-add').click();
     await baked(page);
     await openRight(page, 'Code');
     await expect(panel(page).locator('.code-notice')).toHaveText(/Full mode/);

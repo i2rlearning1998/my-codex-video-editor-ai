@@ -264,3 +264,21 @@ export function ungroupCommands(
   }
   return { commands: [...commands, ...later, ...tail], selected };
 }
+
+// R1: the name of the group a set of layers was ungrouped from, so that
+// grouping exactly those layers again restores it (transient, not saved).
+const ungroupedFrom = new Map<string, { name: string; ids: string[] }>();
+export function rememberUngroup(name: string, ids: readonly string[]): void {
+  const origin = { name, ids: [...ids] };
+  for (const id of ids) ungroupedFrom.set(id, origin);
+}
+/** The name for a new group of these layers. */
+export function groupNameFor(
+  layers: readonly { id: string; name: string }[],
+): string {
+  const origin = layers[0] && ungroupedFrom.get(layers[0].id);
+  if (origin && layers.every((layer) => ungroupedFrom.get(layer.id) === origin))
+    return origin.name;
+  const named = layers.find((layer) => layer.name.trim());
+  return named?.name.trim() || 'Group';
+}

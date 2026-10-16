@@ -55,12 +55,18 @@ test('[QT-017][QT-018][QT-020] apply Dark Neon in one step, undo and redo; save,
   const mine = panel.locator('.theme-group[data-group="saved"] .theme-card');
   await expect(mine).toHaveCount(1);
   await expect(mine.locator('.theme-name')).toHaveText('My neon');
-  await mine.locator('[data-action="theme-rename"]').click();
+  await mine.locator('.theme-more').click();
+  await page
+    .locator('#library-theme-menu [data-action="theme-rename"]')
+    .click();
   const field = panel.locator('.theme-rename-field');
   await field.fill('Night drive');
   await field.press('Enter');
   await expect(mine.locator('.theme-name')).toHaveText('Night drive');
-  await mine.locator('[data-action="theme-delete"]').click();
+  await mine.locator('.theme-more').click();
+  await page
+    .locator('#library-theme-menu [data-action="theme-delete"]')
+    .click();
   await expect(mine).toHaveCount(0);
   // The right panel's Theme tab works with nothing selected.
   await page.keyboard.press('Escape');
@@ -78,7 +84,7 @@ test('[QT-017][QT-018][QT-020] apply Dark Neon in one step, undo and redo; save,
     .toBe('#ffffff');
 });
 
-test('[QT-021][QT-019] a theme from a Creator Pack is listed and applies; the project keeps its own copy; an AI shape follows the palette', async ({
+test('[QT-021][QT-019] a theme from a Creator Pack applies from the AI category; the project keeps its own copy; an AI shape follows the palette', async ({
   page,
 }) => {
   await importPack(page, SUNNY);
@@ -98,11 +104,19 @@ test('[QT-021][QT-019] a theme from a Creator Pack is listed and applies; the pr
   await expect(
     page.locator('#library-ai .ai-group[data-kind="theme"] .ai-card'),
   ).toHaveCount(1);
+  // R6: Creator Pack themes are in the AI category, not the Theme panel.
   await showCategory(page, 'Theme');
-  const card = page.locator(
-    '#library-theme .theme-group[data-group="library"] .theme-card[data-theme-id="theme-pack-sunny--theme-sunny"]',
-  );
-  await card.locator('.theme-apply').click();
+  await expect(
+    page.locator(
+      '#library-theme [data-theme-id="theme-pack-sunny--theme-sunny"]',
+    ),
+  ).toHaveCount(0);
+  await showCategory(page, 'AI');
+  await page
+    .locator(
+      '#library-ai .ai-group[data-kind="theme"] .ai-card[data-item="theme-pack-sunny--theme-sunny"]',
+    )
+    .click();
   await expect
     .poll(async () => (await scene(page)).backgroundColor)
     .toBe('#fffbeb');

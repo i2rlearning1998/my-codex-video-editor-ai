@@ -6,24 +6,24 @@ import { test, expect, hook, menuAction, showCategory } from './fixtures';
 // render checks, My library, the panels, versions, deletes and bad packs.
 const EXAMPLES = 'examples/creator-packs';
 const read = (name: string) => readFileSync(`${EXAMPLES}/${name}`, 'utf8');
-const dialog = (page: Page) => page.locator('.creator-pack-dialog');
+const dialog = (page: Page) => page.locator('.ai-import-dialog');
 const row = (page: Page, id: string) =>
   dialog(page).locator(`.creator-item[data-item="${id}"]`);
 
 async function openImport(page: Page) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-creator').click();
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
   await expect(dialog(page)).toBeVisible();
 }
 /** Pastes a pack and waits for the offline result. */
 async function paste(page: Page, text: string) {
-  await dialog(page).locator('#creator-source').fill(text);
-  await expect(dialog(page).locator('#creator-report')).toBeEnabled();
+  await dialog(page).locator('#ai-import-source').fill(text);
+  await expect(dialog(page).locator('#ai-import-report')).toBeEnabled();
 }
 /** Q4: the render checks run on their own; this waits until they end. */
 async function runChecks(page: Page) {
-  await expect(dialog(page).locator('#creator-summary')).toHaveText(
+  await expect(dialog(page).locator('#ai-import-summary')).toHaveText(
     /passed the checks/,
     { timeout: 60_000 },
   );
@@ -32,7 +32,7 @@ async function importPack(page: Page, text: string) {
   await openImport(page);
   await paste(page, text);
   await runChecks(page);
-  await dialog(page).locator('#creator-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   await finish(page);
 }
 /** Q4: the result card, then Done. */
@@ -99,7 +99,7 @@ test.describe('P2 creator packs', () => {
       'Baked twice: identical bytes.',
     );
     await expect(motion.locator('.creator-thumb')).toBeVisible();
-    await dialog(page).locator('#creator-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     await finish(page);
     // The rest of the valid examples, each a pack of its own.
     for (const file of [
@@ -122,61 +122,28 @@ test.describe('P2 creator packs', () => {
       'template-pack/template-card',
       'text-pack/text-title',
     ]);
-    // Panels, each card badged.
-    const badge = 'AI';
-    await showCategory(page, 'Elements');
-    const elements = page.locator('#library-elements');
-    await elements.locator('[data-tile="shapes"]').click();
-    const kite = elements.locator(
-      '[data-section="creator"] [data-item-id="shape-pack--shape-kite"]',
-    );
-    await expect(kite.locator('.browse-badge')).toHaveText(badge);
+    // R2: AI items show in the AI category only, grouped by kind and badged.
+    await showCategory(page, 'AI');
+    const ai = page.locator('#library-ai');
+    const card = (kind: string, id: string) =>
+      ai.locator(`.ai-group[data-kind="${kind}"] .ai-card[data-item="${id}"]`);
+    for (const [kind, id] of [
+      ['shape', 'shape-pack--shape-kite'],
+      ['background', 'background-pack--background-night'],
+      ['text', 'text-pack--text-title'],
+      ['template', 'template-pack--template-card'],
+      ['motion', 'motion-b-pack--motion-orbit'],
+      ['motion', 'motion-c-pack--motion-particles'],
+      ['preset', 'move-pack--preset-move'],
+    ] as const)
+      await expect(card(kind, id).locator('.ai-chip')).toHaveText('AI');
     // Insert: one undo step.
-    await kite.click();
+    await card('shape', 'shape-pack--shape-kite').click();
     await expect
       .poll(async () => (await hook(page)).history.labels.length)
       .toBe(1);
-    await elements.locator('.browse-back').click();
-    await elements.locator('[data-tile="graphics"]').click();
-    await expect(
-      elements.locator(
-        '[data-section="backgrounds"] [data-item-id="background-pack--background-night"] .browse-badge',
-      ),
-    ).toHaveText(badge);
-    await elements.locator('.browse-back').click();
-    await elements.locator('[data-tile="animations"]').click();
-    for (const id of [
-      'motion-b-pack--motion-orbit',
-      'motion-c-pack--motion-particles',
-    ])
-      await expect(
-        elements.locator(`[data-code-template="${id}"] .browse-badge`),
-      ).toContainText(badge);
-    await showCategory(page, 'Text');
-    await expect(
-      page
-        .locator(
-          '#library-text [data-item-id="text-pack--text-title"] .browse-badge',
-        )
-        .first(),
-    ).toHaveText(badge);
-    await showCategory(page, 'Templates');
-    await expect(
-      page.locator(
-        '#library-templates [data-section="creator"] [data-item-id="template-pack--template-card"] .browse-badge',
-      ),
-    ).toHaveText(badge);
-    await expect(
-      page.locator(
-        '#library-templates [data-section="code"] [data-code-template="motion-c-pack--motion-particles"]',
-      ),
-    ).toBeVisible();
     // A motion item inserts a code layer with its own copy of the source.
-    await page
-      .locator(
-        '#library-templates [data-section="code"] [data-code-template="motion-c-pack--motion-particles"]',
-      )
-      .click();
+    await card('motion', 'motion-c-pack--motion-particles').click();
     await expect
       .poll(async () =>
         (await hook(page)).project.compositions[0]!.layers.some((layer) =>
@@ -207,7 +174,7 @@ test.describe('P2 creator packs', () => {
       await expect(
         rows.first().locator('input[type="checkbox"]'),
       ).toBeDisabled();
-      await expect(dialog(page).locator('#creator-add')).toBeDisabled();
+      await expect(dialog(page).locator('#ai-import-add')).toBeDisabled();
     }
     // Render checks reject what the offline checks cannot see.
     const motion = (id: string, body: string) =>
@@ -272,14 +239,14 @@ test.describe('P2 creator packs', () => {
     await page
       .context()
       .grantPermissions(['clipboard-read', 'clipboard-write']);
-    await dialog(page).locator('#creator-report').click();
+    await dialog(page).locator('#ai-import-report').click();
     await expect(
       page.locator('.toast', { hasText: 'Report copied' }),
     ).toBeVisible();
     const report = await page.evaluate(() => navigator.clipboard.readText());
     expect(report).toContain('Creator pack tiny-video version 1');
     expect(report).toMatch(/NOT SUPPORTED YET/);
-    await dialog(page).locator('#creator-cancel').click();
+    await dialog(page).locator('#ai-import-cancel').click();
     expect(await libraryKeys(page)).toEqual([]);
     expect((await hook(page)).history.labels).toEqual([]);
   });
@@ -306,18 +273,16 @@ test.describe('P2 creator packs', () => {
     await openImport(page);
     await paste(page, JSON.stringify(v2));
     await runChecks(page);
-    await dialog(page).locator('#creator-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     await page.locator('.modal-dialog [data-role="confirm"]').click();
     await finish(page);
     await expect
       .poll(() => libraryKeys(page))
       .toEqual(['shape-pack/shape-kite-two']);
     // Use it, then delete it from the library: the project keeps its copy.
-    await showCategory(page, 'Elements');
-    const elements = page.locator('#library-elements');
-    await elements.locator('[data-tile="shapes"]').click();
-    const card = elements.locator(
-      '[data-section="creator"] [data-item-id="shape-pack--shape-kite-two"]',
+    await showCategory(page, 'AI');
+    const card = page.locator(
+      '#library-ai .ai-card[data-item="shape-pack--shape-kite-two"]',
     );
     await card.click();
     await expect
@@ -326,10 +291,14 @@ test.describe('P2 creator packs', () => {
       )
       .toBe(1);
     const before = (await hook(page)).project;
-    await card.click({ button: 'right' });
+    // R4: the card's "⋯" opens the same menu as a right-click.
+    await card.hover();
     await page
-      .locator('#code-template-menu [data-action="creator-delete"]')
+      .locator(
+        '#library-ai .shelf-item[data-item-id="shape-pack--shape-kite-two"] .shelf-more',
+      )
       .click();
+    await page.locator('#ai-menu [data-action="ai-delete"]').click();
     await expect(card).toHaveCount(0);
     expect(await libraryKeys(page)).toEqual([]);
     expect((await hook(page)).project).toEqual(before);
@@ -365,7 +334,7 @@ test.describe('P2 creator packs', () => {
         );
     }, read('shape.json'));
     await expect(dialog(page)).toBeVisible();
-    await expect(dialog(page).locator('#creator-file-name')).toHaveText(
+    await expect(dialog(page).locator('#ai-import-file-name')).toHaveText(
       'kite.creatorpack.json',
     );
     await expect(row(page, 'shape-kite')).toBeVisible();
@@ -377,5 +346,5 @@ async function runChecksExpectReject(page: Page, id: string, reason: RegExp) {
     timeout: 30_000,
   });
   await expect(row(page, id).locator('.creator-reasons')).toContainText(reason);
-  await expect(dialog(page).locator('#creator-add')).toBeDisabled();
+  await expect(dialog(page).locator('#ai-import-add')).toBeDisabled();
 }

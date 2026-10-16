@@ -69,11 +69,11 @@ async function newProject(page: Page) {
 }
 async function importCode(page: Page, source: string) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-code').click();
-  await dialog(page).locator('#code-source').fill(source);
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await dialog(page).locator('#ai-import-source').fill(source);
 }
-async function addCode(page: Page, source: string, save = false) {
+async function addCode(page: Page, source: string, _save = false) {
   await importCode(page, source);
   await expect(dialog(page).locator('#code-tier')).toHaveText(
     'Tier C · Full mode',
@@ -84,8 +84,7 @@ async function addCode(page: Page, source: string, save = false) {
     'true',
     { timeout: 60_000 },
   );
-  if (!save) await dialog(page).locator('#code-save-template').uncheck();
-  await dialog(page).locator('#code-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   await expect(dialog(page)).toBeHidden();
 }
 /** The artboard as drawn (composition pixels at 100 %), as RGBA. */

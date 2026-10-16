@@ -104,7 +104,7 @@ test('[TL-001] every layer is a clip on a track: example, canvas drops and group
   });
   await page
     .locator('.timeline-menu')
-    .getByRole('menuitem', { name: 'Group' })
+    .locator('[data-command="group"]')
     .click();
   await expect(legacy).toHaveCount(0);
   expect(await unclipped()).toEqual([]);

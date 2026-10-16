@@ -52,20 +52,20 @@ export const FADE = JSON.stringify({
     },
   ],
 });
-export const dialog = (page: Page) => page.locator('.creator-pack-dialog');
+export const dialog = (page: Page) => page.locator('.ai-import-dialog');
 export const panel = (page: Page) => page.locator('#right-section');
 
 /** Imports a pack through Media › Import › Import creator pack. */
 export async function importPack(page: Page, text: string) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-creator').click();
-  await dialog(page).locator('#creator-source').fill(text);
-  await expect(dialog(page).locator('#creator-summary')).toHaveText(
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await dialog(page).locator('#ai-import-source').fill(text);
+  await expect(dialog(page).locator('#ai-import-summary')).toHaveText(
     /passed the checks/,
     { timeout: 60_000 },
   );
-  await dialog(page).locator('#creator-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   // Q4: a result card says what was added; Done closes it.
   await expect(dialog(page).locator('#creator-result')).toBeVisible();
   await dialog(page).locator('#creator-done').click();
@@ -148,3 +148,12 @@ export const SPIN = JSON.stringify({
     },
   ],
 });
+/** R2: a Creator preset is applied from the AI category (not Animate). */
+export async function applyAiPreset(page: Page, id: string) {
+  await showCategory(page, 'AI');
+  await page
+    .locator(
+      `#library-ai .ai-group[data-kind="preset"] .ai-card[data-item="${id}"]`,
+    )
+    .click();
+}

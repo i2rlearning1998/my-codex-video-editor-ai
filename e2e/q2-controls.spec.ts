@@ -11,6 +11,7 @@ import {
 import {
   FADE,
   FADE_ID,
+  applyAiPreset,
   MOVE,
   MOVE_ID,
   badge,
@@ -23,21 +24,7 @@ import {
 // Q2: Animate › Creator is one choice with None; the Controls say what is
 // animated, remove an animation, never keep orphan controls; Delete removes
 // only the selected keyframe.
-const creatorCard = (page: Page, id: string) =>
-  panel(page).locator(
-    `.animate-card[data-creator="true"][data-preset="${id}"]`,
-  );
-const pressed = (page: Page) =>
-  panel(page)
-    .locator('.animate-card[data-creator="true"][aria-pressed="true"]')
-    .evaluateAll((items) =>
-      items.map((item) => (item as HTMLElement).dataset.preset),
-    );
 const labels = async (page: Page) => (await hook(page)).history.labels;
-async function openCreator(page: Page) {
-  await openRight(page, 'Animate');
-  await panel(page).locator('.animate-tabs [data-tab="creator"]').click();
-}
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -46,21 +33,18 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[QT-004][QT-005][QT-006] Creator is one choice with None; Controls say what is animated; Remove animation removes it in one step', async ({
+test('[QT-005][QT-006] an AI preset replaces the last one; Controls say what is animated; Remove animation removes it in one step', async ({
   page,
 }) => {
   await importPack(page, MOVE);
   await importPack(page, FADE);
   await selectBadge(page);
-  await openCreator(page);
-  expect(await pressed(page)).toEqual(['none']);
-  await creatorCard(page, MOVE_ID).click();
-  await expect.poll(() => pressed(page)).toEqual([MOVE_ID]);
-  // A second preset replaces the first (only one is highlighted).
-  await creatorCard(page, FADE_ID).click();
-  await expect.poll(() => pressed(page)).toEqual([FADE_ID]);
+  await applyAiPreset(page, MOVE_ID);
+  await expect.poll(async () => (await frames(page)).length).toBeGreaterThan(0);
+  // A second preset replaces the first.
+  await applyAiPreset(page, FADE_ID);
+  await expect.poll(async () => (await frames(page, 'opacity')).length).toBe(2);
   expect((await badge(page)).layer.transform.position!.animated).toBe(false);
-  expect((await frames(page, 'opacity')).length).toBe(2);
   // Controls: the line says what is animated.
   await openRight(page, 'Code');
   await expect(panel(page).locator('#controls-summary')).toHaveText(
@@ -91,13 +75,6 @@ test('[QT-004][QT-005][QT-006] Creator is one choice with None; Controls say wha
   await expect(panel(page).locator('#controls-summary')).toHaveText(
     'Animating: Opacity - 0.0s to 1.0s',
   );
-  // None in Animate › Creator removes the rest.
-  await openCreator(page);
-  await creatorCard(page, 'none').click();
-  await expect.poll(() => pressed(page)).toEqual(['none']);
-  expect((await badge(page)).layer.transform.opacity!.animated).toBe(false);
-  await page.locator('#undo').click();
-  await expect.poll(() => pressed(page)).toEqual([FADE_ID]);
 });
 
 test('[QT-007] keyframes deleted by hand leave no orphan controls', async ({
@@ -105,9 +82,8 @@ test('[QT-007] keyframes deleted by hand leave no orphan controls', async ({
 }) => {
   await importPack(page, MOVE);
   await selectBadge(page);
-  await openCreator(page);
-  await creatorCard(page, MOVE_ID).click();
-  await expect.poll(() => pressed(page)).toEqual([MOVE_ID]);
+  await applyAiPreset(page, MOVE_ID);
+  await expect.poll(async () => (await frames(page)).length).toBeGreaterThan(0);
   const { start } = await badge(page);
   // Switching to 2D Animation afterwards shows the preset's diamonds.
   await mode2d(page);

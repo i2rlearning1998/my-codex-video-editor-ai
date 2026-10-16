@@ -1,10 +1,15 @@
-// Q4: the left rail's AI category. Everything imported from Creator Packs
-// (My library), grouped by kind, each card with an AI chip. A click inserts
-// it with the usual library insert (one undo step); a preset is applied to
-// the selected layer. The header holds Import creator pack and Copy AI brief.
+// Q4: the left rail's AI category: everything imported into My library
+// (Creator Packs and code animations), grouped by kind, each card with an
+// AI chip. R4: built on the shared library panel (search, New folder, tabs
+// per kind that has items, big cards with "⋯" and "+"). A click inserts the
+// item with the usual library insert (one undo step); a preset is applied to
+// the selected layer; a theme is applied. The header holds Import and Copy
+// AI brief. Rename, folders and Delete never touch layers already placed.
 import { t } from '../i18n';
-import { iconSvg } from './icons';
 import { creatorLibraryId, type CreatorLibrary } from './creator-library';
+import { libraryPreview, libraryThumb } from './library-thumb';
+import { mountShelf, type Shelf } from './library-shelf';
+import { shelfFolders } from './shelf-folders';
 
 /** Kinds in the order the panel lists them (the brief's order). */
 export const AI_KINDS = [
@@ -27,89 +32,105 @@ export interface AiPanelOptions {
   readonly applyPreset: (id: string) => void;
   readonly importPack: () => void;
   readonly copyBrief: () => void;
+  /** A motion item's live hover preview (returns its stop), if any. */
+  readonly motionPreview?: (
+    id: string,
+    slot: HTMLElement,
+  ) => (() => void) | null;
+  readonly rename: (id: string) => void;
+  readonly details: (id: string) => void;
+  readonly remove: (id: string) => void;
+  readonly prompt: (title: string, value: string) => Promise<string | null>;
+  readonly collapse?: () => void;
+  readonly report: (error: unknown) => void;
+  readonly toast?: (text: string) => void;
 }
 
+export const AI_FOLDERS = shelfFolders('ai');
+
 export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
-  const render = () => {
-    const header = document.createElement('header');
-    header.className = 'ai-panel-header';
-    const title = document.createElement('h2');
-    title.textContent = t('ai.title');
-    const actions = document.createElement('div');
-    actions.className = 'ai-panel-actions';
-    const importButton = document.createElement('button');
-    importButton.type = 'button';
-    importButton.className = 'button';
-    importButton.id = 'ai-import';
-    importButton.textContent = t('creator.importMenu');
-    importButton.onclick = () => options.importPack();
-    const brief = document.createElement('button');
-    brief.type = 'button';
-    brief.className = 'button primary';
-    brief.id = 'ai-copy-brief';
-    brief.innerHTML = `${iconSvg('copy', 16)}<span></span>`;
-    brief.querySelector('span')!.textContent = t('brief.copy');
-    brief.onclick = () => options.copyBrief();
-    actions.append(importButton, brief);
-    header.append(title, actions);
-    const entries = options.library.list();
-    const body = document.createElement('div');
-    body.className = 'ai-panel-body';
-    if (!entries.length) {
-      const empty = document.createElement('p');
-      empty.className = 'ai-empty';
-      empty.id = 'ai-empty';
-      empty.textContent = t('ai.empty');
-      body.append(empty);
-    }
-    for (const kind of AI_KINDS) {
-      const items = entries.filter((entry) => entry.item.type === kind);
-      if (!items.length) continue;
-      const section = document.createElement('section');
-      section.className = 'ai-group';
-      section.dataset.kind = kind;
-      const heading = document.createElement('h3');
-      heading.textContent = `${t(`ai.kind.${kind}`)} (${items.length})`;
-      const grid = document.createElement('div');
-      grid.className = 'ai-grid';
-      for (const entry of items) {
-        const id = creatorLibraryId(entry.key);
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'ai-card';
-        card.dataset.item = id;
-        card.title = `${entry.name} · ${entry.packName.en}`;
-        const thumb = document.createElement('span');
-        thumb.className = 'ai-thumb';
-        if (entry.thumbnail) {
-          const image = document.createElement('img');
-          image.src = entry.thumbnail;
-          image.alt = '';
-          image.draggable = false;
-          thumb.append(image);
-        } else
-          thumb.innerHTML = iconSvg(
-            kind === 'preset' ? 'animate' : 'magic',
-            20,
-          );
-        const chip = document.createElement('span');
-        chip.className = 'ai-chip';
-        chip.textContent = t('creator.badge');
-        thumb.append(chip);
-        const name = document.createElement('span');
-        name.className = 'ai-name';
-        name.textContent = entry.name;
-        card.append(thumb, name);
-        card.onclick = () =>
-          kind === 'preset' ? options.applyPreset(id) : options.insert(id);
-        grid.append(card);
-      }
-      section.append(heading, grid);
-      body.append(section);
-    }
-    host.replaceChildren(header, body);
+  const entryOf = (id: string) =>
+    options.library.list().find((entry) => creatorLibraryId(entry.key) === id);
+  const add = (id: string) => {
+    const entry = entryOf(id);
+    if (!entry) return;
+    if (entry.item.type === 'preset') options.applyPreset(id);
+    else options.insert(id);
   };
-  const unsubscribe = options.library.onChange(render);
-  render();
-  return { render, dispose: () => unsubscribe() };
+  const shelf: Shelf = mountShelf({
+    host,
+    prefix: 'ai',
+    title: t('ai.title'),
+    classes: { card: 'ai-card', section: 'ai-group' },
+    searchLabel: t('shelf.searchAi'),
+    ...(options.collapse ? { collapse: options.collapse } : {}),
+    actions: [
+      {
+        id: 'ai-import',
+        label: t('aiImport.button'),
+        icon: 'upload',
+        run: () => options.importPack(),
+      },
+      {
+        id: 'ai-copy-brief',
+        label: t('brief.copy'),
+        icon: 'copy',
+        primary: true,
+        run: () => options.copyBrief(),
+      },
+    ],
+    categoryLabel: (kind) => t(`ai.kind.${kind}`),
+    categoryOrder: AI_KINDS,
+    folders: AI_FOLDERS,
+    items: () =>
+      options.library.list().map((entry) => {
+        const id = creatorLibraryId(entry.key);
+        const kind = entry.item.type;
+        const source = {
+          id,
+          type: kind,
+          name: entry.name,
+          data: entry.item.data,
+          url: entry.thumbnail ?? null,
+        };
+        const live = kind === 'motion' || kind === 'preset';
+        return {
+          id,
+          name: entry.name,
+          category: kind,
+          folderId: AI_FOLDERS.folderOf(id),
+          title: `${entry.name} · ${entry.packName.en}`,
+          chip: t('creator.badge'),
+          keywords: [entry.packName.en, kind, ...entry.item.tags],
+          data: { item: id, kind },
+          thumb: (slot: HTMLElement) => libraryThumb(slot, source),
+          ...(live
+            ? {
+                preview: (slot: HTMLElement) =>
+                  options.motionPreview?.(id, slot) ??
+                  libraryPreview(slot, source),
+              }
+            : {}),
+        };
+      }),
+    add,
+    rename: options.rename,
+    details: options.details,
+    remove: options.remove,
+    prompt: options.prompt,
+    empty: () => ({ title: t('ai.emptyTitle'), description: t('ai.empty') }),
+    report: options.report,
+    ...(options.toast ? { toast: options.toast } : {}),
+  });
+  const offLibrary = options.library.onChange(() => shelf.render());
+  const offFolders = AI_FOLDERS.onChange(() => shelf.render());
+  return {
+    render: () => shelf.render(),
+    shelf,
+    dispose: () => {
+      offLibrary();
+      offFolders();
+      shelf.dispose();
+    },
+  };
 }

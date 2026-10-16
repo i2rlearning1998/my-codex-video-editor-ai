@@ -41,8 +41,9 @@ test('[LAY-040] a browse panel has a header with Back and Close, a sticky search
     'Graphics Templates',
     'Social media Templates',
     'Education Templates',
-    'My Templates',
   ]);
+  // R5: My Templates is its own left-rail category.
+  await expect(host.locator('[data-section="my"]')).toHaveCount(0);
   const strip = host.locator('[data-section="all"] .browse-strip');
   expect(
     await strip.evaluate((element) => getComputedStyle(element).overflowX),
@@ -156,48 +157,40 @@ test('[TPL-014] Templates: category rows open pages with subcategory chips; Rece
   ).toBeVisible();
 });
 
-test('[TPL-015] Save as template keeps a scene in My Templates (not an undo step); it is added again like any template', async ({
+test('[TPL-015] Save scene to My Templates keeps a scene in My Templates (not an undo step); it is added again like any template', async ({
   page,
 }) => {
   const steps = (await labels(page)).length;
-  // The empty canvas menu.
+  const name = (await scene(page)).name;
+  // The empty canvas menu (R5: saved at once under the scene's name).
   const point = await toScreen(page, 30, 700);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await page
     .locator('#canvas-context-menu [data-action="save-as-template"]')
     .click();
-  await page.locator('#save-template-name').fill('My intro');
-  await page.locator('#save-template-category').selectOption('education');
-  await page.locator('[data-action="save-template-confirm"]').click();
   await expect(
-    page.locator('.toast', { hasText: 'Saved My intro' }),
+    page.locator('.toast', { hasText: 'Saved to My Templates › Scene' }),
   ).toBeVisible();
   expect((await labels(page)).length).toBe(steps);
-  // My Templates lists it with its poster, and so does Education.
-  await showCategory(page, 'Templates');
-  const host = panel(page, 'templates');
-  const mine = host.locator('[data-section="my"] [data-my-template]');
+  // R5: My Templates (left rail) lists it with its poster.
+  await showCategory(page, 'MyTemplates');
+  const mine = page.locator('#library-mine .mine-card');
   await expect(mine).toHaveCount(1);
-  await mine.scrollIntoViewIfNeeded();
-  await expect(mine.locator('img')).toHaveAttribute('src', /^data:image\/jpeg/);
-  await host.locator('[data-see-all="education"]').click();
-  await expect(host.locator('[data-my-template]')).toHaveCount(1);
-  // It is kept after a reload (browser storage), and adds as a new scene.
+  await expect(mine.locator('img')).toHaveAttribute('src', /^data:image\//);
+  // It is kept after a reload (My library), and adds as a new scene.
   await page.reload();
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
-  await showCategory(page, 'Templates');
+  await showCategory(page, 'MyTemplates');
   const before = (await hook(page)).project.compositions.length;
-  await panel(page, 'templates')
-    .locator('[data-section="my"] [data-my-template]')
-    .click();
+  await page.locator('#library-mine .mine-card').click();
   await page.locator('.modal-dialog [data-template-mode="new"]').click();
   await page.locator('.modal-dialog [data-action="template-confirm"]').click();
   const project = (await hook(page)).project;
   expect(project.compositions).toHaveLength(before + 1);
   const added = await scene(page);
-  expect(added.name).toBe('My intro');
+  expect(added.name).toBe(name);
   expect(added.layers.length).toBe(project.compositions[0]!.layers.length);
   await page.keyboard.press('Control+z');
   expect((await hook(page)).project.compositions).toHaveLength(before);
@@ -374,23 +367,24 @@ test('[MED-038] Media: type tabs, sort, folders with drag in, Designs from Save 
     'image_gradient_1920x1080.png',
     'video_testsrc_720p_2s_vp9_opus.webm',
   ]);
-  // Folders: create one, drag a card onto it, open it.
-  await page.locator('[data-media-tab="folders"]').click();
+  // R4: folders are tabs. New folder (beside the search) makes one.
   await page.locator('#media-folder-new').click();
   await page.locator('[data-role="prompt-input"]').fill('B-roll');
   await page.keyboard.press('Enter');
-  const folder = page.locator('.media-folder', { hasText: 'B-roll' });
-  await expect(folder).toContainText('0 items');
-  // Moving needs a card on screen: the All tab, then drop on the folder in
-  // the Folders tab through the menu's Move to folder.
+  const folder = page.locator('#media-panel .shelf-folder-tab', {
+    hasText: 'B-roll',
+  });
+  await expect(folder).toHaveAttribute('aria-selected', 'true');
+  await expect(cards).toHaveCount(0);
+  // Move to folder from the card's "⋯" menu.
   await page.locator('[data-media-tab="all"]').click();
   const video = page.locator('.media-item:has(.media-card[data-kind="video"])');
   await video.hover();
   await video.locator('[data-action="media-more"]').click();
   await page.locator('#media-menu [data-action="media-folder"]').click();
   await page.locator('[data-action="media-folder-pick"]').click();
-  await page.locator('[data-media-tab="folders"]').click();
-  await expect(folder).toContainText('1 item');
+  await folder.click();
+  await expect(cards).toHaveCount(1);
   // A dragged card moves into a folder too.
   const transfer = await page.evaluateHandle(
     (id) => {
@@ -403,9 +397,6 @@ test('[MED-038] Media: type tabs, sort, folders with drag in, Designs from Save 
   );
   await folder.dispatchEvent('dragover', { dataTransfer: transfer });
   await folder.dispatchEvent('drop', { dataTransfer: transfer });
-  await expect(folder).toContainText('2 items');
-  await folder.locator('.media-folder-open').click();
-  await expect(page.locator('#media-folder-name')).toHaveText('B-roll');
   await expect(cards).toHaveCount(2);
   expect((await hook(page)).history.canUndo).toBe(false);
   // Designs: Save frame to Media in the export dialog.

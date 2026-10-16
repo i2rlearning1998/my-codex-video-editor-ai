@@ -12,6 +12,7 @@ import {
   seekKeep,
   showCategory,
 } from './fixtures';
+import { applyAiPreset } from './creator-helpers';
 
 // P3 (CREATOR-PACK-SPEC 5.1, 5.1b): Creator presets in Animate > Creator,
 // the Controls that show only what a layer has, Edited manually and Add
@@ -63,19 +64,19 @@ const FADE = JSON.stringify({
     },
   ],
 });
-const dialog = (page: Page) => page.locator('.creator-pack-dialog');
+const dialog = (page: Page) => page.locator('.ai-import-dialog');
 const panel = (page: Page) => page.locator('#right-section');
 
 async function importPack(page: Page, text: string) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-creator').click();
-  await dialog(page).locator('#creator-source').fill(text);
-  await expect(dialog(page).locator('#creator-summary')).toHaveText(
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await dialog(page).locator('#ai-import-source').fill(text);
+  await expect(dialog(page).locator('#ai-import-summary')).toHaveText(
     /passed the checks/,
     { timeout: 60_000 },
   );
-  await dialog(page).locator('#creator-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   // Q4: the result card, then Done.
   await dialog(page).locator('#creator-done').click();
   await expect(dialog(page)).toBeHidden();
@@ -128,13 +129,11 @@ async function applyMove(page: Page) {
     .evaluateAll((items) =>
       items.map((item) => (item as HTMLElement).dataset.tab),
     );
-  // In, Out and Loop are kept; Creator is added.
-  expect(tabs).toEqual(
-    expect.arrayContaining(['in', 'out', 'loop', 'creator']),
-  );
-  await panel(page).locator('.animate-tabs [data-tab="creator"]').click();
+  // In, Out and Loop are kept; R2: AI presets are applied from AI only.
+  expect(tabs).toEqual(expect.arrayContaining(['in', 'out', 'loop']));
+  expect(tabs).not.toContain('creator');
   const steps = (await hook(page)).history.labels.length;
-  await panel(page).locator(`.animate-card[data-preset="${MOVE_ID}"]`).click();
+  await applyAiPreset(page, MOVE_ID);
   await expect
     .poll(async () => (await hook(page)).history.labels.length)
     .toBe(steps + 1);

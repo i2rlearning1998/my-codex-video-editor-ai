@@ -128,7 +128,7 @@ test('[PRJ-023] cards drag to reorder with an insertion line; double-click renam
     'Rename scene',
     'Duplicate scene',
     'Delete scene',
-    'Save as template',
+    'Save scene to My Templates',
     'Move left',
     'Move right',
   ]);
@@ -149,10 +149,8 @@ test('[PRJ-023] cards drag to reorder with an insertion line; double-click renam
   const steps = (await labels(page)).length;
   await cards(page).first().click({ button: 'right' });
   await menu.locator('[data-action="strip-save-template"]').click();
-  await page.locator('#save-template-name').fill('Strip saved');
-  await page.locator('[data-action="save-template-confirm"]').click();
   await expect(
-    page.locator('.toast', { hasText: 'Strip saved' }),
+    page.locator('.toast', { hasText: 'Saved to My Templates › Scene' }),
   ).toBeVisible();
   expect((await labels(page)).length).toBe(steps);
   // Undo restores the deleted scene.

@@ -53,15 +53,14 @@ async function newProject(page: Page) {
 }
 async function addCode(page: Page, source: string) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-code').click();
-  await dialog(page).locator('#code-source').fill(source);
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await dialog(page).locator('#ai-import-source').fill(source);
   await expect(dialog(page).locator('#code-thumb')).toHaveAttribute(
     'data-ready',
     'true',
   );
-  await dialog(page).locator('#code-save-template').uncheck();
-  await dialog(page).locator('#code-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   await expect(dialog(page)).toBeHidden();
 }
 /** The canvas pixel at a composition point (through the live view). */
@@ -173,23 +172,17 @@ test.describe('P1 code layer usability', () => {
         '[data-action="audio-menu"], [data-action="auto-cut"]',
       ),
     ).toHaveCount(0);
-    // Save as template: kept in My Templates (not an undo step).
+    // R2: Save as template keeps it in the AI category (not an undo step).
     const steps = (await hook(page)).history.labels.length;
     await timelineMenu.locator('[data-command="code-save-template"]').click();
     await expect(
-      page.locator('.toast', { hasText: 'to My Templates' }),
+      page.locator('.toast', { hasText: 'AI › Motion' }),
     ).toBeVisible();
     expect((await hook(page)).history.labels.length).toBe(steps);
-    expect(
-      await page.evaluate(
-        () =>
-          (
-            JSON.parse(localStorage.getItem('aive.myTemplates') ?? '[]') as {
-              kind?: string;
-            }[]
-          ).filter((item) => item.kind === 'code').length,
-      ),
-    ).toBe(1);
+    await showCategory(page, 'AI');
+    await expect(
+      page.locator('#library-ai .ai-group[data-kind="motion"] .ai-card'),
+    ).toHaveCount(1);
     // Re-render bakes again from frame 0.
     await clip.click({ button: 'right', position: { x: 20, y: 10 } });
     await timelineMenu.locator('[data-command="code-rerender"]').click();

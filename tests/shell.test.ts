@@ -90,8 +90,9 @@ describe('editor shell integration', () => {
       // V7 (spec 11.4): Record & create.
       'Record',
       'Audio',
-      // Q4: everything from Creator Packs; T1: themes.
+      // Q4: everything from Creator Packs; R5: My Templates; T1: themes.
       'AI',
+      'MyTemplates',
       'Theme',
     ]);
     expect(root.querySelector('#inspector-content input')).toBeNull();

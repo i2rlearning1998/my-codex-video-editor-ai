@@ -29,8 +29,8 @@ const codeDebug = async (page: Page) =>
   );
 async function openImport(page: Page) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-code').click();
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
   await expect(dialog(page)).toBeVisible();
 }
 async function newProject(page: Page) {
@@ -79,13 +79,13 @@ test.describe('X5 hostile and heavy free code', () => {
       "localStorage.setItem('owned', '1');",
       "import('https://example.com/x.js');",
     ]) {
-      await dialog(page).locator('#code-source').fill(free(body));
+      await dialog(page).locator('#ai-import-source').fill(free(body));
       await expect(dialog(page).locator('#code-errors li').first()).toHaveText(
         /^Line \d+: .* Fix: /,
       );
-      await expect(dialog(page).locator('#code-add')).toBeDisabled();
+      await expect(dialog(page).locator('#ai-import-add')).toBeDisabled();
     }
-    await dialog(page).locator('#code-cancel').click();
+    await dialog(page).locator('#ai-import-cancel').click();
     expect(requests).toEqual([]);
     expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(
       storage,
@@ -107,25 +107,25 @@ test.describe('X5 hostile and heavy free code', () => {
       ],
     ] as const) {
       await openImport(page);
-      await dialog(page).locator('#code-source').fill(free(body));
+      await dialog(page).locator('#ai-import-source').fill(free(body));
       // It may pass the static check; running it is stopped, so the
       // thumbnail fails with the runtime's message.
       await expect(dialog(page).locator('#code-error')).toHaveText(message, {
         timeout: 60_000,
       });
-      await dialog(page).locator('#code-cancel').click();
+      await dialog(page).locator('#ai-import-cancel').click();
       await expect(dialog(page)).toBeHidden();
     }
     // No sandbox is left behind, and the runtime still renders valid code.
     await expect(page.locator('iframe[sandbox]')).toHaveCount(0);
     await openImport(page);
-    await dialog(page).locator('#code-source').fill(free(''));
+    await dialog(page).locator('#ai-import-source').fill(free(''));
     await expect(dialog(page).locator('#code-thumb')).toHaveAttribute(
       'data-ready',
       'true',
       { timeout: 60_000 },
     );
-    await dialog(page).locator('#code-cancel').click();
+    await dialog(page).locator('#ai-import-cancel').click();
     expect((await hook(page)).project.compositions[0]!.layers).toEqual([]);
     expect(requests).toEqual([]);
   });
@@ -138,7 +138,7 @@ test.describe('X5 hostile and heavy free code', () => {
     // About 900,000 loop steps a frame (under the runtime's budget), 300
     // frames.
     await dialog(page)
-      .locator('#code-source')
+      .locator('#ai-import-source')
       .fill(
         free(
           'let s = 0; for (let i = 0; i < 900000; i++) s += Math.sqrt(i); this.s = s;',
@@ -155,8 +155,7 @@ test.describe('X5 hostile and heavy free code', () => {
       'true',
       { timeout: 60_000 },
     );
-    await dialog(page).locator('#code-save-template').uncheck();
-    await dialog(page).locator('#code-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     const bar = page.locator('.timeline-clip[data-code="true"] .clip-bake');
     await expect(bar.locator('.clip-bake-label')).toHaveText(/Rendering \d+ %/);
     await expect
@@ -175,24 +174,24 @@ test.describe('X5 hostile and heavy free code', () => {
   }) => {
     await openImport(page);
     await dialog(page)
-      .locator('#code-source')
+      .locator('#ai-import-source')
       .fill(readFileSync('src/freecode/samples/chart.txt', 'utf8'));
     await expect(dialog(page).locator('#code-thumb')).toHaveAttribute(
       'data-ready',
       'true',
       { timeout: 60_000 },
     );
-    await expect(dialog(page).locator('#code-save-template')).toBeChecked();
-    await dialog(page).locator('#code-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     await expect(dialog(page)).toBeHidden();
     await page.reload();
     await expect
       .poll(async () => page.evaluate(() => '__AIVE__' in window))
       .toBe(true);
     await newProject(page);
-    await showCategory(page, 'Templates');
+    // R2: a code animation is kept in AI › Motion.
+    await showCategory(page, 'AI');
     const card = page.locator(
-      '#library-templates [data-section="code"] [data-code-template]',
+      '#library-ai .ai-group[data-kind="motion"] .ai-card',
     );
     await expect(card).toHaveCount(1);
     await card.click();

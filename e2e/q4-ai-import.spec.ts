@@ -17,18 +17,18 @@ test('[QT-014][QT-015][QT-012][QT-013] pasted packs are checked on their own; th
   page,
 }) => {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-creator').click();
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
   // No separate Run checks gate.
   await expect(dialog(page).locator('#creator-check')).toHaveCount(0);
-  await dialog(page).locator('#creator-source').fill(SHAPE);
+  await dialog(page).locator('#ai-import-source').fill(SHAPE);
   const row = dialog(page).locator('.creator-item[data-item="shape-kite"]');
   await expect(row).toHaveAttribute('data-status', /ok|warning/, {
     timeout: 60_000,
   });
   await expect(row.locator('.creator-status')).toHaveText(/OK|Warning/);
-  await expect(dialog(page).locator('#creator-add')).toBeEnabled();
-  await dialog(page).locator('#creator-add').click();
+  await expect(dialog(page).locator('#ai-import-add')).toBeEnabled();
+  await dialog(page).locator('#ai-import-add').click();
   // The result card says what happened and opens the AI tab.
   const result = dialog(page).locator('#creator-result');
   await expect(result).toContainText('Added 1 items to My library.');
@@ -46,13 +46,13 @@ test('[QT-014][QT-015][QT-012][QT-013] pasted packs are checked on their own; th
   await expect(card.locator('.ai-chip')).toHaveText('AI');
   // A preset pack adds a Presets group.
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-creator').click();
-  await dialog(page).locator('#creator-source').fill(MOVE);
-  await expect(dialog(page).locator('#creator-add')).toBeEnabled({
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await dialog(page).locator('#ai-import-source').fill(MOVE);
+  await expect(dialog(page).locator('#ai-import-add')).toBeEnabled({
     timeout: 60_000,
   });
-  await dialog(page).locator('#creator-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   await dialog(page).locator('#creator-open-ai').click();
   await expect(
     ai.locator(
@@ -65,15 +65,11 @@ test('[QT-014][QT-015][QT-012][QT-013] pasted packs are checked on their own; th
   await expect
     .poll(async () => (await hook(page)).history.labels.length)
     .toBe(steps + 1);
-  // Library panels carry the same AI chip.
+  // R2: other library panels list no AI items.
   await showCategory(page, 'Elements');
   const elements = page.locator('#library-elements');
   await elements.locator('[data-tile="shapes"]').click();
   await expect(
-    elements
-      .locator(
-        '[data-section="creator"] [data-item-id="shape-pack--shape-kite"]',
-      )
-      .locator('.browse-badge'),
-  ).toHaveText('AI');
+    elements.locator('[data-item-id="shape-pack--shape-kite"]'),
+  ).toHaveCount(0);
 });

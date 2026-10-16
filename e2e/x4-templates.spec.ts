@@ -6,9 +6,9 @@ import { test, expect, hook, showCategory, seekKeep } from './fixtures';
 // Templates (this browser; not the project, not an undo step).
 const PULSE = readFileSync('tests/fixtures/code/pulse-block.js', 'utf8');
 const dialog = (page: Page) => page.locator('.code-import-dialog');
-const templates = (page: Page) => page.locator('#library-templates');
+// R2: code animations are kept in the AI category (kind Motion).
 const codeCards = (page: Page) =>
-  templates(page).locator('[data-section="code"] [data-code-template]');
+  page.locator('#library-ai .ai-group[data-kind="motion"] .ai-card');
 const codeLayers = async (page: Page) => {
   const state = await hook(page);
   return state.project.compositions
@@ -16,17 +16,16 @@ const codeLayers = async (page: Page) => {
     .layers.filter((l) => l.code);
 };
 
-async function importPulse(page: Page, save = true) {
+async function importPulse(page: Page, _save = true) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-code').click();
-  await dialog(page).locator('#code-source').fill(PULSE);
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await dialog(page).locator('#ai-import-source').fill(PULSE);
   await expect(dialog(page).locator('#code-thumb')).toHaveAttribute(
     'data-ready',
     'true',
   );
-  if (!save) await dialog(page).locator('#code-save-template').uncheck();
-  await dialog(page).locator('#code-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   await expect(dialog(page)).toBeHidden();
 }
 
@@ -47,7 +46,7 @@ test.describe('X4 code templates', () => {
   }) => {
     await importPulse(page);
     const steps = (await hook(page)).history.labels.length;
-    await showCategory(page, 'Templates');
+    await showCategory(page, 'AI');
     await expect(codeCards(page)).toHaveCount(1);
     const card = codeCards(page).first();
     await card.scrollIntoViewIfNeeded();
@@ -62,7 +61,7 @@ test.describe('X4 code templates', () => {
     await expect
       .poll(async () =>
         Number(
-          (await card.locator('.browse-thumb').getAttribute('data-playing')) ??
+          (await card.locator('.shelf-thumb').getAttribute('data-playing')) ??
             0,
         ),
       )
@@ -89,86 +88,10 @@ test.describe('X4 code templates', () => {
     expect(inserted.code!.source).toBe(PULSE);
     expect(inserted.code!.templateId).toBeTruthy();
     expect(inserted.code!.params).toEqual({ color: '#ff3366', radius: 120 });
-    // Unchecked, nothing is saved.
+    // The same code again is still one AI item.
     await importPulse(page, false);
-    await showCategory(page, 'Templates');
+    await showCategory(page, 'AI');
     await expect(codeCards(page)).toHaveCount(1);
-  });
-
-  test('[CODE-009] rename, duplicate, delete with Restore, export and import a template file', async ({
-    page,
-  }, testInfo) => {
-    await importPulse(page);
-    await showCategory(page, 'Templates');
-    const menu = page.locator('#code-template-menu');
-    const open = async (index: number) => {
-      await codeCards(page).nth(index).click({ button: 'right' });
-      await expect(menu).toBeVisible();
-    };
-    // Rename.
-    await open(0);
-    await menu.locator('[data-action="code-template-rename"]').click();
-    await page.locator('.modal-dialog input').fill('Pink pulse');
-    await page.locator('.modal-dialog input').press('Enter');
-    await expect(codeCards(page).first()).toContainText('Pink pulse');
-    // Duplicate.
-    await open(0);
-    await menu.locator('[data-action="code-template-duplicate"]').click();
-    await expect(codeCards(page)).toHaveCount(2);
-    await expect(codeCards(page).nth(1)).toContainText('Pink pulse copy');
-    // Delete, then Restore from the toast.
-    await open(1);
-    await menu.locator('[data-action="code-template-delete"]').click();
-    await expect(codeCards(page)).toHaveCount(1);
-    await page
-      .locator('.toast')
-      .getByRole('button', { name: 'Restore' })
-      .click();
-    await expect(codeCards(page)).toHaveCount(2);
-    // Export as a .json file.
-    const downloading = page.waitForEvent('download');
-    await open(0);
-    await menu.locator('[data-action="code-template-export"]').click();
-    const download = await downloading;
-    expect(download.suggestedFilename()).toBe('Pink-pulse.aive-template.json');
-    const file = testInfo.outputPath('template.json');
-    await download.saveAs(file);
-    const exported = JSON.parse(readFileSync(file, 'utf8'));
-    expect(exported.format).toBe('aive-code-template');
-    expect(exported.template.source).toBe(PULSE);
-    // Import it back: a third template.
-    await templates(page).locator('[data-see-all="code"]').click();
-    const chooser = page.waitForEvent('filechooser');
-    await templates(page).locator('#code-template-import').click();
-    await (await chooser).setFiles(file);
-    await expect(
-      page.locator('.toast', { hasText: 'Template "Pink pulse" imported' }),
-    ).toBeVisible();
-    await expect(templates(page).locator('[data-code-template]')).toHaveCount(
-      3,
-    );
-    // A broken file is refused with a message.
-    const broken = testInfo.outputPath('broken.json');
-    const { writeFileSync } = await import('node:fs');
-    writeFileSync(
-      broken,
-      JSON.stringify({
-        format: 'aive-code-template',
-        version: 1,
-        template: {},
-      }),
-    );
-    const again = page.waitForEvent('filechooser');
-    await templates(page).locator('#code-template-import').click();
-    await (await again).setFiles(broken);
-    await expect(
-      page.locator('.toast', {
-        hasText: 'The template in this file is damaged.',
-      }),
-    ).toBeVisible();
-    await expect(templates(page).locator('[data-code-template]')).toHaveCount(
-      3,
-    );
   });
 
   test('[CODE-010] the Scene outliner shows code layers with a code icon; hide and lock act on them', async ({
