@@ -6,7 +6,7 @@ import { CodeLive } from '../code-layer/live';
 import { freeCodeRuntime, openCodeSession } from '../code-layer/runtime';
 import { tierACommands } from '../code-layer/tier-a';
 import { codeLayerCommands, codeRecord } from '../code-layer/layer';
-import { openCodeImportDialog, type CodeImport } from './code-import-dialog';
+import { openCodeImportDialog } from './code-import-dialog';
 import { codeLayerSelected } from './right-panel';
 import {
   codeTemplates,
@@ -23,7 +23,6 @@ import {
   creatorLibraryId,
   type CreatorEntry,
 } from './creator-library';
-import { libraryIndex } from './library-index';
 import { mountAiPanel } from './ai-panel';
 import { mountThemePanel } from './theme-panel';
 import {
@@ -61,9 +60,10 @@ import {
   removePresetCommands,
 } from './creator-presets';
 import {
-  openCreatorPackDialog,
-  type CreatorPackAdd,
-} from './creator-pack-dialog';
+  codeHash,
+  openAiImportDialog,
+  type AiImportAdd,
+} from './ai-import-dialog';
 import { loadLibrary } from '../library/loader';
 import { adjustments, effects, filters, transitions } from '../fx';
 import type { ParamValues } from './code-params';
@@ -969,7 +969,8 @@ export function mountEditorShell(
     session,
     reportError,
     {
-      list: () => creatorPresets(),
+      // R2: AI presets are applied from the AI category, not Animate.
+      list: () => [],
       applied: (layerId) => {
         const found = locateLayer(session.source.composition.layers, layerId);
         return found ? livePresets(found.layer).map((item) => item.id) : [];
@@ -1548,7 +1549,7 @@ export function mountEditorShell(
     moreOptions: () => workspace?.setOpen('right', true),
     // P1: a code layer's own actions.
     code: {
-      edit: (layerId) => safely(() => openCodeImport({}, { layerId })),
+      edit: (layerId) => safely(() => openCodeImport({ layerId })),
       settings: () =>
         safely(() => {
           workspace?.setOpen('right', true);
@@ -1913,16 +1914,14 @@ export function mountEditorShell(
     );
     return canvas.convertToBlob({ type: 'image/png' });
   };
-  const openCodeImport = (
-    initial: { text?: string; fileName?: string } = {},
-    edit?: { layerId: string },
-  ) => {
+  // R2: the Edit code view of a code layer. Importing code goes through the
+  // AI importer (openAiImport) only.
+  const openCodeImport = (edit: { layerId: string }) => {
     session.setPlaying(false);
-    const editCode = edit ? codeOf(edit.layerId) : null;
+    const editCode = codeOf(edit.layerId);
+    if (!editCode) return;
     const composition = session.source.composition;
     openCodeImportDialog({
-      ...(initial.text !== undefined ? { text: initial.text } : {}),
-      ...(initial.fileName ? { fileName: initial.fileName } : {}),
       ...(editCode
         ? {
             edit: {
@@ -1950,32 +1949,9 @@ export function mountEditorShell(
         );
         return scene ? codeThumbnailOf(scene, scene.duration / 2) : null;
       },
-      onConfirm: async ({ item, saveTemplate, thumbnail }) => {
+      onConfirm: async ({ item }) => {
         const current = session.source.composition;
-        // X4: Save as template (checked by default) keeps a copy in My
-        // Templates; the layer remembers which template it came from.
-        const template =
-          saveTemplate && !edit
-            ? await saveCodeTemplate(item, thumbnail)
-            : null;
-        if (item.tier === 'A') {
-          const built = await tierACommands(item.spec, {
-            project: engine.state,
-            current,
-            mode: item.mode,
-            overrides: item.overrides,
-          });
-          engine.commands.transaction('Import code animation', built.commands);
-          if (built.compositionIds[0])
-            session.selectComposition(built.compositionIds[0]);
-          if (built.notBuilt.length)
-            showToast(
-              t('code.notBuilt', { items: built.notBuilt.join('; ') }),
-              'warning',
-            );
-          else showToast(t('code.added'), 'success');
-          return;
-        }
+        if (item.tier === 'A') return;
         const input = {
           tier: item.tier,
           source: item.source,
@@ -1983,7 +1959,7 @@ export function mountEditorShell(
           params: item.params,
           name: item.name,
         };
-        if (edit && editCode) {
+        {
           const code = codeRecord({
             ...input,
             ...(editCode.templateId ? { templateId: editCode.templateId } : {}),
@@ -2018,16 +1994,7 @@ export function mountEditorShell(
           }
           engine.commands.transaction('Edit code', commands);
           showToast(t('code.applied'), 'success');
-          return;
         }
-        const built = codeLayerCommands(
-          current,
-          { ...input, ...(template ? { templateId: template.id } : {}) },
-          session.currentTime,
-        );
-        engine.commands.transaction('Add code animation', built.commands);
-        session.select(built.layerId);
-        showToast(t('code.added'), 'success');
       },
     });
   };
@@ -2037,9 +2004,28 @@ export function mountEditorShell(
     (manifest) => (builtInIds = manifest.items.map((item) => item.id)),
     () => undefined,
   );
-  const addCreatorItems = async (
-    add: CreatorPackAdd,
-  ): Promise<number | false> => {
+  const placeImported = async (add: AiImportAdd) => {
+    // R2: a single code animation can also go straight into the scene; a
+    // Tier A one as new scenes (one step) or into this scene.
+    const first = add.items[0];
+    if (add.addToScene && first) {
+      if (first.item.type === 'composition' && add.sceneMode !== 'current') {
+        const built = await tierACommands(
+          (first.item.data as { spec: unknown }).spec,
+          {
+            project: engine.state,
+            current: session.source.composition,
+            mode: 'new',
+            overrides: (first.params ?? {}) as ParamValues,
+          },
+        );
+        engine.commands.transaction('Import code animation', built.commands);
+        if (built.compositionIds[0])
+          session.selectComposition(built.compositionIds[0]);
+      } else insertCreatorItem(creatorLibraryId(`${add.packId}/${first.id}`));
+    }
+  };
+  const addCreatorItems = async (add: AiImportAdd): Promise<number | false> => {
     await creatorLibrary.ready;
     const existing = creatorLibrary.packVersion(add.packId);
     if (existing === add.packVersion) {
@@ -2051,6 +2037,7 @@ export function mountEditorShell(
         }),
         'info',
       );
+      await placeImported(add);
       return 0;
     }
     if (existing !== null) {
@@ -2084,9 +2071,11 @@ export function mountEditorShell(
         addedAt: now,
         ...(checked.thumbnail ? { thumbnail: checked.thumbnail } : {}),
         ...(checked.motionMeta ? { motionMeta: checked.motionMeta } : {}),
+        ...(checked.params ? { params: checked.params } : {}),
       })),
       existing !== null ? add.packId : undefined,
     );
+    await placeImported(add);
     showToast(
       t('creator.added', {
         count: String(add.items.length),
@@ -2100,8 +2089,30 @@ export function mountEditorShell(
     initial: { text?: string; fileName?: string } = {},
   ) => {
     session.setPlaying(false);
-    openCreatorPackDialog({
+    const composition = session.source.composition;
+    openAiImportDialog({
       ...initial,
+      canvas: {
+        width: composition.width,
+        height: composition.height,
+        fps: composition.fps,
+      },
+      previewA: async (spec, overrides) => {
+        const built = await tierACommands(spec, {
+          project: engine.state,
+          current: session.source.composition,
+          mode: 'new',
+          overrides,
+        });
+        const project = engine.preview(built.commands);
+        const scene = project.compositions.find(
+          (item) => item.id === built.compositionIds[0],
+        );
+        const blob = scene
+          ? await codeThumbnailOf(scene, scene.duration / 2)
+          : null;
+        return blob ? dataUrlOf(blob) : null;
+      },
       fxCatalog: FX_CATALOG,
       knownLibraryIds: () => [
         ...builtInIds,
@@ -2227,80 +2238,6 @@ export function mountEditorShell(
     };
     $<HTMLTextAreaElement>('brief-request').focus();
   };
-  /** P4: "Copy library index for AI" (plain text under 40 KB). */
-  const copyLibraryIndex = async () => {
-    await creatorLibrary.ready;
-    const manifest = await loadLibrary().catch(() => null);
-    const composition = session.source.composition;
-    const packs = new Map<string, CreatorEntry[]>();
-    for (const entry of creatorLibrary.list())
-      packs.set(entry.packId, [...(packs.get(entry.packId) ?? []), entry]);
-    const controlsOf = (entry: CreatorEntry): string[] => {
-      const item = entry.item;
-      if (item.type === 'preset')
-        return presetControls(item.data).map((control) => control.name);
-      if (item.type === 'motion')
-        return (entry.motionMeta?.params ?? []).map((param) => param.name);
-      return (item.controls ?? []).map((control) => control.name);
-    };
-    const text = libraryIndex({
-      canvas: {
-        width: composition.width,
-        height: composition.height,
-        fps: composition.fps,
-      },
-      fonts: SYSTEM_FONTS.map(([name]) => name),
-      animate: {
-        in: IN_OUT_PRESETS,
-        out: IN_OUT_PRESETS,
-        loop: LOOP_PRESETS,
-        creator: creatorPresets().map((item) => item.id),
-      },
-      fx: {
-        filters: filters.map((item) => item.id),
-        effects: effects.map((item) => item.id),
-        adjust: adjustments.map((item) => item.id),
-        transitions: transitions.map((item) => item.id),
-      },
-      blocks: blocks.map((block) => ({
-        id: block.id,
-        name: block.name,
-        kind: 'block',
-        controls: block.params.map((param) => param.name),
-      })),
-      groups: [
-        {
-          title: 'Built-in library',
-          items: (manifest?.items ?? []).map((item) => ({
-            id: item.id,
-            name: item.name.en,
-            kind: item.type,
-            tags: item.tags,
-          })),
-        },
-        ...[...packs].map(([packId, entries]) => ({
-          title: `Creator pack ${packId} v${entries[0]!.packVersion} "${entries[0]!.packName.en}"`,
-          items: entries.map((entry) => ({
-            id: creatorLibraryId(entry.key),
-            name: entry.item.name.en,
-            kind: entry.item.type,
-            tags: entry.item.tags,
-            controls: controlsOf(entry),
-          })),
-        })),
-      ],
-    });
-    await navigator.clipboard.writeText(text).then(
-      () =>
-        showToast(
-          t('creator.indexCopied', {
-            size: formatNumber(Math.ceil(new Blob([text]).size / 1024)),
-          }),
-          'success',
-        ),
-      () => showToast(t('creator.reportCopyFailed'), 'error'),
-    );
-  };
   /** X2: the Animation settings panel of the selected code layer. */
   const codeBody = (): HTMLElement[] => {
     const layer = codeLayerSelected(session);
@@ -2327,8 +2264,7 @@ export function mountEditorShell(
     edit.innerHTML = `${iconSvg('code', 16)}<span></span>`;
     edit.querySelector('span')!.textContent = t('code.editButton');
     edit.title = t('code.editTitle');
-    edit.onclick = () =>
-      safely(() => openCodeImport({}, { layerId: layer.id }));
+    edit.onclick = () => safely(() => openCodeImport({ layerId: layer.id }));
     const parts: HTMLElement[] = [info, edit];
     if (code.tier === 'C') {
       const notice = document.createElement('p');
@@ -2691,42 +2627,71 @@ export function mountEditorShell(
       reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(blob);
     });
-  const saveCodeTemplate = async (
-    item: CodeImport,
-    thumbnail: Blob | null,
-  ): Promise<CodeTemplate | null> => {
-    const template: CodeTemplate = {
-      kind: 'code',
-      id: crypto.randomUUID(),
-      name: item.name,
-      category:
-        item.tier === 'A'
-          ? 'spec'
-          : typeof item.meta.category === 'string' && item.meta.category
-            ? item.meta.category
-            : 'code',
-      createdAt: new Date().toISOString(),
-      tier: item.tier,
-      source: item.tier === 'A' ? JSON.stringify(item.spec) : item.source,
-      meta:
-        item.tier === 'A'
-          ? {
-              duration: item.duration,
-              scenes: item.scenes,
-              params: item.paramSpecs as unknown as Record<string, unknown>[],
-            }
-          : (item.meta as unknown as Record<string, unknown>),
-      params: item.tier === 'A' ? item.overrides : item.params,
-      ...(thumbnail ? { thumbnail: await dataUrlOf(thumbnail) } : {}),
+  /** R2: a code animation as a My library entry (kind motion, or
+   *  composition for a Tier A spec); it shows in the AI category only. */
+  const codeEntry = (template: {
+    name: string;
+    tier: 'A' | 'B' | 'C';
+    source: string;
+    meta: Readonly<Record<string, unknown>>;
+    params: Readonly<Record<string, unknown>>;
+    thumbnail?: string;
+    createdAt?: string;
+  }): CreatorEntry => {
+    const id = `code-${codeHash(template.source)}`;
+    const name = template.name || t('aiImport.codeName');
+    const meta = template.meta as Record<string, unknown>;
+    const item =
+      template.tier === 'A'
+        ? {
+            id,
+            name: { en: name },
+            tags: ['code'],
+            type: 'composition',
+            data: { spec: JSON.parse(template.source) as unknown },
+          }
+        : {
+            id,
+            name: { en: name },
+            tags: ['code'],
+            type: 'motion',
+            data: { tier: template.tier, source: template.source, meta },
+          };
+    return {
+      key: `${id}/${id}`,
+      packId: id,
+      packName: { en: name },
+      packVersion: 1,
+      item: item as unknown as CreatorEntry['item'],
+      name,
+      addedAt: template.createdAt ?? new Date().toISOString(),
+      motionMeta: {
+        name,
+        category: 'code',
+        ...meta,
+        params: (meta.params as unknown[] | undefined) ?? [],
+      } as unknown as NonNullable<CreatorEntry['motionMeta']>,
+      params: template.params,
+      ...(template.thumbnail ? { thumbnail: template.thumbnail } : {}),
     };
-    try {
-      codeTemplates.save(template);
-      return template;
-    } catch {
-      showToast(t('code.templateFull'), 'error');
-      return null;
-    }
   };
+  // R2: code templates saved before R2 (Templates > Code animations) move to
+  // the AI category, once; layers already placed keep their own code.
+  void creatorLibrary.ready.then(async () => {
+    const old = codeTemplates.list();
+    if (!old.length) return;
+    const entries: CreatorEntry[] = [];
+    for (const template of old)
+      try {
+        const entry = codeEntry(template);
+        if (!creatorLibrary.find(entry.key)) entries.push(entry);
+      } catch {
+        // A damaged template is left where it is.
+        continue;
+      }
+    if (entries.length) await creatorLibrary.add(entries);
+    for (const template of old) codeTemplates.remove(template.id);
+  });
   /** P1: Save as template from a code layer (its source, meta and values). */
   const saveLayerAsTemplate = async (layerId: string) => {
     const code = codeOf(layerId);
@@ -2741,18 +2706,17 @@ export function mountEditorShell(
       thumbnail = await canvas.convertToBlob({ type: 'image/png' });
     }
     const layer = locateLayer(session.source.composition.layers, layerId);
-    const template = await saveCodeTemplate(
-      {
-        tier: code.tier,
-        source: code.source,
-        meta,
-        params: codeParams(code) as ParamValues,
-        name: layer?.layer.name || meta.name,
-      } as CodeImport,
-      thumbnail,
-    );
-    if (template)
-      showToast(t('code.savedTemplate', { name: template.name }), 'success');
+    const entry = codeEntry({
+      tier: code.tier,
+      source: code.source,
+      meta: meta as unknown as Record<string, unknown>,
+      params: codeParams(code),
+      name: layer?.layer.name || meta.name,
+      ...(thumbnail ? { thumbnail: await dataUrlOf(thumbnail) } : {}),
+    });
+    await creatorLibrary.ready;
+    await creatorLibrary.add([entry]);
+    showToast(t('code.savedTemplate', { name: entry.name }), 'success');
   };
   /** Inserts a code template at `time` on a new lane, one undo step. */
   const insertCodeTemplate = async (template: CodeTemplate, time: number) => {
@@ -2867,7 +2831,8 @@ export function mountEditorShell(
   const importCodeTemplateText = (text: string) => {
     try {
       const template = importCodeTemplate(text);
-      codeTemplates.save(template);
+      // R2: an exported code template goes to the AI category.
+      void creatorLibrary.add([codeEntry(template)]);
       showToast(t('code.templateImported', { name: template.name }), 'success');
     } catch (error) {
       showToast(
@@ -2978,7 +2943,13 @@ export function mountEditorShell(
   const insertCreatorItem = (id: string, time = session.currentTime) => {
     const entry = creatorEntryOf(id);
     if (!entry) return;
-    if (entry.item.type === 'motion') {
+    // R2: a theme item is applied (themes live in the AI category too).
+    if (entry.item.type === 'theme') {
+      const theme = themeById(id);
+      if (theme) applyTheme(theme, false);
+      return;
+    }
+    if (entry.item.type === 'motion' || entry.item.type === 'composition') {
       const template = creatorLibrary
         .motionTemplates()
         .find((item) => item.id === id);
@@ -3568,13 +3539,6 @@ export function mountEditorShell(
     entry('import-media-item', t('code.importMedia'), 'media', () =>
       mediaInput.click(),
     );
-    entry('import-code', t('code.importCode'), 'code', () => openCodeImport());
-    entry('import-creator', t('creator.importMenu'), 'elements', () =>
-      openCreatorImport(),
-    );
-    entry('import-index', t('creator.copyIndex'), 'copy', () =>
-      copyLibraryIndex(),
-    );
     importMenuButton.setAttribute('aria-expanded', 'true');
     const popover = openPopover(importMenuButton, menu, {
       label: t('code.importMenu'),
@@ -4064,12 +4028,12 @@ export function mountEditorShell(
         .then((text) =>
           isCreatorPackText(code[0]!.name, text)
             ? openCreatorImport({ text, fileName: code[0]!.name })
-            : // X4: an exported code template file imports into My Templates.
+            : // X4: an exported code template file imports into the AI tab.
               isCodeTemplateFile(text)
               ? importCodeTemplateText(text)
               : /\.txt$/i.test(code[0]!.name)
                 ? showToast(t('creator.notAPack'), 'error')
-                : openCodeImport({ text, fileName: code[0]!.name }),
+                : openCreatorImport({ text, fileName: code[0]!.name }),
         )
         .catch(reportError);
     if (!files.length) return;
@@ -4811,9 +4775,9 @@ export function mountEditorShell(
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
     } else if (payload.kind === 'code') {
-      const template =
-        codeTemplates.find(payload.id) ??
-        creatorLibrary.motionTemplates().find((item) => item.id === payload.id);
+      const template = creatorLibrary
+        .motionTemplates()
+        .find((item) => item.id === payload.id);
       if (template) void insertCodeTemplate(template, time).catch(reportError);
     } else if (payload.kind === 'preset') {
       const commands = addShapeCommands(

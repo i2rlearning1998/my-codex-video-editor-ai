@@ -908,7 +908,7 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-001 | P1 | W8 | Verified | Lengthening, trimming or moving a group clip carries its children in time (the same shift and the same edge change), in the model; a lengthened background group still draws to its new end (Q1) |
 | QT-002 | P1 | W8 | Verified | Ungroup works for normal groups by baking the group's position, scale, rotation and opacity into each child; a refused Ungroup shows one toast, never a stack (Q1) |
 | QT-003 | P1 | W8 | Verified | A background group (from Use as background or a library background) cannot be ungrouped; Ungroup is disabled with the tooltip "Background is one block" (Q1) |
-| QT-004 | P1 | W8 | Verified | Animate > Creator starts with None and highlights only the preset the layer really has (Q2) |
+| QT-004 | P1 | W8 | Dropped | Animate > Creator starts with None and highlights only the preset the layer really has (Q2) |
 | QT-005 | P1 | W8 | Verified | The Controls panel opens with a line that says what is animated, e.g. "Animating: Scale - 0.0s to 1.0s", listing every animated property (Q2) |
 | QT-006 | P1 | W8 | Verified | Remove animation in the Controls panel removes a preset's record, its keyframes and its controls in one undo step (Q2) |
 | QT-007 | P1 | W8 | Verified | When a preset's keyframes are deleted by hand no orphan controls stay: the panel shows Edited manually with Reset to controls, or drops the preset when nothing of it is left (Q2) |
@@ -937,6 +937,10 @@ Hand-test fixes of PR #31.
 | RA-001 | P1 | W8 | Verified | The timeline clip menu has Group and Ungroup, the same actions as the canvas menu and Ctrl+G / Ctrl+Shift+G (R1) |
 | RA-002 | P1 | W8 | Verified | Grouping again keeps the original group's name when the layers came from one Ungroup, else the first child's name; never a bare "Group" when a name exists (R1) |
 | RA-003 | P1 | W8 | Verified | Group and Ungroup show one success toast ("Grouped 2 layers", "Ungrouped into 2 layers"); a refusal shows one toast with the reason (R1) |
+| RA-004 | P1 | W8 | Verified | One AI importer (AI › Import, next to Copy AI brief) takes a single code animation or a Creator Pack (pasted or chosen), checks it on its own and shows pass, warning or rejected with plain reasons per item (R2) |
+| RA-005 | P1 | W8 | Verified | Every motion item in the importer shows all its controllers, editable before adding; the chosen values become its defaults; a code animation lands in AI › Motion, a pack's items are grouped by kind (R2) |
+| RA-006 | P1 | W8 | Verified | Media › Import holds only media entries (no Import code animation, Import creator pack or Copy library index for AI) (R2) |
+| RA-007 | P1 | W8 | Verified | AI items appear only in the AI category: Templates, Elements, Text, Backgrounds and Animate list no AI items or AI chips; code animations saved in Templates before move to AI › Motion once (R2) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
@@ -956,7 +960,7 @@ Creator Pack items imported, checked and registered in the user's library, and t
 | CP-010 | P1 | W8 | Claimed | The right rail's Controls category shows only what the selected layer really has: a preset's controls grouped by animated property (a Move preset shows only Move controls), a motion layer's params, or for hand or AI keyframes a simple From, To, Duration, Delay, Easing, Loop group per keyframed property; basic first, advanced under More (P3, spec 5.1b) |
 | CP-011 | P1 | W8 | Verified | Changing a control regenerates the preset's keyframes in one undo step; editing those keyframes by hand marks the layer Edited manually: the controls grey out with a note and Reset to controls (with a confirm) (P3, spec 5.3) |
 | CP-012 | P1 | W8 | Verified | Add animation adds one more property animation from the Animate presets; only its controls appear (P3, spec 5.1b) |
-| CP-013 | P1 | W8 | Verified | Copy library index for AI (Import menu) copies a compact text (under 40 KB) of library and creator items, Blocks, Animate presets, effect, filter and transition ids, fonts, canvas size and frame rate (P4, spec 8) |
+| CP-013 | P1 | W8 | Dropped | Copy library index for AI (Import menu) copies a compact text (under 40 KB) of library and creator items, Blocks, Animate presets, effect, filter and transition ids, fonts, canvas size and frame rate (P4, spec 8) |
 | CP-014 | P1 | W8 | Verified | Bad creator packs (endless loop, fetch, NaN expression, missing field, oversized source, unused control) are rejected with their exact reasons and leave the editor and library untouched (P2, spec 10) |
 | CP-015 | P1 | W8 | Verified | Re-importing a pack is idempotent, and deleting a library item does not break a project that used it (P2, spec 10) |
 

@@ -21,9 +21,8 @@ import { confirmDialog, escapeHtml } from './components/modal';
 import { itemName, libraryCommands } from './library-insert';
 import { recent, type LibraryActions } from './library-actions';
 import { myTemplates, type MyTemplate } from './my-templates';
-import { codeTemplates, type CodeTemplate } from './code-templates';
+import type { CodeTemplate } from './code-templates';
 import { isCreatorLibraryId, type CreatorLibrary } from './creator-library';
-import { iconSvg } from './icons';
 import type { EditorSession } from './session';
 import {
   addShapeCommands,
@@ -354,17 +353,15 @@ export function mountLibraryPanels(
   const creator = options.creator;
   const allItems = (): readonly LibraryItem[] =>
     creator ? [...items, ...creator.library.libraryItems()] : items;
+  // R2: AI items (Creator Packs, code animations) show only in the AI
+  // category; these panels list the built-in library. `allItems` still
+  // feeds the insert actions, so an AI card inserts the same way.
   const of = <T extends LibraryItem['type']>(type: T) =>
-    allItems().filter(
+    items.filter(
       (item): item is Extract<LibraryItem, { type: T }> => item.type === type,
     );
-  const byId = (id: string) => allItems().find((item) => item.id === id);
+  const byId = (id: string) => items.find((item) => item.id === id);
   const fromCreator = (id: string) => !!creator && isCreatorLibraryId(id);
-  /** P2: Creator Pack motion items with the user's code templates. */
-  const codeList = (): CodeTemplate[] => [
-    ...codeTemplates.list(),
-    ...(creator?.library.motionTemplates() ?? []),
-  ];
   const name = (value: { en: string; hi: string }) =>
     getLanguage() === 'hi' ? value.hi : value.en;
 
@@ -475,68 +472,6 @@ export function mountLibraryPanels(
           danger: true,
         },
       ).then((yes) => yes && myTemplates.remove(template.id)),
-  });
-  // X4: a code animation template card (click inserts it at the playhead).
-  const codeCard = (template: CodeTemplate): BrowseCard => ({
-    id: template.id,
-    label: template.name,
-    keywords: [template.name, template.category, 'code', template.tier],
-    preview: () => template.thumbnail ?? null,
-    icon: 'code',
-    className: fromCreator(template.id)
-      ? 'library-card code-template-card creator-card'
-      : 'library-card code-template-card',
-    badge: fromCreator(template.id)
-      ? `${t('creator.badge')} · ${template.tier}`
-      : template.tier,
-    data: {
-      codeTemplate: template.id,
-      ...(fromCreator(template.id) ? { creator: 'true' } : {}),
-    },
-    activate: () => options.code?.insert(template),
-    hover: (thumb, on) => options.code?.hover(template, thumb, on),
-    drag: () => ({
-      kind: 'code',
-      id: template.id,
-      name: template.name,
-      thumb: template.thumbnail ?? null,
-    }),
-    menu: (x, y) =>
-      fromCreator(template.id)
-        ? creator!.menu(template.id, x, y)
-        : options.code?.menu(template, x, y),
-  });
-  const codeImportRow = (host: HTMLElement) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'button code-template-import';
-    button.id = 'code-template-import';
-    button.innerHTML = `${iconSvg('export', 16)}<span></span>`;
-    button.querySelector('span')!.textContent = t('code.templateImport');
-    button.onclick = () => options.code?.importFile();
-    host.append(button);
-  };
-  const codeEmpty = {
-    title: t('code.templatesEmpty'),
-    hint: t('code.templatesHint'),
-  };
-  const codePage = (): BrowsePage => ({
-    id: 'templates-code',
-    title: t('code.templates'),
-    search: t('library.search.template'),
-    sections: ({ query }) => {
-      const cards = codeList().map(codeCard);
-      if (query) return searchResults(cards, query);
-      return [
-        { id: 'code-import', layout: 'list', render: codeImportRow },
-        {
-          id: 'code-templates',
-          layout: 'grid',
-          cards: () => cards,
-          empty: codeEmpty,
-        },
-      ];
-    },
   });
   const searchResults = (
     cards: readonly BrowseCard[],
@@ -649,22 +584,13 @@ export function mountLibraryPanels(
     search: t('library.search.template'),
     sections: ({ query }) => {
       const cards = myTemplates.list().map(mineCard);
-      const code = codeList().map(codeCard);
-      if (query) return searchResults([...cards, ...code], query);
+      if (query) return searchResults(cards, query);
       return [
         {
           id: 'mine',
           layout: 'grid',
           cards: () => cards,
           empty: { title: t('templates.myEmpty'), hint: t('templates.myHint') },
-        },
-        {
-          id: 'code',
-          title: t('code.templates'),
-          layout: 'grid',
-          cards: () => code,
-          seeAll: codePage,
-          empty: codeEmpty,
         },
       ];
     },
@@ -677,11 +603,7 @@ export function mountLibraryPanels(
     sections: ({ query }) => {
       if (query)
         return searchResults(
-          [
-            ...allTemplates(),
-            ...myTemplates.list().map(mineCard),
-            ...codeList().map(codeCard),
-          ],
+          [...allTemplates(), ...myTemplates.list().map(mineCard)],
           query,
         );
       return [
@@ -694,17 +616,6 @@ export function mountLibraryPanels(
           seeAll: () => categoryPage(category),
           empty: noTemplates,
         })),
-        // P2: templates from Creator Packs.
-        {
-          id: 'creator',
-          title: t('creator.templates'),
-          layout: 'strip',
-          cards: () =>
-            of('template')
-              .filter((item) => fromCreator(item.id))
-              .map(libraryCard),
-          empty: null,
-        },
         {
           id: 'my',
           title: t('templates.my'),
@@ -712,14 +623,6 @@ export function mountLibraryPanels(
           cards: () => myTemplates.list().map(mineCard),
           seeAll: minePage,
           empty: { title: t('templates.myEmpty'), hint: t('templates.myHint') },
-        },
-        {
-          id: 'code',
-          title: t('code.templates'),
-          layout: 'strip',
-          cards: () => codeList().map(codeCard),
-          seeAll: codePage,
-          empty: codeEmpty,
         },
       ];
     },
@@ -762,15 +665,6 @@ export function mountLibraryPanels(
           layout: 'grid',
           columns: 3,
           cards: () => LINE_PRESETS.map(presetCard),
-        },
-        // P2: shapes from Creator Packs.
-        {
-          id: 'creator',
-          title: t('creator.section'),
-          layout: 'grid',
-          columns: 3,
-          cards: () => shapeCards('creator'),
-          empty: null,
         },
         ...SHAPE_SECTIONS.map((section): BrowseSection => ({
           id: section,
@@ -831,26 +725,6 @@ export function mountLibraryPanels(
       ];
     },
   });
-  const animationsPage = (): BrowsePage => ({
-    id: 'elements-animations',
-    title: t('elements.tile.animations'),
-    search: t('elements.search'),
-    sections: ({ query }) => {
-      const cards = (creator?.library.motionTemplates() ?? []).map(codeCard);
-      if (query) return searchResults(cards, query);
-      return [
-        {
-          id: 'animations',
-          layout: 'grid',
-          cards: () => cards,
-          empty: {
-            title: t('creator.animationsEmpty'),
-            hint: t('creator.animationsHint'),
-          },
-        },
-      ];
-    },
-  });
   const elementsRoot: BrowsePage = {
     id: 'elements',
     title: t('library.elements'),
@@ -899,26 +773,16 @@ export function mountLibraryPanels(
               data: { tile: 'graphics' },
               activate: () => panels.Elements.push(graphicsPage()),
             },
-            // P2: Animations (in its place) lists the Creator Pack motions.
-            ...PLANNED_TILES.map(([key, icon, ledger, wave]): BrowseCard =>
-              key === 'animations'
-                ? {
-                    id: 'tile-animations',
-                    label: t('elements.tile.animations'),
-                    icon: 'animate',
-                    className: 'browse-tile',
-                    data: { tile: 'animations' },
-                    activate: () => panels.Elements.push(animationsPage()),
-                  }
-                : {
-                    id: `tile-${key}`,
-                    label: t(`elements.tile.${key}`),
-                    icon,
-                    className: 'browse-tile',
-                    data: { tile: key },
-                    disabled: later(wave, ledger),
-                  },
-            ),
+            // R2: AI motions live in the AI category, so Animations is
+            // a planned tile again.
+            ...PLANNED_TILES.map(([key, icon, ledger, wave]): BrowseCard => ({
+              id: `tile-${key}`,
+              label: t(`elements.tile.${key}`),
+              icon,
+              className: 'browse-tile',
+              data: { tile: key },
+              disabled: later(wave, ledger),
+            })),
           ],
         },
         {

@@ -8,7 +8,13 @@ import {
   seekKeep,
   showCategory,
 } from './fixtures';
-import { SPIN, SPIN_ID, importPack, panel } from './creator-helpers';
+import {
+  SPIN,
+  SPIN_ID,
+  applyAiPreset,
+  importPack,
+  panel,
+} from './creator-helpers';
 
 // Q3: readable keyframe diamonds; an Anchor (pivot) per layer; Spin turns
 // about it (the centre by default).
@@ -54,12 +60,8 @@ test('[QT-010][QT-011][QT-009] Spin turns a rectangle about its anchor (the cent
   );
   await seekKeep(page, clipStart);
   const rest = centre(await corners(page));
-  // Spin from Animate › Creator: 90 degrees over 1 s about the centre.
-  await openRight(page, 'Animate');
-  await panel(page).locator('.animate-tabs [data-tab="creator"]').click();
-  await panel(page)
-    .locator(`.animate-card[data-creator="true"][data-preset="${SPIN_ID}"]`)
-    .click();
+  // Spin from the AI category: 90 degrees over 1 s about the centre.
+  await applyAiPreset(page, SPIN_ID);
   await expect
     .poll(async () => {
       const layer = (await hook(page)).project.compositions[0]!.layers.find(

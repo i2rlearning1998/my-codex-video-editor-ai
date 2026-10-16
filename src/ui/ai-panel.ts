@@ -41,7 +41,7 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     importButton.type = 'button';
     importButton.className = 'button';
     importButton.id = 'ai-import';
-    importButton.textContent = t('creator.importMenu');
+    importButton.textContent = t('aiImport.button');
     importButton.onclick = () => options.importPack();
     const brief = document.createElement('button');
     brief.type = 'button';

@@ -1474,7 +1474,7 @@
   "command.codeSettings": "एनिमेशन सेटिंग्स",
   "command.codeSaveTemplate": "टेम्पलेट के रूप में सहेजें",
   "command.codeRerender": "फिर से रेंडर करें",
-  "code.savedTemplate": "\"{name}\" मेरे टेम्पलेट में सहेजा गया",
+  "code.savedTemplate": "\"{name}\" AI › मोशन में सहेजा गया",
   "creator.importMenu": "क्रिएटर पैक आयात करें",
   "creator.importTitle": "क्रिएटर पैक आयात करें",
   "creator.sourceLabel": "पैक का टेक्स्ट चिपकाएँ, या .creatorpack.txt या .json फ़ाइल चुनें",
@@ -1602,5 +1602,15 @@
   "brief.copiedPlain": "AI ब्रीफ़ कॉपी हो गया",
   "brief.selectHint": "टेक्स्ट चुना हुआ है: कॉपी करने के लिए Ctrl+C दबाएँ।",
   "toast.grouped": "{count} परतें समूहित की गईं",
-  "toast.ungrouped": "{count} परतों में अलग किया गया"
+  "toast.ungrouped": "{count} परतों में अलग किया गया",
+  "aiImport.title": "AI में आयात करें",
+  "aiImport.button": "आयात करें",
+  "aiImport.sourceLabel": "कोड एनिमेशन (कोड और मेटा) या क्रिएटर पैक (पैक टेक्स्ट या JSON) चिपकाएँ, या फ़ाइल चुनें",
+  "aiImport.placeholder": "कोड एनिमेशन, === PACK === टेक्स्ट या पैक JSON",
+  "aiImport.addToScene": "इसे दृश्य में भी जोड़ें",
+  "aiImport.add": "AI में जोड़ें",
+  "aiImport.codeName": "कोड एनिमेशन",
+  "aiImport.codeRejected": "यह कोड एनिमेशन नहीं जोड़ा जा सकता। नीचे की पंक्तियाँ ठीक करके फिर चिपकाएँ।",
+  "aiImport.codeOk": "{name} जाँच में पास हुआ। नीचे नियंत्रण बदलें, फिर जोड़ें।",
+  "aiImport.checking": "{total} आइटम जाँचे जा रहे हैं…"
 }

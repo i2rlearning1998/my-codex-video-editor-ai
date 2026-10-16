@@ -26,6 +26,8 @@ export interface CreatorEntry {
   readonly thumbnail?: string;
   /** Motion: the meta the runtime validated (its params are the controls). */
   readonly motionMeta?: FreeCodeMeta;
+  /** R2: the controller values chosen when it was imported or saved. */
+  readonly params?: Readonly<Record<string, unknown>>;
   /** Soft-deleted (Restore brings it back). */
   readonly removed?: boolean;
   readonly addedAt: string;
@@ -155,22 +157,27 @@ export class CreatorLibrary {
       ];
     });
   }
-  /** Motion items as code templates (Elements > Animations and My Templates). */
+  /** Motion items (and R2 code compositions, Tier A) as code templates. */
   motionTemplates(): CodeTemplate[] {
     return this.list().flatMap((entry): CodeTemplate[] => {
       const item = entry.item;
-      if (item.type !== 'motion' || !entry.motionMeta) return [];
+      if (!entry.motionMeta) return [];
+      if (item.type !== 'motion' && item.type !== 'composition') return [];
+      const tier = item.type === 'motion' ? item.data.tier : 'A';
       return [
         {
           kind: 'code',
           id: creatorLibraryId(entry.key),
           name: entry.name,
-          category: entry.motionMeta.category,
+          category: entry.motionMeta.category ?? 'code',
           createdAt: entry.addedAt,
-          tier: item.data.tier,
-          source: item.data.source,
+          tier,
+          source:
+            item.type === 'motion'
+              ? item.data.source
+              : JSON.stringify(item.data.spec),
           meta: entry.motionMeta as unknown as Record<string, unknown>,
-          params: {},
+          params: entry.params ?? {},
           ...(entry.thumbnail ? { thumbnail: entry.thumbnail } : {}),
         },
       ];

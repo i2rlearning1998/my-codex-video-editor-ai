@@ -10,12 +10,12 @@ const dialog = (page: Page) => page.locator('.code-import-dialog');
 
 async function openImport(page: Page) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-code').click();
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
   await expect(dialog(page)).toBeVisible();
 }
 async function paste(page: Page, text: string) {
-  await dialog(page).locator('#code-source').fill(text);
+  await dialog(page).locator('#ai-import-source').fill(text);
 }
 
 test.describe('X2 import code animation', () => {
@@ -48,16 +48,15 @@ test.describe('X2 import code animation', () => {
       dialog(page).locator('.code-param[data-param="color"]'),
     ).toBeVisible();
     await expect(dialog(page).locator('#code-param-radius')).toHaveValue('120');
-    await expect(dialog(page).locator('#code-save-template')).toBeChecked();
     const before = (await hook(page)).history.labels.length;
-    await dialog(page).locator('#code-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     await expect(dialog(page)).toBeHidden();
     const state = await hook(page);
     const layer = state.project.compositions[0]!.layers.find((l) => l.code)!;
     expect(layer.code!.tier).toBe('B');
     expect(layer.code!.params).toEqual({ color: '#ff3366', radius: 120 });
     expect(state.history.labels.length).toBe(before + 1);
-    expect(state.history.labels.at(-1)).toBe('Add code animation');
+    expect(state.history.labels.at(-1)).toBe('Insert code template');
     await expect(page.locator('.timeline-clip[data-code="true"]')).toHaveCount(
       1,
     );
@@ -74,13 +73,13 @@ test.describe('X2 import code animation', () => {
     await paste(page, '{\n  "version": 1,\n  "id": oops\n}');
     const issue = dialog(page).locator('#code-errors li').first();
     await expect(issue).toHaveText(/^Line 3: The JSON is not valid.* Fix: /);
-    await expect(dialog(page).locator('#code-add')).toBeDisabled();
+    await expect(dialog(page).locator('#ai-import-add')).toBeDisabled();
     await paste(page, 'export default { meta: { id: "x", duration: 900 } }');
     await expect(dialog(page).locator('#code-errors li').first()).toHaveText(
       /Line 1: .*Fix: /,
     );
-    await expect(dialog(page).locator('#code-add')).toBeDisabled();
-    await dialog(page).locator('#code-cancel').click();
+    await expect(dialog(page).locator('#ai-import-add')).toBeDisabled();
+    await dialog(page).locator('#ai-import-cancel').click();
     expect(
       (await hook(page)).project.compositions[0]!.layers.filter((l) => l.code),
     ).toHaveLength(0);
@@ -106,7 +105,7 @@ test.describe('X2 import code animation', () => {
         );
     }, ORBIT);
     await expect(dialog(page)).toBeVisible();
-    await expect(dialog(page).locator('#code-file-name')).toHaveText(
+    await expect(dialog(page).locator('#ai-import-file-name')).toHaveText(
       'orbit.js',
     );
     await expect(dialog(page).locator('#code-tier')).toHaveText(
@@ -120,7 +119,7 @@ test.describe('X2 import code animation', () => {
       'true',
     );
     await expect(page.locator('#drop-overlay')).toBeHidden();
-    await dialog(page).locator('#code-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     await expect(page.locator('.timeline-clip[data-code="true"]')).toHaveCount(
       1,
     );
@@ -143,7 +142,7 @@ test.describe('X2 import code animation', () => {
       'data-ready',
       'true',
     );
-    await dialog(page).locator('#code-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     await expect(dialog(page)).toBeHidden();
     let state = await hook(page);
     expect(state.project.compositions).toHaveLength(2);
@@ -157,7 +156,7 @@ test.describe('X2 import code animation', () => {
       'Tier A · Native layers',
     );
     await dialog(page).getByLabel('Into this scene').check();
-    await dialog(page).locator('#code-add').click();
+    await dialog(page).locator('#ai-import-add').click();
     await expect(dialog(page)).toBeHidden();
     state = await hook(page);
     const scene = state.project.compositions.find(
@@ -178,8 +177,8 @@ test.describe('X2 import code animation', () => {
   }) => {
     await openImport(page);
     await paste(page, PULSE);
-    await expect(dialog(page).locator('#code-add')).toBeEnabled();
-    await dialog(page).locator('#code-add').click();
+    await expect(dialog(page).locator('#ai-import-add')).toBeEnabled();
+    await dialog(page).locator('#ai-import-add').click();
     await expect(dialog(page)).toBeHidden();
     const before = (await hook(page)).project.compositions[0]!.layers.find(
       (l) => l.code,

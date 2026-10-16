@@ -16,17 +16,16 @@ const codeLayers = async (page: Page) => {
     .layers.filter((l) => l.code);
 };
 
-async function importPulse(page: Page, save = true) {
+async function importPulse(page: Page, _save = true) {
   await showCategory(page, 'Media');
-  await page.locator('#import-menu').click();
-  await page.locator('#import-code').click();
-  await dialog(page).locator('#code-source').fill(PULSE);
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await dialog(page).locator('#ai-import-source').fill(PULSE);
   await expect(dialog(page).locator('#code-thumb')).toHaveAttribute(
     'data-ready',
     'true',
   );
-  if (!save) await dialog(page).locator('#code-save-template').uncheck();
-  await dialog(page).locator('#code-add').click();
+  await dialog(page).locator('#ai-import-add').click();
   await expect(dialog(page)).toBeHidden();
 }
 
