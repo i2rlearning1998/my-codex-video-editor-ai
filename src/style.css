@@ -9115,3 +9115,29 @@ input[type='range'] {
   text-align: center;
   color: var(--color-text-muted);
 }
+.shelf-thumb .library-thumb-frame {
+  position: absolute;
+  inset: 0;
+}
+/* R6: a saved theme's "⋯" (Rename, Delete). */
+.theme-card {
+  position: relative;
+}
+.theme-more {
+  position: absolute;
+  inset-block-start: var(--space-1);
+  inset-inline-end: var(--space-1);
+  inline-size: 28px;
+  block-size: 28px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  border: 1px solid var(--border-subtle);
+}
+.theme-save-message {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: var(--font-size-sm, 12px);
+}

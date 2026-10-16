@@ -1,9 +1,12 @@
 // T1: the Theme panel (left rail Theme category and the right panel's Theme
 // tab). One click applies a theme in one undo step; "Also override manual
-// colors" recolours layers the user coloured by hand too. My themes: the
-// project's saved themes (rename, delete) and Save current as theme; themes
-// from Creator Packs are listed too.
+// colors" recolours layers the user coloured by hand too. R6: one list, My
+// themes (the theme library), with Rename and Delete in a "⋯" menu; Save
+// current as theme needs a name that is not used yet. Creator Pack themes are
+// in the AI category.
 import { t } from '../i18n';
+import { createMenu } from './context-menu';
+import { iconSvg } from './icons';
 import type { Theme } from '../themes/themes';
 
 export interface ThemePanelOptions {
@@ -49,16 +52,69 @@ function preview(theme: Theme): HTMLElement {
 
 export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
   let override = false;
+  let draft = '';
   const prefix = host.id || 'theme';
+  const menuElement = document.createElement('div');
+  menuElement.className = 'media-menu theme-menu';
+  menuElement.id = `${prefix}-menu`;
+  menuElement.hidden = true;
+  document.getElementById(menuElement.id)?.remove();
+  document.body.append(menuElement);
+  const menu = createMenu(menuElement, { report: () => undefined });
+  const closeOutside = (event: PointerEvent) => {
+    if (!menuElement.hidden && !menuElement.contains(event.target as Node))
+      menu.close();
+  };
+  document.addEventListener('pointerdown', closeOutside, true);
+  const taken = (name: string, except?: string) => {
+    const { builtIn, saved } = options.themes();
+    const key = name.trim().toLowerCase();
+    return [...builtIn, ...saved].some(
+      (theme) => theme.id !== except && theme.name.trim().toLowerCase() === key,
+    );
+  };
+  /** Rename in place; Enter or leaving commits once. */
+  const renameField = (card: HTMLElement, theme: Theme) => {
+    const field = document.createElement('input');
+    field.type = 'text';
+    field.className = 'theme-rename-field';
+    field.value = theme.name;
+    field.maxLength = 40;
+    field.setAttribute('aria-label', t('theme.rename'));
+    let done = false;
+    const finish = (commit: boolean) => {
+      if (done) return;
+      done = true;
+      field.onblur = null;
+      const value = field.value.trim();
+      if (commit && value && value !== theme.name) {
+        if (taken(value, theme.id)) {
+          done = false;
+          field.setCustomValidity(t('theme.nameTaken'));
+          field.reportValidity();
+          return;
+        }
+        options.rename(theme.id, value);
+      } else render();
+    };
+    field.onkeydown = (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') finish(true);
+      if (event.key === 'Escape') finish(false);
+    };
+    field.oninput = () => field.setCustomValidity('');
+    field.onblur = () => finish(true);
+    card.querySelector('.theme-name')?.replaceWith(field);
+    field.focus();
+    field.select();
+  };
   const render = () => {
-    const { builtIn, saved, library } = options.themes();
+    const { builtIn, saved } = options.themes();
     const current = options.current();
     const title = document.createElement('h2');
     title.className = 'theme-title';
     title.textContent = t('theme.panel');
-    const now = [...builtIn, ...saved, ...library].find(
-      (item) => item.id === current,
-    );
+    const now = [...builtIn, ...saved].find((item) => item.id === current);
     const line = document.createElement('p');
     line.className = 'theme-current';
     line.textContent = now
@@ -73,7 +129,7 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
     box.onchange = () => (override = box.checked);
     overrideLabel.append(box, document.createTextNode(t('theme.override')));
     const group = (
-      kind: 'builtin' | 'saved' | 'library',
+      kind: 'builtin' | 'saved',
       heading: string,
       items: readonly Theme[],
     ) => {
@@ -100,40 +156,36 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
         apply.onclick = () => options.apply(theme, override);
         card.append(apply);
         if (kind === 'saved') {
-          const rename = document.createElement('button');
-          rename.type = 'button';
-          rename.className = 'button theme-rename';
-          rename.dataset.action = 'theme-rename';
-          rename.textContent = t('theme.rename');
-          rename.onclick = () => {
-            const field = document.createElement('input');
-            field.type = 'text';
-            field.className = 'theme-rename-field';
-            field.value = theme.name;
-            field.maxLength = 40;
-            field.setAttribute('aria-label', t('theme.rename'));
-            const commit = () => {
-              const value = field.value.trim();
-              if (value && value !== theme.name)
-                options.rename(theme.id, value);
-              else render();
-            };
-            field.onkeydown = (event) => {
-              if (event.key === 'Enter') commit();
-              if (event.key === 'Escape') render();
-            };
-            field.onblur = commit;
-            rename.replaceWith(field);
-            field.focus();
-            field.select();
+          const more = document.createElement('button');
+          more.type = 'button';
+          more.className = 'icon-button theme-more';
+          more.dataset.action = 'theme-more';
+          more.setAttribute('aria-label', t('shelf.more'));
+          more.setAttribute('aria-haspopup', 'menu');
+          more.title = t('shelf.more');
+          more.innerHTML = iconSvg('more', 16);
+          more.onclick = (event) => {
+            event.stopPropagation();
+            menu.open(() => [
+              {
+                id: 'theme-rename',
+                label: t('theme.rename'),
+                icon: 'edit',
+                run: () => renameField(card, theme),
+              },
+              {
+                id: 'theme-delete',
+                label: t('theme.delete'),
+                icon: 'delete',
+                divider: true,
+                run: () => options.remove(theme.id),
+              },
+            ]);
+            const box = more.getBoundingClientRect();
+            menuElement.style.left = `${Math.max(8, Math.min(box.left, window.innerWidth - menuElement.offsetWidth - 8))}px`;
+            menuElement.style.top = `${Math.max(8, Math.min(box.bottom + 4, window.innerHeight - menuElement.offsetHeight - 8))}px`;
           };
-          const remove = document.createElement('button');
-          remove.type = 'button';
-          remove.className = 'button theme-delete';
-          remove.dataset.action = 'theme-delete';
-          remove.textContent = t('theme.delete');
-          remove.onclick = () => options.remove(theme.id);
-          card.append(rename, remove);
+          card.append(more);
         }
         grid.append(card);
       }
@@ -146,6 +198,8 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
     saveName.type = 'text';
     saveName.id = `${prefix}-save-name`;
     saveName.maxLength = 40;
+    saveName.required = true;
+    saveName.value = draft;
     saveName.placeholder = t('theme.saveName');
     saveName.setAttribute('aria-label', t('theme.saveName'));
     const save = document.createElement('button');
@@ -153,12 +207,32 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
     save.className = 'button';
     save.id = `${prefix}-save`;
     save.textContent = t('theme.save');
-    save.disabled = !now;
-    save.title = now ? '' : t('theme.saveNeedsTheme');
+    const message = document.createElement('p');
+    message.className = 'theme-save-message';
+    message.id = `${prefix}-save-message`;
+    message.setAttribute('role', 'status');
+    const sync = () => {
+      const name = saveName.value.trim();
+      const used = !!name && taken(name);
+      save.disabled = !name || used;
+      message.textContent = used ? t('theme.nameTaken') : '';
+      message.hidden = !used;
+      save.title = !name ? t('theme.nameRequired') : '';
+    };
+    saveName.oninput = () => {
+      draft = saveName.value;
+      sync();
+    };
+    saveName.onkeydown = (event) => {
+      if (event.key === 'Enter' && !save.disabled) save.click();
+    };
     save.onclick = () => {
-      const name = saveName.value.trim() || `${now?.name ?? ''} copy`;
+      const name = saveName.value.trim();
+      if (!name || taken(name)) return;
+      draft = '';
       options.save(name);
     };
+    sync();
     saveRow.append(saveName, save);
     host.replaceChildren(
       title,
@@ -167,12 +241,18 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
       group('builtin', t('theme.builtIn'), builtIn),
       group('saved', t('theme.mine'), saved),
       saveRow,
-      ...(library.length
-        ? [group('library', t('theme.fromPacks'), library)]
-        : []),
+      message,
     );
   };
   const unsubscribe = options.onChange(render);
   render();
-  return { render, dispose: unsubscribe };
+  return {
+    render,
+    dispose: () => {
+      unsubscribe();
+      document.removeEventListener('pointerdown', closeOutside, true);
+      menu.close();
+      menuElement.remove();
+    },
+  };
 }

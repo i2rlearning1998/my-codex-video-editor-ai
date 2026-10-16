@@ -1654,5 +1654,14 @@
   "mine.kind.annotation": "टिप्पणी",
   "mine.kind.sticker": "स्टिकर",
   "mine.kind.group": "समूह",
-  "mine.kind.scene": "दृश्य"
+  "mine.kind.scene": "दृश्य",
+  "theme.nameTaken": "यह नाम पहले से है",
+  "theme.nameRequired": "पहले नाम लिखें",
+  "theme.nameTooLong": "थीम का नाम अधिकतम 40 अक्षर का हो",
+  "theme.storageUnavailable": "इस ब्राउज़र में थीम संग्रह उपलब्ध नहीं है",
+  "theme.appliedKept": "{name} लागू हुई। {count} हाथ से चुने रंग रखे गए।",
+  "theme.appliedOverridden": "{name} लागू हुई। {count} हाथ से चुने रंग बदले गए।",
+  "theme.savedToast": "थीम {name} सहेजी गई",
+  "theme.renamedToast": "नाम बदलकर {name} किया गया",
+  "theme.deletedToast": "थीम {name} हटाई गई"
 }

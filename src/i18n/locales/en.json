@@ -1654,5 +1654,14 @@
   "mine.kind.annotation": "Annotation",
   "mine.kind.sticker": "Sticker",
   "mine.kind.group": "Group",
-  "mine.kind.scene": "Scene"
+  "mine.kind.scene": "Scene",
+  "theme.nameTaken": "Name already used",
+  "theme.nameRequired": "Type a name first",
+  "theme.nameTooLong": "A theme name is at most 40 characters",
+  "theme.storageUnavailable": "Theme storage is not available in this browser",
+  "theme.appliedKept": "{name} applied. {count} manual colours kept.",
+  "theme.appliedOverridden": "{name} applied. {count} manual colours overridden.",
+  "theme.savedToast": "Saved theme {name}",
+  "theme.renamedToast": "Renamed to {name}",
+  "theme.deletedToast": "Deleted theme {name}"
 }

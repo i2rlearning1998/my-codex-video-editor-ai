@@ -29,14 +29,14 @@ import {
   BUILT_IN_THEMES,
   MOTION_STYLES,
   applyThemeCommands,
+  isManualColor,
   projectThemes,
-  saveThemeCommand,
-  themeSchema,
-  updateThemeCommands,
   withPaletteSlots,
   type Theme,
+  type ThemeLayer,
   type ThemeScene,
 } from '../themes/themes';
+import { ThemeError, createThemeLibrary } from '../themes/library';
 import {
   MOTION_SETTINGS,
   applyMotion,
@@ -3291,27 +3291,35 @@ export function mountEditorShell(
   // T1: themes. Built-in, the project's own (reserved markers on the first
   // scene) and My library's (saved themes under theme/<id>, and Creator Pack
   // theme items).
+  // R6: My themes live in the theme library (src/themes/library.ts,
+  // Codex): saved, renamed and deleted there, never as undo steps. Themes
+  // from Creator Packs stay in the AI category.
   let libraryThemes: Theme[] = [];
   const themeListeners = new Set<() => void>();
   const themeChanged = () => {
     for (const listener of [...themeListeners]) listener();
   };
-  void mediaStore.then(async (store) => {
-    if (!store) return;
-    const keys = (await store.keys()).filter((key) => key.startsWith('theme/'));
-    const found: Theme[] = [];
-    for (const key of keys)
-      try {
-        const blob = await store.read(key);
-        const parsed = themeSchema.safeParse(
-          blob ? JSON.parse(await blob.text()) : null,
-        );
-        if (parsed.success) found.push(parsed.data);
-      } catch {
-        // A damaged file is skipped.
-      }
-    libraryThemes = found;
+  const themeLibrary = mediaStore.then((store) =>
+    store ? createThemeLibrary(store) : null,
+  );
+  const builtInThemeIds = new Set(BUILT_IN_THEMES.map((theme) => theme.id));
+  const refreshThemes = async () => {
+    const library = await themeLibrary;
+    if (!library) return;
+    libraryThemes = (await library.listThemes()).filter(
+      (theme) => !builtInThemeIds.has(theme.id),
+    );
     themeChanged();
+  };
+  // After a project opens: old project themes move into the library once.
+  const migrateProjectThemes = () =>
+    void themeLibrary
+      .then((library) => library?.migrateThemes(engine))
+      .then(refreshThemes)
+      .catch(reportError);
+  migrateProjectThemes();
+  engine.on('state:changed', (event) => {
+    if (event.reason === 'load') setTimeout(migrateProjectThemes, 0);
   });
   const creatorThemes = (): Theme[] =>
     creatorLibrary.list().flatMap((entry): Theme[] =>
@@ -3327,17 +3335,11 @@ export function mountEditorShell(
     );
   const firstScene = () =>
     engine.state.compositions[0] as unknown as ThemeScene;
-  const themeLists = () => {
-    const saved = projectThemes(firstScene().markers).saved;
-    const savedIds = new Set(saved.map((item) => item.id));
-    return {
-      builtIn: BUILT_IN_THEMES,
-      saved,
-      library: [...libraryThemes, ...creatorThemes()].filter(
-        (item) => !savedIds.has(item.id),
-      ),
-    };
-  };
+  const themeLists = () => ({
+    builtIn: BUILT_IN_THEMES,
+    saved: libraryThemes,
+    library: creatorThemes(),
+  });
   const currentThemeId = () => projectThemes(firstScene().markers).current;
   const themeById = (id: string | null) => {
     if (!id) return null;
@@ -3349,84 +3351,120 @@ export function mountEditorShell(
     );
   };
   const currentTheme = () => themeById(currentThemeId());
-  const writeLibraryTheme = async (theme: Theme | null, id: string) => {
-    const store = await mediaStore;
-    if (!store) return;
-    if (theme)
-      await store.write(
-        `theme/${id}`,
-        new Blob([JSON.stringify(theme)], { type: 'application/json' }),
-      );
-    else await store.remove(`theme/${id}`);
-    libraryThemes = [
-      ...libraryThemes.filter((item) => item.id !== id),
-      ...(theme ? [theme] : []),
-    ];
-    themeChanged();
+  /** A theme the library does not hold (a Creator Pack theme), applied the
+   *  same way in one step, with the same counts. */
+  const applyThemeHere = (theme: Theme, override: boolean) => {
+    const result = { changed: 0, keptManual: 0, overridden: 0 };
+    const visit = (layers: readonly ThemeLayer[]) => {
+      for (const layer of layers) {
+        if (
+          (layer.type === 'text' || layer.type === 'shape') &&
+          isManualColor(layer, 'fill')
+        ) {
+          if (override) result.overridden++;
+          else result.keptManual++;
+        }
+        visit(layer.children);
+      }
+    };
+    for (const scene of engine.state.compositions)
+      visit(scene.layers as unknown as ThemeLayer[]);
+    engine.commands.transaction(t('theme.applyStep'), [
+      {
+        type: 'SET_PROJECT_BACKGROUND',
+        color: theme.palette.background,
+      } as Command,
+      ...(applyThemeCommands(
+        engine.state.compositions as unknown as ThemeScene[],
+        theme,
+        { override },
+      ) as unknown as Command[]),
+    ]);
+    return result;
   };
+  const themeError = (error: unknown) =>
+    error instanceof ThemeError
+      ? new Error(
+          error.code === 'NAME_TAKEN'
+            ? t('theme.nameTaken')
+            : error.code === 'NAME_REQUIRED'
+              ? t('theme.nameRequired')
+              : error.code === 'NAME_TOO_LONG'
+                ? t('theme.nameTooLong')
+                : error.message,
+        )
+      : error;
   const applyTheme = (theme: Theme, override: boolean) =>
-    safely(() => {
+    safely(async () => {
       session.setPlaying(false);
-      engine.commands.transaction(t('theme.applyStep'), [
-        {
-          type: 'SET_PROJECT_BACKGROUND',
-          color: theme.palette.background,
-        } as Command,
-        ...(applyThemeCommands(
-          engine.state.compositions as unknown as ThemeScene[],
-          theme,
-          { previous: currentTheme(), override },
-        ) as unknown as Command[]),
-      ]);
-      showToast(t('theme.applied', { name: theme.name }), 'success');
+      const library = await themeLibrary;
+      const result =
+        library &&
+        (builtInThemeIds.has(theme.id) ||
+          libraryThemes.some((item) => item.id === theme.id))
+          ? await library.applyTheme(engine, theme.id, {
+              overrideManual: override,
+            })
+          : applyThemeHere(theme, override);
+      showToast(
+        result.overridden
+          ? t('theme.appliedOverridden', {
+              name: theme.name,
+              count: String(result.overridden),
+            })
+          : result.keptManual
+            ? t('theme.appliedKept', {
+                name: theme.name,
+                count: String(result.keptManual),
+              })
+            : t('theme.applied', { name: theme.name }),
+        'success',
+      );
     });
   const themeOptions = {
     themes: themeLists,
     current: currentThemeId,
     apply: applyTheme,
     save: (name: string) =>
-      safely(() => {
-        const base = currentTheme();
-        if (!base) return;
-        const theme: Theme = {
-          ...base,
-          id: `my-${Date.now().toString(36)}`,
-          name: name.slice(0, 40),
-        };
-        engine.commands.transaction(t('theme.saveStep'), [
-          saveThemeCommand(firstScene().id, theme) as unknown as Command,
-        ]);
-        void writeLibraryTheme(theme, theme.id).catch(reportError);
+      safely(async () => {
+        const library = await themeLibrary;
+        if (!library) throw new Error(t('theme.storageUnavailable'));
+        const theme = await library
+          .saveTheme(name, engine.state)
+          .catch((error: unknown) => {
+            throw themeError(error);
+          });
+        await refreshThemes();
+        showToast(t('theme.savedToast', { name: theme.name }), 'success');
       }),
     rename: (id: string, name: string) =>
-      safely(() => {
-        const theme = projectThemes(firstScene().markers).saved.find(
-          (item) => item.id === id,
-        );
-        if (!theme) return;
-        const next = { ...theme, name: name.slice(0, 40) };
-        engine.commands.transaction(
-          t('theme.renameStep'),
-          updateThemeCommands(firstScene(), id, next) as unknown as Command[],
-        );
-        void writeLibraryTheme(next, id).catch(reportError);
+      safely(async () => {
+        const library = await themeLibrary;
+        if (!library) throw new Error(t('theme.storageUnavailable'));
+        const theme = await library
+          .renameTheme(id, name)
+          .catch(async (error: unknown) => {
+            await refreshThemes();
+            throw themeError(error);
+          });
+        await refreshThemes();
+        showToast(t('theme.renamedToast', { name: theme.name }), 'success');
       }),
     remove: (id: string) =>
-      safely(() => {
-        engine.commands.transaction(
-          t('theme.deleteStep'),
-          updateThemeCommands(firstScene(), id, null) as unknown as Command[],
-        );
-        void writeLibraryTheme(null, id).catch(reportError);
+      safely(async () => {
+        const library = await themeLibrary;
+        if (!library) throw new Error(t('theme.storageUnavailable'));
+        const name = libraryThemes.find((item) => item.id === id)?.name ?? '';
+        await library.deleteTheme(id);
+        await refreshThemes();
+        showToast(t('theme.deletedToast', { name }), 'info');
       }),
     onChange: (listener: () => void) => {
       themeListeners.add(listener);
       const offEngine = engine.on('state:changed', listener);
-      const offLibrary = creatorLibrary.onChange(listener);
       return () => {
         themeListeners.delete(listener);
         offEngine();
-        offLibrary();
       };
     },
   };

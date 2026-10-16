@@ -950,6 +950,9 @@ Hand-test fixes of PR #31.
 | RA-014 | P1 | W8 | Verified | A left-rail category My Templates on the shared library panel replaces the My Templates sub-category of Templates; old saved scenes move into it (R5) |
 | RA-015 | P1 | W8 | Verified | Canvas and timeline right-click offer Save to My Templates with a kind submenu (Shape, Text, Background, Animation, Video, Image, Annotation, Sticker); several layers save as one Group item; nothing selected (or the scenes strip) saves the scene; keyframes and controls are kept; a toast "Saved to My Templates › Kind" has Open (R5) |
 | RA-016 | P1 | W8 | Verified | My Templates tabs come from saved kinds only; Add to scene places a copy like a library item in one undo step; rename, move, details and delete never touch placed layers; items persist in My library across a reload and are never undo steps (R5) |
+| RA-017 | P1 | W8 | Verified | Applying a theme keeps hand-picked colours unless Also override manual colors is ticked; the toast says how many were kept or overridden ("Playful Pop applied. 2 manual colours kept.") (R6, theme library by Codex) |
+| RA-018 | P1 | W8 | Verified | The Theme panel has one My themes list (no second My library list); Save current as theme is disabled until named and says "Name already used"; save, rename and delete go to the theme library with toasts and never create or consume undo steps (R6) |
+| RA-019 | P1 | W8 | Verified | Rename and Delete of a saved theme are in a "⋯" menu (tooltip More options); five rounds of save, rename and delete raise no error (R6) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
