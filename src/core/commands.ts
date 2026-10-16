@@ -1,3 +1,4 @@
+import { markManualColor, clearManualColor } from './manual-color';
 import { isSceneTransitionMarker } from './scene-transitions';
 import { z } from 'zod';
 import {
@@ -375,6 +376,7 @@ export const commandSchema = z.discriminatedUnion('type', [
         z.object({ kind: z.literal('property'), key: idSchema }).strict(),
       ]),
       property: propertySchema,
+      colorSource: z.enum(['manual', 'theme']).optional(),
     })
     .strict(),
   z.object({ type: z.literal('ADD_ASSET'), asset: assetSchema }).strict(),
@@ -926,6 +928,12 @@ export function applyCommand(project: Project, command: Command): void {
         const current = layer.properties[command.target.key];
         if (current && current.type !== command.property.type)
           throw new Error('Property type cannot change');
+        if (command.property.type === 'color') {
+          if (command.colorSource === 'theme')
+            clearManualColor(layer, command.target.key);
+          else if (JSON.stringify(current) !== JSON.stringify(command.property))
+            markManualColor(layer, command.target.key);
+        }
         layer.properties[command.target.key] = command.property;
       } else {
         const key = command.target.key;

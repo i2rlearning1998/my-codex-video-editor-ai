@@ -294,6 +294,30 @@ export class EditorEngine {
     return freeze(draft);
   }
 
+  /** One-time persisted-theme migration: remove only legacy theme payload markers,
+   * including history snapshots, so undo cannot resurrect duplicate storage.
+   * Call after the library write succeeds, outside engine event callbacks. */
+  removeLegacyThemeMarkers(): void {
+    this.#exclusive(() => {
+      const clean = (
+        snapshot: DeepReadonly<Project>,
+      ): DeepReadonly<Project> => {
+        const draft = structuredClone(snapshot) as unknown as Project;
+        for (const scene of draft.compositions)
+          scene.markers = scene.markers.filter(
+            (marker) => !marker.label.startsWith('aive:theme '),
+          );
+        return freeze(validateProject(draft));
+      };
+      this.#state = clean(this.#state);
+      for (const entry of [...this.#undo, ...this.#redo]) {
+        entry.before = clean(entry.before);
+        entry.after = clean(entry.after);
+      }
+      this.#notify('library');
+    });
+  }
+
   /** Explicit document/session boundary, never an edit or an undoable command. */
   load(project: unknown): void {
     this.#exclusive(() => {

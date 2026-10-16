@@ -1,16 +1,6 @@
-// T1: themes. A theme is a palette (background, primary, accent, text and an
-// optional extra colour), a heading and a body font, a motion style and an
-// optional caption style. Applying one recolours the project in one undo step
-// (applyThemeCommands). Layers remember a palette slot in the string property
-// `paletteSlot`, so a later theme recolours them; layers without a slot keep
-// their colours unless the user asks to override manual colours.
-//
-// The project keeps its themes with no schema change (D-254): one reserved
-// marker per theme on the first scene ('aive:theme ' + compact JSON, within
-// the 256-character marker label limit) and one for the current theme
-// ('aive:theme-current <id>'). Reserved markers are never drawn, snapped to
-// or counted in a scene's length.
 import { z } from 'zod';
+import { isManualColor } from '../core/manual-color';
+export { markManualColor, isManualColor } from '../core/manual-color';
 
 export const MOTION_STYLES = {
   calm: { easing: 'ease-in-out', durationScale: 1.3 },
@@ -258,17 +248,6 @@ const property = (type: string, value: unknown) => ({
   keyframes: [],
   constraints: [],
 });
-const lower = (value: unknown) =>
-  typeof value === 'string' ? value.toLowerCase() : value;
-
-/**
- * The commands of one "Apply theme" step: scene backgrounds, text colours and
- * fonts, slot fills, and the project's theme markers. `previous` (the theme
- * applied before, if any) tells which colours the user never changed: a text
- * layer without a slot whose colour is still the previous theme's text colour
- * follows the new one (with no previous theme, all text follows). `override`
- * recolours every text and shape layer.
- */
 export function applyThemeCommands(
   scenes: readonly ThemeScene[],
   next: Theme,
@@ -276,7 +255,7 @@ export function applyThemeCommands(
 ): Command[] {
   const commands: Command[] = [];
   const { palette, fonts } = next;
-  const previousText = lower(options.previous?.palette.text);
+
   for (const scene of scenes) {
     commands.push({
       type: 'SET_COMPOSITION_BACKGROUND',
@@ -290,6 +269,7 @@ export function applyThemeCommands(
         layerId,
         target: { kind: 'property', key },
         property: property(type, value),
+        colorSource: 'theme',
       });
     const visit = (layers: readonly ThemeLayer[]) => {
       for (const layer of layers) {
@@ -306,22 +286,20 @@ export function applyThemeCommands(
               ? fonts.heading
               : fonts.body,
           );
-          // With no theme before, every text follows the first one; after
-          // that, only text still in the previous theme's text colour.
-          const follows =
-            slot !== null ||
-            options.override ||
-            previousText === undefined ||
-            lower(fill?.value) === previousText;
-          if (fill?.type === 'color' && follows) {
+          if (
+            fill?.type === 'color' &&
+            (!isManualColor(layer, 'fill') || options.override)
+          ) {
             set(layer.id, 'fill', 'color', colorOf(palette, slot ?? 'text'));
             if (!slot) set(layer.id, 'paletteSlot', 'string', 'text');
           }
         } else if (layer.type === 'shape' && fill?.type === 'color') {
-          if (slot) set(layer.id, 'fill', 'color', colorOf(palette, slot));
-          else if (options.override) {
-            set(layer.id, 'fill', 'color', palette.primary);
-            set(layer.id, 'paletteSlot', 'string', 'primary');
+          if (
+            (slot || options.override) &&
+            (!isManualColor(layer, 'fill') || options.override)
+          ) {
+            set(layer.id, 'fill', 'color', colorOf(palette, slot ?? 'primary'));
+            if (!slot) set(layer.id, 'paletteSlot', 'string', 'primary');
           }
         }
         visit(layer.children);
@@ -332,7 +310,6 @@ export function applyThemeCommands(
   // The project's theme markers live on the first scene.
   const first = scenes[0];
   if (first) {
-    const builtIn = BUILT_IN_THEMES.some((item) => item.id === next.id);
     for (const marker of first.markers) {
       if (marker.label.startsWith(CURRENT_THEME_PREFIX))
         commands.push({
@@ -350,44 +327,25 @@ export function applyThemeCommands(
         label: `${CURRENT_THEME_PREFIX}${next.id}`,
       },
     });
-    // A theme from outside the editor (a Creator Pack) is copied into the
-    // project, so the project never needs My library.
-    const saved = projectThemes(first.markers).saved;
-    if (!builtIn && !saved.some((item) => item.id === next.id))
-      commands.push(saveThemeCommand(first.id, next));
   }
   return commands;
 }
-export function saveThemeCommand(compositionId: string, value: Theme): Command {
-  return {
-    type: 'ADD_MARKER',
-    compositionId,
-    marker: {
-      id: `theme-${value.id}`,
-      time: 0,
-      label: encodeTheme(value),
-    },
-  };
-}
-/** Replaces a saved theme's marker (rename) or removes it (null). */
-export function updateThemeCommands(
-  first: ThemeScene,
-  id: string,
-  value: Theme | null,
-): Command[] {
-  const marker = first.markers.find(
-    (item) => decodeTheme(item.label)?.id === id,
+/** @deprecated Use createThemeLibrary(store).saveTheme; marker writes are disabled. */
+export function saveThemeCommand(
+  _compositionId: string,
+  _value: Theme,
+): Command {
+  throw new Error(
+    'Use the theme library saveTheme API; themes are not project edits',
   );
-  if (!marker) return [];
-  return value
-    ? [
-        {
-          type: 'UPDATE_MARKER',
-          compositionId: first.id,
-          marker: { ...marker, label: encodeTheme(value) },
-        },
-      ]
-    : [{ type: 'DELETE_MARKER', compositionId: first.id, markerId: marker.id }];
+}
+/** @deprecated Use the library renameTheme/deleteTheme APIs. */
+export function updateThemeCommands(
+  _first: ThemeScene,
+  _id: string,
+  _value: Theme | null,
+): Command[] {
+  throw new Error('Use the theme library renameTheme/deleteTheme APIs');
 }
 
 /**
