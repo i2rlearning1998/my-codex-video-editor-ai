@@ -947,6 +947,9 @@ Hand-test fixes of PR #31.
 | RA-011 | P1 | W8 | Verified | Saving, renaming, moving and deleting library items in Media, AI and My Templates never create or consume undo steps; Undo and Redo never bring back or remove a library item (R3) |
 | RA-012 | P1 | W8 | Verified | Every library card shows a 16:9 thumbnail through one thumbnail adapter; motion and preset cards play a short looping preview on hover, one card at a time (R3) |
 | RA-013 | P1 | W8 | Verified | Media and AI are rebuilt on the shared panel; Media keeps import, the drop zone, sort, details and folders (as tabs); AI has Import and Copy AI brief and "⋯ › Delete" on every item (R4) |
+| RA-014 | P1 | W8 | Verified | A left-rail category My Templates on the shared library panel replaces the My Templates sub-category of Templates; old saved scenes move into it (R5) |
+| RA-015 | P1 | W8 | Verified | Canvas and timeline right-click offer Save to My Templates with a kind submenu (Shape, Text, Background, Animation, Video, Image, Annotation, Sticker); several layers save as one Group item; nothing selected (or the scenes strip) saves the scene; keyframes and controls are kept; a toast "Saved to My Templates › Kind" has Open (R5) |
+| RA-016 | P1 | W8 | Verified | My Templates tabs come from saved kinds only; Add to scene places a copy like a library item in one undo step; rename, move, details and delete never touch placed layers; items persist in My library across a reload and are never undo steps (R5) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 

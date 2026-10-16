@@ -85,6 +85,7 @@ import {
   type TimingPreview,
 } from './timeline-model';
 import { iconSvg } from './icons';
+import { SAVE_KINDS } from './my-library';
 import { transitionFocus } from './transition-focus';
 import { createNumberField, syncNumberField } from './components/number-field';
 
@@ -2305,6 +2306,19 @@ export function mountTimeline(
         case 'audio-menu':
           showAudioMenu();
           return;
+        case 'save-mine':
+          showSaveMenu();
+          return;
+        case 'save-mine-kind':
+        case 'save-mine-group':
+          menu.hidden = true;
+          root.dispatchEvent(
+            new CustomEvent('timeline-save-mine', {
+              detail: target.dataset.kind ?? 'group',
+              bubbles: true,
+            }),
+          );
+          return;
         case 'menu-back':
           showMainMenu();
           return;
@@ -3576,12 +3590,20 @@ export function mountTimeline(
     if (!item || submenu?.contains(item)) return;
     window.clearTimeout(subOpen);
     const action = item.dataset.action;
-    if (action === 'audio-menu' || action === 'speed') {
+    if (
+      action === 'audio-menu' ||
+      action === 'speed' ||
+      action === 'save-mine'
+    ) {
       window.clearTimeout(subClose);
       if (item.getAttribute('aria-expanded') === 'true') return;
       subOpen = window.setTimeout(
         () =>
-          action === 'speed' ? showSpeedMenu(false) : showAudioMenu(false),
+          action === 'speed'
+            ? showSpeedMenu(false)
+            : action === 'save-mine'
+              ? showSaveMenu(false)
+              : showAudioMenu(false),
         150,
       );
     } else if (submenu) {
@@ -3607,6 +3629,16 @@ export function mountTimeline(
     if (clipMenuKind() === 'video') items.push(commandItem('detach-audio'));
     openSub('audio-menu', items, focus);
   };
+  const showSaveMenu = (focus = true) =>
+    openSub(
+      'save-mine',
+      SAVE_KINDS.map((kind) => {
+        const item = menuItem(t(`mine.kind.${kind}`), 'save-mine-kind');
+        item.dataset.kind = kind;
+        return item;
+      }),
+      focus,
+    );
   // J14: the menu works from the keyboard: Up and Down move (skipping
   // disabled entries), Home and End, Right opens Audio, Left goes back.
   menu.addEventListener('keydown', (event) => {
@@ -3659,6 +3691,14 @@ export function mountTimeline(
     if (roots.length > 1) section.push(commandItem('group'));
     if (roots.length && roots.every((layer) => layer.type === 'group'))
       section.push(commandItem('ungroup'));
+    // R5: Save to My Templates, by kind; several layers are one Group item.
+    if (roots.length > 1)
+      section.push(menuItem(t('mine.saveGroup'), 'save-mine-group'));
+    else if (roots.length) {
+      const save = menuItem(`${t('mine.save')} ›`, 'save-mine');
+      save.setAttribute('aria-haspopup', 'menu');
+      section.push(save);
+    }
     const shown = new Set(
       section.flatMap((item) =>
         (item as HTMLElement).dataset.command

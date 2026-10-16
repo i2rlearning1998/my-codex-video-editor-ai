@@ -39,6 +39,8 @@ import {
   setAsBackground,
   setLocked,
 } from './layer-actions';
+import { SAVE_KINDS, type MineKind } from './my-library';
+import { selectionRoots } from './selection-context';
 
 /** H3: what the canvas menu reaches outside the Command Bus. */
 export interface CanvasMenuHooks {
@@ -62,6 +64,8 @@ export interface CanvasMenuHooks {
   readonly deleteScene?: () => void;
   /** I2: saves this scene to My Templates (in this browser). */
   readonly saveAsTemplate?: () => void;
+  /** R5: saves the selection to My Templates as one item of a kind. */
+  readonly saveToMine?: (kind: MineKind) => void;
   /** P1: a code layer's own actions. */
   readonly code?: {
     readonly edit: (layerId: string) => void;
@@ -396,6 +400,32 @@ export function canvasMenuEntries(
       icon: 'info',
       run: hooks.info,
     });
+  // R5: Save to My Templates, by kind (several layers are one Group item).
+  if (hooks.saveToMine) {
+    const save = hooks.saveToMine;
+    entries.push(
+      selectionRoots(session.source, session.selectedIds).length > 1
+        ? {
+            id: 'save-to-mine',
+            label: t('mine.saveGroup'),
+            icon: 'folder',
+            divider: true,
+            run: () => save('group'),
+          }
+        : {
+            id: 'save-to-mine',
+            label: t('mine.save'),
+            icon: 'folder',
+            divider: true,
+            submenu: () =>
+              SAVE_KINDS.map((kind) => ({
+                id: `save-to-mine-${kind}`,
+                label: t(`mine.kind.${kind}`),
+                run: () => save(kind),
+              })),
+          },
+    );
+  }
   entries.push({
     id: 'comment',
     label: t('command.comment'),
@@ -456,7 +486,7 @@ function sceneMenuEntries(
       ? [
           {
             id: 'save-as-template',
-            label: t('myTemplates.save'),
+            label: t('mine.saveScene'),
             icon: 'templates',
             run: hooks.saveAsTemplate,
           },

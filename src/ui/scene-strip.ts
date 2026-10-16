@@ -149,7 +149,7 @@ export function mountSceneStrip(options: {
       },
       {
         id: 'strip-save-template',
-        label: t('myTemplates.save'),
+        label: t('mine.saveScene'),
         icon: 'templates',
         divider: true,
         run: () => options.saveAsTemplate(id),

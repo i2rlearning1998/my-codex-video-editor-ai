@@ -543,19 +543,8 @@ export function mountLibraryPanels(
         (item) =>
           !chip || item.data.subcategory === chip || item.tags.includes(chip),
       );
-      // The user's own templates saved into this category come first.
-      const cards = [
-        ...(chip
-          ? []
-          : myTemplates
-              .list()
-              .filter(
-                (mine) =>
-                  category.id === 'all' || mine.category === category.id,
-              )
-              .map(mineCard)),
-        ...list.map(libraryCard),
-      ];
+      // R5: the user's own templates are in My Templates (left rail).
+      const cards = list.map(libraryCard);
       if (query) return searchResults(cards, query);
       const ids = new Set(inCategory(category.id).map((item) => item.id));
       return [
@@ -578,34 +567,13 @@ export function mountLibraryPanels(
       ];
     },
   });
-  const minePage = (): BrowsePage => ({
-    id: 'templates-my',
-    title: t('templates.my'),
-    search: t('library.search.template'),
-    sections: ({ query }) => {
-      const cards = myTemplates.list().map(mineCard);
-      if (query) return searchResults(cards, query);
-      return [
-        {
-          id: 'mine',
-          layout: 'grid',
-          cards: () => cards,
-          empty: { title: t('templates.myEmpty'), hint: t('templates.myHint') },
-        },
-      ];
-    },
-  });
   const templatesRoot: BrowsePage = {
     id: 'templates',
     title: t('library.templates'),
     search: t('library.search.template'),
     status: () => status,
     sections: ({ query }) => {
-      if (query)
-        return searchResults(
-          [...allTemplates(), ...myTemplates.list().map(mineCard)],
-          query,
-        );
+      if (query) return searchResults(allTemplates(), query);
       return [
         recentSection(TEMPLATE_RECENT, templateCard),
         ...taxonomy.map((category): BrowseSection => ({
@@ -616,14 +584,6 @@ export function mountLibraryPanels(
           seeAll: () => categoryPage(category),
           empty: noTemplates,
         })),
-        {
-          id: 'my',
-          title: t('templates.my'),
-          layout: 'strip',
-          cards: () => myTemplates.list().map(mineCard),
-          seeAll: minePage,
-          empty: { title: t('templates.myEmpty'), hint: t('templates.myHint') },
-        },
       ];
     },
   };

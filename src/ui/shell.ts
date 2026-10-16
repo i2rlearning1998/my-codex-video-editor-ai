@@ -163,7 +163,8 @@ import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
 import { addShape, addShapeCommands, type ShapePreset } from './shapes';
-import { myTemplates } from './my-templates';
+import { myTemplates, templateFromScene } from './my-templates';
+import { groupNameFor } from './ungroup';
 import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
@@ -177,7 +178,13 @@ import {
 } from '../audio/tts/commands';
 import { wordmarkHtml } from '../brand/brand';
 import { mountDrawPalette, type DrawPalette } from './draw-palette';
-import { openSaveTemplate } from './save-template';
+import {
+  MyLibrary,
+  mineCommands,
+  type MineItem,
+  type MineKind,
+} from './my-library';
+import { mountMyTemplatesPanel } from './my-templates-panel';
 import { scenePosterUrl } from './scene-poster';
 import { mountContextToolbar } from './context-toolbar';
 import { CropTool } from './crop-tool';
@@ -264,6 +271,8 @@ const RAIL_CATEGORIES = [
   'Audio',
   // Q4: everything imported from Creator Packs.
   'AI',
+  // R5: the user's own saved elements and scenes.
+  'MyTemplates',
   // T1: one-click themes.
   'Theme',
 ] as const;
@@ -277,6 +286,7 @@ const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
   Scene: 'layers',
   Record: 'mic',
   AI: 'magic',
+  MyTemplates: 'folder',
   Theme: 'color',
 };
 export interface ShellActions {
@@ -362,6 +372,7 @@ export function mountEditorShell(
         <div id="library-audio" data-rail-panel="Audio" hidden></div>
         <div id="library-record" data-rail-panel="Record" hidden></div>
         <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div>
+        <div id="library-mine" class="mine-panel" data-rail-panel="MyTemplates" hidden></div>
         <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
@@ -517,6 +528,16 @@ export function mountEditorShell(
   const codeCache = new FrameCache(mediaStore);
   // P2: My library (Creator Pack items), beside My Templates.
   const creatorLibrary = new CreatorLibrary(mediaStore);
+  // R5: My Templates, the user's own saved elements and scenes (this
+  // browser, not the project, never an undo step). Old scene templates in
+  // localStorage move in once.
+  const myLibrary = new MyLibrary(mediaStore, () => ({
+    list: myTemplates.list(),
+    clear: () => {
+      for (const template of myTemplates.list())
+        myTemplates.remove(template.id);
+    },
+  }));
   const codeBaker = new CodeBaker(codeCache, openCodeSession);
   const codeOf = (layerId: string): CodeData | null => {
     const find = (
@@ -1239,12 +1260,29 @@ export function mountEditorShell(
   };
   /** Download selection: the selected elements alone, as a PNG. */
   const downloadSelection = () => {
+    const frameCanvas = selectionCanvas();
+    if (!frameCanvas) return;
+    const roots = selectionRoots(session.source, session.selectedIds);
+    const name = `${(roots.length === 1 ? roots[0]!.name : engine.state.metadata.name).replace(/[\\/:*?"<>|]+/g, '-')}.png`;
+    frameCanvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      showToast(t('download.saved', { name }), 'info', 3000);
+    }, 'image/png');
+  };
+  /** The selected elements alone on a transparent canvas (R5: posters). */
+  const selectionCanvas = (): HTMLCanvasElement | null => {
     const source = session.source;
     const roots = selectionRoots(source, session.selectedIds);
     const boxes = roots
       .map((layer) => worldBox(source, layer.id))
       .filter((box): box is NonNullable<typeof box> => !!box);
-    if (!boxes.length) return;
+    if (!boxes.length) return null;
     const left = Math.floor(Math.min(...boxes.map((box) => box.x))),
       top = Math.floor(Math.min(...boxes.map((box) => box.y))),
       right = Math.ceil(Math.max(...boxes.map((box) => box.x + box.width))),
@@ -1265,7 +1303,7 @@ export function mountEditorShell(
     frameCanvas.width = width;
     frameCanvas.height = height;
     const context = frameCanvas.getContext('2d');
-    if (!context) return;
+    if (!context) return null;
     drawComposition(
       context,
       {
@@ -1288,19 +1326,11 @@ export function mountEditorShell(
       null,
       { overlays: false },
     );
-    const name = `${(roots.length === 1 ? roots[0]!.name : engine.state.metadata.name).replace(/[\\/:*?"<>|]+/g, '-')}.png`;
-    frameCanvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      showToast(t('download.saved', { name }), 'info', 3000);
-    }, 'image/png');
+    return frameCanvas;
   };
   const menuHooks = {
+    // R5: Save to My Templates (the canvas and timeline menus).
+    saveToMine: (kind: MineKind) => void saveToMine(kind).catch(reportError),
     // P1: the code layer's entries run the same hooks as the commands.
     code: {
       edit: (layerId: string) => commandContext.code?.edit(layerId),
@@ -1379,9 +1409,7 @@ export function mountEditorShell(
       }),
     saveAsTemplate: () => {
       const sceneId = session.source.composition.id;
-      openSaveTemplate(engine, sceneId, () =>
-        scenePosterUrl(engine, session, sceneId, frames),
-      );
+      void saveSceneToMine(sceneId);
     },
     deleteScene: () =>
       safely(() => {
@@ -2577,6 +2605,7 @@ export function mountEditorShell(
     'Audio',
     'Record',
     'AI',
+    'MyTemplates',
     'Theme',
   ]);
   // SHP-018: the Draw category; leaving it leaves draw mode.
@@ -3074,6 +3103,191 @@ export function mountEditorShell(
     report: reportError,
     toast: (text) => showToast(text, 'success'),
   });
+  // R5: My Templates (left rail), on the shared library panel.
+  const mineKindLabel = (kind: MineKind) => t(`mine.kind.${kind}`);
+  const savedToast = (kind: MineKind) =>
+    showToast(t('mine.saved', { kind: mineKindLabel(kind) }), 'success', 6000, {
+      label: t('mine.open'),
+      run: () => {
+        openCategory('MyTemplates');
+        minePanel.shelf.setTab(kind);
+      },
+    });
+  /** The used assets of some layers (so a saved item can bring them). */
+  const assetsOf = (layers: readonly DeepReadonly<CoreLayer>[]) => {
+    const ids = new Set<string>();
+    const walk = (list: readonly DeepReadonly<CoreLayer>[]) => {
+      for (const layer of list) {
+        if (layer.assetId) ids.add(layer.assetId);
+        walk(layer.children);
+      }
+    };
+    walk(layers);
+    return session.source.assets.filter((asset) => ids.has(asset.id));
+  };
+  const posterOf = (canvas: HTMLCanvasElement | null) => {
+    if (!canvas) return undefined;
+    const scale = Math.min(1, 320 / Math.max(canvas.width, canvas.height));
+    const small = document.createElement('canvas');
+    small.width = Math.max(1, Math.round(canvas.width * scale));
+    small.height = Math.max(1, Math.round(canvas.height * scale));
+    small.getContext('2d')?.drawImage(canvas, 0, 0, small.width, small.height);
+    return small.toDataURL('image/png');
+  };
+  /** Save to My Templates: the selection as one item of `kind` (several
+   *  layers are one Group item); nothing selected saves the scene. */
+  const saveToMine = async (kind: MineKind) => {
+    const roots = selectionRoots(session.source, session.selectedIds);
+    if (!roots.length) return saveSceneToMine(session.source.composition.id);
+    const composition = session.source.composition;
+    const finalKind: MineKind = roots.length > 1 ? 'group' : kind;
+    const clips = roots.flatMap((layer) => {
+      const found = findClipByLayer(composition, layer.id);
+      return found
+        ? [
+            {
+              layerId: layer.id,
+              startTime: found.clip.startTime,
+              duration: found.clip.duration,
+              sourceIn: found.clip.sourceIn,
+              sourceOut: found.clip.sourceOut,
+              speed: found.clip.speed,
+              metadata: JSON.parse(
+                JSON.stringify(found.clip.metadata),
+              ) as Record<string, unknown>,
+            },
+          ]
+        : [];
+    });
+    const origin = Math.min(
+      ...roots.map(
+        (layer) =>
+          clips.find((clip) => clip.layerId === layer.id)?.startTime ??
+          layer.startTime,
+      ),
+    );
+    const item: MineItem = {
+      id: `mine-${crypto.randomUUID()}`,
+      name:
+        roots.length > 1
+          ? groupNameFor(roots as unknown as { id: string; name: string }[])
+          : roots[0]!.name,
+      kind: finalKind,
+      createdAt: new Date().toISOString(),
+      // The stored layers (session.source evaluates animation at the
+      // playhead), so keyframes and controls are kept.
+      layers: JSON.parse(
+        JSON.stringify(
+          roots.map(
+            (layer) =>
+              locateLayer(
+                engine.state.compositions.find(
+                  (scene) => scene.id === composition.id,
+                )!.layers,
+                layer.id,
+              )?.layer ?? layer,
+          ),
+        ),
+      ) as CoreLayer[],
+      clips,
+      origin,
+      assets: JSON.parse(JSON.stringify(assetsOf(roots))) as NonNullable<
+        MineItem['assets']
+      >,
+      ...(posterOf(selectionCanvas())
+        ? { poster: posterOf(selectionCanvas())! }
+        : {}),
+    };
+    await myLibrary.ready;
+    await myLibrary.add(item);
+    savedToast(finalKind);
+  };
+  const saveSceneToMine = async (sceneId: string) => {
+    const scene = engine.state.compositions.find((item) => item.id === sceneId);
+    if (!scene) return;
+    const poster = scenePosterUrl(engine, session, sceneId, frames);
+    const template = templateFromScene(
+      engine.state,
+      sceneId,
+      scene.name,
+      'my',
+      poster,
+    );
+    await myLibrary.ready;
+    await myLibrary.add({
+      id: template.id,
+      name: template.name,
+      kind: 'scene',
+      createdAt: template.createdAt,
+      ...(poster ? { poster } : {}),
+      scene: template,
+    });
+    if (!template.mediaIncluded) showToast(t('mine.mediaLeftOut'), 'warning');
+    savedToast('scene');
+  };
+  /** Add to scene: exactly like a library item (one undo step). */
+  const insertMine = (id: string) =>
+    safely(() => {
+      const item = myLibrary.find(id);
+      if (!item) return;
+      session.setPlaying(false);
+      if (item.kind === 'scene' && item.scene) {
+        libraryActions.insertMine(item.scene);
+        return;
+      }
+      const built = mineCommands(
+        session.source.composition,
+        session.source.assets,
+        item,
+        session.currentTime,
+        (commands) =>
+          engine
+            .preview(commands)
+            .compositions.find(
+              (scene) => scene.id === session.source.composition.id,
+            )!,
+      );
+      engine.commands.transaction(t('mine.addStep'), built.commands);
+      session.selectMany(built.layerIds);
+    });
+  const minePanel = mountMyTemplatesPanel(element('#library-mine'), {
+    library: myLibrary,
+    add: insertMine,
+    rename: (id) => {
+      const item = myLibrary.find(id);
+      if (!item) return;
+      void shelfPrompt(t('media.rename.title'), item.name).then((name) => {
+        if (name?.trim()) void myLibrary.rename(id, name.trim());
+      });
+    },
+    details: (id) => {
+      const item = myLibrary.find(id);
+      if (!item) return;
+      showDetails(item.name, [
+        [t('media.details.name'), item.name],
+        [t('shelf.detailsKind'), mineKindLabel(item.kind)],
+        [t('shelf.detailsAdded'), new Date(item.createdAt).toLocaleString()],
+        [
+          t('mine.detailsLayers'),
+          String(
+            item.scene
+              ? item.scene.scene.layers.length
+              : (item.layers?.length ?? 0),
+          ),
+        ],
+      ]);
+    },
+    remove: (id) => {
+      const item = myLibrary.find(id);
+      if (!item) return;
+      void myLibrary.remove(id);
+      showToast(t('mine.deleted', { name: item.name }), 'info');
+    },
+    prompt: shelfPrompt,
+    collapse: () => workspace?.setOpen('left', false),
+    report: reportError,
+    toast: (text) => showToast(text, 'success'),
+  });
   // T1: themes. Built-in, the project's own (reserved markers on the first
   // scene) and My library's (saved themes under theme/<id>, and Creator Pack
   // theme items).
@@ -3550,10 +3764,7 @@ export function mountEditorShell(
       );
       if (templates.getAttribute('aria-pressed') !== 'true') templates.click();
     },
-    saveAsTemplate: (sceneId) =>
-      openSaveTemplate(engine, sceneId, () =>
-        scenePosterUrl(engine, session, sceneId, frames),
-      ),
+    saveAsTemplate: (sceneId) => void saveSceneToMine(sceneId),
   });
   // I2: the Draw palette (the Draw rail item).
   drawPalette = mountDrawPalette({
@@ -3663,6 +3874,11 @@ export function mountEditorShell(
   element('#timeline-foundation').addEventListener(
     'timeline-command',
     timelineCommand,
+  );
+  // R5: the timeline menu's Save to My Templates.
+  element('#timeline-foundation').addEventListener(
+    'timeline-save-mine',
+    (event) => menuHooks.saveToMine((event as CustomEvent<MineKind>).detail),
   );
   // J13: Collapse leaves only the player bar under a large preview; Expand
   // brings the lanes back. UI state only (not saved, no history).
