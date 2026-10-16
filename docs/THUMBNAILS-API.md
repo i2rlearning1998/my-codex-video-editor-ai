@@ -1,4 +1,5 @@
 # Thumbnail service
+
 1. Import `getThumbnail`, `getPreviewFrames`, `createThumbnailService`, `thumbnailKey`, `thumbnailSize`, `placeholder`, `renderThumbnail` from `src/thumbnails`.
 2. `getThumbnail(item, {width,height,signal?}): Promise<Blob>`; `getPreviewFrames(item, {count,width,height,signal?}): Promise<Blob[]>`; sizes 1–2048, count clamped to 1–24, progress i/count.
 3. `ThumbnailItem`: `{id,type,data?,revision?,blob?,poster?,bakedFrames?,frameAt?}`; ordinary library items retain their name/tags; `ThumbnailOptions`, `PreviewOptions`, `ThumbnailSize`, `RenderRequest`, `ThumbnailRender`, `ThumbnailCache` are exported.
