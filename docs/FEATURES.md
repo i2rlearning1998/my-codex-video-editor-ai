@@ -893,7 +893,7 @@ Imported code animations: Tier A becomes ordinary layers; Tiers B and C are bake
 | CODE-006 | P1 | W8 | Verified | Animation settings: one control per declared param (number with slider, colour, text, switch, select); Tier B re-renders as it changes, Tier C applies with Apply (re-bake); one undo step per applied change (X3) |
 | CODE-007 | P1 | W8 | Verified | Fade, Speed, Reverse, Filters, Effects, Adjust colors and Transitions change a code layer in the preview and in the export (X3) |
 | CODE-008 | P1 | W8 | Verified | Code templates: Save as template keeps name, category, tier, source, meta, default params and thumbnail in My Templates (not an undo step); Templates > My Templates > Code animations shows them with a hover preview; click or drag inserts a code layer at the playhead on a new lane in one undo step; the project keeps its own copy of the source (X4) |
-| CODE-009 | P1 | W8 | Verified | Code templates can be renamed, duplicated, deleted (with Restore), exported to and imported from a .json file (X4) |
+| CODE-009 | P1 | W8 | Dropped | Code templates can be renamed, duplicated, deleted (with Restore), exported to and imported from a .json file (X4) |
 | CODE-010 | P1 | W8 | Verified | The Scene outliner shows code layers with a code icon; hide and lock work on them (X4) |
 | CODE-011 | P1 | W8 | Verified | The real sandboxed Tier C runtime runs the ten reference samples end to end: import, bake, play, scrub, a param change, Fade and an effect, a short export whose frames match the preview (measured maximum channel difference recorded) (X5) |
 | CODE-012 | P1 | W8 | Verified | A hostile source (network, parent access, storage, endless loop, import()) is refused or stopped with a clear message and the editor is untouched; a heavy bake can be cancelled (X5) |
@@ -941,6 +941,12 @@ Hand-test fixes of PR #31.
 | RA-005 | P1 | W8 | Verified | Every motion item in the importer shows all its controllers, editable before adding; the chosen values become its defaults; a code animation lands in AI › Motion, a pack's items are grouped by kind (R2) |
 | RA-006 | P1 | W8 | Verified | Media › Import holds only media entries (no Import code animation, Import creator pack or Copy library index for AI) (R2) |
 | RA-007 | P1 | W8 | Verified | AI items appear only in the AI category: Templates, Elements, Text, Backgrounds and Animate list no AI items or AI chips; code animations saved in Templates before move to AI › Motion once (R2) |
+| RA-008 | P1 | W8 | Verified | Media, AI and My Templates use one shared library panel: title row with collapse, search with a New folder icon button on the same row, the panel's primary actions, scrollable tabs (All, one per category with items, user folders), a two-column grid of big 16:9 cards (R3) |
+| RA-009 | P1 | W8 | Verified | A card's click adds it to the scene; its "⋯" (More options) opens the same menu as a right-click (Rename, Add to scene, Move to folder, Details, Delete) and its "+" (Add to Scene) adds it once; both are visible on hover and keyboard focus (R3) |
+| RA-010 | P1 | W8 | Verified | Library tabs come only from existing items: no empty automatic categories; deleting the last item of a category removes its tab; user folders may stay empty (R3) |
+| RA-011 | P1 | W8 | Verified | Saving, renaming, moving and deleting library items in Media, AI and My Templates never create or consume undo steps; Undo and Redo never bring back or remove a library item (R3) |
+| RA-012 | P1 | W8 | Verified | Every library card shows a 16:9 thumbnail through one thumbnail adapter; motion and preset cards play a short looping preview on hover, one card at a time (R3) |
+| RA-013 | P1 | W8 | Verified | Media and AI are rebuilt on the shared panel; Media keeps import, the drop zone, sort, details and folders (as tabs); AI has Import and Copy AI brief and "⋯ › Delete" on every item (R4) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 

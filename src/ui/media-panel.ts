@@ -17,8 +17,8 @@ import {
   promptDialog,
 } from './components/modal';
 import { showToast } from './components/toast';
-import { createMenu, type MenuEntry } from './context-menu';
 import { iconSvg } from './icons';
+import { mountShelf, type Shelf, type ShelfItem } from './library-shelf';
 import { mediaFolders } from './media-folders';
 import type { EditorSession } from './session';
 
@@ -40,6 +40,10 @@ export interface MediaPanelOptions {
   /** I2: opens the file picker (the drop zone's click). */
   pick?(): void;
   toast(text: string, kind: 'info' | 'success' | 'error'): void;
+  /** R4: the Import button row, shown as the panel's primary action. */
+  importRow?: HTMLElement;
+  /** R4: the title row's collapse button. */
+  collapse?(): void;
 }
 
 /** The asset fields the panel reads (structural, to keep the readonly types shallow). */
@@ -73,17 +77,9 @@ const listed = (asset: Asset) =>
   ['video', 'audio', 'image'].includes(asset.type) &&
   asset.source.kind !== 'generated' &&
   !removed(asset);
-/** I2: the Media tabs. Designs are frames saved with "Save to Media". */
-export type MediaTab =
-  'all' | 'image' | 'video' | 'audio' | 'design' | 'folders';
-const MEDIA_TABS: readonly MediaTab[] = [
-  'all',
-  'image',
-  'video',
-  'audio',
-  'design',
-  'folders',
-];
+/** I2: the Media categories. Designs are frames saved with "Save to
+ *  Media". R4: a tab shows only while its category has media. */
+const MEDIA_CATEGORIES = ['image', 'video', 'audio', 'design'] as const;
 export type MediaSort = 'added' | 'newest' | 'name' | 'duration';
 const MEDIA_SORTS: readonly MediaSort[] = [
   'added',
@@ -104,26 +100,23 @@ const fingerprintOf = (asset: Asset) =>
  */
 export function mountMediaPanel(options: MediaPanelOptions) {
   const { container, engine, session } = options;
-  container.innerHTML = `
+  // R4: the shared library panel; the drop zone, sort and import progress
+  // sit under the Import row.
+  const extras = document.createElement('div');
+  extras.className = 'media-extras';
+  extras.innerHTML = `
     <button type="button" class="media-dropzone" id="media-dropzone"></button>
-    <div class="media-tabs" id="media-tabs" role="tablist"></div>
     <div class="media-toolbar" id="media-toolbar"><label class="media-sort-label"><span id="media-sort-caption"></span><select id="media-sort"></select></label></div>
-    <div class="media-folder-head" id="media-folder-head" hidden><button type="button" class="icon-button" id="media-folder-back"></button><h3 id="media-folder-name"></h3></div>
     <div class="media-import" id="media-import" role="status" hidden>
       <div class="media-import-text"><span id="media-import-label"></span><span id="media-import-percent"></span></div>
       <progress id="media-import-bar" max="100" value="0"></progress>
       <button type="button" class="button" id="media-import-cancel"></button>
-    </div>
-    <div class="media-state" id="media-state" hidden><svg class="media-illustration" data-media-illustration viewBox="0 0 160 110" aria-hidden="true"><rect x="6" y="18" width="148" height="86" rx="12" fill="none" stroke="var(--border-strong, var(--color-border))" stroke-width="2" stroke-dasharray="6 5"/><rect x="22" y="40" width="70" height="44" rx="6" fill="var(--surface-raised, var(--color-bg-raised))" stroke="var(--color-border)"/><path d="M28 78l16-18 12 12 8-8 22 14z" fill="var(--accent-soft, var(--color-accent-soft))" stroke="var(--accent-text)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="76" cy="52" r="5" fill="var(--accent-text)"/><rect x="70" y="26" width="70" height="44" rx="6" fill="var(--surface-raised, var(--color-bg-raised))" stroke="var(--color-border)" transform="rotate(8 105 48)"/><path d="M98 40l16 9-16 9z" fill="var(--accent-text)" transform="rotate(8 105 48)"/><path d="M118 74c0-6 4-9 8-7l2 1v-12a4 4 0 018 0v14l6 2c3 1 4 4 3 7l-3 10h-18z" fill="var(--color-bg)" stroke="var(--color-text)" stroke-width="1.5" stroke-linejoin="round"/></svg><h3 id="media-state-title"></h3><p id="media-state-description"></p></div>
-    <div class="available-assets media-grid" id="media-grid"></div>`;
+    </div>`;
   const find = <T extends HTMLElement>(selector: string) =>
-    container.querySelector<T>(selector)!;
-  const grid = find('#media-grid');
+    (container.querySelector<T>(selector) ??
+      extras.querySelector<T>(selector))!;
   let storeState: 'opening' | 'ready' | 'unavailable' = 'opening';
-  let query = '';
-  let tab: MediaTab = 'all';
   let sort: MediaSort = 'added';
-  let openFolder: string | null = null;
   let controller: AbortController | null = null;
   let disposed = false;
 
@@ -200,7 +193,9 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       }`;
   };
   const updateThumbnails = () => {
-    for (const card of grid.querySelectorAll<HTMLElement>('.media-card')) {
+    for (const card of shelf.grid.querySelectorAll<HTMLElement>(
+      '.media-card',
+    )) {
       const asset = (session.source.assets as unknown as readonly Asset[]).find(
         (item) => item.id === card.dataset.assetId,
       );
@@ -217,10 +212,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         ? formatDuration(asset.duration).replace(/^00:/, '')
         : t(`media.${asset.type}`);
 
-  const matches = (asset: Asset) =>
-    !query || asset.name.toLowerCase().includes(query);
-
-  // I2: the drop zone, tabs, sort and folder header.
+  // I2: the drop zone and sort.
   const dropzone = find<HTMLButtonElement>('#media-dropzone');
   dropzone.onclick = () => options.pick?.();
   dropzone.ondragover = (event) => {
@@ -241,31 +233,6 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     sort = sortSelect.value as MediaSort;
     render();
   };
-  find<HTMLButtonElement>('#media-folder-back').onclick = () => {
-    openFolder = null;
-    render();
-  };
-  const tabs = find('#media-tabs');
-  const renderTabs = () => {
-    tabs.setAttribute('aria-label', t('media.tabs'));
-    tabs.replaceChildren(
-      ...MEDIA_TABS.map((id) => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'media-tab';
-        button.dataset.mediaTab = id;
-        button.setAttribute('role', 'tab');
-        button.setAttribute('aria-selected', String(tab === id));
-        button.textContent = t(`media.tab.${id}`);
-        button.onclick = () => {
-          tab = id;
-          openFolder = null;
-          render();
-        };
-        return button;
-      }),
-    );
-  };
   const sorted = (list: readonly Asset[]) => {
     const copy = [...list];
     if (sort === 'newest') copy.reverse();
@@ -274,228 +241,24 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       copy.sort((a, b) => (b.duration ?? 0) - (a.duration ?? 0));
     return copy;
   };
-  const inTab = (asset: Asset) => {
-    if (openFolder)
-      return mediaFolders.folderOf(engine.state.id, asset.id) === openFolder;
-    if (tab === 'design') return isDesign(asset);
-    if (tab === 'all') return true;
-    if (tab === 'folders') return false;
-    return asset.type === tab && !isDesign(asset);
-  };
-  /** Folder cards (the Folders tab): open, rename, delete, drop media in. */
-  const folderCards = () => {
-    const project = engine.state.id;
-    const all = (session.source.assets as unknown as readonly Asset[]).filter(
-      listed,
-    );
-    const create = document.createElement('button');
-    create.type = 'button';
-    create.className = 'media-folder-new';
-    create.id = 'media-folder-new';
-    create.innerHTML = iconSvg('plus', 16);
-    create.append(t('media.folder.new'));
-    create.onclick = run(async () => {
-      const name = await promptDialog(t('media.folder.newTitle'), '', {
-        label: t('media.folder.name'),
-        confirmLabel: t('media.folder.create'),
-        cancelLabel: t('media.cancel'),
-      });
-      if (name) mediaFolders.create(project, name);
-    });
-    const cards = mediaFolders.list(project).map((folder) => {
-      const card = document.createElement('div');
-      card.className = 'media-folder';
-      card.dataset.folderId = folder.id;
-      const open = document.createElement('button');
-      open.type = 'button';
-      open.className = 'media-folder-open';
-      const count = all.filter(
-        (asset) => mediaFolders.folderOf(project, asset.id) === folder.id,
-      ).length;
-      open.innerHTML = iconSvg('folder', 22);
-      const label = document.createElement('span');
-      label.className = 'media-folder-name';
-      label.textContent = folder.name;
-      const meta = document.createElement('span');
-      meta.className = 'media-folder-count';
-      meta.textContent = t('media.folder.count', { count });
-      open.append(label, meta);
-      open.onclick = () => {
-        openFolder = folder.id;
-        render();
-      };
-      const more = document.createElement('button');
-      more.type = 'button';
-      more.className = 'media-card-more icon-button';
-      more.dataset.action = 'folder-more';
-      more.setAttribute(
-        'aria-label',
-        t('media.menu.more', { name: folder.name }),
-      );
-      more.innerHTML = iconSvg('more', 16);
-      const openMenuAt = (x: number, y: number) => {
-        menu.open(() => [
-          {
-            id: 'folder-rename',
-            label: t('media.menu.rename'),
-            icon: 'edit',
-            run: run(async () => {
-              const name = await promptDialog(
-                t('media.folder.renameTitle'),
-                folder.name,
-                {
-                  label: t('media.folder.name'),
-                  confirmLabel: t('media.rename.confirm'),
-                  cancelLabel: t('media.cancel'),
-                },
-              );
-              if (name) mediaFolders.rename(project, folder.id, name);
-            }),
-          },
-          {
-            id: 'folder-delete',
-            label: t('media.folder.delete'),
-            icon: 'delete',
-            run: run(() => mediaFolders.remove(project, folder.id)),
-          },
-        ]);
-        placeMenu(x, y);
-      };
-      more.onclick = (event) => {
-        event.stopPropagation();
-        const box = more.getBoundingClientRect();
-        openMenuAt(box.left, box.bottom + 4);
-      };
-      card.oncontextmenu = (event) => {
-        event.preventDefault();
-        openMenuAt(event.clientX, event.clientY);
-      };
-      // Media cards dropped on a folder move into it.
-      card.ondragover = (event) => {
-        if (!event.dataTransfer?.types.includes('application/x-editor-asset'))
-          return;
-        event.preventDefault();
-        card.classList.add('over');
-      };
-      card.ondragleave = () => card.classList.remove('over');
-      card.ondrop = (event) => {
-        card.classList.remove('over');
-        const id = event.dataTransfer?.getData('application/x-editor-asset');
-        if (!id) return;
-        event.preventDefault();
-        event.stopPropagation();
-        mediaFolders.move(project, id, folder.id);
-        options.toast(
-          t('media.folder.moved', { name: folder.name }),
-          'success',
-        );
-      };
-      card.append(open, more);
-      return card;
-    });
-    return [create, ...cards];
-  };
-
   const hasAny = () =>
     (session.source.assets as unknown as readonly Asset[]).some(listed);
-  function render() {
-    if (disposed) return;
-    renderTabs();
-    dropzone.textContent = t('media.dropzone');
-    find('#media-sort-caption').textContent = t('media.sort');
-    if (!sortSelect.options.length)
-      for (const id of MEDIA_SORTS) {
-        const option = document.createElement('option');
-        option.value = id;
-        option.textContent = t(`media.sortBy.${id}`);
-        sortSelect.append(option);
-      }
-    sortSelect.value = sort;
-    const folder = openFolder
-      ? mediaFolders
-          .list(engine.state.id)
-          .find((item) => item.id === openFolder)
-      : undefined;
-    if (openFolder && !folder) openFolder = null;
-    find('#media-folder-head').hidden = !folder;
-    if (folder) {
-      find('#media-folder-name').textContent = folder.name;
-      const back = find<HTMLButtonElement>('#media-folder-back');
-      back.innerHTML = iconSvg('back', 16);
-      back.setAttribute('aria-label', t('browse.back'));
-    }
-    find('#media-toolbar').hidden = tab === 'folders' && !openFolder;
-    const showFolders = tab === 'folders' && !openFolder;
-    grid.classList.toggle('media-folders', showFolders);
-    if (showFolders) {
-      grid.replaceChildren(...folderCards());
-      find('#media-state').hidden = true;
-      return;
-    }
-    const assets = sorted(
-      (session.source.assets as unknown as readonly Asset[]).filter(listed),
-    ).filter(inTab);
-    grid.replaceChildren(
-      ...assets.map((asset) => {
-        const item = document.createElement('div');
-        item.className = 'media-item';
-        item.dataset.assetId = asset.id;
-        const folderId = mediaFolders.folderOf(engine.state.id, asset.id);
-        if (folderId) item.dataset.folderId = folderId;
-        const card = document.createElement('button');
-        card.type = 'button';
-        card.className = 'media-card';
-        card.dataset.assetId = asset.id;
-        card.dataset.name = asset.name;
-        card.dataset.kind = asset.type;
-        card.title = t('asset.drag', { name: asset.name });
-        card.hidden = !matches(asset);
-        card.innerHTML = `<span class="media-thumb"></span><span class="media-badge"></span><span class="media-name"></span>`;
-        card.querySelector('.media-badge')!.textContent = badge(asset);
-        card.querySelector('.media-name')!.textContent = asset.name;
-        setThumb(card, asset);
-        // T1: one pointer-driven drag (no browser drag, no draggable
-        // thumbnail image); a plain click adds the media to the scene.
-        drags().source(card, () => ({
-          kind: 'asset',
-          id: asset.id,
-          name: asset.name,
-          thumb: card.querySelector('img')?.getAttribute('src') ?? null,
-          media: asset.type as 'image' | 'video' | 'audio',
-          duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
-          ...(asset.width && asset.height
-            ? { width: asset.width, height: asset.height }
-            : {}),
-        }));
-        card.addEventListener('click', () => options.place?.(asset.id));
-        // I1.7: the item's menu, from its More button or a right-click.
-        const more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'media-card-more icon-button';
-        more.dataset.action = 'media-more';
-        more.setAttribute(
-          'aria-label',
-          t('media.menu.more', { name: asset.name }),
-        );
-        more.setAttribute('aria-haspopup', 'menu');
-        more.title = t('media.menu.more', { name: asset.name });
-        more.innerHTML = iconSvg('more', 16);
-        more.onclick = (event) => {
-          event.stopPropagation();
-          const box = more.getBoundingClientRect();
-          openMenu(asset.id, box.left, box.bottom + 4);
-        };
-        card.oncontextmenu = (event) => {
-          event.preventDefault();
-          openMenu(asset.id, event.clientX, event.clientY);
-        };
-        // I2: a video previews its filmstrip while hovered.
-        if (asset.type === 'video') {
-          let timer = 0;
-          card.addEventListener('pointerenter', () => {
+  /** One shelf card per listed asset. */
+  const shelfItem = (asset: Asset): ShelfItem => ({
+    id: asset.id,
+    name: asset.name,
+    category: isDesign(asset) ? 'design' : asset.type,
+    folderId: mediaFolders.folderOf(engine.state.id, asset.id),
+    title: t('asset.drag', { name: asset.name }),
+    badge: badge(asset),
+    data: { assetId: asset.id, name: asset.name, kind: asset.type },
+    thumb: () => undefined,
+    // I2: a video previews its filmstrip while hovered.
+    ...(asset.type === 'video'
+      ? {
+          preview: (slot: HTMLElement) => {
             const strip = options.previews.strip(asset);
-            if (strip.state !== 'ready') return;
-            const slot = card.querySelector<HTMLElement>('.media-thumb')!;
+            if (strip.state !== 'ready') return () => undefined;
             const hover = document.createElement('span');
             hover.className = 'media-hover';
             hover.style.backgroundImage = `url("${strip.url}")`;
@@ -506,75 +269,124 @@ export function mountMediaPanel(options: MediaPanelOptions) {
               frame++;
             };
             step();
-            timer = window.setInterval(step, 160);
-          });
-          card.addEventListener('pointerleave', () => {
-            window.clearInterval(timer);
-            card.querySelector('.media-hover')?.remove();
-          });
+            const timer = window.setInterval(step, 160);
+            return () => {
+              window.clearInterval(timer);
+              hover.remove();
+            };
+          },
         }
-        item.hidden = card.hidden;
-        item.append(card, more);
-        return item;
+      : {}),
+    decorate: (card) => {
+      card.innerHTML = '';
+      card.insertAdjacentHTML(
+        'afterbegin',
+        `<span class="shelf-thumb media-thumb"></span><span class="media-badge"></span><span class="shelf-name media-name"></span>`,
+      );
+      card.querySelector('.media-badge')!.textContent = badge(asset);
+      card.querySelector('.media-name')!.textContent = asset.name;
+      setThumb(card, asset);
+      // T1: one pointer-driven drag (no browser drag, no draggable
+      // thumbnail image); a plain click adds the media to the scene.
+      drags().source(card, () => ({
+        kind: 'asset',
+        id: asset.id,
+        name: asset.name,
+        thumb: card.querySelector('img')?.getAttribute('src') ?? null,
+        media: asset.type as 'image' | 'video' | 'audio',
+        duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
+        ...(asset.width && asset.height
+          ? { width: asset.width, height: asset.height }
+          : {}),
+      }));
+    },
+  });
+  const project = () => engine.state.id;
+  const shelf: Shelf = mountShelf({
+    host: container,
+    prefix: 'media',
+    title: t('library.media'),
+    classes: { item: 'media-item', card: 'media-card', thumb: 'media-thumb' },
+    searchId: 'asset-search',
+    searchLabel: t('library.searchPlaceholder'),
+    ...(options.collapse ? { collapse: options.collapse } : {}),
+    extra: [...(options.importRow ? [options.importRow] : []), extras],
+    categoryLabel: (key) => t(`media.tab.${key}`),
+    categoryOrder: MEDIA_CATEGORIES,
+    flatAll: true,
+    folders: {
+      list: () => mediaFolders.list(project()),
+      create: (name) => mediaFolders.create(project(), name),
+      move: (id, folderId) => mediaFolders.move(project(), id, folderId),
+      rename: (id, name) => mediaFolders.rename(project(), id, name),
+      remove: (id) => mediaFolders.remove(project(), id),
+    },
+    items: () =>
+      sorted(
+        (session.source.assets as unknown as readonly Asset[]).filter(listed),
+      ).map(shelfItem),
+    add: (id) => options.place?.(id),
+    rename: (id) => void rename(id),
+    details: (id) => details(id),
+    remove: (id) => void remove(id),
+    prompt: (title, value) =>
+      promptDialog(title, value, {
+        label: t('media.folder.name'),
+        confirmLabel: value
+          ? t('media.rename.confirm')
+          : t('media.folder.create'),
+        cancelLabel: t('media.cancel'),
       }),
-    );
-    const state = find('#media-state');
-    const visible = assets.filter(matches).length;
-    const [title, description] =
+    empty: () =>
+      hasAny()
+        ? {
+            title: t('media.tabEmptyTitle'),
+            description: t('media.folderEmptyDescription'),
+          }
+        : {
+            title: t('media.emptyTitle'),
+            description: t('media.emptyDescription'),
+          },
+    status: () =>
       storeState === 'unavailable'
-        ? ['media.unavailableTitle', 'media.unavailableDescription']
-        : storeState === 'opening' && !assets.length
-          ? ['media.loadingTitle', 'media.loadingDescription']
-          : !assets.length && (tab !== 'all' || openFolder) && hasAny()
-            ? [
-                'media.tabEmptyTitle',
-                openFolder
-                  ? 'media.folderEmptyDescription'
-                  : tab === 'design'
-                    ? 'media.designEmptyDescription'
-                    : 'media.tabEmptyDescription',
-              ]
-            : !assets.length
-              ? ['media.emptyTitle', 'media.emptyDescription']
-              : !visible
-                ? ['media.noMatchesTitle', 'media.noMatchesDescription']
-                : [null, null];
-    state.hidden = title === null;
-    state.dataset.state =
-      storeState === 'unavailable'
-        ? 'error'
-        : storeState === 'opening'
-          ? 'loading'
-          : !assets.length
-            ? 'empty'
-            : 'no-matches';
-    if (title && description) {
-      find('#media-state-title').textContent = t(title);
-      find('#media-state-description').textContent = t(description);
-    }
-    find('#media-import-cancel').textContent = t('media.cancel');
-  }
-
-  // I1.7: the media item menu (Rename, Delete, Add to scene, Move to folder,
-  // Details). Rename, Delete and folders are library changes: never on the
-  // Undo stack (docs/UNDO-RULES.md).
-  const menuElement = document.createElement('div');
-  menuElement.className = 'media-menu';
-  menuElement.id = 'media-menu';
-  menuElement.hidden = true;
-  document.body.append(menuElement);
-  const menu = createMenu(menuElement, {
+        ? {
+            kind: 'error',
+            title: t('media.unavailableTitle'),
+            description: t('media.unavailableDescription'),
+          }
+        : storeState === 'opening' && !hasAny()
+          ? {
+              kind: 'loading',
+              title: t('media.loadingTitle'),
+              description: t('media.loadingDescription'),
+            }
+          : null,
     report: (error) =>
       options.toast(
         error instanceof Error ? error.message : String(error),
         'error',
       ),
+    toast: (text) => options.toast(text, 'success'),
   });
-  const closeOutside = (event: PointerEvent) => {
-    if (!menuElement.hidden && !menuElement.contains(event.target as Node))
-      menu.close();
-  };
-  document.addEventListener('pointerdown', closeOutside, true);
+  const grid = shelf.grid;
+  function render() {
+    if (disposed) return;
+    dropzone.textContent = t('media.dropzone');
+    find('#media-sort-caption').textContent = t('media.sort');
+    if (!sortSelect.options.length)
+      for (const id of MEDIA_SORTS) {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = t(`media.sortBy.${id}`);
+        sortSelect.append(option);
+      }
+    sortSelect.value = sort;
+    find('#media-import-cancel').textContent = t('media.cancel');
+    shelf.render();
+  }
+
+  // I1.7: Rename, Delete and folders are library changes: never on the
+  // Undo stack (docs/UNDO-RULES.md). R4: the menu is the shared panel's.
   const assetById = (id: string) =>
     (engine.state.assets as unknown as readonly Asset[]).find(
       (asset) => asset.id === id,
@@ -683,17 +495,6 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     if (!name || !current || name === current.name) return;
     replaceAsset('Rename media', { ...current, name });
   };
-  const newFolder = async (id: string) => {
-    const name = await promptDialog(t('media.folder.newTitle'), '', {
-      label: t('media.folder.name'),
-      confirmLabel: t('media.folder.create'),
-      cancelLabel: t('media.cancel'),
-    });
-    if (!name) return;
-    const folder = mediaFolders.create(engine.state.id, name);
-    mediaFolders.move(engine.state.id, id, folder.id);
-    options.toast(t('media.folder.moved', { name: folder.name }), 'success');
-  };
   const details = (id: string) => {
     const asset = assetById(id);
     if (!asset) return;
@@ -739,116 +540,23 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       },
     });
   };
-  const run = (action: () => unknown) => () => {
-    try {
-      const result = action();
-      if (result instanceof Promise)
-        result.catch((error: unknown) =>
-          options.toast(
-            error instanceof Error ? error.message : String(error),
-            'error',
-          ),
-        );
-    } catch (error) {
-      options.toast(
-        error instanceof Error ? error.message : String(error),
-        'error',
-      );
-    }
-  };
-  const placeMenu = (x: number, y: number) => {
-    const width = menuElement.offsetWidth,
-      height = menuElement.offsetHeight;
-    menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
-    menuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
-  };
-  const openMenu = (id: string, x: number, y: number) => {
-    const entries = (): MenuEntry[] => {
-      const project = engine.state.id;
-      const current = mediaFolders.folderOf(project, id);
-      return [
-        {
-          id: 'media-rename',
-          label: t('media.menu.rename'),
-          icon: 'edit',
-          run: run(() => rename(id)),
-        },
-        {
-          id: 'media-add',
-          label: t('media.menu.add'),
-          icon: 'plus',
-          ...(options.place ? { run: run(() => options.place!(id)) } : {}),
-        },
-        {
-          id: 'media-folder',
-          label: t('media.menu.folder'),
-          icon: 'folder',
-          submenu: () => [
-            ...mediaFolders.list(project).map((folder) => ({
-              id: 'media-folder-pick',
-              label: folder.name,
-              role: 'menuitemradio' as const,
-              checked: folder.id === current,
-              data: { folderId: folder.id },
-              run: run(() => {
-                mediaFolders.move(project, id, folder.id);
-                options.toast(
-                  t('media.folder.moved', { name: folder.name }),
-                  'success',
-                );
-              }),
-            })),
-            ...(current
-              ? [
-                  {
-                    id: 'media-folder-none',
-                    label: t('media.folder.none'),
-                    run: run(() => mediaFolders.move(project, id, null)),
-                  },
-                ]
-              : []),
-            {
-              id: 'media-folder-new',
-              label: t('media.folder.new'),
-              icon: 'plus',
-              divider: mediaFolders.list(project).length > 0,
-              run: run(() => newFolder(id)),
-            },
-          ],
-        },
-        {
-          id: 'media-details',
-          label: t('media.menu.details'),
-          icon: 'info',
-          run: run(() => details(id)),
-        },
-        {
-          id: 'media-delete',
-          label: t('media.menu.delete'),
-          icon: 'delete',
-          divider: true,
-          run: run(() => remove(id)),
-        },
-      ];
-    };
-    menu.open(entries);
-    placeMenu(x, y);
-  };
   const unsubscribeFolders = mediaFolders.onChange(() => render());
   // T1: a Media card dragged (pointer drag) onto a folder moves into it.
   const folderUnder = (element: Element) =>
-    element.closest<HTMLElement>('#media-panel .media-folder[data-folder-id]');
+    element.closest<HTMLElement>(
+      '#media-panel .shelf-folder-tab[data-folder-id]',
+    );
   const unregisterFolders = drags().register({
     contains: (element) => !!folderUnder(element),
     over(payload, point) {
-      for (const item of grid.querySelectorAll('.media-folder.over'))
+      for (const item of container.querySelectorAll('.shelf-folder-tab.over'))
         item.classList.remove('over');
       if (payload.kind !== 'asset' || !point.element) return false;
       folderUnder(point.element)?.classList.add('over');
       return true;
     },
     leave() {
-      for (const item of grid.querySelectorAll('.media-folder.over'))
+      for (const item of container.querySelectorAll('.shelf-folder-tab.over'))
         item.classList.remove('over');
     },
     drop(payload, point) {
@@ -1016,8 +724,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       return controller !== null;
     },
     filter(value: string) {
-      query = value.trim().toLowerCase();
-      render();
+      shelf.filter(value);
     },
     dispose() {
       disposed = true;
@@ -1026,9 +733,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       unsubscribeWaveforms();
       unsubscribeFolders();
       unregisterFolders();
-      document.removeEventListener('pointerdown', closeOutside, true);
-      menu.close();
-      menuElement.remove();
+      shelf.dispose();
       for (const timer of purges.values()) window.clearTimeout(timer);
     },
   };

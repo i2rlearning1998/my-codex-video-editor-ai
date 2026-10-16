@@ -374,23 +374,24 @@ test('[MED-038] Media: type tabs, sort, folders with drag in, Designs from Save 
     'image_gradient_1920x1080.png',
     'video_testsrc_720p_2s_vp9_opus.webm',
   ]);
-  // Folders: create one, drag a card onto it, open it.
-  await page.locator('[data-media-tab="folders"]').click();
+  // R4: folders are tabs. New folder (beside the search) makes one.
   await page.locator('#media-folder-new').click();
   await page.locator('[data-role="prompt-input"]').fill('B-roll');
   await page.keyboard.press('Enter');
-  const folder = page.locator('.media-folder', { hasText: 'B-roll' });
-  await expect(folder).toContainText('0 items');
-  // Moving needs a card on screen: the All tab, then drop on the folder in
-  // the Folders tab through the menu's Move to folder.
+  const folder = page.locator('#media-panel .shelf-folder-tab', {
+    hasText: 'B-roll',
+  });
+  await expect(folder).toHaveAttribute('aria-selected', 'true');
+  await expect(cards).toHaveCount(0);
+  // Move to folder from the card's "⋯" menu.
   await page.locator('[data-media-tab="all"]').click();
   const video = page.locator('.media-item:has(.media-card[data-kind="video"])');
   await video.hover();
   await video.locator('[data-action="media-more"]').click();
   await page.locator('#media-menu [data-action="media-folder"]').click();
   await page.locator('[data-action="media-folder-pick"]').click();
-  await page.locator('[data-media-tab="folders"]').click();
-  await expect(folder).toContainText('1 item');
+  await folder.click();
+  await expect(cards).toHaveCount(1);
   // A dragged card moves into a folder too.
   const transfer = await page.evaluateHandle(
     (id) => {
@@ -403,9 +404,6 @@ test('[MED-038] Media: type tabs, sort, folders with drag in, Designs from Save 
   );
   await folder.dispatchEvent('dragover', { dataTransfer: transfer });
   await folder.dispatchEvent('drop', { dataTransfer: transfer });
-  await expect(folder).toContainText('2 items');
-  await folder.locator('.media-folder-open').click();
-  await expect(page.locator('#media-folder-name')).toHaveText('B-roll');
   await expect(cards).toHaveCount(2);
   expect((await hook(page)).history.canUndo).toBe(false);
   // Designs: Save frame to Media in the export dialog.

@@ -352,10 +352,6 @@ export function mountEditorShell(
       </div>
       <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], false)).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
       <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
-        <div class="library-search" data-rail-panel="Media" hidden>
-          ${iconSvg('search')}
-          <input type="text" id="asset-search" placeholder="${t('library.searchPlaceholder')}" aria-label="${t('library.searchPlaceholder')}" />
-        </div>
         <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><button type="button" class="button import-menu-button" id="import-menu" aria-haspopup="menu" aria-expanded="false" aria-label="${t('code.importMenu')}" title="${t('code.importMenu')}">${iconSvg('chevronDown', 16)}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
         <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
@@ -471,6 +467,8 @@ export function mountEditorShell(
         });
       }),
     toast: (text, kind) => showToast(text, kind),
+    importRow: element('.import-row'),
+    collapse: () => workspace?.setOpen('left', false),
   });
   const audibleAssets = () => {
     const assets = mediaAssets();
@@ -2938,6 +2936,23 @@ export function mountEditorShell(
   };
   // P2: a Creator Pack item's menu: Insert, Rename, Export item, Delete
   // (soft, with Restore). None of it is an undo step.
+  /** R4: a library item's Details (a read-only list). */
+  const showDetails = (name: string, rows: readonly [string, string][]) =>
+    openModal({
+      titleText: escapeHtml(t('media.details.title', { name })),
+      bodyBuilder: (body) => {
+        const list = document.createElement('dl');
+        list.className = 'media-details';
+        for (const [term, value] of rows) {
+          const dt = document.createElement('dt');
+          dt.textContent = term;
+          const dd = document.createElement('dd');
+          dd.textContent = value;
+          list.append(dt, dd);
+        }
+        body.append(list);
+      },
+    });
   const creatorEntryOf = (id: string) =>
     creatorLibrary.list().find((entry) => creatorLibraryId(entry.key) === id);
   const insertCreatorItem = (id: string, time = session.currentTime) => {
@@ -2985,12 +3000,79 @@ export function mountEditorShell(
     if (built.layerId) session.select(built.layerId);
   };
   // Q4: the AI category (everything from Creator Packs).
+  // R4: the AI category on the shared library panel.
+  const deleteCreatorItem = (id: string) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    void creatorLibrary.remove(entry.key);
+    showToast(t('code.templateDeleted', { name: entry.name }), 'info', 8000, {
+      label: t('code.templateRestore'),
+      run: () => void creatorLibrary.restore(entry.key),
+    });
+  };
+  const renameCreatorItem = (id: string) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    void promptDialog(t('code.templateRename'), entry.name, {
+      label: t('myTemplates.name'),
+      confirmLabel: t('code.templateRename'),
+      cancelLabel: t('code.cancel'),
+      maxLength: 80,
+    }).then((name) => {
+      if (name?.trim()) void creatorLibrary.rename(entry.key, name.trim());
+    });
+  };
+  const creatorDetails = (id: string) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    const controls =
+      entry.item.type === 'preset'
+        ? presetControls(entry.item.data).map((control) => control.name)
+        : (entry.motionMeta?.params ?? []).map((param) => param.name);
+    const rows: [string, string][] = [
+      [t('media.details.name'), entry.name],
+      [t('shelf.detailsKind'), t(`ai.kind.${entry.item.type}`)],
+      [t('shelf.detailsPack'), `${entry.packName.en} (v${entry.packVersion})`],
+      [t('shelf.detailsAdded'), new Date(entry.addedAt).toLocaleString()],
+      ...(controls.length
+        ? ([[t('shelf.detailsControls'), controls.join(', ')]] as [
+            string,
+            string,
+          ][])
+        : []),
+    ];
+    showDetails(entry.name, rows);
+  };
+  const shelfPrompt = (title: string, value: string) =>
+    promptDialog(title, value, {
+      label: t('media.folder.name'),
+      confirmLabel: value
+        ? t('media.rename.confirm')
+        : t('media.folder.create'),
+      cancelLabel: t('media.cancel'),
+      maxLength: 80,
+    });
   mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
     insert: (id) => safely(() => insertCreatorItem(id)),
     applyPreset: (id) => applyCreatorPreset(id),
     importPack: () => openCreatorImport(),
     copyBrief: () => void copyAiBrief(),
+    motionPreview: (id, slot) => {
+      const template = creatorLibrary
+        .motionTemplates()
+        .find((item) => item.id === id);
+      if (!template || template.tier === 'A') return null;
+      codeHover(template, slot, true);
+      return () => codeHover(template, slot, false);
+    },
+    rename: renameCreatorItem,
+    details: creatorDetails,
+    remove: deleteCreatorItem,
+    prompt: shelfPrompt,
+    collapse: () => workspace?.setOpen('left', false),
+    report: reportError,
+    toast: (text) => showToast(text, 'success'),
   });
   // T1: themes. Built-in, the project's own (reserved markers on the first
   // scene) and My library's (saved themes under theme/<id>, and Creator Pack
@@ -3363,8 +3445,6 @@ export function mountEditorShell(
       },
     });
   };
-  const searchInput = element<HTMLInputElement>('#asset-search');
-  searchInput.oninput = () => mediaPanel.filter(searchInput.value);
   // H6: signatures in the Draw panel (typed, drawn or uploaded).
   const signature = mountSignature({
     host: element('#draw-panel'),
