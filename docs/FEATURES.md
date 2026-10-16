@@ -928,6 +928,16 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-021 | P1 | W8 | Verified | Creator Packs accept a theme item kind with the same schema, checked by the quality gate and documented with examples (T1) |
 | QT-022 | P1 | W8 | Verified | Copy AI brief copies one plain-text block (task header, project facts, the live library index, the authoring rules and an optional request) under 40 KB, with a fallback box when the clipboard is blocked (T2) |
 
+## RA: R-ALL fixes (groups, AI importer, shared library panel, My Templates, themes)
+
+Hand-test fixes of PR #31.
+
+| ID | Pri | Wave | Status | Item |
+| --- | --- | --- | --- | --- |
+| RA-001 | P1 | W8 | Verified | The timeline clip menu has Group and Ungroup, the same actions as the canvas menu and Ctrl+G / Ctrl+Shift+G (R1) |
+| RA-002 | P1 | W8 | Verified | Grouping again keeps the original group's name when the layers came from one Ungroup, else the first child's name; never a bare "Group" when a name exists (R1) |
+| RA-003 | P1 | W8 | Verified | Group and Ungroup show one success toast ("Grouped 2 layers", "Ungrouped into 2 layers"); a refusal shows one toast with the reason (R1) |
+
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
 Creator Pack items imported, checked and registered in the user's library, and their controls.

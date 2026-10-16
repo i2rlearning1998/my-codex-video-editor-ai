@@ -219,7 +219,12 @@ import { canvasMenuEntries } from './canvas-menu';
 import { createMenu } from './context-menu';
 import { mountSelectionActions } from './selection-actions';
 import { multiSelectionBox, selectionGeometry } from '../render/selection';
-import { performEdit, planLanding, trackForNewClip } from './editing';
+import {
+  onEditNotice,
+  performEdit,
+  planLanding,
+  trackForNewClip,
+} from './editing';
 import { iconSvg } from './icons';
 import {
   confirmDialog,
@@ -426,6 +431,11 @@ export function mountEditorShell(
       });
     else showToast(text, 'error');
   };
+  // R1: Group and Ungroup say what they did.
+  onEditNotice((text) => {
+    message(text);
+    showToast(text, 'success');
+  });
   const safely = (action: () => void | Promise<void>) => {
     try {
       const result = action();

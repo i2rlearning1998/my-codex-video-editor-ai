@@ -1600,5 +1600,7 @@
   "brief.copyText": "कॉपी करें",
   "brief.copied": "AI ब्रीफ़ कॉपी हो गया ({count} आइटम सूचीबद्ध)",
   "brief.copiedPlain": "AI ब्रीफ़ कॉपी हो गया",
-  "brief.selectHint": "टेक्स्ट चुना हुआ है: कॉपी करने के लिए Ctrl+C दबाएँ।"
+  "brief.selectHint": "टेक्स्ट चुना हुआ है: कॉपी करने के लिए Ctrl+C दबाएँ।",
+  "toast.grouped": "{count} परतें समूहित की गईं",
+  "toast.ungrouped": "{count} परतों में अलग किया गया"
 }

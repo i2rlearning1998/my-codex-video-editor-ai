@@ -2489,6 +2489,7 @@ export function mountTimeline(
         case 'split':
         case 'duplicate':
         case 'group':
+        case 'ungroup':
         case 'delete':
         case 'toggle-enabled':
         case 'reverse':
@@ -3652,6 +3653,12 @@ export function mountTimeline(
   const showMainMenu = () => {
     const kind = clipMenuKind();
     const section = kind ? kindSection(kind) : [];
+    // R1: Group and Ungroup, as on the canvas menu and Ctrl+(Shift+)G. A
+    // blocked Ungroup stays clickable and says why (one toast).
+    const roots = selectionRoots(session.source, session.selectedIds);
+    if (roots.length > 1) section.push(commandItem('group'));
+    if (roots.length && roots.every((layer) => layer.type === 'group'))
+      section.push(commandItem('ungroup'));
     const shown = new Set(
       section.flatMap((item) =>
         (item as HTMLElement).dataset.command

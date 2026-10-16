@@ -1,4 +1,5 @@
 import { isReservedMarker } from '../core';
+import { t } from '../i18n';
 import { isLocked } from '../render/transform-capabilities';
 import {
   layerSchema,
@@ -43,7 +44,12 @@ import {
 import type { EditorSession } from './session';
 
 import { describeSelection, selectionRoots } from './selection-context';
-import { ungroupBlocker, ungroupCommands } from './ungroup';
+import {
+  groupNameFor,
+  rememberUngroup,
+  ungroupBlocker,
+  ungroupCommands,
+} from './ungroup';
 export { selectionRoots };
 export function cloneLayer(
   layer: SceneLayer,
@@ -324,6 +330,15 @@ export function contextActions(
     actions.push('ungroup');
   return actions;
 }
+/** R1: success notices of an edit (the shell shows them as toasts). */
+const editNotices = new Set<(text: string) => void>();
+export function onEditNotice(listener: (text: string) => void): () => void {
+  editNotices.add(listener);
+  return () => editNotices.delete(listener);
+}
+const notifyEdit = (text: string) => {
+  for (const listener of editNotices) listener(text);
+};
 export function performEdit(
   engine: EditorEngine,
   session: EditorSession,
@@ -355,8 +370,16 @@ export function performEdit(
     return clipAction(engine, session, action);
   if (action === 'ungroup') {
     const plan = ungroupCommands(source, session.selectedIds);
+    const groups = selectionRoots(source, session.selectedIds);
     engine.commands.transaction('Ungroup', plan.commands);
+    // R1: a regroup of the same children gets the group's name back.
+    for (const group of groups)
+      rememberUngroup(
+        group.name,
+        group.children.map((child) => child.id),
+      );
     session.selectMany(plan.selected);
+    notifyEdit(t('toast.ungrouped', { count: plan.selected.length }));
     return;
   }
   // TL-032: linked partners delete, split and duplicate together. A partner that
@@ -453,6 +476,9 @@ export function performEdit(
     }
   else if (action === 'group') {
     const groupId = crypto.randomUUID();
+    // R1: the original group's name when these layers came from one Ungroup,
+    // else the first child's name; never a bare "Group" when a name exists.
+    const groupName = groupNameFor(layers);
     // TL-001: children fold their clip timing into the layer and the group gets
     // one clip spanning them, so the group is the only clip on the timeline.
     const childClips = layers.flatMap((layer) => {
@@ -475,7 +501,7 @@ export function performEdit(
       compositionId,
       layerIds: layers.map((layer) => layer.id),
       groupId,
-      name: 'Group',
+      name: groupName,
     });
     const topLevel = source.composition.layers.some(
       (layer) => layer.id === layers[0]!.id,
@@ -502,7 +528,7 @@ export function performEdit(
         trackId: target.trackId,
         clip: {
           id: crypto.randomUUID(),
-          name: 'Group',
+          name: groupName,
           layerId: groupId,
           assetId: null,
           startTime: start,
@@ -633,6 +659,8 @@ export function performEdit(
       commands,
     );
   if (selected.length) session.selectMany(selected);
+  if (action === 'group' && commands.length)
+    notifyEdit(t('toast.grouped', { count: layers.length }));
 }
 export function setClipSpeed(
   engine: EditorEngine,

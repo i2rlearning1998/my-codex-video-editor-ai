@@ -1600,5 +1600,7 @@
   "brief.copyText": "Copy",
   "brief.copied": "AI brief copied ({count} items listed)",
   "brief.copiedPlain": "AI brief copied",
-  "brief.selectHint": "The text is selected: press Ctrl+C to copy it."
+  "brief.selectHint": "The text is selected: press Ctrl+C to copy it.",
+  "toast.grouped": "Grouped {count} layers",
+  "toast.ungrouped": "Ungrouped into {count} layers"
 }
