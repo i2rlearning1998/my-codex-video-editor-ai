@@ -83,6 +83,8 @@ export interface ShelfOptions {
   readonly remove: (id: string) => void;
   /** A name for a new or renamed folder (null: cancelled). */
   readonly prompt: (title: string, value: string) => Promise<string | null>;
+  /** An illustration (inline SVG markup) above the empty state's text. */
+  readonly illustration?: string;
   /** Shown when the panel (or the open tab) has nothing to show. */
   readonly empty: () => { title: string; description: string };
   /** Loading and error states (null: ready). */
@@ -195,7 +197,7 @@ export function mountShelf(options: ShelfOptions): Shelf {
   state.className = 'shelf-state';
   state.id = `${prefix}-state`;
   state.hidden = true;
-  state.innerHTML = `<h3 class="shelf-state-title" id="${prefix}-state-title"></h3><p class="shelf-state-description" id="${prefix}-state-description"></p>`;
+  state.innerHTML = `${options.illustration ?? ''}<h3 class="shelf-state-title" id="${prefix}-state-title"></h3><p class="shelf-state-description" id="${prefix}-state-description"></p>`;
   const grid = document.createElement('div');
   grid.className = 'shelf-grid';
   grid.id = `${prefix}-grid`;
@@ -431,7 +433,9 @@ export function mountShelf(options: ShelfOptions): Shelf {
       const chipEl = document.createElement('span');
       chipEl.className = 'ai-chip shelf-chip';
       chipEl.textContent = item.chip;
-      thumb.append(chipEl);
+      // On the card, not in the thumbnail slot, which the thumbnail
+      // service may replace later.
+      button.append(chipEl);
     }
     const name = document.createElement('span');
     name.className = `shelf-name ${options.classes?.name ?? ''}`.trim();

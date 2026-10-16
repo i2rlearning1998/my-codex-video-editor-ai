@@ -24,7 +24,17 @@
 
 ## 3. Checks
 
-FILLED-AFTER-VERIFY
+- `npm run verify`, run once at the end (Node 22, Chromium 141 sandbox fallback): **exit 1**. Because `npm test` failed, the rest of the chain was run by hand right after (build, e2e, hook assertion, ledger).
+  - Format: passed (after Prettier reformatted Codex's `docs/THUMBNAILS-API.md`). Typecheck: passed. Build: passed.
+  - Unit and jsdom: **906 passed, 3 failed** (909 in 81 files). Failures: the shell rail list (fixed after the run: My Templates added; passes alone) and the two `tests/blocks/worker.test.ts` sandbox tests ("Sandbox unavailable"), which this branch does not touch.
+  - e2e: **488 passed, 8 failed** (1.1 h, one worker), DEV-006 (the deliberate guard probe) among the 8.
+- The 8 e2e failures:
+  - **Fixed after the run, passing alone:** TL-001 (the menu now holds "Save to My Templates as a group" too; the test picks Group by its command), CP-004 (an AI chip was inside the thumbnail slot, which the thumbnail service replaces; it is now on the card), LAY-060 (the Media empty state's illustration is back in the shared panel).
+  - **Fail on the base branch too** (checked in a worktree of `claude/qt-series`): TXT-040 (bundled weights) and CV-044 (text glyphs after a corner drag).
+  - **Known flakes, not chased:** ANI-003, PB-010 (sandbox only). CODE-006 passed when run alone.
+  - **DEV-006:** the guard probe fails by design.
+- Hook assertion: `assert-no-test-hook: OK`. Ledger: `754 items | Verified 432 | Claimed 18 | Todo 299 | Dropped 5` · `Ledger OK`.
+- Targeted specs per part, all passing: r1 ×2, r2 ×4, r3 ×5, r5 ×2, r6 ×2, q5 ×2, plus the updated P, Q, X, I and T specs.
 
 ## 4. Try-it script for the owner (about 10 minutes)
 

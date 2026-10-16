@@ -9055,8 +9055,8 @@ input[type='range'] {
 }
 .shelf-chip {
   position: absolute;
-  inset-block-start: var(--space-1);
-  inset-inline-start: var(--space-1);
+  inset-block-start: calc(var(--space-2) + var(--space-1));
+  inset-inline-start: calc(var(--space-2) + var(--space-1));
 }
 .shelf-more,
 .shelf-plus {
