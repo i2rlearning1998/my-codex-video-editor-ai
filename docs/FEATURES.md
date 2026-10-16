@@ -953,6 +953,7 @@ Hand-test fixes of PR #31.
 | RA-017 | P1 | W8 | Verified | Applying a theme keeps hand-picked colours unless Also override manual colors is ticked; the toast says how many were kept or overridden ("Playful Pop applied. 2 manual colours kept.") (R6, theme library by Codex) |
 | RA-018 | P1 | W8 | Verified | The Theme panel has one My themes list (no second My library list); Save current as theme is disabled until named and says "Name already used"; save, rename and delete go to the theme library with toasts and never create or consume undo steps (R6) |
 | RA-019 | P1 | W8 | Verified | Rename and Delete of a saved theme are in a "⋯" menu (tooltip More options); five rounds of save, rename and delete raise no error (R6) |
+| RA-020 | P1 | W8 | Verified | Settings › Animations (Auto, On, Off) also governs the shared library panels (Media, AI, My Templates): panel slides and card buttons animate with On and not with Off (R7) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
