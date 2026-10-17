@@ -1,3 +1,4 @@
+import { mediaSeekTime } from '../media-probe/timing';
 import type { FrameProvider, MediaFrameRequest } from '../render/adapter';
 import { assetFingerprint, mediaKey } from './import';
 import type { PreviewAsset } from './previews';
@@ -189,10 +190,11 @@ export class MediaFrames implements FrameProvider {
     const ready = element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
     if (element.readyState >= HTMLMediaElement.HAVE_METADATA) {
       const end = Math.max(0, element.duration - NUDGE);
-      const target = Math.max(
-        0,
-        Math.min(end, request.sourceTime + (request.reversed ? -NUDGE : NUDGE)),
-      );
+      const target = mediaSeekTime(request.sourceTime, {
+        end,
+        reverse: request.reversed,
+        nudge: NUDGE,
+      });
       const native =
         playing &&
         !request.reversed &&

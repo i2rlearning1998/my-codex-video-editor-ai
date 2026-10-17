@@ -1,3 +1,5 @@
+import { probeMedia as inspectMedia } from '../media-probe/probe';
+import type { MediaDetails } from '../media-probe/types';
 // Browser-side media inspection: what kind a file is, its size and duration, and a
 // small thumbnail. Everything decodes through the browser's own media elements (D-005).
 
@@ -38,6 +40,7 @@ export function classifyMedia(file: {
 }
 
 export interface MediaProbe {
+  details?: MediaDetails;
   width?: number;
   height?: number;
   duration?: number;
@@ -144,6 +147,10 @@ export async function probeMedia(
   kind: MediaKind,
   signal?: AbortSignal,
 ): Promise<MediaProbe> {
+  const details =
+    kind === 'image'
+      ? undefined
+      : await inspectMedia(blob, signal ? { signal } : {});
   const url = URL.createObjectURL(blob);
   try {
     const element = await loadElement(kind, url, signal);
@@ -164,9 +171,10 @@ export async function probeMedia(
           width: element.videoWidth,
           height: element.videoHeight,
           duration,
+          ...(details ? { details } : {}),
         };
       }
-      return { duration };
+      return { duration, ...(details ? { details } : {}) };
     } finally {
       await release(element);
     }
