@@ -35,7 +35,7 @@ const apply = (page: Page, id: string) =>
 /** Closes every toast (they sit above menus near the panel's foot). */
 async function closeToasts(page: Page) {
   for (const close of await page.locator('.toast .toast-close').all())
-    await close.click().catch(() => undefined);
+    await close.click({ timeout: 1000 }).catch(() => undefined);
   await expect(page.locator('.toast:not(.toast-leaving)')).toHaveCount(0);
 }
 const saved = (page: Page) =>

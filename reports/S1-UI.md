@@ -21,7 +21,21 @@
 
 ## 3. Checks
 
-FILL-IN
+- `npm run verify`, run once at the end (Node 22, Chromium 141 sandbox fallback): **exit 1**. It stopped at `npm test`, so I ran the rest of the chain by hand right after: build, e2e, hook assertion and ledger.
+  - Format: passed. Typecheck: passed. Build: passed.
+  - Unit and jsdom: **906 passed, 3 failed** (909 tests in 81 files):
+    - the two `tests/blocks/worker.test.ts` sandbox tests ("Sandbox unavailable"), as on R-ALL;
+    - Codex's `tests/thumbnails/service.test.ts` "samples distinct hover times". It is flaky: run four times alone it failed once, and it does not touch the preset fix.
+  - e2e: **498 passed, 6 failed** (46.6 min, one worker).
+- The 6 e2e failures:
+  - **Fixed after the run, passing alone:**
+    - LYR-018: the Scene outliner menu could flip over its row after the new placement; it now opens below or above the row, and the test checks the new 240 to 260 px width.
+    - RA-018/RA-019: the test's toast-closing helper waited its full timeout on a toast that was already leaving. It now waits 1 s, and passes 3 of 3 runs.
+  - **Passed when run alone:** TL-096 (timeline edge drag, a timing flake).
+  - **Owner's known flakes, not chased:** LAY-004.
+  - **Failing before this branch, not chased:** TXT-040, CV-044.
+- Hook assertion: `assert-no-test-hook: OK`. Ledger: `762 items | Verified 440 | Claimed 18 | Todo 299 | Dropped 5`, Ledger OK. On the full run's report it flagged RA-018/RA-019, fixed above.
+- Targeted specs per part, all passing: `s1-ui` ×8, plus the updated R, P, Q, J, T, V, H, I specs and the menu regression set (145 tests).
 
 ## 4. Screenshots (reports/s1-ui/, 1920 × 1080)
 
