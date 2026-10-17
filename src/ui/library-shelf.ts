@@ -10,6 +10,7 @@
 // Nothing here is an undo step: the panels' owners keep library state
 // outside the project history.
 import { t } from '../i18n';
+import { drags, type DragPayload } from './drag-controller';
 import { createMenu, type MenuEntry } from './context-menu';
 import { iconSvg } from './icons';
 
@@ -20,6 +21,8 @@ export interface ShelfItem {
   readonly category: string;
   readonly folderId?: string | null;
   readonly title?: string;
+  /** S1 Part 3: what a drag of the card carries (canvas and timeline). */
+  readonly drag?: () => DragPayload | null;
   /** A small badge over the thumbnail (a duration). */
   readonly badge?: string;
   /** Extra data-* attributes on the card button. */
@@ -449,6 +452,14 @@ export function mountShelf(options: ShelfOptions): Shelf {
       button.addEventListener('blur', stop);
     }
     item.decorate?.(button);
+    // S1 Part 3: every library card drags the same way (one pointer-driven
+    // controller); the ghost shows the card's thumbnail.
+    if (item.drag)
+      drags().source(button, () => {
+        const value = item.drag!();
+        const src = button.querySelector('img')?.getAttribute('src') ?? null;
+        return value && !value.thumb && src ? { ...value, thumb: src } : value;
+      });
     const more = document.createElement('button');
     more.type = 'button';
     more.className =

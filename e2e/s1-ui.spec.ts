@@ -314,3 +314,104 @@ test('[S1-004] Media always shows All, Images, Videos and Audio; AI and My Templ
   await showCategory(page, 'MyTemplates');
   expect(await chips('#library-mine')).toEqual([]);
 });
+
+const sceneOf = async (page: Page) => {
+  const state = await hook(page);
+  return state.project.compositions.find(
+    (c) => c.id === state.session.compositionId,
+  )!;
+};
+/** Drags `card` with the mouse to (x, y) and releases. */
+async function dragCard(
+  page: Page,
+  card: ReturnType<Page['locator']>,
+  to: { x: number; y: number },
+) {
+  const from = (await card.boundingBox())!;
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 3);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2 + 12, from.y + 20, {
+    steps: 3,
+  });
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  await page.mouse.up();
+}
+/** A point in the first lane (text and shapes), well after its clip. */
+async function laneSpot(page: Page) {
+  const row = page.locator('#timeline-foundation .timeline-nle-row').first();
+  const clip = (await row.locator('.timeline-clip').first().boundingBox())!;
+  const view = (await page
+    .locator('#timeline-foundation .timeline-scroll')
+    .boundingBox())!;
+  return { x: view.x + view.width - 80, y: clip.y + clip.height / 2 };
+}
+
+test('[S1-005] AI, My Templates and Media cards drag to the canvas (centred on the drop point) and to the timeline (a clip at the drop time), each one undo step', async ({
+  page,
+}) => {
+  await fill(page);
+  const cases = [
+    [
+      'AI',
+      '#library-ai .shelf-item[data-item-id="shape-pack--shape-kite"] .shelf-card',
+    ],
+    ['MyTemplates', '#library-mine .shelf-card'],
+    ['Media', '#media-panel .shelf-card'],
+  ] as const;
+  for (const [category, selector] of cases) {
+    // Canvas: the new element's box is centred on the drop point.
+    await showCategory(page, category);
+    const before = new Set((await sceneOf(page)).layers.map((l) => l.id));
+    const steps = (await hook(page)).history.labels.length;
+    const drop = await toScreen(page, 900, 300);
+    await dragCard(page, page.locator(selector).first(), drop);
+    await expect
+      .poll(async () => (await sceneOf(page)).layers.length)
+      .toBe(before.size + 1);
+    expect((await hook(page)).history.labels.length).toBe(steps + 1);
+    const added = (await sceneOf(page)).layers.find((l) => !before.has(l.id))!;
+    await expect
+      .poll(async () => (await hook(page)).session.selectedIds)
+      .toContain(added.id);
+    // The drawn selection box (canvas pixels) is centred on the drop.
+    const centre = await page.evaluate(() => {
+      const corners = (
+        window as unknown as {
+          __AIVE__: { getCanvas(): { corners: number[][] | null } };
+        }
+      ).__AIVE__.getCanvas().corners;
+      const rect = document
+        .querySelector('#composition-canvas')!
+        .getBoundingClientRect();
+      if (!corners?.length) return null;
+      return [
+        rect.left + corners.reduce((sum, p) => sum + p[0]!, 0) / corners.length,
+        rect.top + corners.reduce((sum, p) => sum + p[1]!, 0) / corners.length,
+      ];
+    });
+    expect(centre).not.toBeNull();
+    expect(Math.abs(centre![0]! - drop.x)).toBeLessThan(12);
+    expect(Math.abs(centre![1]! - drop.y)).toBeLessThan(12);
+    await page.keyboard.press('Control+z');
+    await expect
+      .poll(async () => (await sceneOf(page)).layers.length)
+      .toBe(before.size);
+    // Media's timeline drops are proven by MED-039 and MED-041.
+    if (category === 'Media') continue;
+    // Timeline: a clip that starts at the drop time, not at the playhead.
+    const spot = await laneSpot(page);
+    await dragCard(page, page.locator(selector).first(), spot);
+    await expect
+      .poll(async () => (await sceneOf(page)).layers.length)
+      .toBe(before.size + 1);
+    const layer = (await sceneOf(page)).layers.find((l) => !before.has(l.id))!;
+    const clip = (await sceneOf(page)).tracks
+      .flatMap((track) => track.clips)
+      .find((item) => item.layerId === layer.id)!;
+    expect(clip.startTime).toBeGreaterThan(1);
+    await page.keyboard.press('Control+z');
+    await expect
+      .poll(async () => (await sceneOf(page)).layers.length)
+      .toBe(before.size);
+  }
+});

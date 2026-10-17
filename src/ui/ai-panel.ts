@@ -100,6 +100,7 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           title: `${entry.name} · ${entry.packName.en}`,
           keywords: [entry.packName.en, kind, ...entry.item.tags],
           data: { item: id, kind },
+          drag: () => ({ kind: 'creator' as const, id, name: entry.name }),
           thumb: (slot: HTMLElement) => libraryThumb(slot, source),
           ...(live
             ? {

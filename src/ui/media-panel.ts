@@ -253,6 +253,18 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     badge: badge(asset),
     data: { assetId: asset.id, name: asset.name, kind: asset.type },
     thumb: () => undefined,
+    // T1: one pointer-driven drag (no browser drag, no draggable thumbnail
+    // image); a plain click adds the media to the scene.
+    drag: () => ({
+      kind: 'asset',
+      id: asset.id,
+      name: asset.name,
+      media: asset.type as 'image' | 'video' | 'audio',
+      duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
+      ...(asset.width && asset.height
+        ? { width: asset.width, height: asset.height }
+        : {}),
+    }),
     // I2: a video previews its filmstrip while hovered.
     ...(asset.type === 'video'
       ? {
@@ -286,19 +298,6 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       card.querySelector('.media-badge')!.textContent = badge(asset);
       card.querySelector('.media-name')!.textContent = asset.name;
       setThumb(card, asset);
-      // T1: one pointer-driven drag (no browser drag, no draggable
-      // thumbnail image); a plain click adds the media to the scene.
-      drags().source(card, () => ({
-        kind: 'asset',
-        id: asset.id,
-        name: asset.name,
-        thumb: card.querySelector('img')?.getAttribute('src') ?? null,
-        media: asset.type as 'image' | 'video' | 'audio',
-        duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
-        ...(asset.width && asset.height
-          ? { width: asset.width, height: asset.height }
-          : {}),
-      }));
     },
   });
   const project = () => engine.state.id;

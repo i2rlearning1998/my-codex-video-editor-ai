@@ -965,6 +965,7 @@ Hand-test fixes of PR #33 (S1 brief).
 | S1-002 | P1 | W8 | Verified | Media, AI and My Templates share one layout: every left panel is 380 px wide from 1800 px windows; search (40 px) with a 40 × 40 New folder 8 px after it; Media's Import split button (44 px) and drop zone (56 px), AI's two equal buttons; every row on one left and right edge with 16 px padding (Part 2) |
 | S1-003 | P1 | W8 | Verified | Library cards are two equal columns (12 px gap, at least 165 px at 1920 × 1080) in Media, AI and My Templates; "⋯" (dark, top-right) and "+" (accent, bottom-right) are 32 px, 8 px inside the thumbnail, visible on hover, focus and touch, and never also add the card (Part 2) |
 | S1-004 | P1 | W8 | Verified | Media always shows All, Images, Videos and Audio; AI and My Templates show All plus one chip per kind that has items; AI cards carry no AI chip; preset cards have a drawn thumbnail (Part 2) |
+| S1-005 | P1 | W8 | Verified | AI and My Templates cards drag like every library card (one controller, from the shared card): a canvas drop adds the item centred on the drop point, a timeline drop adds its clip at the drop time and lane, one undo step; Media still drags (Part 3) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 

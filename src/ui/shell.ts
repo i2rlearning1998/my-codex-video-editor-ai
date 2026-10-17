@@ -106,6 +106,7 @@ import {
 } from '../core';
 import {
   deriveRenderItems,
+  hitTest,
   locateLayer,
   type RenderSource,
   type SceneLayer,
@@ -2984,7 +2985,102 @@ export function mountEditorShell(
     });
   const creatorEntryOf = (id: string) =>
     creatorLibrary.list().find((entry) => creatorLibraryId(entry.key) === id);
-  const insertCreatorItem = (id: string, time = session.currentTime) => {
+  /** S1 Part 3: moves the new top-level layers of `commands` so their
+   *  drawn box is centred on `point` (keyframed positions too). */
+  const centreOn = (
+    commands: Command[],
+    ids: readonly string[],
+    point: readonly [number, number],
+  ) => {
+    const composition = engine
+      .preview(commands)
+      .compositions.find((item) => item.id === session.source.composition.id);
+    const box = composition
+      ? selectionGeometryOf({
+          ...session.source,
+          composition,
+          selectedIds: [...ids],
+        } as RenderSource)
+      : null;
+    if (!box) return commands;
+    const dx = point[0] - (box.x + box.width / 2),
+      dy = point[1] - (box.y + box.height / 2);
+    const move = (value: unknown) =>
+      Array.isArray(value) && value.length === 2
+        ? [Number(value[0]) + dx, Number(value[1]) + dy]
+        : value;
+    return commands.map((command) => {
+      if (
+        command.type !== 'CREATE_LAYER' ||
+        command.parentId !== null ||
+        !ids.includes(command.layer.id)
+      )
+        return command;
+      const position = command.layer.transform.position as unknown as {
+        value: unknown;
+        keyframes: { value: unknown }[];
+      };
+      return {
+        ...command,
+        layer: {
+          ...command.layer,
+          transform: {
+            ...command.layer.transform,
+            position: {
+              ...position,
+              value: move(position.value),
+              keyframes: position.keyframes.map((key) => ({
+                ...key,
+                value: move(key.value),
+              })),
+            },
+          },
+        },
+      } as Command;
+    });
+  };
+  /** S1 Part 3: the one-step commands that add an AI shape, text or
+   *  background (null for themes, presets, motion and templates). */
+  const creatorBuilt = (
+    id: string,
+    time: number,
+    point?: readonly [number, number] | null,
+  ): { label: string; commands: Command[]; layerId: string } | null => {
+    const entry = creatorEntryOf(id);
+    if (
+      !entry ||
+      ['theme', 'motion', 'composition', 'preset', 'template'].includes(
+        entry.item.type,
+      )
+    )
+      return null;
+    const item = libraryActions.find(id);
+    const built = item
+      ? libraryActions.commandsFor(item, point ?? undefined, time)
+      : null;
+    if (!built?.layerId) return null;
+    // T1: an AI item's layers remember their palette slot (background, text
+    // or primary), so a theme recolours them.
+    return {
+      label: built.label,
+      layerId: built.layerId,
+      commands: built.commands.map((command) =>
+        command.type === 'CREATE_LAYER'
+          ? ({
+              ...command,
+              layer: withPaletteSlots(
+                command.layer as unknown as CoreLayer,
+              ) as never,
+            } as Command)
+          : command,
+      ),
+    };
+  };
+  const insertCreatorItem = (
+    id: string,
+    time = session.currentTime,
+    point?: readonly [number, number] | null,
+  ) => {
     const entry = creatorEntryOf(id);
     if (!entry) return;
     // R2: a theme item is applied (themes live in the AI category too).
@@ -3000,33 +3096,20 @@ export function mountEditorShell(
       if (template) void insertCodeTemplate(template, time).catch(reportError);
       return;
     }
-    const item = libraryActions.find(id);
-    if (!item) return;
-    // T1: an AI item's layers remember their palette slot (background, text
-    // or primary), so a theme recolours them; one step as before.
-    const built =
-      item.type === 'template'
-        ? null
-        : libraryActions.commandsFor(item, undefined, time);
+    const built = creatorBuilt(id, time, point);
     if (!built) {
-      libraryActions.insert(item, undefined, time);
+      const item = libraryActions.find(id);
+      if (item)
+        libraryActions.insert(
+          item,
+          (point ?? undefined) as [number, number] | undefined,
+          time,
+        );
       return;
     }
     session.setPlaying(false);
-    engine.commands.transaction(
-      built.label,
-      built.commands.map((command) =>
-        command.type === 'CREATE_LAYER'
-          ? ({
-              ...command,
-              layer: withPaletteSlots(
-                command.layer as unknown as CoreLayer,
-              ) as never,
-            } as Command)
-          : command,
-      ),
-    );
-    if (built.layerId) session.select(built.layerId);
+    engine.commands.transaction(built.label, built.commands);
+    session.select(built.layerId);
   };
   // Q4: the AI category (everything from Creator Packs).
   // R4: the AI category on the shared library panel.
@@ -3224,8 +3307,37 @@ export function mountEditorShell(
     if (!template.mediaIncluded) showToast(t('mine.mediaLeftOut'), 'warning');
     savedToast('scene');
   };
+  /** S1 Part 3: the commands that add a saved element item at `time`
+   *  (centred on `point` for a canvas drop); null for a scene. */
+  const mineBuilt = (
+    id: string,
+    time: number,
+    point?: readonly [number, number] | null,
+  ) => {
+    const item = myLibrary.find(id);
+    if (!item || item.kind === 'scene') return null;
+    const built = mineCommands(
+      session.source.composition,
+      session.source.assets,
+      item,
+      time,
+      (commands) =>
+        engine
+          .preview(commands)
+          .compositions.find(
+            (scene) => scene.id === session.source.composition.id,
+          )!,
+    );
+    return point
+      ? { ...built, commands: centreOn(built.commands, built.layerIds, point) }
+      : built;
+  };
   /** Add to scene: exactly like a library item (one undo step). */
-  const insertMine = (id: string) =>
+  const insertMine = (
+    id: string,
+    time = session.currentTime,
+    point?: readonly [number, number] | null,
+  ) =>
     safely(() => {
       const item = myLibrary.find(id);
       if (!item) return;
@@ -3234,24 +3346,14 @@ export function mountEditorShell(
         libraryActions.insertMine(item.scene);
         return;
       }
-      const built = mineCommands(
-        session.source.composition,
-        session.source.assets,
-        item,
-        session.currentTime,
-        (commands) =>
-          engine
-            .preview(commands)
-            .compositions.find(
-              (scene) => scene.id === session.source.composition.id,
-            )!,
-      );
+      const built = mineBuilt(id, time, point);
+      if (!built) return;
       engine.commands.transaction(t('mine.addStep'), built.commands);
       session.selectMany(built.layerIds);
     });
   const minePanel = mountMyTemplatesPanel(element('#library-mine'), {
     library: myLibrary,
-    add: insertMine,
+    add: (id) => insertMine(id),
     rename: (id) => {
       const item = myLibrary.find(id);
       if (!item) return;
@@ -4833,6 +4935,19 @@ export function mountEditorShell(
         : null;
     }
     if (payload.kind === 'mine' || payload.kind === 'code') return null;
+    // S1 Part 3: AI and My Templates items (one layer) take a lane like any
+    // library item; the rest are added whole by addPayload.
+    if (payload.kind === 'creator') return creatorBuilt(payload.id, time);
+    if (payload.kind === 'saved') {
+      const built = mineBuilt(payload.id, time);
+      return built?.layerIds.length === 1
+        ? {
+            label: t('mine.addStep'),
+            commands: built.commands,
+            layerId: built.layerIds[0]!,
+          }
+        : null;
+    }
     const item =
       payload.kind === 'textbox'
         ? ('textbox' as const)
@@ -5110,7 +5225,17 @@ export function mountEditorShell(
     else if (payload.kind === 'mine') {
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
-    } else if (payload.kind === 'code') {
+    } else if (payload.kind === 'creator') {
+      // A preset dropped on the canvas animates the element under the drop
+      // point (else the selection), like a click on the card.
+      if (creatorEntryOf(payload.id)?.item.type === 'preset') {
+        const hit = point ? hitTest(session.source, point) : null;
+        if (hit) session.select(hit);
+        applyCreatorPreset(payload.id);
+      } else insertCreatorItem(payload.id, time, point ?? null);
+    } else if (payload.kind === 'saved')
+      insertMine(payload.id, time, point ?? null);
+    else if (payload.kind === 'code') {
       const template = creatorLibrary
         .motionTemplates()
         .find((item) => item.id === payload.id);
@@ -5171,7 +5296,17 @@ export function mountEditorShell(
         value = { width: w, height: h, dx: 0, dy: 0, whole: true };
       else {
         let commands: Command[] | null = null;
-        if (payload.kind === 'preset') {
+        if (payload.kind === 'creator' || payload.kind === 'saved') {
+          // S1 Part 3: AI and My Templates items measure their real insert;
+          // a whole scene or code animation outlines the artboard.
+          commands =
+            (payload.kind === 'creator'
+              ? creatorBuilt(payload.id, session.currentTime, at)
+              : mineBuilt(payload.id, session.currentTime, at)
+            )?.commands ?? null;
+          if (!commands)
+            value = { width: w, height: h, dx: 0, dy: 0, whole: true };
+        } else if (payload.kind === 'preset') {
           commands = addShapeCommands(
             session.source,
             payload.id as ShapePreset,

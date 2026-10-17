@@ -49,6 +49,11 @@ export function mountMyTemplatesPanel(
           folderId: MINE_FOLDERS.folderOf(item.id),
           keywords: [item.kind],
           data: { mine: item.id, kind: item.kind },
+          drag: () => ({
+            kind: 'saved' as const,
+            id: item.id,
+            name: item.name,
+          }),
           thumb: (slot: HTMLElement) => libraryThumb(slot, source),
           ...(item.kind === 'animation'
             ? { preview: (slot: HTMLElement) => libraryPreview(slot, source) }
