@@ -1,3 +1,4 @@
+import { filterVoices, languageBase } from './languages';
 import { z } from 'zod';
 import { ProviderError } from '../providers/errors';
 import { speechHttp, type PaidDependencies } from './http';
@@ -27,7 +28,7 @@ export function createMiniMax(deps: PaidDependencies = {}): TtsProvider {
     kind: 'speech-tts',
     requiresKey: true,
     keyFields: [{ id: 'apiKey', label: 'API key', secret: true }],
-    async listVoices(_lang) {
+    async listVoices(lang) {
       const raw = await http.request(
         'https://api.minimax.io/v1/get_voice',
         {
@@ -49,11 +50,18 @@ export function createMiniMax(deps: PaidDependencies = {}): TtsProvider {
         })
         .safeParse(raw);
       if (!r.success) throw new ProviderError('BAD_RESPONSE');
-      return r.data.system_voice.map((v) => ({
-        id: v.voice_id,
-        name: v.voice_name ?? v.voice_id,
-        lang: 'und',
-      }));
+      return filterVoices(
+        r.data.system_voice.map((v) => ({
+          id: v.voice_id,
+          name: v.voice_name ?? v.voice_id,
+          lang: ['english', 'hindi'].includes(
+            v.voice_id.split('_')[0]!.toLowerCase(),
+          )
+            ? languageBase(v.voice_id.split('_')[0]!)
+            : 'und',
+        })),
+        lang,
+      );
     },
     async synthesize(r) {
       if (

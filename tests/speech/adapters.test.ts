@@ -39,7 +39,7 @@ describe('paid adapters with documented response fixtures', () => {
   it('lists ElevenLabs voices without inventing their languages', async () => {
     const deps = setup([Response.json(fixture('elevenlabs'))]);
     const voices = await createElevenLabs(deps).listVoices('hi');
-    expect(voices.map((v) => v.lang)).toEqual(['en', 'hi']);
+    expect(voices.map((v) => v.lang)).toEqual(['hi']);
     expect(deps.fetch.mock.calls[0]?.[1]?.headers).toEqual({
       'xi-api-key': 'secret-eleven',
     });
@@ -73,7 +73,7 @@ describe('paid adapters with documented response fixtures', () => {
     ]);
     const provider = createMiniMax(deps);
     expect(await provider.listVoices()).toEqual([
-      { id: 'English_Example', name: 'Example', lang: 'und' },
+      { id: 'English_Example', name: 'Example', lang: 'en' },
     ]);
     const result = await provider.synthesize(request);
     expect(Array.from(new Uint8Array(await result.blob.arrayBuffer()))).toEqual(

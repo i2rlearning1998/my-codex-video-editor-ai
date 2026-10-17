@@ -7,13 +7,14 @@ export interface CaptionCue {
   lines: string[];
   /** Original word timestamps for highlighting; absent for segment-only input. */
   words: WordTiming[];
+  approximate?: boolean;
 }
 export interface CaptionOptions {
   maxCharsPerLine?: number;
   minDuration?: number;
   maxDuration?: number;
 }
-/** Segment-only input retains its timing; it never invents word timestamps. */
+/** Word-aligned cues keep exact timestamps. Segment-only splits are marked approximate. */
 export function toCaptionCues(
   result: Transcription,
   options: CaptionOptions = {},
@@ -32,7 +33,25 @@ export function toCaptionCues(
   )
     throw new SpeechError('INVALID_INPUT');
   const timedWords = Boolean(result.words?.length);
-  const units = timedWords ? result.words! : result.segments;
+  const units = timedWords
+    ? result.words!
+    : result.segments.flatMap((segment) => {
+        const tokens = segment.text.trim().split(/\s+/u).filter(Boolean);
+        const weight = tokens.reduce((n, t) => n + Array.from(t).length, 0);
+        let consumed = 0;
+        return tokens.map((text) => {
+          const start =
+            segment.start + ((segment.end - segment.start) * consumed) / weight;
+          consumed += Array.from(text).length;
+          return {
+            text,
+            start,
+            end:
+              segment.start +
+              ((segment.end - segment.start) * consumed) / weight,
+          };
+        });
+      });
   const cues: CaptionCue[] = [];
   const wrap = (text: string): string[] => {
     const lines: string[] = [];
@@ -80,6 +99,7 @@ export function toCaptionCues(
         end: unit.end,
         lines: ownLines,
         words: timedWords ? [{ ...unit }] : [],
+        ...(!timedWords ? { approximate: true } : {}),
       });
     }
   }

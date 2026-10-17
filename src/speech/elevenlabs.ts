@@ -1,3 +1,4 @@
+import { filterVoices } from './languages';
 import { z } from 'zod';
 import { ProviderError } from '../providers/errors';
 import { speechHttp, type PaidDependencies } from './http';
@@ -10,7 +11,7 @@ export function createElevenLabs(deps: PaidDependencies = {}): TtsProvider {
     kind: 'speech-tts',
     requiresKey: true,
     keyFields: [{ id: 'apiKey', label: 'API key', secret: true }],
-    async listVoices(_lang) {
+    async listVoices(lang) {
       const raw = await http.request(
         'https://api.elevenlabs.io/v1/voices',
         { headers: { 'xi-api-key': http.key('elevenlabs') } },
@@ -28,11 +29,14 @@ export function createElevenLabs(deps: PaidDependencies = {}): TtsProvider {
         })
         .safeParse(raw);
       if (!parsed.success) throw new ProviderError('BAD_RESPONSE');
-      return parsed.data.voices.map((v) => ({
-        id: v.voice_id,
-        name: v.name,
-        lang: v.labels?.language ?? 'und',
-      }));
+      return filterVoices(
+        parsed.data.voices.map((v) => ({
+          id: v.voice_id,
+          name: v.name,
+          lang: v.labels?.language ?? 'und',
+        })),
+        lang,
+      );
     },
     async synthesize(r) {
       if (

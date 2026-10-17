@@ -141,3 +141,80 @@ and inject its transport/codec or model runner for tests. A typed speech registr
 bridge to C1's stock-oriented registry is still to be added. Nothing auto-registers
 or downloads on module import. Browser/Safari/mobile behavior and paid service
 compatibility have not been proven by these fixture-only tests.
+
+## C3 Task A update (2026-10-17; supersedes checkpoint gaps above)
+
+`createSarvam` and `createGoogleCloudTts` now implement the same TTS interface.
+Sarvam uses `api-subscription-key`, Bulbul v3, a curated four-speaker catalog in
+11 languages, WAV output and a 2,500-character request cap. Pitch is unavailable.
+Google uses `x-goog-api-key`, `/v1/voices` and `/v1/text:synthesize`, with LINEAR16
+WAV and a 5,000-byte text limit. Pitch is a ratio in our API, converted to Google's
+semitones. All new calls have injectable fetch/codec and reuse C1 errors/keys.
+These adapters are fixture-tested, not live-account or audio-quality verified.
+
+### Signup and free allowances
+
+| Provider | Free allowance checked 2026-10-17                                                                                                                                                                                          | Key signup                                                                                                                                                                                                                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sarvam   | Signup credits, not a recurring free tier. Current pricing page does not specify a guaranteed numeric credit amount. Bulbul v3 is ₹3/1,000 characters after credits; read the actual balance in the account.               | Create an account at `https://dashboard.sarvam.ai/`, create an API subscription key, store it with `setKey('sarvam','apiKey',value)`. The pricing page also directs account signup to `https://indus.sarvam.ai/`.                               |
+| Google   | Standard and WaveNet: up to 4 million characters/month on the current pricing page. Other voice SKUs have different allowances; do not treat every listed voice as free. Billing must be enabled and overages are charged. | Create/select a Google Cloud project, enable billing and Cloud Text-to-Speech API, create an API key in APIs & Services → Credentials, restrict it to that API and the application's origins, then `setKey('google-cloud-tts','apiKey',value)`. |
+
+Sources: [Sarvam REST](https://docs.sarvam.ai/api-reference/text-to-speech/convert),
+[Sarvam pricing](https://www.sarvam.ai/api-pricing),
+[Google pricing](https://cloud.google.com/text-to-speech/pricing),
+[Google setup](https://docs.cloud.google.com/text-to-speech/docs/get-started),
+[Google header authentication](https://docs.cloud.google.com/docs/authentication/api-keys-use),
+[Google synthesis](https://docs.cloud.google.com/text-to-speech/docs/reference/rest/v1/text/synthesize).
+
+### Registry/status contract
+
+Call `registerSpeechProviders(deps?)` once at startup to bridge seven engines into
+C1's shared registry. Use `createSpeechRegistry(deps?, catalog?)` for isolated
+instances/tests. `catalog.listByKind` returns five TTS and two STT entries;
+`get(id)` returns the typed synthesis/transcription interface. Stock `search` and
+`getDownload` explicitly reject for speech entries.
+`getSpeechStatus(speechRegistry)` or `speechRegistry.getSpeechStatus()` returns
+per-engine `ready`, `needs-key`, `needs-download` (with `sizeBytes`), or `unavailable`
+(with reason). Here `ready` means configured, not a successful paid account probe;
+`needs-download` is reserved until a verified local runner is installed.
+`listVoices(lang)` now filters by language. ElevenLabs uses its supplied language
+label, MiniMax recognizes English/Hindi voice-id prefixes; unknown metadata is
+excluded from a language-filtered list instead of relabelled. `listSpeechVoices`
+wraps an empty list with typed `LANGUAGE_UNAVAILABLE`/`MODEL_UNAVAILABLE` results.
+Both default local engines are explicitly **unavailable** and make no requests.
+
+### Bounded local attempt and infrastructure
+
+`models.ts` is the single config: candidate URLs/published approximate sizes,
+reviewed manifest type (exact bytes + SHA-256 + licence), and concrete blockers.
+No verified file hashes are available in this checkpoint, so executable manifests
+are intentionally empty. SHA values were not invented. SpeechT5's example
+speaker-embedding licence could not be verified from the retrievable dataset
+metadata; fetching its raw card failed. Whisper tiny's ONNX metadata endpoint
+also failed to retrieve, preventing verification of exact pinned hashes. Neither
+has an installed, validated lazy browser runner. This bounded attempt is deferred
+to Task K, per the user's rule. This is not a claim those models are unusable.
+
+`createModelLoader(store?, fetch?)` is implemented now: `load(file, {signal,
+onProgress,offline})`, `has(file)`, `ModelStore`, `createIndexedModelStore`.
+It downloads on demand, enforces exact size and SHA-256, rechecks cached blobs,
+evicts corruption, commits only complete verified blobs atomically in IndexedDB,
+and supports abort/progress/offline cache hits. Retry is resume-safe by restarting
+an interrupted file; HTTP Range continuation is not implemented. Fixtures verify
+corruption, cancellation, restart and cache behavior without model downloads.
+No inference runner, playable local voice, model runtime dependency or real model
+size measurement is claimed. Task K must add the runner and verified config.
+
+### Updated caption splitting and UI wiring
+
+`toCaptionCues` now splits long segments proportionally by word code-point length
+when there are no word timestamps, marking every such cue `approximate: true`
+and leaving its highlight words empty. Exact word-aligned input retains original
+word timestamps and is not approximate. Impossible single-word duration/layout or
+minimum-duration constraints still reject explicitly. Show an approximate-timing
+badge; do not animate guessed karaoke timing as aligned speech.
+
+The UI agent must register engines, show key/download/unavailable states, choose
+Sarvam/Google for Hindi, display provider billing limits, filter voice pickers,
+wire preview/Save/import/cancel, retain media speech metadata and show caption
+approximation. No UI, project schema or existing rendering path was changed.

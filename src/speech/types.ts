@@ -67,11 +67,18 @@ export interface AudioCodec {
   encode(audio: PcmAudio): Blob;
 }
 export type SpeechErrorCode =
-  'NOT_AVAILABLE' | 'INVALID_INPUT' | 'MODEL_UNAVAILABLE';
+  | 'NOT_AVAILABLE'
+  | 'INVALID_INPUT'
+  | 'MODEL_UNAVAILABLE'
+  | 'LANGUAGE_UNAVAILABLE'
+  | 'INTEGRITY_FAILED';
 export class SpeechError extends Error {
   constructor(readonly code: SpeechErrorCode) {
     super(
       {
+        LANGUAGE_UNAVAILABLE:
+          'This language is unavailable for this engine. Choose a cloud voice.',
+        INTEGRITY_FAILED: 'The downloaded model failed its integrity check.',
         NOT_AVAILABLE: 'This voice, language or setting is not available.',
         INVALID_INPUT: 'The speech input is invalid.',
         MODEL_UNAVAILABLE: 'The local model could not be loaded.',
