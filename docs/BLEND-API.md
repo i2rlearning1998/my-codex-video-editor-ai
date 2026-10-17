@@ -9,13 +9,14 @@ strings are retained but render normal with `UNSUPPORTED_BLEND_MODE`. A Canvas
 that rejects an operation also resets to source-over with that warning.
 
 UI dropdown data includes display names/categories:
+
 - Normal: Normal.
 - Darken: Multiply, Darken, Color Burn.
 - Lighten: Screen, Lighten, Color Dodge.
 - Contrast: Overlay, Hard Light, Soft Light.
 - Comparison: Difference, Exclusion.
 - Component: Hue, Saturation, Color, Luminosity.
-Stored values are lowercase, spaces replaced by hyphens (except normal).
+  Stored values are lowercase, spaces replaced by hyphens (except normal).
 
 Call `setLayerBlendMode(engine,{compositionId,layerId,blendMode})` on selection:
 one validated command/undo, locked tracks rejected. Wire warning display. Do not

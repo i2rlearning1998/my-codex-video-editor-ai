@@ -40,19 +40,19 @@ rotation again there would double-rotate phone footage.
 
 ## Details panel fields
 
-| Field | Meaning / units |
-| --- | --- |
-| kind | image, audio or video |
-| container | Demuxer's MIME container name, or image MIME; null if unknown |
-| videoCodec / audioCodec | Demuxed codec IDs; null if absent/unknown |
-| width / height | Display dimensions after aspect/rotation, pixels |
-| rotation | Video rotation metadata, clockwise degrees; null if unknown/image |
-| fps | Estimated intended frame rate from sampled packets; null if unknown |
-| isVariableFrameRate | Sampled timing variability; null if unavailable |
-| durationSec | Media timeline duration, seconds; null for images |
-| audioChannels / sampleRate | Audio channel count / Hz; null if absent |
-| bitrate | Estimated **whole-file** bits per duration second, including container overhead |
-| hasAudio / sizeBytes | Audio track present / exact input Blob byte size |
+| Field                      | Meaning / units                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| kind                       | image, audio or video                                                           |
+| container                  | Demuxer's MIME container name, or image MIME; null if unknown                   |
+| videoCodec / audioCodec    | Demuxed codec IDs; null if absent/unknown                                       |
+| width / height             | Display dimensions after aspect/rotation, pixels                                |
+| rotation                   | Video rotation metadata, clockwise degrees; null if unknown/image               |
+| fps                        | Estimated intended frame rate from sampled packets; null if unknown             |
+| isVariableFrameRate        | Sampled timing variability; null if unavailable                                 |
+| durationSec                | Media timeline duration, seconds; null for images                               |
+| audioChannels / sampleRate | Audio channel count / Hz; null if absent                                        |
+| bitrate                    | Estimated **whole-file** bits per duration second, including container overhead |
+| hasAudio / sizeBytes       | Audio track present / exact input Blob byte size                                |
 
 Show null as Unknown, not zero. FPS/VFR uses at most the demuxer's target of 256
 packets: later changes may not be detected. Very short files can have unknown

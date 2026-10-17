@@ -8,6 +8,10 @@ import {
   activeAtTime,
   clipSourceTime,
   clipTimeEffects,
+  compositionAt,
+  nestedAnchor,
+  nestedInfo,
+  nestedTimeAt,
   effectiveLayerTiming,
   findClipByLayer,
   invertMatrix,
@@ -19,6 +23,7 @@ import {
   type DeepReadonly,
   type Layer,
   type Point2,
+  type TimedClip,
   type TransformPreview,
 } from '../core';
 
@@ -300,7 +305,10 @@ export function deriveRenderItems(input: RenderSource): {
   warnings: readonly string[];
 } {
   // W5-C: drawing (not picking) applies the clips' animation presets.
-  const source: RenderSource = input.animate
+  // NEST: `source` and `scope` switch while a nested clip's children are
+  // visited (their own time frame); without nesting they never change.
+  let scope: ReadonlyMap<string, NestedChildClip> = NO_SCOPE;
+  let source: RenderSource = input.animate
     ? {
         ...input,
         animate: false,
@@ -356,7 +364,14 @@ export function deriveRenderItems(input: RenderSource): {
     maskScopes: readonly MaskScope[] = [],
   ) => {
     for (const layer of layers) {
-      const canonicalTiming = effectiveLayerTiming(source.composition, layer);
+      const scoped = scope.get(layer.id);
+      const canonicalTiming = scoped
+        ? {
+            startTime: scoped.startTime,
+            duration: scoped.duration,
+            enabled: scoped.enabled,
+          }
+        : effectiveLayerTiming(source.composition, layer);
       const timing =
         source.timingPreviews?.find((item) => item.layerId === layer.id) ??
         (source.timingPreview?.layerId === layer.id
@@ -401,7 +416,19 @@ export function deriveRenderItems(input: RenderSource): {
             ]
           : maskScopes;
       if (layer.type === 'group') {
-        visit(layer.children, [...ancestors, layer.id], scopes);
+        // NEST (D-271): a nested clip's children play in its own time
+        // frame, through the outer clip's trim and speed.
+        const nested = nestedFrame(source, scope, layer);
+        if (nested) {
+          const outer = { source, scope };
+          source = nested.source;
+          scope = nested.scope;
+          try {
+            visit(nested.children, [...ancestors, layer.id], scopes);
+          } finally {
+            ({ source, scope } = outer);
+          }
+        } else visit(layer.children, [...ancestors, layer.id], scopes);
         continue;
       }
       // H1.3: sound has no picture. Audio layers are never drawn, picked,
@@ -510,9 +537,9 @@ export function deriveRenderItems(input: RenderSource): {
           (layer.type === 'image' || layer.type === 'video') &&
           layer.assetId &&
           !missing
-            ? mediaRequest(source, layer, layer.type, layer.assetId)
+            ? mediaRequest(source, layer, layer.type, layer.assetId, scoped)
             : layer.code
-              ? codeRequest(source, layer)
+              ? codeRequest(source, layer, scoped)
               : undefined;
         items.push(
           Object.freeze({
@@ -593,6 +620,59 @@ export function deriveRenderItems(input: RenderSource): {
   return { items: Object.freeze(items), warnings: Object.freeze(warnings) };
 }
 
+/** NEST: a child clip kept inside a nested clip, at its absolute time. */
+type NestedChildClip = TimedClip & { readonly enabled: boolean };
+const NO_SCOPE: ReadonlyMap<string, NestedChildClip> = new Map();
+/**
+ * NEST (D-271): when `group` is a nested clip and a time is drawn, the
+ * source its children are drawn with (their keyframes evaluated at the inner
+ * time) and their kept clips; otherwise null, so a project without nesting
+ * takes the old path unchanged.
+ */
+function nestedFrame(
+  source: RenderSource,
+  scope: ReadonlyMap<string, NestedChildClip>,
+  group: SceneLayer,
+): {
+  source: RenderSource;
+  scope: ReadonlyMap<string, NestedChildClip>;
+  children: readonly SceneLayer[];
+} | null {
+  if (source.currentTime === undefined) return null;
+  const clip: (TimedClip & { readonly metadata: object }) | undefined =
+    scope.get(group.id) ?? findClipByLayer(source.composition, group.id)?.clip;
+  const info = clip ? nestedInfo(clip) : null;
+  if (!clip || !info) return null;
+  const time = nestedTimeAt(clip, source.currentTime);
+  const anchor = nestedAnchor(clip);
+  const inner = new Map<string, NestedChildClip>();
+  for (const record of info.clips)
+    inner.set(record.clip.layerId, {
+      ...record.clip,
+      startTime: anchor + record.clip.startTime,
+    });
+  const children = compositionAt({ layers: group.children }, time).layers;
+  const replace = (layers: readonly SceneLayer[]): readonly SceneLayer[] =>
+    layers.map((layer) =>
+      layer.id === group.id
+        ? ({ ...layer, children } as SceneLayer)
+        : layer.children.length
+          ? ({ ...layer, children: replace(layer.children) } as SceneLayer)
+          : layer,
+    );
+  return {
+    source: {
+      ...source,
+      composition: {
+        ...source.composition,
+        layers: replace(source.composition.layers),
+      } as RenderSource['composition'],
+      currentTime: time,
+    },
+    scope: inner,
+    children,
+  };
+}
 /** I1.7: an asset that is gone, or deleted from the library (soft). */
 export function isMissingAsset(
   assets: readonly { readonly id: string; readonly metadata: unknown }[],
@@ -605,6 +685,7 @@ export function isMissingAsset(
 function codeRequest(
   source: RenderSource,
   layer: SceneLayer,
+  scoped?: NestedChildClip,
 ): MediaFrameRequest {
   const code = layer.code as unknown as {
     readonly tier: 'B' | 'C';
@@ -626,7 +707,7 @@ function codeRequest(
       ? meta.fps
       : source.composition.fps;
   const frames = Math.max(1, Math.ceil(duration * fps - 1e-6));
-  const timed = mediaRequest(source, layer, 'video', layer.id);
+  const timed = mediaRequest(source, layer, 'video', layer.id, scoped);
   return Object.freeze({
     ...timed,
     kind: 'code' as const,
@@ -649,9 +730,12 @@ function mediaRequest(
   layer: SceneLayer,
   kind: 'image' | 'video',
   assetId: string,
+  scoped?: NestedChildClip,
 ): MediaFrameRequest {
   const time = source.currentTime ?? 0;
-  const found = findClipByLayer(source.composition, layer.id);
+  const found = scoped
+    ? { clip: scoped }
+    : findClipByLayer(source.composition, layer.id);
   if (!found)
     return Object.freeze({
       key: layer.id,
