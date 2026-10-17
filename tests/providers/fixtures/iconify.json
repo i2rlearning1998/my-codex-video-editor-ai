@@ -1,0 +1,65 @@
+{
+  "icons": [
+    "mdi:home",
+    "openmoji:smiling-face",
+    "noto:grinning-face",
+    "restricted:thing"
+  ],
+  "total": 4,
+  "limit": 32,
+  "start": 0,
+  "collections": {
+    "mdi": {
+      "name": "mdi",
+      "height": 24,
+      "author": {
+        "name": "Artist",
+        "url": "https://example.org/artist"
+      },
+      "license": {
+        "title": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "url": "https://example.org/license"
+      }
+    },
+    "openmoji": {
+      "name": "openmoji",
+      "height": 72,
+      "author": {
+        "name": "Artist",
+        "url": "https://example.org/artist"
+      },
+      "license": {
+        "title": "CC-BY-SA-4.0",
+        "spdx": "CC-BY-SA-4.0",
+        "url": "https://example.org/license"
+      }
+    },
+    "noto": {
+      "name": "noto",
+      "height": 128,
+      "author": {
+        "name": "Artist",
+        "url": "https://example.org/artist"
+      },
+      "license": {
+        "title": "Apache-2.0",
+        "spdx": "Apache-2.0",
+        "url": "https://example.org/license"
+      }
+    },
+    "restricted": {
+      "name": "restricted",
+      "height": 24,
+      "author": {
+        "name": "Artist",
+        "url": "https://example.org/artist"
+      },
+      "license": {
+        "title": "CC-BY-NC-4.0",
+        "spdx": "CC-BY-NC-4.0",
+        "url": "https://example.org/license"
+      }
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import { drawStructuredText } from '../text-engine/draw';
 import { drawRich } from './rich-text';
 import { drawPicture } from './picture';
 import {
@@ -487,6 +488,16 @@ export function drawComposition(
       // J4: text being edited is drawn by the editor over the canvas.
       if (item.editing) {
         // Nothing: the box stays for its outline and handles.
+      } else if (item.kind === 'text' && item.textStyle?.engine) {
+        drawStructuredText(
+          context,
+          item.text,
+          item.size.width,
+          item.fontSize,
+          item.fill,
+          item.textStyle,
+          item.textStyle.engine,
+        );
       } else if (item.kind === 'text' && item.richLayout) {
         drawRich(
           context,

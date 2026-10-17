@@ -1,0 +1,32 @@
+{
+  "results": {
+    "channels": [
+      {
+        "detected_language": "hi",
+        "alternatives": [
+          {
+            "transcript": "नमस्ते दुनिया",
+            "confidence": 0.99,
+            "words": [
+              {
+                "word": "नमस्ते",
+                "punctuated_word": "नमस्ते",
+                "start": 0,
+                "end": 0.4,
+                "confidence": 0.99
+              },
+              {
+                "word": "दुनिया",
+                "punctuated_word": "दुनिया",
+                "start": 0.5,
+                "end": 1,
+                "confidence": 0.98
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "utterances": [{ "start": 0, "end": 1, "transcript": "नमस्ते दुनिया" }]
+  }
+}

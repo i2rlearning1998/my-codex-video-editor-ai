@@ -1,3 +1,5 @@
+import { isCatalogFont } from '../text-engine/catalog';
+import { loadFont } from '../text-engine/fonts';
 // J5: fonts bundled with the editor (SIL Open Font License 1.1, files in
 // public/fonts with their OFL.txt). They have real weights from 100 to 900,
 // and Poppins and Noto Sans Devanagari also cover Devanagari. System fonts
@@ -86,6 +88,25 @@ export function usedFaces(
       if (layer.type === 'text') {
         const style = textStyleOf(layer);
         used.add(`${style.family}|${style.weight}`);
+        if (style.engine) {
+          used.add(`Noto Sans Devanagari|${style.weight}`);
+          if (
+            /[\p{Script=Arabic}]/u.test(
+              layer.properties.text?.type === 'string'
+                ? layer.properties.text.value
+                : '',
+            )
+          )
+            used.add(`Noto Sans Arabic|${style.weight}`);
+          if (
+            /[\p{Script=Hebrew}]/u.test(
+              layer.properties.text?.type === 'string'
+                ? layer.properties.text.value
+                : '',
+            )
+          )
+            used.add(`Noto Sans Hebrew|${style.weight}`);
+        }
         const text = layer.properties.text;
         const runs = layer.properties.textRuns;
         for (const run of parseRuns(
@@ -100,7 +121,7 @@ export function usedFaces(
     }
   };
   compositions.forEach((composition) => visit(composition.layers));
-  return new Set([...used].filter((key) => isBundledFont(key.split('|')[0]!)));
+  return used;
 }
 
 /** Registers every bundled face with a FontFaceSet and loads those in use. */
@@ -120,6 +141,21 @@ export async function loadUsedFonts(
     );
     set.add(face);
     loads.push(face.load().catch(() => undefined));
+  }
+  for (const key of used) {
+    const [family, weight] = key.split('|');
+    if (family && isCatalogFont(family) && !isBundledFont(family)) {
+      const assets = await loadFont(family, [Number(weight)], ['latin']);
+      for (const asset of assets) {
+        const face = new FontFace(asset.family, asset.bytes, {
+          weight: asset.weight,
+          style: asset.style,
+          unicodeRange: asset.unicodeRange,
+        });
+        await face.load();
+        set.add(face);
+      }
+    }
   }
   await Promise.all(loads);
 }

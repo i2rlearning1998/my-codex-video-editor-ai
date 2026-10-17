@@ -1,3 +1,4 @@
+import { audioBufferKey } from '../audio/denoise';
 import { prepareDucking } from '../audio/ducking';
 import { scheduleAudioClip } from '../audio/graph';
 import {
@@ -22,12 +23,24 @@ export async function mixdown(
   const context = new OfflineAudioContext(2, length, MIX_RATE);
   let scheduled = 0;
   const buffers = new Map<string, AudioBuffer>();
-  for (const id of new Set(clips.map((clip) => clip.sourceAssetId))) {
-    const decoded = await decoder.decode(id);
-    if (decoded instanceof AudioBuffer) buffers.set(id, decoded);
+  const duckBuffers = new Map<string, AudioBuffer>();
+  for (const clip of clips) {
+    const mode = clip.audio?.denoise ?? 'off',
+      key = audioBufferKey(clip.sourceAssetId, mode);
+    let decoded = buffers.get(key);
+    if (!decoded) {
+      const result = await decoder.decode(clip.sourceAssetId, mode);
+      if (result instanceof AudioBuffer) {
+        decoded = result;
+        buffers.set(key, result);
+      }
+    }
+    if (decoded) duckBuffers.set(clip.sourceAssetId, decoded);
   }
-  for (const clip of prepareDucking(clips, buffers)) {
-    const decoded = buffers.get(clip.sourceAssetId);
+  for (const clip of prepareDucking(clips, duckBuffers)) {
+    const decoded = buffers.get(
+      audioBufferKey(clip.sourceAssetId, clip.audio?.denoise ?? 'off'),
+    );
     if (!decoded) continue;
     const buffer = clip.reversed ? reverseAudioBuffer(decoded) : decoded;
     if (clip.startTime >= end) continue;

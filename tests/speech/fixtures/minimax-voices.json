@@ -1,0 +1,4 @@
+{
+  "system_voice": [{ "voice_id": "English_Example", "voice_name": "Example" }],
+  "base_resp": { "status_code": 0, "status_msg": "success" }
+}

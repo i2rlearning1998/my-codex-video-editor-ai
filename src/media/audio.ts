@@ -1,3 +1,10 @@
+import {
+  denoiseBuffer,
+  audioBufferKey,
+  type DenoiseMode,
+} from '../audio/denoise';
+import { safeVolume } from '../audio/mixer';
+import { AudioMeters } from '../audio/meters';
 import { prepareDucking, type DuckEnvelope } from '../audio/ducking';
 import { readAudioSettings, type AudioSettings } from '../audio/settings';
 import { scheduleAudioClip } from '../audio/graph';
@@ -28,6 +35,8 @@ export interface AudibleClip {
   readonly reversed: boolean;
   readonly audio?: AudioSettings;
   readonly duckEnvelope?: DuckEnvelope;
+  readonly trackVolume?: number;
+  readonly masterVolume?: number;
 }
 
 /**
@@ -103,15 +112,27 @@ export class AudioDecoder {
     private readonly store: Promise<MediaStore | null>,
     private readonly assets: () => readonly PreviewAsset[],
   ) {}
-  decode(assetId: string): Promise<Decoded> {
-    let known = this.#decoded.get(assetId);
+  decode(assetId: string, mode: DenoiseMode = 'off'): Promise<Decoded> {
+    const key = audioBufferKey(assetId, mode);
+    let known = this.#decoded.get(key);
     if (!known) {
-      known = this.#load(assetId);
-      this.#decoded.set(assetId, known);
+      known =
+        mode === 'off'
+          ? this.#load(assetId)
+          : this.decode(assetId).then<Decoded>((buffer) =>
+              buffer instanceof AudioBuffer
+                ? denoiseBuffer(buffer, mode)
+                : buffer,
+            );
+      this.#decoded.set(key, known);
+      void known.catch(() => this.#decoded.delete(key));
       // Bytes may arrive later (an import restores them): do not cache their absence.
-      void known.then((result) => {
-        if (result === 'missing') this.#decoded.delete(assetId);
-      });
+      void known.then(
+        (result) => {
+          if (result === 'missing') this.#decoded.delete(key);
+        },
+        () => {},
+      );
     }
     return known;
   }
@@ -218,6 +239,7 @@ export class WaveformCache {
 }
 
 export interface AudioDebug {
+  processingError?: string | null;
   state: string;
   /** Transport time now audible (latency-compensated), or null when silent. */
   position: number | null;
@@ -240,6 +262,18 @@ interface Playing {
  * from the transport's continuous clock; any change reschedules everything.
  */
 export class AudioEngine {
+  readonly meters = new AudioMeters();
+  #masterVolume: number | undefined;
+  #processingError: string | null = null;
+  setMasterVolume(volume: number): void {
+    this.#masterVolume = safeVolume(volume);
+    this.#signature = '';
+  }
+  retryProcessing(): void {
+    this.#ready.clear();
+    this.#processingError = null;
+    this.changed();
+  }
   #context: AudioContext | null = null;
   #master: GainNode | null = null;
   #analyser: AnalyserNode | null = null;
@@ -265,15 +299,23 @@ export class AudioEngine {
   /** Call on every transport or project change with the current audible clips. */
   sync(playing: boolean, clock: number, clips: readonly AudibleClip[]): void {
     if (this.#disposed) return;
+    this.meters.sample();
+    clips = clips.map((c) => ({
+      ...c,
+      masterVolume: this.#masterVolume ?? c.masterVolume ?? 1,
+    }));
     if (!playing) {
       this.#stopAll();
       // Once audio has been used, decode ahead so scrub snippets can sound.
       if (this.#context)
-        for (const clip of clips) this.#buffer(clip.sourceAssetId);
+        for (const clip of clips)
+          this.#buffer(clip.sourceAssetId, clip.audio?.denoise ?? 'off');
       return;
     }
     const context = this.#ensureContext();
-    const buffers = clips.map((clip) => this.#buffer(clip.sourceAssetId));
+    const buffers = clips.map((clip) =>
+      this.#buffer(clip.sourceAssetId, clip.audio?.denoise ?? 'off'),
+    );
     const signature = JSON.stringify([clips, buffers.map(Boolean)]);
     const scheduled = this.#anchor
       ? this.#anchor.clock + (context.currentTime - this.#anchor.context)
@@ -296,7 +338,7 @@ export class AudioEngine {
       const source = clip.reversed ? this.#reverse(buffer) : buffer;
       const scheduled = scheduleAudioClip(
         context,
-        this.#master!,
+        this.meters.destination(context, this.#master!, clip.trackId),
         clip,
         source,
         clock,
@@ -316,6 +358,10 @@ export class AudioEngine {
   /** PB-011: a short snippet of every audible clip under a paused playhead. */
   scrub(time: number, clips: readonly AudibleClip[]): void {
     if (this.#disposed) return;
+    clips = clips.map((c) => ({
+      ...c,
+      masterVolume: this.#masterVolume ?? c.masterVolume ?? 1,
+    }));
     const now = performance.now();
     const wait = SNIPPET_SECONDS * 1000 - (now - this.#lastSnippetAt);
     if (wait > 0) {
@@ -324,7 +370,8 @@ export class AudioEngine {
       this.#trailing = setTimeout(() => this.scrub(time, clips), wait);
       return;
     }
-    for (const clip of clips) this.#buffer(clip.sourceAssetId);
+    for (const clip of clips)
+      this.#buffer(clip.sourceAssetId, clip.audio?.denoise ?? 'off');
     const under = this.#prepare(clips).filter(
       (clip) => time >= clip.startTime && time < clip.startTime + clip.duration,
     );
@@ -333,12 +380,15 @@ export class AudioEngine {
     const context = this.#ensureContext();
     const clipIds: string[] = [];
     for (const clip of under) {
-      const buffer = this.#buffer(clip.sourceAssetId);
+      const buffer = this.#buffer(
+        clip.sourceAssetId,
+        clip.audio?.denoise ?? 'off',
+      );
       if (!buffer) continue;
       const source = clip.reversed ? this.#reverse(buffer) : buffer;
       const scheduled = scheduleAudioClip(
         context,
-        this.#master!,
+        this.meters.destination(context, this.#master!, clip.trackId),
         clip,
         source,
         time,
@@ -366,6 +416,7 @@ export class AudioEngine {
     }
     return {
       state: this.#context?.state ?? 'none',
+      processingError: this.#processingError,
       position: this.#position(),
       sources: this.#playing.map(({ clip }) => ({
         clipId: clip.clipId,
@@ -383,6 +434,7 @@ export class AudioEngine {
     this.#disposed = true;
     clearTimeout(this.#trailing);
     this.#stopAll();
+    this.meters.dispose();
     void this.#context?.close().catch(() => undefined);
   }
 
@@ -402,6 +454,7 @@ export class AudioEngine {
       });
       this.#master = this.#context.createGain();
       this.#analyser = this.#context.createAnalyser();
+      this.meters.connectMaster(this.#analyser);
       this.#master.connect(this.#analyser);
       this.#analyser.connect(this.#context.destination);
     }
@@ -410,19 +463,26 @@ export class AudioEngine {
     return this.#context;
   }
 
-  #buffer(assetId: string): AudioBuffer | null {
-    if (this.#ready.has(assetId)) return this.#ready.get(assetId) ?? null;
-    this.#ready.set(assetId, null); // Pending until decoded.
-    void this.decoder.decode(assetId).then((decoded) => {
-      if (this.#disposed) return;
-      if (decoded === 'missing') this.#ready.delete(assetId);
-      else
-        this.#ready.set(
-          assetId,
-          decoded instanceof AudioBuffer ? decoded : null,
-        );
-      if (decoded instanceof AudioBuffer) this.changed();
-    });
+  #buffer(assetId: string, mode: DenoiseMode = 'off'): AudioBuffer | null {
+    const key = audioBufferKey(assetId, mode);
+    if (this.#ready.has(key)) return this.#ready.get(key) ?? null;
+    this.#ready.set(key, null); // Pending until decoded.
+    void this.decoder
+      .decode(assetId, mode)
+      .then((decoded) => {
+        if (this.#disposed) return;
+        if (decoded === 'missing') this.#ready.delete(key);
+        else
+          this.#ready.set(key, decoded instanceof AudioBuffer ? decoded : null);
+        if (decoded instanceof AudioBuffer) this.changed();
+      })
+      .catch(() => {
+        if (!this.#disposed) {
+          this.#processingError =
+            'Noise suppression failed; disable it or retry processing.';
+          this.changed();
+        }
+      });
     return null;
   }
 
@@ -438,7 +498,9 @@ export class AudioEngine {
   #prepare(clips: readonly AudibleClip[]): AudibleClip[] {
     const buffers = new Map<string, AudioBuffer>();
     for (const clip of clips) {
-      const buffer = this.#ready.get(clip.sourceAssetId);
+      const buffer = this.#ready.get(
+        audioBufferKey(clip.sourceAssetId, clip.audio?.denoise ?? 'off'),
+      );
       if (buffer) buffers.set(clip.sourceAssetId, buffer);
     }
     const signature = JSON.stringify([clips, [...buffers.keys()]]);
@@ -463,6 +525,7 @@ interface AudibleComposition {
   readonly tracks: readonly {
     readonly id: string;
     readonly muted: boolean;
+    readonly volume?: number;
     readonly clips: readonly {
       readonly id: string;
       readonly layerId: string;
@@ -487,6 +550,7 @@ export function listAudibleClips(
   composition: unknown,
   assets: readonly PreviewAsset[],
   soloTrackIds: readonly string[] = [],
+  masterVolume = 1,
 ): AudibleClip[] {
   const view = composition as AudibleComposition;
   const layers = view.layers as Parameters<typeof locateLayer>[0];
@@ -525,6 +589,8 @@ export function listAudibleClips(
         speed: clip.speed,
         reversed: effects.reversed,
         audio: readAudioSettings(clip),
+        trackVolume: safeVolume(track.volume),
+        masterVolume: safeVolume(masterVolume),
       });
     }
   }

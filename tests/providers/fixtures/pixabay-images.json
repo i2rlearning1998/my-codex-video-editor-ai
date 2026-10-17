@@ -1,0 +1,23 @@
+{
+  "total": 100,
+  "totalHits": 40,
+  "hits": [
+    {
+      "id": 42,
+      "pageURL": "https://pixabay.com/photos/id-42/",
+      "tags": "forest, green",
+      "user": "Ada",
+      "user_id": 7,
+      "previewURL": "https://cdn.pixabay.com/42_150.jpg",
+      "previewWidth": 150,
+      "previewHeight": 100,
+      "webformatURL": "https://pixabay.com/get/42_640.jpg",
+      "webformatWidth": 640,
+      "webformatHeight": 427,
+      "largeImageURL": "https://pixabay.com/get/42_1280.jpg",
+      "imageURL": "https://pixabay.com/get/42.jpg",
+      "imageWidth": 3000,
+      "imageHeight": 2000
+    }
+  ]
+}
