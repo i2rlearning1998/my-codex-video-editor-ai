@@ -21,6 +21,14 @@ The creator spec is imported unchanged; editor and library schemas stay unchange
   are always known, FX and library ids are checked when a catalog is supplied,
   and an unchecked id is a warning, never a silent pass.
 
+## Docs
+
+- docs/CREATOR-PACK-AUTHORING.md: how to write a pack (every kind, with examples).
+- docs/STYLES.md: the `style` kind (a creative direction for the AI creator).
+- docs/BRIEF-FORM.md: the New AI video brief form and My briefs.
+- docs/AI-BRIEF.md: Copy AI brief.
+- docs/THEMES-API.md and docs/THUMBNAILS-API.md: the theme library and thumbnails.
+
 ## Run
 
 ```sh
