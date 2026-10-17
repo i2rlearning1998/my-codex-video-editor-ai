@@ -9,7 +9,12 @@ import {
   type LaneGroup,
 } from './timeline-drop';
 import { assetDrag } from './drag-state';
-import { announceMenu, dismissMenuOn } from './context-menu';
+import {
+  announceMenu,
+  dismissMenuOn,
+  placeMenuAt,
+  placeSubmenu,
+} from './context-menu';
 import {
   frameToTime,
   playRangeOf,
@@ -2289,8 +2294,12 @@ export function mountTimeline(
         case 'track-solo':
           if (id) session.toggleSolo(id);
           break;
+        // S1 Part 4: an entry with a submenu opens it.
         case 'speed':
-          showSpeedMenu();
+        case 'clip-menu':
+        case 'code-menu':
+        case 'track-menu':
+          openSubFor(target, true);
           return;
         // J14: the clip menu's own entries run registered commands (the
         // shell holds their context); Audio opens its submenu.
@@ -2304,10 +2313,8 @@ export function mountTimeline(
           );
           return;
         case 'audio-menu':
-          showAudioMenu();
-          return;
         case 'save-mine':
-          showSaveMenu();
+          openSubFor(target, true);
           return;
         case 'save-mine-kind':
         case 'save-mine-group':
@@ -3460,7 +3467,13 @@ export function mountTimeline(
     engine,
     session,
     togglePlayback: noop,
-    code: { edit: noop, settings: noop, saveTemplate: noop, rerender: noop },
+    code: {
+      edit: noop,
+      settings: noop,
+      rerender: noop,
+      exportCode: noop,
+      duplicateCopy: noop,
+    },
   };
   const commandItem = (id: string, role = 'menuitem') => {
     const command = commands.find((item) => item.id === id)!;
@@ -3492,6 +3505,13 @@ export function mountTimeline(
     );
     return kinds.size === 1 && !kinds.has('none') ? [...kinds][0]! : null;
   };
+  /** S1 Part 4: an entry that opens a submenu (hover, click, Right). */
+  const parentItem = (label: string, action: string) => {
+    const item = menuItem(`${label} ›`, action);
+    item.setAttribute('aria-haspopup', 'menu');
+    item.setAttribute('aria-expanded', 'false');
+    return item;
+  };
   const kindSection = (kind: string): HTMLElement[] => {
     const items: HTMLElement[] = [
       'duplicate',
@@ -3513,67 +3533,62 @@ export function mountTimeline(
       );
       items.push(freeze);
     }
-    items.push(commandItem('edit-duration'), commandItem('rename-clip'));
-    // P1: a code clip's own entries (no Audio, Detach audio or Auto cut).
-    if (kind === 'code')
-      items.push(
-        ...[
-          'code-edit',
-          'code-settings',
-          'code-save-template',
-          'code-rerender',
-        ].map((id) => commandItem(id)),
-      );
-    if (kind === 'video' || kind === 'audio') {
-      const audio = menuItem(`${t('menu.audio')} ›`, 'audio-menu');
-      audio.setAttribute('aria-haspopup', 'menu');
-      items.push(audio);
-    }
-    if (kind === 'video') {
-      const cut = menuItem(t('command.autoCut'), 'auto-cut');
-      cut.setAttribute('aria-disabled', 'true');
-      cut.disabled = true;
-      cut.title = t('menu.autoCutPlanned');
-      items.push(cut);
-    }
-    items.push(commandItem('more-options'));
+    items.push(commandItem('rename-clip'));
     return items;
   };
-  // U3: Speed and Audio open as flyouts beside their entry: on hover after
-  // 150 ms (a 300 ms grace lets the pointer travel to the flyout), on click
-  // and on the Right arrow; Left or Escape closes the flyout.
-  let submenu: HTMLElement | null = null;
+  // S1 Part 4: submenus (Audio, Code animation, Clip, Speed, Track, Save to
+  // My Templates) open as flyouts beside their entry, nested to any depth:
+  // on hover after 150 ms (a 300 ms grace lets the pointer travel to the
+  // flyout), on click and on the Right arrow; Left or Escape closes one
+  // level. Each flyout is placed and clamped inside the window.
+  const builders = new Map<string, () => HTMLElement[]>();
+  let subs: HTMLElement[] = [];
   let subOpen = 0,
     subClose = 0;
-  const closeSub = () => {
-    window.clearTimeout(subClose);
-    submenu?.remove();
-    submenu = null;
-    for (const item of menu.querySelectorAll('[aria-expanded="true"]'))
-      item.setAttribute('aria-expanded', 'false');
+  const levelOf = (element: Element) => {
+    const list = element.closest('.timeline-submenu');
+    return list ? subs.indexOf(list as HTMLElement) + 1 : 0;
   };
-  const openSub = (action: string, items: HTMLElement[], focus: boolean) => {
-    const parent = menu.querySelector<HTMLElement>(
-      `:scope > [data-action="${action}"]`,
+  /** Closes the flyouts from `level` on (0 closes them all). */
+  const closeSub = (level = 0) => {
+    window.clearTimeout(subClose);
+    for (const list of subs.slice(level)) list.remove();
+    subs = subs.slice(0, level);
+    const open = new Set(
+      subs.map((list) => list.dataset.parent).filter(Boolean),
     );
-    closeSub();
-    if (!parent) return;
+    for (const item of menu.querySelectorAll<HTMLElement>(
+      '[aria-haspopup="menu"]',
+    ))
+      item.setAttribute(
+        'aria-expanded',
+        String(open.has(item.dataset.action ?? '')),
+      );
+  };
+  const openSubFor = (parent: HTMLElement, focus: boolean) => {
+    const action = parent.dataset.action ?? '';
+    const build = builders.get(action);
+    if (!build) return;
+    const level = levelOf(parent);
+    if (subs[level]?.dataset.parent === action) {
+      closeSub(level + 1);
+      if (focus)
+        subs[level]!.querySelector<HTMLButtonElement>(
+          'button:not(:disabled)',
+        )?.focus();
+      return;
+    }
+    closeSub(level);
     const list = document.createElement('div');
     list.className = 'timeline-submenu';
     list.setAttribute('role', 'menu');
-    list.append(...items);
+    list.dataset.parent = action;
+    list.append(...build());
     menu.append(list);
-    const box = parent.getBoundingClientRect();
-    const width = list.offsetWidth || 180;
-    const left =
-      box.right + width + 8 > window.innerWidth
-        ? Math.max(8, box.left - width)
-        : box.right;
-    list.style.left = `${left}px`;
-    list.style.top = `${Math.max(8, Math.min(box.top - 4, window.innerHeight - list.offsetHeight - 8))}px`;
+    placeSubmenu(list, parent);
     parent.setAttribute('aria-expanded', 'true');
     list.onpointerenter = () => window.clearTimeout(subClose);
-    submenu = list;
+    subs.push(list);
     if (focus)
       list.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
   };
@@ -3587,32 +3602,19 @@ export function mountTimeline(
   );
   menu.addEventListener('pointerover', (event) => {
     const item = (event.target as HTMLElement).closest<HTMLElement>('button');
-    if (!item || submenu?.contains(item)) return;
+    if (!item) return;
     window.clearTimeout(subOpen);
-    const action = item.dataset.action;
-    if (
-      action === 'audio-menu' ||
-      action === 'speed' ||
-      action === 'save-mine'
-    ) {
+    const level = levelOf(item);
+    if (item.getAttribute('aria-haspopup') === 'menu') {
       window.clearTimeout(subClose);
       if (item.getAttribute('aria-expanded') === 'true') return;
-      subOpen = window.setTimeout(
-        () =>
-          action === 'speed'
-            ? showSpeedMenu(false)
-            : action === 'save-mine'
-              ? showSaveMenu(false)
-              : showAudioMenu(false),
-        150,
-      );
-    } else if (submenu) {
+      subOpen = window.setTimeout(() => openSubFor(item, false), 150);
+    } else if (subs.length > level) {
       window.clearTimeout(subClose);
-      subClose = window.setTimeout(closeSub, 300);
+      subClose = window.setTimeout(() => closeSub(level), 300);
     }
   });
-  const showAudioMenu = (focus = true) => {
-    const back = menuItem(`‹ ${t('menu.back')}`, 'menu-back');
+  builders.set('audio-menu', () => {
     const mute = commandItem('clip-mute', 'menuitemcheckbox');
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
       (layer) => {
@@ -3624,112 +3626,109 @@ export function mountTimeline(
       'aria-checked',
       String(clips.length > 0 && clips.every(({ track }) => track.muted)),
     );
-    void back;
     const items: HTMLElement[] = [mute];
     if (clipMenuKind() === 'video') items.push(commandItem('detach-audio'));
-    openSub('audio-menu', items, focus);
-  };
-  const showSaveMenu = (focus = true) =>
-    openSub(
-      'save-mine',
-      SAVE_KINDS.map((kind) => {
-        const item = menuItem(t(`mine.kind.${kind}`), 'save-mine-kind');
-        item.dataset.kind = kind;
-        return item;
-      }),
-      focus,
-    );
+    return items;
+  });
+  builders.set('code-menu', () =>
+    [
+      'code-edit',
+      'code-settings',
+      'code-rerender',
+      'edit-duration',
+      'code-export',
+      'code-duplicate',
+    ].map((id) => commandItem(id)),
+  );
+  builders.set('save-mine', () => {
+    const roots = selectionRoots(session.source, session.selectedIds);
+    const kinds: string[] =
+      roots.length > 1
+        ? ['group', 'scene']
+        : [
+            ...SAVE_KINDS,
+            ...(roots[0]?.type === 'group' ? ['group'] : []),
+            'scene',
+          ];
+    return kinds.map((kind) => {
+      const item = menuItem(t(`mine.kind.${kind}`), 'save-mine-kind');
+      item.dataset.kind = kind;
+      return item;
+    });
+  });
+  builders.set('speed', () => {
+    const current = selectionRoots(session.source, session.selectedIds)
+      .map((layer) => findClipByLayer(session.source.composition, layer.id))
+      .find(Boolean)?.clip.speed;
+    return SPEED_PRESETS.map((speed) => {
+      const item = menuItem(
+        t('clip.speedValue', { speed: formatNumber(speed) }),
+        'speed-preset',
+        'menuitemradio',
+      );
+      item.dataset.speed = String(speed);
+      item.setAttribute('aria-checked', String(current === speed));
+      return item;
+    });
+  });
   // J14: the menu works from the keyboard: Up and Down move (skipping
-  // disabled entries), Home and End, Right opens Audio, Left goes back.
+  // disabled entries), Home and End, Right opens a submenu, Left goes back.
   menu.addEventListener('keydown', (event) => {
-    const list =
-      (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
-        '.timeline-submenu',
-      ) ?? menu;
+    const active = document.activeElement as HTMLElement | null;
+    const list = active?.closest<HTMLElement>('.timeline-submenu') ?? menu;
     const items = [
       ...list.querySelectorAll<HTMLButtonElement>(
         ':scope > button:not(:disabled)',
       ),
     ];
-    const index = items.indexOf(document.activeElement as HTMLButtonElement);
+    const index = items.indexOf(active as HTMLButtonElement);
     const focus = (at: number) =>
       items[(at + items.length) % items.length]?.focus();
     if (event.key === 'ArrowDown') focus(index + 1);
     else if (event.key === 'ArrowUp') focus(index < 0 ? -1 : index - 1);
     else if (event.key === 'Home') focus(0);
     else if (event.key === 'End') focus(-1);
-    else if (event.key === 'Escape') {
+    else if (event.key === 'Escape' && list === menu) {
+      closeSub();
       menu.hidden = true;
       scroll.focus();
     } else if (
       event.key === 'ArrowRight' &&
-      (document.activeElement as HTMLElement | null)?.dataset.action ===
-        'audio-menu'
+      active?.getAttribute('aria-haspopup') === 'menu'
     )
-      showAudioMenu();
-    else if (event.key === 'ArrowLeft' && list !== menu) {
+      openSubFor(active, true);
+    else if (
+      (event.key === 'ArrowLeft' || event.key === 'Escape') &&
+      list !== menu
+    ) {
+      const level = subs.indexOf(list);
       const parent = menu.querySelector<HTMLElement>(
-        ':scope > [aria-expanded="true"]',
+        `[data-action="${list.dataset.parent}"][aria-haspopup="menu"]`,
       );
-      closeSub();
+      closeSub(level);
       parent?.focus();
-    } else if (
-      event.key === 'ArrowRight' &&
-      (document.activeElement as HTMLElement | null)?.dataset.action === 'speed'
-    )
-      showSpeedMenu();
-    else return;
+    } else return;
     event.preventDefault();
     event.stopPropagation();
   });
-  const showMainMenu = () => {
-    const kind = clipMenuKind();
-    const section = kind ? kindSection(kind) : [];
-    // R1: Group and Ungroup, as on the canvas menu and Ctrl+(Shift+)G. A
-    // blocked Ungroup stays clickable and says why (one toast).
-    const roots = selectionRoots(session.source, session.selectedIds);
-    if (roots.length > 1) section.push(commandItem('group'));
-    if (roots.length && roots.every((layer) => layer.type === 'group'))
-      section.push(commandItem('ungroup'));
-    // R5: Save to My Templates, by kind; several layers are one Group item.
-    if (roots.length > 1)
-      section.push(menuItem(t('mine.saveGroup'), 'save-mine-group'));
-    else if (roots.length) {
-      const save = menuItem(`${t('mine.save')} ›`, 'save-mine');
-      save.setAttribute('aria-haspopup', 'menu');
-      section.push(save);
-    }
-    const shown = new Set(
-      section.flatMap((item) =>
-        (item as HTMLElement).dataset.command
-          ? [(item as HTMLElement).dataset.command!]
-          : [],
-      ),
-    );
+  /** The earlier entries (Cut, Speed, Reverse, Link, Enable / disable ...)
+   *  that are not in the kind's own section. */
+  const earlierItems = (shown: ReadonlySet<string>): HTMLElement[] => {
     const clips = selectionRoots(session.source, session.selectedIds).flatMap(
       (layer) => {
         const found = findClipByLayer(session.source.composition, layer.id);
         return found ? [found.clip] : [];
       },
     );
-    const earlier = contextActions(
+    return contextActions(
       session.source,
       session.selectedIds,
       session.currentTime,
       menuMarker,
-    ).filter((action) => !shown.has(action));
-    const divider = document.createElement('div');
-    divider.className = 'timeline-menu-divider';
-    divider.setAttribute('role', 'separator');
-    // V2 (spec 4): the lane's own actions (the lane headers are gone).
-    const lane = laneSection();
-    const laneDivider = divider.cloneNode() as HTMLElement;
-    menu.replaceChildren(
-      ...section,
-      ...(section.length && earlier.length ? [divider] : []),
-      ...earlier.map((action) => {
-        if (action === 'speed')
-          return menuItem(`${t('command.speed')} ›`, action);
+    )
+      .filter((action) => !shown.has(action))
+      .map((action) => {
+        if (action === 'speed') return parentItem(t('command.speed'), action);
         if (CLIP_ACTIONS.includes(action))
           return menuItem(t(`command.${action}`), action);
         if (action === 'reverse' || action === 'freeze') {
@@ -3761,9 +3760,69 @@ export function mountTimeline(
                 : action[0]!.toUpperCase() + action.slice(1),
           action,
         );
-      }),
-      ...(lane.length ? [laneDivider, ...lane] : []),
+      });
+  };
+  const showMainMenu = () => {
+    closeSub();
+    const kind = clipMenuKind();
+    const divider = () => {
+      const line = document.createElement('div');
+      line.className = 'timeline-menu-divider';
+      line.setAttribute('role', 'separator');
+      return line;
+    };
+    const lane = laneSection();
+    // Empty lane space: the few marker and lane entries, flat.
+    if (!kind) {
+      const earlier = earlierItems(new Set());
+      menu.replaceChildren(
+        ...earlier,
+        ...(earlier.length && lane.length ? [divider()] : []),
+        ...lane,
+      );
+      menu.querySelector<HTMLButtonElement>('button')?.focus();
+      return;
+    }
+    // S1 Part 4: a clip's menu stays short: the everyday edits, then
+    // submenus (Audio, Code animation, Save to My Templates, Clip, Track).
+    const section = kindSection(kind);
+    // R1: Group and Ungroup, as on the canvas menu and Ctrl+(Shift+)G. A
+    // blocked Ungroup stays clickable and says why (one toast).
+    const roots = selectionRoots(session.source, session.selectedIds);
+    if (roots.length > 1) section.push(commandItem('group'));
+    if (roots.length && roots.every((layer) => layer.type === 'group'))
+      section.push(commandItem('ungroup'));
+    const subsection: HTMLElement[] = [];
+    if (kind === 'video' || kind === 'audio')
+      subsection.push(parentItem(t('menu.audio'), 'audio-menu'));
+    if (kind === 'code')
+      subsection.push(parentItem(t('menu.codeAnimation'), 'code-menu'));
+    if (roots.length) subsection.push(parentItem(t('mine.save'), 'save-mine'));
+    const shown = new Set(
+      section.flatMap((item) =>
+        item.dataset.command ? [item.dataset.command] : [],
+      ),
     );
+    builders.set('clip-menu', () => {
+      const items: HTMLElement[] = [];
+      if (kind !== 'code') items.push(commandItem('edit-duration'));
+      items.push(...earlierItems(shown));
+      if (kind === 'video') {
+        const cut = menuItem(t('command.autoCut'), 'auto-cut');
+        cut.setAttribute('aria-disabled', 'true');
+        cut.disabled = true;
+        cut.title = t('menu.autoCutPlanned');
+        items.push(cut);
+      }
+      items.push(commandItem('more-options'));
+      return items;
+    });
+    subsection.push(parentItem(t('menu.clip'), 'clip-menu'));
+    if (lane.length) {
+      builders.set('track-menu', () => laneSection());
+      subsection.push(parentItem(t('menu.track'), 'track-menu'));
+    }
+    menu.replaceChildren(...section, divider(), ...subsection);
     menu.querySelector<HTMLButtonElement>('button')?.focus();
   };
   /** The lane under the right-click (or the clicked clip's lane). */
@@ -3814,26 +3873,6 @@ export function mountTimeline(
     );
     return items;
   };
-  // VID-015: speed presets open in place of the main menu, with Back.
-  const showSpeedMenu = (focus = true) => {
-    const current = selectionRoots(session.source, session.selectedIds)
-      .map((layer) => findClipByLayer(session.source.composition, layer.id))
-      .find(Boolean)?.clip.speed;
-    openSub(
-      'speed',
-      SPEED_PRESETS.map((speed) => {
-        const item = menuItem(
-          t('clip.speedValue', { speed: formatNumber(speed) }),
-          'speed-preset',
-          'menuitemradio',
-        );
-        item.dataset.speed = String(speed);
-        item.setAttribute('aria-checked', String(current === speed));
-        return item;
-      }),
-      focus,
-    );
-  };
   const contextmenu = (event: MouseEvent) => {
     event.preventDefault();
     // V2: the menu pauses playback; every playback tick would close it.
@@ -3853,7 +3892,7 @@ export function mountTimeline(
       announceMenu(menu);
       menu.hidden = false;
       remove.focus();
-      placeMenu(event.clientX);
+      placeMenu(event.clientX, event.clientY);
       return;
     }
     const diamond = (event.target as HTMLElement).closest<HTMLElement>(
@@ -3872,7 +3911,7 @@ export function mountTimeline(
       showKeyframeMenu();
       announceMenu(menu);
       menu.hidden = false;
-      placeMenu(event.clientX);
+      placeMenu(event.clientX, event.clientY);
       return;
     }
     const target = (event.target as HTMLElement).closest<HTMLElement>(
@@ -3900,7 +3939,7 @@ export function mountTimeline(
     menu.hidden = false;
     // J14: the first entry takes focus once the menu is shown.
     menu.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
-    placeMenu(event.clientX);
+    placeMenu(event.clientX, event.clientY);
   };
   /** V5 (spec 6): removes the transition into a clip (one step). */
   function removeTransition(clipId: string) {
@@ -3931,13 +3970,11 @@ export function mountTimeline(
   };
   document.addEventListener('keydown', markerKey, true);
   /** V1: the timeline is a clipped card, so its menu is fixed to the
-   *  window, rising from 12 px above the card's bottom at the pointer. */
-  function placeMenu(clientX: number) {
-    const box = root.getBoundingClientRect();
-    menu.style.position = 'fixed';
-    menu.style.left = `${Math.max(box.left, Math.min(box.right - 140, clientX))}px`;
-    menu.style.bottom = `${Math.max(0, window.innerHeight - box.bottom + 12)}px`;
+   *  window. S1 Part 4: at the pointer, flipped and clamped inside the
+   *  window (it scrolls inside when taller than the window). */
+  function placeMenu(clientX: number, clientY: number) {
     menu.style.zIndex = 'var(--z-menu)';
+    placeMenuAt(menu, clientX, clientY);
   }
   // TL-055: scrolling within half a viewport of the end extends the timeline.
   const onScroll = () =>

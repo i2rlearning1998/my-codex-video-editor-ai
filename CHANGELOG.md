@@ -2,6 +2,14 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## S1 (Clipchamp-level panels and menus) — 2026-10-17
+
+- **One panel header (Part 1):** every left and right panel shows its title and one drawer button; the Back arrows and Close crosses in panel headers are gone.
+- **Library layout (Part 2):** Media, AI and My Templates share one layout: 380 px panels from 1800 px windows, edge-aligned search with New folder, a full-width Import split button and drop zone in Media, two equal buttons in AI, two equal columns of big cards with clear "⋯" and "+" buttons inside the thumbnail. Media always shows Images, Videos and Audio; AI cards lose the AI bar; preset cards get a real thumbnail.
+- **Drag and drop (Part 3):** AI and My Templates cards drag to the canvas (centred on the drop point) and the timeline (a clip at the drop time), like every other library.
+- **Menus (Part 4):** one placement for every context menu (fixed to the window, flipped and clamped, scrolls inside when taller than the window); short code-layer, canvas and timeline menus with submenus (Code animation, Clip, Track, Style, Save to My Templates, More); Save to My Templates lists every kind; "Save as template" is removed; code animations in AI and My Templates have Duplicate and Export again.
+- **Colours (Part 5):** new colours use the accent tokens.
+
 ## R-ALL (R1 to R7) — 2026-10-16
 
 - **Groups (R1):** Group and Ungroup in the timeline menu; regrouping keeps the group's name; a toast says what happened.

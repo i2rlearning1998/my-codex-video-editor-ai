@@ -166,7 +166,7 @@ test('[TPL-015] Save scene to My Templates keeps a scene in My Templates (not an
   const point = await toScreen(page, 30, 700);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await page
-    .locator('#canvas-context-menu [data-action="save-as-template"]')
+    .locator('#canvas-context-menu [data-action="save-scene-to-mine"]')
     .click();
   await expect(
     page.locator('.toast', { hasText: 'Saved to My Templates › Scene' }),

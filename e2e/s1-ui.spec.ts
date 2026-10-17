@@ -415,3 +415,276 @@ test('[S1-005] AI, My Templates and Media cards drag to the canvas (centred on t
       .toBe(before.size);
   }
 });
+
+const PULSE = readFileSync('tests/fixtures/code/pulse-block.js', 'utf8');
+/** Imports the pulse block through AI › Import; `place` adds it too. */
+async function importPulse(page: Page, place: boolean) {
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await page.locator('#ai-import-source').fill(PULSE);
+  await expect(page.locator('.ai-import-item')).toHaveAttribute(
+    'data-status',
+    'ok',
+  );
+  if (!place) await page.locator('#ai-import-scene').uncheck();
+  await page.locator('#ai-import-add').click();
+  await expect(page.locator('.ai-import-dialog')).toBeHidden();
+  await page.evaluate(() =>
+    document.querySelectorAll('.toast').forEach((toast) => toast.remove()),
+  );
+}
+const codeLayerId = async (page: Page) => {
+  await expect
+    .poll(async () => (await sceneOf(page)).layers.some((l) => l.code))
+    .toBe(true);
+  return (await sceneOf(page)).layers.find((l) => l.code)!.id;
+};
+const inside = async (page: Page, selector: string) => {
+  // Measured after the menu's enter animation (a 0.98 scale) has finished.
+  await page
+    .locator(selector)
+    .last()
+    .evaluate((el) =>
+      Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)),
+    );
+  const box = (await page.locator(selector).last().boundingBox())!;
+  const view = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(view.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(view.height);
+  return box;
+};
+const topRows = (page: Page, selector: string) =>
+  page
+    .locator(selector)
+    .evaluate(
+      (menu) =>
+        menu.querySelectorAll(':scope > button, :scope > [role="menuitem"]')
+          .length,
+    );
+
+test('[S1-006] canvas and timeline menus stay inside the window at the canvas bottom-right, the timeline bottom and the window edges; 240 to 260 px wide, 32 px rows, at most 14 top-level rows for a code layer', async ({
+  page,
+}) => {
+  await importPulse(page, true);
+  const id = await codeLayerId(page);
+  const canvasMenu = '#canvas-context-menu';
+  // Canvas: right-clicks at the artboard's bottom-right and near its edges.
+  for (const [x, y] of [
+    [1270, 710],
+    [10, 710],
+    [1270, 10],
+    [640, 360],
+  ] as const) {
+    await page.keyboard.press('Escape');
+    const point = await toScreen(page, x, y);
+    await page.mouse.click(point.x, point.y, { button: 'right' });
+    await expect(page.locator(canvasMenu)).toBeVisible();
+    const box = await inside(page, canvasMenu);
+    expect(box.width).toBeGreaterThanOrEqual(240);
+    expect(box.width).toBeLessThanOrEqual(260);
+  }
+  // The code layer's canvas menu: short, with submenus inside the window.
+  await page.keyboard.press('Escape');
+  const centre = await toScreen(page, 640, 360);
+  await page.mouse.click(centre.x, centre.y);
+  await page.mouse.click(centre.x, centre.y, { button: 'right' });
+  await expect(
+    page.locator(`${canvasMenu} [data-action="code-menu"]`),
+  ).toBeVisible();
+  expect(await topRows(page, canvasMenu)).toBeLessThanOrEqual(14);
+  const row = (await page
+    .locator(`${canvasMenu} > button`)
+    .first()
+    .boundingBox())!;
+  expect(row.height).toBeCloseTo(32, 0);
+  for (const parent of ['code-menu', 'save-to-mine', 'more-menu']) {
+    await page.locator(`${canvasMenu} > [data-action="${parent}"]`).click();
+    await inside(page, `${canvasMenu} .menu-flyout`);
+  }
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  // Timeline: the code clip, at the bottom of the timeline and at the
+  // window's right edge.
+  const menu = '#timeline-foundation .timeline-menu';
+  const clip = page.locator(
+    `#timeline-foundation .timeline-clip[data-id="${id}"]`,
+  );
+  const lanes = (await page
+    .locator('#timeline-foundation .timeline-scroll')
+    .boundingBox())!;
+  const clipBox = (await clip.boundingBox())!;
+  for (const point of [
+    { x: clipBox.x + 20, y: clipBox.y + clipBox.height / 2 },
+    { x: lanes.x + 40, y: lanes.y + lanes.height - 6 },
+    { x: lanes.x + lanes.width - 6, y: lanes.y + lanes.height - 6 },
+  ]) {
+    await page.mouse.click(point.x, point.y, { button: 'right' });
+    await expect(page.locator(menu)).toBeVisible();
+    const box = await inside(page, menu);
+    expect(box.width).toBeGreaterThanOrEqual(240);
+    expect(box.width).toBeLessThanOrEqual(260);
+    await page.keyboard.press('Escape');
+  }
+  await clip.click({ button: 'right', position: { x: 20, y: 8 } });
+  await expect(page.locator(`${menu} [data-action="code-menu"]`)).toBeVisible();
+  expect(await topRows(page, menu)).toBeLessThanOrEqual(14);
+  for (const parent of ['code-menu', 'clip-menu', 'track-menu', 'save-mine']) {
+    await page.locator(`${menu} > [data-action="${parent}"]`).click();
+    await inside(page, '#timeline-foundation .timeline-submenu');
+  }
+  // Clip › Speed opens a second level, also inside the window.
+  await page.locator(`${menu} > [data-action="clip-menu"]`).click();
+  await page
+    .locator('#timeline-foundation .timeline-submenu [data-action="speed"]')
+    .click();
+  await expect(
+    page.locator('#timeline-foundation .timeline-submenu'),
+  ).toHaveCount(2);
+  await inside(page, '#timeline-foundation .timeline-submenu');
+});
+
+test('[S1-007] Save to My Templates lists every kind, none hidden or covered; "Save as template" exists nowhere', async ({
+  page,
+}) => {
+  await importPulse(page, true);
+  const id = await codeLayerId(page);
+  const kinds = [
+    'shape',
+    'text',
+    'background',
+    'animation',
+    'video',
+    'image',
+    'annotation',
+    'sticker',
+    'scene',
+  ];
+  /** Every entry is drawn on top: the element at its centre is itself. */
+  const allShown = async (selector: string) => {
+    for (const item of await page.locator(selector).all()) {
+      const box = (await item.boundingBox())!;
+      const hit = await page.evaluate(
+        ([x, y]) => {
+          const el = document.elementFromPoint(x!, y!);
+          return el?.closest('button')?.textContent ?? null;
+        },
+        [box.x + box.width / 2, box.y + box.height / 2],
+      );
+      expect(hit).toBe(await item.textContent());
+    }
+  };
+  const point = await toScreen(page, 640, 360);
+  await page.mouse.click(point.x, point.y);
+  await page.mouse.click(point.x, point.y, { button: 'right' });
+  const canvasMenu = page.locator('#canvas-context-menu');
+  await expect(canvasMenu).not.toContainText('Save as template');
+  await canvasMenu.locator('> [data-action="save-to-mine"]').click();
+  for (const kind of kinds)
+    await expect(
+      canvasMenu.locator(`[data-action="save-to-mine-${kind}"]`),
+    ).toBeVisible();
+  await allShown('#canvas-context-menu .menu-flyout button');
+  await canvasMenu.locator('> [data-action="code-menu"]').click();
+  await expect(canvasMenu).not.toContainText('Save as template');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  // Timeline.
+  const menu = page.locator('#timeline-foundation .timeline-menu');
+  await page
+    .locator(`#timeline-foundation .timeline-clip[data-id="${id}"]`)
+    .click({ button: 'right', position: { x: 20, y: 8 } });
+  await expect(menu).not.toContainText('Save as template');
+  await menu.locator('> [data-action="save-mine"]').click();
+  for (const kind of kinds)
+    await expect(
+      menu.locator(
+        `.timeline-submenu [data-action="save-mine-kind"][data-kind="${kind}"]`,
+      ),
+    ).toBeVisible();
+  await allShown('#timeline-foundation .timeline-submenu button');
+  await menu.locator('> [data-action="code-menu"]').click();
+  await expect(menu).not.toContainText('Save as template');
+  await expect(menu.locator('[data-command="code-save-template"]')).toHaveCount(
+    0,
+  );
+  // The empty canvas menu says Save scene to My Templates.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.locator('#composition-canvas').focus();
+  await page.keyboard.press('Escape');
+  const corner = await toScreen(page, 1270, 10);
+  await page.mouse.click(corner.x, corner.y, { button: 'right' });
+  await expect(canvasMenu).toBeVisible();
+  await expect(canvasMenu).not.toContainText('Save as template');
+});
+
+test('[S1-008] AI and My Templates code animations have Duplicate ("<name> copy", unique) and Export, and an exported file imports again', async ({
+  page,
+}) => {
+  await importPulse(page, false);
+  const ai = page.locator('#library-ai');
+  const card = (name: string) =>
+    ai.locator('.shelf-item', { hasText: new RegExp(`^${name}$`) });
+  await expect(ai.locator('.shelf-item')).toHaveCount(1);
+  const first = ai.locator('.shelf-item').first();
+  const name = (await first.locator('.shelf-name').textContent())!;
+  const menuOf = async (item: ReturnType<Page['locator']>, host: string) => {
+    await item.hover();
+    await item.locator('.shelf-more').click();
+    await expect(page.locator(`#${host}-menu`)).toBeVisible();
+    await inside(page, `#${host}-menu`);
+  };
+  await menuOf(first, 'ai');
+  await page.locator('#ai-menu [data-action="ai-duplicate"]').click();
+  await expect(card(`${name} copy`)).toHaveCount(1);
+  await menuOf(first, 'ai');
+  await page.locator('#ai-menu [data-action="ai-duplicate"]').click();
+  await expect(card(`${name} copy 2`)).toHaveCount(1);
+  // Export, then import the file again.
+  await menuOf(first, 'ai');
+  const download = page.waitForEvent('download');
+  await page.locator('#ai-menu [data-action="ai-export"]').click();
+  const file = await (await download).path();
+  expect(readFileSync(file, 'utf8')).toBe(PULSE);
+  await page.locator('#ai-import').click();
+  await page.locator('#ai-import-file').setInputFiles(file);
+  await expect(page.locator('.ai-import-item')).toHaveAttribute(
+    'data-status',
+    'ok',
+  );
+  await page.locator('#ai-import-cancel').click();
+  // My Templates: a code layer saved as an Animation.
+  await first.locator('.shelf-plus').click({ force: true });
+  const id = await codeLayerId(page);
+  await page
+    .locator(`#timeline-foundation .timeline-clip[data-id="${id}"]`)
+    .click({ button: 'right', position: { x: 20, y: 8 } });
+  const menu = page.locator('#timeline-foundation .timeline-menu');
+  await menu.locator('> [data-action="save-mine"]').click();
+  await menu.locator('.timeline-submenu [data-kind="animation"]').click();
+  await page.evaluate(() =>
+    document.querySelectorAll('.toast').forEach((toast) => toast.remove()),
+  );
+  await showCategory(page, 'MyTemplates');
+  const mine = page.locator('#library-mine .shelf-item');
+  await expect(mine).toHaveCount(1);
+  const saved = (await mine.first().locator('.shelf-name').textContent())!;
+  await menuOf(mine.first(), 'mine');
+  await page.locator('#mine-menu [data-action="mine-duplicate"]').click();
+  await expect(mine).toHaveCount(2);
+  await expect(page.locator('#library-mine')).toContainText(`${saved} copy`);
+  await menuOf(mine.last(), 'mine');
+  const download2 = page.waitForEvent('download');
+  await page.locator('#mine-menu [data-action="mine-export"]').click();
+  const file2 = await (await download2).path();
+  expect(readFileSync(file2, 'utf8')).toBe(PULSE);
+  await showCategory(page, 'AI');
+  await page.locator('#ai-import').click();
+  await page.locator('#ai-import-file').setInputFiles(file2);
+  await expect(page.locator('.ai-import-item')).toHaveAttribute(
+    'data-status',
+    'ok',
+  );
+});

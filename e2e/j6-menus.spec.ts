@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen } from './fixtures';
+import { test, expect, hook, toScreen, revealEntry } from './fixtures';
 
 // J6: Show element timing, Alternative text, Resize canvas to selection.
 // The example's subtitle text sits at 76,570 680 × 70.
@@ -33,7 +33,12 @@ test('[CV-058] Show element timing opens a popover with start and duration, high
   page,
 }) => {
   await openMenu(page, 200, 600);
-  await menu(page).locator('[data-action="show-timing"]').click();
+  await (
+    await revealEntry(
+      menu(page),
+      menu(page).locator('[data-action="show-timing"]'),
+    )
+  ).click();
   const popover = page.locator('.element-timing-popover');
   await expect(popover).toBeVisible();
   const clip = page.locator(
@@ -66,7 +71,12 @@ test('[CV-059] Alternative text is saved per layer with a confirmation and an AL
   page,
 }) => {
   await openMenu(page, 200, 600);
-  await menu(page).locator('[data-action="alt-text"]').click();
+  await (
+    await revealEntry(
+      menu(page),
+      menu(page).locator('[data-action="alt-text"]'),
+    )
+  ).click();
   const area = page.locator('#alt-text-input');
   await expect(area).toBeFocused();
   await area.fill('A subtitle about shapes');
@@ -85,7 +95,12 @@ test('[CV-059] Alternative text is saved per layer with a confirmation and an AL
   ).toHaveText('ALT');
   // Reopening shows the saved value; it survives a reload.
   await openMenu(page, 200, 600);
-  await menu(page).locator('[data-action="alt-text"]').click();
+  await (
+    await revealEntry(
+      menu(page),
+      menu(page).locator('[data-action="alt-text"]'),
+    )
+  ).click();
   await expect(page.locator('#alt-text-input')).toHaveValue(
     'A subtitle about shapes',
   );
@@ -104,7 +119,12 @@ test('[CV-060] Resize canvas to selection asks first, gives this scene the selec
   page,
 }) => {
   await openMenu(page, 200, 600);
-  await menu(page).locator('[data-action="resize-to-selection"]').click();
+  await (
+    await revealEntry(
+      menu(page),
+      menu(page).locator('[data-action="resize-to-selection"]'),
+    )
+  ).click();
   const dialog = page.locator('.modal-dialog');
   await expect(dialog).toContainText('680 × 70');
   // Cancel changes nothing.
@@ -113,7 +133,12 @@ test('[CV-060] Resize canvas to selection asks first, gives this scene the selec
     1280, 720,
   ]);
   await openMenu(page, 200, 600);
-  await menu(page).locator('[data-action="resize-to-selection"]').click();
+  await (
+    await revealEntry(
+      menu(page),
+      menu(page).locator('[data-action="resize-to-selection"]'),
+    )
+  ).click();
   await page.locator('.modal-dialog [data-role="confirm"]').click();
   let composition = await scene(page);
   expect([composition.width, composition.height]).toEqual([680, 70]);

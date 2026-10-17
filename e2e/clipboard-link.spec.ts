@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, seekKeep } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  toScreen,
+  seekKeep,
+  revealEntry,
+} from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2, clip-b 3..5 (asset-video) · Video 2: clip-c 1..4 · Video 3: empty
@@ -64,10 +71,10 @@ async function menu(page: Page, clipId: string, name: string) {
     button: 'right',
     position: { x: 30, y: 10 },
   });
-  await page
-    .locator('.timeline-menu')
-    .getByRole('menuitem', { name, exact: true })
-    .click();
+  const menu = page.locator('.timeline-menu');
+  await (
+    await revealEntry(menu, menu.getByRole('menuitem', { name, exact: true }))
+  ).click();
 }
 
 test('[TL-027] copy, cut and paste clips at the playhead onto the selected track', async ({

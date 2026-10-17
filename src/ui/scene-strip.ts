@@ -35,7 +35,7 @@ export function mountSceneStrip(options: {
   report: (error: unknown) => void;
   /** Opens the Templates panel ("From template"). */
   openTemplates: () => void;
-  saveAsTemplate: (sceneId: string) => void;
+  saveSceneToMine: (sceneId: string) => void;
   crossfade?: () => void;
 }): SceneStrip {
   const { host, engine, session, report } = options;
@@ -148,11 +148,11 @@ export function mountSceneStrip(options: {
           : { reason: t('scenes.lastScene') }),
       },
       {
-        id: 'strip-save-template',
+        id: 'strip-save-to-mine',
         label: t('mine.saveScene'),
         icon: 'templates',
         divider: true,
-        run: () => options.saveAsTemplate(id),
+        run: () => options.saveSceneToMine(id),
       },
       {
         id: 'strip-move-left',

@@ -1,7 +1,14 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Page, TestInfo } from '@playwright/test';
-import { test, expect, hook, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  showCategory,
+  openSubmenus,
+  revealEntry,
+} from './fixtures';
 import { reveal } from './controls';
 
 // H3: the Canva canvas. Default example: 1280 × 720, paper #f0eee7; the
@@ -500,11 +507,11 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   // J7: a new picture is behind the example's text and shapes (lane
   // order), so its menus open on a part nothing is drawn over.
   await open(150, 690);
+  for (const action of ['copy', 'duplicate', 'delete', 'lock'])
+    await expect(menu.locator(`[data-action="${action}"]`)).toBeVisible();
+  // S1 (D-266): the rest are in More.
+  await openSubmenus(menu, 'more-menu');
   for (const action of [
-    'copy',
-    'duplicate',
-    'delete',
-    'lock',
     'show-timing',
     'alt-text',
     'set-background',
@@ -527,13 +534,15 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
     'Planned: Wave 8 (ADV-008)',
   );
   // Info.
-  await menu.locator('[data-action="info"]').click();
+  await (await revealEntry(menu, menu.locator('[data-action="info"]'))).click();
   await expect(
     page.locator('.toast', { hasText: 'Type: Image' }),
   ).toBeVisible();
   // Alternative text.
   await open(150, 690);
-  await menu.locator('[data-action="alt-text"]').click();
+  await (
+    await revealEntry(menu, menu.locator('[data-action="alt-text"]'))
+  ).click();
   await page.locator('#alt-text-input').fill('A test pattern');
   await page.locator('[data-action="alt-text-save"]').click();
   expect((await layerOf(page, id)).properties.altText.value).toBe(
@@ -542,7 +551,9 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   // Download selection: a PNG the size of the picture.
   await open(150, 690);
   const saving = page.waitForEvent('download');
-  await menu.locator('[data-action="download-selection"]').click();
+  await (
+    await revealEntry(menu, menu.locator('[data-action="download-selection"]'))
+  ).click();
   const download = await saving;
   expect(download.suggestedFilename()).toMatch(/\.png$/);
   const file = testInfo.outputPath('selection.png');
@@ -557,13 +568,17 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   expect(size[0]).toBeCloseTo((drawn[1]![0] - drawn[0]![0]) / a, -1);
   // Show element timing moves the playhead to the clip's start.
   await open(150, 690);
-  await menu.locator('[data-action="show-timing"]').click();
+  await (
+    await revealEntry(menu, menu.locator('[data-action="show-timing"]'))
+  ).click();
   await expect(
     page.locator('#timeline-foundation .timeline-scroll'),
   ).toBeFocused();
   // Set image as background: it covers the canvas and goes to the back.
   await open(150, 690);
-  await menu.locator('[data-action="set-background"]').click();
+  await (
+    await revealEntry(menu, menu.locator('[data-action="set-background"]'))
+  ).click();
   expect((await labels(page)).at(-1)).toBe('Set image as background');
   const project = (await hook(page)).project;
   expect(project.compositions[0]!.layers[0]!.id).toBe(id);

@@ -76,7 +76,8 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       code: {
         edit: vi.fn(),
         settings: vi.fn(),
-        saveTemplate: vi.fn(),
+        exportCode: vi.fn(),
+        duplicateCopy: vi.fn(),
         rerender: vi.fn(),
       },
     };

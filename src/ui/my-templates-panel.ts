@@ -14,6 +14,10 @@ export interface MyTemplatesPanelOptions {
   readonly library: MyLibrary;
   readonly add: (id: string) => void;
   readonly rename: (id: string) => void;
+  /** S1: a code animation's Duplicate and Export (absent for others). */
+  readonly duplicate?: (id: string) => void;
+  readonly exportItem?: (id: string) => void;
+  readonly isCode?: (id: string) => boolean;
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
   readonly prompt: (title: string, value: string) => Promise<string | null>;
@@ -62,6 +66,23 @@ export function mountMyTemplatesPanel(
       }),
     add: options.add,
     rename: options.rename,
+    extraMenu: (id) =>
+      options.isCode?.(id)
+        ? [
+            {
+              id: 'mine-duplicate',
+              label: t('shelf.duplicate'),
+              icon: 'duplicate',
+              run: () => options.duplicate?.(id),
+            },
+            {
+              id: 'mine-export',
+              label: t('shelf.export'),
+              icon: 'download',
+              run: () => options.exportItem?.(id),
+            },
+          ]
+        : [],
     details: options.details,
     remove: options.remove,
     prompt: options.prompt,

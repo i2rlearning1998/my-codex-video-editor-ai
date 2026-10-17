@@ -7,6 +7,7 @@ import {
   laneAction,
   showCategory,
   seekKeep,
+  revealEntry,
 } from './fixtures';
 
 // W4-C: audio playback, sync, mute and solo, scrub snippets and waveforms.
@@ -52,11 +53,15 @@ const clipEl = (page: Page, id: string) =>
   page.locator(`.timeline-clip[data-clip-id="${id}"]`);
 async function clipMenu(page: Page, id: string, item: string) {
   await clipEl(page, id).click({ button: 'right', position: { x: 20, y: 10 } });
-  await page
-    .locator('.timeline-menu')
-    .locator('[role^="menuitem"]')
-    .filter({ hasText: new RegExp(`^${item}$`) })
-    .click();
+  const menu = page.locator('.timeline-menu');
+  await (
+    await revealEntry(
+      menu,
+      menu
+        .locator('[role^="menuitem"]')
+        .filter({ hasText: new RegExp(`^${item}$`) }),
+    )
+  ).click();
 }
 
 test.beforeEach(async ({ page, openFixtureProject }) => {

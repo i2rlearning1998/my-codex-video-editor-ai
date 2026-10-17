@@ -257,12 +257,23 @@ test.describe('media and timeline fixture', () => {
     page,
   }) => {
     const clipOnly = ['speed', 'reverse', 'freeze', 'detach-audio'];
-    const actions = async () =>
-      menu(page)
-        .locator('button')
-        .evaluateAll((items) =>
-          items.map((item) => (item as HTMLElement).dataset.action),
-        );
+    // S1 (D-266): the top level plus the Clip and Style submenus.
+    const actions = async () => {
+      const collect = () =>
+        menu(page)
+          .locator('button')
+          .evaluateAll((items) =>
+            items.map((item) => (item as HTMLElement).dataset.action ?? ''),
+          );
+      const seen = new Set(await collect());
+      for (const parent of ['clip-menu', 'style-menu']) {
+        const item = menu(page).locator(`:scope > [data-action="${parent}"]`);
+        if (!(await item.count())) continue;
+        await item.click();
+        for (const action of await collect()) seen.add(action);
+      }
+      return [...seen];
+    };
     // Image layer-c (1..4 s) alone: no speed, reverse, freeze or detach.
     await seek(page, 3.5);
     await rightClickAt(page, 500, 500);
@@ -293,6 +304,10 @@ test.describe('media and timeline fixture', () => {
       .locator('.timeline-clip[data-clip-id="clip-c"]')
       .click({ button: 'right', position: { x: 20, y: 10 } });
     await expect(page.locator('.timeline-menu')).toBeVisible();
+    // S1 (D-266): a mixed selection has a flat menu; otherwise Clip holds
+    // Speed and Reverse.
+    const clipMenu = page.locator('.timeline-menu > [data-action="clip-menu"]');
+    if (await clipMenu.count()) await clipMenu.click();
     await expect(
       page.locator('.timeline-menu [data-action="speed"]'),
     ).toHaveCount(0);

@@ -148,7 +148,7 @@ test('[PRJ-023] cards drag to reorder with an insertion line; double-click renam
   // Save as template from the strip (not an undo step).
   const steps = (await labels(page)).length;
   await cards(page).first().click({ button: 'right' });
-  await menu.locator('[data-action="strip-save-template"]').click();
+  await menu.locator('[data-action="strip-save-to-mine"]').click();
   await expect(
     page.locator('.toast', { hasText: 'Saved to My Templates › Scene' }),
   ).toBeVisible();

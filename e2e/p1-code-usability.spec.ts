@@ -8,6 +8,7 @@ import {
   openRight,
   seekKeep,
   showCategory,
+  openSubmenus,
 } from './fixtures';
 
 // P1 (CREATOR-PACK-SPEC 5.2): a code layer's own menus, a poster and a
@@ -116,7 +117,7 @@ test.describe('P1 code layer usability', () => {
     await newProject(page);
   });
 
-  test('[CP-001] a code layer has its own menus: Edit code, Animation settings, Save as template and Re-render; no picture or sound items', async ({
+  test('[CP-001] a code layer has its own menus: a Code animation submenu (Edit code, Animation settings, Re-render, Edit duration, Export, Duplicate as copy); no picture or sound items', async ({
     page,
   }) => {
     await addCode(page, PULSE);
@@ -134,14 +135,28 @@ test.describe('P1 code layer usability', () => {
       .evaluateAll((items) =>
         items.map((item) => (item as HTMLElement).dataset.action),
       );
-    expect(actions.slice(0, 4)).toEqual([
+    // S1 (D-266): the code entries are in the Code animation submenu.
+    expect(actions).toContain('code-menu');
+    expect(actions).not.toContain('detach-audio');
+    await openSubmenus(canvasMenu, 'code-menu');
+    const code = await canvasMenu
+      .locator('.menu-flyout [data-action]')
+      .evaluateAll((items) =>
+        items.map((item) => (item as HTMLElement).dataset.action),
+      );
+    expect(code).toEqual([
       'code-edit',
       'code-settings',
-      'code-save-template',
       'code-rerender',
+      'edit-duration',
+      'code-export',
+      'code-duplicate',
     ]);
-    expect(actions).not.toContain('set-background');
-    expect(actions).not.toContain('detach-audio');
+    await openSubmenus(canvasMenu, 'more-menu');
+    await expect(
+      canvasMenu.locator('[data-action="set-background"]'),
+    ).toHaveCount(0);
+    await openSubmenus(canvasMenu, 'code-menu');
     // Animation settings opens the right panel's settings.
     await canvasMenu.locator('[data-action="code-settings"]').click();
     await expect(panel(page).locator('.code-tier')).toHaveText(
@@ -154,37 +169,38 @@ test.describe('P1 code layer usability', () => {
     );
     await clip.click({ button: 'right', position: { x: 20, y: 10 } });
     await expect(timelineMenu).toBeVisible();
+    await openSubmenus(timelineMenu, 'code-menu');
     const commands = await timelineMenu
-      .locator(':scope > [data-command]')
+      .locator('.timeline-submenu [data-command]')
       .evaluateAll((items) =>
         items.map((item) => (item as HTMLElement).dataset.command),
       );
-    expect(commands).toEqual(
-      expect.arrayContaining([
-        'code-edit',
-        'code-settings',
-        'code-save-template',
-        'code-rerender',
-      ]),
-    );
+    expect(commands).toEqual([
+      'code-edit',
+      'code-settings',
+      'code-rerender',
+      'edit-duration',
+      'code-export',
+      'code-duplicate',
+    ]);
     await expect(
       timelineMenu.locator(
         '[data-action="audio-menu"], [data-action="auto-cut"]',
       ),
     ).toHaveCount(0);
-    // R2: Save as template keeps it in the AI category (not an undo step).
+    // S1 (D-266): Save as template is gone; Duplicate as copy is one step.
+    await expect(
+      page.locator('[data-command="code-save-template"]'),
+    ).toHaveCount(0);
     const steps = (await hook(page)).history.labels.length;
-    await timelineMenu.locator('[data-command="code-save-template"]').click();
-    await expect(
-      page.locator('.toast', { hasText: 'AI › Motion' }),
-    ).toBeVisible();
-    expect((await hook(page)).history.labels.length).toBe(steps);
-    await showCategory(page, 'AI');
-    await expect(
-      page.locator('#library-ai .ai-group[data-kind="motion"] .ai-card'),
-    ).toHaveCount(1);
+    await timelineMenu.locator('[data-command="code-duplicate"]').click();
+    await expect
+      .poll(async () => (await hook(page)).history.labels.length)
+      .toBe(steps + 1);
+    await page.keyboard.press('Control+z');
     // Re-render bakes again from frame 0.
     await clip.click({ button: 'right', position: { x: 20, y: 10 } });
+    await openSubmenus(timelineMenu, 'code-menu');
     await timelineMenu.locator('[data-command="code-rerender"]').click();
     await expect
       .poll(async () => (await codeDebug(page)).state)
@@ -192,6 +208,7 @@ test.describe('P1 code layer usability', () => {
     await baked(page);
     // Edit code opens the dialog with the layer's code.
     await clip.click({ button: 'right', position: { x: 20, y: 10 } });
+    await openSubmenus(timelineMenu, 'code-menu');
     await timelineMenu.locator('[data-command="code-edit"]').click();
     await expect(dialog(page)).toBeVisible();
     await expect(dialog(page).locator('#code-source')).toHaveValue(PULSE);
@@ -222,6 +239,10 @@ test.describe('P1 code layer usability', () => {
     // canvas shows the thumbnail frame (the bar at 1.5 s), never nothing.
     const clip = page.locator(`.timeline-clip[data-id="${layerId}"]`);
     await clip.click({ button: 'right', position: { x: 20, y: 10 } });
+    await openSubmenus(
+      page.locator('#timeline-foundation .timeline-menu'),
+      'code-menu',
+    );
     await page
       .locator(
         '#timeline-foundation .timeline-menu [data-command="code-rerender"]',
@@ -237,6 +258,10 @@ test.describe('P1 code layer usability', () => {
     expect(samples.every(Boolean)).toBe(true);
     // Playback starts from the cache while the rest bakes.
     await clip.click({ button: 'right', position: { x: 20, y: 10 } });
+    await openSubmenus(
+      page.locator('#timeline-foundation .timeline-menu'),
+      'code-menu',
+    );
     await page
       .locator(
         '#timeline-foundation .timeline-menu [data-command="code-rerender"]',

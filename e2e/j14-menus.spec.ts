@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, showCategory } from './fixtures';
+import { test, expect, hook, showCategory, openSubmenus } from './fixtures';
 
 // J14: the timeline clip menu starts with a section for the kind of clip
 // (each entry a registered command with its shortcut), then a divider and
@@ -70,27 +70,31 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
   const video = await addToScene(page, WEBM);
   await clipMenu(page, video);
   const shown = await entries(page);
-  expect(shown.slice(0, 11)).toEqual([
+  // S1 (D-266): the everyday edits, then submenus; the earlier entries
+  // are in Clip and the lane's in Track.
+  expect(shown).toEqual([
     'Duplicate',
     'Copy',
     'Paste',
     'Delete',
     'Split',
     'Freeze frame',
-    'Edit duration',
     'Rename',
     'Audio ›',
-    'Auto cut',
-    'More options',
+    'Save to My Templates ›',
+    'Clip ›',
+    'Track ›',
   ]);
-  // The earlier entries follow a divider (none of them repeated); V2
-  // (D-191): the lane's own actions follow a second one.
-  await expect(menu(page).locator('.timeline-menu-divider')).toHaveCount(2);
-  expect(shown).toContain('Cut');
-  expect(shown.filter((item) => item === 'Duplicate')).toHaveLength(1);
-  // Detach audio stays where it was (in the earlier entries) and is also in
-  // the Audio submenu.
-  expect(shown).toContain('Detach audio');
+  await expect(menu(page).locator('.timeline-menu-divider')).toHaveCount(1);
+  await openSubmenus(menu(page), 'clip-menu');
+  const clipEntries = await entries(page);
+  expect(clipEntries).toContain('Edit duration');
+  expect(clipEntries).toContain('Cut');
+  expect(clipEntries).toContain('Auto cut');
+  expect(clipEntries).toContain('More options');
+  expect(clipEntries.filter((item) => item === 'Duplicate')).toHaveLength(1);
+  // Detach audio is in Clip and in the Audio submenu.
+  expect(clipEntries).toContain('Detach audio');
   // Shortcuts on the right; Auto cut is planned.
   const row = (command: string) =>
     menu(page).locator(`[data-command="${command}"]`);
@@ -101,6 +105,10 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
   await expect(autoCut).toBeDisabled();
   await expect(autoCut).toHaveAttribute('title', 'Planned: Wave 10 (AI-008)');
   await page.screenshot({ path: testInfo.outputPath('video-menu.png') });
+  // Reopen the menu for the keyboard part.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await clipMenu(page, video);
   // Keyboard: Down moves, End goes to the last entry, Up comes back;
   // Right on Audio opens its submenu, Left returns.
   await expect(row('duplicate')).toBeFocused();
@@ -139,6 +147,7 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
   expect(lane.muted).toBe(true);
   // Edit duration: a popover with the duration only.
   await clipMenu(page, video);
+  await openSubmenus(menu(page), 'clip-menu');
   await row('edit-duration').click();
   const popover = page.locator('.element-timing-popover');
   await expect(popover).toBeVisible();
@@ -170,6 +179,7 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
   ).toBe('Intro shot');
   // More options opens the right panel.
   await clipMenu(page, video);
+  await openSubmenus(menu(page), 'clip-menu');
   await row('more-options').click();
   await expect
     .poll(() =>
@@ -188,29 +198,24 @@ test('[TL-075] an image clip and a text clip have their own lists: no Freeze fra
 }) => {
   const image = await addToScene(page, JPG);
   await clipMenu(page, image);
-  expect((await entries(page)).slice(0, 8)).toEqual([
+  const list = [
     'Duplicate',
     'Copy',
     'Paste',
     'Delete',
     'Split',
-    'Edit duration',
     'Rename',
-    'More options',
-  ]);
+    'Save to My Templates ›',
+    'Clip ›',
+    'Track ›',
+  ];
+  expect(await entries(page)).toEqual(list);
   await page.keyboard.press('Escape');
   await expect(menu(page)).toBeHidden();
   await clipMenu(page, 'example-headline');
+  expect(await entries(page)).toEqual(list);
+  await openSubmenus(menu(page), 'clip-menu');
   const text = await entries(page);
-  expect(text.slice(0, 8)).toEqual([
-    'Duplicate',
-    'Copy',
-    'Paste',
-    'Delete',
-    'Split',
-    'Edit duration',
-    'Rename',
-    'More options',
-  ]);
+  expect(text).toContain('Edit duration');
   expect(text).not.toContain('Auto cut');
 });

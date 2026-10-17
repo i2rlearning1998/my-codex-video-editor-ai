@@ -141,7 +141,13 @@ test('[RA-015][RA-016] several layers save as one Group item; nothing selected s
       .click({ button: 'right', position: { x: 20, y: 10 } });
     await expect(timelineMenu).toBeVisible({ timeout: 1000 });
   }).toPass();
-  await timelineMenu.locator('[data-action="save-mine-group"]').click();
+  // S1 (D-266): several layers save as Group (or the Scene).
+  await timelineMenu.locator('[data-action="save-mine"]').click();
+  await timelineMenu
+    .locator(
+      '.timeline-submenu [data-action="save-mine-kind"][data-kind="group"]',
+    )
+    .click();
   await expect(toast(page, 'Saved to My Templates › Group')).toHaveCount(1);
   // Nothing selected: the empty canvas saves the scene.
   await page.keyboard.press('Escape');
@@ -150,7 +156,7 @@ test('[RA-015][RA-016] several layers save as one Group item; nothing selected s
   const corner = await toScreen(page, 1270, 10);
   await page.mouse.click(corner.x, corner.y, { button: 'right' });
   await expect(canvasMenu(page)).toBeVisible();
-  await canvasMenu(page).locator('[data-action="save-as-template"]').click();
+  await canvasMenu(page).locator('[data-action="save-scene-to-mine"]').click();
   await expect(toast(page, 'Saved to My Templates › Scene')).toHaveCount(1);
   await showCategory(page, 'MyTemplates');
   expect(await tabs(page)).toEqual(['all', 'group', 'scene']);

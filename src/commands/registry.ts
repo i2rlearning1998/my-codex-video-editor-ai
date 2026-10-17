@@ -52,8 +52,11 @@ export interface CommandContext {
   code?: {
     edit: (layerId: string) => void;
     settings: (layerId: string) => void;
-    saveTemplate: (layerId: string) => void;
     rerender: (layerId: string) => void;
+    /** S1: downloads the code as a file the AI importer reads again. */
+    exportCode: (layerId: string) => void;
+    /** S1: a copy of the layer named "<name> copy" (one step). */
+    duplicateCopy: (layerId: string) => void;
   };
   /** G3: the canvas view (zoom and pan); absent outside the full shell. */
   view?: CanvasView;
@@ -251,8 +254,9 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     [
       ['code-edit', 'command.codeEdit', 'edit'],
       ['code-settings', 'command.codeSettings', 'settings'],
-      ['code-save-template', 'command.codeSaveTemplate', 'saveTemplate'],
       ['code-rerender', 'command.codeRerender', 'rerender'],
+      ['code-export', 'command.codeExport', 'exportCode'],
+      ['code-duplicate', 'command.codeDuplicate', 'duplicateCopy'],
     ] as const
   ).map(([id, labelKey, hook]): RegisteredCommand => ({
     id,

@@ -35,9 +35,59 @@ export interface MenuEntry {
 export interface MenuController {
   open(entries: () => readonly MenuEntry[]): void;
   close(): void;
-  /** Keeps the open menu inside its container's box (flips up or left). */
-  fit(): void;
+  /** S1: places the open menu at (x, y) in the window (or where it is),
+   *  fixed, flipped up or left and clamped so all of it shows; a menu taller
+   *  than the window scrolls inside. */
+  fit(x?: number, y?: number): void;
   readonly isOpen: boolean;
+}
+
+/** S1 Part 4: every menu keeps 8 px from the window's edges. */
+const EDGE = 8;
+/**
+ * S1 Part 4: one placement for every context menu (canvas, timeline,
+ * library cards): fixed to the window at the pointer, flipped above or to
+ * the left when it would pass an edge, clamped inside, and at most the
+ * window's height less 16 px (it then scrolls inside).
+ */
+export function placeMenuAt(menu: HTMLElement, x: number, y: number): void {
+  Object.assign(menu.style, {
+    position: 'fixed',
+    right: '',
+    bottom: '',
+    left: '0px',
+    top: '0px',
+    maxBlockSize: `${window.innerHeight - 2 * EDGE}px`,
+  });
+  const width = menu.offsetWidth,
+    height = menu.offsetHeight;
+  const clamp = (value: number, size: number, room: number) =>
+    Math.round(Math.max(EDGE, Math.min(value, room - size - EDGE)));
+  const left = x + width > window.innerWidth - EDGE ? x - width : x;
+  const top = y + height > window.innerHeight - EDGE ? y - height : y;
+  menu.style.left = `${clamp(left, width, window.innerWidth)}px`;
+  menu.style.top = `${clamp(top, height, window.innerHeight)}px`;
+}
+/** S1 Part 4: a submenu beside its parent entry (left when there is no room
+ *  on the right), clamped inside the window like a menu. */
+export function placeSubmenu(list: HTMLElement, parent: HTMLElement): void {
+  const box = parent.getBoundingClientRect();
+  Object.assign(list.style, {
+    position: 'fixed',
+    maxBlockSize: `${window.innerHeight - 2 * EDGE}px`,
+  });
+  const width = list.offsetWidth,
+    height = list.offsetHeight;
+  const left =
+    box.right + 2 + width + EDGE > window.innerWidth
+      ? Math.max(EDGE, box.left - width - 2)
+      : box.right + 2;
+  const top = Math.max(
+    EDGE,
+    Math.min(box.top - 4, window.innerHeight - height - EDGE),
+  );
+  list.style.left = `${Math.round(left)}px`;
+  list.style.top = `${Math.round(top)}px`;
 }
 
 /** Hover delay before a flyout opens, and the grace before it closes (H2). */
@@ -135,24 +185,7 @@ export function createMenu(
     const at = items.indexOf(document.activeElement as HTMLButtonElement);
     items[(at + step + items.length) % items.length]?.focus();
   };
-  const placeFlyout = (list: HTMLElement, parent: HTMLElement) => {
-    const box = parent.getBoundingClientRect();
-    const width = list.offsetWidth,
-      height = list.offsetHeight;
-    const margin = 8;
-    const right = box.right + 2;
-    const left =
-      right + width + margin > window.innerWidth
-        ? Math.max(margin, box.left - width - 2)
-        : right;
-    const top = Math.max(
-      margin,
-      Math.min(box.top - 4, window.innerHeight - height - margin),
-    );
-    list.style.left = `${Math.round(left)}px`;
-    list.style.top = `${Math.round(top)}px`;
-    list.style.maxBlockSize = `${window.innerHeight - 2 * margin}px`;
-  };
+  const placeFlyout = placeSubmenu;
   const openFlyout = (
     level: number,
     parent: HTMLButtonElement,
@@ -294,22 +327,10 @@ export function createMenu(
       event.stopPropagation();
     };
   };
-  const fit = () => {
+  const fit = (x?: number, y?: number) => {
     if (container.hidden) return;
-    const area = container.offsetParent?.getBoundingClientRect();
-    if (!area) return;
-    container.style.maxBlockSize = '';
-    const left = container.offsetLeft,
-      top = container.offsetTop;
-    const width = container.offsetWidth,
-      height = container.offsetHeight;
-    // Flip up (or left) when the menu would pass the area's edge.
-    if (top + height > area.height)
-      container.style.top = `${Math.max(0, Math.min(top - height, area.height - height))}px`;
-    if (left + width > area.width)
-      container.style.left = `${Math.max(0, area.width - width)}px`;
-    // Only a truly small area scrolls, with the thin themed scrollbar.
-    if (height > area.height) container.style.maxBlockSize = `${area.height}px`;
+    const box = container.getBoundingClientRect();
+    placeMenuAt(container, x ?? box.left, y ?? box.top);
   };
   dismissMenuOn(
     container,

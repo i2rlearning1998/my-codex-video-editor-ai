@@ -966,6 +966,9 @@ Hand-test fixes of PR #33 (S1 brief).
 | S1-003 | P1 | W8 | Verified | Library cards are two equal columns (12 px gap, at least 165 px at 1920 × 1080) in Media, AI and My Templates; "⋯" (dark, top-right) and "+" (accent, bottom-right) are 32 px, 8 px inside the thumbnail, visible on hover, focus and touch, and never also add the card (Part 2) |
 | S1-004 | P1 | W8 | Verified | Media always shows All, Images, Videos and Audio; AI and My Templates show All plus one chip per kind that has items; AI cards carry no AI chip; preset cards have a drawn thumbnail (Part 2) |
 | S1-005 | P1 | W8 | Verified | AI and My Templates cards drag like every library card (one controller, from the shared card): a canvas drop adds the item centred on the drop point, a timeline drop adds its clip at the drop time and lane, one undo step; Media still drags (Part 3) |
+| S1-006 | P1 | W8 | Verified | One menu placement for every context menu: fixed to the window at the pointer, 240 to 260 px wide, 32 px rows, at most the window's height less 16 px (scrolls inside), flipped and clamped so the whole menu and every nested submenu stay inside the window; a code layer's canvas and timeline menus have at most 14 top-level rows (Code animation, Clip, Track, Save to My Templates and More as submenus) (Part 4) |
+| S1-007 | P1 | W8 | Verified | Save to My Templates lists every kind that fits the selection (Shape, Text, Background, Animation, Video, Image, Annotation, Sticker, Group, Scene), none covered by another region; "Save as template" is removed everywhere (Part 4) |
+| S1-008 | P1 | W8 | Verified | AI and My Templates code animations have Duplicate ("<name> copy", kept unique) and Export in their "⋯" menu; an exported file imports again through AI › Import; a code layer's Code animation submenu has Export and Duplicate as copy (Part 4) |
 
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 

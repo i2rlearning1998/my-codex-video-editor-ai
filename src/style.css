@@ -8427,13 +8427,6 @@ input[type='range'] {
   color: var(--color-text);
   font: inherit;
 }
-.code-save {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  margin-inline-end: auto;
-  font-size: var(--font-size-sm);
-}
 /* X4: a code template's hover preview plays over its thumbnail. */
 .code-template-card .code-hover {
   position: absolute;
@@ -9088,4 +9081,45 @@ input[type='range'] {
   font-size: var(--font-caption);
   font-weight: var(--weight-semibold);
   color: var(--text-secondary);
+}
+
+/* S1 Part 4: one look and size for every context menu and its submenus:
+   240 to 260 px wide, 32 px rows, fixed to the window by placeMenuAt and
+   placeSubmenu (context-menu.ts), scrolling inside when taller than the
+   window. */
+.canvas-context-menu,
+.menu-flyout,
+.timeline-menu,
+.timeline-submenu,
+.media-menu {
+  inline-size: auto;
+  min-inline-size: 240px;
+  max-inline-size: 260px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.timeline-menu {
+  bottom: auto;
+  max-block-size: calc(100vh - 16px);
+}
+.timeline-submenu {
+  display: block;
+  padding: 6px;
+  background: var(--overlay);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  color: var(--text);
+}
+.timeline-menu button {
+  min-block-size: 32px;
+}
+.timeline-menu button[aria-expanded='true'] {
+  background-color: var(--hover);
+}
+.menu-label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

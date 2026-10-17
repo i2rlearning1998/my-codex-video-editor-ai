@@ -333,7 +333,8 @@ test('[LAY-030][CV-043] right-click submenus open on hover, keep open on a diago
       (element) => element.scrollHeight <= element.clientHeight,
     ),
   ).toBe(true);
-  await expect(menu.locator('[data-action="copy-style"]')).toBeInViewport();
+  // S1 (D-266): Copy style is in the Style submenu.
+  await expect(menu.locator('[data-action="style-menu"]')).toBeInViewport();
   for (const action of ['toggle-enabled', 'link', 'unlink'])
     await expect(menu.locator(`[data-action="${action}"]`)).toHaveCount(0);
   // Hover opens the Layer submenu after a short delay, without a click.

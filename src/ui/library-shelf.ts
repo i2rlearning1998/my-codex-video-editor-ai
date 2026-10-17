@@ -11,7 +11,7 @@
 // outside the project history.
 import { t } from '../i18n';
 import { drags, type DragPayload } from './drag-controller';
-import { createMenu, type MenuEntry } from './context-menu';
+import { createMenu, placeMenuAt, type MenuEntry } from './context-menu';
 import { iconSvg } from './icons';
 
 export interface ShelfItem {
@@ -70,6 +70,8 @@ export interface ShelfOptions {
   readonly flatAll?: boolean;
   /** Category order (others follow in first-seen order). */
   readonly categoryOrder?: readonly string[];
+  /** S1: extra item-menu entries after Add to scene (Duplicate, Export). */
+  readonly extraMenu?: (id: string) => readonly MenuEntry[];
   /** S1: categories whose chip shows even with no items (Media's types). */
   readonly fixedCategories?: readonly string[];
   readonly folders?: {
@@ -210,12 +212,7 @@ export function mountShelf(options: ShelfOptions): Shelf {
       menu.close();
   };
   document.addEventListener('pointerdown', closeOutside, true);
-  const placeMenu = (x: number, y: number) => {
-    const width = menuElement.offsetWidth,
-      height = menuElement.offsetHeight;
-    menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
-    menuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
-  };
+  const placeMenu = (x: number, y: number) => placeMenuAt(menuElement, x, y);
   const run = (action: () => unknown) => () => {
     try {
       const result = action();
@@ -248,6 +245,7 @@ export function mountShelf(options: ShelfOptions): Shelf {
         icon: 'plus',
         run: run(() => options.add(id)),
       },
+      ...(options.extraMenu?.(id) ?? []),
       ...(folders
         ? [
             {
