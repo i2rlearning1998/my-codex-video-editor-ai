@@ -1,5 +1,5 @@
 // I2: the one browse panel every left-rail library uses (Templates,
-// Elements, Text, Transitions). A header with Back, the title and Close; a
+// Elements, Text, Transitions). Under the shared panel header, a Back row on drilled pages; a
 // sticky search; sections with a title, "See all ›" and a horizontal strip
 // (or a grid, tiles or a list); a drill-down stack that slides in 180 ms
 // (Back only, no breadcrumb). Grids render in chunks as they scroll into view,
@@ -102,16 +102,7 @@ export function createBrowsePanel(
   backButton.innerHTML = iconSvg('back', 18);
   const title = document.createElement('h2');
   title.className = 'browse-title';
-  const closeButton = document.createElement('button');
-  closeButton.type = 'button';
-  closeButton.className = 'icon-button browse-close';
-  closeButton.dataset.action = 'browse-close';
-  closeButton.setAttribute('aria-label', t('browse.close'));
-  closeButton.title = t('browse.close');
-  closeButton.innerHTML = iconSvg('close', 18);
-  closeButton.hidden = !options.close;
-  closeButton.onclick = () => options.close?.();
-  header.append(backButton, title, closeButton);
+  header.append(backButton, title);
   const searchRow = document.createElement('div');
   searchRow.className = 'browse-search';
   const search = document.createElement('input');
@@ -359,6 +350,9 @@ export function createBrowsePanel(
     const page = frame.page;
     title.textContent = page.title;
     backButton.hidden = stack.length < 2;
+    // S1 Part 1: the root page's title and collapse are the shared panel
+    // header's; this row only shows Back and the drilled page's title.
+    header.hidden = stack.length < 2;
     host.dataset.page = page.id;
     searchRow.hidden = !page.search;
     search.placeholder = page.search ?? '';

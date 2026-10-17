@@ -42,11 +42,7 @@ test('[RA-008] Media, AI and My Templates share one panel: title and collapse, s
   ] as const) {
     await showCategory(page, category);
     const panel = page.locator(host);
-    await expect(panel.locator('.shelf-head .shelf-title')).toBeVisible();
-    await expect(panel.locator('.shelf-collapse')).toHaveAttribute(
-      'aria-label',
-      /.+/,
-    );
+    await expect(page.locator('#left-panel-title')).not.toBeEmpty();
     const row = panel.locator('.shelf-search-row');
     await expect(row.locator('input')).toBeVisible();
     const folder = row.locator('.shelf-new-folder');

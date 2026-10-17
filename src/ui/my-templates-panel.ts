@@ -17,7 +17,6 @@ export interface MyTemplatesPanelOptions {
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
   readonly prompt: (title: string, value: string) => Promise<string | null>;
-  readonly collapse?: () => void;
   readonly report: (error: unknown) => void;
   readonly toast?: (text: string) => void;
 }
@@ -32,7 +31,6 @@ export function mountMyTemplatesPanel(
     title: t('mine.title'),
     classes: { card: 'mine-card', section: 'mine-group' },
     searchLabel: t('shelf.searchMine'),
-    ...(options.collapse ? { collapse: options.collapse } : {}),
     categoryLabel: (kind) => t(`mine.kind.${kind}`),
     categoryOrder: MINE_KINDS,
     folders: MINE_FOLDERS,

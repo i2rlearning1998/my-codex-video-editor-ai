@@ -4968,8 +4968,8 @@ button.color-swatch-trigger {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.browse-header[hidden],
 .browse-back[hidden],
-.browse-close[hidden],
 .browse-search[hidden] {
   display: none;
 }
@@ -8927,16 +8927,6 @@ input[type='range'] {
   gap: var(--space-3);
   min-inline-size: 0;
 }
-.shelf-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-.shelf-title {
-  margin: 0;
-  font-size: var(--font-size-lg, 16px);
-}
 .shelf-search-row {
   display: flex;
   align-items: center;
@@ -8946,8 +8936,7 @@ input[type='range'] {
   flex: 1;
   min-inline-size: 0;
 }
-.shelf-new-folder,
-.shelf-collapse {
+.shelf-new-folder {
   inline-size: 32px;
   block-size: 32px;
   display: grid;
@@ -9140,4 +9129,43 @@ input[type='range'] {
   margin: 0;
   color: var(--danger-text);
   font-size: var(--font-size-sm, 12px);
+}
+
+/* S1 Part 1: one header for every side panel: the title on the left and
+   exactly one collapse button (the drawer icon) on the right. */
+.panel-head,
+.panel-collapse-row .panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: 56px;
+  margin: 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  box-sizing: border-box;
+}
+.panel-collapse-row {
+  padding: 0;
+  justify-content: stretch;
+}
+.panel-collapse-row .panel-head {
+  flex: 1;
+}
+.panel-head .panel-head-title {
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  font-size: var(--font-size-lg, 16px);
+  font-weight: var(--weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.panel-head .panel-head-collapse {
+  inline-size: 40px;
+  block-size: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin-inline-start: auto;
 }

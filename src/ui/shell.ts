@@ -233,6 +233,7 @@ import {
   trackForNewClip,
 } from './editing';
 import { iconSvg } from './icons';
+import { panelHeaderHtml } from './panel-header';
 import {
   confirmDialog,
   escapeHtml,
@@ -374,7 +375,7 @@ export function mountEditorShell(
         <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div>
         <div id="library-mine" class="mine-panel" data-rail-panel="MyTemplates" hidden></div>
         <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div>
-        <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
+        <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
       </aside>
@@ -397,7 +398,7 @@ export function mountEditorShell(
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
-        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('panelRight', 20)}</button></header>
+        ${panelHeaderHtml({ className: 'right-panel-header', titleId: 'right-panel-title', extra: '<span class="count-badge" id="right-panel-count" hidden></span>', button: { id: 'right-panel-collapse', icon: 'panelRight', label: t('right.collapse') } })}
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
@@ -479,7 +480,6 @@ export function mountEditorShell(
       }),
     toast: (text, kind) => showToast(text, kind),
     importRow: element('.import-row'),
-    collapse: () => workspace?.setOpen('left', false),
   });
   const audibleAssets = () => {
     const assets = mediaAssets();
@@ -3099,7 +3099,6 @@ export function mountEditorShell(
     details: creatorDetails,
     remove: deleteCreatorItem,
     prompt: shelfPrompt,
-    collapse: () => workspace?.setOpen('left', false),
     report: reportError,
     toast: (text) => showToast(text, 'success'),
   });
@@ -3284,7 +3283,6 @@ export function mountEditorShell(
       showToast(t('mine.deleted', { name: item.name }), 'info');
     },
     prompt: shelfPrompt,
-    collapse: () => workspace?.setOpen('left', false),
     report: reportError,
     toast: (text) => showToast(text, 'success'),
   });
@@ -3629,6 +3627,9 @@ export function mountEditorShell(
     root
       .querySelector('.library')
       ?.setAttribute('data-active-category', category);
+    // S1 Part 1: the shared header names the category.
+    const leftTitle = root.querySelector('#left-panel-title');
+    if (leftTitle) leftTitle.textContent = t(categoryKey(category));
     if (category !== 'Draw') session.setDrawBrush(null);
     if (shown === 'placeholder') {
       const [titleKey, descriptionKey] = descriptions[category]!;
@@ -4415,6 +4416,7 @@ export function mountEditorShell(
     panel.append(body);
   }
   workspace = mountWorkspace(element('.editor-shell'), session, resize);
+  element('#left-panel-title').textContent = t(categoryKey(activeCategory));
   sceneOutliner = mountSceneOutliner(
     element('#scene-list'),
     element('#scene-heading'),

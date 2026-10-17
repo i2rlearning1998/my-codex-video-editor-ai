@@ -955,6 +955,14 @@ Hand-test fixes of PR #31.
 | RA-019 | P1 | W8 | Verified | Rename and Delete of a saved theme are in a "⋯" menu (tooltip More options); five rounds of save, rename and delete raise no error (R6) |
 | RA-020 | P1 | W8 | Verified | Settings › Animations (Auto, On, Off) also governs the shared library panels (Media, AI, My Templates): panel slides and card buttons animate with On and not with Off (R7) |
 
+## S1: Clipchamp-level library panels and menus
+
+Hand-test fixes of PR #33 (S1 brief).
+
+| ID | Pri | Wave | Status | Item |
+| --- | --- | --- | --- | --- |
+| S1-001 | P1 | W8 | Verified | Every left-rail and right-rail panel has one shared header: the title on the left and exactly one collapse button (the drawer icon) on the right; no Back arrows or Close crosses in panel headers (Part 1) |
+
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
 Creator Pack items imported, checked and registered in the user's library, and their controls.

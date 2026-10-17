@@ -309,7 +309,6 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     classes: { item: 'media-item', card: 'media-card', thumb: 'media-thumb' },
     searchId: 'asset-search',
     searchLabel: t('library.searchPlaceholder'),
-    ...(options.collapse ? { collapse: options.collapse } : {}),
     extra: [...(options.importRow ? [options.importRow] : []), extras],
     categoryLabel: (key) => t(`media.tab.${key}`),
     // T-ALL P1: the illustrated empty state.

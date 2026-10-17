@@ -41,7 +41,6 @@ export interface AiPanelOptions {
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
   readonly prompt: (title: string, value: string) => Promise<string | null>;
-  readonly collapse?: () => void;
   readonly report: (error: unknown) => void;
   readonly toast?: (text: string) => void;
 }
@@ -63,7 +62,6 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     title: t('ai.title'),
     classes: { card: 'ai-card', section: 'ai-group' },
     searchLabel: t('shelf.searchAi'),
-    ...(options.collapse ? { collapse: options.collapse } : {}),
     actions: [
       {
         id: 'ai-import',

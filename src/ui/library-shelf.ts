@@ -1,5 +1,5 @@
 // R3: the shared Clipchamp-style library panel, used by Media, AI and My
-// Templates. Top to bottom: a title row with a collapse button; a search box
+// Templates. Top to bottom (under the shared panel header): a search box
 // with a New folder icon button on the same row; the panel's primary actions;
 // a row of chips (All, one per category that has items, then the user's
 // folders); a two-column grid of big cards (16:9 thumbnail, one-line name).
@@ -60,7 +60,6 @@ export interface ShelfOptions {
   };
   readonly searchId?: string;
   readonly searchLabel: string;
-  readonly collapse?: () => void;
   readonly actions?: readonly ShelfAction[];
   /** Extra elements placed after the action row (a drop zone, progress). */
   readonly extra?: readonly HTMLElement[];
@@ -120,24 +119,9 @@ export function mountShelf(options: ShelfOptions): Shelf {
   let disposed = false;
   let stopPreview: (() => void) | null = null;
 
-  // Title row.
-  const head = document.createElement('header');
-  head.className = 'shelf-head';
-  const title = document.createElement('h2');
-  title.className = 'shelf-title';
-  title.textContent = options.title;
-  head.append(title);
-  if (options.collapse) {
-    const collapse = document.createElement('button');
-    collapse.type = 'button';
-    collapse.className = 'icon-button shelf-collapse';
-    collapse.id = `${prefix}-collapse`;
-    collapse.innerHTML = iconSvg('chevronLeft', 16);
-    collapse.setAttribute('aria-label', t('shelf.collapse'));
-    collapse.title = t('shelf.collapse');
-    collapse.onclick = () => options.collapse?.();
-    head.append(collapse);
-  }
+  // S1 Part 1: the panel's title and collapse button are the shared panel
+  // header's (panel-header.ts); the shelf only names its region.
+  host.setAttribute('aria-label', options.title);
   // Search with New folder on the same row.
   const searchRow = document.createElement('div');
   searchRow.className = 'shelf-search-row';
@@ -202,7 +186,6 @@ export function mountShelf(options: ShelfOptions): Shelf {
   grid.className = 'shelf-grid';
   grid.id = `${prefix}-grid`;
   host.replaceChildren(
-    head,
     searchRow,
     ...(options.actions?.length ? [actions] : []),
     ...(options.extra ?? []),
