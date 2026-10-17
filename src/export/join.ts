@@ -3,6 +3,7 @@
 // single-composition: each scene's clips, layer times, keyframes and markers
 // move by the length of the scenes before it, and its ids get a scene prefix
 // so nothing collides. Nothing here touches the project.
+import { joinSceneCameras } from '../camera/scene';
 import { isReservedMarker } from '../core';
 import type { Composition, DeepReadonly } from '../core';
 
@@ -120,8 +121,11 @@ export function joinScenes(
       });
     offset += scene.duration;
   });
+  // FINAL1: each scene's camera, shifted into the joined timeline.
+  const camera = joinSceneCameras(scenes);
   return {
     ...first,
+    ...(camera ? { camera } : { camera: undefined }),
     id: 'all-scenes',
     // U6: each scene's own range applies to that scene's export only.
     playRange: undefined,

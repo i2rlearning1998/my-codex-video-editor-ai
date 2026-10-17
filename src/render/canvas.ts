@@ -2,6 +2,7 @@ import { processChromaFrame } from '../chroma/process';
 import { drawMaskedItems } from '../masks/render';
 import { drawStructuredText } from '../text-engine/draw';
 import { drawRich } from './rich-text';
+import { sceneCameraMatrix } from '../camera/scene';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
@@ -374,6 +375,14 @@ export function drawComposition(
     0,
   ];
   const view = multiplyMatrices(pixels, viewport.matrix);
+  // FINAL1: a scene camera moves the picture (not the artboard or the
+  // editor's overlays); without one, `content` is `view`.
+  const camera = source.composition.camera
+    ? sceneCameraMatrix(source.composition, source.currentTime ?? 0)
+    : null;
+  const content = camera
+    ? multiplyMatrices(view, camera as unknown as AffineMatrix)
+    : view;
   const { items, warnings } = deriveRenderItems(source);
   const errors = [...warnings];
   context.setTransform(1, 0, 0, 1, 0, 0);
@@ -397,7 +406,7 @@ export function drawComposition(
   const paintItem = (context: Target, item: RenderItem, fade: number) => {
     context.save();
     try {
-      context.setTransform(...multiplyMatrices(view, item.matrix));
+      context.setTransform(...multiplyMatrices(content, item.matrix));
       context.globalAlpha = item.opacity * fade;
       // W5-C Wipe: only the revealed part of the box is drawn.
       if (item.reveal !== undefined) {
@@ -568,7 +577,7 @@ export function drawComposition(
               ...item,
               maskScopes: item.maskScopes.map((scope) => ({
                 ...scope,
-                matrix: multiplyMatrices(view, scope.matrix),
+                matrix: multiplyMatrices(content, scope.matrix),
               })),
             }
           : item,

@@ -12,6 +12,7 @@ import {
   layerSchema,
   nameSchema,
   propertySchema,
+  sceneCameraSchema,
   trackSchema,
   type Layer,
   type Project,
@@ -123,6 +124,14 @@ export const commandSchema = z.discriminatedUnion('type', [
       type: z.literal('SET_COMPOSITION_FPS'),
       ...location,
       fps: z.number().positive().max(240),
+    })
+    .strict(),
+  // FINAL1: one scene's virtual camera (null removes it).
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION_CAMERA'),
+      ...location,
+      camera: sceneCameraSchema.nullable(),
     })
     .strict(),
   // U6: one scene's playback and export range (null end: the scene's end).
@@ -496,6 +505,15 @@ export function applyCommand(project: Project, command: Command): void {
       if (command.end !== null && command.end <= command.start)
         throw new Error('The end must come after the start');
       composition.playRange = { start: command.start, end: command.end };
+      return;
+    }
+    case 'SET_COMPOSITION_CAMERA': {
+      const composition = compositionById(project, command.compositionId);
+      if (command.camera === null) delete composition.camera;
+      else
+        composition.camera = structuredClone(
+          command.camera,
+        ) as typeof composition.camera;
       return;
     }
     case 'SET_OUTLINER': {

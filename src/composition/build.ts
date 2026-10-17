@@ -21,6 +21,8 @@ import {
   type DeepReadonly,
   type Project,
 } from '../core';
+import { cameraFromTracks } from '../camera/scene';
+import type { Easing, SceneCamera } from '../core';
 import { clipFxSchema } from '../core/fx';
 import { transitionSchema } from '../core/transitions';
 import type { Scalar } from '../ai-spec/schema';
@@ -90,7 +92,9 @@ export interface BuildWarning {
     | 'transition-rejected'
     | 'style-mismatch'
     | 'not-built'
-    | 'voice-over-longer';
+    | 'voice-over-longer'
+    | 'camera-depth'
+    | 'camera-shake';
   readonly message: string;
 }
 export type BuildMissing =
@@ -186,6 +190,7 @@ function withIds<T>(seed: string, run: () => T): T {
 
 interface SpecItem {
   id: string;
+  depth?: number;
   name?: string;
   kind: string;
   slot?: string;
@@ -196,11 +201,62 @@ interface SpecItem {
   transform: { x: number; y: number; scale: number };
   fx: { id: string; params: Record<string, Scalar> }[];
 }
+interface CameraState {
+  x: number;
+  y: number;
+  zoom: number;
+  rotation: number;
+  shake: { amplitude: number; frequency: number; seed: number };
+}
+interface CameraMove {
+  id: string;
+  start: number;
+  duration: number;
+  from: CameraState;
+  to: CameraState;
+  easing?: Easing;
+}
+/**
+ * A scene's camera moves as one scene camera: each move is a keyframe at
+ * its start (with its easing) and one at its end that holds until the next
+ * move. Moves are sorted and never overlap (the spec checks it).
+ */
+export function cameraFromMoves(moves: readonly CameraMove[]): {
+  camera: SceneCamera;
+  shakeChanges: boolean;
+} {
+  const tracks = {
+    x: [] as [number, number, Easing?][],
+    y: [] as [number, number, Easing?][],
+    zoom: [] as [number, number, Easing?][],
+    rotation: [] as [number, number, Easing?][],
+  };
+  for (const move of moves)
+    for (const key of ['x', 'y', 'zoom', 'rotation'] as const) {
+      // A move that starts where the last one ended replaces its end key.
+      if (tracks[key].at(-1)?.[0] === move.start) tracks[key].pop();
+      tracks[key].push([move.start, move.from[key], move.easing ?? 'linear']);
+      tracks[key].push([move.start + move.duration, move.to[key], 'hold']);
+    }
+  const shakes = moves.flatMap((move) => [move.from.shake, move.to.shake]);
+  const shake = shakes.find((item) => item.amplitude > 0);
+  return {
+    camera: cameraFromTracks({ ...tracks, ...(shake ? { shake } : {}) }),
+    shakeChanges: shakes.some(
+      (item) =>
+        item.amplitude > 0 &&
+        (item.amplitude !== shake!.amplitude ||
+          item.frequency !== shake!.frequency ||
+          item.seed !== shake!.seed),
+    ),
+  };
+}
+
 interface SpecScene {
   id: string;
   duration: number;
   items: SpecItem[];
-  cameraMoves: { id: string }[];
+  cameraMoves: CameraMove[];
   transition?: { id: string; duration: number };
 }
 
@@ -461,14 +517,27 @@ export async function buildProjectFromComposition(
           },
         ]);
       }
-      // Camera moves: the camera exists (src/camera) but is not in projects.
-      for (const move of scene.cameraMoves)
-        missing.push({
-          kind: 'feature',
-          path: `scenes/${scene.id}/cameraMoves/${move.id}`,
-          reason:
-            'Camera moves are not part of the project yet (no camera layer or command); the move is left out.',
-        });
+      // Camera moves become the scene camera (FINAL1).
+      if (scene.cameraMoves.length) {
+        const camera = cameraFromMoves(scene.cameraMoves);
+        if (scene.items.some((item) => (item.depth ?? 1) !== 1))
+          warn(
+            'camera-depth',
+            `Scene "${scene.id}": the camera moves the whole scene; item depth (parallax) is not applied.`,
+          );
+        if (camera.shakeChanges)
+          warn(
+            'camera-shake',
+            `Scene "${scene.id}": the camera shake changes between moves; the first shake is used.`,
+          );
+        run('Camera', [
+          {
+            type: 'SET_COMPOSITION_CAMERA',
+            compositionId: scenes[sceneIndex]!.compositionId,
+            camera: camera.camera,
+          },
+        ]);
+      }
     });
 
     // Scene transitions: the reserved marker on the incoming scene (D-199).

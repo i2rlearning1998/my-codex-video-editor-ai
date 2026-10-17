@@ -122,7 +122,11 @@ describe('[J] composition adapter', () => {
     expect(sceneTransitionOf(project.compositions[2]!)).toMatchObject({
       type: 'fade-black',
     });
-    expect(result.missing.map((m) => m.kind)).toEqual(['feature', 'captions']);
+    expect(result.missing.map((m) => m.kind)).toEqual(['captions']);
+    // FINAL1: the camera move is the first scene's camera.
+    expect(
+      project.compositions[0]!.camera!.zoom.keyframes.map((k) => k.value),
+    ).toEqual([1, 1.1]);
     // The library background was expanded in the last scene.
     expect(project.compositions[2]!.layers.length).toBeGreaterThan(1);
   });
@@ -139,7 +143,6 @@ describe('[J] composition adapter', () => {
       'slot:archive',
       'slot:interview',
       'voice-over',
-      'feature',
       'captions',
     ]);
     const voice = result.missing.find((m) => m.kind === 'voice-over');
@@ -258,7 +261,6 @@ describe('[J] composition:build CLI', () => {
       'slot',
       'slot',
       'voice-over',
-      'feature',
       'captions',
     ]);
   }, 60_000);

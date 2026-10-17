@@ -262,6 +262,31 @@ export const trackSchema = z
   })
   .strict();
 export type Track = z.infer<typeof trackSchema>;
+const cameraShake = z
+  .object({
+    amplitude: finite.min(0).max(4096),
+    frequency: finite.min(0).max(1000),
+    seed: z.number().int().nonnegative().max(0xffffffff),
+  })
+  .strict();
+export const sceneCameraSchema = z
+  .object({
+    x: numberProperty,
+    y: numberProperty,
+    zoom: numberProperty,
+    rotation: numberProperty,
+    shake: cameraShake.optional(),
+  })
+  .strict()
+  .superRefine((camera, ctx) => {
+    const zooms = [
+      camera.zoom.value,
+      ...camera.zoom.keyframes.map((k) => k.value),
+    ];
+    if (zooms.some((z) => typeof z !== 'number' || z <= 0 || z > 100))
+      ctx.addIssue({ code: 'custom', message: 'Camera zoom must be 0 to 100' });
+  });
+export type SceneCamera = z.infer<typeof sceneCameraSchema>;
 export const compositionSchema = z
   .object({
     id: idSchema,
@@ -280,6 +305,15 @@ export const compositionSchema = z
         .strict(),
     ),
     audioTracks: z.tuple([]),
+    /**
+     * FINAL1 (schema 9, optional, like `playRange`): a virtual camera over
+     * the whole scene. x and y are offsets from the centre in composition
+     * pixels, zoom a positive factor, rotation degrees; each is a number
+     * property, so it keyframes with the existing model and easing. `shake`
+     * adds a seeded drift. Missing means no camera: the scene draws exactly
+     * as before.
+     */
+    camera: sceneCameraSchema.optional(),
     /**
      * U6 (schema 6, optional): the scene's playback and export range in
      * seconds. Missing means the whole scene; a null end follows the scene's
