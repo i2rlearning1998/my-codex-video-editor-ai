@@ -1,0 +1,58 @@
+{
+  "$comment": "Local Whisper files. sizeBytes and sha256 stay null until the owner runs `npm run models:pin` (docs/SPEECH-API.md, Offline captions setup); until then downloads are checked by size only once known. approxBytes is the published size, shown before the first download.",
+  "active": "tiny",
+  "revision": "main",
+  "license": "MIT (OpenAI Whisper); Apache-2.0 (ONNX conversion)",
+  "variants": {
+    "tiny": {
+      "model": "Xenova/whisper-tiny",
+      "approxBytes": 41000000,
+      "files": [
+        { "path": "config.json", "sizeBytes": null, "sha256": null },
+        { "path": "generation_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "preprocessor_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        { "path": "tokenizer.json", "sizeBytes": null, "sha256": null },
+        { "path": "tokenizer_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "onnx/encoder_model_quantized.onnx",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "onnx/decoder_model_merged_quantized.onnx",
+          "sizeBytes": null,
+          "sha256": null
+        }
+      ]
+    },
+    "base": {
+      "model": "Xenova/whisper-base",
+      "approxBytes": 80000000,
+      "files": [
+        { "path": "config.json", "sizeBytes": null, "sha256": null },
+        { "path": "generation_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "preprocessor_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        { "path": "tokenizer.json", "sizeBytes": null, "sha256": null },
+        { "path": "tokenizer_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "onnx/encoder_model_quantized.onnx",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "onnx/decoder_model_merged_quantized.onnx",
+          "sizeBytes": null,
+          "sha256": null
+        }
+      ]
+    }
+  }
+}

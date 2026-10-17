@@ -1879,5 +1879,6 @@
   "stock.error.KEY_MISSING": "Add a key first.",
   "stock.error.RATE_LIMITED": "Too many searches. Try again later.",
   "media.details.credit": "Credit",
-  "media.details.licence": "Licence"
+  "media.details.licence": "Licence",
+  "settings.offline.note.unpinned": "Downloads once from Hugging Face into this browser, then works without internet. Files are checked by size only until the model files are pinned (npm run models:pin)."
 }

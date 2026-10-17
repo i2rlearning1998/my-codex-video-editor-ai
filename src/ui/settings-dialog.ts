@@ -373,22 +373,37 @@ export function openSettings(tab: SettingsTab = 'general'): ModalHandle {
 
   // Offline engines.
   const engines = root.querySelector<HTMLElement>('.offline-engines')!;
+  // A row is rebuilt only when its state or buttons change; progress
+  // updates in place, so Cancel stays under the pointer.
   const renderEngines = () => {
-    engines.innerHTML = localEngines(speechRegistry())
-      .views()
-      .map(engineRow)
-      .join('');
-    for (const button of engines.querySelectorAll<HTMLButtonElement>(
-      '[data-engine-action]',
-    ))
-      button.onclick = () => {
-        const id =
-          button.closest<HTMLElement>('[data-engine]')!.dataset.engine!;
-        localEngines(speechRegistry()).act(
-          id,
-          button.dataset.engineAction as 'download' | 'cancel' | 'remove',
-        );
-      };
+    for (const view of localEngines(speechRegistry()).views()) {
+      const key = `${view.state}:${view.actions.join(',')}`;
+      let row = engines.querySelector<HTMLElement>(
+        `[data-engine="${view.id}"]`,
+      );
+      if (row && row.dataset.key === key) {
+        row.querySelector('.key-state')!.textContent = view.label;
+        row.querySelector('.settings-note')!.textContent = view.note;
+        const bar = row.querySelector<HTMLProgressElement>('.engine-progress');
+        if (bar && view.progress !== undefined) bar.value = view.progress;
+        continue;
+      }
+      const holder = document.createElement('div');
+      holder.innerHTML = engineRow(view);
+      const fresh = holder.firstElementChild as HTMLElement;
+      fresh.dataset.key = key;
+      for (const button of fresh.querySelectorAll<HTMLButtonElement>(
+        '[data-engine-action]',
+      ))
+        button.onclick = () =>
+          void localEngines(speechRegistry()).act(
+            view.id,
+            button.dataset.engineAction as 'download' | 'cancel' | 'remove',
+          );
+      if (row) row.replaceWith(fresh);
+      else engines.append(fresh);
+      row = fresh;
+    }
   };
   unsubscribe = localEngines(speechRegistry()).subscribe(renderEngines);
   renderEngines();

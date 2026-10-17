@@ -2,7 +2,7 @@
 // Settings › Offline voice & captions, the Voice-over section and the Auto
 // captions dialog. One controller so every surface shows the same state.
 import { t } from '../i18n';
-import type { createSpeechRegistry } from '../speech';
+import { LOCAL_MODELS, type createSpeechRegistry } from '../speech';
 
 type Registry = ReturnType<typeof createSpeechRegistry>;
 export type EngineAction = 'download' | 'cancel' | 'remove';
@@ -35,6 +35,8 @@ const notify = () => {
   for (const listener of [...listeners]) listener();
 };
 
+/** Redraws every surface showing the engines (a status changed). */
+export const refreshLocalEngines = () => notify();
 /** U11 registers the Whisper driver here; tests register fakes. */
 export function registerLocalEngineDriver(
   id: string,
@@ -79,7 +81,13 @@ export function localEngines(registry: Registry) {
         label: t('settings.offline.state.needsDownload', {
           size: formatBytes(status.sizeBytes),
         }),
-        note: errors.get(id) ?? t('settings.offline.note.download'),
+        note:
+          errors.get(id) ??
+          t(
+            LOCAL_MODELS.find((m) => m.id === id)?.pinned === false
+              ? 'settings.offline.note.unpinned'
+              : 'settings.offline.note.download',
+          ),
         actions: drivers.has(id) ? ['download'] : [],
       };
     return {
