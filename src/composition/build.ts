@@ -407,6 +407,8 @@ export async function buildProjectFromComposition(
     sceneIndex: number;
     library: string;
     whole: boolean;
+    /** FINAL1: take the slot item's timing and stacking place. */
+    replace?: boolean;
   }[] = [];
   const builtClips = new Map<string, string>(); // item key → clip id
   const references = new Map(
@@ -447,6 +449,7 @@ export async function buildProjectFromComposition(
           sceneIndex,
           library: fill.id,
           whole: false,
+          ...(fill.replace ? { replace: true } : {}),
         });
         return 'skip';
       }
@@ -578,6 +581,70 @@ export async function buildProjectFromComposition(
       ]);
     });
 
+    /**
+     * FINAL1 `replace: true`: the library item's clips take the slot item's
+     * start and length, and its lane goes just behind the lane of the next
+     * item the scene draws after the slot (the slot's stacking place).
+     */
+    const replaceSlot = (
+      entry: (typeof libraryAt)[number],
+      compositionId: string,
+      before: ReadonlySet<string>,
+    ) => {
+      const composition = () =>
+        engine.state.compositions.find((c) => c.id === compositionId)!;
+      const added = composition().tracks.filter(
+        (track) => !before.has(track.id),
+      );
+      run(
+        'Replace slot',
+        added.flatMap((track) =>
+          track.clips.flatMap(
+            (clip) =>
+              [
+                {
+                  type: 'SET_CLIP_TIMING',
+                  compositionId,
+                  clipId: clip.id,
+                  startTime: entry.item.start,
+                  duration: entry.item.duration,
+                  sourceIn: 0,
+                  sourceOut: entry.item.duration,
+                },
+                {
+                  type: 'SET_LAYER_TIMING',
+                  compositionId,
+                  layerId: clip.layerId,
+                  startTime: entry.item.start,
+                  duration: entry.item.duration,
+                },
+              ] as Command[],
+          ),
+        ),
+      );
+      const items = spec.scenes[entry.sceneIndex]!.items;
+      const after = items
+        .slice(items.indexOf(entry.item) + 1)
+        .map((item) => builtClips.get(`${entry.sceneIndex}/${item.id}`))
+        .find(Boolean);
+      if (!after) return;
+      for (const track of added) {
+        const others = composition().tracks.filter((t) => t.id !== track.id);
+        const next = others.findIndex((t) =>
+          t.clips.some((clip) => clip.id === after),
+        );
+        if (next >= 0)
+          run('Replace slot', [
+            {
+              type: 'MOVE_TRACK',
+              compositionId,
+              trackId: track.id,
+              index: next + 1,
+            },
+          ]);
+      }
+    };
+
     // Library references and library-filled slots.
     for (const entry of libraryAt) {
       const item = options.library?.(entry.library);
@@ -619,7 +686,9 @@ export async function buildProjectFromComposition(
         entry.item.start,
         at ? { at } : {},
       );
+      const before = new Set(composition.tracks.map((track) => track.id));
       run(built.label, built.commands);
+      if (entry.replace) replaceSlot(entry, scene.compositionId, before);
     }
 
     // Voice-over: one clip per scene, cut from the narration in order.

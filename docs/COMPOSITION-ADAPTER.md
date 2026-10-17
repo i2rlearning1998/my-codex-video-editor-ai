@@ -21,7 +21,7 @@ All three new fields are optional; an older composition is unchanged.
 - `compositionSlots(data)`: every slot (`id`, `type`, `hint`, `required`), the voice-over last.
 - `createSlotFills(data, initial?)`: `fillSlot(slotId, fill)` → `{ok}` or `{ok:false, reason}`, `clearSlot`, `fillOf`, `listUnfilledSlots()`, `toRecord()`.
 - A `SlotFill` is one of:
-  - `{kind: 'library', id}`: an editor library item (image and logo slots only); it is inserted at the slot's box.
+  - `{kind: 'library', id, replace?}`: an editor library item (image and logo slots only); it is inserted at the slot's box, on top of the scene. With `replace: true` it takes the slot's place instead: the slot item's start and length, and its lane goes just behind the next item the scene draws after the slot.
   - `{kind: 'stock', asset, provider, itemId}`: a stock item already imported (`importStockItem`, then the media store) as an asset record; the provider and item are kept in the asset's metadata.
   - `{kind: 'file', asset}`: the person's file, already imported as an asset record.
 - `buildProjectFromComposition(composition, options)` → `{project, warnings, missing, errors}`. Options: `slotFills` (a record or a `SlotFills`), `style`, `theme`, `parameters`, `library(id)`, `captions` (the hook below), `name`, `now`.
@@ -66,8 +66,7 @@ Deterministic: ids come from the plan, fixed names or a seeded generator (the sp
 
 ## Gaps
 
-- Camera moves are not built (no camera in projects).
-- Library items are placed on top of the spec's own items, not between them.
+- Library items are placed on top of the spec's own items, unless a slot fill says `replace: true`; a library reference (`{library}`) is always on top.
 - A library fill uses the library item's own size and length, not the slot's.
 - Captions need the captions engine's hook; the adapter has none of its own.
 - Asset bytes are never checked here: a filled asset must already be in the media store.
