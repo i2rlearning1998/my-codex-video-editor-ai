@@ -218,3 +218,22 @@ The UI agent must register engines, show key/download/unavailable states, choose
 Sarvam/Google for Hindi, display provider billing limits, filter voice pickers,
 wire preview/Save/import/cancel, retain media speech metadata and show caption
 approximation. No UI, project schema or existing rendering path was changed.
+
+## FINAL1 Step 5: local engines, one more attempt (2026-10-17): still blocked
+
+What was tried, in this sandbox:
+
+- `https://huggingface.co/api/models/Xenova/whisper-tiny/tree/main/onnx` (file sizes and LFS SHA-256): the network policy refuses the host (`CONNECT 403`, a policy denial, not a server error). The same applies to any Hugging Face file, so no official artifact hash can be read or checked here.
+- Hosts that work: the npm registry and PyPI only. The runner package `@huggingface/transformers` 4.3.1 (Apache-2.0, about 10 MB unpacked) is reachable. The only Whisper weights found on npm are a third-party mirror (`sts-whisper-tiny` 1.0.0). Its files can be hashed, but nothing here can prove they are the original MIT/Apache-2.0 conversion, so they were not pinned.
+- English TTS: no candidate passes the licence rule. Kokoro and Piper phonemize with eSpeak (GPL). SpeechT5's example speaker embedding (CMU ARCTIC x-vectors) has a licence that still could not be read. Hindi local TTS: none found.
+
+Result: both local engines stay `unavailable` (`LOCAL_MODELS` keeps empty file lists and its blockers). Cloud TTS (Sarvam, Google, ElevenLabs, MiniMax) and cloud STT (Deepgram) cover Hindi and English.
+
+What the owner can do to unblock Whisper (STT):
+
+1. On a machine that can reach Hugging Face, download these files of `Xenova/whisper-tiny` at a fixed commit: `onnx/encoder_model_quantized.onnx`, `onnx/decoder_model_merged_quantized.onnx`, `config.json`, `generation_config.json`, `preprocessor_config.json`, `tokenizer.json`, `tokenizer_config.json`. Record each file's size and `sha256sum`, and the commit hash.
+2. Host them on a URL the app may fetch (the project's own static hosting is best, under `public/models/whisper-tiny/` or a bucket), or allow `huggingface.co` in this environment's network settings.
+3. Approve `@huggingface/transformers` (Apache-2.0) as a lazily loaded runtime dependency, or `onnxruntime-web` (MIT) plus a small feature-extractor and tokenizer port.
+4. With the URLs, sizes and hashes, the next session fills `LOCAL_MODELS['local-whisper'].files` and adds the runner behind the existing download, cache, progress and abort code. The status API then reports "needs download (size)".
+
+For English local TTS, a permissive voice without an eSpeak phonemizer is needed. One option is SpeechT5 with a speaker embedding whose licence the owner confirms (or one recorded in-house), hosted the same way.
