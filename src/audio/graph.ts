@@ -1,7 +1,6 @@
-import { duckGainAt } from './ducking';
+import { mixedGainAt } from './mixer';
 import { clipSchedule, type AudibleClip } from '../media/audio';
 import {
-  clipGainAt,
   defaultAudioSettings,
   normalizationSignature,
   dbToGain,
@@ -87,13 +86,7 @@ export function scheduleAudioClip(
     const curve = new Float32Array(Math.max(2, Math.ceil(seconds * 200) + 1));
     for (let i = 0; i < curve.length; i++) {
       const localTime = local + elapsed + (seconds * i) / (curve.length - 1);
-      curve[i] =
-        duckGainAt(clip.duckEnvelope, localTime) *
-        clipGainAt(
-          settings,
-          local + elapsed + (seconds * i) / (curve.length - 1),
-          clip.duration,
-        );
+      curve[i] = mixedGainAt(clip, localTime);
     }
     gain.gain.setValueCurveAtTime(curve, start + elapsed, seconds);
   }

@@ -24,8 +24,19 @@ try another runtime/model and install verified pinned files plus runner tests.
 - Prepared Asset/media-store outputs and separate camera+PiP data. API docs provided.
 - No live device/browser proof; memory and background timer limitations documented.
 
-## Next task: C — audio engine
-C–J not started. Do not redo previous C2 speech or thumbnail work. Follow task order,
+## Done — Task C audio engine
+- Shared master/track/clip gains, eased volume keys, fade presets, mixer command,
+  per-track/master peak/RMS meters and cached waveform analysis.
+- Actual lazy RNNoise WASM runtime with pinned size/hash; same mode-specific buffers
+  feed playback and export. Fake runner/node tests; no live model tests.
+- Schema 9 adds optional unity-default master/track volume; 8→9 migration and old
+  fixture/session-load regression tests. UI must pass persisted master to playback
+  and ExportInput.masterVolume (see AUDIO-API.md); UI files were not edited.
+- Runtime is first-use CDN-loaded then runs locally. Main-thread batches, five-minute
+  denoise source limit, cold-offline/CSP/Safari risks documented; no quality claim.
+
+## Next task: D — text engine
+D–J not started. Do not redo previous C2 speech or thumbnail work. Follow task order,
 only task unit tests + typecheck, commit/push after each; no UI/CSS/e2e/CI polling.
 
 Task A validation: 42 speech unit tests passed; typecheck passed both configurations.
@@ -34,3 +45,5 @@ Initial test expectations corrected for English metadata and the five TTS engine
 Task B validation: 17 recorder tests passed; typecheck passed both configurations.
 Initial track-array typing errors were fixed. WebM duration assertion now checks
 actual Segment metadata (same 0.040 s expectation), plus seek index/packet integrity.
+
+Validation for Task C: focused audio unit tests: 18 passed, 1 skipped across 5 files. The skipped test requires OfflineAudioContext, unavailable in Node. `npm run typecheck` passed. No browser, e2e, full-suite or CI run was performed.

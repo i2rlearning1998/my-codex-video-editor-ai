@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest';
 import fixture from './fixtures/projects/av-sync.json';
-import { EditorEngine, serializeProject } from '../src/core';
+import { EditorEngine, serializeProject, SCHEMA_VERSION } from '../src/core';
 import {
   clipGainAt,
   defaultAudioSettings,
@@ -24,7 +24,7 @@ test('[AUD-002][AUD-009] validated audio commands preserve schema, unrelated met
   };
   setClipAudio(engine, 'av-main', 'clip-tone', settings, 'Audio');
   expect(readAudioSettings(state())).toEqual(settings);
-  expect(engine.state.schemaVersion).toBe(8); // V7: ported onto schema 7
+  expect(engine.state.schemaVersion).toBe(SCHEMA_VERSION);
   expect(engine.history.undo).toHaveLength(1);
   engine.undo();
   expect(serializeProject(engine.state)).toBe(before);

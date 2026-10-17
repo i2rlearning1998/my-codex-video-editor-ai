@@ -18,7 +18,7 @@ export async function normalizeClip(
     normalization: null,
   };
   const rendered = await mixdown(
-    [{ ...clip, audio }],
+    [{ ...clip, audio, masterVolume: 1, trackVolume: 1 }],
     decoder,
     clip.startTime,
     clip.startTime + clip.duration,

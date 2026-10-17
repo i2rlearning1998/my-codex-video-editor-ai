@@ -4,7 +4,7 @@
 | --- | --- | --- |
 | A Speech | Cloud/registry/captions/cache done; local inference deferred to K | `createSarvam`, `createGoogleCloudTts`, `registerSpeechProviders`, `createSpeechRegistry`, `getSpeechStatus`, `listSpeechVoices`, `createModelLoader`, `createIndexedModelStore`; UI: language/voice/key picker, status reason, Save/import, cancel/progress, approximate caption badge |
 | B Recorder | Implemented; unit verified | `startRecording`, `listDevices`, `getPermissionStates`, `selectRecordingMime`, `repairWebM`, `toMediaItem`, `browserRecorderDependencies`; UI: capture/device dialog, permissions, countdown, meter/timer, pause/resume/stop/discard, preview, media-store writes and Asset command, PiP placement |
-| C Audio | Not started | Pending |
+| C Audio | Implemented; unit verified, browser audio unverified | `setMixerVolume`, `mixedGainAt`, `fadePreset`, `AudioMeters`, `measureLevel`, `analyzeClip`, `createClipAnalyzer`, `denoisePcm`, `denoiseBuffer`, `createBufferDenoiser`, `loadRnnoise`; UI: mixer/clip sliders, key easing/fades, denoise selector/errors/retry, meter subscriptions; pass project master to AudioEngine and ExportInput |
 | D Text | Not started | Pending |
 | E Masks | Not started | Pending |
 | F Blend | Not started | Pending |
@@ -36,3 +36,13 @@ separate blobs and layout, not a composited recording. See docs/RECORDER-API.md.
 Task B validation: 17 recorder tests passed; typecheck passed both configurations.
 Initial track-array typing errors were fixed. WebM duration assertion now checks
 actual Segment metadata (same 0.040 s expectation), plus seek index/packet integrity.
+
+Task C: schema 9 optional master/track fields, 8→9 migration and backward-load tests.
+RNNoise wrapper 2025.1.5 Apache-2.0, embedded RNNoise BSD-3-Clause: 4,827,304-byte
+ESM contains 3,600,944-byte WASM (measured npm artefacts). Pinned SHA in source/docs.
+Runtime downloaded lazily at first use; audio stays local. Five-minute/48 kHz
+source processing limit; no cold-offline guarantee, CSP/Blob import and Safari
+compatibility unverified. Tests use fake runner/nodes; real OfflineAudioContext
+check is conditional. No UI/CSS/e2e changes; no new package dependency.
+
+Validation for Task C: focused audio unit tests: 18 passed, 1 skipped across 5 files. The skipped test requires OfflineAudioContext, unavailable in Node. `npm run typecheck` passed. No browser, e2e, full-suite or CI run was performed.
