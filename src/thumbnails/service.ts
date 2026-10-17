@@ -184,18 +184,20 @@ export function createThumbnailService(
   return {
     getThumbnail: (item: unknown, options: ThumbnailOptions) =>
       request(item, options, 0),
-    getPreviewFrames: (
+    getPreviewFrames: async (
       item: unknown,
       options: PreviewOptions,
     ): Promise<Blob[]> => {
       const count = Number.isFinite(options.count)
         ? Math.max(1, Math.min(24, Math.floor(options.count)))
         : 1;
-      return Promise.all(
-        Array.from({ length: count }, (_, i) =>
-          request(item, options, i / count),
-        ),
-      );
+      // Hashing uses Web Crypto and can complete out of order. Enqueue each
+      // frame after the previous one finishes so stateful live providers see
+      // monotonically increasing time, not hash-completion order.
+      const frames: Blob[] = [];
+      for (let i = 0; i < count; i++)
+        frames.push(await request(item, options, i / count));
+      return frames;
     },
   };
 }

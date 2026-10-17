@@ -1,3 +1,4 @@
+import { MigrationRegistry } from './serialization';
 import { applyCommand, validateCommand, type Command } from './commands';
 import { CapabilityRegistry, type CapabilityInvocation } from './capabilities';
 import { EventBus, type ChangeReason, type EditorEvents } from './events';
@@ -44,7 +45,7 @@ export class EditorEngine {
   readonly commands: CommandBus;
 
   constructor(project: unknown, options: EngineOptions = {}) {
-    this.#state = freeze(validateProject(project));
+    this.#state = freeze(new MigrationRegistry().run(project));
     this.#limit = options.historyLimit ?? 100;
     if (!Number.isInteger(this.#limit) || this.#limit < 1)
       throw new Error('History limit must be a positive integer');
@@ -321,7 +322,7 @@ export class EditorEngine {
   /** Explicit document/session boundary, never an edit or an undoable command. */
   load(project: unknown): void {
     this.#exclusive(() => {
-      const validated = freeze(validateProject(project));
+      const validated = freeze(new MigrationRegistry().run(project));
       this.#state = validated;
       this.#undo = [];
       this.#redo = [];
