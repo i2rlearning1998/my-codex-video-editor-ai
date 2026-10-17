@@ -56,7 +56,7 @@ describe('X1 code layers', () => {
     const before = JSON.parse(text) as Record<string, unknown>;
     expect(before.schemaVersion).toBe(7);
     const migrated = deserializeProject(text);
-    expect(migrated.schemaVersion).toBe(8);
+    expect(migrated.schemaVersion).toBe(9);
     expect({ ...migrated, schemaVersion: 7 }).toEqual(before);
   });
 
@@ -282,7 +282,7 @@ describe('X1 code layers', () => {
     const text = serializeProject(validateProject(project)) + '\n';
     if (process.env.UPDATE_FIXTURES) writeFileSync(FILE, text);
     expect(text).toBe(readFileSync(FILE, 'utf8'));
-    expect(deserializeProject(text).schemaVersion).toBe(8);
+    expect(deserializeProject(text).schemaVersion).toBe(9);
   });
 
   it('[DEV-008] code-layer-free.json holds a Tier C layer (for the fake runtime)', async () => {

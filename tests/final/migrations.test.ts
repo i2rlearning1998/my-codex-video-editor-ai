@@ -10,7 +10,7 @@ describe('[FINAL1] migration chain', () => {
     ['v5-scenes', 5],
     ['v6-outliner', 6],
     ['v7-rotated', 7],
-    ['code-layer', 8],
+    ['v8-code-layer', 8],
   ])('opens %s (schema %i)', (name, version) => {
     const text = readFileSync(`tests/fixtures/projects/${name}.json`, 'utf8');
     expect(JSON.parse(text).schemaVersion).toBe(version);
@@ -20,7 +20,7 @@ describe('[FINAL1] migration chain', () => {
   });
   it('refuses a future version', () => {
     const text = readFileSync(
-      'tests/fixtures/projects/code-layer.json',
+      'tests/fixtures/projects/v8-code-layer.json',
       'utf8',
     );
     expect(() =>
