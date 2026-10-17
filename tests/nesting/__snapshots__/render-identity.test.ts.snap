@@ -1,0 +1,246 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`[NEST] render identity for projects without nesting > av-sync.json derives the same render items 1`] = `
+[
+  "d46c293b858db623",
+  "d46c293b858db623",
+  "86f3fc78cf0d180c",
+  "86f3fc78cf0d180c",
+  "cf4742cfec549446",
+  "cf4742cfec549446",
+  "3bda20e9f92d339e",
+  "3bda20e9f92d339e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > code-layer.json derives the same render items 1`] = `
+[
+  "a260ce1c79ef6304",
+  "a260ce1c79ef6304",
+  "731bbbebc525aaa1",
+  "731bbbebc525aaa1",
+  "88af6fe995cd8678",
+  "88af6fe995cd8678",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > code-layer-free.json derives the same render items 1`] = `
+[
+  "30fd7dd8a88cf2ad",
+  "30fd7dd8a88cf2ad",
+  "6f26861905e2b4df",
+  "6f26861905e2b4df",
+  "d67a31c04046f242",
+  "d67a31c04046f242",
+  "b8e7af897d062dfc",
+  "b8e7af897d062dfc",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > frame-code.json derives the same render items 1`] = `
+[
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "ba1dd97186a0e666",
+  "ba1dd97186a0e666",
+  "e739e17c32df4bcd",
+  "e739e17c32df4bcd",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > g2-types.json derives the same render items 1`] = `
+[
+  "e5441f345ae14f19",
+  "e5441f345ae14f19",
+  "8b3851e1a1541c5a",
+  "8b3851e1a1541c5a",
+  "cfb4c0614aaeb41d",
+  "cfb4c0614aaeb41d",
+  "858cc6f462d0d131",
+  "858cc6f462d0d131",
+  "12ee18a2d8ac1144",
+  "12ee18a2d8ac1144",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > h1-rotated.json derives the same render items 1`] = `
+[
+  "348779a17c674d50",
+  "348779a17c674d50",
+  "8e3e772d1412928e",
+  "8e3e772d1412928e",
+  "8d886c8d34024408",
+  "8d886c8d34024408",
+  "ed8a6a8fb71e751d",
+  "ed8a6a8fb71e751d",
+  "1e39502d9bccf0ef",
+  "1e39502d9bccf0ef",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > media-example.json derives the same render items 1`] = `
+[
+  "7a44669615e1445e",
+  "7a44669615e1445e",
+  "9b8d4c489e26ec52",
+  "9b8d4c489e26ec52",
+  "69811ecb2173f697",
+  "69811ecb2173f697",
+  "71365177d744cfeb",
+  "71365177d744cfeb",
+  "77eb275cc9f99381",
+  "77eb275cc9f99381",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > nle-example.json derives the same render items 1`] = `
+[
+  "8991a03020d0fbee",
+  "8991a03020d0fbee",
+  "1c555b46692823ee",
+  "1c555b46692823ee",
+  "ca03dabf8f23e026",
+  "ca03dabf8f23e026",
+  "26a826d030328d4c",
+  "26a826d030328d4c",
+  "83b7d99a7d6cd5ca",
+  "83b7d99a7d6cd5ca",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > two-scenes.json derives the same render items 1`] = `
+[
+  "8991a03020d0fbee",
+  "8991a03020d0fbee",
+  "1c555b46692823ee",
+  "1c555b46692823ee",
+  "ca03dabf8f23e026",
+  "ca03dabf8f23e026",
+  "26a826d030328d4c",
+  "26a826d030328d4c",
+  "83b7d99a7d6cd5ca",
+  "83b7d99a7d6cd5ca",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "ac16ade140a0d547",
+  "ac16ade140a0d547",
+  "5c987ac1f1dd9980",
+  "5c987ac1f1dd9980",
+  "ad1e4583f70232ba",
+  "ad1e4583f70232ba",
+  "ccf9f543d933aac2",
+  "ccf9f543d933aac2",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > v4-keyframes.json derives the same render items 1`] = `
+[
+  "6ea64d4ac38ddc47",
+  "6ea64d4ac38ddc47",
+  "9691bf0c4f86cee6",
+  "9691bf0c4f86cee6",
+  "081dfaa480e0c3c9",
+  "081dfaa480e0c3c9",
+  "26a826d030328d4c",
+  "26a826d030328d4c",
+  "83b7d99a7d6cd5ca",
+  "83b7d99a7d6cd5ca",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > v5-scenes.json derives the same render items 1`] = `
+[
+  "8991a03020d0fbee",
+  "8991a03020d0fbee",
+  "1c555b46692823ee",
+  "1c555b46692823ee",
+  "ca03dabf8f23e026",
+  "ca03dabf8f23e026",
+  "26a826d030328d4c",
+  "26a826d030328d4c",
+  "83b7d99a7d6cd5ca",
+  "83b7d99a7d6cd5ca",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "ac16ade140a0d547",
+  "ac16ade140a0d547",
+  "5c987ac1f1dd9980",
+  "5c987ac1f1dd9980",
+  "ad1e4583f70232ba",
+  "ad1e4583f70232ba",
+  "ccf9f543d933aac2",
+  "ccf9f543d933aac2",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > v6-outliner.json derives the same render items 1`] = `
+[
+  "e5441f345ae14f19",
+  "e5441f345ae14f19",
+  "8b3851e1a1541c5a",
+  "8b3851e1a1541c5a",
+  "cfb4c0614aaeb41d",
+  "cfb4c0614aaeb41d",
+  "858cc6f462d0d131",
+  "858cc6f462d0d131",
+  "12ee18a2d8ac1144",
+  "12ee18a2d8ac1144",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
+exports[`[NEST] render identity for projects without nesting > v7-rotated.json derives the same render items 1`] = `
+[
+  "348779a17c674d50",
+  "348779a17c674d50",
+  "8e3e772d1412928e",
+  "8e3e772d1412928e",
+  "8d886c8d34024408",
+  "8d886c8d34024408",
+  "ed8a6a8fb71e751d",
+  "ed8a6a8fb71e751d",
+  "1e39502d9bccf0ef",
+  "1e39502d9bccf0ef",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
