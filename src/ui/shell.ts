@@ -41,13 +41,7 @@ import {
   type ThemeScene,
 } from '../themes/themes';
 import { ThemeError, createThemeLibrary } from '../themes/library';
-import {
-  MOTION_SETTINGS,
-  applyMotion,
-  readMotion,
-  reducedNow,
-  systemReducesMotion,
-} from './motion';
+import { applyMotion, readMotion, reducedNow } from './motion';
 import { presetControls } from '../creator-pack/preset';
 import { blocks } from '../blocks/starters';
 import { SYSTEM_FONTS } from '../render/text-style';
@@ -254,6 +248,7 @@ import { runCommand, type CommandContext } from '../commands/registry';
 import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
 import { cycleThemePreference, onThemeChange, themePreference } from './theme';
+import { openSettings } from './settings-dialog';
 import {
   t,
   formatNumber,
@@ -5935,44 +5930,11 @@ export function mountEditorShell(
     element('#app-menu').hidden = true;
     copyAiBrief();
   };
-  // Q5: Settings › Animations (Auto, On, Off) with the system signal shown.
+  // Q5: Settings › Animations; FINAL2 U1: appearance, keys, offline engines.
   applyMotion(readMotion());
   element<HTMLButtonElement>('#open-settings').onclick = () => {
     element('#app-menu').hidden = true;
-    const handle = openModal({
-      titleText: t('settings.title'),
-      bodyHtml: `
-        <div class="settings-row">
-          <span class="settings-label" id="motion-label">${t('settings.motion')}</span>
-          <div class="segmented" role="radiogroup" aria-labelledby="motion-label" id="motion-setting">
-            ${MOTION_SETTINGS.map((value) => `<button type="button" role="radio" data-motion-value="${value}">${t(`settings.motion.${value}`)}</button>`).join('')}
-          </div>
-          <p class="settings-note" id="motion-system">${t('settings.motionSystem', { value: t(systemReducesMotion() ? 'settings.yes' : 'settings.no') })}</p>
-        </div>
-        <div class="modal-actions"><button type="button" class="button primary" id="settings-done">${t('creator.done')}</button></div>`,
-    });
-    const sync = () => {
-      const current = readMotion();
-      for (const button of handle.root.querySelectorAll<HTMLElement>(
-        '[data-motion-value]',
-      ))
-        button.setAttribute(
-          'aria-checked',
-          String(button.dataset.motionValue === current),
-        );
-    };
-    for (const button of handle.root.querySelectorAll<HTMLButtonElement>(
-      '[data-motion-value]',
-    ))
-      button.onclick = () => {
-        applyMotion(
-          button.dataset.motionValue as (typeof MOTION_SETTINGS)[number],
-        );
-        sync();
-      };
-    handle.root.querySelector<HTMLButtonElement>('#settings-done')!.onclick =
-      () => handle.close();
-    sync();
+    openSettings();
   };
   const unsubscribeTheme = onThemeChange(() => {
     applyThemeControls();
