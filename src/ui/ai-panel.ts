@@ -1,6 +1,6 @@
 // Q4: the left rail's AI category: everything imported into My library
-// (Creator Packs and code animations), grouped by kind, each card with an
-// AI chip. R4: built on the shared library panel (search, New folder, tabs
+// (Creator Packs and code animations), grouped by kind (S1: no AI chip,
+// everything here is AI). R4: built on the shared library panel (search, New folder, tabs
 // per kind that has items, big cards with "⋯" and "+"). A click inserts the
 // item with the usual library insert (one undo step); a preset is applied to
 // the selected layer; a theme is applied. The header holds Import and Copy
@@ -98,7 +98,6 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           category: kind,
           folderId: AI_FOLDERS.folderOf(id),
           title: `${entry.name} · ${entry.packName.en}`,
-          chip: t('creator.badge'),
           keywords: [entry.packName.en, kind, ...entry.item.tags],
           data: { item: id, kind },
           thumb: (slot: HTMLElement) => libraryThumb(slot, source),

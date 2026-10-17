@@ -166,13 +166,14 @@ test('[RA-013] Media on the shared panel: tabs from the kinds present, Import, d
   page,
 }) => {
   await showCategory(page, 'Media');
-  expect(await tabs(media(page))).toEqual([]);
+  // S1: Images, Videos and Audio always show.
+  expect(await tabs(media(page))).toEqual(['all', 'image', 'video', 'audio']);
   const chooser = page.waitForEvent('filechooser');
   await page.locator('#import-media').click();
   await (await chooser).setFiles(PNG);
   const card = media(page).locator('.media-card').first();
   await expect(card).toBeVisible();
-  expect(await tabs(media(page))).toEqual(['all', 'image']);
+  expect(await tabs(media(page))).toEqual(['all', 'image', 'video', 'audio']);
   await expect(media(page).locator('#media-dropzone')).toBeVisible();
   await expect(media(page).locator('#media-sort')).toBeVisible();
   // Move to a new folder from the "⋯" menu: a folder tab appears.

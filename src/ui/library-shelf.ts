@@ -1,7 +1,7 @@
 // R3: the shared Clipchamp-style library panel, used by Media, AI and My
 // Templates. Top to bottom (under the shared panel header): a search box
 // with a New folder icon button on the same row; the panel's primary actions;
-// a row of chips (All, one per category that has items, then the user's
+// a row of chips (All, one per category that has items or is fixed, then the user's
 // folders); a two-column grid of big cards (16:9 thumbnail, one-line name).
 // A card's click adds it to the scene; its "⋯" button opens the same menu as
 // a right-click (Rename, Add to scene, Move to folder, Details, Delete) and
@@ -20,9 +20,8 @@ export interface ShelfItem {
   readonly category: string;
   readonly folderId?: string | null;
   readonly title?: string;
-  /** A small chip over the thumbnail (a duration, the AI chip). */
+  /** A small badge over the thumbnail (a duration). */
   readonly badge?: string;
-  readonly chip?: string;
   /** Extra data-* attributes on the card button. */
   readonly data?: Readonly<Record<string, string>>;
   /** Extra search words. */
@@ -68,6 +67,8 @@ export interface ShelfOptions {
   readonly flatAll?: boolean;
   /** Category order (others follow in first-seen order). */
   readonly categoryOrder?: readonly string[];
+  /** S1: categories whose chip shows even with no items (Media's types). */
+  readonly fixedCategories?: readonly string[];
   readonly folders?: {
     list(): readonly ShelfFolder[];
     create(name: string): ShelfFolder | void;
@@ -345,8 +346,13 @@ export function mountShelf(options: ShelfOptions): Shelf {
       word.toLowerCase().includes(query),
     );
   /** Categories with at least one item, in the panel's order. */
-  const categories = (items: readonly ShelfItem[]) => {
-    const seen = [...new Set(items.map((item) => item.category))];
+  const categories = (items: readonly ShelfItem[], fixed = false) => {
+    const seen = [
+      ...new Set([
+        ...(fixed ? (options.fixedCategories ?? []) : []),
+        ...items.map((item) => item.category),
+      ]),
+    ];
     const order = options.categoryOrder ?? [];
     return [
       ...order.filter((key) => seen.includes(key)),
@@ -411,14 +417,6 @@ export function mountShelf(options: ShelfOptions): Shelf {
       badge.className = 'shelf-badge media-badge';
       badge.textContent = item.badge;
       button.append(badge);
-    }
-    if (item.chip) {
-      const chipEl = document.createElement('span');
-      chipEl.className = 'ai-chip shelf-chip';
-      chipEl.textContent = item.chip;
-      // On the card, not in the thumbnail slot, which the thumbnail
-      // service may replace later.
-      button.append(chipEl);
     }
     const name = document.createElement('span');
     name.className = `shelf-name ${options.classes?.name ?? ''}`.trim();
@@ -503,13 +501,13 @@ export function mountShelf(options: ShelfOptions): Shelf {
     stopPreview = null;
     const items = options.items();
     const folders = options.folders?.list() ?? [];
-    const keys = categories(items);
+    const keys = categories(items, true);
     // A tab whose last item went disappears; the panel falls back to All.
     if (tab.startsWith('folder:')) {
       if (!folders.some((folder) => folderTab(folder.id) === tab)) tab = ALL;
     } else if (tab !== ALL && !keys.includes(tab)) tab = ALL;
     tabs.replaceChildren(
-      ...(items.length || folders.length ? [chip(ALL, t('shelf.all'))] : []),
+      ...(keys.length || folders.length ? [chip(ALL, t('shelf.all'))] : []),
       ...keys.map((key) => chip(key, options.categoryLabel(key))),
       ...folders.map((folder) =>
         chip(folderTab(folder.id), folder.name, folder),

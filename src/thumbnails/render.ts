@@ -481,15 +481,19 @@ export async function renderThumbnail(
       ]);
       if (tracks.some((track) => !known.has(track.property)))
         throw Error('Unsupported preview track');
+      // S1: a preset's position tracks are offsets from the layer's resting
+      // place (D-239), so the sample square starts at the centre.
       context.translate(
-        values.x ??
-          values['position.x'] ??
-          values['transform.position.x'] ??
-          width / 2,
-        values.y ??
-          values['position.y'] ??
-          values['transform.position.y'] ??
-          height / 2,
+        width / 2 +
+          (values.x ??
+            values['position.x'] ??
+            values['transform.position.x'] ??
+            0),
+        height / 2 +
+          (values.y ??
+            values['position.y'] ??
+            values['transform.position.y'] ??
+            0),
       );
       context.rotate(
         ((values.rotation ?? values['transform.rotation'] ?? 0) * Math.PI) /

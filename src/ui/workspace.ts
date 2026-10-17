@@ -48,6 +48,13 @@ const SIZES: Record<
   narrow: { rail: 56, left: 300, right: 300, timeline: 252 },
   phone: { rail: 56, left: 0, right: 0, timeline: 180 },
 };
+/**
+ * S1 Part 2: from 1800 px wide every left panel is 380 px, so the library
+ * cards (two columns) are at least 165 px wide, as in Clipchamp.
+ */
+function leftSize(layout: Layout, width: number): number {
+  return layout === 'wide' && width >= 1800 ? 380 : SIZES[layout].left;
+}
 const LIMITS = {
   left: [260, 420],
   right: [240, 360],
@@ -87,7 +94,7 @@ export function mountWorkspace(
     requestAnimationFrame(() => shell.classList.remove('shell-booting')),
   );
   let layout = layoutFor(window.innerWidth);
-  let left = SIZES[layout].left || SIZES.wide.left,
+  let left = leftSize(layout, window.innerWidth) || SIZES.wide.left,
     right = SIZES[layout].right || SIZES.wide.right,
     height: number | null = storedHeight();
   let leftClosed = layout === 'narrow' || layout === 'phone',
@@ -421,7 +428,10 @@ export function mountWorkspace(
       layout = next;
       leftClosed = layout === 'narrow' || layout === 'phone';
       rightClosed = true;
-      left = Math.max(LIMITS.left[0], SIZES[layout].left || left);
+      left = Math.max(
+        LIMITS.left[0],
+        leftSize(layout, window.innerWidth) || left,
+      );
       right = Math.max(LIMITS.right[0], SIZES[layout].right || right);
     }
     paint();

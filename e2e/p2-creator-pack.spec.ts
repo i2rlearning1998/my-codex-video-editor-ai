@@ -136,7 +136,8 @@ test.describe('P2 creator packs', () => {
       ['motion', 'motion-c-pack--motion-particles'],
       ['preset', 'move-pack--preset-move'],
     ] as const)
-      await expect(card(kind, id).locator('.ai-chip')).toHaveText('AI');
+      // S1: no AI chip in the AI category (everything there is AI).
+      await expect(card(kind, id).locator('.ai-chip')).toHaveCount(0);
     // Insert: one undo step.
     await card('shape', 'shape-pack--shape-kite').click();
     await expect
