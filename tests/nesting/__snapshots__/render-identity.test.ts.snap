@@ -244,3 +244,20 @@ exports[`[NEST] render identity for projects without nesting > v7-rotated.json d
   "c0cecb18fe7e420e",
 ]
 `;
+
+exports[`[NEST] render identity for projects without nesting > v8-code-layer.json derives the same render items 1`] = `
+[
+  "a260ce1c79ef6304",
+  "a260ce1c79ef6304",
+  "731bbbebc525aaa1",
+  "731bbbebc525aaa1",
+  "88af6fe995cd8678",
+  "88af6fe995cd8678",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
