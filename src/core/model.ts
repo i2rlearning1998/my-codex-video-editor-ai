@@ -3,6 +3,7 @@ import { maskSchema, matteSchema, type Mask, type Matte } from '../masks/types';
 import { isReservedMarker } from './scene-transitions';
 import { z } from 'zod';
 import { trackHolds } from './lanes';
+import { isNestedClip } from './nesting';
 
 export const SCHEMA_VERSION = 9;
 export type JsonValue =
@@ -577,6 +578,13 @@ export function validateProject(value: unknown): Project {
         track.clips.map((clip) => clip.layerId),
       ),
     );
+    // NEST (D-271): a nested clip's children live in its own time frame;
+    // only the outer clip sets the scene's length.
+    const nestedLayers = new Set(
+      composition.tracks.flatMap((track) =>
+        track.clips.filter(isNestedClip).map((clip) => clip.layerId),
+      ),
+    );
     const visit = (layers: Layer[]) => {
       for (const layer of layers) {
         if (!linkedLayers.has(layer.id))
@@ -586,7 +594,7 @@ export function validateProject(value: unknown): Project {
           ...Object.values(layer.properties),
         ])
           endpoints.push(...property.keyframes.map((frame) => frame.time));
-        visit(layer.children);
+        if (!nestedLayers.has(layer.id)) visit(layer.children);
       }
     };
     visit(composition.layers);

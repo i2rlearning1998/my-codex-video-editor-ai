@@ -18,6 +18,7 @@ import {
   type Project,
   type Track,
 } from './model';
+import { nestedAnchor } from './nesting';
 
 export interface ClipLocation {
   readonly clip: DeepReadonly<Clip>;
@@ -112,6 +113,24 @@ export function clipSourceTime(clip: TimedClip, time: number): number {
       effects.reversed ? clip.sourceOut - local : clip.sourceIn + local,
     ),
   );
+}
+/**
+ * NEST (D-271): the time in a nested clip's children's frame shown at outer
+ * time `time`: the outer clip's trim, speed, reverse and freeze applied
+ * (clamped to the clip). At speed 1 with no trim it is `time` itself.
+ */
+export function nestedTimeAt(clip: TimedClip, time: number): number {
+  const metadata = clip.metadata as Readonly<Record<string, unknown>>;
+  if (
+    clip.speed === 1 &&
+    clip.sourceIn === 0 &&
+    metadata.reversed !== true &&
+    metadata.freezeFrame === undefined &&
+    time >= clip.startTime &&
+    time <= clip.startTime + clip.duration
+  )
+    return time;
+  return nestedAnchor(clip) + clipSourceTime(clip, time);
 }
 export interface ClipTiming {
   readonly startTime: number;

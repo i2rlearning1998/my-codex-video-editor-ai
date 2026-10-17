@@ -4,7 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { compositionAt, deserializeProject } from '../../src/core';
+import { compositionAt, deserializeProject, freeze } from '../../src/core';
 import { deriveRenderItems } from '../../src/render/adapter';
 
 const dir = 'tests/fixtures/projects';
@@ -13,7 +13,9 @@ const files = readdirSync(dir)
   .sort();
 
 function digest(name: string): string[] {
-  const project = deserializeProject(readFileSync(`${dir}/${name}`, 'utf8'));
+  const project = freeze(
+    deserializeProject(readFileSync(`${dir}/${name}`, 'utf8')),
+  );
   const out: string[] = [];
   for (const composition of project.compositions)
     for (const time of [0, 0.5, 1, 2.5, 4, 7.25])

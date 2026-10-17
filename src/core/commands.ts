@@ -18,6 +18,7 @@ import {
   type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
+import { isNestedClip, nestedAnchor } from './nesting';
 import { syncLanes } from './lanes';
 import {
   maxTransition,
@@ -647,7 +648,18 @@ export function applyCommand(project: Project, command: Command): void {
       // so they follow it: a move shifts them (and their keyframes), a trim
       // or lengthening moves the edges that sat on the clip's edges.
       const group = findLayer(composition.layers, clip.layerId)?.layer;
-      if (group?.type === 'group')
+      // NEST (D-271): a nested clip's children stay put in its own time
+      // frame; they follow only the frame's anchor (start minus source in).
+      if (group?.type === 'group' && isNestedClip(clip)) {
+        group.startTime = command.startTime;
+        group.duration = command.duration;
+        shiftNested(
+          group,
+          command.startTime -
+            (command.sourceIn ?? clip.sourceIn) / clip.speed -
+            nestedAnchor(clip),
+        );
+      } else if (group?.type === 'group')
         retimeChildren(
           group,
           clip.startTime,
@@ -725,6 +737,13 @@ export function applyCommand(project: Project, command: Command): void {
       )
         throw new Error(
           'Not enough room: the slower clip would overlap the next clip',
+        );
+      // NEST (D-271): the children follow the nested frame's anchor.
+      const nested = findLayer(composition.layers, clip.layerId)?.layer;
+      if (nested?.type === 'group' && isNestedClip(clip))
+        shiftNested(
+          nested,
+          clip.sourceIn / clip.speed - clip.sourceIn / command.speed,
         );
       clip.speed = command.speed;
       clip.duration = duration;
@@ -1022,6 +1041,18 @@ function retimeChildren(
         layer.startTime = nextStart;
         layer.duration = nextEnd - nextStart;
       }
+      visit(layer.children);
+    }
+  };
+  visit(group.children);
+}
+/** NEST (D-271): moves a nested clip's children (and keyframes) by `delta`. */
+function shiftNested(group: Layer, delta: number): void {
+  if (delta === 0) return;
+  const visit = (layers: Layer[]) => {
+    for (const layer of layers) {
+      layer.startTime = Math.max(0, layer.startTime + delta);
+      shiftKeyframes(layer, delta);
       visit(layer.children);
     }
   };
