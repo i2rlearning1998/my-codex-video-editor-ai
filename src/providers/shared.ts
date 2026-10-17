@@ -111,7 +111,7 @@ export function stockProvider(
       input.minDuration > input.maxDuration
     )
       throw new ProviderError('BAD_RESPONSE');
-    if (def.requiresKey && !keys.hasKeys(def as Provider))
+    if (def.requiresKey && !keys.hasKeys(def))
       throw new ProviderError('KEY_MISSING');
     const key = keys.getKey(def.id, def.keyFields[0]?.id ?? 'apiKey');
     const options = {

@@ -44,7 +44,9 @@ export function createKeyStore(
   };
   const clearKey = (provider: string, field = 'apiKey') =>
     setKey(provider, field, '');
-  const hasKeys = (provider: Provider) =>
+  const hasKeys = (
+    provider: Pick<Provider, 'id' | 'requiresKey' | 'keyFields'>,
+  ) =>
     !provider.requiresKey ||
     provider.keyFields.every((field) => Boolean(getKey(provider.id, field.id)));
   return { getKey, setKey, clearKey, hasKeys };
