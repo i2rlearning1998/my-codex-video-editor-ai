@@ -26,7 +26,12 @@ import {
   systemReducesMotion,
 } from './motion';
 import { accentChoices, setAccent } from './accent';
-import { stockProviders, voiceServices, speechRegistry } from './services';
+import {
+  stockProviders,
+  voiceServices,
+  speechRegistry,
+  KEYS_CHANGED,
+} from './services';
 import { localEngines, type LocalEngineView } from './local-engines';
 
 export type SettingsTab = 'general' | 'appearance' | 'keys' | 'offline';
@@ -130,7 +135,8 @@ function bindKeyBlock(
   if (!inputs.length) return;
   const state = block.querySelector<HTMLElement>('.key-state')!;
   const result = block.querySelector<HTMLElement>('.key-result')!;
-  const sync = () => {
+  const sync = (changed = true) => {
+    if (changed) document.dispatchEvent(new Event(KEYS_CHANGED));
     const saved = provider.keyFields.every((f) => getKey(provider.id, f.id));
     state.dataset.state = saved ? 'saved' : 'empty';
     state.textContent = t(
@@ -209,7 +215,7 @@ function bindKeyBlock(
       testButton.disabled = false;
     }
   };
-  sync();
+  sync(false);
 }
 
 function swatches(mode: AppearanceMode, list: readonly AccentPalette[]) {

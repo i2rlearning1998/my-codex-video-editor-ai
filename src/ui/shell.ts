@@ -249,6 +249,8 @@ import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
 import { cycleThemePreference, onThemeChange, themePreference } from './theme';
 import { openSettings } from './settings-dialog';
+import { dropStock, stockQuality } from './stock-panel';
+import { importStockItem } from '../providers';
 import {
   t,
   formatNumber,
@@ -3985,6 +3987,33 @@ export function mountEditorShell(
         importFile: () => codeTemplateInput.click(),
       },
       creator: { library: creatorLibrary, menu: creatorMenu },
+      // FINAL2 U2: a stock item is downloaded, imported into Media with its
+      // licence and placed at the playhead (audio on a new audio lane).
+      stock: {
+        add: async (item, place, signal) => {
+          const result = await importStockItem(item, stockQuality(item), {
+            signal,
+          });
+          const file = new File([result.blob], result.name, {
+            type: result.mime,
+          });
+          const [id] = await mediaPanel.importFiles([file], {
+            license: result.licenseMeta,
+          });
+          const asset = id
+            ? session.source.assets.find((entry) => entry.id === id)
+            : undefined;
+          if (!asset) throw new Error(t('stock.importFailed'));
+          if (asset.type === 'audio') addOnNewAudioLane(asset.id);
+          else
+            placeAsset(asset, {
+              time: place.time ?? session.currentTime,
+              point: place.point ?? null,
+            });
+        },
+        openKeys: () => openSettings('keys'),
+        report: reportError,
+      },
     },
   );
   void libraryBrowsers;
@@ -5242,7 +5271,12 @@ export function mountEditorShell(
         ? { label: 'Add shape', commands, layerId: created.layer.id }
         : null;
     }
-    if (payload.kind === 'mine' || payload.kind === 'code') return null;
+    if (
+      payload.kind === 'mine' ||
+      payload.kind === 'code' ||
+      payload.kind === 'stock'
+    )
+      return null;
     // S1 Part 3: AI and My Templates items (one layer) take a lane like any
     // library item; the rest are added whole by addPayload.
     if (payload.kind === 'creator') return creatorBuilt(payload.id, time);
@@ -5543,6 +5577,8 @@ export function mountEditorShell(
       } else insertCreatorItem(payload.id, time, point ?? null);
     } else if (payload.kind === 'saved')
       insertMine(payload.id, time, point ?? null);
+    else if (payload.kind === 'stock')
+      dropStock(payload.id, { time, point: point ?? null });
     else if (payload.kind === 'code') {
       const template = creatorLibrary
         .motionTemplates()
@@ -5590,7 +5626,7 @@ export function mountEditorShell(
     const at: [number, number] = [w / 2, h / 2];
     let value: Footprint | null = null;
     try {
-      if (payload.kind === 'asset') {
+      if (payload.kind === 'asset' || payload.kind === 'stock') {
         if (payload.media !== 'audio') {
           const aw = payload.width ?? 0,
             ah = payload.height ?? 0;

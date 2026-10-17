@@ -60,3 +60,6 @@ export function voiceServices(): SpeechProvider[] {
     (p): p is SpeechProvider => Boolean(p),
   );
 }
+
+/** Fired on document when a provider key is saved or cleared. */
+export const KEYS_CHANGED = 'aive-keys-changed';

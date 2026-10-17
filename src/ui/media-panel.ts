@@ -17,6 +17,7 @@ import {
   promptDialog,
 } from './components/modal';
 import { showToast } from './components/toast';
+import { attachStockLicense, type LicenseMeta } from '../providers';
 import { iconSvg } from './icons';
 import { mountShelf, type Shelf, type ShelfItem } from './library-shelf';
 import { mediaFolders } from './media-folders';
@@ -522,6 +523,20 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       ]);
     if (asset.duration !== undefined)
       rows.push([t('media.details.duration'), formatDuration(asset.duration)]);
+    // FINAL2 U2: the stock credit (author, provider, licence).
+    const credit = (asset.metadata as Record<string, unknown>).stockLicense as
+      | {
+          author?: unknown;
+          attributionText?: unknown;
+          license?: { name?: unknown };
+        }
+      | undefined;
+    if (credit && typeof credit === 'object') {
+      if (typeof credit.attributionText === 'string' && credit.attributionText)
+        rows.push([t('media.details.credit'), credit.attributionText]);
+      if (typeof credit.license?.name === 'string')
+        rows.push([t('media.details.licence'), credit.license.name]);
+    }
     rows.push([
       t('media.details.used'),
       t('media.details.clips', { count: usage(id) }),
@@ -635,7 +650,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
    *  already there or restored), in file order. */
   const importFiles = async (
     files: readonly File[],
-    importOptions: { design?: boolean } = {},
+    importOptions: { design?: boolean; license?: LicenseMeta } = {},
   ): Promise<string[]> => {
     if (!files.length) return [];
     if (controller) {
@@ -666,7 +681,15 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         },
         // I1.6: importing is a library change, not an undoable edit.
         addAsset: (asset) =>
-          engine.library('Import media', [{ type: 'ADD_ASSET', asset }]),
+          engine.library('Import media', [
+            {
+              type: 'ADD_ASSET',
+              // FINAL2 U2: stock media keep their licence and credit.
+              asset: importOptions.license
+                ? attachStockLicense(asset, importOptions.license)
+                : asset,
+            },
+          ]),
         onProgress: (progress) =>
           showProgress(
             progress.fileName,

@@ -30,10 +30,8 @@ export async function mockStock(
   allowError(
     page,
     (m) =>
-      /http (401|403|429)|requestfailed: https:\/\/(images|videos)\.pexels|requestfailed: https:\/\/(cdn\.pixabay|api\.iconify|cdn\.freesound)/.test(
-        m,
-      ) ||
-      /Failed to load resource: the server responded with a status of (401|403|429)/.test(
+      /http (401|403|429)|status of (401|403|429)/.test(m) ||
+      /(requestfailed|Failed to load resource).*https:\/\/(images\.pexels|videos\.pexels|player\.vimeo|cdn\.pixabay|api\.iconify|cdn\.freesound)/.test(
         m,
       ),
     'The mocked providers answer bad keys, rate limits and blocked downloads on purpose.',
