@@ -1,6 +1,7 @@
 // B1: a style's card picture (styles are never placed on the canvas): its
 // palette as swatches, the category's icon and its name, as an SVG data URI.
-// A style's own `thumbnail` (a data: image) wins when it has one.
+// A style's own `thumbnail` (a data: image) wins when it has one. A saved
+// brief's card is drawn the same way.
 import type { StyleData } from '../creator-pack';
 import { iconSvg } from './icons';
 
@@ -54,8 +55,23 @@ export function styleThumbnail(data: StyleData, name: string): string {
   );
   const label = escape(name.length > 26 ? `${name.slice(0, 25)}…` : name);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" fill="${palette.background}"/>${icon}<text x="24" y="98" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="600" fill="${palette.text}">${label}</text>${swatches}</svg>`;
+  return dataUri(svg);
+}
+function dataUri(svg: string): string {
   const bytes = new TextEncoder().encode(svg);
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return `data:image/svg+xml;base64,${btoa(binary)}`;
+}
+
+/** B1: a saved brief's card: a magic wand, its name and its topic. */
+export function briefThumbnail(name: string, topic: string): string {
+  const icon = iconSvg('magic', 40).replace(
+    '<svg',
+    `<svg x="24" y="24" color="${NEUTRAL.accent}"`,
+  );
+  const line = (text: string, max: number) =>
+    escape(text.length > max ? `${text.slice(0, max - 1)}…` : text);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" fill="${NEUTRAL.background}"/>${icon}<text x="24" y="104" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="600" fill="${NEUTRAL.text}">${line(name, 26)}</text><text x="24" y="134" font-family="Inter, system-ui, sans-serif" font-size="15" fill="${NEUTRAL.accent}">${line(topic, 34)}</text></svg>`;
+  return dataUri(svg);
 }

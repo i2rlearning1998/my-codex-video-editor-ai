@@ -23,7 +23,11 @@ import {
   creatorLibraryId,
   type CreatorEntry,
 } from './creator-library';
-import { mountAiPanel } from './ai-panel';
+import { briefIdOf, isBriefId, mountAiPanel } from './ai-panel';
+import { openBriefDialog } from './brief-dialog';
+import { BriefLibrary } from './brief-library';
+import { styleThumbnail } from './style-card';
+import { briefSections, type BriefFormValues } from '../ai-brief/form';
 import { mountThemePanel } from './theme-panel';
 import {
   BUILT_IN_THEMES,
@@ -2167,7 +2171,7 @@ export function mountEditorShell(
     });
   };
   /** T2: Copy AI brief, built from the live registries (src/ai-brief). */
-  const briefText = async (request: string) => {
+  const briefText = async (request: string, form?: BriefFormValues) => {
     await creatorLibrary.ready;
     const manifest = await loadLibrary().catch(() => null);
     const { aiBrief } = await import('../ai-brief');
@@ -2223,6 +2227,11 @@ export function mountEditorShell(
       },
       fonts: SYSTEM_FONTS.map(([name]) => name),
       request,
+      // B1: the New AI video form and its style; no stock provider is
+      // built yet, so the brief says none is installed.
+      form: form ?? null,
+      style: form ? briefStyle(form.styleId) : null,
+      stock: [],
     });
   };
   const copyAiBrief = () => {
@@ -3266,9 +3275,130 @@ export function mountEditorShell(
       showToast(t('code.exported', { name: file }), 'info', 3000);
     }
   };
-  /** B1: "Use this style" (Part 2 opens the New AI video form). */
-  const openNewVideo = (styleId?: string) => {
-    if (styleId) creatorDetails(styleId);
+  // B1: the New AI video form and My briefs.
+  const briefLibrary = new BriefLibrary(mediaStore);
+  /** The styles in My library, as the form's cards. */
+  const briefStyles = () =>
+    creatorLibrary.list().flatMap((entry) =>
+      entry.item.type === 'style'
+        ? [
+            {
+              id: creatorLibraryId(entry.key),
+              name: entry.name,
+              category: entry.item.data.category,
+              thumbnail: styleThumbnail(entry.item.data, entry.name),
+            },
+          ]
+        : [],
+    );
+  /** The brief's style: its full record, under its library id. */
+  const briefStyle = (styleId: string | null) => {
+    const entry = styleId ? creatorEntryOf(styleId) : undefined;
+    return entry?.item.type === 'style'
+      ? { id: entry.key, name: entry.name, data: entry.item.data }
+      : null;
+  };
+  /** Copies `text`; when the clipboard is blocked, shows it to copy by hand. */
+  const copyOrShow = async (text: string, done: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(done, 'success');
+    } catch {
+      const handle = openModal({
+        titleText: t('brief.title'),
+        bodyHtml: `<p>${t('brief.fallback')}</p><textarea id="brief-form-text" rows="12" readonly></textarea>`,
+      });
+      const box =
+        handle.root.querySelector<HTMLTextAreaElement>('#brief-form-text')!;
+      box.value = text;
+      box.focus();
+      box.select();
+    }
+  };
+  const openNewVideo = (
+    styleId?: string | null,
+    initial?: Partial<BriefFormValues> | null,
+  ) => {
+    openBriefDialog({
+      styles: briefStyles,
+      initial: { ...(initial ?? {}), ...(styleId ? { styleId } : {}) },
+      copy: async (values) => {
+        const { text } = await briefText('', values);
+        await copyOrShow(text, t('briefForm.copied'));
+      },
+      save: async (values) => {
+        const name = await promptDialog(
+          t('briefForm.save'),
+          values.topic.trim().slice(0, 80) || t('briefForm.untitled'),
+          {
+            label: t('myTemplates.name'),
+            confirmLabel: t('briefForm.save'),
+            cancelLabel: t('media.cancel'),
+            maxLength: 80,
+          },
+        );
+        if (!name?.trim()) return;
+        await briefLibrary.save(name.trim(), values);
+        showToast(t('briefForm.saved', { name: name.trim() }), 'success');
+      },
+      copyText: (text) => copyOrShow(text, t('briefForm.filesCopied')),
+      report: reportError,
+    });
+  };
+  const renameBrief = (id: string) => {
+    const item = briefLibrary.find(id);
+    if (!item) return;
+    void shelfPrompt(t('media.rename.title'), item.name).then((name) => {
+      if (name?.trim()) void briefLibrary.rename(id, name.trim());
+    });
+  };
+  const duplicateBrief = (id: string) => {
+    const item = briefLibrary.find(id);
+    if (!item) return;
+    const name = copyName(
+      item.name,
+      briefLibrary.list().map((other) => other.name),
+    );
+    void briefLibrary.save(name, item.values);
+    showToast(t('code.duplicated', { name }), 'success');
+  };
+  /** A saved brief exports as the brief text it copies. */
+  const exportBrief = (id: string) => {
+    const item = briefLibrary.find(id);
+    if (!item) return;
+    void briefText('', item.values).then(({ text }) => {
+      const file = `${item.name.replace(/[\\/:*?"<>|]+/g, '-') || 'brief'}.brief.txt`;
+      downloadText(text, file, 'text/plain');
+      showToast(t('code.exported', { name: file }), 'info', 3000);
+    });
+  };
+  const briefDetails = (id: string) => {
+    const item = briefLibrary.find(id);
+    if (!item) return;
+    const style = briefStyle(item.values.styleId);
+    const { locked, free } = briefSections(item.values, style);
+    showDetails(item.name, [
+      [t('media.details.name'), item.name],
+      [t('shelf.detailsKind'), t('ai.kind.brief')],
+      [t('shelf.detailsAdded'), new Date(item.createdAt).toLocaleString()],
+      [t('briefForm.style'), style?.name ?? t('briefForm.noStyle')],
+      [
+        t('briefForm.summary', {
+          locked: String(locked.length),
+          free: String(free.length),
+        }),
+        '',
+      ],
+    ]);
+  };
+  const deleteBrief = (id: string) => {
+    const item = briefLibrary.find(id);
+    if (!item) return;
+    void briefLibrary.remove(id);
+    showToast(t('code.templateDeleted', { name: item.name }), 'info', 8000, {
+      label: t('code.templateRestore'),
+      run: () => void briefLibrary.save(item.name, item.values, item.id),
+    });
   };
   const creatorDetails = (id: string) => {
     const entry = creatorEntryOf(id);
@@ -3314,13 +3444,30 @@ export function mountEditorShell(
       codeHover(template, slot, true);
       return () => codeHover(template, slot, false);
     },
-    rename: renameCreatorItem,
-    isCode: isCreatorCode,
+    // B1: My briefs share the panel (ids `brief:<id>`); each action routes
+    // to the brief library or to My library.
+    rename: (id) =>
+      isBriefId(id) ? renameBrief(briefIdOf(id)) : renameCreatorItem(id),
+    isCode: (id) => isBriefId(id) || isCreatorCode(id),
     useStyle: (id) => safely(() => openNewVideo(id)),
-    duplicate: (id) => safely(() => duplicateCreatorItem(id)),
-    exportItem: (id) => safely(() => exportCreatorItem(id)),
-    details: creatorDetails,
-    remove: deleteCreatorItem,
+    newVideo: () => safely(() => openNewVideo()),
+    briefs: briefLibrary,
+    useBrief: (id) =>
+      safely(() => openNewVideo(null, briefLibrary.find(id)?.values)),
+    duplicate: (id) =>
+      safely(() =>
+        isBriefId(id)
+          ? duplicateBrief(briefIdOf(id))
+          : duplicateCreatorItem(id),
+      ),
+    exportItem: (id) =>
+      safely(() =>
+        isBriefId(id) ? exportBrief(briefIdOf(id)) : exportCreatorItem(id),
+      ),
+    details: (id) =>
+      isBriefId(id) ? briefDetails(briefIdOf(id)) : creatorDetails(id),
+    remove: (id) =>
+      isBriefId(id) ? deleteBrief(briefIdOf(id)) : deleteCreatorItem(id),
     prompt: shelfPrompt,
     report: reportError,
     toast: (text) => showToast(text, 'success'),

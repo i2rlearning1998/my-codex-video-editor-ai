@@ -48,6 +48,8 @@ export interface ShelfAction {
   readonly label: string;
   readonly icon: string;
   readonly primary?: boolean;
+  /** B1: the action takes the whole row (above the others). */
+  readonly wide?: boolean;
   readonly run: () => void;
 }
 export interface ShelfOptions {
@@ -168,7 +170,10 @@ export function mountShelf(options: ShelfOptions): Shelf {
   for (const action of options.actions ?? []) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `button ${action.primary ? 'primary' : ''}`.trim();
+    button.className =
+      `button ${action.primary ? 'primary' : ''} ${action.wide ? 'shelf-action-wide' : ''}`
+        .replace(/\s+/g, ' ')
+        .trim();
     button.id = action.id;
     button.innerHTML = `${iconSvg(action.icon, 16)}<span></span>`;
     button.querySelector('span')!.textContent = action.label;
