@@ -1,0 +1,24 @@
+{
+  "page": 1,
+  "per_page": 20,
+  "total_results": 25,
+  "next_page": "https://api.pexels.com/v1/search?page=2",
+  "photos": [
+    {
+      "id": 11,
+      "width": 3000,
+      "height": 2000,
+      "url": "https://www.pexels.com/photo/11/",
+      "photographer": "Mira",
+      "photographer_url": "https://www.pexels.com/@mira/",
+      "alt": "Mountain lake",
+      "src": {
+        "original": "https://images.pexels.com/photos/11/original.jpeg",
+        "large": "https://images.pexels.com/photos/11/large.jpeg",
+        "medium": "https://images.pexels.com/photos/11/medium.jpeg",
+        "small": "https://images.pexels.com/photos/11/small.jpeg",
+        "tiny": "https://images.pexels.com/photos/11/tiny.jpeg"
+      }
+    }
+  ]
+}
