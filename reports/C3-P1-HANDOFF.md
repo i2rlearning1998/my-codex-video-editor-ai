@@ -9,6 +9,8 @@ Current limitations: ellipse distance/Bezier flatten approximations; animated CP
 cost, Canvas/Safari/mobile/readback behavior not measured. See MASKS-API.md.
 
 ## Not done / next
-F blend modes is next. G chroma key not started. No UI or browser proof.
+F implemented: optional blendMode, Canvas operation warnings, group isolation, one-undo setter and all-mode reference fixtures. G chroma key is next. No UI or browser proof.
 
 E validation: 12 unit tests passed (tests/masks); typecheck passed both TS configs. Initial JSON command/test fixture typing errors fixed and rechecked. No e2e/full suite/CI polling.
+
+F validation: 21 unit tests passed (tests/blend); typecheck passed. Fixed negative-zero output in the byte reference; assertions retained. No browser/e2e/CI run.

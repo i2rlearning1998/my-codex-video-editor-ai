@@ -156,6 +156,7 @@ export interface Layer {
   effects: [];
   masks?: Mask[] | undefined;
   matte?: Matte | undefined;
+  blendMode?: string | undefined;
   assetId: string | null;
   children: Layer[];
   /** Schema 8 (optional): an imported code animation (X1). */
@@ -189,6 +190,7 @@ export const layerSchema: z.ZodType<Layer> = z.lazy(() =>
         .max(32)
         .optional(),
       matte: matteSchema.optional(),
+      blendMode: z.string().max(64).optional(),
       assetId: idSchema.nullable(),
       children: z.array(layerSchema),
       code: codeLayerSchema.optional(),

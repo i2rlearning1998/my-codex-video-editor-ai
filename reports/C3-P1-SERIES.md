@@ -5,7 +5,7 @@
   rasterMask, createMaskCache, drawMaskedItems; see MASKS-API.md for full exports.
   UI: handles/type/order/feather/expansion/opacity/invert/mode, keyframes/easing,
   matte source/type/invert, command commit on release, render warnings.
-- F blend modes: not started. Next task.
+- F blend modes: implemented. APIs: BLEND_OPTIONS, resolveBlendMode, applyBlendMode, blendPixel, setLayerBlendMode. UI: dropdown + warnings, commit via setter. Native Canvas mode support/precision unverified.
 - G chroma key: not started.
 
 Existing-file edits for E: src/core/model.ts (optional masks/matte validation; no
@@ -17,3 +17,7 @@ readback/CORS, memory and Safari/mobile. No measured performance or pixel-parity
 claims. Matte uses raw source content and remains visible; missing source fails closed.
 
 E validation: 12 unit tests passed (tests/masks); typecheck passed both TS configs. Initial JSON command/test fixture typing errors fixed and rechecked. No e2e/full suite/CI polling.
+
+Existing-file edits for F: core/model.ts optional blendMode; render/adapter.ts group/leaf blend scopes; masks/render.ts final Canvas blend after masking (skip alpha raster when no mask). No schema bump/migration.
+
+F validation: 21 unit tests passed (tests/blend); typecheck passed. Fixed negative-zero output in the byte reference; assertions retained. No browser/e2e/CI run.

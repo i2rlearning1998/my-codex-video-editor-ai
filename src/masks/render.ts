@@ -1,3 +1,4 @@
+import { applyBlendMode } from '../blend';
 import {
   invertMatrix,
   transformPoint,
@@ -6,6 +7,7 @@ import {
 import { stackAlpha, matteAlpha, type ReadMask } from './geometry';
 import type { Matte } from './types';
 export interface MaskScope {
+  readonly blendMode?: string | undefined;
   readonly id: string;
   readonly matrix: AffineMatrix;
   readonly masks: readonly ReadMask[];
@@ -117,45 +119,51 @@ export function drawMaskedItems<T extends MaskItem>(
         end++;
       const isolated = surface();
       draw(isolated.ctx, list.slice(i, end), depth + 1);
-      const alpha = cache.get(width, height, scope.matrix, scope.masks);
-      if (scope.matte) {
-        const candidates = all.filter(
-          (item) =>
-            item.id === scope.matte!.layerId ||
-            item.ancestors.includes(scope.matte!.layerId),
-        );
-        if (!candidates.length) {
-          errors.push(`Matte source ${scope.matte.layerId} is missing.`);
-          alpha.fill(0);
-        } else {
-          const matte = surface();
-          candidates.forEach((item) => paint(matte.ctx, item));
-          const data = matte.ctx.getImageData(0, 0, width, height).data;
-          for (let p = 0; p < alpha.length; p++) {
-            const n = p * 4;
-            alpha[p] = Math.round(
-              alpha[p]! *
-                matteAlpha(
-                  data[n]!,
-                  data[n + 1]!,
-                  data[n + 2]!,
-                  data[n + 3]!,
-                  scope.matte.type,
-                  scope.matte.invert,
-                ),
-            );
+      if (scope.masks.length || scope.matte) {
+        const alpha = cache.get(width, height, scope.matrix, scope.masks);
+        if (scope.matte) {
+          const candidates = all.filter(
+            (item) =>
+              item.id === scope.matte!.layerId ||
+              item.ancestors.includes(scope.matte!.layerId),
+          );
+          if (!candidates.length) {
+            errors.push(`Matte source ${scope.matte.layerId} is missing.`);
+            alpha.fill(0);
+          } else {
+            const matte = surface();
+            candidates.forEach((item) => paint(matte.ctx, item));
+            const data = matte.ctx.getImageData(0, 0, width, height).data;
+            for (let p = 0; p < alpha.length; p++) {
+              const n = p * 4;
+              alpha[p] = Math.round(
+                alpha[p]! *
+                  matteAlpha(
+                    data[n]!,
+                    data[n + 1]!,
+                    data[n + 2]!,
+                    data[n + 3]!,
+                    scope.matte.type,
+                    scope.matte.invert,
+                  ),
+              );
+            }
           }
         }
+        const stencil = surface(),
+          pixels = stencil.ctx.createImageData(width, height);
+        for (let p = 0; p < alpha.length; p++)
+          pixels.data[p * 4 + 3] = alpha[p]!;
+        stencil.ctx.putImageData(pixels, 0, 0);
+        isolated.ctx.globalCompositeOperation = 'destination-in';
+        isolated.ctx.drawImage(stencil.c, 0, 0);
       }
-      const stencil = surface(),
-        pixels = stencil.ctx.createImageData(width, height);
-      for (let p = 0; p < alpha.length; p++) pixels.data[p * 4 + 3] = alpha[p]!;
-      stencil.ctx.putImageData(pixels, 0, 0);
-      isolated.ctx.globalCompositeOperation = 'destination-in';
-      isolated.ctx.drawImage(stencil.c, 0, 0);
       target.save();
       target.setTransform(1, 0, 0, 1, 0, 0);
       target.globalAlpha = 1;
+      applyBlendMode(target, scope.blendMode, (warning) =>
+        errors.push(`${warning.code}: ${warning.message}`),
+      );
       target.drawImage(isolated.c, 0, 0);
       target.restore();
       i = end;

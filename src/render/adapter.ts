@@ -343,6 +343,10 @@ export function deriveRenderItems(input: RenderSource): {
       ? value.value
       : undefined;
   };
+  const hasBlend = (layers: readonly SceneLayer[]): boolean =>
+    layers.some(
+      (layer) => layer.blendMode !== undefined || hasBlend(layer.children),
+    );
   const visit = (
     layers: readonly SceneLayer[],
     ancestors: readonly string[],
@@ -369,11 +373,15 @@ export function deriveRenderItems(input: RenderSource): {
       )
         continue;
       const scopes =
-        layer.masks?.length || layer.matte
+        layer.masks?.length ||
+        layer.matte ||
+        layer.blendMode !== undefined ||
+        (layer.type === 'group' && hasBlend(layer.children))
           ? [
               ...maskScopes,
               {
                 id: layer.id,
+                blendMode: layer.blendMode,
                 matrix: worldTransform(
                   source.composition,
                   layer.id,
