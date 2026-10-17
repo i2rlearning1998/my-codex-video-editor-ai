@@ -200,6 +200,29 @@ bouncy or cinematic: the default easing and preset speed) and an optional
 {"format":"creator-pack","version":1,"pack":{"id":"theme-pack-sunny","name":{"en":"theme-pack-sunny","hi":"थीम संग्रह"},"version":1,"author":"ai","createdWith":"claude-chat","notes":"Original palettes; no external assets."},"items":[{"id":"theme-sunny","name":{"en":"Sunny Morning","hi":"धूप भरी सुबह"},"tags":["bright","warm"],"type":"theme","data":{"palette":{"background":"#fffbeb","primary":"#f59e0b","accent":"#0ea5e9","text":"#1f2937","extra":"#fde68a"},"fonts":{"heading":"Poppins","body":"Inter"},"motion":"bouncy"}}]}
 ```
 
+### Style
+
+A style is a creative direction for the whole video, not a canvas item: it is
+never placed. `data`: `category` (documentary, youtube-intro, logo-reveal-2d,
+logo-reveal-3d, reels, education, animation-2d, animation-3d,
+recorded-video-enhance, custom), `description` (at most 600 characters),
+optional `thumbnail` (a base64 `data:` image), `brief` (`mood`, `pacing`,
+`structure` (1 to 12 steps), `doNot` (up to 12) and `qualityBar`), `look`
+(optional `themeId`, `palette`, `fonts`, `motion`), `kit` (`preferLibrary`,
+`presets`, `transitions`, `effects`: ids from the library index, or
+`{"id": "...", "optional": true}` when the editor may lack one), `inputs.accepts`
+(topic, script, audio, video, reference, logo, brand), `assetPolicy` (`order`
+starts with library and ends with ai when ai is allowed; `aiImagesMax` and
+`aiVideosMax`, 0 means none), `output` (`aspect`, `fps`, `durationHint`) and
+`defaultFreedom` (strict, guided or free). No URLs anywhere. Write the brief as
+concrete direction: shot lengths, the order of the parts and what to avoid, in
+80 to 200 words. Worked example (`examples/creator-packs/style-logo-reveal-2d.json`):
+
+<!-- prettier-ignore -->
+```json
+{"format":"creator-pack","version":1,"pack":{"id":"style-pack-logo-reveal","name":{"en":"Logo reveal style","hi":"लोगो रिवील स्टाइल"},"version":1,"author":"ai","createdWith":"claude-chat","notes":"Original creative direction; no external assets."},"items":[{"id":"style-logo-reveal-2d","name":{"en":"Clean 2D logo reveal","hi":"साफ़ 2D लोगो रिवील"},"tags":["logo","reveal","brand"],"type":"style","data":{"category":"logo-reveal-2d","description":"A flat, geometric reveal that builds the brand's logo from its own shapes and colours, ending on a clean, centred lock-up that can be used as an outro or a sting.","brief":{"mood":"Precise, modern and premium; calm confidence.","pacing":"Medium: a 3 to 4 second build, a 0.3 second settle with slight overshoot, then a 2 second hold. Motion follows one direction throughout.","structure":["Empty brand-coloured background (0-0.3 s)","Two or three primitive shapes in brand colours move in and assemble (0.3-2.5 s)","The shapes resolve into the logo; the wordmark slides out from behind it (2.5-3.5 s)","Optional tagline fades in under the wordmark","Hold the final lock-up, perfectly centred, for 2 s"],"doNot":["Never distort, recolour or crop the user's logo","No 3D, bevels, lens flares or glows","No more than three moving parts at once","Do not add sound effects unless the user supplies them","No busy background textures"],"qualityBar":"The final frame matches the logo exactly, centred with safe margins; the animation reads well at 50% size; colours come only from the brand palette."},"look":{"motion":"snappy"},"kit":{"preferLibrary":[],"presets":["pop","slide","wipe"],"transitions":[],"effects":[]},"inputs":{"accepts":["logo","brand","reference"]},"assetPolicy":{"order":["library"],"aiImagesMax":0,"aiVideosMax":0},"output":{"aspect":"16:9","fps":60,"durationHint":"5-7 seconds"},"defaultFreedom":"strict"}}]}
+```
+
 ## Quality gate before delivery
 
 - Check required fields, unique IDs, both languages, valid source references/limits.

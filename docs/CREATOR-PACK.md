@@ -14,7 +14,20 @@ The creator spec is imported unchanged; editor and library schemas stay unchange
 - Conservative URL/network/obvious-loop policy, compileBlock for Tier B;
   static Tier C / pixel-code checks with needsRuntimeCheck.
 - Composition Spec validation/planning projection and library dependency checks.
-- Eight valid packs, six rejected packs, focused unit tests, offline CLI.
+- Eleven valid packs (three of them styles), eight rejected packs, focused unit
+  tests, offline CLI.
+- B1: the `style` kind, a creative direction for the AI creator (see
+  docs/STYLES.md). Its kit ids must exist or be marked optional; Animate presets
+  are always known, FX and library ids are checked when a catalog is supplied,
+  and an unchecked id is a warning, never a silent pass.
+
+## Docs
+
+- docs/CREATOR-PACK-AUTHORING.md: how to write a pack (every kind, with examples).
+- docs/STYLES.md: the `style` kind (a creative direction for the AI creator).
+- docs/BRIEF-FORM.md: the New AI video brief form and My briefs.
+- docs/AI-BRIEF.md: Copy AI brief.
+- docs/THEMES-API.md and docs/THUMBNAILS-API.md: the theme library and thumbnails.
 
 ## Run
 
@@ -27,7 +40,9 @@ npx vitest run tests/creator-pack
 CLI: exit 0 = all items pass offline checks (warnings allowed); 1 = rejected
 pack/items; 2 = file/argument/loader failure. Vite, already installed, loads TS in
 middleware mode without a listening server. CLI output is exactly result.report.
-No implicit FX catalog is imported; an absent catalog is an empty list.
+Without `--fx` the CLI loads the editor's own FX catalog (`src/fx`), so style
+kits and recipes are checked against real ids; `checkPack` itself never imports
+one, and an absent catalog there is an empty list.
 
 ```ts
 import { checkPack, generatePreset } from '../src/creator-pack';

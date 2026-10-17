@@ -1,0 +1,72 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "style-pack-logo-reveal",
+    "name": {
+      "en": "Logo reveal style",
+      "hi": "लोगो रिवील स्टाइल"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "claude-chat",
+    "notes": "Original creative direction; no external assets."
+  },
+  "items": [
+    {
+      "id": "style-logo-reveal-2d",
+      "name": {
+        "en": "Clean 2D logo reveal",
+        "hi": "साफ़ 2D लोगो रिवील"
+      },
+      "tags": ["logo", "reveal", "brand"],
+      "type": "style",
+      "data": {
+        "category": "logo-reveal-2d",
+        "description": "A flat, geometric reveal that builds the brand's logo from its own shapes and colours, ending on a clean, centred lock-up that can be used as an outro or a sting.",
+        "brief": {
+          "mood": "Precise, modern and premium; calm confidence.",
+          "pacing": "Medium: a 3 to 4 second build, a 0.3 second settle with slight overshoot, then a 2 second hold. Motion follows one direction throughout.",
+          "structure": [
+            "Empty brand-coloured background (0-0.3 s)",
+            "Two or three primitive shapes in brand colours move in and assemble (0.3-2.5 s)",
+            "The shapes resolve into the logo; the wordmark slides out from behind it (2.5-3.5 s)",
+            "Optional tagline fades in under the wordmark",
+            "Hold the final lock-up, perfectly centred, for 2 s"
+          ],
+          "doNot": [
+            "Never distort, recolour or crop the user's logo",
+            "No 3D, bevels, lens flares or glows",
+            "No more than three moving parts at once",
+            "Do not add sound effects unless the user supplies them",
+            "No busy background textures"
+          ],
+          "qualityBar": "The final frame matches the logo exactly, centred with safe margins; the animation reads well at 50% size; colours come only from the brand palette."
+        },
+        "look": {
+          "motion": "snappy"
+        },
+        "kit": {
+          "preferLibrary": [],
+          "presets": ["pop", "slide", "wipe"],
+          "transitions": [],
+          "effects": []
+        },
+        "inputs": {
+          "accepts": ["logo", "brand", "reference"]
+        },
+        "assetPolicy": {
+          "order": ["library"],
+          "aiImagesMax": 0,
+          "aiVideosMax": 0
+        },
+        "output": {
+          "aspect": "16:9",
+          "fps": 60,
+          "durationHint": "5-7 seconds"
+        },
+        "defaultFreedom": "strict"
+      }
+    }
+  ]
+}

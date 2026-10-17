@@ -7,7 +7,8 @@
 // must change the middle frame (a warning for motion, a rejection for a
 // preset). Nothing touches the project.
 import { SYSTEM_FONTS } from '../render/text-style';
-import type { CreatorItem } from '../creator-pack';
+import type { CreatorItem, StyleData } from '../creator-pack';
+import { styleThumbnail } from './style-card';
 import type { LibraryItem } from '../library/schema';
 import type { RenderSource } from '../render/adapter';
 import type { TextMeasurer } from '../render/text-layout';
@@ -412,6 +413,7 @@ export async function runtimeCheck(
     if (item.type === 'motion') return await checkMotion(item, deps);
     if (item.type === 'preset') return await checkPreset(item);
     if (item.type === 'theme') return checkTheme(item.data);
+    if (item.type === 'style') return checkStyle(item.data, item.name.en);
     if (
       item.type === 'shape' ||
       item.type === 'text' ||
@@ -441,6 +443,24 @@ export async function runtimeCheck(
  * T1: a theme item: its fonts must be ones the editor has, and it gets a
  * swatch thumbnail (background with the other slots as bars).
  */
+/** B1: a style is text for the creator: nothing to render; its fonts are
+ *  checked and its card picture is drawn. */
+function checkStyle(data: StyleData, name: string): RuntimeResult {
+  const available = SYSTEM_FONTS.map(([font]) => font as string);
+  const fonts = data.look.fonts;
+  const missing = fonts
+    ? [fonts.heading, fonts.body].filter((font) => !available.includes(font))
+    : [];
+  return {
+    status: missing.length ? 'warning' : 'ok',
+    reasons: missing.length
+      ? [
+          `Font ${missing.join(', ')} is not in this editor; the creator will use the closest of ${available.join(', ')}.`,
+        ]
+      : [],
+    thumbnail: styleThumbnail(data, name),
+  };
+}
 function checkTheme(data: {
   palette: Record<string, string | undefined>;
   fonts: { heading: string; body: string };

@@ -8,3 +8,4 @@
 - A toast says "AI brief copied (N items listed)". When the clipboard is blocked, the text shows in a read-only box with a Copy button.
 - Tests: `tests/t2-ai-brief.test.ts` (every kind listed, size limit) and `e2e/t2-ai-brief.spec.ts` (QT-022).
 - Paste the reply into Media › Import › Import creator pack; checks run on their own and the result card opens the AI category.
+- B1: with a style chosen or the New AI video form filled, the block becomes the creator brief (docs/BRIEF-FORM.md), under 60 KB; with nothing filled it is unchanged.

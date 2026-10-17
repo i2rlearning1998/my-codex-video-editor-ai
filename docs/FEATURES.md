@@ -970,6 +970,16 @@ Hand-test fixes of PR #33 (S1 brief).
 | S1-007 | P1 | W8 | Verified | Save to My Templates lists every kind that fits the selection (Shape, Text, Background, Animation, Video, Image, Annotation, Sticker, Group, Scene), none covered by another region; "Save as template" is removed everywhere (Part 4) |
 | S1-008 | P1 | W8 | Verified | AI and My Templates code animations have Duplicate ("<name> copy", kept unique) and Export in their "⋯" menu; an exported file imports again through AI › Import; a code layer's Code animation submenu has Export and Duplicate as copy (Part 4) |
 
+## B1: Styles and the AI video brief
+
+The AI acts as the creator: a style gives the direction, the brief form says what is locked and what is free (B1 brief).
+
+| ID | Pri | Wave | Status | Item |
+| --- | --- | --- | --- | --- |
+| B1-001 | P1 | W10 | Verified | Creator Packs have a `style` kind (category, description, brief, look, kit, inputs, asset policy, output, default freedom); kit ids must exist or be marked optional; no URLs; styles list in AI › Styles as cards (palette, category icon, name) with Rename, Duplicate, Export, Move to folder, Details and Delete; "+" is Use this style; a style is never placed on the canvas (Part 1) |
+| B1-002 | P1 | W10 | Verified | AI › New AI video opens a brief form (What, Content, References, Freedom, Assets, Voice and music, Extra notes; style cards or "No style - you decide"); filled fields become LOCKED, empty ones are listed once under FREE; only file names and kinds are kept, with "Attach these files in the Claude chat"; Copy brief copies one creator block (task header, BRIEF, STYLE, project, library index, rules) under 60 KB; nothing blocks, hints are soft (Parts 2 and 3) |
+| B1-003 | P1 | W10 | Verified | Save as My brief keeps the form in My library (`brief/<id>`), listed under AI › Briefs with the shared "⋯" menu; "+" reopens the form prefilled; "Use this style" opens the form with the style chosen; not an undo step (Part 3) |
+
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
 Creator Pack items imported, checked and registered in the user's library, and their controls.

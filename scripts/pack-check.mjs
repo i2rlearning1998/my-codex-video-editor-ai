@@ -11,7 +11,7 @@ if (!args[0]) {
 } else {
   let server;
   try {
-    const options = { fxCatalog: [], knownLibraryIds: [] };
+    const options = { fxCatalog: null, knownLibraryIds: [] };
     for (const argument of args.slice(1)) {
       if (argument.startsWith('--fx='))
         options.fxCatalog = argument.slice(5).split(',').filter(Boolean);
@@ -30,6 +30,17 @@ if (!args[0]) {
     const { checkPack } = await server.ssrLoadModule(
       '/src/creator-pack/index.ts',
     );
+    // B1: without --fx, the editor's own FX catalog is used, so style kits
+    // and recipes are checked against the real ids.
+    if (!options.fxCatalog) {
+      const fx = await server.ssrLoadModule('/src/fx/index.ts');
+      options.fxCatalog = [
+        ...fx.filters,
+        ...fx.effects,
+        ...fx.adjustments,
+        ...fx.transitions,
+      ].map((item) => item.id);
+    }
     const result = checkPack(await readFile(args[0], 'utf8'), options);
     console.log(result.report);
     process.exitCode = result.ok ? 0 : 1;

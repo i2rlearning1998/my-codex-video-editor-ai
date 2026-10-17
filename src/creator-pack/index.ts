@@ -7,3 +7,4 @@ export * from './recipe';
 export * from './policy';
 export * from './composition';
 export * from './check';
+export * from './style';

@@ -2,6 +2,13 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## B1 (Styles and the AI video brief) — 2026-10-17
+
+- **Styles (Part 1):** a new Creator Pack kind, `style`: a reusable creative direction (category, mood, pacing, structure, what to avoid, look, kit, asset policy, output, default freedom). Kit ids are checked against the editor; text fields refuse URLs. Three example styles and one rejected example. AI › Styles shows them as cards; "+" is Use this style.
+- **New AI video (Part 2):** a large brief form in the AI category. Whatever is filled is LOCKED for the AI; whatever is empty is FREE. Only file names are kept, with a list of files to attach in the Claude chat.
+- **Creator brief and My briefs (Part 3):** Copy brief gives one block (task, BRIEF, STYLE, project, library ids, rules) under 60 KB; with nothing filled, Copy AI brief is unchanged. Save as My brief lists the form under AI › Briefs; "+" reopens it.
+- **Docs (Part 4):** docs/STYLES.md and docs/BRIEF-FORM.md.
+
 ## S1 (Clipchamp-level panels and menus) — 2026-10-17
 
 - **One panel header (Part 1):** every left and right panel shows its title and one drawer button; the Back arrows and Close crosses in panel headers are gone.
