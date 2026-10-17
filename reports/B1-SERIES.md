@@ -19,7 +19,19 @@
 
 ## 3. Checks
 
-VERIFY_PLACEHOLDER
+- `npm run verify`, run once at the end (Chromium 141 sandbox fallback): **exit 1**. It stopped at `npm test`, so build, e2e, the hook assertion and the ledger check were run by hand right after.
+  - Format: passed. Typecheck: passed. Build: passed.
+  - Unit and jsdom: **920 passed, 3 failed** (923 tests in 83 files). The failures are the same 3 as on S1:
+    - the two `tests/blocks/worker.test.ts` tests ("Sandbox unavailable" in this sandbox);
+    - the flaky `tests/thumbnails/service.test.ts` "samples distinct hover times".
+  - e2e: **506 passed, 2 failed** (53.9 min). Both were failing before this branch, so they were not chased:
+    - TXT-040 (`j5-weights.spec.ts`);
+    - the `[CV-044][CV-045]` text corner drag test (`transform-g2.spec.ts:168`). It still fails when run alone (scale factor 1.136 against the expected 1.070).
+- Hook assertion: `assert-no-test-hook: OK`.
+- Ledger: `765 items | Verified 443 | Claimed 18 | Todo 299 | Dropped 5`. It reports 3 errors, one each for CV-044, CV-045 and TXT-040, the two failing tests above.
+- Targeted runs during the work, all passing:
+  - `b1-styles` ×4, plus `s1-ui`, `t2-ai-brief`, `r2-ai-import`, `r3-shelf`, `q4-ai-import` and `p2-creator-pack` (23 tests);
+  - the unit tests `tests/b1-brief.test.ts`, `tests/t2-ai-brief.test.ts` and `tests/creator-pack` (94 tests).
 
 ## 4. Try-it script for the owner (about 10 minutes)
 
