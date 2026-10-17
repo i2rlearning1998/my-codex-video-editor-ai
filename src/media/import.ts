@@ -115,7 +115,12 @@ export async function importMediaFiles(
       } catch (error) {
         if (isAbort(error)) throw error;
         if (!stored) await deps.store.remove(key);
-        outcomes.push({ fileName: file.name, status: 'unreadable' });
+        outcomes.push({
+          fileName: file.name,
+          status: 'unreadable',
+          error:
+            error instanceof Error ? error.message : 'Media cannot be read',
+        });
         continue;
       }
       if (deps.signal?.aborted)
@@ -131,6 +136,7 @@ export async function importMediaFiles(
           fileName: file.name,
           lastModified: file.lastModified,
           fingerprint,
+          ...(probe.details ? { mediaProbe: { ...probe.details } } : {}),
         },
         ...(probe.width ? { width: Math.max(1, Math.round(probe.width)) } : {}),
         ...(probe.height
