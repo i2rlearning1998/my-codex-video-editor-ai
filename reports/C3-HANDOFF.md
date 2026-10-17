@@ -17,9 +17,20 @@ blockers, empty executable manifests; registry marks both local engines unavaila
 No playable local voice/STT or fake-runner inference proof is claimed. Task K must
 try another runtime/model and install verified pinned files plus runner tests.
 
-## Next task: B — recorder
+## Done — Task B recorder
+- Capture modes, countdown, pause/resume/stop/discard, typed permission/device errors,
+  elapsed/max duration, peak/RMS subscriptions and cleanup with injectable fakes.
+- MP4 preference; WebM encoded-packet remux repairs container duration and seek index.
+- Prepared Asset/media-store outputs and separate camera+PiP data. API docs provided.
+- No live device/browser proof; memory and background timer limitations documented.
+
+## Next task: C — audio engine
 C–J not started. Do not redo previous C2 speech or thumbnail work. Follow task order,
 only task unit tests + typecheck, commit/push after each; no UI/CSS/e2e/CI polling.
 
 Task A validation: 42 speech unit tests passed; typecheck passed both configurations.
 Initial test expectations corrected for English metadata and the five TTS engines.
+
+Task B validation: 17 recorder tests passed; typecheck passed both configurations.
+Initial track-array typing errors were fixed. WebM duration assertion now checks
+actual Segment metadata (same 0.040 s expectation), plus seek index/packet integrity.

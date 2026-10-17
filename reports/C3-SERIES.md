@@ -3,7 +3,7 @@
 | Task | Status | APIs / UI wiring |
 | --- | --- | --- |
 | A Speech | Cloud/registry/captions/cache done; local inference deferred to K | `createSarvam`, `createGoogleCloudTts`, `registerSpeechProviders`, `createSpeechRegistry`, `getSpeechStatus`, `listSpeechVoices`, `createModelLoader`, `createIndexedModelStore`; UI: language/voice/key picker, status reason, Save/import, cancel/progress, approximate caption badge |
-| B Recorder | Not started | Next task |
+| B Recorder | Implemented; unit verified | `startRecording`, `listDevices`, `getPermissionStates`, `selectRecordingMime`, `repairWebM`, `toMediaItem`, `browserRecorderDependencies`; UI: capture/device dialog, permissions, countdown, meter/timer, pause/resume/stop/discard, preview, media-store writes and Asset command, PiP placement |
 | C Audio | Not started | Pending |
 | D Text | Not started | Pending |
 | E Masks | Not started | Pending |
@@ -25,3 +25,14 @@ exact UI contracts are in docs/SPEECH-API.md.
 
 Task A validation: 42 speech unit tests passed; typecheck passed both configurations.
 Initial test expectations corrected for English metadata and the five TTS engines.
+
+Task B reuses existing Mediabunny 1.59.1 (MPL-2.0), dynamically imported for remux;
+no dependency/model added. Fixture repair writes 0.040 s container duration and
+preserves Opus packet bytes/timestamps plus Cues. Fake tests do not establish
+Safari/mobile behavior. Capture/remux is in memory (200 MiB default cap); background
+throttling can delay the 100 ms maximum-duration check. Camera/screen tracks have
+separate blobs and layout, not a composited recording. See docs/RECORDER-API.md.
+
+Task B validation: 17 recorder tests passed; typecheck passed both configurations.
+Initial track-array typing errors were fixed. WebM duration assertion now checks
+actual Segment metadata (same 0.040 s expectation), plus seek index/packet integrity.
