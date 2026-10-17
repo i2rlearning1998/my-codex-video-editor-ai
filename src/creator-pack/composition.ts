@@ -1,14 +1,27 @@
 import { validateSpec, resolveSpec } from '../ai-spec';
 import { jsonCopy } from './parser';
 import { controlsSchema } from './controls';
-/** Only this extension is removed from the validation projection, never the authored spec. */
-export function checkComposition(
-  input: unknown,
-  libraryIds: readonly string[],
-): string[] {
+
+/** A `{library: "pack/item"}` scene item, by scene and item index. */
+export interface LibraryReference {
+  readonly sceneIndex: number;
+  readonly itemIndex: number;
+  readonly library: string;
+  /** The sentinel item id that stands in for it in the projected spec. */
+  readonly itemId: string;
+}
+/**
+ * The spec as Composition Spec v1 validates it: Creator Pack controls become
+ * plain parameters, and each library reference becomes a validation-only
+ * sentinel shape (same count and timing). Only this extension is removed
+ * from the projection, never the authored spec.
+ */
+export function projectComposition(input: unknown): {
+  spec: Record<string, unknown>;
+  references: LibraryReference[];
+} {
   const spec = jsonCopy(input) as Record<string, unknown>,
-    warnings: string[] = [],
-    known = new Set(libraryIds);
+    references: LibraryReference[] = [];
   if (Array.isArray(spec.parameters)) {
     const controls = controlsSchema.parse(spec.parameters);
     spec.parameters = controls.map((c) => {
@@ -17,10 +30,10 @@ export function checkComposition(
     });
   }
   if (Array.isArray(spec.scenes))
-    for (const scene of spec.scenes) {
-      if (!scene || typeof scene !== 'object') continue;
+    spec.scenes.forEach((scene: unknown, sceneIndex: number) => {
+      if (!scene || typeof scene !== 'object') return;
       const s = scene as Record<string, unknown>;
-      if (!Array.isArray(s.items)) continue;
+      if (!Array.isArray(s.items)) return;
       s.items = s.items.map((item: unknown, index: number) => {
         if (!item || typeof item !== 'object' || !('library' in item))
           return item;
@@ -29,14 +42,16 @@ export function checkComposition(
           throw Error(
             'Library reference must be exactly {"library":"pack/item"}.',
           );
-        if (!known.has(ref.library))
-          throw Error(`Unknown library reference ${ref.library}.`);
-        warnings.push(
-          `Library ${ref.library}: reference checked; expansion skipped: not supported yet.`,
-        );
+        const itemId = `cp-reference-${index}`;
+        references.push({
+          sceneIndex,
+          itemIndex: index,
+          library: ref.library,
+          itemId,
+        });
         // Validation-only sentinel preserves scene/item count and timing validation.
         return {
-          id: `cp-reference-${index}`,
+          id: itemId,
           name: 'Library reference',
           kind: 'shape',
           start: 0,
@@ -47,7 +62,24 @@ export function checkComposition(
           fill: '#000000',
         };
       });
-    }
+    });
+  return { spec, references };
+}
+
+export function checkComposition(
+  input: unknown,
+  libraryIds: readonly string[],
+): string[] {
+  const { spec, references } = projectComposition(input),
+    warnings: string[] = [],
+    known = new Set(libraryIds);
+  for (const ref of references) {
+    if (!known.has(ref.library))
+      throw Error(`Unknown library reference ${ref.library}.`);
+    warnings.push(
+      `Library ${ref.library}: reference checked; expansion skipped: not supported yet.`,
+    );
+  }
   const result = validateSpec(spec);
   if (!result.ok)
     throw Error(result.errors.map((e) => `${e.path}: ${e.message}`).join('\n'));

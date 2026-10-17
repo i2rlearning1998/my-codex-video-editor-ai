@@ -22,7 +22,31 @@ export interface TierAOptions {
   readonly at?: number;
   /** Fresh id suffix (tests pass a fixed one). */
   readonly suffix?: string;
+  /**
+   * J (composition adapter): decides an item before it is built. `skip`
+   * leaves it out; `{ assetId }` fills a media slot with an asset already in
+   * the project; `{ placeholder }` builds an empty-slot frame (a shape layer
+   * with these properties) in the slot's place. Undefined keeps the default
+   * (media slots without a file are left out and named).
+   */
+  readonly item?: (item: TierAItem) => TierAItemDecision | undefined;
 }
+export interface TierAItem {
+  readonly id: string;
+  readonly kind: string;
+  readonly slot?: string;
+  /** Scene-local start and the item's length (seconds). */
+  readonly start: number;
+  readonly duration: number;
+  /** The layer this item becomes (with the suffix). */
+  readonly layerId: string;
+  readonly clipId: string;
+  readonly compositionId: string;
+}
+export type TierAItemDecision =
+  | 'skip'
+  | { readonly assetId: string }
+  | { readonly placeholder: Readonly<Record<string, unknown>> };
 export interface TierAResult {
   readonly commands: Command[];
   /** New scenes, in order (mode 'new'). */
@@ -38,6 +62,9 @@ interface PlannedCommand {
 interface SpecItem {
   id: string;
   kind: string;
+  slot?: string;
+  start: number;
+  duration: number;
   blockId?: string;
   params?: Record<string, number | string | boolean>;
   seed?: number;
@@ -98,6 +125,28 @@ export async function tierACommands(
   );
   /** Layers (plan ids) that are not built, and why. */
   const skipped = new Map<string, string>();
+  const decisions = new Map<string, TierAItemDecision | undefined>();
+  const decide = (layer: string, item: SpecItem) => {
+    if (!options.item) return undefined;
+    if (!decisions.has(layer)) {
+      const entry = plan.itemMap.find((e) => e.layerId === layer)!;
+      const scene = plan.scenes.find((s) => s.id === entry.sceneId)!;
+      decisions.set(
+        layer,
+        options.item({
+          id: item.id,
+          kind: item.kind,
+          ...(item.slot ? { slot: item.slot } : {}),
+          start: item.start,
+          duration: item.duration,
+          layerId: rename(layer),
+          clipId: rename(entry.clipId),
+          compositionId: rename(scene.compositionId),
+        }),
+      );
+    }
+    return decisions.get(layer);
+  };
   const notBuilt = plan.requirements.flatMap((r) =>
     r.reason.startsWith('Code layer') || r.reason.startsWith('Camera/parallax')
       ? []
@@ -140,9 +189,31 @@ export async function tierACommands(
       } as Command);
       continue;
     }
-    if (op.status === 'needs-asset') {
-      if (itemLayer) skipped.set(itemLayer, 'needs-asset');
+    const decision = itemLayer && item ? decide(itemLayer, item) : undefined;
+    if (decision === 'skip') {
+      skipped.set(itemLayer!, 'skip');
       continue;
+    }
+    if (op.status === 'needs-asset') {
+      if (decision && 'assetId' in decision) {
+        if (c.type === 'CREATE_LAYER')
+          (c.layer as Record<string, unknown>).assetId = decision.assetId;
+        if (c.type === 'CREATE_CLIP')
+          (c.clip as Record<string, unknown>).assetId = decision.assetId;
+      } else if (decision && 'placeholder' in decision) {
+        if (c.type === 'CREATE_LAYER') {
+          const layer = c.layer as Record<string, unknown>;
+          layer.type = 'shape';
+          layer.assetId = null;
+          layer.properties = {
+            ...(layer.properties as object),
+            ...decision.placeholder,
+          };
+        }
+      } else {
+        if (itemLayer) skipped.set(itemLayer, 'needs-asset');
+        continue;
+      }
     }
     if (
       op.command.type === 'ADD_EFFECT' ||
