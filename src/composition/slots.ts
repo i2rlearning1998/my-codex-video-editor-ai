@@ -19,8 +19,16 @@ export interface CompositionSlot {
 export const VOICE_OVER_SLOT = 'voice-over';
 
 export type SlotFill =
-  /** An editor library item (built-in or My library), by id. */
-  | { readonly kind: 'library'; readonly id: string }
+  /**
+   * An editor library item (built-in or My library), by id. It is added on
+   * top of the scene at the slot's box; with `replace: true` it takes the
+   * slot's place instead: the slot item's timing and stacking place.
+   */
+  | {
+      readonly kind: 'library';
+      readonly id: string;
+      readonly replace?: boolean;
+    }
   /** A stock item the caller imported as an asset (provider and item kept). */
   | {
       readonly kind: 'stock';

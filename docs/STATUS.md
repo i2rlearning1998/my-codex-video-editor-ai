@@ -1,3 +1,6 @@
+- **FINAL1 (integration part 1)** is on `claude/final-1`, a draft PR stacked on `claude/j-composition` (PR #39), not merged; see reports/FINAL1.md.
+  - Merged `codex/c3-render-effects` and `codex/c3-media-probe` (D-275). Captions and nesting engines (D-270, D-271), the scene camera (D-272), composition decisions (D-273); local speech still blocked (D-274).
+  - Schema 9 (optional `camera` field, no bump); engine only, no UI; no new npm dependencies.
 - **J (composition adapter)** is on `claude/j-composition`, a draft PR stacked on `claude/b1-styles-brief` (PR #36), with `origin/codex/c2-engines` merged; not merged; see reports/J-SERIES.md.
   - `src/composition`: media slots, `buildProjectFromComposition`, the pack builder and `npm run composition:build` (D-269). Engine only; nothing in the UI is wired yet.
   - Schema unchanged; no new npm dependencies.

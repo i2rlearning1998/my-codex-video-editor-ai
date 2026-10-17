@@ -1,6 +1,9 @@
+import { chromaSchema, type ChromaKey } from '../chroma/types';
+import { maskSchema, matteSchema, type Mask, type Matte } from '../masks/types';
 import { isReservedMarker } from './scene-transitions';
 import { z } from 'zod';
 import { trackHolds } from './lanes';
+import { isNestedClip } from './nesting';
 
 export const SCHEMA_VERSION = 9;
 export type JsonValue =
@@ -153,7 +156,10 @@ export interface Layer {
   transform: Transform;
   properties: Record<string, Property>;
   effects: [];
-  masks: [];
+  masks?: Mask[] | undefined;
+  matte?: Matte | undefined;
+  blendMode?: string | undefined;
+  chromaKey?: ChromaKey | undefined;
   assetId: string | null;
   children: Layer[];
   /** Schema 8 (optional): an imported code animation (X1). */
@@ -170,13 +176,36 @@ export const layerSchema: z.ZodType<Layer> = z.lazy(() =>
       transform: transformSchema,
       properties: z.record(idSchema, propertySchema),
       effects: z.tuple([]),
-      masks: z.tuple([]),
+      masks: z
+        .array(
+          maskSchema.superRefine((mask, ctx) => {
+            for (const key of mask.keyframes ?? [])
+              if (
+                key.easing !== undefined &&
+                !easingSchema.safeParse(key.easing).success
+              )
+                ctx.addIssue({
+                  code: 'custom',
+                  message: 'Invalid mask easing',
+                });
+          }),
+        )
+        .max(32)
+        .optional(),
+      matte: matteSchema.optional(),
+      blendMode: z.string().max(64).optional(),
+      chromaKey: chromaSchema.optional(),
       assetId: idSchema.nullable(),
       children: z.array(layerSchema),
       code: codeLayerSchema.optional(),
     })
     .strict()
     .superRefine((layer, ctx) => {
+      if (layer.chromaKey && layer.type !== 'image' && layer.type !== 'video')
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Chroma key requires image or video',
+        });
       if (layer.code && (layer.type !== 'video' || layer.assetId !== null))
         ctx.addIssue({
           code: 'custom',
@@ -234,6 +263,31 @@ export const trackSchema = z
   })
   .strict();
 export type Track = z.infer<typeof trackSchema>;
+const cameraShake = z
+  .object({
+    amplitude: finite.min(0).max(4096),
+    frequency: finite.min(0).max(1000),
+    seed: z.number().int().nonnegative().max(0xffffffff),
+  })
+  .strict();
+export const sceneCameraSchema = z
+  .object({
+    x: numberProperty,
+    y: numberProperty,
+    zoom: numberProperty,
+    rotation: numberProperty,
+    shake: cameraShake.optional(),
+  })
+  .strict()
+  .superRefine((camera, ctx) => {
+    const zooms = [
+      camera.zoom.value,
+      ...camera.zoom.keyframes.map((k) => k.value),
+    ];
+    if (zooms.some((z) => typeof z !== 'number' || z <= 0 || z > 100))
+      ctx.addIssue({ code: 'custom', message: 'Camera zoom must be 0 to 100' });
+  });
+export type SceneCamera = z.infer<typeof sceneCameraSchema>;
 export const compositionSchema = z
   .object({
     id: idSchema,
@@ -252,6 +306,15 @@ export const compositionSchema = z
         .strict(),
     ),
     audioTracks: z.tuple([]),
+    /**
+     * FINAL1 (schema 9, optional, like `playRange`): a virtual camera over
+     * the whole scene. x and y are offsets from the centre in composition
+     * pixels, zoom a positive factor, rotation degrees; each is a number
+     * property, so it keyframes with the existing model and easing. `shake`
+     * adds a seeded drift. Missing means no camera: the scene draws exactly
+     * as before.
+     */
+    camera: sceneCameraSchema.optional(),
     /**
      * U6 (schema 6, optional): the scene's playback and export range in
      * seconds. Missing means the whole scene; a null end follows the scene's
@@ -549,6 +612,13 @@ export function validateProject(value: unknown): Project {
         track.clips.map((clip) => clip.layerId),
       ),
     );
+    // NEST (D-271): a nested clip's children live in its own time frame;
+    // only the outer clip sets the scene's length.
+    const nestedLayers = new Set(
+      composition.tracks.flatMap((track) =>
+        track.clips.filter(isNestedClip).map((clip) => clip.layerId),
+      ),
+    );
     const visit = (layers: Layer[]) => {
       for (const layer of layers) {
         if (!linkedLayers.has(layer.id))
@@ -558,7 +628,7 @@ export function validateProject(value: unknown): Project {
           ...Object.values(layer.properties),
         ])
           endpoints.push(...property.keyframes.map((frame) => frame.time));
-        visit(layer.children);
+        if (!nestedLayers.has(layer.id)) visit(layer.children);
       }
     };
     visit(composition.layers);

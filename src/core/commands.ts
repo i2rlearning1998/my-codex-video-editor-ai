@@ -12,12 +12,14 @@ import {
   layerSchema,
   nameSchema,
   propertySchema,
+  sceneCameraSchema,
   trackSchema,
   type Layer,
   type Project,
   type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
+import { isNestedClip, nestedAnchor } from './nesting';
 import { syncLanes } from './lanes';
 import {
   maxTransition,
@@ -123,6 +125,14 @@ export const commandSchema = z.discriminatedUnion('type', [
       type: z.literal('SET_COMPOSITION_FPS'),
       ...location,
       fps: z.number().positive().max(240),
+    })
+    .strict(),
+  // FINAL1: one scene's virtual camera (null removes it).
+  z
+    .object({
+      type: z.literal('SET_COMPOSITION_CAMERA'),
+      ...location,
+      camera: sceneCameraSchema.nullable(),
     })
     .strict(),
   // U6: one scene's playback and export range (null end: the scene's end).
@@ -498,6 +508,15 @@ export function applyCommand(project: Project, command: Command): void {
       composition.playRange = { start: command.start, end: command.end };
       return;
     }
+    case 'SET_COMPOSITION_CAMERA': {
+      const composition = compositionById(project, command.compositionId);
+      if (command.camera === null) delete composition.camera;
+      else
+        composition.camera = structuredClone(
+          command.camera,
+        ) as typeof composition.camera;
+      return;
+    }
     case 'SET_OUTLINER': {
       const composition = compositionById(project, command.compositionId);
       if (command.outliner === null) delete composition.outliner;
@@ -647,7 +666,18 @@ export function applyCommand(project: Project, command: Command): void {
       // so they follow it: a move shifts them (and their keyframes), a trim
       // or lengthening moves the edges that sat on the clip's edges.
       const group = findLayer(composition.layers, clip.layerId)?.layer;
-      if (group?.type === 'group')
+      // NEST (D-271): a nested clip's children stay put in its own time
+      // frame; they follow only the frame's anchor (start minus source in).
+      if (group?.type === 'group' && isNestedClip(clip)) {
+        group.startTime = command.startTime;
+        group.duration = command.duration;
+        shiftNested(
+          group,
+          command.startTime -
+            (command.sourceIn ?? clip.sourceIn) / clip.speed -
+            nestedAnchor(clip),
+        );
+      } else if (group?.type === 'group')
         retimeChildren(
           group,
           clip.startTime,
@@ -725,6 +755,13 @@ export function applyCommand(project: Project, command: Command): void {
       )
         throw new Error(
           'Not enough room: the slower clip would overlap the next clip',
+        );
+      // NEST (D-271): the children follow the nested frame's anchor.
+      const nested = findLayer(composition.layers, clip.layerId)?.layer;
+      if (nested?.type === 'group' && isNestedClip(clip))
+        shiftNested(
+          nested,
+          clip.sourceIn / clip.speed - clip.sourceIn / command.speed,
         );
       clip.speed = command.speed;
       clip.duration = duration;
@@ -1022,6 +1059,18 @@ function retimeChildren(
         layer.startTime = nextStart;
         layer.duration = nextEnd - nextStart;
       }
+      visit(layer.children);
+    }
+  };
+  visit(group.children);
+}
+/** NEST (D-271): moves a nested clip's children (and keyframes) by `delta`. */
+function shiftNested(group: Layer, delta: number): void {
+  if (delta === 0) return;
+  const visit = (layers: Layer[]) => {
+    for (const layer of layers) {
+      layer.startTime = Math.max(0, layer.startTime + delta);
+      shiftKeyframes(layer, delta);
       visit(layer.children);
     }
   };

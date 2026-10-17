@@ -1,5 +1,8 @@
+import { processChromaFrame } from '../chroma/process';
+import { drawMaskedItems } from '../masks/render';
 import { drawStructuredText } from '../text-engine/draw';
 import { drawRich } from './rich-text';
+import { sceneCameraMatrix } from '../camera/scene';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
@@ -372,6 +375,14 @@ export function drawComposition(
     0,
   ];
   const view = multiplyMatrices(pixels, viewport.matrix);
+  // FINAL1: a scene camera moves the picture (not the artboard or the
+  // editor's overlays); without one, `content` is `view`.
+  const camera = source.composition.camera
+    ? sceneCameraMatrix(source.composition, source.currentTime ?? 0)
+    : null;
+  const content = camera
+    ? multiplyMatrices(view, camera as unknown as AffineMatrix)
+    : view;
   const { items, warnings } = deriveRenderItems(source);
   const errors = [...warnings];
   context.setTransform(1, 0, 0, 1, 0, 0);
@@ -395,7 +406,7 @@ export function drawComposition(
   const paintItem = (context: Target, item: RenderItem, fade: number) => {
     context.save();
     try {
-      context.setTransform(...multiplyMatrices(view, item.matrix));
+      context.setTransform(...multiplyMatrices(content, item.matrix));
       context.globalAlpha = item.opacity * fade;
       // W5-C Wipe: only the revealed part of the box is drawn.
       if (item.reveal !== undefined) {
@@ -410,7 +421,7 @@ export function drawComposition(
         context.clip();
       }
       // W4-B: decoded media replaces the placeholder once its frame is ready.
-      const frame = item.media
+      let frame: CanvasImageSource | null | undefined = item.media
         ? source.frames?.frame(item.media, source.playing ?? false)
         : null;
       // I1.7: deleted or missing media draws a clear hatched placeholder.
@@ -423,6 +434,12 @@ export function drawComposition(
         );
         return;
       }
+      if (frame && item.chromaKey)
+        frame = processChromaFrame(
+          frame,
+          item.chromaKey,
+          source.chromaQuality ?? 'full',
+        );
       // H3: cropping shows the whole source dimmed and the kept part bright.
       if (item.cropView) {
         const { source: full, frame: kept } = item.cropView;
@@ -542,6 +559,53 @@ export function drawComposition(
   // and composited once. Preview and export share this path.
   const byId = new Map(items.map((item) => [item.id, item]));
   const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
+    const selected = items
+      .filter(
+        (item) =>
+          (!only || only(item)) &&
+          !(
+            item.fxFrom &&
+            items.some(
+              (other) =>
+                other.fxTransition?.from === item.id && (!only || only(other)),
+            )
+          ),
+      )
+      .map((item) =>
+        item.maskScopes
+          ? {
+              ...item,
+              maskScopes: item.maskScopes.map((scope) => ({
+                ...scope,
+                matrix: multiplyMatrices(content, scope.matrix),
+              })),
+            }
+          : item,
+      );
+    if (
+      drawMaskedItems(
+        context,
+        selected,
+        items,
+        (target, item) => {
+          if (
+            (item.fx || item.fxTransition) &&
+            drawWithFx(
+              target,
+              item,
+              fade,
+              paintItem,
+              item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
+              errors,
+            )
+          )
+            return;
+          paintItem(target, item, fade);
+        },
+        errors,
+      )
+    )
+      return;
     for (const item of items) {
       if (only && !only(item)) continue;
       if (item.fxFrom && byId.get(item.id)) {

@@ -8,6 +8,7 @@ export * from './transforms';
 export * from './pivot';
 export * from './time';
 export * from './timeline';
+export * from './nesting';
 export * from './lanes';
 export * from './transitions';
 export * from './scene-transitions';

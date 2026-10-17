@@ -18,14 +18,14 @@ export const LOCAL_MODELS: readonly LocalModelConfig[] = [
     files: [],
     languages: ['en'],
     blocker:
-      'SpeechT5 example speaker embedding licence and pinned artifact hashes have not been verified; no browser runner is installed.',
+      'No permissively licensed English voice without an eSpeak (GPL) phonemizer was verified; SpeechT5 needs a speaker embedding whose licence is confirmed. See docs/SPEECH-API.md, FINAL1 Step 5.',
   },
   {
     id: 'local-whisper',
     files: [],
     languages: ['en', 'hi'],
     blocker:
-      'Whisper tiny artifact metadata retrieval failed; exact file hashes and a matching lazy browser runner are not yet installed.',
+      'huggingface.co is refused by the build environment, so official Whisper tiny file hashes cannot be pinned; the owner can host the files listed in docs/SPEECH-API.md, FINAL1 Step 5.',
   },
 ];
 /** Research URLs are not runtime download URLs and never imply verified artefacts. */
