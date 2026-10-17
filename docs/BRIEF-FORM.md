@@ -39,7 +39,7 @@ The block stays under 60 KB: labels are dropped first ("ids only, labels dropped
 
 ## My briefs
 
-Save as My brief asks for a name (the topic by default) and keeps the form's values in My library (the media store, key `brief/<id>`; OPFS with an IndexedDB fallback), never in the project and never as an undo step. AI › Briefs lists them with the shared "⋯" menu: Rename, Open, Duplicate, Export (the brief text as `.brief.txt`), Move to folder, Details, Delete (with Restore).
+Save as My brief asks for a name (the topic by default) and keeps the form's values in My library (the media store, key `brief/<id>`; OPFS with an IndexedDB fallback), never in the project and never as an undo step. AI › Briefs lists them with the shared "⋯" menu: Rename, Open this brief, Duplicate, Export (the brief text as `.brief.txt`), Move to folder, Details, Delete (with Restore).
 
 ## Tests
 
