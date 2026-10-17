@@ -11,6 +11,8 @@ export interface CaptionCue {
 }
 export interface CaptionOptions {
   maxCharsPerLine?: number;
+  /** Lines per cue (default 2). */
+  maxLines?: number;
   minDuration?: number;
   maxDuration?: number;
 }
@@ -22,9 +24,12 @@ export function toCaptionCues(
   const width = options.maxCharsPerLine ?? 42;
   const min = options.minDuration ?? 0.5;
   const max = options.maxDuration ?? 6;
+  const maxLines = options.maxLines ?? 2;
   if (
     !Number.isInteger(width) ||
     width < 1 ||
+    !Number.isInteger(maxLines) ||
+    maxLines < 1 ||
     !Number.isFinite(min) ||
     !Number.isFinite(max) ||
     min < 0 ||
@@ -86,13 +91,17 @@ export function toCaptionCues(
     const lines = wrap(
       current ? `${current.lines.join(' ')} ${unit.text}` : unit.text,
     );
-    if (current && lines.length <= 2 && unit.end - current.start <= max) {
+    if (
+      current &&
+      lines.length <= maxLines &&
+      unit.end - current.start <= max
+    ) {
       current.end = unit.end;
       current.lines = lines;
       if (timedWords) current.words.push({ ...unit });
     } else {
       const ownLines = wrap(unit.text);
-      if (ownLines.length > 2) throw new SpeechError('INVALID_INPUT');
+      if (ownLines.length > maxLines) throw new SpeechError('INVALID_INPUT');
       cues.push({
         id: `caption_${cues.length + 1}`,
         start: unit.start,
