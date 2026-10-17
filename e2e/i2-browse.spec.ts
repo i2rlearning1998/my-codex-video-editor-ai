@@ -32,7 +32,7 @@ test('[LAY-040] a browse panel has a header with Back and Close, a sticky search
 }) => {
   await showCategory(page, 'Templates');
   const host = panel(page, 'templates');
-  await expect(host.locator('.browse-title')).toHaveText('Templates');
+  await expect(page.locator('#left-panel-title')).toHaveText('Templates');
   await expect(host.locator('[data-action="browse-back"]')).toBeHidden();
   // Sections, each with a title, See all and a horizontal strip.
   await expect(host.locator('.browse-section-head h3')).toContainText([
@@ -96,8 +96,8 @@ test('[LAY-040] a browse panel has a header with Back and Close, a sticky search
   await host.locator('#browse-search-templates').fill('quiz');
   await expect(host.locator('.library-card')).toHaveCount(1);
   await host.locator('#browse-search-templates').fill('');
-  // Close collapses the side panel.
-  await host.locator('[data-action="browse-close"]').click();
+  // The shared header's collapse button collapses the side panel (S1).
+  await page.locator('.library .panel-head-collapse').click();
   await expect.poll(() => leftOpen(page)).toBe(false);
 });
 
@@ -166,7 +166,7 @@ test('[TPL-015] Save scene to My Templates keeps a scene in My Templates (not an
   const point = await toScreen(page, 30, 700);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await page
-    .locator('#canvas-context-menu [data-action="save-as-template"]')
+    .locator('#canvas-context-menu [data-action="save-scene-to-mine"]')
     .click();
   await expect(
     page.locator('.toast', { hasText: 'Saved to My Templates › Scene' }),

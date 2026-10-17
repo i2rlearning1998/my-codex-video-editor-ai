@@ -61,7 +61,7 @@ async function pixels(page: Page) {
     );
 }
 
-test('[LYR-018] outliner menus are the shared vertical list (200 to 240 px, 32 px rows, icons, shortcuts) below the clicked row; Shift+F10 opens them, Escape closes; rows are 32 px with 18 px icons', async ({
+test('[LYR-018] outliner menus are the shared vertical list (240 to 260 px since S1, 32 px rows, icons, shortcuts) below the clicked row; Shift+F10 opens them, Escape closes; rows are 32 px with 18 px icons', async ({
   page,
 }) => {
   const { a } = await nested(page);
@@ -111,8 +111,9 @@ test('[LYR-018] outliner menus are the shared vertical list (200 to 240 px, 32 p
   }
   for (const box of boxes) expect(Math.round(box.height)).toBe(32);
   const menuBox = (await menu(page).boundingBox())!;
-  expect(menuBox.width).toBeGreaterThanOrEqual(200);
-  expect(menuBox.width).toBeLessThanOrEqual(240);
+  // S1 (D-266): every context menu is 240 to 260 px wide.
+  expect(menuBox.width).toBeGreaterThanOrEqual(239);
+  expect(menuBox.width).toBeLessThanOrEqual(260);
   // It never covers the clicked row's name.
   expect(
     menuBox.y >= rowBox.y + rowBox.height - 1 ||

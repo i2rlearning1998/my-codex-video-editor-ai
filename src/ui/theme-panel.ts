@@ -111,9 +111,6 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
   const render = () => {
     const { builtIn, saved } = options.themes();
     const current = options.current();
-    const title = document.createElement('h2');
-    title.className = 'theme-title';
-    title.textContent = t('theme.panel');
     const now = [...builtIn, ...saved].find((item) => item.id === current);
     const line = document.createElement('p');
     line.className = 'theme-current';
@@ -235,7 +232,6 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
     sync();
     saveRow.append(saveName, save);
     host.replaceChildren(
-      title,
       line,
       overrideLabel,
       group('builtin', t('theme.builtIn'), builtIn),

@@ -14,10 +14,13 @@ export interface MyTemplatesPanelOptions {
   readonly library: MyLibrary;
   readonly add: (id: string) => void;
   readonly rename: (id: string) => void;
+  /** S1: a code animation's Duplicate and Export (absent for others). */
+  readonly duplicate?: (id: string) => void;
+  readonly exportItem?: (id: string) => void;
+  readonly isCode?: (id: string) => boolean;
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
   readonly prompt: (title: string, value: string) => Promise<string | null>;
-  readonly collapse?: () => void;
   readonly report: (error: unknown) => void;
   readonly toast?: (text: string) => void;
 }
@@ -32,7 +35,6 @@ export function mountMyTemplatesPanel(
     title: t('mine.title'),
     classes: { card: 'mine-card', section: 'mine-group' },
     searchLabel: t('shelf.searchMine'),
-    ...(options.collapse ? { collapse: options.collapse } : {}),
     categoryLabel: (kind) => t(`mine.kind.${kind}`),
     categoryOrder: MINE_KINDS,
     folders: MINE_FOLDERS,
@@ -51,6 +53,11 @@ export function mountMyTemplatesPanel(
           folderId: MINE_FOLDERS.folderOf(item.id),
           keywords: [item.kind],
           data: { mine: item.id, kind: item.kind },
+          drag: () => ({
+            kind: 'saved' as const,
+            id: item.id,
+            name: item.name,
+          }),
           thumb: (slot: HTMLElement) => libraryThumb(slot, source),
           ...(item.kind === 'animation'
             ? { preview: (slot: HTMLElement) => libraryPreview(slot, source) }
@@ -59,6 +66,23 @@ export function mountMyTemplatesPanel(
       }),
     add: options.add,
     rename: options.rename,
+    extraMenu: (id) =>
+      options.isCode?.(id)
+        ? [
+            {
+              id: 'mine-duplicate',
+              label: t('shelf.duplicate'),
+              icon: 'duplicate',
+              run: () => options.duplicate?.(id),
+            },
+            {
+              id: 'mine-export',
+              label: t('shelf.export'),
+              icon: 'download',
+              run: () => options.exportItem?.(id),
+            },
+          ]
+        : [],
     details: options.details,
     remove: options.remove,
     prompt: options.prompt,

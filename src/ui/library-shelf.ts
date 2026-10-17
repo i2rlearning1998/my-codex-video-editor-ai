@@ -1,7 +1,7 @@
 // R3: the shared Clipchamp-style library panel, used by Media, AI and My
-// Templates. Top to bottom: a title row with a collapse button; a search box
+// Templates. Top to bottom (under the shared panel header): a search box
 // with a New folder icon button on the same row; the panel's primary actions;
-// a row of chips (All, one per category that has items, then the user's
+// a row of chips (All, one per category that has items or is fixed, then the user's
 // folders); a two-column grid of big cards (16:9 thumbnail, one-line name).
 // A card's click adds it to the scene; its "⋯" button opens the same menu as
 // a right-click (Rename, Add to scene, Move to folder, Details, Delete) and
@@ -10,7 +10,8 @@
 // Nothing here is an undo step: the panels' owners keep library state
 // outside the project history.
 import { t } from '../i18n';
-import { createMenu, type MenuEntry } from './context-menu';
+import { drags, type DragPayload } from './drag-controller';
+import { createMenu, placeMenuAt, type MenuEntry } from './context-menu';
 import { iconSvg } from './icons';
 
 export interface ShelfItem {
@@ -20,9 +21,10 @@ export interface ShelfItem {
   readonly category: string;
   readonly folderId?: string | null;
   readonly title?: string;
-  /** A small chip over the thumbnail (a duration, the AI chip). */
+  /** S1 Part 3: what a drag of the card carries (canvas and timeline). */
+  readonly drag?: () => DragPayload | null;
+  /** A small badge over the thumbnail (a duration). */
   readonly badge?: string;
-  readonly chip?: string;
   /** Extra data-* attributes on the card button. */
   readonly data?: Readonly<Record<string, string>>;
   /** Extra search words. */
@@ -60,7 +62,6 @@ export interface ShelfOptions {
   };
   readonly searchId?: string;
   readonly searchLabel: string;
-  readonly collapse?: () => void;
   readonly actions?: readonly ShelfAction[];
   /** Extra elements placed after the action row (a drop zone, progress). */
   readonly extra?: readonly HTMLElement[];
@@ -69,6 +70,10 @@ export interface ShelfOptions {
   readonly flatAll?: boolean;
   /** Category order (others follow in first-seen order). */
   readonly categoryOrder?: readonly string[];
+  /** S1: extra item-menu entries after Add to scene (Duplicate, Export). */
+  readonly extraMenu?: (id: string) => readonly MenuEntry[];
+  /** S1: categories whose chip shows even with no items (Media's types). */
+  readonly fixedCategories?: readonly string[];
   readonly folders?: {
     list(): readonly ShelfFolder[];
     create(name: string): ShelfFolder | void;
@@ -120,24 +125,9 @@ export function mountShelf(options: ShelfOptions): Shelf {
   let disposed = false;
   let stopPreview: (() => void) | null = null;
 
-  // Title row.
-  const head = document.createElement('header');
-  head.className = 'shelf-head';
-  const title = document.createElement('h2');
-  title.className = 'shelf-title';
-  title.textContent = options.title;
-  head.append(title);
-  if (options.collapse) {
-    const collapse = document.createElement('button');
-    collapse.type = 'button';
-    collapse.className = 'icon-button shelf-collapse';
-    collapse.id = `${prefix}-collapse`;
-    collapse.innerHTML = iconSvg('chevronLeft', 16);
-    collapse.setAttribute('aria-label', t('shelf.collapse'));
-    collapse.title = t('shelf.collapse');
-    collapse.onclick = () => options.collapse?.();
-    head.append(collapse);
-  }
+  // S1 Part 1: the panel's title and collapse button are the shared panel
+  // header's (panel-header.ts); the shelf only names its region.
+  host.setAttribute('aria-label', options.title);
   // Search with New folder on the same row.
   const searchRow = document.createElement('div');
   searchRow.className = 'shelf-search-row';
@@ -202,7 +192,6 @@ export function mountShelf(options: ShelfOptions): Shelf {
   grid.className = 'shelf-grid';
   grid.id = `${prefix}-grid`;
   host.replaceChildren(
-    head,
     searchRow,
     ...(options.actions?.length ? [actions] : []),
     ...(options.extra ?? []),
@@ -223,12 +212,7 @@ export function mountShelf(options: ShelfOptions): Shelf {
       menu.close();
   };
   document.addEventListener('pointerdown', closeOutside, true);
-  const placeMenu = (x: number, y: number) => {
-    const width = menuElement.offsetWidth,
-      height = menuElement.offsetHeight;
-    menuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
-    menuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
-  };
+  const placeMenu = (x: number, y: number) => placeMenuAt(menuElement, x, y);
   const run = (action: () => unknown) => () => {
     try {
       const result = action();
@@ -261,6 +245,7 @@ export function mountShelf(options: ShelfOptions): Shelf {
         icon: 'plus',
         run: run(() => options.add(id)),
       },
+      ...(options.extraMenu?.(id) ?? []),
       ...(folders
         ? [
             {
@@ -362,8 +347,13 @@ export function mountShelf(options: ShelfOptions): Shelf {
       word.toLowerCase().includes(query),
     );
   /** Categories with at least one item, in the panel's order. */
-  const categories = (items: readonly ShelfItem[]) => {
-    const seen = [...new Set(items.map((item) => item.category))];
+  const categories = (items: readonly ShelfItem[], fixed = false) => {
+    const seen = [
+      ...new Set([
+        ...(fixed ? (options.fixedCategories ?? []) : []),
+        ...items.map((item) => item.category),
+      ]),
+    ];
     const order = options.categoryOrder ?? [];
     return [
       ...order.filter((key) => seen.includes(key)),
@@ -429,14 +419,6 @@ export function mountShelf(options: ShelfOptions): Shelf {
       badge.textContent = item.badge;
       button.append(badge);
     }
-    if (item.chip) {
-      const chipEl = document.createElement('span');
-      chipEl.className = 'ai-chip shelf-chip';
-      chipEl.textContent = item.chip;
-      // On the card, not in the thumbnail slot, which the thumbnail
-      // service may replace later.
-      button.append(chipEl);
-    }
     const name = document.createElement('span');
     name.className = `shelf-name ${options.classes?.name ?? ''}`.trim();
     name.textContent = item.name;
@@ -468,6 +450,14 @@ export function mountShelf(options: ShelfOptions): Shelf {
       button.addEventListener('blur', stop);
     }
     item.decorate?.(button);
+    // S1 Part 3: every library card drags the same way (one pointer-driven
+    // controller); the ghost shows the card's thumbnail.
+    if (item.drag)
+      drags().source(button, () => {
+        const value = item.drag!();
+        const src = button.querySelector('img')?.getAttribute('src') ?? null;
+        return value && !value.thumb && src ? { ...value, thumb: src } : value;
+      });
     const more = document.createElement('button');
     more.type = 'button';
     more.className =
@@ -520,13 +510,13 @@ export function mountShelf(options: ShelfOptions): Shelf {
     stopPreview = null;
     const items = options.items();
     const folders = options.folders?.list() ?? [];
-    const keys = categories(items);
+    const keys = categories(items, true);
     // A tab whose last item went disappears; the panel falls back to All.
     if (tab.startsWith('folder:')) {
       if (!folders.some((folder) => folderTab(folder.id) === tab)) tab = ALL;
     } else if (tab !== ALL && !keys.includes(tab)) tab = ALL;
     tabs.replaceChildren(
-      ...(items.length || folders.length ? [chip(ALL, t('shelf.all'))] : []),
+      ...(keys.length || folders.length ? [chip(ALL, t('shelf.all'))] : []),
       ...keys.map((key) => chip(key, options.categoryLabel(key))),
       ...folders.map((folder) =>
         chip(folderTab(folder.id), folder.name, folder),

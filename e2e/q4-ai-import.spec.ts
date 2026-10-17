@@ -43,7 +43,8 @@ test('[QT-014][QT-015][QT-012][QT-013] pasted packs are checked on their own; th
   const shapes = ai.locator('.ai-group[data-kind="shape"]');
   await expect(shapes.locator('h3')).toHaveText('Shapes (1)');
   const card = shapes.locator('.ai-card[data-item="shape-pack--shape-kite"]');
-  await expect(card.locator('.ai-chip')).toHaveText('AI');
+  // S1: no AI chip in the AI category (everything there is AI).
+  await expect(card.locator('.ai-chip')).toHaveCount(0);
   // A preset pack adds a Presets group.
   await showCategory(page, 'Media');
   await showCategory(page, 'AI');

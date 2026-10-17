@@ -1,5 +1,12 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, artboard, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  artboard,
+  showCategory,
+  openSubmenus,
+} from './fixtures';
 import { pickColor, reveal } from './controls';
 
 // Default example: text "example-headline" (76,165, fill #272b29, size 78),
@@ -324,10 +331,13 @@ test('[CV-039] Copy style from text and Paste style onto a shape and a text in o
   await select(page, 'example-headline');
   const headline = await toScreen(page, 200, 250);
   await page.mouse.click(headline.x, headline.y, { button: 'right' });
+  const styleMenu = page.locator('#canvas-context-menu');
+  await openSubmenus(styleMenu, 'style-menu');
   await page.locator('#canvas-context-menu [data-action="copy-style"]').click();
   await select(page, 'example-badge', 'example-subtitle');
   const badge = await toScreen(page, 150, 460);
   await page.mouse.click(badge.x, badge.y, { button: 'right' });
+  await openSubmenus(styleMenu, 'style-menu');
   await page.screenshot({ path: testInfo.outputPath('style-menu.png') });
   await page
     .locator('#canvas-context-menu [data-action="paste-style"]')

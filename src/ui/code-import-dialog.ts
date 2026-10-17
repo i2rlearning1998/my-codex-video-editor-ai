@@ -41,7 +41,6 @@ export type CodeImport =
     };
 export interface CodeImportResult {
   readonly item: CodeImport;
-  readonly saveTemplate: boolean;
   /** The dialog's thumbnail (PNG), for a template. */
   readonly thumbnail: Blob | null;
 }
@@ -106,7 +105,6 @@ export function openCodeImportDialog(options: CodeImportOptions) {
         </div>
       </div>
       <div class="modal-actions">
-        <label class="code-save"><input type="checkbox" id="code-save-template" ${editing ? '' : 'checked'} /> ${t('code.saveTemplate')}</label>
         <button type="button" class="button" id="code-cancel">${t('code.cancel')}</button>
         <button type="button" class="button primary" id="code-add" disabled>${editing ? t('code.apply') : t('code.add')}</button>
       </div>`,
@@ -315,7 +313,6 @@ export function openCodeImportDialog(options: CodeImportOptions) {
     if (!current || current.tier === null) return;
     add.disabled = true;
     errorLine.hidden = true;
-    const saveTemplate = $<HTMLInputElement>('code-save-template').checked;
     const item: CodeImport =
       current.tier === 'A'
         ? {
@@ -341,7 +338,7 @@ export function openCodeImportDialog(options: CodeImportOptions) {
             name: current.meta.name,
           };
     try {
-      await options.onConfirm({ item, saveTemplate, thumbnail: thumbBlob });
+      await options.onConfirm({ item, thumbnail: thumbBlob });
       handle.close();
     } catch (error) {
       showError(error);

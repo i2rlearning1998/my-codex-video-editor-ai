@@ -1,5 +1,13 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, toScreen, rulerBox, seekKeep } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  toScreen,
+  rulerBox,
+  seekKeep,
+  openSubmenus,
+} from './fixtures';
 
 // Fixture nle-example.json at 80 px/s, 30 fps:
 //   Video 1: clip-a 0..2 (source 0..2 of 6 s), clip-b 3..5 (source 1..3)
@@ -414,11 +422,14 @@ async function timelineMenu(page: Page, clipId: string) {
     position: { x: 20, y: 10 },
   });
   await expect(page.locator('.timeline-menu')).toBeVisible();
+  // S1 (D-266): Speed and Reverse are in the Clip submenu.
+  await openSubmenus(page.locator('.timeline-menu'), 'clip-menu');
 }
 async function canvasMenu(page: Page, x: number, y: number) {
   const point = await toScreen(page, x, y);
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect(page.locator('#canvas-context-menu')).toBeVisible();
+  await openSubmenus(page.locator('#canvas-context-menu'), 'clip-menu');
 }
 
 // D-073: speed, reverse and freeze apply to video and audio clips, so these

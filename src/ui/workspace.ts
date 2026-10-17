@@ -1,5 +1,6 @@
 import type { EditorSession } from './session';
 import { iconSvg } from './icons';
+import { panelHeaderHtml } from './panel-header';
 import { t } from '../i18n';
 
 /**
@@ -47,6 +48,13 @@ const SIZES: Record<
   narrow: { rail: 56, left: 300, right: 300, timeline: 252 },
   phone: { rail: 56, left: 0, right: 0, timeline: 180 },
 };
+/**
+ * S1 Part 2: from 1800 px wide every left panel is 380 px, so the library
+ * cards (two columns) are at least 165 px wide, as in Clipchamp.
+ */
+function leftSize(layout: Layout, width: number): number {
+  return layout === 'wide' && width >= 1800 ? 380 : SIZES[layout].left;
+}
 const LIMITS = {
   left: [260, 420],
   right: [240, 360],
@@ -86,7 +94,7 @@ export function mountWorkspace(
     requestAnimationFrame(() => shell.classList.remove('shell-booting')),
   );
   let layout = layoutFor(window.innerWidth);
-  let left = SIZES[layout].left || SIZES.wide.left,
+  let left = leftSize(layout, window.innerWidth) || SIZES.wide.left,
     right = SIZES[layout].right || SIZES.wide.right,
     height: number | null = storedHeight();
   let leftClosed = layout === 'narrow' || layout === 'phone',
@@ -100,9 +108,17 @@ export function mountWorkspace(
     (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ ===
     'reserve';
   const bar = shell.querySelector('.topbar')!;
+  // S1 Part 1: the left panel's one header (title + drawer icon).
   const leftToggle = document.createElement('div');
   leftToggle.className = 'workspace-controls panel-collapse-row';
-  leftToggle.innerHTML = `<button type="button" class="icon-button" data-panel="left" aria-controls="library-panel" aria-label="${t('workspace.toggleLibrary')}" title="${t('workspace.toggleLibrary')}">${iconSvg('panelLeft')}</button>`;
+  leftToggle.innerHTML = panelHeaderHtml({
+    titleId: 'left-panel-title',
+    button: {
+      icon: 'panelLeft',
+      label: t('workspace.toggleLibrary'),
+      attributes: 'data-panel="left" aria-controls="library-panel"',
+    },
+  });
   // T-ALL P1 (spec 7): the left panel's collapse button lives in its own
   // header; the right panel uses its header's collapse button, so neither
   // toggle is in the top bar any more. A rail category reopens the left
@@ -412,7 +428,10 @@ export function mountWorkspace(
       layout = next;
       leftClosed = layout === 'narrow' || layout === 'phone';
       rightClosed = true;
-      left = Math.max(LIMITS.left[0], SIZES[layout].left || left);
+      left = Math.max(
+        LIMITS.left[0],
+        leftSize(layout, window.innerWidth) || left,
+      );
       right = Math.max(LIMITS.right[0], SIZES[layout].right || right);
     }
     paint();

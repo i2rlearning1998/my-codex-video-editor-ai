@@ -9,6 +9,7 @@ import {
   showCategory,
   openInspector,
   seekKeep,
+  revealEntry,
 } from './fixtures';
 
 // W4-B: decoded video and images on the canvas and in playback.
@@ -95,13 +96,19 @@ async function clipMenu(page: Page, id: string, item: string, radio?: string) {
   await clipEl(page, id).click({ button: 'right', position: { x: 20, y: 10 } });
   const menu = page.locator('.timeline-menu');
   if (radio) {
-    await menu.getByRole('menuitem', { name: item }).click();
+    await (
+      await revealEntry(menu, menu.getByRole('menuitem', { name: item }))
+    ).click();
     await menu.getByRole('menuitemradio', { name: radio }).click();
   } else
-    await menu
-      .locator('[role^="menuitem"]')
-      .filter({ hasText: new RegExp(`^${item}$`) })
-      .click();
+    await (
+      await revealEntry(
+        menu,
+        menu
+          .locator('[role^="menuitem"]')
+          .filter({ hasText: new RegExp(`^${item}$`) }),
+      )
+    ).click();
 }
 const clipRow = async (page: Page, id: string) =>
   (await hook(page)).project.compositions[0]!.tracks.flatMap(

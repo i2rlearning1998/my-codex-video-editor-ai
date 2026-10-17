@@ -128,12 +128,9 @@ export function mountSelectionActions(
       more.setAttribute('aria-haspopup', 'menu');
       more.onclick = (event) => {
         event.stopPropagation();
+        // S1: window coordinates (the menu is fixed to the window).
         const bounds = more.getBoundingClientRect();
-        const origin = cluster.offsetParent?.getBoundingClientRect();
-        options.openMenu([
-          bounds.left - (origin?.left ?? 0),
-          bounds.bottom - (origin?.top ?? 0) + 4,
-        ]);
+        options.openMenu([bounds.left, bounds.bottom + 4]);
       };
       cluster.replaceChildren(...items, ...arrange, more);
     }

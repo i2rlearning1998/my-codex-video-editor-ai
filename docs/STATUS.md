@@ -1,3 +1,7 @@
+- **S1 (Parts 1 to 5)** is on `claude/s1-ui-fix`, a draft PR stacked on `claude/r-all` (PR #33), not merged; see reports/S1-UI.md.
+  - **Part 1** one panel header for every left and right panel: title plus one drawer button (D-263). **Part 2** the Clipchamp library layout for Media, AI and My Templates: 380 px panels from 1800 px windows, edge-aligned rows, two equal columns of cards with "⋯" and "+" inside the thumbnail, fixed Media chips (D-264).
+  - **Part 3** AI and My Templates cards drag to the canvas and the timeline (D-265). **Part 4** one menu placement (fixed, flipped, clamped, scrolls inside), short grouped canvas and timeline menus, "Save as template" removed, Duplicate and Export for code animations (D-266). **Part 5** new colours use the accent tokens.
+  - Schema is still 8; no new npm dependencies.
 - **R-ALL (R1 to R7)** is on `claude/r-all`, a draft PR stacked on `claude/qt-series` (PR #31), not merged; see reports/R-ALL.md.
   - **R1** Group and Ungroup in the timeline menu, names kept on regroup, toasts (D-256). **R2** one AI importer, AI items only in AI (D-257).
   - **R3/R4** a shared Clipchamp-style library panel for Media and AI (D-258, D-259). **R5** My Templates rail category and Save to My Templates (D-260).

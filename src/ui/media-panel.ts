@@ -253,6 +253,18 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     badge: badge(asset),
     data: { assetId: asset.id, name: asset.name, kind: asset.type },
     thumb: () => undefined,
+    // T1: one pointer-driven drag (no browser drag, no draggable thumbnail
+    // image); a plain click adds the media to the scene.
+    drag: () => ({
+      kind: 'asset',
+      id: asset.id,
+      name: asset.name,
+      media: asset.type as 'image' | 'video' | 'audio',
+      duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
+      ...(asset.width && asset.height
+        ? { width: asset.width, height: asset.height }
+        : {}),
+    }),
     // I2: a video previews its filmstrip while hovered.
     ...(asset.type === 'video'
       ? {
@@ -286,19 +298,6 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       card.querySelector('.media-badge')!.textContent = badge(asset);
       card.querySelector('.media-name')!.textContent = asset.name;
       setThumb(card, asset);
-      // T1: one pointer-driven drag (no browser drag, no draggable
-      // thumbnail image); a plain click adds the media to the scene.
-      drags().source(card, () => ({
-        kind: 'asset',
-        id: asset.id,
-        name: asset.name,
-        thumb: card.querySelector('img')?.getAttribute('src') ?? null,
-        media: asset.type as 'image' | 'video' | 'audio',
-        duration: asset.duration && asset.duration > 0 ? asset.duration : 5,
-        ...(asset.width && asset.height
-          ? { width: asset.width, height: asset.height }
-          : {}),
-      }));
     },
   });
   const project = () => engine.state.id;
@@ -309,12 +308,13 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     classes: { item: 'media-item', card: 'media-card', thumb: 'media-thumb' },
     searchId: 'asset-search',
     searchLabel: t('library.searchPlaceholder'),
-    ...(options.collapse ? { collapse: options.collapse } : {}),
     extra: [...(options.importRow ? [options.importRow] : []), extras],
     categoryLabel: (key) => t(`media.tab.${key}`),
     // T-ALL P1: the illustrated empty state.
     illustration: `<svg class="media-illustration" data-media-illustration viewBox="0 0 160 110" aria-hidden="true"><rect x="6" y="18" width="148" height="86" rx="12" fill="none" stroke="var(--border-strong, var(--color-border))" stroke-width="2" stroke-dasharray="6 5"/><rect x="22" y="40" width="70" height="44" rx="6" fill="var(--surface-raised, var(--color-bg-raised))" stroke="var(--color-border)"/><path d="M28 78l16-18 12 12 8-8 22 14z" fill="var(--accent-soft, var(--color-accent-soft))" stroke="var(--accent-text)" stroke-width="1.5" stroke-linejoin="round"/><circle cx="76" cy="52" r="5" fill="var(--accent-text)"/><rect x="70" y="26" width="70" height="44" rx="6" fill="var(--surface-raised, var(--color-bg-raised))" stroke="var(--color-border)" transform="rotate(8 105 48)"/><path d="M98 40l16 9-16 9z" fill="var(--accent-text)" transform="rotate(8 105 48)"/><path d="M118 74c0-6 4-9 8-7l2 1v-12a4 4 0 018 0v14l6 2c3 1 4 4 3 7l-3 10h-18z" fill="var(--color-bg)" stroke="var(--color-text)" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
     categoryOrder: MEDIA_CATEGORIES,
+    // S1: Images, Videos and Audio always show, even with no media.
+    fixedCategories: ['image', 'video', 'audio'],
     flatAll: true,
     folders: {
       list: () => mediaFolders.list(project()),

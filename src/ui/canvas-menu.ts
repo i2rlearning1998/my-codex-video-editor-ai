@@ -63,15 +63,17 @@ export interface CanvasMenuHooks {
   /** Deletes this scene (not the last). */
   readonly deleteScene?: () => void;
   /** I2: saves this scene to My Templates (in this browser). */
-  readonly saveAsTemplate?: () => void;
+  readonly saveSceneToMine?: () => void;
   /** R5: saves the selection to My Templates as one item of a kind. */
   readonly saveToMine?: (kind: MineKind) => void;
   /** P1: a code layer's own actions. */
   readonly code?: {
     readonly edit: (layerId: string) => void;
     readonly settings: (layerId: string) => void;
-    readonly saveTemplate: (layerId: string) => void;
     readonly rerender: (layerId: string) => void;
+    readonly editDuration: () => void;
+    readonly exportCode: (layerId: string) => void;
+    readonly duplicateCopy: (layerId: string) => void;
   };
 }
 const planned = (wave: number | string, id: string) =>
@@ -159,55 +161,116 @@ export function canvasMenuEntries(
       !(action === 'detach-audio' && isCodeSelection(session)),
   );
   const clips = selectedClips(source, session.selectedIds);
+  // S1 Part 4: at most about 14 top-level rows. The everyday edits stay on
+  // top; the rest is grouped into submenus (Code animation, Clip, Arrange,
+  // Align, Style, Save to My Templates, More). The commands are unchanged.
   const entries: MenuEntry[] = [];
-  // P1: a code layer has its own section first; picture and sound items that
-  // mean nothing for it (Set as background, Detach audio) are left out.
   const selection0 = describeSelection(source, session.selectedIds);
   const codeLayer =
     selection0.items.length === 1 && selection0.items[0]!.layer.code
       ? selection0.items[0]!.id
       : null;
+  const edit = (action: EditAction): MenuEntry => ({
+    id: action,
+    label: t(LABEL_KEYS[action] ?? `command.${action}`),
+    ...(ICONS[action] ? { icon: ICONS[action] } : {}),
+    ...(SHORTCUTS[action] ? { shortcut: SHORTCUTS[action] } : {}),
+    run: () => performEdit(engine, session, action),
+  });
+  const check = (action: 'reverse' | 'freeze'): MenuEntry => ({
+    id: action,
+    label: t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),
+    icon: action,
+    role: 'menuitemcheckbox',
+    checked:
+      clips.length > 0 &&
+      clips.every(({ clip }) =>
+        action === 'reverse'
+          ? clipTimeEffects(clip).reversed
+          : clipTimeEffects(clip).freezeFrame !== null,
+      ),
+    run: () => performEdit(engine, session, action),
+  });
+  const TOP: readonly EditAction[] = [
+    'duplicate',
+    'copy',
+    'paste',
+    'delete',
+    'split',
+  ];
+  for (const action of TOP)
+    if (available.includes(action)) entries.push(edit(action));
+  if (available.includes('freeze')) entries.push(check('freeze'));
+  if (available.includes('group')) entries.push(edit('group'));
+  // Ungroup shows for groups even when it cannot run, with the reason.
+  const selection = describeSelection(source, session.selectedIds);
+  if (selection.every('group')) {
+    const reason = ungroupBlocker(source, session.selectedIds);
+    entries.push({
+      id: 'ungroup',
+      label: t('command.ungroup'),
+      icon: 'ungroup',
+      shortcut: 'Ctrl+Shift+G',
+      ...(reason
+        ? { reason }
+        : { run: () => performEdit(engine, session, 'ungroup') }),
+    });
+  }
+  // P1: a code layer's own actions, in one submenu.
   if (codeLayer && hooks.code) {
     const code = hooks.code;
-    entries.push(
-      {
-        id: 'code-edit',
-        label: t('command.codeEdit'),
-        icon: 'code',
-        run: () => code.edit(codeLayer),
-      },
-      {
-        id: 'code-settings',
-        label: t('command.codeSettings'),
-        icon: 'adjust',
-        run: () => code.settings(codeLayer),
-      },
-      {
-        id: 'code-save-template',
-        label: t('command.codeSaveTemplate'),
-        icon: 'templates',
-        run: () => code.saveTemplate(codeLayer),
-      },
-      {
-        id: 'code-rerender',
-        label: t('command.codeRerender'),
-        icon: 'replace',
-        run: () => code.rerender(codeLayer),
-      },
-    );
-  }
-  const edit = (action: EditAction) =>
     entries.push({
-      id: action,
-      label: t(LABEL_KEYS[action] ?? `command.${action}`),
-      ...(ICONS[action] ? { icon: ICONS[action] } : {}),
-      ...(SHORTCUTS[action] ? { shortcut: SHORTCUTS[action] } : {}),
-      run: () => performEdit(engine, session, action),
+      id: 'code-menu',
+      label: t('menu.codeAnimation'),
+      icon: 'code',
+      divider: true,
+      submenu: () => [
+        {
+          id: 'code-edit',
+          label: t('command.codeEdit'),
+          icon: 'code',
+          run: () => code.edit(codeLayer),
+        },
+        {
+          id: 'code-settings',
+          label: t('command.codeSettings'),
+          icon: 'adjust',
+          run: () => code.settings(codeLayer),
+        },
+        {
+          id: 'code-rerender',
+          label: t('command.codeRerender'),
+          icon: 'replace',
+          run: () => code.rerender(codeLayer),
+        },
+        {
+          id: 'edit-duration',
+          label: t('command.editDuration'),
+          icon: 'timing',
+          run: () => code.editDuration(),
+        },
+        {
+          id: 'code-export',
+          label: t('command.codeExport'),
+          icon: 'download',
+          run: () => code.exportCode(codeLayer),
+        },
+        {
+          id: 'code-duplicate',
+          label: t('command.codeDuplicate'),
+          icon: 'duplicate',
+          run: () => code.duplicateCopy(codeLayer),
+        },
+      ],
     });
-  const firstEdit = entries.length;
+  }
+  // The clip's own actions (Cut, Speed, Reverse, Detach audio, ...).
+  const clipEntries: MenuEntry[] = [];
   for (const action of available) {
+    if (TOP.includes(action) || ['freeze', 'group', 'ungroup'].includes(action))
+      continue;
     if (action === 'speed')
-      entries.push({
+      clipEntries.push({
         id: 'speed',
         label: t('command.speed'),
         icon: 'speed',
@@ -224,45 +287,23 @@ export function canvasMenuEntries(
           }));
         },
       });
-    else if (action === 'reverse' || action === 'freeze')
-      entries.push({
-        id: action,
-        label: t(action === 'reverse' ? 'command.reverse' : 'command.freeze'),
-        icon: action,
-        role: 'menuitemcheckbox',
-        checked:
-          clips.length > 0 &&
-          clips.every(({ clip }) =>
-            action === 'reverse'
-              ? clipTimeEffects(clip).reversed
-              : clipTimeEffects(clip).freezeFrame !== null,
-          ),
-        run: () => performEdit(engine, session, action),
-      });
-    else if (action !== 'ungroup') edit(action);
+    else if (action === 'reverse') clipEntries.push(check('reverse'));
+    else clipEntries.push(edit(action));
   }
-  if (codeLayer && firstEdit > 0 && entries[firstEdit])
-    entries[firstEdit] = { ...entries[firstEdit]!, divider: true };
-  // Ungroup shows for groups even when it cannot run, with the reason.
-  const selection = describeSelection(source, session.selectedIds);
-  if (selection.every('group')) {
-    const reason = ungroupBlocker(source, session.selectedIds);
+  if (clipEntries.length)
     entries.push({
-      id: 'ungroup',
-      label: t('command.ungroup'),
-      icon: 'ungroup',
-      shortcut: 'Ctrl+Shift+G',
-      ...(reason
-        ? { reason }
-        : { run: () => performEdit(engine, session, 'ungroup') }),
+      id: 'clip-menu',
+      label: t('menu.clip'),
+      icon: 'scissors',
+      ...(codeLayer ? {} : { divider: true }),
+      submenu: () => clipEntries,
     });
-  }
   entries.push(
     {
       id: 'arrange',
       label: t('command.arrange'),
       icon: 'layers',
-      divider: true,
+      ...(clipEntries.length || codeLayer ? {} : { divider: true }),
       submenu: () =>
         ARRANGE_ACTIONS.map((action) => ({
           id: `arrange-${action}`,
@@ -322,61 +363,92 @@ export function canvasMenuEntries(
         ]
       : []),
     {
-      id: 'copy-style',
-      label: t('command.copyStyle'),
+      id: 'style-menu',
+      label: t('menu.style'),
       icon: 'brush',
-      shortcut: 'Ctrl+Alt+C',
-      divider: true,
-      ...(canCopyStyle(session) ? { run: () => copyStyle(session) } : {}),
-    },
-    {
-      id: 'paste-style',
-      label: t('command.pasteStyle'),
-      icon: 'paste',
-      shortcut: 'Ctrl+Alt+V',
-      ...(hasStyle() ? { run: () => pasteStyle(engine, session) } : {}),
+      submenu: () => [
+        {
+          id: 'copy-style',
+          label: t('command.copyStyle'),
+          icon: 'brush',
+          shortcut: 'Ctrl+Alt+C',
+          ...(canCopyStyle(session) ? { run: () => copyStyle(session) } : {}),
+        },
+        {
+          id: 'paste-style',
+          label: t('command.pasteStyle'),
+          icon: 'paste',
+          shortcut: 'Ctrl+Alt+V',
+          ...(hasStyle() ? { run: () => pasteStyle(engine, session) } : {}),
+        },
+      ],
     },
   );
-  // H3 (CV-051): Lock; Hide stays planned (LYR-006).
+  // H3 (CV-051): Lock.
   const locked = selectionLocked(session);
-  entries.push(
-    {
-      id: locked ? 'unlock' : 'lock',
-      label: t(locked ? 'command.unlock' : 'command.lock'),
-      icon: locked ? 'unlock' : 'lock',
-      divider: true,
-      run: () => setLocked(engine, session, !locked),
-    },
+  entries.push({
+    id: locked ? 'unlock' : 'lock',
+    label: t(locked ? 'command.unlock' : 'command.lock'),
+    icon: locked ? 'unlock' : 'lock',
+    divider: true,
+    run: () => setLocked(engine, session, !locked),
+  });
+  // R5: Save to My Templates. S1: every kind that fits the selection.
+  if (hooks.saveToMine) {
+    const save = hooks.saveToMine;
+    const roots = selectionRoots(session.source, session.selectedIds);
+    const kinds: MineKind[] =
+      roots.length > 1
+        ? ['group', 'scene']
+        : [
+            ...SAVE_KINDS,
+            ...(roots[0]?.type === 'group' ? (['group'] as const) : []),
+            'scene',
+          ];
+    entries.push({
+      id: 'save-to-mine',
+      label: t('mine.save'),
+      icon: 'folder',
+      submenu: () =>
+        kinds.map((kind) => ({
+          id: `save-to-mine-${kind}`,
+          label: t(`mine.kind.${kind}`),
+          run: () => save(kind),
+        })),
+    });
+  }
+  // Everything else, in More.
+  const one = session.selectedIds.length === 1;
+  const more: MenuEntry[] = [
     {
       id: 'hide',
       label: t('command.hide'),
       icon: 'eyeOff',
       reason: planned(2, 'LYR-006'),
     },
-  );
-  const one = session.selectedIds.length === 1;
+  ];
   if (one && hooks.showTiming)
-    entries.push({
+    more.push({
       id: 'show-timing',
       label: t('command.showTiming'),
       icon: 'timing',
       run: hooks.showTiming,
     });
   if (one && hooks.altText)
-    entries.push({
+    more.push({
       id: 'alt-text',
       label: t('command.altText'),
       icon: 'text',
       run: hooks.altText,
     });
   if (canSetBackground(session) && !codeLayer)
-    entries.push({
+    more.push({
       id: 'set-background',
       label: t('command.setBackground'),
       icon: 'image',
       run: () => setAsBackground(engine, session),
     });
-  entries.push({
+  more.push({
     id: 'resize-to-selection',
     label: t('command.resizeToSelection'),
     icon: 'crop',
@@ -386,7 +458,7 @@ export function canvasMenuEntries(
         : resizeCanvasToSelection(engine, session),
   });
   if (hooks.download)
-    entries.push({
+    more.push({
       id: 'download-selection',
       label: t('command.downloadSelection'),
       icon: 'download',
@@ -394,43 +466,23 @@ export function canvasMenuEntries(
       run: hooks.download,
     });
   if (one && hooks.info)
-    entries.push({
+    more.push({
       id: 'info',
       label: t('command.info'),
       icon: 'info',
       run: hooks.info,
     });
-  // R5: Save to My Templates, by kind (several layers are one Group item).
-  if (hooks.saveToMine) {
-    const save = hooks.saveToMine;
-    entries.push(
-      selectionRoots(session.source, session.selectedIds).length > 1
-        ? {
-            id: 'save-to-mine',
-            label: t('mine.saveGroup'),
-            icon: 'folder',
-            divider: true,
-            run: () => save('group'),
-          }
-        : {
-            id: 'save-to-mine',
-            label: t('mine.save'),
-            icon: 'folder',
-            divider: true,
-            submenu: () =>
-              SAVE_KINDS.map((kind) => ({
-                id: `save-to-mine-${kind}`,
-                label: t(`mine.kind.${kind}`),
-                run: () => save(kind),
-              })),
-          },
-    );
-  }
-  entries.push({
+  more.push({
     id: 'comment',
     label: t('command.comment'),
     icon: 'comment',
     reason: planned(8, 'ADV-008'),
+  });
+  entries.push({
+    id: 'more-menu',
+    label: t('menu.more'),
+    icon: 'more',
+    submenu: () => more,
   });
   return entries;
 }
@@ -482,13 +534,13 @@ function sceneMenuEntries(
           },
         ]
       : []),
-    ...(hooks.saveAsTemplate
+    ...(hooks.saveSceneToMine
       ? [
           {
-            id: 'save-as-template',
+            id: 'save-scene-to-mine',
             label: t('mine.saveScene'),
             icon: 'templates',
-            run: hooks.saveAsTemplate,
+            run: hooks.saveSceneToMine,
           },
         ]
       : []),

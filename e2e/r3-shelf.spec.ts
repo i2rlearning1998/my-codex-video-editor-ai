@@ -42,11 +42,7 @@ test('[RA-008] Media, AI and My Templates share one panel: title and collapse, s
   ] as const) {
     await showCategory(page, category);
     const panel = page.locator(host);
-    await expect(panel.locator('.shelf-head .shelf-title')).toBeVisible();
-    await expect(panel.locator('.shelf-collapse')).toHaveAttribute(
-      'aria-label',
-      /.+/,
-    );
+    await expect(page.locator('#left-panel-title')).not.toBeEmpty();
     const row = panel.locator('.shelf-search-row');
     await expect(row.locator('input')).toBeVisible();
     const folder = row.locator('.shelf-new-folder');
@@ -170,13 +166,14 @@ test('[RA-013] Media on the shared panel: tabs from the kinds present, Import, d
   page,
 }) => {
   await showCategory(page, 'Media');
-  expect(await tabs(media(page))).toEqual([]);
+  // S1: Images, Videos and Audio always show.
+  expect(await tabs(media(page))).toEqual(['all', 'image', 'video', 'audio']);
   const chooser = page.waitForEvent('filechooser');
   await page.locator('#import-media').click();
   await (await chooser).setFiles(PNG);
   const card = media(page).locator('.media-card').first();
   await expect(card).toBeVisible();
-  expect(await tabs(media(page))).toEqual(['all', 'image']);
+  expect(await tabs(media(page))).toEqual(['all', 'image', 'video', 'audio']);
   await expect(media(page).locator('#media-dropzone')).toBeVisible();
   await expect(media(page).locator('#media-sort')).toBeVisible();
   // Move to a new folder from the "⋯" menu: a folder tab appears.

@@ -1,4 +1,9 @@
-import { test as base, expect, type Page } from '@playwright/test';
+import {
+  test as base,
+  expect,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import type { Project } from '../src/core';
@@ -387,4 +392,43 @@ export async function settledView(page: Page) {
       { intervals: [300] },
     )
     .toBe(true);
+}
+/**
+ * S1 (D-266): the context menus group their entries in submenus (Clip,
+ * Track, Code animation, Style, More ...); this opens the submenus named by
+ * their data-action, in order, inside `menu`.
+ */
+export async function openSubmenus(menu: Locator, ...actions: string[]) {
+  for (const action of actions) {
+    const parent = menu
+      .locator(`[data-action="${action}"][aria-haspopup="menu"]`)
+      .first();
+    if ((await parent.getAttribute('aria-expanded')) !== 'true')
+      await parent.click();
+    await expect(parent).toHaveAttribute('aria-expanded', 'true');
+  }
+}
+/** S1 (D-266): returns `entry`, first opening the top-level submenu of
+ *  `menu` that holds it when it is not on the top level. */
+export async function revealEntry(menu: Locator, entry: Locator) {
+  const target = entry.first();
+  if (await target.isVisible()) return target;
+  for (const action of [
+    'clip-menu',
+    'more-menu',
+    'style-menu',
+    'track-menu',
+    'code-menu',
+    'audio-menu',
+    'save-mine',
+    'save-to-mine',
+  ]) {
+    const parent = menu.locator(
+      `:scope > [data-action="${action}"][aria-haspopup="menu"]`,
+    );
+    if (!(await parent.count())) continue;
+    await parent.click();
+    if (await target.isVisible()) return target;
+  }
+  return target;
 }

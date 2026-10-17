@@ -1435,8 +1435,13 @@ export function mountSceneOutliner(
     announceMenu(menuElement);
     menu.open(() => entries);
     menu.fit();
+    // S1: fit keeps it inside the window; it still opens below the row, or
+    // above it when there is no room, never over the row's name.
     const placed = menuElement.getBoundingClientRect();
-    if (placed.bottom > window.innerHeight - 8 && box.top - placed.height > 8)
+    const below = Math.max(event.clientY, box.bottom) + 2;
+    if (below + placed.height <= window.innerHeight - 8)
+      menuElement.style.top = `${below}px`;
+    else if (box.top - placed.height - 2 >= 8)
       menuElement.style.top = `${box.top - placed.height - 2}px`;
     menuElement.style.left = `${Math.max(
       8,

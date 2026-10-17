@@ -106,6 +106,7 @@ import {
 } from '../core';
 import {
   deriveRenderItems,
+  hitTest,
   locateLayer,
   type RenderSource,
   type SceneLayer,
@@ -233,6 +234,7 @@ import {
   trackForNewClip,
 } from './editing';
 import { iconSvg } from './icons';
+import { panelHeaderHtml } from './panel-header';
 import {
   confirmDialog,
   escapeHtml,
@@ -362,7 +364,7 @@ export function mountEditorShell(
       </div>
       <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], false)).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
       <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
-        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><button type="button" class="button import-menu-button" id="import-menu" aria-haspopup="menu" aria-expanded="false" aria-label="${t('code.importMenu')}" title="${t('code.importMenu')}">${iconSvg('chevronDown', 16)}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
+        <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><button type="button" class="button primary import-menu-button" id="import-menu" aria-haspopup="menu" aria-expanded="false" aria-label="${t('code.importMenu')}" title="${t('code.importMenu')}">${iconSvg('chevronDown', 16)}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
         <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" hidden></div>
@@ -374,7 +376,7 @@ export function mountEditorShell(
         <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div>
         <div id="library-mine" class="mine-panel" data-rail-panel="MyTemplates" hidden></div>
         <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div>
-        <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><h2>${t('scene.title')}</h2><span id="layer-count" class="count"></span></div>
+        <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
       </aside>
@@ -397,7 +399,7 @@ export function mountEditorShell(
         <p class="render-warning" id="render-warning" role="status" hidden></p>
       </main>
       <aside class="inspector panel" id="inspector-panel" aria-label="${t('inspector.title')}">
-        <header class="right-panel-header"><h2 id="right-panel-title"></h2><span class="count-badge" id="right-panel-count" hidden></span><button type="button" class="icon-button" id="right-panel-collapse" aria-label="${t('right.collapse')}" title="${t('right.collapse')}">${iconSvg('panelRight', 20)}</button></header>
+        ${panelHeaderHtml({ className: 'right-panel-header', titleId: 'right-panel-title', extra: '<span class="count-badge" id="right-panel-count" hidden></span>', button: { id: 'right-panel-collapse', icon: 'panelRight', label: t('right.collapse') } })}
         <div id="right-section"></div>
         <div id="inspector-content"></div>
         <section class="animation-panel" id="animation-panel" aria-label="${t('animation.title')}" hidden></section>
@@ -479,7 +481,6 @@ export function mountEditorShell(
       }),
     toast: (text, kind) => showToast(text, kind),
     importRow: element('.import-row'),
-    collapse: () => workspace?.setOpen('left', false),
   });
   const audibleAssets = () => {
     const assets = mediaAssets();
@@ -1136,6 +1137,9 @@ export function mountEditorShell(
     registerExternalOverlay,
   );
   const canvasMenu = element('#canvas-context-menu');
+  // S1 Part 4: the menu is fixed to the window and lives outside the stage,
+  // so no region (the timeline's ruler, a panel) can paint over it.
+  root.append(canvasMenu);
   // W2-F1: the canvas menu is built from the selection's capabilities and
   // rendered by the shared menu (context-menu.ts).
   let unregisterCanvasMenu: (() => void) | undefined;
@@ -1335,9 +1339,11 @@ export function mountEditorShell(
     code: {
       edit: (layerId: string) => commandContext.code?.edit(layerId),
       settings: (layerId: string) => commandContext.code?.settings(layerId),
-      saveTemplate: (layerId: string) =>
-        commandContext.code?.saveTemplate(layerId),
       rerender: (layerId: string) => commandContext.code?.rerender(layerId),
+      editDuration: () => commandContext.editDuration?.(),
+      exportCode: (layerId: string) => commandContext.code?.exportCode(layerId),
+      duplicateCopy: (layerId: string) =>
+        commandContext.code?.duplicateCopy(layerId),
     },
     showTiming: () => {
       const layer = selectedLayer();
@@ -1407,7 +1413,7 @@ export function mountEditorShell(
         );
         session.selectComposition(added.id);
       }),
-    saveAsTemplate: () => {
+    saveSceneToMine: () => {
       const sceneId = session.source.composition.id;
       void saveSceneToMine(sceneId);
     },
@@ -1421,17 +1427,16 @@ export function mountEditorShell(
         ]);
       }),
   };
+  /** Opens the canvas menu at `point` (window coordinates). */
   const openCanvasMenu = (point: Point2, layerId: string | null) => {
     const entries = canvasMenuEntries(engine, session, !!layerId, menuHooks);
     canvasMenuController.open(() =>
       canvasMenuEntries(engine, session, !!layerId, menuHooks),
     );
     if (!entries.length) canvasMenuController.close();
-    const bounds = stage.getBoundingClientRect();
-    canvasMenu.style.left = `${Math.max(0, Math.min(bounds.width - 170, point[0]))}px`;
-    canvasMenu.style.top = `${Math.max(0, Math.min(bounds.height - 40, point[1]))}px`;
-    // G1.3: flip or shift so the whole menu shows without a scrollbar.
-    canvasMenuController.fit();
+    // S1 Part 4: fixed to the window at the pointer, flipped and clamped so
+    // the whole menu shows (never clipped by panels or the timeline).
+    canvasMenuController.fit(point[0], point[1]);
     unregisterCanvasMenu ??= registerExternalOverlay(hideCanvasMenu);
   };
   document.addEventListener('click', (event) => {
@@ -1521,7 +1526,11 @@ export function mountEditorShell(
     reportError,
     (action) => performEdit(engine, session, action),
     true,
-    openCanvasMenu,
+    // The canvas reports canvas-relative points; the menu wants the window's.
+    (point, layerId) => {
+      const box = canvas.getBoundingClientRect();
+      openCanvasMenu([box.left + point[0], box.top + point[1]], layerId);
+    },
     drawTool,
     cropTool,
     (target) => {
@@ -1581,8 +1590,9 @@ export function mountEditorShell(
           workspace?.setOpen('right', true);
           setRightSection('Code');
         }),
-      saveTemplate: (layerId) => void saveLayerAsTemplate(layerId),
       rerender: (layerId) => void rerenderCode(layerId),
+      exportCode: (layerId) => safely(() => exportCodeLayer(layerId)),
+      duplicateCopy: (layerId) => duplicateCodeCopy(layerId),
     },
   };
   let renderedProject: unknown;
@@ -2720,31 +2730,86 @@ export function mountEditorShell(
     for (const template of old) codeTemplates.remove(template.id);
   });
   /** P1: Save as template from a code layer (its source, meta and values). */
-  const saveLayerAsTemplate = async (layerId: string) => {
+  /** S1 Part 4: downloads `text` as a file. */
+  const downloadText = (text: string, name: string, type: string) => {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  };
+  /** S1: a code animation as a file the AI importer reads again: the
+   *  source (.js) for Tier B and C, the Composition Spec (.json) for A. */
+  const downloadCode = (name: string, tier: string, source: string) => {
+    const file = `${name.replace(/[\\/:*?"<>|]+/g, '-') || 'code'}.${tier === 'A' ? 'json' : 'js'}`;
+    downloadText(
+      source,
+      file,
+      tier === 'A' ? 'application/json' : 'text/javascript',
+    );
+    showToast(t('code.exported', { name: file }), 'info', 3000);
+  };
+  const exportCodeLayer = (layerId: string) => {
     const code = codeOf(layerId);
     if (!code) return;
-    const meta = codeMeta(code);
-    const spec = codeSpec(layerId, 'full');
-    const poster = spec ? codePosters.image(code.bakeKey, spec) : null;
-    let thumbnail: Blob | null = null;
-    if (poster) {
-      const canvas = new OffscreenCanvas(poster.width, poster.height);
-      canvas.getContext('2d')!.drawImage(poster, 0, 0);
-      thumbnail = await canvas.convertToBlob({ type: 'image/png' });
-    }
     const layer = locateLayer(session.source.composition.layers, layerId);
-    const entry = codeEntry({
-      tier: code.tier,
-      source: code.source,
-      meta: meta as unknown as Record<string, unknown>,
-      params: codeParams(code),
-      name: layer?.layer.name || meta.name,
-      ...(thumbnail ? { thumbnail: await dataUrlOf(thumbnail) } : {}),
-    });
-    await creatorLibrary.ready;
-    await creatorLibrary.add([entry]);
-    showToast(t('code.savedTemplate', { name: entry.name }), 'success');
+    downloadCode(
+      layer?.layer.name || codeMeta(code).name,
+      code.tier,
+      code.source,
+    );
   };
+  /** S1: "<name> copy", then "<name> copy 2" and so on, unique in `taken`. */
+  const copyName = (name: string, taken: readonly string[]) => {
+    let next = t('shelf.copyName', { name });
+    for (let n = 2; taken.includes(next); n++)
+      next = t('shelf.copyNameN', { name, n: String(n) });
+    return next;
+  };
+  /** S1: Duplicate as copy: the layer duplicated and named "<name> copy",
+   *  one undo step. */
+  const duplicateCodeCopy = (layerId: string) =>
+    safely(() => {
+      session.select(layerId);
+      const captured = engine.commands.capture(() =>
+        performEdit(engine, session, 'duplicate'),
+      ) as Command[];
+      const created = captured.flatMap((command) =>
+        command.type === 'CREATE_LAYER' && command.parentId === null
+          ? [command.layer.id]
+          : [],
+      );
+      const taken = session.source.composition.layers.map((item) => item.name);
+      const renamed = captured.map((command): Command => {
+        if (
+          command.type === 'CREATE_LAYER' &&
+          created.includes(command.layer.id)
+        )
+          return {
+            ...command,
+            layer: {
+              ...command.layer,
+              name: copyName(command.layer.name, taken),
+            },
+          } as Command;
+        if (
+          command.type === 'CREATE_CLIP' &&
+          created.includes(command.clip.layerId)
+        )
+          return {
+            ...command,
+            clip: {
+              ...command.clip,
+              name: copyName(command.clip.name, taken),
+            },
+          } as Command;
+        return command;
+      });
+      if (!renamed.length) return;
+      engine.commands.transaction(t('command.codeDuplicate'), renamed);
+      session.selectMany(created);
+    });
   /** Inserts a code template at `time` on a new lane, one undo step. */
   const insertCodeTemplate = async (template: CodeTemplate, time: number) => {
     session.setPlaying(false);
@@ -2984,7 +3049,102 @@ export function mountEditorShell(
     });
   const creatorEntryOf = (id: string) =>
     creatorLibrary.list().find((entry) => creatorLibraryId(entry.key) === id);
-  const insertCreatorItem = (id: string, time = session.currentTime) => {
+  /** S1 Part 3: moves the new top-level layers of `commands` so their
+   *  drawn box is centred on `point` (keyframed positions too). */
+  const centreOn = (
+    commands: Command[],
+    ids: readonly string[],
+    point: readonly [number, number],
+  ) => {
+    const composition = engine
+      .preview(commands)
+      .compositions.find((item) => item.id === session.source.composition.id);
+    const box = composition
+      ? selectionGeometryOf({
+          ...session.source,
+          composition,
+          selectedIds: [...ids],
+        } as RenderSource)
+      : null;
+    if (!box) return commands;
+    const dx = point[0] - (box.x + box.width / 2),
+      dy = point[1] - (box.y + box.height / 2);
+    const move = (value: unknown) =>
+      Array.isArray(value) && value.length === 2
+        ? [Number(value[0]) + dx, Number(value[1]) + dy]
+        : value;
+    return commands.map((command) => {
+      if (
+        command.type !== 'CREATE_LAYER' ||
+        command.parentId !== null ||
+        !ids.includes(command.layer.id)
+      )
+        return command;
+      const position = command.layer.transform.position as unknown as {
+        value: unknown;
+        keyframes: { value: unknown }[];
+      };
+      return {
+        ...command,
+        layer: {
+          ...command.layer,
+          transform: {
+            ...command.layer.transform,
+            position: {
+              ...position,
+              value: move(position.value),
+              keyframes: position.keyframes.map((key) => ({
+                ...key,
+                value: move(key.value),
+              })),
+            },
+          },
+        },
+      } as Command;
+    });
+  };
+  /** S1 Part 3: the one-step commands that add an AI shape, text or
+   *  background (null for themes, presets, motion and templates). */
+  const creatorBuilt = (
+    id: string,
+    time: number,
+    point?: readonly [number, number] | null,
+  ): { label: string; commands: Command[]; layerId: string } | null => {
+    const entry = creatorEntryOf(id);
+    if (
+      !entry ||
+      ['theme', 'motion', 'composition', 'preset', 'template'].includes(
+        entry.item.type,
+      )
+    )
+      return null;
+    const item = libraryActions.find(id);
+    const built = item
+      ? libraryActions.commandsFor(item, point ?? undefined, time)
+      : null;
+    if (!built?.layerId) return null;
+    // T1: an AI item's layers remember their palette slot (background, text
+    // or primary), so a theme recolours them.
+    return {
+      label: built.label,
+      layerId: built.layerId,
+      commands: built.commands.map((command) =>
+        command.type === 'CREATE_LAYER'
+          ? ({
+              ...command,
+              layer: withPaletteSlots(
+                command.layer as unknown as CoreLayer,
+              ) as never,
+            } as Command)
+          : command,
+      ),
+    };
+  };
+  const insertCreatorItem = (
+    id: string,
+    time = session.currentTime,
+    point?: readonly [number, number] | null,
+  ) => {
     const entry = creatorEntryOf(id);
     if (!entry) return;
     // R2: a theme item is applied (themes live in the AI category too).
@@ -3000,33 +3160,20 @@ export function mountEditorShell(
       if (template) void insertCodeTemplate(template, time).catch(reportError);
       return;
     }
-    const item = libraryActions.find(id);
-    if (!item) return;
-    // T1: an AI item's layers remember their palette slot (background, text
-    // or primary), so a theme recolours them; one step as before.
-    const built =
-      item.type === 'template'
-        ? null
-        : libraryActions.commandsFor(item, undefined, time);
+    const built = creatorBuilt(id, time, point);
     if (!built) {
-      libraryActions.insert(item, undefined, time);
+      const item = libraryActions.find(id);
+      if (item)
+        libraryActions.insert(
+          item,
+          (point ?? undefined) as [number, number] | undefined,
+          time,
+        );
       return;
     }
     session.setPlaying(false);
-    engine.commands.transaction(
-      built.label,
-      built.commands.map((command) =>
-        command.type === 'CREATE_LAYER'
-          ? ({
-              ...command,
-              layer: withPaletteSlots(
-                command.layer as unknown as CoreLayer,
-              ) as never,
-            } as Command)
-          : command,
-      ),
-    );
-    if (built.layerId) session.select(built.layerId);
+    engine.commands.transaction(built.label, built.commands);
+    session.select(built.layerId);
   };
   // Q4: the AI category (everything from Creator Packs).
   // R4: the AI category on the shared library panel.
@@ -3050,6 +3197,45 @@ export function mountEditorShell(
     }).then((name) => {
       if (name?.trim()) void creatorLibrary.rename(entry.key, name.trim());
     });
+  };
+  /** S1 Part 4: an AI code animation (motion, or a Composition Spec). */
+  const isCreatorCode = (id: string) => {
+    const item = creatorEntryOf(id)?.item;
+    return item?.type === 'motion' || item?.type === 'composition';
+  };
+  /** S1: Duplicate makes "<name> copy" (kept unique) in AI. */
+  const duplicateCreatorItem = (id: string) => {
+    const entry = creatorEntryOf(id);
+    if (!entry || !isCreatorCode(id)) return;
+    const suffix = `copy-${crypto.randomUUID().slice(0, 8)}`;
+    const itemId = `${entry.item.id}-${suffix}`;
+    const packId = `${entry.packId}-${suffix}`;
+    const name = copyName(
+      entry.name,
+      creatorLibrary.list().map((other) => other.name),
+    );
+    void creatorLibrary.add([
+      {
+        ...entry,
+        key: `${packId}/${itemId}`,
+        packId,
+        item: { ...entry.item, id: itemId } as CreatorEntry['item'],
+        name,
+        addedAt: new Date().toISOString(),
+        removed: false,
+      },
+    ]);
+    showToast(t('code.duplicated', { name }), 'success');
+  };
+  /** S1: Export downloads a file the AI importer reads again. */
+  const exportCreatorItem = (id: string) => {
+    const entry = creatorEntryOf(id);
+    const item = entry?.item;
+    if (!entry || !item) return;
+    if (item.type === 'motion')
+      downloadCode(entry.name, item.data.tier, item.data.source);
+    else if (item.type === 'composition')
+      downloadCode(entry.name, 'A', JSON.stringify(item.data.spec, null, 2));
   };
   const creatorDetails = (id: string) => {
     const entry = creatorEntryOf(id);
@@ -3096,10 +3282,12 @@ export function mountEditorShell(
       return () => codeHover(template, slot, false);
     },
     rename: renameCreatorItem,
+    isCode: isCreatorCode,
+    duplicate: (id) => safely(() => duplicateCreatorItem(id)),
+    exportItem: (id) => safely(() => exportCreatorItem(id)),
     details: creatorDetails,
     remove: deleteCreatorItem,
     prompt: shelfPrompt,
-    collapse: () => workspace?.setOpen('left', false),
     report: reportError,
     toast: (text) => showToast(text, 'success'),
   });
@@ -3138,7 +3326,8 @@ export function mountEditorShell(
    *  layers are one Group item); nothing selected saves the scene. */
   const saveToMine = async (kind: MineKind) => {
     const roots = selectionRoots(session.source, session.selectedIds);
-    if (!roots.length) return saveSceneToMine(session.source.composition.id);
+    if (!roots.length || kind === 'scene')
+      return saveSceneToMine(session.source.composition.id);
     const composition = session.source.composition;
     const finalKind: MineKind = roots.length > 1 ? 'group' : kind;
     const clips = roots.flatMap((layer) => {
@@ -3225,8 +3414,37 @@ export function mountEditorShell(
     if (!template.mediaIncluded) showToast(t('mine.mediaLeftOut'), 'warning');
     savedToast('scene');
   };
+  /** S1 Part 3: the commands that add a saved element item at `time`
+   *  (centred on `point` for a canvas drop); null for a scene. */
+  const mineBuilt = (
+    id: string,
+    time: number,
+    point?: readonly [number, number] | null,
+  ) => {
+    const item = myLibrary.find(id);
+    if (!item || item.kind === 'scene') return null;
+    const built = mineCommands(
+      session.source.composition,
+      session.source.assets,
+      item,
+      time,
+      (commands) =>
+        engine
+          .preview(commands)
+          .compositions.find(
+            (scene) => scene.id === session.source.composition.id,
+          )!,
+    );
+    return point
+      ? { ...built, commands: centreOn(built.commands, built.layerIds, point) }
+      : built;
+  };
   /** Add to scene: exactly like a library item (one undo step). */
-  const insertMine = (id: string) =>
+  const insertMine = (
+    id: string,
+    time = session.currentTime,
+    point?: readonly [number, number] | null,
+  ) =>
     safely(() => {
       const item = myLibrary.find(id);
       if (!item) return;
@@ -3235,24 +3453,39 @@ export function mountEditorShell(
         libraryActions.insertMine(item.scene);
         return;
       }
-      const built = mineCommands(
-        session.source.composition,
-        session.source.assets,
-        item,
-        session.currentTime,
-        (commands) =>
-          engine
-            .preview(commands)
-            .compositions.find(
-              (scene) => scene.id === session.source.composition.id,
-            )!,
-      );
+      const built = mineBuilt(id, time, point);
+      if (!built) return;
       engine.commands.transaction(t('mine.addStep'), built.commands);
       session.selectMany(built.layerIds);
     });
   const minePanel = mountMyTemplatesPanel(element('#library-mine'), {
     library: myLibrary,
-    add: insertMine,
+    add: (id) => insertMine(id),
+    // S1 Part 4: a saved code animation can be duplicated and exported.
+    isCode: (id) => {
+      const item = myLibrary.find(id);
+      return item?.layers?.length === 1 && !!item.layers[0]!.code;
+    },
+    duplicate: (id) => {
+      const item = myLibrary.find(id);
+      if (!item) return;
+      const name = copyName(
+        item.name,
+        myLibrary.list().map((other) => other.name),
+      );
+      void myLibrary.add({
+        ...item,
+        id: crypto.randomUUID(),
+        name,
+        createdAt: new Date().toISOString(),
+      });
+      showToast(t('code.duplicated', { name }), 'success');
+    },
+    exportItem: (id) => {
+      const item = myLibrary.find(id);
+      const code = item?.layers?.[0]?.code;
+      if (item && code) downloadCode(item.name, code.tier, code.source);
+    },
     rename: (id) => {
       const item = myLibrary.find(id);
       if (!item) return;
@@ -3284,7 +3517,6 @@ export function mountEditorShell(
       showToast(t('mine.deleted', { name: item.name }), 'info');
     },
     prompt: shelfPrompt,
-    collapse: () => workspace?.setOpen('left', false),
     report: reportError,
     toast: (text) => showToast(text, 'success'),
   });
@@ -3629,6 +3861,9 @@ export function mountEditorShell(
     root
       .querySelector('.library')
       ?.setAttribute('data-active-category', category);
+    // S1 Part 1: the shared header names the category.
+    const leftTitle = root.querySelector('#left-panel-title');
+    if (leftTitle) leftTitle.textContent = t(categoryKey(category));
     if (category !== 'Draw') session.setDrawBrush(null);
     if (shown === 'placeholder') {
       const [titleKey, descriptionKey] = descriptions[category]!;
@@ -3802,7 +4037,7 @@ export function mountEditorShell(
       );
       if (templates.getAttribute('aria-pressed') !== 'true') templates.click();
     },
-    saveAsTemplate: (sceneId) => void saveSceneToMine(sceneId),
+    saveSceneToMine: (sceneId) => void saveSceneToMine(sceneId),
   });
   // I2: the Draw palette (the Draw rail item).
   drawPalette = mountDrawPalette({
@@ -4415,6 +4650,7 @@ export function mountEditorShell(
     panel.append(body);
   }
   workspace = mountWorkspace(element('.editor-shell'), session, resize);
+  element('#left-panel-title').textContent = t(categoryKey(activeCategory));
   sceneOutliner = mountSceneOutliner(
     element('#scene-list'),
     element('#scene-heading'),
@@ -4831,6 +5067,19 @@ export function mountEditorShell(
         : null;
     }
     if (payload.kind === 'mine' || payload.kind === 'code') return null;
+    // S1 Part 3: AI and My Templates items (one layer) take a lane like any
+    // library item; the rest are added whole by addPayload.
+    if (payload.kind === 'creator') return creatorBuilt(payload.id, time);
+    if (payload.kind === 'saved') {
+      const built = mineBuilt(payload.id, time);
+      return built?.layerIds.length === 1
+        ? {
+            label: t('mine.addStep'),
+            commands: built.commands,
+            layerId: built.layerIds[0]!,
+          }
+        : null;
+    }
     const item =
       payload.kind === 'textbox'
         ? ('textbox' as const)
@@ -5108,7 +5357,17 @@ export function mountEditorShell(
     else if (payload.kind === 'mine') {
       const template = myTemplates.find(payload.id);
       if (template) libraryActions.insertMine(template);
-    } else if (payload.kind === 'code') {
+    } else if (payload.kind === 'creator') {
+      // A preset dropped on the canvas animates the element under the drop
+      // point (else the selection), like a click on the card.
+      if (creatorEntryOf(payload.id)?.item.type === 'preset') {
+        const hit = point ? hitTest(session.source, point) : null;
+        if (hit) session.select(hit);
+        applyCreatorPreset(payload.id);
+      } else insertCreatorItem(payload.id, time, point ?? null);
+    } else if (payload.kind === 'saved')
+      insertMine(payload.id, time, point ?? null);
+    else if (payload.kind === 'code') {
       const template = creatorLibrary
         .motionTemplates()
         .find((item) => item.id === payload.id);
@@ -5169,7 +5428,17 @@ export function mountEditorShell(
         value = { width: w, height: h, dx: 0, dy: 0, whole: true };
       else {
         let commands: Command[] | null = null;
-        if (payload.kind === 'preset') {
+        if (payload.kind === 'creator' || payload.kind === 'saved') {
+          // S1 Part 3: AI and My Templates items measure their real insert;
+          // a whole scene or code animation outlines the artboard.
+          commands =
+            (payload.kind === 'creator'
+              ? creatorBuilt(payload.id, session.currentTime, at)
+              : mineBuilt(payload.id, session.currentTime, at)
+            )?.commands ?? null;
+          if (!commands)
+            value = { width: w, height: h, dx: 0, dy: 0, whole: true };
+        } else if (payload.kind === 'preset') {
           commands = addShapeCommands(
             session.source,
             payload.id as ShapePreset,

@@ -8,6 +8,7 @@ import {
   openInspector,
   showSceneStrip,
   seekKeep,
+  openSubmenus,
 } from './fixtures';
 
 // W2-C: browser proof for the "risky" Claimed Wave 2 items.
@@ -123,6 +124,7 @@ test('[HIS-002] canvas, inspector and timeline edits all undo back to the start 
   });
   // Speed is for video and audio clips only (D-073); a text clip can be
   // disabled from the same menu as one timeline step.
+  await openSubmenus(page.locator('.timeline-menu'), 'clip-menu');
   await page
     .locator('.timeline-menu')
     .getByRole('menuitem', { name: 'Enable / disable clip' })

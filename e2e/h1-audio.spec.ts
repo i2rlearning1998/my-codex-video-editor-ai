@@ -1,6 +1,13 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, rulerBox, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  rulerBox,
+  showCategory,
+  revealEntry,
+} from './fixtures';
 
 // H1.3: audio layers are never drawn on, or picked from, the canvas. They
 // live as clips on audio tracks, in the Scene list and in the side panels.
@@ -105,10 +112,13 @@ test('[AUD-018][VID-006] after Detach audio the new audio layer stays off the ca
     button: 'right',
     position: { x: 20, y: 10 },
   });
-  await page
-    .locator('.timeline-menu [role^="menuitem"]')
-    .filter({ hasText: /^Detach audio$/ })
-    .click();
+  const menu = page.locator('.timeline-menu');
+  await (
+    await revealEntry(
+      menu,
+      menu.locator('[role^="menuitem"]').filter({ hasText: /^Detach audio$/ }),
+    )
+  ).click();
   const clips = (await hook(page)).project.compositions[0]!.tracks.flatMap(
     (track) => track.clips,
   );

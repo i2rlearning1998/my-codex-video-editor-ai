@@ -955,6 +955,21 @@ Hand-test fixes of PR #31.
 | RA-019 | P1 | W8 | Verified | Rename and Delete of a saved theme are in a "⋯" menu (tooltip More options); five rounds of save, rename and delete raise no error (R6) |
 | RA-020 | P1 | W8 | Verified | Settings › Animations (Auto, On, Off) also governs the shared library panels (Media, AI, My Templates): panel slides and card buttons animate with On and not with Off (R7) |
 
+## S1: Clipchamp-level library panels and menus
+
+Hand-test fixes of PR #33 (S1 brief).
+
+| ID | Pri | Wave | Status | Item |
+| --- | --- | --- | --- | --- |
+| S1-001 | P1 | W8 | Verified | Every left-rail and right-rail panel has one shared header: the title on the left and exactly one collapse button (the drawer icon) on the right; no Back arrows or Close crosses in panel headers (Part 1) |
+| S1-002 | P1 | W8 | Verified | Media, AI and My Templates share one layout: every left panel is 380 px wide from 1800 px windows; search (40 px) with a 40 × 40 New folder 8 px after it; Media's Import split button (44 px) and drop zone (56 px), AI's two equal buttons; every row on one left and right edge with 16 px padding (Part 2) |
+| S1-003 | P1 | W8 | Verified | Library cards are two equal columns (12 px gap, at least 165 px at 1920 × 1080) in Media, AI and My Templates; "⋯" (dark, top-right) and "+" (accent, bottom-right) are 32 px, 8 px inside the thumbnail, visible on hover, focus and touch, and never also add the card (Part 2) |
+| S1-004 | P1 | W8 | Verified | Media always shows All, Images, Videos and Audio; AI and My Templates show All plus one chip per kind that has items; AI cards carry no AI chip; preset cards have a drawn thumbnail (Part 2) |
+| S1-005 | P1 | W8 | Verified | AI and My Templates cards drag like every library card (one controller, from the shared card): a canvas drop adds the item centred on the drop point, a timeline drop adds its clip at the drop time and lane, one undo step; Media still drags (Part 3) |
+| S1-006 | P1 | W8 | Verified | One menu placement for every context menu: fixed to the window at the pointer, 240 to 260 px wide, 32 px rows, at most the window's height less 16 px (scrolls inside), flipped and clamped so the whole menu and every nested submenu stay inside the window; a code layer's canvas and timeline menus have at most 14 top-level rows (Code animation, Clip, Track, Save to My Templates and More as submenus) (Part 4) |
+| S1-007 | P1 | W8 | Verified | Save to My Templates lists every kind that fits the selection (Shape, Text, Background, Animation, Video, Image, Annotation, Sticker, Group, Scene), none covered by another region; "Save as template" is removed everywhere (Part 4) |
+| S1-008 | P1 | W8 | Verified | AI and My Templates code animations have Duplicate ("<name> copy", kept unique) and Export in their "⋯" menu; an exported file imports again through AI › Import; a code layer's Code animation submenu has Export and Duplicate as copy (Part 4) |
+
 ## CP: Creator Pack in the editor (P-series, CREATOR-PACK-SPEC)
 
 Creator Pack items imported, checked and registered in the user's library, and their controls.

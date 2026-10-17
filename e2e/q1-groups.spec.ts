@@ -6,6 +6,7 @@ import {
   seekKeep,
   showCategory,
   showGraphics,
+  openSubmenus,
 } from './fixtures';
 
 // Q1: a group clip carries its children in time; Ungroup bakes the group's
@@ -94,6 +95,7 @@ test('[QT-001] lengthening a group clip carries its children: a layered backgrou
   await seekKeep(page, 1);
   const before = await pixel(page, 640, 360);
   await clipMenu(page, group.id);
+  await openSubmenus(menu(page), 'clip-menu');
   await menu(page).locator('[data-command="edit-duration"]').click();
   const field = page.locator(
     '.element-timing-popover #element-timing-duration',
@@ -117,6 +119,7 @@ test('[QT-001] lengthening a group clip carries its children: a layered backgrou
   await expect.poll(() => pixel(page, 640, 360)).toEqual(before);
   // Trimming back to 3 s carries them too; undo restores 12 s.
   await clipMenu(page, group.id);
+  await openSubmenus(menu(page), 'clip-menu');
   await menu(page).locator('[data-command="edit-duration"]').click();
   await field.fill('3');
   await field.press('Enter');

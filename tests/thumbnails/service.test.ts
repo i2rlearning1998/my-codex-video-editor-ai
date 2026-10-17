@@ -290,8 +290,9 @@ describe('canvas rendering with fakes', () => {
       },
     };
     await service.getPreviewFrames(preset, { ...size, count: 2 });
-    expect(calls.translate).toContainEqual([20, 45]);
-    expect(calls.translate).toContainEqual([80, 45]);
+    // Position tracks are offsets from the centre (D-239).
+    expect(calls.translate).toContainEqual([100, 45]);
+    expect(calls.translate).toContainEqual([160, 45]);
   });
   it('requires live-frame revision and uses baked/live frames, closing decoded bitmaps', async () => {
     fake();

@@ -1,6 +1,6 @@
 // Q4: the left rail's AI category: everything imported into My library
-// (Creator Packs and code animations), grouped by kind, each card with an
-// AI chip. R4: built on the shared library panel (search, New folder, tabs
+// (Creator Packs and code animations), grouped by kind (S1: no AI chip,
+// everything here is AI). R4: built on the shared library panel (search, New folder, tabs
 // per kind that has items, big cards with "⋯" and "+"). A click inserts the
 // item with the usual library insert (one undo step); a preset is applied to
 // the selected layer; a theme is applied. The header holds Import and Copy
@@ -38,10 +38,13 @@ export interface AiPanelOptions {
     slot: HTMLElement,
   ) => (() => void) | null;
   readonly rename: (id: string) => void;
+  /** S1: a code animation's Duplicate and Export (absent for others). */
+  readonly duplicate?: (id: string) => void;
+  readonly exportItem?: (id: string) => void;
+  readonly isCode?: (id: string) => boolean;
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
   readonly prompt: (title: string, value: string) => Promise<string | null>;
-  readonly collapse?: () => void;
   readonly report: (error: unknown) => void;
   readonly toast?: (text: string) => void;
 }
@@ -63,7 +66,6 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     title: t('ai.title'),
     classes: { card: 'ai-card', section: 'ai-group' },
     searchLabel: t('shelf.searchAi'),
-    ...(options.collapse ? { collapse: options.collapse } : {}),
     actions: [
       {
         id: 'ai-import',
@@ -100,9 +102,9 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           category: kind,
           folderId: AI_FOLDERS.folderOf(id),
           title: `${entry.name} · ${entry.packName.en}`,
-          chip: t('creator.badge'),
           keywords: [entry.packName.en, kind, ...entry.item.tags],
           data: { item: id, kind },
+          drag: () => ({ kind: 'creator' as const, id, name: entry.name }),
           thumb: (slot: HTMLElement) => libraryThumb(slot, source),
           ...(live
             ? {
@@ -115,6 +117,23 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
       }),
     add,
     rename: options.rename,
+    extraMenu: (id) =>
+      options.isCode?.(id)
+        ? [
+            {
+              id: 'ai-duplicate',
+              label: t('shelf.duplicate'),
+              icon: 'duplicate',
+              run: () => options.duplicate?.(id),
+            },
+            {
+              id: 'ai-export',
+              label: t('shelf.export'),
+              icon: 'download',
+              run: () => options.exportItem?.(id),
+            },
+          ]
+        : [],
     details: options.details,
     remove: options.remove,
     prompt: options.prompt,

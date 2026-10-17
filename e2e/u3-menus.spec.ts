@@ -95,15 +95,23 @@ test('[LAY-058] Speed and Audio open as flyouts on hover, and on the Right arrow
     button: 'right',
     position: { x: 20, y: 10 },
   });
-  const speed = timelineMenu(page).locator(':scope > [data-action="speed"]');
-  await expect(speed).toBeVisible();
+  // S1 (D-266): Clip opens on hover, and Speed opens beside it on hover.
+  const clipMenu = timelineMenu(page).locator(
+    ':scope > [data-action="clip-menu"]',
+  );
+  await expect(clipMenu).toBeVisible();
+  await clipMenu.hover();
+  const first = page.locator('.timeline-submenu').first();
+  await expect(first).toBeVisible();
+  const speed = first.locator(':scope > [data-action="speed"]');
   await speed.hover();
-  const flyout = page.locator('.timeline-submenu');
+  const flyout = page.locator('.timeline-submenu').nth(1);
   await expect(flyout).toBeVisible();
   await expect(flyout.getByRole('menuitemradio').first()).toBeVisible();
-  // The main menu stays as it was beside it.
+  // The menus stay as they were beside it.
   await expect(speed).toBeVisible();
   await expect(speed).toHaveAttribute('aria-expanded', 'true');
+  await expect(clipMenu).toHaveAttribute('aria-expanded', 'true');
   // Choosing a speed works from the flyout.
   await flyout.locator('[data-speed="2"]').click();
   expect(
