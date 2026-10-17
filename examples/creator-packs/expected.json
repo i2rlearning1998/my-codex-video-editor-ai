@@ -73,5 +73,22 @@
     "ok": false,
     "statuses": ["rejected"],
     "reason": "Low contrast"
+  },
+  "style-documentary.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "style-youtube-intro.json": {
+    "ok": true,
+    "statuses": ["warning"]
+  },
+  "style-logo-reveal-2d.json": {
+    "ok": true,
+    "statuses": ["ok"]
+  },
+  "bad-style-kit.json": {
+    "ok": false,
+    "statuses": ["rejected"],
+    "reason": "Unknown kit preset"
   }
 }

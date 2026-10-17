@@ -1,0 +1,89 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "style-pack-youtube-intro",
+    "name": {
+      "en": "YouTube intro style",
+      "hi": "यूट्यूब इंट्रो स्टाइल"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "claude-chat",
+    "notes": "Original creative direction; no external assets."
+  },
+  "items": [
+    {
+      "id": "style-youtube-intro",
+      "name": {
+        "en": "Punchy YouTube intro",
+        "hi": "दमदार यूट्यूब इंट्रो"
+      },
+      "tags": ["youtube", "intro", "energy"],
+      "type": "style",
+      "data": {
+        "category": "youtube-intro",
+        "description": "A 5 to 10 second channel intro that states who the channel is and what the viewer gets, then gets out of the way. Energy up front, logo and name locked in the last two seconds.",
+        "brief": {
+          "mood": "Confident, bright and friendly; energetic without being noisy.",
+          "pacing": "Fast: beats every 0.4 to 0.6 seconds for the first half, then a held 1.5 second logo lock-up. Animations snap in and ease out.",
+          "structure": [
+            "Hook (0-1.5 s): a bold shape or colour burst on the beat",
+            "Promise (1.5-4 s): one line saying what the channel gives, max 6 words",
+            "Channel name and logo reveal (4-7 s)",
+            "Hold the lock-up for at least 1.5 s with a subtle loop",
+            "Optional subscribe hint as a small badge, never a pop-up"
+          ],
+          "doNot": [
+            "No intro longer than 10 seconds",
+            "No more than two fonts",
+            "No text smaller than 6% of the frame height",
+            "Do not cover the logo with particles or light leaks",
+            "No generic 'Welcome to my channel' line"
+          ],
+          "qualityBar": "The name is readable on a phone at the end frame; the first frame is already interesting as a thumbnail; it loops cleanly if replayed."
+        },
+        "look": {
+          "palette": {
+            "background": "#111827",
+            "primary": "#7c3aed",
+            "accent": "#f59e0b",
+            "text": "#ffffff"
+          },
+          "fonts": {
+            "heading": "Poppins",
+            "body": "Inter"
+          },
+          "motion": "snappy"
+        },
+        "kit": {
+          "preferLibrary": [],
+          "presets": ["pop", "zoom", "slide", "pulse"],
+          "transitions": [
+            "transition.push",
+            "transition.zoom",
+            {
+              "id": "transition.glitch-reveal",
+              "optional": true
+            }
+          ],
+          "effects": ["effect.glow", "effect.crash-zoom"]
+        },
+        "inputs": {
+          "accepts": ["topic", "logo", "brand", "audio"]
+        },
+        "assetPolicy": {
+          "order": ["library", "stock", "ai"],
+          "aiImagesMax": 1,
+          "aiVideosMax": 0
+        },
+        "output": {
+          "aspect": "16:9",
+          "fps": 30,
+          "durationHint": "5-10 seconds"
+        },
+        "defaultFreedom": "free"
+      }
+    }
+  ]
+}

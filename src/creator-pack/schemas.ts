@@ -134,6 +134,149 @@ export const themeDataSchema = z
     caption: z.string().max(40).optional(),
   })
   .strict();
+/** B1: a style's free-text field: bounded, no links (styles never fetch). */
+const styleText = (max: number) =>
+  z
+    .string()
+    .min(1)
+    .max(max)
+    .refine(
+      (text) => !/(https?:\/\/|www\.|ftp:\/\/)/i.test(text),
+      'No URLs: a style is offline text.',
+    );
+/** B1: a kit id, or `{id, optional: true}` when the editor may lack it. */
+export const kitIdSchema = z.union([
+  z.string().min(1).max(129),
+  z
+    .object({ id: z.string().min(1).max(129), optional: z.literal(true) })
+    .strict(),
+]);
+export const STYLE_CATEGORIES = [
+  'documentary',
+  'youtube-intro',
+  'logo-reveal-2d',
+  'logo-reveal-3d',
+  'reels',
+  'education',
+  'animation-2d',
+  'animation-3d',
+  'recorded-video-enhance',
+  'custom',
+] as const;
+export const STYLE_INPUTS = [
+  'topic',
+  'script',
+  'audio',
+  'video',
+  'reference',
+  'logo',
+  'brand',
+] as const;
+export const STYLE_ASPECTS = [
+  '16:9',
+  '9:16',
+  '1:1',
+  '4:5',
+  '2:3',
+  '21:9',
+  '4:3',
+] as const;
+const unique = <T>(list: readonly T[]) => new Set(list).size === list.length;
+/**
+ * B1: a style, a reusable creative direction for the AI creator (what kind
+ * of video, how it should feel, which library pieces it likes, the asset
+ * policy and the output). It is never placed on the canvas.
+ */
+export const styleDataSchema = z
+  .object({
+    category: z.enum(STYLE_CATEGORIES),
+    description: styleText(600),
+    thumbnail: z
+      .string()
+      .max(200_000)
+      .regex(
+        /^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/,
+        'Thumbnail must be a base64 data: URI image.',
+      )
+      .optional(),
+    brief: z
+      .object({
+        mood: styleText(200),
+        pacing: styleText(300),
+        structure: z.array(styleText(200)).min(1).max(12),
+        doNot: z.array(styleText(200)).max(12),
+        qualityBar: styleText(300),
+      })
+      .strict(),
+    look: z
+      .object({
+        themeId: idSchema.optional(),
+        palette: z
+          .object({
+            background: hexColor,
+            primary: hexColor,
+            accent: hexColor,
+            text: hexColor,
+            extra: hexColor.optional(),
+          })
+          .strict()
+          .optional(),
+        fonts: z
+          .object({
+            heading: z.string().min(1).max(40),
+            body: z.string().min(1).max(40),
+          })
+          .strict()
+          .optional(),
+        motion: z.enum(['calm', 'snappy', 'bouncy', 'cinematic']).optional(),
+      })
+      .strict(),
+    kit: z
+      .object({
+        preferLibrary: z.array(kitIdSchema).max(24),
+        presets: z.array(kitIdSchema).max(24),
+        transitions: z.array(kitIdSchema).max(24),
+        effects: z.array(kitIdSchema).max(24),
+      })
+      .strict(),
+    inputs: z
+      .object({
+        accepts: z
+          .array(z.enum(STYLE_INPUTS))
+          .min(1)
+          .max(STYLE_INPUTS.length)
+          .refine(unique, 'List each input once.'),
+      })
+      .strict(),
+    assetPolicy: z
+      .object({
+        order: z
+          .array(z.enum(['library', 'stock', 'ai']))
+          .min(1)
+          .max(3)
+          .refine(unique, 'List each source once.')
+          .refine(
+            (order) => order[0] === 'library',
+            'The editor library comes first.',
+          )
+          .refine(
+            (order) => !order.includes('ai') || order.at(-1) === 'ai',
+            'AI-generated assets come last.',
+          ),
+        aiImagesMax: number.int().min(0).max(50),
+        aiVideosMax: number.int().min(0).max(20),
+      })
+      .strict(),
+    output: z
+      .object({
+        aspect: z.enum(STYLE_ASPECTS),
+        fps: number.int().min(12).max(120),
+        durationHint: styleText(60),
+      })
+      .strict(),
+    defaultFreedom: z.enum(['strict', 'guided', 'free']),
+  })
+  .strict();
 const native = libraryItemSchema.options.map((s) => s.extend({ ...common }));
 const v1ItemSchema = z
   .union([
@@ -165,6 +308,14 @@ const v1ItemSchema = z
         type: z.literal('theme'),
         controls: z.never().optional(),
         data: themeDataSchema,
+      })
+      .strict(),
+    z
+      .object({
+        ...common,
+        type: z.literal('style'),
+        controls: z.never().optional(),
+        data: styleDataSchema,
       })
       .strict(),
     z
@@ -280,3 +431,5 @@ export type CreatorItem = z.infer<typeof itemSchema>;
 export type CreatorPack = z.infer<typeof packSchema>;
 export type Preset = z.infer<typeof presetSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
+export type StyleData = z.infer<typeof styleDataSchema>;
+export type KitId = z.infer<typeof kitIdSchema>;

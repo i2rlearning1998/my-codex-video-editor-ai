@@ -7,12 +7,15 @@
 // AI brief. Rename, folders and Delete never touch layers already placed.
 import { t } from '../i18n';
 import { creatorLibraryId, type CreatorLibrary } from './creator-library';
+import { styleThumbnail } from './style-card';
 import { libraryPreview, libraryThumb } from './library-thumb';
 import { mountShelf, type Shelf } from './library-shelf';
 import { shelfFolders } from './shelf-folders';
 
 /** Kinds in the order the panel lists them (the brief's order). */
 export const AI_KINDS = [
+  // B1: styles first: they start a whole AI video.
+  'style',
   'shape',
   'background',
   'text',
@@ -42,6 +45,8 @@ export interface AiPanelOptions {
   readonly duplicate?: (id: string) => void;
   readonly exportItem?: (id: string) => void;
   readonly isCode?: (id: string) => boolean;
+  /** B1: "Use this style" (opens the New AI video form with it). */
+  readonly useStyle?: (id: string) => void;
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
   readonly prompt: (title: string, value: string) => Promise<string | null>;
@@ -58,6 +63,7 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     const entry = entryOf(id);
     if (!entry) return;
     if (entry.item.type === 'preset') options.applyPreset(id);
+    else if (entry.item.type === 'style') options.useStyle?.(id);
     else options.insert(id);
   };
   const shelf: Shelf = mountShelf({
@@ -88,12 +94,17 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
       options.library.list().map((entry) => {
         const id = creatorLibraryId(entry.key);
         const kind = entry.item.type;
+        const style = entry.item.type === 'style';
         const source = {
           id,
           type: kind,
           name: entry.name,
           data: entry.item.data,
-          url: entry.thumbnail ?? null,
+          // B1: a style's card is its palette, category icon and name.
+          url:
+            entry.item.type === 'style'
+              ? styleThumbnail(entry.item.data, entry.name)
+              : (entry.thumbnail ?? null),
         };
         const live = kind === 'motion' || kind === 'preset';
         return {
@@ -104,7 +115,16 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           title: `${entry.name} · ${entry.packName.en}`,
           keywords: [entry.packName.en, kind, ...entry.item.tags],
           data: { item: id, kind },
-          drag: () => ({ kind: 'creator' as const, id, name: entry.name }),
+          // B1: a style is never placed: no drag; "+" uses it.
+          ...(style
+            ? { addLabel: t('style.use') }
+            : {
+                drag: () => ({
+                  kind: 'creator' as const,
+                  id,
+                  name: entry.name,
+                }),
+              }),
           thumb: (slot: HTMLElement) => libraryThumb(slot, source),
           ...(live
             ? {

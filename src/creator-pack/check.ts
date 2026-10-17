@@ -6,6 +6,7 @@ import { validatePreset } from './preset';
 import { resolveRecipe } from './recipe';
 import { checkComposition } from './composition';
 import { controlValues } from './controls';
+import { checkStyleKit } from './style';
 export interface CheckOptions {
   fxCatalog: readonly string[];
   knownLibraryIds: readonly string[];
@@ -157,6 +158,15 @@ export function checkPack(input: unknown, options: CheckOptions): PackResult {
           throw Error(
             `Low contrast: text ${item.data.palette.text} on background ${item.data.palette.background} is ${ratio.toFixed(2)}:1; use at least 4.5:1.`,
           );
+      } else if (item.type === 'style') {
+        result.reasons.push(
+          ...checkStyleKit(item.data, {
+            fxCatalog: options.fxCatalog,
+            knownLibraryIds: [...known],
+            packId: pack.pack.id,
+            packItems: [...idCounts.keys()],
+          }),
+        );
       } else if (item.type === 'composition') {
         result.reasons.push(...checkComposition(item.data.spec, fullIds));
         result.needsRuntimeCheck = true;

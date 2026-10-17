@@ -1673,5 +1673,7 @@
   "shelf.copyName": "{name} कॉपी",
   "shelf.copyNameN": "{name} कॉपी {n}",
   "code.exported": "\"{name}\" एक्सपोर्ट किया गया",
-  "code.duplicated": "\"{name}\" के रूप में डुप्लिकेट किया गया"
+  "code.duplicated": "\"{name}\" के रूप में डुप्लिकेट किया गया",
+  "ai.kind.style": "स्टाइल",
+  "style.use": "यह स्टाइल इस्तेमाल करें"
 }

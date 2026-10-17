@@ -21,6 +21,9 @@ export interface ShelfItem {
   readonly category: string;
   readonly folderId?: string | null;
   readonly title?: string;
+  /** B1: the "+" and menu label when it is not Add to scene ("Use this
+   *  style"). */
+  readonly addLabel?: string;
   /** S1 Part 3: what a drag of the card carries (canvas and timeline). */
   readonly drag?: () => DragPayload | null;
   /** A small badge over the thumbnail (a duration). */
@@ -241,7 +244,7 @@ export function mountShelf(options: ShelfOptions): Shelf {
       },
       {
         id: `${prefix}-add`,
-        label: t('shelf.addToScene'),
+        label: item?.addLabel ?? t('shelf.addToScene'),
         icon: 'plus',
         run: run(() => options.add(id)),
       },
@@ -476,8 +479,11 @@ export function mountShelf(options: ShelfOptions): Shelf {
     plus.type = 'button';
     plus.className = 'shelf-plus icon-button';
     plus.dataset.action = `${prefix}-plus`;
-    plus.setAttribute('aria-label', t('shelf.addToSceneShort'));
-    plus.title = t('shelf.addToSceneShort');
+    plus.setAttribute(
+      'aria-label',
+      item.addLabel ?? t('shelf.addToSceneShort'),
+    );
+    plus.title = item.addLabel ?? t('shelf.addToSceneShort');
     plus.innerHTML = iconSvg('plus', 16);
     plus.onclick = (event) => {
       event.stopPropagation();

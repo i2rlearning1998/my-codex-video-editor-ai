@@ -1,0 +1,60 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "style-pack-bad",
+    "name": {
+      "en": "Bad style",
+      "hi": "खराब स्टाइल"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "claude-chat",
+    "notes": "Original creative direction; no external assets."
+  },
+  "items": [
+    {
+      "id": "style-loud",
+      "name": {
+        "en": "Loud promo",
+        "hi": "शोर प्रोमो"
+      },
+      "tags": ["promo"],
+      "type": "style",
+      "data": {
+        "category": "reels",
+        "description": "Everything at once, as loud as possible.",
+        "brief": {
+          "mood": "Loud.",
+          "pacing": "As fast as possible.",
+          "structure": ["Explosions"],
+          "doNot": [],
+          "qualityBar": "Loud."
+        },
+        "look": {
+          "motion": "bouncy"
+        },
+        "kit": {
+          "preferLibrary": [],
+          "presets": ["boing-boing"],
+          "transitions": [],
+          "effects": []
+        },
+        "inputs": {
+          "accepts": ["topic"]
+        },
+        "assetPolicy": {
+          "order": ["library", "stock", "ai"],
+          "aiImagesMax": 5,
+          "aiVideosMax": 2
+        },
+        "output": {
+          "aspect": "9:16",
+          "fps": 30,
+          "durationHint": "15 s"
+        },
+        "defaultFreedom": "free"
+      }
+    }
+  ]
+}

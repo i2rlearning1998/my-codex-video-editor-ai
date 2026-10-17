@@ -1,7 +1,8 @@
 // T2: Copy AI brief. One plain-text block to paste into Claude chat: the
 // task, the project's facts, the live library index (ids and short labels,
 // grouped by Creator Pack kind), the authoring rules (from
-// docs/CREATOR-PACK-AUTHORING.md, examples left out) and an optional request.
+// docs/CREATOR-PACK-AUTHORING.md, examples left out; B1: its theme and style
+// notes kept) and an optional request.
 // Everything is read from live registries by the caller, so it never goes
 // stale; it stays under 40 KB (D-255).
 export const BRIEF_LIMIT = 40 * 1024;
@@ -55,10 +56,12 @@ export function authoringRules(doc: string, maxWords = 3000): string {
   const examples = doc.indexOf('## Complete examples');
   const head = examples >= 0 ? doc.slice(0, examples) : doc;
   const theme = /### Theme\n([\s\S]*?)(?=\n### |\n## )/.exec(doc);
+  const style = /### Style\n([\s\S]*?)(?=\n### |\n## )/.exec(doc);
   const gate = /## Quality gate before delivery\n[\s\S]*$/.exec(doc);
   const text = [
     cut(head).replace(/^# .*\n/, ''),
     theme ? `## Theme items\n${cut(theme[1]!)}` : '',
+    style ? `## Style items\n${cut(style[1]!)}` : '',
     gate ? cut(gate[0]) : '',
   ]
     .join('\n')

@@ -128,8 +128,8 @@ it('authoring examples are complete valid offline packs', () => {
   );
   expect(doc.split('\n').length).toBeLessThan(400);
   const examples = [...doc.matchAll(/```json\n([\s\S]*?)\n```/g)];
-  // T1 (D-254): one more worked example, the theme.
-  expect(examples).toHaveLength(13);
+  // T1 (D-254): one more worked example, the theme; B1: and the style.
+  expect(examples).toHaveLength(14);
   for (const m of examples) {
     const r = checkPack(m[1]!, {
       fxCatalog: [

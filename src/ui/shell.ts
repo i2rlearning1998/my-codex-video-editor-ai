@@ -3113,9 +3113,14 @@ export function mountEditorShell(
     const entry = creatorEntryOf(id);
     if (
       !entry ||
-      ['theme', 'motion', 'composition', 'preset', 'template'].includes(
-        entry.item.type,
-      )
+      [
+        'theme',
+        'motion',
+        'composition',
+        'preset',
+        'template',
+        'style',
+      ].includes(entry.item.type)
     )
       return null;
     const item = libraryActions.find(id);
@@ -3146,7 +3151,8 @@ export function mountEditorShell(
     point?: readonly [number, number] | null,
   ) => {
     const entry = creatorEntryOf(id);
-    if (!entry) return;
+    // B1: a style is never placed on the canvas.
+    if (!entry || entry.item.type === 'style') return;
     // R2: a theme item is applied (themes live in the AI category too).
     if (entry.item.type === 'theme') {
       const theme = themeById(id);
@@ -3201,15 +3207,20 @@ export function mountEditorShell(
   /** S1 Part 4: an AI code animation (motion, or a Composition Spec). */
   const isCreatorCode = (id: string) => {
     const item = creatorEntryOf(id)?.item;
-    return item?.type === 'motion' || item?.type === 'composition';
+    // B1: styles are duplicated and exported the same way.
+    return (
+      item?.type === 'motion' ||
+      item?.type === 'composition' ||
+      item?.type === 'style'
+    );
   };
   /** S1: Duplicate makes "<name> copy" (kept unique) in AI. */
   const duplicateCreatorItem = (id: string) => {
     const entry = creatorEntryOf(id);
     if (!entry || !isCreatorCode(id)) return;
     const suffix = `copy-${crypto.randomUUID().slice(0, 8)}`;
-    const itemId = `${entry.item.id}-${suffix}`;
-    const packId = `${entry.packId}-${suffix}`;
+    const itemId = `${entry.item.id.slice(0, 50)}-${suffix}`;
+    const packId = `${entry.packId.slice(0, 50)}-${suffix}`;
     const name = copyName(
       entry.name,
       creatorLibrary.list().map((other) => other.name),
@@ -3236,6 +3247,28 @@ export function mountEditorShell(
       downloadCode(entry.name, item.data.tier, item.data.source);
     else if (item.type === 'composition')
       downloadCode(entry.name, 'A', JSON.stringify(item.data.spec, null, 2));
+    else if (item.type === 'style') {
+      // B1: a one-item Creator Pack, which AI › Import reads again.
+      const pack = {
+        format: 'creator-pack',
+        version: 1,
+        pack: {
+          id: entry.packId,
+          name: entry.packName,
+          version: entry.packVersion,
+          author: 'ai',
+          createdWith: 'claude-chat',
+        },
+        items: [{ ...item, name: { ...item.name, en: entry.name } }],
+      };
+      const file = `${entry.name.replace(/[\\/:*?"<>|]+/g, '-') || 'style'}.creatorpack.json`;
+      downloadText(JSON.stringify(pack, null, 2), file, 'application/json');
+      showToast(t('code.exported', { name: file }), 'info', 3000);
+    }
+  };
+  /** B1: "Use this style" (Part 2 opens the New AI video form). */
+  const openNewVideo = (styleId?: string) => {
+    if (styleId) creatorDetails(styleId);
   };
   const creatorDetails = (id: string) => {
     const entry = creatorEntryOf(id);
@@ -3283,6 +3316,7 @@ export function mountEditorShell(
     },
     rename: renameCreatorItem,
     isCode: isCreatorCode,
+    useStyle: (id) => safely(() => openNewVideo(id)),
     duplicate: (id) => safely(() => duplicateCreatorItem(id)),
     exportItem: (id) => safely(() => exportCreatorItem(id)),
     details: creatorDetails,
