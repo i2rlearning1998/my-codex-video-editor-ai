@@ -1002,6 +1002,18 @@ Creator Pack items imported, checked and registered in the user's library, and t
 | CP-014 | P1 | W8 | Verified | Bad creator packs (endless loop, fetch, NaN expression, missing field, oversized source, unused control) are rejected with their exact reasons and leave the editor and library untouched (P2, spec 10) |
 | CP-015 | P1 | W8 | Verified | Re-importing a pack is idempotent, and deleting a library item does not break a project that used it (P2, spec 10) |
 
+## F2: Final integration UI (FINAL2)
+
+The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts U1 to U11).
+
+| ID | Pri | Wave | Status | Item |
+| --- | --- | --- | --- | --- |
+| F2-001 | P1 | W9 | Verified | Settings › Stock & API keys: one block per provider (Pixabay, Pexels, Freesound; Sarvam, Google Cloud TTS, ElevenLabs, MiniMax, Deepgram) with Show, Save (masked), Test (Working, Key not valid, Too many requests, No internet) and Clear; Iconify needs no key; keys stay in this browser; Offline voice & captions shows each local engine's status (U1) |
+| F2-002 | P1 | W9 | Verified | Settings › Appearance › Accent colour: 8 swatches for the dark theme and 8 for the light theme, kept separately in this browser, applied at startup and on every theme switch; purple keeps today's look (U1) |
+| F2-003 | P1 | W9 | Verified | Elements › Photos, Videos (Pexels and Pixabay), Icons and Stickers (Iconify) and Audio (Freesound) open a stock page: debounced search, provider switch, orientation filter, shared 2-column cards with a licence badge, Load more, attribution at the bottom; a click or "+" downloads, imports into Media with the licence and credit (Media › Details) and places it at the playhead; cards drag to the canvas and the timeline; Charts, Tables, Frames, Grids, 3D and Animations stay disabled (U2) |
+| F2-004 | P1 | W9 | Verified | Stock states in plain words: no key (a card that opens Settings › Stock & API keys), key not accepted, too many requests with the wait in seconds, no internet, a download the site blocks ("A server is needed for this one"), nothing found; a failed download never breaks the editor (U2) |
+| F2-090 | P1 | W9 | Verified | Offline captions: the Whisper engine (tiny multilingual, English and Hindi, word timings) downloads in the user's browser with progress, Cancel and Remove, checked by size until `npm run models:pin` pins size and SHA-256; status Needs download (size) / Ready in Settings and every engine picker; offline voice says Not available and points to the cloud voices (U11) |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.

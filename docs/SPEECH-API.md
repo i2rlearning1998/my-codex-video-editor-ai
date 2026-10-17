@@ -237,3 +237,15 @@ What the owner can do to unblock Whisper (STT):
 4. With the URLs, sizes and hashes, the next session fills `LOCAL_MODELS['local-whisper'].files` and adds the runner behind the existing download, cache, progress and abort code. The status API then reports "needs download (size)".
 
 For English local TTS, a permissive voice without an eSpeak phonemizer is needed. One option is SpeechT5 with a speaker embedding whose licence the owner confirms (or one recorded in-house), hosted the same way.
+
+## FINAL2 U11: offline Whisper wired (2026-10-17)
+
+The owner approved `@huggingface/transformers` 4.3.1 (Apache-2.0) as a lazily loaded dependency (installed with `--ignore-scripts`; only its web build is bundled, as a separate chunk with the ONNX Runtime WebAssembly file, so the first load does not grow). `src/speech/whisper.ts` is the runner: it downloads the files listed in `src/speech/whisper-models.json` (variant `tiny` active, `base` listed) into IndexedDB through `createModelLoader` (progress, cancel, cache), then serves them to transformers through its custom cache, so inference never goes back to the network for them. Word timestamps are asked for and fall back to segments. The registry now reports `local-whisper` as `needs-download` (approximate size until pinned) or `ready`; Settings › Offline voice & captions offers Download, Cancel and Remove, and any STT engine picker can use it once ready. Offline TTS stays "Not available" (owner decision: cloud voices cover English and Hindi; SpeechT5's speaker-voice licence is unclear).
+
+Until the files are pinned, the loader checks each downloaded file by size only (non-empty, under 512 MB, and its exact size once pinned) and Settings shows a one-line note saying so.
+
+### Offline captions setup: 3 steps
+
+1. On a computer with internet, in the project folder, run `npm run models:pin` (all variants; `npm run models:pin -- --variant tiny` for one). It reads Hugging Face's current commit of each model, downloads every listed file, and writes its exact size, SHA-256 and the commit into `src/speech/whisper-models.json`.
+2. Commit that file (`git add src/speech/whisper-models.json && git commit -m "chore(speech): pin Whisper files"`). From then on the loader rejects any file whose size or SHA-256 differs, and the size-only note disappears.
+3. In the editor: Settings › Offline voice & captions › Download (about 41 MB for tiny). Then Auto captions and Transcribe can use "Offline Whisper" without internet.

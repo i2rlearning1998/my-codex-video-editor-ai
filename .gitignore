@@ -10,3 +10,4 @@ reports/*.patch
 reports/*.stat.txt
 review.zip
 .env*
+.claude/worktrees/
