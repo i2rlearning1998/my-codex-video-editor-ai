@@ -2,6 +2,10 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## J (composition adapter) — 2026-10-17
+
+- **Composition adapter:** an AI composition (scenes, media slots, library items, effects, transitions, a voice-over and captions) becomes a real project, with a list of what is still missing (empty slots, the voice-over, captions, camera moves) and warnings. Empty required slots show as dashed frames. `npm run composition:build` prints the result for a pack. Not yet wired into the editor's screens.
+
 ## B1 (Styles and the AI video brief) — 2026-10-17
 
 - **Styles (Part 1):** a new Creator Pack kind, `style`: a reusable creative direction (category, mood, pacing, structure, what to avoid, look, kit, asset policy, output, default freedom). Kit ids are checked against the editor; text fields refuse URLs. Three example styles and one rejected example. AI › Styles shows them as cards; "+" is Use this style.

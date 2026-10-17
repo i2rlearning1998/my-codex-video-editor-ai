@@ -48,17 +48,51 @@ or direct state mutation. Removing the property returns to legacy layout.
 Hindi or mixed text: `{ "direction": "auto" }` plus a suitable `fontFamily`.
 
 Nested list:
+
 ```json
-{"direction":"auto","list":{"kind":"numbered","levels":[1,2,3,1],"indent":28,"spacing":6}}
+{
+  "direction": "auto",
+  "list": {
+    "kind": "numbered",
+    "levels": [1, 2, 3, 1],
+    "indent": 28,
+    "spacing": 6
+  }
+}
 ```
+
 One paragraph per item; levels 1–3. Bullet styles: disc, circle, square. Numbered
 children restart when returning to a parent level. RTL markers reserve right-side
 space. Alignment left/right is interpreted as start/end in this opt-in path.
 
 Table:
+
 ```json
-{"table":{"rows":[[{"text":"Item"},{"text":"Value"}],[{"text":"हिंदी"},{"text":"42","style":{"color":"#ffffff","background":"#334155","align":"end"}}]],"columnWidths":[2,1],"header":true,"padding":8,"border":"#808080","borderWidth":1}}
+{
+  "table": {
+    "rows": [
+      [{ "text": "Item" }, { "text": "Value" }],
+      [
+        { "text": "हिंदी" },
+        {
+          "text": "42",
+          "style": {
+            "color": "#ffffff",
+            "background": "#334155",
+            "align": "end"
+          }
+        }
+      ]
+    ],
+    "columnWidths": [2, 1],
+    "header": true,
+    "padding": 8,
+    "border": "#808080",
+    "borderWidth": 1
+  }
+}
 ```
+
 Column widths are positive relative weights; row height fits wrapped contents.
 Cells support color, background, bold and start/center/end alignment. IDs
 `cell-row-column` and `paragraph-index` are stable addresses for tooling/stagger

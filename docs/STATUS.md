@@ -1,3 +1,6 @@
+- **J (composition adapter)** is on `claude/j-composition`, a draft PR stacked on `claude/b1-styles-brief` (PR #36), with `origin/codex/c2-engines` merged; not merged; see reports/J-SERIES.md.
+  - `src/composition`: media slots, `buildProjectFromComposition`, the pack builder and `npm run composition:build` (D-269). Engine only; nothing in the UI is wired yet.
+  - Schema unchanged; no new npm dependencies.
 - **B1 (Parts 1 to 4)** is on `claude/b1-styles-brief`, a draft PR stacked on `claude/s1-ui-fix` (PR #35), not merged; see reports/B1-SERIES.md.
   - **Part 1** the Creator Pack `style` kind, its examples and AI › Styles (D-267). **Parts 2 and 3** the New AI video brief form, the creator brief (LOCKED / FREE, under 60 KB) and AI › Briefs (D-268). **Part 4** docs/STYLES.md and docs/BRIEF-FORM.md.
   - Schema is still 8; no new npm dependencies.
