@@ -43,6 +43,9 @@ const browser = process.env.PLAYWRIGHT_CHANNEL
         ? { channel: 'msedge' }
         : { launchOptions: { executablePath: chromiumFallback } };
 
+// FINAL2: E2E_PORT lets parallel worktrees run their own dev server.
+const port = Number(process.env.E2E_PORT ?? 4173);
+
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: false,
@@ -55,7 +58,7 @@ export default defineConfig({
     ['json', { outputFile: 'e2e-results/results.json' }],
   ],
   use: {
-    baseURL: 'http://127.0.0.1:4173',
+    baseURL: `http://127.0.0.1:${port}`,
     ...browser,
     // V7 (spec 11.4): Chromium's fake microphone, so the voiceover
     // recording flow runs without a device or a permission prompt.
@@ -76,8 +79,8 @@ export default defineConfig({
   },
   updateSnapshots: 'missing',
   webServer: {
-    command: 'npm run dev -- --port 4173 --strictPort',
-    url: 'http://127.0.0.1:4173',
+    command: `npm run dev -- --port ${port} --strictPort`,
+    url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
   },
 });
