@@ -1,4 +1,6 @@
 /// <reference lib="webworker" />
+import { mediaSeekTime } from '../media-probe/timing';
+import { rasterizeOrientedSample } from '../media-probe/rotation';
 // W5-A export worker: decodes source video with WebCodecs (via Mediabunny), draws
 // every output frame with the same drawComposition as the preview, encodes video and
 // the pre-mixed audio, and streams the file into OPFS (EXP-001 to EXP-004).
@@ -126,7 +128,10 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 
 /** The source time a request should show, nudged inside the wanted frame. */
 const target = (request: MediaFrameRequest) =>
-  Math.max(0, request.sourceTime + (request.reversed ? -NUDGE : NUDGE));
+  mediaSeekTime(request.sourceTime, {
+    reverse: request.reversed,
+    nudge: NUDGE,
+  });
 
 async function run(job: ExportJob): Promise<void> {
   const { settings } = job;
@@ -320,7 +325,7 @@ async function run(job: ExportJob): Promise<void> {
           const sample = next && !next.done ? next.value : null;
           if (sample) {
             open.push(sample);
-            ready.set(request.key, sample.toCanvasImageSource());
+            ready.set(request.key, rasterizeOrientedSample(sample));
           }
         }
         const frames: FrameProvider = {
