@@ -404,7 +404,7 @@ export async function buildProjectFromComposition(
   });
   for (const line of tier.notBuilt)
     if (
-      !/supply a local asset|verify the uploaded asset|ADD_EFFECT|CREATE_TRANSITION/.test(
+      !/supply a local asset|verify the uploaded asset|ADD_EFFECT|CREATE_TRANSITION|Camera layer/.test(
         line,
       )
     )

@@ -1,0 +1,300 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "doc-mini",
+    "name": {
+      "en": "Documentary mini"
+    },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "claude-chat"
+  },
+  "items": [
+    {
+      "id": "style-documentary",
+      "name": {
+        "en": "Calm documentary",
+        "hi": "\u0936\u093e\u0902\u0924 \u0921\u0949\u0915\u094d\u092f\u0942\u092e\u0947\u0902\u091f\u094d\u0930\u0940"
+      },
+      "tags": ["documentary", "story", "calm"],
+      "type": "style",
+      "data": {
+        "category": "documentary",
+        "description": "A patient, factual story told through real footage, archive pictures and a steady voice-over. The viewer should finish knowing one thing clearly, not ten things vaguely.",
+        "brief": {
+          "mood": "Thoughtful, honest and warm; curious rather than dramatic.",
+          "pacing": "Slow and even: shots of 4 to 7 seconds, cuts on the end of a spoken sentence, a 1 second breath after each chapter. Never cut faster than 2 seconds.",
+          "structure": [
+            "Cold open: one striking image and one sentence that poses the question (0-10 s)",
+            "Title card on a quiet background",
+            "Three chapters, each opened by a short lower-third chapter title",
+            "Each chapter: establishing shot, detail shots, one fact on screen",
+            "Closing: return to the opening image, answer the question in one sentence",
+            "End card with credits and sources as on-screen text"
+          ],
+          "doNot": [
+            "No whooshes, flashes, glitches or zoom punches",
+            "No more than one on-screen text line at a time",
+            "No stock music with vocals under the voice-over",
+            "Never invent statistics; leave a [FACT?] placeholder text instead",
+            "No colour-shifting or VHS effects"
+          ],
+          "qualityBar": "Every text on screen is readable for at least 3 seconds; the voice-over is never covered by music; every chapter answers part of the opening question."
+        },
+        "look": {
+          "palette": {
+            "background": "#f4efe6",
+            "primary": "#2f3e46",
+            "accent": "#b5651d",
+            "text": "#1b1b1b"
+          },
+          "fonts": {
+            "heading": "Poppins",
+            "body": "Inter"
+          },
+          "motion": "calm"
+        },
+        "kit": {
+          "preferLibrary": [
+            {
+              "id": "starter/lower-third",
+              "optional": true
+            }
+          ],
+          "presets": ["fade", "slide", "ken-burns"],
+          "transitions": [
+            "transition.cross-blur",
+            {
+              "id": "transition.dip-to-black",
+              "optional": true
+            }
+          ],
+          "effects": ["effect.slow-zoom", "effect.filmic"]
+        },
+        "inputs": {
+          "accepts": ["topic", "script", "audio", "video", "reference"]
+        },
+        "assetPolicy": {
+          "order": ["library", "stock", "ai"],
+          "aiImagesMax": 0,
+          "aiVideosMax": 0
+        },
+        "output": {
+          "aspect": "16:9",
+          "fps": 25,
+          "durationHint": "3-8 minutes"
+        },
+        "defaultFreedom": "guided"
+      }
+    },
+    {
+      "id": "bees",
+      "name": {
+        "en": "Bees and honey"
+      },
+      "tags": ["documentary"],
+      "type": "composition",
+      "data": {
+        "spec": {
+          "version": 1,
+          "id": "documentary-mini",
+          "title": "Bees and honey",
+          "canvas": {
+            "width": 1920,
+            "height": 1080,
+            "fps": 25
+          },
+          "assets": [
+            {
+              "id": "archive",
+              "kind": "image",
+              "description": "An archive photo of a beehive"
+            },
+            {
+              "id": "interview",
+              "kind": "video",
+              "description": "A beekeeper speaking to camera"
+            },
+            {
+              "id": "music",
+              "kind": "audio",
+              "description": "Calm instrumental bed, no vocals"
+            }
+          ],
+          "scenes": [
+            {
+              "id": "cold-open",
+              "name": "Cold open",
+              "duration": 5,
+              "items": [
+                {
+                  "id": "photo",
+                  "name": "Archive photo",
+                  "kind": "media-slot",
+                  "slot": "archive",
+                  "start": 0,
+                  "duration": 5,
+                  "width": 1920,
+                  "height": 1080,
+                  "fx": [
+                    {
+                      "id": "effect.filmic",
+                      "params": {},
+                      "seed": 1
+                    }
+                  ]
+                },
+                {
+                  "id": "question",
+                  "name": "Question",
+                  "kind": "text",
+                  "start": 1,
+                  "duration": 4,
+                  "text": "Where does honey come from?",
+                  "width": 1400,
+                  "height": 120,
+                  "transform": {
+                    "x": 260,
+                    "y": 860
+                  },
+                  "fill": "#f4efe6"
+                },
+                {
+                  "id": "bed",
+                  "name": "Music bed",
+                  "kind": "audio-slot",
+                  "slot": "music",
+                  "start": 0,
+                  "duration": 5
+                }
+              ],
+              "cameraMoves": [
+                {
+                  "id": "push-in",
+                  "start": 0,
+                  "duration": 5,
+                  "from": {
+                    "x": 0,
+                    "y": 0,
+                    "zoom": 1,
+                    "rotation": 0,
+                    "shake": {
+                      "amplitude": 0,
+                      "frequency": 0,
+                      "seed": 1
+                    }
+                  },
+                  "to": {
+                    "x": 0,
+                    "y": 0,
+                    "zoom": 1.1,
+                    "rotation": 0,
+                    "shake": {
+                      "amplitude": 0,
+                      "frequency": 0,
+                      "seed": 1
+                    }
+                  }
+                }
+              ],
+              "transition": {
+                "id": "crossfade",
+                "duration": 1
+              }
+            },
+            {
+              "id": "chapter-1",
+              "name": "Chapter 1",
+              "duration": 6,
+              "items": [
+                {
+                  "id": "keeper",
+                  "name": "Beekeeper",
+                  "kind": "media-slot",
+                  "slot": "interview",
+                  "start": 0,
+                  "duration": 6,
+                  "width": 1920,
+                  "height": 1080
+                },
+                {
+                  "id": "lower-third",
+                  "name": "Lower third",
+                  "kind": "shape",
+                  "start": 0.5,
+                  "duration": 4,
+                  "shape": "rectangle",
+                  "fill": "#2f3e46",
+                  "width": 720,
+                  "height": 90,
+                  "transform": {
+                    "x": 80,
+                    "y": 900
+                  }
+                },
+                {
+                  "id": "chapter-title",
+                  "name": "Chapter title",
+                  "kind": "text",
+                  "start": 0.5,
+                  "duration": 4,
+                  "text": "1. The hive",
+                  "width": 680,
+                  "height": 70,
+                  "transform": {
+                    "x": 100,
+                    "y": 910
+                  },
+                  "fontSize": 48,
+                  "fill": "#f4efe6"
+                }
+              ],
+              "transition": {
+                "id": "fade-black",
+                "duration": 1
+              }
+            },
+            {
+              "id": "close",
+              "name": "Close",
+              "duration": 4,
+              "items": [
+                {
+                  "library": "bg-gradient-1"
+                },
+                {
+                  "id": "answer",
+                  "name": "Answer",
+                  "kind": "text",
+                  "start": 0,
+                  "duration": 4,
+                  "text": "From flowers, patience and work.",
+                  "width": 1400,
+                  "height": 120,
+                  "transform": {
+                    "x": 260,
+                    "y": 480
+                  },
+                  "fill": "#1b1b1b"
+                }
+              ]
+            }
+          ]
+        },
+        "slots": [
+          {
+            "id": "music",
+            "required": false,
+            "hint": "Calm instrumental bed (optional)"
+          }
+        ],
+        "voiceOver": {
+          "text": "Every jar of honey starts with a single flower.",
+          "lang": "en"
+        },
+        "captions": true
+      }
+    }
+  ]
+}

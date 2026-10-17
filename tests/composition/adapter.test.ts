@@ -234,3 +234,32 @@ describe('[J] composition adapter', () => {
     expect(bad.errors.length).toBeGreaterThan(0);
   });
 });
+
+describe('[J] composition:build CLI', () => {
+  it('builds a pack and lists what is missing', async () => {
+    const { execFileSync } = await import('node:child_process');
+    const text = execFileSync(
+      process.execPath,
+      [
+        'scripts/composition-build.mjs',
+        'examples/creator-packs/composition-documentary-mini.json',
+        '--json',
+      ],
+      { encoding: 'utf8' },
+    );
+    const [build] = JSON.parse(text) as {
+      itemId: string;
+      errors: string[];
+      missing: { kind: string }[];
+    }[];
+    expect(build!.itemId).toBe('bees');
+    expect(build!.errors).toEqual([]);
+    expect(build!.missing.map((m) => m.kind)).toEqual([
+      'slot',
+      'slot',
+      'voice-over',
+      'feature',
+      'captions',
+    ]);
+  }, 60_000);
+});
