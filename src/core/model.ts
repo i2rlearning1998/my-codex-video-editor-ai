@@ -1,3 +1,4 @@
+import { chromaSchema, type ChromaKey } from '../chroma/types';
 import { maskSchema, matteSchema, type Mask, type Matte } from '../masks/types';
 import { isReservedMarker } from './scene-transitions';
 import { z } from 'zod';
@@ -157,6 +158,7 @@ export interface Layer {
   masks?: Mask[] | undefined;
   matte?: Matte | undefined;
   blendMode?: string | undefined;
+  chromaKey?: ChromaKey | undefined;
   assetId: string | null;
   children: Layer[];
   /** Schema 8 (optional): an imported code animation (X1). */
@@ -191,12 +193,18 @@ export const layerSchema: z.ZodType<Layer> = z.lazy(() =>
         .optional(),
       matte: matteSchema.optional(),
       blendMode: z.string().max(64).optional(),
+      chromaKey: chromaSchema.optional(),
       assetId: idSchema.nullable(),
       children: z.array(layerSchema),
       code: codeLayerSchema.optional(),
     })
     .strict()
     .superRefine((layer, ctx) => {
+      if (layer.chromaKey && layer.type !== 'image' && layer.type !== 'video')
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Chroma key requires image or video',
+        });
       if (layer.code && (layer.type !== 'video' || layer.assetId !== null))
         ctx.addIssue({
           code: 'custom',

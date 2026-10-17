@@ -1,3 +1,4 @@
+import { processChromaFrame } from '../chroma/process';
 import { drawMaskedItems } from '../masks/render';
 import { drawStructuredText } from '../text-engine/draw';
 import { drawRich } from './rich-text';
@@ -411,7 +412,7 @@ export function drawComposition(
         context.clip();
       }
       // W4-B: decoded media replaces the placeholder once its frame is ready.
-      const frame = item.media
+      let frame: CanvasImageSource | null | undefined = item.media
         ? source.frames?.frame(item.media, source.playing ?? false)
         : null;
       // I1.7: deleted or missing media draws a clear hatched placeholder.
@@ -424,6 +425,12 @@ export function drawComposition(
         );
         return;
       }
+      if (frame && item.chromaKey)
+        frame = processChromaFrame(
+          frame,
+          item.chromaKey,
+          source.chromaQuality ?? 'full',
+        );
       // H3: cropping shows the whole source dimmed and the kept part bright.
       if (item.cropView) {
         const { source: full, frame: kept } = item.cropView;

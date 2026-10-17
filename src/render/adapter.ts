@@ -1,3 +1,4 @@
+import type { ChromaKey } from '../chroma/types';
 import { evaluateMask } from '../masks/geometry';
 import type { MaskScope } from '../masks/render';
 import { layoutStructured } from '../text-engine/layout';
@@ -105,6 +106,7 @@ export interface RenderSource {
   readonly drawing?: DrawingPath & { readonly opacity: number };
   /** W5-C: draw with the clips' animation presets (picking never sets this). */
   readonly animate?: boolean;
+  readonly chromaQuality?: 'full' | 'fast';
   /**
    * CV-041: the multi-selection frame (four world corners) while it is being
    * resized or rotated; otherwise the frame is the selection's bounds.
@@ -155,6 +157,7 @@ export interface LayerSize {
   readonly source: 'properties' | 'asset' | 'placeholder' | 'mixed';
 }
 export interface RenderItem {
+  readonly chromaKey?: Readonly<ChromaKey>;
   readonly maskScopes?: readonly MaskScope[];
   readonly id: string;
   readonly ancestors: readonly string[];
@@ -557,6 +560,7 @@ export function deriveRenderItems(input: RenderSource): {
             ...(stringProperty(layer, 'presetFxFrom') ? { fxFrom: true } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
+            ...(layer.chromaKey ? { chromaKey: layer.chromaKey } : {}),
             ...(scopes.length ? { maskScopes: scopes } : {}),
             matrix: world.matrix,
             opacity: world.opacity,
