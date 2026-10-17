@@ -1,3 +1,6 @@
+import type { ChromaKey } from '../chroma/types';
+import { evaluateMask } from '../masks/geometry';
+import type { MaskScope } from '../masks/render';
 import { layoutStructured } from '../text-engine/layout';
 import { pictureOf, type PictureStyle } from './picture';
 import {
@@ -103,6 +106,7 @@ export interface RenderSource {
   readonly drawing?: DrawingPath & { readonly opacity: number };
   /** W5-C: draw with the clips' animation presets (picking never sets this). */
   readonly animate?: boolean;
+  readonly chromaQuality?: 'full' | 'fast';
   /**
    * CV-041: the multi-selection frame (four world corners) while it is being
    * resized or rotated; otherwise the frame is the selection's bounds.
@@ -153,6 +157,8 @@ export interface LayerSize {
   readonly source: 'properties' | 'asset' | 'placeholder' | 'mixed';
 }
 export interface RenderItem {
+  readonly chromaKey?: Readonly<ChromaKey>;
+  readonly maskScopes?: readonly MaskScope[];
   readonly id: string;
   readonly ancestors: readonly string[];
   readonly matrix: AffineMatrix;
@@ -340,9 +346,14 @@ export function deriveRenderItems(input: RenderSource): {
       ? value.value
       : undefined;
   };
+  const hasBlend = (layers: readonly SceneLayer[]): boolean =>
+    layers.some(
+      (layer) => layer.blendMode !== undefined || hasBlend(layer.children),
+    );
   const visit = (
     layers: readonly SceneLayer[],
     ancestors: readonly string[],
+    maskScopes: readonly MaskScope[] = [],
   ) => {
     for (const layer of layers) {
       const canonicalTiming = effectiveLayerTiming(source.composition, layer);
@@ -364,8 +375,33 @@ export function deriveRenderItems(input: RenderSource): {
           !activeAtTime(timing, source.currentTime))
       )
         continue;
+      const scopes =
+        layer.masks?.length ||
+        layer.matte ||
+        layer.blendMode !== undefined ||
+        (layer.type === 'group' && hasBlend(layer.children))
+          ? [
+              ...maskScopes,
+              {
+                id: layer.id,
+                blendMode: layer.blendMode,
+                matrix: worldTransform(
+                  source.composition,
+                  layer.id,
+                  source.previews ?? source.preview,
+                ).matrix,
+                masks: (layer.masks ?? []).map((mask) =>
+                  evaluateMask(
+                    mask,
+                    (source.currentTime ?? 0) - timing.startTime,
+                  ),
+                ),
+                ...(layer.matte ? { matte: layer.matte } : {}),
+              },
+            ]
+          : maskScopes;
       if (layer.type === 'group') {
-        visit(layer.children, [...ancestors, layer.id]);
+        visit(layer.children, [...ancestors, layer.id], scopes);
         continue;
       }
       // H1.3: sound has no picture. Audio layers are never drawn, picked,
@@ -524,6 +560,8 @@ export function deriveRenderItems(input: RenderSource): {
             ...(stringProperty(layer, 'presetFxFrom') ? { fxFrom: true } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
+            ...(layer.chromaKey ? { chromaKey: layer.chromaKey } : {}),
+            ...(scopes.length ? { maskScopes: scopes } : {}),
             matrix: world.matrix,
             opacity: world.opacity,
             size: effectiveSize,
