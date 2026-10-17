@@ -277,6 +277,48 @@ export const styleDataSchema = z
     defaultFreedom: z.enum(['strict', 'guided', 'free']),
   })
   .strict();
+/**
+ * J: what a composition adds around its Composition Spec, all optional.
+ * `slots` describe the spec's asset slots for the person filling them
+ * (a logo is an image slot; `required` defaults to true when an item uses
+ * the slot); `voiceOver` asks for a narration clip (the speech engine makes
+ * it; the adapter only places it); `captions` asks for captions over it.
+ */
+export const COMPOSITION_SLOT_TYPES = [
+  'image',
+  'video',
+  'audio',
+  'logo',
+] as const;
+export const compositionDataSchema = z
+  .object({
+    spec: z.record(z.unknown()),
+    slots: z
+      .array(
+        z
+          .object({
+            id: z.string().min(1).max(64),
+            type: z.enum(COMPOSITION_SLOT_TYPES).optional(),
+            hint: z.string().min(1).max(200).optional(),
+            required: z.boolean().optional(),
+          })
+          .strict(),
+      )
+      .max(32)
+      .optional(),
+    voiceOver: z
+      .object({
+        text: z.string().min(1).max(5000),
+        lang: z.string().min(2).max(16),
+        voiceId: z.string().min(1).max(100).optional(),
+        required: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+    captions: z.boolean().optional(),
+  })
+  .strict();
+export type CompositionData = z.infer<typeof compositionDataSchema>;
 const native = libraryItemSchema.options.map((s) => s.extend({ ...common }));
 const v1ItemSchema = z
   .union([
@@ -323,7 +365,7 @@ const v1ItemSchema = z
         ...common,
         type: z.literal('composition'),
         controls: z.never().optional(),
-        data: z.object({ spec: z.record(z.unknown()) }).strict(),
+        data: compositionDataSchema,
       })
       .strict(),
     ...(['adjust', 'filter', 'effect', 'transition'] as const).map((type) =>

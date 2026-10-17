@@ -1,3 +1,4 @@
+import { layoutStructured } from '../text-engine/layout';
 import { pictureOf, type PictureStyle } from './picture';
 import {
   clipFx,
@@ -412,7 +413,32 @@ export function deriveRenderItems(input: RenderSource): {
         // The stored height is a static field the user (or a drag) set; wrapped
         // text can need more lines than that at the current width/font size, so
         // never clip content the layout itself says it needs.
-        const needed = richLayout?.height ?? wrapped?.height;
+        let needed = richLayout?.height ?? wrapped?.height;
+        const structuredStyle =
+          layer.type === 'text' ? textStyleOf(layer) : undefined;
+        if (structuredStyle?.engine) {
+          try {
+            const fontSize = Math.min(
+              numericProperty(layer, 'fontSize') ?? 32,
+              4096,
+            );
+            const cells = layoutStructured(
+              text?.type === 'string' ? text.value : layer.name,
+              size.width,
+              fontSize * structuredStyle.lineHeight,
+              structuredStyle.engine,
+              (value, bold) =>
+                (source.measureText ?? fallbackTextMeasure)(
+                  value,
+                  fontSize,
+                  bold ? { ...structuredStyle, weight: 700 } : structuredStyle,
+                ),
+            );
+            needed = Math.max(0, ...cells.map((cell) => cell.y + cell.height));
+          } catch {
+            /* Invalid structured layout stays clipped to the stored box. */
+          }
+        }
         // T6: a fixed-height box never grows; text past it is clipped and
         // the editor marks the overflow.
         const fixedHeight =

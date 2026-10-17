@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "pack:check": "node scripts/pack-check.mjs",
+    "composition:build": "node scripts/composition-build.mjs",
     "dev": "vite --host 127.0.0.1",
     "fx:gallery": "vite --config fx-gallery/vite.config.ts",
     "ai-spec:check": "vitest run tests/ai-spec",

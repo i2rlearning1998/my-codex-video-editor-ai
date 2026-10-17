@@ -21,6 +21,8 @@ import {
 import type { ExportJob, WorkerMessage } from './worker';
 
 export interface ExportInput {
+  /** Project settings.masterVolume; absent is unity. */
+  masterVolume?: number;
   composition: DeepReadonly<Composition>;
   assets: readonly DeepReadonly<Asset>[];
   background: string;
@@ -173,7 +175,7 @@ export function startExport(
       }
     }
     const audio = await mixdown(
-      listAudibleClips(input.composition, assets),
+      listAudibleClips(input.composition, assets, [], input.masterVolume ?? 1),
       deps.decoder,
       settings.start,
       settings.end,

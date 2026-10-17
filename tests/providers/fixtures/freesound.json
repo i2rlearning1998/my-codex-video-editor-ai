@@ -1,0 +1,39 @@
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "name": "Gentle rain",
+      "url": "https://freesound.org/people/Ada/sounds/1/",
+      "username": "Ada",
+      "duration": 9,
+      "tags": ["rain", "nature"],
+      "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "previews": {
+        "preview-hq-mp3": "https://cdn.freesound.org/previews/0/1-hq.mp3",
+        "preview-lq-mp3": "https://cdn.freesound.org/previews/0/1-lq.mp3"
+      },
+      "images": {
+        "waveform_m": "https://cdn.freesound.org/displays/0/1.png"
+      }
+    },
+    {
+      "id": 2,
+      "name": "Gentle rain",
+      "url": "https://freesound.org/people/Ada/sounds/2/",
+      "username": "Ada",
+      "duration": 9,
+      "tags": ["rain", "nature"],
+      "license": "https://creativecommons.org/licenses/by/4.0/",
+      "previews": {
+        "preview-hq-mp3": "https://cdn.freesound.org/previews/0/2-hq.mp3",
+        "preview-lq-mp3": "https://cdn.freesound.org/previews/0/2-lq.mp3"
+      },
+      "images": {
+        "waveform_m": "https://cdn.freesound.org/displays/0/2.png"
+      }
+    }
+  ]
+}

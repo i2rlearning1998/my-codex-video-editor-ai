@@ -1,3 +1,5 @@
+import { isCatalogFont, fallbackChain } from '../text-engine/catalog';
+import { parseTextEngine, type TextEngineOptions } from '../text-engine/layout';
 // W2-F5 text styling (TXT-010, TXT-014, TXT-016, TXT-017): a text layer's
 // font, weight, italic, alignment, spacing and case live in its property
 // record (schema unchanged, D-033 pattern) and are read defensively here, so
@@ -47,6 +49,7 @@ export const TEXT_LIMITS = {
 } as const;
 
 export interface TextStyle {
+  readonly engine?: TextEngineOptions;
   readonly family: string;
   readonly weight: number;
   readonly italic: boolean;
@@ -99,15 +102,19 @@ export function textStyleOf(layer: SceneLayer): TextStyle {
   const paragraphSpacing = numeric('paragraphSpacing');
   const decoration = string('textDecoration') ?? '';
   const anchor = string('textAnchor');
+  const engine = parseTextEngine(string('textEngine'));
   return {
+    ...(engine ? { engine } : {}),
     underline: decoration.split(' ').includes('underline'),
     strike: decoration.split(' ').includes('line-through'),
     anchor: (TEXT_ANCHORS as readonly string[]).includes(anchor ?? '')
       ? (anchor as TextAnchor)
       : 'top',
-    family: SYSTEM_FONTS.some(([name]) => name === family)
-      ? family!
-      : DEFAULT_TEXT_STYLE.family,
+    family:
+      SYSTEM_FONTS.some(([name]) => name === family) ||
+      (family !== undefined && isCatalogFont(family))
+        ? family!
+        : DEFAULT_TEXT_STYLE.family,
     weight:
       weight !== undefined && inRange(weight, [100, 900])
         ? Math.round(weight / 100) * 100
@@ -138,6 +145,12 @@ export function textStyleOf(layer: SceneLayer): TextStyle {
 
 /** The CSS font shorthand for a style at a size. */
 export function textFont(style: TextStyle, fontSize: number): string {
+  if (
+    style.engine ||
+    (isCatalogFont(style.family) &&
+      !SYSTEM_FONTS.some(([name]) => name === style.family))
+  )
+    return `${style.italic ? 'italic ' : ''}${style.weight} ${fontSize}px ${fallbackChain(style.family)}`;
   const generic =
     SYSTEM_FONTS.find(([name]) => name === style.family)?.[1] ?? 'sans-serif';
   return `${style.italic ? 'italic ' : ''}${style.weight} ${fontSize}px "${style.family}", ${generic}`;

@@ -26,6 +26,7 @@ The creator spec is imported unchanged; editor and library schemas stay unchange
 - docs/CREATOR-PACK-AUTHORING.md: how to write a pack (every kind, with examples).
 - docs/STYLES.md: the `style` kind (a creative direction for the AI creator).
 - docs/BRIEF-FORM.md: the New AI video brief form and My briefs.
+- docs/COMPOSITION-ADAPTER.md: building a project from a composition (slots, voice-over, captions).
 - docs/AI-BRIEF.md: Copy AI brief.
 - docs/THEMES-API.md and docs/THUMBNAILS-API.md: the theme library and thumbnails.
 

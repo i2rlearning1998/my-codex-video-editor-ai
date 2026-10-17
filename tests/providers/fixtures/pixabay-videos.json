@@ -1,0 +1,44 @@
+{
+  "total": 1,
+  "totalHits": 1,
+  "hits": [
+    {
+      "id": 43,
+      "pageURL": "https://pixabay.com/videos/id-43/",
+      "tags": "ocean, blue",
+      "user": "Ada",
+      "user_id": 7,
+      "duration": 12,
+      "videos": {
+        "tiny": {
+          "url": "https://cdn.pixabay.com/video/43_tiny.mp4",
+          "width": 480,
+          "height": 270,
+          "thumbnail": "https://cdn.pixabay.com/video/43_tiny.jpg",
+          "size": 1000
+        },
+        "small": {
+          "url": "https://cdn.pixabay.com/video/43_small.mp4",
+          "width": 640,
+          "height": 360,
+          "thumbnail": "https://cdn.pixabay.com/video/43_small.jpg",
+          "size": 1000
+        },
+        "medium": {
+          "url": "https://cdn.pixabay.com/video/43_medium.mp4",
+          "width": 1280,
+          "height": 720,
+          "thumbnail": "https://cdn.pixabay.com/video/43_medium.jpg",
+          "size": 1000
+        },
+        "large": {
+          "url": "https://cdn.pixabay.com/video/43_large.mp4",
+          "width": 1920,
+          "height": 1080,
+          "thumbnail": "https://cdn.pixabay.com/video/43_large.jpg",
+          "size": 1000
+        }
+      }
+    }
+  ]
+}

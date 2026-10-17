@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { EditorEngine, JsonValue } from '../core';
+import { easingSchema, type EditorEngine, type JsonValue } from '../core';
+import { easeProgress } from '../core/animation';
 import { compositionById, requireLayer } from '../core/scene';
 
 const db = z.number().finite().min(-96).max(24);
@@ -47,13 +48,23 @@ export const audioSettingsSchema = z
       .strict()
       .default({}),
     gainDb: db.default(0),
+    volume: z.number().finite().min(0).max(2).optional(),
+    denoise: z.enum(['off', 'low', 'high']).optional(),
     pan: z.number().finite().min(-1).max(1).default(0),
     fadeIn: z.number().finite().min(0).max(86400).default(0),
     fadeOut: z.number().finite().min(0).max(86400).default(0),
     muted: z.boolean().default(false),
     // Clip-local seconds. Linear interpolation in dB; follows clip moves.
     volumeKeys: z
-      .array(z.object({ time: z.number().finite().nonnegative(), db }).strict())
+      .array(
+        z
+          .object({
+            time: z.number().finite().nonnegative(),
+            db,
+            easing: easingSchema.optional(),
+          })
+          .strict(),
+      )
       .max(2048)
       .default([])
       .refine(
@@ -141,8 +152,14 @@ export function volumeDbAt(settings: AudioSettings, local: number): number {
   for (let i = 1; i < keys.length; i++) {
     const a = keys[i - 1]!,
       b = keys[i]!;
-    if (local <= b.time)
+    if (local <= b.time && a.easing === undefined)
       return a.db + ((b.db - a.db) * (local - a.time)) / (b.time - a.time);
+    if (local <= b.time)
+      return (
+        a.db +
+        (b.db - a.db) *
+          easeProgress(a.easing, (local - a.time) / (b.time - a.time))
+      );
   }
   return keys[keys.length - 1]!.db;
 }
@@ -161,7 +178,11 @@ export function clipGainAt(
     fadeIn ? local / fadeIn : 1,
     fadeOut ? (duration - local) / fadeOut : 1,
   );
-  return dbToGain(volumeDbAt(settings, local)) * Math.max(0, fade);
+  return (
+    (settings.volume ?? 1) *
+    dbToGain(volumeDbAt(settings, local)) *
+    Math.max(0, fade)
+  );
 }
 
 export function normalizationSignature(

@@ -1,0 +1,16 @@
+{
+  "voices": [
+    {
+      "languageCodes": ["hi-IN"],
+      "name": "hi-IN-Standard-A",
+      "ssmlGender": "FEMALE",
+      "naturalSampleRateHertz": 24000
+    },
+    {
+      "languageCodes": ["en-US"],
+      "name": "en-US-Standard-A",
+      "ssmlGender": "MALE",
+      "naturalSampleRateHertz": 24000
+    }
+  ]
+}

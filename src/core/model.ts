@@ -2,7 +2,7 @@ import { isReservedMarker } from './scene-transitions';
 import { z } from 'zod';
 import { trackHolds } from './lanes';
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export const jsonSchema: z.ZodType<JsonValue> = z.lazy(() =>
@@ -230,6 +230,7 @@ export const trackSchema = z
     locked: z.boolean(),
     muted: z.boolean(),
     clips: z.array(clipSchema),
+    volume: finite.min(0).max(2).optional(),
   })
   .strict();
 export type Track = z.infer<typeof trackSchema>;
@@ -408,6 +409,7 @@ export const projectSchema = z
         /** The default background of new scenes (J1); each scene has its own. */
         backgroundColor: hexColor,
         audioSampleRate: z.union([z.literal(44100), z.literal(48000)]),
+        masterVolume: finite.min(0).max(2).optional(),
       })
       .strict(),
     compositions: z.array(compositionSchema).min(1),

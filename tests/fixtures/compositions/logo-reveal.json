@@ -1,0 +1,23 @@
+{
+  "spec": {
+    "version": 1,
+    "id": "logo-reveal",
+    "title": "Logo reveal",
+    "canvas": { "width": 1920, "height": 1080, "fps": 60 },
+    "assets": [{ "id": "logo", "kind": "image", "description": "The brand logo" }],
+    "scenes": [
+      {
+        "id": "reveal",
+        "name": "Reveal",
+        "duration": 5,
+        "background": "#101418",
+        "items": [
+          { "id": "logo-mark", "name": "Logo", "kind": "media-slot", "slot": "logo", "start": 0.5, "duration": 4.5, "width": 600, "height": 600, "transform": { "x": 660, "y": 180 }, "fx": [{ "id": "effect.glow", "params": {}, "seed": 7 }] },
+          { "id": "tagline", "name": "Tagline", "kind": "text", "start": 2, "duration": 3, "text": "Made with care", "width": 900, "height": 90, "transform": { "x": 510, "y": 840 }, "fill": "#ffffff" },
+          { "library": "shape-polygon-6" }
+        ]
+      }
+    ]
+  },
+  "slots": [{ "id": "logo", "type": "logo", "hint": "Square logo, PNG with transparency" }]
+}

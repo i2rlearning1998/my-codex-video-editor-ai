@@ -34,6 +34,12 @@ function versionOf(document: unknown): number {
 export class MigrationRegistry {
   #migrations = new Map<number, Migration>();
   constructor() {
+    // C3 audio: optional master/track volume; absence remains unity.
+    this.register({
+      from: 8,
+      to: 9,
+      migrate: (input) => ({ ...(input as object), schemaVersion: 9 }),
+    });
     // Schema 8 (X1): an optional code field on layers; nothing to move.
     this.register({
       from: 7,
