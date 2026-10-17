@@ -1,0 +1,14 @@
+{
+  "voices": [
+    {
+      "voice_id": "voice_en",
+      "name": "English example",
+      "labels": { "language": "en" }
+    },
+    {
+      "voice_id": "voice_hi",
+      "name": "Hindi example",
+      "labels": { "language": "hi" }
+    }
+  ]
+}
