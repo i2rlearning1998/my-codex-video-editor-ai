@@ -1,3 +1,4 @@
+import { drawMaskedItems } from '../masks/render';
 import { drawStructuredText } from '../text-engine/draw';
 import { drawRich } from './rich-text';
 import { drawPicture } from './picture';
@@ -542,6 +543,53 @@ export function drawComposition(
   // and composited once. Preview and export share this path.
   const byId = new Map(items.map((item) => [item.id, item]));
   const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
+    const selected = items
+      .filter(
+        (item) =>
+          (!only || only(item)) &&
+          !(
+            item.fxFrom &&
+            items.some(
+              (other) =>
+                other.fxTransition?.from === item.id && (!only || only(other)),
+            )
+          ),
+      )
+      .map((item) =>
+        item.maskScopes
+          ? {
+              ...item,
+              maskScopes: item.maskScopes.map((scope) => ({
+                ...scope,
+                matrix: multiplyMatrices(view, scope.matrix),
+              })),
+            }
+          : item,
+      );
+    if (
+      drawMaskedItems(
+        context,
+        selected,
+        items,
+        (target, item) => {
+          if (
+            (item.fx || item.fxTransition) &&
+            drawWithFx(
+              target,
+              item,
+              fade,
+              paintItem,
+              item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
+              errors,
+            )
+          )
+            return;
+          paintItem(target, item, fade);
+        },
+        errors,
+      )
+    )
+      return;
     for (const item of items) {
       if (only && !only(item)) continue;
       if (item.fxFrom && byId.get(item.id)) {

@@ -1,3 +1,4 @@
+import { maskSchema, matteSchema, type Mask, type Matte } from '../masks/types';
 import { isReservedMarker } from './scene-transitions';
 import { z } from 'zod';
 import { trackHolds } from './lanes';
@@ -153,7 +154,8 @@ export interface Layer {
   transform: Transform;
   properties: Record<string, Property>;
   effects: [];
-  masks: [];
+  masks?: Mask[] | undefined;
+  matte?: Matte | undefined;
   assetId: string | null;
   children: Layer[];
   /** Schema 8 (optional): an imported code animation (X1). */
@@ -170,7 +172,23 @@ export const layerSchema: z.ZodType<Layer> = z.lazy(() =>
       transform: transformSchema,
       properties: z.record(idSchema, propertySchema),
       effects: z.tuple([]),
-      masks: z.tuple([]),
+      masks: z
+        .array(
+          maskSchema.superRefine((mask, ctx) => {
+            for (const key of mask.keyframes ?? [])
+              if (
+                key.easing !== undefined &&
+                !easingSchema.safeParse(key.easing).success
+              )
+                ctx.addIssue({
+                  code: 'custom',
+                  message: 'Invalid mask easing',
+                });
+          }),
+        )
+        .max(32)
+        .optional(),
+      matte: matteSchema.optional(),
       assetId: idSchema.nullable(),
       children: z.array(layerSchema),
       code: codeLayerSchema.optional(),
