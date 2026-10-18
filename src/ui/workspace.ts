@@ -111,6 +111,11 @@ export function mountWorkspace(
   const reserve =
     (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ ===
     'reserve';
+  // FINAL2 U10: the same for the 380 px library width; the e2e fixture keeps
+  // the earlier width (from 1800 px only) and F2-072 switches it off.
+  const legacyLibrary =
+    (window as { __AIVE_E2E_LIBRARY__?: string }).__AIVE_E2E_LIBRARY__ ===
+    'legacy';
   const bar = shell.querySelector('.topbar')!;
   // S1 Part 1: the left panel's one header (title + drawer icon).
   const leftToggle = document.createElement('div');
@@ -162,7 +167,9 @@ export function mountWorkspace(
     // FINAL2 U10: library panels are 380 px on every wide window, so two
     // columns of cards are at least 165 px (below 1440 px: unchanged).
     const left =
-      library && layout === 'wide' ? Math.max(leftWidth(), 380) : leftWidth();
+      library && layout === 'wide' && !legacyLibrary
+        ? Math.max(leftWidth(), 380)
+        : leftWidth();
     const docked = (side: 'left' | 'right') =>
       side === 'left'
         ? layout === 'wide' || layout === 'medium'

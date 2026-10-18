@@ -50,6 +50,10 @@ export const test = base.extend<Fixtures>({
         // stored; the Reconnect media dialog stays off for them.
         (window as { __AIVE_E2E_RELINK__?: string }).__AIVE_E2E_RELINK__ =
           'off';
+        // FINAL2 U10 (D-284): earlier pixel tests keep the library width
+        // they were written for; F2-072 switches this off.
+        (window as { __AIVE_E2E_LIBRARY__?: string }).__AIVE_E2E_LIBRARY__ =
+          'legacy';
       });
       const errors: string[] = [];
       const allowed: ((message: string) => boolean)[] = [];

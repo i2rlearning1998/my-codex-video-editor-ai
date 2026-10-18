@@ -225,7 +225,8 @@ test.describe('P2 creator packs', () => {
       ),
     );
     await runChecksExpectReject(page, 'random-thing', /not deterministic/);
-    // A composition is not supported yet: listed, never silently dropped.
+    // FINAL2 U10 (D-284): a composition is checked by the composition
+    // adapter and offers Build video instead of being added to the library.
     await paste(page, read('composition.json'));
     await expect(row(page, 'shape-kite')).toHaveAttribute(
       'data-status',
@@ -234,8 +235,10 @@ test.describe('P2 creator packs', () => {
     const composition = dialog(page).locator(
       '.creator-item[data-type="composition"]',
     );
-    await expect(composition).toHaveAttribute('data-status', 'unsupported');
-    await expect(composition).toContainText('Not supported yet');
+    await expect(composition).toHaveAttribute('data-status', 'ok');
+    await expect(
+      composition.locator('[data-action="build-video"]'),
+    ).toBeVisible();
     // Copy report: plain text for the AI.
     await page
       .context()
@@ -246,7 +249,6 @@ test.describe('P2 creator packs', () => {
     ).toBeVisible();
     const report = await page.evaluate(() => navigator.clipboard.readText());
     expect(report).toContain('Creator pack tiny-video version 1');
-    expect(report).toMatch(/NOT SUPPORTED YET/);
     await dialog(page).locator('#ai-import-cancel').click();
     expect(await libraryKeys(page)).toEqual([]);
     expect((await hook(page)).history.labels).toEqual([]);

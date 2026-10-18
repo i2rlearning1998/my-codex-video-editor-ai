@@ -98,6 +98,10 @@ test.describe('library panel width', () => {
   test('[F2-072] from 1440 px library panels are 380 px wide (two cards of at least 165 px); the Scene panel keeps its width', async ({
     page,
   }) => {
+    await page.addInitScript(() => {
+      (window as { __AIVE_E2E_LIBRARY__?: string }).__AIVE_E2E_LIBRARY__ =
+        'off';
+    });
     await page.goto('/');
     const width = () =>
       page

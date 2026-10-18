@@ -211,16 +211,18 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
     'Graphics',
     'Photos',
     'Videos',
-    '3D',
-    'Animations',
+    // FINAL2 U2: stock Icons and Stickers; the planned tiles follow the live ones.
+    'Icons',
+    'Stickers',
     'Audio',
     'Tables',
+    '3D',
+    'Animations',
     'Charts',
     'Frames',
     'Grids',
   ]);
   for (const [tile, id] of [
-    ['photos', 'MED-028'],
     ['charts', 'SHP-016'],
     ['frames', 'MSK-003'],
   ] as const) {
