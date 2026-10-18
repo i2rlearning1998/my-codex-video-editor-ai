@@ -367,6 +367,8 @@ export function openAiImportDialog(options: AiImportOptions) {
         }
         if (
           row.type === 'composition' &&
+          // A single Composition Spec (Tier A) is added as before.
+          !row.tier &&
           options.buildComposition &&
           row.item &&
           usable(row)
