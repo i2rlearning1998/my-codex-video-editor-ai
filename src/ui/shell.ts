@@ -130,6 +130,7 @@ import {
   selectionGeometry as selectionGeometryOf,
 } from './geometry';
 import { mountMediaPanel } from './media-panel';
+import { mountMediaRelink } from './media-relink';
 import { openExportDialog } from './export-dialog';
 import { drawComposition } from '../render/canvas';
 import {
@@ -530,6 +531,20 @@ export function mountEditorShell(
       });
     },
   );
+  // FINAL2 U8: Reconnect media for files missing from this browser's store.
+  const mediaRelink = mountMediaRelink({
+    engine,
+    store: mediaStore,
+    refreshed: () => {
+      frames.retry();
+      waveforms.retry();
+      previews.retry();
+    },
+  });
+  setTimeout(() => void mediaRelink.check(), 0);
+  engine.on('state:changed', (event) => {
+    if (event.reason === 'load') setTimeout(() => void mediaRelink.check(), 0);
+  });
   // X1 (spec section 5): code animations play from a frame cache that the
   // preview and the export share; the baker fills it one job at a time.
   const codeCache = new FrameCache(mediaStore);
@@ -6231,6 +6246,7 @@ export function mountEditorShell(
       unsubscribeTheme();
       sceneBoard.dispose();
       mediaPanel.dispose();
+      mediaRelink.dispose();
       soundPack.dispose();
       recordPanel.dispose();
       positionPanel.dispose();

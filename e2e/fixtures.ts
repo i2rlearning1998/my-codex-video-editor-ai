@@ -45,6 +45,10 @@ export const test = base.extend<Fixtures>({
         // column reserved; V1's own tests switch this off.
         (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ =
           'reserve';
+        // FINAL2 U8: earlier tests open projects whose media bytes are not
+        // stored; the Reconnect media dialog stays off for them.
+        (window as { __AIVE_E2E_RELINK__?: string }).__AIVE_E2E_RELINK__ =
+          'off';
       });
       const errors: string[] = [];
       const allowed: ((message: string) => boolean)[] = [];
