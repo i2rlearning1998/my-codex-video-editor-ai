@@ -9710,3 +9710,46 @@ input[type='range'] {
     transform: rotate(360deg);
   }
 }
+
+/* FINAL2 U7: masks, blend mode groups and chroma key. */
+.select-group {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.mask-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-2) 0;
+}
+.mask-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.mask-pick {
+  flex: 1;
+  min-height: var(--hit-min);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  text-align: start;
+  font-size: var(--font-label);
+  cursor: pointer;
+}
+.mask-pick[aria-selected='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.right-note.right-warning {
+  color: var(--warning-text);
+}
+.chroma-quality {
+  margin-block-end: var(--space-2);
+}

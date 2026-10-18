@@ -171,4 +171,4 @@ export function blendPixel(
   ] as [number, number, number, number];
 }
 
-export { setLayerBlendMode } from './commands';
+export { setLayerBlendMode, registerLayerBlend } from './commands';
