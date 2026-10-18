@@ -1019,6 +1019,11 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | F2-050 | P1 | W9 | Verified | Reconnect media: after a project opens, media whose files are not in this browser are listed (name, kind, size, length, picture size); Pick file per item (a file of the wrong kind or an unreadable one is refused in plain words), Pick folder matches all by name, size, length and picture size; Reconnect stores the bytes first, then restores each reference in one library change (ids, clips, lanes, keyframes and Undo history unchanged); Skip keeps placeholders and a toast offers Reconnect again (U8) |
 | F2-051 | P1 | W9 | Verified | Media › Details shows what the probe read: video and audio codec, resolution, frame rate, variable frame rate, rotation, audio (mono or stereo, kHz) and container; unknown values read Unknown; the stock credit row stays (U8) |
 | F2-052 | P1 | W9 | Claimed | Plain import notes: an unsupported video or sound codec names the format and what to convert to; a rotated phone video says it is shown upright automatically; a variable frame rate says playback and export follow the file's timing, so nothing needs fixing (also in Details) (U8) |
+| F2-020 | P1 | W9 | Verified | Audio › Mixer above the sound pack: master volume 0 to 200 % saved in the project (one undo step) and shown again after a reload; a master meter and one row per video or audio lane with its meter, mute, solo (the lane's own state) and volume (U5) |
+| F2-021 | P1 | W9 | Verified | Meters move while playing (peak and level, clipping above 0 dBFS marked), from the playback engine's analysers (U5) |
+| F2-022 | P1 | W9 | Verified | The master volume is heard in playback and passed to the export mix (`ExportInput.masterVolume`) (U5) |
+| F2-023 | P1 | W9 | Verified | Clip Audio tab: fade in and fade out presets (None, 0.5 s, 1 s, 2 s) and volume keyframes (add at the playhead, change, remove), one undo step each (U5) |
+| F2-024 | P1 | W9 | Verified | Clip Audio tab: Reduce noise Off / Low / High (Beta) with the download size, "never uploaded" and the 5-minute limit; a failed noise model load says so in plain words with Turn off and Try again (U5) |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 

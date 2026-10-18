@@ -9895,6 +9895,118 @@ input[type='range'] {
   font-size: var(--font-size-xs);
 }
 .relink-actions {
+
+/* FINAL2 U5: audio mixer, meters, clip fades, volume keyframes, reduce noise */
+.audio-mixer {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-block-end: 1px solid var(--border);
+}
+.audio-mixer-title {
+  margin: 0;
+  font-size: 15px;
+}
+.audio-mixer-master {
+  display: grid;
+  gap: var(--space-2);
+}
+.audio-mixer-tracks {
+  display: grid;
+  gap: var(--space-2);
+}
+.audio-mixer-track {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'name mute solo'
+    'volume volume volume'
+    'meter meter meter';
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+}
+.audio-mixer-name {
+  grid-area: name;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.audio-mixer-track [data-action='mixer-mute'] {
+  grid-area: mute;
+}
+.audio-mixer-track [data-action='mixer-solo'] {
+  grid-area: solo;
+}
+.audio-mixer-volume {
+  grid-area: volume;
+}
+.audio-mixer-track .audio-meter {
+  grid-area: meter;
+}
+.audio-mixer-toggle[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.audio-mixer-solo {
+  font-weight: 600;
+}
+.audio-meter {
+  --meter-peak: 0;
+  --meter-rms: 0;
+  position: relative;
+  block-size: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+}
+.audio-meter-rms,
+.audio-meter-peak {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+}
+.audio-meter-rms {
+  inline-size: calc(var(--meter-rms) * 100%);
+  background: var(--accent-fill);
+}
+.audio-meter-peak {
+  inline-size: 2px;
+  inset-inline-start: calc(var(--meter-peak) * 100% - 2px);
+  background: var(--text);
+}
+.audio-meter.clipping .audio-meter-peak {
+  background: var(--danger-text);
+}
+.audio-mixer-empty,
+.audio-mixer-note {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+}
+.audio-fade-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  margin-block: var(--space-1);
+}
+.audio-fade-label {
+  min-inline-size: 64px;
+}
+.audio-fade-row .button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.audio-keys {
+  display: grid;
+  gap: var(--space-1);
+}
+.audio-key {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -9909,4 +10021,10 @@ input[type='range'] {
   pointer-events: none;
 .relink-spacer {
   flex: 1;
+}
+.audio-key > :first-child {
+  flex: 1;
+}
+.audio-denoise-error {
+  color: var(--danger-text);
 }

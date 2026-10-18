@@ -92,7 +92,7 @@ test('[AUD-019][AUD-002][AUD-009][AUD-011][AUD-012] an audio clip shows Audio, F
   expect((await labels(page)).slice(-2)).toEqual(['Volume', 'Mute clip']);
   // Groups start closed.
   const groups = panel(page).locator('details.right-audio-group');
-  await expect(groups).toHaveCount(5);
+  await expect(groups).toHaveCount(8); // FINAL2 U5 adds Fades, Volume keyframes, Reduce noise
   for (const item of await groups.all())
     expect(
       await item.evaluate((element) => (element as HTMLDetailsElement).open),
