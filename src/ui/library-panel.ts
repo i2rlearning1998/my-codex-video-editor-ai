@@ -303,7 +303,6 @@ const STOCK_TILES: [StockTab, string][] = [
 const PLANNED_TILES: [string, string, string, number][] = [
   ['3d', 'cube', 'ADV-002', 8],
   ['animations', 'animate', 'SHP-012', 5],
-  ['tables', 'list', 'SHP-025', 8],
   ['charts', 'properties', 'SHP-016', 8],
   ['frames', 'crop', 'MSK-003', 6],
   ['grids', 'templates', 'MSK-003', 6],
@@ -341,6 +340,8 @@ export function mountLibraryPanels(
       hover(template: CodeTemplate, thumb: HTMLElement, on: boolean): void;
       importFile(): void;
     };
+    /** FINAL2 U6: Insert table (opens the rows × columns picker). */
+    table?: () => void;
     /** FINAL2 U2: stock search (Photos, Videos, Icons, Stickers, Audio). */
     stock?: StockDeps;
     /** P2: Creator Pack items in My library (badged, with their menu). */
@@ -762,6 +763,19 @@ export function mountLibraryPanels(
                   data: { tile: key },
                   activate: () => panels.Elements.push(stockPage(key)),
                 }))
+              : []),
+            // FINAL2 U6: Tables opens the rows × columns picker.
+            ...(options.table
+              ? [
+                  {
+                    id: 'tile-tables',
+                    label: t('elements.tile.tables'),
+                    icon: 'list',
+                    className: 'browse-tile',
+                    data: { tile: 'tables' },
+                    activate: () => options.table?.(),
+                  } as BrowseCard,
+                ]
               : []),
             // R2: AI motions live in the AI category, so Animations is
             // a planned tile again.

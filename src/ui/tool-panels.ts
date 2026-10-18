@@ -1,7 +1,7 @@
 // H3: the toolbar's deep panels in the left side panel (Canva): Font,
 // Effects, Edit image, Replace and Crop. Controls whose systems are not built
 // are shown disabled with "Planned: Wave N (ID)".
-import { isBundledFont } from '../render/fonts';
+import { buildFontPicker } from './font-picker';
 import { textEditorFor } from './text-editor';
 import type { Command, EditorEngine } from '../core';
 import { t } from '../i18n';
@@ -69,29 +69,24 @@ export function mountToolPanels(
   const font = () => {
     const layer = selected();
     if (!layer || layer.type !== 'text') return null;
-    const current = textStyleOf(layer).family;
-    const listOf = (names: readonly string[]) => {
-      const list = document.createElement('div');
-      list.className = 'font-list';
-      list.setAttribute('role', 'listbox');
-      list.setAttribute('aria-label', t('toolbar.font'));
-      list.append(...names.map(option));
-      return list;
-    };
-    const option = (name: string) => {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'font-option';
-      item.setAttribute('role', 'option');
-      item.dataset.font = name;
-      item.setAttribute('aria-selected', String(name === current));
-      item.style.fontFamily = name;
-      item.textContent = name;
-      item.onclick = () => {
-        // J4: while editing, the font applies to the selected characters.
+    const style = textStyleOf(layer);
+    const text = layer.properties.text;
+    const wrap = document.createElement('div');
+    wrap.className = 'tool-panel';
+    wrap.dataset.toolPanel = 'font';
+    // FINAL2 U6: search, categories, Hindi filter, recent and the catalog.
+    const picker = buildFontPicker({
+      current: style.family,
+      weight: style.weight,
+      text: text?.type === 'string' ? text.value : '',
+      apply: (name) => {
+        // J4: while editing, a font the runs can hold applies to the
+        // selected characters; a downloaded font applies to the whole box.
         const editor = textEditorFor(layer.id);
-        if (editor) editor.format('family', name);
-        else
+        if (editor && SYSTEM_FONTS.some(([system]) => system === name))
+          editor.format('family', name);
+        else {
+          editor?.finish();
           run(
             'Set font',
             textStyleCommands(
@@ -101,24 +96,11 @@ export function mountToolPanels(
               name,
             ),
           );
-      };
-      return item;
-    };
-    const names = SYSTEM_FONTS.map(([name]) => name as string);
-    const more = planned(t('panels.fontCatalog'), 'text', 'TXT-007', 3);
+        }
+      },
+    });
     const upload = planned(t('panels.fontUpload'), 'upload', 'TXT-009', 3);
-    const wrap = document.createElement('div');
-    wrap.className = 'tool-panel';
-    wrap.dataset.toolPanel = 'font';
-    wrap.append(
-      // J5: bundled fonts have every weight from Thin to Black.
-      section(t('panels.bundledFonts'), listOf(names.filter(isBundledFont))),
-      section(
-        t('panels.systemFonts'),
-        listOf(names.filter((name) => !isBundledFont(name))),
-      ),
-      section(t('panels.moreFonts'), more, upload),
-    );
+    wrap.append(picker, section(t('panels.moreFonts'), upload));
     return wrap;
   };
   const effects = () => {

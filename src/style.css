@@ -9710,3 +9710,167 @@ input[type='range'] {
     transform: rotate(360deg);
   }
 }
+
+/* FINAL2 U6: font picker, text direction and lists, tables */
+.font-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.font-search {
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+}
+.font-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.font-chip {
+  min-block-size: 32px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--raised);
+  color: var(--text-secondary);
+}
+.font-chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.font-offline,
+.font-coverage,
+.text-structure-hint {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.font-offline[hidden],
+.font-coverage[hidden] {
+  display: none;
+}
+.font-coverage[data-state='missing'] {
+  color: var(--danger-text);
+}
+.font-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.font-option-name {
+  flex: 1;
+  text-align: start;
+}
+.font-tag {
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.font-state {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-secondary);
+}
+.font-state[data-state='error'] {
+  color: var(--danger-text);
+}
+.text-structure-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.text-structure-label {
+  color: var(--text-secondary);
+}
+.text-structure-segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.text-list-levels {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.text-list-levels li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-inline-start: calc(var(--level, 0) * var(--space-4));
+}
+.text-list-line {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.text-list-level {
+  color: var(--text-secondary);
+}
+.text-table-widths {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.text-table-cells {
+  --u6-columns: 3;
+  display: grid;
+  grid-template-columns: repeat(var(--u6-columns), minmax(0, 1fr));
+  gap: var(--space-1);
+}
+.text-table-cell-input {
+  min-inline-size: 0;
+  min-block-size: 32px;
+  padding-inline: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  background: var(--raised);
+  color: var(--text);
+}
+.table-picker-grid {
+  --u6-columns: 8;
+  display: grid;
+  grid-template-columns: repeat(var(--u6-columns), 32px);
+  gap: var(--space-1);
+}
+.table-picker-grid button {
+  inline-size: 32px;
+  block-size: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-chip);
+  background: var(--raised);
+}
+.table-picker-grid button.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.table-picker-size {
+  margin-block: var(--space-2) 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.table-cell-editor {
+  position: absolute;
+  z-index: 3;
+  transform-origin: 0 0;
+  margin: 0;
+  padding: var(--space-2);
+  box-sizing: border-box;
+  resize: none;
+  border: 2px solid var(--accent);
+  background: var(--panel);
+  color: var(--text);
+  outline: none;
+}
+.table-cell-editor[hidden] {
+  display: none;
+}

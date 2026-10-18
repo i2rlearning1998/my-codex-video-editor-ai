@@ -146,6 +146,11 @@ import {
 } from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
 import { mountTextEditor, type TextEditor } from './text-editor';
+import {
+  mountTableEditor,
+  openTablePicker,
+  tableInsertCommands,
+} from './text-table';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import {
@@ -1513,10 +1518,20 @@ export function mountEditorShell(
       safely(() => contextToolbar.render());
     });
   });
+  // FINAL2 U6: a table edits the cell under the pointer instead.
+  const tableEditor = mountTableEditor(
+    stage,
+    canvas,
+    engine,
+    session,
+    viewport,
+    reportError,
+  );
   const editText = (
     id: string | null,
     options?: Parameters<typeof textEditor.start>[1],
   ) => {
+    if (id && tableEditor.start(id, options?.at)) return;
     if (id) safely(() => textEditor.start(id, options));
   };
   const pointer = bindCanvasInteraction(
@@ -3987,6 +4002,24 @@ export function mountEditorShell(
         importFile: () => codeTemplateInput.click(),
       },
       creator: { library: creatorLibrary, menu: creatorMenu },
+      // FINAL2 U6: Elements › Tables inserts a table at the playhead.
+      table: () =>
+        openTablePicker((rows, columns) =>
+          safely(() => {
+            session.setPlaying(false);
+            const insert = tableInsertCommands(
+              rows,
+              columns,
+              session.source.composition,
+              (item) => libraryActions.commandsFor(item, undefined)!,
+            );
+            engine.commands.transaction(
+              t('textx.step.insert'),
+              insert.commands,
+            );
+            if (insert.layerId) session.select(insert.layerId);
+          }),
+        ),
       // FINAL2 U2: a stock item is downloaded, imported into Media with its
       // licence and placed at the playhead (audio on a new audio lane).
       stock: {

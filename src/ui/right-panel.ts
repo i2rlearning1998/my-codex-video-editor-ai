@@ -20,6 +20,7 @@ import {
   getEffect,
 } from '../fx';
 import { resolvedTextStyle } from './text-editor';
+import { textStructureSections } from './text-structure';
 import {
   clipAnimation,
   clipFx,
@@ -551,7 +552,13 @@ export function mountRightPanel(
           id: 'right-font',
           label: t('toolbar.font'),
           value: style.family,
-          options: SYSTEM_FONTS.map(([name]) => ({
+          options: [
+            ...SYSTEM_FONTS.map(([name]) => name as string),
+            // FINAL2 U6: a downloaded catalog font stays listed.
+            ...(SYSTEM_FONTS.some(([name]) => name === style.family)
+              ? []
+              : [style.family]),
+          ].map((name) => ({
             value: name,
             label: name,
             font: name,
@@ -657,6 +664,17 @@ export function mountRightPanel(
       accordion('text-spacing', t('toolbar.advanced'), [
         hooks.build?.('spacing'),
       ]),
+      // FINAL2 U6: direction, lists and tables (text engine).
+      ...textStructureSections({
+        compositionId,
+        layer: () => {
+          const item = single();
+          return item?.type === 'text' ? item : null;
+        },
+        run: (label, commands) => safely(() => run(label, commands)),
+        align: (value) => styleRun('Set alignment', 'textAlign', value),
+        accordion,
+      }),
     ];
   };
   const pictureTab = (video: boolean) => {

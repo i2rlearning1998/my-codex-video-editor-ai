@@ -124,6 +124,9 @@ test('[LAY-043] text: font, size, B I U S, case, align, colour and spacing in th
   expect(await accordions(page)).toEqual([
     'Text',
     'Spacing and more',
+    // FINAL2 U6: direction and lists (text engine).
+    'Direction and alignment',
+    'List',
     'Anchor',
   ]);
   await panel(page).locator('[data-action="right-italic"]').click();

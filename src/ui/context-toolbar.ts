@@ -2,6 +2,7 @@
 // controls above the canvas. Controls whose systems are not built are shown
 // disabled with the wave that builds them (D-068); nothing behind them exists.
 import { fontWeights } from '../render/fonts';
+import { isCatalogFont } from '../text-engine/catalog';
 import { LIST_STYLES, parseListStyle } from '../render/rich-text';
 import {
   clearRunKeys,
@@ -215,7 +216,10 @@ export function fontSizeCommand(
 }
 /** W2-F5: the text style properties the toolbar edits, with their checks. */
 const TEXT_STYLE_KEYS = {
-  fontFamily: (value: unknown) => SYSTEM_FONTS.some(([name]) => name === value),
+  fontFamily: (value: unknown) =>
+    SYSTEM_FONTS.some(([name]) => name === value) ||
+    // FINAL2 U6: the text engine's font catalog (downloaded on demand).
+    (typeof value === 'string' && isCatalogFont(value)),
   fontWeight: (value: unknown) =>
     (FONT_WEIGHTS as readonly unknown[]).includes(value),
   fontStyle: (value: unknown) => value === 'italic' || value === 'normal',
