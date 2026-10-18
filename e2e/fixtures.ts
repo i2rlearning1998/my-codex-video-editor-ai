@@ -21,6 +21,7 @@ export interface HookSnapshot {
     soloTrackIds: string[];
     selectedKeyframes: { layerId: string; time: number }[];
     drawBrush: string | null;
+    enteredGroupId?: string | null;
   };
   getHistory(): { canUndo: boolean; canRedo: boolean; labels: string[] };
   getConsoleErrors(): readonly unknown[];

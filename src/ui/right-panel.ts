@@ -130,9 +130,8 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
  *  Effects open, listing what they will hold; Transitions is the J12 panel
  *  for a clip (it stays planned for the canvas). */
-const PLANNED: Partial<Record<RightSection, readonly [string, number]>> = {
-  Captions: ['TXT-035', 8],
-};
+// FINAL2 U9: Captions (Auto Caption) opens the Auto captions dialog.
+const PLANNED: Partial<Record<RightSection, readonly [string, number]>> = {};
 
 export type SelectionKind =
   | 'none'

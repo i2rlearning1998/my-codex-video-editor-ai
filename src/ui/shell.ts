@@ -1,3 +1,10 @@
+import {
+  openAutoCaptions,
+  openTranscribe,
+  selectedSoundClip,
+  type CaptionsContext,
+} from './captions-ui';
+import { mountNestBar } from './nest-ui';
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
@@ -800,6 +807,8 @@ export function mountEditorShell(
     }),
   );
   let timeline: ReturnType<typeof mountTimeline> | undefined;
+  let nestBar: ReturnType<typeof mountNestBar> | undefined;
+  const captionsContext: CaptionsContext = { engine, session, mediaStore };
   const syncAudio = () => {
     const clock = timeline?.playback.clock ?? session.currentTime;
     const clips = audibleClips();
@@ -1126,6 +1135,7 @@ export function mountEditorShell(
       crop: () => toolPanels?.startCrop(),
       scenes: () => sceneBoard.open(),
       canvasSize: resizeCanvas,
+      autoCaptions: () => openAutoCaptions(captionsContext),
     },
   );
   // G5: the scene board over the canvas.
@@ -1595,6 +1605,14 @@ export function mountEditorShell(
       exportCode: (layerId) => safely(() => exportCodeLayer(layerId)),
       duplicateCopy: (layerId) => duplicateCodeCopy(layerId),
     },
+    // FINAL2 U9: Transcribe, Auto captions and nested clips.
+    captions: {
+      transcribe: (layerId) =>
+        openTranscribe(captionsContext, layerId ?? undefined),
+      autoCaptions: (layerId) =>
+        openAutoCaptions(captionsContext, layerId ?? undefined),
+    },
+    nesting: { enter: (layerId) => nestBar?.enter(layerId) },
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -1791,6 +1809,14 @@ export function mountEditorShell(
     previews,
     waveforms,
     codeStatus,
+  );
+  // FINAL2 U9: a nested clip's breadcrumb bar above the timeline.
+  nestBar = mountNestBar(
+    element('#timeline-foundation').parentElement!,
+    element('#timeline-foundation'),
+    engine,
+    session,
+    reportError,
   );
   // H4: Editor | 2D Animation (3D is planned). The switch crossfades the
   // panels and the timeline in 320 ms and keeps the selection.
@@ -4483,10 +4509,11 @@ export function mountEditorShell(
           el.setAttribute('aria-pressed', 'false');
         }
         if (!caption) continue;
+        // FINAL2 U9: Auto Caption opens the Auto captions dialog.
         const label = t('panel.captions');
-        el.title = `${label}: ${t('right.planned')}`;
+        el.title = label;
         el.setAttribute('aria-label', el.title);
-        el.setAttribute('aria-disabled', 'true');
+        el.removeAttribute('aria-disabled');
         el.setAttribute('aria-pressed', 'false');
         el.querySelector('.icon-rail-label')!.textContent = label;
       }
@@ -4639,6 +4666,16 @@ export function mountEditorShell(
     el.onclick = () => {
       const name = el.dataset.section!;
       if (el.getAttribute('aria-disabled') === 'true') return;
+      // FINAL2 U9: Auto Caption is a dialog, not a panel section.
+      if (name === 'Captions') {
+        safely(() => {
+          openAutoCaptions(
+            captionsContext,
+            selectedSoundClip(session) ?? undefined,
+          );
+        });
+        return;
+      }
       // T1: the Theme tab with nothing selected.
       if (name === 'Theme' && !session.selectedIds.length && !themeState.open) {
         themeState.open = true;

@@ -6,6 +6,7 @@ import {
   createLayer,
   decomposeMatrix,
   findClipByLayer,
+  isNestedClip,
   laneGroupOfLayer,
   laneGroupOfTrack,
   laneInsertIndex,
@@ -80,6 +81,8 @@ export function ungroupBlocker(
     if (locked?.type === 'boolean' && locked.value) return t('ungroup.locked');
     const clip = findClipByLayer(source.composition, group.id);
     if (clip?.track.locked) return 'The group is on a locked track';
+    // FINAL2 U9: a nested clip comes apart with Un-nest (flattenNested).
+    if (clip && isNestedClip(clip.clip)) return t('nest.ungroupBlocked');
     if (isIdentity(group)) continue;
     if (animated(group))
       return 'The group is animated, so it cannot be ungrouped';

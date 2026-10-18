@@ -6,6 +6,7 @@
 import {
   clipAudioDetached,
   findClipByLayer,
+  isNestedClip,
   type ClipLocation,
   type DeepReadonly,
   type Clip,
@@ -68,7 +69,9 @@ export function capabilitiesOf(
   if (shape && isClosedKind(shape.kind)) capabilities.add('closed-shape');
   if (clip) {
     capabilities.add('clip');
-    if (TIMED_MEDIA.has(layer.type)) capabilities.add('time-effects');
+    // FINAL2 U9: a nested clip takes speed too (D-271 maps it inside).
+    if (TIMED_MEDIA.has(layer.type) || isNestedClip(clip.clip))
+      capabilities.add('time-effects');
     if (isDetachable(source, clip.clip)) capabilities.add('detach-audio');
   }
   return capabilities;

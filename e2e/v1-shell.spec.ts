@@ -34,10 +34,13 @@ test('[LAY-063] the right rail is always shown (Auto Caption alone and disabled 
   await expect.poll(() => width(page, '#rail-right')).toBeCloseTo(65, 0);
   await expect.poll(shown).toEqual(['Captions', 'Theme']);
   const caption = page.locator('#rail-right [data-section="Captions"]');
-  await expect(caption).toHaveAttribute('aria-disabled', 'true');
+  // FINAL2 U9: Auto Caption is live; it opens a dialog, never the panel.
+  await expect(caption).not.toHaveAttribute('aria-disabled', 'true');
   await expect(caption).toContainText('Auto Caption');
-  await expect(caption).toHaveAttribute('title', /Planned/);
-  await caption.click({ force: true });
+  await caption.click();
+  await expect(page.locator('#captions-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#captions-dialog')).toBeHidden();
   await expect.poll(() => width(page, '#inspector-panel')).toBe(0);
   const stage = await box(page, '.preview-panel');
   const centred = async () => {

@@ -37,10 +37,13 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       'arrange-front': 'layer-c',
       'clip-nudge-left': 'layer-b',
       'clip-track-up': 'layer-c',
+      // FINAL2 U9: a video clip with media.
+      'clip-transcribe': 'layer-b',
+      'clip-auto-captions': 'layer-b',
     };
     clearClipboard();
     session.selectMany(
-      ['group', 'link', 'unlink'].includes(command.id)
+      ['group', 'link', 'unlink', 'nest-clips'].includes(command.id)
         ? ids.slice(0, 2)
         : command.id.startsWith('distribute-')
           ? ids
@@ -80,7 +83,14 @@ test('[KEY-001] every registered action has translated labels, enablement and an
         duplicateCopy: vi.fn(),
         rerender: vi.fn(),
       },
+      // FINAL2 U9: the captions dialogs and the nested clip bar.
+      captions: { transcribe: vi.fn(), autoCaptions: vi.fn() },
+      nesting: { enter: vi.fn() },
     };
+    if (command.id === 'enter-nested' || command.id === 'unnest-clip') {
+      session.selectMany(ids.slice(0, 2));
+      runCommand('nest-clips', context);
+    }
     if (command.id.startsWith('code-')) {
       const compiled = compileBlock(
         readFileSync('tests/fixtures/code/pulse-block.js', 'utf8'),
@@ -174,6 +184,12 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       expect(context.renameClip).toHaveBeenCalledOnce();
     else if (command.id === 'more-options')
       expect(context.moreOptions).toHaveBeenCalledOnce();
+    else if (command.id === 'clip-transcribe')
+      expect(context.captions.transcribe).toHaveBeenCalledWith('layer-b');
+    else if (command.id === 'clip-auto-captions')
+      expect(context.captions.autoCaptions).toHaveBeenCalledWith('layer-b');
+    else if (command.id === 'enter-nested')
+      expect(context.nesting.enter).toHaveBeenCalledOnce();
     else if (command.id === 'play') expect(session.playing).toBe(true);
     else if (command.id === 'select-all')
       expect(session.selectedIds).toEqual(ids);
