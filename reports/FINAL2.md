@@ -24,7 +24,19 @@ u1-settings-accent, u1-settings-offline, u2-stock-photos, u3-voiceover, u4-recor
 
 ## Checks
 
-VERIFY_RESULTS
+Full `npm run verify` once at the end, in the sandbox's Chromium 141.0.7390.37 (no Chrome or Edge here; D-030), Playwright 1.63.0.
+
+- Format, typecheck, build, test-hook assertion: pass.
+- Unit + jsdom (Vitest): 1173 passed, 2 failed. Both are `tests/blocks/worker.test.ts` sandbox-only worker tests, failing the same way before FINAL2.
+- e2e: 497 passed, 31 failed in the full run (57 min, parallel).
+  - Expected or pre-existing, not chased: DEV-006 (the deliberate probe), TXT-040, CV-044/045.
+  - Real regressions, fixed and re-run green: DEV-007 (debug report missing `enteredGroupId`), CODE-004 (a single Tier A spec showed Build video; Add was disabled).
+  - Earlier tests updated for intended FINAL2 behaviour, re-run green: SHP-026 (Icons and Stickers tiles; Photos live), TL-075 (Transcribe, Auto captions), CP-008/CP-014 (a composition is buildable), PRJ-001 to PRJ-006 (schema 9, FINAL1 fallout).
+  - Caused by the 380 px library width (narrower canvas at the 1600 px e2e viewport): SHP-001, SHP-005, SHP-013, CV-061 ×2, VID-001, VID-010 to VID-012, MED-023, MED-024, CODE-006, CODE-011 ×10. The e2e fixture now keeps the earlier width (`__AIVE_E2E_LIBRARY__='legacy'`, like the D-190 reserve); F2-072 turns it off. All re-run green.
+  - PB-009 (a known sandbox timing flake, D-216): passed on re-run.
+- Re-runs after the fixes: 12 spec files, 52 of 53 passed (CODE-004 failed, fixed, then x2, u10 and p2 12 of 12); x5 10 of 10.
+- Ledger: OK after the re-run (CP-008 and CP-014 pass again).
+- Not re-run as one full suite after the fixes (the brief allows one full verify).
 
 ## Try it (mock mode, no real keys; about 15 minutes)
 
