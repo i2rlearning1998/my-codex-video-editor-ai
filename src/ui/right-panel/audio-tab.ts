@@ -6,6 +6,8 @@
 // `clip.metadata.audio` (schema unchanged) and is heard in the preview and
 // the export alike (one graph). Track mute and Detach audio stay below.
 import { normalizeClip } from '../../audio/normalize';
+import { final2Groups } from './audio-extras';
+export { configureAudioTab } from './audio-extras';
 import {
   audioSettingsSchema,
   defaultAudioSettings,
@@ -473,6 +475,9 @@ export function audioTab(
         duckField('release', 'audio.duckRelease', 0.01, 5, 0.05, 2, 's'),
       ],
     ),
+  );
+  elements.push(
+    ...final2Groups(session, clip, settings, track.locked, save, group),
   );
   // Track mute (AUD-007) and Detach audio (VID-006), as before.
   const trackMute = document.createElement('button');

@@ -1012,6 +1012,11 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | F2-002 | P1 | W9 | Verified | Settings › Appearance › Accent colour: 8 swatches for the dark theme and 8 for the light theme, kept separately in this browser, applied at startup and on every theme switch; purple keeps today's look (U1) |
 | F2-003 | P1 | W9 | Verified | Elements › Photos, Videos (Pexels and Pixabay), Icons and Stickers (Iconify) and Audio (Freesound) open a stock page: debounced search, provider switch, orientation filter, shared 2-column cards with a licence badge, Load more, attribution at the bottom; a click or "+" downloads, imports into Media with the licence and credit (Media › Details) and places it at the playhead; cards drag to the canvas and the timeline; Charts, Tables, Frames, Grids, 3D and Animations stay disabled (U2) |
 | F2-004 | P1 | W9 | Verified | Stock states in plain words: no key (a card that opens Settings › Stock & API keys), key not accepted, too many requests with the wait in seconds, no internet, a download the site blocks ("A server is needed for this one"), nothing found; a failed download never breaks the editor (U2) |
+| F2-020 | P1 | W9 | Verified | Audio › Mixer above the sound pack: master volume 0 to 200 % saved in the project (one undo step) and shown again after a reload; a master meter and one row per video or audio lane with its meter, mute, solo (the lane's own state) and volume (U5) |
+| F2-021 | P1 | W9 | Verified | Meters move while playing (peak and level, clipping above 0 dBFS marked), from the playback engine's analysers (U5) |
+| F2-022 | P1 | W9 | Verified | The master volume is heard in playback and passed to the export mix (`ExportInput.masterVolume`) (U5) |
+| F2-023 | P1 | W9 | Verified | Clip Audio tab: fade in and fade out presets (None, 0.5 s, 1 s, 2 s) and volume keyframes (add at the playhead, change, remove), one undo step each (U5) |
+| F2-024 | P1 | W9 | Verified | Clip Audio tab: Reduce noise Off / Low / High (Beta) with the download size, "never uploaded" and the 5-minute limit; a failed noise model load says so in plain words with Turn off and Try again (U5) |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 

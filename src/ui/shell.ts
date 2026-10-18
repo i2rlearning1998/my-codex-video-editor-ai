@@ -167,6 +167,8 @@ import { groupNameFor } from './ungroup';
 import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
+import { mountAudioMixer, projectMasterVolume } from './audio-mixer';
+import { configureAudioTab } from './right-panel/audio-tab';
 import { mountRecordPanel } from './record-panel';
 import { newTts, ttsState } from './right-panel/tts-panel';
 import { themeState } from './right-panel';
@@ -507,11 +509,21 @@ export function mountEditorShell(
       // so is audio detached from it.
       audibleAssets(),
       session.soloTrackIds,
+      // FINAL2 U5: the persisted master volume (AUDIO-API.md).
+      projectMasterVolume(engine),
     );
   // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
   let redrawQueued = false;
+  let audioError: string | null = null;
   const audio = new AudioEngine(decoder, () => {
     if (!disposed) safely(draw);
+    // FINAL2 U5: a processing (noise reduction) failure shows in the open
+    // right panel at once, with Turn off and Try again.
+    const error = audio.debug.processingError ?? null;
+    if (error !== audioError && !disposed) {
+      audioError = error;
+      safely(() => rightPanel.render(activeSection as RightSection));
+    }
   });
   const frames = new MediaFrames(
     mediaStore,
@@ -800,7 +812,14 @@ export function mountEditorShell(
     }),
   );
   let timeline: ReturnType<typeof mountTimeline> | undefined;
+  let masterVolume: number | null = null;
   const syncAudio = () => {
+    // FINAL2 U5: the engine follows the project's master volume.
+    const master = projectMasterVolume(engine);
+    if (master !== masterVolume) {
+      masterVolume = master;
+      audio.setMasterVolume(master);
+    }
     const clock = timeline?.playback.clock ?? session.currentTime;
     const clips = audibleClips();
     audio.sync(session.playing, clock, clips);
@@ -2548,6 +2567,8 @@ export function mountEditorShell(
       assets: session.source.assets,
       background: session.source.background,
       projectName: engine.state.metadata.name,
+      // FINAL2 U5: the export mix uses the same master volume as playback.
+      masterVolume: projectMasterVolume(engine),
       store: mediaStore,
       decoder,
       renderFrame,
@@ -5042,7 +5063,23 @@ export function mountEditorShell(
   leaveRecord = () => recordPanel.leave();
   // V7 (spec 11.3): the left Audio category, the built-in sound pack. A
   // sound goes in at the playhead on a new audio lane, one step.
-  const soundPack = mountSoundPack(element('#library-audio'), {
+  // FINAL2 U5: the Mixer sits above the sound pack in the same category.
+  const audioCategory = element('#library-audio');
+  const mixerHost = document.createElement('section');
+  const soundPackHost = document.createElement('div');
+  audioCategory.replaceChildren(mixerHost, soundPackHost);
+  // The clip Audio tab offers Retry and shows processing errors (denoise).
+  configureAudioTab({
+    processingError: () => audio.debug.processingError ?? null,
+    retry: () => audio.retryProcessing(),
+  });
+  const audioMixer = mountAudioMixer(mixerHost, {
+    engine,
+    session,
+    meters: audio.meters,
+    report: reportError,
+  });
+  const soundPack = mountSoundPack(soundPackHost, {
     importSound: (file) =>
       mediaPanel.importFiles([file]).then((ids) => ids[0] ?? null),
     existing: (fileName) =>
@@ -6079,6 +6116,7 @@ export function mountEditorShell(
       sceneBoard.dispose();
       mediaPanel.dispose();
       soundPack.dispose();
+      audioMixer.dispose();
       recordPanel.dispose();
       positionPanel.dispose();
       frames.dispose();

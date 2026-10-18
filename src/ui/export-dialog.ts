@@ -34,6 +34,8 @@ export interface ExportDialogOptions {
   assets: readonly DeepReadonly<Asset>[];
   background: string;
   projectName: string;
+  /** FINAL2 U5: project settings.masterVolume (linear 0 to 2). */
+  masterVolume?: number;
   store: Promise<MediaStore | null>;
   decoder: AudioDecoder;
   /** The playhead frame as a PNG, drawn like the export (EXP-009). */
@@ -342,6 +344,9 @@ export function openExportDialog(options: ExportDialogOptions) {
         composition,
         assets: options.assets,
         background: options.background,
+        ...(options.masterVolume !== undefined
+          ? { masterVolume: options.masterVolume }
+          : {}),
         // J1: each joined scene keeps its own background.
         ...(composition === joined
           ? {
