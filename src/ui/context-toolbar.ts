@@ -425,6 +425,8 @@ export interface ToolbarHooks {
   crop?: () => void;
   /** Opens the Scenes board. */
   scenes?: () => void;
+  /** FINAL2 U10: opens the scene camera panel. */
+  camera?: () => void;
   /** Applies a canvas size to every scene. */
   canvasSize?: (width: number, height: number) => void;
 }
@@ -1263,6 +1265,15 @@ export function mountContextToolbar(
       tool('scene-order', 'scenes', t('scene.order'), () => hooks.scenes?.(), {
         text: true,
       }),
+      tool(
+        'scene-camera',
+        'camera',
+        t('camera.title'),
+        () => hooks.camera?.(),
+        {
+          text: true,
+        },
+      ),
       divider(),
       planned('scene-animate'),
     ];

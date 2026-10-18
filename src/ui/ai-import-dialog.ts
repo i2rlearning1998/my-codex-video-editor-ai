@@ -57,6 +57,8 @@ export interface AiImportOptions extends CheckDeps {
   readonly onAdd: (add: AiImportAdd) => Promise<number | false>;
   readonly copy: (text: string) => void;
   readonly openAi?: () => void;
+  /** FINAL2 U10: a checked composition item offers "Build video". */
+  readonly buildComposition?: (item: CreatorItem) => void;
 }
 
 type Status = 'ok' | 'warning' | 'rejected' | 'unsupported' | 'checking';
@@ -82,6 +84,20 @@ const PENDING =
   /still required|require runtime|runtime checks|nothing was applied/i;
 const THUMB_WIDTH = 320;
 
+/** FINAL2 U10: an exported code animation's first line keeps its control
+ *  values; the importer restores them. */
+export const PARAMS_HEADER = '// @aive-params ';
+export function savedParams(source: string): ParamValues {
+  if (!source.startsWith(PARAMS_HEADER)) return {};
+  try {
+    const value: unknown = JSON.parse(
+      source.slice(PARAMS_HEADER.length, source.indexOf('\n')),
+    );
+    return value && typeof value === 'object' ? (value as ParamValues) : {};
+  } catch {
+    return {};
+  }
+}
 /** A pack (sectioned text or JSON with format creator-pack), not code. */
 export function looksLikePack(text: string): boolean {
   const head = text.replace(/^﻿/, '').trimStart();
@@ -349,6 +365,26 @@ export function openAiImportDialog(options: AiImportOptions) {
           params.append(heading, form);
           body.append(params);
         }
+        if (
+          row.type === 'composition' &&
+          options.buildComposition &&
+          row.item &&
+          usable(row)
+        ) {
+          // FINAL2 U10: not kept in the library; built into scenes.
+          box.checked = false;
+          box.disabled = true;
+          const build = document.createElement('button');
+          build.type = 'button';
+          build.className = 'button primary sm ai-import-build';
+          build.dataset.action = 'build-video';
+          build.textContent = t('composition.build');
+          build.onclick = () => {
+            handle.close();
+            options.buildComposition!(row.item!);
+          };
+          body.append(build);
+        }
         li.append(box, thumb, body);
         return li;
       }),
@@ -483,7 +519,17 @@ export function openAiImportDialog(options: AiImportOptions) {
           } as unknown as CreatorItem,
           meta: result.meta,
           specs: result.meta.params,
-          values: defaults(result.meta.params),
+          values: {
+            ...defaults(result.meta.params),
+            ...Object.fromEntries(
+              Object.entries(savedParams(text)).filter(([key, value]) =>
+                result.meta.params.some(
+                  (spec) =>
+                    spec.name === key && typeof spec.default === typeof value,
+                ),
+              ),
+            ),
+          },
         },
       ];
     }
@@ -522,8 +568,13 @@ export function openAiImportDialog(options: AiImportOptions) {
       envelope = null;
     }
     rows = pack.items.map((result) => {
+      // FINAL2 U10: a composition is built (Build video), not registered.
+      const buildable =
+        result.type === 'composition' && !!options.buildComposition;
       const unsupported =
-        result.status !== 'rejected' && UNSUPPORTED_KINDS.has(result.type);
+        result.status !== 'rejected' &&
+        !buildable &&
+        UNSUPPORTED_KINDS.has(result.type);
       return {
         id: result.id,
         type: result.type,
@@ -537,6 +588,38 @@ export function openAiImportDialog(options: AiImportOptions) {
         ...(result.item ? { item: result.item } : {}),
       };
     });
+    // FINAL2 U10: a composition is checked by the composition adapter
+    // itself (the offline pack check predates it and rejects its parts).
+    if (options.buildComposition) {
+      let rawItems: { id?: string; type?: string; name?: { en: string } }[] =
+        [];
+      try {
+        rawItems = (parsePack(text) as { items?: typeof rawItems }).items ?? [];
+      } catch {
+        rawItems = [];
+      }
+      const { buildProjectFromComposition } = await import('../composition');
+      for (const row of rows) {
+        if (row.type !== 'composition') continue;
+        const raw = rawItems.find((entry) => entry.id === row.id);
+        if (!raw) continue;
+        const built = await buildProjectFromComposition(
+          (raw as { data?: unknown }).data,
+        ).catch((error: unknown) => ({
+          project: null,
+          errors: [String(error)],
+          warnings: [],
+          missing: [],
+        }));
+        if (mine !== run) return;
+        row.item = raw as unknown as CreatorItem;
+        row.name = raw.name?.en ?? row.id;
+        row.status = built.project ? 'ok' : 'rejected';
+        row.reasons = built.project
+          ? [t('composition.ready', { count: built.missing.length })]
+          : built.errors.slice(0, 5);
+      }
+    }
     summary.textContent = pack.items.length
       ? t('aiImport.checking', { total: String(rows.length) })
       : t('creator.packRejected', { reason: pack.reasons.join(' ') });
@@ -546,6 +629,12 @@ export function openAiImportDialog(options: AiImportOptions) {
     for (const row of rows) {
       if (mine !== run) return;
       if (!row.item || !usable(row)) continue;
+      if (row.type === 'composition') {
+        // Built later by the composition adapter; no render check here.
+        row.reasons = row.reasons.filter((reason) => !PENDING.test(reason));
+        paint();
+        continue;
+      }
       row.status = 'checking';
       paint();
       const result = await runtimeCheck(row.item, options);

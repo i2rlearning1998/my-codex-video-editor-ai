@@ -9710,3 +9710,134 @@ input[type='range'] {
     transform: rotate(360deg);
   }
 }
+/* FINAL2 U10: Build video (composition slots) and the scene camera. */
+.modal-dialog.composition-dialog {
+  width: min(680px, 100%);
+}
+.composition-build {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.composition-slots {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: min(48dvh, 460px);
+  overflow-y: auto;
+}
+.composition-slot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-raised);
+}
+.composition-slot-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.composition-required {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: var(--font-size-xs);
+}
+.composition-state {
+  margin-inline-start: auto;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.composition-state[data-filled='true'] {
+  color: var(--success-text);
+}
+.composition-media {
+  min-width: 0;
+  max-width: 220px;
+}
+.composition-stock-results {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+.composition-stock-item {
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+.composition-stock-item img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.composition-checklist {
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  color: var(--text-secondary);
+}
+.composition-error {
+  color: var(--danger-text);
+}
+.camera-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+.camera-presets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.camera-presets [aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.camera-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.camera-field {
+  display: grid;
+  grid-template-columns: 80px 1fr 32px;
+  align-items: center;
+  gap: var(--space-2);
+}
+.camera-input {
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+.camera-keyframe[aria-pressed='true'] {
+  color: var(--accent-text);
+}
+.camera-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.camera-badge {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--accent-fill);
+  color: var(--text-on-accent);
+  font-size: var(--font-size-sm);
+  pointer-events: none;
+}

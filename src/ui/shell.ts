@@ -249,8 +249,13 @@ import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
 import { cycleThemePreference, onThemeChange, themePreference } from './theme';
 import { openSettings } from './settings-dialog';
+import { openCompositionBuild } from './composition-dialog';
+import { PARAMS_HEADER } from './ai-import-dialog';
+import { cameraBadge, cameraPanel, cameraView } from './camera-panel';
+import type { Asset } from '../core';
 import { dropStock, stockQuality } from './stock-panel';
-import { importStockItem } from '../providers';
+import { hasKeys, importStockItem } from '../providers';
+import { stockProviders } from './services';
 import {
   t,
   formatNumber,
@@ -860,12 +865,24 @@ export function mountEditorShell(
     );
     // J3: a control being dragged previews its edit on the canvas.
     const base = session.previewSource ?? session.source;
+    // FINAL2 U10: the editing canvas shows the scene un-moved by the
+    // camera unless playing or "Preview camera" is on.
+    const cameraOff =
+      !!base.composition.camera && !session.playing && !cameraView.preview;
     const drawn = {
       ...base,
+      ...(cameraOff
+        ? { composition: { ...base.composition, camera: undefined } }
+        : {}),
       // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
         ? {
-            composition: withErasedPaths(base.composition, drawTool.erased),
+            composition: withErasedPaths(
+              cameraOff
+                ? { ...base.composition, camera: undefined }
+                : base.composition,
+              drawTool.erased,
+            ),
           }
         : {}),
       frames,
@@ -919,6 +936,12 @@ export function mountEditorShell(
     updateChip(drawn);
     placeArtboardShadow();
     updateSelectionActions();
+    {
+      const badge = cameraBadge(session.source.composition);
+      cameraBadgeEl.hidden = !badge;
+      cameraBadgeEl.textContent = badge ?? '';
+      cameraBadgeEl.dataset.preview = String(cameraView.preview);
+    }
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
       session.playing && frames.buffering
@@ -1126,6 +1149,8 @@ export function mountEditorShell(
       crop: () => toolPanels?.startCrop(),
       scenes: () => sceneBoard.open(),
       canvasSize: resizeCanvas,
+      // FINAL2 U10: the scene camera panel.
+      camera: () => openCameraPanel(),
     },
   );
   // G5: the scene board over the canvas.
@@ -1158,6 +1183,42 @@ export function mountEditorShell(
       ? (locateLayer(session.source.composition.layers, session.selectedId)
           ?.layer ?? null)
       : null;
+  /** FINAL2 U10: the scene camera, a left side panel. */
+  const openCameraPanel = () =>
+    sidePanels.show('camera', t('camera.title'), () =>
+      cameraPanel({
+        composition: () => session.source.composition,
+        time: () => session.currentTime,
+        run: (label, commands) =>
+          safely(() => {
+            engine.commands.transaction(label, commands);
+            sidePanels.refresh();
+          }),
+        redraw: () => safely(draw),
+      }),
+    );
+  // The badge over the canvas, and no picking while the camera is previewed.
+  const cameraBadgeEl = document.createElement('div');
+  cameraBadgeEl.className = 'camera-badge';
+  cameraBadgeEl.id = 'camera-badge';
+  cameraBadgeEl.setAttribute('role', 'status');
+  cameraBadgeEl.hidden = true;
+  (root.querySelector('#canvas-footer') ?? stage).append(cameraBadgeEl);
+  stage.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (
+        cameraView.preview &&
+        session.source.composition.camera &&
+        (event.target as Element).closest?.('canvas')
+      ) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        showToast(t('camera.previewHint'), 'info');
+      }
+    },
+    true,
+  );
   const openAltText = () => {
     const layer = selectedLayer();
     if (!layer) return;
@@ -2122,6 +2183,80 @@ export function mountEditorShell(
     );
     return add.items.length;
   };
+  /** FINAL2 U10: Build video from an AI composition (slots, then scenes). */
+  const openBuildVideo = (item: { name: { en: string }; data: unknown }) =>
+    openCompositionBuild(item, {
+      assets: () => session.source.assets as unknown as readonly Asset[],
+      importFile: async (file) => {
+        const id = await importMade(file);
+        return (
+          (session.source.assets.find((asset) => asset.id === id) as unknown as
+            Asset | undefined) ?? null
+        );
+      },
+      library: (id) => libraryActions.find(id),
+      addScenes: (project) => {
+        const missing = project.assets.filter(
+          (asset) => !engine.state.assets.some((have) => have.id === asset.id),
+        );
+        if (missing.length)
+          engine.library(
+            'Import media',
+            missing.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
+          );
+        const taken = new Set<string>();
+        const collect = (value: unknown) => {
+          if (Array.isArray(value)) value.forEach(collect);
+          else if (value && typeof value === 'object')
+            for (const [key, inner] of Object.entries(value)) {
+              if (key === 'id' && typeof inner === 'string') taken.add(inner);
+              collect(inner);
+            }
+        };
+        collect(engine.state.compositions);
+        const fresh = project.compositions.map((composition) => {
+          // Ids already in the open project get a suffix (a second build).
+          let text = JSON.stringify(composition);
+          const ids = new Set<string>();
+          const own = (value: unknown) => {
+            if (Array.isArray(value)) value.forEach(own);
+            else if (value && typeof value === 'object')
+              for (const [key, inner] of Object.entries(value)) {
+                if (key === 'id' && typeof inner === 'string') ids.add(inner);
+                own(inner);
+              }
+          };
+          own(composition);
+          const suffix = `-${Date.now().toString(36)}`;
+          for (const id of ids)
+            if (taken.has(id))
+              text = text
+                .split(JSON.stringify(id))
+                .join(JSON.stringify(id + suffix));
+          return JSON.parse(text) as typeof composition;
+        });
+        engine.commands.transaction(
+          'Build video',
+          fresh.map((composition) => ({
+            type: 'CREATE_COMPOSITION' as const,
+            composition,
+          })),
+        );
+        if (fresh[0]) session.selectComposition(fresh[0].id);
+        showToast(t('composition.added', { count: fresh.length }), 'success');
+      },
+      openProject: async (project) => {
+        if (
+          await confirmDialog(t('composition.openConfirm'), {
+            titleText: t('composition.openProject'),
+            confirmLabel: t('composition.openProject'),
+          })
+        )
+          engine.load(project);
+      },
+      openKeys: () => openSettings('keys'),
+      report: reportError,
+    });
   const openCreatorImport = (
     initial: { text?: string; fileName?: string } = {},
   ) => {
@@ -2159,6 +2294,8 @@ export function mountEditorShell(
       runtime: freeCodeRuntime,
       onAdd: addCreatorItems,
       openAi: () => openCategory('AI'),
+      // FINAL2 U10: a composition builds into scenes (slot dialog).
+      buildComposition: (item) => openBuildVideo(item),
       copy: (text) => {
         void navigator.clipboard
           .writeText(text)
@@ -2216,6 +2353,13 @@ export function mountEditorShell(
       },
       kinds: ITEM_KINDS,
       entries,
+      // FINAL2 U10: the installed stock providers and whether a key is
+      // saved (never the key itself).
+      stock: stockProviders().map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        hasKey: hasKeys(provider),
+      })),
       blocks: blocks.map((block) => ({ id: block.id, label: block.name })),
       animate: {
         in: IN_OUT_PRESETS,
@@ -2224,11 +2368,9 @@ export function mountEditorShell(
       },
       fonts: SYSTEM_FONTS.map(([name]) => name),
       request,
-      // B1: the New AI video form and its style; no stock provider is
-      // built yet, so the brief says none is installed.
+      // B1: the New AI video form and its style.
       form: form ?? null,
       style: form ? briefStyle(form.styleId) : null,
-      stock: [],
     });
   };
   const copyAiBrief = () => {
@@ -2760,10 +2902,15 @@ export function mountEditorShell(
     const code = codeOf(layerId);
     if (!code) return;
     const layer = locateLayer(session.source.composition.layers, layerId);
+    // FINAL2 U10: changed control values travel with the code (a first
+    // comment line the AI importer reads back as the controls' values).
+    const params = (code as { params?: Record<string, unknown> }).params;
     downloadCode(
       layer?.layer.name || codeMeta(code).name,
       code.tier,
-      code.source,
+      params && Object.keys(params).length
+        ? `${PARAMS_HEADER}${JSON.stringify(params)}\n${code.source}`
+        : code.source,
     );
   };
   /** S1: "<name> copy", then "<name> copy 2" and so on, unique in `taken`. */
@@ -4049,6 +4196,12 @@ export function mountEditorShell(
   };
   const applyCategory = (category: string) => {
     syncRails();
+    // FINAL2 U10: library panels get room for two 165 px card columns.
+    workspace?.setLibrary(
+      ['Media', 'AI', 'MyTemplates', 'Templates', 'Elements', 'Text'].includes(
+        category,
+      ),
+    );
     const hidden = root.querySelector<HTMLElement>(
       `#rail-left [data-category="${category}"]`,
     );
