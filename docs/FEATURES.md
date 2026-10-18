@@ -1028,6 +1028,10 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | F2-041 | P1 | W9 | Verified | One blend control (Adjust colors › Blend mode): the layer's own blend mode, all 16 modes grouped Normal, Darken, Lighten, Contrast, Comparison, Component; replaces the earlier clip-FX blend select (an old clip blend is shown until changed, then cleared in the same step); Reset colors sets Normal (U7) |
 | F2-042 | P1 | W9 | Verified | Right panel › Effects › Chroma key (pictures and video): on/off, key colour, eyedropper on the canvas (picks from the unkeyed picture; Escape stops), similarity, smoothness, spill, edge feather and shrink, keep-only invert, Full or Fast preview quality (export stays full); a plain notice when the graphics-card path is unavailable (U7) |
 | F2-043 | P1 | W9 | Verified | A masked picture's exported PNG frame matches the preview pixel (export parity smoke test) (U7) |
+| F2-030 | P1 | W9 | Verified | Font panel: search, category chips, a Hindi / Devanagari filter, Recently used (this browser), bundled and system fonts and the text engine's catalog downloaded on first use (cached for offline use and export), Loading and plain-word offline or failed states that keep the previous font, and a coverage line from the engine's glyph check (U6) |
+| F2-031 | P1 | W9 | Verified | Right panel › Text: direction Auto / Left to right / Right to left, Start / Centre / End alignment whose icons flip for right-to-left text, and bullet or numbered lists with style, indent, spacing and a level (1 to 3) per line, one undo step each (U6) |
+| F2-032 | P1 | W9 | Verified | Elements › Tables opens a rows × columns picker and inserts a table (text engine table model) at the playhead in one undo step (U6) |
+| F2-033 | P1 | W9 | Verified | Table cells edit in place on the canvas (double-click, Tab to the next cell, Enter commits, Escape cancels) and in the right panel with rows, columns, header row, column widths, border colour and width (U6) |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 

@@ -2,7 +2,11 @@
 // the faces the project uses, so the canvas measures and draws them with
 // their real weights; `loaded` redraws once a face arrives.
 import type { EditorEngine } from '../core';
-import { bundledFaces, usedFaces } from '../render/fonts';
+import { bundledFaces, isBundledFont, usedFaces } from '../render/fonts';
+import { isCatalogFont } from '../text-engine/catalog';
+import { loadFont } from '../text-engine/fonts';
+import { showToast } from './components/toast';
+import { t } from '../i18n';
 import type { SceneLayer } from '../render/adapter';
 
 export function mountFonts(engine: EditorEngine, loaded: () => void) {
@@ -20,6 +24,8 @@ export function mountFonts(engine: EditorEngine, loaded: () => void) {
     document.fonts.add(face);
     return { source, face };
   });
+  const requested = new Set<string>();
+  const warned = new Set<string>();
   const ensure = () => {
     const used = usedFaces(
       engine.state.compositions as unknown as readonly {
@@ -32,6 +38,22 @@ export function mountFonts(engine: EditorEngine, loaded: () => void) {
         used.has(`${source.family}|${source.weight}`)
       )
         face.load().then(loaded, () => undefined);
+    // FINAL2 U6: catalog fonts the project uses come from the text engine's
+    // cache (or download); a failure says so once and keeps a fallback.
+    for (const key of used) {
+      const [family, weight] = key.split('|');
+      if (!family || !isCatalogFont(family) || isBundledFont(family)) continue;
+      if (requested.has(key)) continue;
+      requested.add(key);
+      loadFont(family, [Number(weight) || 400], ['latin'], {
+        offline: navigator.onLine === false,
+      }).then(loaded, () => {
+        requested.delete(key);
+        if (warned.has(family)) return;
+        warned.add(family);
+        showToast(t('fonts.error.project', { font: family }), 'error');
+      });
+    }
   };
   ensure();
   return engine.on('state:changed', ensure);

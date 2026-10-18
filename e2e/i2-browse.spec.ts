@@ -221,7 +221,7 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
   ]);
   for (const [tile, id] of [
     ['photos', 'MED-028'],
-    ['tables', 'SHP-025'],
+    ['charts', 'SHP-016'],
     ['frames', 'MSK-003'],
   ] as const) {
     const button = host.locator(`[data-tile="${tile}"]`);
