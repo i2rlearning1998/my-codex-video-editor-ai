@@ -11,10 +11,12 @@ import { mountEditorShell } from './ui/shell';
 import { confirmDialog } from './ui/components/modal';
 import { t } from './i18n';
 import { initTheme } from './ui/theme';
+import { initAccent } from './ui/accent';
 import { mountTooltips } from './ui/components/tooltip';
 import './style.css';
 
 initTheme();
+initAccent();
 mountTooltips();
 // H2: the canvas shows its focus ring only after keyboard navigation (a click
 // focuses it for shortcuts, which should not frame the whole stage).

@@ -24,6 +24,7 @@ import { myTemplates, type MyTemplate } from './my-templates';
 import type { CodeTemplate } from './code-templates';
 import { isCreatorLibraryId, type CreatorLibrary } from './creator-library';
 import type { EditorSession } from './session';
+import { mountStock, type StockDeps, type StockTab } from './stock-panel';
 import {
   addShapeCommands,
   BASIC_PRESETS,
@@ -290,14 +291,18 @@ export interface LibraryBrowsers {
 const later = (wave: number | string, id: string) =>
   t('toolbar.later', { wave: String(wave), id });
 const TEMPLATE_RECENT = 'template';
+/** FINAL2 U2: live stock tiles: [tab, icon]. */
+const STOCK_TILES: [StockTab, string][] = [
+  ['photos', 'image'],
+  ['videos', 'media'],
+  ['icons', 'elements'],
+  ['stickers', 'magic'],
+  ['audio', 'audio'],
+];
 /** A disabled Elements category tile: [key, icon, ledger, wave]. */
 const PLANNED_TILES: [string, string, string, number][] = [
-  ['photos', 'image', 'MED-028', 4],
-  ['videos', 'media', 'MED-029', 4],
   ['3d', 'cube', 'ADV-002', 8],
   ['animations', 'animate', 'SHP-012', 5],
-  ['audio', 'audio', 'AUD-013', 7],
-  ['tables', 'list', 'SHP-025', 8],
   ['charts', 'properties', 'SHP-016', 8],
   ['frames', 'crop', 'MSK-003', 6],
   ['grids', 'templates', 'MSK-003', 6],
@@ -335,6 +340,10 @@ export function mountLibraryPanels(
       hover(template: CodeTemplate, thumb: HTMLElement, on: boolean): void;
       importFile(): void;
     };
+    /** FINAL2 U6: Insert table (opens the rows × columns picker). */
+    table?: () => void;
+    /** FINAL2 U2: stock search (Photos, Videos, Icons, Stickers, Audio). */
+    stock?: StockDeps;
     /** P2: Creator Pack items in My library (badged, with their menu). */
     creator?: {
       library: CreatorLibrary;
@@ -644,6 +653,17 @@ export function mountLibraryPanels(
       ];
     },
   });
+  const stockPage = (tab: StockTab): BrowsePage => ({
+    id: `stock-${tab}`,
+    title: t(`elements.tile.${tab}`),
+    sections: () => [
+      {
+        id: `stock-${tab}`,
+        layout: 'list',
+        render: (host) => mountStock(host, tab, options.stock!),
+      },
+    ],
+  });
   const graphicsPage = (): BrowsePage => ({
     id: 'elements-graphics',
     title: t('elements.graphics'),
@@ -733,6 +753,30 @@ export function mountLibraryPanels(
               data: { tile: 'graphics' },
               activate: () => panels.Elements.push(graphicsPage()),
             },
+            // FINAL2 U2: the stock categories open their own search page.
+            ...(options.stock
+              ? STOCK_TILES.map(([key, icon]): BrowseCard => ({
+                  id: `tile-${key}`,
+                  label: t(`elements.tile.${key}`),
+                  icon,
+                  className: 'browse-tile',
+                  data: { tile: key },
+                  activate: () => panels.Elements.push(stockPage(key)),
+                }))
+              : []),
+            // FINAL2 U6: Tables opens the rows × columns picker.
+            ...(options.table
+              ? [
+                  {
+                    id: 'tile-tables',
+                    label: t('elements.tile.tables'),
+                    icon: 'list',
+                    className: 'browse-tile',
+                    data: { tile: 'tables' },
+                    activate: () => options.table?.(),
+                  } as BrowseCard,
+                ]
+              : []),
             // R2: AI motions live in the AI category, so Animations is
             // a planned tile again.
             ...PLANNED_TILES.map(([key, icon, ledger, wave]): BrowseCard => ({

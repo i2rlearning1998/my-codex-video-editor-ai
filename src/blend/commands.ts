@@ -13,6 +13,12 @@ export function setLayerBlendMode(
   input: z.infer<typeof inputSchema>,
   label = 'Layer blend mode',
 ) {
+  registerLayerBlend(engine);
+  engine.commands.execute({ type: 'plugin:layer-blend:SET', input }, label);
+}
+
+/** FINAL2 U7: registers the capability so the UI can put its command in a transaction or a preview. */
+export function registerLayerBlend(engine: EditorEngine) {
   if (!engine.capabilities.list().some((c) => c.id === 'layer-blend'))
     engine.capabilities.register({
       id: 'layer-blend',
@@ -39,5 +45,4 @@ export function setLayerBlendMode(
         },
       },
     });
-  engine.commands.execute({ type: 'plugin:layer-blend:SET', input }, label);
 }

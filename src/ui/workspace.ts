@@ -16,6 +16,8 @@ export interface Workspace {
   /** V1 (spec 1.3): with nothing selected the right rail and panel take no
    *  space at all. */
   setEmpty(empty: boolean): void;
+  /** FINAL2 U10: a library category is shown (cards need 380 px). */
+  setLibrary(library: boolean): void;
   onChange(listener: () => void): () => void;
   dispose(): void;
 }
@@ -100,13 +102,20 @@ export function mountWorkspace(
   let leftClosed = layout === 'narrow' || layout === 'phone',
     // V7 (spec 10.1): the right panel opens only from its rail.
     rightClosed = true,
-    empty = true;
+    empty = true,
+    library = false;
+  const leftWidth = () => left;
   // Earlier pixel-measuring e2e tests keep the right column reserved (the
   // T-ALL layout) through a test-only flag set by the e2e fixture; the V1
   // tests run without it (D-190).
   const reserve =
     (window as { __AIVE_E2E_RIGHT__?: string }).__AIVE_E2E_RIGHT__ ===
     'reserve';
+  // FINAL2 U10: the same for the 380 px library width; the e2e fixture keeps
+  // the earlier width (from 1800 px only) and F2-072 switches it off.
+  const legacyLibrary =
+    (window as { __AIVE_E2E_LIBRARY__?: string }).__AIVE_E2E_LIBRARY__ ===
+    'legacy';
   const bar = shell.querySelector('.topbar')!;
   // S1 Part 1: the left panel's one header (title + drawer icon).
   const leftToggle = document.createElement('div');
@@ -155,6 +164,12 @@ export function mountWorkspace(
   };
   const paint = () => {
     const sizes = SIZES[layout];
+    // FINAL2 U10: library panels are 380 px on every wide window, so two
+    // columns of cards are at least 165 px (below 1440 px: unchanged).
+    const left =
+      library && layout === 'wide' && !legacyLibrary
+        ? Math.max(leftWidth(), 380)
+        : leftWidth();
     const docked = (side: 'left' | 'right') =>
       side === 'left'
         ? layout === 'wide' || layout === 'medium'
@@ -450,6 +465,11 @@ export function mountWorkspace(
     },
     setOpen,
     setEmpty,
+    setLibrary(next) {
+      if (next === library) return;
+      library = next;
+      paint();
+    },
     onChange(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

@@ -6,6 +6,7 @@
 // override per character) and its own undo stack for the session. Leaving
 // the editor (Escape or a click elsewhere) commits the text and its runs as
 // one undo step.
+import { editCaptionCommands, readCaptionCue } from '../captions';
 import {
   multiplyMatrices,
   worldTransform,
@@ -806,18 +807,28 @@ export function mountTextEditor(
         (model.text !== original.text || runs !== original.runs)
       )
         try {
-          engine.commands.transaction(
-            'Edit text',
-            commitCommands(
-              item,
+          // FINAL2 U9: a caption keeps its cue in step (its words, the
+          // karaoke highlight and its timing), as one 'Edit caption' step.
+          if (readCaptionCue(item) && model.text !== original.text) {
+            const plan = editCaptionCommands(
+              session.source.composition,
+              item.id,
               model.text,
-              runs,
-              list,
-              base,
-              session,
-              compositionId,
-            ),
-          );
+            );
+            engine.commands.transaction(plan.label, plan.commands);
+          } else
+            engine.commands.transaction(
+              'Edit text',
+              commitCommands(
+                item,
+                model.text,
+                runs,
+                list,
+                base,
+                session,
+                compositionId,
+              ),
+            );
         } catch (error) {
           report(error);
         }

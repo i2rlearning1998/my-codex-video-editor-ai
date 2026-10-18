@@ -1,3 +1,6 @@
+- **FINAL2 (integration part 2, all the UI)** is on `claude/final-2`, draft PR #42 stacked on `claude/final-1`, not merged; see reports/FINAL2.md.
+  - U1 Settings (keys, offline engines, accent), U2 stock in Elements, U3/U4 voice-over and recorder, U5 audio mixer and master volume, U6 fonts / RTL / lists / tables, U7 masks / blend / chroma, U8 probe details and reconnect, U9 captions and nesting, U10 Build video and camera, U11 offline Whisper (D-276 to D-286).
+  - Schema 9 unchanged. New dependency: `@huggingface/transformers` 4.3.1 (owner-approved, lazy).
 - **FINAL1 (integration part 1)** is on `claude/final-1`, a draft PR stacked on `claude/j-composition` (PR #39), not merged; see reports/FINAL1.md.
   - Merged `codex/c3-render-effects` and `codex/c3-media-probe` (D-275). Captions and nesting engines (D-270, D-271), the scene camera (D-272), composition decisions (D-273); local speech still blocked (D-274).
   - Schema 9 (optional `camera` field, no bump); engine only, no UI; no new npm dependencies.

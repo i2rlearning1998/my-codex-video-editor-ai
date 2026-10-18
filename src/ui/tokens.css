@@ -311,3 +311,21 @@
   --ease-standard: var(--ease-enter);
   --icon-rail-width: var(--rail-width);
 }
+
+/* FINAL2 U1: a chosen accent other than the default purple (data-accent is
+   set by src/appearance applyAccent). The legacy fill, text, border, focus
+   and region tokens follow it; purple keeps every value above unchanged. */
+:root[data-accent]:not([data-accent='purple']) {
+  --accent-pressed: var(--accent-active);
+  --accent-border: color-mix(in srgb, var(--accent) 40%, transparent);
+  --accent-fill: color-mix(in srgb, var(--accent-active) 80%, black);
+  --accent-fill-hover: color-mix(in srgb, var(--accent-active) 68%, black);
+  --focus-ring: var(--accent-hover);
+  --region-accent: var(--accent);
+}
+:root[data-theme='dark'][data-accent]:not([data-accent='purple']) {
+  --accent-text: color-mix(in srgb, var(--accent) 80%, white);
+}
+:root[data-theme='light'][data-accent]:not([data-accent='purple']) {
+  --accent-text: color-mix(in srgb, var(--accent-active) 70%, black);
+}

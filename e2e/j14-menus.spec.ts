@@ -80,6 +80,9 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
     'Split',
     'Freeze frame',
     'Rename',
+    // FINAL2 U9 (D-283).
+    'Transcribe',
+    'Auto captions',
     'Audio ›',
     'Save to My Templates ›',
     'Clip ›',

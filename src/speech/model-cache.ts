@@ -52,9 +52,15 @@ export function createModelLoader(
   store: ModelStore = createIndexedModelStore(),
   fetcher: FetchLike = (url, init) => fetch(url, init),
 ) {
-  const key = (file: ModelFile) => `${file.id}/${file.sha256.toLowerCase()}`;
+  const MAX = 512 * 1024 * 1024;
+  // FINAL2 U11: a file not yet pinned (`sha256: null`, run `npm run
+  // models:pin`) is checked by size only: its exact size when known, else
+  // any non-empty file under the cap.
+  const key = (file: ModelFile) =>
+    `${file.id}/${file.sha256 ? file.sha256.toLowerCase() : 'size-only'}`;
   async function valid(file: ModelFile, blob: Blob) {
-    if (blob.size !== file.sizeBytes) return false;
+    if (file.sizeBytes !== null && blob.size !== file.sizeBytes) return false;
+    if (!file.sha256) return blob.size > 0 && blob.size <= MAX;
     const digest = await crypto.subtle.digest(
       'SHA-256',
       await blob.arrayBuffer(),
@@ -68,10 +74,11 @@ export function createModelLoader(
   function check(file: ModelFile) {
     if (
       !/^https:\/\//.test(file.url) ||
-      !Number.isSafeInteger(file.sizeBytes) ||
-      file.sizeBytes < 1 ||
-      file.sizeBytes > 512 * 1024 * 1024 ||
-      !/^[a-f0-9]{64}$/i.test(file.sha256)
+      (file.sizeBytes !== null &&
+        (!Number.isSafeInteger(file.sizeBytes) ||
+          file.sizeBytes < 1 ||
+          file.sizeBytes > MAX)) ||
+      (file.sha256 !== null && !/^[a-f0-9]{64}$/i.test(file.sha256))
     )
       throw new SpeechError('INVALID_INPUT');
   }
@@ -126,7 +133,8 @@ export function createModelLoader(
           assertActive(options.signal);
           if (part.done) break;
           size += part.value.length;
-          if (size > file.sizeBytes) throw new SpeechError('INTEGRITY_FAILED');
+          if (size > (file.sizeBytes ?? MAX))
+            throw new SpeechError('INTEGRITY_FAILED');
           chunks.push(part.value);
           options.onProgress?.({
             phase: 'download',

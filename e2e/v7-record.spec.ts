@@ -31,11 +31,12 @@ test('[AUD-008][AUD-022] Record & create: Screen and camera, Camera and Screen p
   await showCategory(page, 'Record');
   const cards = record(page).locator('.record-card');
   await expect(cards).toHaveCount(5);
+  // FINAL2 U4: Screen and camera, Camera and Screen now record (they were
+  // Planned in V7); e2e/final2-u3u4.spec.ts proves them.
   for (const id of ['screen-camera', 'camera', 'screen'])
-    await expect(record(page).locator(`[data-record="${id}"]`)).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    );
+    await expect(
+      record(page).locator(`[data-record="${id}"]`),
+    ).not.toHaveAttribute('aria-disabled', 'true');
   await expect(
     record(page).locator('[data-record="audio"]'),
   ).not.toHaveAttribute('aria-disabled', 'true');

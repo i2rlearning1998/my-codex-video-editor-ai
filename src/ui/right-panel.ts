@@ -13,13 +13,9 @@ import {
   sceneTransitionLimit,
   setSceneTransition,
 } from './scene-transition-actions';
-import {
-  blendModes,
-  defaults as fxDefaults,
-  getAdjustment,
-  getEffect,
-} from '../fx';
+import { defaults as fxDefaults, getAdjustment, getEffect } from '../fx';
 import { resolvedTextStyle } from './text-editor';
+import { textStructureSections } from './text-structure';
 import {
   clipAnimation,
   clipFx,
@@ -91,6 +87,13 @@ import {
   toggleEffect,
 } from './right-panel/fx-panels';
 import { sceneLengthCommands } from './scene-length';
+import {
+  blendCommand,
+  blendControl,
+  chromaAccordion,
+  masksAccordion,
+  type LayerEffectsContext,
+} from './right-panel/layer-effects';
 import { describeSelection, selectionRoots } from './selection-context';
 import type { EditorSession } from './session';
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
@@ -130,9 +133,8 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
  *  Effects open, listing what they will hold; Transitions is the J12 panel
  *  for a clip (it stays planned for the canvas). */
-const PLANNED: Partial<Record<RightSection, readonly [string, number]>> = {
-  Captions: ['TXT-035', 8],
-};
+// FINAL2 U9: Captions (Auto Caption) opens the Auto captions dialog.
+const PLANNED: Partial<Record<RightSection, readonly [string, number]>> = {};
 
 export type SelectionKind =
   | 'none'
@@ -551,7 +553,13 @@ export function mountRightPanel(
           id: 'right-font',
           label: t('toolbar.font'),
           value: style.family,
-          options: SYSTEM_FONTS.map(([name]) => ({
+          options: [
+            ...SYSTEM_FONTS.map(([name]) => name as string),
+            // FINAL2 U6: a downloaded catalog font stays listed.
+            ...(SYSTEM_FONTS.some(([name]) => name === style.family)
+              ? []
+              : [style.family]),
+          ].map((name) => ({
             value: name,
             label: name,
             font: name,
@@ -657,6 +665,17 @@ export function mountRightPanel(
       accordion('text-spacing', t('toolbar.advanced'), [
         hooks.build?.('spacing'),
       ]),
+      // FINAL2 U6: direction, lists and tables (text engine).
+      ...textStructureSections({
+        compositionId,
+        layer: () => {
+          const item = single();
+          return item?.type === 'text' ? item : null;
+        },
+        run: (label, commands) => safely(() => run(label, commands)),
+        align: (value) => styleRun('Set alignment', 'textAlign', value),
+        accordion,
+      }),
     ];
   };
   const pictureTab = (video: boolean) => {
@@ -1087,34 +1106,24 @@ export function mountRightPanel(
       block.append(label, range);
       return block;
     };
-    const blend = createSelect({
-      id: 'right-blend-mode',
-      label: t('right.adjust.blend'),
-      value: fx?.blendMode ?? 'blend.normal',
-      // Spec 5: Clipchamp's six blend modes.
-      options: blendModes
-        .filter((mode) =>
-          [
-            'blend.normal',
-            'blend.darken',
-            'blend.multiply',
-            'blend.lighten',
-            'blend.screen',
-            'blend.overlay',
-          ].includes(mode.id),
-        )
-        .map((mode) => ({
-          value: mode.id,
-          label: t(`fx.${mode.id}`),
-        })),
-      disabled: !fx,
-      onChange: (value) =>
-        safely(() =>
-          setFx('Blend mode', (next) => {
-            if (value === 'blend.normal') delete next.blendMode;
-            else next.blendMode = value;
-          }),
-        ),
+    // FINAL2 U7: one blend control, the layer's own blend mode (all 16,
+    // grouped); a V4 clip-FX blend is shown until replaced, then cleared.
+    const legacyClear = () =>
+      clips
+        .filter(({ clip }) => fxOf(clip).blendMode !== undefined)
+        .map(({ clip }) => {
+          const next = fxOf(clip);
+          delete next.blendMode;
+          return {
+            type: 'SET_CLIP_FX',
+            compositionId: session.source.composition.id,
+            clipId: clip.id,
+            fx: next,
+          } as Command;
+        });
+    const blend = blendControl(layerFx(), {
+      legacy: fx?.blendMode,
+      clearLegacy: legacyClear,
     });
     return [
       heading(t('panel.adjust'), t('right.adjustHint')),
@@ -1131,14 +1140,28 @@ export function mountRightPanel(
           'undo',
           t('right.adjust.reset'),
           fx
-            ? () =>
-                setFx('Reset colors', (next) => {
-                  next.stack = next.stack.filter(
-                    (item) =>
-                      !item.id.startsWith('adjust.') || isFilterEntry(item),
-                  );
-                  delete next.blendMode;
-                })
+            ? () => {
+                const layer = single();
+                run('Reset colors', [
+                  ...clips.map(({ clip }) => {
+                    const next = fxOf(clip);
+                    next.stack = next.stack.filter(
+                      (item) =>
+                        !item.id.startsWith('adjust.') || isFilterEntry(item),
+                    );
+                    delete next.blendMode;
+                    return {
+                      type: 'SET_CLIP_FX',
+                      compositionId: session.source.composition.id,
+                      clipId: clip.id,
+                      fx: next,
+                    } as Command;
+                  }),
+                  layer && layer.blendMode !== undefined
+                    ? blendCommand(engine, session, layer.id, 'normal')
+                    : null,
+                ]);
+              }
             : null,
           fx ? undefined : { reason: t('right.fadeNeedsClip') },
         ),
@@ -1339,12 +1362,24 @@ export function mountRightPanel(
     ['distance', 0, 100],
     ['angle', -180, 180],
   ];
+  // FINAL2 U7: masks, chroma key and the layer blend mode.
+  const layerFx = (): LayerEffectsContext => ({
+    engine,
+    session,
+    accordion,
+    run,
+    safely,
+    report,
+    rerender,
+  });
   const effects = () => {
     const kind = kindOf(session);
     if (kind === 'video' || kind === 'image')
       return [
         heading(t('panel.effects'), t('right.effectsHint')),
         ...fxEffects(),
+        masksAccordion(layerFx()),
+        chromaAccordion(layerFx()),
       ];
     // Shapes: the outline is the stroke (live); shadows are planned. Text
     // outline and shadow come with the text effects (TXT-019, Wave 3).
@@ -1362,6 +1397,7 @@ export function mountRightPanel(
         ...plannedFields('shadow', SHADOW, wave, ledger),
       ]),
       accordion(`${kind}-effect-fx`, t('panel.effects'), fxEffects()),
+      masksAccordion(layerFx()),
     ];
   };
   const transitionQuery = { value: '' };

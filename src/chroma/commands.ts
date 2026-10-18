@@ -15,6 +15,20 @@ export function setChromaKey(
   input: z.infer<typeof inputSchema>,
   label = 'Chroma key',
 ) {
+  registerChromaKey(engine);
+  engine.commands.execute(
+    {
+      type: 'plugin:chroma-key:SET',
+      input: jsonSchema.parse(
+        JSON.parse(JSON.stringify(inputSchema.parse(input))),
+      ),
+    },
+    label,
+  );
+}
+
+/** FINAL2 U7: registers the capability so the UI can put its command in a transaction or a preview. */
+export function registerChromaKey(engine: EditorEngine) {
   if (!engine.capabilities.list().some((c) => c.id === 'chroma-key'))
     engine.capabilities.register({
       id: 'chroma-key',
@@ -44,13 +58,4 @@ export function setChromaKey(
         },
       },
     });
-  engine.commands.execute(
-    {
-      type: 'plugin:chroma-key:SET',
-      input: jsonSchema.parse(
-        JSON.parse(JSON.stringify(inputSchema.parse(input))),
-      ),
-    },
-    label,
-  );
 }

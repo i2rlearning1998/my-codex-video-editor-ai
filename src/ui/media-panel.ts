@@ -17,9 +17,16 @@ import {
   promptDialog,
 } from './components/modal';
 import { showToast } from './components/toast';
+import { attachStockLicense, type LicenseMeta } from '../providers';
 import { iconSvg } from './icons';
 import { mountShelf, type Shelf, type ShelfItem } from './library-shelf';
 import { mediaFolders } from './media-folders';
+import {
+  codecMessage,
+  probeNotes,
+  probeRows,
+  storedDetails,
+} from './media-probe-info';
 import type { EditorSession } from './session';
 
 /** I1.7: how long a deleted media item can be restored before its stored
@@ -522,6 +529,23 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       ]);
     if (asset.duration !== undefined)
       rows.push([t('media.details.duration'), formatDuration(asset.duration)]);
+    // FINAL2 U8: what the media probe read (codec, frame rate, rotation...).
+    const probed = storedDetails(asset.metadata);
+    if (probed) rows.push(...probeRows(probed));
+    // FINAL2 U2: the stock credit (author, provider, licence).
+    const credit = (asset.metadata as Record<string, unknown>).stockLicense as
+      | {
+          author?: unknown;
+          attributionText?: unknown;
+          license?: { name?: unknown };
+        }
+      | undefined;
+    if (credit && typeof credit === 'object') {
+      if (typeof credit.attributionText === 'string' && credit.attributionText)
+        rows.push([t('media.details.credit'), credit.attributionText]);
+      if (typeof credit.license?.name === 'string')
+        rows.push([t('media.details.licence'), credit.license.name]);
+    }
     rows.push([
       t('media.details.used'),
       t('media.details.clips', { count: usage(id) }),
@@ -539,6 +563,12 @@ export function mountMediaPanel(options: MediaPanelOptions) {
           list.append(dt, dd);
         }
         body.append(list);
+        for (const note of probed ? probeNotes(probed, asset.name) : []) {
+          const line = document.createElement('p');
+          line.className = 'media-details-note';
+          line.textContent = note;
+          body.append(line);
+        }
       },
     });
   };
@@ -616,10 +646,17 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         );
       else if (outcome.status === 'unreadable')
         options.toast(
-          t('media.unreadable', { name: outcome.fileName }),
+          codecMessage(outcome.fileName, outcome.error) ??
+            t('media.unreadable', { name: outcome.fileName }),
           'error',
         );
-      else if (outcome.status === 'failed')
+      else if (outcome.status === 'imported' && outcome.assetId) {
+        // FINAL2 U8: rotation is applied for you; variable timing needs no fix.
+        const asset = assetById(outcome.assetId);
+        const probed = asset && storedDetails(asset.metadata);
+        for (const note of probed ? probeNotes(probed, asset.name) : [])
+          options.toast(note, 'info');
+      } else if (outcome.status === 'failed')
         options.toast(
           t('media.failed', {
             name: outcome.fileName,
@@ -635,7 +672,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
    *  already there or restored), in file order. */
   const importFiles = async (
     files: readonly File[],
-    importOptions: { design?: boolean } = {},
+    importOptions: { design?: boolean; license?: LicenseMeta } = {},
   ): Promise<string[]> => {
     if (!files.length) return [];
     if (controller) {
@@ -666,7 +703,15 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         },
         // I1.6: importing is a library change, not an undoable edit.
         addAsset: (asset) =>
-          engine.library('Import media', [{ type: 'ADD_ASSET', asset }]),
+          engine.library('Import media', [
+            {
+              type: 'ADD_ASSET',
+              // FINAL2 U2: stock media keep their licence and credit.
+              asset: importOptions.license
+                ? attachStockLicense(asset, importOptions.license)
+                : asset,
+            },
+          ]),
         onProgress: (progress) =>
           showProgress(
             progress.fileName,

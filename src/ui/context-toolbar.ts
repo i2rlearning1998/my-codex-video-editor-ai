@@ -2,6 +2,7 @@
 // controls above the canvas. Controls whose systems are not built are shown
 // disabled with the wave that builds them (D-068); nothing behind them exists.
 import { fontWeights } from '../render/fonts';
+import { isCatalogFont } from '../text-engine/catalog';
 import { LIST_STYLES, parseListStyle } from '../render/rich-text';
 import {
   clearRunKeys,
@@ -215,7 +216,10 @@ export function fontSizeCommand(
 }
 /** W2-F5: the text style properties the toolbar edits, with their checks. */
 const TEXT_STYLE_KEYS = {
-  fontFamily: (value: unknown) => SYSTEM_FONTS.some(([name]) => name === value),
+  fontFamily: (value: unknown) =>
+    SYSTEM_FONTS.some(([name]) => name === value) ||
+    // FINAL2 U6: the text engine's font catalog (downloaded on demand).
+    (typeof value === 'string' && isCatalogFont(value)),
   fontWeight: (value: unknown) =>
     (FONT_WEIGHTS as readonly unknown[]).includes(value),
   fontStyle: (value: unknown) => value === 'italic' || value === 'normal',
@@ -425,8 +429,12 @@ export interface ToolbarHooks {
   crop?: () => void;
   /** Opens the Scenes board. */
   scenes?: () => void;
+  /** FINAL2 U10: opens the scene camera panel. */
+  camera?: () => void;
   /** Applies a canvas size to every scene. */
   canvasSize?: (width: number, height: number) => void;
+  /** FINAL2 U9: opens the Auto captions dialog. */
+  autoCaptions?: () => void;
 }
 /** H3: the kinds of toolbar, from the selection. */
 export type ToolbarMode =
@@ -1263,6 +1271,15 @@ export function mountContextToolbar(
       tool('scene-order', 'scenes', t('scene.order'), () => hooks.scenes?.(), {
         text: true,
       }),
+      tool(
+        'scene-camera',
+        'camera',
+        t('camera.title'),
+        () => hooks.camera?.(),
+        {
+          text: true,
+        },
+      ),
       divider(),
       planned('scene-animate'),
     ];
@@ -1296,7 +1313,14 @@ export function mountContextToolbar(
       divider(),
       fpsChip(),
       divider(),
-      planned('auto-captions'),
+      hooks.autoCaptions
+        ? tool(
+            'auto-captions',
+            'captions',
+            t('toolbar.autoCaptions'),
+            hooks.autoCaptions,
+          )
+        : planned('auto-captions'),
     ];
   };
 

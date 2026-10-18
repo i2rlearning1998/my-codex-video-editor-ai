@@ -13,6 +13,20 @@ import { LOCAL_MODELS } from './models';
 import { SpeechError, type TtsProvider, type SttProvider } from './types';
 import type { PaidDependencies } from './http';
 export type SpeechProvider = TtsProvider | SttProvider;
+/** FINAL2 U11: local models whose files are stored and checked. */
+const readyModels = new Set<string>();
+const localTranscribers = new Map<string, SttProvider['transcribe']>();
+export function setLocalModelReady(id: string, ready: boolean): void {
+  if (ready) readyModels.add(id);
+  else readyModels.delete(id);
+}
+export function setLocalTranscriber(
+  id: string,
+  transcribe: SttProvider['transcribe'] | null,
+): void {
+  if (transcribe) localTranscribers.set(id, transcribe);
+  else localTranscribers.delete(id);
+}
 export type SpeechStatus =
   | { id: string; state: 'ready' }
   | { id: string; state: 'needs-key' }
@@ -60,13 +74,17 @@ export function createSpeechRegistry(
   };
   const stt: SttProvider = {
     id: 'local-whisper',
-    name: 'Local Whisper (unavailable)',
+    name: 'Offline Whisper',
     kind: 'speech-stt',
     requiresKey: false,
     keyFields: [],
     languages: ['en', 'hi'],
-    transcribe: async () => {
-      throw new SpeechError('MODEL_UNAVAILABLE');
+    // FINAL2 U11: a runner set by the app (or a test fake) once downloaded.
+    transcribe: async (request) => {
+      const runner = localTranscribers.get('local-whisper');
+      if (!runner || !readyModels.has('local-whisper'))
+        throw new SpeechError('MODEL_UNAVAILABLE');
+      return runner(request);
     },
   };
   const entries: SpeechProvider[] = [
@@ -97,12 +115,23 @@ export function createSpeechRegistry(
     getSpeechStatus: (): SpeechStatus[] =>
       entries.map((p) => {
         const local = LOCAL_MODELS.find((m) => m.id === p.id);
-        if (local)
+        if (local) {
+          if (local.blocker || !local.files.length)
+            return {
+              id: p.id,
+              state: 'unavailable',
+              reason: local.blocker ?? 'No verified runner',
+            };
+          if (readyModels.has(p.id)) return { id: p.id, state: 'ready' };
+          const known = local.files.every((f) => f.sizeBytes !== null);
           return {
             id: p.id,
-            state: 'unavailable',
-            reason: local.blocker ?? 'No verified runner',
+            state: 'needs-download',
+            sizeBytes: known
+              ? local.files.reduce((sum, f) => sum + (f.sizeBytes ?? 0), 0)
+              : (local.approxBytes ?? 0),
           };
+        }
         return { id: p.id, state: keys.hasKeys(p) ? 'ready' : 'needs-key' };
       }),
   };

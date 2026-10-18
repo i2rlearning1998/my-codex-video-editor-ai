@@ -96,6 +96,7 @@ export async function createDebugReport(
       soloTrackIds: [...session.soloTrackIds],
       selectedKeyframes: session.selectedKeyframes.map((item) => ({ ...item })),
       drawBrush: session.drawBrush,
+      enteredGroupId: session.enteredGroupId,
     },
     recentCommands: diagnostics.getCommands().slice(-30),
     recentErrors: diagnostics

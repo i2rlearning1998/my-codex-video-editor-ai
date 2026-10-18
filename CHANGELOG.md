@@ -2,6 +2,19 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## FINAL2 (integration part 2, all the UI) — 2026-10-18
+
+- **Settings:** Stock & API keys (save, test, clear; keys stay in this browser), offline engines with Download, and an accent colour per theme.
+- **Elements:** stock Photos, Videos, Icons, Stickers and Audio with licences and credits; Tables.
+- **Record & create:** Voice-over (text to speech saved to Media) and camera and screen recording.
+- **Audio:** a mixer with master volume (also in the export), meters, fade presets, volume keyframes and noise reduction.
+- **Text:** font search with a Hindi filter and downloadable fonts, right-to-left text, lists.
+- **Effects:** masks, blend modes and chroma key.
+- **Media:** probe details and Reconnect media.
+- **Captions and nesting:** Transcribe, Auto captions with five styles, SRT and VTT; nested clips.
+- **AI:** Build video from an AI composition; the scene camera panel.
+- **Offline captions:** Whisper downloads in your browser (pin the files with `npm run models:pin`).
+
 ## FINAL1 (integration part 1) — 2026-10-17
 
 - **Merged:** masks, blend modes and chroma key; media probe, rotation, variable frame rate and relink.

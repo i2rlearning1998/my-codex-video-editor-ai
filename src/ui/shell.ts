@@ -1,3 +1,10 @@
+import {
+  openAutoCaptions,
+  openTranscribe,
+  selectedSoundClip,
+  type CaptionsContext,
+} from './captions-ui';
+import { mountNestBar } from './nest-ui';
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
@@ -41,13 +48,7 @@ import {
   type ThemeScene,
 } from '../themes/themes';
 import { ThemeError, createThemeLibrary } from '../themes/library';
-import {
-  MOTION_SETTINGS,
-  applyMotion,
-  readMotion,
-  reducedNow,
-  systemReducesMotion,
-} from './motion';
+import { applyMotion, readMotion, reducedNow } from './motion';
 import { presetControls } from '../creator-pack/preset';
 import { blocks } from '../blocks/starters';
 import { SYSTEM_FONTS } from '../render/text-style';
@@ -136,6 +137,7 @@ import {
   selectionGeometry as selectionGeometryOf,
 } from './geometry';
 import { mountMediaPanel } from './media-panel';
+import { mountMediaRelink } from './media-relink';
 import { openExportDialog } from './export-dialog';
 import { drawComposition } from '../render/canvas';
 import {
@@ -151,7 +153,17 @@ import {
   type PreviewAsset,
 } from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
+import {
+  cancelEyedropper,
+  createEffectsCanvasTool,
+  layerEffects,
+} from './right-panel/layer-effects';
 import { mountTextEditor, type TextEditor } from './text-editor';
+import {
+  mountTableEditor,
+  openTablePicker,
+  tableInsertCommands,
+} from './text-table';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
 import {
@@ -173,7 +185,10 @@ import { groupNameFor } from './ungroup';
 import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
+import { mountAudioMixer, projectMasterVolume } from './audio-mixer';
+import { configureAudioTab } from './right-panel/audio-tab';
 import { mountRecordPanel } from './record-panel';
+import { recordPanelHooks } from './record-panel-hooks';
 import { newTts, ttsState } from './right-panel/tts-panel';
 import { themeState } from './right-panel';
 import {
@@ -254,6 +269,14 @@ import { runCommand, type CommandContext } from '../commands/registry';
 import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
 import { cycleThemePreference, onThemeChange, themePreference } from './theme';
+import { openSettings } from './settings-dialog';
+import { openCompositionBuild } from './composition-dialog';
+import { PARAMS_HEADER } from './ai-import-dialog';
+import { cameraBadge, cameraPanel, cameraView } from './camera-panel';
+import type { Asset } from '../core';
+import { dropStock, stockQuality } from './stock-panel';
+import { hasKeys, importStockItem } from '../providers';
+import { stockProviders } from './services';
 import {
   t,
   formatNumber,
@@ -510,11 +533,21 @@ export function mountEditorShell(
       // so is audio detached from it.
       audibleAssets(),
       session.soloTrackIds,
+      // FINAL2 U5: the persisted master volume (AUDIO-API.md).
+      projectMasterVolume(engine),
     );
   // W4-B: decoded frames arrive asynchronously; coalesce their redraws per frame.
   let redrawQueued = false;
+  let audioError: string | null = null;
   const audio = new AudioEngine(decoder, () => {
     if (!disposed) safely(draw);
+    // FINAL2 U5: a processing (noise reduction) failure shows in the open
+    // right panel at once, with Turn off and Try again.
+    const error = audio.debug.processingError ?? null;
+    if (error !== audioError && !disposed) {
+      audioError = error;
+      safely(() => rightPanel.render(activeSection as RightSection));
+    }
   });
   const frames = new MediaFrames(
     mediaStore,
@@ -528,6 +561,20 @@ export function mountEditorShell(
       });
     },
   );
+  // FINAL2 U8: Reconnect media for files missing from this browser's store.
+  const mediaRelink = mountMediaRelink({
+    engine,
+    store: mediaStore,
+    refreshed: () => {
+      frames.retry();
+      waveforms.retry();
+      previews.retry();
+    },
+  });
+  setTimeout(() => void mediaRelink.check(), 0);
+  engine.on('state:changed', (event) => {
+    if (event.reason === 'load') setTimeout(() => void mediaRelink.check(), 0);
+  });
   // X1 (spec section 5): code animations play from a frame cache that the
   // preview and the export share; the baker fills it one job at a time.
   const codeCache = new FrameCache(mediaStore);
@@ -803,7 +850,16 @@ export function mountEditorShell(
     }),
   );
   let timeline: ReturnType<typeof mountTimeline> | undefined;
+  let masterVolume: number | null = null;
+  let nestBar: ReturnType<typeof mountNestBar> | undefined;
+  const captionsContext: CaptionsContext = { engine, session, mediaStore };
   const syncAudio = () => {
+    // FINAL2 U5: the engine follows the project's master volume.
+    const master = projectMasterVolume(engine);
+    if (master !== masterVolume) {
+      masterVolume = master;
+      audio.setMasterVolume(master);
+    }
     const clock = timeline?.playback.clock ?? session.currentTime;
     const clips = audibleClips();
     audio.sync(session.playing, clock, clips);
@@ -863,12 +919,24 @@ export function mountEditorShell(
     );
     // J3: a control being dragged previews its edit on the canvas.
     const base = session.previewSource ?? session.source;
+    // FINAL2 U10: the editing canvas shows the scene un-moved by the
+    // camera unless playing or "Preview camera" is on.
+    const cameraOff =
+      !!base.composition.camera && !session.playing && !cameraView.preview;
     const drawn = {
       ...base,
+      ...(cameraOff
+        ? { composition: { ...base.composition, camera: undefined } }
+        : {}),
       // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
         ? {
-            composition: withErasedPaths(base.composition, drawTool.erased),
+            composition: withErasedPaths(
+              cameraOff
+                ? { ...base.composition, camera: undefined }
+                : base.composition,
+              drawTool.erased,
+            ),
           }
         : {}),
       frames,
@@ -897,6 +965,10 @@ export function mountEditorShell(
         : hover && hover !== 'artboard' && !interaction.active
           ? { hoverId: hover }
           : {}),
+      // FINAL2 U7: the chroma key's preview quality (export stays full).
+      ...(layerEffects.quality === 'fast'
+        ? { chromaQuality: 'fast' as const }
+        : {}),
       ...(cropTool.active && cropTool.layerId
         ? {
             cropLayerId: cropTool.layerId,
@@ -914,6 +986,7 @@ export function mountEditorShell(
       session.selectedId,
     );
     if (session.playing) drawSceneCut(drawn);
+    else effectsTool.draw(viewport().matrix);
     frames.endFrame();
     if (textEditing?.layerId) textEditing.sync();
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
@@ -922,6 +995,12 @@ export function mountEditorShell(
     updateChip(drawn);
     placeArtboardShadow();
     updateSelectionActions();
+    {
+      const badge = cameraBadge(session.source.composition);
+      cameraBadgeEl.hidden = !badge;
+      cameraBadgeEl.textContent = badge ?? '';
+      cameraBadgeEl.dataset.preview = String(cameraView.preview);
+    }
     // PB-009: a visible video without a current frame during playback.
     element('#buffering-indicator').hidden = !(
       session.playing && frames.buffering
@@ -947,6 +1026,14 @@ export function mountEditorShell(
     }
     safely(draw);
   });
+  // FINAL2 U7: mask handles and the chroma eyedropper on the canvas.
+  const effectsTool = createEffectsCanvasTool(
+    engine,
+    session,
+    canvas,
+    reportError,
+  );
+  layerEffects.requestDraw = () => safely(draw);
   let toolPanels: ReturnType<typeof mountToolPanels> | undefined;
   // H3: the object (or the empty artboard) under the pointer is outlined.
   let hover: string | 'artboard' | null = null;
@@ -1129,6 +1216,9 @@ export function mountEditorShell(
       crop: () => toolPanels?.startCrop(),
       scenes: () => sceneBoard.open(),
       canvasSize: resizeCanvas,
+      // FINAL2 U10: the scene camera panel.
+      camera: () => openCameraPanel(),
+      autoCaptions: () => openAutoCaptions(captionsContext),
     },
   );
   // G5: the scene board over the canvas.
@@ -1161,6 +1251,42 @@ export function mountEditorShell(
       ? (locateLayer(session.source.composition.layers, session.selectedId)
           ?.layer ?? null)
       : null;
+  /** FINAL2 U10: the scene camera, a left side panel. */
+  const openCameraPanel = () =>
+    sidePanels.show('camera', t('camera.title'), () =>
+      cameraPanel({
+        composition: () => session.source.composition,
+        time: () => session.currentTime,
+        run: (label, commands) =>
+          safely(() => {
+            engine.commands.transaction(label, commands);
+            sidePanels.refresh();
+          }),
+        redraw: () => safely(draw),
+      }),
+    );
+  // The badge over the canvas, and no picking while the camera is previewed.
+  const cameraBadgeEl = document.createElement('div');
+  cameraBadgeEl.className = 'camera-badge';
+  cameraBadgeEl.id = 'camera-badge';
+  cameraBadgeEl.setAttribute('role', 'status');
+  cameraBadgeEl.hidden = true;
+  (root.querySelector('#canvas-footer') ?? stage).append(cameraBadgeEl);
+  stage.addEventListener(
+    'pointerdown',
+    (event) => {
+      if (
+        cameraView.preview &&
+        session.source.composition.camera &&
+        (event.target as Element).closest?.('canvas')
+      ) {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+        showToast(t('camera.previewHint'), 'info');
+      }
+    },
+    true,
+  );
   const openAltText = () => {
     const layer = selectedLayer();
     if (!layer) return;
@@ -1516,10 +1642,20 @@ export function mountEditorShell(
       safely(() => contextToolbar.render());
     });
   });
+  // FINAL2 U6: a table edits the cell under the pointer instead.
+  const tableEditor = mountTableEditor(
+    stage,
+    canvas,
+    engine,
+    session,
+    viewport,
+    reportError,
+  );
   const editText = (
     id: string | null,
     options?: Parameters<typeof textEditor.start>[1],
   ) => {
+    if (id && tableEditor.start(id, options?.at)) return;
     if (id) safely(() => textEditor.start(id, options));
   };
   const pointer = bindCanvasInteraction(
@@ -1556,6 +1692,7 @@ export function mountEditorShell(
       cancel: () => drawPalette?.place.cancel(),
     },
     (id, at) => editText(id, at ? { at } : { selectAll: true }),
+    effectsTool,
   );
   const commandContext: CommandContext = {
     engine,
@@ -1598,6 +1735,14 @@ export function mountEditorShell(
       exportCode: (layerId) => safely(() => exportCodeLayer(layerId)),
       duplicateCopy: (layerId) => duplicateCodeCopy(layerId),
     },
+    // FINAL2 U9: Transcribe, Auto captions and nested clips.
+    captions: {
+      transcribe: (layerId) =>
+        openTranscribe(captionsContext, layerId ?? undefined),
+      autoCaptions: (layerId) =>
+        openAutoCaptions(captionsContext, layerId ?? undefined),
+    },
+    nesting: { enter: (layerId) => nestBar?.enter(layerId) },
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -1620,6 +1765,11 @@ export function mountEditorShell(
     // H3: a crop ends when its layer is no longer the selection.
     if (cropTool.active && session.selectedId !== cropTool.layerId)
       cropTool.cancel();
+    if (
+      layerEffects.eyedropper &&
+      session.selectedId !== layerEffects.eyedropper
+    )
+      cancelEyedropper(session);
     const identity = JSON.stringify([
       source.composition.id,
       session.selectedIds,
@@ -1794,6 +1944,14 @@ export function mountEditorShell(
     previews,
     waveforms,
     codeStatus,
+  );
+  // FINAL2 U9: a nested clip's breadcrumb bar above the timeline.
+  nestBar = mountNestBar(
+    element('#timeline-foundation').parentElement!,
+    element('#timeline-foundation'),
+    engine,
+    session,
+    reportError,
   );
   // H4: Editor | 2D Animation (3D is planned). The switch crossfades the
   // panels and the timeline in 320 ms and keeps the selection.
@@ -2125,6 +2283,80 @@ export function mountEditorShell(
     );
     return add.items.length;
   };
+  /** FINAL2 U10: Build video from an AI composition (slots, then scenes). */
+  const openBuildVideo = (item: { name: { en: string }; data: unknown }) =>
+    openCompositionBuild(item, {
+      assets: () => session.source.assets as unknown as readonly Asset[],
+      importFile: async (file) => {
+        const id = await importMade(file);
+        return (
+          (session.source.assets.find((asset) => asset.id === id) as unknown as
+            Asset | undefined) ?? null
+        );
+      },
+      library: (id) => libraryActions.find(id),
+      addScenes: (project) => {
+        const missing = project.assets.filter(
+          (asset) => !engine.state.assets.some((have) => have.id === asset.id),
+        );
+        if (missing.length)
+          engine.library(
+            'Import media',
+            missing.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
+          );
+        const taken = new Set<string>();
+        const collect = (value: unknown) => {
+          if (Array.isArray(value)) value.forEach(collect);
+          else if (value && typeof value === 'object')
+            for (const [key, inner] of Object.entries(value)) {
+              if (key === 'id' && typeof inner === 'string') taken.add(inner);
+              collect(inner);
+            }
+        };
+        collect(engine.state.compositions);
+        const fresh = project.compositions.map((composition) => {
+          // Ids already in the open project get a suffix (a second build).
+          let text = JSON.stringify(composition);
+          const ids = new Set<string>();
+          const own = (value: unknown) => {
+            if (Array.isArray(value)) value.forEach(own);
+            else if (value && typeof value === 'object')
+              for (const [key, inner] of Object.entries(value)) {
+                if (key === 'id' && typeof inner === 'string') ids.add(inner);
+                own(inner);
+              }
+          };
+          own(composition);
+          const suffix = `-${Date.now().toString(36)}`;
+          for (const id of ids)
+            if (taken.has(id))
+              text = text
+                .split(JSON.stringify(id))
+                .join(JSON.stringify(id + suffix));
+          return JSON.parse(text) as typeof composition;
+        });
+        engine.commands.transaction(
+          'Build video',
+          fresh.map((composition) => ({
+            type: 'CREATE_COMPOSITION' as const,
+            composition,
+          })),
+        );
+        if (fresh[0]) session.selectComposition(fresh[0].id);
+        showToast(t('composition.added', { count: fresh.length }), 'success');
+      },
+      openProject: async (project) => {
+        if (
+          await confirmDialog(t('composition.openConfirm'), {
+            titleText: t('composition.openProject'),
+            confirmLabel: t('composition.openProject'),
+          })
+        )
+          engine.load(project);
+      },
+      openKeys: () => openSettings('keys'),
+      report: reportError,
+    });
   const openCreatorImport = (
     initial: { text?: string; fileName?: string } = {},
   ) => {
@@ -2162,6 +2394,8 @@ export function mountEditorShell(
       runtime: freeCodeRuntime,
       onAdd: addCreatorItems,
       openAi: () => openCategory('AI'),
+      // FINAL2 U10: a composition builds into scenes (slot dialog).
+      buildComposition: (item) => openBuildVideo(item),
       copy: (text) => {
         void navigator.clipboard
           .writeText(text)
@@ -2219,6 +2453,13 @@ export function mountEditorShell(
       },
       kinds: ITEM_KINDS,
       entries,
+      // FINAL2 U10: the installed stock providers and whether a key is
+      // saved (never the key itself).
+      stock: stockProviders().map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        hasKey: hasKeys(provider),
+      })),
       blocks: blocks.map((block) => ({ id: block.id, label: block.name })),
       animate: {
         in: IN_OUT_PRESETS,
@@ -2227,11 +2468,9 @@ export function mountEditorShell(
       },
       fonts: SYSTEM_FONTS.map(([name]) => name),
       request,
-      // B1: the New AI video form and its style; no stock provider is
-      // built yet, so the brief says none is installed.
+      // B1: the New AI video form and its style.
       form: form ?? null,
       style: form ? briefStyle(form.styleId) : null,
-      stock: [],
     });
   };
   const copyAiBrief = () => {
@@ -2551,6 +2790,8 @@ export function mountEditorShell(
       assets: session.source.assets,
       background: session.source.background,
       projectName: engine.state.metadata.name,
+      // FINAL2 U5: the export mix uses the same master volume as playback.
+      masterVolume: projectMasterVolume(engine),
       store: mediaStore,
       decoder,
       renderFrame,
@@ -2763,10 +3004,15 @@ export function mountEditorShell(
     const code = codeOf(layerId);
     if (!code) return;
     const layer = locateLayer(session.source.composition.layers, layerId);
+    // FINAL2 U10: changed control values travel with the code (a first
+    // comment line the AI importer reads back as the controls' values).
+    const params = (code as { params?: Record<string, unknown> }).params;
     downloadCode(
       layer?.layer.name || codeMeta(code).name,
       code.tier,
-      code.source,
+      params && Object.keys(params).length
+        ? `${PARAMS_HEADER}${JSON.stringify(params)}\n${code.source}`
+        : code.source,
     );
   };
   /** S1: "<name> copy", then "<name> copy 2" and so on, unique in `taken`. */
@@ -3990,6 +4236,51 @@ export function mountEditorShell(
         importFile: () => codeTemplateInput.click(),
       },
       creator: { library: creatorLibrary, menu: creatorMenu },
+      // FINAL2 U6: Elements › Tables inserts a table at the playhead.
+      table: () =>
+        openTablePicker((rows, columns) =>
+          safely(() => {
+            session.setPlaying(false);
+            const insert = tableInsertCommands(
+              rows,
+              columns,
+              session.source.composition,
+              (item) => libraryActions.commandsFor(item, undefined)!,
+            );
+            engine.commands.transaction(
+              t('textx.step.insert'),
+              insert.commands,
+            );
+            if (insert.layerId) session.select(insert.layerId);
+          }),
+        ),
+      // FINAL2 U2: a stock item is downloaded, imported into Media with its
+      // licence and placed at the playhead (audio on a new audio lane).
+      stock: {
+        add: async (item, place, signal) => {
+          const result = await importStockItem(item, stockQuality(item), {
+            signal,
+          });
+          const file = new File([result.blob], result.name, {
+            type: result.mime,
+          });
+          const [id] = await mediaPanel.importFiles([file], {
+            license: result.licenseMeta,
+          });
+          const asset = id
+            ? session.source.assets.find((entry) => entry.id === id)
+            : undefined;
+          if (!asset) throw new Error(t('stock.importFailed'));
+          if (asset.type === 'audio') addOnNewAudioLane(asset.id);
+          else
+            placeAsset(asset, {
+              time: place.time ?? session.currentTime,
+              point: place.point ?? null,
+            });
+        },
+        openKeys: () => openSettings('keys'),
+        report: reportError,
+      },
     },
   );
   void libraryBrowsers;
@@ -4025,6 +4316,12 @@ export function mountEditorShell(
   };
   const applyCategory = (category: string) => {
     syncRails();
+    // FINAL2 U10: library panels get room for two 165 px card columns.
+    workspace?.setLibrary(
+      ['Media', 'AI', 'MyTemplates', 'Templates', 'Elements', 'Text'].includes(
+        category,
+      ),
+    );
     const hidden = root.querySelector<HTMLElement>(
       `#rail-left [data-category="${category}"]`,
     );
@@ -4459,10 +4756,11 @@ export function mountEditorShell(
           el.setAttribute('aria-pressed', 'false');
         }
         if (!caption) continue;
+        // FINAL2 U9: Auto Caption opens the Auto captions dialog.
         const label = t('panel.captions');
-        el.title = `${label}: ${t('right.planned')}`;
+        el.title = label;
         el.setAttribute('aria-label', el.title);
-        el.setAttribute('aria-disabled', 'true');
+        el.removeAttribute('aria-disabled');
         el.setAttribute('aria-pressed', 'false');
         el.querySelector('.icon-rail-label')!.textContent = label;
       }
@@ -4615,6 +4913,16 @@ export function mountEditorShell(
     el.onclick = () => {
       const name = el.dataset.section!;
       if (el.getAttribute('aria-disabled') === 'true') return;
+      // FINAL2 U9: Auto Caption is a dialog, not a panel section.
+      if (name === 'Captions') {
+        safely(() => {
+          openAutoCaptions(
+            captionsContext,
+            selectedSoundClip(session) ?? undefined,
+          );
+        });
+        return;
+      }
       // T1: the Theme tab with nothing selected.
       if (name === 'Theme' && !session.selectedIds.length && !themeState.open) {
         themeState.open = true;
@@ -5014,11 +5322,35 @@ export function mountEditorShell(
     },
     openTextToSpeech: () => openTextToSpeech(),
     report: reportError,
+    // FINAL2 U4 and U3 (record-panel-hooks.ts).
+    ...recordPanelHooks({
+      importMade,
+      engine,
+      session,
+      assetCommands: (asset, place) => assetCommands(asset, place),
+      addOnNewAudioLane,
+    }),
   });
   leaveRecord = () => recordPanel.leave();
   // V7 (spec 11.3): the left Audio category, the built-in sound pack. A
   // sound goes in at the playhead on a new audio lane, one step.
-  const soundPack = mountSoundPack(element('#library-audio'), {
+  // FINAL2 U5: the Mixer sits above the sound pack in the same category.
+  const audioCategory = element('#library-audio');
+  const mixerHost = document.createElement('section');
+  const soundPackHost = document.createElement('div');
+  audioCategory.replaceChildren(mixerHost, soundPackHost);
+  // The clip Audio tab offers Retry and shows processing errors (denoise).
+  configureAudioTab({
+    processingError: () => audio.debug.processingError ?? null,
+    retry: () => audio.retryProcessing(),
+  });
+  const audioMixer = mountAudioMixer(mixerHost, {
+    engine,
+    session,
+    meters: audio.meters,
+    report: reportError,
+  });
+  const soundPack = mountSoundPack(soundPackHost, {
     importSound: (file) =>
       mediaPanel.importFiles([file]).then((ids) => ids[0] ?? null),
     existing: (fileName) =>
@@ -5247,7 +5579,12 @@ export function mountEditorShell(
         ? { label: 'Add shape', commands, layerId: created.layer.id }
         : null;
     }
-    if (payload.kind === 'mine' || payload.kind === 'code') return null;
+    if (
+      payload.kind === 'mine' ||
+      payload.kind === 'code' ||
+      payload.kind === 'stock'
+    )
+      return null;
     // S1 Part 3: AI and My Templates items (one layer) take a lane like any
     // library item; the rest are added whole by addPayload.
     if (payload.kind === 'creator') return creatorBuilt(payload.id, time);
@@ -5548,6 +5885,8 @@ export function mountEditorShell(
       } else insertCreatorItem(payload.id, time, point ?? null);
     } else if (payload.kind === 'saved')
       insertMine(payload.id, time, point ?? null);
+    else if (payload.kind === 'stock')
+      dropStock(payload.id, { time, point: point ?? null });
     else if (payload.kind === 'code') {
       const template = creatorLibrary
         .motionTemplates()
@@ -5595,7 +5934,7 @@ export function mountEditorShell(
     const at: [number, number] = [w / 2, h / 2];
     let value: Footprint | null = null;
     try {
-      if (payload.kind === 'asset') {
+      if (payload.kind === 'asset' || payload.kind === 'stock') {
         if (payload.media !== 'audio') {
           const aw = payload.width ?? 0,
             ah = payload.height ?? 0;
@@ -5851,6 +6190,10 @@ export function mountEditorShell(
   // so there is exactly one document-level keydown listener for the whole shell.
   const disposeShortcuts = bindShortcuts(commandContext, {
     cancelGesture: () => {
+      if (cancelEyedropper(session)) {
+        rightPanel.render(activeSection as RightSection);
+        return true;
+      }
       if (cropTool.active) {
         cropTool.cancel();
         return true;
@@ -5935,44 +6278,11 @@ export function mountEditorShell(
     element('#app-menu').hidden = true;
     copyAiBrief();
   };
-  // Q5: Settings › Animations (Auto, On, Off) with the system signal shown.
+  // Q5: Settings › Animations; FINAL2 U1: appearance, keys, offline engines.
   applyMotion(readMotion());
   element<HTMLButtonElement>('#open-settings').onclick = () => {
     element('#app-menu').hidden = true;
-    const handle = openModal({
-      titleText: t('settings.title'),
-      bodyHtml: `
-        <div class="settings-row">
-          <span class="settings-label" id="motion-label">${t('settings.motion')}</span>
-          <div class="segmented" role="radiogroup" aria-labelledby="motion-label" id="motion-setting">
-            ${MOTION_SETTINGS.map((value) => `<button type="button" role="radio" data-motion-value="${value}">${t(`settings.motion.${value}`)}</button>`).join('')}
-          </div>
-          <p class="settings-note" id="motion-system">${t('settings.motionSystem', { value: t(systemReducesMotion() ? 'settings.yes' : 'settings.no') })}</p>
-        </div>
-        <div class="modal-actions"><button type="button" class="button primary" id="settings-done">${t('creator.done')}</button></div>`,
-    });
-    const sync = () => {
-      const current = readMotion();
-      for (const button of handle.root.querySelectorAll<HTMLElement>(
-        '[data-motion-value]',
-      ))
-        button.setAttribute(
-          'aria-checked',
-          String(button.dataset.motionValue === current),
-        );
-    };
-    for (const button of handle.root.querySelectorAll<HTMLButtonElement>(
-      '[data-motion-value]',
-    ))
-      button.onclick = () => {
-        applyMotion(
-          button.dataset.motionValue as (typeof MOTION_SETTINGS)[number],
-        );
-        sync();
-      };
-    handle.root.querySelector<HTMLButtonElement>('#settings-done')!.onclick =
-      () => handle.close();
-    sync();
+    openSettings();
   };
   const unsubscribeTheme = onThemeChange(() => {
     applyThemeControls();
@@ -6080,7 +6390,9 @@ export function mountEditorShell(
       unsubscribeTheme();
       sceneBoard.dispose();
       mediaPanel.dispose();
+      mediaRelink.dispose();
       soundPack.dispose();
+      audioMixer.dispose();
       recordPanel.dispose();
       positionPanel.dispose();
       frames.dispose();

@@ -30,7 +30,7 @@ test('[LOC-002][LOC-003][LOC-004] browser default, live language switch and pers
       )
         errors.push(message.text());
     });
-    await localized.goto('http://127.0.0.1:4173/');
+    await localized.goto(`http://127.0.0.1:${process.env.E2E_PORT ?? 4173}/`);
     await expect(localized.locator('html')).toHaveAttribute('lang', expected!);
     expect(errors).toEqual([]);
     await context.close();

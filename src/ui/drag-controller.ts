@@ -19,7 +19,9 @@ export interface DragPayload {
     | 'code'
     // S1 Part 3: an AI item (My library) and a My Templates item.
     | 'creator'
-    | 'saved';
+    | 'saved'
+    // FINAL2 U2: a stock search result (imported on drop).
+    | 'stock';
   /** The asset id, library item id, shape preset or My Template id. */
   readonly id: string;
   readonly name: string;

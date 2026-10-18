@@ -439,7 +439,8 @@ test('[CV-057] the canvas bar shows outside the artboard and after Escape; objec
   await expect(bar).toHaveAttribute('data-mode', 'canvas');
   await expect(bar.locator('[data-control="canvas-size"]')).toBeVisible();
   await expect(bar.locator('[data-control="canvas-background"]')).toBeVisible();
-  await expect(bar.locator('[data-control="auto-captions"]')).toBeDisabled();
+  // FINAL2 U9: Auto captions is live (it opens the dialog).
+  await expect(bar.locator('[data-control="auto-captions"]')).toBeEnabled();
   // The artboard: the scene bar, with its own size chip; one bar only.
   const point = await toScreen(page, 30, 690);
   await page.mouse.click(point.x, point.y);

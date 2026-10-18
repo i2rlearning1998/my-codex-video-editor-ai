@@ -88,12 +88,16 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
     'Animate',
     'Captions',
   ]);
-  // An unbuilt tab is disabled with its wave; clicking it changes nothing.
+  // FINAL2 U9: Auto Caption is live: it opens the Auto captions dialog
+  // (not a panel section), so the open section does not change.
   await expect(section(page, 'Captions')).toHaveAttribute(
     'title',
-    'Auto Caption: Planned: Wave 8 (TXT-035)',
+    'Auto Caption',
   );
-  await section(page, 'Captions').click({ force: true });
+  await section(page, 'Captions').click();
+  await expect(page.locator('#captions-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#captions-dialog')).toBeHidden();
   await expect(section(page, 'Properties')).toHaveAttribute(
     'aria-pressed',
     'true',

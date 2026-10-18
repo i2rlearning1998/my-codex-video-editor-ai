@@ -43,6 +43,10 @@ export default defineConfig({
   // server reloading the page when it first discovers the dependency (W5-A).
   // X1: the block compiler loads TypeScript lazily; pre-bundled so its first
   // use never makes the dev server reload the page.
-  optimizeDeps: { include: ['mediabunny', 'typescript'] },
+  // FINAL2 U11: the lazy Whisper runner is pre-bundled too, so its first use
+  // never makes the dev server reload the page.
+  optimizeDeps: {
+    include: ['mediabunny', 'typescript', '@huggingface/transformers'],
+  },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 });

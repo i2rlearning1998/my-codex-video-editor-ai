@@ -27,6 +27,8 @@ export function createTestHook(
         selectedKeyframes: session.selectedKeyframes,
         /** I2: the active brush (null outside draw mode). */
         drawBrush: session.drawBrush,
+        /** FINAL2 U9: the entered group (or nested clip), null at the top. */
+        enteredGroupId: session.enteredGroupId,
       }),
     getHistory: () =>
       snapshot({
