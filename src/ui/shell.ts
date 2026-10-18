@@ -168,6 +168,7 @@ import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
 import { mountRecordPanel } from './record-panel';
+import { recordPanelHooks } from './record-panel-hooks';
 import { newTts, ttsState } from './right-panel/tts-panel';
 import { themeState } from './right-panel';
 import {
@@ -5038,6 +5039,14 @@ export function mountEditorShell(
     },
     openTextToSpeech: () => openTextToSpeech(),
     report: reportError,
+    // FINAL2 U4 and U3 (record-panel-hooks.ts).
+    ...recordPanelHooks({
+      importMade,
+      engine,
+      session,
+      assetCommands: (asset, place) => assetCommands(asset, place),
+      addOnNewAudioLane,
+    }),
   });
   leaveRecord = () => recordPanel.leave();
   // V7 (spec 11.3): the left Audio category, the built-in sound pack. A

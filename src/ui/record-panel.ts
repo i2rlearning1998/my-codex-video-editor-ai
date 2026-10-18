@@ -1,7 +1,8 @@
 // V7 (Clipchamp clone spec 11.4): the left "Record & create" category.
-// Record: Screen and camera, Camera and Screen are shown, disabled and
-// Planned; Audio records a voiceover. Create: Text to speech opens the
-// right Text to speech panel. The voiceover flow replaces the cards (Back
+// Record: Screen and camera, Camera and Screen record video (FINAL2 U4,
+// recorder-flow.ts); Audio records a voiceover. Create: Text to speech opens
+// the right Text to speech panel, and the Voice-over section (FINAL2 U3,
+// voiceover.ts) speaks typed text into Media. The voiceover flow replaces the cards (Back
 // returns): idle (microphone, level meter, Record), the browser's
 // permission (a refusal or a missing device is explained, with Retry),
 // 3-2-1, recording (time, level, Pause / Resume, Stop), then review
@@ -9,15 +10,23 @@
 import { confirmDialog } from './components/modal';
 import { formatDuration, t } from '../i18n';
 import { iconSvg } from './icons';
+import { mountRecorderFlow, type RecordedFile } from './recorder-flow';
+import { mountVoiceover, type SpeechMetadata } from './voiceover';
 
 export interface RecordHooks {
   /** Imports the take and adds it at the playhead on a new audio lane. */
   addRecording(file: File): Promise<void>;
   openTextToSpeech(): void;
   report(error: unknown): void;
+  /** FINAL2 U4: camera and screen takes into Media (and the timeline). */
+  saveVideo(files: RecordedFile[], toTimeline: boolean): Promise<void>;
+  /** FINAL2 U3: a voice-over file into Media; its asset id. */
+  saveSpeech(file: File, speech: SpeechMetadata): Promise<string>;
+  addSpeech(assetId: string, name: string): void;
 }
 
-type Phase = 'cards' | 'idle' | 'denied' | 'countdown' | 'recording' | 'review';
+type Phase =
+  'cards' | 'video' | 'idle' | 'denied' | 'countdown' | 'recording' | 'review';
 
 export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
   host.classList.add('record-panel');
@@ -37,6 +46,22 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
   let problem = '';
   let player: HTMLAudioElement | null = null;
   let takeUrl = '';
+  let videoCard = 'camera';
+  // FINAL2 U4 and U3: one recorder flow and one voice-over section, kept
+  // across renders (their state and focus survive a phase change).
+  const videoFlow = mountRecorderFlow({
+    saveVideo: (files, toTimeline) => hooks.saveVideo(files, toTimeline),
+    report: (error) => hooks.report(error),
+    done: () => {
+      phase = 'cards';
+      render();
+    },
+  });
+  const voiceover = mountVoiceover({
+    saveSpeech: (file, speech) => hooks.saveSpeech(file, speech),
+    addSpeech: (assetId, name) => hooks.addSpeech(assetId, name),
+    report: (error) => hooks.report(error),
+  });
 
   const button = (
     action: string,
@@ -176,9 +201,9 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
       title.textContent = t('record.recordSection');
       nodes.push(title);
       for (const [id, key, icon, works] of [
-        ['screen-camera', 'record.screenCamera', 'screen', false],
-        ['camera', 'record.camera', 'camera', false],
-        ['screen', 'record.screen', 'screen', false],
+        ['screen-camera', 'record.screenCamera', 'screen', true],
+        ['camera', 'record.camera', 'camera', true],
+        ['screen', 'record.screen', 'screen', true],
         ['audio', 'record.audio', 'mic', true],
       ] as const) {
         const card = document.createElement('button');
@@ -194,9 +219,16 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
           tag.className = 'quiet-tag';
           tag.textContent = t('right.planned');
           card.querySelector('.record-card-title')!.append(' ', tag);
-        } else
+        } else if (id === 'audio')
           card.onclick = () => {
             phase = 'idle';
+            render();
+          };
+        else
+          card.onclick = () => {
+            phase = 'video';
+            videoCard = id;
+            videoFlow.open(id);
             render();
           };
         nodes.push(card);
@@ -211,7 +243,7 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
       tts.innerHTML = `<span class="record-card-title"></span>${iconSvg('text', 24)}`;
       tts.querySelector('.record-card-title')!.textContent = t('tts.title');
       tts.onclick = () => hooks.openTextToSpeech();
-      nodes.push(create, tts);
+      nodes.push(create, tts, voiceover.element);
       host.replaceChildren(...nodes);
       return;
     }
@@ -219,8 +251,20 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
     back.onclick = () => void leave();
     const heading = document.createElement('h3');
     heading.className = 'record-heading';
-    heading.textContent = t('record.audio');
+    heading.textContent = t(
+      phase !== 'video'
+        ? 'record.audio'
+        : videoCard === 'camera'
+          ? 'record.camera'
+          : videoCard === 'screen'
+            ? 'record.screen'
+            : 'record.screenCamera',
+    );
     nodes.push(back, heading);
+    if (phase === 'video') {
+      host.replaceChildren(...nodes, videoFlow.element);
+      return;
+    }
     if (phase === 'idle' || phase === 'denied') {
       const select = document.createElement('select');
       select.id = 'record-device';
@@ -395,6 +439,23 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
   };
   /** Back, or leaving the category: a take in progress asks Keep or Discard. */
   const leave = async () => {
+    if (phase === 'video') {
+      if (videoFlow.active()) {
+        const keep = await confirmDialog(t('record.leaveMessage'), {
+          titleText: t('record.leaveTitle'),
+          confirmLabel: t('record.keep'),
+          cancelLabel: t('record.discard'),
+        });
+        if (keep) {
+          videoFlow.stop();
+          return;
+        }
+      }
+      videoFlow.discard();
+      phase = 'cards';
+      render();
+      return;
+    }
     if (phase === 'recording' || phase === 'countdown') {
       const keep = await confirmDialog(t('record.leaveMessage'), {
         titleText: t('record.leaveTitle'),
@@ -423,9 +484,16 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
   return {
     /** The category is left: a recording asks Keep or Discard. */
     leave: () => {
-      if (phase === 'recording' || phase === 'countdown') void leave();
+      if (
+        phase === 'recording' ||
+        phase === 'countdown' ||
+        (phase === 'video' && videoFlow.active())
+      )
+        void leave();
     },
     dispose: () => {
+      videoFlow.dispose();
+      voiceover.dispose();
       if (recorder) recorder.onstop = null;
       if (recorder && recorder.state !== 'inactive') recorder.stop();
       release();

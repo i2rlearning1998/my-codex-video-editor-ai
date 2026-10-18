@@ -9710,3 +9710,126 @@ input[type='range'] {
     transform: rotate(360deg);
   }
 }
+/* FINAL2 u3u4: Voice-over section and camera / screen recording in Record & create. */
+.voiceover {
+  display: grid;
+  gap: var(--space-2);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--border);
+}
+.voiceover-field {
+  display: grid;
+  gap: 4px;
+}
+.voiceover-label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.voiceover textarea,
+.voiceover select,
+.rec-flow select {
+  inline-size: 100%;
+  min-block-size: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  font: inherit;
+}
+.voiceover textarea {
+  resize: vertical;
+}
+.voiceover-status,
+.voiceover-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.voiceover-status[data-state='ready'] {
+  color: var(--accent-text);
+}
+.voiceover-hint {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.voiceover-speed-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.voiceover-speed-row input {
+  flex: 1;
+}
+.voiceover-speed {
+  min-inline-size: 4ch;
+  font-variant-numeric: tabular-nums;
+}
+.voiceover-actions,
+.rec-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.voiceover-actions > .button,
+.rec-actions > .button {
+  flex: 1;
+}
+.voiceover-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.voiceover-progress progress {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.voiceover-note,
+.voiceover-message,
+.rec-permission {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.voiceover-message:empty {
+  display: none;
+}
+.voiceover-message[data-kind='error'] {
+  color: var(--danger-text);
+}
+.rec-flow {
+  display: grid;
+  gap: var(--space-2);
+}
+.rec-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+.rec-check input {
+  accent-color: var(--accent);
+}
+.rec-preview-frame {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--raised);
+}
+.rec-preview {
+  display: block;
+  inline-size: 100%;
+}
+.rec-pip {
+  position: absolute;
+  inset-inline-end: 4%;
+  inset-block-end: 6%;
+  inline-size: 28%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
