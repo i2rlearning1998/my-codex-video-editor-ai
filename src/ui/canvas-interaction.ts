@@ -15,6 +15,7 @@ import { SNAP_PIXELS } from './snapping';
 import type { DrawTool } from './draw-tool';
 import type { CropTool } from './crop-tool';
 import { guardAnimated } from './editor-mode';
+import type { EffectsCanvasTool } from './right-panel/layer-effects';
 
 /**
  * CV-022: map a picked leaf to the selectable layer. Outside any entered group
@@ -92,9 +93,13 @@ export function bindCanvasInteraction(
   place?: PlaceTool,
   /** J4: edit a text layer on the canvas (caret at a page point, or all). */
   editText?: (id: string, at?: { x: number; y: number }) => void,
+  /** FINAL2 U7: mask handles and the chroma eyedropper (they win only while
+   *  their right-panel section is open). */
+  effects?: EffectsCanvasTool,
 ) {
   let pointer: number | null = null;
   let cropping = false;
+  let effectsDrag = false;
   /** H4: what the current drag changes, for the Editor-mode guard. */
   let dragKind: TransformHandle | 'move' = 'move';
   // CV-041: a multi-selection has its own box and handles (revision 6).
@@ -145,6 +150,8 @@ export function bindCanvasInteraction(
     // leaves it).
     cropping = false;
     crop?.end();
+    if (effectsDrag) effects?.cancel();
+    effectsDrag = false;
     draw?.cancel();
     place?.cancel();
     interaction.cancel();
@@ -212,6 +219,18 @@ export function bindCanvasInteraction(
         pointer = event.pointerId;
         canvas.setPointerCapture(pointer);
         canvas.focus({ preventScroll: true });
+        event.preventDefault();
+        return;
+      }
+      // FINAL2 U7: a mask handle or the armed eyedropper takes the press.
+      if (effects?.hit(viewport().matrix, point)) {
+        suppressClick = true;
+        if (effects.begin(viewport().matrix, point)) {
+          effectsDrag = true;
+          pointer = event.pointerId;
+          canvas.setPointerCapture(pointer);
+          canvas.focus({ preventScroll: true });
+        }
         event.preventDefault();
         return;
       }
@@ -295,6 +314,10 @@ export function bindCanvasInteraction(
       crop?.update(viewport().matrix, point);
       return;
     }
+    if (effectsDrag) {
+      effects?.update(viewport().matrix, point);
+      return;
+    }
     if (draw?.active) {
       draw.add(compositionPoint(point), event.shiftKey);
       return;
@@ -375,6 +398,12 @@ export function bindCanvasInteraction(
                       : 'ns-resize';
           return;
         }
+        const effectsCursor = effects?.cursor(viewport().matrix, point);
+        if (effectsCursor) {
+          interaction.hover(null);
+          canvas.style.cursor = effectsCursor;
+          return;
+        }
         const handle = handleAt(point);
         interaction.hover(handle);
         const picked = pickLayer(session.source, viewport(), point);
@@ -413,6 +442,12 @@ export function bindCanvasInteraction(
         cropping = false;
         crop?.end();
         release();
+        return;
+      }
+      if (effectsDrag) {
+        effectsDrag = false;
+        release();
+        effects?.end();
         return;
       }
       if (draw?.active) {

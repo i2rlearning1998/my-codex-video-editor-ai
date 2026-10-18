@@ -219,7 +219,10 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   );
   await panel(page).locator('#right-blend-mode').click();
   await page.getByRole('option', { name: 'Multiply' }).click();
-  expect((await fxOf(page, first))!.blendMode).toBe('blend.multiply');
+  // FINAL2 U7: the one blend control sets the layer's own blend mode.
+  expect(
+    (await scene(page)).layers.find((layer) => layer.id === first)!.blendMode,
+  ).toBe('multiply');
   await panel(page).locator('[data-action="right-adjust-reset"]').click();
   expect((await labels(page)).at(-1)).toBe('Reset colors');
   expect(await fxOf(page, first)).toBeUndefined();

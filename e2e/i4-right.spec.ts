@@ -98,7 +98,9 @@ test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and
   ).toBeCloseTo(0.5);
   for (const id of ['exposure', 'contrast', 'saturation', 'temperature'])
     await expect(panel(page).locator(`#right-adjust-${id}`)).toBeDisabled();
-  await expect(panel(page).locator('#right-blend-mode')).toBeDisabled();
+  // FINAL2 U7: the blend mode is the layer's own, so a child without a
+  // clip can still blend.
+  await expect(panel(page).locator('#right-blend-mode')).toBeEnabled();
   await expect(
     panel(page).locator('[data-action="right-adjust-reset"]'),
     // T-ALL P6 (D-189): the colour controls are live for clips; a group's

@@ -16,6 +16,20 @@ export function setLayerMasks(
   input: z.infer<typeof inputSchema>,
   label = 'Layer masks',
 ) {
+  registerLayerMasks(engine);
+  engine.commands.execute(
+    {
+      type: 'plugin:layer-masks:SET',
+      input: jsonSchema.parse(
+        JSON.parse(JSON.stringify(inputSchema.parse(input))),
+      ),
+    },
+    label,
+  );
+}
+
+/** FINAL2 U7: registers the capability so the UI can put its command in a transaction or a preview. */
+export function registerLayerMasks(engine: EditorEngine) {
   if (!engine.capabilities.list().some((c) => c.id === 'layer-masks'))
     engine.capabilities.register({
       id: 'layer-masks',
@@ -44,13 +58,4 @@ export function setLayerMasks(
         },
       },
     });
-  engine.commands.execute(
-    {
-      type: 'plugin:layer-masks:SET',
-      input: jsonSchema.parse(
-        JSON.parse(JSON.stringify(inputSchema.parse(input))),
-      ),
-    },
-    label,
-  );
 }

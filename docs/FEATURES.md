@@ -1024,6 +1024,10 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | F2-022 | P1 | W9 | Verified | The master volume is heard in playback and passed to the export mix (`ExportInput.masterVolume`) (U5) |
 | F2-023 | P1 | W9 | Verified | Clip Audio tab: fade in and fade out presets (None, 0.5 s, 1 s, 2 s) and volume keyframes (add at the playhead, change, remove), one undo step each (U5) |
 | F2-024 | P1 | W9 | Verified | Clip Audio tab: Reduce noise Off / Low / High (Beta) with the download size, "never uploaded" and the 5-minute limit; a failed noise model load says so in plain words with Turn off and Try again (U5) |
+| F2-040 | P1 | W9 | Verified | Right panel › Effects › Masks: add rectangle, ellipse, polygon or path masks; choose, delete, combine (add, subtract, intersect), feather, expansion, opacity, invert; shape keyframe at the playhead; matte from another layer (alpha or luma, invert); the open mask's handles show on the canvas and drag with the real mouse (one step on release, the keyframe at the playhead when animated), only while the Masks section is open (U7) |
+| F2-041 | P1 | W9 | Verified | One blend control (Adjust colors › Blend mode): the layer's own blend mode, all 16 modes grouped Normal, Darken, Lighten, Contrast, Comparison, Component; replaces the earlier clip-FX blend select (an old clip blend is shown until changed, then cleared in the same step); Reset colors sets Normal (U7) |
+| F2-042 | P1 | W9 | Verified | Right panel › Effects › Chroma key (pictures and video): on/off, key colour, eyedropper on the canvas (picks from the unkeyed picture; Escape stops), similarity, smoothness, spill, edge feather and shrink, keep-only invert, Full or Fast preview quality (export stays full); a plain notice when the graphics-card path is unavailable (U7) |
+| F2-043 | P1 | W9 | Verified | A masked picture's exported PNG frame matches the preview pixel (export parity smoke test) (U7) |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 

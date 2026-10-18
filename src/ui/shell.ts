@@ -146,6 +146,11 @@ import {
   type PreviewAsset,
 } from '../media';
 import { bindCanvasInteraction } from './canvas-interaction';
+import {
+  cancelEyedropper,
+  createEffectsCanvasTool,
+  layerEffects,
+} from './right-panel/layer-effects';
 import { mountTextEditor, type TextEditor } from './text-editor';
 import { TransformInteraction } from './transform-interaction';
 import { EditorSession } from './session';
@@ -945,6 +950,10 @@ export function mountEditorShell(
         : hover && hover !== 'artboard' && !interaction.active
           ? { hoverId: hover }
           : {}),
+      // FINAL2 U7: the chroma key's preview quality (export stays full).
+      ...(layerEffects.quality === 'fast'
+        ? { chromaQuality: 'fast' as const }
+        : {}),
       ...(cropTool.active && cropTool.layerId
         ? {
             cropLayerId: cropTool.layerId,
@@ -962,6 +971,7 @@ export function mountEditorShell(
       session.selectedId,
     );
     if (session.playing) drawSceneCut(drawn);
+    else effectsTool.draw(viewport().matrix);
     frames.endFrame();
     if (textEditing?.layerId) textEditing.sync();
     syncNumberField(root, 'canvas-zoom-percent', canvasView.scale * 100);
@@ -1001,6 +1011,14 @@ export function mountEditorShell(
     }
     safely(draw);
   });
+  // FINAL2 U7: mask handles and the chroma eyedropper on the canvas.
+  const effectsTool = createEffectsCanvasTool(
+    engine,
+    session,
+    canvas,
+    reportError,
+  );
+  layerEffects.requestDraw = () => safely(draw);
   let toolPanels: ReturnType<typeof mountToolPanels> | undefined;
   // H3: the object (or the empty artboard) under the pointer is outlined.
   let hover: string | 'artboard' | null = null;
@@ -1648,6 +1666,7 @@ export function mountEditorShell(
       cancel: () => drawPalette?.place.cancel(),
     },
     (id, at) => editText(id, at ? { at } : { selectAll: true }),
+    effectsTool,
   );
   const commandContext: CommandContext = {
     engine,
@@ -1712,6 +1731,11 @@ export function mountEditorShell(
     // H3: a crop ends when its layer is no longer the selection.
     if (cropTool.active && session.selectedId !== cropTool.layerId)
       cropTool.cancel();
+    if (
+      layerEffects.eyedropper &&
+      session.selectedId !== layerEffects.eyedropper
+    )
+      cancelEyedropper(session);
     const identity = JSON.stringify([
       source.composition.id,
       session.selectedIds,
@@ -6087,6 +6111,10 @@ export function mountEditorShell(
   // so there is exactly one document-level keydown listener for the whole shell.
   const disposeShortcuts = bindShortcuts(commandContext, {
     cancelGesture: () => {
+      if (cancelEyedropper(session)) {
+        rightPanel.render(activeSection as RightSection);
+        return true;
+      }
       if (cropTool.active) {
         cropTool.cancel();
         return true;

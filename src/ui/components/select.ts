@@ -10,6 +10,8 @@ export interface SelectOption {
   /** Optional CSS font-family for previewing fonts in their own face. */
   readonly font?: string;
   readonly disabled?: boolean;
+  /** FINAL2 U7: a heading shown above the first option of each group. */
+  readonly group?: string;
 }
 
 export interface SelectOptions {
@@ -67,7 +69,16 @@ export function createSelect(options: SelectOptions): HTMLElement {
     list.className = 'select-list';
     list.setAttribute('role', 'listbox');
     list.setAttribute('aria-labelledby', label.id);
+    let group: string | undefined;
     const items = options.options.map((option) => {
+      if (option.group && option.group !== group) {
+        const heading = document.createElement('div');
+        heading.className = 'select-group';
+        heading.setAttribute('role', 'presentation');
+        heading.textContent = option.group;
+        list.append(heading);
+      }
+      group = option.group;
       const item = document.createElement('div');
       item.setAttribute('role', 'option');
       item.className = 'select-option';
