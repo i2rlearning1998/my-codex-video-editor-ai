@@ -433,6 +433,8 @@ export interface ToolbarHooks {
   camera?: () => void;
   /** Applies a canvas size to every scene. */
   canvasSize?: (width: number, height: number) => void;
+  /** FINAL2 U9: opens the Auto captions dialog. */
+  autoCaptions?: () => void;
 }
 /** H3: the kinds of toolbar, from the selection. */
 export type ToolbarMode =
@@ -1311,7 +1313,14 @@ export function mountContextToolbar(
       divider(),
       fpsChip(),
       divider(),
-      planned('auto-captions'),
+      hooks.autoCaptions
+        ? tool(
+            'auto-captions',
+            'captions',
+            t('toolbar.autoCaptions'),
+            hooks.autoCaptions,
+          )
+        : planned('auto-captions'),
     ];
   };
 

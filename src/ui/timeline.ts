@@ -1,4 +1,5 @@
-import { isReservedMarker } from '../core';
+import { isReservedMarker, nestedInfo } from '../core';
+import { selectedNested } from './nest-ui';
 import { commands } from '../commands/registry';
 import {
   laneDropPlan,
@@ -345,12 +346,14 @@ export class TimelineInteraction {
         ? clipTrimBounds(
             this.session.source.composition,
             location.clip.id,
-            // X1: a code clip stops at its animation's end.
-            clipSourceDuration(
-              this.session.source.composition,
-              this.session.source.assets,
-              location.clip,
-            ),
+            // X1: a code clip stops at its animation's end; FINAL2 U9: a
+            // nested clip at its children's length.
+            nestedInfo(location.clip)?.duration ??
+              clipSourceDuration(
+                this.session.source.composition,
+                this.session.source.assets,
+                location.clip,
+              ),
           )
         : undefined;
     const roots = new Set(
@@ -3790,8 +3793,19 @@ export function mountTimeline(
     // blocked Ungroup stays clickable and says why (one toast).
     const roots = selectionRoots(session.source, session.selectedIds);
     if (roots.length > 1) section.push(commandItem('group'));
-    if (roots.length && roots.every((layer) => layer.type === 'group'))
+    // FINAL2 U9: a nested clip offers Open and Un-nest, never Ungroup (the
+    // core UNGROUP would lose its kept clips); two or more clips can nest.
+    const nested = selectedNested({ session });
+    if (roots.length > 1) section.push(commandItem('nest-clips'));
+    if (nested)
+      section.push(commandItem('enter-nested'), commandItem('unnest-clip'));
+    else if (roots.length && roots.every((layer) => layer.type === 'group'))
       section.push(commandItem('ungroup'));
+    if (kind === 'video' || kind === 'audio')
+      section.push(
+        commandItem('clip-transcribe'),
+        commandItem('clip-auto-captions'),
+      );
     const subsection: HTMLElement[] = [];
     if (kind === 'video' || kind === 'audio')
       subsection.push(parentItem(t('menu.audio'), 'audio-menu'));

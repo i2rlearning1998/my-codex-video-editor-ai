@@ -22,6 +22,13 @@ import {
   pasteStyle,
 } from '../ui/style-clipboard';
 import {
+  canNest,
+  nestSelection,
+  selectedNested,
+  unnestSelection,
+} from '../ui/nest-ui';
+import { selectedSoundClip } from '../ui/captions-ui';
+import {
   contextActions,
   jumpToCut,
   moveClipsToAdjacentTrack,
@@ -60,6 +67,13 @@ export interface CommandContext {
   };
   /** G3: the canvas view (zoom and pan); absent outside the full shell. */
   view?: CanvasView;
+  /** FINAL2 U9: the Transcribe and Auto captions dialogs. */
+  captions?: {
+    transcribe: (layerId: string | null) => void;
+    autoCaptions: (layerId: string | null) => void;
+  };
+  /** FINAL2 U9: enters a nested clip (the timeline's breadcrumb bar). */
+  nesting?: { enter: (layerId: string) => void };
 }
 /** P1: the one selected top-level code layer's id, or null. */
 export function selectedCodeLayer(session: EditorSession): string | null {
@@ -268,6 +282,48 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
       if (layerId) code?.[hook](layerId);
     },
   })),
+  // FINAL2 U9: Transcribe and Auto captions (a video or audio clip), and
+  // nested clips: Nest clips, Open nested clip and Un-nest (one step each).
+  {
+    id: 'clip-transcribe',
+    labelKey: 'command.transcribe',
+    shortcut: '',
+    isEnabled: ({ session }) => !!selectedSoundClip(session),
+    run: ({ session, captions }) =>
+      captions?.transcribe(selectedSoundClip(session)),
+  },
+  {
+    id: 'clip-auto-captions',
+    labelKey: 'command.autoCaptions',
+    shortcut: '',
+    isEnabled: () => true,
+    run: ({ session, captions }) =>
+      captions?.autoCaptions(selectedSoundClip(session)),
+  },
+  {
+    id: 'nest-clips',
+    labelKey: 'command.nestClips',
+    shortcut: '',
+    isEnabled: (context) => canNest(context),
+    run: (context) => nestSelection(context),
+  },
+  {
+    id: 'enter-nested',
+    labelKey: 'command.enterNested',
+    shortcut: '',
+    isEnabled: (context) => !!selectedNested(context),
+    run: (context) => {
+      const nested = selectedNested(context);
+      if (nested) context.nesting?.enter(nested.layer.id);
+    },
+  },
+  {
+    id: 'unnest-clip',
+    labelKey: 'command.unnest',
+    shortcut: '',
+    isEnabled: (context) => !!selectedNested(context),
+    run: (context) => unnestSelection(context),
+  },
   // CV-025: align and distribute (palette, canvas Align submenu).
   ...ALIGN_EDGES.map((edge): RegisteredCommand => ({
     id: `align-${edge}`,
