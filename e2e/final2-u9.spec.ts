@@ -68,7 +68,7 @@ test('[F2-060] Transcribe from the clip menu: engines show their status (Deepgra
   // Whisper shows the offline engine's status.
   await expect(
     dialog.locator('.caption-engine[data-engine="local-whisper"]'),
-  ).toContainText('Not available yet');
+  ).toContainText('Needs download');
   // Happy path with the test engine, in Hindi.
   await dialog
     .locator('.caption-engine[data-engine="e2e-fake-stt"] .caption-engine-pick')
