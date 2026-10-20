@@ -1,7 +1,8 @@
 {
   "page": 1,
   "per_page": 20,
-  "total_results": 1,
+  "total_results": 2,
+  "url": "https://www.pexels.com/search/videos/ocean/",
   "videos": [
     {
       "id": 12,
@@ -9,27 +10,98 @@
       "height": 1080,
       "url": "https://www.pexels.com/video/12/",
       "image": "https://images.pexels.com/videos/12/poster.jpg",
+      "full_res": null,
+      "tags": [],
       "duration": 6,
       "user": {
+        "id": 3,
         "name": "Mira",
         "url": "https://www.pexels.com/@mira/"
       },
       "video_files": [
+        {
+          "id": 20,
+          "quality": "hls",
+          "file_type": "video/mp4",
+          "width": null,
+          "height": null,
+          "link": "https://player.vimeo.com/external/12.m3u8?s=abc&oauth2_token_id=1"
+        },
+        {
+          "id": 23,
+          "quality": "uhd",
+          "file_type": "video/mp4",
+          "width": 3840,
+          "height": 2160,
+          "fps": 29.97,
+          "link": "https://videos.pexels.com/video-files/12/uhd.mp4",
+          "size": 48000000
+        },
         {
           "id": 21,
           "quality": "hd",
           "file_type": "video/mp4",
           "width": 1920,
           "height": 1080,
-          "link": "https://videos.pexels.com/video-files/12/hd.mp4"
+          "fps": 29.97,
+          "link": "https://videos.pexels.com/video-files/12/hd.mp4",
+          "size": 9000000
         },
         {
           "id": 22,
-          "quality": "hd",
+          "quality": "sd",
           "file_type": "video/mp4",
           "width": 1280,
           "height": 720,
-          "link": "https://videos.pexels.com/video-files/12/small.mp4"
+          "link": "https://videos.pexels.com/video-files/12/small.mp4",
+          "size": 3000000
+        },
+        {
+          "id": 24,
+          "quality": null,
+          "file_type": "video/mp4",
+          "width": 640,
+          "height": 360,
+          "fps": null,
+          "link": "https://videos.pexels.com/video-files/12/tiny.mp4"
+        }
+      ],
+      "video_pictures": [
+        {
+          "id": 1,
+          "nr": 0,
+          "picture": "https://images.pexels.com/videos/12/pictures/preview-0.jpg"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "width": 1080,
+      "height": 1920,
+      "url": "https://www.pexels.com/video/13/",
+      "image": "https://images.pexels.com/videos/13/poster.jpg",
+      "duration": 9,
+      "user": {
+        "id": 4,
+        "name": "Ravi",
+        "url": "https://www.pexels.com/@ravi/"
+      },
+      "video_files": [
+        {
+          "id": 30,
+          "quality": "hls",
+          "file_type": "video/mp4",
+          "width": null,
+          "height": null,
+          "link": "https://player.vimeo.com/external/13.m3u8?s=def"
+        },
+        {
+          "id": 31,
+          "quality": "hd",
+          "file_type": "video/mp4",
+          "width": 1080,
+          "height": 1920,
+          "link": "https://videos.pexels.com/video-files/13/hd.mp4"
         }
       ]
     }
