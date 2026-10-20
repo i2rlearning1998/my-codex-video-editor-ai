@@ -85,7 +85,12 @@ export function mountSelectionActions(
   /** Shows the cluster above `box`, or hides it when there is nothing to act on. */
   const update = (
     box: StageBox | null,
-    stage: { width: number; height?: number },
+    stage: {
+      width: number;
+      height?: number;
+      /** FIX1 F1: stage rectangles the cluster must not cover (the toolbar). */
+      avoid?: readonly StageBox[];
+    },
   ) => {
     const ids = session.selectedIds;
     if (!box || !ids.length) {
@@ -150,7 +155,26 @@ export function mountSelectionActions(
       [box.left - gap - width, Math.max(0, box.top)],
       [clampX(box.right - width), box.bottom + gap],
     ];
+    const avoid = stage.avoid ?? [];
+    const clear = (x: number, y: number) =>
+      avoid.every(
+        (rect) =>
+          x + width <= rect.left ||
+          x >= rect.right ||
+          y + height <= rect.top ||
+          y >= rect.bottom,
+      );
+    // FIX1 F1: the contextual toolbar keeps the top row; the cluster may
+    // also sit just under it, beside the box.
+    const under = Math.max(0, ...avoid.map((rect) => rect.bottom + 8));
+    if (avoid.length)
+      candidates.push(
+        [clampX(box.right - width), Math.max(under, box.top - height - gap)],
+        [box.right + gap, Math.max(under, box.top)],
+        [box.left - gap - width, Math.max(under, box.top)],
+      );
     const fits = ([x, y]: [number, number]) =>
+      clear(x, y) &&
       x >= 0 &&
       y >= 0 &&
       x + width <= stage.width &&
@@ -159,7 +183,11 @@ export function mountSelectionActions(
         x >= box.right + 12 ||
         y + height <= box.top - 12 ||
         y >= box.bottom + 12);
-    const [left, top] = candidates.find(fits) ?? candidates[0]!;
+    const fallback = candidates.find(([x, y]) => clear(x, y)) ?? [
+      clampX(box.right - width),
+      under,
+    ];
+    const [left, top] = candidates.find(fits) ?? fallback;
     cluster.style.left = `${left}px`;
     cluster.style.top = `${top}px`;
   };

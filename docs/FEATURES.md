@@ -1040,6 +1040,13 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | F2-072 | P1 | W9 | Verified | From 1440 px wide, library panels are 380 px (two cards of at least 165 px); the Scene panel and narrower windows keep today's width; the AI brief lists the installed stock providers and whether a key is saved; an exported code animation keeps its changed control values and the importer restores them (U10) |
 | F2-090 | P1 | W9 | Verified | Offline captions: the Whisper engine (tiny multilingual, English and Hindi, word timings) downloads in the user's browser with progress, Cancel and Remove, checked by size until `npm run models:pin` pins size and SHA-256; status Needs download (size) / Ready in Settings and every engine picker; offline voice says Not available and points to the cloud voices (U11) |
 
+## FX1: Fix round 1 (owner's real-browser test)
+
+| ID      | Pri | Wave | Status   | Feature |
+| ------- | --- | ---- | -------- | ------- |
+| FX1-001 | P0 | W9 | Verified | Every left panel, right panel and both icon rails scroll so their last control is reachable at 1920 × 940 and 1366 × 768; the right rail's last icon is reachable (F1) |
+| FX1-002 | P0 | W9 | Verified | Media, AI and My Templates keep search, Import, drop zone and chips fixed while only Sort and the cards scroll (short windows: the chips stay pinned); the selection's action cluster never covers the floating toolbar at any zoom (F1) |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.

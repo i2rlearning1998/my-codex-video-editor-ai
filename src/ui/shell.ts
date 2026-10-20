@@ -1613,6 +1613,21 @@ export function mountEditorShell(
       return selectionActions.update(null, stage.getBoundingClientRect());
     const xs = corners.map((point) => point[0] + canvas.offsetLeft),
       ys = corners.map((point) => point[1] + canvas.offsetTop);
+    // FIX1 F1: never over the floating contextual toolbar.
+    const stageRect = stage.getBoundingClientRect();
+    const avoid = [
+      ...stage.querySelectorAll<HTMLElement>(
+        '#context-toolbar:not([hidden]), .stage-toolbar-row > :not([hidden])',
+      ),
+    ]
+      .map((el) => el.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0)
+      .map((rect) => ({
+        left: rect.left - stageRect.left,
+        top: rect.top - stageRect.top,
+        right: rect.right - stageRect.left,
+        bottom: rect.bottom - stageRect.top,
+      }));
     selectionActions.update(
       {
         left: Math.min(...xs),
@@ -1620,7 +1635,7 @@ export function mountEditorShell(
         right: Math.max(...xs),
         bottom: Math.max(...ys),
       },
-      { width: stage.clientWidth, height: stage.clientHeight },
+      { width: stage.clientWidth, height: stage.clientHeight, avoid },
     );
   }
   // J4: on-canvas text editing (double-click, Enter or the Text tool).

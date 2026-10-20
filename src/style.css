@@ -10601,3 +10601,82 @@ input[type='range'] {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* FIX1 F1: one scroll rule for every panel. Each panel's header stays put
+   and its body scrolls, so nothing is ever cut off: every left-panel page is
+   a flex child that may shrink (min-height 0) and scrolls on its own; the
+   right panel and both icon rails scroll when they are taller than the
+   window. Library shelves (Media, AI, My Templates) keep their search,
+   Import, drop zone and chips fixed and scroll only their body. */
+.library
+  > .panel-body
+  > [data-rail-panel]:not([hidden]):not(.import-row):not(.scene-heading):not(
+    .shelf
+  ),
+.library > .panel-body > #side-panel-host > *,
+.library > .panel-body > .draw-panel:not([hidden]) {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+.library > .panel-body > #side-panel-host:not(:empty) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+.editor-shell > .icon-rail,
+.editor-shell > #rail-left,
+.editor-shell > #rail-right {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.icon-rail > button {
+  flex: none;
+}
+.inspector {
+  min-block-size: 0;
+}
+.inspector > #right-section,
+.inspector > #inspector-content {
+  flex: none;
+}
+.library .shelf {
+  overflow: hidden;
+}
+.shelf > .shelf-body {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-inline: calc(-1 * var(--space-4));
+  padding-inline: var(--space-4);
+}
+.shelf > .shelf-tabs {
+  flex: none;
+  position: relative;
+  z-index: 1;
+  background: var(--panel, var(--color-bg));
+}
+/* FIX1 F1: on short windows the fixed top would leave no room for cards, so
+   the whole shelf scrolls and only the chips stay pinned (sticky). */
+@media (max-height: 820px) {
+  .library .shelf {
+    overflow-y: auto;
+  }
+  .shelf > .shelf-body {
+    flex: none;
+    overflow: visible;
+  }
+  .shelf > .shelf-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-inline: calc(-1 * var(--space-4));
+    padding-inline: var(--space-4);
+    padding-block: var(--space-2);
+  }
+}

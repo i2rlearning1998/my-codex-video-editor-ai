@@ -209,6 +209,8 @@ test('[S1-003] cards are two equal columns of the same width (at least 165 px) i
       widths.push(card);
       // The thumbnail shows a picture, never a placeholder pill.
       const thumb = item.locator('.shelf-thumb');
+      // FIX1 F1: only the shelf body scrolls; bring the card into view first.
+      await item.scrollIntoViewIfNeeded();
       const t = await thumb.evaluate((el) => {
         const r = el.getBoundingClientRect();
         return {

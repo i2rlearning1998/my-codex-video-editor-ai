@@ -199,13 +199,18 @@ export function mountShelf(options: ShelfOptions): Shelf {
   const grid = document.createElement('div');
   grid.className = 'shelf-grid';
   grid.id = `${prefix}-grid`;
+  // FIX1 F1: the search, actions, extras and chips stay fixed; only the
+  // body (a panel's sort row, the state and the cards) scrolls.
+  const body = document.createElement('div');
+  body.className = 'shelf-body';
+  body.id = `${prefix}-body`;
+  body.append(state, grid);
   host.replaceChildren(
     searchRow,
     ...(options.actions?.length ? [actions] : []),
     ...(options.extra ?? []),
     tabs,
-    state,
-    grid,
+    body,
   );
 
   // The item menu (also the "⋯" button's).

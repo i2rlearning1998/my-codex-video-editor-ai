@@ -308,6 +308,12 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     },
   });
   const project = () => engine.state.id;
+  // FIX1 F1: Sort scrolls with the cards, under the fixed chips.
+  const moveSort = () => {
+    const body = container.querySelector('.shelf-body');
+    const sort = extras.querySelector('#media-toolbar');
+    if (body && sort) body.prepend(sort);
+  };
   const shelf: Shelf = mountShelf({
     host: container,
     prefix: 'media',
@@ -377,6 +383,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       ),
     toast: (text) => options.toast(text, 'success'),
   });
+  moveSort();
   const grid = shelf.grid;
   function render() {
     if (disposed) return;
