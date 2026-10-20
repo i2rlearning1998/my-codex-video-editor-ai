@@ -162,6 +162,10 @@
   --region-scrollbar: #8e919c;
 }
 :root {
+  /* FIX1 F2: the light neutral tile behind black (currentColor) icons, in
+     both themes, so icon previews never vanish on a dark card. */
+  --tile-light: #f3f4f7;
+  --tile-light-border: #d9dce3;
   /* Spacing */
   --space-1: 4px;
   --space-2: 8px;

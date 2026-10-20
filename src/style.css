@@ -10642,7 +10642,7 @@ input[type='range'] {
 .inspector > #inspector-content {
   flex: none;
 }
-.library .shelf {
+.library .shelf:has(> .shelf-body) {
   overflow: hidden;
 }
 .shelf > .shelf-body {
@@ -10659,12 +10659,12 @@ input[type='range'] {
   flex: none;
   position: relative;
   z-index: 1;
-  background: var(--panel, var(--color-bg));
+  background: var(--region-panel);
 }
 /* FIX1 F1: on short windows the fixed top would leave no room for cards, so
    the whole shelf scrolls and only the chips stay pinned (sticky). */
 @media (max-height: 820px) {
-  .library .shelf {
+  .library .shelf:has(> .shelf-body) {
     overflow-y: auto;
   }
   .shelf > .shelf-body {
@@ -10679,4 +10679,82 @@ input[type='range'] {
     padding-inline: var(--space-4);
     padding-block: var(--space-2);
   }
+}
+/* FIX1 F2: stock cards. The licence is a small corner chip (full text in
+   its tooltip and in Details); icons sit on a light tile; stickers and
+   icons show whole (contain); a download shows a real progress bar. */
+.shelf .stock-item .stock-licence {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-start: 6px;
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--card-overlay);
+  color: var(--text-on-accent);
+  z-index: 1;
+}
+.stock-panel[data-stock='icons'] .shelf-thumb,
+.stock-panel[data-stock='icons'] .shelf-thumb img.stock-icon {
+  background: var(--tile-light);
+}
+.stock-panel[data-stock='icons'] .shelf-thumb {
+  border: 1px solid var(--tile-light-border);
+  box-sizing: border-box;
+}
+.shelf .shelf-thumb img.stock-icon {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.stock-progress {
+  padding: var(--space-2);
+  box-sizing: border-box;
+  text-align: center;
+}
+.stock-progress[data-state='error'] {
+  background: var(--card-overlay);
+  justify-content: center;
+  overflow-y: auto;
+}
+.stock-progress-bar {
+  inline-size: 80%;
+  block-size: 6px;
+  accent-color: var(--accent);
+}
+.stock-progress .stock-dismiss {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
+  inline-size: 24px;
+  block-size: 24px;
+  color: var(--text-on-accent);
+}
+.stock-message .diagnostics-button,
+.stock-progress .diagnostics-button {
+  color: inherit;
+}
+.stock-details-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+.stock-details-facts dt {
+  color: var(--text-secondary);
+}
+.stock-details-facts dd {
+  margin: 0;
+}
+.stock-quality {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+.stock-quality-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }

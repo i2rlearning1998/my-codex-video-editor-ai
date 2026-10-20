@@ -95,12 +95,18 @@ describe('provider framework', () => {
     expect(await testKey(p)).toEqual({ status: 'ok' });
     expect(deps.fetch).toHaveBeenCalledTimes(2);
     deps.fetch.mockRejectedValue(Error('private-pexels'));
-    expect(await testKey(p)).toEqual({ status: 'network', code: 'NETWORK' });
+    expect(await testKey(p)).toMatchObject({
+      status: 'network',
+      code: 'NETWORK',
+    });
     deps.fetch.mockResolvedValue(
       new Response('private-pexels', { status: 401 }),
     );
     const result = await testKey(p);
-    expect(result).toEqual({ status: 'invalid-key', code: 'KEY_INVALID' });
+    expect(result).toMatchObject({
+      status: 'invalid-key',
+      code: 'KEY_INVALID',
+    });
     expect(JSON.stringify(result)).not.toContain('private-');
   });
   it('cache persists across instances, expires exactly at TTL, returns isolated copies', async () => {
@@ -163,8 +169,9 @@ describe('provider framework', () => {
     ).rejects.toMatchObject({ code: 'ABORTED' });
     controller.abort();
     await aborted;
+    // FIX1 F2: a timeout says so (never "No internet").
     const timed = expect(net.json('https://example.org')).rejects.toMatchObject(
-      { code: 'NETWORK' },
+      { code: 'TIMEOUT' },
     );
     await vi.advanceTimersByTimeAsync(10);
     await timed;
@@ -180,7 +187,8 @@ describe.each([
     for (const [status, code] of [
       [401, 'KEY_INVALID'],
       [429, 'RATE_LIMITED'],
-      [503, 'NETWORK'],
+      // FIX1 F2: an error status is named with its number.
+      [503, 'HTTP'],
       [200, 'BAD_RESPONSE'],
     ] as const) {
       const deps = setup(fixture);
@@ -188,7 +196,10 @@ describe.each([
       const provider = create(deps);
       await expect(
         provider.search({ kind, query: name }),
-      ).rejects.toMatchObject({ code });
+      ).rejects.toMatchObject({
+        code,
+        ...(code === 'HTTP' ? { status } : {}),
+      });
     }
   });
 });

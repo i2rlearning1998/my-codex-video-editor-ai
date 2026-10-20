@@ -12,7 +12,20 @@ export interface RequestPolicy {
   invalid400?: boolean;
   reset?: 'seconds' | 'epoch';
   download?: boolean;
+  /** FIX1 F2: this request's own time limit (downloads get minutes). */
+  timeoutMs?: number;
 }
+/** FIX1 F4: an endpoint without its query (keys travel in queries). */
+export const endpointOf = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.origin + parsed.pathname;
+  } catch {
+    return '';
+  }
+};
+const offline = () =>
+  typeof navigator !== 'undefined' && navigator.onLine === false;
 export function retryAfter(
   value: string | null,
   now: number,
@@ -48,6 +61,12 @@ export function createNetwork(
       budget = { times: [], blocked: 0, failures: 0 };
       budgets.set(bucket, budget);
     }
+    const step = policy.download ? ('download' as const) : ('search' as const);
+    const detail = (status?: number) => ({
+      step,
+      endpoint: endpointOf(url),
+      ...(status === undefined ? {} : { status }),
+    });
     if (budget.blocked > now())
       throw new ProviderError('RATE_LIMITED', budget.blocked);
     const limits = policy.limits ?? [];
@@ -64,10 +83,13 @@ export function createNetwork(
     const abort = () => controller.abort();
     policy.signal?.addEventListener('abort', abort, { once: true });
     if (policy.signal?.aborted) abort();
-    const timer = setTimeout(() => {
-      timedOut = true;
-      controller.abort();
-    }, options.timeoutMs ?? 15000);
+    const timer = setTimeout(
+      () => {
+        timedOut = true;
+        controller.abort();
+      },
+      policy.timeoutMs ?? options.timeoutMs ?? 15000,
+    );
     try {
       const work = (async () => {
         const response = await fetcher(url, {
@@ -78,13 +100,19 @@ export function createNetwork(
           referrerPolicy: 'no-referrer',
           redirect: 'error',
         });
-        if (response.type === 'opaque') throw new ProviderError('CORS_BLOCKED');
+        if (response.type === 'opaque')
+          throw new ProviderError('CORS_BLOCKED', undefined, detail());
         if (
-          response.status === 401 ||
-          response.status === 403 ||
-          (policy.invalid400 && response.status === 400)
+          !policy.download &&
+          (response.status === 401 ||
+            response.status === 403 ||
+            (policy.invalid400 && response.status === 400))
         )
-          throw new ProviderError('KEY_INVALID');
+          throw new ProviderError(
+            'KEY_INVALID',
+            undefined,
+            detail(response.status),
+          );
         if (response.status === 429) {
           budget.failures++;
           budget.blocked = Math.max(
@@ -95,12 +123,15 @@ export function createNetwork(
               Math.min(60000, 1000 * 2 ** (budget.failures - 1)),
             ),
           );
-          throw new ProviderError('RATE_LIMITED', budget.blocked);
-        }
-        if (!response.ok)
           throw new ProviderError(
-            response.status >= 500 ? 'NETWORK' : 'BAD_RESPONSE',
+            'RATE_LIMITED',
+            budget.blocked,
+            detail(response.status),
           );
+        }
+        // FIX1 F2: any other error status is named with its number.
+        if (!response.ok)
+          throw new ProviderError('HTTP', undefined, detail(response.status));
         budget.failures = 0;
         const remaining = response.headers.get('X-Ratelimit-Remaining'),
           reset = response.headers.get('X-Ratelimit-Reset');
@@ -118,7 +149,13 @@ export function createNetwork(
       })();
       return await new Promise<T>((resolve, reject) => {
         const cancelled = () =>
-          reject(new ProviderError(timedOut ? 'NETWORK' : 'ABORTED'));
+          reject(
+            new ProviderError(
+              timedOut ? 'TIMEOUT' : 'ABORTED',
+              undefined,
+              detail(),
+            ),
+          );
         controller.signal.addEventListener('abort', cancelled, { once: true });
         if (controller.signal.aborted) cancelled();
         void work
@@ -129,11 +166,23 @@ export function createNetwork(
       });
     } catch (error) {
       if (policy.signal?.aborted) throw new ProviderError('ABORTED');
-      if (error instanceof ProviderError) throw error;
+      if (error instanceof ProviderError) {
+        if (!error.step) {
+          error.step = step;
+          error.endpoint = endpointOf(url);
+        }
+        throw error;
+      }
+      // FIX1 F2: "No internet" only when the browser says it is offline; a
+      // fetch that throws online is a blocked (cross-origin) or failed request.
       throw new ProviderError(
-        policy.download && error instanceof TypeError
-          ? 'CORS_BLOCKED'
-          : 'NETWORK',
+        offline()
+          ? 'OFFLINE'
+          : policy.download && error instanceof TypeError
+            ? 'CORS_BLOCKED'
+            : 'NETWORK',
+        undefined,
+        detail(),
       );
     } finally {
       clearTimeout(timer);

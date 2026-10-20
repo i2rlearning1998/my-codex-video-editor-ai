@@ -42,6 +42,7 @@ import { SYSTEM_FONTS, TEXT_ALIGNS, textStyleOf } from '../render/text-style';
 import { alignSelection, canDistribute, distributeSelection } from './align';
 import {
   colorCommand,
+  tintCommand,
   fontSizeCommand,
   textStyleCommands,
 } from './context-toolbar';
@@ -691,9 +692,32 @@ export function mountRightPanel(
           hooks.build?.('flip'),
           hooks.build?.('corners'),
           video ? null : hooks.build?.('border'),
+          video ? null : iconColorField(),
         ],
       ),
     ];
+  };
+  /** FIX1 F2: an SVG picture (an icon or sticker) can be recoloured. */
+  const iconColorField = () => {
+    const layer = single();
+    if (!layer || layer.type !== 'image') return null;
+    const asset = session.source.assets.find((a) => a.id === layer.assetId);
+    const mime = (asset?.metadata as { mimeType?: unknown } | undefined)
+      ?.mimeType;
+    if (mime !== 'image/svg+xml') return null;
+    const tint = layer.properties.tint;
+    return createColorField({
+      id: 'right-icon-color',
+      label: t('right.iconColor'),
+      value: tint?.type === 'color' ? tint.value.slice(0, 7) : '#000000',
+      documentColors: () => documentColors(session.source.composition),
+      onCommit: (next) =>
+        safely(() =>
+          run('Icon colour', [
+            tintCommand(session.source.composition.id, single() ?? layer, next),
+          ]),
+        ),
+    });
   };
   const groupTab = () => {
     const actions = contextActions(

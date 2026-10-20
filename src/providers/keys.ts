@@ -6,6 +6,8 @@ export type KeyTestResult =
       status: 'invalid-key' | 'rate-limited' | 'network';
       code: string;
       retryAt?: number;
+      /** FIX1 F4: the failure itself, for the diagnostics report. */
+      error?: ProviderError;
     };
 export interface KeyStorage {
   getItem(key: string): string | null;
@@ -74,6 +76,7 @@ export async function testKey(
             ? 'rate-limited'
             : 'network',
       code: e.code,
+      error: e,
       ...(e.retryAt === undefined ? {} : { retryAt: e.retryAt }),
     };
   }

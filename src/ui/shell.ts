@@ -4272,26 +4272,40 @@ export function mountEditorShell(
       // FINAL2 U2: a stock item is downloaded, imported into Media with its
       // licence and placed at the playhead (audio on a new audio lane).
       stock: {
-        add: async (item, place, signal) => {
-          const result = await importStockItem(item, stockQuality(item), {
-            signal,
-          });
+        add: async (item, place, signal, job) => {
+          const result = await importStockItem(
+            item,
+            job?.quality ?? stockQuality(item),
+            {
+              signal,
+              ...(job ? { onProgress: job.onProgress } : {}),
+            },
+          );
           const file = new File([result.blob], result.name, {
             type: result.mime,
           });
+          // FIX1 F2: adding from stock is the user's own request, so a
+          // file that was once deleted from Media comes back silently.
           const [id] = await mediaPanel.importFiles([file], {
             license: result.licenseMeta,
+            quiet: true,
           });
           const asset = id
             ? session.source.assets.find((entry) => entry.id === id)
             : undefined;
           if (!asset) throw new Error(t('stock.importFailed'));
           if (asset.type === 'audio') addOnNewAudioLane(asset.id);
-          else
+          else {
+            // FIX1 F2: icons and stickers land big and centred: their
+            // longer side is 30 % of the canvas's shorter side.
+            const symbol = item.kind === 'icon' || item.kind === 'sticker';
+            const { width, height } = session.source.composition;
             placeAsset(asset, {
               time: place.time ?? session.currentTime,
-              point: place.point ?? null,
+              point: place.point ?? (symbol ? [width / 2, height / 2] : null),
+              ...(symbol ? { size: 0.3 * Math.min(width, height) } : {}),
             });
+          }
         },
         openKeys: () => openSettings('keys'),
         report: reportError,
@@ -5392,6 +5406,8 @@ export function mountEditorShell(
       trackId?: string | undefined;
       /** J9: commands making the lane `trackId` names (a new lane). */
       newTrack?: Command[];
+      /** FIX1 F2: the longer side's size in composition pixels. */
+      size?: number;
     },
   ) => {
     const id = asset.id;
@@ -5412,7 +5428,9 @@ export function mountEditorShell(
         // down to fit inside the composition when it is larger.
         const { width: w, height: h } = session.source.composition;
         if (asset.width && asset.height) {
-          const fit = Math.min(1, w / asset.width, h / asset.height);
+          const fit = place.size
+            ? place.size / Math.max(asset.width, asset.height)
+            : Math.min(1, w / asset.width, h / asset.height);
           layer.transform.scale = vector2(fit, fit);
           layer.transform.position = vector2(
             point[0] - (asset.width * fit) / 2,

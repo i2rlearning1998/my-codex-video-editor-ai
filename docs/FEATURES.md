@@ -1046,6 +1046,11 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | ------- | --- | ---- | -------- | ------- |
 | FX1-001 | P0 | W9 | Verified | Every left panel, right panel and both icon rails scroll so their last control is reachable at 1920 × 940 and 1366 × 768; the right rail's last icon is reachable (F1) |
 | FX1-002 | P0 | W9 | Verified | Media, AI and My Templates keep search, Import, drop zone and chips fixed while only Sort and the cards scroll (short windows: the chips stay pinned); the selection's action cluster never covers the floating toolbar at any zoom (F1) |
+| FX1-003 | P0 | W9 | Verified | Pixabay videos never use an empty rendition (`large` with url "" and size 0); the default is medium (up to 1080p), then small, then tiny; Details lists each quality with its size and lets the user choose; the card shows a progress bar with Cancel; downloads may take 3 minutes (F2) |
+| FX1-004 | P0 | W9 | Verified | Pexels videos tolerate HLS entries (null width and height, quality "hls"), null quality and missing fps; only MP4 renditions are kept, the best up to 1080p is imported; search uses the documented /videos/search endpoint (F2) |
+| FX1-005 | P0 | W9 | Verified | Icon thumbnails sit on a light tile, one card per name; an added icon or sticker lands centred with its longer side at 30 % of the canvas's shorter side; an SVG picture has an Icon colour control (tint, preview and export); adding stock never shows a Restored note (F2) |
+| FX1-006 | P0 | W9 | Verified | Stickers: an empty search merges several seed words into a mixed, de-duplicated set with Load more; share-alike sets (OpenMoji, CC BY-SA) are out of the default list; licences are a small corner chip, full text in Details (F2) |
+| FX1-007 | P0 | W9 | Verified | Stock errors tell the truth: No internet only when the browser is offline; otherwise timeout, the HTTP status (403, 404, 429, 5xx), blocked download, empty file or too big; a failed card keeps Retry; Copy diagnostics carries the step, endpoint without query and status, never a key (F2, F4) |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 

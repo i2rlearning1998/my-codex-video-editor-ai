@@ -196,6 +196,22 @@ export function colorCommand(
     withValue(layer, key, value, 'color', time),
   );
 }
+/** FIX1 F2: the colour of an imported icon (an SVG picture's `tint`). */
+export function tintCommand(
+  compositionId: string,
+  layer: SceneLayer,
+  value: string,
+): Command | null {
+  if (layer.type !== 'image' || !/^#[0-9a-fA-F]{6}$/.test(value)) return null;
+  const current = layer.properties.tint;
+  if (current?.type === 'color' && current.value === value) return null;
+  return setProperty(
+    compositionId,
+    layer,
+    'tint',
+    withValue(layer, 'tint', value, 'color'),
+  );
+}
 export function fontSizeCommand(
   compositionId: string,
   layer: SceneLayer,

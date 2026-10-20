@@ -119,7 +119,7 @@ test('[F2-004] Stock states: no key shows a card that opens Settings; a rate lim
   mock.mode = 'cors';
   await panel.locator('.stock-card').first().click();
   await expect(page.locator('.toast').last()).toContainText(
-    'This site blocks direct download',
+    'The browser blocked this download',
   );
   await expect(page.locator('.editor-shell')).toBeVisible();
   // Rate limited.

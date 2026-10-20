@@ -22,6 +22,8 @@ export interface PictureStyle {
     readonly width: number;
     readonly dash: StrokeDash;
   } | null;
+  /** FIX1 F2: a one-colour recolour of an icon (its ink becomes this colour). */
+  readonly tint?: string | null;
 }
 export const FULL_CROP: Crop = { x: 0, y: 0, width: 1, height: 1 };
 const COLOR = /^#[0-9a-fA-F]{6}$/;
@@ -69,7 +71,12 @@ export function pictureOf(layer: SceneLayer): PictureStyle | null {
   const color = p.stroke?.type === 'color' ? p.stroke.value.slice(0, 7) : '';
   const width = Math.min(MAX_BORDER, Math.max(0, numeric('strokeWidth')));
   const dash = p.strokeDash?.type === 'string' ? p.strokeDash.value : 'solid';
+  const tint =
+    layer.type === 'image' && p.tint?.type === 'color'
+      ? p.tint.value.slice(0, 7)
+      : '';
   return {
+    ...(COLOR.test(tint) ? { tint } : {}),
     crop: cropOf(layer),
     radius: Math.max(0, numeric('cornerRadius')),
     border:
@@ -133,6 +140,51 @@ const sourceSize = (frame: CanvasImageSource) => {
   return { width, height };
 };
 
+/** The last tinted bitmap per source (one icon redraws every frame). */
+const tints = new WeakMap<object, { key: string; canvas: OffscreenCanvas }>();
+/**
+ * FIX1 F2: the picture's ink recoloured: drawn at the size it shows on
+ * screen, then every opaque pixel takes the tint (source-in). Icons are one
+ * colour, so this is the same as replacing their currentColor fill.
+ */
+function tinted(
+  context: Context,
+  frame: CanvasImageSource,
+  style: PictureStyle,
+  width: number,
+  height: number,
+): OffscreenCanvas {
+  const m = context.getTransform();
+  const scale = Math.max(Math.hypot(m.a, m.b), Math.hypot(m.c, m.d), 1);
+  const w = Math.max(1, Math.min(4096, Math.ceil(width * scale)));
+  const h = Math.max(1, Math.min(4096, Math.ceil(height * scale)));
+  const crop = style.crop ?? FULL_CROP;
+  const key = `${style.tint}|${w}|${h}|${crop.x},${crop.y},${crop.width},${crop.height}`;
+  const cached = tints.get(frame as object);
+  if (cached?.key === key) return cached.canvas;
+  const canvas = new OffscreenCanvas(w, h);
+  const c = canvas.getContext('2d')!;
+  const size = sourceSize(frame);
+  if (size.width > 0 && size.height > 0)
+    c.drawImage(
+      frame,
+      crop.x * size.width,
+      crop.y * size.height,
+      crop.width * size.width,
+      crop.height * size.height,
+      0,
+      0,
+      w,
+      h,
+    );
+  else c.drawImage(frame, 0, 0, w, h);
+  c.globalCompositeOperation = 'source-in';
+  c.fillStyle = style.tint!;
+  c.fillRect(0, 0, w, h);
+  tints.set(frame as object, { key, canvas });
+  return canvas;
+}
+
 /**
  * Draws a picture (or its placeholder fill when there is no frame yet) into
  * a width × height box, clipped to rounded corners, with its crop and border.
@@ -151,7 +203,15 @@ export function drawPicture(
       roundedRect(context, width, height, style.radius);
       context.clip();
     }
-    if (frame) {
+    if (frame && style.tint) {
+      context.drawImage(
+        tinted(context, frame, style, width, height),
+        0,
+        0,
+        width,
+        height,
+      );
+    } else if (frame) {
       const crop = style.crop ?? FULL_CROP;
       const size = sourceSize(frame);
       if (size.width > 0 && size.height > 0 && style.crop)

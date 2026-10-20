@@ -14,13 +14,18 @@ const unreachable = (page: Page, root: string) =>
   page.evaluate((root) => {
     const host = document.querySelector<HTMLElement>(root)!;
     const out: string[] = [];
+    const ancestors = (el: HTMLElement) => {
+      const list: HTMLElement[] = [];
+      for (let a = el.parentElement; a; a = a.parentElement) list.push(a);
+      return list;
+    };
     for (const el of host.querySelectorAll<HTMLElement>(
       'button,input,select,textarea,[role="slider"]',
     )) {
       if (el.offsetParent === null || !el.checkVisibility()) continue;
       const r = el.getBoundingClientRect();
       if (r.height < 2 || r.width < 2) continue;
-      for (let a = el.parentElement; a; a = a.parentElement) {
+      for (const a of ancestors(el)) {
         const style = getComputedStyle(a);
         if (style.overflowY === 'visible') continue;
         const box = a.getBoundingClientRect();

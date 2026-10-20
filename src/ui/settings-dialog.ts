@@ -46,17 +46,33 @@ const esc = (value: string) =>
       ]!,
   );
 
+/** FIX1 F4: the last key-test failure per provider (diagnostics). */
+export const lastKeyError = new Map<string, ProviderError>();
 /** Voice services whose key can be checked with a free list request. */
 const LISTABLE = new Set(['google-cloud-tts', 'elevenlabs', 'minimax']);
 
 export type KeyTestOutcome =
-  'ok' | 'invalid' | 'rate' | 'network' | 'missing' | 'later';
-export function testOutcomeText(outcome: KeyTestOutcome, retryAt?: number) {
+  | 'ok'
+  | 'invalid'
+  | 'rate'
+  | 'network'
+  | 'missing'
+  | 'later'
+  // FIX1 F2: the truthful failure classes.
+  | 'offline'
+  | 'timeout'
+  | 'http'
+  | 'blocked';
+export function testOutcomeText(
+  outcome: KeyTestOutcome,
+  retryAt?: number,
+  status?: number,
+) {
   if (outcome === 'rate' && retryAt) {
     const seconds = Math.max(1, Math.ceil((retryAt - Date.now()) / 1000));
     return t('settings.keys.result.rateIn', { seconds });
   }
-  return t(`settings.keys.result.${outcome}`);
+  return t(`settings.keys.result.${outcome}`, { status: status ?? '' });
 }
 const fromCode = (code: string): KeyTestOutcome =>
   code === 'KEY_INVALID'
@@ -65,19 +81,29 @@ const fromCode = (code: string): KeyTestOutcome =>
       ? 'missing'
       : code === 'RATE_LIMITED'
         ? 'rate'
-        : 'network';
+        : code === 'OFFLINE'
+          ? 'offline'
+          : code === 'TIMEOUT'
+            ? 'timeout'
+            : code === 'HTTP'
+              ? 'http'
+              : code === 'CORS_BLOCKED'
+                ? 'blocked'
+                : 'network';
 
 async function runTest(
   provider: Provider | SpeechProvider,
-): Promise<{ outcome: KeyTestOutcome; retryAt?: number }> {
+): Promise<{ outcome: KeyTestOutcome; retryAt?: number; status?: number }> {
   if (!provider.keyFields.every((f) => getKey(provider.id, f.id)))
     return { outcome: 'missing' };
   if ('kinds' in provider) {
     const result = await testKey(provider);
     if (result.status === 'ok') return { outcome: 'ok' };
+    if (result.error) lastKeyError.set(provider.id, result.error);
     return {
       outcome: fromCode(result.code),
       ...(result.retryAt ? { retryAt: result.retryAt } : {}),
+      ...(result.error?.status ? { status: result.error.status } : {}),
     };
   }
   if (LISTABLE.has(provider.id) && 'listVoices' in provider) {
@@ -85,11 +111,14 @@ async function runTest(
       await provider.listVoices();
       return { outcome: 'ok' };
     } catch (error) {
-      if (error instanceof ProviderError)
+      if (error instanceof ProviderError) {
+        lastKeyError.set(provider.id, error);
         return {
           outcome: fromCode(error.code),
           ...(error.retryAt ? { retryAt: error.retryAt } : {}),
+          ...(error.status ? { status: error.status } : {}),
         };
+      }
       return { outcome: 'network' };
     }
   }
@@ -208,9 +237,9 @@ function bindKeyBlock(
     result.dataset.outcome = 'busy';
     result.textContent = t('settings.keys.testing');
     try {
-      const { outcome, retryAt } = await runTest(provider);
+      const { outcome, retryAt, status } = await runTest(provider);
       result.dataset.outcome = outcome;
-      result.textContent = testOutcomeText(outcome, retryAt);
+      result.textContent = testOutcomeText(outcome, retryAt, status);
     } finally {
       testButton.disabled = false;
     }

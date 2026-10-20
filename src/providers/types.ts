@@ -19,6 +19,8 @@ export interface StockFile {
   width: number;
   height: number;
   mime: string;
+  /** FIX1 F2: the file size the provider reports (0 or missing: unknown). */
+  bytes?: number;
 }
 export interface StockItem {
   id: string;

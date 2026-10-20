@@ -7,7 +7,13 @@ import {
   type ProviderDependencies,
 } from './shared';
 import type { StockItem } from './types';
-/** Commercial-friendly does not mean attribution-free; CC-BY-SA retains share-alike. */
+/**
+ * Permissive licences only. Commercial-friendly does not mean
+ * attribution-free: CC BY sets keep their credit in Media › Details.
+ * FIX1 F2: share-alike sets (CC BY-SA, for example OpenMoji) are left out of
+ * the default list, because a video made with them may have to be shared
+ * under the same licence.
+ */
 export const COMMERCIAL_ICON_LICENSES = [
   'MIT',
   'ISC',
@@ -16,10 +22,19 @@ export const COMMERCIAL_ICON_LICENSES = [
   'BSD-3-Clause',
   'CC0-1.0',
   'CC-BY-4.0',
-  'CC-BY-SA-4.0',
   'OFL-1.1',
 ] as const;
-export const STICKER_PREFIXES = ['openmoji', 'noto', 'noto-v1'] as const;
+/**
+ * FIX1 F2: colour emoji sets for Stickers: Google Noto (Apache-2.0),
+ * Microsoft Fluent Emoji Flat (MIT) and Twemoji (CC BY 4.0, credited).
+ * The licence of each answer is still checked against the list above.
+ */
+export const STICKER_PREFIXES = [
+  'noto',
+  'fluent-emoji-flat',
+  'twemoji',
+  'noto-v1',
+] as const;
 const collection = z.object({
   name: z.string(),
   author: z.object({ name: z.string(), url: httpUrl.optional() }),
