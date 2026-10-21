@@ -59,7 +59,7 @@ function text(value: string, extra: Record<string, unknown> = {}) {
 }
 
 describe('[FN3-005] text box model (auto and fixed width)', () => {
-  it('a new single-line text is one line tall and never wraps in auto width ("Shyam Monani")', () => {
+  it('[FN3-005] a new single-line text is one line tall and never wraps in auto width ("Shyam Monani")', () => {
     const layer = text('Shyam Monani', { textBox: string('auto') });
     const box = textBoxOf(layer, { measure: fallbackTextMeasure });
     expect(box.mode).toBe('auto');
@@ -69,13 +69,13 @@ describe('[FN3-005] text box model (auto and fixed width)', () => {
     expect(box.width).toBeCloseTo(12 * 40 * 0.6, 1);
     expect(layerSize(layer, [])!.height).toBe(box.height);
   });
-  it('no phantom empty line: the box is exactly the lines', () => {
+  it('[FN3-005] no phantom empty line: the box is exactly the lines', () => {
     const layer = text('one\ntwo', { textBox: string('auto') });
     const box = textBoxOf(layer, { measure: fallbackTextMeasure });
     expect(box.layout.lines).toHaveLength(2);
     expect(box.height).toBeCloseTo(2 * 48, 6);
   });
-  it('fixed width wraps inside the width and the height grows to fit', () => {
+  it('[FN3-005] fixed width wraps inside the width and the height grows to fit', () => {
     const layer = text('Shyam Monani writes here', {
       textBox: string('fixed'),
       width: number(300),
@@ -85,7 +85,7 @@ describe('[FN3-005] text box model (auto and fixed width)', () => {
     expect(box.layout.lines.length).toBeGreaterThan(1);
     expect(box.height).toBeCloseTo(box.layout.lines.length * 48, 6);
   });
-  it('a fixed height keeps its height (vertical align moves the text in it)', () => {
+  it('[FN3-005] a fixed height keeps its height (vertical align moves the text in it)', () => {
     const layer = text('Hi', {
       textBox: string('fixed'),
       textFixedHeight: bool(true),
@@ -95,7 +95,7 @@ describe('[FN3-005] text box model (auto and fixed width)', () => {
     expect(textHeightFixed(layer)).toBe(true);
     expect(textBoxOf(layer, { measure: fallbackTextMeasure }).height).toBe(400);
   });
-  it('old layers keep their look: wrapped stays fixed, a centred unwrapped box keeps its width', () => {
+  it('[FN3-005] old layers keep their look: wrapped stays fixed, a centred unwrapped box keeps its width', () => {
     expect(textBoxMode(text('a', { textWrap: bool(true) }))).toBe('fixed');
     expect(textBoxMode(text('a'))).toBe('auto');
     expect(textBoxMode(text('a', { textAlign: string('center') }))).toBe(
@@ -118,19 +118,19 @@ describe('[FN3-006] lists act on paragraphs', () => {
       fallbackTextMeasure,
       levels ? { levels } : {},
     );
-  it('one line gives one bullet; three paragraphs give three', () => {
+  it('[FN3-006] one line gives one bullet; three paragraphs give three', () => {
     expect(layout('Hello').lines.filter((l) => l.marker)).toHaveLength(1);
     expect(layout('a\nb\nc').lines.filter((l) => l.marker)).toHaveLength(3);
   });
-  it('a stale empty line is removed when a list is turned on', () => {
+  it('[FN3-006] a stale empty line is removed when a list is turned on', () => {
     const on = listOn('Shyam Monani\n\n', null);
     expect(on.text).toBe('Shyam Monani');
     expect(on.levels).toEqual([0]);
   });
-  it('a selection makes bullets of the selected paragraphs only', () => {
+  it('[FN3-006] a selection makes bullets of the selected paragraphs only', () => {
     expect(listOn('a\nb\nc', [1, 2]).levels).toEqual([-1, 0, 0]);
   });
-  it('Tab and Shift+Tab change levels (0 to 3); markers follow the level', () => {
+  it('[FN3-006] Tab and Shift+Tab change levels (0 to 3); markers follow the level', () => {
     const levels = indentLevels([0, 0, 0], 3, [1, 2], 1);
     expect(levels).toEqual([0, 1, 1]);
     expect(indentLevels(levels, 3, [0, 2], -1)).toEqual([0, 0, 0]);
@@ -141,7 +141,7 @@ describe('[FN3-006] lists act on paragraphs', () => {
       listMarkers(2, 'check', { checked: [true, false] }).map((m) => m.trim()),
     ).toEqual(['☑', '☐']);
   });
-  it('a soft line break keeps one bullet for two lines', () => {
+  it('[FN3-006] a soft line break keeps one bullet for two lines', () => {
     const result = layout(`first${SOFT_BREAK}second`);
     expect(result.lines).toHaveLength(2);
     expect(result.lines.filter((l) => l.marker)).toHaveLength(1);
@@ -149,7 +149,7 @@ describe('[FN3-006] lists act on paragraphs', () => {
 });
 
 describe('[FN3-007] IME composition, clusters and paste', () => {
-  it('Devanagari composition commits once: no doubled or lost characters', () => {
+  it('[FN3-007] Devanagari composition commits once: no doubled or lost characters', () => {
     const composition = new Composition();
     composition.start({ text: 'नाम: ', selection: [5, 5] });
     for (const step of ['न', 'नम', 'नमस', 'नमस्', 'नमस्त', 'नमस्ते'])
@@ -160,30 +160,30 @@ describe('[FN3-007] IME composition, clusters and paste', () => {
     expect(result.selection).toEqual([11, 11]);
     expect(composition.active).toBe(false);
   });
-  it('composition replaces a selection exactly once', () => {
+  it('[FN3-007] composition replaces a selection exactly once', () => {
     const composition = new Composition();
     composition.start({ text: 'abc', selection: [1, 2] });
     composition.update('ह');
     expect(composition.end('हि')!.text).toBe('aहिc');
   });
-  it('the caret moves by grapheme cluster: a conjunct or a vowel sign never splits', () => {
+  it('[FN3-007] the caret moves by grapheme cluster: a conjunct or a vowel sign never splits', () => {
     const word = 'नमस्ते';
     // Unicode 15.1: the conjunct स्ते is one cluster with its vowel sign.
     expect(clusters(word)).toEqual(['न', 'म', 'स्ते']);
     expect(moveCaret(word, 2, 1)).toBe(6);
     expect(moveCaret(word, 6, -1)).toBe(2);
   });
-  it('paste keeps plain text only', () => {
+  it('[FN3-007] paste keeps plain text only', () => {
     expect(plainPaste('a\r\nb\u0007c')).toBe('a\nbc');
   });
-  it('ligatures off breaks Latin ligatures only (Devanagari still joins)', () => {
+  it('[FN3-007] ligatures off breaks Latin ligatures only (Devanagari still joins)', () => {
     expect(withoutLigatures('fi')).toBe('f\u200ci');
     expect(withoutLigatures('क्ष')).toBe('क्ष');
   });
 });
 
 describe('[FN3-008] typewriter reveal and effects', () => {
-  it('the typewriter reveals whole clusters, so a conjunct appears whole', () => {
+  it('[FN3-008] the typewriter reveals whole clusters, so a conjunct appears whole', () => {
     const layout = layoutRich(
       'नमस्ते दुनिया',
       [],
@@ -198,7 +198,7 @@ describe('[FN3-008] typewriter reveal and effects', () => {
     expect(revealCount(layout, 0.4, true)).toBe(0);
     expect(revealCount(layout, 0.5, true)).toBe(3);
   });
-  it('effects read defensively with Canva defaults', () => {
+  it('[FN3-008] effects read defensively with Canva defaults', () => {
     expect(parseTextEffect('{"type":"shadow"}')).toEqual(
       EFFECT_DEFAULTS.shadow,
     );

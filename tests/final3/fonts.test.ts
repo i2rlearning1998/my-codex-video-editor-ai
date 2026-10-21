@@ -34,20 +34,20 @@ function loader() {
 const family = (url: string) => new URL(url).searchParams.get('family');
 
 describe('[FN3-012] font requests use each family’s real weights and italics', () => {
-  it('a single-weight family is asked for with no weight list, even for bold', () => {
+  it('[FN3-012] a single-weight family is asked for with no weight list, even for bold', () => {
     expect(servedWeights('Pacifico', [700])).toEqual([400]);
     expect(
       family(fontStylesheetUrl('Pacifico', servedWeights('Pacifico', [700]))),
     ).toBe('Pacifico');
   });
-  it('bold or italic on a single-weight family without italics is synthetic: no request for them', async () => {
+  it('[FN3-012] bold or italic on a single-weight family without italics is synthetic: no request for them', async () => {
     const { loader: load, fetcher } = loader();
     await load.loadFont('Pacifico', [700], ['latin'], { italic: true });
     const url = String(fetcher.mock.calls[0]![0]);
     expect(family(url)).toBe('Pacifico');
     expect(url).not.toMatch(/ital|wght/);
   });
-  it('a family with real italics asks for them with its real weights', async () => {
+  it('[FN3-012] a family with real italics asks for them with its real weights', async () => {
     expect(familyHasItalic('Lora')).toBe(true);
     const { loader: load, fetcher } = loader();
     await load.loadFont('Lora', [400, 800], ['latin'], { italic: true });
@@ -56,7 +56,7 @@ describe('[FN3-012] font requests use each family’s real weights and italics',
       'Lora:ital,wght@0,400;0,700;1,400;1,700',
     );
   });
-  it('uploaded font names are safe CSS family names', () => {
+  it('[FN3-012] uploaded font names are safe CSS family names', () => {
     expect(uploadedFamilyName('My Brand-Bold.otf')).toBe('My Brand-Bold');
     expect(uploadedFamilyName('evil";}{.ttf')).toBe('evil');
     expect(isSafeFamily('My Brand-Bold')).toBe(true);

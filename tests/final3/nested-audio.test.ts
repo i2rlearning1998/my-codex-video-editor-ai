@@ -22,7 +22,7 @@ const sort = <T extends { asset: string }>(list: T[]) =>
   [...list].sort((a, b) => a.asset.localeCompare(b.asset));
 
 describe('[FN3-003] nested audio', () => {
-  it('nests an audio clip with a video clip; the same sound plays at the same times', () => {
+  it('[FN3-003] nests an audio clip with a video clip; the same sound plays at the same times', () => {
     const engine = new EditorEngine(fixture);
     const before = sort(audible(engine));
     expect(before.length).toBe(2);
@@ -40,7 +40,7 @@ describe('[FN3-003] nested audio', () => {
     expect(sort(audible(engine))).toEqual(before);
   });
 
-  it('a nested clip at 2x plays its sound twice as fast and half as long; a trim cuts the sound', () => {
+  it('[FN3-003] a nested clip at 2x plays its sound twice as fast and half as long; a trim cuts the sound', () => {
     const engine = new EditorEngine(fixture);
     const scene = engine.state.compositions[0]!;
     const ids = scene.tracks.flatMap((track) => track.clips.map((c) => c.id));

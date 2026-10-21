@@ -103,7 +103,7 @@ const layersOf = (project: { compositions: { layers: unknown[] }[] }) => {
 };
 
 describe('[FN3-019] Video Plan v2 validator and starter kit', () => {
-  it('accepts the English and Hindi examples; warns for unknown fields and kit ids; errors are plain sentences', () => {
+  it('[FN3-019] accepts the English and Hindi examples; warns for unknown fields and kit ids; errors are plain sentences', () => {
     expect(validatePlan(read('honey-en')).ok).toBe(true);
     expect(validatePlan(read('chai-hi')).ok).toBe(true);
     const plan = JSON.parse(read('honey-en'));
@@ -130,7 +130,7 @@ describe('[FN3-019] Video Plan v2 validator and starter kit', () => {
       validatePlan('{"format": "video-plan",\n "version": 2,,}').errors[0],
     ).toMatch(/^The plan is not valid JSON/);
   });
-  it('has every starter kit item (13 items, 4 backgrounds) and each builds inside the canvas', () => {
+  it('[FN3-019] has every starter kit item (13 items, 4 backgrounds) and each builds inside the canvas', () => {
     expect(KIT_IDS).toHaveLength(17);
     for (const id of KIT_IDS) {
       const items = kitItems(id, {
@@ -154,7 +154,7 @@ describe('[FN3-019] Video Plan v2 validator and starter kit', () => {
 });
 
 describe('[FN3-020] the auto-builder', { timeout: 60_000 }, () => {
-  it('builds three scenes with media, alternatives, voice timing, captions, camera, transitions and ducked music; deterministic', async () => {
+  it('[FN3-020] builds three scenes with media, alternatives, voice timing, captions, camera, transitions and ducked music; deterministic', async () => {
     const { value, imported } = deps();
     const first = await buildVideoFromPlan(read('honey-en'), value);
     expect(first.errors).toEqual([]);
@@ -209,7 +209,7 @@ describe('[FN3-020] the auto-builder', { timeout: 60_000 }, () => {
     const rebuilt = await buildVideoFromPlan(swapped, deps().value);
     expect(rebuilt.resolved['open/flower']).toBe('mock:bee-flower-macro-2');
   });
-  it('without a voice key builds silent with a banner and proportional captions; stock down gives fallback cards and flags, and still builds', async () => {
+  it('[FN3-020] without a voice key builds silent with a banner and proportional captions; stock down gives fallback cards and flags, and still builds', async () => {
     const silent = await buildVideoFromPlan(
       read('honey-en'),
       deps({ voice: false }).value,
@@ -234,7 +234,7 @@ describe('[FN3-020] the auto-builder', { timeout: 60_000 }, () => {
       ).length,
     ).toBeGreaterThanOrEqual(2);
   });
-  it('builds the Hindi plan in 9:16 with the Devanagari font and the Headline captions', async () => {
+  it('[FN3-020] builds the Hindi plan in 9:16 with the Devanagari font and the Headline captions', async () => {
     const result = await buildVideoFromPlan(read('chai-hi'), deps().value);
     expect(result.errors).toEqual([]);
     const scene = result.project!.compositions[0]!;

@@ -43,7 +43,7 @@ const close = (a: readonly number[], b: readonly number[], digits = 9) =>
   a.forEach((value, index) => expect(value).toBeCloseTo(b[index]!, digits));
 
 describe('[FN3-013] camera rig', () => {
-  it('at rest every camera is the identity (persp and ortho, any sensor fit)', () => {
+  it('[FN3-013] at rest every camera is the identity (persp and ortho, any sensor fit)', () => {
     close(poseMatrix(spec, restPose(spec), frame, 0), [1, 0, 0, 1, 0, 0]);
     close(
       poseMatrix({ ...spec, type: 'ortho' }, restPose(spec), frame, 300),
@@ -54,7 +54,7 @@ describe('[FN3-013] camera rig', () => {
       [1, 0, 0, 1, 0, 0],
     );
   });
-  it('a push-in is smooth: the scale grows every frame with no steps (60 fps)', () => {
+  it('[FN3-013] a push-in is smooth: the scale grows every frame with no steps (60 fps)', () => {
     const shot = {
       ...defaultShot('cam-1', 'push-in'),
       easing: 'linear' as const,
@@ -72,7 +72,7 @@ describe('[FN3-013] camera rig', () => {
     // Not rounded: the scale is not quantised to device pixels.
     expect(new Set(scales.map((s) => s.toFixed(12))).size).toBe(scales.length);
   });
-  it('depth gives parallax only with a perspective camera; clip and DoF follow depth', () => {
+  it('[FN3-013] depth gives parallax only with a perspective camera; clip and DoF follow depth', () => {
     const pose: Pose = { ...restPose(spec), x: 100 };
     // How far the canvas centre moves on screen when the camera trucks.
     const shift = (camera: typeof spec, depth: number) => {
@@ -98,7 +98,7 @@ describe('[FN3-013] camera rig', () => {
       dofBlur({ ...dof, dof: { ...dof.dof, fStop: 8 } }, pose, frame, 800),
     );
   });
-  it('every controller moves finitely; Randomise stays inside safe limits', () => {
+  it('[FN3-013] every controller moves finitely; Randomise stays inside safe limits', () => {
     for (const controller of CONTROLLERS) {
       const shot = defaultShot('cam-1', controller);
       for (const t of [0, 1.5, 3]) {
@@ -120,7 +120,7 @@ describe('[FN3-013] camera rig', () => {
       expect(shot.amount).toBeLessThanOrEqual(10);
     }
   });
-  it('camera and shot JSON round-trip; bad values fall back to defaults', () => {
+  it('[FN3-013] camera and shot JSON round-trip; bad values fall back to defaults', () => {
     const custom = {
       ...spec,
       focal: 85,
@@ -136,7 +136,7 @@ describe('[FN3-013] camera rig', () => {
     expect(broken.type).toBe('persp');
     expect(parseCameraSpec('{nope')).toBeNull();
   });
-  it('guides and safe areas: thirds, golden triangles, EBU margins', () => {
+  it('[FN3-013] guides and safe areas: thirds, golden triangles, EBU margins', () => {
     const guides = { ...spec.guides, thirds: true, goldenTriangleA: true };
     const lines = guideLines({ ...spec, guides }, frame);
     expect(lines).toHaveLength(4 + 3);
@@ -154,7 +154,7 @@ describe('[FN3-013] camera rig', () => {
 });
 
 describe('[FN3-014] camera shots and the cameraShots hook', () => {
-  it('adds shots on a Camera track at the top; cuts switch cameras; deleting the last removes the track', () => {
+  it('[FN3-014] adds shots on a Camera track at the top; cuts switch cameras; deleting the last removes the track', () => {
     const engine = new EditorEngine(fixture);
     const scene = engine.state.compositions[0]!;
     const plans = [
@@ -218,7 +218,7 @@ describe('[FN3-014] camera shots and the cameraShots hook', () => {
       false,
     );
   });
-  it('a scene without shots draws exactly as before (old projects unchanged), and a shot on scene 2 leaves scene 1 alone', () => {
+  it('[FN3-014] a scene without shots draws exactly as before (old projects unchanged), and a shot on scene 2 leaves scene 1 alone', () => {
     const engine = new EditorEngine(fixture);
     const [one, two] = engine.state.compositions;
     expect(cameraStateAt(one as never, 1)).toBeNull();
@@ -231,7 +231,7 @@ describe('[FN3-014] camera shots and the cameraShots hook', () => {
       cameraStateAt(engine.state.compositions[1] as never, 1),
     ).not.toBeNull();
   });
-  it('the frame edits the start framing: truck, zoom and roll go into `from`', () => {
+  it('[FN3-014] the frame edits the start framing: truck, zoom and roll go into `from`', () => {
     const shot = defaultShot('cam-1', 'hold');
     const moved = framedShot(shot, spec, 'start', {
       x: 40,
@@ -256,7 +256,7 @@ describe('[FN3-014] camera shots and the cameraShots hook', () => {
     const corners = frameCorners(spec, pose, frame);
     expect(corners[1][0] - corners[0][0]).toBeGreaterThan(1920);
   });
-  it('the joined export keeps targets and focus objects pointing at their layers', () => {
+  it('[FN3-014] the joined export keeps targets and focus objects pointing at their layers', () => {
     const engine = new EditorEngine(fixture);
     const two = engine.state.compositions[1]!;
     const target = two.layers[0]!.id;
@@ -277,7 +277,7 @@ describe('[FN3-014] camera shots and the cameraShots hook', () => {
     expect(shot.shot.target).toBe(`scene2-${target}`);
     expect(joined.layers.some((l) => l.id === shot.shot.target)).toBe(true);
   });
-  it('a Composition Spec scene builds its cameraShots (target = an item)', async () => {
+  it('[FN3-014] a Composition Spec scene builds its cameraShots (target = an item)', async () => {
     const data = JSON.parse(
       readFileSync('tests/fixtures/compositions/logo-reveal.json', 'utf8'),
     ) as {
