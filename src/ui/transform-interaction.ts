@@ -23,10 +23,11 @@ import {
 } from '../core';
 import {
   locateLayer,
-  textLayoutForWidth,
   type LayerPreview,
   type SceneLayer,
 } from '../render/adapter';
+import { textBoxOf } from '../render/text-box';
+import { fontScaleCommands, resetTextWidthCommands } from './text-box-commands';
 import { t } from '../i18n';
 import { guardCommands } from './editor-mode';
 import {
@@ -493,13 +494,10 @@ export class TransformInteraction {
         gesture.value = gesture.layer.transform;
         delete gesture.textBox;
       } else {
-        const layout = textLayoutForWidth(
-          gesture.layer,
-          result.width,
-          this.session.source.measureText,
-        );
+        // FINAL3 T1: the box wraps at the new width; its height follows.
+        const box = textBoxOf(gesture.layer, { width: result.width });
         gesture.value = result.transform;
-        gesture.textBox = { width: result.width, height: layout.height };
+        gesture.textBox = { width: result.width, height: box.height };
       }
     } else if (gesture.kind !== 'rotate')
       gesture.value = resizeTransform(
@@ -596,6 +594,24 @@ export class TransformInteraction {
     if (!gesture) return;
     this.#gesture = null;
     try {
+      // FINAL3 T1: a corner drag on a text scales its font size (Canva),
+      // not the layer: the stored scale stays as it was.
+      if (
+        !gesture.members &&
+        gesture.layer.type === 'text' &&
+        typeof gesture.kind === 'number' &&
+        gesture.value
+      ) {
+        const commands = fontScaleCommands(
+          gesture.compositionId,
+          gesture.layer,
+          gesture.value,
+          this.session.currentTime,
+        );
+        if (commands.length)
+          this.engine.commands.transaction('Resize text', commands);
+        return;
+      }
       const commands = gesture.members
         ? gesture.members.flatMap((member) =>
             buildTransformCommands(
@@ -627,6 +643,21 @@ export class TransformInteraction {
     } finally {
       this.changed();
     }
+  }
+  /** FINAL3 T1: a double-click on a text's side handle: auto width again. */
+  resetTextWidth(layerId: string): boolean {
+    const layer = locateLayer(
+      this.session.source.composition.layers,
+      layerId,
+    )?.layer;
+    if (!layer || layer.type !== 'text' || isLocked(layer)) return false;
+    const commands = resetTextWidthCommands(
+      this.session.source.composition.id,
+      layer,
+    );
+    if (commands.length)
+      this.engine.commands.transaction('Auto width', commands);
+    return true;
   }
   cancel(): void {
     if (this.#gesture || this.#multi) {

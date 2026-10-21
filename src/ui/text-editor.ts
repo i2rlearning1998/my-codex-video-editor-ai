@@ -17,20 +17,29 @@ import { t } from '../i18n';
 import {
   locateLayer,
   numericProperty,
-  textLayoutForWidth,
   type SceneLayer,
 } from '../render/adapter';
 import type { Viewport } from '../render/canvas';
 import {
+  formatListChecked,
+  formatListLevels,
   formatRuns,
   isKnownFamily,
-  layoutRich,
-  parseListStyle,
+  listMarkers,
   parseRuns,
+  SOFT_BREAK,
   type ListStyle,
   type TextRun,
 } from '../render/rich-text';
-import { fallbackTextMeasure, layoutParagraphs } from '../render/text-layout';
+import { textBoxOf, textHeightFixed, textListOf } from '../render/text-box';
+import {
+  Composition,
+  indentLevels,
+  paragraphAt,
+  plainPaste,
+  replaceSelection,
+  selectedParagraphs,
+} from '../text-engine/editing';
 import {
   SYSTEM_FONTS,
   textStyleOf,
@@ -63,6 +72,9 @@ interface Model {
   readonly styles: readonly Override[];
   /** Selection as character offsets (anchor, focus). */
   readonly selection: readonly [number, number];
+  /** FINAL3 T3: each paragraph's list level (−1: out of the list) and tick. */
+  readonly levels: readonly number[];
+  readonly checked: readonly boolean[];
 }
 /** The resolved style of the selection; `null` for a mixed value. */
 export interface SelectionStyle {
@@ -248,7 +260,8 @@ function readDom(
         // A trailing <br> only holds an empty line open.
         if (node.nextSibling || node.parentElement?.childNodes.length === 1) {
           if (node.parentElement?.childNodes.length === 1) return;
-          text += '\n';
+          // FINAL3 T2: a <br> inside a paragraph is a soft line break.
+          text += SOFT_BREAK;
           styles.push({});
         }
         return;
@@ -258,38 +271,6 @@ function readDom(
     nodes.forEach(visit);
   });
   return { text, styles };
-}
-
-/** Plain or rich clipboard content as text and styles (null: the caret's). */
-function readClipboard(
-  data: DataTransfer,
-  base: Base,
-): { text: string; styles: (Override | null)[] } {
-  const html = data.getData('text/html');
-  if (html) {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    // Block elements become paragraphs (direct children of the root).
-    const holder = doc.createElement('div');
-    const blocks = [
-      ...doc.body.querySelectorAll('p,div,li,h1,h2,h3,h4,h5,h6'),
-    ].filter((block) => !block.querySelector('p,div,li,h1,h2,h3,h4,h5,h6'));
-    if (blocks.length)
-      for (const block of blocks) {
-        const div = doc.createElement('div');
-        div.append(
-          ...[...block.childNodes].map((node) => node.cloneNode(true)),
-        );
-        holder.append(div);
-      }
-    else holder.append(...[...doc.body.childNodes]);
-    const result = readDom(holder, base);
-    if (result.text.trim()) return result;
-  }
-  const plain = data.getData('text/plain').replace(/\r\n?/g, '\n');
-  return {
-    text: plain,
-    styles: Array.from({ length: plain.length }, () => null),
-  };
 }
 
 export interface TextEditor {
@@ -432,13 +413,27 @@ export function mountTextEditor(
   let layerId: string | null = null;
   let compositionId = '';
   let base: Base | null = null;
-  let original: { text: string; runs: string; list: ListStyle } | null = null;
+  let original: {
+    text: string;
+    runs: string;
+    list: ListStyle;
+    levels: string;
+    checked: string;
+  } | null = null;
   let list: ListStyle = 'none';
-  let model: Model = { text: '', styles: [], selection: [0, 0] };
+  let model: Model = {
+    text: '',
+    styles: [],
+    selection: [0, 0],
+    levels: [],
+    checked: [],
+  };
   let undo: Model[] = [];
   let redo: Model[] = [];
   let lastSnapshot = 0;
   let composing = false;
+  // FINAL3 T2: IME input is applied once, from the committed string.
+  const composition = new Composition();
   /** The last selection inside the editor, kept while a toolbar has focus. */
   let saved: [number, number] = [0, 0];
 
@@ -446,7 +441,9 @@ export function mountTextEditor(
     !!original &&
     model.text === original.text &&
     formatRuns(runsFromStyles(model.styles)) === original.runs &&
-    list === original.list;
+    list === original.list &&
+    formatListLevels(model.levels) === original.levels &&
+    formatListChecked(model.checked) === original.checked;
   const layer = (): SceneLayer | null =>
     layerId
       ? (locateLayer(session.source.composition.layers, layerId)?.layer ?? null)
@@ -561,26 +558,49 @@ export function mountTextEditor(
   const render = () => {
     const fragment = document.createDocumentFragment();
     let start = 0;
-    for (const paragraph of model.text.split('\n')) {
+    const paragraphs = model.text.split('\n');
+    const markers = listMarkers(paragraphs.length, list, {
+      levels: model.levels,
+      checked: model.checked,
+    });
+    paragraphs.forEach((paragraph, at) => {
       const div = document.createElement('div');
+      // FINAL3 T3: the paragraph's list level and marker (a hanging indent).
+      const level = list === 'none' ? -1 : (model.levels[at] ?? 0);
+      div.dataset.level = String(level);
+      if (model.checked[at]) div.dataset.checked = '1';
+      const marker = markers[at] ?? '';
+      if (marker) {
+        div.dataset.marker = marker;
+        div.style.paddingInlineStart = `${(Math.max(0, level) + 1) * 1.2}em`;
+        div.style.textIndent = '-1.2em';
+      }
       let from = start;
       const end = start + paragraph.length;
-      for (let index = start + 1; index <= end; index++)
-        if (index === end || !same(model.styles[index]!, model.styles[from]!)) {
-          const piece = model.text.slice(from, index);
-          const style = css(model.styles[from] ?? {});
+      const piece = (value: string, style: string) => {
+        // FINAL3 T2: a soft break is a <br> inside the paragraph.
+        value.split(SOFT_BREAK).forEach((part, index) => {
+          if (index) div.append(document.createElement('br'));
+          if (!part) return;
           if (style) {
             const span = document.createElement('span');
             span.setAttribute('style', style);
-            span.textContent = piece;
+            span.textContent = part;
             div.append(span);
-          } else div.append(document.createTextNode(piece));
+          } else div.append(document.createTextNode(part));
+        });
+      };
+      for (let index = start + 1; index <= end; index++)
+        if (index === end || !same(model.styles[index]!, model.styles[from]!)) {
+          piece(model.text.slice(from, index), css(model.styles[from] ?? {}));
           from = index;
         }
-      if (!paragraph) div.append(document.createElement('br'));
+      // An empty paragraph, or one ending in a soft break, holds its line.
+      if (!paragraph || paragraph.endsWith(SOFT_BREAK))
+        div.append(document.createElement('br'));
       fragment.append(div);
       start = end + 1;
-    }
+    });
     box.replaceChildren(fragment);
   };
   const applyBase = () => {
@@ -640,7 +660,26 @@ export function mountTextEditor(
   const readModel = () => {
     if (!base) return;
     const { text, styles } = readDom(box, base);
-    model = { text, styles, selection: readSelection() ?? model.selection };
+    // FINAL3 T3: levels and ticks ride on the paragraph elements (a new
+    // paragraph made by Enter copies its level; an empty one has no tick).
+    const divs = paragraphsOf();
+    const count = text.split('\n').length;
+    const levels = Array.from({ length: count }, (_, at) => {
+      const value = Number(divs[at]?.dataset.level);
+      return Number.isFinite(value) ? Math.max(-1, Math.min(3, value)) : 0;
+    });
+    const paragraphs = text.split('\n');
+    const checked = Array.from(
+      { length: count },
+      (_, at) => divs[at]?.dataset.checked === '1' && !!paragraphs[at],
+    );
+    model = {
+      text,
+      styles,
+      selection: readSelection() ?? model.selection,
+      levels,
+      checked,
+    };
   };
 
   // T6: while typing, the canvas draws the box at the size the text needs
@@ -650,19 +689,14 @@ export function mountTextEditor(
     const item = layer();
     if (!item || !base || !layerId) return;
     try {
+      // FINAL3 T1: the box is measured from the text, so previewing the
+      // text (and its runs and list) makes the selection follow each line.
       const commands = commitCommands(
         item,
-        model.text,
+        model,
         formatRuns(runsFromStyles(model.styles)),
         list,
-        base,
-        session,
         compositionId,
-      ).filter(
-        (command) =>
-          command.type === 'SET_PROPERTY' &&
-          command.target.kind === 'property' &&
-          (command.target.key === 'width' || command.target.key === 'height'),
       );
       session.setPreview(commands.length ? engine.preview(commands) : null);
     } catch {
@@ -679,26 +713,23 @@ export function mountTextEditor(
     const [a, b, c, d, e, f] = multiplyMatrices(view.matrix, world.matrix);
     const canvasBox = canvas.getBoundingClientRect();
     const hostBox = host.getBoundingClientRect();
-    const width = numericProperty(item, 'width') ?? 360;
-    const height = numericProperty(item, 'height') ?? 100;
-    const wrap =
-      item.properties.textWrap?.type === 'boolean' &&
-      item.properties.textWrap.value;
+    // FINAL3 T1: the box as the canvas measures it (auto or fixed width,
+    // height exactly the lines); no stored minimum makes an empty line.
+    const measured = textBoxOf(item, { text: model.text });
+    const wrap = measured.mode === 'fixed';
+    const fixed = textHeightFixed(item);
     box.style.left = `${canvasBox.left - hostBox.left + host.scrollLeft}px`;
     box.style.top = `${canvasBox.top - hostBox.top + host.scrollTop}px`;
     box.style.transform = `matrix(${a}, ${b}, ${c}, ${d}, ${e}, ${f})`;
-    box.style.width = wrap ? `${width}px` : 'max-content';
-    box.style.minWidth = `${width}px`;
-    box.style.minHeight = `${height}px`;
+    box.style.width = wrap ? `${measured.width}px` : 'max-content';
+    box.style.minWidth = wrap ? `${measured.width}px` : '1px';
+    box.style.minHeight = fixed ? `${measured.height}px` : '0px';
     box.style.whiteSpace = wrap ? 'pre-wrap' : 'pre';
     box.style.opacity = String(world.opacity);
     // T6: a fixed-height box shows where it ends while the text is typed in
     // full; past that line the canvas clips it.
-    const fixed =
-      item.properties.textFixedHeight?.type === 'boolean' &&
-      item.properties.textFixedHeight.value;
     box.classList.toggle('fixed-height', fixed);
-    box.style.setProperty('--fixed-height', `${height}px`);
+    box.style.setProperty('--fixed-height', `${measured.height}px`);
     queueCaret();
   };
 
@@ -713,12 +744,43 @@ export function mountTextEditor(
     changed();
   });
   box.addEventListener('compositionstart', () => {
+    readModel();
     composing = true;
     snapshot(true);
+    composition.start({ text: model.text, selection: model.selection });
   });
-  box.addEventListener('compositionend', () => {
+  box.addEventListener('compositionupdate', (event) => {
+    composition.update((event as CompositionEvent).data ?? '');
+  });
+  box.addEventListener('compositionend', (event) => {
     composing = false;
+    // FINAL3 T2: the committed string replaces the selection once: the
+    // browser's intermediate DOM is not trusted (no doubled or lost
+    // characters in Hindi or other IME input).
+    const before = model;
+    const result = composition.end((event as CompositionEvent).data ?? '');
     readModel();
+    if (result && result.text !== model.text) {
+      const [from] = before.selection;
+      const at = Math.min(from, before.selection[1]);
+      const inserted =
+        result.text.length -
+        before.text.length +
+        Math.abs(before.selection[1] - before.selection[0]);
+      const look = before.styles[Math.max(0, at - 1)] ?? {};
+      model = {
+        ...model,
+        text: result.text,
+        styles: [
+          ...before.styles.slice(0, at),
+          ...Array.from({ length: Math.max(0, inserted) }, () => look),
+          ...before.styles.slice(Math.max(...before.selection)),
+        ],
+        selection: result.selection,
+      };
+      render();
+      writeSelection(model.selection);
+    }
     live();
     changed();
   });
@@ -737,6 +799,49 @@ export function mountTextEditor(
       event.preventDefault();
       event.stopPropagation();
       editor.finish();
+      return;
+    }
+    // FINAL3 T2: Shift+Enter is a soft line break inside the paragraph.
+    if (event.key === 'Enter' && event.shiftKey) {
+      event.preventDefault();
+      event.stopPropagation();
+      readModel();
+      snapshot(true);
+      insertPlain(SOFT_BREAK);
+      return;
+    }
+    // FINAL3 T3: Enter on an empty list paragraph leaves the list.
+    if (event.key === 'Enter' && list !== 'none') {
+      readModel();
+      const at = paragraphAt(model.text, Math.min(...model.selection));
+      const paragraph = model.text.split('\n')[at] ?? '';
+      if (!paragraph && (model.levels[at] ?? 0) >= 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        snapshot(true);
+        const levels = [...model.levels];
+        while (levels.length <= at) levels.push(0);
+        levels[at] = -1;
+        restore({ ...model, levels });
+        return;
+      }
+    }
+    // FINAL3 T3: Tab and Shift+Tab indent list paragraphs.
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      event.stopPropagation();
+      if (list === 'none') return;
+      readModel();
+      snapshot(true);
+      restore({
+        ...model,
+        levels: indentLevels(
+          model.levels,
+          model.text.split('\n').length,
+          selectedParagraphs(model.text, model.selection),
+          event.shiftKey ? -1 : 1,
+        ),
+      });
       return;
     }
     const mod = event.ctrlKey || event.metaKey;
@@ -773,30 +878,50 @@ export function mountTextEditor(
     // Other keys type: the global shortcuts already skip editable text.
     event.stopPropagation();
   });
+  /** Inserts plain text at the selection, in the style at the caret. */
+  const insertPlain = (value: string) => {
+    const [anchor, focus] = model.selection;
+    const from = Math.min(anchor, focus),
+      to = Math.max(anchor, focus);
+    const look = model.styles[Math.max(0, from - 1)] ?? {};
+    const next = replaceSelection(model, value);
+    const added = value.split('\n').length - 1;
+    const removed = model.text.slice(from, to).split('\n').length - 1;
+    const paragraph = paragraphAt(model.text, from);
+    // New paragraphs take the level of the one they were typed in.
+    const levels = [...model.levels];
+    levels.splice(
+      paragraph + 1,
+      removed,
+      ...Array.from({ length: added }, () => model.levels[paragraph] ?? 0),
+    );
+    const checked = [...model.checked];
+    checked.splice(
+      paragraph + 1,
+      removed,
+      ...Array.from({ length: added }, () => false),
+    );
+    restore({
+      ...model,
+      text: next.text,
+      styles: [
+        ...model.styles.slice(0, from),
+        ...Array.from({ length: value.length }, () => look),
+        ...model.styles.slice(to),
+      ],
+      selection: next.selection,
+      levels,
+      checked,
+    });
+  };
+  // FINAL3 T2: paste is plain text only (foreign HTML and its styles are
+  // dropped); the pasted text takes the style at the caret.
   box.addEventListener('paste', (event) => {
     if (!event.clipboardData || !base) return;
     event.preventDefault();
     readModel();
-    const pasted = readClipboard(event.clipboardData, base);
-    const [anchor, focus] = model.selection;
-    const from = Math.min(anchor, focus),
-      to = Math.max(anchor, focus);
-    // Plain text takes the style at the caret.
-    const at = model.styles[Math.max(0, from - 1)] ?? {};
-    const styles = pasted.styles.map((style) =>
-      style ? relative(style, base!) : at,
-    );
     snapshot(true);
-    const caret = from + pasted.text.length;
-    restore({
-      text: model.text.slice(0, from) + pasted.text + model.text.slice(to),
-      styles: [
-        ...model.styles.slice(0, from),
-        ...styles,
-        ...model.styles.slice(to),
-      ],
-      selection: [caret, caret],
-    });
+    insertPlain(plainPaste(event.clipboardData.getData('text/plain')));
   });
   // A click elsewhere (not a toolbar, popover or side panel) commits.
   const outside = (event: PointerEvent) => {
@@ -838,7 +963,18 @@ export function mountTextEditor(
       return layerId;
     },
     start(id, options = {}) {
-      if (layerId === id) return;
+      if (layerId === id) {
+        // FINAL3 T2: already editing: a double-click selects everything, a
+        // click puts the caret at the pointer.
+        if (options.selectAll) {
+          readModel();
+          model = { ...model, selection: [0, model.text.length] };
+          writeSelection(model.selection);
+          saved = [...model.selection] as [number, number];
+          changed();
+        }
+        return;
+      }
       if (layerId) editor.finish();
       const item = locateLayer(session.source.composition.layers, id)?.layer;
       if (!item || item.type !== 'text') return;
@@ -853,8 +989,16 @@ export function mountTextEditor(
         item.properties.text?.type === 'string'
           ? item.properties.text.value
           : item.name;
-      list = parseListStyle(property('listStyle'));
-      original = { text, runs: property('textRuns'), list };
+      const listed = textListOf(item);
+      list = listed.list;
+      original = {
+        text,
+        runs: property('textRuns'),
+        list,
+        levels: formatListLevels(listed.levels),
+        checked: formatListChecked(listed.checked),
+      };
+      const count = text.split('\n').length;
       model = {
         text,
         styles: stylesFromRuns(
@@ -864,6 +1008,11 @@ export function mountTextEditor(
         selection: options.selectAll
           ? [0, text.length]
           : [text.length, text.length],
+        levels: Array.from(
+          { length: count },
+          (_, at) => listed.levels[at] ?? 0,
+        ),
+        checked: Array.from({ length: count }, (_, at) => !!listed.checked[at]),
       };
       undo = [];
       redo = [];
@@ -903,11 +1052,7 @@ export function mountTextEditor(
       )
         canvas.focus({ preventScroll: true });
       const runs = formatRuns(runsFromStyles(model.styles));
-      if (
-        item &&
-        original &&
-        (model.text !== original.text || runs !== original.runs)
-      )
+      if (item && original && !sameAsOpened())
         try {
           // FINAL2 U9: a caption keeps its cue in step (its words, the
           // karaoke highlight and its timing), as one 'Edit caption' step.
@@ -921,15 +1066,7 @@ export function mountTextEditor(
           } else
             engine.commands.transaction(
               'Edit text',
-              commitCommands(
-                item,
-                model.text,
-                runs,
-                list,
-                base,
-                session,
-                compositionId,
-              ),
+              commitCommands(item, model, runs, list, compositionId),
             );
         } catch (error) {
           report(error);
@@ -1006,22 +1143,37 @@ export function mountTextEditor(
     const item = layer();
     if (!item || !session.selectedIds.includes(layerId)) return editor.finish();
     base = baseOf(item);
-    const value = item.properties.listStyle;
-    list = parseListStyle(value?.type === 'string' ? value.value : undefined);
+    // FINAL3 T3: the toolbar turned a list on or off: take its levels.
+    const listed = textListOf(item);
+    if (listed.list !== list) {
+      readModel();
+      list = listed.list;
+      const count = model.text.split('\n').length;
+      model = {
+        ...model,
+        levels: Array.from(
+          { length: count },
+          (_, at) => listed.levels[at] ?? 0,
+        ),
+      };
+      render();
+      writeSelection(model.selection);
+    }
     applyBase();
     sync();
   });
   return editor;
 }
 
-/** Commands that store an edit: text, runs, list and a box that fits. */
+/**
+ * Commands that store an edit: the text, its runs and its list levels and
+ * ticks. FINAL3 T1: the box is measured from the text, so no size is stored.
+ */
 function commitCommands(
   item: SceneLayer,
-  text: string,
+  model: Model,
   runs: string,
   list: ListStyle,
-  base: Base,
-  session: EditorSession,
   compositionId: string,
 ): Command[] {
   const commands: Command[] = [];
@@ -1043,82 +1195,12 @@ function commitCommands(
       },
     } as Command);
   };
-  set('text', text);
+  set('text', model.text);
   set('textRuns', runs);
-  // The box grows to fit the edited text (it never shrinks).
-  const measure = session.source.measureText ?? fallbackTextMeasure;
-  const wrap =
-    item.properties.textWrap?.type === 'boolean' &&
-    item.properties.textWrap.value;
-  const width = numericProperty(item, 'width') ?? 360;
-  const height = numericProperty(item, 'height') ?? 100;
-  let needWidth = width,
-    needHeight = height;
-  if (runs || list !== 'none') {
-    const layout = layoutRich(
-      text,
-      parseRuns(runs, text.length),
-      list,
-      base,
-      wrap ? width : null,
-      measure,
-    );
-    needHeight = layout.height;
-    if (!wrap)
-      needWidth = Math.max(
-        ...layout.lines.map((line) => line.width + line.indent),
-        0,
-      );
-  } else if (wrap) {
-    // T6: a fixed-width box wraps at its width (as the canvas draws it).
-    needHeight = textLayoutForWidth(
-      {
-        ...item,
-        properties: {
-          ...item.properties,
-          text: {
-            type: 'string',
-            value: text,
-            animated: false,
-            keyframes: [],
-            constraints: [],
-          },
-        },
-      } as unknown as SceneLayer,
-      width,
-      session.source.measureText,
-    ).height;
-  } else {
-    const layout = layoutParagraphs(text, base.size, base.style);
-    needHeight = layout.height;
-    if (!wrap)
-      needWidth = Math.max(
-        ...layout.lines.map((line) => measure(line, base.size, base.style)),
-        0,
-      );
+  if (list !== 'none') {
+    set('listLevels', formatListLevels(model.levels));
+    set('listChecked', formatListChecked(model.checked));
   }
-  // T6: a fixed-height box keeps its height (the text past it is clipped).
-  const fixed =
-    item.properties.textFixedHeight?.type === 'boolean' &&
-    item.properties.textFixedHeight.value;
-  for (const [key, value, now] of [
-    ['width', Math.ceil(needWidth), width],
-    ['height', fixed ? height : Math.ceil(needHeight), height],
-  ] as const)
-    if (value > now && Number.isFinite(value))
-      commands.push({
-        type: 'SET_PROPERTY',
-        compositionId,
-        layerId: item.id,
-        target: { kind: 'property', key },
-        property: {
-          type: 'number',
-          value,
-          animated: false,
-          keyframes: [],
-          constraints: [],
-        },
-      } as Command);
   return commands;
 }
 

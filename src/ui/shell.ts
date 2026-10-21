@@ -751,9 +751,12 @@ export function mountEditorShell(
       fitHeight,
       session.source.composition,
       window.devicePixelRatio || 1,
-      // FINAL3 A1: a short stage (laptop-height windows) keeps 12 px per
-      // side, so a portrait canvas is not shrunk by the margin.
-      fitHeight < 560 ? { ...EDITOR_FIT, padding: 12 } : EDITOR_FIT,
+      // FINAL3 A1: a portrait canvas on a short stage (laptop-height
+      // windows) keeps 12 px per side, so the margin does not shrink it.
+      fitHeight < 560 &&
+        session.source.composition.height > session.source.composition.width
+        ? { ...EDITOR_FIT, padding: 12 }
+        : EDITOR_FIT,
     );
     const at = (pan: readonly [number, number]): AffineMatrix =>
       multiplyMatrices(
@@ -1731,7 +1734,7 @@ export function mountEditorShell(
       finish: () => drawPalette?.place.finish(),
       cancel: () => drawPalette?.place.cancel(),
     },
-    (id, at) => editText(id, at ? { at } : { selectAll: true }),
+    (id, options) => editText(id, options ?? { selectAll: true }),
     effectsTool,
   );
   const commandContext: CommandContext = {

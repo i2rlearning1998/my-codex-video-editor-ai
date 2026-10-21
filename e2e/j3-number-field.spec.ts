@@ -135,6 +135,7 @@ test('[INS-018] dragging a slider or scrubbing a label previews on the canvas li
   const label = page.locator('#inspector-content dt label', {
     hasText: 'Position X',
   });
+  await label.scrollIntoViewIfNeeded();
   const box = (await label.boundingBox())!;
   const before = (await layer(page, id)).transform.position.value[0];
   await page.mouse.move(box.x + 5, box.y + box.height / 2);

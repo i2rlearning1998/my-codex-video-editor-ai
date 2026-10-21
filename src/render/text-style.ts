@@ -64,6 +64,9 @@ export interface TextStyle {
   readonly underline: boolean;
   readonly strike: boolean;
   readonly anchor: TextAnchor;
+  /** FINAL3 (Canva Typography): kerning and ligatures, on unless false. */
+  readonly kerning?: boolean;
+  readonly ligatures?: boolean;
 }
 /** Matches the pre-W2-F5 rendering exactly (600 Arial, 1.2 line height). */
 export const DEFAULT_TEXT_STYLE: TextStyle = Object.freeze({
@@ -103,8 +106,14 @@ export function textStyleOf(layer: SceneLayer): TextStyle {
   const decoration = string('textDecoration') ?? '';
   const anchor = string('textAnchor');
   const engine = parseTextEngine(string('textEngine'));
+  const flag = (key: string) => {
+    const value = p[key];
+    return value?.type === 'boolean' ? value.value : undefined;
+  };
   return {
     ...(engine ? { engine } : {}),
+    ...(flag('fontKerning') === false ? { kerning: false } : {}),
+    ...(flag('fontLigatures') === false ? { ligatures: false } : {}),
     underline: decoration.split(' ').includes('underline'),
     strike: decoration.split(' ').includes('line-through'),
     anchor: (TEXT_ANCHORS as readonly string[]).includes(anchor ?? '')
@@ -169,6 +178,26 @@ export function applyCase(text: string, textCase: TextCase): string {
   return text;
 }
 
+/**
+ * FINAL3 (Canva Typography › Ligatures off): a zero-width non-joiner between
+ * Latin letters stops ligatures (fi, fl, ff). Other scripts are untouched, so
+ * Devanagari conjuncts still join.
+ */
+export function withoutLigatures(text: string): string {
+  return text.replace(/(\p{Script=Latin})(?=\p{Script=Latin})/gu, '$1\u200c');
+}
+/** The text as drawn and measured with a style's typography settings. */
+export const typographyText = (text: string, style: TextStyle) =>
+  style.ligatures === false ? withoutLigatures(text) : text;
+/** Applies kerning to a context that supports it (Chrome 99+). */
+export function applyKerning(
+  context: { fontKerning?: string },
+  style: TextStyle,
+): void {
+  if ('fontKerning' in context)
+    context.fontKerning = style.kerning === false ? 'none' : 'normal';
+}
+
 /** Canvas measuring with letter spacing, whether or not Canvas supports it. */
 export function measureWithContext(
   context: {
@@ -182,8 +211,9 @@ export function measureWithContext(
 ): number {
   context.font = textFont(style, fontSize);
   if ('letterSpacing' in context) context.letterSpacing = '0px';
+  applyKerning(context as { fontKerning?: string }, style);
   return (
-    context.measureText(text).width +
+    context.measureText(typographyText(text, style)).width +
     Array.from(text).length * style.letterSpacing
   );
 }

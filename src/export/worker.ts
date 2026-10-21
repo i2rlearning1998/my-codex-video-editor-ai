@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { setTextBoxMeasurer } from '../render/text-box';
 import { mediaSeekTime } from '../media-probe/timing';
 import { rasterizeOrientedSample } from '../media-probe/rotation';
 // W5-A export worker: decodes source video with WebCodecs (via Mediabunny), draws
@@ -149,6 +150,9 @@ async function run(job: ExportJob): Promise<void> {
     );
   const measureText: TextMeasurer = (text, fontSize, style) =>
     measureWithContext(measure, text, fontSize, style);
+  // FINAL3 T1: text boxes are sized with the worker's measurer, like the
+  // preview's (same fonts, same metrics).
+  setTextBoxMeasurer(measureText);
   const sourceAt = (time: number, frames?: FrameProvider): RenderSource => ({
     // ANI-003: the same evaluation as the preview.
     composition: compositionAt(job.composition, time),

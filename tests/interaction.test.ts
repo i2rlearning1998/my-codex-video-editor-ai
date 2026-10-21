@@ -46,6 +46,15 @@ function setup(
   layer.transform.position = vector2(30, 40);
   layer.properties = { width: number(100), height: number(60) };
   if (type === 'text') {
+    // FINAL3 T1 (revision 9): a fixed-width text box wraps at its width and
+    // is as tall as its lines.
+    layer.properties.textBox = {
+      type: 'string',
+      value: 'fixed',
+      animated: false,
+      keyframes: [],
+      constraints: [],
+    };
     layer.properties.fontSize = number(10);
     layer.properties.text = {
       type: 'string',
@@ -640,8 +649,8 @@ describe('Tier 2.2.1 professional interaction contract', () => {
       const preview = s.render.mock.calls.at(-1)![1];
       const item = deriveRenderItems(preview).items[0]!;
       expect(item.size.width).toBe(50);
-      expect(item.lines!.length).toBeGreaterThan(1);
-      expect(item.size.height).toBe(item.lines!.length * 12);
+      expect(item.richLayout!.lines.length).toBeGreaterThan(1);
+      expect(item.size.height).toBe(item.richLayout!.lines.length * 12);
       s.event('pointerup', end);
       expect(s.current().properties.width!.value).toBe(50);
       expect(s.current().properties.height!.value).toBe(item.size.height);
@@ -677,15 +686,19 @@ describe('Tier 2.2.1 professional interaction contract', () => {
     expect(s.geometry().corners[1]![0]).toBeCloseTo(before.corners[1]![0]);
     expect(s.geometry().corners[1]![1]).toBeCloseTo(before.corners[1]![1]);
   });
-  it('text corners scale the whole object without changing box width, height, or font size', () => {
+  it('[FN3-010] text corners scale the font size (and a fixed width) in one step; the layer scale stays 1 (revision 9)', () => {
     const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
-    const before = s.current().properties;
-    const start = s.geometry().corners[2]!;
-    s.event('pointerdown', start);
-    s.event('pointerup', [start[0] + 50, start[1] + 30]);
-    expect(s.current().transform.scale.value).toEqual([1.5, 1.5]);
-    expect(s.current().properties).toEqual(before);
+    const [left, , start] = s.geometry().corners;
+    // Along the diagonal to 1.5 × the size.
+    s.event('pointerdown', start!);
+    s.event('pointerup', [
+      start![0] + (start![0] - left![0]) * 0.5,
+      start![1] + (start![1] - left![1]) * 0.5,
+    ]);
+    expect(s.current().transform.scale.value).toEqual([1, 1]);
+    expect(s.current().properties.fontSize!.value).toBeCloseTo(15, 1);
+    expect(s.current().properties.width!.value).toBeCloseTo(150, 1);
     expect(s.engine.history.undo).toHaveLength(1);
   });
   it.each(['rotate', 'right', 'text-right'] as const)(
@@ -1042,18 +1055,24 @@ describe('Tier 2.2.2 uniform corner scaling', () => {
       expect(s.engine.state).toEqual(after);
     },
   );
-  it('preserves text glyph proportions across repeated normal corner drags', () => {
+  it('[FN3-010] preserves text glyph proportions across repeated corner drags: the font grows, the scale stays 1', () => {
     const s = setup(false, 1, [448, 248], 'text');
     s.shell.session.select('child');
-    const properties = s.current().properties;
     for (let i = 1; i <= 3; i++) {
-      const start = s.geometry().corners[2]!;
-      const end = s.screen([150, 90]);
+      const [left, , right] = s.geometry().corners;
+      const start = right!;
+      const width = right![0] - left![0];
+      // Drag the bottom-right corner along the diagonal to 1.5 × the size.
       s.event('pointerdown', start);
-      s.event('pointerup', end);
-      expect(s.current().transform.scale.value[0]).toBeCloseTo(1.5 ** i, 10);
-      expect(s.current().transform.scale.value[1]).toBeCloseTo(1.5 ** i, 10);
-      expect(s.current().properties).toEqual(properties);
+      s.event('pointerup', [
+        start[0] + width * 0.5,
+        start[1] + (right![1] - left![1]) * 0.5,
+      ]);
+      expect(s.current().transform.scale.value).toEqual([1, 1]);
+      expect(s.current().properties.fontSize!.value).toBeCloseTo(
+        10 * 1.5 ** i,
+        1,
+      );
       expect(s.engine.history.undo).toHaveLength(i);
     }
   });

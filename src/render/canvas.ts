@@ -1,13 +1,15 @@
 import { processChromaFrame } from '../chroma/process';
 import { drawMaskedItems } from '../masks/render';
 import { drawStructuredText } from '../text-engine/draw';
-import { drawRich } from './rich-text';
+import { drawTextWithEffects } from './text-effects';
+import { setTextBoxMeasurer } from './text-box';
 import { sceneCameraMatrix } from '../camera/scene';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
   invertMatrix,
   multiplyMatrices,
+  IDENTITY_MATRIX,
   transformPoint,
   type AffineMatrix,
   type Point2,
@@ -198,15 +200,29 @@ function fillSpaced(
   context.letterSpacing = '0px';
 }
 
+/**
+ * FINAL3 T1: the page's one text measurer (real fonts through Canvas). Text
+ * boxes are sized with it everywhere (render/text-box.ts).
+ */
+let metrics: CanvasRenderingContext2D | null | undefined;
+export const canvasMeasureText: TextMeasurer = (text, fontSize, style) => {
+  if (metrics === undefined)
+    metrics =
+      typeof document === 'undefined' ||
+      // jsdom (unit tests) has no Canvas: the deterministic metrics apply.
+      /jsdom/i.test(globalThis.navigator?.userAgent ?? '')
+        ? null
+        : document.createElement('canvas').getContext('2d');
+  if (!metrics) return fallbackTextMeasure(text, fontSize, style);
+  return measureWithContext(metrics, text, fontSize, style);
+};
+
 /** Replaceable Canvas 2D boundary. No engine, subscriptions, commands, or retained scene data. */
 export class Canvas2DRenderer implements CompositionRenderer {
-  #metrics: CanvasRenderingContext2D | null | undefined;
-  readonly measureText: TextMeasurer = (text, fontSize, style) => {
-    if (this.#metrics === undefined)
-      this.#metrics = document.createElement('canvas').getContext('2d');
-    if (!this.#metrics) return fallbackTextMeasure(text, fontSize, style);
-    return measureWithContext(this.#metrics, text, fontSize, style);
-  };
+  readonly measureText: TextMeasurer = canvasMeasureText;
+  constructor() {
+    setTextBoxMeasurer(canvasMeasureText);
+  }
   render(
     canvas: HTMLCanvasElement,
     source: RenderSource,
@@ -385,6 +401,11 @@ export function drawComposition(
     : view;
   const { items, warnings } = deriveRenderItems(source);
   const errors = [...warnings];
+  const fxFrame = {
+    matrix: view,
+    width: source.composition.width,
+    height: source.composition.height,
+  } as const;
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.clearRect(
     0,
@@ -403,10 +424,20 @@ export function drawComposition(
   }
   type Target = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   /** Draws one item onto `context` (the canvas, or an FX scratch canvas). */
-  const paintItem = (context: Target, item: RenderItem, fade: number) => {
+  const paintItem = (
+    context: Target,
+    item: RenderItem,
+    fade: number,
+    offset?: readonly [number, number],
+  ) => {
     context.save();
     try {
-      context.setTransform(...multiplyMatrices(content, item.matrix));
+      context.setTransform(
+        ...multiplyMatrices(
+          offset ? [1, 0, 0, 1, -offset[0], -offset[1]] : IDENTITY_MATRIX,
+          multiplyMatrices(content, item.matrix),
+        ),
+      );
       context.globalAlpha = item.opacity * fade;
       // W5-C Wipe: only the revealed part of the box is drawn.
       if (item.reveal !== undefined) {
@@ -499,9 +530,13 @@ export function drawComposition(
       context.fillStyle = item.fill;
       if (item.kind !== 'text')
         context.fillRect(0, 0, item.size.width, item.size.height);
-      context.beginPath();
-      context.rect(0, 0, item.size.width, item.size.height);
-      context.clip();
+      // FINAL3: a text box fits its text, so text and its effects (shadow,
+      // glow, outline) are not clipped; a fixed-height box still clips.
+      if (item.kind !== 'text' || item.textOverflow || item.textStyle?.engine) {
+        context.beginPath();
+        context.rect(0, 0, item.size.width, item.size.height);
+        context.clip();
+      }
       // J4: text being edited is drawn by the editor over the canvas.
       if (item.editing) {
         // Nothing: the box stays for its outline and handles.
@@ -516,13 +551,14 @@ export function drawComposition(
           item.textStyle.engine,
         );
       } else if (item.kind === 'text' && item.richLayout) {
-        drawRich(
-          context,
-          item.richLayout,
-          item.textStyle ?? DEFAULT_TEXT_STYLE,
-          item.size.width,
-          item.size.height,
-        );
+        drawTextWithEffects(context, {
+          ...item,
+          layout: item.richLayout,
+          style: item.textStyle ?? DEFAULT_TEXT_STYLE,
+          width: item.size.width,
+          height: item.size.height,
+          color: item.fill.slice(0, 7),
+        });
       } else if (item.kind === 'text' && item.textLayout) {
         drawText(context, item);
       } else if (item.kind !== 'rectangle') {
@@ -597,6 +633,7 @@ export function drawComposition(
               paintItem,
               item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
               errors,
+              fxFrame,
             )
           )
             return;
@@ -624,6 +661,7 @@ export function drawComposition(
           paintItem,
           item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
           errors,
+          fxFrame,
         )
       )
         continue;

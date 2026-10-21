@@ -10,6 +10,8 @@ export const IN_OUT_PRESETS = [
   'pop',
   'wipe',
   'typewriter',
+  // FINAL3 T6: text appears word by word.
+  'words',
 ] as const;
 export const LOOP_PRESETS = ['pulse', 'float', 'spin', 'wiggle'] as const;
 export const SLIDE_DIRECTIONS = ['up', 'down', 'left', 'right'] as const;

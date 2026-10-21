@@ -54,6 +54,8 @@ export interface PresetEffect {
   offset: [number, number];
   reveal: number;
   characters: number;
+  /** FINAL3 T6: the reveal goes word by word. */
+  words?: boolean;
 }
 const identity = (): PresetEffect => ({
   opacity: 1,
@@ -106,6 +108,10 @@ function applyInOut(
       return;
     case 'typewriter':
       effect.characters *= raw;
+      return;
+    case 'words':
+      effect.characters *= raw;
+      effect.words = true;
       return;
   }
 }
@@ -228,23 +234,25 @@ function modulate(
   let properties = layer.properties as Record<string, unknown>;
   if (effect.reveal < 1)
     properties = { ...properties, presetReveal: number(effect.reveal) };
-  const text = layer.properties.text;
-  if (
-    effect.characters < 1 &&
-    layer.type === 'text' &&
-    text?.type === 'string'
-  ) {
-    const characters = [...text.value];
+  // FINAL3 T6: the typewriter keeps the whole text (the box and its
+  // alignment stay put) and reveals grapheme clusters or words as it draws
+  // (render/text-effects.ts), so a Devanagari conjunct appears whole.
+  if (effect.characters < 1 && layer.type === 'text')
     properties = {
       ...properties,
-      text: {
-        ...(text as object),
-        value: characters
-          .slice(0, Math.ceil(characters.length * effect.characters))
-          .join(''),
-      },
+      presetTextReveal: number(Math.max(0, effect.characters)),
+      ...(effect.words
+        ? {
+            presetTextRevealBy: {
+              type: 'string',
+              value: 'words',
+              animated: false,
+              keyframes: [],
+              constraints: [],
+            },
+          }
+        : {}),
     };
-  }
   return Object.freeze({
     ...(layer as object),
     transform,

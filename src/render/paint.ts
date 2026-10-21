@@ -14,7 +14,11 @@ export interface Gradient {
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /** A valid gradient, or null (empty, malformed or out of range). */
-export function parseGradient(text: string | undefined): Gradient | null {
+export function parseGradient(
+  text: string | undefined,
+  /** FINAL3: text gradients take up to 10 colours (Canva). */
+  maxStops = 4,
+): Gradient | null {
   if (!text) return null;
   try {
     const value = JSON.parse(text) as Partial<Gradient>;
@@ -22,7 +26,7 @@ export function parseGradient(text: string | undefined): Gradient | null {
     const angle = Number(value.angle ?? 0);
     if (!Number.isFinite(angle)) return null;
     const stops = Array.isArray(value.stops) ? value.stops : [];
-    if (stops.length < 2 || stops.length > 4) return null;
+    if (stops.length < 2 || stops.length > maxStops) return null;
     if (
       !stops.every(
         (stop) =>

@@ -41,6 +41,8 @@ import {
   type RichLayout,
 } from './rich-text';
 import { textStyleOf, type TextStyle } from './text-style';
+import { textBoxOf, textHeightFixed } from './text-box';
+import { textEffectsOf, type TextLook } from './text-effects';
 import { shapeOf, type ShapeStyle } from './shapes';
 import type { TransformCapabilities } from './transform-capabilities';
 import { drawingOf, type DrawingPath } from './drawing';
@@ -161,7 +163,8 @@ export interface LayerSize {
   readonly height: number;
   readonly source: 'properties' | 'asset' | 'placeholder' | 'mixed';
 }
-export interface RenderItem {
+/** FINAL3: a text item also carries its effects, curve, gradient and reveal. */
+export interface RenderItem extends TextLook {
   readonly chromaKey?: Readonly<ChromaKey>;
   readonly maskScopes?: readonly MaskScope[];
   readonly id: string;
@@ -263,6 +266,16 @@ export function layerSize(
   preview?: LayerPreview,
 ): LayerSize | null {
   if (layer.type === 'group') return null;
+  // FINAL3 T1: a text box is as big as its text (tables keep their box).
+  if (layer.type === 'text' && !textStyleOf(layer).engine?.table) {
+    const drag = preview?.layerId === layer.id ? preview.textBox : undefined;
+    const box = textBoxOf(layer, drag ? { width: drag.width } : {});
+    return Object.freeze({
+      width: box.width,
+      height: box.height,
+      source: 'properties' as const,
+    });
+  }
   const asset = assets.find((item) => item.id === layer.assetId);
   const box = preview?.layerId === layer.id ? preview.textBox : undefined;
   const width = box?.width ?? numericProperty(layer, 'width'),
@@ -451,32 +464,34 @@ export function deriveRenderItems(input: RenderSource): {
           transformPoint(world.matrix, point);
         const fill = layer.properties.fill;
         const text = layer.properties.text;
-        const wrapped =
-          layer.type === 'text' &&
-          ((source.preview?.layerId === layer.id && source.preview.textBox) ||
-            (layer.properties.textWrap?.type === 'boolean' &&
-              layer.properties.textWrap.value))
-            ? textLayoutForWidth(layer, size.width, source.measureText)
+        // FINAL3 T1: every text (but a table) is laid out once, as rich
+        // text, by its box (render/text-box.ts); the drawing uses it.
+        const table =
+          layer.type === 'text' && !!textStyleOf(layer).engine?.table;
+        const drag =
+          source.preview?.layerId === layer.id
+            ? source.preview.textBox
             : undefined;
-        // W2-F5: every text layer is laid out with its style.
-        const textLayout =
-          layer.type === 'text'
-            ? (wrapped ??
-              layoutParagraphs(
-                text?.type === 'string' ? text.value : layer.name,
-                Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
-                textStyleOf(layer),
-              ))
+        const textBox =
+          layer.type === 'text' && !table
+            ? textBoxOf(layer, {
+                ...(drag ? { width: drag.width } : {}),
+                ...(source.measureText ? { measure: source.measureText } : {}),
+              })
             : undefined;
-        // J4: per-range styles or a list lay out as rich text.
-        const richLayout =
-          layer.type === 'text'
-            ? richTextLayout(layer, size, source)
-            : undefined;
+        const wrapped = undefined as TextLayout | undefined;
+        const textLayout = table
+          ? layoutParagraphs(
+              text?.type === 'string' ? text.value : layer.name,
+              Math.min(numericProperty(layer, 'fontSize') ?? 32, 4096),
+              textStyleOf(layer),
+            )
+          : undefined;
+        const richLayout = textBox?.layout;
         // The stored height is a static field the user (or a drag) set; wrapped
         // text can need more lines than that at the current width/font size, so
         // never clip content the layout itself says it needs.
-        let needed = richLayout?.height ?? wrapped?.height;
+        let needed: number | undefined = undefined;
         const structuredStyle =
           layer.type === 'text' ? textStyleOf(layer) : undefined;
         if (structuredStyle?.engine) {
@@ -504,12 +519,10 @@ export function deriveRenderItems(input: RenderSource): {
         }
         // T6: a fixed-height box never grows; text past it is clipped and
         // the editor marks the overflow.
-        const fixedHeight =
-          layer.type === 'text' &&
-          layer.properties.textFixedHeight?.type === 'boolean' &&
-          layer.properties.textFixedHeight.value;
-        const effectiveSize =
-          wrapped && needed !== undefined && !fixedHeight
+        const fixedHeight = layer.type === 'text' && textHeightFixed(layer);
+        const effectiveSize = textBox
+          ? { ...size, width: textBox.width, height: textBox.height }
+          : table && needed !== undefined && !fixedHeight
             ? { ...size, height: Math.max(size.height, needed) }
             : size;
         const textOverflow =
@@ -547,7 +560,13 @@ export function deriveRenderItems(input: RenderSource): {
             ...(textLayout
               ? { textStyle: textStyleOf(layer), textLayout }
               : {}),
-            ...(richLayout ? { richLayout } : {}),
+            ...(richLayout && textBox
+              ? {
+                  richLayout,
+                  textStyle: textBox.style,
+                  ...textEffectsOf(layer, textBox),
+                }
+              : {}),
             ...(source.editingTextId === layer.id ? { editing: true } : {}),
             ...(textOverflow ? { textOverflow: true } : {}),
             ...(layer.type === 'shape' && !drawing

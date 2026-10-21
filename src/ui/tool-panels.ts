@@ -13,6 +13,7 @@ import { iconSvg } from './icons';
 import type { EditorSession } from './session';
 import type { SidePanels } from './side-panel';
 import { createNumberField } from './components/number-field';
+import { buildTextEffectsPanel } from './text-effects-panel';
 
 export type ToolPanelId = 'font' | 'effects' | 'edit-image' | 'replace';
 
@@ -103,28 +104,20 @@ export function mountToolPanels(
     wrap.append(picker, section(t('panels.moreFonts'), upload));
     return wrap;
   };
-  const effects = () => {
-    const layer = selected();
-    if (!layer || layer.type !== 'text') return null;
-    const wrap = document.createElement('div');
-    wrap.className = 'tool-panel';
-    wrap.dataset.toolPanel = 'effects';
-    wrap.append(
-      section(
-        t('panels.style'),
-        planned(t('panels.shadow'), 'effects', 'TXT-019', 3),
-        planned(t('panels.outline'), 'strokeStyle', 'TXT-019', 3),
-        planned(t('panels.glow'), 'magic', 'TXT-020', 3),
-        planned(t('panels.background'), 'rectangle', 'TXT-020', 3),
-        planned(t('panels.presets'), 'text', 'TXT-022', 3),
-      ),
-      section(
-        t('panels.shape'),
-        planned(t('panels.curve'), 'curve', 'TXT-021', 3),
-      ),
-    );
-    return wrap;
-  };
+  // FINAL3: Canva's text effects (Style and Shape), all live.
+  const effects = (): HTMLElement | null =>
+    buildTextEffectsPanel({
+      compositionId: () => session.source.composition.id,
+      layer: () => {
+        const layer = selected();
+        return layer?.type === 'text' ? layer : null;
+      },
+      run,
+      refresh: () => {
+        if (panels.openId === 'effects')
+          panels.show('effects', t('toolbar.effects'), effects);
+      },
+    });
   const editImage = () => {
     const layer = selected();
     if (!layer || (layer.type !== 'image' && layer.type !== 'video'))

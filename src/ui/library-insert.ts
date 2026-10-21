@@ -22,7 +22,8 @@ import type {
   LibraryTextElement,
   Paint,
 } from '../library/schema';
-import type { RenderSource } from '../render/adapter';
+import type { RenderSource, SceneLayer } from '../render/adapter';
+import { textBoxOf } from '../render/text-box';
 import { formatGradient } from '../render/paint';
 import { formatPolygons, type MultiPolygon } from '../render/shapes';
 import { DRAWING_DURATION } from './draw-tool';
@@ -138,6 +139,9 @@ function markBackground(layer: Layer): void {
 function textLayer(
   element: LibraryTextElement,
   canvas: { width: number; height: number },
+  /** FINAL3 T1: new text is auto width (Canva); template text keeps its
+   *  designed wrapping width. */
+  auto = false,
 ): Layer {
   const content =
     currentLanguage() === 'hi' ? element.text.hi : element.text.en;
@@ -150,7 +154,12 @@ function textLayer(
     text: plain('string', content),
     fontSize: number(Math.round(element.size * canvas.height)),
     fill: plain('color', element.color),
-    textWrap: plain('boolean', true),
+    ...(auto
+      ? { textBox: plain('string', 'auto') }
+      : {
+          textWrap: plain('boolean', true),
+          textBox: plain('string', 'fixed'),
+        }),
     ...(element.font ? { fontFamily: plain('string', element.font) } : {}),
     ...(element.weight ? { fontWeight: number(element.weight) } : {}),
     ...(element.italic ? { fontStyle: plain('string', 'italic') } : {}),
@@ -166,6 +175,22 @@ function textLayer(
       ? { textDecoration: plain('string', element.decoration) }
       : {}),
   } as never;
+  if (auto) {
+    // The box is as big as the text: centre it where the element's box was.
+    const box = textBoxOf(layer as unknown as SceneLayer);
+    layer.properties.width = number(box.width);
+    layer.properties.height = number(box.height);
+    withTransform(
+      layer,
+      element.x * canvas.width + (width - box.width) / 2,
+      element.y * canvas.height + (height - box.height) / 2,
+      box.width,
+      box.height,
+      element.rotation,
+      element.opacity,
+    );
+    return layer;
+  }
   withTransform(
     layer,
     element.x * canvas.width,
@@ -376,7 +401,7 @@ export function libraryCommands(
     }
     case 'text': {
       const layers = item.data.elements.map((element) =>
-        textLayer(element, canvas),
+        textLayer(element, canvas, true),
       );
       // Centre the block on the canvas.
       const width = Math.max(...item.data.elements.map((e) => e.w)),

@@ -5617,17 +5617,13 @@ button.number-field-step:focus-visible {
 .text-editor > div:not(:last-child) {
   margin-block-end: var(--paragraph-spacing, 0);
 }
-.text-editor[data-list='bullet'] > div::before {
-  content: '•\2002';
-}
-.text-editor[data-list='number'] {
-  counter-reset: text-list;
-}
-.text-editor[data-list='number'] > div {
-  counter-increment: text-list;
-}
-.text-editor[data-list='number'] > div::before {
-  content: counter(text-list) '.\2002';
+/* FINAL3 T3: each list paragraph carries its own marker (bullet by level,
+   number or a checklist box), the same text the canvas draws. */
+.text-editor > div[data-marker]::before {
+  content: attr(data-marker);
+  display: inline-block;
+  min-inline-size: 1.2em;
+  text-indent: 0;
 }
 .text-editor ::selection {
   background: color-mix(in srgb, var(--color-accent) 40%, transparent);
@@ -10976,4 +10972,36 @@ input[type='range'] {
   100% {
     opacity: 0;
   }
+}
+
+/* FINAL3: the text Effects panel (Canva Style and Shape tiles). */
+.text-effect-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.text-effect-tile {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+.text-effect-tile[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.text-effect-preview {
+  inline-size: 100%;
+  block-size: auto;
+  border-radius: var(--radius-sm);
+}
+.text-effect-fields {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
 }
