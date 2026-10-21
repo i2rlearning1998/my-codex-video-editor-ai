@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { validateSpecs } from './vendor/blocks/params';
+import { CAMERA_EASINGS, CONTROLLERS } from '../camera/rig';
 export const SPEC_VERSION = 1 as const;
 export const LIMITS = Object.freeze({
   bytes: 1_048_576,
@@ -191,6 +192,38 @@ function makeSchema<B extends boolean>(bindings: B) {
         .strict(),
     })
     .strict();
+  // FINAL3 C5: camera shots (docs/camera.md): code controllers on the
+  // scene's Camera track, with optional start and end framing.
+  const framing = z
+    .object({
+      x: num(-5000, 5000),
+      y: num(-5000, 5000),
+      z: num(-5000, 5000),
+      pan: num(-90, 90),
+      tilt: num(-90, 90),
+      roll: num(-360, 360),
+      focal: num(1, 500),
+    })
+    .partial()
+    .strict();
+  const cameraShot = z
+    .object({
+      start: seconds,
+      duration: positiveTime,
+      controller: z.enum(CONTROLLERS),
+      camera: z.string().min(1).max(80).optional(),
+      easing: z.enum(CAMERA_EASINGS).optional(),
+      strength: num(0, 2).optional(),
+      amount: num(0, 100).optional(),
+      speed: num(0.05, 20).optional(),
+      seed: num(1, 99999).int().optional(),
+      direction: z.union([z.literal(1), z.literal(-1)]).optional(),
+      /** An item id of this scene (Follow, Rack focus, Orbit). */
+      target: safeId.optional(),
+      from: framing.optional(),
+      to: framing.optional(),
+    })
+    .strict();
   const cameraMove = z
     .object({
       id: safeId,
@@ -255,6 +288,7 @@ function makeSchema<B extends boolean>(bindings: B) {
               background: editable(color).default('#101219'),
               items: z.array(item).min(1).max(64),
               cameraMoves: z.array(cameraMove).max(8).default([]),
+              cameraShots: z.array(cameraShot).max(32).default([]),
               transition: z
                 .object({
                   id: z.enum([

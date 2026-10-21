@@ -176,6 +176,56 @@ export function cameraStateAt(
     focusDepth: focus ? focus.depth : pose.focus,
   };
 }
+/** FINAL3 C3: a shot's framing at its start or end (the editor's frame). */
+export function shotFramePose(
+  scene: ShotScene,
+  entry: CameraShotEntry,
+  which: 'start' | 'end',
+  center: (id: string) => { x: number; y: number } | null = () => null,
+): Pose {
+  const frame: Frame = { width: scene.width, height: scene.height };
+  const context: ShotContext = {
+    frame,
+    layerCenter: layerCenterFinder(scene, center),
+  };
+  const local = which === 'start' ? 0 : entry.clip.duration;
+  const time = entry.clip.startTime + local;
+  return applyTrackTo(
+    entry.spec,
+    shotPose(entry.spec, entry.shot, local, entry.clip.duration, context, time),
+    context,
+    time,
+  );
+}
+/** What the camera sees at a pose: the frame's corners in composition space. */
+export function frameCorners(
+  spec: CameraSpec,
+  pose: Pose,
+  frame: Frame,
+): [[number, number], [number, number], [number, number], [number, number]] {
+  const [a, b, c, d, e, f] = poseMatrix(spec, pose, frame, 0);
+  const det = a * d - b * c;
+  const map = (x: number, y: number): [number, number] => [
+    (d * (x - e) - c * (y - f)) / det,
+    (-b * (x - e) + a * (y - f)) / det,
+  ];
+  return [
+    map(0, 0),
+    map(frame.width, 0),
+    map(frame.width, frame.height),
+    map(0, frame.height),
+  ];
+}
+/** Assets of camera backgrounds included in the render (for the export). */
+export function cameraBackgroundAssets(scene: ShotScene): string[] {
+  return [
+    ...new Set(
+      cameraShotsOf(scene).flatMap((entry) =>
+        entry.spec.background?.render ? [entry.spec.background.assetId] : [],
+      ),
+    ),
+  ];
+}
 /** The matrix for a layer at `depth` through the camera at a state. */
 export const cameraMatrixFor = (
   state: CameraState,

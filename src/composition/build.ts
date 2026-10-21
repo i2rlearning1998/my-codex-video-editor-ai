@@ -22,6 +22,9 @@ import {
   type Project,
 } from '../core';
 import { cameraFromTracks } from '../camera/scene';
+import type { CameraShotPlan } from '../camera/shots';
+import type { Shot } from '../camera/rig';
+import { cameraShotsCommands } from '../camera/shot-commands';
 import type { Easing, SceneCamera } from '../core';
 import { clipFxSchema } from '../core/fx';
 import { transitionSchema } from '../core/transitions';
@@ -94,7 +97,8 @@ export interface BuildWarning {
     | 'not-built'
     | 'voice-over-longer'
     | 'camera-depth'
-    | 'camera-shake';
+    | 'camera-shake'
+    | 'camera-target';
   readonly message: string;
 }
 export type BuildMissing =
@@ -257,6 +261,16 @@ interface SpecScene {
   duration: number;
   items: SpecItem[];
   cameraMoves: CameraMove[];
+  cameraShots?: readonly (Omit<CameraShotPlan, 'sceneId' | 'params'> & {
+    readonly camera?: string;
+    readonly easing?: Shot['easing'];
+    readonly strength?: number;
+    readonly amount?: number;
+    readonly speed?: number;
+    readonly seed?: number;
+    readonly direction?: 1 | -1;
+    readonly target?: string;
+  })[];
   transition?: { id: string; duration: number };
 }
 
@@ -541,6 +555,55 @@ export async function buildProjectFromComposition(
           },
         ]);
       }
+    });
+
+    // FINAL3 C5: camera shots go on each scene's Camera track; a target
+    // names an item of the scene (its built layer).
+    spec.scenes.forEach((scene, sceneIndex) => {
+      if (!scene.cameraShots?.length) return;
+      const compositionId = scenes[sceneIndex]!.compositionId;
+      const layerOf = (itemId: string | undefined) => {
+        if (!itemId) return null;
+        const clipId = builtClips.get(`${sceneIndex}/${itemId}`);
+        const composition = engine.state.compositions.find(
+          (c) => c.id === compositionId,
+        );
+        const clip = composition?.tracks
+          .flatMap((track) => track.clips)
+          .find((item) => item.id === clipId);
+        if (!clip)
+          warn(
+            'camera-target',
+            `Scene "${scene.id}": camera target "${itemId}" is not a built item; the shot has no target.`,
+          );
+        return clip?.layerId ?? null;
+      };
+      const plans: CameraShotPlan[] = scene.cameraShots.map((shot) => {
+        const {
+          start,
+          duration,
+          controller,
+          from,
+          to,
+          camera,
+          target,
+          ...rest
+        } = shot;
+        return {
+          sceneId: compositionId,
+          start,
+          duration,
+          controller,
+          params: {
+            ...rest,
+            ...(camera ? { camera } : {}),
+            target: layerOf(target),
+          },
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
+        };
+      });
+      run('Camera shots', cameraShotsCommands(engine.state as never, plans));
     });
 
     // Scene transitions: the reserved marker on the incoming scene (D-199).

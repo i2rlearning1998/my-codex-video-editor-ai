@@ -33,6 +33,8 @@
   --clip-video: #2f5fa8;
   --clip-image: #3f7d3a;
   --clip-audio: #2a6f8f;
+  /* FINAL3 C3: camera shots. */
+  --clip-camera: #7445a6;
   --clip-label: #ffffff;
   /* Accent and status */
   --accent: #7c5cff;
@@ -113,6 +115,7 @@
   --clip-video: #c7d8f5;
   --clip-image: #cfe8c9;
   --clip-audio: #c3e0ee;
+  --clip-camera: #e2d4f5;
   --clip-label: #14161d;
   --accent: #6c47ff;
   --accent-hover: #5b37f0;

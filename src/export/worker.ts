@@ -44,6 +44,8 @@ import {
   type MediaFrameRequest,
   type RenderSource,
 } from '../render/adapter';
+import { cameraBackgroundRequest } from '../render/camera-overlay';
+import { cameraStateAt } from '../camera/shots';
 import { drawComposition } from '../render/canvas';
 import { drawSceneTransition } from '../render/scene-transitions';
 import { measureWithContext } from '../render/text-style';
@@ -181,13 +183,24 @@ async function run(job: ExportJob): Promise<void> {
   // Plan: which video layers need which source times, frame by frame (and
   // draw by draw).
   const plan = times.map((time) =>
-    drawsAt(time).map((at) =>
-      deriveRenderItems(sourceAt(at)).items.flatMap((item) =>
-        item.media?.kind === 'video' || item.media?.kind === 'code'
-          ? [item.media]
-          : [],
-      ),
-    ),
+    drawsAt(time).map((at) => {
+      const source = sourceAt(at);
+      // FINAL3 C3: a camera background video included in the render.
+      const backdrop = cameraBackgroundRequest(
+        cameraStateAt(source.composition, at),
+        source.assets,
+        at,
+        true,
+      );
+      return [
+        ...deriveRenderItems(source).items.flatMap((item) =>
+          item.media?.kind === 'video' || item.media?.kind === 'code'
+            ? [item.media]
+            : [],
+        ),
+        ...(backdrop?.kind === 'video' ? [backdrop] : []),
+      ];
+    }),
   );
   const decoders = new Map<
     string,

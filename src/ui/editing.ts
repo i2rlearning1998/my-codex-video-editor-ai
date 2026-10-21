@@ -768,7 +768,8 @@ export function moveClipsToAdjacentTrack(
     let index = tracks.findIndex((item) => item.id === track.id) + direction;
     while (
       tracks[index] &&
-      (tracks[index]!.locked || !trackAcceptsLayer(tracks[index]!.type, layer))
+      (tracks[index]!.locked ||
+        !trackAcceptsLayer(tracks[index]!.type, layer, tracks[index]!.id))
     )
       index += direction;
     const destination = tracks[index];
@@ -1015,7 +1016,7 @@ function clipAction(
         clip.metadata.linkId = relinked.get(link)!;
       }
       const fits = (track: DeepReadonly<Track> | undefined) =>
-        track && trackAcceptsLayer(track.type, layer);
+        track && trackAcceptsLayer(track.type, layer, track.id);
       const original = composition.tracks.find(
         (track) => track.id === item.trackId,
       );

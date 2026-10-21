@@ -61,6 +61,33 @@ function shiftKeyframes(record: Json, offset: number): Json {
   );
 }
 
+/** FINAL3 C3: a camera shot's layer references follow the new layer ids. */
+function cameraIds<T>(properties: T, id: (value: string) => string): T {
+  const record = properties as Record<string, { type: string; value: unknown }>;
+  if (record?.role?.value !== 'camera') return properties;
+  const rewrite = (key: string, edit: (data: Record<string, any>) => void) => {
+    const entry = record[key];
+    if (entry?.type !== 'string' || typeof entry.value !== 'string') return;
+    try {
+      const data = JSON.parse(entry.value) as Record<string, any>;
+      edit(data);
+      record[key] = { ...entry, value: JSON.stringify(data) };
+    } catch {
+      // Unreadable camera data is read as defaults by the renderer anyway.
+    }
+  };
+  const mapped = (value: unknown) =>
+    typeof value === 'string' && value ? id(value) : value;
+  rewrite('cameraSpec', (spec) => {
+    if (spec.dof) spec.dof.focusLayer = mapped(spec.dof.focusLayer);
+    if (spec.trackTo) spec.trackTo.layerId = mapped(spec.trackTo.layerId);
+  });
+  rewrite('cameraShot', (shot) => {
+    shot.target = mapped(shot.target);
+  });
+  return properties;
+}
+
 export function joinScenes(
   scenes: readonly DeepReadonly<Composition>[],
 ): DeepReadonly<Composition> {
@@ -89,7 +116,7 @@ export function joinScenes(
       id: id(layer.id),
       startTime: layer.startTime + offset,
       transform: shiftKeyframes(layer.transform, offset),
-      properties: shiftKeyframes(layer.properties, offset),
+      properties: cameraIds(shiftKeyframes(layer.properties, offset), id),
       children: layer.children.map(shiftLayer),
     });
     layers.push(...scene.layers.map(shiftLayer));

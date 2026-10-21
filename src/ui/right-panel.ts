@@ -102,6 +102,7 @@ import { textListOf } from '../render/text-box';
 import { listCommands } from './text-box-commands';
 import type { EditorSession } from './session';
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
+import { cameraUi, isShotLayer } from './camera-section';
 
 export const RIGHT_SECTIONS = [
   'Properties',
@@ -118,6 +119,8 @@ export const RIGHT_SECTIONS = [
   'Code',
   // T1: themes (opened from the rail with nothing selected).
   'Theme',
+  // FINAL3 C3: the camera (a shot selected, or the scene toolbar's Camera).
+  'Camera',
 ] as const;
 export type RightSection = (typeof RIGHT_SECTIONS)[number];
 export const RIGHT_ICONS: Record<RightSection, string> = {
@@ -134,6 +137,7 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Speech: 'text',
   Theme: 'color',
   Code: 'code',
+  Camera: 'camera',
 };
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
  *  Effects open, listing what they will hold; Transitions is the J12 panel
@@ -150,12 +154,14 @@ export type SelectionKind =
   | 'shape'
   | 'drawing'
   | 'group'
-  | 'multi';
+  | 'multi'
+  | 'camera';
 export function kindOf(session: EditorSession): SelectionKind {
   const roots = selectionRoots(session.source, session.selectedIds);
   if (!roots.length) return 'none';
   if (roots.length > 1) return 'multi';
   const layer = roots[0]!;
+  if (isShotLayer(layer)) return 'camera';
   if (layer.type === 'shape') return drawingOf(layer) ? 'drawing' : 'shape';
   return layer.type as SelectionKind;
 }
@@ -196,6 +202,8 @@ const TABS: Record<SelectionKind, RightSection[]> = {
   drawing: ['Properties', 'Animate', 'Effects', 'Adjust'],
   group: ['Properties', 'Fade', 'Animate'],
   multi: ['Properties', 'Fade', 'Animate'],
+  // FINAL3 C3: a camera shot on the Camera track.
+  camera: ['Camera'],
 };
 /**
  * V5 (spec 6): the cut marker whose Transition panel is open (the clip the
@@ -284,6 +292,9 @@ export function sectionsFor(session: EditorSession): RightSection[] {
   if (kindOf(session) === 'none' && ttsState.open && flag('legacyTtsPanel'))
     return ['Speech'];
   if (kindOf(session) === 'none' && themeState.open) return ['Audio', 'Theme'];
+  if (session.selectedIds.length && kindOf(session) !== 'camera')
+    cameraUi.open = false;
+  if (kindOf(session) === 'none' && cameraUi.open) return ['Camera'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session) && flag('legacyTtsPanel'))
@@ -351,6 +362,8 @@ export interface RightPanelHooks {
   projectAudio?: () => HTMLElement | null;
   /** T1: the Theme panel. */
   themeBody?: () => HTMLElement;
+  /** FINAL3 C3: the Camera section. */
+  cameraBody?: () => readonly HTMLElement[];
   /** V7: Text to speech's Save. */
   tts?: TtsHooks;
   /** V7: decodes clip sound for the Audio tab's loudness analysis. */
@@ -1732,35 +1745,37 @@ export function mountRightPanel(
                             ? [hooks.themeBody?.() ?? null].filter(
                                 (item): item is HTMLElement => !!item,
                               )
-                            : section === 'Speech'
-                              ? speech()
-                              : section === 'Transitions'
-                                ? transitions()
-                                : section === 'Audio' &&
-                                    kindOf(session) === 'none'
-                                  ? [
-                                      heading(
-                                        t('mixer.projectAudio'),
-                                        t('mixer.projectAudioHint'),
-                                      ),
-                                      hooks.projectAudio?.() ?? null,
-                                    ]
-                                  : section === 'Audio'
+                            : section === 'Camera'
+                              ? [...(hooks.cameraBody?.() ?? [])]
+                              : section === 'Speech'
+                                ? speech()
+                                : section === 'Transitions'
+                                  ? transitions()
+                                  : section === 'Audio' &&
+                                      kindOf(session) === 'none'
                                     ? [
                                         heading(
-                                          t('panel.audio'),
-                                          t('right.audioHint'),
+                                          t('mixer.projectAudio'),
+                                          t('mixer.projectAudioHint'),
                                         ),
-                                        ...audioTab(
-                                          engine,
-                                          session,
-                                          run,
-                                          report,
-                                          hooks.audioDecoder,
-                                          rerender,
-                                        ),
+                                        hooks.projectAudio?.() ?? null,
                                       ]
-                                    : [];
+                                    : section === 'Audio'
+                                      ? [
+                                          heading(
+                                            t('panel.audio'),
+                                            t('right.audioHint'),
+                                          ),
+                                          ...audioTab(
+                                            engine,
+                                            session,
+                                            run,
+                                            report,
+                                            hooks.audioDecoder,
+                                            rerender,
+                                          ),
+                                        ]
+                                      : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

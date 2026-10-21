@@ -276,7 +276,11 @@ import { PARAMS_HEADER } from './ai-import-dialog';
 import { cameraMatrixFor, cameraStateAt } from '../camera/shots';
 import { sceneCameraMatrix } from '../camera/scene';
 import { selectionBounds } from '../render/selection';
-import { cameraBadge, cameraPanel, cameraView } from './camera-panel';
+import { cameraBadge, cameraView } from './camera-panel';
+import { cameraSection, cameraUi, selectedShot } from './camera-section';
+import { mountCameraFrame } from './camera-frame';
+import { cameraShotsOf } from '../camera/shots';
+import { updateCameraCommands } from '../camera/shot-commands';
 import type { Asset } from '../core';
 import {
   dropStock,
@@ -959,6 +963,7 @@ export function mountEditorShell(
       ),
     );
   };
+  let cameraFrameTool: ReturnType<typeof mountCameraFrame> | null = null;
   const draw = () => {
     if (disposed) return;
     drawCount++;
@@ -977,9 +982,11 @@ export function mountEditorShell(
     // editing, applied while playing, and with "Preview camera" folded into
     // the view (so layers stay selectable and movable through it).
     const cameraOff = !session.playing && !cameraView.preview;
+    const shotFrame = cameraFrameTool?.overlay() ?? null;
     const drawn = {
       ...base,
       ...(cameraOff ? { camera: false } : {}),
+      ...(shotFrame ? { cameraFrame: shotFrame } : {}),
       ...(!session.playing && cameraView.preview ? { cameraInView: true } : {}),
       // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
@@ -1165,6 +1172,21 @@ export function mountEditorShell(
         mountThemePanel(host, { ...themeOptions, onChange: () => () => {} });
         return host;
       },
+      // FINAL3 C3: the Camera section (cameras, shots, Blender settings).
+      cameraBody: () =>
+        cameraSection({
+          composition: () => session.source.composition,
+          assets: () => engine.state.assets,
+          time: () => session.currentTime,
+          selectedId: () =>
+            session.selectedIds.length === 1 ? session.selectedIds[0]! : null,
+          select: (id) => session.select(id),
+          run: (label, commands) =>
+            engine.commands.transaction(label, commands),
+          report: reportError,
+          redraw: () => safely(draw),
+          rerender: () => rightPanel.render('Camera'),
+        }),
       audioDecoder: decoder,
       // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
       tts: {
@@ -1270,7 +1292,7 @@ export function mountEditorShell(
       scenes: () => sceneBoard.open(),
       canvasSize: resizeCanvas,
       // FINAL2 U10: the scene camera panel.
-      camera: () => openCameraPanel(),
+      camera: () => openCameraSection(),
       autoCaptions: () => openAutoCaptions(captionsContext),
     },
   );
@@ -1304,20 +1326,19 @@ export function mountEditorShell(
       ? (locateLayer(session.source.composition.layers, session.selectedId)
           ?.layer ?? null)
       : null;
-  /** FINAL2 U10: the scene camera, a left side panel. */
-  const openCameraPanel = () =>
-    sidePanels.show('camera', t('camera.title'), () =>
-      cameraPanel({
-        composition: () => session.source.composition,
-        time: () => session.currentTime,
-        run: (label, commands) =>
-          safely(() => {
-            engine.commands.transaction(label, commands);
-            sidePanels.refresh();
-          }),
-        redraw: () => safely(draw),
-      }),
-    );
+  /** FINAL3 C3: the scene toolbar's Camera opens the right Camera section. */
+  const openCameraSection = () => {
+    cameraUi.open = true;
+    themeState.open = false;
+    projectAudioState.open = false;
+    transitionFocus.sceneId = null;
+    root.querySelector('.editor-shell')?.classList.remove('right-empty');
+    workspace?.setEmpty(false);
+    renderedRight = '';
+    syncRightRail();
+    setRightSection('Camera');
+    workspace?.setOpen('right', true);
+  };
   // The badge over the canvas, and no picking while the camera is previewed.
   const cameraBadgeEl = document.createElement('div');
   cameraBadgeEl.className = 'camera-badge';
@@ -1327,6 +1348,42 @@ export function mountEditorShell(
   (root.querySelector('#canvas-footer') ?? stage).append(cameraBadgeEl);
   // FINAL3 C3: Preview camera no longer blocks the canvas: the view looks
   // through the camera, so layers are picked and moved where they are seen.
+  // While editing, the framed shot's camera frame edits its start or end.
+  const framedShot = () => {
+    const composition = session.source.composition;
+    const chosen = selectedShot(composition, session.selectedIds);
+    if (chosen || !cameraUi.open) return chosen;
+    const shots = cameraShotsOf(composition as never).filter(
+      (entry) => !cameraUi.cameraId || entry.spec.id === cameraUi.cameraId,
+    );
+    return (
+      shots.find(
+        (entry) =>
+          session.currentTime >= entry.clip.startTime &&
+          session.currentTime < entry.clip.startTime + entry.clip.duration,
+      ) ??
+      shots[0] ??
+      null
+    );
+  };
+  cameraFrameTool = mountCameraFrame({
+    stage,
+    canvas,
+    scene: () => session.source.composition,
+    shot: framedShot,
+    which: () => cameraUi.edit,
+    matrix: () => viewport().matrix,
+    active: () =>
+      cameraUi.frame &&
+      !session.playing &&
+      !cameraView.preview &&
+      !cropTool.active,
+    run: (label, commands) =>
+      safely(() => {
+        engine.commands.transaction(label, commands);
+      }),
+    redraw: () => safely(draw),
+  });
   const openAltText = () => {
     const layer = selectedLayer();
     if (!layer) return;
@@ -2037,6 +2094,34 @@ export function mountEditorShell(
       session.setMode(button.dataset.mode as 'editor' | 'animation2d');
     };
   session.onChange(syncMode);
+  // FINAL3 C3 (Blender's focus picker): with "Pick on canvas" on, the next
+  // layer selected becomes the camera's Focus Object (depth of field on),
+  // and the shot is selected again.
+  session.onChange(() => {
+    if (!cameraUi.pickFocus || session.selectedIds.length !== 1) return;
+    const composition = session.source.composition;
+    if (selectedShot(composition, session.selectedIds)) return;
+    const shots = cameraShotsOf(composition as never);
+    const entry =
+      shots.find((item) => item.layer.id === cameraUi.pickShot) ??
+      shots.find((item) => item.spec.id === cameraUi.cameraId) ??
+      shots[0];
+    cameraUi.pickFocus = false;
+    if (!entry) return;
+    const picked = session.selectedIds[0]!;
+    const root = composition.layers.find((layer) => layer.id === picked);
+    if (!root) return;
+    safely(() => {
+      engine.commands.transaction(
+        'Focus object',
+        updateCameraCommands(composition as never, {
+          ...entry.spec,
+          dof: { ...entry.spec.dof, enabled: true, focusLayer: picked },
+        }),
+      );
+      session.select(entry.layer.id);
+    });
+  });
   const unsubscribe = session.onChange(refresh);
   // J3: a NumberField being scrubbed or slid previews its edit on the canvas:
   // the commit runs in capture mode and the canvas draws the result. Nothing
@@ -4836,6 +4921,7 @@ export function mountEditorShell(
         !focusedScene(session) &&
         !ttsState.open &&
         !themeState.open &&
+        !cameraUi.open &&
         !projectAudioState.open)
     ) {
       animateShown = false;
@@ -4909,9 +4995,11 @@ export function mountEditorShell(
           ? 'tts.title'
           : themeState.open
             ? 'panel.theme'
-            : projectAudioState.open
-              ? 'mixer.projectAudio'
-              : 'transition.title'
+            : cameraUi.open
+              ? 'cam.title'
+              : projectAudioState.open
+                ? 'mixer.projectAudio'
+                : 'transition.title'
         : kind === 'video' || kind === 'image'
           ? `right.tab.${kind}`
           : firstTabKey(kind),

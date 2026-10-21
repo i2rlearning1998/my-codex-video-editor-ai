@@ -5890,6 +5890,77 @@ button.number-field-step:focus-visible {
 .nle-clip[data-kind='audio'] {
   --clip-fill: var(--clip-audio);
 }
+/* FINAL3 C3: the Camera track: shots, a label with a fold button. */
+.nle-clip[data-kind='camera'] {
+  --clip-fill: var(--clip-camera);
+}
+.camera-lane-head {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 100%;
+  padding-inline: var(--space-1);
+  font-size: var(--font-size-xs, 11px);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.timeline-nle-row[data-camera='true'][data-collapsed='true'] .nle-clip {
+  font-size: 0;
+}
+.camera-panel-group .camera-row,
+.camera-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-block: var(--space-1);
+}
+.camera-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block: var(--space-2);
+}
+.camera-shots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.camera-shot {
+  width: 100%;
+  text-align: start;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-subtle, transparent);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised, transparent);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.camera-shot[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+.camera-name {
+  width: 100%;
+}
+.camera-framing h4 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: 12px;
+}
+.camera-edit {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.camera-edit [aria-checked='true'] {
+  color: var(--accent-text);
+  border-color: var(--accent);
+}
 .clip-kind-icon {
   display: inline-flex;
   flex: none;

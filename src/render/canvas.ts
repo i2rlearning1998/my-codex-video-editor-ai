@@ -6,6 +6,12 @@ import { setTextBoxMeasurer } from './text-box';
 import { sceneCameraMatrix } from '../camera/scene';
 import { cameraMatrixFor, cameraStateAt } from '../camera/shots';
 import { dofBlur, insideClip } from '../camera/rig';
+import {
+  cameraBackgroundRequest,
+  drawCameraBackground,
+  drawCameraFrame,
+  drawCameraViewOverlays,
+} from './camera-overlay';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
@@ -491,7 +497,9 @@ export function drawComposition(
       // FINAL3 C1: depth of field. A soft gaussian, plus copies on the
       // aperture's shape (Blades, Rotation, Ratio) for the bokeh.
       const content = contentFor(item);
-      const scale = Math.sqrt(Math.abs(content[0] * content[3] - content[1] * content[2]));
+      const scale = Math.sqrt(
+        Math.abs(content[0] * content[3] - content[1] * content[2]),
+      );
       const radius = blur * scale;
       const blades = rig!.spec.dof.blades >= 3 ? rig!.spec.dof.blades : 0;
       const ratio = rig!.spec.dof.ratio;
@@ -810,7 +818,24 @@ export function drawComposition(
     context.beginPath();
     context.rect(0, 0, source.composition.width, source.composition.height);
     context.clip();
+    // FINAL3 C3: the camera's background picture, behind or over the scene
+    // (exported only with Include in render).
+    const backdrop = rig?.spec.background ?? null;
+    const backdropRequest = cameraBackgroundRequest(
+      rig,
+      source.assets,
+      time,
+      options.overlays === false,
+    );
+    const backdropImage = backdropRequest
+      ? source.frames?.frame(backdropRequest, source.playing ?? false)
+      : null;
+    if (backdrop && backdropImage && backdrop.depth === 'back')
+      drawCameraBackground(context, base, backdrop, frame, backdropImage);
+    context.setTransform(...view);
     drawItems(1);
+    if (backdrop && backdropImage && backdrop.depth === 'front')
+      drawCameraBackground(context, base, backdrop, frame, backdropImage);
     // T6: in the editor (not export), a text box whose text is clipped by
     // its fixed height shows a small overflow badge on its bottom edge.
     if (options.overlays !== false)
@@ -854,6 +879,29 @@ export function drawComposition(
   }
   if (options.overlays === false)
     return { warnings: errors, zoom: viewport.matrix[0] };
+  const device = {
+    width: viewport.width * viewport.pixelRatio,
+    height: viewport.height * viewport.pixelRatio,
+  };
+  // FINAL3 C3: looking through the camera: passepartout, guides, safe
+  // areas, name and limits; while editing: the shot's camera frame.
+  if (rig && !source.cropLayerId)
+    drawCameraViewOverlays(
+      context,
+      base,
+      rig,
+      frame,
+      device,
+      viewport.pixelRatio,
+    );
+  if (source.cameraFrame)
+    drawCameraFrame(
+      context,
+      pixels,
+      viewport.matrix,
+      source.cameraFrame,
+      device,
+    );
   // CV-013: snap guides across the composition, 1 CSS px at any zoom.
   if (source.guides?.length) {
     context.setTransform(...pixels);

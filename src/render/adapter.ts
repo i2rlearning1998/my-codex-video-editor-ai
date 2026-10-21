@@ -1,3 +1,4 @@
+import type { CameraFrameOverlay } from './camera-overlay';
 import type { ChromaKey } from '../chroma/types';
 import { evaluateMask } from '../masks/geometry';
 import type { MaskScope } from '../masks/render';
@@ -91,6 +92,8 @@ export interface RenderSource {
   readonly background: string;
   /** FINAL3 C3: false draws the scene un-moved by its camera (editing). */
   readonly camera?: boolean;
+  /** FINAL3 C3: the selected shot's editable camera frame (editor only). */
+  readonly cameraFrame?: CameraFrameOverlay | null;
   /** FINAL3 C3: the viewport already looks through the camera's depth-0
    *  view (Preview camera); layers at other depths keep their parallax. */
   readonly cameraInView?: boolean;
