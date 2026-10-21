@@ -437,15 +437,18 @@ export function drawComposition(
   const content = camera
     ? multiplyMatrices(view, camera as unknown as AffineMatrix)
     : view;
-  // Preview camera: the viewport already holds the depth-0 camera.
-  const base =
-    rig && source.cameraInView
-      ? multiplyMatrices(
-          view,
-          invertMatrix(cameraMatrixFor(rig, frame, 0) as AffineMatrix) ??
-            IDENTITY_MATRIX,
-        )
-      : view;
+  // Preview camera: the viewport already holds the depth-0 camera; `base`
+  // is the camera's frame (where the artboard is), as in the export.
+  const lens = !source.cameraInView
+    ? null
+    : rig
+      ? (cameraMatrixFor(rig, frame, 0) as AffineMatrix)
+      : source.composition.camera
+        ? (sceneCameraMatrix(source.composition, time) as AffineMatrix | null)
+        : null;
+  const base = lens
+    ? multiplyMatrices(view, invertMatrix(lens) ?? IDENTITY_MATRIX)
+    : view;
   const contentFor = (item: RenderItem): AffineMatrix =>
     rig
       ? multiplyMatrices(
@@ -811,7 +814,8 @@ export function drawComposition(
   }
   context.save();
   try {
-    context.setTransform(...view);
+    // (The frame: the artboard, or the camera's frame while previewing.)
+    context.setTransform(...base);
     context.globalAlpha = 1;
     context.fillStyle = source.background;
     context.fillRect(0, 0, source.composition.width, source.composition.height);

@@ -259,6 +259,13 @@ export function mountCameraFrame(deps: CameraFrameDeps) {
   const up = (event: PointerEvent) => {
     if (!gesture || event.pointerId !== gesture.pointerId) return;
     event.stopPropagation();
+    // The click that follows belongs to the gesture, not to the canvas.
+    const swallow = (click: Event) => {
+      click.stopPropagation();
+      click.preventDefault();
+    };
+    window.addEventListener('click', swallow, { capture: true, once: true });
+    setTimeout(() => window.removeEventListener('click', swallow, true), 0);
     finish(true);
   };
   const cancel = () => finish(false);

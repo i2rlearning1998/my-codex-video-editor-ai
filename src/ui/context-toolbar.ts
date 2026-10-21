@@ -107,6 +107,8 @@ import { guardCommands } from './editor-mode';
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 export function toolbarKind(layer: SceneLayer | null): ToolbarKind | null {
   if (!layer) return null;
+  // FINAL3 C3: a camera shot is edited in the right Camera section.
+  if (layer.properties.role?.value === 'camera') return null;
   if (layer.type === 'image' || layer.type === 'video') return 'media';
   if (layer.type === 'text') return 'text';
   if (layer.type === 'shape') return drawingOf(layer) ? 'drawing' : 'shape';

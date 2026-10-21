@@ -771,7 +771,11 @@ export function mountEditorShell(
       : null;
   };
   // G3: Fit, then the zoom about the view's center, then the pan.
-  const viewportFor = (z: number, requested: readonly [number, number]) => {
+  const viewportFor = (
+    z: number,
+    requested: readonly [number, number],
+    withLens = true,
+  ) => {
     const fitHeight = Math.max(1, canvas.clientHeight || stage.clientHeight);
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
@@ -805,10 +809,6 @@ export function mountEditorShell(
       requested,
     );
     let matrix = at(pan);
-    // FINAL3 C3: Preview camera looks through the camera's depth-0 view, so
-    // layers are drawn, picked and moved where the camera shows them.
-    const lens = previewCameraMatrix();
-    if (lens) matrix = multiplyMatrices(matrix, lens);
     // FINAL3 A1: at a whole-pixel zoom (100 %, 200 %) the artboard sits on
     // whole device pixels, so nothing is resampled (crisp, as in Figma).
     const device = matrix[0] * view.pixelRatio;
@@ -818,6 +818,11 @@ export function mountEditorShell(
       const [a, b, c, d, e, f] = matrix;
       matrix = [a, b, c, d, snap(e), snap(f)];
     }
+    // FINAL3 C3: Preview camera looks through the camera's depth-0 view, so
+    // layers are drawn, picked and moved where the camera shows them (the
+    // camera's frame stays where the artboard is).
+    const lens = withLens ? previewCameraMatrix() : null;
+    if (lens) matrix = multiplyMatrices(matrix, lens);
     return { ...view, matrix };
   };
   const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
@@ -850,7 +855,11 @@ export function mountEditorShell(
   // outside the artboard is painted by it.
   const artboardShadow = element('#artboard-shadow');
   const placeArtboardShadow = () => {
-    const [a, , , d, e, f] = viewport().matrix;
+    const [a, , , d, e, f] = viewportFor(
+      session.canvasZoom,
+      session.canvasPan,
+      false,
+    ).matrix;
     const { width, height } = session.source.composition;
     Object.assign(artboardShadow.style, {
       left: `${canvas.offsetLeft + e}px`,
@@ -1348,24 +1357,11 @@ export function mountEditorShell(
   (root.querySelector('#canvas-footer') ?? stage).append(cameraBadgeEl);
   // FINAL3 C3: Preview camera no longer blocks the canvas: the view looks
   // through the camera, so layers are picked and moved where they are seen.
-  // While editing, the framed shot's camera frame edits its start or end.
-  const framedShot = () => {
-    const composition = session.source.composition;
-    const chosen = selectedShot(composition, session.selectedIds);
-    if (chosen || !cameraUi.open) return chosen;
-    const shots = cameraShotsOf(composition as never).filter(
-      (entry) => !cameraUi.cameraId || entry.spec.id === cameraUi.cameraId,
-    );
-    return (
-      shots.find(
-        (entry) =>
-          session.currentTime >= entry.clip.startTime &&
-          session.currentTime < entry.clip.startTime + entry.clip.duration,
-      ) ??
-      shots[0] ??
-      null
-    );
-  };
+  // While editing, the selected shot's camera frame edits its start or end
+  // (with a shot selected the canvas edits the camera; select a layer in
+  // the timeline or the Scene list, or turn the frame off, to edit layers).
+  const framedShot = () =>
+    selectedShot(session.source.composition, session.selectedIds);
   cameraFrameTool = mountCameraFrame({
     stage,
     canvas,
@@ -1375,6 +1371,7 @@ export function mountEditorShell(
     matrix: () => viewport().matrix,
     active: () =>
       cameraUi.frame &&
+      !cameraUi.pickFocus &&
       !session.playing &&
       !cameraView.preview &&
       !cropTool.active,
@@ -5419,11 +5416,12 @@ export function mountEditorShell(
         !transitionFocus.sceneId &&
         !ttsState.open &&
         !themeState.open &&
+        !cameraUi.open &&
         !projectAudioState.open,
     );
     // (A press waits for its release, so its gesture is never cancelled.)
     if (pressing) return;
-    workspace?.setEmpty(key === '');
+    workspace?.setEmpty(key === '' && !cameraUi.open);
     if (key === rightSelection) return;
     rightSelection = key;
     // V7 (spec 10.1): a selection only changes the rail's categories; it
@@ -5439,6 +5437,7 @@ export function mountEditorShell(
           !transitionFocus.sceneId &&
           !ttsState.open &&
           !themeState.open &&
+          !cameraUi.open &&
           workspace?.rightOpen
         )
           workspace.setOpen('right', false);
@@ -6681,6 +6680,13 @@ export function mountEditorShell(
           viewport().matrix,
         )?.corners ?? null,
       draws: drawCount,
+      // FINAL3 C3: the camera frame on the canvas (canvas CSS px), if shown.
+      cameraFrame:
+        cameraFrameTool
+          ?.overlay()
+          ?.corners.map((corner) =>
+            transformPoint(viewport().matrix, corner),
+          ) ?? null,
       // T6: text boxes whose fixed height clips their text (the editor
       // draws an overflow mark on them).
       textOverflow: deriveRenderItems(session.source)
