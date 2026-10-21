@@ -2,6 +2,15 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## FINAL3 (leftovers, text, camera, video plans) — 2026-10-21
+
+- **Leftovers:** all tests run at 1920 × 940; Pexels videos use the current endpoint; sound inside nested clips; Effects and Speed for a nested clip; stock adds never say Restored.
+- **Text (like Canva):** auto-width and fixed-width boxes with exact heights, corner handles scale the font, double-click selects all, a visible caret, soft breaks, lists by paragraph with checklists and levels, Hindi typing kept whole.
+- **Fonts:** search and filters, document and recently used fonts, upload your own font, real weights, failures with Retry.
+- **Text tab and tools:** heading, subheading and body text, 24 font combinations, My text styles, aA case, superscript and subscript, kerning and ligatures, gradients up to 10 colours, a format painter, ten effects and Curve.
+- **Camera (like Blender):** add cameras and shots on a Camera track, controllers instead of keyframes (push in, orbit, shake and more), presets, lens, sensor, shift, clipping, depth of field, guides, safe areas, passepartout, background image, Track To, Preview camera and an on-canvas camera frame; layers can have depth.
+- **Video plans:** paste a Video Plan v2 in AI › Import and Build video finds media, speaks the narration, adds captions, camera, transitions and music; Review & swap; save the feel as a theme; the Creator playbook in docs.
+
 ## FIX1 (bug fixes from the owner's test) — 2026-10-21
 
 - **Panels:** every panel and rail scrolls at 1920 × 940 and 1366 × 768; library search, Import and chips stay put.
