@@ -2,6 +2,17 @@
 
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
+## FIX1 (bug fixes from the owner's test) — 2026-10-21
+
+- **Panels:** every panel and rail scrolls at 1920 × 940 and 1366 × 768; library search, Import and chips stay put.
+- **Stock:** Pexels and Pixabay videos import (real answer shapes), quality choice, download progress with Cancel and Retry, honest error messages, icons sized and recolourable, mixed stickers.
+- **Text to speech:** one tool, cloud voices only, Add pause, clear errors.
+- **Captions:** Whisper shows each step and every failure; Settings has a self-test; Copy diagnostics everywhere.
+- **Audio:** libraries on the left, the mixer on the right; slider rows on one line.
+- **Nested clips:** open one and edit its real lanes and clips; each edit is one undo step.
+- **AI import:** severity colours, plain warnings; Build video shows the new scenes.
+- **Text:** no browser autofill in the text editor, a visible caret, real font weights, fonts shown in their own face, Devanagari check.
+
 ## FINAL2 (integration part 2, all the UI) — 2026-10-18
 
 - **Settings:** Stock & API keys (save, test, clear; keys stay in this browser), offline engines with Download, and an accent colour per theme.

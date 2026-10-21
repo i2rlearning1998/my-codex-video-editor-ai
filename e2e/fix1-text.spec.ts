@@ -48,7 +48,7 @@ test('[FX1-018] the text editor has no autofill and a visible 2 px caret', async
     ['autocapitalize', 'off'],
     ['writingsuggestions', 'false'],
     ['aria-autocomplete', 'none'],
-  ])
+  ] as const)
     await expect(editor).toHaveAttribute(name, value);
   await page.keyboard.insertText('Hello');
   const caret = page.locator('.text-caret');
@@ -61,6 +61,7 @@ test('[FX1-018] the text editor has no autofill and a visible 2 px caret', async
       }),
     )
     .toEqual({ hidden: false, width: 2 });
+  await page.screenshot({ path: 'reports/fix1/f8-caret.png' });
   // The caret is the text colour, or black or white when that would vanish.
   const colours = await page.evaluate(() => {
     const box = document.querySelector<HTMLElement>('.text-editor')!;
@@ -96,6 +97,7 @@ test('[FX1-017] font rows use their own face and single-weight fonts load', asyn
   ).toContain('Pacifico Preview');
   await row.click();
   await expect(panel.locator('.font-error')).toHaveCount(0);
+  await page.screenshot({ path: 'reports/fix1/f8-fonts.png' });
   await expect
     .poll(() =>
       requests.some(

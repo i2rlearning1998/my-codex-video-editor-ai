@@ -86,9 +86,16 @@ export async function importStockItem(
     'image/png': 'png',
     'image/webp': 'webp',
     'image/svg+xml': 'svg',
+    'image/gif': 'gif',
     'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov',
     'audio/mpeg': 'mp3',
     'audio/ogg': 'ogg',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/mp4': 'm4a',
+    'audio/webm': 'webm',
   };
   const name =
     (item.title

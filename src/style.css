@@ -10713,6 +10713,12 @@ input[type='range'] {
   padding: var(--space-2);
   box-sizing: border-box;
   text-align: center;
+  /* Above the card's licence chip and buttons. */
+  z-index: 2;
+}
+.stock-progress-text {
+  font-size: var(--font-size-xs);
+  line-height: 1.25;
 }
 .stock-progress[data-state='error'] {
   background: var(--card-overlay);

@@ -255,11 +255,14 @@ export function sectionsFor(session: EditorSession): RightSection[] {
     themeState.open = false;
     projectAudioState.open = false;
   }
-  if (kindOf(session) === 'none' && projectAudioState.open) return ['Audio'];
+  // FIX1 F5: Project audio and Theme both stay on the rail, so either can be
+  // reached while the other is open.
+  if (kindOf(session) === 'none' && projectAudioState.open)
+    return ['Audio', 'Theme'];
   // FIX1 F3: the old right-hand Text to speech panel is off by default.
   if (kindOf(session) === 'none' && ttsState.open && flag('legacyTtsPanel'))
     return ['Speech'];
-  if (kindOf(session) === 'none' && themeState.open) return ['Theme'];
+  if (kindOf(session) === 'none' && themeState.open) return ['Audio', 'Theme'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session) && flag('legacyTtsPanel'))

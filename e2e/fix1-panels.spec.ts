@@ -107,10 +107,14 @@ async function rightSections(page: Page, label: string) {
       els
         .filter((el) => (el as HTMLElement).offsetParent !== null)
         .filter((el) => el.getAttribute('aria-disabled') !== 'true')
-        .map((el) => el.getAttribute('data-section')!),
+        .map((el) => el.getAttribute('data-section')!)
+        .sort((a, b) => Number(b === 'Captions') - Number(a === 'Captions')),
     );
   for (const section of sections) {
     const button = page.locator(`#rail-right [data-section="${section}"]`);
+    // With nothing selected, opening Project audio or Theme keeps only those
+    // two on the rail (Auto Caption opens a dialog, checked before them).
+    if (!(await button.isVisible())) continue;
     await button.scrollIntoViewIfNeeded();
     if ((await button.getAttribute('aria-pressed')) !== 'true')
       await button.click();
@@ -282,4 +286,7 @@ test('[FX1-002] Media keeps search, Import, drop zone and chips fixed while the 
       b.y < a.y + a.height;
     expect(overlap, `zoom ${zoom}`).toBe(false);
   }
+  await page.screenshot({
+    path: `reports/fix1/f1-panels-${test.info().project.name}.png`,
+  });
 });

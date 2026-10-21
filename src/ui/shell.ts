@@ -4893,7 +4893,9 @@ export function mountEditorShell(
       const label =
         section === 'Properties'
           ? t(firstTabKey(kindOf(session)))
-          : t(`panel.${section.toLowerCase()}`);
+          : section === 'Audio' && kindOf(session) === 'none'
+            ? t('mixer.projectAudio')
+            : t(`panel.${section.toLowerCase()}`);
       const planned = plannedSection(section, session);
       const title = planned
         ? `${label}: ${t('toolbar.later', { wave: String(planned[1]), id: planned[0] })}`
