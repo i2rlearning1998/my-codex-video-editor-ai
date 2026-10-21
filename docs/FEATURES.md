@@ -1092,6 +1092,10 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FN3-023 | P0 | W9 | Verified | Review & swap: up to four alternatives, Search more and Use my own swap media keeping place and animation; a narration change speaks it again and remakes the scene; re-time, reorder, delete, regenerate; Export plan and Compare to plan (V3) |
 | FN3-024 | P0 | W9 | Verified | The importer rejects a plan with errors in plain words, warns for an unknown starter-kit id, and a v1 composition still opens the slot dialog (V1.2, V6.6) |
 | FN3-025 | P1 | W9 | Verified | AI lists a built plan with its status, its feel as a Theme and the starter kit; a feel saves as a theme that says what it holds, exports as a Creator Pack and applies without changing content; a plan can name it by themeId (V3.5, V4) |
+| FN3-026 | P0 | W9 | Verified | Text format tools: aA cycles UPPER, lower and Title; superscript and subscript; kerning, ligatures and Change all; a text gradient of 2 to 10 colours; the format painter copies a text's whole format (font, case, spacing, effect, gradient) (CP.4, CP.6, CP.11, CP.13, CP.14) |
+| FN3-027 | P0 | W9 | Verified | Every text effect (Shadow, Lift, Hollow, Splice, Echo, Outline, Glow, Background, Glitch, Neon) has its settings and Remove effect and draws (CP.20 to CP.30) |
+| FN3-028 | P0 | W9 | Verified | The font picker filters by kind, lists document fonts, and a font that cannot load says why with Retry while the text keeps its font (T4.2, T4.5, CP.17) |
+| FN3-029 | P0 | W9 | Verified | Camera overlays (guides, safe areas, passepartout, name) show only in the editor; a camera background image draws through the camera and is exported only with Include in render; Track To and the focus picker set the camera (BP.8 to BP.13) |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 
