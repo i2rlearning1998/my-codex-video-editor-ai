@@ -8,6 +8,8 @@
 // Everything is computed in floating point (no rounding, so no jitter) and
 // shared by the preview and the export. DOM-free.
 import { rngFor } from '../blocks/helpers';
+import { CAMERA_EASINGS, CONTROLLERS } from '../ai-spec/camera-names';
+export { CAMERA_EASINGS, CONTROLLERS };
 
 export const CAMERA_ROLE = 'camera';
 export type Matrix = readonly [number, number, number, number, number, number];
@@ -289,32 +291,8 @@ export function dofBlur(
 
 // --- Controllers -------------------------------------------------------------
 
-export const CONTROLLERS = [
-  'push-in',
-  'pull-out',
-  'pan-left',
-  'pan-right',
-  'pan-up',
-  'pan-down',
-  'tilt',
-  'orbit',
-  'dolly-zoom',
-  'handheld',
-  'whip-pan',
-  'rack-focus',
-  'follow',
-  'parallax-drift',
-  'hold',
-] as const;
 export type ControllerId = (typeof CONTROLLERS)[number];
-export const CAMERA_EASINGS = [
-  'linear',
-  'ease-in',
-  'ease-out',
-  'ease-in-out',
-  'smooth',
-  'snap',
-] as const;
+
 export type CameraEasing = (typeof CAMERA_EASINGS)[number];
 export function ease(easing: CameraEasing, u: number): number {
   const x = Math.max(0, Math.min(1, u));

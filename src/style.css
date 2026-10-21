@@ -5939,8 +5939,8 @@ button.number-field-step:focus-visible {
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--border-subtle, transparent);
   border-radius: var(--radius-md);
-  background: var(--surface-raised, transparent);
-  color: var(--text-primary);
+  background: var(--raised);
+  color: var(--text);
   font-size: 12px;
 }
 .camera-shot[aria-pressed='true'] {

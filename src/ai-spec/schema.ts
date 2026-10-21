@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { validateSpecs } from './vendor/blocks/params';
-import { CAMERA_EASINGS, CONTROLLERS } from '../camera/rig';
+import { CAMERA_EASINGS, CONTROLLERS } from './camera-names';
 export const SPEC_VERSION = 1 as const;
 export const LIMITS = Object.freeze({
   bytes: 1_048_576,
