@@ -4104,7 +4104,16 @@ export function mountEditorShell(
       return state.flags.length ? 'needs-assets' : 'built';
     },
     kit: {
-      items: () => KIT_IDS.map((id) => ({ id, name: t(`kit.name.${id}`) })),
+      // (Listed with the plans it builds, once the library holds one.)
+      items: () =>
+        creatorLibrary
+          .list()
+          .some(
+            (entry) =>
+              entry.item.type === 'composition' && isPlanV2(entry.item.data),
+          )
+          ? KIT_IDS.map((id) => ({ id, name: t(`kit.name.${id}`) }))
+          : [],
       insert: (id) => void insertKitItem(id).catch(reportError),
     },
     insert: (id) => safely(() => insertCreatorItem(id)),
