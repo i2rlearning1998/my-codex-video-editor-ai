@@ -4,6 +4,7 @@
 // top-left of that box before rotation (its center minus half its size), so an
 // unrotated object's X and Y are its top-left corner. The Inspector, the
 // toolbar and the Position panel all use these, so they always agree.
+import { textHeightFixed } from '../render/text-box';
 import {
   IDENTITY_MATRIX,
   invertMatrix,
@@ -94,9 +95,10 @@ export function ratioForced(layer: SceneLayer): boolean {
   // Groups and freehand drawings would distort text, images or brush shapes.
   return layer.type === 'group' || !!drawingOf(layer);
 }
-/** Text boxes change their width only; their height follows the text. */
+/** Text boxes change their width only; their height follows the text,
+ *  unless the box has a fixed height (FINAL3: then H sets it). */
 export function heightEditable(layer: SceneLayer): boolean {
-  return layer.type !== 'text';
+  return layer.type !== 'text' || textHeightFixed(layer);
 }
 
 /** The lock-ratio toggle: transient UI state, on by default, like Canva. */
@@ -170,15 +172,20 @@ export function geometryEdit(
   }
   if (!(value > 0)) throw new RangeError('The size must be above 0.');
   if (layer.type === 'text') {
-    if (field === 'H') return null;
-    // The text box gets wider or narrower and the text rewraps (no stretch).
+    if (field === 'H' && !textHeightFixed(layer)) return null;
+    // The text box gets wider or narrower and the text rewraps (no stretch);
+    // a fixed-height box takes its new height (the text is anchored in it).
     const scaleX = Math.hypot(selected.matrix[0], selected.matrix[1]);
+    const scaleY = Math.hypot(selected.matrix[2], selected.matrix[3]);
     const size = layerSize(layer, source.assets);
-    if (!size || !(scaleX > 0)) return null;
+    if (!size || !(scaleX > 0) || !(scaleY > 0)) return null;
     return {
       layer,
       transform: base,
-      textBox: { width: value / scaleX, height: size.height },
+      textBox:
+        field === 'H'
+          ? { width: size.width, height: value / scaleY }
+          : { width: value / scaleX, height: size.height },
     };
   }
   const current = field === 'W' ? geometry.width : geometry.height;

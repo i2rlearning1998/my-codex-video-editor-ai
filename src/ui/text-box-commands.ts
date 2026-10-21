@@ -5,7 +5,8 @@
 // for one transaction (one undo step).
 import type { Command, TransformValues } from '../core';
 import type { SceneLayer } from '../render/adapter';
-import { formatRuns, parseRuns } from '../render/rich-text';
+import { formatListLevels, formatRuns, parseRuns } from '../render/rich-text';
+import { listOn } from '../text-engine/editing';
 import { textBoxMode, textHeightFixed } from '../render/text-box';
 import { buildTransformCommands } from './transform-commands';
 import { withValueAt } from './keyframes';
@@ -137,4 +138,114 @@ export function resetTextWidthCommands(
     if (command) commands.push(command);
   }
   return commands;
+}
+
+/**
+ * FINAL3 T3: turning a list on, changing it or off. Lists act on
+ * paragraphs: a stale empty line is removed first (one line → one bullet);
+ * with `range` (the paragraphs selected while editing) only those join the
+ * list. One undo step.
+ */
+export function listCommands(
+  compositionId: string,
+  layer: SceneLayer,
+  style: 'none' | 'bullet' | 'number' | 'check',
+  range: [number, number] | null = null,
+): Command[] {
+  const commands: Command[] = [];
+  const add = (key: string, value: string) => {
+    const old = layer.properties[key];
+    if (!old && !value) return;
+    const command = textPropertyCommand(compositionId, layer, key, value);
+    if (command) commands.push(command);
+  };
+  const text = layer.properties.text;
+  const value = text?.type === 'string' ? text.value : layer.name;
+  if (style === 'none') {
+    add('listStyle', '');
+    add('listLevels', '');
+    add('listChecked', '');
+    return commands;
+  }
+  const on = listOn(value, range);
+  if (on.text !== value) {
+    add('text', on.text);
+    // Runs past the trimmed end are dropped by the reader; keep them valid.
+    const runs = layer.properties.textRuns;
+    if (runs?.type === 'string' && runs.value)
+      add('textRuns', formatRuns(parseRuns(runs.value, on.text.length)));
+  }
+  add('listStyle', style);
+  add('listLevels', formatListLevels(on.levels));
+  if (style !== 'check') add('listChecked', '');
+  return commands;
+}
+
+/**
+ * FINAL3 (Canva Text position): superscript, subscript or none on the whole
+ * text box (while editing, the editor applies it to the selection).
+ */
+export function scriptCommands(
+  compositionId: string,
+  layer: SceneLayer,
+  script: 'super' | 'sub' | 'none',
+): Command[] {
+  const text = layer.properties.text;
+  const value = text?.type === 'string' ? text.value : layer.name;
+  const property = layer.properties.textRuns;
+  const runs = parseRuns(
+    property?.type === 'string' ? property.value : undefined,
+    value.length,
+  );
+  // Every character gets the script; the rest of each run is kept.
+  const cuts = new Set([0, value.length]);
+  for (const run of runs) cuts.add(run.start).add(run.end);
+  const points = [...cuts].sort((a, b) => a - b);
+  const next = points.slice(0, -1).flatMap((start, index) => {
+    const end = points[index + 1]!;
+    if (end <= start) return [];
+    const own = runs.find((run) => run.start <= start && end <= run.end);
+    const {
+      start: _s,
+      end: _e,
+      script: _old,
+      ...rest
+    } = own ?? {
+      start,
+      end,
+    };
+    void _s;
+    void _e;
+    void _old;
+    const piece = {
+      start,
+      end,
+      ...rest,
+      ...(script === 'none' ? {} : { script }),
+    };
+    return Object.keys(piece).length > 2 ? [piece] : [];
+  });
+  const command = textPropertyCommand(
+    compositionId,
+    layer,
+    'textRuns',
+    formatRuns(next),
+  );
+  return command ? [command] : [];
+}
+
+/** FINAL3 (Canva Typography): kerning or ligatures on one or every text. */
+export function typographyCommands(
+  compositionId: string,
+  layers: readonly SceneLayer[],
+  key: 'fontKerning' | 'fontLigatures',
+  value: boolean,
+): Command[] {
+  return layers.flatMap((layer) => {
+    if (layer.type !== 'text') return [];
+    const old = layer.properties[key];
+    if (!old && value) return [];
+    const command = textPropertyCommand(compositionId, layer, key, value);
+    return command ? [command] : [];
+  });
 }

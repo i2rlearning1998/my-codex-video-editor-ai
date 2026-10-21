@@ -41,6 +41,11 @@ export interface ListInfo {
   readonly checked?: readonly boolean[];
   /** FINAL2 U6's direction setting (auto detects per paragraph). */
   readonly direction?: 'ltr' | 'rtl' | 'auto';
+  /** FINAL2 U6's structured list: the first level's bullet, the indent per
+   *  level and the space after each item (composition units). */
+  readonly bullet?: 'disc' | 'circle' | 'square';
+  readonly indent?: number;
+  readonly spacing?: number;
 }
 export const MAX_LIST_LEVEL = 3;
 /** "0,1,-1" → [0, 1, -1] (−1: a paragraph left out of the list; malformed
@@ -234,7 +239,7 @@ export function listMarkers(
       listed < 0
         ? ''
         : list === 'bullet'
-          ? `${['•', '◦', '▪', '‣'][level]} `
+          ? `${(info.bullet === 'circle' ? ['◦', '▪', '•', '‣'] : info.bullet === 'square' ? ['▪', '•', '◦', '‣'] : ['•', '◦', '▪', '‣'])[level]} `
           : list === 'number'
             ? `${level % 2 ? String.fromCharCode(96 + Math.min(26, counters[level]!)) : counters[level]}. `
             : list === 'check'
@@ -296,7 +301,11 @@ export function layoutRich(
         }
       : undefined;
     // FINAL3 T3: each level indents by about two characters.
-    const indent = marker ? marker.width + level * firstLook.size * 1.2 : 0;
+    const indent = marker
+      ? info.indent !== undefined
+        ? Math.max(marker.width, info.indent * (level + 1))
+        : marker.width + level * firstLook.size * 1.2
+      : 0;
     const direction =
       info.direction === 'rtl' || info.direction === 'ltr'
         ? info.direction
@@ -416,16 +425,17 @@ export function layoutRich(
     }
     pushLine(true);
   }
+  // FINAL2 U6's list spacing adds to the paragraph spacing.
+  const paragraphSpacing =
+    base.style.paragraphSpacing + (list !== 'none' ? (info.spacing ?? 0) : 0);
   const height = lines.reduce(
     (sum, line, index) =>
       sum +
       line.lineHeight +
-      (line.paragraphEnd && index < lines.length - 1
-        ? base.style.paragraphSpacing
-        : 0),
+      (line.paragraphEnd && index < lines.length - 1 ? paragraphSpacing : 0),
     0,
   );
-  return { lines, height, paragraphSpacing: base.style.paragraphSpacing };
+  return { lines, height, paragraphSpacing };
 }
 
 type Context = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;

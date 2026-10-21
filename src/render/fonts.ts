@@ -1,5 +1,6 @@
 import { isCatalogFont } from '../text-engine/catalog';
 import { loadFont } from '../text-engine/fonts';
+import { loadUploadedFont } from '../text-engine/uploaded';
 // J5: fonts bundled with the editor (SIL Open Font License 1.1, files in
 // public/fonts with their OFL.txt). They have real weights from 100 to 900,
 // and Poppins and Noto Sans Devanagari also cover Devanagari. System fonts
@@ -7,7 +8,7 @@ import { loadFont } from '../text-engine/fonts';
 // register these faces with their own FontFaceSet.
 import type { SceneLayer } from './adapter';
 import { parseRuns } from './rich-text';
-import { textStyleOf } from './text-style';
+import { SYSTEM_FONTS, textStyleOf } from './text-style';
 const LATIN =
   'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
 const DEVANAGARI =
@@ -88,6 +89,8 @@ export function usedFaces(
       if (layer.type === 'text') {
         const style = textStyleOf(layer);
         used.add(`${style.family}|${style.weight}`);
+        // FINAL3 T4: italic text also asks for the family's real italics.
+        if (style.italic) used.add(`${style.family}|${style.weight}|i`);
         if (style.engine) {
           used.add(`Noto Sans Devanagari|${style.weight}`);
           if (
@@ -143,9 +146,21 @@ export async function loadUsedFonts(
     loads.push(face.load().catch(() => undefined));
   }
   for (const key of used) {
-    const [family, weight] = key.split('|');
+    const [family, weight, italic] = key.split('|');
+    // FINAL3 T4: an uploaded font comes from this browser's font cache.
+    if (
+      family &&
+      !isCatalogFont(family) &&
+      !isBundledFont(family) &&
+      !SYSTEM_FONTS.some(([name]) => name === family)
+    ) {
+      await loadUploadedFont(family, set);
+      continue;
+    }
     if (family && isCatalogFont(family) && !isBundledFont(family)) {
-      const assets = await loadFont(family, [Number(weight)], ['latin']);
+      const assets = await loadFont(family, [Number(weight)], ['latin'], {
+        italic: italic === 'i',
+      });
       for (const asset of assets) {
         const face = new FontFace(asset.family, asset.bytes, {
           weight: asset.weight,

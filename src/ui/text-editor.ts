@@ -56,6 +56,8 @@ export interface Override {
   color?: string;
   size?: number;
   family?: string;
+  /** FINAL3: superscript or subscript ('none' clears it). */
+  script?: 'super' | 'sub' | 'none';
 }
 export type OverrideKey = keyof Override;
 const KEYS: readonly OverrideKey[] = [
@@ -66,6 +68,7 @@ const KEYS: readonly OverrideKey[] = [
   'color',
   'size',
   'family',
+  'script',
 ];
 interface Model {
   readonly text: string;
@@ -118,8 +121,15 @@ export function runsFromStyles(styles: readonly Override[]): TextRun[] {
   let start = 0;
   for (let index = 1; index <= styles.length; index++)
     if (index === styles.length || !same(styles[index]!, styles[start]!)) {
-      const style = clean(styles[start]!);
-      if (Object.keys(style).length) runs.push({ start, end: index, ...style });
+      const { script, ...style } = clean(styles[start]!);
+      // 'none' only clears a script while editing; runs store super or sub.
+      const run: TextRun = {
+        start,
+        end: index,
+        ...style,
+        ...(script === 'super' || script === 'sub' ? { script } : {}),
+      };
+      if (Object.keys(run).length > 2) runs.push(run);
       start = index;
     }
   return runs;
@@ -166,6 +176,8 @@ function overrideOf(element: Element | null, root: Element): Override {
     if (tag === 'I' || tag === 'EM') result.italic = true;
     if (tag === 'U') result.underline = true;
     if (tag === 'S' || tag === 'STRIKE' || tag === 'DEL') result.strike = true;
+    if (tag === 'SUP') result.script = 'super';
+    if (tag === 'SUB') result.script = 'sub';
     if (tag === 'FONT') {
       const color = node.getAttribute('color');
       if (color && toHex(color)) result.color = toHex(color)!;
@@ -200,6 +212,8 @@ function overrideOf(element: Element | null, root: Element): Override {
     }
     if (style.fontFamily && familyOf(style.fontFamily))
       result.family = familyOf(style.fontFamily)!;
+    if (style.verticalAlign === 'super' || style.verticalAlign === 'sub')
+      result.script = style.verticalAlign;
   }
   return result;
 }
@@ -220,6 +234,8 @@ function relative(value: Override, base: Base): Override {
     result.size = Math.round(value.size * 100) / 100;
   if (value.family !== undefined && value.family !== base.style.family)
     result.family = value.family;
+  if (value.script === 'super' || value.script === 'sub')
+    result.script = value.script;
   return result;
 }
 
@@ -287,6 +303,8 @@ export interface TextEditor {
   selectionStyle(): SelectionStyle | null;
   /** Applies a style to the selection (the whole text when it is empty). */
   format(key: OverrideKey, value: Override[OverrideKey] | 'toggle'): void;
+  /** FINAL3 T3: the paragraphs the selection (or the caret) is in. */
+  paragraphRange(): [number, number] | null;
   onChange(listener: () => void): () => void;
 }
 
@@ -553,6 +571,8 @@ export function mountTextEditor(
     if (style.size !== undefined) parts.push(`font-size:${style.size}px`);
     if (style.family !== undefined)
       parts.push(`font-family:${cssFamily(style.family)}`);
+    if (style.script === 'super' || style.script === 'sub')
+      parts.push(`vertical-align:${style.script};font-size:62%`);
     return parts.join(';');
   };
   const render = () => {
@@ -1130,6 +1150,11 @@ export function mountTextEditor(
       saved = [...model.selection] as [number, number];
       box.focus({ preventScroll: true });
       writeSelection(model.selection);
+    },
+    paragraphRange() {
+      if (!layerId) return null;
+      readModel();
+      return selectedParagraphs(model.text, saved);
     },
     onChange(listener) {
       listeners.add(listener);

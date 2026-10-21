@@ -83,6 +83,9 @@ export function textListOf(layer: SceneLayer): {
   list: ListStyle;
   levels: number[];
   checked: boolean[];
+  bullet?: 'disc' | 'circle' | 'square';
+  indent?: number;
+  spacing?: number;
 } {
   const own = parseListStyle(string(layer, 'listStyle'));
   const engine = textStyleOf(layer).engine;
@@ -91,6 +94,13 @@ export function textListOf(layer: SceneLayer): {
       list: engine.list.kind === 'numbered' ? 'number' : 'bullet',
       levels: (engine.list.levels ?? []).map((level) => level - 1),
       checked: [],
+      ...(engine.list.bullet ? { bullet: engine.list.bullet } : {}),
+      ...(engine.list.indent !== undefined
+        ? { indent: engine.list.indent }
+        : {}),
+      ...(engine.list.spacing !== undefined
+        ? { spacing: engine.list.spacing }
+        : {}),
     };
   return {
     list: own,
@@ -157,7 +167,7 @@ export function textBoxOf(
       : null;
   const hit = key ? cache.get(key) : undefined;
   if (hit) return hit;
-  const { list, levels, checked } = textListOf(layer);
+  const { list, levels, checked, ...structured } = textListOf(layer);
   const layout = layoutRich(
     text,
     parseRuns(string(layer, 'textRuns'), text.length),
@@ -165,7 +175,12 @@ export function textBoxOf(
     { style, size: fontSize, color },
     width,
     measure,
-    { levels, checked, direction: style.engine?.direction ?? 'auto' },
+    {
+      levels,
+      checked,
+      direction: style.engine?.direction ?? 'auto',
+      ...structured,
+    },
   );
   const content = Math.max(
     fontSize * 0.25,

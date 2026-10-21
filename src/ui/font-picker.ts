@@ -13,6 +13,7 @@ import { SYSTEM_FONTS } from '../render/text-style';
 import { FONT_CATALOG, type FontCategory } from '../text-engine/catalog';
 import { FontLoadError, loadFont, loadFontPreview } from '../text-engine/fonts';
 import { glyphCoverage } from '../text-engine/layout';
+import { uploadedFonts } from '../text-engine/uploaded';
 import { iconSvg } from './icons';
 
 export const FONT_RECENT_KEY = 'aive.fonts.recent';
@@ -25,7 +26,7 @@ const CHIPS: readonly ('all' | FontCategory)[] = [
   'handwriting',
   'monospace',
 ];
-type Source = 'bundled' | 'system' | 'catalog';
+type Source = 'bundled' | 'system' | 'catalog' | 'uploaded';
 interface Entry {
   readonly family: string;
   readonly category: FontCategory;
@@ -80,13 +81,26 @@ export function drawsOwnGlyphs(family: string, text: string): boolean {
   );
 }
 
+/** FINAL3 T4: the catalog plus the user's uploaded fonts. */
+function allEntries(): Entry[] {
+  return [
+    ...ENTRIES,
+    ...uploadedFonts().map((family): Entry => ({
+      family,
+      category: 'sans-serif',
+      devanagari: false,
+      source: 'uploaded',
+    })),
+  ];
+}
 export function recentFonts(): string[] {
   try {
     const raw = JSON.parse(localStorage.getItem(FONT_RECENT_KEY) ?? '[]');
+    const known = allEntries();
     return Array.isArray(raw)
       ? raw
           .filter((name): name is string => typeof name === 'string')
-          .filter((name) => ENTRIES.some((entry) => entry.family === name))
+          .filter((name) => known.some((entry) => entry.family === name))
           .slice(0, RECENT_LIMIT)
       : [];
   } catch {
@@ -156,7 +170,12 @@ export interface FontPickerOptions {
   readonly weight: number;
   /** The selected text, for the coverage line. */
   readonly text: string;
-  readonly apply: (family: string) => void;
+  /** FINAL3 T4: `uploaded` is true for the user's own font. */
+  readonly apply: (family: string, uploaded?: boolean) => void;
+  /** FINAL3 T4: the families the project's text already uses. */
+  readonly documentFonts?: readonly string[];
+  /** FINAL3 T4: stores an uploaded file; resolves its family. */
+  readonly upload?: (file: File) => Promise<string>;
 }
 
 export function buildFontPicker(options: FontPickerOptions): HTMLElement {
@@ -249,7 +268,7 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
   };
   const pick = async (entry: Entry) => {
     if (entry.source !== 'catalog') {
-      done(entry.family);
+      done(entry.family, entry.source === 'uploaded');
       return;
     }
     states.set(entry.family, { kind: 'loading' });
@@ -295,10 +314,10 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
     }
     paint();
   };
-  const done = (family: string) => {
+  const done = (family: string, uploaded = false) => {
     current = family;
     remember(family);
-    options.apply(family);
+    options.apply(family, uploaded);
     paint();
   };
   const option = (entry: Entry) => {
@@ -391,7 +410,8 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
     offline.hidden =
       typeof navigator === 'undefined' || navigator.onLine !== false;
     const needle = query.trim().toLowerCase();
-    const matches = ENTRIES.filter(
+    const known = allEntries();
+    const matches = known.filter(
       (entry) =>
         (!needle || entry.family.toLowerCase().includes(needle)) &&
         (chip === 'all' || entry.category === chip) &&
@@ -400,8 +420,15 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
     );
     const filtered = !!needle || chip !== 'all' || hindi;
     const recent = recentFonts()
-      .map((name) => ENTRIES.find((entry) => entry.family === name)!)
+      .map((name) => known.find((entry) => entry.family === name)!)
       .filter(Boolean);
+    // FINAL3 T4: Document fonts (used in this project) and Uploaded fonts.
+    const documentFonts = (options.documentFonts ?? [])
+      .map((name) => known.find((entry) => entry.family === name))
+      .filter((entry): entry is Entry => !!entry);
+    const uploaded = known.filter((entry) => entry.source === 'uploaded');
+    const uploadSection = section('uploaded', t('fonts.uploaded'), uploaded);
+    if (options.upload) uploadSection.append(uploadButton());
     lists.replaceChildren(
       ...(filtered
         ? [section('results', t('fonts.results'), matches)]
@@ -409,6 +436,10 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
             ...(recent.length
               ? [section('recent', t('fonts.recent'), recent)]
               : []),
+            ...(documentFonts.length
+              ? [section('document', t('fonts.documentFonts'), documentFonts)]
+              : []),
+            uploadSection,
             section(
               'bundled',
               t('panels.bundledFonts'),
@@ -432,6 +463,40 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
     query = search.value;
     paint();
   };
+  /** FINAL3 T4: Upload a font (.ttf, .otf, .woff, .woff2). */
+  function uploadButton() {
+    const label = document.createElement('label');
+    label.className = 'secondary sm font-upload';
+    label.dataset.action = 'font-upload';
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.id = 'font-upload-input';
+    input.accept = '.ttf,.otf,.woff,.woff2';
+    input.hidden = true;
+    const text = document.createElement('span');
+    text.textContent = t('fonts.upload');
+    const hint = document.createElement('small');
+    hint.textContent = t('fonts.uploadHint');
+    label.append(input, text, hint);
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file || !options.upload) return;
+      states.set(file.name, { kind: 'loading' });
+      void options
+        .upload(file)
+        .then((family) => {
+          states.set(family, { kind: 'ready' });
+          done(family, true);
+        })
+        .catch((error: unknown) => {
+          coverage.hidden = false;
+          coverage.dataset.state = 'missing';
+          coverage.textContent =
+            error instanceof Error ? error.message : t('fonts.error.failed');
+        });
+    };
+    return label;
+  }
   const connection = () => {
     if (!wrap.isConnected) {
       window.removeEventListener('online', connection);

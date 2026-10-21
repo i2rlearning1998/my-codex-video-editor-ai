@@ -1,4 +1,5 @@
 import { isCatalogFont, fallbackChain } from '../text-engine/catalog';
+import { isSafeFamily } from '../text-engine/uploaded';
 import { parseTextEngine, type TextEngineOptions } from '../text-engine/layout';
 // W2-F5 text styling (TXT-010, TXT-014, TXT-016, TXT-017): a text layer's
 // font, weight, italic, alignment, spacing and case live in its property
@@ -121,7 +122,11 @@ export function textStyleOf(layer: SceneLayer): TextStyle {
       : 'top',
     family:
       SYSTEM_FONTS.some(([name]) => name === family) ||
-      (family !== undefined && isCatalogFont(family))
+      (family !== undefined && isCatalogFont(family)) ||
+      // FINAL3 T4: the user's own uploaded font.
+      (family !== undefined &&
+        string('fontSource') === 'uploaded' &&
+        isSafeFamily(family))
         ? family!
         : DEFAULT_TEXT_STYLE.family,
     weight:

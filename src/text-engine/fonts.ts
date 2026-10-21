@@ -1,4 +1,4 @@
-import { isCatalogFont, servedWeights } from './catalog';
+import { familyHasItalic, isCatalogFont, servedWeights } from './catalog';
 export interface FontAsset {
   family: string;
   weight: string;
@@ -79,6 +79,8 @@ export interface FontRequest {
   signal?: AbortSignal;
   offline?: boolean;
   onState?: (state: FontState) => void;
+  /** FINAL3: also the real italic faces (only when the family has them). */
+  italic?: boolean;
 }
 export function createFontLoader(options: FontLoaderOptions) {
   const states = new Map<string, FontState>();
@@ -138,7 +140,10 @@ export function createFontLoader(options: FontLoaderOptions) {
         throw new FontLoadError('FONT_UNAVAILABLE', 'Unsupported font request');
       // FIX1 F8: only weights the family really has (Google refuses others).
       weights = servedWeights(family, weights);
-      const key = keyOf(family, weights, subsets);
+      // FINAL3 T4: italics only when the family has real ones; otherwise the
+      // browser slants the upright face (synthetic, no request, no error).
+      const italic = !!request.italic && familyHasItalic(family);
+      const key = keyOf(family, weights, subsets) + (italic ? '|italic' : '');
       const state = (s: FontState) => {
         states.set(key, s);
         request.onState?.(s);
@@ -157,7 +162,9 @@ export function createFontLoader(options: FontLoaderOptions) {
               'OFFLINE_MISS',
               'This font has not been cached on this device',
             );
-          const url = new URL(fontStylesheetUrl(family, weights, subsets));
+          const url = new URL(
+            fontStylesheetUrl(family, weights, subsets, undefined, italic),
+          );
           const response = await fetcher(url, {
             signal: request.signal ?? null,
             credentials: 'omit',
@@ -253,14 +260,23 @@ export function fontStylesheetUrl(
   weights: readonly number[],
   subsets: readonly string[] = ['latin'],
   text?: string,
+  /** FINAL3 T4: the italic faces too (the caller checked they exist). */
+  italic = false,
 ): string {
   const url = new URL('https://fonts.googleapis.com/css2');
   const list = [...new Set(weights)].sort((a, b) => a - b);
   url.searchParams.set(
     'family',
-    list.length === 1 && list[0] === 400
-      ? family
-      : `${family}:wght@${list.join(';')}`,
+    italic
+      ? list.length === 1 && list[0] === 400
+        ? `${family}:ital@0;1`
+        : `${family}:ital,wght@${[
+            ...list.map((w) => `0,${w}`),
+            ...list.map((w) => `1,${w}`),
+          ].join(';')}`
+      : list.length === 1 && list[0] === 400
+        ? family
+        : `${family}:wght@${list.join(';')}`,
   );
   url.searchParams.set('display', 'swap');
   if (text) url.searchParams.set('text', text);
