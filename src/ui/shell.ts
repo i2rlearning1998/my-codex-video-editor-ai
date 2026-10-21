@@ -273,6 +273,9 @@ import { cycleThemePreference, onThemeChange, themePreference } from './theme';
 import { openSettings } from './settings-dialog';
 import { openCompositionBuild } from './composition-dialog';
 import { PARAMS_HEADER } from './ai-import-dialog';
+import { cameraMatrixFor, cameraStateAt } from '../camera/shots';
+import { sceneCameraMatrix } from '../camera/scene';
+import { selectionBounds } from '../render/selection';
 import { cameraBadge, cameraPanel, cameraView } from './camera-panel';
 import type { Asset } from '../core';
 import {
@@ -743,6 +746,26 @@ export function mountEditorShell(
       codeRenderStatus.textContent = text;
   };
   codeBaker.onChange(paintCodeStatus);
+  /** FINAL3 C3: the camera's depth-0 matrix while previewing, else null. */
+  const previewCameraMatrix = (): AffineMatrix | null => {
+    if (!cameraView.preview || session.playing) return null;
+    const composition = session.source.composition;
+    const time = session.currentTime;
+    const rig = cameraStateAt(composition, time, (id) => {
+      const box = selectionBounds(session.source, id);
+      if (!box) return null;
+      const [x, y] = transformPoint(box.matrix, [
+        box.bounds.x + box.bounds.width / 2,
+        box.bounds.y + box.bounds.height / 2,
+      ]);
+      return { x, y };
+    });
+    if (rig)
+      return cameraMatrixFor(rig, composition, 0) as unknown as AffineMatrix;
+    return composition.camera
+      ? (sceneCameraMatrix(composition, time) as unknown as AffineMatrix)
+      : null;
+  };
   // G3: Fit, then the zoom about the view's center, then the pan.
   const viewportFor = (z: number, requested: readonly [number, number]) => {
     const fitHeight = Math.max(1, canvas.clientHeight || stage.clientHeight);
@@ -778,6 +801,10 @@ export function mountEditorShell(
       requested,
     );
     let matrix = at(pan);
+    // FINAL3 C3: Preview camera looks through the camera's depth-0 view, so
+    // layers are drawn, picked and moved where the camera shows them.
+    const lens = previewCameraMatrix();
+    if (lens) matrix = multiplyMatrices(matrix, lens);
     // FINAL3 A1: at a whole-pixel zoom (100 %, 200 %) the artboard sits on
     // whole device pixels, so nothing is resampled (crisp, as in Figma).
     const device = matrix[0] * view.pixelRatio;
