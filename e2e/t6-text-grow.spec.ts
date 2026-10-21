@@ -79,6 +79,31 @@ test('[TXT-043] a fixed-width box wraps as it is typed and keeps its width', asy
   page,
 }) => {
   await addTextBox(page);
+  // FINAL3 T1: a new text is auto width; dragging a side handle fixes the
+  // width (the box then wraps), as in Canva.
+  await page.keyboard.press('Escape');
+  const canvas = (await page.locator('#composition-canvas').boundingBox())!;
+  const corners = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __AIVE__: { getCanvas: () => { corners: number[][] } };
+        }
+      ).__AIVE__.getCanvas().corners,
+  );
+  const grip = {
+    x: canvas.x + (corners[1]![0]! + corners[2]![0]!) / 2,
+    y: canvas.y + (corners[1]![1]! + corners[2]![1]!) / 2,
+  };
+  await page.mouse.move(grip.x, grip.y);
+  await page.mouse.down();
+  await page.mouse.move(grip.x + 40, grip.y, { steps: 6 });
+  await page.mouse.up();
+  expect(property(await layer(page), 'textBox')).toBe('fixed');
+  await page.locator('#composition-canvas').focus();
+  await page.keyboard.press('Enter');
+  await expect(editor(page)).toBeVisible();
+  await page.keyboard.press('Control+End');
   const width = (await editor(page).boundingBox())!.width;
   const before = await drawnHeight(page);
   // One long line: it wraps inside the box, so the box gets taller, not

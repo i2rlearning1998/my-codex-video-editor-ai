@@ -2,6 +2,7 @@ import type { PlaceTool } from './draw-palette';
 import { invertMatrix, transformPoint, type Point2 } from '../core';
 import { pickLayer, type Viewport } from '../render/canvas';
 import { deriveRenderItems, locateLayer } from '../render/adapter';
+import { textStyleOf } from '../render/text-style';
 import {
   hitHandle,
   hitMultiHandle,
@@ -505,15 +506,20 @@ export function bindCanvasInteraction(
       const picked = pick(screenPoint(event));
       const additive = event.shiftKey || event.ctrlKey || event.metaKey;
       // FINAL3 T2: a click on the one selected text places the caret there
-      // (the first click selects it, as in Canva).
+      // (the first click selects it, as in Canva). A table keeps its
+      // double-click (it picks the cell).
+      const pickedLayer = picked
+        ? locateLayer(session.source.composition.layers, picked)?.layer
+        : undefined;
       if (
         !additive &&
         picked &&
         editText &&
         session.selectedIds.length === 1 &&
         session.selectedId === picked &&
-        locateLayer(session.source.composition.layers, picked)?.layer.type ===
-          'text'
+        pickedLayer?.type === 'text' &&
+        !textStyleOf(pickedLayer).engine?.table &&
+        event.detail === 1
       ) {
         editText(picked, { at: { x: event.clientX, y: event.clientY } });
         return;
@@ -550,7 +556,11 @@ export function bindCanvasInteraction(
       // FINAL3 T2: a double-click on text edits it with all of it selected.
       if (found?.layer.type === 'text' && editText) {
         session.select(current.id);
-        editText(current.id, { selectAll: true });
+        // (A table editor uses the point to pick its cell.)
+        editText(current.id, {
+          selectAll: true,
+          at: { x: event.clientX, y: event.clientY },
+        });
         return;
       }
       if (found?.layer.type !== 'group') return;

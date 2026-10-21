@@ -3,6 +3,15 @@
 // Starter Pack 1, with drawn previews; a click or a drop adds the item
 // through the Command Bus.
 import { drags } from './drag-controller';
+import {
+  combinationsFor,
+  DEFAULT_TEXT_ITEMS,
+  deleteMyTextStyle,
+  FONT_COMBINATIONS,
+  myTextStyles,
+  onMyTextStylesChange,
+  type MyTextStyle,
+} from './text-styles';
 import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
 import { loadLibrary } from '../library/loader';
@@ -256,6 +265,9 @@ function createPreviews(measureText?: TextMeasurer) {
     item: LibraryItem | { type: 'layers'; layers: unknown[] },
   ): Promise<string | null> => {
     let entry = cache.get(key);
+    // jsdom (unit tests) has no Canvas: cards keep their icon.
+    if (!entry && /jsdom/i.test(globalThis.navigator?.userAgent ?? ''))
+      cache.set(key, (entry = Promise.resolve(null)));
     if (!entry) {
       entry = new Promise((resolve) => {
         queue.push(() => {
@@ -314,13 +326,7 @@ const SHAPE_SECTIONS = [
   'arrows',
   'flowchart',
 ] as const;
-const TEXT_SECTIONS = [
-  'combinations',
-  'plain',
-  'styles',
-  'titles',
-  'two-line',
-] as const;
+const TEXT_SECTIONS = ['plain', 'styles', 'titles', 'two-line'] as const;
 
 export function mountLibraryPanels(
   hosts: LibraryHosts,
@@ -349,10 +355,18 @@ export function mountLibraryPanels(
       library: CreatorLibrary;
       menu(id: string, x: number, y: number): void;
     };
+    /** FINAL3 T5: adds a saved "My text style" (centred, or at a point). */
+    insertTextStyle?: (style: MyTextStyle) => void;
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
-  let items: readonly LibraryItem[] = [];
+  // FINAL3 T5: the default text styles and the font combinations are built
+  // in code, so they work before (and without) the library manifest.
+  const BUILT_IN: readonly LibraryItem[] = [
+    ...DEFAULT_TEXT_ITEMS,
+    ...FONT_COMBINATIONS,
+  ];
+  let items: readonly LibraryItem[] = BUILT_IN;
   let taxonomy: readonly TemplateCategory[] = [];
   let status: { kind: 'loading' | 'error'; text: string } | null = {
     kind: 'loading',
@@ -811,6 +825,13 @@ export function mountLibraryPanels(
   };
 
   // --- Text -----------------------------------------------------------------
+  const combinationItems = () => [
+    ...combinationsFor(getLanguage()),
+    ...of('text').filter(
+      (item) =>
+        item.section === 'combinations' && !item.id.startsWith('combo-'),
+    ),
+  ];
   const textCards = (section: string) =>
     of('text')
       .filter((item) => item.section === section)
@@ -867,11 +888,90 @@ export function mountLibraryPanels(
             host.append(add, magic);
           },
         },
+        // FINAL3 T5 (Canva): Default text styles: three big buttons, each
+        // drawn in its size; click adds it centred, drag places it.
         {
           id: 'default',
           title: t('text.section.default'),
           layout: 'list',
-          cards: () => textCards('default'),
+          render: (host) => {
+            for (const item of DEFAULT_TEXT_ITEMS) {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = `text-default-button ${item.id}`;
+              button.dataset.itemId = item.id;
+              button.textContent = itemName(item);
+              button.onclick = () => actions.insert(item);
+              drags().source(button, () => ({
+                kind: 'library',
+                id: item.id,
+                name: itemName(item),
+              }));
+              host.append(button);
+            }
+          },
+        },
+        {
+          id: 'combinations-built',
+          title: t('text.section.combinations'),
+          layout: 'strip',
+          // FINAL3 T5: 24 built in code (12 English, 12 Hindi) and the
+          // library's own, in the UI language's order; See all lists them.
+          cards: () => combinationItems().slice(0, 8).map(libraryCard),
+          seeAll: () => ({
+            id: 'text-combinations-all',
+            title: t('text.section.combinations'),
+            search: t('library.search.text'),
+            sections: ({ query: inner }) =>
+              inner
+                ? searchResults(combinationItems().map(libraryCard), inner)
+                : [
+                    {
+                      id: 'combinations-built',
+                      layout: 'grid',
+                      cards: () => combinationItems().map(libraryCard),
+                    },
+                  ],
+          }),
+        },
+        // FINAL3 T5: the user's saved text styles.
+        {
+          id: 'my-text-styles',
+          title: t('text.myStyles'),
+          layout: 'list',
+          render: (host) => {
+            const styles = myTextStyles();
+            if (!styles.length) {
+              const empty = document.createElement('p');
+              empty.className = 'empty-state';
+              empty.textContent = t('text.myStylesEmpty');
+              host.append(empty);
+              return;
+            }
+            for (const style of styles) {
+              const row = document.createElement('div');
+              row.className = 'my-text-style';
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'my-text-style-use';
+              button.dataset.styleId = style.id;
+              button.textContent = style.name;
+              const font = style.layer.properties.fontFamily;
+              if (font?.type === 'string')
+                button.style.fontFamily = `"${font.value}", sans-serif`;
+              button.onclick = () => options.insertTextStyle?.(style);
+              const remove = document.createElement('button');
+              remove.type = 'button';
+              remove.className = 'ghost sm';
+              remove.dataset.action = 'my-text-style-delete';
+              remove.setAttribute('aria-label', t('text.myStyleDelete'));
+              remove.title = t('text.myStyleDelete');
+              remove.textContent = '×';
+              remove.onclick = () => deleteMyTextStyle(style.id);
+              row.append(button, remove);
+              host.append(row);
+            }
+          },
         },
         {
           id: 'dynamic',
@@ -935,6 +1035,7 @@ export function mountLibraryPanels(
     Object.values(panels).forEach((panel) => panel.refresh());
   };
   recent.onChange(refreshAll);
+  onMyTextStylesChange(() => panels.Text.refresh());
   myTemplates.onChange(() => panels.Templates.refresh());
   creator?.library.onChange(() => {
     actions.setItems(allItems());
@@ -942,7 +1043,7 @@ export function mountLibraryPanels(
   });
   loadLibrary().then(
     (manifest) => {
-      items = manifest.items;
+      items = [...manifest.items, ...BUILT_IN];
       taxonomy = manifest.templates ?? [];
       status = null;
       actions.setItems(allItems());

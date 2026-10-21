@@ -400,8 +400,10 @@ export function libraryCommands(
       };
     }
     case 'text': {
+      // A table (FINAL2 U6) keeps the width its columns divide.
+      const auto = !(item.data as { fixedWidth?: boolean }).fixedWidth;
       const layers = item.data.elements.map((element) =>
-        textLayer(element, canvas, true),
+        textLayer(element, canvas, auto),
       );
       // Centre the block on the canvas.
       const width = Math.max(...item.data.elements.map((e) => e.w)),
@@ -587,5 +589,33 @@ export function stickyNoteCommands(
     label: 'Add sticky note',
     commands: addTopLevel(composition, group, time),
     layerId: group.id,
+  };
+}
+
+/**
+ * FINAL3 T5: a saved "My text style" added again: the saved text layer with
+ * a new id, its box centred on the canvas (or on `at`), at the playhead.
+ */
+export function myTextStyleCommands(
+  source: RenderSource,
+  saved: Layer,
+  time: number,
+  at?: readonly [number, number],
+): LibraryInsert {
+  const composition = source.composition;
+  const layer = JSON.parse(JSON.stringify(saved)) as Layer;
+  layer.id = newId();
+  layer.children = [];
+  const box = textBoxOf(layer as unknown as SceneLayer);
+  const [sx, sy] = layer.transform.scale.value as [number, number];
+  const target = at ?? [composition.width / 2, composition.height / 2];
+  layer.transform.position = vector2(
+    target[0] - (box.width * Math.abs(sx)) / 2,
+    target[1] - (box.height * Math.abs(sy)) / 2,
+  );
+  return {
+    label: 'Add text style',
+    commands: addTopLevel(composition, layer, time),
+    layerId: layer.id,
   };
 }

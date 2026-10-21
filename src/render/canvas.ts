@@ -4,6 +4,8 @@ import { drawStructuredText } from '../text-engine/draw';
 import { drawTextWithEffects } from './text-effects';
 import { setTextBoxMeasurer } from './text-box';
 import { sceneCameraMatrix } from '../camera/scene';
+import { cameraMatrixFor, cameraStateAt } from '../camera/shots';
+import { dofBlur, insideClip } from '../camera/rig';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
@@ -393,13 +395,66 @@ export function drawComposition(
   const view = multiplyMatrices(pixels, viewport.matrix);
   // FINAL1: a scene camera moves the picture (not the artboard or the
   // editor's overlays); without one, `content` is `view`.
-  const camera = source.composition.camera
-    ? sceneCameraMatrix(source.composition, source.currentTime ?? 0)
-    : null;
+  const { items, warnings } = deriveRenderItems(source);
+  // FINAL3 C1: the shot on screen (Camera track), else the FINAL1 scene
+  // camera. Floating point throughout: nothing is rounded, so a slow move
+  // never steps (the jitter fix); preview and export share this code.
+  const time = source.currentTime ?? 0;
+  const frame = {
+    width: source.composition.width,
+    height: source.composition.height,
+  };
+  const centers = new Map<string, { x: number; y: number; n: number }>();
+  for (const item of items) {
+    const root = item.ancestors[0] ?? item.id;
+    const [x, y] = transformPoint(item.matrix, [
+      item.size.width / 2,
+      item.size.height / 2,
+    ]);
+    const known = centers.get(root) ?? { x: 0, y: 0, n: 0 };
+    centers.set(root, { x: known.x + x, y: known.y + y, n: known.n + 1 });
+  }
+  const rig =
+    source.camera === false
+      ? null
+      : cameraStateAt(source.composition, time, (id) => {
+          const known = centers.get(id);
+          return known ? { x: known.x / known.n, y: known.y / known.n } : null;
+        });
+  const camera =
+    rig ||
+    source.camera === false ||
+    source.cameraInView ||
+    !source.composition.camera
+      ? null
+      : sceneCameraMatrix(source.composition, time);
   const content = camera
     ? multiplyMatrices(view, camera as unknown as AffineMatrix)
     : view;
-  const { items, warnings } = deriveRenderItems(source);
+  // Preview camera: the viewport already holds the depth-0 camera.
+  const base =
+    rig && source.cameraInView
+      ? multiplyMatrices(
+          view,
+          invertMatrix(cameraMatrixFor(rig, frame, 0) as AffineMatrix) ??
+            IDENTITY_MATRIX,
+        )
+      : view;
+  const contentFor = (item: RenderItem): AffineMatrix =>
+    rig
+      ? multiplyMatrices(
+          base,
+          cameraMatrixFor(rig, frame, item.depth ?? 0) as AffineMatrix,
+        )
+      : content;
+  /** FINAL3 C1: Clip Start / End: a layer out of range is not drawn. */
+  const clipped = (item: RenderItem) =>
+    !!rig && !insideClip(rig.spec, rig.pose, frame, item.depth ?? 0);
+  /** FINAL3 C1: depth of field: the blur (composition px) of an item. */
+  const blurOf = (item: RenderItem) =>
+    rig
+      ? dofBlur(rig.spec, rig.pose, frame, item.depth ?? 0, rig.focusDepth)
+      : 0;
   const errors = [...warnings];
   const fxFrame = {
     matrix: view,
@@ -430,12 +485,73 @@ export function drawComposition(
     fade: number,
     offset?: readonly [number, number],
   ) => {
+    if (clipped(item)) return;
+    const blur = blurOf(item);
+    if (blur > 0.25) {
+      // FINAL3 C1: depth of field. A soft gaussian, plus copies on the
+      // aperture's shape (Blades, Rotation, Ratio) for the bokeh.
+      const content = contentFor(item);
+      const scale = Math.sqrt(Math.abs(content[0] * content[3] - content[1] * content[2]));
+      const radius = blur * scale;
+      const blades = rig!.spec.dof.blades >= 3 ? rig!.spec.dof.blades : 0;
+      const ratio = rig!.spec.dof.ratio;
+      const turn = (rig!.spec.dof.rotation * Math.PI) / 180;
+      const copies: [number, number][] = blades
+        ? Array.from({ length: blades }, (_, index) => {
+            const angle = turn + (index / blades) * Math.PI * 2;
+            return [
+              Math.cos(angle) * radius * 0.6 * ratio,
+              Math.sin(angle) * radius * 0.6,
+            ];
+          })
+        : ratio !== 1
+          ? [
+              [-radius * 0.5 * ratio, 0],
+              [radius * 0.5 * ratio, 0],
+            ]
+          : [];
+      const shared = 1 / (copies.length + 1);
+      for (const [dx, dy] of [[0, 0] as [number, number], ...copies]) {
+        context.save();
+        try {
+          context.filter = `blur(${Math.max(0.5, radius * (copies.length ? 0.45 : 1))}px)`;
+          paintOnce(
+            context,
+            item,
+            fade * (copies.length ? (dx || dy ? shared : shared * 1.5) : 1),
+            offset,
+            [dx, dy],
+          );
+        } finally {
+          context.restore();
+        }
+      }
+      return;
+    }
+    paintOnce(context, item, fade, offset);
+  };
+  const paintOnce = (
+    context: Target,
+    item: RenderItem,
+    fade: number,
+    offset?: readonly [number, number],
+    shift?: readonly [number, number],
+  ) => {
     context.save();
     try {
       context.setTransform(
         ...multiplyMatrices(
-          offset ? [1, 0, 0, 1, -offset[0], -offset[1]] : IDENTITY_MATRIX,
-          multiplyMatrices(content, item.matrix),
+          offset || shift
+            ? [
+                1,
+                0,
+                0,
+                1,
+                (shift?.[0] ?? 0) - (offset?.[0] ?? 0),
+                (shift?.[1] ?? 0) - (offset?.[1] ?? 0),
+              ]
+            : IDENTITY_MATRIX,
+          multiplyMatrices(contentFor(item), item.matrix),
         ),
       );
       context.globalAlpha = item.opacity * fade;

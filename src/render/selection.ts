@@ -1,3 +1,4 @@
+import { isCameraLayer } from '../camera/shots';
 import {
   IDENTITY_MATRIX,
   boundsCorners,
@@ -34,7 +35,9 @@ export function selectionBounds(
 ): { bounds: TransformBounds; matrix: AffineMatrix } | null {
   const found = locateLayer(source.composition.layers, id);
   // H1.3: audio has no box to select, resize or measure.
-  if (!found || found.layer.type === 'audio') return null;
+  // FINAL3 C1: a camera shot has no box either.
+  if (!found || found.layer.type === 'audio' || isCameraLayer(found.layer))
+    return null;
   try {
     const matrix = worldTransform(
       source.composition,

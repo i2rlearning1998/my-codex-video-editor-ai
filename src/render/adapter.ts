@@ -42,6 +42,7 @@ import {
 } from './rich-text';
 import { textStyleOf, type TextStyle } from './text-style';
 import { textBoxOf, textHeightFixed } from './text-box';
+import { isCameraLayer } from '../camera/shots';
 import { textEffectsOf, type TextLook } from './text-effects';
 import { shapeOf, type ShapeStyle } from './shapes';
 import type { TransformCapabilities } from './transform-capabilities';
@@ -88,6 +89,11 @@ export interface RenderSource {
   readonly composition: DeepReadonly<Composition>;
   readonly assets: readonly DeepReadonly<Asset>[];
   readonly background: string;
+  /** FINAL3 C3: false draws the scene un-moved by its camera (editing). */
+  readonly camera?: boolean;
+  /** FINAL3 C3: the viewport already looks through the camera's depth-0
+   *  view (Preview camera); layers at other depths keep their parallax. */
+  readonly cameraInView?: boolean;
   readonly preview?: LayerPreview;
   readonly previews?: readonly LayerPreview[];
   readonly selectedIds?: readonly string[];
@@ -165,6 +171,8 @@ export interface LayerSize {
 }
 /** FINAL3: a text item also carries its effects, curve, gradient and reveal. */
 export interface RenderItem extends TextLook {
+  /** FINAL3 C4: depth (z) for the camera (0: the canvas plane). */
+  readonly depth?: number;
   readonly chromaKey?: Readonly<ChromaKey>;
   readonly maskScopes?: readonly MaskScope[];
   readonly id: string;
@@ -367,6 +375,14 @@ export function deriveRenderItems(input: RenderSource): {
       ? value.value
       : undefined;
   };
+  // FINAL3 C4: a top-level layer's depth (z) property, 0 when unset.
+  const depths = new Map<string, number>();
+  for (const layer of source.composition.layers) {
+    const value = layer.properties.depth;
+    if (value?.type === 'number' && Number.isFinite(value.value) && value.value)
+      depths.set(layer.id, value.value);
+  }
+  const depthOf = (id: string) => depths.get(id) ?? 0;
   const hasBlend = (layers: readonly SceneLayer[]): boolean =>
     layers.some(
       (layer) => layer.blendMode !== undefined || hasBlend(layer.children),
@@ -447,6 +463,8 @@ export function deriveRenderItems(input: RenderSource): {
       // H1.3: sound has no picture. Audio layers are never drawn, picked,
       // outlined or snapped to; they live as clips on audio tracks.
       if (layer.type === 'audio') continue;
+      // FINAL3 C1: a camera shot is a clip on the Camera track, not a picture.
+      if (isCameraLayer(layer)) continue;
       try {
         const world = worldTransform(
           source.composition,
@@ -606,6 +624,11 @@ export function deriveRenderItems(input: RenderSource): {
             ...(stringProperty(layer, 'presetFxFrom') ? { fxFrom: true } : {}),
             id: layer.id,
             ancestors: Object.freeze([...ancestors]),
+            // FINAL3 C4: the depth (z) of the top-level layer: the camera's
+            // parallax, clipping and depth of field.
+            ...(depthOf(ancestors[0] ?? layer.id) !== 0
+              ? { depth: depthOf(ancestors[0] ?? layer.id) }
+              : {}),
             ...(layer.chromaKey ? { chromaKey: layer.chromaKey } : {}),
             ...(scopes.length ? { maskScopes: scopes } : {}),
             matrix: world.matrix,

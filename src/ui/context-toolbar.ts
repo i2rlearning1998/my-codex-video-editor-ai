@@ -3,6 +3,7 @@
 // disabled with the wave that builds them (D-068); nothing behind them exists.
 import { fontWeights } from '../render/fonts';
 import { isCatalogFont } from '../text-engine/catalog';
+import { isSafeFamily, uploadedFonts } from '../text-engine/uploaded';
 import { LIST_STYLES, parseListStyle } from '../render/rich-text';
 import {
   clearRunKeys,
@@ -18,6 +19,7 @@ import {
   typographyCommands,
 } from './text-box-commands';
 import { textBoxOf } from '../render/text-box';
+import { saveMyTextStyle } from './text-styles';
 import { buildTextGradientEditor, textGradientCommands } from './text-gradient';
 import {
   localTransformMatrix,
@@ -238,7 +240,11 @@ const TEXT_STYLE_KEYS = {
   fontFamily: (value: unknown) =>
     SYSTEM_FONTS.some(([name]) => name === value) ||
     // FINAL2 U6: the text engine's font catalog (downloaded on demand).
-    (typeof value === 'string' && isCatalogFont(value)),
+    (typeof value === 'string' && isCatalogFont(value)) ||
+    // FINAL3 T4: an uploaded font (marked with fontSource in the same step).
+    (typeof value === 'string' &&
+      isSafeFamily(value) &&
+      uploadedFonts().includes(value)),
   fontWeight: (value: unknown) =>
     (FONT_WEIGHTS as readonly unknown[]).includes(value),
   fontStyle: (value: unknown) => value === 'italic' || value === 'normal',
@@ -1664,13 +1670,25 @@ export function mountContextToolbar(
                 icon: 'duplicate',
               },
               { value: 'delete', label: t('command.delete'), icon: 'delete' },
+              // FINAL3 T5: keep this look in My text styles.
+              { value: 'save-style', label: t('text.saveStyle'), icon: 'text' },
             ],
             '',
             (value) => {
               closePopover('text-more');
               safely(() => {
                 if (value === 'lock') setLocked(engine, session, true);
-                else
+                else if (value === 'save-style') {
+                  const current = selected() ?? layer;
+                  const text = current.properties.text;
+                  saveMyTextStyle(
+                    current,
+                    (text?.type === 'string' ? text.value : current.name)
+                      .replace(/\s+/gu, ' ')
+                      .slice(0, 40),
+                  );
+                  showToast(t('text.styleSaved'), 'success', 3000);
+                } else
                   performEdit(engine, session, value as 'duplicate' | 'delete');
               });
             },
@@ -1746,18 +1764,26 @@ export function mountContextToolbar(
         // FINAL3 T1: Fixed height starts at the height the text has now
         // (nothing jumps); back to Auto height, the box fits its lines.
         const stored = current.properties.height;
-        if (!fixed && (!stored || !isAnimated(stored)))
+        // Back to Auto height: the stored height follows the text too.
+        const unfixed = {
+          ...(current as object),
+          properties: {
+            ...(current.properties as object),
+            textFixedHeight: { type: 'boolean', value: false },
+          },
+        } as unknown as SceneLayer;
+        const height = textBoxOf(fixed ? unfixed : current).height;
+        if (
+          !stored ||
+          (!isAnimated(stored) &&
+            Math.abs(Number(stored.value) - height) > 0.01)
+        )
           commands.push(
             setProperty(
               compositionId,
               current,
               'height',
-              withValue(
-                current,
-                'height',
-                Math.ceil(textBoxOf(current).height),
-                'number',
-              ),
+              withValue(current, 'height', height, 'number'),
             ),
           );
         run(fixed ? 'Auto height' : 'Fixed height', commands);

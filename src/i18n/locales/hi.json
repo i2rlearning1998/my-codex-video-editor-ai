@@ -2387,5 +2387,12 @@
   "fonts.uploaded": "अपलोड किए गए फ़ॉन्ट",
   "fonts.uploadHint": ".ttf, .otf, .woff या .woff2",
   "fonts.documentFonts": "दस्तावेज़ के फ़ॉन्ट",
-  "fonts.weight": "मोटाई"
+  "fonts.weight": "मोटाई",
+  "text.myStyles": "मेरी टेक्स्ट शैलियाँ",
+  "text.myStylesEmpty": "किसी सजे हुए टेक्स्ट को चुनें और 'मेरी टेक्स्ट शैली के रूप में सहेजें' चुनें।",
+  "text.myStyleDelete": "यह टेक्स्ट शैली हटाएँ",
+  "text.saveStyle": "मेरी टेक्स्ट शैली के रूप में सहेजें",
+  "text.styleSaved": "मेरी टेक्स्ट शैलियों में सहेजा गया",
+  "settings.spellcheck": "टेक्स्ट लिखते समय वर्तनी जाँचें",
+  "settings.spellcheckNote": "कैनवास के टेक्स्ट बॉक्स में ब्राउज़र की वर्तनी जाँच लगती है।"
 }

@@ -46,6 +46,7 @@ import {
   type TextStyle,
 } from '../render/text-style';
 import type { EditorSession } from './session';
+import { textSpellcheck } from './feature-flags';
 
 /** The style keys a run can override. */
 export interface Override {
@@ -685,6 +686,7 @@ export function mountTextEditor(
     const divs = paragraphsOf();
     const count = text.split('\n').length;
     const levels = Array.from({ length: count }, (_, at) => {
+      if (list === 'none') return 0;
       const value = Number(divs[at]?.dataset.level);
       return Number.isFinite(value) ? Math.max(-1, Math.min(3, value)) : 0;
     });
@@ -1037,12 +1039,15 @@ export function mountTextEditor(
       undo = [];
       redo = [];
       current = editor;
+      // FINAL3 T2: spell checking is a setting (off by default).
+      box.spellcheck = textSpellcheck();
       applyBase();
       render();
       box.hidden = false;
       sync();
       box.focus({ preventScroll: true });
-      const point = options.at;
+      // FINAL3 T2: Select all wins over a pointer position.
+      const point = options.selectAll ? undefined : options.at;
       const caret =
         point && document.caretPositionFromPoint?.(point.x, point.y);
       if (caret && box.contains(caret.offsetNode)) {

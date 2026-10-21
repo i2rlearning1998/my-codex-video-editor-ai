@@ -11005,3 +11005,45 @@ input[type='range'] {
   gap: var(--space-2);
   margin-block-start: var(--space-3);
 }
+
+/* FINAL3 T5: Canva's default text style buttons, each in its own size. */
+.text-default-button {
+  display: block;
+  inline-size: 100%;
+  margin-block-end: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  text-align: start;
+  cursor: grab;
+}
+.text-default-button:hover {
+  background: var(--color-bg-hover);
+}
+.text-default-button.text-add-heading {
+  font-size: var(--font-size-xl);
+  font-weight: var(--weight-semibold);
+}
+.text-default-button.text-add-subheading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--weight-medium);
+}
+.text-default-button.text-add-body {
+  font-size: var(--font-size-sm);
+}
+.my-text-style {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.my-text-style-use {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  text-align: start;
+}

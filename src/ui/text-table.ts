@@ -111,6 +111,8 @@ export function tableInsertCommands(
     name: { en: t('textx.table'), hi: t('textx.table') },
     tags: [],
     data: {
+      // FINAL3 T1: a table keeps its width (its columns divide it).
+      fixedWidth: true,
       elements: [
         {
           kind: 'text',

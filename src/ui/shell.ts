@@ -215,7 +215,7 @@ import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
-import { addTopLevel } from './library-insert';
+import { addTopLevel, myTextStyleCommands } from './library-insert';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
@@ -946,22 +946,18 @@ export function mountEditorShell(
     const base = session.previewSource ?? session.source;
     // FINAL2 U10: the editing canvas shows the scene un-moved by the
     // camera unless playing or "Preview camera" is on.
-    const cameraOff =
-      !!base.composition.camera && !session.playing && !cameraView.preview;
+    // FINAL3 C3: the camera (shots or the scene camera) is off while
+    // editing, applied while playing, and with "Preview camera" folded into
+    // the view (so layers stay selectable and movable through it).
+    const cameraOff = !session.playing && !cameraView.preview;
     const drawn = {
       ...base,
-      ...(cameraOff
-        ? { composition: { ...base.composition, camera: undefined } }
-        : {}),
+      ...(cameraOff ? { camera: false } : {}),
+      ...(!session.playing && cameraView.preview ? { cameraInView: true } : {}),
       // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
         ? {
-            composition: withErasedPaths(
-              cameraOff
-                ? { ...base.composition, camera: undefined }
-                : base.composition,
-              drawTool.erased,
-            ),
+            composition: withErasedPaths(base.composition, drawTool.erased),
           }
         : {}),
       frames,
@@ -1127,6 +1123,8 @@ export function mountEditorShell(
         animatePanel.render();
         return animateBody;
       },
+      openTool: (id) =>
+        id === 'position' ? positionPanel.toggle() : toolPanels?.open(id),
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
@@ -1300,21 +1298,8 @@ export function mountEditorShell(
   cameraBadgeEl.setAttribute('role', 'status');
   cameraBadgeEl.hidden = true;
   (root.querySelector('#canvas-footer') ?? stage).append(cameraBadgeEl);
-  stage.addEventListener(
-    'pointerdown',
-    (event) => {
-      if (
-        cameraView.preview &&
-        session.source.composition.camera &&
-        (event.target as Element).closest?.('canvas')
-      ) {
-        event.stopImmediatePropagation();
-        event.preventDefault();
-        showToast(t('camera.previewHint'), 'info');
-      }
-    },
-    true,
-  );
+  // FINAL3 C3: Preview camera no longer blocks the canvas: the view looks
+  // through the camera, so layers are picked and moved where they are seen.
   const openAltText = () => {
     const layer = selectedLayer();
     if (!layer) return;
@@ -4333,6 +4318,17 @@ export function mountEditorShell(
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
       },
+      // FINAL3 T5: a saved text style, centred at the playhead.
+      insertTextStyle: (style) =>
+        safely(() => {
+          const insert = myTextStyleCommands(
+            session.source,
+            style.layer,
+            session.currentTime,
+          );
+          engine.commands.transaction(insert.label, insert.commands);
+          session.select(insert.layerId ?? null);
+        }),
       code: {
         insert: (template) =>
           void insertCodeTemplate(template, session.currentTime).catch(

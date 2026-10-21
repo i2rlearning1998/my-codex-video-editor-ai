@@ -98,6 +98,8 @@ import {
   type LayerEffectsContext,
 } from './right-panel/layer-effects';
 import { describeSelection, selectionRoots } from './selection-context';
+import { textListOf } from '../render/text-box';
+import { listCommands } from './text-box-commands';
 import type { EditorSession } from './session';
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
 
@@ -329,6 +331,8 @@ const folded = new Set<string>();
 export interface RightPanelHooks {
   /** U5: the Animate tab's presets (the former left Animate panel). */
   animateBody?: () => HTMLElement;
+  /** FINAL3 T5: the text's Font and Effects side panels and Position. */
+  openTool?: (id: 'font' | 'effects' | 'position') => void;
   crop?: () => void;
   /** The toolbar's popover contents, for the same controls here. */
   build?: (
@@ -611,6 +615,9 @@ export function mountRightPanel(
           max: 4096,
           decimals: 0,
           presets: [12, 16, 24, 32, 48, 64, 96, 128],
+          // FINAL3 T5: the shared slider beside the number.
+          slider: true,
+          sliderRange: [8, 200],
           onCommit: (value) =>
             safely(() =>
               run('Set font size', [
@@ -696,7 +703,66 @@ export function mountRightPanel(
           })),
           onChange: (value) => styleRun('Set alignment', 'textAlign', value),
         }),
+        // FINAL3 T5: case (aA), vertical align and the list, as in Canva.
+        createSelect({
+          id: 'right-case',
+          label: t('toolbar.textCase'),
+          value: style.textCase,
+          options: (['none', 'upper', 'lower', 'title'] as const).map(
+            (value) => ({ value, label: t(`text.case.${value}`) }),
+          ),
+          onChange: (value) => styleRun('Set text case', 'textCase', value),
+        }),
+        createSelect({
+          id: 'right-valign',
+          label: t('toolbar.anchor'),
+          value: style.anchor,
+          options: (['top', 'middle', 'bottom'] as const).map((value) => ({
+            value,
+            label: t(`text.anchor.${value}`),
+          })),
+          onChange: (value) => styleRun('Set text anchor', 'textAnchor', value),
+        }),
+        createSelect({
+          id: 'right-list',
+          label: t('toolbar.list'),
+          value: textListOf(layer).list,
+          options: (['none', 'bullet', 'number', 'check'] as const).map(
+            (value) => ({ value, label: t(`text.list.${value}`) }),
+          ),
+          onChange: (value) =>
+            safely(() =>
+              run(
+                value === 'none' ? 'Remove list' : 'Set list',
+                listCommands(
+                  compositionId,
+                  single() ?? layer,
+                  value as 'none' | 'bullet' | 'number' | 'check',
+                ),
+              ),
+            ),
+        }),
         colorField('right-color'),
+        row(
+          button(
+            'right-text-font',
+            'text',
+            t('toolbar.font'),
+            hooks.openTool ? () => hooks.openTool!('font') : null,
+          ),
+          button(
+            'right-text-effects',
+            'effects',
+            t('toolbar.effects'),
+            hooks.openTool ? () => hooks.openTool!('effects') : null,
+          ),
+          button(
+            'right-text-position',
+            'layers',
+            t('toolbar.position'),
+            hooks.openTool ? () => hooks.openTool!('position') : null,
+          ),
+        ),
       ]),
       accordion('text-spacing', t('toolbar.advanced'), [
         hooks.build?.('spacing'),

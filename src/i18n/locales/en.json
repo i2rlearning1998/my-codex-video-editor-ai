@@ -2387,5 +2387,12 @@
   "fonts.uploaded": "Uploaded fonts",
   "fonts.uploadHint": ".ttf, .otf, .woff or .woff2",
   "fonts.documentFonts": "Document fonts",
-  "fonts.weight": "Weight"
+  "fonts.weight": "Weight",
+  "text.myStyles": "My text styles",
+  "text.myStylesEmpty": "Select a styled text and choose Save as my text style to keep it here.",
+  "text.myStyleDelete": "Remove this text style",
+  "text.saveStyle": "Save as my text style",
+  "text.styleSaved": "Saved to My text styles",
+  "settings.spellcheck": "Check spelling while typing text",
+  "settings.spellcheckNote": "Uses the browser's spelling check in text boxes on the canvas."
 }
