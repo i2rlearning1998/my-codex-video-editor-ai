@@ -10893,3 +10893,35 @@ input[type='range'] {
   padding: 0;
   border-block-end: 0;
 }
+/* FIX1 F6: the nested clip block and the breadcrumb bar. */
+.timeline-clip[data-nested='true'] {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    var(--accent-soft) 6px 8px
+  );
+}
+.nest-map {
+  position: absolute;
+  inset: 55% 4px 3px;
+  pointer-events: none;
+}
+.nest-map-clip {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 2px;
+  background: var(--text-on-accent);
+  opacity: 0.55;
+  border: 1px solid var(--card-overlay);
+}
+.nest-length {
+  margin-inline-start: auto;
+}
+.nest-spacer {
+  flex: 1;
+}
+.nest-bar .nest-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}

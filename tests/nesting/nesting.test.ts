@@ -291,3 +291,126 @@ describe('[NEST] nested clips', () => {
     );
   });
 });
+
+// FIX1 F6: editing inside a nested clip goes through a scratch scene that
+// holds its real lanes and clips; the edit is written back in one step.
+import {
+  applyScratch,
+  packNested,
+  packPath,
+  unpackNested,
+  unpackPath,
+} from '../../src/nesting';
+describe('[FX1-014] editing inside a nested clip', () => {
+  it('unpacks the inside onto its own lanes in inner time, writes a trim back in one step, updates the nest length and flattens to the right places', () => {
+    const engine = setup();
+    // Start the nest at 2 s so inner and outer time differ.
+    run(engine, {
+      label: 'Move',
+      commands: [
+        {
+          type: 'SET_CLIP_TIMING',
+          compositionId: C,
+          clipId: 'clip-a',
+          startTime: 2,
+          duration: 4,
+        },
+        {
+          type: 'SET_CLIP_TIMING',
+          compositionId: C,
+          clipId: 'clip-b',
+          startTime: 3,
+          duration: 2,
+        },
+      ],
+    });
+    run(
+      engine,
+      nestClips(engine.state, C, ['clip-a', 'clip-b'], { groupId: 'n1' }),
+    );
+    const scratch = unpackNested(engine.state, C, 'n1');
+    const inside = scratch.compositions.find((c) => c.id === C)!;
+    expect(inside.tracks.map((t) => t.id)).toEqual(['ta', 'tb']);
+    expect(inside.tracks[1]!.clips[0]).toMatchObject({
+      id: 'clip-b',
+      startTime: 1,
+      duration: 2,
+    });
+    expect(inside.layers.find((l) => l.id === 'a')!.startTime).toBe(0);
+    // Trim a's tail inside: 4 s → 2.5 s (b still ends at 3 s).
+    const edited = applyScratch(scratch, [
+      {
+        type: 'SET_CLIP_TIMING',
+        compositionId: C,
+        clipId: 'clip-a',
+        startTime: 0,
+        duration: 2.5,
+        sourceIn: 0,
+        sourceOut: 2.5,
+      },
+    ]);
+    const steps = engine.history.undo.length;
+    engine.commands.transaction('Edit nested clip', [
+      packNested(
+        engine.state,
+        C,
+        'n1',
+        edited.compositions.find((c) => c.id === C)!,
+      ),
+    ]);
+    expect(engine.history.undo.length).toBe(steps + 1);
+    const nest = scene(engine).tracks[0]!.clips[0]!;
+    expect(nest).toMatchObject({ startTime: 2, duration: 3, sourceOut: 3 });
+    expect(scene(engine).layers.find((l) => l.id === 'n1')!.duration).toBe(3);
+    // Un-nest: the trimmed clip and its partner are back where they were.
+    run(engine, flattenNested(engine.state, C, 'n1_clip'));
+    const clips = scene(engine).tracks.flatMap((t) => t.clips);
+    expect(clips.find((c) => c.id === 'clip-a')).toMatchObject({
+      startTime: 2,
+      duration: 2.5,
+    });
+    expect(clips.find((c) => c.id === 'clip-b')).toMatchObject({
+      startTime: 3,
+      duration: 2,
+    });
+    engine.undo();
+    engine.undo();
+    expect(scene(engine).tracks[0]!.clips[0]!.duration).toBe(4);
+  });
+
+  it('edits two levels deep and packs back through both', () => {
+    const engine = setup();
+    run(
+      engine,
+      nestClips(engine.state, C, ['clip-a', 'clip-b'], { groupId: 'inner' }),
+    );
+    run(
+      engine,
+      nestClips(engine.state, C, ['inner_clip', 'clip-c'], {
+        groupId: 'outer',
+      }),
+    );
+    const path = ['outer', 'inner'];
+    const levels = unpackPath(engine.state, C, path);
+    const deepest = levels.at(-1)!;
+    const edited = applyScratch(deepest, [
+      {
+        type: 'SET_CLIP_TIMING',
+        compositionId: C,
+        clipId: 'clip-b',
+        startTime: 1,
+        duration: 1,
+        sourceIn: 0,
+        sourceOut: 1,
+      },
+    ]);
+    engine.commands.transaction('Edit nested clip', [
+      packPath(engine.state, C, path, levels, edited),
+    ]);
+    const again = unpackPath(engine.state, C, path).at(-1)!;
+    const b = again.compositions[0]!.tracks.flatMap((t) => t.clips).find(
+      (c) => c.id === 'clip-b',
+    )!;
+    expect(b.duration).toBe(1);
+  });
+});

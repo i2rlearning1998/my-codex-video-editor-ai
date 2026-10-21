@@ -2338,5 +2338,8 @@
   "audioLibrary.music": "Music",
   "audioLibrary.mine": "My audio",
   "audioLibrary.mineEmpty": "Audio you import into Media shows here.",
-  "mixer.projectAudioHint": "Master volume and every lane: level, volume, mute and solo."
+  "mixer.projectAudioHint": "Master volume and every lane: level, volume, mute and solo.",
+  "nest.backToMain": "Back to main timeline",
+  "nest.tooDeep": "Nested clips go at most 5 levels deep.",
+  "nest.length": "Nested clip, {seconds} s long"
 }

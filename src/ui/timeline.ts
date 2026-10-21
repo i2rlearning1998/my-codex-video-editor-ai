@@ -1306,6 +1306,43 @@ export function mountTimeline(
         );
         if (entry.layer.code) clip.dataset.code = 'true';
         clip.prepend(icon);
+        // FIX1 F6: a nested clip shows a nest icon, a map of the clips
+        // inside (their lanes and times through the outer trim) and its
+        // length.
+        const nestedContent = nestedInfo(entry.clip);
+        if (nestedContent) {
+          clip.dataset.nested = 'true';
+          icon.innerHTML = iconSvg('layers', 12);
+          const map = document.createElement('span');
+          map.className = 'nest-map';
+          map.setAttribute('aria-hidden', 'true');
+          const windowLength = entry.clip.sourceOut - entry.clip.sourceIn;
+          const ranks =
+            Math.max(0, ...nestedContent.clips.map((r) => r.trackRank)) + 1;
+          for (const record of nestedContent.clips) {
+            const from =
+              (record.clip.startTime - entry.clip.sourceIn) / windowLength;
+            const to = from + record.clip.duration / windowLength;
+            if (to <= 0 || from >= 1) continue;
+            const bar = document.createElement('span');
+            bar.className = 'nest-map-clip';
+            bar.dataset.kind = record.trackType;
+            bar.style.left = `${Math.max(0, from) * 100}%`;
+            bar.style.width = `${(Math.min(1, to) - Math.max(0, from)) * 100}%`;
+            bar.style.top = `${(record.trackRank / ranks) * 100}%`;
+            bar.style.height = `${100 / ranks}%`;
+            map.append(bar);
+          }
+          clip.append(map);
+          const length = document.createElement('span');
+          length.className = 'clip-badge nest-length';
+          length.dataset.badge = 'length';
+          length.textContent = `${formatTimelineTime(entry.clip.duration)} s`;
+          length.title = t('nest.length', {
+            seconds: formatTimelineTime(entry.clip.duration),
+          });
+          clip.append(length);
+        }
         if (highlighted === entry.layer.id)
           clip.classList.add('timing-highlight');
         clip.style.left = `${preview ? timeToPixel(preview.startTime, zoom) : entry.left}px`;
@@ -3798,7 +3835,11 @@ export function mountTimeline(
     const nested = selectedNested({ session });
     if (roots.length > 1) section.push(commandItem('nest-clips'));
     if (nested)
-      section.push(commandItem('enter-nested'), commandItem('unnest-clip'));
+      section.push(
+        commandItem('enter-nested'),
+        commandItem('unnest-clip'),
+        commandItem('rename-clip'),
+      );
     else if (roots.length && roots.every((layer) => layer.type === 'group'))
       section.push(commandItem('ungroup'));
     if (kind === 'video' || kind === 'audio')

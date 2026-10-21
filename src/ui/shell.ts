@@ -186,6 +186,7 @@ import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
 import { mountAudioMixer, projectMasterVolume } from './audio-mixer';
+import { createNestEngine } from './nest-engine';
 import { configureAudioTab } from './right-panel/audio-tab';
 import { mountRecordPanel } from './record-panel';
 import { recordPanelHooks } from './record-panel-hooks';
@@ -333,10 +334,13 @@ export interface ShellActions {
 }
 export function mountEditorShell(
   root: HTMLElement,
-  engine: EditorEngine,
+  realEngine: EditorEngine,
   actions: ShellActions = {},
   renderer: CompositionRenderer = new Canvas2DRenderer(),
 ) {
+  // FIX1 F6: inside a nested clip the editor edits its inside as a scene;
+  // the wrapper writes each edit back to the real engine (one undo step).
+  const engine = createNestEngine(realEngine);
   const categoryKey = (name: string) => `library.${name.toLowerCase()}`;
   const railButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-category="${name}" aria-pressed="${pressed}" title="${t(categoryKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${t(categoryKey(name))}</span></button>`;
@@ -2807,6 +2811,8 @@ export function mountEditorShell(
     )?.id;
   const openExport = () => {
     session.setPlaying(false);
+    // FIX1 F6: export always shows the whole project.
+    if (engine.nest) nestBar?.leaveAll();
     openExportDialog({
       composition: session.source.composition,
       scenes: engine.state.compositions,
