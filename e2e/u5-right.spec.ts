@@ -37,7 +37,8 @@ test('[LAY-059] the right rail shows 24 px icons with labels; nothing selected s
   await expect(page.locator('#right-section')).toBeHidden();
   // V7 (spec 10.1): the rail stays, holding a disabled Auto Caption; T1
   // adds Theme, the one tab that works with nothing selected.
-  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(2);
+  // FIX1 F5 (D-291): and Project audio (the Mixer).
+  await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(3);
 });
 
 test('[PRJ-027] the canvas bar sets the scene frame rate; times re-snap to the new grid; one undo step', async ({

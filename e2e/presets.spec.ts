@@ -9,7 +9,12 @@ import {
   openRight,
   seekKeep,
 } from './fixtures';
+import { LEGACY_VIEWPORT } from './fixtures';
 import { choose as chooseOption, sidePanel } from './controls';
+
+// Pixel and canvas-geometry checks written for the 1600 × 1072 window
+// (FIX1 D-287 made 1920 × 940 the default).
+test.use({ viewport: LEGACY_VIEWPORT });
 
 // Default example: shape "example-badge" at 76,456 (224×48, #cbbced) over the
 // artboard (#f0eee7); text "example-headline" (fill #272b29, size 78). Clips run

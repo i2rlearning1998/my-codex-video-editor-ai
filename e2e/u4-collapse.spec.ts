@@ -1,5 +1,10 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook } from './fixtures';
+import { LEGACY_VIEWPORT } from './fixtures';
+
+// Pixel and canvas-geometry checks written for the 1600 × 1072 window
+// (FIX1 D-287 made 1920 × 940 the default).
+test.use({ viewport: LEGACY_VIEWPORT });
 
 // U4: a collapsed timeline is the canvas plus one player bar with a
 // full-width scrubber; every ratio change fits the new canvas in the view.

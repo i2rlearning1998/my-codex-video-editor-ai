@@ -46,9 +46,10 @@ test('[F2-001] Settings keys: save masks the key, Test says Working or Key not v
   await expect(pexels.locator('.key-state')).toHaveText('Not set');
   // Offline engines.
   await dialog.locator('[data-settings-tab="offline"]').click();
-  await expect(
-    dialog.locator('[data-engine="local-tts"] .settings-note'),
-  ).toContainText('cloud voice');
+  // FIX1 F3 (D-289): the offline voice is behind a flag (off), so it is
+  // not listed; Whisper still is.
+  await expect(dialog.locator('[data-engine="local-tts"]')).toHaveCount(0);
+  await expect(dialog.locator('[data-engine="local-whisper"]')).toHaveCount(1);
   await page.screenshot({ path: 'reports/final-ui/u1-settings-offline.png' });
 });
 
