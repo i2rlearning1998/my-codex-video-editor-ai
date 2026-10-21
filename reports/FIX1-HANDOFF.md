@@ -13,6 +13,6 @@ Branch `claude/fix-1` from `claude/final-2`. Draft PR targets `claude/final-2`.
 | F6 nesting | Done: SET_NESTED_CONTENT core command, src/nesting/view.ts unpack/pack, src/ui/nest-engine.ts (whole UI edits the inside), new breadcrumb + block map (FX1-014). Not done: Effects/Speed tabs for a nest in the right rail (capability rules) |
 | F7 import / build | Done (FX1-015, FX1-016) |
 | F8 text | Done: autofill off, 2 px caret in text colour, real Google weights per family, own-typeface rows, Devanagari coverage filter, Retry on font errors. e2e fix1-text, unit fonts.test. |
-| Full verify | Not run |
+| Full verify | Done: unit 2 known worker failures; e2e 530 passed, 25 failed (intended changes or old-viewport geometry), fixed and re-run green; see reports/FIX1.md section 4 |
 
-Next: END (docs, report, full verify, PR). Note: INS-018 (j3) fails at the 1920x940 viewport, not from F5; pin LEGACY_VIEWPORT at the end if needed.
+Next: draft PR to claude/final-2, then owner review. Note: INS-018 (j3) fails at the 1920x940 viewport, not from F5; pin LEGACY_VIEWPORT at the end if needed.

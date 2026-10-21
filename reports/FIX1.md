@@ -26,7 +26,17 @@ f1-panels-desktop, f1-panels-laptop-1366 (1366 × 768), f2-stock-progress, f2-ic
 
 ## 4. Checks
 
-VERIFY_RESULTS
+One full `npm run verify` at the end, in the sandbox's Chromium 141 (no Chrome or Edge here; D-030), Playwright 1.63.0, window 1920 × 940.
+
+- Format and typecheck: pass. Build: pass. Test-hook assertion: pass.
+- Unit + jsdom (Vitest): 1186 passed, 2 failed, 1 skipped. The 2 are `tests/blocks/worker.test.ts`, sandbox-only worker tests that fail the same way on `claude/final-2` (reports/FINAL2.md). Because `npm test` failed, `verify` stopped there; build, e2e, hook and ledger were then run directly, the same commands in the same order.
+- e2e: 530 passed, 25 failed (1.1 h, parallel). None was a FIX1 product regression:
+  - Intended FIX1 changes, tests updated: LAY-035, LAY-041, LAY-059, LAY-063 (Project audio now sits on the empty right rail), AUD-021 (stock music is a library tab, not a planned tile), F2-001 (the offline voice is behind a flag).
+  - Written for the old 1600 × 1072 canvas, pinned to `LEGACY_VIEWPORT` with a comment (D-287): CV-013, LAY-003/LAY-008/LAY-033, LAY-004, INS-018, ANI-007, CV-063, TR-014, TR-016, CODE-006, CODE-011 ×10.
+  - Re-run of those 14 spec files: 61 passed, 1 failed (a second LAY-035 assertion about the empty rail), fixed; h4-panels then 5 of 5.
+  - Known flakes (LAY-004, LAY-038, ANI-003, PB-010) and known failures (TXT-040, CV-044/045) did not fail in this run; DEV-006 is the deliberate probe (expected failure).
+- Ledger: the only errors were the 18 IDs above (Verified with a failing test in the full run's report); all pass in the re-run. The ledger was not re-run against one complete report after the fixes (one full verify allowed).
+- Earlier during the parts, FX1-001 failed once after F5: with nothing selected, opening Project audio hid Theme and the reverse. Fixed (both stay on the rail).
 
 ## 5. Try it with real keys (about 20 minutes, browser window about 1920 × 940)
 

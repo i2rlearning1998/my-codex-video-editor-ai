@@ -110,7 +110,9 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   await page.keyboard.press('Escape');
   // U5: nothing selected has no tabs; T-ALL P1 (D-183): the right panel
   // itself is then not drawn.
-  await expect.poll(() => shownSections(page)).toEqual(['Captions', 'Theme']);
+  await expect
+    .poll(() => shownSections(page))
+    .toEqual(['Audio', 'Captions', 'Theme']);
   await expect(page.locator('#right-panel-empty')).toBeHidden();
 });
 
