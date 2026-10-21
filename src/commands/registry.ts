@@ -74,6 +74,8 @@ export interface CommandContext {
   };
   /** FINAL2 U9: enters a nested clip (the timeline's breadcrumb bar). */
   nesting?: { enter: (layerId: string) => void };
+  /** FINAL3 V3: opens Review & swap for the plan the project was built from. */
+  planReview?: () => void;
 }
 /** P1: the one selected top-level code layer's id, or null. */
 export function selectedCodeLayer(session: EditorSession): string | null {
@@ -476,6 +478,14 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   },
   // T5: Stop left the Player bar; it stays in the palette (pause and go to
   // the start).
+  // FINAL3 V3: Review & swap (palette).
+  {
+    id: 'plan-review',
+    labelKey: 'command.planReview',
+    shortcut: '',
+    isEnabled: ({ planReview }) => !!planReview,
+    run: ({ planReview }) => planReview?.(),
+  },
   {
     id: 'stop',
     labelKey: 'command.stop',

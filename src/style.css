@@ -11118,3 +11118,79 @@ input[type='range'] {
   color: var(--color-text);
   text-align: start;
 }
+/* FINAL3 V2/V3: Build video for a plan, and Review & swap. */
+.plan-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.plan-steps li {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+}
+.plan-steps li[data-state='running'],
+.plan-steps li[data-state='done'] {
+  color: var(--text);
+}
+.plan-steps li[data-state='failed'] {
+  color: var(--warning-text);
+}
+.plan-banner {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--warning-text);
+}
+.plan-summary[data-state='error'] {
+  color: var(--danger-text);
+}
+.plan-scene {
+  border-top: 1px solid var(--border-subtle);
+  padding-block: var(--space-2);
+}
+.plan-scene h4 {
+  margin: 0 0 var(--space-1);
+  cursor: pointer;
+}
+.plan-narration {
+  width: 100%;
+  resize: vertical;
+}
+.plan-flag {
+  color: var(--warning-text);
+  font-size: 12px;
+}
+.plan-alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block: var(--space-1);
+}
+.plan-alternative {
+  width: 64px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  font-size: 10px;
+}
+.plan-alternative[aria-pressed='true'] {
+  border: 2px solid var(--accent);
+}
+.plan-alternative img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.plan-compare {
+  margin: 0 0 var(--space-2);
+  padding-inline-start: var(--space-4);
+}

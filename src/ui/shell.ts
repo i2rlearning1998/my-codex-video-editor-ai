@@ -278,10 +278,17 @@ import { sceneCameraMatrix } from '../camera/scene';
 import { selectionBounds } from '../render/selection';
 import { cameraBadge, cameraView } from './camera-panel';
 import { cameraSection, cameraUi, selectedShot } from './camera-section';
+import { isPlanV2, type VideoPlan } from '../video-plan';
+import { openPlanBuild, planServices } from './plan-build-dialog';
+import { planReviewPanel } from './plan-review';
+import { planState, savePlanState } from './plan-state';
+import { planVoiceEngine } from './voiceover';
+import { synthesizeToMedia } from '../speech';
+import type { LicenseMeta } from '../providers';
 import { mountCameraFrame } from './camera-frame';
 import { cameraShotsOf } from '../camera/shots';
 import { updateCameraCommands } from '../camera/shot-commands';
-import type { Asset } from '../core';
+import type { Asset, Project } from '../core';
 import {
   dropStock,
   mountStock,
@@ -1852,6 +1859,10 @@ export function mountEditorShell(
         openAutoCaptions(captionsContext, layerId ?? undefined),
     },
     nesting: { enter: (layerId) => nestBar?.enter(layerId) },
+    planReview: () => {
+      if (planState(engine.state.id)) openPlanReview();
+      else showToast(t('plan.reviewEmpty'), 'info');
+    },
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -2420,6 +2431,204 @@ export function mountEditorShell(
     );
     return add.items.length;
   };
+  /** FINAL2 U10 / FINAL3 V2.6: adds built scenes in one 'Build video' step
+   *  (replacing a single empty scene); returns the new scenes' ids. */
+  const addBuiltScenes = (
+    project: Project,
+    toast = t('composition.added', { count: project.compositions.length }),
+  ): string[] => {
+    const missing = project.assets.filter(
+      (asset) => !engine.state.assets.some((have) => have.id === asset.id),
+    );
+    if (missing.length)
+      engine.library(
+        'Import media',
+        missing.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
+      );
+    const taken = new Set<string>();
+    const collect = (value: unknown) => {
+      if (Array.isArray(value)) value.forEach(collect);
+      else if (value && typeof value === 'object')
+        for (const [key, inner] of Object.entries(value)) {
+          if (key === 'id' && typeof inner === 'string') taken.add(inner);
+          collect(inner);
+        }
+    };
+    collect(engine.state.compositions);
+    const fresh = project.compositions.map((composition) => {
+      // Ids already in the open project get a suffix (a second build).
+      let text = JSON.stringify(composition);
+      const ids = new Set<string>();
+      const own = (value: unknown) => {
+        if (Array.isArray(value)) value.forEach(own);
+        else if (value && typeof value === 'object')
+          for (const [key, inner] of Object.entries(value)) {
+            if (key === 'id' && typeof inner === 'string') ids.add(inner);
+            own(inner);
+          }
+      };
+      own(composition);
+      const suffix = `-${Date.now().toString(36)}`;
+      for (const id of ids)
+        if (taken.has(id))
+          text = text
+            .split(JSON.stringify(id))
+            .join(JSON.stringify(id + suffix));
+      return JSON.parse(text) as typeof composition;
+    });
+    // FIX1 F7: a project that is only one empty default scene gets the
+    // built scenes instead of keeping a blank first scene.
+    const scenes = engine.state.compositions;
+    const blank =
+      scenes.length === 1 &&
+      !scenes[0]!.layers.length &&
+      scenes[0]!.tracks.every((track) => !track.clips.length)
+        ? scenes[0]!.id
+        : null;
+    engine.commands.transaction('Build video', [
+      ...fresh.map((composition) => ({
+        type: 'CREATE_COMPOSITION' as const,
+        composition,
+      })),
+      ...(blank && fresh.length
+        ? [{ type: 'DELETE_COMPOSITION' as const, compositionId: blank }]
+        : []),
+    ]);
+    if (fresh[0]) session.selectComposition(fresh[0].id);
+    // The new scenes show at once in the strip, and the note stays long
+    // enough to read, with a way to the scenes board.
+    if (!stripShown) stripButton.click();
+    showToast(toast, 'success', 10000, {
+      label: t('composition.showScenes'),
+      run: () => element<HTMLButtonElement>('#scene-board-toggle').click(),
+    });
+
+    return fresh.map((composition) => composition.id);
+  };
+  /** FINAL3 V2: a quiet import (no Restored note) that returns the asset. */
+  const importQuiet = async (file: File, license?: LicenseMeta) => {
+    const [id] = await mediaPanel.importFiles([file], {
+      ...(license ? { license } : {}),
+      quiet: true,
+    });
+    return (
+      (session.source.assets.find((asset) => asset.id === id) as unknown as
+        Asset | undefined) ?? null
+    );
+  };
+  const planBuildServices = () =>
+    planServices({
+      assets: () => session.source.assets as unknown as readonly Asset[],
+      importFile: importQuiet,
+    });
+  const planThemeById = async (id: string) =>
+    BUILT_IN_THEMES.find((theme) => theme.id === id) ??
+    (await (await themeLibrary)?.listThemes())?.find(
+      (theme) => theme.id === id,
+    ) ??
+    null;
+  /** FINAL3 V2: Build video for a Video Plan v2 (no slot dialog). */
+  const openPlanBuildFor = (plan: VideoPlan) => {
+    session.setPlaying(false);
+    openPlanBuild(plan, {
+      assets: () => session.source.assets as unknown as readonly Asset[],
+      importFile: importQuiet,
+      theme: planThemeById,
+      addScenes: (result) => {
+        const ids = addBuiltScenes(
+          result.project!,
+          t('plan.built', {
+            count: String(result.project!.compositions.length),
+          }),
+        );
+        session.select(null);
+        savePlanState(engine.state.id, {
+          plan: result.plan!,
+          alternatives: Object.fromEntries(
+            Object.entries(result.alternatives).map(([k, v]) => [k, [...v]]),
+          ),
+          flags: [...result.flags],
+          silent: result.silent,
+          sceneIds: ids,
+          pages: {},
+        });
+      },
+      review: () => openPlanReview(),
+      report: reportError,
+    });
+  };
+  /** FINAL3 V3: Review & swap, a left side panel. */
+  const openPlanReview = () =>
+    sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
+      planReviewPanel({
+        project: () => engine.state,
+        run: (label, commands) =>
+          safely(() => {
+            engine.commands.transaction(label, commands);
+          }),
+        addAssets: (assets) => {
+          if (assets.length)
+            engine.library(
+              'Import media',
+              assets.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
+            );
+        },
+        services: async () => {
+          const plan = planState(engine.state.id)?.plan;
+          const voice = await planVoiceEngine(
+            plan?.meta.language ?? 'en',
+          ).catch(() => null);
+          return {
+            ...planBuildServices(),
+            ...(plan?.meta.themeId
+              ? { theme: await planThemeById(plan.meta.themeId) }
+              : {}),
+            ...(voice
+              ? {
+                  voice: async (text: string, lang: string) => {
+                    const made = await synthesizeToMedia(text, {
+                      provider: voice.provider,
+                      voiceId: voice.voiceId,
+                      lang,
+                    });
+                    const asset = await importQuiet(
+                      new File([made.blob], 'Narration.wav', {
+                        type: made.mime,
+                      }),
+                    );
+                    return asset ? { asset, duration: made.durationSec } : null;
+                  },
+                }
+              : { voiceUnavailable: t('plan.noVoice') }),
+          };
+        },
+        importCandidate: (candidate) =>
+          planBuildServices().importCandidate(candidate),
+        searchMore: async (intent, page) => [
+          ...(await planBuildServices().resolve.stock(
+            intent.query,
+            intent.type,
+            intent.orientation,
+            page,
+          )),
+        ],
+        pickFile: (accept) =>
+          new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = accept;
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              resolve(file ? await importQuiet(file) : null);
+            };
+            input.click();
+          }),
+        openScene: (id) => session.selectComposition(id),
+        download: (name, text) => downloadText(text, name, 'application/json'),
+        report: reportError,
+        rerender: () => sidePanels.refresh(),
+      }),
+    );
   /** FINAL2 U10: Build video from an AI composition (slots, then scenes). */
   const openBuildVideo = (item: { name: { en: string }; data: unknown }) =>
     openCompositionBuild(item, {
@@ -2432,79 +2641,7 @@ export function mountEditorShell(
         );
       },
       library: (id) => libraryActions.find(id),
-      addScenes: (project) => {
-        const missing = project.assets.filter(
-          (asset) => !engine.state.assets.some((have) => have.id === asset.id),
-        );
-        if (missing.length)
-          engine.library(
-            'Import media',
-            missing.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
-          );
-        const taken = new Set<string>();
-        const collect = (value: unknown) => {
-          if (Array.isArray(value)) value.forEach(collect);
-          else if (value && typeof value === 'object')
-            for (const [key, inner] of Object.entries(value)) {
-              if (key === 'id' && typeof inner === 'string') taken.add(inner);
-              collect(inner);
-            }
-        };
-        collect(engine.state.compositions);
-        const fresh = project.compositions.map((composition) => {
-          // Ids already in the open project get a suffix (a second build).
-          let text = JSON.stringify(composition);
-          const ids = new Set<string>();
-          const own = (value: unknown) => {
-            if (Array.isArray(value)) value.forEach(own);
-            else if (value && typeof value === 'object')
-              for (const [key, inner] of Object.entries(value)) {
-                if (key === 'id' && typeof inner === 'string') ids.add(inner);
-                own(inner);
-              }
-          };
-          own(composition);
-          const suffix = `-${Date.now().toString(36)}`;
-          for (const id of ids)
-            if (taken.has(id))
-              text = text
-                .split(JSON.stringify(id))
-                .join(JSON.stringify(id + suffix));
-          return JSON.parse(text) as typeof composition;
-        });
-        // FIX1 F7: a project that is only one empty default scene gets the
-        // built scenes instead of keeping a blank first scene.
-        const scenes = engine.state.compositions;
-        const blank =
-          scenes.length === 1 &&
-          !scenes[0]!.layers.length &&
-          scenes[0]!.tracks.every((track) => !track.clips.length)
-            ? scenes[0]!.id
-            : null;
-        engine.commands.transaction('Build video', [
-          ...fresh.map((composition) => ({
-            type: 'CREATE_COMPOSITION' as const,
-            composition,
-          })),
-          ...(blank && fresh.length
-            ? [{ type: 'DELETE_COMPOSITION' as const, compositionId: blank }]
-            : []),
-        ]);
-        if (fresh[0]) session.selectComposition(fresh[0].id);
-        // The new scenes show at once in the strip, and the note stays long
-        // enough to read, with a way to the scenes board.
-        if (!stripShown) stripButton.click();
-        showToast(
-          t('composition.added', { count: fresh.length }),
-          'success',
-          10000,
-          {
-            label: t('composition.showScenes'),
-            run: () =>
-              element<HTMLButtonElement>('#scene-board-toggle').click(),
-          },
-        );
-      },
+      addScenes: (project) => addBuiltScenes(project),
       openProject: async (project) => {
         if (
           await confirmDialog(t('composition.openConfirm'), {
@@ -2555,7 +2692,10 @@ export function mountEditorShell(
       onAdd: addCreatorItems,
       openAi: () => openCategory('AI'),
       // FINAL2 U10: a composition builds into scenes (slot dialog).
-      buildComposition: (item) => openBuildVideo(item),
+      buildComposition: (item) =>
+        isPlanV2(item.data)
+          ? openPlanBuildFor(item.data as unknown as VideoPlan)
+          : openBuildVideo(item),
       copy: (text) => {
         void navigator.clipboard
           .writeText(text)

@@ -523,6 +523,9 @@ export async function buildVideoFromPlan(
         }
         const at = anchorBox(layer, width, height, w, h);
         if (asset) {
+          // A video plays once: its clip ends with the video.
+          if (asset.type === 'video' && asset.duration && asset.duration > 0.2)
+            when.duration = Math.min(when.duration, asset.duration);
           const slotId =
             `m${si}x${layer.id.replace(/[^A-Za-z0-9]/g, '')}`.slice(0, 60);
           addSlot(

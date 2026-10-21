@@ -127,6 +127,29 @@ const plainError = (error: unknown) => {
   return t('voiceover.error.failed');
 };
 
+/** FINAL3 V2.2: the first ready Text to speech engine and a voice for a
+ *  language (the plan builder speaks with it), or null without one. */
+export async function planVoiceEngine(
+  lang: string,
+): Promise<{ provider: TtsProvider; voiceId: string } | null> {
+  let provider: TtsProvider | null = testEngine();
+  if (!provider) {
+    const status = speechRegistry().getSpeechStatus();
+    provider =
+      voiceServices()
+        .filter((p): p is TtsProvider => p.kind === 'speech-tts')
+        .find(
+          (p) => status.find((item) => item.id === p.id)?.state === 'ready',
+        ) ?? null;
+  }
+  if (!provider) return null;
+  const voices = await provider.listVoices(lang).catch(() => []);
+  const any = voices.length
+    ? voices
+    : await provider.listVoices().catch(() => []);
+  return any[0] ? { provider, voiceId: any[0].id } : null;
+}
+
 export function mountVoiceover(hooks: VoiceoverHooks) {
   const root = document.createElement('section');
   root.className = 'voiceover';

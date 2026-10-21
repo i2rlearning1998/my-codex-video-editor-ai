@@ -7,6 +7,20 @@
 // Accepted items go to My library and show in the AI category only.
 import type { ParamSpec } from '../blocks/types';
 import { classifyCode, scriptOf } from '../code-layer/classify';
+import { isPlanV2, validatePlan } from '../video-plan';
+
+/** FINAL3 V1: the parsed JSON when the text is a Video Plan v2. */
+function planText(text: string): unknown {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('{') || !trimmed.includes('video-plan')) return null;
+  try {
+    const value = JSON.parse(trimmed) as unknown;
+    return isPlanV2(value) ? value : null;
+  } catch {
+    // A broken plan is still a plan when it says so.
+    return /"format"\s*:\s*"video-plan"/.test(trimmed) ? {} : null;
+  }
+}
 import { codeSeed } from '../code-layer/meta';
 import { openCodeSession } from '../code-layer/runtime';
 import type { FreeCodeMeta } from '../code-layer/runtime-types';
@@ -438,9 +452,60 @@ export function openAiImportDialog(options: AiImportOptions) {
     const text = source.value;
     if (!text.trim()) return clear();
     root.dataset.checking = 'true';
-    if (looksLikePack(text)) await classifyPack(text, mine);
+    if (planText(text)) classifyPlan(text);
+    else if (looksLikePack(text)) await classifyPack(text, mine);
     else await classifyCodeText(text, mine);
     if (mine === run) delete root.dataset.checking;
+  };
+  /** FINAL3 V1: a Video Plan v2: checked here, built by Build video. */
+  const classifyPlan = (text: string) => {
+    mode = 'code';
+    pack = null;
+    const check = validatePlan(text);
+    const plan = check.plan;
+    const title =
+      plan?.meta.title ??
+      (planText(text) as { meta?: { title?: string } }).meta?.title ??
+      t('plan.untitled');
+    const id = `plan-${codeHash(text)}`;
+    rows = [
+      {
+        id,
+        type: 'composition',
+        name: title,
+        status: !check.ok
+          ? 'rejected'
+          : check.warnings.length
+            ? 'warning'
+            : 'ok',
+        reasons: [...check.errors, ...check.warnings],
+        ...(plan
+          ? {
+              item: {
+                id,
+                name: { en: title.slice(0, 60) },
+                tags: ['plan'],
+                type: 'composition',
+                data: plan,
+              } as unknown as CreatorItem,
+            }
+          : {}),
+        specs: [],
+        values: {},
+      },
+    ];
+    envelope = plan
+      ? { id, name: { en: title.slice(0, 60) }, version: 1 }
+      : null;
+    checked = true;
+    summary.textContent = check.ok
+      ? t('plan.checked', {
+          scenes: String(plan!.scenes.length),
+          warnings: String(check.warnings.length),
+        })
+      : t('plan.rejected', { count: String(check.errors.length) });
+    report.disabled = false;
+    paint();
   };
   /** A single code animation: one item, with its tier and controllers. */
   const classifyCodeText = async (text: string, mine: number) => {
@@ -616,6 +681,23 @@ export function openAiImportDialog(options: AiImportOptions) {
         if (row.type !== 'composition') continue;
         const raw = rawItems.find((entry) => entry.id === row.id);
         if (!raw) continue;
+        // FINAL3 V1: a Video Plan v2 inside a pack.
+        const data = (raw as { data?: unknown }).data;
+        if (isPlanV2(data)) {
+          const check = validatePlan(data);
+          row.item = {
+            ...raw,
+            data: check.plan ?? data,
+          } as unknown as CreatorItem;
+          row.name = raw.name?.en ?? row.id;
+          row.status = !check.ok
+            ? 'rejected'
+            : check.warnings.length
+              ? 'warning'
+              : 'ok';
+          row.reasons = [...check.errors, ...check.warnings];
+          continue;
+        }
         const built = await buildProjectFromComposition(
           (raw as { data?: unknown }).data,
         ).catch((error: unknown) => ({

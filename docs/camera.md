@@ -21,22 +21,27 @@ Everything is computed in floating point (`poseMatrix`, `shotPose`); nothing is 
 
 ## API
 
-| Name | Where | What |
-| --- | --- | --- |
-| `cameraShotsCommands(project, plans)` | src/camera/shot-commands.ts | **The plain-data hook**: commands that add the planned shots (and Camera tracks). One transaction = one undo step. |
-| `CameraShotPlan` | src/camera/shots.ts | `{sceneId, start, duration, controller, params?, from?, to?}`; `params` holds `easing`, `strength`, `amount`, `speed`, `seed`, `direction`, `target` and `camera` (a camera name: plans naming the same camera share it). |
-| `cameraShots` in a Composition Spec scene | src/ai-spec/schema.ts | The same plans inside a scene (no `sceneId`); `target` names an item of the scene. Built by `buildProjectFromComposition`. |
-| `addShotCommands`, `updateShotCommands`, `updateCameraCommands`, `duplicateCameraCommands`, `deleteCameraCommands` | src/camera/shot-commands.ts | What the Camera section runs. |
-| `cameraShotsOf`, `camerasOf`, `activeShot`, `cameraStateAt`, `cameraMatrixFor`, `shotFramePose`, `frameCorners` | src/camera/shots.ts | Reading shots and evaluating the camera at a time. |
-| `poseMatrix`, `shotPose`, `dofBlur`, `insideClip`, `lensZoom`, `fieldOfView`, `focalForFov` | src/camera/rig.ts | The maths (DOM-free). |
+| Name                                                                                                               | Where                       | What                                                                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cameraShotsCommands(project, plans)`                                                                              | src/camera/shot-commands.ts | **The plain-data hook**: commands that add the planned shots (and Camera tracks). One transaction = one undo step.                                                                                                        |
+| `CameraShotPlan`                                                                                                   | src/camera/shots.ts         | `{sceneId, start, duration, controller, params?, from?, to?}`; `params` holds `easing`, `strength`, `amount`, `speed`, `seed`, `direction`, `target` and `camera` (a camera name: plans naming the same camera share it). |
+| `cameraShots` in a Composition Spec scene                                                                          | src/ai-spec/schema.ts       | The same plans inside a scene (no `sceneId`); `target` names an item of the scene. Built by `buildProjectFromComposition`.                                                                                                |
+| `addShotCommands`, `updateShotCommands`, `updateCameraCommands`, `duplicateCameraCommands`, `deleteCameraCommands` | src/camera/shot-commands.ts | What the Camera section runs.                                                                                                                                                                                             |
+| `cameraShotsOf`, `camerasOf`, `activeShot`, `cameraStateAt`, `cameraMatrixFor`, `shotFramePose`, `frameCorners`    | src/camera/shots.ts         | Reading shots and evaluating the camera at a time.                                                                                                                                                                        |
+| `poseMatrix`, `shotPose`, `dofBlur`, `insideClip`, `lensZoom`, `fieldOfView`, `focalForFov`                        | src/camera/rig.ts           | The maths (DOM-free).                                                                                                                                                                                                     |
 
 ## Example 1: a slow push on scene 1
 
 ```ts
 import { cameraShotsCommands } from './src/camera/shot-commands';
 const commands = cameraShotsCommands(engine.state, [
-  { sceneId: 'scene-1', start: 0, duration: 6, controller: 'push-in',
-    params: { strength: 0.5, easing: 'smooth' } },
+  {
+    sceneId: 'scene-1',
+    start: 0,
+    duration: 6,
+    controller: 'push-in',
+    params: { strength: 0.5, easing: 'smooth' },
+  },
 ]);
 engine.commands.transaction('Camera shots', commands);
 ```
@@ -45,12 +50,23 @@ engine.commands.transaction('Camera shots', commands);
 
 ```ts
 cameraShotsCommands(engine.state, [
-  { sceneId: 'scene-1', start: 0, duration: 3, controller: 'pan-right',
-    params: { camera: 'Wide', strength: 0.8 } },
+  {
+    sceneId: 'scene-1',
+    start: 0,
+    duration: 3,
+    controller: 'pan-right',
+    params: { camera: 'Wide', strength: 0.8 },
+  },
   // The cut: at 3 s the "Close" camera takes over and follows the logo.
-  { sceneId: 'scene-1', start: 3, duration: 4, controller: 'follow',
+  {
+    sceneId: 'scene-1',
+    start: 3,
+    duration: 4,
+    controller: 'follow',
     params: { camera: 'Close', target: 'logo-layer' },
-    from: { focal: 85 }, to: { focal: 85 } },
+    from: { focal: 85 },
+    to: { focal: 85 },
+  },
 ]);
 ```
 
@@ -58,13 +74,28 @@ cameraShotsCommands(engine.state, [
 
 ```json
 {
-  "id": "intro", "name": "Intro", "duration": 8,
-  "items": [ { "id": "title", "...": "..." } ],
+  "id": "intro",
+  "name": "Intro",
+  "duration": 8,
+  "items": [{ "id": "title", "...": "..." }],
   "cameraShots": [
-    { "start": 0, "duration": 5, "controller": "pull-out", "strength": 1.2,
-      "easing": "ease-out", "from": { "tilt": -4 } },
-    { "start": 5, "duration": 1, "controller": "handheld", "amount": 18,
-      "speed": 7, "strength": 1.5, "target": "title" }
+    {
+      "start": 0,
+      "duration": 5,
+      "controller": "pull-out",
+      "strength": 1.2,
+      "easing": "ease-out",
+      "from": { "tilt": -4 }
+    },
+    {
+      "start": 5,
+      "duration": 1,
+      "controller": "handheld",
+      "amount": 18,
+      "speed": 7,
+      "strength": 1.5,
+      "target": "title"
+    }
   ]
 }
 ```
