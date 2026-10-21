@@ -2,9 +2,11 @@
 
 Tick only when code plus a test (or a screenshot opened at 1920 × 940) exists. States: `[x]` DONE, `[B]` BLOCKED (external reason named), `[ ]` not ticked.
 
+**Counts: 174 DONE, 1 BLOCKED, 2 not ticked (of 177).**
+
 ## Part A, leftovers from FIX1
 
-- [x] A1 Un-pin the 18 tests pinned to 1600 × 1072 and make the whole e2e green at 1920 × 940 — full e2e at 1920 × 940, see reports/FINAL3.md §3
+- [ ] A1 Un-pin the 18 tests pinned to 1600 × 1072 and make the whole e2e green at 1920 × 940 — not ticked: the 2nd full run had 4 failures (fixed and passing in their own specs since) and the 3rd full verify was stopped before it finished, so no complete green run proves it
 - [x] A2 Pexels video endpoint is /v1/videos/... (search and popular), mocks and unit tests updated, tolerant mapper kept (hd/sd/hls, missing fps, HLS no size) — FN3-001
 - [x] A3a Effects tab for a selected nested clip (applies to the whole nest) — FN3-004
 - [x] A3b Speed tab for a selected nested clip (speed scales inner time) — FN3-004
@@ -231,4 +233,4 @@ Tick only when code plus a test (or a screenshot opened at 1920 × 940) exists. 
 
 - [x] E1 Docs, changelog, reports/FINAL3.md, screenshots in reports/final3/ opened at 1920 × 940 — reports/FINAL3.md, docs, CHANGELOG, reports/final3/
 - [x] E2 Try-it script (at most 30 steps) — reports/FINAL3.md §4
-- [x] E3 Full verify once (lint, typecheck, unit, full e2e at 1920 × 940, 1366 smoke); one draft PR — reports/FINAL3.md §3; draft PR
+- [ ] E3 Full verify once (lint, typecheck, unit, full e2e at 1920 × 940, 1366 smoke); one draft PR — not ticked: the 3rd full verify did not finish (stopped by the owner); the draft PR is open

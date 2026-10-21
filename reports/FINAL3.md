@@ -6,7 +6,7 @@
 - Text works like Canva: auto-width and fixed-width boxes with exact heights, corner handles that scale the font, double-click selects all, a visible caret, soft line breaks, lists by paragraph (bullet, numbered, checklist, levels), Hindi typing kept whole, a Text tab with headings and 24 font combinations, uploaded fonts, ten effects plus Curve, format tools and a format painter.
 - Cameras work like Blender, without keyframes: cameras and shots on a Camera track, code controllers (push in, orbit, shake, whip pan and more), presets, lens, sensor, shift, clipping, depth of field, guides, safe areas, passepartout, background image, Track To, Preview camera that keeps layers editable, an on-canvas camera frame, and layer depth for parallax.
 - A Video Plan v2 pasted into AI › Import builds a whole video: media from the project or stock with alternatives, narration, captions, camera, transitions and ducked music; Review & swap; the feel saves as a theme; a Creator playbook in docs.
-- Checklist: 176 of 177 done, 1 blocked (T4.7's list of failing catalogue fonts needs Google Fonts, which the sandbox cannot reach), 0 not ticked.
+- Checklist: 174 DONE, 1 BLOCKED (T4.7: the list of failing catalogue fonts needs Google Fonts, which the sandbox cannot reach), 2 not ticked (A1 and E3: no complete green full run, see §3).
 
 ## 2. Scope and results
 
@@ -43,12 +43,26 @@
 | FN3-029 | Verified | e2e/final3-more.spec.ts                                                                  |
 | FN3-030 | Verified | e2e/final3-more.spec.ts                                                                  |
 
-- In-scope items Verified: 30 of 30 ledger rows; checklist 176 done, 1 blocked (T4.7, external).
+- In-scope items Verified: 30 of 30 ledger rows; checklist 174 DONE, 1 BLOCKED (T4.7, external), 2 not ticked (A1, E3).
 - Not done, with reason: none.
 
 ## 3. Checks
 
-VERIFY_RESULTS
+**3rd full verify poora nahi hua; 2nd run ke 4 failures (CV-049, TXT-036, CV-037, CODE-006) alag-alag specs me pass hue.**
+
+(In English: the 3rd full verify did not finish (the owner stopped it); the 2nd run's 4 failures (CV-049, TXT-036, CV-037, CODE-006) passed when their specs were run on their own.)
+
+Browser: the sandbox's pre-installed Chromium (Playwright build 1194), not Google Chrome; it cannot decode or encode H.264 or AAC.
+
+| Run | Format | Typecheck | Unit (Vitest) | Build | E2E (1920 × 940 + 1366 × 768 smoke) | Hook assertion | Ledger |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1st | pass | pass | 1225 passed, 3 failed (KEY-001 `plan-review`, fixed; 2 in tests/blocks/worker.test.ts) | pass | 551 passed, 30 failed | pass | 33 errors (the failed tests) |
+| 2nd (after the D-301 fixes) | pass | pass | 1227 passed, 2 failed (tests/blocks/worker.test.ts), 1 skipped | pass | 577 passed, 4 failed (CV-049, TXT-036, CV-037, CODE-006) | pass | 844 items, Verified 521, Claimed 19, Todo 299, Dropped 5; 5 errors (the 4 failed tests' IDs) |
+| 3rd | stopped by the owner before it finished | | | | | | |
+
+After the 2nd run: CV-049, TXT-036 and CV-037 were fixed in the product (old text layers keep their stored box, D-301) and CODE-006's test waits for a bake that is not yet listed. Their specs, run on their own: h1-rotated, h3-canvas and text-style 22 passed, x3-settings 5 passed, 0 failed. No complete full run has been made with these last fixes.
+
+The 2 unit failures in tests/blocks/worker.test.ts fail without this round's changes too (the test worker here has no WebAssembly); not chased. The 1366 × 768 smoke tests (FX1-001, FX1-002) passed in the 2nd run.
 
 ## 4. Try-it script for the owner (about 20 minutes)
 
@@ -101,7 +115,8 @@ D-295 (Part A), D-296 and D-297 (text model and Text tab), D-298 and D-299 (came
 - Real IME hardware input: Devanagari composition is proven with composition events in unit tests and the existing TXT-004 e2e, not with a physical keyboard.
 - Depth-of-field blur is a cheap per-layer blur by depth (no bokeh shape); Blades, Rotation and Ratio are stored and shown but only change the blur's shape slightly.
 - Plan builds at 1366 × 768 were only covered by the panel smoke test.
-- KNOWN_FAILURES
+- Known and not chased (as the brief says): tests/blocks/worker.test.ts (2), and the listed flakes LAY-004, LAY-038, ANI-003, PB-010 and known failures TXT-040, CV-044/045, DEV-006 (the expected probe). None of them failed in the 2nd run except as listed above.
+- No complete green full verify exists for the final commit (the 3rd run was stopped).
 
 ## 8. Architecture and contract impact
 
