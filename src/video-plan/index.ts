@@ -5,3 +5,5 @@ export * from './validate';
 export * from './timing';
 export * from './resolve';
 export * from './build';
+export * from './kit-project';
+export * from './feel';

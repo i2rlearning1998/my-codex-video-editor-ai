@@ -27,6 +27,8 @@ export const AI_KINDS = [
   'composition',
   'effect',
   'theme',
+  // FINAL3 V3.5: the plan builder's starter kit.
+  'kit',
 ] as const;
 
 export interface AiPanelOptions {
@@ -58,6 +60,16 @@ export interface AiPanelOptions {
   readonly prompt: (title: string, value: string) => Promise<string | null>;
   readonly report: (error: unknown) => void;
   readonly toast?: (text: string) => void;
+  /** FINAL3 V3.5: a plan's build status (shown as a coloured badge). */
+  readonly planStatus?: (
+    id: string,
+    data: unknown,
+  ) => 'built' | 'needs-assets' | 'not-built' | null;
+  /** FINAL3 V3.5: the starter kit's items, added to the open scene. */
+  readonly kit?: {
+    readonly items: () => readonly { id: string; name: string }[];
+    readonly insert: (id: string) => void;
+  };
 }
 
 export const AI_FOLDERS = shelfFolders('ai');
@@ -70,6 +82,7 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     options.library.list().find((entry) => creatorLibraryId(entry.key) === id);
   const add = (id: string) => {
     if (isBriefId(id)) return options.useBrief?.(briefIdOf(id));
+    if (id.startsWith('kit:')) return options.kit?.insert(id.slice(4));
     const entry = entryOf(id);
     if (!entry) return;
     if (entry.item.type === 'preset') options.applyPreset(id);
@@ -130,6 +143,19 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     folders: AI_FOLDERS,
     items: () => [
       ...briefItems(),
+      ...(options.kit?.items() ?? []).map((item) => {
+        const id = `kit:${item.id}`;
+        return {
+          id,
+          name: item.name,
+          category: 'kit',
+          folderId: AI_FOLDERS.folderOf(id),
+          keywords: ['kit', 'starter', item.id],
+          data: { kit: item.id, kind: 'kit' },
+          thumb: (slot: HTMLElement) =>
+            libraryThumb(slot, { id, type: 'kit', name: item.name }),
+        };
+      }),
       ...options.library.list().map((entry) => {
         const id = creatorLibraryId(entry.key);
         const kind = entry.item.type;
@@ -146,6 +172,10 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
               : (entry.thumbnail ?? null),
         };
         const live = kind === 'motion' || kind === 'preset';
+        const status =
+          kind === 'composition'
+            ? (options.planStatus?.(id, entry.item.data) ?? null)
+            : null;
         return {
           id,
           name: entry.name,
@@ -153,7 +183,8 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           folderId: AI_FOLDERS.folderOf(id),
           title: `${entry.name} · ${entry.packName.en}`,
           keywords: [entry.packName.en, kind, ...entry.item.tags],
-          data: { item: id, kind },
+          data: { item: id, kind, ...(status ? { planStatus: status } : {}) },
+          ...(status ? { badge: t(`plan.status.${status}`) } : {}),
           // B1: a style is never placed: no drag; "+" uses it.
           ...(style
             ? { addLabel: t('style.use') }

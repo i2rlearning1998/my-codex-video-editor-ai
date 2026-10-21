@@ -21,6 +21,10 @@ export interface ThemePanelOptions {
   readonly save: (name: string) => void;
   readonly rename: (id: string, name: string) => void;
   readonly remove: (id: string) => void;
+  /** FINAL3 V4.1: what a saved theme contains and does not contain. */
+  readonly describe?: (theme: Theme) => string;
+  /** FINAL3 V4.4: downloads the theme as a one-item Creator Pack. */
+  readonly exportPack?: (theme: Theme) => void;
   readonly onChange: (listener: () => void) => () => void;
 }
 
@@ -152,6 +156,14 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
         apply.append(preview(theme), name);
         apply.onclick = () => options.apply(theme, override);
         card.append(apply);
+        const contains = kind === 'saved' ? options.describe?.(theme) : null;
+        if (contains) {
+          const line = document.createElement('span');
+          line.className = 'theme-contains';
+          line.textContent = contains;
+          card.append(line);
+          apply.title = `${apply.title}\n${contains}`;
+        }
         if (kind === 'saved') {
           const more = document.createElement('button');
           more.type = 'button';
@@ -170,6 +182,16 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
                 icon: 'edit',
                 run: () => renameField(card, theme),
               },
+              ...(options.exportPack
+                ? [
+                    {
+                      id: 'theme-export',
+                      label: t('theme.exportPack'),
+                      icon: 'download',
+                      run: () => options.exportPack!(theme),
+                    },
+                  ]
+                : []),
               {
                 id: 'theme-delete',
                 label: t('theme.delete'),

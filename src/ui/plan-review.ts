@@ -30,6 +30,8 @@ import { sceneLengthCommands } from './scene-length';
 export interface PlanReviewDeps {
   project(): DeepReadonly<Project>;
   run(label: string, commands: Command[]): void;
+  /** FINAL3 V4.1: saves the plan's feel as a theme in My themes. */
+  saveFeel?(name: string, plan: VideoPlan): Promise<void>;
   /** Adds media records the project lacks (a library change, no step). */
   addAssets(assets: readonly Asset[]): void;
   /** The builder's services (media, voice, sound) for regenerating. */
@@ -202,6 +204,27 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     }),
   );
   root.append(top, compare);
+  if (deps.saveFeel) {
+    const feelRow = document.createElement('div');
+    feelRow.className = 'camera-row plan-feel';
+    const feelName = document.createElement('input');
+    feelName.type = 'text';
+    feelName.id = 'plan-feel-name';
+    feelName.maxLength = 40;
+    feelName.placeholder = t('plan.feelNamePlaceholder');
+    feelName.setAttribute('aria-label', t('plan.feelNamePlaceholder'));
+    feelName.value = state.plan.meta.title.slice(0, 40);
+    feelRow.append(
+      feelName,
+      button(
+        'plan-save-feel',
+        t('plan.saveFeel'),
+        () => deps.saveFeel!(feelName.value, state.plan),
+        'color',
+      ),
+    );
+    root.append(feelRow);
+  }
 
   /** Builds one scene again from the (edited) plan and puts it in place. */
   const regenerate = async (index: number) => {

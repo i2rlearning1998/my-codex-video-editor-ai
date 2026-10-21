@@ -289,3 +289,81 @@ test('[FN3-024] the importer checks a plan in plain words: errors reject it, an 
     page.locator('.composition-dialog .composition-slot'),
   ).not.toHaveCount(0);
 });
+
+test('[FN3-025] the AI category lists the plan with its status, its feel as a Theme and the starter kit; the feel saves as a theme (contains / does not contain), exports as a Creator Pack, applies without changing content and a plan can name it', async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await withKey(page);
+  await withVoice(page);
+  await mockStock(page);
+  await page.goto('/');
+  const dialog = await build(page);
+  await dialog.locator('#plan-review').click();
+  // AI: the plan (Built), its feel (Theme) and the starter kit.
+  await page.locator('[data-action="side-panel-back"]:visible').click();
+  await showCategory(page, 'AI');
+  const ai = page.locator('#library-ai');
+  await expect(ai.locator('[data-plan-status="built"]')).toHaveCount(1);
+  await expect(ai).toContainText('Where honey comes from · feel');
+  const kit = ai.locator('[data-kit="lower-third-1"]');
+  await expect(kit).toHaveCount(1);
+  await kit.click();
+  await expect
+    .poll(async () => (await hook(page)).history.labels.at(-1))
+    .toBe('Add starter kit item');
+  await page.screenshot({ path: 'reports/final3/d-ai.png' });
+  // Save the feel as a theme from Review & swap (the palette opens it).
+  await page.keyboard.press('Control+k');
+  await page.locator('#command-palette input').fill('Review video plan');
+  await page.keyboard.press('Enter');
+  const review = page.locator('.plan-review');
+  await review.locator('#plan-feel-name').fill('Honey feel');
+  await review.locator('[data-action="plan-save-feel"]').click();
+  await expect(page.locator('.toast', { hasText: 'Honey feel' })).toBeVisible();
+  // My themes: what it holds; export as a Creator Pack.
+  await showCategory(page, 'Theme');
+  const card = page
+    .locator('.theme-group[data-group="saved"] .theme-card')
+    .filter({ hasText: 'Honey feel' });
+  await expect(card.locator('.theme-contains')).toContainText(
+    'transition, camera tendency, pacing',
+  );
+  await expect(card.locator('.theme-contains')).toContainText(
+    'Does not contain text, media or layout',
+  );
+  const download = page.waitForEvent('download');
+  await card.locator('[data-action="theme-more"]').click();
+  await page
+    .locator('#library-theme-menu [data-action="theme-export"]')
+    .click();
+  const pack = JSON.parse(
+    readFileSync((await (await download).path())!, 'utf8'),
+  );
+  expect(pack.items[0].type).toBe('theme');
+  expect(pack.items[0].data.palette.background).toBe('#1b1a17');
+  // Applying it changes colours, not content.
+  const count = (await allLayers(page)).length;
+  await card.locator('.theme-apply').click();
+  await expect(
+    page.locator('.toast', { hasText: 'transition, camera and pacing' }),
+  ).toBeVisible();
+  expect((await allLayers(page)).length).toBe(count);
+  // A plan can name it: its scenes take the theme's background.
+  const themeId = await card.getAttribute('data-theme-id');
+  const plan = JSON.parse(PLAN);
+  delete plan.feel;
+  plan.meta.title = 'Honey again';
+  plan.meta.themeId = themeId;
+  plan.scenes = [plan.scenes[2]];
+  await importPlan(page, JSON.stringify(plan));
+  await page.locator('[data-action="build-video"]').click();
+  await expect(page.locator('.plan-build #plan-summary')).toBeVisible({
+    timeout: 60_000,
+  });
+  const { project, session } = await hook(page);
+  const again = project.compositions.find(
+    (c) => c.id === session.compositionId,
+  )!;
+  expect(again.backgroundColor).toBe('#1b1a17');
+});

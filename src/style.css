@@ -5903,7 +5903,7 @@ button.number-field-step:focus-visible {
   gap: var(--space-1);
   height: 100%;
   padding-inline: var(--space-1);
-  font-size: var(--font-size-xs, 11px);
+  font-size: var(--font-caption);
   color: var(--text-secondary);
   background: transparent;
   border: 0;
@@ -5941,7 +5941,7 @@ button.number-field-step:focus-visible {
   border-radius: var(--radius-md);
   background: var(--raised);
   color: var(--text);
-  font-size: 12px;
+  font-size: var(--font-caption);
 }
 .camera-shot[aria-pressed='true'] {
   border-color: var(--accent);
@@ -5951,7 +5951,7 @@ button.number-field-step:focus-visible {
 }
 .camera-framing h4 {
   margin: var(--space-2) 0 var(--space-1);
-  font-size: 12px;
+  font-size: var(--font-caption);
 }
 .camera-edit {
   display: inline-flex;
@@ -7291,7 +7291,7 @@ input[type='range'] {
   border-radius: 10px;
 }
 #rail-right button .icon-rail-label {
-  font-size: 11px;
+  font-size: var(--font-caption);
   line-height: 1.15;
 }
 #rail-right button[aria-pressed='true'] {
@@ -11163,7 +11163,7 @@ input[type='range'] {
 }
 .plan-flag {
   color: var(--warning-text);
-  font-size: 12px;
+  font-size: var(--font-caption);
 }
 .plan-alternatives {
   display: flex;
@@ -11180,7 +11180,7 @@ input[type='range'] {
   border-radius: var(--radius-md);
   background: var(--raised);
   color: var(--text);
-  font-size: 10px;
+  font-size: var(--font-caption);
 }
 .plan-alternative[aria-pressed='true'] {
   border: 2px solid var(--accent);
@@ -11193,4 +11193,19 @@ input[type='range'] {
 .plan-compare {
   margin: 0 0 var(--space-2);
   padding-inline-start: var(--space-4);
+}
+.theme-contains {
+  display: block;
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+}
+[data-plan-status='built'] .shelf-badge {
+  color: var(--success-text);
+}
+[data-plan-status='needs-assets'] .shelf-badge {
+  color: var(--warning-text);
+}
+.plan-feel input {
+  flex: 1;
+  min-width: 0;
 }

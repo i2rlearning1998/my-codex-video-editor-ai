@@ -278,7 +278,15 @@ import { sceneCameraMatrix } from '../camera/scene';
 import { selectionBounds } from '../render/selection';
 import { cameraBadge, cameraView } from './camera-panel';
 import { cameraSection, cameraUi, selectedShot } from './camera-section';
-import { isPlanV2, type VideoPlan } from '../video-plan';
+import {
+  feelTheme,
+  isPlanV2,
+  KIT_IDS,
+  kitLayers,
+  withFeelDefaults,
+  type VideoPlan,
+} from '../video-plan';
+import type { FeelExtras } from '../themes/library';
 import { openPlanBuild, planServices } from './plan-build-dialog';
 import { planReviewPanel } from './plan-review';
 import { planState, savePlanState } from './plan-state';
@@ -2528,13 +2536,54 @@ export function mountEditorShell(
     ) ??
     null;
   /** FINAL3 V2: Build video for a Video Plan v2 (no slot dialog). */
-  const openPlanBuildFor = (plan: VideoPlan) => {
+  let aiPanel: { render(): void } | null = null;
+  const openPlanBuildFor = (input: VideoPlan) => {
     session.setPlaying(false);
+    // FINAL3 V4.2 and V4.3: the plan's theme, else the project's current
+    // theme, gives the feel values the plan leaves out.
+    const themeId = input.meta.themeId ?? currentThemeId();
+    const plan = withFeelDefaults(
+      input,
+      themeById(themeId),
+      themeId ? (feelExtras.get(themeId) ?? null) : null,
+    );
     openPlanBuild(plan, {
       assets: () => session.source.assets as unknown as readonly Asset[],
       importFile: importQuiet,
       theme: planThemeById,
       addScenes: (result) => {
+        // FINAL3 V3.5: the plan's feel is listed in AI as a Theme.
+        if (plan.feel?.palette || plan.feel?.headingFont) {
+          const { theme } = feelTheme(plan);
+          const hash = [...plan.meta.title].reduce(
+            (h, c) => (h * 31 + c.charCodeAt(0)) >>> 0,
+            7,
+          );
+          const id = `feel-${hash.toString(36)}`;
+          const name = t('plan.feelName', { name: plan.meta.title }).slice(
+            0,
+            60,
+          );
+          void creatorLibrary
+            .add([
+              {
+                key: `plan-feel/${id}`,
+                packId: 'plan-feel',
+                packName: { en: plan.meta.title.slice(0, 60) },
+                packVersion: 1,
+                item: {
+                  id,
+                  name: { en: name },
+                  tags: ['feel'],
+                  type: 'theme',
+                  data: theme,
+                } as unknown as CreatorEntry['item'],
+                name,
+                addedAt: new Date().toISOString(),
+              },
+            ])
+            .catch(reportError);
+        }
         const ids = addBuiltScenes(
           result.project!,
           t('plan.built', {
@@ -2552,6 +2601,7 @@ export function mountEditorShell(
           sceneIds: ids,
           pages: {},
         });
+        aiPanel?.render();
       },
       review: () => openPlanReview(),
       report: reportError,
@@ -2566,6 +2616,18 @@ export function mountEditorShell(
           safely(() => {
             engine.commands.transaction(label, commands);
           }),
+        saveFeel: async (name, plan) => {
+          const library = await themeLibrary;
+          if (!library) throw new Error(t('theme.storageUnavailable'));
+          const { theme, extras } = feelTheme(plan);
+          const saved = await library
+            .saveFeelTheme(name, theme, extras)
+            .catch((error: unknown) => {
+              throw themeError(error);
+            });
+          await refreshThemes();
+          showToast(t('theme.savedToast', { name: saved.name }), 'success');
+        },
         addAssets: (assets) => {
           if (assets.length)
             engine.library(
@@ -3702,12 +3764,59 @@ export function mountEditorShell(
       ),
     };
   };
+  /** FINAL3 V3.5: a starter kit item in the open scene (one step). */
+  const insertKitItem = async (id: string) => {
+    const composition = session.source.composition;
+    const theme = themeById(currentThemeId()) ?? BUILT_IN_THEMES[0]!;
+    const built = await kitLayers(id, {
+      width: composition.width,
+      height: composition.height,
+      fps: composition.fps,
+      palette: {
+        background: theme.palette.background,
+        text: theme.palette.text,
+        accent: theme.palette.accent,
+      },
+      text: t('kit.sampleText'),
+    });
+    if (!built) return;
+    const placed = mineCommands(
+      session.source.composition,
+      session.source.assets,
+      {
+        id: `kit-${id}`,
+        name: t(`kit.name.${id}`),
+        kind: 'annotation',
+        createdAt: engine.state.metadata.updatedAt,
+        layers: built.layers,
+        clips: built.clips.map((clip) => ({
+          layerId: clip.layerId,
+          startTime: clip.startTime,
+          duration: clip.duration,
+          metadata: clip.metadata as Record<string, unknown>,
+        })),
+        origin: 0,
+      },
+      session.currentTime,
+      (commands) =>
+        engine
+          .preview(commands)
+          .compositions.find((scene) => scene.id === composition.id)!,
+    );
+    engine.commands.transaction('Add starter kit item', placed.commands);
+    session.selectMany?.(placed.layerIds);
+  };
   const insertCreatorItem = (
     id: string,
     time = session.currentTime,
     point?: readonly [number, number] | null,
   ) => {
     const entry = creatorEntryOf(id);
+    // FINAL3 V2: a Video Plan builds into scenes.
+    if (entry?.item.type === 'composition' && isPlanV2(entry.item.data)) {
+      openPlanBuildFor(entry.item.data as unknown as VideoPlan);
+      return;
+    }
     // B1: a style is never placed on the canvas.
     if (!entry || entry.item.type === 'style') return;
     // R2: a theme item is applied (themes live in the AI category too).
@@ -3802,6 +3911,12 @@ export function mountEditorShell(
     if (!entry || !item) return;
     if (item.type === 'motion')
       downloadCode(entry.name, item.data.tier, item.data.source);
+    else if (item.type === 'composition' && isPlanV2(item.data))
+      downloadText(
+        `${JSON.stringify(item.data, null, 2)}\n`,
+        `${entry.name.replace(/[^\p{L}\p{N}]+/gu, '-')}.plan.json`,
+        'application/json',
+      );
     else if (item.type === 'composition')
       downloadCode(entry.name, 'A', JSON.stringify(item.data.spec, null, 2));
     else if (item.type === 'style') {
@@ -3978,8 +4093,20 @@ export function mountEditorShell(
       cancelLabel: t('media.cancel'),
       maxLength: 80,
     });
-  mountAiPanel(element('#library-ai'), {
+  aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    // FINAL3 V3.5: a plan's status, and the starter kit.
+    planStatus: (_id, data) => {
+      if (!isPlanV2(data)) return null;
+      const state = planState(engine.state.id);
+      const title = (data as VideoPlan).meta.title;
+      if (!state || state.plan.meta.title !== title) return 'not-built';
+      return state.flags.length ? 'needs-assets' : 'built';
+    },
+    kit: {
+      items: () => KIT_IDS.map((id) => ({ id, name: t(`kit.name.${id}`) })),
+      insert: (id) => void insertKitItem(id).catch(reportError),
+    },
     insert: (id) => safely(() => insertCreatorItem(id)),
     applyPreset: (id) => applyCreatorPreset(id),
     importPack: () => openCreatorImport(),
@@ -4264,12 +4391,19 @@ export function mountEditorShell(
     store ? createThemeLibrary(store) : null,
   );
   const builtInThemeIds = new Set(BUILT_IN_THEMES.map((theme) => theme.id));
+  const feelExtras = new Map<string, FeelExtras>();
   const refreshThemes = async () => {
     const library = await themeLibrary;
     if (!library) return;
     libraryThemes = (await library.listThemes()).filter(
       (theme) => !builtInThemeIds.has(theme.id),
     );
+    // FINAL3 V4: what a feel theme adds (transition, camera, pacing).
+    feelExtras.clear();
+    for (const theme of libraryThemes) {
+      const extras = await library.feelOf(theme.id);
+      if (extras) feelExtras.set(theme.id, extras);
+    }
     themeChanged();
   };
   // After a project opens: old project themes move into the library once.
@@ -4381,9 +4515,59 @@ export function mountEditorShell(
             : t('theme.applied', { name: theme.name }),
         'success',
       );
+      if (feelExtras.has(theme.id))
+        showToast(t('theme.feelApplied', { name: theme.name }), 'info');
     });
   const themeOptions = {
     themes: themeLists,
+    // FINAL3 V4: what a theme holds, and its Creator Pack export.
+    describe: (theme: Theme) => {
+      const extras = feelExtras.get(theme.id);
+      const parts = [
+        t('theme.has.palette'),
+        t('theme.has.fonts'),
+        t('theme.has.motion'),
+        ...(theme.caption ? [t('theme.has.caption')] : []),
+        ...(extras?.transition ? [t('theme.has.transition')] : []),
+        ...(extras?.cameraTendency ? [t('theme.has.camera')] : []),
+        ...(extras?.pacing ? [t('theme.has.pacing')] : []),
+      ];
+      return t('theme.contains', { list: parts.join(', ') });
+    },
+    exportPack: (theme: Theme) => {
+      const id = theme.id.replace(/[^a-z0-9-]/g, '-').slice(0, 60);
+      const { id: _id, name: _name, ...data } = theme;
+      void _id;
+      void _name;
+      downloadText(
+        `${JSON.stringify(
+          {
+            format: 'creator-pack',
+            version: 1,
+            pack: {
+              id: `theme-${id}`.slice(0, 64),
+              name: { en: theme.name },
+              version: 1,
+              author: 'human',
+              createdWith: 'api',
+            },
+            items: [
+              {
+                id,
+                name: { en: theme.name },
+                tags: ['theme'],
+                type: 'theme',
+                data,
+              },
+            ],
+          },
+          null,
+          2,
+        )}\n`,
+        `${theme.name.replace(/[^\p{L}\p{N}]+/gu, '-')}.creatorpack.json`,
+        'application/json',
+      );
+    },
     current: currentThemeId,
     apply: applyTheme,
     save: (name: string) =>
