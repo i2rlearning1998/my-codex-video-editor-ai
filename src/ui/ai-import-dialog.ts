@@ -381,7 +381,18 @@ export function openAiImportDialog(options: AiImportOptions) {
           build.className = 'button primary sm ai-import-build';
           build.dataset.action = 'build-video';
           build.textContent = t('composition.build');
-          build.onclick = () => {
+          // FIX1 F7: Build video also keeps the ticked items (a style)
+          // and the composition itself in the AI library.
+          build.onclick = async () => {
+            build.disabled = true;
+            const rows = [...selected().filter((other) => other !== row), row];
+            if (envelope)
+              await options
+                .onAdd(payload(rows, false))
+                .catch((error: unknown) => {
+                  console.debug('[ai-import] keep before build failed', error);
+                  return false as const;
+                });
             handle.close();
             options.buildComposition!(row.item!);
           };
@@ -688,30 +699,32 @@ export function openAiImportDialog(options: AiImportOptions) {
   };
   report.onclick = () => options.copy(reportText());
   $<HTMLButtonElement>('ai-import-cancel').onclick = () => handle.close();
+  /** The items to keep, as onAdd takes them. */
+  const payload = (rows: readonly Row[], addToScene: boolean): AiImportAdd => ({
+    packId: envelope!.id,
+    packName: envelope!.name,
+    packVersion: envelope!.version,
+    addToScene,
+    sceneMode,
+    items: rows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      item: row.item!,
+      ...(row.runtime?.thumbnail ? { thumbnail: row.runtime.thumbnail } : {}),
+      ...(row.meta ? { motionMeta: withDefaults(row.meta, row.values) } : {}),
+      ...(row.specs.length ? { params: row.values } : {}),
+    })),
+  });
   add.onclick = async () => {
     if (!envelope) return;
     add.disabled = true;
     const done = await options
-      .onAdd({
-        packId: envelope.id,
-        packName: envelope.name,
-        packVersion: envelope.version,
-        addToScene:
+      .onAdd(
+        payload(
+          selected(),
           mode === 'code' && $<HTMLInputElement>('ai-import-scene').checked,
-        sceneMode,
-        items: selected().map((row) => ({
-          id: row.id,
-          type: row.type,
-          item: row.item!,
-          ...(row.runtime?.thumbnail
-            ? { thumbnail: row.runtime.thumbnail }
-            : {}),
-          ...(row.meta
-            ? { motionMeta: withDefaults(row.meta, row.values) }
-            : {}),
-          ...(row.specs.length ? { params: row.values } : {}),
-        })),
-      })
+        ),
+      )
       .catch((error: unknown) => {
         summary.textContent =
           error instanceof Error ? error.message : String(error);

@@ -2362,15 +2362,38 @@ export function mountEditorShell(
                 .join(JSON.stringify(id + suffix));
           return JSON.parse(text) as typeof composition;
         });
-        engine.commands.transaction(
-          'Build video',
-          fresh.map((composition) => ({
+        // FIX1 F7: a project that is only one empty default scene gets the
+        // built scenes instead of keeping a blank first scene.
+        const scenes = engine.state.compositions;
+        const blank =
+          scenes.length === 1 &&
+          !scenes[0]!.layers.length &&
+          scenes[0]!.tracks.every((track) => !track.clips.length)
+            ? scenes[0]!.id
+            : null;
+        engine.commands.transaction('Build video', [
+          ...fresh.map((composition) => ({
             type: 'CREATE_COMPOSITION' as const,
             composition,
           })),
-        );
+          ...(blank && fresh.length
+            ? [{ type: 'DELETE_COMPOSITION' as const, compositionId: blank }]
+            : []),
+        ]);
         if (fresh[0]) session.selectComposition(fresh[0].id);
-        showToast(t('composition.added', { count: fresh.length }), 'success');
+        // The new scenes show at once in the strip, and the note stays long
+        // enough to read, with a way to the scenes board.
+        if (!stripShown) stripButton.click();
+        showToast(
+          t('composition.added', { count: fresh.length }),
+          'success',
+          10000,
+          {
+            label: t('composition.showScenes'),
+            run: () =>
+              element<HTMLButtonElement>('#scene-board-toggle').click(),
+          },
+        );
       },
       openProject: async (project) => {
         if (

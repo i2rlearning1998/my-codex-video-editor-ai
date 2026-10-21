@@ -68,15 +68,21 @@ export function checkStyleKit(
     ],
   ];
   const unchecked: string[] = [];
+  const KIT_WORD: Record<string, string> = {
+    transitions: 'a transition',
+    effects: 'an effect',
+    preferLibrary: 'a library item',
+  };
   for (const [group, known] of groups)
     for (const entry of data.kit[group]) {
       const id = kitIdOf(entry);
       const found = known(id);
       if (found === true) continue;
       if (kitOptional(entry)) {
+        // FIX1 F7: in plain words (the owner reads these).
         if (found === false)
           warnings.push(
-            `kit.${group}: ${id} is not in this editor; it is optional, so the creator may skip it.`,
+            `This style asks for ${KIT_WORD[group]} "${plainKitName(id)}" that this editor does not have yet; it will be skipped.`,
           );
         continue;
       }
@@ -99,4 +105,9 @@ export function checkStyleKit(
       'assetPolicy allows AI images or videos but its order has no "ai"; add "ai" last or set both maxima to 0.',
     );
   return warnings;
+}
+/** FIX1 F7: "transition.dip-to-black" → "dip to black". */
+function plainKitName(id: string): string {
+  const last = id.split(/[./]/).filter(Boolean).at(-1) ?? id;
+  return last.replace(/[-_]+/g, ' ').trim() || id;
 }

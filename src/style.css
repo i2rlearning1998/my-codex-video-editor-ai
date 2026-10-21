@@ -10925,3 +10925,21 @@ input[type='range'] {
   align-items: center;
   gap: var(--space-1);
 }
+/* FIX1 F7: severity colours. Errors are red, warnings amber, information
+   neutral and OK green; an item's notes take its own status colour. */
+.creator-item .creator-reasons.code-errors {
+  color: var(--text-secondary);
+}
+.creator-item[data-status='warning'] .creator-reasons.code-errors {
+  color: var(--warning-text);
+}
+.creator-item[data-status='rejected'] .creator-reasons.code-errors,
+.creator-item[data-status='unsupported'] .creator-reasons.code-errors {
+  color: var(--danger-text);
+}
+.creator-item > .creator-thumb[hidden] + .creator-item-body {
+  grid-column: 2 / -1;
+}
+.creator-item > .creator-thumb[hidden] {
+  display: none;
+}

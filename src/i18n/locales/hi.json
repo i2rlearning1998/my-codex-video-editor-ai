@@ -1894,7 +1894,7 @@
   "composition.openProject": "Open as new project",
   "composition.addScenes": "Add as new scenes",
   "composition.openConfirm": "This replaces the open project. Export it first if you want to keep it.",
-  "composition.added": "Added {count} scene(s).",
+  "composition.added": "Added {count} scenes",
   "composition.required": "Required",
   "composition.empty": "Empty",
   "composition.fromMedia": "Pick from Media",
@@ -2341,5 +2341,6 @@
   "mixer.projectAudioHint": "Master volume and every lane: level, volume, mute and solo.",
   "nest.backToMain": "Back to main timeline",
   "nest.tooDeep": "Nested clips go at most 5 levels deep.",
-  "nest.length": "Nested clip, {seconds} s long"
+  "nest.length": "Nested clip, {seconds} s long",
+  "composition.showScenes": "Show scenes"
 }
