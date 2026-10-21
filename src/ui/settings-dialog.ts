@@ -18,6 +18,11 @@ import {
   type Provider,
 } from '../providers';
 import type { SpeechProvider } from '../speech';
+import { diagnosticsButton } from './diagnostics';
+import { classifyWhisperError, WhisperError } from '../speech/whisper';
+import { encodeWav } from '../speech';
+import { lastDownloadError } from './local-engines';
+import { whisperRunner } from './services';
 import { openModal, type ModalHandle } from './components/modal';
 import {
   MOTION_SETTINGS,
@@ -237,9 +242,27 @@ function bindKeyBlock(
     result.dataset.outcome = 'busy';
     result.textContent = t('settings.keys.testing');
     try {
+      const started = performance.now();
       const { outcome, retryAt, status } = await runTest(provider);
       result.dataset.outcome = outcome;
       result.textContent = testOutcomeText(outcome, retryAt, status);
+      // FIX1 F4: a failed test can be reported (never with the key).
+      if (!['ok', 'later', 'missing'].includes(outcome)) {
+        const error = lastKeyError.get(provider.id);
+        const took = performance.now() - started;
+        result.append(
+          ' ',
+          diagnosticsButton(() => ({
+            feature: 'Settings › Stock & API keys › Test',
+            providerId: provider.id,
+            step: 'key test',
+            ...(status ? { status } : {}),
+            timings: { test: took },
+            error,
+            extra: { outcome },
+          })),
+        );
+      }
     } finally {
       testButton.disabled = false;
     }
@@ -274,6 +297,87 @@ function engineRow(view: LocalEngineView): string {
 }
 
 let open: ModalHandle | undefined;
+
+/**
+ * FIX1 F4: Offline captions › Run self-test. Downloads the model when
+ * needed, starts it and runs one second of silence through the real runner,
+ * then says which backend ran, how long the start took, and any error in
+ * plain words (with Copy diagnostics). Silence giving no words is a pass.
+ */
+function bindSelfTest(section: HTMLElement) {
+  const button = section.querySelector<HTMLButtonElement>(
+    '[data-action="whisper-selftest"]',
+  )!;
+  const result = section.querySelector<HTMLElement>('.selftest-result')!;
+  const backend = () =>
+    'gpu' in navigator
+      ? t('settings.selftest.backendWasmGpu')
+      : t('settings.selftest.backendWasm');
+  button.onclick = async () => {
+    const runner = whisperRunner;
+    if (!runner) return;
+    button.disabled = true;
+    result.dataset.state = 'busy';
+    const started = performance.now();
+    const steps: string[] = [];
+    try {
+      if (!(await runner.isReady())) {
+        result.textContent = t('settings.selftest.downloading');
+        await localEngines(speechRegistry()).act('local-whisper', 'download');
+        if (!(await runner.isReady()))
+          throw (
+            lastDownloadError.get('local-whisper') ??
+            new WhisperError('not-downloaded', 'check')
+          );
+      }
+      result.textContent = t('settings.selftest.loading');
+      const silence = encodeWav({
+        sampleRate: 16000,
+        channels: [new Float32Array(16000)],
+      });
+      try {
+        await runner.transcribe({
+          blob: silence,
+          lang: 'en',
+          onProgress: (p) => steps.push(`${p.phase} ${p.completed}/${p.total}`),
+        });
+      } catch (error) {
+        if (!(error instanceof WhisperError && error.kind === 'no-speech'))
+          throw error;
+      }
+      result.dataset.state = 'ok';
+      result.textContent = t('settings.selftest.ok', {
+        backend: backend(),
+        seconds: (
+          (runner.lastLoadMs?.() ?? performance.now() - started) / 1000
+        ).toFixed(1),
+      });
+    } catch (error) {
+      const failure = classifyWhisperError(error, 'load');
+      result.dataset.state = 'error';
+      result.textContent = t('settings.selftest.failed', {
+        why: t(`captions.fail.${failure.kind}`),
+      });
+      result.append(
+        ' ',
+        diagnosticsButton(() => ({
+          feature: 'Offline captions self-test',
+          providerId: 'local-whisper',
+          step: failure.step,
+          error: failure.cause ?? failure,
+          timings: { total: performance.now() - started },
+          extra: {
+            failure: failure.kind,
+            backend: backend(),
+            steps: steps.join(', '),
+          },
+        })),
+      );
+    } finally {
+      button.disabled = false;
+    }
+  };
+}
 
 /** Opens Settings, optionally on one tab (a "fix it" button elsewhere). */
 export function openSettings(
@@ -326,6 +430,12 @@ export function openSettings(
       <div class="settings-pane" role="tabpanel" id="settings-pane-offline" aria-labelledby="settings-tab-offline">
         <p class="settings-note settings-lead">${t('settings.offline.lead')}</p>
         <div class="offline-engines"></div>
+        <section class="key-block whisper-selftest" id="whisper-selftest">
+          <header class="key-block-head"><h4>${t('settings.selftest.title')}</h4></header>
+          <p class="settings-note">${t('settings.selftest.note')}</p>
+          <div class="key-actions"><button type="button" class="button secondary sm" data-action="whisper-selftest">${t('settings.selftest.run')}</button></div>
+          <p class="selftest-result" role="status" aria-live="polite"></p>
+        </section>
       </div>
       <div class="modal-actions"><button type="button" class="button primary" id="settings-done">${t('creator.done')}</button></div>`,
   });
@@ -440,6 +550,7 @@ export function openSettings(
   };
   unsubscribe = localEngines(speechRegistry()).subscribe(renderEngines);
   renderEngines();
+  bindSelfTest(root.querySelector<HTMLElement>('#whisper-selftest')!);
 
   root.querySelector<HTMLButtonElement>('#settings-done')!.onclick = () =>
     handle.close();

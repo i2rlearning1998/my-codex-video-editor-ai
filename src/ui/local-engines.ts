@@ -3,6 +3,8 @@
 // captions dialog. One controller so every surface shows the same state.
 import { t } from '../i18n';
 import { LOCAL_MODELS, type createSpeechRegistry } from '../speech';
+import { classifyWhisperError } from '../speech/whisper';
+import { flag } from './feature-flags';
 
 type Registry = ReturnType<typeof createSpeechRegistry>;
 export type EngineAction = 'download' | 'cancel' | 'remove';
@@ -23,6 +25,8 @@ export interface LocalEngineDriver {
   remove(): Promise<void>;
 }
 
+/** FIX1 F4: the last download failure per engine. */
+export const lastDownloadError = new Map<string, unknown>();
 export const LOCAL_ENGINE_IDS = ['local-whisper', 'local-tts'] as const;
 const drivers = new Map<string, LocalEngineDriver>();
 const running = new Map<
@@ -99,7 +103,11 @@ export function localEngines(registry: Registry) {
     };
   };
   return {
-    views: () => LOCAL_ENGINE_IDS.map(view),
+    // FIX1 F3: the offline voice stays behind its feature flag.
+    views: () =>
+      LOCAL_ENGINE_IDS.filter(
+        (id) => id !== 'local-tts' || flag('offlineVoice'),
+      ).map(view),
     view,
     subscribe(listener: () => void) {
       listeners.add(listener);
@@ -127,9 +135,19 @@ export function localEngines(registry: Registry) {
           job.progress = Math.min(1, Math.max(0, fraction));
           notify();
         }, job.controller.signal);
-      } catch {
+      } catch (error) {
+        // FIX1 F4: the reason is kept for Copy diagnostics and the console.
+        console.debug('[offline engines] download failed', id, error);
+        lastDownloadError.set(id, error);
         if (!job.controller.signal.aborted)
-          errors.set(id, t('settings.offline.note.failed'));
+          errors.set(
+            id,
+            t('settings.offline.note.failedWhy', {
+              why: t(
+                `captions.fail.${classifyWhisperError(error, 'load').kind}`,
+              ),
+            }),
+          );
       } finally {
         running.delete(id);
         notify();

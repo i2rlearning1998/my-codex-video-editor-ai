@@ -19,6 +19,10 @@ import {
 } from '../speech';
 import { createWhisperRunner, type WhisperRunner } from '../speech/whisper';
 import {
+  fakeWhisperRunner,
+  type FakeWhisperMode,
+} from '../speech/whisper-fake';
+import {
   refreshLocalEngines,
   registerLocalEngineDriver,
 } from './local-engines';
@@ -73,14 +77,23 @@ function fakeWhisper(): WhisperRunner {
   };
 }
 
+/** FIX1 F4: the runner in use (the Settings self-test reads it). */
+export let whisperRunner: WhisperRunner | null = null;
 /** FINAL2 U11: the offline Whisper engine (Settings › Offline voice & captions). */
 function wireWhisper() {
-  const fake =
+  const testMode =
     (import.meta.env.DEV || import.meta.env.MODE === 'e2e') &&
-    typeof window !== 'undefined' &&
-    (window as { __AIVE_E2E_WHISPER__?: string }).__AIVE_E2E_WHISPER__ ===
-      'fake';
-  const runner = fake ? fakeWhisper() : createWhisperRunner();
+    typeof window !== 'undefined'
+      ? (window as { __AIVE_E2E_WHISPER__?: string }).__AIVE_E2E_WHISPER__
+      : undefined;
+  // FIX1 F4: `runner:<mode>` is the real runner with a faked model.
+  const runner =
+    testMode === 'fake'
+      ? fakeWhisper()
+      : testMode?.startsWith('runner:')
+        ? fakeWhisperRunner(testMode.slice(7) as FakeWhisperMode)
+        : createWhisperRunner();
+  whisperRunner = runner;
   setLocalTranscriber('local-whisper', (request) => runner.transcribe(request));
   registerLocalEngineDriver('local-whisper', {
     async download(onProgress, signal) {

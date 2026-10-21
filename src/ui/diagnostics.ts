@@ -47,6 +47,7 @@ export function sanitize(text: string, secrets = savedSecrets()): string {
   for (const secret of secrets) clean = clean.split(secret).join('[key]');
   return clean
     .replace(/(https?:\/\/[^\s?#"')]+)\?[^\s#"')]*/g, '$1?[query removed]')
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [removed]')
     .replace(
       /\b(authorization|api[-_]?key|key|token|access_token|xi-api-key|bearer)(["'\s:=]+)([A-Za-z0-9._~+/=-]{6,})/gi,
       '$1$2[removed]',
