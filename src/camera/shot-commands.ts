@@ -260,6 +260,8 @@ export function deleteCameraCommands(
 export function cameraShotsCommands(
   project: { readonly compositions: readonly Scene[] },
   plans: readonly CameraShotPlan[],
+  /** Fresh ids for cameras and shots (default: time and random based). */
+  ids: (prefix: string) => string = freshId,
 ): Command[] {
   const commands: Command[] = [];
   const bySceneCamera = new Map<string, CameraSpec>();
@@ -274,7 +276,7 @@ export function cameraShotsCommands(
     const spec =
       bySceneCamera.get(key) ??
       camerasOf(scene).find((camera) => camera.name === cameraName) ??
-      defaultCameraSpec(freshId('camera'), cameraName);
+      defaultCameraSpec(ids('camera'), cameraName);
     bySceneCamera.set(key, spec);
     const { camera: _camera, ...params } = plan.params ?? {};
     void _camera;
@@ -283,6 +285,7 @@ export function cameraShotsCommands(
       duration: plan.duration,
       spec,
       exact: true,
+      layerId: ids('shot'),
       shot: {
         controller: plan.controller,
         ...params,

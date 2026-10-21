@@ -1,0 +1,24 @@
+{
+  "format": "video-plan",
+  "version": 2,
+  "meta": { "title": "चाय की कहानी", "language": "hi", "aspect": "9:16", "fps": 30 },
+  "feel": { "captionStyle": "headline", "transition": "slide-left", "cameraTendency": "dynamic", "pacing": "fast" },
+  "scenes": [
+    {
+      "id": "khet",
+      "narration": "चाय की हर प्याली असम के हरे बागानों से शुरू होती है।",
+      "layers": [
+        { "id": "bagan", "kind": "media", "size": "full", "mediaIntent": { "query": "tea garden assam", "type": "photo", "orientation": "portrait" } },
+        { "id": "shirshak", "kind": "title", "text": "चाय की कहानी", "anchor": "top" }
+      ]
+    },
+    {
+      "id": "pyali",
+      "narration": "पत्तियाँ तोड़ी जाती हैं, सुखाई जाती हैं, और फिर बनती है आपकी चाय।",
+      "layers": [
+        { "id": "cup", "kind": "media", "size": "large", "anchor": "center", "mediaIntent": { "query": "masala chai cup", "type": "photo" } },
+        { "id": "quote", "kind": "kit", "kit": "quote-card", "text": "एक प्याली, हज़ार कहानियाँ|कहावत", "start": 2 }
+      ]
+    }
+  ]
+}
