@@ -334,6 +334,8 @@ export function caretColor(text: string, background: string): string {
 
 /** The editor in use, for the toolbar and right panel (one at a time). */
 let current: TextEditor | null = null;
+/** TXT-003: the last text copied inside the editor, with its styles. */
+let internalCopy: { text: string; styles: readonly Override[] } | null = null;
 export const textEditorFor = (layerId: string | null | undefined) =>
   current && layerId && current.layerId === layerId ? current : null;
 
@@ -936,6 +938,22 @@ export function mountTextEditor(
       checked,
     });
   };
+  // TXT-003: text copied or cut inside the editor keeps its styles when it
+  // is pasted back (Canva); the copy is remembered with its characters'
+  // styles, and used only while the clipboard still holds the same text.
+  const remember = () => {
+    readModel();
+    const [anchor, focus] = model.selection;
+    const from = Math.min(anchor, focus),
+      to = Math.max(anchor, focus);
+    if (to > from)
+      internalCopy = {
+        text: model.text.slice(from, to),
+        styles: model.styles.slice(from, to),
+      };
+  };
+  box.addEventListener('copy', remember);
+  box.addEventListener('cut', remember);
   // FINAL3 T2: paste is plain text only (foreign HTML and its styles are
   // dropped); the pasted text takes the style at the caret.
   box.addEventListener('paste', (event) => {
@@ -943,7 +961,26 @@ export function mountTextEditor(
     event.preventDefault();
     readModel();
     snapshot(true);
-    insertPlain(plainPaste(event.clipboardData.getData('text/plain')));
+    const value = plainPaste(event.clipboardData.getData('text/plain'));
+    const own = internalCopy;
+    if (own && own.text === value && !value.includes('\n')) {
+      const [anchor, focus] = model.selection;
+      const from = Math.min(anchor, focus),
+        to = Math.max(anchor, focus);
+      const next = replaceSelection(model, value);
+      restore({
+        ...model,
+        text: next.text,
+        styles: [
+          ...model.styles.slice(0, from),
+          ...own.styles,
+          ...model.styles.slice(to),
+        ],
+        selection: next.selection,
+      });
+      return;
+    }
+    insertPlain(value);
   });
   // A click elsewhere (not a toolbar, popover or side panel) commits.
   const outside = (event: PointerEvent) => {

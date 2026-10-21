@@ -143,6 +143,16 @@ export function textBoxOf(
     fill?.type === 'color' ? fill.value.slice(0, 7) : DEFAULT_TEXT_COLOR;
   const mode = options.width !== undefined ? 'fixed' : textBoxMode(layer);
   const storedWidth = numeric(layer, 'width');
+  // An old unwrapped layer (no `textBox` yet) keeps the box it was stored
+  // with, never smaller than its text, so it is picked, outlined and
+  // selected exactly as before FINAL3; a side handle or its double-click
+  // gives it a FINAL3 box.
+  const legacy =
+    options.width === undefined &&
+    mode === 'auto' &&
+    string(layer, 'textBox') === undefined &&
+    storedWidth !== undefined &&
+    numeric(layer, 'height') !== undefined;
   const width =
     mode === 'fixed' ? Math.max(1, options.width ?? storedWidth ?? 360) : null;
   const curve = Math.max(-100, Math.min(100, numeric(layer, 'textCurve') ?? 0));
@@ -163,6 +173,7 @@ export function textBoxOf(
           style,
           numeric(layer, 'height'),
           textHeightFixed(layer),
+          legacy,
         ])
       : null;
   const hit = key ? cache.get(key) : undefined;
@@ -187,11 +198,21 @@ export function textBoxOf(
     ...layout.lines.map((line) => line.width + line.indent),
   );
   const drop = curve ? curveDrop(curve, content) : 0;
+  const lines = Math.max(
+    layout.height + drop,
+    fontSize * style.lineHeight * 0.5,
+  );
   const box: TextBox = Object.freeze({
-    width: width ?? Math.ceil(content * 100) / 100,
+    width:
+      width ??
+      (legacy
+        ? Math.max(storedWidth!, Math.ceil(content * 100) / 100)
+        : Math.ceil(content * 100) / 100),
     height: textHeightFixed(layer)
       ? Math.max(1, numeric(layer, 'height') ?? layout.height)
-      : Math.max(layout.height + drop, fontSize * style.lineHeight * 0.5),
+      : legacy
+        ? Math.max(numeric(layer, 'height')!, lines)
+        : lines,
     mode,
     layout,
     style,

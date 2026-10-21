@@ -40,6 +40,9 @@ test('[PB-017] Manual Start 20 and End 150 never change when clips move, stretch
   const clip = page.locator(
     '#timeline-foundation .timeline-clip[data-action="clip"][data-id="example-badge"]',
   );
+  // (FINAL3 D-295: the timeline is shorter at 940 px; the lane may be
+  // below the fold.)
+  await clip.scrollIntoViewIfNeeded();
   const before = (await clip.boundingBox())!;
   await page.mouse.move(before.x + 20, before.y + before.height / 2);
   await page.mouse.down();

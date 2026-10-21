@@ -6,7 +6,6 @@ import {
   expect,
   hook,
   showCategory,
-  toScreen,
   showSceneStrip,
   settled,
   openRight,
@@ -112,7 +111,28 @@ async function localToScreen(page: Page, id: string, x: number, y: number) {
   const layer = await layerOf(page, id);
   const [px, py] = layer.transform.position.value as [number, number];
   const [sx, sy] = layer.transform.scale.value as [number, number];
-  return toScreen(page, px + x * sx, py + y * sy);
+  // The canvas's own view matrix (read-only test hook), not the artboard
+  // found by scanning pixels, which is only whole-pixel exact: a handle
+  // dragged to a point lands there at any canvas size.
+  const [cx, cy] = [px + x * sx, py + y * sy];
+  const box = (await page.locator('#composition-canvas').boundingBox())!;
+  const view = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __AIVE__: { getCanvas(): { view: number[] } };
+        }
+      ).__AIVE__.getCanvas().view,
+  );
+  const [a, b, c, d, e, f] = view as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  return { x: box.x + a * cx + c * cy + e, y: box.y + b * cx + d * cy + f };
 }
 
 test('[F2-040][F2-043] masks: add a rectangle, drag its handle on the canvas, and the PNG frame matches the preview', async ({

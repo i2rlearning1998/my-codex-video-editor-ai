@@ -825,12 +825,14 @@ export function mountLibraryPanels(
   };
 
   // --- Text -----------------------------------------------------------------
+  // The library's own combinations lead (they were the strip before
+  // FINAL3), then the 24 built in code.
   const combinationItems = () => [
-    ...combinationsFor(getLanguage()),
     ...of('text').filter(
       (item) =>
         item.section === 'combinations' && !item.id.startsWith('combo-'),
     ),
+    ...combinationsFor(getLanguage()),
   ];
   const textCards = (section: string) =>
     of('text')
@@ -910,6 +912,13 @@ export function mountLibraryPanels(
               host.append(button);
             }
           },
+        },
+        // The library's default styles (bold heading, subheading, body) stay
+        // as cards under the three buttons.
+        {
+          id: 'default-library',
+          layout: 'list',
+          cards: () => textCards('default'),
         },
         {
           id: 'combinations-built',

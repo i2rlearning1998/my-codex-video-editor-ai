@@ -225,7 +225,9 @@ test('[TXT-024] bulleted and numbered lists from the toolbar, drawn on the canva
     .locator('div')
     .first()
     .evaluate((div) => getComputedStyle(div, '::before').content);
-  expect(marker).toContain('counter');
+  // FINAL3 T3: the editor writes each paragraph's marker itself (levels
+  // and checklists), so the first one reads "1. ".
+  expect(marker).toContain('1.');
   await page.keyboard.press('Escape');
 });
 

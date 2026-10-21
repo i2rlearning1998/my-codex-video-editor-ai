@@ -129,6 +129,22 @@ describe('[FN3-005] text box model (auto and fixed width)', () => {
       true,
     );
   });
+  it('[FN3-005] an old unwrapped layer keeps its stored box (never smaller than its text); a FINAL3 box hugs the text', () => {
+    // Stored 120 × 300 with no `textBox`: picked and outlined as before.
+    const old = textBoxOf(text('a'), { measure: fallbackTextMeasure });
+    expect([old.width, old.height]).toEqual([120, 300]);
+    // Longer text than the stored width: the box grows, it never wraps.
+    const long = textBoxOf(text('Shyam Monani Shyam'), {
+      measure: fallbackTextMeasure,
+    });
+    expect(long.layout.lines).toHaveLength(1);
+    expect(long.width).toBeGreaterThan(120);
+    // Once it has a FINAL3 box, it is exactly its text.
+    const auto = textBoxOf(text('a', { textBox: string('auto') }), {
+      measure: fallbackTextMeasure,
+    });
+    expect(auto.height).toBeCloseTo(40 * DEFAULT_TEXT_STYLE.lineHeight, 6);
+  });
 });
 
 describe('[FN3-006] lists act on paragraphs', () => {

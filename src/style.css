@@ -7291,7 +7291,7 @@ input[type='range'] {
   border-radius: 10px;
 }
 #rail-right button .icon-rail-label {
-  font-size: var(--font-caption);
+  font-size: 11px;
   line-height: 1.15;
 }
 #rail-right button[aria-pressed='true'] {

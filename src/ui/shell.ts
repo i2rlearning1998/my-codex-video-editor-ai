@@ -6759,11 +6759,15 @@ export function mountEditorShell(
         width: `${boardRight - boardLeft}px`,
       });
     const centre = canvasPoint(cx, cy);
+    // A snapped axis lands exactly on its target: the screen round trip
+    // leaves float dust (279.99999999999994) that is dropped here.
+    const exact = (value: number, snapped: boolean) =>
+      snapped ? Math.round(value * 1e6) / 1e6 : value;
     return centre
-      ? ([centre[0] - footprint.dx, centre[1] - footprint.dy] as [
-          number,
-          number,
-        ])
+      ? ([
+          exact(centre[0] - footprint.dx, snappedX !== null),
+          exact(centre[1] - footprint.dy, snappedY !== null),
+        ] as [number, number])
       : pointer;
   };
   drags().register({

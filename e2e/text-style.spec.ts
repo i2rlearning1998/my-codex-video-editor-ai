@@ -86,9 +86,8 @@ const lastLabel = async (page: Page) =>
   (await hook(page)).history.labels.at(-1);
 const SUBTITLE: [number, number, number, number] = [60, 565, 900, 645];
 // Above the badge (456), left of the cards, and left of the rotation handle
-// under the box's middle (H3; the auto-width box puts it near x 344); both
-// lines start at x 76.
-const HEADLINE: [number, number, number, number] = [60, 160, 320, 452];
+// under the box's middle (H3); both lines start at x 76.
+const HEADLINE: [number, number, number, number] = [60, 160, 400, 452];
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -136,20 +135,6 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
       '[data-tool-panel="effects"] .text-effect-tile[data-effect="shadow"]',
     ),
   ).toBeEnabled();
-  await page.keyboard.press('Escape');
-  // FINAL3 T1: the old 680 × 70 box is now an auto-width box hugging the
-  // text; give it back its fixed 680 × 70 size (Auto height off, W, H).
-  await control(page, 'spacing').click();
-  await page.locator('.toolbar-popover [data-action="auto-height"]').click();
-  await page.keyboard.press('Escape');
-  await control(page, 'position').click();
-  for (const [id, value] of [
-    ['#position-w', '680'],
-    ['#position-h', '70'],
-  ] as const) {
-    await page.locator(id).fill(value);
-    await page.locator(id).press('Enter');
-  }
   await page.keyboard.press('Escape');
   const left = await ink(page, SUBTITLE);
   expect(left.left).toBeLessThan(80);
