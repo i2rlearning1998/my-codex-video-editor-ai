@@ -139,6 +139,11 @@ describe('[FN3-005] text box model (auto and fixed width)', () => {
     });
     expect(long.layout.lines).toHaveLength(1);
     expect(long.width).toBeGreaterThan(120);
+    // A centred old box keeps its stored width and height.
+    const centred = textBoxOf(text('a', { textAlign: string('center') }), {
+      measure: fallbackTextMeasure,
+    });
+    expect([centred.width, centred.height]).toEqual([120, 300]);
     // Once it has a FINAL3 box, it is exactly its text.
     const auto = textBoxOf(text('a', { textBox: string('auto') }), {
       measure: fallbackTextMeasure,

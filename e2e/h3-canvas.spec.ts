@@ -646,29 +646,9 @@ test('[TXT-036] underline, strikethrough and uppercase toggle from the toolbar, 
     'Set strikethrough',
     'Set text case',
   ]);
-  // Anchor (FINAL3 T1, revision 9): a text box is as tall as its lines, so
-  // the anchor matters in a box with a fixed height. Fixed height starts at
-  // the text's height; H then makes it 50 units taller, and Bottom moves the
-  // ink down by that much.
+  // Anchor: the 730 × 230 headline box is about 43 units taller than its
+  // two lines, so Bottom moves the ink down by that much.
   await select(page, 'example-headline');
-  await control(page, 'spacing').click();
-  await page.locator('.toolbar-popover [data-action="auto-height"]').click();
-  expect(
-    (await layerOf(page, 'example-headline')).properties.textFixedHeight.value,
-  ).toBe(true);
-  await page.keyboard.press('Escape');
-  await control(page, 'position').click();
-  const h = page.locator('#position-h');
-  const tall = Number(await h.inputValue()) + 50;
-  await h.fill(String(tall));
-  await h.press('Enter');
-  await expect
-    .poll(async () =>
-      Math.round(
-        (await layerOf(page, 'example-headline')).properties.height.value,
-      ),
-    )
-    .toBe(Math.round(tall));
   const box = (await debug(page)).corners!;
   const inkTop = async () =>
     page

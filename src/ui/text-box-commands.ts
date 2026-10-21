@@ -89,11 +89,18 @@ export function fontScaleCommands(
     const value = numeric(layer, key);
     if (value) add(key, round(value * factor));
   }
-  if (textBoxMode(layer) === 'fixed') {
+  // An old layer keeps its stored box (D-301): it scales with the font.
+  const wrap = layer.properties.textWrap;
+  const legacy =
+    layer.properties.textBox === undefined &&
+    !(wrap?.type === 'boolean' && wrap.value) &&
+    numeric(layer, 'width') !== undefined &&
+    numeric(layer, 'height') !== undefined;
+  if (textBoxMode(layer) === 'fixed' || legacy) {
     const width = numeric(layer, 'width');
     if (width) add('width', round(width * factor));
   }
-  if (textHeightFixed(layer)) {
+  if (textHeightFixed(layer) || legacy) {
     const height = numeric(layer, 'height');
     if (height) add('height', round(height * factor));
   }

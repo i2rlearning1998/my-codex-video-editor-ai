@@ -149,8 +149,8 @@ export function textBoxOf(
   // gives it a FINAL3 box.
   const legacy =
     options.width === undefined &&
-    mode === 'auto' &&
     string(layer, 'textBox') === undefined &&
+    !flag(layer, 'textWrap') &&
     storedWidth !== undefined &&
     numeric(layer, 'height') !== undefined;
   const width =
@@ -205,7 +205,7 @@ export function textBoxOf(
   const box: TextBox = Object.freeze({
     width:
       width ??
-      (legacy
+      (legacy && mode === 'auto'
         ? Math.max(storedWidth!, Math.ceil(content * 100) / 100)
         : Math.ceil(content * 100) / 100),
     height: textHeightFixed(layer)
