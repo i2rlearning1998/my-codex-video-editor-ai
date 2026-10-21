@@ -28,8 +28,8 @@ const codeDebug = async (page: Page) =>
           }
         ).__AIVE__.getMedia().code,
     )
-  )[// (The bake may not be listed for a frame after Add: not started yet.)
-  0] ?? ({ state: 'pending' } as unknown as CodeDebug);
+  ) // (The bake may not be listed for a frame after Add: not started yet.)
+  [0] ?? ({ state: 'pending' } as unknown as CodeDebug);
 const baked = (page: Page) =>
   expect
     .poll(async () => (await codeDebug(page)).state, { timeout: 30_000 })
