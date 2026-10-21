@@ -19,7 +19,7 @@ import {
   type Property,
 } from './model';
 import { MAX_CLIP_SPEED, MIN_CLIP_SPEED } from './timeline';
-import { isNestedClip, nestedAnchor } from './nesting';
+import { isNestedClip, nestedAnchor, NESTED_KEY } from './nesting';
 import { syncLanes } from './lanes';
 import {
   maxTransition,
@@ -335,6 +335,36 @@ export const commandSchema = z.discriminatedUnion('type', [
       ...location,
       layerId: idSchema,
       code: codeLayerSchema.nullable(),
+    })
+    .strict(),
+  // FIX1 F6: a nested clip's whole inside (its children, the clips kept in
+  // it and the outer trim), written back after an edit made inside it.
+  z
+    .object({
+      type: z.literal('SET_NESTED_CONTENT'),
+      ...location,
+      layerId: idSchema,
+      children: z.array(layerSchema),
+      nested: z
+        .object({
+          version: z.literal(1),
+          duration: z.number().finite().positive(),
+          clips: z.array(
+            z
+              .object({
+                trackId: idSchema,
+                trackName: z.string().trim().min(1).max(256),
+                trackType: z.enum(['video', 'audio', 'text', 'object']),
+                trackRank: z.number().int().nonnegative(),
+                clip: clipSchema,
+              })
+              .strict(),
+          ),
+        })
+        .strict(),
+      sourceIn: z.number().finite().nonnegative(),
+      sourceOut: z.number().finite().positive(),
+      duration: z.number().finite().positive(),
     })
     .strict(),
   // H3: Replace swaps the picture or footage behind a layer (and its clip).
@@ -937,6 +967,31 @@ export function applyCommand(project: Project, command: Command): void {
         throw new Error('Only a code animation layer can hold code');
       if (command.code === null) delete layer.code;
       else layer.code = structuredClone(command.code);
+      return;
+    }
+    case 'SET_NESTED_CONTENT': {
+      const group = composition.layers.find((l) => l.id === command.layerId);
+      if (!group || group.type !== 'group')
+        throw new Error('A nested clip must be a top-level group');
+      const clip = composition.tracks
+        .flatMap((track) => track.clips)
+        .find((item) => item.layerId === group.id);
+      if (!clip || !isNestedClip(clip))
+        throw new Error(`Layer ${group.id} is not a nested clip`);
+      if (command.sourceOut <= command.sourceIn)
+        throw new Error('Invalid nested clip timing');
+      if (!command.nested.clips.length)
+        throw new Error('A nested clip needs at least one clip inside');
+      group.children = structuredClone(command.children);
+      clip.metadata = {
+        ...clip.metadata,
+        [NESTED_KEY]: structuredClone(command.nested) as never,
+      };
+      clip.sourceIn = command.sourceIn;
+      clip.sourceOut = command.sourceOut;
+      clip.duration = command.duration;
+      group.startTime = clip.startTime;
+      group.duration = clip.duration;
       return;
     }
     case 'SET_LAYER_ASSET': {

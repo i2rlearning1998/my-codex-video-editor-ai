@@ -30,13 +30,19 @@ describe('Pixabay', () => {
     await p.search(o);
     expect(deps.fetch).toHaveBeenCalledTimes(2);
   });
-  it('maps all four video sizes and applies duration filtering without losing next-page semantics', async () => {
+  it('maps the real video sizes (an empty `large` with size 0 is skipped) and applies duration filtering without losing next-page semantics', async () => {
     const p = createPixabay(setup('pixabay-videos'));
     const r = await p.search({ kind: 'stock-video', query: 'ocean' });
-    expect(r.items[0]!.files).toHaveLength(4);
+    expect(r.items[0]!.files.map((f) => f.quality)).toEqual([
+      'tiny',
+      'small',
+      'medium',
+    ]);
+    expect(r.items[0]!.files.every((f) => f.url !== '')).toBe(true);
+    expect(r.items[0]!.files[2]!.bytes).toBe(3500000);
     expect(r.items[0]).toMatchObject({
-      width: 1920,
-      height: 1080,
+      width: 1280,
+      height: 720,
       durationSec: 12,
     });
     expect((await p.getDownload(r.items[0]!, 'tiny')).mime).toBe('video/mp4');

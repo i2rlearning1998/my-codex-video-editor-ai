@@ -1,3 +1,6 @@
+- **FIX1 (bug-fix round from the owner's real-browser test)** is on `claude/fix-1`, a draft PR stacked on `claude/final-2` (PR #42), not merged; see reports/FIX1.md.
+  - F9 test infra (1920 × 940, 1366 smoke), F1 panel scrolling, F2 stock fixes, F3 one cloud Text to speech, F4 Copy diagnostics and visible Whisper failures, F5 audio panels, F6 complete nested clips, F7 import and Build video polish, F8 text editor and fonts (D-287 to D-294).
+  - Schema 9 unchanged (one additive command `SET_NESTED_CONTENT`); no new npm dependencies.
 - **FINAL2 (integration part 2, all the UI)** is on `claude/final-2`, draft PR #42 stacked on `claude/final-1`, not merged; see reports/FINAL2.md.
   - U1 Settings (keys, offline engines, accent), U2 stock in Elements, U3/U4 voice-over and recorder, U5 audio mixer and master volume, U6 fonts / RTL / lists / tables, U7 masks / blend / chroma, U8 probe details and reconnect, U9 captions and nesting, U10 Build video and camera, U11 offline Whisper (D-276 to D-286).
   - Schema 9 unchanged. New dependency: `@huggingface/transformers` 4.3.1 (owner-approved, lazy).

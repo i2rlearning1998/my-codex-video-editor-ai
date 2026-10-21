@@ -8,22 +8,22 @@ import {
   isNestedClip,
   nestedInfo,
   type EditorEngine,
+  type Project,
+  type TimedClip,
 } from '../core';
-import { formatNumber, t } from '../i18n';
+import { t } from '../i18n';
 
-const formatTime = (seconds: number) =>
-  formatNumber(Math.round(seconds * 10) / 10);
 import {
-  absoluteChildClip,
-  enterNested,
-  exitNested,
   flattenNested,
   innerToOuter,
+  MAX_NEST_DEPTH,
   nestClips,
-  NOT_NESTED,
-  resolveNestPath,
-  type NestEditState,
+  nestedAnchor,
+  nestedTimeAt,
+  unpackPath,
 } from '../nesting';
+import type { NestEngine } from './nest-engine';
+import { iconSvg } from './icons';
 import { selectedClips } from './editing';
 import { selectionRoots } from './selection-context';
 import type { EditorSession } from './session';
@@ -87,17 +87,19 @@ export function unnestSelection(context: Context): void {
 }
 
 /**
- * The breadcrumb bar above the timeline and the double-click that enters a
- * nested clip. Returns `enter` for the registered Open nested clip command.
+ * FIX1 F6: the breadcrumb bar above the timeline ("Main timeline › <nest>"
+ * with Back to main timeline) and the double-click that opens a nested
+ * clip. Inside, the whole editor shows the nested clip's real lanes and
+ * clips (createNestEngine); the playhead is mapped into the nest's own time
+ * and back on leaving. Esc with nothing selected leaves one level.
  */
 export function mountNestBar(
   section: HTMLElement,
   foundation: HTMLElement,
-  engine: EditorEngine,
+  engine: NestEngine,
   session: EditorSession,
   report: (error: unknown) => void,
 ) {
-  let state: NestEditState = NOT_NESTED;
   const bar = document.createElement('nav');
   bar.className = 'nest-bar';
   bar.id = 'nest-bar';
@@ -106,42 +108,79 @@ export function mountNestBar(
   section.insertBefore(bar, foundation);
   let rendered = '';
 
-  const leaveAll = () => {
-    const top = state.path[0];
-    state = NOT_NESTED;
+  /** The nested clip of `path[depth]` and the project that holds it. */
+  const levelClip = (path: readonly string[], depth: number) => {
+    const real = engine.real;
+    const compositionId =
+      engine.nest?.compositionId ?? session.source.composition.id;
+    const holder =
+      depth === 0
+        ? (real.state as unknown as Project)
+        : unpackPath(real.state, compositionId, path.slice(0, depth)).at(-1)!;
+    const composition = holder.compositions.find(
+      (c) => c.id === compositionId,
+    )!;
+    const found = findClipByLayer(
+      composition as unknown as Parameters<typeof findClipByLayer>[0],
+      path[depth]!,
+    );
+    const group = composition.layers.find((l) => l.id === path[depth]);
+    return found && group
+      ? { clip: found.clip as unknown as TimedClip, name: group.name }
+      : null;
+  };
+  /** Outer (main timeline) time → the time inside `path`. */
+  const inward = (path: readonly string[], time: number) => {
+    let t = time;
+    path.forEach((_, depth) => {
+      const level = levelClip(path, depth);
+      if (level) t = nestedTimeAt(level.clip, t) - nestedAnchor(level.clip);
+    });
+    return Math.max(0, t);
+  };
+  /** The time inside `path` → outer (main timeline) time. */
+  const outward = (path: readonly string[], time: number) => {
+    let t = time;
+    for (let depth = path.length - 1; depth >= 0; depth--) {
+      const level = levelClip(path, depth);
+      if (level) t = innerToOuter(level.clip, t + nestedAnchor(level.clip));
+    }
+    return Math.max(0, t);
+  };
+  const go = (path: readonly string[]) => {
+    const from = engine.nest?.path ?? [];
+    const outer = outward(from, session.currentTime);
+    session.setPlaying(false);
+    session.select(null);
     if (session.enteredGroupId) session.enterGroup(null);
-    if (top) session.select(top);
+    const compositionId = session.source.composition.id;
+    engine.setNest(path.length ? { compositionId, path } : null);
+    session.setCurrentTime(inward(path, outer));
     render();
+  };
+  const leaveAll = () => {
+    const top = engine.nest?.path[0];
+    go([]);
+    if (top) session.select(top);
   };
   const leaveOne = () => {
-    const left = state.path.at(-1);
-    state = exitNested(state);
-    const parent = state.path.at(-1) ?? null;
-    session.enterGroup(parent);
+    const path = engine.nest?.path ?? [];
+    const left = path.at(-1);
+    go(path.slice(0, -1));
     if (left) session.select(left);
-    render();
   };
   const render = () => {
-    const composition = session.source.composition;
-    if (state.path.length && state.compositionId !== composition.id)
-      state = NOT_NESTED;
-    let levels: ReturnType<typeof resolveNestPath> = [];
-    if (state.path.length)
-      try {
-        levels = resolveNestPath(engine.state, composition.id, state.path);
-      } catch {
-        state = NOT_NESTED;
-      }
-    const key = JSON.stringify([
-      state.path,
-      levels.map((level) => [level.group.name, level.clip]),
-      session.selectedIds,
-    ]);
+    const nest = engine.nest;
+    const path = nest?.path ?? [];
+    const names = path.map(
+      (_, depth) => levelClip(path, depth)?.name ?? t('nest.name'),
+    );
+    const key = JSON.stringify([path, names]);
+    section.classList.toggle('nest-entered', path.length > 0);
     if (key === rendered) return;
     rendered = key;
-    bar.hidden = !levels.length;
-    section.classList.toggle('nest-entered', levels.length > 0);
-    if (!levels.length) {
+    bar.hidden = !path.length;
+    if (!path.length) {
       bar.replaceChildren();
       return;
     }
@@ -170,76 +209,49 @@ export function mountNestBar(
         }
       }),
     ];
-    levels.forEach((level, index) => {
+    names.forEach((name, index) => {
       items.push(sep());
-      const last = index === levels.length - 1;
+      const last = index === names.length - 1;
       items.push(
         crumb(
-          level.group.name,
+          name,
           last
             ? undefined
             : () => {
-                while (state.path.length > index + 1) leaveOne();
+                try {
+                  go(path.slice(0, index + 1));
+                } catch (error) {
+                  report(error);
+                }
               },
         ),
       );
     });
-    // The children of the innermost nested clip, with their place on the
-    // parent timeline; a click selects one (the canvas edits it).
-    const inner = levels.at(-1)!;
-    const list = document.createElement('div');
-    list.className = 'nest-children';
-    list.setAttribute('role', 'list');
-    for (const child of inner.group.children) {
-      const kept = absoluteChildClip(inner.clip, child.id);
-      const start = kept ? innerToOuter(inner.clip, kept.startTime) : null;
-      const end = kept
-        ? innerToOuter(inner.clip, kept.startTime + kept.duration)
-        : null;
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'nest-child';
-      chip.setAttribute('role', 'listitem');
-      chip.dataset.id = child.id;
-      chip.setAttribute(
-        'aria-pressed',
-        String(session.selectedIds.includes(child.id)),
-      );
-      chip.textContent =
-        start !== null && end !== null
-          ? t('nest.child', {
-              name: child.name,
-              start: formatTime(Math.min(start, end)),
-              end: formatTime(Math.max(start, end)),
-            })
-          : child.name;
-      chip.onclick = () => session.select(child.id);
-      list.append(chip);
-    }
     const exit = document.createElement('button');
     exit.type = 'button';
-    exit.className = 'nest-exit';
+    exit.className = 'button sm nest-exit';
     exit.dataset.action = 'nest-exit';
-    exit.textContent = t('nest.exit');
+    exit.innerHTML = `${iconSvg('back', 16)}<span></span>`;
+    exit.querySelector('span')!.textContent = t('nest.backToMain');
+    exit.title = `${t('nest.backToMain')} (Esc)`;
     exit.onclick = () => {
       try {
-        leaveOne();
+        leaveAll();
       } catch (error) {
         report(error);
       }
     };
-    bar.replaceChildren(...items, list, exit);
+    const spacer = document.createElement('span');
+    spacer.className = 'nest-spacer';
+    bar.replaceChildren(...items, spacer, exit);
   };
 
   const enter = (layerId: string) => {
-    const composition = session.source.composition;
-    const found = findClipByLayer(composition, layerId);
+    const found = findClipByLayer(session.source.composition, layerId);
     if (!found || !nestedInfo(found.clip)) throw new Error(t('nest.notNested'));
-    session.setPlaying(false);
-    state = enterNested(engine.state, state, composition.id, layerId);
-    session.enterGroup(layerId);
-    session.select(null);
-    render();
+    const path = [...(engine.nest?.path ?? []), layerId];
+    if (path.length > MAX_NEST_DEPTH) throw new Error(t('nest.tooDeep'));
+    go(path);
   };
 
   // A double click on a nested clip enters it. The first click re-renders
@@ -282,21 +294,37 @@ export function mountNestBar(
   };
   foundation.addEventListener('pointerdown', onDown, true);
   foundation.addEventListener('pointerup', onUp, true);
-  const off = session.onChange(() => {
-    // Escape on the canvas leaves the entered group: follow it.
-    if (state.path.length && session.enteredGroupId !== state.path.at(-1)) {
-      state = NOT_NESTED;
-      if (session.enteredGroupId) session.enterGroup(null);
+  // Esc with nothing selected (and no menu, dialog or field open) leaves
+  // one level. Capture phase: the first Esc still clears the selection.
+  const onKey = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !engine.nest) return;
+    if (session.selectedIds.length) return;
+    if (
+      document.querySelector(
+        '.modal-backdrop, .popover, [role="menu"]:not([hidden])',
+      )
+    )
+      return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('input, textarea, select, [contenteditable="true"]'))
+      return;
+    try {
+      leaveOne();
+    } catch (error) {
+      report(error);
     }
-    render();
-  });
+  };
+  document.addEventListener('keydown', onKey, true);
+  const offEngine = engine.on('state:changed', () => render());
   return {
     enter,
+    leaveAll,
     get state() {
-      return state;
+      return engine.nest;
     },
     dispose() {
-      off();
+      offEngine();
+      document.removeEventListener('keydown', onKey, true);
       foundation.removeEventListener('pointerdown', onDown, true);
       foundation.removeEventListener('pointerup', onUp, true);
       bar.remove();

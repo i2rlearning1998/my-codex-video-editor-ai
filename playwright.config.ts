@@ -73,10 +73,22 @@ export default defineConfig({
     // with the canvas at least as large as before the H2 shell.
     // I3 (D-150): 72 px taller for the scene strip, so the canvas keeps the
     // size the pixel-measuring tests were written for (D-120).
-    viewport: { width: 1600, height: 1072 },
+    // FIX1 F9: the owner's real Chrome window (1920 wide, about 940 tall
+    // inside the browser's own bars). Earlier pixel-measuring specs that were
+    // written for the 1600 × 1072 canvas opt back in with `LEGACY_VIEWPORT`.
+    viewport: { width: 1920, height: 940 },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  // FIX1 F9: a small-laptop smoke run of the panel-scroll test only.
+  projects: [
+    { name: 'desktop' },
+    {
+      name: 'laptop-1366',
+      testMatch: /fix1-panels\.spec\.ts/,
+      use: { viewport: { width: 1366, height: 768 } },
+    },
+  ],
   updateSnapshots: 'missing',
   webServer: {
     command: `npm run dev -- --port ${port} --strictPort`,

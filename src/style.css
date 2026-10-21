@@ -10601,3 +10601,379 @@ input[type='range'] {
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
+
+/* FIX1 F1: one scroll rule for every panel. Each panel's header stays put
+   and its body scrolls, so nothing is ever cut off: every left-panel page is
+   a flex child that may shrink (min-height 0) and scrolls on its own; the
+   right panel and both icon rails scroll when they are taller than the
+   window. Library shelves (Media, AI, My Templates) keep their search,
+   Import, drop zone and chips fixed and scroll only their body. */
+.library
+  > .panel-body
+  > [data-rail-panel]:not([hidden]):not(.import-row):not(.scene-heading):not(
+    .shelf
+  ),
+.library > .panel-body > #side-panel-host > *,
+.library > .panel-body > .draw-panel:not([hidden]) {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+.library > .panel-body > #side-panel-host:not(:empty) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-block-size: 0;
+}
+.editor-shell > .icon-rail,
+.editor-shell > #rail-left,
+.editor-shell > #rail-right {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.icon-rail > button {
+  flex: none;
+}
+.inspector {
+  min-block-size: 0;
+}
+.inspector > #right-section,
+.inspector > #inspector-content {
+  flex: none;
+}
+.library .shelf:has(> .shelf-body) {
+  overflow: hidden;
+}
+.shelf > .shelf-body {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-inline: calc(-1 * var(--space-4));
+  padding-inline: var(--space-4);
+}
+.shelf > .shelf-tabs {
+  flex: none;
+  position: relative;
+  z-index: 1;
+  background: var(--region-panel);
+}
+/* FIX1 F1: on short windows the fixed top would leave no room for cards, so
+   the whole shelf scrolls and only the chips stay pinned (sticky). */
+@media (max-height: 820px) {
+  .library .shelf:has(> .shelf-body) {
+    overflow-y: auto;
+  }
+  .shelf > .shelf-body {
+    flex: none;
+    overflow: visible;
+  }
+  .shelf > .shelf-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-inline: calc(-1 * var(--space-4));
+    padding-inline: var(--space-4);
+    padding-block: var(--space-2);
+  }
+}
+/* FIX1 F2: stock cards. The licence is a small corner chip (full text in
+   its tooltip and in Details); icons sit on a light tile; stickers and
+   icons show whole (contain); a download shows a real progress bar. */
+.shelf .stock-item .stock-licence {
+  position: absolute;
+  inset-block-start: 6px;
+  inset-inline-start: 6px;
+  display: grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--card-overlay);
+  color: var(--text-on-accent);
+  z-index: 1;
+}
+.stock-panel[data-stock='icons'] .shelf-thumb,
+.stock-panel[data-stock='icons'] .shelf-thumb img.stock-icon {
+  background: var(--tile-light);
+}
+.stock-panel[data-stock='icons'] .shelf-thumb {
+  border: 1px solid var(--tile-light-border);
+  box-sizing: border-box;
+}
+.shelf .shelf-thumb img.stock-icon {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.stock-progress {
+  padding: var(--space-2);
+  box-sizing: border-box;
+  text-align: center;
+  /* Above the card's licence chip and buttons. */
+  z-index: 2;
+}
+.stock-progress-text {
+  font-size: var(--font-size-xs);
+  line-height: 1.25;
+}
+.stock-progress[data-state='error'] {
+  background: var(--card-overlay);
+  justify-content: center;
+  overflow-y: auto;
+}
+.stock-progress-bar {
+  inline-size: 80%;
+  block-size: 6px;
+  accent-color: var(--accent);
+}
+.stock-progress .stock-dismiss {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
+  inline-size: 24px;
+  block-size: 24px;
+  color: var(--text-on-accent);
+}
+.stock-message .diagnostics-button,
+.stock-progress .diagnostics-button {
+  color: inherit;
+}
+.stock-details-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+.stock-details-facts dt {
+  color: var(--text-secondary);
+}
+.stock-details-facts dd {
+  margin: 0;
+}
+.stock-quality {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-end: var(--space-4);
+}
+.stock-quality-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* FIX1 F3: the one Text to speech tool. */
+.voiceover-text-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.voiceover-count {
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+}
+.voiceover-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+}
+.voiceover-empty p {
+  margin: 0;
+}
+.voiceover-empty-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.key-block-focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-md);
+}
+/* FIX1 F5: one slider + number row everywhere (volume, opacity, speed,
+   master volume …): label, a full-width slider, then the number with its
+   unit and steppers, all on one line. The row used to inherit a two-column
+   grid (`.right-row`) that pushed the unit and slider onto their own rows,
+   and the range input took the row's height, so its track became a pill
+   with the thumb off the value. */
+.number-field.has-slider,
+.number-field.right-row.has-slider {
+  display: grid;
+  grid-template-columns:
+    minmax(0, max-content) minmax(48px, 1fr)
+    auto auto auto auto;
+  grid-template-areas: 'label slider input unit steps more';
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: 0;
+  flex-wrap: nowrap;
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+.number-field.right-row.has-slider {
+  grid-template-columns: 96px minmax(32px, 1fr) auto auto auto auto;
+}
+.number-field.has-slider > .number-field-label {
+  grid-area: label;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.number-field.has-slider > .slider-field {
+  grid-area: slider;
+  min-inline-size: 0;
+  flex: none;
+}
+.number-field.has-slider > .number-field-input {
+  grid-area: input;
+  inline-size: 3.8em;
+}
+.number-field.has-slider > .number-field-unit {
+  grid-area: unit;
+  margin-inline-start: calc(-1 * var(--space-1));
+}
+.number-field.has-slider > .number-field-steps {
+  grid-area: steps;
+  margin-inline-start: calc(-1 * var(--space-1));
+}
+.number-field.has-slider > .number-field-more {
+  grid-area: more;
+  min-inline-size: 24px;
+  inline-size: 24px;
+}
+.number-field.has-slider .slider-field input[type='range'] {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: 4px;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-sizing: border-box;
+}
+.number-field.has-slider .slider-readout {
+  display: none;
+}
+/* FIX1 F5: the Audio libraries' tabs and My audio list. */
+#library-audio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
+}
+#library-audio > .audio-library-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--region-panel);
+  padding-block: var(--space-2);
+}
+.audio-mine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.audio-mine[hidden] {
+  display: none;
+}
+/* FIX1 F5: the Mixer in the right panel fits the panel's width. */
+.audio-mixer,
+.audio-mixer-master,
+.audio-mixer-tracks {
+  grid-template-columns: minmax(0, 1fr);
+  min-inline-size: 0;
+}
+.audio-mixer > *,
+.audio-mixer-master > *,
+.audio-mixer-tracks > *,
+.audio-mixer-track > * {
+  min-inline-size: 0;
+}
+#right-section > .audio-mixer {
+  padding: 0;
+  border-block-end: 0;
+}
+/* FIX1 F6: the nested clip block and the breadcrumb bar. */
+.timeline-clip[data-nested='true'] {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 6px,
+    var(--accent-soft) 6px 8px
+  );
+}
+.nest-map {
+  position: absolute;
+  inset: 55% 4px 3px;
+  pointer-events: none;
+}
+.nest-map-clip {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 2px;
+  background: var(--text-on-accent);
+  opacity: 0.55;
+  border: 1px solid var(--card-overlay);
+}
+.nest-length {
+  margin-inline-start: auto;
+}
+.nest-spacer {
+  flex: 1;
+}
+.nest-bar .nest-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* FIX1 F7: severity colours. Errors are red, warnings amber, information
+   neutral and OK green; an item's notes take its own status colour. */
+.creator-item .creator-reasons.code-errors {
+  color: var(--text-secondary);
+}
+.creator-item[data-status='warning'] .creator-reasons.code-errors {
+  color: var(--warning-text);
+}
+.creator-item[data-status='rejected'] .creator-reasons.code-errors,
+.creator-item[data-status='unsupported'] .creator-reasons.code-errors {
+  color: var(--danger-text);
+}
+.creator-item > .creator-thumb[hidden] + .creator-item-body {
+  grid-column: 2 / -1;
+}
+.creator-item > .creator-thumb[hidden] {
+  display: none;
+}
+/* FIX1 F8: the text editor's own caret (the browser's is hidden): 2 px,
+   blinking, in the text's colour or a contrasting one. */
+.text-editor {
+  caret-color: transparent;
+}
+.text-caret {
+  position: fixed;
+  z-index: 40;
+  inline-size: 2px;
+  pointer-events: none;
+  border-radius: 1px;
+}
+.text-caret[hidden] {
+  display: none;
+}
+.text-caret.blink {
+  animation: text-caret-blink 1.06s steps(1, end) infinite;
+}
+@keyframes text-caret-blink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}

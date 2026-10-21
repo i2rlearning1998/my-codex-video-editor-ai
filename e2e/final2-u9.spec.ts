@@ -204,20 +204,16 @@ test('[F2-062] Nest two clips, open the nested clip and leave by the breadcrumb,
   await expect(menuEntry(page, 'unnest-clip')).toBeVisible();
   await expect(menuEntry(page, 'ungroup')).toHaveCount(0);
   await page.keyboard.press('Escape');
-  // Double-click enters: the breadcrumb lists its two clips.
+  // Double-click enters: FIX1 F6 shows its two clips on their own lanes.
   await clipEl(page, groupId).dblclick();
   const bar = page.locator('#nest-bar');
   await expect(bar).toBeVisible();
-  await expect(bar.locator('.nest-child')).toHaveCount(2);
-  await expect
-    .poll(async () => (await hook(page)).session.enteredGroupId)
-    .toBe(groupId);
+  await expect(
+    page.locator('#timeline-foundation .timeline-clip.nle-clip'),
+  ).toHaveCount(2);
   await page.screenshot({ path: 'reports/final-ui/u9-nesting.png' });
   await bar.locator('.nest-crumb', { hasText: 'Main timeline' }).click();
   await expect(bar).toBeHidden();
-  await expect
-    .poll(async () => (await hook(page)).session.enteredGroupId)
-    .toBe(null);
   // Un-nest: the two clips come back as they were (one step).
   await clipEl(page, groupId).click({ button: 'right' });
   await menuEntry(page, 'unnest-clip').click();

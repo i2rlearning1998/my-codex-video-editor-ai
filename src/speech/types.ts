@@ -14,7 +14,8 @@ export interface Voice {
   lang: string;
 }
 export interface SpeechProgress {
-  phase: 'download' | 'synthesis' | 'transcription';
+  /** FIX1 F4: `load` (the model starting) and `decode` (reading the clip). */
+  phase: 'download' | 'synthesis' | 'transcription' | 'load' | 'decode';
   completed: number;
   total: number | null;
   file?: string;

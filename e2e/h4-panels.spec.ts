@@ -54,7 +54,8 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   // I4 (D-148): tabs per selection; the first is named after it. U5: with
   // nothing selected there are no tabs (no Canvas panel).
   // V7 (spec 10.1): the rail stays, with a disabled Auto Caption only.
-  expect(await shownSections(page)).toEqual(['Captions', 'Theme']);
+  // FIX1 F5 (D-291): Project audio (the Mixer) works with nothing selected.
+  expect(await shownSections(page)).toEqual(['Audio', 'Captions', 'Theme']);
   await select(page, 'example-headline');
   expect(await shownSections(page)).toEqual([
     'Properties',
@@ -109,7 +110,9 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   await page.keyboard.press('Escape');
   // U5: nothing selected has no tabs; T-ALL P1 (D-183): the right panel
   // itself is then not drawn.
-  await expect.poll(() => shownSections(page)).toEqual(['Captions', 'Theme']);
+  await expect
+    .poll(() => shownSections(page))
+    .toEqual(['Audio', 'Captions', 'Theme']);
   await expect(page.locator('#right-panel-empty')).toBeHidden();
 });
 

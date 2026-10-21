@@ -7,7 +7,13 @@ export interface ImportOptions {
   maxBytes?: number;
   network?: Network;
   now?: () => Date;
+  /** FIX1 F2: bytes received so far and the expected total (0: unknown). */
+  onProgress?: (loaded: number, total: number) => void;
+  /** FIX1 F2: the whole download's time limit (default 3 minutes). */
+  timeoutMs?: number;
 }
+/** FIX1 F2: downloads get minutes, not the 15 s of a search. */
+export const DOWNLOAD_TIMEOUT_MS = 180_000;
 export interface StockImport {
   blob: Blob;
   mime: string;
@@ -26,9 +32,15 @@ export async function importStockItem(
   const network = options.network ?? createNetwork();
   const blob = await network.request(
     file.url,
-    { download: true, ...(options.signal ? { signal: options.signal } : {}) },
+    {
+      download: true,
+      timeoutMs: options.timeoutMs ?? DOWNLOAD_TIMEOUT_MS,
+      ...(options.signal ? { signal: options.signal } : {}),
+    },
     async (response, signal) => {
       const length = Number(response.headers.get('Content-Length'));
+      const total = Number.isFinite(length) && length > 0 ? length : 0;
+      options.onProgress?.(0, total || file.bytes || 0);
       if (length > max) {
         await response.body?.cancel();
         throw new ProviderError('SIZE_LIMIT');
@@ -47,6 +59,7 @@ export async function importStockItem(
           const result = await reader.read();
           if (result.done) break;
           size += result.value.byteLength;
+          options.onProgress?.(size, total || file.bytes || 0);
           if (size > max) {
             await reader.cancel();
             throw new ProviderError('SIZE_LIMIT');
@@ -54,7 +67,8 @@ export async function importStockItem(
           chunks.push(result.value);
         }
         assertActive(signal);
-        if (!size) throw new ProviderError('BAD_RESPONSE');
+        if (!size)
+          throw new ProviderError('EMPTY', undefined, { step: 'download' });
         const mime = (response.headers.get('Content-Type') ?? file.mime)
           .split(';')[0]!
           .trim();
@@ -72,9 +86,16 @@ export async function importStockItem(
     'image/png': 'png',
     'image/webp': 'webp',
     'image/svg+xml': 'svg',
+    'image/gif': 'gif',
     'video/mp4': 'mp4',
+    'video/webm': 'webm',
+    'video/quicktime': 'mov',
     'audio/mpeg': 'mp3',
     'audio/ogg': 'ogg',
+    'audio/wav': 'wav',
+    'audio/x-wav': 'wav',
+    'audio/mp4': 'm4a',
+    'audio/webm': 'webm',
   };
   const name =
     (item.title

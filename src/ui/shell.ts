@@ -186,11 +186,12 @@ import { drags, setDragReporter, type DragPayload } from './drag-controller';
 import { mountSceneStrip } from './scene-strip';
 import { mountSoundPack } from './sound-pack-panel';
 import { mountAudioMixer, projectMasterVolume } from './audio-mixer';
+import { createNestEngine } from './nest-engine';
 import { configureAudioTab } from './right-panel/audio-tab';
 import { mountRecordPanel } from './record-panel';
 import { recordPanelHooks } from './record-panel-hooks';
 import { newTts, ttsState } from './right-panel/tts-panel';
-import { themeState } from './right-panel';
+import { projectAudioState, themeState } from './right-panel';
 import {
   registerTtsCommands,
   ttsCommand,
@@ -274,7 +275,12 @@ import { openCompositionBuild } from './composition-dialog';
 import { PARAMS_HEADER } from './ai-import-dialog';
 import { cameraBadge, cameraPanel, cameraView } from './camera-panel';
 import type { Asset } from '../core';
-import { dropStock, stockQuality } from './stock-panel';
+import {
+  dropStock,
+  mountStock,
+  stockQuality,
+  type StockDeps,
+} from './stock-panel';
 import { hasKeys, importStockItem } from '../providers';
 import { stockProviders } from './services';
 import {
@@ -328,10 +334,13 @@ export interface ShellActions {
 }
 export function mountEditorShell(
   root: HTMLElement,
-  engine: EditorEngine,
+  realEngine: EditorEngine,
   actions: ShellActions = {},
   renderer: CompositionRenderer = new Canvas2DRenderer(),
 ) {
+  // FIX1 F6: inside a nested clip the editor edits its inside as a scene;
+  // the wrapper writes each edit back to the real engine (one undo step).
+  const engine = createNestEngine(realEngine);
   const categoryKey = (name: string) => `library.${name.toLowerCase()}`;
   const railButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-category="${name}" aria-pressed="${pressed}" title="${t(categoryKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${t(categoryKey(name))}</span></button>`;
@@ -1090,6 +1099,8 @@ export function mountEditorShell(
     },
   );
   // H4: the right panel's sections other than Properties.
+  // FIX1 F5: the Mixer's host, shown by the right panel as Project audio.
+  const projectAudioHost = document.createElement('section');
   const rightPanel = mountRightPanel(
     element('#right-section'),
     engine,
@@ -1103,6 +1114,7 @@ export function mountEditorShell(
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
+      projectAudio: () => projectAudioHost,
       // X2: the selected code layer's Animation settings.
       codeBody: () => codeBody(),
       themeBody: () => {
@@ -1613,6 +1625,21 @@ export function mountEditorShell(
       return selectionActions.update(null, stage.getBoundingClientRect());
     const xs = corners.map((point) => point[0] + canvas.offsetLeft),
       ys = corners.map((point) => point[1] + canvas.offsetTop);
+    // FIX1 F1: never over the floating contextual toolbar.
+    const stageRect = stage.getBoundingClientRect();
+    const avoid = [
+      ...stage.querySelectorAll<HTMLElement>(
+        '#context-toolbar:not([hidden]), .stage-toolbar-row > :not([hidden])',
+      ),
+    ]
+      .map((el) => el.getBoundingClientRect())
+      .filter((rect) => rect.width > 0 && rect.height > 0)
+      .map((rect) => ({
+        left: rect.left - stageRect.left,
+        top: rect.top - stageRect.top,
+        right: rect.right - stageRect.left,
+        bottom: rect.bottom - stageRect.top,
+      }));
     selectionActions.update(
       {
         left: Math.min(...xs),
@@ -1620,7 +1647,7 @@ export function mountEditorShell(
         right: Math.max(...xs),
         bottom: Math.max(...ys),
       },
-      { width: stage.clientWidth, height: stage.clientHeight },
+      { width: stage.clientWidth, height: stage.clientHeight, avoid },
     );
   }
   // J4: on-canvas text editing (double-click, Enter or the Text tool).
@@ -2335,15 +2362,38 @@ export function mountEditorShell(
                 .join(JSON.stringify(id + suffix));
           return JSON.parse(text) as typeof composition;
         });
-        engine.commands.transaction(
-          'Build video',
-          fresh.map((composition) => ({
+        // FIX1 F7: a project that is only one empty default scene gets the
+        // built scenes instead of keeping a blank first scene.
+        const scenes = engine.state.compositions;
+        const blank =
+          scenes.length === 1 &&
+          !scenes[0]!.layers.length &&
+          scenes[0]!.tracks.every((track) => !track.clips.length)
+            ? scenes[0]!.id
+            : null;
+        engine.commands.transaction('Build video', [
+          ...fresh.map((composition) => ({
             type: 'CREATE_COMPOSITION' as const,
             composition,
           })),
-        );
+          ...(blank && fresh.length
+            ? [{ type: 'DELETE_COMPOSITION' as const, compositionId: blank }]
+            : []),
+        ]);
         if (fresh[0]) session.selectComposition(fresh[0].id);
-        showToast(t('composition.added', { count: fresh.length }), 'success');
+        // The new scenes show at once in the strip, and the note stays long
+        // enough to read, with a way to the scenes board.
+        if (!stripShown) stripButton.click();
+        showToast(
+          t('composition.added', { count: fresh.length }),
+          'success',
+          10000,
+          {
+            label: t('composition.showScenes'),
+            run: () =>
+              element<HTMLButtonElement>('#scene-board-toggle').click(),
+          },
+        );
       },
       openProject: async (project) => {
         if (
@@ -2784,6 +2834,8 @@ export function mountEditorShell(
     )?.id;
   const openExport = () => {
     session.setPlaying(false);
+    // FIX1 F6: export always shows the whole project.
+    if (engine.nest) nestBar?.leaveAll();
     openExportDialog({
       composition: session.source.composition,
       scenes: engine.state.compositions,
@@ -4207,6 +4259,45 @@ export function mountEditorShell(
     codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
     codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
   };
+  const stockDeps: StockDeps = {
+    add: async (item, place, signal, job) => {
+      const result = await importStockItem(
+        item,
+        job?.quality ?? stockQuality(item),
+        {
+          signal,
+          ...(job ? { onProgress: job.onProgress } : {}),
+        },
+      );
+      const file = new File([result.blob], result.name, {
+        type: result.mime,
+      });
+      // FIX1 F2: adding from stock is the user's own request, so a
+      // file that was once deleted from Media comes back silently.
+      const [id] = await mediaPanel.importFiles([file], {
+        license: result.licenseMeta,
+        quiet: true,
+      });
+      const asset = id
+        ? session.source.assets.find((entry) => entry.id === id)
+        : undefined;
+      if (!asset) throw new Error(t('stock.importFailed'));
+      if (asset.type === 'audio') addOnNewAudioLane(asset.id);
+      else {
+        // FIX1 F2: icons and stickers land big and centred: their
+        // longer side is 30 % of the canvas's shorter side.
+        const symbol = item.kind === 'icon' || item.kind === 'sticker';
+        const { width, height } = session.source.composition;
+        placeAsset(asset, {
+          time: place.time ?? session.currentTime,
+          point: place.point ?? (symbol ? [width / 2, height / 2] : null),
+          ...(symbol ? { size: 0.3 * Math.min(width, height) } : {}),
+        });
+      }
+    },
+    openKeys: () => openSettings('keys'),
+    report: reportError,
+  };
   const libraryBrowsers = mountLibraryPanels(
     {
       Templates: element('#library-templates'),
@@ -4256,31 +4347,7 @@ export function mountEditorShell(
         ),
       // FINAL2 U2: a stock item is downloaded, imported into Media with its
       // licence and placed at the playhead (audio on a new audio lane).
-      stock: {
-        add: async (item, place, signal) => {
-          const result = await importStockItem(item, stockQuality(item), {
-            signal,
-          });
-          const file = new File([result.blob], result.name, {
-            type: result.mime,
-          });
-          const [id] = await mediaPanel.importFiles([file], {
-            license: result.licenseMeta,
-          });
-          const asset = id
-            ? session.source.assets.find((entry) => entry.id === id)
-            : undefined;
-          if (!asset) throw new Error(t('stock.importFailed'));
-          if (asset.type === 'audio') addOnNewAudioLane(asset.id);
-          else
-            placeAsset(asset, {
-              time: place.time ?? session.currentTime,
-              point: place.point ?? null,
-            });
-        },
-        openKeys: () => openSettings('keys'),
-        report: reportError,
-      },
+      stock: stockDeps,
     },
   );
   void libraryBrowsers;
@@ -4729,7 +4796,8 @@ export function mountEditorShell(
       (kindOf(session) === 'none' &&
         !focusedScene(session) &&
         !ttsState.open &&
-        !themeState.open)
+        !themeState.open &&
+        !projectAudioState.open)
     ) {
       animateShown = false;
       element('#inspector-content').hidden = true;
@@ -4749,8 +4817,15 @@ export function mountEditorShell(
       )) {
         const caption = el.dataset.section === 'Captions';
         // T1: Theme is the one tab that works with nothing selected.
-        const theme = el.dataset.section === 'Theme';
+        // FIX1 F5: so is Audio: Project audio (the Mixer).
+        const theme =
+          el.dataset.section === 'Theme' || el.dataset.section === 'Audio';
         el.hidden = !caption && !theme;
+        if (el.dataset.section === 'Audio') {
+          el.title = t('mixer.projectAudio');
+          el.setAttribute('aria-label', el.title);
+          el.querySelector('.icon-rail-label')!.textContent = el.title;
+        }
         if (theme) {
           el.removeAttribute('aria-disabled');
           el.setAttribute('aria-pressed', 'false');
@@ -4795,7 +4870,9 @@ export function mountEditorShell(
           ? 'tts.title'
           : themeState.open
             ? 'panel.theme'
-            : 'transition.title'
+            : projectAudioState.open
+              ? 'mixer.projectAudio'
+              : 'transition.title'
         : kind === 'video' || kind === 'image'
           ? `right.tab.${kind}`
           : firstTabKey(kind),
@@ -4816,7 +4893,9 @@ export function mountEditorShell(
       const label =
         section === 'Properties'
           ? t(firstTabKey(kindOf(session)))
-          : t(`panel.${section.toLowerCase()}`);
+          : section === 'Audio' && kindOf(session) === 'none'
+            ? t('mixer.projectAudio')
+            : t(`panel.${section.toLowerCase()}`);
       const planned = plannedSection(section, session);
       const title = planned
         ? `${label}: ${t('toolbar.later', { wave: String(planned[1]), id: planned[0] })}`
@@ -4885,6 +4964,13 @@ export function mountEditorShell(
         syncRightRail();
         if (workspace?.rightOpen) workspace.setOpen('right', false);
       }
+      if (projectAudioState.open && !session.selectedIds.length) {
+        projectAudioState.open = false;
+        root.querySelector('.editor-shell')?.classList.add('right-empty');
+        renderedRight = '';
+        syncRightRail();
+        if (workspace?.rightOpen) workspace.setOpen('right', false);
+      }
       if (ttsState.open && !session.selectedIds.length) {
         ttsState.open = false;
         root.querySelector('.editor-shell')?.classList.add('right-empty');
@@ -4923,9 +5009,27 @@ export function mountEditorShell(
         });
         return;
       }
+      // FIX1 F5: Project audio with nothing selected.
+      if (
+        name === 'Audio' &&
+        !session.selectedIds.length &&
+        !projectAudioState.open
+      ) {
+        projectAudioState.open = true;
+        themeState.open = false;
+        transitionFocus.sceneId = null;
+        root.querySelector('.editor-shell')?.classList.remove('right-empty');
+        workspace?.setEmpty(false);
+        renderedRight = '';
+        syncRightRail();
+        setRightSection('Audio');
+        workspace?.setOpen('right', true);
+        return;
+      }
       // T1: the Theme tab with nothing selected.
       if (name === 'Theme' && !session.selectedIds.length && !themeState.open) {
         themeState.open = true;
+        projectAudioState.open = false;
         transitionFocus.sceneId = null;
         root.querySelector('.editor-shell')?.classList.remove('right-empty');
         renderedRight = '';
@@ -5187,7 +5291,8 @@ export function mountEditorShell(
       key === '' &&
         !transitionFocus.sceneId &&
         !ttsState.open &&
-        !themeState.open,
+        !themeState.open &&
+        !projectAudioState.open,
     );
     // (A press waits for its release, so its gesture is never cancelled.)
     if (pressing) return;
@@ -5335,10 +5440,97 @@ export function mountEditorShell(
   // V7 (spec 11.3): the left Audio category, the built-in sound pack. A
   // sound goes in at the playhead on a new audio lane, one step.
   // FINAL2 U5: the Mixer sits above the sound pack in the same category.
+  // FIX1 F5: the left Audio category holds libraries only (Sound effects,
+  // Music from stock, My audio from Media); the Mixer is the right panel's
+  // Project audio with nothing selected.
   const audioCategory = element('#library-audio');
-  const mixerHost = document.createElement('section');
+  const mixerHost = projectAudioHost;
   const soundPackHost = document.createElement('div');
-  audioCategory.replaceChildren(mixerHost, soundPackHost);
+  const musicHost = document.createElement('div');
+  const mineHost = document.createElement('div');
+  mineHost.className = 'audio-mine';
+  const audioTabs = document.createElement('div');
+  audioTabs.className = 'shelf-tabs audio-library-tabs';
+  audioTabs.setAttribute('role', 'tablist');
+  audioTabs.setAttribute('aria-label', t('library.audio'));
+  const audioPages = {
+    sounds: soundPackHost,
+    music: musicHost,
+    mine: mineHost,
+  };
+  let audioPage: keyof typeof audioPages = 'sounds';
+  let musicMounted = false;
+  const renderMine = () => {
+    const assets = (
+      engine.state.assets as unknown as readonly {
+        id: string;
+        type: string;
+        name: string;
+        duration?: number;
+        source: { kind: string };
+        metadata: { removed?: unknown };
+      }[]
+    ).filter(
+      (asset) =>
+        asset.type === 'audio' &&
+        asset.source.kind !== 'generated' &&
+        asset.metadata.removed !== true,
+    );
+    const rows = assets.map((asset) => {
+      const row = document.createElement('div');
+      row.className = 'sound-tile audio-mine-item';
+      row.dataset.assetId = asset.id;
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'sound-tile-add';
+      add.dataset.action = 'audio-mine-add';
+      add.title = t('shelf.addToSceneShort');
+      add.innerHTML = `${iconSvg('audio', 16)}<span class="sound-tile-name"></span><span class="sound-tile-length"></span>`;
+      add.querySelector('.sound-tile-name')!.textContent = asset.name;
+      add.querySelector('.sound-tile-length')!.textContent = asset.duration
+        ? `${formatNumber(asset.duration, { maximumFractionDigits: 1 })} s`
+        : '';
+      add.onclick = () => safely(() => void addOnNewAudioLane(asset.id));
+      row.append(add);
+      return row;
+    });
+    if (!rows.length) {
+      const empty = document.createElement('p');
+      empty.className = 'sound-pack-empty';
+      empty.textContent = t('audioLibrary.mineEmpty');
+      mineHost.replaceChildren(empty);
+    } else mineHost.replaceChildren(...rows);
+  };
+  const showAudioPage = (page: keyof typeof audioPages) => {
+    audioPage = page;
+    for (const [name, host] of Object.entries(audioPages))
+      host.hidden = name !== page;
+    for (const tab of audioTabs.querySelectorAll('[role="tab"]'))
+      tab.setAttribute(
+        'aria-selected',
+        String((tab as HTMLElement).dataset.audioTab === page),
+      );
+    if (page === 'music' && !musicMounted) {
+      musicMounted = true;
+      mountStock(musicHost, 'audio', stockDeps);
+    }
+    if (page === 'mine') renderMine();
+  };
+  for (const page of Object.keys(audioPages) as (keyof typeof audioPages)[]) {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'shelf-tab';
+    tab.setAttribute('role', 'tab');
+    tab.dataset.audioTab = page;
+    tab.textContent = t(`audioLibrary.${page}`);
+    tab.onclick = () => showAudioPage(page);
+    audioTabs.append(tab);
+  }
+  engine.on('state:changed', () => {
+    if (audioPage === 'mine' && !mineHost.hidden) renderMine();
+  });
+  audioCategory.replaceChildren(audioTabs, soundPackHost, musicHost, mineHost);
+  showAudioPage('sounds');
   // The clip Audio tab offers Retry and shows processing errors (denoise).
   configureAudioTab({
     processingError: () => audio.debug.processingError ?? null,
@@ -5377,6 +5569,8 @@ export function mountEditorShell(
       trackId?: string | undefined;
       /** J9: commands making the lane `trackId` names (a new lane). */
       newTrack?: Command[];
+      /** FIX1 F2: the longer side's size in composition pixels. */
+      size?: number;
     },
   ) => {
     const id = asset.id;
@@ -5397,7 +5591,9 @@ export function mountEditorShell(
         // down to fit inside the composition when it is larger.
         const { width: w, height: h } = session.source.composition;
         if (asset.width && asset.height) {
-          const fit = Math.min(1, w / asset.width, h / asset.height);
+          const fit = place.size
+            ? place.size / Math.max(asset.width, asset.height)
+            : Math.min(1, w / asset.width, h / asset.height);
           layer.transform.scale = vector2(fit, fit);
           layer.transform.position = vector2(
             point[0] - (asset.width * fit) / 2,

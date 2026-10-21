@@ -18,6 +18,11 @@ import {
   type Provider,
 } from '../providers';
 import type { SpeechProvider } from '../speech';
+import { diagnosticsButton } from './diagnostics';
+import { classifyWhisperError, WhisperError } from '../speech/whisper';
+import { encodeWav } from '../speech';
+import { lastDownloadError } from './local-engines';
+import { whisperRunner } from './services';
 import { openModal, type ModalHandle } from './components/modal';
 import {
   MOTION_SETTINGS,
@@ -46,17 +51,33 @@ const esc = (value: string) =>
       ]!,
   );
 
+/** FIX1 F4: the last key-test failure per provider (diagnostics). */
+export const lastKeyError = new Map<string, ProviderError>();
 /** Voice services whose key can be checked with a free list request. */
 const LISTABLE = new Set(['google-cloud-tts', 'elevenlabs', 'minimax']);
 
 export type KeyTestOutcome =
-  'ok' | 'invalid' | 'rate' | 'network' | 'missing' | 'later';
-export function testOutcomeText(outcome: KeyTestOutcome, retryAt?: number) {
+  | 'ok'
+  | 'invalid'
+  | 'rate'
+  | 'network'
+  | 'missing'
+  | 'later'
+  // FIX1 F2: the truthful failure classes.
+  | 'offline'
+  | 'timeout'
+  | 'http'
+  | 'blocked';
+export function testOutcomeText(
+  outcome: KeyTestOutcome,
+  retryAt?: number,
+  status?: number,
+) {
   if (outcome === 'rate' && retryAt) {
     const seconds = Math.max(1, Math.ceil((retryAt - Date.now()) / 1000));
     return t('settings.keys.result.rateIn', { seconds });
   }
-  return t(`settings.keys.result.${outcome}`);
+  return t(`settings.keys.result.${outcome}`, { status: status ?? '' });
 }
 const fromCode = (code: string): KeyTestOutcome =>
   code === 'KEY_INVALID'
@@ -65,19 +86,29 @@ const fromCode = (code: string): KeyTestOutcome =>
       ? 'missing'
       : code === 'RATE_LIMITED'
         ? 'rate'
-        : 'network';
+        : code === 'OFFLINE'
+          ? 'offline'
+          : code === 'TIMEOUT'
+            ? 'timeout'
+            : code === 'HTTP'
+              ? 'http'
+              : code === 'CORS_BLOCKED'
+                ? 'blocked'
+                : 'network';
 
 async function runTest(
   provider: Provider | SpeechProvider,
-): Promise<{ outcome: KeyTestOutcome; retryAt?: number }> {
+): Promise<{ outcome: KeyTestOutcome; retryAt?: number; status?: number }> {
   if (!provider.keyFields.every((f) => getKey(provider.id, f.id)))
     return { outcome: 'missing' };
   if ('kinds' in provider) {
     const result = await testKey(provider);
     if (result.status === 'ok') return { outcome: 'ok' };
+    if (result.error) lastKeyError.set(provider.id, result.error);
     return {
       outcome: fromCode(result.code),
       ...(result.retryAt ? { retryAt: result.retryAt } : {}),
+      ...(result.error?.status ? { status: result.error.status } : {}),
     };
   }
   if (LISTABLE.has(provider.id) && 'listVoices' in provider) {
@@ -85,11 +116,14 @@ async function runTest(
       await provider.listVoices();
       return { outcome: 'ok' };
     } catch (error) {
-      if (error instanceof ProviderError)
+      if (error instanceof ProviderError) {
+        lastKeyError.set(provider.id, error);
         return {
           outcome: fromCode(error.code),
           ...(error.retryAt ? { retryAt: error.retryAt } : {}),
+          ...(error.status ? { status: error.status } : {}),
         };
+      }
       return { outcome: 'network' };
     }
   }
@@ -208,9 +242,27 @@ function bindKeyBlock(
     result.dataset.outcome = 'busy';
     result.textContent = t('settings.keys.testing');
     try {
-      const { outcome, retryAt } = await runTest(provider);
+      const started = performance.now();
+      const { outcome, retryAt, status } = await runTest(provider);
       result.dataset.outcome = outcome;
-      result.textContent = testOutcomeText(outcome, retryAt);
+      result.textContent = testOutcomeText(outcome, retryAt, status);
+      // FIX1 F4: a failed test can be reported (never with the key).
+      if (!['ok', 'later', 'missing'].includes(outcome)) {
+        const error = lastKeyError.get(provider.id);
+        const took = performance.now() - started;
+        result.append(
+          ' ',
+          diagnosticsButton(() => ({
+            feature: 'Settings › Stock & API keys › Test',
+            providerId: provider.id,
+            step: 'key test',
+            ...(status ? { status } : {}),
+            timings: { test: took },
+            error,
+            extra: { outcome },
+          })),
+        );
+      }
     } finally {
       testButton.disabled = false;
     }
@@ -246,8 +298,93 @@ function engineRow(view: LocalEngineView): string {
 
 let open: ModalHandle | undefined;
 
+/**
+ * FIX1 F4: Offline captions › Run self-test. Downloads the model when
+ * needed, starts it and runs one second of silence through the real runner,
+ * then says which backend ran, how long the start took, and any error in
+ * plain words (with Copy diagnostics). Silence giving no words is a pass.
+ */
+function bindSelfTest(section: HTMLElement) {
+  const button = section.querySelector<HTMLButtonElement>(
+    '[data-action="whisper-selftest"]',
+  )!;
+  const result = section.querySelector<HTMLElement>('.selftest-result')!;
+  const backend = () =>
+    'gpu' in navigator
+      ? t('settings.selftest.backendWasmGpu')
+      : t('settings.selftest.backendWasm');
+  button.onclick = async () => {
+    const runner = whisperRunner;
+    if (!runner) return;
+    button.disabled = true;
+    result.dataset.state = 'busy';
+    const started = performance.now();
+    const steps: string[] = [];
+    try {
+      if (!(await runner.isReady())) {
+        result.textContent = t('settings.selftest.downloading');
+        await localEngines(speechRegistry()).act('local-whisper', 'download');
+        if (!(await runner.isReady()))
+          throw (
+            lastDownloadError.get('local-whisper') ??
+            new WhisperError('not-downloaded', 'check')
+          );
+      }
+      result.textContent = t('settings.selftest.loading');
+      const silence = encodeWav({
+        sampleRate: 16000,
+        channels: [new Float32Array(16000)],
+      });
+      try {
+        await runner.transcribe({
+          blob: silence,
+          lang: 'en',
+          onProgress: (p) => steps.push(`${p.phase} ${p.completed}/${p.total}`),
+        });
+      } catch (error) {
+        if (!(error instanceof WhisperError && error.kind === 'no-speech'))
+          throw error;
+      }
+      result.dataset.state = 'ok';
+      result.textContent = t('settings.selftest.ok', {
+        backend: backend(),
+        seconds: (
+          (runner.lastLoadMs?.() ?? performance.now() - started) / 1000
+        ).toFixed(1),
+      });
+    } catch (error) {
+      const failure = classifyWhisperError(error, 'load');
+      result.dataset.state = 'error';
+      result.textContent = t('settings.selftest.failed', {
+        why: t(`captions.fail.${failure.kind}`),
+      });
+      result.append(
+        ' ',
+        diagnosticsButton(() => ({
+          feature: 'Offline captions self-test',
+          providerId: 'local-whisper',
+          step: failure.step,
+          error: failure.cause ?? failure,
+          timings: { total: performance.now() - started },
+          extra: {
+            failure: failure.kind,
+            backend: backend(),
+            steps: steps.join(', '),
+          },
+        })),
+      );
+    } finally {
+      button.disabled = false;
+    }
+  };
+}
+
 /** Opens Settings, optionally on one tab (a "fix it" button elsewhere). */
-export function openSettings(tab: SettingsTab = 'general'): ModalHandle {
+export function openSettings(
+  tab: SettingsTab = 'general',
+  /** FIX1 F3: opens the keys tab at this provider's key. */
+  provider?: string,
+): ModalHandle {
   open?.close();
   const stock = stockProviders();
   const voices = voiceServices();
@@ -293,6 +430,12 @@ export function openSettings(tab: SettingsTab = 'general'): ModalHandle {
       <div class="settings-pane" role="tabpanel" id="settings-pane-offline" aria-labelledby="settings-tab-offline">
         <p class="settings-note settings-lead">${t('settings.offline.lead')}</p>
         <div class="offline-engines"></div>
+        <section class="key-block whisper-selftest" id="whisper-selftest">
+          <header class="key-block-head"><h4>${t('settings.selftest.title')}</h4></header>
+          <p class="settings-note">${t('settings.selftest.note')}</p>
+          <div class="key-actions"><button type="button" class="button secondary sm" data-action="whisper-selftest">${t('settings.selftest.run')}</button></div>
+          <p class="selftest-result" role="status" aria-live="polite"></p>
+        </section>
       </div>
       <div class="modal-actions"><button type="button" class="button primary" id="settings-done">${t('creator.done')}</button></div>`,
   });
@@ -407,6 +550,7 @@ export function openSettings(tab: SettingsTab = 'general'): ModalHandle {
   };
   unsubscribe = localEngines(speechRegistry()).subscribe(renderEngines);
   renderEngines();
+  bindSelfTest(root.querySelector<HTMLElement>('#whisper-selftest')!);
 
   root.querySelector<HTMLButtonElement>('#settings-done')!.onclick = () =>
     handle.close();
@@ -414,5 +558,18 @@ export function openSettings(tab: SettingsTab = 'general'): ModalHandle {
   root
     .querySelector<HTMLElement>(`[data-settings-tab="${tab}"]`)
     ?.focus({ preventScroll: true });
+  if (provider) {
+    const block = handle.root.querySelector<HTMLElement>(
+      `.key-block[data-provider="${CSS.escape(provider)}"]`,
+    );
+    block?.classList.add('key-block-focus');
+    // After the modal's own first-frame focus.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        block?.scrollIntoView({ block: 'center' });
+        block?.querySelector<HTMLInputElement>('.key-input')?.focus();
+      }),
+    );
+  }
   return handle;
 }

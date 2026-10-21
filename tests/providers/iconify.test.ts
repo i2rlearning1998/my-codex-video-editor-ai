@@ -13,7 +13,7 @@ describe('Iconify', () => {
     });
     expect(deps.fetch.mock.calls[0]![1]?.headers).toEqual({});
   });
-  it('returns OpenMoji and Noto stickers with per-set licences', async () => {
+  it('returns Noto stickers with per-set licences and leaves share-alike OpenMoji out (FIX1 F2)', async () => {
     const deps = setup('iconify'),
       r = await createIconify(deps).search({
         kind: 'sticker',
@@ -21,12 +21,11 @@ describe('Iconify', () => {
         page: 2,
         perPage: 32,
       });
-    expect(r.items.map((i) => i.id)).toEqual([
-      'openmoji:smiling-face',
-      'noto:grinning-face',
-    ]);
+    expect(r.items.map((i) => i.id)).toEqual(['noto:grinning-face']);
     expect(deps.fetch.mock.calls[0]![0]).toContain('start=32');
-    expect(r.items[0]!.license.name).toBe('CC-BY-SA-4.0');
+    expect(
+      decodeURIComponent(deps.fetch.mock.calls[0]![0] as string),
+    ).not.toContain('openmoji');
   });
   it('fetches the actual SVG for import rather than fabricating vector data', async () => {
     const deps = setup('iconify'),

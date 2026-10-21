@@ -1,4 +1,4 @@
-import { isCatalogFont } from './catalog';
+import { isCatalogFont, servedWeights } from './catalog';
 export interface FontAsset {
   family: string;
   weight: string;
@@ -12,13 +12,17 @@ export interface FontStore {
 }
 export type FontState = 'idle' | 'loading' | 'ready' | 'error';
 export class FontLoadError extends Error {
+  /** FIX1 F8: the HTTP status Google Fonts answered with, if any. */
+  status?: number;
   constructor(
     public readonly code:
       'OFFLINE_MISS' | 'FONT_UNAVAILABLE' | 'STORAGE' | 'ABORTED',
     message: string,
+    status?: number,
   ) {
     super(message);
     this.name = 'FontLoadError';
+    if (status !== undefined) this.status = status;
   }
 }
 export function createFontStore(): FontStore {
@@ -132,6 +136,8 @@ export function createFontLoader(options: FontLoaderOptions) {
         )
       )
         throw new FontLoadError('FONT_UNAVAILABLE', 'Unsupported font request');
+      // FIX1 F8: only weights the family really has (Google refuses others).
+      weights = servedWeights(family, weights);
       const key = keyOf(family, weights, subsets);
       const state = (s: FontState) => {
         states.set(key, s);
@@ -151,12 +157,7 @@ export function createFontLoader(options: FontLoaderOptions) {
               'OFFLINE_MISS',
               'This font has not been cached on this device',
             );
-          const url = new URL('https://fonts.googleapis.com/css2');
-          url.searchParams.set(
-            'family',
-            `${family}:wght@${[...new Set(weights)].sort((a, b) => a - b).join(';')}`,
-          );
-          url.searchParams.set('display', 'swap');
+          const url = new URL(fontStylesheetUrl(family, weights, subsets));
           const response = await fetcher(url, {
             signal: request.signal ?? null,
             credentials: 'omit',
@@ -164,7 +165,8 @@ export function createFontLoader(options: FontLoaderOptions) {
           if (!response.ok)
             throw new FontLoadError(
               'FONT_UNAVAILABLE',
-              'Font stylesheet could not load',
+              `Google Fonts returned ${response.status} for the stylesheet`,
+              response.status,
             );
           const css = await response.text();
           if (css.length > 1000000)
@@ -195,7 +197,8 @@ export function createFontLoader(options: FontLoaderOptions) {
             if (!file.ok)
               throw new FontLoadError(
                 'FONT_UNAVAILABLE',
-                'Font file could not load',
+                `Google Fonts returned ${file.status} for a font file`,
+                file.status,
               );
             const bytes = await file.arrayBuffer();
             if (
@@ -239,6 +242,72 @@ export function createFontLoader(options: FontLoaderOptions) {
       }
     },
   };
+}
+/**
+ * FIX1 F8: the Google Fonts CSS2 request for a family: only the given
+ * (served) weights, normal style; `text` asks for just those glyphs (the
+ * picker's preview).
+ */
+export function fontStylesheetUrl(
+  family: string,
+  weights: readonly number[],
+  subsets: readonly string[] = ['latin'],
+  text?: string,
+): string {
+  const url = new URL('https://fonts.googleapis.com/css2');
+  const list = [...new Set(weights)].sort((a, b) => a - b);
+  url.searchParams.set(
+    'family',
+    list.length === 1 && list[0] === 400
+      ? family
+      : `${family}:wght@${list.join(';')}`,
+  );
+  url.searchParams.set('display', 'swap');
+  if (text) url.searchParams.set('text', text);
+  void subsets;
+  return url.href;
+}
+/** Preview faces already asked for (family → promise). */
+const previews = new Map<string, Promise<boolean>>();
+/**
+ * FIX1 F8: a tiny face holding only `text` (the font's name, plus a Hindi
+ * word for Devanagari fonts), registered as "<family> Preview", so each row
+ * of the font picker can be drawn in its own typeface without downloading
+ * the family. Resolves false when it cannot load (the row keeps the
+ * fallback face).
+ */
+export function loadFontPreview(
+  family: string,
+  text: string,
+  fetcher: typeof fetch = globalThis.fetch,
+): Promise<boolean> {
+  if (!isCatalogFont(family)) return Promise.resolve(false);
+  const known = previews.get(family);
+  if (known) return known;
+  const work = (async () => {
+    try {
+      const weight = servedWeights(family, [400])[0]!;
+      const response = await fetcher(
+        fontStylesheetUrl(family, [weight], ['latin'], text),
+        { credentials: 'omit' },
+      );
+      if (!response.ok) return false;
+      const css = await response.text();
+      const src = /url\(\s*['"]?([^\s)'" ]+)/.exec(css)?.[1];
+      if (!src || new URL(src).hostname !== 'fonts.gstatic.com') return false;
+      const file = await fetcher(src, { credentials: 'omit' });
+      if (!file.ok) return false;
+      const face = new FontFace(`${family} Preview`, await file.arrayBuffer());
+      await face.load();
+      (globalThis.document?.fonts as FontFaceSet | undefined)?.add(face);
+      return true;
+    } catch (error) {
+      console.debug('[fonts] preview not loaded', family, error);
+      return false;
+    }
+  })();
+  previews.set(family, work);
+  return work;
 }
 let shared: ReturnType<typeof createFontLoader> | undefined;
 export function loadFont(

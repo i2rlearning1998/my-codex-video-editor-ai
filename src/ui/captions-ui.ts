@@ -28,9 +28,12 @@ import type { MediaStore } from '../media/store';
 import type { SttProvider, Transcription, WordTiming } from '../speech/types';
 import { openModal, type ModalHandle } from './components/modal';
 import { plainMessage, showToast } from './components/toast';
-import { localEngines } from './local-engines';
+import { lastDownloadError, localEngines } from './local-engines';
 import { speechRegistry } from './services';
 import { openSettings } from './settings-dialog';
+import { diagnosticsButton } from './diagnostics';
+import { WhisperError } from '../speech/whisper';
+import { SpeechError } from '../speech/types';
 import type { EditorSession } from './session';
 
 export interface CaptionsContext {
@@ -381,7 +384,7 @@ async function transcribe(
   context: CaptionsContext,
   picks: Picks,
   signal: AbortSignal,
-  onProgress: (fraction: number | null) => void,
+  onProgress: (fraction: number | null, label?: string) => void,
 ): Promise<{ clip: SourceClip; transcription: Transcription }> {
   const clip = soundClips(context.session).find(
     (c) => c.layerId === picks.layerId,
@@ -393,15 +396,37 @@ async function transcribe(
   const cached = transcripts.get(key);
   if (cached) return { clip, transcription: cached };
   const blob = await mediaBlob(context, clip.assetId);
-  onProgress(null);
+  onProgress(null, t('captions.step.start'));
+  const started = performance.now();
+  lastRun = { engine: engine.provider.id, lang: picks.lang, steps: [] };
+  // FIX1 F4: every step is named while it runs, and every failure is
+  // thrown to the dialog (never swallowed).
   const transcription = await engine.provider.transcribe({
     blob,
     lang: picks.lang,
     signal,
-    onProgress: (p) =>
-      onProgress(p.total ? Math.min(1, p.completed / p.total) : null),
+    onProgress: (p) => {
+      const fraction = p.total ? Math.min(1, p.completed / p.total) : null;
+      const label =
+        p.phase === 'load'
+          ? t('captions.step.load')
+          : p.phase === 'decode'
+            ? t('captions.step.decode')
+            : p.phase === 'download'
+              ? t('captions.step.download', {
+                  done: (p.completed / 1e6).toFixed(0),
+                  total: p.total ? (p.total / 1e6).toFixed(0) : '?',
+                })
+              : t('captions.step.listen', {
+                  percent: String(Math.round((fraction ?? 0) * 100)),
+                });
+      lastRun?.steps.push(`${p.phase} ${p.completed}/${p.total ?? '?'}`);
+      onProgress(fraction, label);
+    },
   });
+  if (lastRun) lastRun.ms = performance.now() - started;
   if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+  if (!transcription.text.trim()) throw new WhisperError('no-speech', 'listen');
   transcripts.set(key, transcription);
   return { clip, transcription };
 }
@@ -416,7 +441,7 @@ const progressRow = () => {
   const fill = bar.querySelector<HTMLElement>('span')!;
   return {
     row,
-    set(fraction: number | null) {
+    set(fraction: number | null, label?: string) {
       row.hidden = false;
       bar.classList.toggle('indeterminate', fraction === null);
       if (fraction !== null) {
@@ -425,7 +450,7 @@ const progressRow = () => {
         bar.setAttribute('aria-valuenow', String(percent));
       } else bar.removeAttribute('aria-valuenow');
       row.querySelector('.caption-progress-text')!.textContent =
-        t('captions.working');
+        label ?? t('captions.working');
     },
     hide() {
       row.hidden = true;
@@ -442,9 +467,44 @@ const message = () => {
   return line;
 };
 const errorText = (error: unknown) =>
-  error instanceof DOMException && error.name === 'AbortError'
+  (error instanceof DOMException && error.name === 'AbortError') ||
+  (error instanceof WhisperError && error.kind === 'cancelled')
     ? t('captions.cancelled')
-    : plainMessage(error instanceof Error ? error.message : String(error));
+    : error instanceof WhisperError
+      ? t(`captions.fail.${error.kind}`)
+      : error instanceof SpeechError && error.code === 'MODEL_UNAVAILABLE'
+        ? t('captions.fail.not-downloaded')
+        : plainMessage(error instanceof Error ? error.message : String(error));
+/** FIX1 F4: what the last run did, for Copy diagnostics. */
+let lastRun: {
+  engine: string;
+  lang: string;
+  steps: string[];
+  ms?: number;
+} | null = null;
+/** Shows the failure in `status`, with Copy diagnostics, and logs it. */
+const showFailure = (status: HTMLElement, error: unknown) => {
+  status.textContent = errorText(error);
+  status.dataset.kind = 'error';
+  console.debug('[captions] failed', error);
+  if (error instanceof DOMException && error.name === 'AbortError') return;
+  if (error instanceof WhisperError && error.kind === 'cancelled') return;
+  status.append(
+    ' ',
+    diagnosticsButton(() => ({
+      feature: 'Auto captions',
+      ...(lastRun ? { providerId: lastRun.engine } : {}),
+      ...(error instanceof WhisperError ? { step: error.step } : {}),
+      error: error instanceof WhisperError && error.cause ? error.cause : error,
+      timings: lastRun?.ms ? { run: lastRun.ms } : {},
+      extra: {
+        failure: error instanceof WhisperError ? error.kind : undefined,
+        language: lastRun?.lang,
+        steps: lastRun?.steps.slice(-6).join(', '),
+      },
+    })),
+  );
+};
 
 let open: ModalHandle | undefined;
 
@@ -509,12 +569,16 @@ export function openTranscribe(
       const update = () => {
         start.disabled =
           !picks.layerId || !selectedEngine(picks)?.ready || !!controller;
+        // FIX1 F4: a shown failure stays until the next run (it used to
+        // be cleared here right after it was written: "silently nothing").
+        if (status.dataset.kind === 'error') return;
         status.textContent = !selectedEngine(picks)?.ready
           ? t('captions.hint.engine')
           : '';
       };
       start.onclick = async () => {
         controller = new AbortController();
+        delete status.dataset.kind;
         update();
         progress.onCancel(() => controller?.abort());
         try {
@@ -530,7 +594,7 @@ export function openTranscribe(
           toCaptions.hidden = false;
           status.textContent = '';
         } catch (error) {
-          status.textContent = errorText(error);
+          showFailure(status, error);
         } finally {
           controller = null;
           progress.hide();
@@ -712,7 +776,27 @@ export function openAutoCaptions(
       create.className = 'primary';
       create.dataset.action = 'captions-create';
       create.textContent = t('captions.create');
-      actions.append(create);
+      // FIX1 F4: the dialog can always be reported, run or not.
+      actions.append(
+        create,
+        diagnosticsButton(() => ({
+          feature: 'Auto captions',
+          ...(picks.engine ? { providerId: picks.engine } : {}),
+          extra: {
+            engineReady: selectedEngine(picks)?.ready ?? false,
+            engineState: selectedEngine(picks)?.label,
+            language: picks.lang,
+            lastSteps: lastRun?.steps.slice(-6).join(', '),
+            webAssembly: typeof WebAssembly !== 'undefined',
+            webGpu: 'gpu' in navigator,
+            crossOriginIsolated: self.crossOriginIsolated,
+            downloadError: (() => {
+              const error = lastDownloadError.get('local-whisper');
+              return error instanceof Error ? error.message : undefined;
+            })(),
+          },
+        })),
+      );
       // SRT / VTT: import into this scene, export the scene's captions.
       const files = document.createElement('div');
       files.className = 'caption-files';
@@ -743,12 +827,14 @@ export function openAutoCaptions(
       const update = () => {
         create.disabled =
           !picks.layerId || !selectedEngine(picks)?.ready || !!controller;
+        exportSrt.disabled = exportVtt.disabled = !hasCaptions();
+        // FIX1 F4: a shown failure stays until the next run.
+        if (status.dataset.kind === 'error') return;
         status.textContent = !picks.layerId
           ? ''
           : !selectedEngine(picks)?.ready
             ? t('captions.hint.engine')
             : '';
-        exportSrt.disabled = exportVtt.disabled = !hasCaptions();
       };
       const finish = (count: number) => {
         showToast(t('captions.added', { count: String(count) }), 'success');
@@ -756,6 +842,7 @@ export function openAutoCaptions(
       };
       create.onclick = async () => {
         controller = new AbortController();
+        delete status.dataset.kind;
         update();
         progress.onCancel(() => controller?.abort());
         try {
@@ -770,9 +857,11 @@ export function openAutoCaptions(
             { style: styleId, position, maxLines, language: picks.lang },
           );
           controller = null;
+          // FIX1 F4: no cue is a visible failure, never a silent close.
+          if (!track.cues.length) throw new WhisperError('no-speech', 'listen');
           finish(addCaptionTrack(context, track));
         } catch (error) {
-          status.textContent = errorText(error);
+          showFailure(status, error);
         } finally {
           controller = null;
           progress.hide();

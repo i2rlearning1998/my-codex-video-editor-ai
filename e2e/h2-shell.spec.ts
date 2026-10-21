@@ -1,5 +1,10 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, showCategory, settled } from './fixtures';
+import { LEGACY_VIEWPORT } from './fixtures';
+
+// Pixel and canvas-geometry checks written for the 1600 × 1072 window
+// (FIX1 D-287 made 1920 × 940 the default).
+test.use({ viewport: LEGACY_VIEWPORT });
 
 // H2: themes, motion, the responsive shell, tooltips and toasts.
 const ready = async (page: Page) =>

@@ -308,6 +308,12 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     },
   });
   const project = () => engine.state.id;
+  // FIX1 F1: Sort scrolls with the cards, under the fixed chips.
+  const moveSort = () => {
+    const body = container.querySelector('.shelf-body');
+    const sort = extras.querySelector('#media-toolbar');
+    if (body && sort) body.prepend(sort);
+  };
   const shelf: Shelf = mountShelf({
     host: container,
     prefix: 'media',
@@ -377,6 +383,7 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       ),
     toast: (text) => options.toast(text, 'success'),
   });
+  moveSort();
   const grid = shelf.grid;
   function render() {
     if (disposed) return;
@@ -672,7 +679,12 @@ export function mountMediaPanel(options: MediaPanelOptions) {
    *  already there or restored), in file order. */
   const importFiles = async (
     files: readonly File[],
-    importOptions: { design?: boolean; license?: LicenseMeta } = {},
+    importOptions: {
+      design?: boolean;
+      license?: LicenseMeta;
+      /** FIX1 F2: no Restored or Already in Media notes (stock adds). */
+      quiet?: boolean;
+    } = {},
   ): Promise<string[]> => {
     if (!files.length) return [];
     if (controller) {
@@ -722,11 +734,13 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       });
       summarize(
         outcomes.filter(
-          (item) => !(item.assetId && restoredIds.has(item.assetId)),
+          (item) =>
+            !(item.assetId && restoredIds.has(item.assetId)) &&
+            !(importOptions.quiet && item.status === 'duplicate'),
         ),
         cancelled,
       );
-      if (restoredIds.size)
+      if (restoredIds.size && !importOptions.quiet)
         options.toast(
           t('media.restored', { count: restoredIds.size }),
           'success',

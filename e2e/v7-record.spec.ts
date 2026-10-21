@@ -15,6 +15,11 @@ import {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     (window as { __AIVE_E2E_TTS__?: boolean }).__AIVE_E2E_TTS__ = true;
+    // FIX1 F3: the V7 right-hand panel is kept behind a flag (off for users).
+    (window as { __AIVE_FLAGS__?: object }).__AIVE_FLAGS__ = {
+      legacyTtsPanel: true,
+      browserVoice: true,
+    };
   });
   await page.goto('/');
   await expect

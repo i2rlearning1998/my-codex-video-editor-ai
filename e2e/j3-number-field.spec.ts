@@ -7,6 +7,11 @@ import {
   showCategory,
   toScreen,
 } from './fixtures';
+import { LEGACY_VIEWPORT } from './fixtures';
+
+// Pixel and canvas-geometry checks written for the 1600 × 1072 window
+// (FIX1 D-287 made 1920 × 940 the default).
+test.use({ viewport: LEGACY_VIEWPORT });
 
 // J3: one NumberField everywhere: arrows (Shift ×10, Alt ×0.1), wheel and
 // arrow keys, a slider beside bounded fields, a live canvas preview while

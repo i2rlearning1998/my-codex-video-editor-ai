@@ -30,6 +30,8 @@ export interface EngineOptions {
   historyLimit?: number;
   now?: () => string;
   onListenerError?: (error: unknown) => void;
+  /** FIX1 F6: share another engine's capabilities (a scratch engine). */
+  capabilities?: CapabilityRegistry;
 }
 
 /** The sole owner of canonical project state. All ordinary edits enter its command bus. */
@@ -41,10 +43,11 @@ export class EditorEngine {
   #events: EventBus;
   #limit: number;
   #now: () => string;
-  readonly capabilities = new CapabilityRegistry();
+  readonly capabilities: CapabilityRegistry;
   readonly commands: CommandBus;
 
   constructor(project: unknown, options: EngineOptions = {}) {
+    this.capabilities = options.capabilities ?? new CapabilityRegistry();
     this.#state = freeze(new MigrationRegistry().run(project));
     this.#limit = options.historyLimit ?? 100;
     if (!Number.isInteger(this.#limit) || this.#limit < 1)

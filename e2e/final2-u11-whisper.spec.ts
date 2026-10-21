@@ -34,10 +34,6 @@ test('[F2-090] Offline captions: Whisper shows Needs download with its size and 
   await expect(
     whisper.locator('[data-engine-action="download"]'),
   ).toBeVisible();
-  await expect(
-    dialog.locator('[data-engine="local-tts"] .key-state'),
-  ).toHaveText('Not available yet');
-  await expect(
-    dialog.locator('[data-engine="local-tts"] .settings-note'),
-  ).toContainText('Sarvam, Google, ElevenLabs or MiniMax');
+  // FIX1 F3: the offline voice is behind a feature flag (cloud voices only).
+  await expect(dialog.locator('[data-engine="local-tts"]')).toHaveCount(0);
 });

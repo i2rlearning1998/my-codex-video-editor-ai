@@ -3,6 +3,7 @@ import { createSearchCache, type SearchCache } from './cache';
 import { keyStore, type KeyStore } from './keys';
 import {
   createNetwork,
+  endpointOf,
   searchCacheKey,
   type Network,
   type RequestPolicy,
@@ -138,8 +139,13 @@ export function stockProvider(
       });
       try {
         def.map(raw, options);
-      } catch {
-        throw new ProviderError('BAD_RESPONSE');
+      } catch (error) {
+        // FIX1 F4: the console keeps what could not be read (never a key).
+        console.debug('[stock] unreadable answer', def.id, error);
+        throw new ProviderError('BAD_RESPONSE', undefined, {
+          step: 'read',
+          endpoint: endpointOf(request.url),
+        });
       }
       if (!bypass) await cache.set(cacheKey, raw, def.ttlMs);
     }

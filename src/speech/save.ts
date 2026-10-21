@@ -31,6 +31,9 @@ export function splitSpeech(text: string, maxChars = 500): string[] {
   if (!parts.length) throw new SpeechError('INVALID_INPUT');
   return parts;
 }
+/** FIX1 F3: "Add pause" writes this mark; each one is half a second of silence. */
+export const SPEECH_PAUSE = '[pause]';
+export const PAUSE_SECONDS = 0.5;
 export async function synthesizeToMedia(
   text: string,
   opts: Omit<TtsRequest, 'text'> & {
@@ -40,8 +43,18 @@ export async function synthesizeToMedia(
     now?: () => Date;
   },
 ) {
-  const parts = splitSpeech(text, opts.maxChars ?? 500),
-    codec = opts.codec ?? browserCodec,
+  // Pauses split the text; a part followed by a pause gets silence after it.
+  const segments = text.split(SPEECH_PAUSE);
+  const parts: string[] = [];
+  const pauseAfter = new Set<number>();
+  segments.forEach((segment, index) => {
+    if (segment.trim())
+      parts.push(...splitSpeech(segment, opts.maxChars ?? 500));
+    if (index < segments.length - 1 && parts.length)
+      pauseAfter.add(parts.length - 1);
+  });
+  if (!parts.length) throw new SpeechError('INVALID_INPUT');
+  const codec = opts.codec ?? browserCodec,
     blocks: Float32Array[][] = [];
   let frames = 0,
     sampleRate = 0,
@@ -71,6 +84,13 @@ export async function synthesizeToMedia(
     if (frames * channelCount * 4 > 200 * 1024 * 1024)
       throw new SpeechError('INVALID_INPUT');
     blocks.push(decoded.channels);
+    if (pauseAfter.has(i) && i < parts.length - 1) {
+      const silence = Math.round(PAUSE_SECONDS * sampleRate);
+      blocks.push(
+        Array.from({ length: channelCount }, () => new Float32Array(silence)),
+      );
+      frames += silence;
+    }
     opts.onProgress?.({
       phase: 'synthesis',
       completed: i + 1,

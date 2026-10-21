@@ -96,3 +96,60 @@ it('default registration uses loaded FontFace bytes and the worker font set', as
     vi.unstubAllGlobals();
   }
 });
+
+// FIX1 F8: single-weight families are asked for the weights they have
+// (Google answers 400 to a missing weight); bold is then synthetic.
+import {
+  FONT_CATALOG,
+  fontStylesheetUrl,
+  servedWeights,
+} from '../../src/text-engine';
+it('[FX1-017] requests only the weights a family really has; single-weight fonts are asked without a weight list', async () => {
+  for (const family of [
+    'Tiro Devanagari Hindi',
+    'Pacifico',
+    'Bebas Neue',
+    'Anton',
+    'Abril Fatface',
+    'Righteous',
+    'Alfa Slab One',
+    'Bungee',
+    'DM Serif Display',
+  ]) {
+    expect(FONT_CATALOG.find((f) => f.family === family)!.weights).toEqual([
+      400,
+    ]);
+    expect(servedWeights(family, [700])).toEqual([400]);
+    expect(fontStylesheetUrl(family, servedWeights(family, [600, 700]))).toBe(
+      `https://fonts.googleapis.com/css2?family=${family.replaceAll(' ', '+')}&display=swap`,
+    );
+  }
+  expect(servedWeights('Cinzel', [300])).toEqual([400]);
+  expect(servedWeights('Kalam', [500, 600])).toEqual([400, 700]);
+  expect(servedWeights('Inter', [600, 700])).toEqual([600, 700]);
+  // A real request: the loader never asks Google for a missing weight.
+  const f = fixture();
+  f.fetcher.mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.includes(':wght@'))
+      return new Response('Bad request', { status: 400 });
+    return new Response(
+      url.includes('css2')
+        ? css.replace("'Lora'", "'Pacifico'")
+        : new Uint8Array([1, 2, 3]),
+    );
+  });
+  const faces = await createFontLoader(f).loadFont('Pacifico', [700]);
+  expect(faces).toHaveLength(1);
+  expect(String(f.fetcher.mock.calls[0]![0])).not.toContain('wght');
+});
+it('[FX1-017] a refused stylesheet says the status', async () => {
+  const f = fixture();
+  f.fetcher.mockResolvedValue(new Response('', { status: 403 }));
+  await expect(
+    createFontLoader(f).loadFont('Inter', [400]),
+  ).rejects.toMatchObject({
+    status: 403,
+    message: expect.stringContaining('403'),
+  });
+});

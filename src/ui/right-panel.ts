@@ -40,8 +40,10 @@ import { formatNumber, t } from '../i18n';
 import { drawingOf } from '../render/drawing';
 import { SYSTEM_FONTS, TEXT_ALIGNS, textStyleOf } from '../render/text-style';
 import { alignSelection, canDistribute, distributeSelection } from './align';
+import { flag } from './feature-flags';
 import {
   colorCommand,
+  tintCommand,
   fontSizeCommand,
   textStyleCommands,
 } from './context-toolbar';
@@ -224,6 +226,8 @@ export const ttsClip = (session: EditorSession) => {
 };
 /** T1: the right panel's Theme tab is open (with nothing selected). */
 export const themeState = { open: false };
+/** FIX1 F5: Project audio (the Mixer) is open with nothing selected. */
+export const projectAudioState = { open: false };
 /** X2: the selected code animation layer, if exactly one is selected. */
 export const codeLayerSelected = (session: EditorSession) => {
   const roots = selectionRoots(session.source, session.selectedIds);
@@ -249,12 +253,19 @@ export function sectionsFor(session: EditorSession): RightSection[] {
   if (session.selectedIds.length) {
     ttsState.open = false;
     themeState.open = false;
+    projectAudioState.open = false;
   }
-  if (kindOf(session) === 'none' && ttsState.open) return ['Speech'];
-  if (kindOf(session) === 'none' && themeState.open) return ['Theme'];
+  // FIX1 F5: Project audio and Theme both stay on the rail, so either can be
+  // reached while the other is open.
+  if (kindOf(session) === 'none' && projectAudioState.open)
+    return ['Audio', 'Theme'];
+  // FIX1 F3: the old right-hand Text to speech panel is off by default.
+  if (kindOf(session) === 'none' && ttsState.open && flag('legacyTtsPanel'))
+    return ['Speech'];
+  if (kindOf(session) === 'none' && themeState.open) return ['Audio', 'Theme'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
-  if (kindOf(session) === 'audio' && ttsClip(session))
+  if (kindOf(session) === 'audio' && ttsClip(session) && flag('legacyTtsPanel'))
     return [...TABS.audio, 'Speech'];
   let tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
   // P3 (spec 5.1b): Controls follow Properties when the layer has keyframes
@@ -309,6 +320,8 @@ export interface RightPanelHooks {
   ) => HTMLElement | null;
   /** X2: the Animation settings of the selected code layer. */
   codeBody?: () => readonly (HTMLElement | null)[];
+  /** FIX1 F5: the Mixer (master volume and lanes), shown with nothing selected. */
+  projectAudio?: () => HTMLElement | null;
   /** T1: the Theme panel. */
   themeBody?: () => HTMLElement;
   /** V7: Text to speech's Save. */
@@ -691,9 +704,32 @@ export function mountRightPanel(
           hooks.build?.('flip'),
           hooks.build?.('corners'),
           video ? null : hooks.build?.('border'),
+          video ? null : iconColorField(),
         ],
       ),
     ];
+  };
+  /** FIX1 F2: an SVG picture (an icon or sticker) can be recoloured. */
+  const iconColorField = () => {
+    const layer = single();
+    if (!layer || layer.type !== 'image') return null;
+    const asset = session.source.assets.find((a) => a.id === layer.assetId);
+    const mime = (asset?.metadata as { mimeType?: unknown } | undefined)
+      ?.mimeType;
+    if (mime !== 'image/svg+xml') return null;
+    const tint = layer.properties.tint;
+    return createColorField({
+      id: 'right-icon-color',
+      label: t('right.iconColor'),
+      value: tint?.type === 'color' ? tint.value.slice(0, 7) : '#000000',
+      documentColors: () => documentColors(session.source.composition),
+      onCommit: (next) =>
+        safely(() =>
+          run('Icon colour', [
+            tintCommand(session.source.composition.id, single() ?? layer, next),
+          ]),
+        ),
+    });
   };
   const groupTab = () => {
     const actions = contextActions(
@@ -1605,22 +1641,31 @@ export function mountRightPanel(
                               ? speech()
                               : section === 'Transitions'
                                 ? transitions()
-                                : section === 'Audio'
+                                : section === 'Audio' &&
+                                    kindOf(session) === 'none'
                                   ? [
                                       heading(
-                                        t('panel.audio'),
-                                        t('right.audioHint'),
+                                        t('mixer.projectAudio'),
+                                        t('mixer.projectAudioHint'),
                                       ),
-                                      ...audioTab(
-                                        engine,
-                                        session,
-                                        run,
-                                        report,
-                                        hooks.audioDecoder,
-                                        rerender,
-                                      ),
+                                      hooks.projectAudio?.() ?? null,
                                     ]
-                                  : [];
+                                  : section === 'Audio'
+                                    ? [
+                                        heading(
+                                          t('panel.audio'),
+                                          t('right.audioHint'),
+                                        ),
+                                        ...audioTab(
+                                          engine,
+                                          session,
+                                          run,
+                                          report,
+                                          hooks.audioDecoder,
+                                          rerender,
+                                        ),
+                                      ]
+                                    : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

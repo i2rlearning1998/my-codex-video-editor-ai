@@ -39,9 +39,11 @@ const video = base.extend({
   videos: z.record(
     z.object({
       url: z.string(),
-      width: dimension,
-      height: dimension,
-      thumbnail: httpUrl.optional(),
+      width: z.number().nullish(),
+      height: z.number().nullish(),
+      size: z.number().nullish(),
+      // FIX1 F2: an absent rendition has an empty thumbnail too.
+      thumbnail: z.string().nullish(),
     }),
   ),
 });
@@ -95,7 +97,15 @@ export function createPixabay(deps: ProviderDependencies = {}) {
         const root = z
           .object({ totalHits: dimension, hits: z.array(z.unknown()) })
           .parse(raw);
-        const items = root.hits.map((hit): StockItem => {
+        // FIX1 F2: one unusable hit is skipped, not the whole page.
+        const items = root.hits.flatMap((hit): StockItem[] => {
+          try {
+            return [mapHit(hit)];
+          } catch {
+            return [];
+          }
+        });
+        function mapHit(hit: unknown): StockItem {
           if (options.kind === 'stock-image') {
             const p = photo.parse(hit);
             const files: StockFile[] = [
@@ -151,13 +161,21 @@ export function createPixabay(deps: ProviderDependencies = {}) {
           }
           const v = video.parse(hit),
             files: StockFile[] = Object.entries(v.videos)
-              .filter(([, f]) => httpUrl.safeParse(f.url).success)
+              // FIX1 F2: `large` can be { url: "", size: 0 } (no 4K file).
+              .filter(
+                ([, f]) =>
+                  httpUrl.safeParse(f.url).success &&
+                  f.size !== 0 &&
+                  !!f.width &&
+                  !!f.height,
+              )
               .map(([quality, f]) => ({
                 quality,
                 url: f.url,
-                width: f.width,
-                height: f.height,
+                width: f.width!,
+                height: f.height!,
                 mime: 'video/mp4',
+                ...(f.size ? { bytes: f.size } : {}),
               }));
           const largest = [...files].sort((a, b) => b.width - a.width)[0];
           if (!largest) throw Error('No file');
@@ -167,8 +185,11 @@ export function createPixabay(deps: ProviderDependencies = {}) {
             kind: 'stock-video',
             title: v.tags,
             thumbUrl:
-              v.videos.tiny?.thumbnail ?? v.videos.medium?.thumbnail ?? '',
-            previewUrl: v.videos.tiny?.url || largest.url,
+              [v.videos.tiny?.thumbnail, v.videos.medium?.thumbnail].find(
+                (url) => !!url && httpUrl.safeParse(url).success,
+              ) ?? '',
+            previewUrl:
+              files.find((f) => f.quality === 'tiny')?.url ?? largest.url,
             width: largest.width,
             height: largest.height,
             durationSec: v.duration,
@@ -179,7 +200,7 @@ export function createPixabay(deps: ProviderDependencies = {}) {
             license: { ...PIXABAY_LICENSE },
             files,
           };
-        });
+        }
         return pageResult(items, root.totalHits, options);
       },
     },

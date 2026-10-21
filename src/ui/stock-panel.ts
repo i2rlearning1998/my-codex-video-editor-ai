@@ -16,6 +16,8 @@ import { iconSvg } from './icons';
 import { drags } from './drag-controller';
 import { createMenu, placeMenuAt, type MenuController } from './context-menu';
 import { stockProvidersFor, KEYS_CHANGED } from './services';
+import { openModal, type ModalHandle } from './components/modal';
+import { diagnosticsButton } from './diagnostics';
 
 export type StockTab = 'photos' | 'videos' | 'icons' | 'stickers' | 'audio';
 export const STOCK_TABS: readonly StockTab[] = [
@@ -40,7 +42,16 @@ export interface StockPlace {
 }
 export interface StockDeps {
   /** Downloads, imports into Media with the licence and places the item. */
-  add(item: StockItem, place: StockPlace, signal: AbortSignal): Promise<void>;
+  add(
+    item: StockItem,
+    place: StockPlace,
+    signal: AbortSignal,
+    /** FIX1 F2: the download's quality and its progress. */
+    job?: {
+      quality: string;
+      onProgress: (loaded: number, total: number) => void;
+    },
+  ): Promise<void>;
   openKeys(): void;
   report(error: unknown): void;
 }
@@ -50,11 +61,44 @@ const shown = new Map<string, StockItem>();
 export const stockCardId = (item: StockItem) => `${item.providerId}:${item.id}`;
 export const stockItem = (id: string) => shown.get(id);
 
-/** The download a stock item uses: the largest file no wider than 1920 px. */
+/** FIX1 F2: Pixabay's named video renditions, in the editor's preference. */
+const VIDEO_PREFERENCE = ['medium', 'small', 'tiny'] as const;
+/** The quality the user chose on an item's Details, by card id. */
+const chosenQuality = new Map<string, string>();
+/**
+ * The download a stock item uses. Videos: Pixabay's medium (up to 1080p),
+ * then small, then tiny, never `large` (4K) unless chosen in Details;
+ * otherwise the largest MP4 whose shorter side is at most 1080. Pictures:
+ * the largest file no wider than 1920 px. A quality chosen in Details wins.
+ */
 export function stockQuality(item: StockItem): string {
-  const files = [...item.files].sort((a, b) => a.width - b.width);
+  const chosen = chosenQuality.get(stockCardId(item));
+  if (chosen && item.files.some((f) => f.quality === chosen)) return chosen;
+  const files = [...item.files]
+    .filter((f) => !!f.url)
+    .sort((a, b) => a.width * a.height - b.width * b.height);
+  if (item.kind === 'stock-video') {
+    for (const name of VIDEO_PREFERENCE)
+      if (files.some((f) => f.quality === name)) return name;
+    const fit = files.filter(
+      (f) => f.quality !== 'large' && Math.min(f.width, f.height) <= 1080,
+    );
+    return (fit.at(-1) ?? files[0] ?? item.files[0])!.quality;
+  }
   const fit = files.filter((f) => !f.width || f.width <= 1920);
-  return (fit.at(-1) ?? files[0])!.quality;
+  return (fit.at(-1) ?? files[0] ?? item.files[0])!.quality;
+}
+/** A byte count in plain words (KB, MB, GB). */
+export function formatBytes(bytes: number): string {
+  if (!bytes) return '';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let value = bytes,
+    unit = 0;
+  while (value >= 1000 && unit < units.length - 1) {
+    value /= 1000;
+    unit++;
+  }
+  return `${value >= 10 || unit === 0 ? Math.round(value) : value.toFixed(1)} ${units[unit]}`;
 }
 
 /** A provider error as one plain sentence (never a code). */
@@ -75,8 +119,30 @@ export function stockErrorText(
   }
   if (code === 'KEY_MISSING')
     return t('stock.noKey', { provider, what: t(`stock.what.${tab}`) });
+  // FIX1 F2: "No internet" only when the browser is offline.
+  if (
+    code === 'NETWORK' &&
+    typeof navigator !== 'undefined' &&
+    !navigator.onLine
+  )
+    return t('stock.error.OFFLINE', { provider });
+  const status = error instanceof ProviderError ? error.status : undefined;
+  if (code === 'HTTP')
+    return t(
+      status === 403 || status === 404 || status === 429 || (status ?? 0) >= 500
+        ? `stock.error.HTTP_${(status ?? 0) >= 500 ? '5xx' : status}`
+        : 'stock.error.HTTP',
+      { provider, status: status ?? '' },
+    );
   return t(`stock.error.${code}`, { provider });
 }
+const FEATURE: Record<StockTab, string> = {
+  photos: 'Elements › Photos',
+  videos: 'Elements › Videos',
+  icons: 'Elements › Icons',
+  stickers: 'Elements › Stickers',
+  audio: 'Elements › Audio',
+};
 
 interface TabState {
   providerId: string;
@@ -88,9 +154,47 @@ interface TabState {
   error: unknown;
   controller: AbortController | null;
   /** Import jobs by card id. */
-  jobs: Map<string, AbortController>;
+  jobs: Map<string, StockJob>;
+  /** FIX1 F2: the last failed import per card id (shown with Retry). */
+  failed: Map<string, { error: unknown; place: StockPlace }>;
+}
+interface StockJob {
+  controller: AbortController;
+  loaded: number;
+  total: number;
+  started: number;
 }
 const states = new Map<StockTab, TabState>();
+/** FIX1 F2: the seed words of the empty sticker search. */
+export const STICKER_SEEDS = [
+  'smiling',
+  'heart',
+  'star',
+  'fire',
+  'cat',
+  'pizza',
+  'hand',
+  'party',
+] as const;
+/**
+ * FIX1 F2: one card per name. Icon and emoji sets repeat the same symbol
+ * (noto and noto-v1, many icon sets); the first allowed set wins.
+ */
+export function dedupe(
+  items: readonly StockItem[],
+  tab: StockTab,
+): StockItem[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key =
+      tab === 'icons' || tab === 'stickers'
+        ? item.title.trim().toLowerCase()
+        : `${item.providerId}:${item.id}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 const stateOf = (tab: StockTab, providers: readonly Provider[]): TabState => {
   let state = states.get(tab);
   if (!state || !providers.some((p) => p.id === state!.providerId)) {
@@ -105,6 +209,7 @@ const stateOf = (tab: StockTab, providers: readonly Provider[]): TabState => {
       error: null,
       controller: null,
       jobs: new Map(),
+      failed: new Map(),
     };
     states.set(tab, state);
   }
@@ -281,9 +386,13 @@ export function mountStock(
       if (tab === 'icons' || tab === 'stickers') img.className = 'stock-icon';
       thumb.append(img);
     } else thumb.innerHTML = iconSvg(tab === 'audio' ? 'audio' : 'image', 28);
+    // FIX1 F2: a small corner chip, never a bar over the picture; the full
+    // licence and author are in its tooltip and in Details.
     const badge = document.createElement('span');
-    badge.className = 'shelf-badge media-badge stock-licence';
-    badge.textContent =
+    badge.className = 'stock-licence';
+    badge.setAttribute('role', 'img');
+    badge.innerHTML = iconSvg('info', 12);
+    const licenceText =
       item.license.attributionRequired && item.author
         ? t('stock.licenceBy', {
             licence: item.license.name,
@@ -291,8 +400,9 @@ export function mountStock(
           })
         : item.license.name;
     badge.title = item.license.commercialUse
-      ? item.license.name
-      : t('stock.notCommercial', { licence: item.license.name });
+      ? licenceText
+      : t('stock.notCommercial', { licence: licenceText });
+    badge.setAttribute('aria-label', badge.title);
     const name = document.createElement('span');
     name.className = 'shelf-name';
     name.textContent = item.title;
@@ -376,27 +486,91 @@ export function mountStock(
       sync();
       wrap.append(play);
     }
-    if (state.jobs.has(id)) showJob(wrap, id);
+    if (state.jobs.has(id) || state.failed.has(id)) showJob(wrap, id);
     return wrap;
   };
 
   const showJob = (wrap: HTMLElement, id: string) => {
     wrap.querySelector('.stock-progress')?.remove();
     const job = state.jobs.get(id);
-    if (!job) return;
+    const failure = state.failed.get(id);
+    if (!job && !failure) return;
     const overlay = document.createElement('div');
     overlay.className = 'stock-progress';
     overlay.setAttribute('role', 'status');
-    overlay.innerHTML = `<span class="stock-spinner" aria-hidden="true"></span><span>${escapeHtml(t('stock.adding'))}</span>`;
-    const cancel = document.createElement('button');
-    cancel.type = 'button';
-    cancel.className = 'button ghost sm stock-cancel';
-    cancel.textContent = t('stock.cancel');
-    cancel.onclick = (event) => {
-      event.stopPropagation();
-      job.abort();
-    };
-    overlay.append(cancel);
+    if (job) {
+      const percent = job.total
+        ? Math.min(100, Math.round((job.loaded / job.total) * 100))
+        : null;
+      overlay.dataset.state = 'busy';
+      overlay.innerHTML = `<span class="stock-progress-text">${escapeHtml(
+        percent === null
+          ? job.loaded
+            ? t('stock.downloadedSoFar', { size: formatBytes(job.loaded) })
+            : t('stock.adding')
+          : t('stock.downloading', {
+              percent,
+              size: formatBytes(job.total),
+            }),
+      )}</span><progress class="stock-progress-bar" max="100" ${
+        percent === null ? '' : `value="${percent}"`
+      }></progress>`;
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'button ghost sm stock-cancel';
+      cancel.textContent = t('stock.cancel');
+      cancel.onclick = (event) => {
+        event.stopPropagation();
+        job.controller.abort();
+      };
+      overlay.append(cancel);
+    } else if (failure) {
+      overlay.dataset.state = 'error';
+      const text = document.createElement('span');
+      text.className = 'stock-progress-text';
+      text.textContent = stockErrorText(failure.error, provider().name, tab);
+      const retry = document.createElement('button');
+      retry.type = 'button';
+      retry.className = 'button primary sm stock-retry';
+      retry.dataset.action = 'stock-retry';
+      retry.textContent = t('stock.retry');
+      const item = shown.get(id);
+      retry.onclick = (event) => {
+        event.stopPropagation();
+        if (item) void startImport(item, wrap, failure.place);
+      };
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.className = 'icon-button stock-dismiss';
+      close.setAttribute('aria-label', t('stock.dismiss'));
+      close.title = t('stock.dismiss');
+      close.innerHTML = iconSvg('close', 14);
+      close.onclick = (event) => {
+        event.stopPropagation();
+        state.failed.delete(id);
+        overlay.remove();
+      };
+      overlay.append(
+        text,
+        retry,
+        diagnosticsButton(() => ({
+          feature: FEATURE[tab],
+          providerId: item?.providerId ?? provider().id,
+          step: 'download',
+          error: failure.error,
+          extra: {
+            quality: item ? stockQuality(item) : undefined,
+            size: item
+              ? formatBytes(
+                  item.files.find((f) => f.quality === stockQuality(item))
+                    ?.bytes ?? 0,
+                ) || 'unknown'
+              : undefined,
+          },
+        })),
+        close,
+      );
+    }
     wrap.append(overlay);
   };
   const startImport = async (
@@ -407,19 +581,135 @@ export function mountStock(
     const id = stockCardId(item);
     if (state.jobs.has(id)) return;
     const controller = new AbortController();
-    state.jobs.set(id, controller);
+    const quality = stockQuality(item);
+    const job: StockJob = {
+      controller,
+      loaded: 0,
+      total: item.files.find((f) => f.quality === quality)?.bytes ?? 0,
+      started: performance.now(),
+    };
+    state.jobs.set(id, job);
+    state.failed.delete(id);
+    const cardOf = () =>
+      body.querySelector<HTMLElement>(
+        `.stock-item[data-item-id="${CSS.escape(id)}"]`,
+      ) ?? wrap;
     if (wrap) showJob(wrap, id);
+    let frame = 0;
     try {
-      await deps.add(item, place, controller.signal);
+      await deps.add(item, place, controller.signal, {
+        quality,
+        onProgress: (loaded, total) => {
+          job.loaded = loaded;
+          if (total) job.total = total;
+          if (frame) return;
+          frame = requestAnimationFrame(() => {
+            frame = 0;
+            const card = cardOf();
+            if (card && state.jobs.get(id) === job) showJob(card, id);
+          });
+        },
+      });
     } catch (error) {
-      if (!(error instanceof ProviderError && error.code === 'ABORTED'))
+      if (!(error instanceof ProviderError && error.code === 'ABORTED')) {
+        state.failed.set(id, { error, place });
+        console.debug('[stock] import failed', FEATURE[tab], error);
         deps.report(new Error(stockErrorText(error, provider().name, tab)));
+      }
     } finally {
+      cancelAnimationFrame(frame);
       state.jobs.delete(id);
-      body
-        .querySelector(`[data-item-id="${CSS.escape(id)}"] .stock-progress`)
-        ?.remove();
+      const card = cardOf();
+      card?.querySelector('.stock-progress')?.remove();
+      if (card) showJob(card, id);
     }
+  };
+  /** FIX1 F2: Details: licence, author, source and the download quality. */
+  const openDetails = (item: StockItem, wrap: HTMLElement) => {
+    const id = stockCardId(item);
+    const files = [...item.files]
+      .filter((f) => !!f.url)
+      .sort((a, b) => a.width * a.height - b.width * b.height);
+    let handle: ModalHandle | null = null;
+    handle = openModal({
+      titleText: escapeHtml(item.title),
+      bodyBuilder: (root) => {
+        root.classList.add('stock-details');
+        const facts = document.createElement('dl');
+        facts.className = 'stock-details-facts';
+        const fact = (label: string, value: string | HTMLElement) => {
+          const dt = document.createElement('dt');
+          dt.textContent = label;
+          const dd = document.createElement('dd');
+          dd.append(value);
+          facts.append(dt, dd);
+        };
+        const link = (text: string, href: string) => {
+          const a = document.createElement('a');
+          a.href = href;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = text;
+          return a;
+        };
+        fact(
+          t('stock.details.licence'),
+          link(item.license.name, item.license.url),
+        );
+        fact(t('stock.details.author'), link(item.author, item.authorUrl));
+        fact(
+          t('stock.details.source'),
+          link(
+            t('stock.openSource', { provider: provider().name }),
+            item.sourceUrl,
+          ),
+        );
+        if (item.license.attributionRequired)
+          fact(t('stock.details.credit'), t('stock.details.creditNeeded'));
+        root.append(facts);
+        if (files.length > 1) {
+          const group = document.createElement('div');
+          group.className = 'stock-quality';
+          group.setAttribute('role', 'radiogroup');
+          group.setAttribute('aria-label', t('stock.details.quality'));
+          const title = document.createElement('p');
+          title.className = 'settings-label';
+          title.textContent = t('stock.details.quality');
+          root.append(title, group);
+          const current = stockQuality(item);
+          for (const file of files) {
+            const label = document.createElement('label');
+            label.className = 'stock-quality-option';
+            const radio = document.createElement('input');
+            radio.type = 'radio';
+            radio.name = `stock-quality-${id}`;
+            radio.value = file.quality;
+            radio.checked = file.quality === current;
+            radio.onchange = () => chosenQuality.set(id, file.quality);
+            const text = document.createElement('span');
+            const size = formatBytes(file.bytes ?? 0);
+            text.textContent = `${t(
+              `stock.quality.${/^(tiny|small|medium|large|original)$/.test(file.quality) ? file.quality : 'other'}`,
+            )} · ${file.width} × ${file.height}${size ? ` · ${size}` : ''}`;
+            label.append(radio, text);
+            group.append(label);
+          }
+        }
+        const actions = document.createElement('div');
+        actions.className = 'modal-actions';
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'button primary';
+        add.dataset.action = 'stock-details-add';
+        add.textContent = t('shelf.addToSceneShort');
+        add.onclick = () => {
+          handle?.close();
+          void startImport(item, wrap, {});
+        };
+        actions.append(add);
+        root.append(actions);
+      },
+    });
   };
   const openMenu = (
     item: StockItem,
@@ -433,6 +723,12 @@ export function mountStock(
         label: t('shelf.addToSceneShort'),
         icon: 'plus',
         run: () => void startImport(item, wrap, {}),
+      },
+      {
+        id: 'stock-details',
+        label: t('stock.details'),
+        icon: 'info',
+        run: () => openDetails(item, wrap),
       },
       {
         id: 'stock-source',
@@ -470,15 +766,25 @@ export function mountStock(
     if (state.status === 'error') {
       const code =
         state.error instanceof ProviderError ? state.error.code : 'NETWORK';
-      body.append(
-        message(
-          stockErrorText(state.error, p.name, tab),
-          'error',
-          code === 'KEY_INVALID'
-            ? { label: t('stock.checkKey'), run: deps.openKeys }
-            : { label: t('stock.retry'), run: () => void runSearch(true) },
-        ),
+      const card = message(
+        stockErrorText(state.error, p.name, tab),
+        'error',
+        code === 'KEY_INVALID'
+          ? { label: t('stock.checkKey'), run: deps.openKeys }
+          : { label: t('stock.retry'), run: () => void runSearch(true) },
       );
+      // FIX1 F4: what failed, where, and the HTTP status (never the key).
+      const error = state.error;
+      card.append(
+        diagnosticsButton(() => ({
+          feature: FEATURE[tab],
+          providerId: p.id,
+          step: 'search',
+          error,
+          extra: { query: state.query.trim() || defaultQuery() },
+        })),
+      );
+      body.append(card);
       return;
     }
     if (!state.items.length) {
@@ -520,19 +826,37 @@ export function mountStock(
     if (fresh) state.items = [];
     render();
     try {
-      const result = await p.search({
-        kind: KIND[tab],
-        query: state.query.trim() || defaultQuery(),
-        page,
-        perPage: 20,
-        ...(state.orientation ? { orientation: state.orientation } : {}),
-        signal: controller.signal,
-      });
+      // FIX1 F2: an empty sticker search shows a mixed set from several
+      // seed words (one word alone gives near-identical results).
+      const typed = state.query.trim();
+      const queries =
+        !typed && tab === 'stickers'
+          ? STICKER_SEEDS
+          : [typed || defaultQuery()];
+      const results = await Promise.allSettled(
+        queries.map((query) =>
+          p.search({
+            kind: KIND[tab],
+            query,
+            page,
+            perPage: queries.length > 1 ? 32 : 20,
+            ...(state.orientation ? { orientation: state.orientation } : {}),
+            signal: controller.signal,
+          }),
+        ),
+      );
       if (state.controller !== controller) return;
-      state.items = fresh
-        ? [...result.items]
-        : [...state.items, ...result.items];
-      state.nextPage = result.nextPage;
+      const ok = results.flatMap((r) =>
+        r.status === 'fulfilled' ? [r.value] : [],
+      );
+      if (!ok.length)
+        throw (results[0] as PromiseRejectedResult).reason as unknown;
+      // Interleave the seeds so the first rows are mixed.
+      const merged: StockItem[] = [];
+      for (let i = 0; ok.some((r) => i < r.items.length); i++)
+        for (const r of ok) if (r.items[i]) merged.push(r.items[i]!);
+      state.items = dedupe(fresh ? merged : [...state.items, ...merged], tab);
+      state.nextPage = ok.some((r) => r.nextPage !== null) ? page + 1 : null;
       state.status = 'done';
     } catch (error) {
       if (state.controller !== controller) return;

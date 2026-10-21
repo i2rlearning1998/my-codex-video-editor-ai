@@ -40,7 +40,9 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
   stock.innerHTML = `${iconSvg('audio', 20)}<span></span><span class="quiet-tag"></span>`;
   stock.querySelector('span')!.textContent = t('sound.stock');
   stock.querySelector('.quiet-tag')!.textContent = t('right.planned');
-  host.replaceChildren(heading, search, list, empty, stock);
+  // FIX1 F5: stock music is the Audio category's Music tab now.
+  host.replaceChildren(heading, search, list, empty);
+  void stock;
 
   // Preview: one shared context, one sound at a time.
   let context: AudioContext | null = null;

@@ -27,7 +27,7 @@ describe('[B1] style items', () => {
     expect(check(read('style-youtube-intro.json')).items[0]!.status).toBe('ok');
     const documentary = check(read('style-documentary.json')).items[0]!;
     expect(documentary.status).toBe('warning');
-    expect(documentary.reasons.join()).toContain('transition.dip-to-black');
+    expect(documentary.reasons.join()).toContain('a transition "dip to black"');
     expect(check(read('style-logo-reveal-2d.json')).ok).toBe(true);
   });
   it('rejects a required kit id the editor lacks, accepts it when optional', () => {
