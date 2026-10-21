@@ -55,6 +55,21 @@ export const test = base.extend<Fixtures>({
         (window as { __AIVE_E2E_LIBRARY__?: string }).__AIVE_E2E_LIBRARY__ =
           'legacy';
       });
+      // FIX1 F8: the font picker loads small preview faces from Google
+      // Fonts for the rows in view; with no live network here they answer
+      // an empty stylesheet (no preview), unless a test mocks the fonts.
+      await page.route(
+        /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
+        (route) =>
+          route.fulfill({
+            status: 200,
+            headers: {
+              'access-control-allow-origin': '*',
+              'content-type': 'text/css',
+            },
+            body: '',
+          }),
+      );
       const errors: string[] = [];
       const allowed: ((message: string) => boolean)[] = [];
       // Shared per-test registry; exceptions must be declared explicitly in the test.

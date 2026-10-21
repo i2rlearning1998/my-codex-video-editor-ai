@@ -309,6 +309,29 @@ export interface TextEditor {
   onChange(listener: () => void): () => void;
 }
 
+/** Relative luminance of a #rrggbb colour (0 black, 1 white). */
+function luminance(hex: string): number {
+  const value = /^#([0-9a-f]{6})/i.exec(hex)?.[1];
+  if (!value) return 0;
+  const channel = (i: number) => {
+    const c = parseInt(value.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(0) + 0.7152 * channel(2) + 0.0722 * channel(4);
+}
+/**
+ * FIX1 F8: the caret takes the text's colour unless it would be hard to
+ * see on the canvas (contrast under 3:1); then black or white, whichever
+ * stands out.
+ */
+export function caretColor(text: string, background: string): string {
+  const a = luminance(text),
+    b = luminance(background);
+  const contrast = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  if (contrast >= 3) return text.slice(0, 7);
+  return b > 0.5 ? '#000000' : '#ffffff';
+}
+
 /** The editor in use, for the toolbar and right panel (one at a time). */
 let current: TextEditor | null = null;
 export const textEditorFor = (layerId: string | null | undefined) =>
@@ -326,11 +349,84 @@ export function mountTextEditor(
   box.className = 'text-editor';
   box.contentEditable = 'true';
   box.spellcheck = false;
+  // FIX1 F8: never a form field for the browser: no autofill (names,
+  // e-mails), no autocorrect, no writing suggestions.
+  for (const [name, value] of [
+    ['autocomplete', 'off'],
+    ['autocorrect', 'off'],
+    ['autocapitalize', 'off'],
+    ['writingsuggestions', 'false'],
+    ['aria-autocomplete', 'none'],
+    ['data-form-type', 'other'],
+    ['data-lpignore', 'true'],
+    ['translate', 'no'],
+  ] as const)
+    box.setAttribute(name, value);
   box.setAttribute('role', 'textbox');
   box.setAttribute('aria-multiline', 'true');
   box.setAttribute('aria-label', t('text.editing'));
   box.hidden = true;
   host.append(box);
+  // FIX1 F8: the caret: 2 px wide, blinking, in the text's own colour, or
+  // black / white when that colour would vanish on the canvas.
+  const caret = document.createElement('div');
+  caret.className = 'text-caret';
+  caret.setAttribute('aria-hidden', 'true');
+  caret.hidden = true;
+  document.body.append(caret);
+  let caretFrame = 0;
+  const placeCaret = () => {
+    caretFrame = 0;
+    const selection = document.getSelection();
+    if (
+      box.hidden ||
+      !selection ||
+      !selection.rangeCount ||
+      !selection.isCollapsed ||
+      !box.contains(selection.anchorNode)
+    ) {
+      caret.hidden = true;
+      return;
+    }
+    const range = selection.getRangeAt(0).cloneRange();
+    let rect = range.getClientRects()[0] ?? null;
+    if (!rect || (!rect.height && !rect.width)) {
+      // An empty line has no text box: use its line element.
+      const node = selection.anchorNode;
+      const line = (
+        node instanceof HTMLElement ? node : node?.parentElement
+      )?.closest('div');
+      const box2 = (
+        line && box.contains(line) ? line : box
+      ).getBoundingClientRect();
+      const lineHeight =
+        parseFloat(getComputedStyle(box).fontSize) *
+        (parseFloat(box.style.lineHeight) || 1.2) *
+        (box2.height / Math.max(1, (line ?? box).offsetHeight) || 1);
+      rect = new DOMRect(
+        box2.left,
+        box2.top,
+        0,
+        Math.min(box2.height || lineHeight, lineHeight),
+      );
+    }
+    if (!rect || !rect.height) {
+      caret.hidden = true;
+      return;
+    }
+    caret.hidden = false;
+    caret.style.left = `${rect.left - 1}px`;
+    caret.style.top = `${rect.top}px`;
+    caret.style.height = `${rect.height}px`;
+    // Restart the blink so the caret shows at once after a move.
+    caret.classList.remove('blink');
+    void caret.offsetWidth;
+    caret.classList.add('blink');
+  };
+  const queueCaret = () => {
+    if (!caretFrame) caretFrame = requestAnimationFrame(placeCaret);
+  };
+  document.addEventListener('selectionchange', queueCaret);
   const listeners = new Set<() => void>();
   const changed = () => listeners.forEach((listener) => listener());
   let layerId: string | null = null;
@@ -497,6 +593,10 @@ export function mountTextEditor(
     style.lineHeight = String(base.style.lineHeight);
     style.letterSpacing = `${base.style.letterSpacing}px`;
     style.color = base.color;
+    caret.style.background = caretColor(
+      base.color,
+      session.source.background ?? '#ffffff',
+    );
     style.textAlign = base.style.align;
     style.textDecorationLine =
       [
@@ -599,6 +699,7 @@ export function mountTextEditor(
       item.properties.textFixedHeight.value;
     box.classList.toggle('fixed-height', fixed);
     box.style.setProperty('--fixed-height', `${height}px`);
+    queueCaret();
   };
 
   // --- Events ----------------------------------------------------------------
@@ -791,6 +892,7 @@ export function mountTextEditor(
       layerId = null;
       current = null;
       box.hidden = true;
+      caret.hidden = true;
       box.replaceChildren();
       session.setPreview(null);
       session.setEditingText(null);

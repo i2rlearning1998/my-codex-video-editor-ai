@@ -10943,3 +10943,31 @@ input[type='range'] {
 .creator-item > .creator-thumb[hidden] {
   display: none;
 }
+/* FIX1 F8: the text editor's own caret (the browser's is hidden): 2 px,
+   blinking, in the text's colour or a contrasting one. */
+.text-editor {
+  caret-color: transparent;
+}
+.text-caret {
+  position: fixed;
+  z-index: 40;
+  inline-size: 2px;
+  pointer-events: none;
+  border-radius: 1px;
+}
+.text-caret[hidden] {
+  display: none;
+}
+.text-caret.blink {
+  animation: text-caret-blink 1.06s steps(1, end) infinite;
+}
+@keyframes text-caret-blink {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0;
+  }
+}

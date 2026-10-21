@@ -12,7 +12,7 @@ Branch `claude/fix-1` from `claude/final-2`. Draft PR targets `claude/final-2`.
 | F5 audio | Done: libraries left, Project audio right (rail Audio with nothing selected), shared slider row CSS (FX1-012, FX1-013) |
 | F6 nesting | Done: SET_NESTED_CONTENT core command, src/nesting/view.ts unpack/pack, src/ui/nest-engine.ts (whole UI edits the inside), new breadcrumb + block map (FX1-014). Not done: Effects/Speed tabs for a nest in the right rail (capability rules) |
 | F7 import / build | Done (FX1-015, FX1-016) |
-| F8 text | Not started |
+| F8 text | Done: autofill off, 2 px caret in text colour, real Google weights per family, own-typeface rows, Devanagari coverage filter, Retry on font errors. e2e fix1-text, unit fonts.test. |
 | Full verify | Not run |
 
-Next: F8. Note: INS-018 (j3) fails at the 1920x940 viewport, not from F5; pin LEGACY_VIEWPORT at the end if needed.
+Next: END (docs, report, full verify, PR). Note: INS-018 (j3) fails at the 1920x940 viewport, not from F5; pin LEGACY_VIEWPORT at the end if needed.

@@ -2342,5 +2342,8 @@
   "nest.backToMain": "Back to main timeline",
   "nest.tooDeep": "Nested clips go at most 5 levels deep.",
   "nest.length": "Nested clip, {seconds} s long",
-  "composition.showScenes": "Show scenes"
+  "composition.showScenes": "Show scenes",
+  "fonts.error.status": "Google Fonts returned {status}; this font did not download.",
+  "fonts.error.reason": "This font did not download: {reason}.",
+  "fonts.retryButton": "Retry"
 }

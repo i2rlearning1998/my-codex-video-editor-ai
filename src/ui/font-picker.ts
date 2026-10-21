@@ -11,7 +11,7 @@ import { t } from '../i18n';
 import { bundledFaces, isBundledFont } from '../render/fonts';
 import { SYSTEM_FONTS } from '../render/text-style';
 import { FONT_CATALOG, type FontCategory } from '../text-engine/catalog';
-import { FontLoadError, loadFont } from '../text-engine/fonts';
+import { FontLoadError, loadFont, loadFontPreview } from '../text-engine/fonts';
 import { glyphCoverage } from '../text-engine/layout';
 import { iconSvg } from './icons';
 
@@ -54,6 +54,31 @@ type LoadState =
   { kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready' };
 /** Download state per family, kept while the page lives. */
 const states = new Map<string, LoadState>();
+/** FIX1 F8: the Hindi sample every Devanagari font must draw. */
+export const DEVANAGARI_SAMPLE = 'नमस्ते दुनिया';
+/**
+ * FIX1 F8: Devanagari fonts checked after loading: true when they draw the
+ * sample with their own glyphs. A font that fails is left out of the Hindi
+ * filter (and logged), so it is never offered for Hindi text.
+ */
+export const devanagariCoverage = new Map<string, boolean>();
+/** Whether `family` draws `text` itself (not through a fallback face). */
+export function drawsOwnGlyphs(family: string, text: string): boolean {
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (!context) return true;
+  const width = (font: string) => {
+    context.font = font;
+    return context.measureText(text).width;
+  };
+  // A font without these glyphs measures exactly like each fallback alone.
+  return ['monospace', 'serif'].some(
+    (generic) =>
+      Math.abs(
+        width(`40px "${family}", ${generic}`) - width(`40px ${generic}`),
+      ) > 0.5,
+  );
+}
 
 export function recentFonts(): string[] {
   try {
@@ -182,6 +207,25 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
   coverage.setAttribute('aria-live', 'polite');
   const lists = document.createElement('div');
   lists.className = 'font-lists';
+  // FIX1 F8: preview faces load for the rows that scroll into view.
+  const previewObserver =
+    typeof IntersectionObserver === 'undefined'
+      ? null
+      : new IntersectionObserver((seen) => {
+          for (const record of seen) {
+            if (!record.isIntersecting) continue;
+            const row = record.target as HTMLElement;
+            previewObserver?.unobserve(row);
+            const family = row.dataset.font!;
+            const entry = ENTRIES.find((item) => item.family === family);
+            void loadFontPreview(
+              family,
+              entry?.devanagari ? `${family} ${DEVANAGARI_SAMPLE}` : family,
+            ).then((ok) => {
+              row.dataset.preview = ok ? 'ready' : 'none';
+            });
+          }
+        });
   wrap.append(search, chips, offline, coverage, lists);
 
   const paintCoverage = () => {
@@ -211,18 +255,42 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
     states.set(entry.family, { kind: 'loading' });
     paint();
     try {
-      await loadFont(entry.family, [options.weight], ['latin'], {
-        offline: typeof navigator !== 'undefined' && navigator.onLine === false,
-      });
+      // FIX1 F8: only weights the family has (bold or italic on a
+      // single-weight font is drawn synthetically); Hindi fonts bring
+      // their Devanagari faces.
+      await loadFont(
+        entry.family,
+        [options.weight],
+        entry.devanagari ? ['latin', 'devanagari'] : ['latin'],
+        {
+          offline:
+            typeof navigator !== 'undefined' && navigator.onLine === false,
+        },
+      );
+      if (entry.devanagari) {
+        await document.fonts.load(`40px "${entry.family}"`, DEVANAGARI_SAMPLE);
+        const covered = drawsOwnGlyphs(entry.family, DEVANAGARI_SAMPLE);
+        devanagariCoverage.set(entry.family, covered);
+        if (!covered)
+          console.debug(
+            '[fonts] no Devanagari glyphs; hidden from the Hindi filter',
+            entry.family,
+          );
+      }
       states.set(entry.family, { kind: 'ready' });
       done(entry.family);
     } catch (error) {
+      console.debug('[fonts] download failed', entry.family, error);
       states.set(entry.family, {
         kind: 'error',
         message:
           error instanceof FontLoadError && error.code === 'OFFLINE_MISS'
             ? t('fonts.error.offline')
-            : t('fonts.error.failed'),
+            : error instanceof FontLoadError && error.status
+              ? t('fonts.error.status', { status: error.status })
+              : error instanceof FontLoadError
+                ? t('fonts.error.reason', { reason: error.message })
+                : t('fonts.error.failed'),
       });
     }
     paint();
@@ -242,7 +310,13 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
     item.dataset.font = entry.family;
     item.dataset.source = entry.source;
     item.setAttribute('aria-selected', String(entry.family === current));
-    item.style.fontFamily = `"${entry.family}", sans-serif`;
+    // FIX1 F8: each row in its own typeface: the family once loaded, else a
+    // tiny preview face of just its name.
+    item.style.fontFamily = `"${entry.family}", "${entry.family} Preview", sans-serif`;
+    if (entry.source === 'catalog' && state?.kind !== 'ready') {
+      item.dataset.preview = 'pending';
+      previewObserver?.observe(item);
+    }
     const name = document.createElement('span');
     name.className = 'font-option-name';
     name.textContent = entry.family;
@@ -261,7 +335,14 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
       item.setAttribute('aria-busy', 'true');
     } else if (state?.kind === 'error') {
       status.dataset.state = 'error';
-      status.textContent = `${state.message} ${t('fonts.retry')}`;
+      status.textContent = state.message;
+      // A click on the row (or on Retry) tries again.
+      const retry = document.createElement('span');
+      retry.className = 'font-retry';
+      retry.dataset.action = 'font-retry';
+      retry.setAttribute('role', 'button');
+      retry.textContent = t('fonts.retryButton');
+      status.append(' ', retry);
     } else if (entry.source === 'catalog' && state?.kind !== 'ready') {
       status.dataset.state = 'download';
       status.innerHTML = iconSvg('download', 16);
@@ -314,7 +395,8 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
       (entry) =>
         (!needle || entry.family.toLowerCase().includes(needle)) &&
         (chip === 'all' || entry.category === chip) &&
-        (!hindi || entry.devanagari),
+        (!hindi ||
+          (entry.devanagari && devanagariCoverage.get(entry.family) !== false)),
     );
     const filtered = !!needle || chip !== 'all' || hindi;
     const recent = recentFonts()
