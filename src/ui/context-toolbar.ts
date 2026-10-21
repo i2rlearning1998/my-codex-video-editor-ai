@@ -3,6 +3,7 @@
 // disabled with the wave that builds them (D-068); nothing behind them exists.
 import { fontWeights } from '../render/fonts';
 import { isCatalogFont } from '../text-engine/catalog';
+import { isSafeFamily, uploadedFonts } from '../text-engine/uploaded';
 import { LIST_STYLES, parseListStyle } from '../render/rich-text';
 import {
   clearRunKeys,
@@ -12,6 +13,14 @@ import {
   type Override,
   type OverrideKey,
 } from './text-editor';
+import {
+  listCommands,
+  scriptCommands,
+  typographyCommands,
+} from './text-box-commands';
+import { textBoxOf } from '../render/text-box';
+import { saveMyTextStyle } from './text-styles';
+import { buildTextGradientEditor, textGradientCommands } from './text-gradient';
 import {
   localTransformMatrix,
   number,
@@ -23,11 +32,7 @@ import {
   type TransformValues,
 } from '../core';
 import { formatNumber, t } from '../i18n';
-import {
-  locateLayer,
-  textLayoutForWidth,
-  type SceneLayer,
-} from '../render/adapter';
+import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
   MAX_BRUSH,
   MIN_BRUSH,
@@ -102,6 +107,8 @@ import { guardCommands } from './editor-mode';
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
 export function toolbarKind(layer: SceneLayer | null): ToolbarKind | null {
   if (!layer) return null;
+  // FINAL3 C3: a camera shot is edited in the right Camera section.
+  if (layer.properties.role?.value === 'camera') return null;
   if (layer.type === 'image' || layer.type === 'video') return 'media';
   if (layer.type === 'text') return 'text';
   if (layer.type === 'shape') return drawingOf(layer) ? 'drawing' : 'shape';
@@ -235,7 +242,11 @@ const TEXT_STYLE_KEYS = {
   fontFamily: (value: unknown) =>
     SYSTEM_FONTS.some(([name]) => name === value) ||
     // FINAL2 U6: the text engine's font catalog (downloaded on demand).
-    (typeof value === 'string' && isCatalogFont(value)),
+    (typeof value === 'string' && isCatalogFont(value)) ||
+    // FINAL3 T4: an uploaded font (marked with fontSource in the same step).
+    (typeof value === 'string' &&
+      isSafeFamily(value) &&
+      uploadedFonts().includes(value)),
   fontWeight: (value: unknown) =>
     (FONT_WEIGHTS as readonly unknown[]).includes(value),
   fontStyle: (value: unknown) => value === 'italic' || value === 'normal',
@@ -321,20 +332,6 @@ export function textStyleCommands(
       );
   }
   return commands;
-}
-/** T6: the height a text box's lines need at its width. */
-function textHeightNeeded(layer: SceneLayer): number {
-  const wrap = layer.properties.textWrap;
-  const width = layer.properties.width;
-  if (wrap?.type === 'boolean' && wrap.value && width?.type === 'number')
-    return textLayoutForWidth(layer, width.value).height;
-  const text = layer.properties.text;
-  const size = layer.properties.fontSize;
-  return layoutParagraphs(
-    text?.type === 'string' ? text.value : layer.name,
-    Math.min(size?.type === 'number' ? size.value : 32, 4096),
-    textStyleOf(layer),
-  ).height;
 }
 /** Brush size keeps the stroke in place: the path and box are re-padded. */
 export function brushSizeCommands(
@@ -926,11 +923,11 @@ export function mountContextToolbar(
     item.setAttribute('aria-haspopup', 'dialog');
     return item;
   };
-  const copyStyleTool = () => {
+  const copyStyleTool = (label = t('command.copyStyle')) => {
     const item = tool(
       'copy-style',
       'brush',
-      t('command.copyStyle'),
+      label,
       () => {
         copyStyle(session);
         showToast(t('toolbar.styleCopied'), 'info', 2500);
@@ -1401,20 +1398,22 @@ export function mountContextToolbar(
           })),
           value(),
           (style) => {
+            // FINAL3 T3: lists act on paragraphs: while editing, the
+            // selected ones (or the caret's); otherwise every paragraph.
+            const editor = textEditorFor(layer.id);
+            const range = editor?.paragraphRange() ?? null;
+            editor?.finish();
             const target = selected() ?? layer;
-            run(style === 'none' ? 'Remove list' : 'Set list', [
-              setProperty(
+            run(
+              style === 'none' ? 'Remove list' : 'Set list',
+              listCommands(
                 session.source.composition.id,
                 target,
-                'listStyle',
-                withValue(
-                  target,
-                  'listStyle',
-                  style === 'none' ? '' : style,
-                  'string',
-                ),
+                style as (typeof LIST_STYLES)[number],
+                range,
               ),
-            ]);
+            );
+            if (editor) editor.start(layer.id);
           },
           () => closePopover('list'),
         ),
@@ -1553,8 +1552,22 @@ export function mountContextToolbar(
                 session.currentTime,
               ),
               clearRunKeys(compositionId, selected() ?? layer, ['color']),
+              // FINAL3: a solid colour replaces a gradient.
+              ...textGradientCommands(compositionId, selected() ?? layer, null),
             ]),
           ),
+        undefined,
+        // FINAL3: Solid, Linear or Radial with up to 10 colours.
+        () =>
+          buildTextGradientEditor({
+            compositionId: () => session.source.composition.id,
+            layer: () => {
+              const current = selected();
+              return current?.type === 'text' ? current : null;
+            },
+            run,
+            documentColors: designColors,
+          }),
       ),
       divider(),
       tool(
@@ -1613,18 +1626,20 @@ export function mountContextToolbar(
           ),
         { pressed: !!look.strike },
       ),
-      tool(
-        'uppercase',
-        'uppercase',
-        t('toolbar.uppercase'),
-        () =>
-          styleRun(
-            'Set text case',
-            'textCase',
-            style.textCase === 'upper' ? 'none' : 'upper',
-          ),
-        { pressed: style.textCase === 'upper' },
-      ),
+      // FINAL3 (Canva aA): each click goes UPPER, lower, Title, then back.
+      (() => {
+        const order = ['none', 'upper', 'lower', 'title'] as const;
+        const next = order[(order.indexOf(style.textCase) + 1) % order.length]!;
+        const item = tool(
+          'uppercase',
+          'uppercase',
+          `${t('toolbar.case')}: ${t(`text.case.${style.textCase}`)}`,
+          () => styleRun('Set text case', 'textCase', next),
+          { pressed: style.textCase !== 'none' },
+        );
+        item.dataset.value = style.textCase;
+        return item;
+      })(),
       align,
       listTool(layer),
       popTool('spacing', 'spacing', t('toolbar.advanced'), () =>
@@ -1641,7 +1656,48 @@ export function mountContextToolbar(
       ),
       animateTool(),
       positionTool(),
-      copyStyleTool(),
+      copyStyleTool(t('toolbar.formatPainter')),
+      // FINAL3 (Canva's text toolbar ⋯): Lock, Duplicate and Delete.
+      popTool(
+        'text-more',
+        'more',
+        t('toolbar.more'),
+        () =>
+          options(
+            [
+              { value: 'lock', label: t('command.lock'), icon: 'lock' },
+              {
+                value: 'duplicate',
+                label: t('command.duplicate'),
+                icon: 'duplicate',
+              },
+              { value: 'delete', label: t('command.delete'), icon: 'delete' },
+              // FINAL3 T5: keep this look in My text styles.
+              { value: 'save-style', label: t('text.saveStyle'), icon: 'text' },
+            ],
+            '',
+            (value) => {
+              closePopover('text-more');
+              safely(() => {
+                if (value === 'lock') setLocked(engine, session, true);
+                else if (value === 'save-style') {
+                  const current = selected() ?? layer;
+                  const text = current.properties.text;
+                  saveMyTextStyle(
+                    current,
+                    (text?.type === 'string' ? text.value : current.name)
+                      .replace(/\s+/gu, ' ')
+                      .slice(0, 40),
+                  );
+                  showToast(t('text.styleSaved'), 'success', 3000);
+                } else
+                  performEdit(engine, session, value as 'duplicate' | 'delete');
+              });
+            },
+            () => closePopover('text-more'),
+          ),
+        { listbox: true },
+      ),
     ];
   };
   /** J5: the weight to show: the selection's while editing, else the box's. */
@@ -1707,21 +1763,29 @@ export function mountContextToolbar(
             constraints: [],
           } as never),
         ];
-        // Back to Auto height: the box grows to its text in the same step.
-        const needed = fixed ? textHeightNeeded(current) : 0;
+        // FINAL3 T1: Fixed height starts at the height the text has now
+        // (nothing jumps); back to Auto height, the box fits its lines.
         const stored = current.properties.height;
+        // Back to Auto height: the stored height follows the text too.
+        const unfixed = {
+          ...(current as object),
+          properties: {
+            ...(current.properties as object),
+            textFixedHeight: { type: 'boolean', value: false },
+          },
+        } as unknown as SceneLayer;
+        const height = textBoxOf(fixed ? unfixed : current).height;
         if (
-          needed &&
-          stored?.type === 'number' &&
-          !isAnimated(stored) &&
-          needed > stored.value
+          !stored ||
+          (!isAnimated(stored) &&
+            Math.abs(Number(stored.value) - height) > 0.01)
         )
           commands.push(
             setProperty(
               compositionId,
               current,
               'height',
-              withValue(current, 'height', Math.ceil(needed), 'number'),
+              withValue(current, 'height', height, 'number'),
             ),
           );
         run(fixed ? 'Auto height' : 'Fixed height', commands);
@@ -1780,10 +1844,113 @@ export function mountContextToolbar(
         style.textCase,
         (value) => styleRun('Set text case', 'textCase', value),
       ),
+      ...typographyRows(layer),
       anchorLabel,
       anchor,
       autoHeight,
     );
+  };
+  /**
+   * FINAL3 (Canva Advanced settings): Text position (Superscript, Subscript,
+   * None) on the selection while editing or the whole text; Typography:
+   * Kerning and Ligatures, with Change all for every text in the design.
+   */
+  const typographyRows = (layer: SceneLayer): HTMLElement[] => {
+    const compositionId = session.source.composition.id;
+    const label = (text: string) => {
+      const item = document.createElement('span');
+      item.className = 'toolbar-popover-label';
+      item.textContent = text;
+      return item;
+    };
+    const position = document.createElement('div');
+    position.className = 'segmented';
+    position.id = 'toolbar-text-position';
+    position.setAttribute('role', 'radiogroup');
+    position.setAttribute('aria-label', t('toolbar.textPosition'));
+    for (const value of ['none', 'super', 'sub'] as const) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.dataset.script = value;
+      item.setAttribute('role', 'radio');
+      item.textContent = t(`toolbar.script.${value}`);
+      item.onclick = () =>
+        safely(() => {
+          const editor = textEditorFor(layer.id);
+          if (editor) editor.format('script', value);
+          else
+            run(
+              'Set text position',
+              scriptCommands(compositionId, selected() ?? layer, value),
+            );
+        });
+      position.append(item);
+    }
+    const style = textStyleOf(layer);
+    const toggle = (
+      key: 'fontKerning' | 'fontLigatures',
+      on: boolean,
+      text: string,
+    ) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'switch-row';
+      item.dataset.action = key;
+      item.setAttribute('role', 'switch');
+      item.setAttribute('aria-checked', String(on));
+      item.innerHTML = `<span></span><span class="switch" aria-hidden="true"></span>`;
+      item.firstElementChild!.textContent = text;
+      item.onclick = () =>
+        safely(() =>
+          run(
+            key === 'fontKerning' ? 'Set kerning' : 'Set ligatures',
+            typographyCommands(compositionId, [selected() ?? layer], key, !on),
+          ),
+        );
+      return item;
+    };
+    const all = document.createElement('button');
+    all.type = 'button';
+    all.className = 'secondary sm';
+    all.dataset.action = 'typography-all';
+    all.textContent = t('toolbar.changeAll');
+    all.title = t('toolbar.changeAllTip');
+    all.onclick = () =>
+      safely(() => {
+        const texts: SceneLayer[] = [];
+        const visit = (layers: readonly SceneLayer[]) =>
+          layers.forEach((item) => {
+            if (item.type === 'text') texts.push(item);
+            visit(item.children);
+          });
+        visit(session.source.composition.layers);
+        run('Change all text typography', [
+          ...typographyCommands(
+            compositionId,
+            texts,
+            'fontKerning',
+            style.kerning !== false,
+          ),
+          ...typographyCommands(
+            compositionId,
+            texts,
+            'fontLigatures',
+            style.ligatures !== false,
+          ),
+        ]);
+      });
+    return [
+      label(t('toolbar.textPosition')),
+      position,
+      label(t('toolbar.typography')),
+      toggle('fontKerning', style.kerning !== false, t('toolbar.kerning')),
+      toggle(
+        'fontLigatures',
+        style.ligatures !== false,
+        t('toolbar.ligatures'),
+      ),
+      all,
+    ];
   };
   const shapeControls = (layer: SceneLayer) => {
     const shape = shapeOf(layer);

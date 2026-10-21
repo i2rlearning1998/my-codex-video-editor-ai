@@ -74,8 +74,13 @@ export async function mockStock(
       body: media(file),
     });
   };
-  await page.route('https://api.pexels.com/**', (route) =>
-    api(
+  await page.route('https://api.pexels.com/**', (route) => {
+    // FINAL3 A2: the deprecated /videos/... paths (without /v1) answer 404,
+    // like the real API's retired routes.
+    const path = new URL(route.request().url()).pathname;
+    if (path.startsWith('/videos/'))
+      return route.fulfill({ status: 404, headers: cors, body: '{}' });
+    return api(
       route,
       () =>
         fixture(
@@ -84,8 +89,8 @@ export async function mockStock(
             : 'pexels-photos.json',
         ),
       route.request().headers()['authorization'] === GOOD_KEY,
-    ),
-  );
+    );
+  });
   await page.route('https://pixabay.com/api/**', (route) =>
     api(
       route,

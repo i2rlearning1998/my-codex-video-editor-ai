@@ -49,7 +49,7 @@ test('[F2-070] AI › Import a composition pack: Build video lists the media slo
   expect(added.name).not.toBe('Main composition');
 });
 
-test('[F2-071] Scene camera: a preset sets the camera with a badge; editing shows the scene still, Preview camera shows the move and turns picking off', async ({
+test('[F2-071] Scene camera: the scene toolbar Camera button opens the right Camera section (FINAL3 C3: no keyframe buttons); Preview camera keeps layers selectable', async ({
   page,
   openFixtureProject,
 }) => {
@@ -58,39 +58,29 @@ test('[F2-071] Scene camera: a preset sets the camera with a badge; editing show
   const bar = page.locator('#context-toolbar');
   await expect(bar).toHaveAttribute('data-kind', 'scene');
   await bar.locator('[data-control="scene-camera"]').click();
-  const panel = page.locator('[data-deep-panel="camera"]');
-  await expect(panel).toBeVisible();
-  const canvas = page.locator('#composition-canvas');
-  const art = (await page.locator('#artboard-shadow').boundingBox())!;
-  const shot = () => page.screenshot({ clip: art });
-  const still = await shot();
-  await panel.locator('[data-camera-preset="pan-left"]').click();
-  await expect(page.locator('#camera-badge')).toHaveText('Camera: Pan left');
-  const state = await hook(page);
-  expect(
-    (state.project.compositions[0] as { camera?: unknown }).camera,
-  ).toBeTruthy();
-  expect(state.history.labels.at(-1)).toBe('Camera preset');
-  await expect(panel.locator('[data-camera-key="x"]')).not.toHaveValue('0');
-  // Editing: un-moved.
-  await expect.poll(async () => (await shot()).equals(still)).toBe(true);
-  await panel.locator('#camera-preview').check();
-  await expect.poll(async () => (await shot()).equals(still)).toBe(false);
-  await page.screenshot({ path: 'reports/final-ui/u10-camera.png' });
-  // Picking is off while previewing.
-  const box = (await canvas.boundingBox())!;
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-  await expect(page.locator('.toast').last()).toContainText(
-    'cannot be selected',
-  );
-  expect((await hook(page)).session.selectedIds).toEqual([]);
-  // A typed zoom with a keyframe.
-  await panel.locator('[data-camera-keyframe="zoom"]').click();
-  await expect(panel.locator('[data-camera-keyframe="zoom"]')).toHaveAttribute(
-    'aria-pressed',
+  const panel = page.locator('#right-section');
+  await expect(panel).toHaveAttribute('data-section', 'Camera');
+  await expect(page.locator('[data-deep-panel="camera"]')).toHaveCount(0);
+  await panel.locator('[data-action="camera-add"]').click();
+  expect((await hook(page)).history.labels.at(-1)).toBe('Add camera');
+  await expect(panel.locator('[data-camera-keyframe]')).toHaveCount(0);
+  await panel.locator('[data-action="camera-preview"]').click();
+  await expect(panel.locator('[data-action="camera-preview"]')).toHaveAttribute(
+    'aria-checked',
     'true',
   );
-  await panel.locator('#camera-preview').uncheck();
+  await page.screenshot({ path: 'reports/final-ui/u10-camera.png' });
+  // Picking stays on while previewing: a click on a layer selects it.
+  const box = (await page.locator('#artboard-shadow').boundingBox())!;
+  await page.keyboard.press('Escape');
+  // (The blue video picture near the top left.)
+  await page.mouse.click(box.x + box.width * 0.25, box.y + box.height * 0.25);
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds.length)
+    .toBeGreaterThan(0);
+  await expect(
+    page.locator('.toast', { hasText: 'cannot be selected' }),
+  ).toHaveCount(0);
 });
 
 test.describe('library panel width', () => {

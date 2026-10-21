@@ -23,3 +23,20 @@ export function flag(name: keyof FeatureFlags): boolean {
       : (window as { __AIVE_FLAGS__?: Partial<FeatureFlags> }).__AIVE_FLAGS__;
   return override?.[name] ?? DEFAULTS[name];
 }
+
+/** FINAL3 T2: spell checking while editing text (off unless chosen). */
+const SPELLCHECK_KEY = 'aive.textSpellcheck';
+export function textSpellcheck(): boolean {
+  try {
+    return localStorage.getItem(SPELLCHECK_KEY) === 'on';
+  } catch {
+    return false;
+  }
+}
+export function setTextSpellcheck(on: boolean): void {
+  try {
+    localStorage.setItem(SPELLCHECK_KEY, on ? 'on' : 'off');
+  } catch {
+    /* Storage blocked: the setting lasts for this page only. */
+  }
+}

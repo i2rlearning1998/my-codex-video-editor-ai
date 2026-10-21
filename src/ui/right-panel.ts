@@ -21,6 +21,7 @@ import {
   clipFx,
   clipTransition,
   findClipByLayer,
+  isNestedClip,
   clipAudioDetached,
   sceneTransitionOf,
   type Transition,
@@ -97,8 +98,11 @@ import {
   type LayerEffectsContext,
 } from './right-panel/layer-effects';
 import { describeSelection, selectionRoots } from './selection-context';
+import { textListOf } from '../render/text-box';
+import { listCommands } from './text-box-commands';
 import type { EditorSession } from './session';
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
+import { cameraUi, isShotLayer } from './camera-section';
 
 export const RIGHT_SECTIONS = [
   'Properties',
@@ -115,6 +119,8 @@ export const RIGHT_SECTIONS = [
   'Code',
   // T1: themes (opened from the rail with nothing selected).
   'Theme',
+  // FINAL3 C3: the camera (a shot selected, or the scene toolbar's Camera).
+  'Camera',
 ] as const;
 export type RightSection = (typeof RIGHT_SECTIONS)[number];
 export const RIGHT_ICONS: Record<RightSection, string> = {
@@ -131,6 +137,7 @@ export const RIGHT_ICONS: Record<RightSection, string> = {
   Speech: 'text',
   Theme: 'color',
   Code: 'code',
+  Camera: 'camera',
 };
 /** Tabs not built yet: their ledger item and wave. J15: Filters and
  *  Effects open, listing what they will hold; Transitions is the J12 panel
@@ -147,14 +154,25 @@ export type SelectionKind =
   | 'shape'
   | 'drawing'
   | 'group'
-  | 'multi';
+  | 'multi'
+  | 'camera';
 export function kindOf(session: EditorSession): SelectionKind {
   const roots = selectionRoots(session.source, session.selectedIds);
   if (!roots.length) return 'none';
   if (roots.length > 1) return 'multi';
   const layer = roots[0]!;
+  if (isShotLayer(layer)) return 'camera';
   if (layer.type === 'shape') return drawingOf(layer) ? 'drawing' : 'shape';
   return layer.type as SelectionKind;
+}
+/** FINAL3 A3: the one selected layer is a nested clip. */
+export function nestedSelected(session: EditorSession): boolean {
+  if (kindOf(session) !== 'group') return false;
+  const found = findClipByLayer(
+    session.source.composition,
+    session.selectedIds[0]!,
+  );
+  return !!found && isNestedClip(found.clip);
 }
 /** The first tab's name for the selection. */
 export const firstTabKey = (kind: SelectionKind) =>
@@ -184,6 +202,8 @@ const TABS: Record<SelectionKind, RightSection[]> = {
   drawing: ['Properties', 'Animate', 'Effects', 'Adjust'],
   group: ['Properties', 'Fade', 'Animate'],
   multi: ['Properties', 'Fade', 'Animate'],
+  // FINAL3 C3: a camera shot on the Camera track.
+  camera: ['Camera'],
 };
 /**
  * V5 (spec 6): the cut marker whose Transition panel is open (the clip the
@@ -247,6 +267,15 @@ const CODE_TABS: RightSection[] = [
   'Speed',
   'Animate',
 ];
+/** FINAL3 A3: a nested clip takes effects (on everything inside) and a
+ *  speed that scales its inner time. */
+const NESTED_TABS: RightSection[] = [
+  'Properties',
+  'Fade',
+  'Effects',
+  'Speed',
+  'Animate',
+];
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
   // V7 (spec 11.5): Text to speech, opened from Record & create.
@@ -263,11 +292,18 @@ export function sectionsFor(session: EditorSession): RightSection[] {
   if (kindOf(session) === 'none' && ttsState.open && flag('legacyTtsPanel'))
     return ['Speech'];
   if (kindOf(session) === 'none' && themeState.open) return ['Audio', 'Theme'];
+  if (session.selectedIds.length && kindOf(session) !== 'camera')
+    cameraUi.open = false;
+  if (kindOf(session) === 'none' && cameraUi.open) return ['Camera'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session) && flag('legacyTtsPanel'))
     return [...TABS.audio, 'Speech'];
-  let tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
+  let tabs = codeLayerSelected(session)
+    ? CODE_TABS
+    : nestedSelected(session)
+      ? NESTED_TABS
+      : TABS[kindOf(session)];
   // P3 (spec 5.1b): Controls follow Properties when the layer has keyframes
   // or a Creator preset (only what it really has).
   const controlled = controlledLayer(session);
@@ -306,6 +342,8 @@ const folded = new Set<string>();
 export interface RightPanelHooks {
   /** U5: the Animate tab's presets (the former left Animate panel). */
   animateBody?: () => HTMLElement;
+  /** FINAL3 T5: the text's Font and Effects side panels and Position. */
+  openTool?: (id: 'font' | 'effects' | 'position') => void;
   crop?: () => void;
   /** The toolbar's popover contents, for the same controls here. */
   build?: (
@@ -324,6 +362,8 @@ export interface RightPanelHooks {
   projectAudio?: () => HTMLElement | null;
   /** T1: the Theme panel. */
   themeBody?: () => HTMLElement;
+  /** FINAL3 C3: the Camera section. */
+  cameraBody?: () => readonly HTMLElement[];
   /** V7: Text to speech's Save. */
   tts?: TtsHooks;
   /** V7: decodes clip sound for the Audio tab's loudness analysis. */
@@ -588,6 +628,9 @@ export function mountRightPanel(
           max: 4096,
           decimals: 0,
           presets: [12, 16, 24, 32, 48, 64, 96, 128],
+          // FINAL3 T5: the shared slider beside the number.
+          slider: true,
+          sliderRange: [8, 200],
           onCommit: (value) =>
             safely(() =>
               run('Set font size', [
@@ -673,7 +716,66 @@ export function mountRightPanel(
           })),
           onChange: (value) => styleRun('Set alignment', 'textAlign', value),
         }),
+        // FINAL3 T5: case (aA), vertical align and the list, as in Canva.
+        createSelect({
+          id: 'right-case',
+          label: t('toolbar.textCase'),
+          value: style.textCase,
+          options: (['none', 'upper', 'lower', 'title'] as const).map(
+            (value) => ({ value, label: t(`text.case.${value}`) }),
+          ),
+          onChange: (value) => styleRun('Set text case', 'textCase', value),
+        }),
+        createSelect({
+          id: 'right-valign',
+          label: t('toolbar.anchor'),
+          value: style.anchor,
+          options: (['top', 'middle', 'bottom'] as const).map((value) => ({
+            value,
+            label: t(`text.anchor.${value}`),
+          })),
+          onChange: (value) => styleRun('Set text anchor', 'textAnchor', value),
+        }),
+        createSelect({
+          id: 'right-list',
+          label: t('toolbar.list'),
+          value: textListOf(layer).list,
+          options: (['none', 'bullet', 'number', 'check'] as const).map(
+            (value) => ({ value, label: t(`text.list.${value}`) }),
+          ),
+          onChange: (value) =>
+            safely(() =>
+              run(
+                value === 'none' ? 'Remove list' : 'Set list',
+                listCommands(
+                  compositionId,
+                  single() ?? layer,
+                  value as 'none' | 'bullet' | 'number' | 'check',
+                ),
+              ),
+            ),
+        }),
         colorField('right-color'),
+        row(
+          button(
+            'right-text-font',
+            'text',
+            t('toolbar.font'),
+            hooks.openTool ? () => hooks.openTool!('font') : null,
+          ),
+          button(
+            'right-text-effects',
+            'effects',
+            t('toolbar.effects'),
+            hooks.openTool ? () => hooks.openTool!('effects') : null,
+          ),
+          button(
+            'right-text-position',
+            'layers',
+            t('toolbar.position'),
+            hooks.openTool ? () => hooks.openTool!('position') : null,
+          ),
+        ),
       ]),
       accordion('text-spacing', t('toolbar.advanced'), [
         hooks.build?.('spacing'),
@@ -1067,8 +1169,8 @@ export function mountRightPanel(
       ),
       slider,
       list,
-      toggle('reverse'),
-      toggle('freeze'),
+      // FINAL3 A3: a nested clip's speed scales its inner time only.
+      ...(nestedSelected(session) ? [] : [toggle('reverse'), toggle('freeze')]),
     ];
   };
   const animate = () => {
@@ -1410,6 +1512,12 @@ export function mountRightPanel(
   });
   const effects = () => {
     const kind = kindOf(session);
+    // FINAL3 A3: a nested clip's effects apply to everything inside it.
+    if (nestedSelected(session))
+      return [
+        heading(t('panel.effects'), t('right.nestedEffectsHint')),
+        ...fxEffects(),
+      ];
     if (kind === 'video' || kind === 'image')
       return [
         heading(t('panel.effects'), t('right.effectsHint')),
@@ -1637,35 +1745,37 @@ export function mountRightPanel(
                             ? [hooks.themeBody?.() ?? null].filter(
                                 (item): item is HTMLElement => !!item,
                               )
-                            : section === 'Speech'
-                              ? speech()
-                              : section === 'Transitions'
-                                ? transitions()
-                                : section === 'Audio' &&
-                                    kindOf(session) === 'none'
-                                  ? [
-                                      heading(
-                                        t('mixer.projectAudio'),
-                                        t('mixer.projectAudioHint'),
-                                      ),
-                                      hooks.projectAudio?.() ?? null,
-                                    ]
-                                  : section === 'Audio'
+                            : section === 'Camera'
+                              ? [...(hooks.cameraBody?.() ?? [])]
+                              : section === 'Speech'
+                                ? speech()
+                                : section === 'Transitions'
+                                  ? transitions()
+                                  : section === 'Audio' &&
+                                      kindOf(session) === 'none'
                                     ? [
                                         heading(
-                                          t('panel.audio'),
-                                          t('right.audioHint'),
+                                          t('mixer.projectAudio'),
+                                          t('mixer.projectAudioHint'),
                                         ),
-                                        ...audioTab(
-                                          engine,
-                                          session,
-                                          run,
-                                          report,
-                                          hooks.audioDecoder,
-                                          rerender,
-                                        ),
+                                        hooks.projectAudio?.() ?? null,
                                       ]
-                                    : [];
+                                    : section === 'Audio'
+                                      ? [
+                                          heading(
+                                            t('panel.audio'),
+                                            t('right.audioHint'),
+                                          ),
+                                          ...audioTab(
+                                            engine,
+                                            session,
+                                            run,
+                                            report,
+                                            hooks.audioDecoder,
+                                            rerender,
+                                          ),
+                                        ]
+                                      : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

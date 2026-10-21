@@ -5617,17 +5617,13 @@ button.number-field-step:focus-visible {
 .text-editor > div:not(:last-child) {
   margin-block-end: var(--paragraph-spacing, 0);
 }
-.text-editor[data-list='bullet'] > div::before {
-  content: '•\2002';
-}
-.text-editor[data-list='number'] {
-  counter-reset: text-list;
-}
-.text-editor[data-list='number'] > div {
-  counter-increment: text-list;
-}
-.text-editor[data-list='number'] > div::before {
-  content: counter(text-list) '.\2002';
+/* FINAL3 T3: each list paragraph carries its own marker (bullet by level,
+   number or a checklist box), the same text the canvas draws. */
+.text-editor > div[data-marker]::before {
+  content: attr(data-marker);
+  display: inline-block;
+  min-inline-size: 1.2em;
+  text-indent: 0;
 }
 .text-editor ::selection {
   background: color-mix(in srgb, var(--color-accent) 40%, transparent);
@@ -5893,6 +5889,77 @@ button.number-field-step:focus-visible {
 }
 .nle-clip[data-kind='audio'] {
   --clip-fill: var(--clip-audio);
+}
+/* FINAL3 C3: the Camera track: shots, a label with a fold button. */
+.nle-clip[data-kind='camera'] {
+  --clip-fill: var(--clip-camera);
+}
+.camera-lane-head {
+  position: sticky;
+  inset-inline-start: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 100%;
+  padding-inline: var(--space-1);
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.timeline-nle-row[data-camera='true'][data-collapsed='true'] .nle-clip {
+  font-size: 0;
+}
+.camera-panel-group .camera-row,
+.camera-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-block: var(--space-1);
+}
+.camera-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block: var(--space-2);
+}
+.camera-shots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.camera-shot {
+  width: 100%;
+  text-align: start;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-subtle, transparent);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--font-caption);
+}
+.camera-shot[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+.camera-name {
+  width: 100%;
+}
+.camera-framing h4 {
+  margin: var(--space-2) 0 var(--space-1);
+  font-size: var(--font-caption);
+}
+.camera-edit {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.camera-edit [aria-checked='true'] {
+  color: var(--accent-text);
+  border-color: var(--accent);
 }
 .clip-kind-icon {
   display: inline-flex;
@@ -10976,4 +11043,169 @@ input[type='range'] {
   100% {
     opacity: 0;
   }
+}
+
+/* FINAL3: the text Effects panel (Canva Style and Shape tiles). */
+.text-effect-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.text-effect-tile {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+.text-effect-tile[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.text-effect-preview {
+  inline-size: 100%;
+  block-size: auto;
+  border-radius: var(--radius-sm);
+}
+.text-effect-fields {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}
+
+/* FINAL3 T5: Canva's default text style buttons, each in its own size. */
+.text-default-button {
+  display: block;
+  inline-size: 100%;
+  margin-block-end: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  text-align: start;
+  cursor: grab;
+}
+.text-default-button:hover {
+  background: var(--color-bg-hover);
+}
+.text-default-button.text-add-heading {
+  font-size: var(--font-size-xl);
+  font-weight: var(--weight-semibold);
+}
+.text-default-button.text-add-subheading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--weight-medium);
+}
+.text-default-button.text-add-body {
+  font-size: var(--font-size-sm);
+}
+.my-text-style {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.my-text-style-use {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  text-align: start;
+}
+/* FINAL3 V2/V3: Build video for a plan, and Review & swap. */
+.plan-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+.plan-steps li {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+}
+.plan-steps li[data-state='running'],
+.plan-steps li[data-state='done'] {
+  color: var(--text);
+}
+.plan-steps li[data-state='failed'] {
+  color: var(--warning-text);
+}
+.plan-banner {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--warning-text);
+}
+.plan-summary[data-state='error'] {
+  color: var(--danger-text);
+}
+.plan-scene {
+  border-top: 1px solid var(--border-subtle);
+  padding-block: var(--space-2);
+}
+.plan-scene h4 {
+  margin: 0 0 var(--space-1);
+  cursor: pointer;
+}
+.plan-narration {
+  width: 100%;
+  resize: vertical;
+}
+.plan-flag {
+  color: var(--warning-text);
+  font-size: var(--font-caption);
+}
+.plan-alternatives {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-block: var(--space-1);
+}
+.plan-alternative {
+  width: 64px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--font-caption);
+}
+.plan-alternative[aria-pressed='true'] {
+  border: 2px solid var(--accent);
+}
+.plan-alternative img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.plan-compare {
+  margin: 0 0 var(--space-2);
+  padding-inline-start: var(--space-4);
+}
+.theme-contains {
+  display: block;
+  font-size: var(--font-caption);
+  color: var(--text-secondary);
+}
+[data-plan-status='built'] .shelf-badge {
+  color: var(--success-text);
+}
+[data-plan-status='needs-assets'] .shelf-badge {
+  color: var(--warning-text);
+}
+.plan-feel input {
+  flex: 1;
+  min-width: 0;
 }

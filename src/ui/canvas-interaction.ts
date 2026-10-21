@@ -2,6 +2,7 @@ import type { PlaceTool } from './draw-palette';
 import { invertMatrix, transformPoint, type Point2 } from '../core';
 import { pickLayer, type Viewport } from '../render/canvas';
 import { deriveRenderItems, locateLayer } from '../render/adapter';
+import { textStyleOf } from '../render/text-style';
 import {
   hitHandle,
   hitMultiHandle,
@@ -92,7 +93,10 @@ export function bindCanvasInteraction(
   /** I2: the Draw palette's Shape, Line, Sticky note and Text tools. */
   place?: PlaceTool,
   /** J4: edit a text layer on the canvas (caret at a page point, or all). */
-  editText?: (id: string, at?: { x: number; y: number }) => void,
+  editText?: (
+    id: string,
+    options?: { at?: { x: number; y: number }; selectAll?: boolean },
+  ) => void,
   /** FINAL2 U7: mask handles and the chroma eyedropper (they win only while
    *  their right-panel section is open). */
   effects?: EffectsCanvasTool,
@@ -499,16 +503,43 @@ export function bindCanvasInteraction(
         suppressClick = false;
         return;
       }
-      session.select(
-        pick(screenPoint(event)),
-        event.shiftKey || event.ctrlKey || event.metaKey,
-      );
+      const picked = pick(screenPoint(event));
+      const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+      // FINAL3 T2: a click on the one selected text places the caret there
+      // (the first click selects it, as in Canva). A table keeps its
+      // double-click (it picks the cell).
+      const pickedLayer = picked
+        ? locateLayer(session.source.composition.layers, picked)?.layer
+        : undefined;
+      if (
+        !additive &&
+        picked &&
+        editText &&
+        session.selectedIds.length === 1 &&
+        session.selectedId === picked &&
+        pickedLayer?.type === 'text' &&
+        !textStyleOf(pickedLayer).engine?.table &&
+        event.detail === 1
+      ) {
+        editText(picked, { at: { x: event.clientX, y: event.clientY } });
+        return;
+      }
+      session.select(picked, additive);
     });
   // Double-click enters the group under the pointer and selects its child.
   canvas.ondblclick = (event) =>
     safely(() => {
       if (drawing()) return;
       const point = screenPoint(event);
+      // FINAL3 T1: a double-click on a text's side handle: auto width.
+      const handle = handleAt(point);
+      if (
+        (handle === 'text-left' || handle === 'text-right') &&
+        session.selectedId
+      ) {
+        interaction.resetTextWidth(session.selectedId);
+        return;
+      }
       const leaf = pickLayer(session.source, viewport(), point);
       const current = resolvePick(session.source, leaf, session.enteredGroupId);
       if (!current.id) return;
@@ -522,10 +553,14 @@ export function bindCanvasInteraction(
         crop.start(current.id);
         return;
       }
-      // J4: a double-click on text edits it, with the caret at the pointer.
+      // FINAL3 T2: a double-click on text edits it with all of it selected.
       if (found?.layer.type === 'text' && editText) {
         session.select(current.id);
-        editText(current.id, { x: event.clientX, y: event.clientY });
+        // (A table editor uses the point to pick its cell.)
+        editText(current.id, {
+          selectAll: true,
+          at: { x: event.clientX, y: event.clientY },
+        });
         return;
       }
       if (found?.layer.type !== 'group') return;

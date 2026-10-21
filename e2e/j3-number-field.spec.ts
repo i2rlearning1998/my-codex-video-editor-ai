@@ -7,11 +7,6 @@ import {
   showCategory,
   toScreen,
 } from './fixtures';
-import { LEGACY_VIEWPORT } from './fixtures';
-
-// Pixel and canvas-geometry checks written for the 1600 × 1072 window
-// (FIX1 D-287 made 1920 × 940 the default).
-test.use({ viewport: LEGACY_VIEWPORT });
 
 // J3: one NumberField everywhere: arrows (Shift ×10, Alt ×0.1), wheel and
 // arrow keys, a slider beside bounded fields, a live canvas preview while
@@ -118,6 +113,8 @@ test('[INS-018] dragging a slider or scrubbing a label previews on the canvas li
   // Opacity slider beside the field: drag to the left end.
   const slider = page.locator('#inspector-opacity-slider');
   await expect(slider).toBeVisible();
+  // (At 1920 × 940 the panel scrolls; a user scrolls it into view first.)
+  await slider.scrollIntoViewIfNeeded();
   const track = (await slider.boundingBox())!;
   await page.mouse.move(track.x + track.width - 2, track.y + track.height / 2);
   await page.mouse.down();
@@ -138,6 +135,7 @@ test('[INS-018] dragging a slider or scrubbing a label previews on the canvas li
   const label = page.locator('#inspector-content dt label', {
     hasText: 'Position X',
   });
+  await label.scrollIntoViewIfNeeded();
   const box = (await label.boundingBox())!;
   const before = (await layer(page, id)).transform.position.value[0];
   await page.mouse.move(box.x + 5, box.y + box.height / 2);

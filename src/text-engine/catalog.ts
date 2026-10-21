@@ -122,6 +122,9 @@ export const FONT_CATALOG: readonly CatalogFont[] = groups.flatMap(
 );
 export const isCatalogFont = (family: string) =>
   FONT_CATALOG.some((f) => f.family === family);
+/** FINAL3 T4: whether Google serves real italics for the family. */
+export const familyHasItalic = (family: string) =>
+  FONT_CATALOG.find((f) => f.family === family)?.italic ?? false;
 /**
  * FIX1 F8: the weights to request for `wanted`: each mapped to the
  * family's nearest real weight (ties go heavier), without repeats.

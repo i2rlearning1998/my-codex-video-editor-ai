@@ -11,6 +11,7 @@ import {
 } from './context-toolbar';
 import { selectionRoots } from './editing';
 import type { EditorSession } from './session';
+import { textPropertyCommand } from './text-box-commands';
 import { buildTransformCommands } from './transform-commands';
 
 export interface CopiedStyle {
@@ -18,7 +19,35 @@ export interface CopiedStyle {
   readonly color?: string;
   readonly fontSize?: number;
   readonly strokeWidth?: number;
+  /** FINAL3 (Canva format painter): a text's whole formatting. */
+  readonly text?: Readonly<Record<string, string | number | boolean>>;
 }
+/** The text formatting the format painter carries from text to text. */
+const TEXT_FORMAT_KEYS = [
+  'fontFamily',
+  'fontWeight',
+  'fontStyle',
+  'fontSource',
+  'textDecoration',
+  'textCase',
+  'textAlign',
+  'textAnchor',
+  'lineHeight',
+  'letterSpacing',
+  'paragraphSpacing',
+  'fontKerning',
+  'fontLigatures',
+  'textEffect',
+  'textCurve',
+  'textGradient',
+  'listStyle',
+] as const;
+/** Kept off the target when the copied text has none. */
+const TEXT_FORMAT_CLEAR: Partial<Record<string, string | number>> = {
+  textEffect: '',
+  textGradient: '',
+  textCurve: 0,
+};
 let copied: CopiedStyle | null = null;
 
 export const hasStyle = () => copied !== null;
@@ -49,7 +78,25 @@ export function styleOf(source: RenderSource, id: string): CopiedStyle | null {
       ? { fontSize: fontSize.value }
       : {}),
     ...(drawing && drawing !== 'invalid' ? { strokeWidth: drawing.width } : {}),
+    ...(layer.type === 'text' ? { text: textFormatOf(layer) } : {}),
   });
+}
+
+function textFormatOf(layer: {
+  properties: Readonly<Record<string, { type: string; value: unknown }>>;
+}) {
+  const format: Record<string, string | number | boolean> = {};
+  for (const key of TEXT_FORMAT_KEYS) {
+    const property = layer.properties[key];
+    if (
+      property &&
+      (typeof property.value === 'string' ||
+        typeof property.value === 'number' ||
+        typeof property.value === 'boolean')
+    )
+      format[key] = property.value;
+  }
+  return Object.freeze(format);
 }
 
 export function copyStyle(session: EditorSession): void {
@@ -86,7 +133,31 @@ export function pasteStyleCommands(
     ...(style.strokeWidth !== undefined
       ? brushSizeCommands(compositionId, layer, style.strokeWidth)
       : []),
+    ...(style.text && layer.type === 'text'
+      ? pasteTextFormat(compositionId, layer, style.text)
+      : []),
   ]);
+}
+
+function pasteTextFormat(
+  compositionId: string,
+  layer: Parameters<typeof textPropertyCommand>[1],
+  format: Readonly<Record<string, string | number | boolean>>,
+): Command[] {
+  const commands: Command[] = [];
+  for (const key of TEXT_FORMAT_KEYS) {
+    const value =
+      format[key] ??
+      (layer.properties[key] ? TEXT_FORMAT_CLEAR[key] : undefined);
+    if (value === undefined) continue;
+    try {
+      const command = textPropertyCommand(compositionId, layer, key, value);
+      if (command) commands.push(command);
+    } catch {
+      // A property of another type on the target is left as it is.
+    }
+  }
+  return commands;
 }
 
 export function pasteStyle(engine: EditorEngine, session: EditorSession): void {

@@ -129,7 +129,7 @@ export function nestedDepth(
 }
 
 /**
- * The commands that nest `clipIds` (top-level clips, any lanes, not audio)
+ * The commands that nest `clipIds` (top-level clips, any lanes, audio too)
  * into one nested clip on the parent timeline: a group of their layers with
  * one clip spanning them, on a new lane at the topmost selected lane's
  * place. Their clips are kept inside the nested clip. Run as one transaction.
@@ -156,8 +156,8 @@ export function nestClips(
     if (track.locked) throw new Error(`Track ${track.name} is locked`);
     const layer = layers.get(clip.layerId)?.l;
     if (!layer) throw new Error(`Clip ${clip.id} is not a top-level clip`);
-    if (layer.type === 'audio' || track.type === 'audio')
-      throw new Error('Audio clips cannot be nested yet');
+    // FINAL3 A3: audio clips nest too; they sound through the nested clip
+    // (src/media/audio.ts listAudibleClips).
   }
   // Cycles and depth: the new clip is one level above the deepest inside.
   const seen = new Set<string>();

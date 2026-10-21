@@ -175,6 +175,46 @@ export function createThemeLibrary(store: ThemeStore) {
     serial(async () => {
       if (!(await read()).some((theme) => theme.id === id)) return;
       await store.remove(`theme/${id}`);
+      if ((await store.keys()).includes(`feel/${id}`))
+        await store.remove(`feel/${id}`);
+    });
+  /**
+   * FINAL3 V4: a plan's feel saved as a theme. The theme record keeps the
+   * palette, fonts, motion and caption style; the rest of the feel
+   * (transition, camera tendency, pacing) is kept beside it as
+   * `feel/<id>`, so themes stay one schema.
+   */
+  const saveFeelTheme = (
+    name: string,
+    feel: Omit<Theme, 'id' | 'name'>,
+    extras: FeelExtras,
+  ) =>
+    serial(async () => {
+      const validName = await checkedName(name);
+      const value: Theme = {
+        ...feel,
+        id: `feel-${Date.now().toString(36)}`,
+        name: validName,
+      };
+      await write(value);
+      await store.write(
+        `feel/${value.id}`,
+        new Blob([JSON.stringify(extras)], { type: 'application/json' }),
+      );
+      return value;
+    });
+  /** The feel extras saved with a theme, or null. */
+  const feelOf = (id: string) =>
+    serial(async (): Promise<FeelExtras | null> => {
+      const blob = (await store.keys()).includes(`feel/${id}`)
+        ? await store.read(`feel/${id}`)
+        : null;
+      if (!blob) return null;
+      try {
+        return JSON.parse(await blob.text()) as FeelExtras;
+      } catch {
+        return null;
+      }
     });
   const migrateThemes = (project: EditorEngine) =>
     serial(async () => {
@@ -250,7 +290,15 @@ export function createThemeLibrary(store: ThemeStore) {
     deleteTheme,
     migrateThemes,
     applyTheme,
+    saveFeelTheme,
+    feelOf,
   };
+}
+/** FINAL3 V4: what a feel adds to a theme. */
+export interface FeelExtras {
+  readonly transition?: string;
+  readonly cameraTendency?: string;
+  readonly pacing?: string;
 }
 export type ThemeLibrary = ReturnType<typeof createThemeLibrary>;
 let library: Promise<ThemeLibrary> | undefined;

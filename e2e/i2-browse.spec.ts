@@ -292,10 +292,13 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
     'title',
     'Planned: Wave 8 (TXT-035)',
   );
+  // FINAL3 T5: Canva's order: default styles, font combinations, the
+  // user's own styles, then the rest.
   await expect(host.locator('.browse-section-head h3')).toContainText([
     'Default text styles',
-    'Dynamic text',
     'Font combinations',
+    'My text styles',
+    'Dynamic text',
     'Plain text',
     'Text styles',
     'Titles',
@@ -313,7 +316,7 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   const at = await toScreen(page, 300, 500);
   const rect = (await canvas.boundingBox())!;
   await host
-    .locator('[data-section="default"] .library-card[data-item-id="text-2"]')
+    .locator('[data-section="default"] [data-item-id="text-add-subheading"]')
     .dragTo(canvas, { targetPosition: { x: at.x - rect.x, y: at.y - rect.y } });
   await expect
     .poll(async () => (await scene(page)).layers.length)

@@ -2,6 +2,7 @@
 // Stock & API keys, and Offline voice & captions. Keys stay in this browser
 // (src/providers/keys.ts); nothing here is a project edit or an undo step.
 import { t } from '../i18n';
+import { setTextSpellcheck, textSpellcheck } from './feature-flags';
 import {
   DARK_ACCENTS,
   LIGHT_ACCENTS,
@@ -407,6 +408,10 @@ export function openSettings(
           </div>
           <p class="settings-note" id="motion-system">${t('settings.motionSystem', { value: t(systemReducesMotion() ? 'settings.yes' : 'settings.no') })}</p>
         </div>
+        <div class="settings-row">
+          <button type="button" class="switch-row" id="text-spellcheck-setting" role="switch" aria-checked="${String(textSpellcheck())}"><span>${t('settings.spellcheck')}</span><span class="switch" aria-hidden="true"></span></button>
+          <p class="settings-note">${t('settings.spellcheckNote')}</p>
+        </div>
       </div>
       <div class="settings-pane" role="tabpanel" id="settings-pane-appearance" aria-labelledby="settings-tab-appearance">
         <div class="settings-row">
@@ -460,6 +465,15 @@ export function openSettings(
   ))
     button.onclick = () => showTab(button.dataset.settingsTab as SettingsTab);
 
+  // FINAL3 T2: spell checking in the text editor (off by default).
+  const spell = root.querySelector<HTMLButtonElement>(
+    '#text-spellcheck-setting',
+  )!;
+  spell.onclick = () => {
+    const next = !textSpellcheck();
+    setTextSpellcheck(next);
+    spell.setAttribute('aria-checked', String(next));
+  };
   // General: animations.
   const syncMotion = () => {
     const current = readMotion();

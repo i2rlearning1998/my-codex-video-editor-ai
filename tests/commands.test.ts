@@ -86,6 +86,8 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       // FINAL2 U9: the captions dialogs and the nested clip bar.
       captions: { transcribe: vi.fn(), autoCaptions: vi.fn() },
       nesting: { enter: vi.fn() },
+      // FINAL3 V3: Review & swap for a built plan.
+      planReview: vi.fn(),
     };
     if (command.id === 'enter-nested' || command.id === 'unnest-clip') {
       session.selectMany(ids.slice(0, 2));
@@ -190,7 +192,11 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       expect(context.captions.autoCaptions).toHaveBeenCalledWith('layer-b');
     else if (command.id === 'enter-nested')
       expect(context.nesting.enter).toHaveBeenCalledOnce();
-    else if (command.id === 'play') expect(session.playing).toBe(true);
+    // FINAL3 V3: Review & swap opens a panel; no history.
+    else if (command.id === 'plan-review') {
+      expect(context.planReview).toHaveBeenCalledOnce();
+      expect(engine.canUndo).toBe(false);
+    } else if (command.id === 'play') expect(session.playing).toBe(true);
     else if (command.id === 'select-all')
       expect(session.selectedIds).toEqual(ids);
     else if (command.id === 'undo') expect(engine.canRedo).toBe(true);

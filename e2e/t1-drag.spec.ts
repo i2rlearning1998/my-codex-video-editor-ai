@@ -27,6 +27,11 @@ const textLane = async (page: Page) =>
 const mediaCard = (page: Page, name: string) =>
   page.locator(`.media-card[data-name="${name}"]`);
 
+async function closeToasts(page: Page) {
+  for (const close of await page.locator('.toast .toast-close').all())
+    await close.click().catch(() => undefined);
+  await expect(page.locator('.toast')).toHaveCount(0);
+}
 async function importWithPicker(page: Page, names: string[]) {
   await showCategory(page, 'Media');
   const chooser = page.waitForEvent('filechooser');
@@ -52,6 +57,10 @@ async function stableBox(from: Locator) {
 }
 /** A real mouse drag (press, a few moves, release). */
 async function drag(page: Page, from: Locator, x: number, y: number) {
+  // Toasts sit just above the timeline, over the left panel's lower cards
+  // at 1920 × 940 (FINAL3 D-295 made the timeline shorter there); the user
+  // closes a note before picking up the card under it.
+  await closeToasts(page);
   const box = await stableBox(from);
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -108,6 +117,7 @@ async function session(page: Page) {
     const mode = i % 6;
     if (mode === 5) {
       await stableBox(from);
+      await closeToasts(page);
       await from.click();
     } else if (mode === 2) {
       // Onto the "+" line under the last lane of the item's own group (a

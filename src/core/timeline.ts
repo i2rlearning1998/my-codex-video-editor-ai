@@ -232,9 +232,22 @@ export function clipTrimBounds(
 export function trackAcceptsLayer(
   trackType: Track['type'],
   layer: LaneLayer | string,
+  /** FINAL3 C3: with the lane's id, the Camera track takes only camera
+   *  shots, and camera shots stay on it. */
+  trackId?: string,
 ): boolean {
+  if (
+    trackId !== undefined &&
+    trackId.startsWith(CAMERA_TRACK_PREFIX) !==
+      (typeof layer !== 'string' &&
+        layer.properties?.role?.type === 'string' &&
+        layer.properties.role.value === 'camera')
+  )
+    return false;
   return laneAccepts(trackType, layer);
 }
+/** FINAL3 C3: the Camera track's id prefix (src/camera/shots.ts). */
+export const CAMERA_TRACK_PREFIX = 'camera-track';
 
 /** TL-001, J7: the track type that holds clips of a layer. */
 export function trackTypeForLayer(layer: LaneLayer | string): Track['type'] {
@@ -283,7 +296,7 @@ export function findFreeTrack<T extends LaneTrack>(
     .find(
       (track) =>
         !track.locked &&
-        trackAcceptsLayer(track.type, layerType) &&
+        trackAcceptsLayer(track.type, layerType, track.id) &&
         track.clips.every(
           (clip) =>
             excludedClipIds.includes(clip.id) ||

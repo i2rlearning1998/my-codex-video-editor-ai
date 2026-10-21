@@ -5,6 +5,8 @@ import type { EditorEngine } from '../core';
 import { bundledFaces, isBundledFont, usedFaces } from '../render/fonts';
 import { isCatalogFont } from '../text-engine/catalog';
 import { loadFont } from '../text-engine/fonts';
+import { loadUploadedFont } from '../text-engine/uploaded';
+import { SYSTEM_FONTS } from '../render/text-style';
 import { showToast } from './components/toast';
 import { t } from '../i18n';
 import type { SceneLayer } from '../render/adapter';
@@ -41,12 +43,31 @@ export function mountFonts(engine: EditorEngine, loaded: () => void) {
     // FINAL2 U6: catalog fonts the project uses come from the text engine's
     // cache (or download); a failure says so once and keeps a fallback.
     for (const key of used) {
-      const [family, weight] = key.split('|');
+      const [family, weight, italic] = key.split('|');
+      // FINAL3 T4: an uploaded font is registered from this browser's cache.
+      if (
+        family &&
+        !isCatalogFont(family) &&
+        !isBundledFont(family) &&
+        !SYSTEM_FONTS.some(([name]) => name === family) &&
+        !requested.has(key)
+      ) {
+        requested.add(key);
+        void loadUploadedFont(family, document.fonts).then((found) => {
+          if (found) loaded();
+          else if (!warned.has(family)) {
+            warned.add(family);
+            showToast(t('fonts.uploadedMissing', { font: family }), 'info');
+          }
+        });
+        continue;
+      }
       if (!family || !isCatalogFont(family) || isBundledFont(family)) continue;
       if (requested.has(key)) continue;
       requested.add(key);
       loadFont(family, [Number(weight) || 400], ['latin'], {
         offline: navigator.onLine === false,
+        italic: italic === 'i',
       }).then(loaded, () => {
         requested.delete(key);
         if (warned.has(family)) return;

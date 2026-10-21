@@ -185,7 +185,8 @@ export function mountAnimatePanel(
                 ...(preset === 'slide' ? { direction: 'up' } : {}),
               }),
             { preset },
-            preset === 'typewriter' && layer.type !== 'text',
+            (preset === 'typewriter' || preset === 'words') &&
+              layer.type !== 'text',
           ),
         ),
       );

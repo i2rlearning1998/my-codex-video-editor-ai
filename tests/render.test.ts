@@ -172,10 +172,12 @@ describe('scene graph render adapter', () => {
     const blank = createProject();
     blank.compositions[0]!.layers.push(createLayer('blank', 'text', 'Blank'));
     const snapshot = new EditorEngine(blank).state;
+    // FINAL3 T1: a text box is as big as its text ("Blank", 32 px, one
+    // line, deterministic metrics: 5 × 0.6 × 32 wide, 1.2 × 32 tall).
     expect(layerSize(snapshot.compositions[0]!.layers[0]!, [])).toEqual({
-      width: 360,
-      height: 100,
-      source: 'placeholder',
+      width: 96,
+      height: 38.4,
+      source: 'properties',
     });
   });
   it('respects nested matrices, inherited opacity and depth-first sibling order', () => {

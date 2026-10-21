@@ -1063,6 +1063,41 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FX1-017 | P0 | W9 | Verified | Google Fonts are asked for with the weights each family really has (a single-weight font such as Pacifico without a weight list), every font row is drawn in its own face (a small preview face), a failed font says why with Retry, and the Hindi filter hides fonts whose Devanagari coverage check fails (F8) |
 | FX1-018 | P0 | W9 | Verified | The on-canvas text editor turns off autofill, autocorrect, autocapitalize and writing suggestions, and draws a visible 2 px blinking caret in the text colour (black or white when that colour has under 3:1 contrast with the canvas) (F8) |
 
+## FN3: Final round 3 (text, camera, video plan)
+
+| ID | Pri | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| FN3-001 | P0 | W9 | Verified | Pexels video search asks the documented /v1/videos/search endpoint; the retired /videos/ path is never used (A2) |
+| FN3-002 | P0 | W9 | Verified | Adding stock photos, videos and icons never shows a Restored note and adds no undo step (A4) |
+| FN3-003 | P0 | W9 | Verified | Audio clips and video with sound can be nested; they sound through the nested clip's trim and speed (A3) |
+| FN3-004 | P0 | W9 | Verified | A selected nested clip has Effects (applied to the whole nest) and Speed (scales its inner time) tabs; enter and leave still work (A3) |
+| FN3-005 | P0 | W9 | Verified | Text boxes are Canva's: new text is auto width (grows, never wraps by itself); a side handle makes it fixed width (wraps, height grows); a double-click on the side handle goes back to auto width; the box is exactly as tall as its lines (T1) |
+| FN3-006 | P0 | W9 | Verified | Lists act on paragraphs (bullet, numbered, checklist): one line is one bullet, Enter adds one, Enter on an empty one leaves the list, Tab and Shift+Tab indent (T3) |
+| FN3-007 | P0 | W9 | Verified | Editing keeps IME and Devanagari compositions whole, moves by grapheme clusters and pastes plain text (T2, unit) |
+| FN3-008 | P0 | W9 | Verified | Text effects (Shadow, Lift, Hollow, Splice, Echo, Outline, Glow, Background, Glitch, Neon) and Curve draw the same in the preview and the export; the typewriter reveals grapheme clusters (T5, T6) |
+| FN3-009 | P0 | W9 | Verified | Double-click selects all the text; a click on selected text places the caret; the caret is a visible contrasting 2 px line; the editor is never a form field; Shift+Enter is a soft break (T2) |
+| FN3-010 | P0 | W9 | Verified | Text corner handles scale the font size (and a fixed width) in one step; the layer scale stays 1 (T1, contract revision 9) |
+| FN3-011 | P0 | W9 | Verified | The Text tab: search, Add a heading, subheading and body text (click and drag), at least 12 font combinations in English and in Hindi, default styles and My text styles (T5) |
+| FN3-012 | P0 | W9 | Verified | Fonts are asked for with each family's real weights and italics; an uploaded .ttf, .otf or .woff2 is listed under Uploaded fonts and used by the text (T4) |
+| FN3-013 | P0 | W9 | Verified | The camera rig is Blender-like and float-exact: identity at rest, a smooth push-in (no steps), depth parallax only with perspective, clip range and depth of field by depth, every controller finite, Randomise within limits, settings read defensively (C1, C2, C4) |
+| FN3-014 | P0 | W9 | Verified | Camera shots live on a Camera track (top lane, shots only) per scene; cuts switch cameras; the cameraShots hook and Composition Spec `cameraShots` build them; joined exports keep targets (C1, C5) |
+| FN3-015 | P0 | W9 | Verified | The scene toolbar's Camera opens the right Camera section (not in AI): Add camera, Add shot, presets row, controllers, Randomise, lens, sensor, shift, clip, depth of field, overlays, background, Track To, each one step; no keyframe UI; the Camera track folds; shots split like clips (C2, C3) |
+| FN3-016 | P0 | W9 | Verified | Preview camera shows the controller moving the picture; the exported frame equals the preview; layers stay selectable and movable through the camera (C3, C6) |
+| FN3-017 | P0 | W9 | Verified | The camera frame on the canvas edits a shot's start or end framing: drag trucks, corners zoom, the handle rolls, the wheel dollies, Alt-drag orbits, Shift is fine; one step each (C3, BP.16) |
+| FN3-018 | P0 | W9 | Verified | A camera on scene 2 leaves scene 1 alone; shots survive a reload; a project without cameras has no Camera track (C6) |
+| FN3-019 | P0 | W9 | Verified | Video Plan v2 is validated with plain-language errors that name the scene and layer; unknown fields and kit ids are warnings; the quality gate checks pace, length and text; the starter kit has 13 items and 4 backgrounds (V1, V2.5) |
+| FN3-020 | P0 | W9 | Verified | The auto-builder is deterministic: media ranked with four alternatives, scene length from the voice, captions from narration timing, camera from the scene or the feel, transitions, ducked music; silent with a banner without a voice; fallback cards and flags when media fail (V2) |
+| FN3-021 | P0 | W9 | Verified | AI › Import builds a v2 plan end to end with progress and no slot dialog; it replaces a single empty scene in one undo step, opens the scene strip and says Built N scenes (V2.0, V2.6) |
+| FN3-022 | P0 | W9 | Verified | Without a voice key the build is silent with a banner; with stock down media get fallback cards and needs-asset flags and the build completes (V2.1, V2.2) |
+| FN3-023 | P0 | W9 | Verified | Review & swap: up to four alternatives, Search more and Use my own swap media keeping place and animation; a narration change speaks it again and remakes the scene; re-time, reorder, delete, regenerate; Export plan and Compare to plan (V3) |
+| FN3-024 | P0 | W9 | Verified | The importer rejects a plan with errors in plain words, warns for an unknown starter-kit id, and a v1 composition still opens the slot dialog (V1.2, V6.6) |
+| FN3-025 | P1 | W9 | Verified | AI lists a built plan with its status, its feel as a Theme and the starter kit; a feel saves as a theme that says what it holds, exports as a Creator Pack and applies without changing content; a plan can name it by themeId (V3.5, V4) |
+| FN3-026 | P0 | W9 | Verified | Text format tools: aA cycles UPPER, lower and Title; superscript and subscript; kerning, ligatures and Change all; a text gradient of 2 to 10 colours; the format painter copies a text's whole format (font, case, spacing, effect, gradient) (CP.4, CP.6, CP.11, CP.13, CP.14) |
+| FN3-027 | P0 | W9 | Verified | Every text effect (Shadow, Lift, Hollow, Splice, Echo, Outline, Glow, Background, Glitch, Neon) has its settings and Remove effect and draws (CP.20 to CP.30) |
+| FN3-028 | P0 | W9 | Verified | The font picker filters by kind, lists document fonts, and a font that cannot load says why with Retry while the text keeps its font (T4.2, T4.5, CP.17) |
+| FN3-029 | P0 | W9 | Verified | Camera overlays (guides, safe areas, passepartout, name) show only in the editor; a camera background image draws through the camera and is exported only with Include in render; Track To and the focus picker set the camera (BP.8 to BP.13) |
+| FN3-030 | P0 | W9 | Verified | Spellcheck is a Settings switch (off by default); inside the text editor Ctrl+Z undoes one typing burst and Ctrl+A, Ctrl+I style the text; a camera is renamed in one step; the typewriter shows in the exported frame (T2.6, T2.9, T2.11, C3.7, T6.1) |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.

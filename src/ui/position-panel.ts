@@ -3,7 +3,7 @@
 // composition's layers as a flat, front-first list that reorders by drag.
 // It opens from the context toolbar and the selection action cluster, and
 // works for any selection the shared capability rules allow.
-import type { EditorEngine } from '../core';
+import { number, type Command, type EditorEngine } from '../core';
 import { t } from '../i18n';
 import { locateLayer, type SceneLayer } from '../render/adapter';
 import {
@@ -166,6 +166,46 @@ export function mountPositionPanel(
           })
         : null;
     if (fields && rotation) fields.append(rotation);
+    // FINAL3 C4: a top-level layer's depth (z) for the camera's parallax
+    // and depth of field; 0 is the canvas plane (nothing changes).
+    const topLevel =
+      single &&
+      session.source.composition.layers.some((layer) => layer.id === single.id);
+    if (fields && single && topLevel) {
+      const stored = single.properties.depth;
+      const depth =
+        stored?.type === 'number' && Number.isFinite(stored.value)
+          ? Number(stored.value)
+          : 0;
+      fields.append(
+        createNumberField({
+          id: 'position-depth',
+          label: t('position.depth'),
+          value: depth,
+          unit: 'px',
+          decimals: 0,
+          min: -5000,
+          max: 100000,
+          slider: true,
+          sliderRange: [-1000, 3000],
+          presets: [0, 200, 500, 1000, 2000],
+          onCommit: (value) =>
+            safely(() => {
+              if (value === depth) return;
+              engine.commands.transaction('Layer depth', [
+                {
+                  type: 'SET_PROPERTY',
+                  compositionId: session.source.composition.id,
+                  layerId: single.id,
+                  target: { kind: 'property', key: 'depth' },
+                  property: number(value),
+                } as Command,
+              ]);
+            }),
+          onInvalid: (message) => report(new RangeError(message)),
+        }),
+      );
+    }
     return [
       ...(fields ? [section(t('geometry.title'), fields)] : []),
       order,

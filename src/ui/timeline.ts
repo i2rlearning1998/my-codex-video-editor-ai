@@ -94,6 +94,7 @@ import { iconSvg } from './icons';
 import { SAVE_KINDS } from './my-library';
 import { transitionFocus } from './transition-focus';
 import { createNumberField, syncNumberField } from './components/number-field';
+import { isCameraTrack } from '../camera/shots';
 
 /** TL-027/TL-032 menu actions labelled from the command catalog. */
 const CLIP_ACTIONS: readonly EditAction[] = [
@@ -135,8 +136,10 @@ export function parseTimecode(text: string): number | null {
 }
 
 /** J10: the kind of element a clip holds, for its colour and icon. */
-type ClipKind = 'text' | 'shape' | 'group' | 'video' | 'image' | 'audio';
+type ClipKind =
+  'text' | 'shape' | 'group' | 'video' | 'image' | 'audio' | 'camera';
 const CLIP_ICONS: Record<ClipKind, string> = {
+  camera: 'camera',
   text: 'text',
   shape: 'elements',
   group: 'group',
@@ -144,10 +147,15 @@ const CLIP_ICONS: Record<ClipKind, string> = {
   image: 'image',
   audio: 'audio',
 };
-const clipKind = (layer: { readonly type: string }): ClipKind =>
-  (['text', 'shape', 'group', 'video', 'image', 'audio'] as const).find(
-    (kind) => kind === layer.type,
-  ) ?? 'shape';
+const clipKind = (layer: {
+  readonly type: string;
+  readonly properties?: Readonly<Record<string, { readonly value: unknown }>>;
+}): ClipKind =>
+  layer.properties?.role?.value === 'camera'
+    ? 'camera'
+    : ((['text', 'shape', 'group', 'video', 'image', 'audio'] as const).find(
+        (kind) => kind === layer.type,
+      ) ?? 'shape');
 /** T3: where something dragged over the timeline would land. */
 export type AssetTarget = LaneDropTarget;
 /** T3: what is being dragged over the timeline. */
@@ -280,7 +288,11 @@ export class TimelineInteraction {
         tracks[
           tracks.findIndex((track) => track.id === found.track.id) + shift
         ];
-      if (!target || target.locked || !trackAcceptsLayer(target.type, layer))
+      if (
+        !target ||
+        target.locked ||
+        !trackAcceptsLayer(target.type, layer, target.id)
+      )
         return undefined;
       moves.set(layer.id, target.id);
     }
@@ -654,6 +666,14 @@ export function mountTimeline(
    *  28 px, audio 36 px, with an 8 px gap between lanes. */
   const laneHeight = (group: string) =>
     group === 'visual' ? 52 : group === 'audio' ? 36 : 28;
+  /** FINAL3 C3: the Camera track folds to a thin strip (transient). */
+  let cameraFolded = false;
+  const rowHeight = (track: { readonly id: string; readonly type: string }) =>
+    isCameraTrack(track)
+      ? cameraFolded
+        ? 12
+        : 28
+      : laneHeight(laneGroupOfTrack(track.type as never));
   const LANE_GAP = 8;
   /** V2: padding above the first and below the last lane when they scroll. */
   const LANE_PAD = 23;
@@ -663,7 +683,7 @@ export function mountTimeline(
     const spans: { top: number; height: number }[] = [];
     let top = 0;
     for (const row of nleTimelineRows(session.source, session.timelineZoom)) {
-      const height = laneHeight(laneGroupOfTrack(row.track.type));
+      const height = rowHeight(row.track);
       if (spans.length) top += LANE_GAP;
       spans.push({ top, height });
       top += height;
@@ -1242,7 +1262,11 @@ export function mountTimeline(
       // separates them, and a lane of another group refuses a dragged clip.
       const laneGroup = laneGroupOfTrack(row.track.type);
       line.dataset.laneGroup = laneGroup;
-      line.style.height = `${laneHeight(laneGroup)}px`;
+      line.style.height = `${rowHeight(row.track)}px`;
+      if (isCameraTrack(row.track)) {
+        line.dataset.camera = 'true';
+        line.dataset.collapsed = String(cameraFolded);
+      }
       line.classList.toggle(
         'lane-group-start',
         trackIndex > 0 &&
@@ -1267,6 +1291,28 @@ export function mountTimeline(
       track.dataset.trackId = row.track.id;
       track.style.width = `${width}px`;
       track.style.marginLeft = `${headerWidth}px`;
+      if (isCameraTrack(row.track)) {
+        const head = document.createElement('button');
+        head.type = 'button';
+        head.className = 'camera-lane-head';
+        head.dataset.action = 'camera-lane-fold';
+        head.setAttribute('aria-expanded', String(!cameraFolded));
+        head.title = t(cameraFolded ? 'cam.laneUnfold' : 'cam.laneFold');
+        head.setAttribute('aria-label', head.title);
+        head.innerHTML = iconSvg(
+          cameraFolded ? 'chevronRight' : 'chevronDown',
+          12,
+        );
+        if (!cameraFolded) head.append(document.createTextNode(t('cam.title')));
+        head.onclick = (event) => {
+          event.stopPropagation();
+          cameraFolded = !cameraFolded;
+          renderedIdentity = '';
+          render();
+        };
+        head.onpointerdown = (event) => event.stopPropagation();
+        track.append(head);
+      }
       const crossTrack = controller.destinationId?.startsWith('track:');
       // TL-030 preview: where the drop inserts and which clips it pushes.
       for (const insertion of landing?.insertions ?? []) {
@@ -3815,6 +3861,10 @@ export function mountTimeline(
     // Empty lane space: the few marker and lane entries, flat.
     if (!kind) {
       const earlier = earlierItems(new Set());
+      // FINAL3 A3: clips of mixed kinds (a video and an audio clip) can
+      // still nest and group.
+      if (selectionRoots(session.source, session.selectedIds).length > 1)
+        earlier.push(commandItem('nest-clips'));
       menu.replaceChildren(
         ...earlier,
         ...(earlier.length && lane.length ? [divider()] : []),

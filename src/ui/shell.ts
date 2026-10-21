@@ -215,7 +215,7 @@ import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
-import { addTopLevel } from './library-insert';
+import { addTopLevel, myTextStyleCommands } from './library-insert';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
@@ -273,8 +273,30 @@ import { cycleThemePreference, onThemeChange, themePreference } from './theme';
 import { openSettings } from './settings-dialog';
 import { openCompositionBuild } from './composition-dialog';
 import { PARAMS_HEADER } from './ai-import-dialog';
-import { cameraBadge, cameraPanel, cameraView } from './camera-panel';
-import type { Asset } from '../core';
+import { cameraMatrixFor, cameraStateAt } from '../camera/shots';
+import { sceneCameraMatrix } from '../camera/scene';
+import { selectionBounds } from '../render/selection';
+import { cameraBadge, cameraView } from './camera-panel';
+import { cameraSection, cameraUi, selectedShot } from './camera-section';
+import {
+  feelTheme,
+  isPlanV2,
+  KIT_IDS,
+  kitLayers,
+  withFeelDefaults,
+  type VideoPlan,
+} from '../video-plan';
+import type { FeelExtras } from '../themes/library';
+import { openPlanBuild, planServices } from './plan-build-dialog';
+import { planReviewPanel } from './plan-review';
+import { planState, savePlanState } from './plan-state';
+import { planVoiceEngine } from './voiceover';
+import { synthesizeToMedia } from '../speech';
+import type { LicenseMeta } from '../providers';
+import { mountCameraFrame } from './camera-frame';
+import { cameraShotsOf } from '../camera/shots';
+import { updateCameraCommands } from '../camera/shot-commands';
+import type { Asset, Project } from '../core';
 import {
   dropStock,
   mountStock,
@@ -743,14 +765,44 @@ export function mountEditorShell(
       codeRenderStatus.textContent = text;
   };
   codeBaker.onChange(paintCodeStatus);
+  /** FINAL3 C3: the camera's depth-0 matrix while previewing, else null. */
+  const previewCameraMatrix = (): AffineMatrix | null => {
+    if (!cameraView.preview || session.playing) return null;
+    const composition = session.source.composition;
+    const time = session.currentTime;
+    const rig = cameraStateAt(composition, time, (id) => {
+      const box = selectionBounds(session.source, id);
+      if (!box) return null;
+      const [x, y] = transformPoint(box.matrix, [
+        box.bounds.x + box.bounds.width / 2,
+        box.bounds.y + box.bounds.height / 2,
+      ]);
+      return { x, y };
+    });
+    if (rig)
+      return cameraMatrixFor(rig, composition, 0) as unknown as AffineMatrix;
+    return composition.camera
+      ? (sceneCameraMatrix(composition, time) as unknown as AffineMatrix)
+      : null;
+  };
   // G3: Fit, then the zoom about the view's center, then the pan.
-  const viewportFor = (z: number, requested: readonly [number, number]) => {
+  const viewportFor = (
+    z: number,
+    requested: readonly [number, number],
+    withLens = true,
+  ) => {
+    const fitHeight = Math.max(1, canvas.clientHeight || stage.clientHeight);
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
-      Math.max(1, canvas.clientHeight || stage.clientHeight),
+      fitHeight,
       session.source.composition,
       window.devicePixelRatio || 1,
-      EDITOR_FIT,
+      // FINAL3 A1: a portrait canvas on a short stage (laptop-height
+      // windows) keeps 12 px per side, so the margin does not shrink it.
+      fitHeight < 560 &&
+        session.source.composition.height > session.source.composition.width
+        ? { ...EDITOR_FIT, padding: 12 }
+        : EDITOR_FIT,
     );
     const at = (pan: readonly [number, number]): AffineMatrix =>
       multiplyMatrices(
@@ -771,7 +823,22 @@ export function mountEditorShell(
       session.source.composition,
       requested,
     );
-    return { ...view, matrix: at(pan) };
+    let matrix = at(pan);
+    // FINAL3 A1: at a whole-pixel zoom (100 %, 200 %) the artboard sits on
+    // whole device pixels, so nothing is resampled (crisp, as in Figma).
+    const device = matrix[0] * view.pixelRatio;
+    if (Math.abs(device - Math.round(device)) < 1e-9 && matrix[1] === 0) {
+      const snap = (value: number) =>
+        Math.round(value * view.pixelRatio) / view.pixelRatio;
+      const [a, b, c, d, e, f] = matrix;
+      matrix = [a, b, c, d, snap(e), snap(f)];
+    }
+    // FINAL3 C3: Preview camera looks through the camera's depth-0 view, so
+    // layers are drawn, picked and moved where the camera shows them (the
+    // camera's frame stays where the artboard is).
+    const lens = withLens ? previewCameraMatrix() : null;
+    if (lens) matrix = multiplyMatrices(matrix, lens);
+    return { ...view, matrix };
   };
   const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
   // G4: a circle the size of the brush (or eraser) follows the pointer.
@@ -803,7 +870,11 @@ export function mountEditorShell(
   // outside the artboard is painted by it.
   const artboardShadow = element('#artboard-shadow');
   const placeArtboardShadow = () => {
-    const [a, , , d, e, f] = viewport().matrix;
+    const [a, , , d, e, f] = viewportFor(
+      session.canvasZoom,
+      session.canvasPan,
+      false,
+    ).matrix;
     const { width, height } = session.source.composition;
     Object.assign(artboardShadow.style, {
       left: `${canvas.offsetLeft + e}px`,
@@ -916,6 +987,7 @@ export function mountEditorShell(
       ),
     );
   };
+  let cameraFrameTool: ReturnType<typeof mountCameraFrame> | null = null;
   const draw = () => {
     if (disposed) return;
     drawCount++;
@@ -930,22 +1002,20 @@ export function mountEditorShell(
     const base = session.previewSource ?? session.source;
     // FINAL2 U10: the editing canvas shows the scene un-moved by the
     // camera unless playing or "Preview camera" is on.
-    const cameraOff =
-      !!base.composition.camera && !session.playing && !cameraView.preview;
+    // FINAL3 C3: the camera (shots or the scene camera) is off while
+    // editing, applied while playing, and with "Preview camera" folded into
+    // the view (so layers stay selectable and movable through it).
+    const cameraOff = !session.playing && !cameraView.preview;
+    const shotFrame = cameraFrameTool?.overlay() ?? null;
     const drawn = {
       ...base,
-      ...(cameraOff
-        ? { composition: { ...base.composition, camera: undefined } }
-        : {}),
+      ...(cameraOff ? { camera: false } : {}),
+      ...(shotFrame ? { cameraFrame: shotFrame } : {}),
+      ...(!session.playing && cameraView.preview ? { cameraInView: true } : {}),
       // G4: the eraser's cuts show while dragging; release commits them.
       ...(drawTool.erased.size
         ? {
-            composition: withErasedPaths(
-              cameraOff
-                ? { ...base.composition, camera: undefined }
-                : base.composition,
-              drawTool.erased,
-            ),
+            composition: withErasedPaths(base.composition, drawTool.erased),
           }
         : {}),
       frames,
@@ -1111,6 +1181,8 @@ export function mountEditorShell(
         animatePanel.render();
         return animateBody;
       },
+      openTool: (id) =>
+        id === 'position' ? positionPanel.toggle() : toolPanels?.open(id),
       // I4: the toolbar's crop tool and popover contents (one implementation).
       crop: () => toolPanels?.startCrop(),
       build: (id) => contextToolbar.build(id),
@@ -1124,6 +1196,21 @@ export function mountEditorShell(
         mountThemePanel(host, { ...themeOptions, onChange: () => () => {} });
         return host;
       },
+      // FINAL3 C3: the Camera section (cameras, shots, Blender settings).
+      cameraBody: () =>
+        cameraSection({
+          composition: () => session.source.composition,
+          assets: () => engine.state.assets,
+          time: () => session.currentTime,
+          selectedId: () =>
+            session.selectedIds.length === 1 ? session.selectedIds[0]! : null,
+          select: (id) => session.select(id),
+          run: (label, commands) =>
+            engine.commands.transaction(label, commands),
+          report: reportError,
+          redraw: () => safely(draw),
+          rerender: () => rightPanel.render('Camera'),
+        }),
       audioDecoder: decoder,
       // V7 (spec 11.5): Save stores the speech and adds or replaces its clip.
       tts: {
@@ -1229,7 +1316,7 @@ export function mountEditorShell(
       scenes: () => sceneBoard.open(),
       canvasSize: resizeCanvas,
       // FINAL2 U10: the scene camera panel.
-      camera: () => openCameraPanel(),
+      camera: () => openCameraSection(),
       autoCaptions: () => openAutoCaptions(captionsContext),
     },
   );
@@ -1263,20 +1350,19 @@ export function mountEditorShell(
       ? (locateLayer(session.source.composition.layers, session.selectedId)
           ?.layer ?? null)
       : null;
-  /** FINAL2 U10: the scene camera, a left side panel. */
-  const openCameraPanel = () =>
-    sidePanels.show('camera', t('camera.title'), () =>
-      cameraPanel({
-        composition: () => session.source.composition,
-        time: () => session.currentTime,
-        run: (label, commands) =>
-          safely(() => {
-            engine.commands.transaction(label, commands);
-            sidePanels.refresh();
-          }),
-        redraw: () => safely(draw),
-      }),
-    );
+  /** FINAL3 C3: the scene toolbar's Camera opens the right Camera section. */
+  const openCameraSection = () => {
+    cameraUi.open = true;
+    themeState.open = false;
+    projectAudioState.open = false;
+    transitionFocus.sceneId = null;
+    root.querySelector('.editor-shell')?.classList.remove('right-empty');
+    workspace?.setEmpty(false);
+    renderedRight = '';
+    syncRightRail();
+    setRightSection('Camera');
+    workspace?.setOpen('right', true);
+  };
   // The badge over the canvas, and no picking while the camera is previewed.
   const cameraBadgeEl = document.createElement('div');
   cameraBadgeEl.className = 'camera-badge';
@@ -1284,21 +1370,32 @@ export function mountEditorShell(
   cameraBadgeEl.setAttribute('role', 'status');
   cameraBadgeEl.hidden = true;
   (root.querySelector('#canvas-footer') ?? stage).append(cameraBadgeEl);
-  stage.addEventListener(
-    'pointerdown',
-    (event) => {
-      if (
-        cameraView.preview &&
-        session.source.composition.camera &&
-        (event.target as Element).closest?.('canvas')
-      ) {
-        event.stopImmediatePropagation();
-        event.preventDefault();
-        showToast(t('camera.previewHint'), 'info');
-      }
-    },
-    true,
-  );
+  // FINAL3 C3: Preview camera no longer blocks the canvas: the view looks
+  // through the camera, so layers are picked and moved where they are seen.
+  // While editing, the selected shot's camera frame edits its start or end
+  // (with a shot selected the canvas edits the camera; select a layer in
+  // the timeline or the Scene list, or turn the frame off, to edit layers).
+  const framedShot = () =>
+    selectedShot(session.source.composition, session.selectedIds);
+  cameraFrameTool = mountCameraFrame({
+    stage,
+    canvas,
+    scene: () => session.source.composition,
+    shot: framedShot,
+    which: () => cameraUi.edit,
+    matrix: () => viewport().matrix,
+    active: () =>
+      cameraUi.frame &&
+      !cameraUi.pickFocus &&
+      !session.playing &&
+      !cameraView.preview &&
+      !cropTool.active,
+    run: (label, commands) =>
+      safely(() => {
+        engine.commands.transaction(label, commands);
+      }),
+    redraw: () => safely(draw),
+  });
   const openAltText = () => {
     const layer = selectedLayer();
     if (!layer) return;
@@ -1718,7 +1815,7 @@ export function mountEditorShell(
       finish: () => drawPalette?.place.finish(),
       cancel: () => drawPalette?.place.cancel(),
     },
-    (id, at) => editText(id, at ? { at } : { selectAll: true }),
+    (id, options) => editText(id, options ?? { selectAll: true }),
     effectsTool,
   );
   const commandContext: CommandContext = {
@@ -1770,6 +1867,10 @@ export function mountEditorShell(
         openAutoCaptions(captionsContext, layerId ?? undefined),
     },
     nesting: { enter: (layerId) => nestBar?.enter(layerId) },
+    planReview: () => {
+      if (planState(engine.state.id)) openPlanReview();
+      else showToast(t('plan.reviewEmpty'), 'info');
+    },
   };
   let renderedProject: unknown;
   let renderedSelection = '';
@@ -2009,6 +2110,34 @@ export function mountEditorShell(
       session.setMode(button.dataset.mode as 'editor' | 'animation2d');
     };
   session.onChange(syncMode);
+  // FINAL3 C3 (Blender's focus picker): with "Pick on canvas" on, the next
+  // layer selected becomes the camera's Focus Object (depth of field on),
+  // and the shot is selected again.
+  session.onChange(() => {
+    if (!cameraUi.pickFocus || session.selectedIds.length !== 1) return;
+    const composition = session.source.composition;
+    if (selectedShot(composition, session.selectedIds)) return;
+    const shots = cameraShotsOf(composition as never);
+    const entry =
+      shots.find((item) => item.layer.id === cameraUi.pickShot) ??
+      shots.find((item) => item.spec.id === cameraUi.cameraId) ??
+      shots[0];
+    cameraUi.pickFocus = false;
+    if (!entry) return;
+    const picked = session.selectedIds[0]!;
+    const root = composition.layers.find((layer) => layer.id === picked);
+    if (!root) return;
+    safely(() => {
+      engine.commands.transaction(
+        'Focus object',
+        updateCameraCommands(composition as never, {
+          ...entry.spec,
+          dof: { ...entry.spec.dof, enabled: true, focusLayer: picked },
+        }),
+      );
+      session.select(entry.layer.id);
+    });
+  });
   const unsubscribe = session.onChange(refresh);
   // J3: a NumberField being scrubbed or slid previews its edit on the canvas:
   // the commit runs in capture mode and the canvas draws the result. Nothing
@@ -2310,6 +2439,258 @@ export function mountEditorShell(
     );
     return add.items.length;
   };
+  /** FINAL2 U10 / FINAL3 V2.6: adds built scenes in one 'Build video' step
+   *  (replacing a single empty scene); returns the new scenes' ids. */
+  const addBuiltScenes = (
+    project: Project,
+    toast = t('composition.added', { count: project.compositions.length }),
+  ): string[] => {
+    const missing = project.assets.filter(
+      (asset) => !engine.state.assets.some((have) => have.id === asset.id),
+    );
+    if (missing.length)
+      engine.library(
+        'Import media',
+        missing.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
+      );
+    const taken = new Set<string>();
+    const collect = (value: unknown) => {
+      if (Array.isArray(value)) value.forEach(collect);
+      else if (value && typeof value === 'object')
+        for (const [key, inner] of Object.entries(value)) {
+          if (key === 'id' && typeof inner === 'string') taken.add(inner);
+          collect(inner);
+        }
+    };
+    collect(engine.state.compositions);
+    const fresh = project.compositions.map((composition) => {
+      // Ids already in the open project get a suffix (a second build).
+      let text = JSON.stringify(composition);
+      const ids = new Set<string>();
+      const own = (value: unknown) => {
+        if (Array.isArray(value)) value.forEach(own);
+        else if (value && typeof value === 'object')
+          for (const [key, inner] of Object.entries(value)) {
+            if (key === 'id' && typeof inner === 'string') ids.add(inner);
+            own(inner);
+          }
+      };
+      own(composition);
+      const suffix = `-${Date.now().toString(36)}`;
+      for (const id of ids)
+        if (taken.has(id))
+          text = text
+            .split(JSON.stringify(id))
+            .join(JSON.stringify(id + suffix));
+      return JSON.parse(text) as typeof composition;
+    });
+    // FIX1 F7: a project that is only one empty default scene gets the
+    // built scenes instead of keeping a blank first scene.
+    const scenes = engine.state.compositions;
+    const blank =
+      scenes.length === 1 &&
+      !scenes[0]!.layers.length &&
+      scenes[0]!.tracks.every((track) => !track.clips.length)
+        ? scenes[0]!.id
+        : null;
+    engine.commands.transaction('Build video', [
+      ...fresh.map((composition) => ({
+        type: 'CREATE_COMPOSITION' as const,
+        composition,
+      })),
+      ...(blank && fresh.length
+        ? [{ type: 'DELETE_COMPOSITION' as const, compositionId: blank }]
+        : []),
+    ]);
+    if (fresh[0]) session.selectComposition(fresh[0].id);
+    // The new scenes show at once in the strip, and the note stays long
+    // enough to read, with a way to the scenes board.
+    if (!stripShown) stripButton.click();
+    showToast(toast, 'success', 10000, {
+      label: t('composition.showScenes'),
+      run: () => element<HTMLButtonElement>('#scene-board-toggle').click(),
+    });
+
+    return fresh.map((composition) => composition.id);
+  };
+  /** FINAL3 V2: a quiet import (no Restored note) that returns the asset. */
+  const importQuiet = async (file: File, license?: LicenseMeta) => {
+    const [id] = await mediaPanel.importFiles([file], {
+      ...(license ? { license } : {}),
+      quiet: true,
+    });
+    return (
+      (session.source.assets.find((asset) => asset.id === id) as unknown as
+        Asset | undefined) ?? null
+    );
+  };
+  const planBuildServices = () =>
+    planServices({
+      assets: () => session.source.assets as unknown as readonly Asset[],
+      importFile: importQuiet,
+    });
+  const planThemeById = async (id: string) =>
+    BUILT_IN_THEMES.find((theme) => theme.id === id) ??
+    (await (await themeLibrary)?.listThemes())?.find(
+      (theme) => theme.id === id,
+    ) ??
+    null;
+  /** FINAL3 V2: Build video for a Video Plan v2 (no slot dialog). */
+  let aiPanel: { render(): void } | null = null;
+  const openPlanBuildFor = (input: VideoPlan) => {
+    session.setPlaying(false);
+    // FINAL3 V4.2 and V4.3: the plan's theme, else the project's current
+    // theme, gives the feel values the plan leaves out.
+    const themeId = input.meta.themeId ?? currentThemeId();
+    const plan = withFeelDefaults(
+      input,
+      themeById(themeId),
+      themeId ? (feelExtras.get(themeId) ?? null) : null,
+    );
+    openPlanBuild(plan, {
+      assets: () => session.source.assets as unknown as readonly Asset[],
+      importFile: importQuiet,
+      theme: planThemeById,
+      addScenes: (result) => {
+        // FINAL3 V3.5: the plan's feel is listed in AI as a Theme.
+        if (plan.feel?.palette || plan.feel?.headingFont) {
+          const { theme } = feelTheme(plan);
+          const hash = [...plan.meta.title].reduce(
+            (h, c) => (h * 31 + c.charCodeAt(0)) >>> 0,
+            7,
+          );
+          const id = `feel-${hash.toString(36)}`;
+          const name = t('plan.feelName', { name: plan.meta.title }).slice(
+            0,
+            60,
+          );
+          void creatorLibrary
+            .add([
+              {
+                key: `plan-feel/${id}`,
+                packId: 'plan-feel',
+                packName: { en: plan.meta.title.slice(0, 60) },
+                packVersion: 1,
+                item: {
+                  id,
+                  name: { en: name },
+                  tags: ['feel'],
+                  type: 'theme',
+                  data: theme,
+                } as unknown as CreatorEntry['item'],
+                name,
+                addedAt: new Date().toISOString(),
+              },
+            ])
+            .catch(reportError);
+        }
+        const ids = addBuiltScenes(
+          result.project!,
+          t('plan.built', {
+            count: String(result.project!.compositions.length),
+          }),
+        );
+        session.select(null);
+        savePlanState(engine.state.id, {
+          plan: result.plan!,
+          alternatives: Object.fromEntries(
+            Object.entries(result.alternatives).map(([k, v]) => [k, [...v]]),
+          ),
+          flags: [...result.flags],
+          silent: result.silent,
+          sceneIds: ids,
+          pages: {},
+        });
+        aiPanel?.render();
+      },
+      review: () => openPlanReview(),
+      report: reportError,
+    });
+  };
+  /** FINAL3 V3: Review & swap, a left side panel. */
+  const openPlanReview = () =>
+    sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
+      planReviewPanel({
+        project: () => engine.state,
+        run: (label, commands) =>
+          safely(() => {
+            engine.commands.transaction(label, commands);
+          }),
+        saveFeel: async (name, plan) => {
+          const library = await themeLibrary;
+          if (!library) throw new Error(t('theme.storageUnavailable'));
+          const { theme, extras } = feelTheme(plan);
+          const saved = await library
+            .saveFeelTheme(name, theme, extras)
+            .catch((error: unknown) => {
+              throw themeError(error);
+            });
+          await refreshThemes();
+          showToast(t('theme.savedToast', { name: saved.name }), 'success');
+        },
+        addAssets: (assets) => {
+          if (assets.length)
+            engine.library(
+              'Import media',
+              assets.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
+            );
+        },
+        services: async () => {
+          const plan = planState(engine.state.id)?.plan;
+          const voice = await planVoiceEngine(
+            plan?.meta.language ?? 'en',
+          ).catch(() => null);
+          return {
+            ...planBuildServices(),
+            ...(plan?.meta.themeId
+              ? { theme: await planThemeById(plan.meta.themeId) }
+              : {}),
+            ...(voice
+              ? {
+                  voice: async (text: string, lang: string) => {
+                    const made = await synthesizeToMedia(text, {
+                      provider: voice.provider,
+                      voiceId: voice.voiceId,
+                      lang,
+                    });
+                    const asset = await importQuiet(
+                      new File([made.blob], 'Narration.wav', {
+                        type: made.mime,
+                      }),
+                    );
+                    return asset ? { asset, duration: made.durationSec } : null;
+                  },
+                }
+              : { voiceUnavailable: t('plan.noVoice') }),
+          };
+        },
+        importCandidate: (candidate) =>
+          planBuildServices().importCandidate(candidate),
+        searchMore: async (intent, page) => [
+          ...(await planBuildServices().resolve.stock(
+            intent.query,
+            intent.type,
+            intent.orientation,
+            page,
+          )),
+        ],
+        pickFile: (accept) =>
+          new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = accept;
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              resolve(file ? await importQuiet(file) : null);
+            };
+            input.click();
+          }),
+        openScene: (id) => session.selectComposition(id),
+        download: (name, text) => downloadText(text, name, 'application/json'),
+        report: reportError,
+        rerender: () => sidePanels.refresh(),
+      }),
+    );
   /** FINAL2 U10: Build video from an AI composition (slots, then scenes). */
   const openBuildVideo = (item: { name: { en: string }; data: unknown }) =>
     openCompositionBuild(item, {
@@ -2322,79 +2703,7 @@ export function mountEditorShell(
         );
       },
       library: (id) => libraryActions.find(id),
-      addScenes: (project) => {
-        const missing = project.assets.filter(
-          (asset) => !engine.state.assets.some((have) => have.id === asset.id),
-        );
-        if (missing.length)
-          engine.library(
-            'Import media',
-            missing.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
-          );
-        const taken = new Set<string>();
-        const collect = (value: unknown) => {
-          if (Array.isArray(value)) value.forEach(collect);
-          else if (value && typeof value === 'object')
-            for (const [key, inner] of Object.entries(value)) {
-              if (key === 'id' && typeof inner === 'string') taken.add(inner);
-              collect(inner);
-            }
-        };
-        collect(engine.state.compositions);
-        const fresh = project.compositions.map((composition) => {
-          // Ids already in the open project get a suffix (a second build).
-          let text = JSON.stringify(composition);
-          const ids = new Set<string>();
-          const own = (value: unknown) => {
-            if (Array.isArray(value)) value.forEach(own);
-            else if (value && typeof value === 'object')
-              for (const [key, inner] of Object.entries(value)) {
-                if (key === 'id' && typeof inner === 'string') ids.add(inner);
-                own(inner);
-              }
-          };
-          own(composition);
-          const suffix = `-${Date.now().toString(36)}`;
-          for (const id of ids)
-            if (taken.has(id))
-              text = text
-                .split(JSON.stringify(id))
-                .join(JSON.stringify(id + suffix));
-          return JSON.parse(text) as typeof composition;
-        });
-        // FIX1 F7: a project that is only one empty default scene gets the
-        // built scenes instead of keeping a blank first scene.
-        const scenes = engine.state.compositions;
-        const blank =
-          scenes.length === 1 &&
-          !scenes[0]!.layers.length &&
-          scenes[0]!.tracks.every((track) => !track.clips.length)
-            ? scenes[0]!.id
-            : null;
-        engine.commands.transaction('Build video', [
-          ...fresh.map((composition) => ({
-            type: 'CREATE_COMPOSITION' as const,
-            composition,
-          })),
-          ...(blank && fresh.length
-            ? [{ type: 'DELETE_COMPOSITION' as const, compositionId: blank }]
-            : []),
-        ]);
-        if (fresh[0]) session.selectComposition(fresh[0].id);
-        // The new scenes show at once in the strip, and the note stays long
-        // enough to read, with a way to the scenes board.
-        if (!stripShown) stripButton.click();
-        showToast(
-          t('composition.added', { count: fresh.length }),
-          'success',
-          10000,
-          {
-            label: t('composition.showScenes'),
-            run: () =>
-              element<HTMLButtonElement>('#scene-board-toggle').click(),
-          },
-        );
-      },
+      addScenes: (project) => addBuiltScenes(project),
       openProject: async (project) => {
         if (
           await confirmDialog(t('composition.openConfirm'), {
@@ -2445,7 +2754,10 @@ export function mountEditorShell(
       onAdd: addCreatorItems,
       openAi: () => openCategory('AI'),
       // FINAL2 U10: a composition builds into scenes (slot dialog).
-      buildComposition: (item) => openBuildVideo(item),
+      buildComposition: (item) =>
+        isPlanV2(item.data)
+          ? openPlanBuildFor(item.data as unknown as VideoPlan)
+          : openBuildVideo(item),
       copy: (text) => {
         void navigator.clipboard
           .writeText(text)
@@ -3452,12 +3764,59 @@ export function mountEditorShell(
       ),
     };
   };
+  /** FINAL3 V3.5: a starter kit item in the open scene (one step). */
+  const insertKitItem = async (id: string) => {
+    const composition = session.source.composition;
+    const theme = themeById(currentThemeId()) ?? BUILT_IN_THEMES[0]!;
+    const built = await kitLayers(id, {
+      width: composition.width,
+      height: composition.height,
+      fps: composition.fps,
+      palette: {
+        background: theme.palette.background,
+        text: theme.palette.text,
+        accent: theme.palette.accent,
+      },
+      text: t('kit.sampleText'),
+    });
+    if (!built) return;
+    const placed = mineCommands(
+      session.source.composition,
+      session.source.assets,
+      {
+        id: `kit-${id}`,
+        name: t(`kit.name.${id}`),
+        kind: 'annotation',
+        createdAt: engine.state.metadata.updatedAt,
+        layers: built.layers,
+        clips: built.clips.map((clip) => ({
+          layerId: clip.layerId,
+          startTime: clip.startTime,
+          duration: clip.duration,
+          metadata: clip.metadata as Record<string, unknown>,
+        })),
+        origin: 0,
+      },
+      session.currentTime,
+      (commands) =>
+        engine
+          .preview(commands)
+          .compositions.find((scene) => scene.id === composition.id)!,
+    );
+    engine.commands.transaction('Add starter kit item', placed.commands);
+    session.selectMany?.(placed.layerIds);
+  };
   const insertCreatorItem = (
     id: string,
     time = session.currentTime,
     point?: readonly [number, number] | null,
   ) => {
     const entry = creatorEntryOf(id);
+    // FINAL3 V2: a Video Plan builds into scenes.
+    if (entry?.item.type === 'composition' && isPlanV2(entry.item.data)) {
+      openPlanBuildFor(entry.item.data as unknown as VideoPlan);
+      return;
+    }
     // B1: a style is never placed on the canvas.
     if (!entry || entry.item.type === 'style') return;
     // R2: a theme item is applied (themes live in the AI category too).
@@ -3552,6 +3911,12 @@ export function mountEditorShell(
     if (!entry || !item) return;
     if (item.type === 'motion')
       downloadCode(entry.name, item.data.tier, item.data.source);
+    else if (item.type === 'composition' && isPlanV2(item.data))
+      downloadText(
+        `${JSON.stringify(item.data, null, 2)}\n`,
+        `${entry.name.replace(/[^\p{L}\p{N}]+/gu, '-')}.plan.json`,
+        'application/json',
+      );
     else if (item.type === 'composition')
       downloadCode(entry.name, 'A', JSON.stringify(item.data.spec, null, 2));
     else if (item.type === 'style') {
@@ -3728,8 +4093,29 @@ export function mountEditorShell(
       cancelLabel: t('media.cancel'),
       maxLength: 80,
     });
-  mountAiPanel(element('#library-ai'), {
+  aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    // FINAL3 V3.5: a plan's status, and the starter kit.
+    planStatus: (_id, data) => {
+      if (!isPlanV2(data)) return null;
+      const state = planState(engine.state.id);
+      const title = (data as VideoPlan).meta.title;
+      if (!state || state.plan.meta.title !== title) return 'not-built';
+      return state.flags.length ? 'needs-assets' : 'built';
+    },
+    kit: {
+      // (Listed with the plans it builds, once the library holds one.)
+      items: () =>
+        creatorLibrary
+          .list()
+          .some(
+            (entry) =>
+              entry.item.type === 'composition' && isPlanV2(entry.item.data),
+          )
+          ? KIT_IDS.map((id) => ({ id, name: t(`kit.name.${id}`) }))
+          : [],
+      insert: (id) => void insertKitItem(id).catch(reportError),
+    },
     insert: (id) => safely(() => insertCreatorItem(id)),
     applyPreset: (id) => applyCreatorPreset(id),
     importPack: () => openCreatorImport(),
@@ -4014,12 +4400,19 @@ export function mountEditorShell(
     store ? createThemeLibrary(store) : null,
   );
   const builtInThemeIds = new Set(BUILT_IN_THEMES.map((theme) => theme.id));
+  const feelExtras = new Map<string, FeelExtras>();
   const refreshThemes = async () => {
     const library = await themeLibrary;
     if (!library) return;
     libraryThemes = (await library.listThemes()).filter(
       (theme) => !builtInThemeIds.has(theme.id),
     );
+    // FINAL3 V4: what a feel theme adds (transition, camera, pacing).
+    feelExtras.clear();
+    for (const theme of libraryThemes) {
+      const extras = await library.feelOf(theme.id);
+      if (extras) feelExtras.set(theme.id, extras);
+    }
     themeChanged();
   };
   // After a project opens: old project themes move into the library once.
@@ -4131,9 +4524,59 @@ export function mountEditorShell(
             : t('theme.applied', { name: theme.name }),
         'success',
       );
+      if (feelExtras.has(theme.id))
+        showToast(t('theme.feelApplied', { name: theme.name }), 'info');
     });
   const themeOptions = {
     themes: themeLists,
+    // FINAL3 V4: what a theme holds, and its Creator Pack export.
+    describe: (theme: Theme) => {
+      const extras = feelExtras.get(theme.id);
+      const parts = [
+        t('theme.has.palette'),
+        t('theme.has.fonts'),
+        t('theme.has.motion'),
+        ...(theme.caption ? [t('theme.has.caption')] : []),
+        ...(extras?.transition ? [t('theme.has.transition')] : []),
+        ...(extras?.cameraTendency ? [t('theme.has.camera')] : []),
+        ...(extras?.pacing ? [t('theme.has.pacing')] : []),
+      ];
+      return t('theme.contains', { list: parts.join(', ') });
+    },
+    exportPack: (theme: Theme) => {
+      const id = theme.id.replace(/[^a-z0-9-]/g, '-').slice(0, 60);
+      const { id: _id, name: _name, ...data } = theme;
+      void _id;
+      void _name;
+      downloadText(
+        `${JSON.stringify(
+          {
+            format: 'creator-pack',
+            version: 1,
+            pack: {
+              id: `theme-${id}`.slice(0, 64),
+              name: { en: theme.name },
+              version: 1,
+              author: 'human',
+              createdWith: 'api',
+            },
+            items: [
+              {
+                id,
+                name: { en: theme.name },
+                tags: ['theme'],
+                type: 'theme',
+                data,
+              },
+            ],
+          },
+          null,
+          2,
+        )}\n`,
+        `${theme.name.replace(/[^\p{L}\p{N}]+/gu, '-')}.creatorpack.json`,
+        'application/json',
+      );
+    },
     current: currentThemeId,
     apply: applyTheme,
     save: (name: string) =>
@@ -4317,6 +4760,17 @@ export function mountEditorShell(
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
       },
+      // FINAL3 T5: a saved text style, centred at the playhead.
+      insertTextStyle: (style) =>
+        safely(() => {
+          const insert = myTextStyleCommands(
+            session.source,
+            style.layer,
+            session.currentTime,
+          );
+          engine.commands.transaction(insert.label, insert.commands);
+          session.select(insert.layerId ?? null);
+        }),
       code: {
         insert: (template) =>
           void insertCodeTemplate(template, session.currentTime).catch(
@@ -4797,6 +5251,7 @@ export function mountEditorShell(
         !focusedScene(session) &&
         !ttsState.open &&
         !themeState.open &&
+        !cameraUi.open &&
         !projectAudioState.open)
     ) {
       animateShown = false;
@@ -4870,9 +5325,11 @@ export function mountEditorShell(
           ? 'tts.title'
           : themeState.open
             ? 'panel.theme'
-            : projectAudioState.open
-              ? 'mixer.projectAudio'
-              : 'transition.title'
+            : cameraUi.open
+              ? 'cam.title'
+              : projectAudioState.open
+                ? 'mixer.projectAudio'
+                : 'transition.title'
         : kind === 'video' || kind === 'image'
           ? `right.tab.${kind}`
           : firstTabKey(kind),
@@ -5292,11 +5749,12 @@ export function mountEditorShell(
         !transitionFocus.sceneId &&
         !ttsState.open &&
         !themeState.open &&
+        !cameraUi.open &&
         !projectAudioState.open,
     );
     // (A press waits for its release, so its gesture is never cancelled.)
     if (pressing) return;
-    workspace?.setEmpty(key === '');
+    workspace?.setEmpty(key === '' && !cameraUi.open);
     if (key === rightSelection) return;
     rightSelection = key;
     // V7 (spec 10.1): a selection only changes the rail's categories; it
@@ -5312,6 +5770,7 @@ export function mountEditorShell(
           !transitionFocus.sceneId &&
           !ttsState.open &&
           !themeState.open &&
+          !cameraUi.open &&
           workspace?.rightOpen
         )
           workspace.setOpen('right', false);
@@ -6300,11 +6759,15 @@ export function mountEditorShell(
         width: `${boardRight - boardLeft}px`,
       });
     const centre = canvasPoint(cx, cy);
+    // A snapped axis lands exactly on its target: the screen round trip
+    // leaves float dust (279.99999999999994) that is dropped here.
+    const exact = (value: number, snapped: boolean) =>
+      snapped ? Math.round(value * 1e6) / 1e6 : value;
     return centre
-      ? ([centre[0] - footprint.dx, centre[1] - footprint.dy] as [
-          number,
-          number,
-        ])
+      ? ([
+          exact(centre[0] - footprint.dx, snappedX !== null),
+          exact(centre[1] - footprint.dy, snappedY !== null),
+        ] as [number, number])
       : pointer;
   };
   drags().register({
@@ -6554,6 +7017,13 @@ export function mountEditorShell(
           viewport().matrix,
         )?.corners ?? null,
       draws: drawCount,
+      // FINAL3 C3: the camera frame on the canvas (canvas CSS px), if shown.
+      cameraFrame:
+        cameraFrameTool
+          ?.overlay()
+          ?.corners.map((corner) =>
+            transformPoint(viewport().matrix, corner),
+          ) ?? null,
       // T6: text boxes whose fixed height clips their text (the editor
       // draws an overflow mark on them).
       textOverflow: deriveRenderItems(session.source)

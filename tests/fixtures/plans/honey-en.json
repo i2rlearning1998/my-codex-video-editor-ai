@@ -1,0 +1,52 @@
+{
+  "format": "video-plan",
+  "version": 2,
+  "meta": { "title": "Where honey comes from", "language": "en", "aspect": "16:9", "fps": 30 },
+  "feel": {
+    "palette": { "background": "#1b1a17", "text": "#fff7e6", "accent": "#f2a900" },
+    "headingFont": "Poppins",
+    "bodyFont": "Inter",
+    "captionStyle": "bold-box",
+    "transition": "dip-to-black",
+    "cameraTendency": "gentle",
+    "pacing": "medium"
+  },
+  "scenes": [
+    {
+      "id": "open",
+      "title": "Cold open",
+      "narration": "Every jar of honey starts with a single flower.",
+      "durationHint": 4,
+      "layers": [
+        { "id": "flower", "kind": "media", "size": "full", "mediaIntent": { "query": "bee flower macro", "type": "photo", "orientation": "landscape" } },
+        { "id": "title", "kind": "title", "text": "Where honey comes from", "anchor": "center", "enter": "slide-up" }
+      ],
+      "camera": { "controller": "push-in", "strength": 0.6 }
+    },
+    {
+      "id": "hive",
+      "title": "The hive",
+      "narration": "Inside the hive, thousands of bees work together to turn nectar into honey.",
+      "layers": [
+        { "id": "hive-video", "kind": "media", "size": "full", "mediaIntent": { "query": "beehive bees working", "type": "video" } },
+        { "id": "name", "kind": "kit", "kit": "lower-third-1", "text": "The hive|Up to 60,000 bees", "enter": "slide-right" },
+        { "id": "count", "kind": "kit", "kit": "number-counter", "text": "60,000|bees in one hive", "start": 2.5, "enter": "pop" }
+      ],
+      "transitionOut": { "type": "crossfade", "duration": 0.8 },
+      "sfx": [{ "query": "bees buzzing", "at": 0, "volume": 0.4 }]
+    },
+    {
+      "id": "close",
+      "title": "Close",
+      "narration": "So next time you taste honey, thank a bee.",
+      "layers": [
+        { "id": "bg", "kind": "kit", "kit": "background-spotlight" },
+        { "id": "thanks", "kind": "kit", "kit": "end-card", "text": "Thank a bee|Subscribe for more nature stories" },
+        { "id": "cta", "kind": "kit", "kit": "subscribe-cta", "enter": "pop" }
+      ]
+    }
+  ],
+  "captions": { "enabled": true },
+  "music": { "query": "calm acoustic", "volume": 0.3, "ducking": true },
+  "notes": "A short explainer for a nature channel."
+}

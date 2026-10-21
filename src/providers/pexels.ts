@@ -105,8 +105,9 @@ export function createPexels(deps: ProviderDependencies = {}) {
       build(o, key) {
         const url = new URL(
           o.kind === 'stock-video'
-            ? // FIX1 F2: the documented video endpoint has no /v1 prefix.
-              'https://api.pexels.com/videos/search'
+            ? // FINAL3 A2: the documented video search is /v1/videos/search;
+              // the bare /videos/... paths are deprecated.
+              'https://api.pexels.com/v1/videos/search'
             : 'https://api.pexels.com/v1/search',
         );
         url.search = new URLSearchParams({

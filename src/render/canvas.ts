@@ -1,13 +1,23 @@
 import { processChromaFrame } from '../chroma/process';
 import { drawMaskedItems } from '../masks/render';
 import { drawStructuredText } from '../text-engine/draw';
-import { drawRich } from './rich-text';
+import { drawTextWithEffects } from './text-effects';
+import { setTextBoxMeasurer } from './text-box';
 import { sceneCameraMatrix } from '../camera/scene';
+import { cameraMatrixFor, cameraStateAt } from '../camera/shots';
+import { dofBlur, insideClip } from '../camera/rig';
+import {
+  cameraBackgroundRequest,
+  drawCameraBackground,
+  drawCameraFrame,
+  drawCameraViewOverlays,
+} from './camera-overlay';
 import { drawPicture } from './picture';
 import {
   boundsCorners,
   invertMatrix,
   multiplyMatrices,
+  IDENTITY_MATRIX,
   transformPoint,
   type AffineMatrix,
   type Point2,
@@ -198,15 +208,29 @@ function fillSpaced(
   context.letterSpacing = '0px';
 }
 
+/**
+ * FINAL3 T1: the page's one text measurer (real fonts through Canvas). Text
+ * boxes are sized with it everywhere (render/text-box.ts).
+ */
+let metrics: CanvasRenderingContext2D | null | undefined;
+export const canvasMeasureText: TextMeasurer = (text, fontSize, style) => {
+  if (metrics === undefined)
+    metrics =
+      typeof document === 'undefined' ||
+      // jsdom (unit tests) has no Canvas: the deterministic metrics apply.
+      /jsdom/i.test(globalThis.navigator?.userAgent ?? '')
+        ? null
+        : document.createElement('canvas').getContext('2d');
+  if (!metrics) return fallbackTextMeasure(text, fontSize, style);
+  return measureWithContext(metrics, text, fontSize, style);
+};
+
 /** Replaceable Canvas 2D boundary. No engine, subscriptions, commands, or retained scene data. */
 export class Canvas2DRenderer implements CompositionRenderer {
-  #metrics: CanvasRenderingContext2D | null | undefined;
-  readonly measureText: TextMeasurer = (text, fontSize, style) => {
-    if (this.#metrics === undefined)
-      this.#metrics = document.createElement('canvas').getContext('2d');
-    if (!this.#metrics) return fallbackTextMeasure(text, fontSize, style);
-    return measureWithContext(this.#metrics, text, fontSize, style);
-  };
+  readonly measureText: TextMeasurer = canvasMeasureText;
+  constructor() {
+    setTextBoxMeasurer(canvasMeasureText);
+  }
   render(
     canvas: HTMLCanvasElement,
     source: RenderSource,
@@ -377,14 +401,75 @@ export function drawComposition(
   const view = multiplyMatrices(pixels, viewport.matrix);
   // FINAL1: a scene camera moves the picture (not the artboard or the
   // editor's overlays); without one, `content` is `view`.
-  const camera = source.composition.camera
-    ? sceneCameraMatrix(source.composition, source.currentTime ?? 0)
-    : null;
+  const { items, warnings } = deriveRenderItems(source);
+  // FINAL3 C1: the shot on screen (Camera track), else the FINAL1 scene
+  // camera. Floating point throughout: nothing is rounded, so a slow move
+  // never steps (the jitter fix); preview and export share this code.
+  const time = source.currentTime ?? 0;
+  const frame = {
+    width: source.composition.width,
+    height: source.composition.height,
+  };
+  const centers = new Map<string, { x: number; y: number; n: number }>();
+  for (const item of items) {
+    const root = item.ancestors[0] ?? item.id;
+    const [x, y] = transformPoint(item.matrix, [
+      item.size.width / 2,
+      item.size.height / 2,
+    ]);
+    const known = centers.get(root) ?? { x: 0, y: 0, n: 0 };
+    centers.set(root, { x: known.x + x, y: known.y + y, n: known.n + 1 });
+  }
+  const rig =
+    source.camera === false
+      ? null
+      : cameraStateAt(source.composition, time, (id) => {
+          const known = centers.get(id);
+          return known ? { x: known.x / known.n, y: known.y / known.n } : null;
+        });
+  const camera =
+    rig ||
+    source.camera === false ||
+    source.cameraInView ||
+    !source.composition.camera
+      ? null
+      : sceneCameraMatrix(source.composition, time);
   const content = camera
     ? multiplyMatrices(view, camera as unknown as AffineMatrix)
     : view;
-  const { items, warnings } = deriveRenderItems(source);
+  // Preview camera: the viewport already holds the depth-0 camera; `base`
+  // is the camera's frame (where the artboard is), as in the export.
+  const lens = !source.cameraInView
+    ? null
+    : rig
+      ? (cameraMatrixFor(rig, frame, 0) as AffineMatrix)
+      : source.composition.camera
+        ? (sceneCameraMatrix(source.composition, time) as AffineMatrix | null)
+        : null;
+  const base = lens
+    ? multiplyMatrices(view, invertMatrix(lens) ?? IDENTITY_MATRIX)
+    : view;
+  const contentFor = (item: RenderItem): AffineMatrix =>
+    rig
+      ? multiplyMatrices(
+          base,
+          cameraMatrixFor(rig, frame, item.depth ?? 0) as AffineMatrix,
+        )
+      : content;
+  /** FINAL3 C1: Clip Start / End: a layer out of range is not drawn. */
+  const clipped = (item: RenderItem) =>
+    !!rig && !insideClip(rig.spec, rig.pose, frame, item.depth ?? 0);
+  /** FINAL3 C1: depth of field: the blur (composition px) of an item. */
+  const blurOf = (item: RenderItem) =>
+    rig
+      ? dofBlur(rig.spec, rig.pose, frame, item.depth ?? 0, rig.focusDepth)
+      : 0;
   const errors = [...warnings];
+  const fxFrame = {
+    matrix: view,
+    width: source.composition.width,
+    height: source.composition.height,
+  } as const;
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.clearRect(
     0,
@@ -403,10 +488,83 @@ export function drawComposition(
   }
   type Target = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
   /** Draws one item onto `context` (the canvas, or an FX scratch canvas). */
-  const paintItem = (context: Target, item: RenderItem, fade: number) => {
+  const paintItem = (
+    context: Target,
+    item: RenderItem,
+    fade: number,
+    offset?: readonly [number, number],
+  ) => {
+    if (clipped(item)) return;
+    const blur = blurOf(item);
+    if (blur > 0.25) {
+      // FINAL3 C1: depth of field. A soft gaussian, plus copies on the
+      // aperture's shape (Blades, Rotation, Ratio) for the bokeh.
+      const content = contentFor(item);
+      const scale = Math.sqrt(
+        Math.abs(content[0] * content[3] - content[1] * content[2]),
+      );
+      const radius = blur * scale;
+      const blades = rig!.spec.dof.blades >= 3 ? rig!.spec.dof.blades : 0;
+      const ratio = rig!.spec.dof.ratio;
+      const turn = (rig!.spec.dof.rotation * Math.PI) / 180;
+      const copies: [number, number][] = blades
+        ? Array.from({ length: blades }, (_, index) => {
+            const angle = turn + (index / blades) * Math.PI * 2;
+            return [
+              Math.cos(angle) * radius * 0.6 * ratio,
+              Math.sin(angle) * radius * 0.6,
+            ];
+          })
+        : ratio !== 1
+          ? [
+              [-radius * 0.5 * ratio, 0],
+              [radius * 0.5 * ratio, 0],
+            ]
+          : [];
+      const shared = 1 / (copies.length + 1);
+      for (const [dx, dy] of [[0, 0] as [number, number], ...copies]) {
+        context.save();
+        try {
+          context.filter = `blur(${Math.max(0.5, radius * (copies.length ? 0.45 : 1))}px)`;
+          paintOnce(
+            context,
+            item,
+            fade * (copies.length ? (dx || dy ? shared : shared * 1.5) : 1),
+            offset,
+            [dx, dy],
+          );
+        } finally {
+          context.restore();
+        }
+      }
+      return;
+    }
+    paintOnce(context, item, fade, offset);
+  };
+  const paintOnce = (
+    context: Target,
+    item: RenderItem,
+    fade: number,
+    offset?: readonly [number, number],
+    shift?: readonly [number, number],
+  ) => {
     context.save();
     try {
-      context.setTransform(...multiplyMatrices(content, item.matrix));
+      context.setTransform(
+        ...multiplyMatrices(
+          offset || shift
+            ? [
+                1,
+                0,
+                0,
+                1,
+                (shift?.[0] ?? 0) - (offset?.[0] ?? 0),
+                (shift?.[1] ?? 0) - (offset?.[1] ?? 0),
+              ]
+            : IDENTITY_MATRIX,
+          multiplyMatrices(contentFor(item), item.matrix),
+        ),
+      );
       context.globalAlpha = item.opacity * fade;
       // W5-C Wipe: only the revealed part of the box is drawn.
       if (item.reveal !== undefined) {
@@ -499,9 +657,13 @@ export function drawComposition(
       context.fillStyle = item.fill;
       if (item.kind !== 'text')
         context.fillRect(0, 0, item.size.width, item.size.height);
-      context.beginPath();
-      context.rect(0, 0, item.size.width, item.size.height);
-      context.clip();
+      // FINAL3: a text box fits its text, so text and its effects (shadow,
+      // glow, outline) are not clipped; a fixed-height box still clips.
+      if (item.kind !== 'text' || item.textOverflow || item.textStyle?.engine) {
+        context.beginPath();
+        context.rect(0, 0, item.size.width, item.size.height);
+        context.clip();
+      }
       // J4: text being edited is drawn by the editor over the canvas.
       if (item.editing) {
         // Nothing: the box stays for its outline and handles.
@@ -516,13 +678,14 @@ export function drawComposition(
           item.textStyle.engine,
         );
       } else if (item.kind === 'text' && item.richLayout) {
-        drawRich(
-          context,
-          item.richLayout,
-          item.textStyle ?? DEFAULT_TEXT_STYLE,
-          item.size.width,
-          item.size.height,
-        );
+        drawTextWithEffects(context, {
+          ...item,
+          layout: item.richLayout,
+          style: item.textStyle ?? DEFAULT_TEXT_STYLE,
+          width: item.size.width,
+          height: item.size.height,
+          color: item.fill.slice(0, 7),
+        });
       } else if (item.kind === 'text' && item.textLayout) {
         drawText(context, item);
       } else if (item.kind !== 'rectangle') {
@@ -597,6 +760,7 @@ export function drawComposition(
               paintItem,
               item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
               errors,
+              fxFrame,
             )
           )
             return;
@@ -624,6 +788,7 @@ export function drawComposition(
           paintItem,
           item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
           errors,
+          fxFrame,
         )
       )
         continue;
@@ -649,14 +814,32 @@ export function drawComposition(
   }
   context.save();
   try {
-    context.setTransform(...view);
+    // (The frame: the artboard, or the camera's frame while previewing.)
+    context.setTransform(...base);
     context.globalAlpha = 1;
     context.fillStyle = source.background;
     context.fillRect(0, 0, source.composition.width, source.composition.height);
     context.beginPath();
     context.rect(0, 0, source.composition.width, source.composition.height);
     context.clip();
+    // FINAL3 C3: the camera's background picture, behind or over the scene
+    // (exported only with Include in render).
+    const backdrop = rig?.spec.background ?? null;
+    const backdropRequest = cameraBackgroundRequest(
+      rig,
+      source.assets,
+      time,
+      options.overlays === false,
+    );
+    const backdropImage = backdropRequest
+      ? source.frames?.frame(backdropRequest, source.playing ?? false)
+      : null;
+    if (backdrop && backdropImage && backdrop.depth === 'back')
+      drawCameraBackground(context, base, backdrop, frame, backdropImage);
+    context.setTransform(...view);
     drawItems(1);
+    if (backdrop && backdropImage && backdrop.depth === 'front')
+      drawCameraBackground(context, base, backdrop, frame, backdropImage);
     // T6: in the editor (not export), a text box whose text is clipped by
     // its fixed height shows a small overflow badge on its bottom edge.
     if (options.overlays !== false)
@@ -700,6 +883,29 @@ export function drawComposition(
   }
   if (options.overlays === false)
     return { warnings: errors, zoom: viewport.matrix[0] };
+  const device = {
+    width: viewport.width * viewport.pixelRatio,
+    height: viewport.height * viewport.pixelRatio,
+  };
+  // FINAL3 C3: looking through the camera: passepartout, guides, safe
+  // areas, name and limits; while editing: the shot's camera frame.
+  if (rig && !source.cropLayerId)
+    drawCameraViewOverlays(
+      context,
+      base,
+      rig,
+      frame,
+      device,
+      viewport.pixelRatio,
+    );
+  if (source.cameraFrame)
+    drawCameraFrame(
+      context,
+      pixels,
+      viewport.matrix,
+      source.cameraFrame,
+      device,
+    );
   // CV-013: snap guides across the composition, 1 CSS px at any zoom.
   if (source.guides?.length) {
     context.setTransform(...pixels);

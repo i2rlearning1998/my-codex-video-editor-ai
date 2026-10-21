@@ -57,6 +57,20 @@ const SIZES: Record<
 function leftSize(layout: Layout, width: number): number {
   return layout === 'wide' && width >= 1800 ? 380 : SIZES[layout].left;
 }
+/**
+ * FINAL3 A1: the default timeline height follows the window's height, so a
+ * laptop-height window (about 940 px inside the browser) keeps a usable
+ * canvas: at most the layout's standard height, about a third of the window,
+ * never under 240 px.
+ */
+function defaultTimeline(layout: Layout): number {
+  const standard = SIZES[layout].timeline;
+  if (layout === 'phone') return standard;
+  return Math.min(
+    standard,
+    Math.max(240, Math.round(window.innerHeight * 0.3)),
+  );
+}
 const LIMITS = {
   left: [260, 420],
   right: [240, 360],
@@ -206,7 +220,7 @@ export function mountWorkspace(
     shell.style.setProperty('--right-open', `${right}px`);
     shell.style.setProperty(
       '--timeline-height',
-      `${Math.round(clampTimeline(height ?? sizes.timeline))}px`,
+      `${Math.round(clampTimeline(height ?? defaultTimeline(layout)))}px`,
     );
     // Floating layers under <body> (toasts) read these too.
     for (const name of ['--rail-width', '--timeline-height'])
@@ -293,7 +307,7 @@ export function mountWorkspace(
       if (id !== undefined && handle.hasPointerCapture(id))
         handle.releasePointerCapture(id);
     };
-    const current = () => height ?? SIZES[layout].timeline;
+    const current = () => height ?? defaultTimeline(layout);
     const cancel = () => {
       if (gesture) {
         left = gesture.left;
@@ -331,7 +345,7 @@ export function mountWorkspace(
       // The default height fits the ruler and the lanes, at least one video
       // lane and at most the standard panel height.
       const defaultHeight = clampTimeline(
-        Math.max(186, Math.min(fit, SIZES[layout].timeline)),
+        Math.max(186, Math.min(fit, defaultTimeline(layout))),
       );
       const collapsed = shell.classList.contains('timeline-collapsed');
       const start = gesture?.height ?? raw;

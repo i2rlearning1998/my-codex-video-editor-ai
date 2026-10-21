@@ -16,7 +16,19 @@ import {
 import type { RenderItem } from './adapter';
 
 type Target = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-type Paint = (context: Target, item: RenderItem, fade: number) => void;
+type Paint = (
+  context: Target,
+  item: RenderItem,
+  fade: number,
+  /** FINAL3: device pixels the scratch canvas starts at (its origin). */
+  offset?: readonly [number, number],
+) => void;
+/** FINAL3: the artboard on the output (composition size and its matrix). */
+export interface FxFrame {
+  readonly matrix: readonly [number, number, number, number, number, number];
+  readonly width: number;
+  readonly height: number;
+}
 
 const scratch: OffscreenCanvas[] = [];
 /** A reusable scratch canvas of the given size (null without OffscreenCanvas). */
@@ -40,9 +52,26 @@ export function drawWithFx(
   paint: Paint,
   from: RenderItem | undefined,
   errors: string[],
+  /**
+   * FINAL3 A1: the effects and transitions see the artboard, not the whole
+   * editor canvas, so a wipe or a banding covers the same part of the picture
+   * in the preview as in the export (the stage around the artboard is wider
+   * on a 1920 px window).
+   */
+  frame?: FxFrame,
 ): boolean {
-  const width = context.canvas.width,
+  let ox = 0,
+    oy = 0,
+    width = context.canvas.width,
     height = context.canvas.height;
+  if (frame && frame.matrix[1] === 0 && frame.matrix[2] === 0) {
+    const [a, , , d, e, f] = frame.matrix;
+    ox = Math.floor(e);
+    oy = Math.floor(f);
+    width = Math.max(1, Math.min(8192, Math.ceil(a * frame.width + e - ox)));
+    height = Math.max(1, Math.min(8192, Math.ceil(d * frame.height + f - oy)));
+  }
+  const offset: readonly [number, number] = [ox, oy];
   if (!width || !height || !scratchCanvas(0, width, height)) return false;
   try {
     const processed = (target: RenderItem, index: number): Surface => {
@@ -50,7 +79,7 @@ export function drawWithFx(
       const local = canvas.getContext('2d', { willReadFrequently: true })!;
       local.setTransform(1, 0, 0, 1, 0, 0);
       local.clearRect(0, 0, width, height);
-      paint(local, target, fade);
+      paint(local, target, fade, offset);
       const pixels = local.getImageData(0, 0, width, height);
       const source: Surface = { width, height, data: pixels.data };
       const fx = target.fx;
@@ -105,7 +134,7 @@ export function drawWithFx(
       context.globalCompositeOperation = (getBlendMode(
         item.fx?.blendMode ?? 'blend.normal',
       )?.operation ?? 'source-over') as GlobalCompositeOperation;
-      context.drawImage(result, 0, 0);
+      context.drawImage(result, ox, oy);
     } finally {
       context.restore();
     }

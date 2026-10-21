@@ -13,6 +13,11 @@ import { iconSvg } from './icons';
 import type { EditorSession } from './session';
 import type { SidePanels } from './side-panel';
 import { createNumberField } from './components/number-field';
+import { buildTextEffectsPanel } from './text-effects-panel';
+import { textPropertyCommand } from './text-box-commands';
+import { uploadFont } from '../text-engine/uploaded';
+import { fontWeights, usedFaces } from '../render/fonts';
+import { createSelect } from './components/select';
 
 export type ToolPanelId = 'font' | 'effects' | 'edit-image' | 'replace';
 
@@ -75,11 +80,21 @@ export function mountToolPanels(
     wrap.className = 'tool-panel';
     wrap.dataset.toolPanel = 'font';
     // FINAL2 U6: search, categories, Hindi filter, recent and the catalog.
+    // FINAL3 T4: the families this project's text uses (Document fonts).
+    const documentFonts = [
+      ...new Set(
+        [...usedFaces(engine.state.compositions as never)].map(
+          (key) => key.split('|')[0]!,
+        ),
+      ),
+    ];
     const picker = buildFontPicker({
       current: style.family,
       weight: style.weight,
       text: text?.type === 'string' ? text.value : '',
-      apply: (name) => {
+      documentFonts,
+      upload: (file) => uploadFont(file),
+      apply: (name, uploaded = false) => {
         // J4: while editing, a font the runs can hold applies to the
         // selected characters; a downloaded font applies to the whole box.
         const editor = textEditorFor(layer.id);
@@ -87,44 +102,65 @@ export function mountToolPanels(
           editor.format('family', name);
         else {
           editor?.finish();
-          run(
-            'Set font',
-            textStyleCommands(
-              session.source.composition.id,
-              selected() ?? layer,
-              'fontFamily',
-              name,
-            ),
+          const target = selected() ?? layer;
+          const id = session.source.composition.id;
+          // FINAL3 T4: an uploaded font is marked so every reader (and the
+          // export) accepts it; other fonts clear the mark.
+          const source = textPropertyCommand(
+            id,
+            target,
+            'fontSource',
+            uploaded ? 'uploaded' : '',
           );
+          run('Set font', [
+            ...(source && (uploaded || target.properties.fontSource)
+              ? [source]
+              : []),
+            ...textStyleCommands(id, target, 'fontFamily', name),
+          ]);
         }
       },
     });
-    const upload = planned(t('panels.fontUpload'), 'upload', 'TXT-009', 3);
-    wrap.append(picker, section(t('panels.moreFonts'), upload));
+    // FINAL3 T4: the family's own weights (synthetic bold for one weight).
+    const weights = fontWeights(style.family);
+    const weight = createSelect({
+      id: 'font-panel-weight',
+      label: t('fonts.weight'),
+      value: String(style.weight),
+      options: [...new Set([...weights, style.weight])]
+        .sort((a, b) => a - b)
+        .map((value) => ({
+          value: String(value),
+          label: t(`text.weight${value}`),
+        })),
+      onChange: (value) =>
+        run(
+          'Set font weight',
+          textStyleCommands(
+            session.source.composition.id,
+            selected() ?? layer,
+            'fontWeight',
+            Number(value),
+          ),
+        ),
+    });
+    wrap.append(section(t('fonts.weight'), weight), picker);
     return wrap;
   };
-  const effects = () => {
-    const layer = selected();
-    if (!layer || layer.type !== 'text') return null;
-    const wrap = document.createElement('div');
-    wrap.className = 'tool-panel';
-    wrap.dataset.toolPanel = 'effects';
-    wrap.append(
-      section(
-        t('panels.style'),
-        planned(t('panels.shadow'), 'effects', 'TXT-019', 3),
-        planned(t('panels.outline'), 'strokeStyle', 'TXT-019', 3),
-        planned(t('panels.glow'), 'magic', 'TXT-020', 3),
-        planned(t('panels.background'), 'rectangle', 'TXT-020', 3),
-        planned(t('panels.presets'), 'text', 'TXT-022', 3),
-      ),
-      section(
-        t('panels.shape'),
-        planned(t('panels.curve'), 'curve', 'TXT-021', 3),
-      ),
-    );
-    return wrap;
-  };
+  // FINAL3: Canva's text effects (Style and Shape), all live.
+  const effects = (): HTMLElement | null =>
+    buildTextEffectsPanel({
+      compositionId: () => session.source.composition.id,
+      layer: () => {
+        const layer = selected();
+        return layer?.type === 'text' ? layer : null;
+      },
+      run,
+      refresh: () => {
+        if (panels.openId === 'effects')
+          panels.show('effects', t('toolbar.effects'), effects);
+      },
+    });
   const editImage = () => {
     const layer = selected();
     if (!layer || (layer.type !== 'image' && layer.type !== 'video'))

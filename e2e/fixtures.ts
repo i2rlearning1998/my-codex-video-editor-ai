@@ -456,6 +456,3 @@ export async function revealEntry(menu: Locator, entry: Locator) {
   }
   return target;
 }
-
-/** FIX1 F9: the viewport earlier pixel-measuring specs were written for. */
-export const LEGACY_VIEWPORT = { width: 1600, height: 1072 } as const;

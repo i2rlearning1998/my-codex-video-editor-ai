@@ -76,6 +76,22 @@ export function buildTransformCommands(
     } as Command);
   }
   if (textBox) {
+    // FINAL3 T1: a side drag makes the box fixed width.
+    const mode = layer.properties.textBox;
+    if (!mode || mode.value !== 'fixed')
+      commands.push({
+        type: 'SET_PROPERTY',
+        compositionId,
+        layerId: layer.id,
+        target: { kind: 'property', key: 'textBox' },
+        property: {
+          type: 'string',
+          value: 'fixed',
+          animated: false,
+          keyframes: [],
+          constraints: [],
+        },
+      } as Command);
     for (const [key, value] of [
       ['width', textBox.width],
       ['height', textBox.height],

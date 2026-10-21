@@ -2,6 +2,7 @@
 // worker's lifetime, progress, cancel and the download. No engine access: it reads
 // the composition snapshot it is given.
 import type { Asset, Composition, DeepReadonly, SceneCut } from '../core';
+import { cameraBackgroundAssets } from '../camera/shots';
 import {
   assetFingerprint,
   listAudibleClips,
@@ -160,7 +161,13 @@ export function startExport(
       for (const key of await store.keys())
         if (key.startsWith('exports/')) await store.remove(key);
     const assets = input.assets as unknown as readonly PreviewAsset[];
-    const used = usedAssetIds(input.composition, settings.start, settings.end);
+    // FINAL3 C3: camera backgrounds included in the render are used too.
+    const used = [
+      ...new Set([
+        ...usedAssetIds(input.composition, settings.start, settings.end),
+        ...cameraBackgroundAssets(input.composition as never),
+      ]),
+    ];
     const videos: Record<string, Blob> = {};
     const images: Record<string, ImageBitmap> = {};
     for (const id of used) {

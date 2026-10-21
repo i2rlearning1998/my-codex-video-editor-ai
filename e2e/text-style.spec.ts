@@ -122,8 +122,8 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
     'copy-style',
   ])
     await expect(control(page, id)).toBeEnabled();
-  // List is live since J4 (TXT-024); Effects opens a panel whose effects
-  // name their wave.
+  // List is live since J4 (TXT-024); Effects opens the FINAL3 effects panel
+  // (every effect is live now).
   await expect(control(page, 'list')).toBeEnabled();
   await expect(control(page, 'list')).not.toHaveAttribute(
     'aria-disabled',
@@ -131,8 +131,10 @@ test('[CV-037][TXT-014] the text toolbar aligns text left, center, right and jus
   );
   await control(page, 'effects').click();
   await expect(
-    page.locator('[data-tool-panel="effects"] [aria-disabled="true"]').first(),
-  ).toHaveAttribute('title', 'Planned: Wave 3 (TXT-019)');
+    page.locator(
+      '[data-tool-panel="effects"] .text-effect-tile[data-effect="shadow"]',
+    ),
+  ).toBeEnabled();
   await page.keyboard.press('Escape');
   const left = await ink(page, SUBTITLE);
   expect(left.left).toBeLessThan(80);

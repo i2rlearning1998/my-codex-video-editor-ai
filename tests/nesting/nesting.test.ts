@@ -251,7 +251,7 @@ describe('[NEST] nested clips', () => {
     expect(xAt(engine, 'a', 1)).toBe(200);
   });
 
-  it('rejects cycles, depth over the limit, audio and repeated clips', () => {
+  it('rejects cycles, depth over the limit and repeated clips', () => {
     const engine = setup();
     expect(() => nestClips(engine.state, C, ['clip-a', 'clip-a'])).toThrow(
       /twice/,
