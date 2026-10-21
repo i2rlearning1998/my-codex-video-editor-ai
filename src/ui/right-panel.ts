@@ -21,6 +21,7 @@ import {
   clipFx,
   clipTransition,
   findClipByLayer,
+  isNestedClip,
   clipAudioDetached,
   sceneTransitionOf,
   type Transition,
@@ -156,6 +157,15 @@ export function kindOf(session: EditorSession): SelectionKind {
   if (layer.type === 'shape') return drawingOf(layer) ? 'drawing' : 'shape';
   return layer.type as SelectionKind;
 }
+/** FINAL3 A3: the one selected layer is a nested clip. */
+export function nestedSelected(session: EditorSession): boolean {
+  if (kindOf(session) !== 'group') return false;
+  const found = findClipByLayer(
+    session.source.composition,
+    session.selectedIds[0]!,
+  );
+  return !!found && isNestedClip(found.clip);
+}
 /** The first tab's name for the selection. */
 export const firstTabKey = (kind: SelectionKind) =>
   `right.tab.${kind === 'none' ? 'canvas' : kind === 'multi' ? 'arrange' : kind}`;
@@ -247,6 +257,15 @@ const CODE_TABS: RightSection[] = [
   'Speed',
   'Animate',
 ];
+/** FINAL3 A3: a nested clip takes effects (on everything inside) and a
+ *  speed that scales its inner time. */
+const NESTED_TABS: RightSection[] = [
+  'Properties',
+  'Fade',
+  'Effects',
+  'Speed',
+  'Animate',
+];
 /** The tabs the rail shows for the current selection. */
 export function sectionsFor(session: EditorSession): RightSection[] {
   // V7 (spec 11.5): Text to speech, opened from Record & create.
@@ -267,7 +286,11 @@ export function sectionsFor(session: EditorSession): RightSection[] {
     return ['Transitions'];
   if (kindOf(session) === 'audio' && ttsClip(session) && flag('legacyTtsPanel'))
     return [...TABS.audio, 'Speech'];
-  let tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
+  let tabs = codeLayerSelected(session)
+    ? CODE_TABS
+    : nestedSelected(session)
+      ? NESTED_TABS
+      : TABS[kindOf(session)];
   // P3 (spec 5.1b): Controls follow Properties when the layer has keyframes
   // or a Creator preset (only what it really has).
   const controlled = controlledLayer(session);
@@ -1067,8 +1090,8 @@ export function mountRightPanel(
       ),
       slider,
       list,
-      toggle('reverse'),
-      toggle('freeze'),
+      // FINAL3 A3: a nested clip's speed scales its inner time only.
+      ...(nestedSelected(session) ? [] : [toggle('reverse'), toggle('freeze')]),
     ];
   };
   const animate = () => {
@@ -1410,6 +1433,12 @@ export function mountRightPanel(
   });
   const effects = () => {
     const kind = kindOf(session);
+    // FINAL3 A3: a nested clip's effects apply to everything inside it.
+    if (nestedSelected(session))
+      return [
+        heading(t('panel.effects'), t('right.nestedEffectsHint')),
+        ...fxEffects(),
+      ];
     if (kind === 'video' || kind === 'image')
       return [
         heading(t('panel.effects'), t('right.effectsHint')),

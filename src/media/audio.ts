@@ -8,7 +8,7 @@ import { AudioMeters } from '../audio/meters';
 import { prepareDucking, type DuckEnvelope } from '../audio/ducking';
 import { readAudioSettings, type AudioSettings } from '../audio/settings';
 import { scheduleAudioClip } from '../audio/graph';
-import { clipAudioDetached, clipTimeEffects } from '../core';
+import { clipAudioDetached, clipTimeEffects, nestedInfo } from '../core';
 import { locateLayer } from '../render/adapter';
 import { assetFingerprint, mediaKey } from './import';
 import type { PreviewAsset } from './previews';
@@ -555,44 +555,90 @@ export function listAudibleClips(
   const view = composition as AudibleComposition;
   const layers = view.layers as Parameters<typeof locateLayer>[0];
   const clips: AudibleClip[] = [];
+  type ClipView = AudibleComposition['tracks'][number]['clips'][number];
+  /**
+   * FINAL3 A3: a clip, at its place on the parent timeline. `window` is the
+   * outer time range it may sound in (a nested clip's trimmed span) and
+   * `gain` the outer clip's volume. Nested clips expand into their audible
+   * children, through the outer trim and speed (inner time = sourceIn +
+   * (t − start) × speed).
+   */
+  const visit = (
+    clip: ClipView,
+    trackId: string,
+    trackVolume: number | undefined,
+    gain: number,
+    depth: number,
+  ) => {
+    const layer = locateLayer(layers, clip.layerId)?.layer;
+    const effects = clipTimeEffects(clip);
+    if (!clip.enabled || !layer || effects.freezeFrame !== null) return;
+    const nested = layer.type === 'group' ? nestedInfo(clip) : null;
+    if (nested) {
+      if (depth >= 8 || effects.reversed || !(clip.speed > 0)) return;
+      const outerGain = gain * (readAudioSettings(clip)?.volume ?? 1);
+      const lo = clip.sourceIn,
+        hi = clip.sourceIn + clip.duration * clip.speed;
+      for (const record of nested.clips) {
+        const inner = record.clip as unknown as ClipView;
+        const from = Math.max(inner.startTime, lo),
+          to = Math.min(inner.startTime + inner.duration, hi);
+        if (!(to - from > 1e-6)) continue;
+        const cut = from - inner.startTime;
+        visit(
+          {
+            ...inner,
+            startTime: clip.startTime + (from - lo) / clip.speed,
+            duration: (to - from) / clip.speed,
+            sourceIn: inner.sourceIn + cut * inner.speed,
+            sourceOut: inner.sourceIn + (cut + (to - from)) * inner.speed,
+            speed: inner.speed * clip.speed,
+          },
+          trackId,
+          trackVolume,
+          outerGain,
+          depth + 1,
+        );
+      }
+      return;
+    }
+    const asset = assets.find((item) => item.id === clip.assetId);
+    if (
+      !asset ||
+      !(
+        layer.type === 'audio' ||
+        (layer.type === 'video' && !clipAudioDetached(clip))
+      )
+    )
+      return;
+    const source = soundSource(asset, assets);
+    if (!source) return;
+    const settings = readAudioSettings(clip);
+    clips.push({
+      clipId: clip.id,
+      trackId,
+      sourceAssetId: source.id,
+      startTime: clip.startTime,
+      duration: clip.duration,
+      sourceIn: clip.sourceIn,
+      sourceOut: clip.sourceOut,
+      speed: clip.speed,
+      reversed: effects.reversed,
+      audio:
+        gain === 1 || !settings
+          ? settings
+          : { ...settings, volume: Math.min(2, (settings.volume ?? 1) * gain) },
+      trackVolume: safeVolume(trackVolume),
+      masterVolume: safeVolume(masterVolume),
+    });
+  };
   for (const track of view.tracks) {
     if (
       track.muted ||
       (soloTrackIds.length && !soloTrackIds.includes(track.id))
     )
       continue;
-    for (const clip of track.clips) {
-      const layer = locateLayer(layers, clip.layerId)?.layer;
-      const asset = assets.find((item) => item.id === clip.assetId);
-      const effects = clipTimeEffects(clip);
-      if (
-        !clip.enabled ||
-        !layer ||
-        !asset ||
-        effects.freezeFrame !== null ||
-        !(
-          layer.type === 'audio' ||
-          (layer.type === 'video' && !clipAudioDetached(clip))
-        )
-      )
-        continue;
-      const source = soundSource(asset, assets);
-      if (!source) continue;
-      clips.push({
-        clipId: clip.id,
-        trackId: track.id,
-        sourceAssetId: source.id,
-        startTime: clip.startTime,
-        duration: clip.duration,
-        sourceIn: clip.sourceIn,
-        sourceOut: clip.sourceOut,
-        speed: clip.speed,
-        reversed: effects.reversed,
-        audio: readAudioSettings(clip),
-        trackVolume: safeVolume(track.volume),
-        masterVolume: safeVolume(masterVolume),
-      });
-    }
+    for (const clip of track.clips) visit(clip, track.id, track.volume, 1, 0);
   }
   return clips;
 }

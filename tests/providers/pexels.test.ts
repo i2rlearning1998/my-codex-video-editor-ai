@@ -16,12 +16,12 @@ describe('Pexels', () => {
     expect(url).not.toContain('private-');
     expect(init?.headers).toEqual({ Authorization: 'private-pexels' });
   });
-  it('maps real-shaped video answers: HLS entries with null sizes, null quality and missing fps are tolerated, only MP4 renditions are kept, on the documented /videos/search endpoint', async () => {
+  it('maps real-shaped video answers: HLS entries with null sizes, null quality and missing fps are tolerated, only MP4 renditions are kept, on the documented /v1/videos/search endpoint', async () => {
     const deps = setup('pexels-videos'),
       p = createPexels(deps),
       r = await p.search({ kind: 'stock-video', query: 'sea' });
     const url = deps.fetch.mock.calls[0]![0] as string;
-    expect(new URL(url).pathname).toBe('/videos/search');
+    expect(new URL(url).pathname).toBe('/v1/videos/search');
     expect(r.items).toHaveLength(2);
     expect(r.items[0]!.files.map((f) => f.quality)).toEqual([
       'uhd-23',

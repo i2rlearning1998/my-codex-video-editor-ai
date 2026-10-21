@@ -541,15 +541,23 @@ export class TransformInteraction {
       if (off !== 0 && Math.abs(off) < 1e-6)
         delta[guide.axis === 'x' ? 0 : 1] = off;
     }
-    if (!delta[0] && !delta[1]) return;
     const origin = transformPoint(gesture.inverseParent, [0, 0]);
     const moved = transformPoint(gesture.inverseParent, delta);
     const [x, y] = value.position.value;
+    // FINAL3 A1: at other zoom levels the parent-space position itself keeps
+    // dust (440.00000000000006); round values within 1e-9 of a micro-unit.
+    const clean = (n: number) => {
+      const r = Math.round(n * 1e6) / 1e6;
+      return Math.abs(n - r) < 1e-9 ? r : n;
+    };
     gesture.value = {
       ...value,
       position: {
         ...value.position,
-        value: [x + moved[0] - origin[0], y + moved[1] - origin[1]],
+        value: [
+          clean(x + moved[0] - origin[0]),
+          clean(y + moved[1] - origin[1]),
+        ],
       },
     };
   }

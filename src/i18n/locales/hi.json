@@ -2345,5 +2345,7 @@
   "composition.showScenes": "Show scenes",
   "fonts.error.status": "Google Fonts returned {status}; this font did not download.",
   "fonts.error.reason": "This font did not download: {reason}.",
-  "fonts.retryButton": "Retry"
+  "fonts.retryButton": "Retry",
+  "right.nestedEffectsHint": "नेस्टेड क्लिप पर इफ़ेक्ट उसके अंदर की हर चीज़ पर लगते हैं।",
+  "animate.preset.words": "शब्द दर शब्द"
 }

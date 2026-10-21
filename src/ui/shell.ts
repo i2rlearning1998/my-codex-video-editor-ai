@@ -745,12 +745,15 @@ export function mountEditorShell(
   codeBaker.onChange(paintCodeStatus);
   // G3: Fit, then the zoom about the view's center, then the pan.
   const viewportFor = (z: number, requested: readonly [number, number]) => {
+    const fitHeight = Math.max(1, canvas.clientHeight || stage.clientHeight);
     const view = fitViewport(
       Math.max(1, canvas.clientWidth || stage.clientWidth),
-      Math.max(1, canvas.clientHeight || stage.clientHeight),
+      fitHeight,
       session.source.composition,
       window.devicePixelRatio || 1,
-      EDITOR_FIT,
+      // FINAL3 A1: a short stage (laptop-height windows) keeps 12 px per
+      // side, so a portrait canvas is not shrunk by the margin.
+      fitHeight < 560 ? { ...EDITOR_FIT, padding: 12 } : EDITOR_FIT,
     );
     const at = (pan: readonly [number, number]): AffineMatrix =>
       multiplyMatrices(
@@ -771,7 +774,17 @@ export function mountEditorShell(
       session.source.composition,
       requested,
     );
-    return { ...view, matrix: at(pan) };
+    let matrix = at(pan);
+    // FINAL3 A1: at a whole-pixel zoom (100 %, 200 %) the artboard sits on
+    // whole device pixels, so nothing is resampled (crisp, as in Figma).
+    const device = matrix[0] * view.pixelRatio;
+    if (Math.abs(device - Math.round(device)) < 1e-9 && matrix[1] === 0) {
+      const snap = (value: number) =>
+        Math.round(value * view.pixelRatio) / view.pixelRatio;
+      const [a, b, c, d, e, f] = matrix;
+      matrix = [a, b, c, d, snap(e), snap(f)];
+    }
+    return { ...view, matrix };
   };
   const viewport = () => viewportFor(session.canvasZoom, session.canvasPan);
   // G4: a circle the size of the brush (or eraser) follows the pointer.

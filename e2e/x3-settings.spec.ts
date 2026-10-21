@@ -8,11 +8,6 @@ import {
   seekKeep,
   showCategory,
 } from './fixtures';
-import { LEGACY_VIEWPORT } from './fixtures';
-
-// Pixel and canvas-geometry checks written for the 1600 × 1072 window
-// (FIX1 D-287 made 1920 × 940 the default).
-test.use({ viewport: LEGACY_VIEWPORT });
 
 // X3 (CODE-TIERS-SPEC section 5): Animation settings of a code layer, and
 // the clip tools on it in the preview and the export.

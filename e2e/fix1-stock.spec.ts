@@ -99,7 +99,7 @@ test('[FX1-004] Pexels videos with HLS entries (null width and height, missing f
     panel(page).locator('.stock-message[data-state="error"]'),
   ).toHaveCount(0);
   expect(
-    mock.requests.some((url) => new URL(url).pathname === '/videos/search'),
+    mock.requests.some((url) => new URL(url).pathname === '/v1/videos/search'),
   ).toBe(true);
   const card = panel(page).locator('.stock-item').first();
   await card.hover();

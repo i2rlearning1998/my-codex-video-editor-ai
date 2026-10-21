@@ -2345,5 +2345,7 @@
   "composition.showScenes": "Show scenes",
   "fonts.error.status": "Google Fonts returned {status}; this font did not download.",
   "fonts.error.reason": "This font did not download: {reason}.",
-  "fonts.retryButton": "Retry"
+  "fonts.retryButton": "Retry",
+  "right.nestedEffectsHint": "Effects on a nested clip apply to everything inside it.",
+  "animate.preset.words": "Word by word"
 }

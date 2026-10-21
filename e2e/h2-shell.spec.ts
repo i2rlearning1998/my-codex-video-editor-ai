@@ -1,10 +1,5 @@
 import type { Page } from '@playwright/test';
 import { test, expect, hook, showCategory, settled } from './fixtures';
-import { LEGACY_VIEWPORT } from './fixtures';
-
-// Pixel and canvas-geometry checks written for the 1600 × 1072 window
-// (FIX1 D-287 made 1920 × 940 the default).
-test.use({ viewport: LEGACY_VIEWPORT });
 
 // H2: themes, motion, the responsive shell, tooltips and toasts.
 const ready = async (page: Page) =>
@@ -106,8 +101,10 @@ test('[LAY-033][LAY-003][LAY-008] side panels open and close in 150 to 300 ms, a
     .locator('#rail-left')
     .evaluate((element) => element.getBoundingClientRect().right);
   const open = await stageLeft();
-  // V1 (D-190): the 320 px panel plus an 8 px gutter on each side.
-  expect(open - rail).toBeCloseTo(336, 0);
+  // V1 (D-190): the panel plus an 8 px gutter on each side; S1 (D-264) makes
+  // the panel 380 px from 1800 px windows, else 320 px.
+  const panel = page.viewportSize()!.width >= 1800 ? 380 : 320;
+  expect(open - rail).toBeCloseTo(panel + 16, 0);
   await page.locator('[data-panel="left"]').click();
   await expect.poll(stageLeft).toBeCloseTo(rail + 8, 0);
   await expect(page.locator('.library')).toBeHidden();

@@ -16,7 +16,11 @@ const tiles = (page: Page) => panel(page).locator('.fx-tile');
 
 /** The artboard drawn on the canvas, scaled to 64 x 36 RGB, once stable.
  *  (The artboard is found once, on the plain picture: an effect may cover
- *  all of it.) */
+ *  all of it.) FINAL3 A1: both measurements leave out a 3 % margin on every
+ *  side, where the editor draws a selected layer's handles (never
+ *  exported); at 1920 × 940 the artboard is small enough for a handle to
+ *  tint a whole sample. */
+const INSET = 0.03;
 let board: Awaited<ReturnType<typeof artboard>> | null = null;
 export async function preview(page: Page, fresh = false) {
   if (fresh || !board) board = await artboard(page);
@@ -43,17 +47,19 @@ export async function preview(page: Page, fresh = false) {
   await expect
     .poll(async () => {
       value = await page.locator('#composition-canvas').evaluate(
-        (canvas: HTMLCanvasElement, { at: board, size }) => {
+        (canvas: HTMLCanvasElement, { at: board, size, inset }) => {
           const rect = canvas.getBoundingClientRect();
           const ratio = canvas.width / rect.width;
           const small = new OffscreenCanvas(64, 36);
           const context = small.getContext('2d')!;
+          const w = size.width * board.scale * ratio,
+            h = size.height * board.scale * ratio;
           context.drawImage(
             canvas,
-            (board.x - rect.left) * ratio,
-            (board.y - rect.top) * ratio,
-            size.width * board.scale * ratio,
-            size.height * board.scale * ratio,
+            (board.x - rect.left) * ratio + w * inset,
+            (board.y - rect.top) * ratio + h * inset,
+            w * (1 - 2 * inset),
+            h * (1 - 2 * inset),
             0,
             0,
             64,
@@ -62,7 +68,7 @@ export async function preview(page: Page, fresh = false) {
           const data = context.getImageData(0, 0, 64, 36).data;
           return [...data].filter((_, index) => index % 4 !== 3);
         },
-        { at: board!, size },
+        { at: board!, size, inset: INSET },
       );
       const same = JSON.stringify(value) === last;
       last = JSON.stringify(value);
@@ -79,15 +85,28 @@ export async function exported(page: Page, testInfo: TestInfo) {
   const file = testInfo.outputPath(`frame-${Date.now()}.png`);
   await (await saving).saveAs(file);
   await page.locator('.modal-dialog .modal-close').click();
-  return page.evaluate(async (png64) => {
-    const bytes = Uint8Array.from(atob(png64), (c) => c.charCodeAt(0));
-    const bitmap = await createImageBitmap(new Blob([bytes]));
-    const small = new OffscreenCanvas(64, 36);
-    const context = small.getContext('2d')!;
-    context.drawImage(bitmap, 0, 0, 64, 36);
-    const data = context.getImageData(0, 0, 64, 36).data;
-    return [...data].filter((_, index) => index % 4 !== 3);
-  }, readFileSync(file).toString('base64'));
+  return page.evaluate(
+    async ({ png64, inset }) => {
+      const bytes = Uint8Array.from(atob(png64), (c) => c.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([bytes]));
+      const small = new OffscreenCanvas(64, 36);
+      const context = small.getContext('2d')!;
+      context.drawImage(
+        bitmap,
+        bitmap.width * inset,
+        bitmap.height * inset,
+        bitmap.width * (1 - 2 * inset),
+        bitmap.height * (1 - 2 * inset),
+        0,
+        0,
+        64,
+        36,
+      );
+      const data = context.getImageData(0, 0, 64, 36).data;
+      return [...data].filter((_, index) => index % 4 !== 3);
+    },
+    { png64: readFileSync(file).toString('base64'), inset: INSET },
+  );
 }
 export const meanDiff = (a: number[], b: number[]) =>
   a.reduce((sum, value, index) => sum + Math.abs(value - b[index]!), 0) /

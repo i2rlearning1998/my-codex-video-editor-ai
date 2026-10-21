@@ -3815,6 +3815,10 @@ export function mountTimeline(
     // Empty lane space: the few marker and lane entries, flat.
     if (!kind) {
       const earlier = earlierItems(new Set());
+      // FINAL3 A3: clips of mixed kinds (a video and an audio clip) can
+      // still nest and group.
+      if (selectionRoots(session.source, session.selectedIds).length > 1)
+        earlier.push(commandItem('nest-clips'));
       menu.replaceChildren(
         ...earlier,
         ...(earlier.length && lane.length ? [divider()] : []),

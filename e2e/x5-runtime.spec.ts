@@ -9,11 +9,6 @@ import {
   seekKeep,
   showCategory,
 } from './fixtures';
-import { LEGACY_VIEWPORT } from './fixtures';
-
-// Pixel and canvas-geometry checks written for the 1600 × 1072 window
-// (FIX1 D-287 made 1920 × 940 the default).
-test.use({ viewport: LEGACY_VIEWPORT });
 
 // X5 (CODE-TIERS-SPEC sections 4 and 6): the real sandboxed Tier C runtime
 // (Codex's src/freecode) in the editor: the ten reference samples end to end.

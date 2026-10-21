@@ -9,7 +9,6 @@ import {
   seekKeep,
   settled,
 } from './fixtures';
-import { LEGACY_VIEWPORT } from './fixtures';
 import {
   contactSheet,
   exported,
@@ -17,10 +16,6 @@ import {
   preview,
   spread,
 } from './fx-helpers';
-
-// Pixel and canvas-geometry checks written for the 1600 × 1072 window
-// (FIX1 D-287 made 1920 × 940 the default).
-test.use({ viewport: LEGACY_VIEWPORT });
 
 // V5 (Clipchamp clone spec 6): a "+" on a cut between two touching clips
 // adds Fade through black; the cut then shows a lavender marker over a band
