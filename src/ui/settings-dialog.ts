@@ -276,7 +276,11 @@ function engineRow(view: LocalEngineView): string {
 let open: ModalHandle | undefined;
 
 /** Opens Settings, optionally on one tab (a "fix it" button elsewhere). */
-export function openSettings(tab: SettingsTab = 'general'): ModalHandle {
+export function openSettings(
+  tab: SettingsTab = 'general',
+  /** FIX1 F3: opens the keys tab at this provider's key. */
+  provider?: string,
+): ModalHandle {
   open?.close();
   const stock = stockProviders();
   const voices = voiceServices();
@@ -443,5 +447,18 @@ export function openSettings(tab: SettingsTab = 'general'): ModalHandle {
   root
     .querySelector<HTMLElement>(`[data-settings-tab="${tab}"]`)
     ?.focus({ preventScroll: true });
+  if (provider) {
+    const block = handle.root.querySelector<HTMLElement>(
+      `.key-block[data-provider="${CSS.escape(provider)}"]`,
+    );
+    block?.classList.add('key-block-focus');
+    // After the modal's own first-frame focus.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        block?.scrollIntoView({ block: 'center' });
+        block?.querySelector<HTMLInputElement>('.key-input')?.focus();
+      }),
+    );
+  }
   return handle;
 }

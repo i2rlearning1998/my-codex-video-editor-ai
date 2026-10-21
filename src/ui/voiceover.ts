@@ -1,4 +1,8 @@
 // FINAL2 U3: the Voice-over section of the left "Record & create" panel.
+// FIX1 F3: this is now the one "Text to speech" tool. Only cloud engines
+// are listed (Sarvam, Google Cloud, ElevenLabs, MiniMax); the browser and
+// offline voices stay behind feature flags. With no key an empty state
+// offers one button per provider, opening Settings at that key.
 // Text, language, engine and voice (from the speech registry), speed,
 // Preview, Save to Media (synthesizeToMedia, with progress and Cancel) and
 // Add to timeline at the playhead. Engines that need a key or a download
@@ -9,6 +13,7 @@ import { browserVoices } from '../audio/tts/browser';
 import type { TtsVoice } from '../audio/tts/types';
 import { ProviderError } from '../providers/errors';
 import {
+  SPEECH_PAUSE,
   SpeechError,
   encodeWav,
   listSpeechVoices,
@@ -20,6 +25,13 @@ import {
 import { formatBytes } from './local-engines';
 import { KEYS_CHANGED, speechRegistry, voiceServices } from './services';
 import { openSettings } from './settings-dialog';
+import { flag } from './feature-flags';
+import { diagnosticsButton } from './diagnostics';
+
+/** FIX1 F3: the cloud engines, in the order the empty state offers them. */
+const CLOUD_ENGINES = ['sarvam', 'google-cloud-tts', 'elevenlabs', 'minimax'];
+/** The longest text one Save makes. */
+export const MAX_SPEECH_TEXT = 5000;
 
 export interface SpeechMetadata {
   providerId: string;
@@ -86,14 +98,28 @@ function testEngine(): TtsProvider | null {
 }
 
 const plainError = (error: unknown) => {
+  // FIX1 F3: the real class: key, quota, offline, timeout, status.
   if (error instanceof ProviderError)
-    return error.code === 'KEY_MISSING' || error.code === 'KEY_INVALID'
-      ? t('voiceover.error.key')
-      : error.code === 'RATE_LIMITED'
-        ? t('voiceover.error.limit')
-        : error.code === 'ABORTED'
-          ? t('voiceover.cancelled')
-          : t('voiceover.error.network');
+    return error.code === 'KEY_INVALID' && error.status === 403
+      ? t('voiceover.error.keyOrQuota')
+      : error.code === 'KEY_MISSING' || error.code === 'KEY_INVALID'
+        ? t('voiceover.error.key')
+        : error.code === 'RATE_LIMITED'
+          ? t('voiceover.error.limit')
+          : error.code === 'ABORTED'
+            ? t('voiceover.cancelled')
+            : error.code === 'OFFLINE' ||
+                (error.code === 'NETWORK' && !navigator.onLine)
+              ? t('voiceover.error.offline')
+              : error.code === 'TIMEOUT'
+                ? t('voiceover.error.timeout')
+                : error.code === 'HTTP'
+                  ? error.status === 402 || error.status === 403
+                    ? t('voiceover.error.quota', { status: error.status })
+                    : t('voiceover.error.status', {
+                        status: error.status ?? '',
+                      })
+                  : t('voiceover.error.network');
   if (error instanceof SpeechError)
     return error.code === 'LANGUAGE_UNAVAILABLE'
       ? t('voiceover.error.language')
@@ -116,6 +142,7 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
   let progress = 0;
   let message = '';
   let messageKind: 'info' | 'error' = 'info';
+  let lastError: unknown = null;
   let saved: { key: string; assetId: string } | null = null;
   let player: HTMLAudioElement | null = null;
   let playerUrl = '';
@@ -133,15 +160,24 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
         state: 'ready',
         provider: fake,
       });
-    list.push({
-      id: 'browser',
-      label: t('voiceover.engine.browser'),
-      state: 'ready',
-    });
+    if (flag('browserVoice'))
+      list.push({
+        id: 'browser',
+        label: t('voiceover.engine.browser'),
+        state: 'ready',
+      });
     const tts = [
       ...voiceServices(),
-      ...(registry.get('local-tts') ? [registry.get('local-tts')!] : []),
-    ].filter((p): p is TtsProvider => p.kind === 'speech-tts');
+      ...(flag('offlineVoice') && registry.get('local-tts')
+        ? [registry.get('local-tts')!]
+        : []),
+    ]
+      .filter((p): p is TtsProvider => p.kind === 'speech-tts')
+      .sort(
+        (a, b) =>
+          ((CLOUD_ENGINES.indexOf(a.id) + 99) % 99) -
+          ((CLOUD_ENGINES.indexOf(b.id) + 99) % 99),
+      );
     for (const provider of tts) {
       const found = status.find((item) => item.id === provider.id);
       const state = (found?.state ?? 'unavailable') as EngineState;
@@ -160,16 +196,20 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
     }
     return list;
   };
-  const current = () => {
+  const current = (): Engine => {
     const list = engines();
-    return list.find((item) => item.id === engineId) ?? list[0]!;
+    return (
+      list.find((item) => item.id === engineId) ??
+      list[0] ?? { id: '', label: '', state: 'unavailable' }
+    );
   };
   const pickDefault = () => {
     const list = engines();
     const chosen =
       list.find((item) => item.provider && item.state === 'ready') ??
-      list.find((item) => item.id === 'browser')!;
-    engineId = chosen.id;
+      list.find((item) => item.id === 'browser') ??
+      list[0];
+    engineId = chosen?.id ?? '';
   };
   const key = () => [engineId, voiceId, language, speed, text].join('|');
 
@@ -211,6 +251,7 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
       if (engineId !== forEngine) return;
       message = plainError(error);
       messageKind = 'error';
+      lastError = error;
     } finally {
       if (engineId === forEngine && language === forLanguage) {
         loadingVoices = false;
@@ -229,7 +270,13 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
   const setMessage = (value: string, kind: 'info' | 'error' = 'info') => {
     message = value;
     messageKind = kind;
+    if (kind === 'info') lastError = null;
     render();
+  };
+  const fail = (error: unknown) => {
+    console.debug('[tts] failed', current().id, error);
+    lastError = error;
+    setMessage(plainError(error), 'error');
   };
 
   const preview = async () => {
@@ -251,7 +298,8 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
       busy = new AbortController();
       progress = 0;
       setMessage(t('voiceover.making'));
-      const [first] = splitSpeech(text);
+      const spoken = text.split(SPEECH_PAUSE).find((part) => part.trim());
+      const [first] = splitSpeech(spoken ?? text);
       const result = await engine.provider.synthesize({
         text: first!,
         voiceId,
@@ -267,7 +315,7 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
       setMessage(t('voiceover.playing'));
     } catch (error) {
       busy = null;
-      setMessage(plainError(error), 'error');
+      fail(error);
     }
   };
 
@@ -307,7 +355,7 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
       return assetId;
     } catch (error) {
       busy = null;
-      setMessage(plainError(error), 'error');
+      fail(error);
       return null;
     }
   };
@@ -361,12 +409,39 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
   const textBox = document.createElement('textarea');
   textBox.id = 'vo-text';
   textBox.rows = 4;
-  textBox.maxLength = 5000;
+  textBox.maxLength = MAX_SPEECH_TEXT;
+  textBox.setAttribute('autocomplete', 'off');
   textBox.placeholder = t('voiceover.placeholder');
+  const count = document.createElement('span');
+  count.className = 'voiceover-count';
+  count.id = 'vo-count';
+  const showCount = () =>
+    (count.textContent = t('voiceover.count', {
+      count: String(textBox.value.length),
+      max: String(MAX_SPEECH_TEXT),
+    }));
   textBox.oninput = () => {
     text = textBox.value;
+    showCount();
     syncButtons();
   };
+  // FIX1 F3: Add pause inserts a half-second pause at the caret.
+  const pauseButton = document.createElement('button');
+  pauseButton.type = 'button';
+  pauseButton.className = 'button sm';
+  pauseButton.dataset.action = 'vo-pause';
+  pauseButton.textContent = t('tts.addPause');
+  pauseButton.onclick = () => {
+    const at = textBox.selectionStart ?? textBox.value.length;
+    const mark = ` ${SPEECH_PAUSE} `;
+    if (textBox.value.length + mark.length > MAX_SPEECH_TEXT) return;
+    textBox.setRangeText(mark, at, textBox.selectionEnd ?? at, 'end');
+    textBox.focus();
+    text = textBox.value;
+    showCount();
+    syncButtons();
+  };
+  showCount();
   let actions: HTMLButtonElement[] = [];
   const syncButtons = () => {
     const engine = current();
@@ -384,8 +459,44 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
     const title = document.createElement('h3');
     title.className = 'record-heading';
     title.id = 'voiceover-title';
-    title.textContent = t('voiceover.title');
-    const nodes: HTMLElement[] = [title, field(t('voiceover.text'), textBox)];
+    title.textContent = t('tts.title');
+    // FIX1 F3: no cloud engine has a key: one card with a button each.
+    const usable = engines().some(
+      (item) => item.provider && item.state === 'ready',
+    );
+    if (!usable) {
+      const empty = document.createElement('div');
+      empty.className = 'voiceover-empty';
+      empty.dataset.state = 'no-key';
+      const words = document.createElement('p');
+      words.textContent = t('voiceover.emptyTitle');
+      const hint = document.createElement('p');
+      hint.className = 'voiceover-note';
+      hint.textContent = t('voiceover.emptyHint');
+      const buttons = document.createElement('div');
+      buttons.className = 'voiceover-empty-actions';
+      for (const engine of engines().filter((item) => item.provider)) {
+        const open = button(
+          `vo-key-${engine.id}`,
+          t('voiceover.addKeyFor', { provider: engine.label }),
+        );
+        open.className = 'button sm';
+        open.dataset.provider = engine.id;
+        open.onclick = () => openSettings('keys', engine.id);
+        buttons.append(open);
+      }
+      empty.append(words, hint, buttons);
+      root.replaceChildren(title, empty);
+      return;
+    }
+    const textRow = document.createElement('div');
+    textRow.className = 'voiceover-text-row';
+    textRow.append(pauseButton, count);
+    const nodes: HTMLElement[] = [
+      title,
+      field(t('voiceover.text'), textBox),
+      textRow,
+    ];
 
     const lang = select(
       'vo-language',
@@ -542,6 +653,17 @@ export function mountVoiceover(hooks: VoiceoverHooks) {
     note.dataset.kind = messageKind;
     note.textContent = message;
     nodes.push(note);
+    if (messageKind === 'error' && lastError !== null) {
+      const error = lastError;
+      nodes.push(
+        diagnosticsButton(() => ({
+          feature: 'Text to speech',
+          providerId: current().id,
+          error,
+          extra: { language, voice: voiceId, characters: text.length },
+        })),
+      );
+    }
     root.replaceChildren(...nodes);
     syncButtons();
   };

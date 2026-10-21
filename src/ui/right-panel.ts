@@ -40,6 +40,7 @@ import { formatNumber, t } from '../i18n';
 import { drawingOf } from '../render/drawing';
 import { SYSTEM_FONTS, TEXT_ALIGNS, textStyleOf } from '../render/text-style';
 import { alignSelection, canDistribute, distributeSelection } from './align';
+import { flag } from './feature-flags';
 import {
   colorCommand,
   tintCommand,
@@ -251,11 +252,13 @@ export function sectionsFor(session: EditorSession): RightSection[] {
     ttsState.open = false;
     themeState.open = false;
   }
-  if (kindOf(session) === 'none' && ttsState.open) return ['Speech'];
+  // FIX1 F3: the old right-hand Text to speech panel is off by default.
+  if (kindOf(session) === 'none' && ttsState.open && flag('legacyTtsPanel'))
+    return ['Speech'];
   if (kindOf(session) === 'none' && themeState.open) return ['Theme'];
   if (kindOf(session) === 'none' && focusedScene(session))
     return ['Transitions'];
-  if (kindOf(session) === 'audio' && ttsClip(session))
+  if (kindOf(session) === 'audio' && ttsClip(session) && flag('legacyTtsPanel'))
     return [...TABS.audio, 'Speech'];
   let tabs = codeLayerSelected(session) ? CODE_TABS : TABS[kindOf(session)];
   // P3 (spec 5.1b): Controls follow Properties when the layer has keyframes

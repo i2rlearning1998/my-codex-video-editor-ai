@@ -56,6 +56,8 @@ test('[F2-010][F2-011] Voice-over: type, Preview, Save to Media (the WAV is in M
   page,
 }) => {
   await showCategory(page, 'Record');
+  // FIX1 F3: the one Text to speech card opens the tool.
+  await panel(page).locator('[data-record="tts"]').click();
   const vo = panel(page).locator('.voiceover');
   await expect(vo.locator('#vo-engine')).toHaveValue('test-speech');
   await expect(vo.locator('.voiceover-status')).toHaveText('Ready');
@@ -88,7 +90,7 @@ test('[F2-010][F2-011] Voice-over: type, Preview, Save to Media (the WAV is in M
     .toBe(lanes + 1);
   expect((await assets(page)).length).toBe(before + 1);
   const lane = (await scene(page)).tracks.find(
-    (track) => track.name === 'Voice-over 1',
+    (track) => track.name === 'Speech 1',
   )!;
   expect(lane.type).toBe('audio');
   expect(lane.clips[0]!.assetId).toBe(speech.id);

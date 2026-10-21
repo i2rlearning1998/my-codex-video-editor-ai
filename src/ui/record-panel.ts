@@ -12,6 +12,7 @@ import { formatDuration, t } from '../i18n';
 import { iconSvg } from './icons';
 import { mountRecorderFlow, type RecordedFile } from './recorder-flow';
 import { mountVoiceover, type SpeechMetadata } from './voiceover';
+import { flag } from './feature-flags';
 
 export interface RecordHooks {
   /** Imports the take and adds it at the playhead on a new audio lane. */
@@ -26,7 +27,15 @@ export interface RecordHooks {
 }
 
 type Phase =
-  'cards' | 'video' | 'idle' | 'denied' | 'countdown' | 'recording' | 'review';
+  | 'cards'
+  | 'video'
+  | 'idle'
+  | 'denied'
+  | 'countdown'
+  | 'recording'
+  | 'review'
+  // FIX1 F3: the one Text to speech tool.
+  | 'tts';
 
 export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
   host.classList.add('record-panel');
@@ -242,8 +251,14 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
       tts.dataset.record = 'tts';
       tts.innerHTML = `<span class="record-card-title"></span>${iconSvg('text', 24)}`;
       tts.querySelector('.record-card-title')!.textContent = t('tts.title');
-      tts.onclick = () => hooks.openTextToSpeech();
-      nodes.push(create, tts, voiceover.element);
+      // FIX1 F3: one card for the one Text to speech tool; it opens in
+      // this panel (Back returns to the cards).
+      tts.onclick = () => {
+        if (flag('legacyTtsPanel')) return hooks.openTextToSpeech();
+        phase = 'tts';
+        render();
+      };
+      nodes.push(create, tts);
       host.replaceChildren(...nodes);
       return;
     }
@@ -260,6 +275,10 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
             ? 'record.screen'
             : 'record.screenCamera',
     );
+    if (phase === 'tts') {
+      host.replaceChildren(back, voiceover.element);
+      return;
+    }
     nodes.push(back, heading);
     if (phase === 'video') {
       host.replaceChildren(...nodes, videoFlow.element);
@@ -439,6 +458,11 @@ export function mountRecordPanel(host: HTMLElement, hooks: RecordHooks) {
   };
   /** Back, or leaving the category: a take in progress asks Keep or Discard. */
   const leave = async () => {
+    if (phase === 'tts') {
+      phase = 'cards';
+      render();
+      return;
+    }
     if (phase === 'video') {
       if (videoFlow.active()) {
         const keep = await confirmDialog(t('record.leaveMessage'), {
