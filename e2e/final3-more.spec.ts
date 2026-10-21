@@ -5,6 +5,7 @@ import {
   test,
   expect,
   hook,
+  menuAction,
   openSubmenus,
   showCategory,
   seekKeep,
@@ -237,6 +238,33 @@ test('[FN3-028] the font picker filters by kind (Serif, Mono, Handwriting), list
 async function addCamera(page: Page) {
   await page.keyboard.press('Escape');
   const bar = page.locator('#context-toolbar');
+  if ((await bar.getAttribute('data-kind')) !== 'scene') {
+    // A click on an empty corner of the artboard shows the scene bar.
+    const { width, height } = await scene(page);
+    const view = await page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __AIVE__: { getCanvas(): { view: number[] } };
+          }
+        ).__AIVE__.getCanvas().view,
+    );
+    const box = (await page.locator('#composition-canvas').boundingBox())!;
+    const [a, b, c, d, e, f] = view as [
+      number,
+      number,
+      number,
+      number,
+      number,
+      number,
+    ];
+    const x = width * 0.98;
+    const y = height * 0.03;
+    await page.mouse.click(
+      box.x + a * x + c * y + e,
+      box.y + b * x + d * y + f,
+    );
+  }
   await expect(bar).toHaveAttribute('data-kind', 'scene');
   await bar.locator('[data-control="scene-camera"]').click();
   await page.locator('#right-section [data-action="camera-add"]').click();
@@ -328,4 +356,84 @@ test('[FN3-029] camera overlays (guides, safe areas, passepartout) show only in 
   const dof = (await cameraSpec(page, shot)).dof;
   expect(dof).toMatchObject({ enabled: true, focusLayer: headline.id });
   expect(await selectedId(page)).toBe(shot);
+});
+
+const boxCentre = async (page: Page) => {
+  const canvas = (await page.locator('#composition-canvas').boundingBox())!;
+  const corners = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __AIVE__: { getCanvas(): { corners: [number, number][] } };
+        }
+      ).__AIVE__.getCanvas().corners,
+  );
+  return {
+    x: canvas.x + (corners[0]![0] + corners[2]![0]) / 2,
+    y: canvas.y + (corners[0]![1] + corners[2]![1]) / 2,
+  };
+};
+
+test('[FN3-030] spellcheck is a setting; inside the editor Ctrl+Z undoes one typing burst and Ctrl+A, Ctrl+I style the text; a camera can be renamed; the typewriter shows in the export', async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(150_000);
+  const id = await addHeading(page);
+  const editor = page.locator('.text-editor');
+  // Spellcheck: off by default, on from Settings.
+  let centre = await boxCentre(page);
+  await page.mouse.dblclick(centre.x, centre.y);
+  await expect(editor).toHaveAttribute('spellcheck', 'false');
+  // One typing burst is one undo step inside the editor.
+  await page.keyboard.type('Hello there');
+  await expect(editor).toHaveText('Hello there');
+  await page.keyboard.press('Control+z');
+  await expect(editor).toHaveText('Add a heading');
+  // Ctrl+A then Ctrl+I: the whole text italic, kept on Escape.
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+i');
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeHidden();
+  expect(String(await prop(page, id, 'textRuns'))).toContain('"italic":true');
+  await menuAction(page, '#open-settings');
+  const settings = page.locator('.modal-dialog');
+  const spell = settings.locator('#text-spellcheck-setting');
+  await spell.click();
+  await expect(spell).toHaveAttribute('aria-checked', 'true');
+  await settings.locator('.modal-close').click();
+  await selectClip(page, id);
+  centre = await boxCentre(page);
+  await page.mouse.dblclick(centre.x, centre.y);
+  await expect(editor).toHaveAttribute('spellcheck', 'true');
+  await page.keyboard.press('Escape');
+  // The typewriter at half its In and at the end, in the exported frame.
+  await selectClip(page, id);
+  await page.locator('#context-toolbar [data-control="animate"]').click();
+  await page
+    .locator('[data-deep-panel="animate"] [data-preset="typewriter"]')
+    .first()
+    .click();
+  const clip = async () =>
+    (await hook(page)).project.compositions[0]!.tracks.flatMap(
+      (track) => track.clips,
+    ).find((item) => item.layerId === id)!;
+  await expect
+    .poll(async () => JSON.stringify((await clip()).metadata))
+    .toContain('typewriter');
+  const { startTime, metadata } = await clip();
+  const length = (metadata as { animation: { in: { duration: number } } })
+    .animation.in.duration;
+  await page.keyboard.press('Escape');
+  await seekKeep(page, startTime + length / 2);
+  const half = await exported(page, testInfo);
+  await seekKeep(page, startTime + length + 0.5);
+  const full = await exported(page, testInfo);
+  expect(meanDiff(half, full)).toBeGreaterThan(0.05);
+  // A camera is renamed in one step.
+  await selectClip(page, id);
+  await addCamera(page);
+  const name = right(page).locator('#camera-name');
+  await name.fill('Wide shot');
+  await name.press('Enter');
+  expect(await lastLabel(page)).toBe('Rename camera');
 });

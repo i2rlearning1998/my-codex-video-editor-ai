@@ -1096,6 +1096,7 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FN3-027 | P0 | W9 | Verified | Every text effect (Shadow, Lift, Hollow, Splice, Echo, Outline, Glow, Background, Glitch, Neon) has its settings and Remove effect and draws (CP.20 to CP.30) |
 | FN3-028 | P0 | W9 | Verified | The font picker filters by kind, lists document fonts, and a font that cannot load says why with Retry while the text keeps its font (T4.2, T4.5, CP.17) |
 | FN3-029 | P0 | W9 | Verified | Camera overlays (guides, safe areas, passepartout, name) show only in the editor; a camera background image draws through the camera and is exported only with Include in render; Track To and the focus picker set the camera (BP.8 to BP.13) |
+| FN3-030 | P0 | W9 | Verified | Spellcheck is a Settings switch (off by default); inside the text editor Ctrl+Z undoes one typing burst and Ctrl+A, Ctrl+I style the text; a camera is renamed in one step; the typewriter shows in the exported frame (T2.6, T2.9, T2.11, C3.7, T6.1) |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 

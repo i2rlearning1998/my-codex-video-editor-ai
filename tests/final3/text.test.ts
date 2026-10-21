@@ -3,8 +3,11 @@ import { createLayer, number, type Layer } from '../../src/core';
 import type { SceneLayer } from '../../src/render/adapter';
 import { layerSize } from '../../src/render/adapter';
 import {
+  setTextBoxMeasurer,
+  textBoxEpoch,
   textBoxMode,
   textBoxOf,
+  textFontsChanged,
   textHeightFixed,
 } from '../../src/render/text-box';
 import {
@@ -68,6 +71,27 @@ describe('[FN3-005] text box model (auto and fixed width)', () => {
     // Its stored 120 px width is ignored: the box fits the 12 characters.
     expect(box.width).toBeCloseTo(12 * 40 * 0.6, 1);
     expect(layerSize(layer, [])!.height).toBe(box.height);
+  });
+  it('[FN3-005] boxes are measured again when a font arrives (no stale size)', () => {
+    let wide = false;
+    const measure: typeof fallbackTextMeasure = (value, size, style) => {
+      const width = fallbackTextMeasure(value, size, style);
+      return wide ? width * 2 : width;
+    };
+    setTextBoxMeasurer(measure);
+    try {
+      const layer = text('Shyam Monani', { textBox: string('auto') });
+      const before = textBoxOf(layer).width;
+      // The font arrives: the same layer measures with the real face.
+      wide = true;
+      expect(textBoxOf(layer).width).toBe(before);
+      const epoch = textBoxEpoch();
+      textFontsChanged();
+      expect(textBoxEpoch()).toBe(epoch + 1);
+      expect(textBoxOf(layer).width).toBeCloseTo(before * 2, 6);
+    } finally {
+      setTextBoxMeasurer(fallbackTextMeasure);
+    }
   });
   it('[FN3-005] no phantom empty line: the box is exactly the lines', () => {
     const layer = text('one\ntwo', { textBox: string('auto') });
