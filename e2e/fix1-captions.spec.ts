@@ -77,33 +77,54 @@ test('[FX1-010] offline captions succeed: steps are named while they run and the
   expect(lane.clips.length).toBeGreaterThan(0);
 });
 
-for (const [mode, text] of [
-  ['no-speech', 'No speech found'],
-  ['blocked', 'Model download blocked'],
-  ['memory', 'Out of memory'],
-  ['unsupported', 'does not support offline captions'],
-  ['no-audio', 'sound could not be read'],
-] as const)
-  test(`[FX1-010] offline captions fail visibly: ${mode} says "${text}" with Copy diagnostics`, async ({
-    page,
-    context,
-  }) => {
-    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
-    await start(page, mode);
-    await (await download(page)).locator('#settings-done').click();
-    const layer = await addSound(page);
-    const dialog = await openCaptions(page, layer);
-    await dialog.locator('[data-action="captions-create"]').click();
-    const message = dialog.locator('.caption-message');
-    await expect(message).toContainText(text);
-    await expect(dialog).toBeVisible();
-    await message.locator('[data-action="copy-diagnostics"]').click();
-    const report = await page.evaluate(() => navigator.clipboard.readText());
-    expect(report).toContain('Feature: Auto captions');
-    expect(report).toContain(`failure: ${mode}`);
-    if (mode === 'no-speech')
-      await page.screenshot({ path: 'reports/fix1/f4-captions-error.png' });
-  });
+async function failCase(
+  page: Page,
+  context: import('@playwright/test').BrowserContext,
+  mode: string,
+  text: string,
+) {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await start(page, mode);
+  await (await download(page)).locator('#settings-done').click();
+  const layer = await addSound(page);
+  const dialog = await openCaptions(page, layer);
+  await dialog.locator('[data-action="captions-create"]').click();
+  const message = dialog.locator('.caption-message');
+  await expect(message).toContainText(text);
+  await expect(dialog).toBeVisible();
+  await message.locator('[data-action="copy-diagnostics"]').click();
+  const report = await page.evaluate(() => navigator.clipboard.readText());
+  expect(report).toContain('Feature: Auto captions');
+  expect(report).toContain(`failure: ${mode}`);
+  if (mode === 'no-speech')
+    await page.screenshot({ path: 'reports/fix1/f4-captions-error.png' });
+}
+
+test('[FX1-010] offline captions fail visibly: no-speech says "No speech found" with Copy diagnostics', async ({
+  page,
+  context,
+}) => failCase(page, context, 'no-speech', 'No speech found'));
+
+test('[FX1-010] offline captions fail visibly: blocked says "Model download blocked" with Copy diagnostics', async ({
+  page,
+  context,
+}) => failCase(page, context, 'blocked', 'Model download blocked'));
+
+test('[FX1-010] offline captions fail visibly: memory says "Out of memory" with Copy diagnostics', async ({
+  page,
+  context,
+}) => failCase(page, context, 'memory', 'Out of memory'));
+
+test('[FX1-010] offline captions fail visibly: unsupported says "does not support offline captions" with Copy diagnostics', async ({
+  page,
+  context,
+}) =>
+  failCase(page, context, 'unsupported', 'does not support offline captions'));
+
+test('[FX1-010] offline captions fail visibly: no-audio says "sound could not be read" with Copy diagnostics', async ({
+  page,
+  context,
+}) => failCase(page, context, 'no-audio', 'sound could not be read'));
 
 test('[FX1-010] Cancel stops a model that never starts', async ({ page }) => {
   await start(page, 'hang');
