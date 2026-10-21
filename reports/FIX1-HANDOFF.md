@@ -9,7 +9,8 @@ Branch `claude/fix-1` from `claude/final-2`. Draft PR targets `claude/final-2`.
 | F2 stock | Done: Pexels /videos/search + tolerant mapper, Pixabay sizes, quality in Details, progress/Cancel/Retry, truthful errors, icon tile, size and colour, sticker seeds, licence chip (FX1-003 to 007) |
 | F3 voice | Done: one TTS tool (voiceover.ts), cloud engines only, flags in feature-flags.ts, Add pause, real errors (FX1-008, FX1-009) |
 | F4 diagnostics + Whisper | Done: root cause = the captions dialog cleared its own error message; whisper.ts error classes, windows + progress, self-test (FX1-010, FX1-011) |
-| F5 to F8 | Not started |
+| F5 audio | Done: libraries left, Project audio right (rail Audio with nothing selected), shared slider row CSS (FX1-012, FX1-013) |
+| F6 to F8 | Not started |
 | Full verify | Not run |
 
-Next: F5.
+Next: F6. Note: INS-018 (j3) fails at the 1920x940 viewport, not from F5; pin LEGACY_VIEWPORT at the end if needed.

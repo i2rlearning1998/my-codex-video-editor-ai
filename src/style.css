@@ -10791,3 +10791,105 @@ input[type='range'] {
   outline-offset: 2px;
   border-radius: var(--radius-md);
 }
+/* FIX1 F5: one slider + number row everywhere (volume, opacity, speed,
+   master volume …): label, a full-width slider, then the number with its
+   unit and steppers, all on one line. The row used to inherit a two-column
+   grid (`.right-row`) that pushed the unit and slider onto their own rows,
+   and the range input took the row's height, so its track became a pill
+   with the thumb off the value. */
+.number-field.has-slider,
+.number-field.right-row.has-slider {
+  display: grid;
+  grid-template-columns:
+    minmax(0, max-content) minmax(48px, 1fr)
+    auto auto auto auto;
+  grid-template-areas: 'label slider input unit steps more';
+  align-items: center;
+  column-gap: var(--space-2);
+  row-gap: 0;
+  flex-wrap: nowrap;
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+.number-field.right-row.has-slider {
+  grid-template-columns: 96px minmax(32px, 1fr) auto auto auto auto;
+}
+.number-field.has-slider > .number-field-label {
+  grid-area: label;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.number-field.has-slider > .slider-field {
+  grid-area: slider;
+  min-inline-size: 0;
+  flex: none;
+}
+.number-field.has-slider > .number-field-input {
+  grid-area: input;
+  inline-size: 3.8em;
+}
+.number-field.has-slider > .number-field-unit {
+  grid-area: unit;
+  margin-inline-start: calc(-1 * var(--space-1));
+}
+.number-field.has-slider > .number-field-steps {
+  grid-area: steps;
+  margin-inline-start: calc(-1 * var(--space-1));
+}
+.number-field.has-slider > .number-field-more {
+  grid-area: more;
+  min-inline-size: 24px;
+  inline-size: 24px;
+}
+.number-field.has-slider .slider-field input[type='range'] {
+  inline-size: 100%;
+  min-inline-size: 0;
+  block-size: 4px;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  box-sizing: border-box;
+}
+.number-field.has-slider .slider-readout {
+  display: none;
+}
+/* FIX1 F5: the Audio libraries' tabs and My audio list. */
+#library-audio {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
+}
+#library-audio > .audio-library-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--region-panel);
+  padding-block: var(--space-2);
+}
+.audio-mine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.audio-mine[hidden] {
+  display: none;
+}
+/* FIX1 F5: the Mixer in the right panel fits the panel's width. */
+.audio-mixer,
+.audio-mixer-master,
+.audio-mixer-tracks {
+  grid-template-columns: minmax(0, 1fr);
+  min-inline-size: 0;
+}
+.audio-mixer > *,
+.audio-mixer-master > *,
+.audio-mixer-tracks > *,
+.audio-mixer-track > * {
+  min-inline-size: 0;
+}
+#right-section > .audio-mixer {
+  padding: 0;
+  border-block-end: 0;
+}

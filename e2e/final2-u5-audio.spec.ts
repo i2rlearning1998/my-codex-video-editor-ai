@@ -34,9 +34,21 @@ test('[F2-020] [F2-021] [F2-022] [F2-023] [F2-024] Audio: master volume is saved
   );
   await page.goto('/');
   await ready(page);
-  await showCategory(page, 'Audio');
-  const mixer = page.locator('#library-audio .audio-mixer');
+  // FIX1 F5: the Mixer is the right panel's Project audio (nothing selected).
+  const openMixer = async () => {
+    await page.keyboard.press('Escape');
+    await expect
+      .poll(async () => (await hook(page)).session.selectedIds.length)
+      .toBe(0);
+    const rail = page.locator('#rail-right [data-section="Audio"]');
+    await expect(rail).toHaveAttribute('title', 'Project audio');
+    if (!(await page.locator('#mixer-master').isVisible())) await rail.click();
+    await expect(page.locator('#mixer-master')).toBeVisible();
+  };
+  await openMixer();
+  const mixer = page.locator('#inspector-panel .audio-mixer');
   await expect(mixer.locator('.audio-mixer-empty')).toBeVisible();
+  await showCategory(page, 'Audio');
   // A sound from the pack gets a lane row in the Mixer.
   await page
     .locator(
@@ -44,6 +56,7 @@ test('[F2-020] [F2-021] [F2-022] [F2-023] [F2-024] Audio: master volume is saved
     )
     .click();
   await expect.poll(async () => !!(await audioClip(page))).toBe(true);
+  await openMixer();
   const { track } = (await audioClip(page))!;
   const row = mixer.locator(`.audio-mixer-track[data-track="${track.id}"]`);
   await expect(row).toBeVisible();
@@ -85,7 +98,7 @@ test('[F2-020] [F2-021] [F2-022] [F2-023] [F2-024] Audio: master volume is saved
   await page.reload();
   await ready(page);
   expect((await hook(page)).project.settings.masterVolume).toBe(1.5);
-  await showCategory(page, 'Audio');
+  await openMixer();
   await expect(page.locator('#mixer-master')).toHaveValue('150');
 
   // The clip Audio tab.

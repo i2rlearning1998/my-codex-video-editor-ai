@@ -226,6 +226,8 @@ export const ttsClip = (session: EditorSession) => {
 };
 /** T1: the right panel's Theme tab is open (with nothing selected). */
 export const themeState = { open: false };
+/** FIX1 F5: Project audio (the Mixer) is open with nothing selected. */
+export const projectAudioState = { open: false };
 /** X2: the selected code animation layer, if exactly one is selected. */
 export const codeLayerSelected = (session: EditorSession) => {
   const roots = selectionRoots(session.source, session.selectedIds);
@@ -251,7 +253,9 @@ export function sectionsFor(session: EditorSession): RightSection[] {
   if (session.selectedIds.length) {
     ttsState.open = false;
     themeState.open = false;
+    projectAudioState.open = false;
   }
+  if (kindOf(session) === 'none' && projectAudioState.open) return ['Audio'];
   // FIX1 F3: the old right-hand Text to speech panel is off by default.
   if (kindOf(session) === 'none' && ttsState.open && flag('legacyTtsPanel'))
     return ['Speech'];
@@ -313,6 +317,8 @@ export interface RightPanelHooks {
   ) => HTMLElement | null;
   /** X2: the Animation settings of the selected code layer. */
   codeBody?: () => readonly (HTMLElement | null)[];
+  /** FIX1 F5: the Mixer (master volume and lanes), shown with nothing selected. */
+  projectAudio?: () => HTMLElement | null;
   /** T1: the Theme panel. */
   themeBody?: () => HTMLElement;
   /** V7: Text to speech's Save. */
@@ -1632,22 +1638,31 @@ export function mountRightPanel(
                               ? speech()
                               : section === 'Transitions'
                                 ? transitions()
-                                : section === 'Audio'
+                                : section === 'Audio' &&
+                                    kindOf(session) === 'none'
                                   ? [
                                       heading(
-                                        t('panel.audio'),
-                                        t('right.audioHint'),
+                                        t('mixer.projectAudio'),
+                                        t('mixer.projectAudioHint'),
                                       ),
-                                      ...audioTab(
-                                        engine,
-                                        session,
-                                        run,
-                                        report,
-                                        hooks.audioDecoder,
-                                        rerender,
-                                      ),
+                                      hooks.projectAudio?.() ?? null,
                                     ]
-                                  : [];
+                                  : section === 'Audio'
+                                    ? [
+                                        heading(
+                                          t('panel.audio'),
+                                          t('right.audioHint'),
+                                        ),
+                                        ...audioTab(
+                                          engine,
+                                          session,
+                                          run,
+                                          report,
+                                          hooks.audioDecoder,
+                                          rerender,
+                                        ),
+                                      ]
+                                    : [];
       host.replaceChildren(
         ...content.filter((item): item is HTMLElement => !!item),
       );

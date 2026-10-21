@@ -2332,5 +2332,11 @@
   "settings.selftest.ok": "Works. Backend: {backend}. The model started in {seconds} s.",
   "settings.selftest.failed": "Self-test failed: {why}",
   "settings.selftest.backendWasm": "WebAssembly (CPU)",
-  "settings.selftest.backendWasmGpu": "WebAssembly (CPU); WebGPU is available but not used yet"
+  "settings.selftest.backendWasmGpu": "WebAssembly (CPU); WebGPU is available but not used yet",
+  "mixer.projectAudio": "Project audio",
+  "audioLibrary.sounds": "Sound effects",
+  "audioLibrary.music": "Music",
+  "audioLibrary.mine": "My audio",
+  "audioLibrary.mineEmpty": "Audio you import into Media shows here.",
+  "mixer.projectAudioHint": "Master volume and every lane: level, volume, mute and solo."
 }
