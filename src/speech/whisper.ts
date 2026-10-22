@@ -11,30 +11,19 @@ import {
 import { LOCAL_MODELS, type ModelFile } from './models';
 import { browserCodec, resampleMono } from './pcm';
 import {
+  createInProcessEngine,
+  type TransformersModule,
+  type WhisperEngine,
+} from './whisper-engine';
+import type { FakeWhisperMode } from './whisper-fake-transformers';
+import { createWorkerEngine, workerSupported } from './whisper-worker-client';
+import {
   SpeechError,
   type AudioCodec,
   type SttRequest,
   type Transcription,
   type WordTiming,
 } from './types';
-
-/** The few parts of @huggingface/transformers the runner uses. */
-interface TransformersModule {
-  env: Record<string, unknown>;
-  pipeline(
-    task: 'automatic-speech-recognition',
-    model: string,
-    options: Record<string, unknown>,
-  ): Promise<
-    (
-      audio: Float32Array,
-      options: Record<string, unknown>,
-    ) => Promise<{
-      text: string;
-      chunks?: { text: string; timestamp: [number, number | null] }[];
-    }>
-  >;
-}
 
 /** FIX1 F4: why offline captions failed, in plain classes. */
 export type WhisperFailure =
@@ -46,6 +35,8 @@ export type WhisperFailure =
   | 'load-timeout'
   | 'not-downloaded'
   | 'cancelled'
+  /** FIX3 2.3: the worker sent nothing for too long. */
+  | 'stalled'
   | 'failed';
 export class WhisperError extends Error {
   constructor(
@@ -145,18 +136,31 @@ export function createWhisperRunner(
     loadTimeoutMs?: number;
     /** FIX1 F4: test seam for a browser without WebAssembly. */
     unsupported?: () => string | null;
+    /** FIX3: run the worker with this fake model (dev/test only). */
+    workerFake?: FakeWhisperMode;
+    /** FIX3: called with each window's language (tests). */
+    onLanguage?: (language: string) => void;
   } = {},
 ): WhisperRunner {
   const config = LOCAL_MODELS.find((m) => m.id === 'local-whisper')!;
   const files: readonly ModelFile[] = config.files;
   const store = options.store ?? createIndexedModelStore();
   const loader = createModelLoader(store, options.fetcher);
-  const loadTransformers =
-    options.loadTransformers ??
-    (() =>
-      import('@huggingface/transformers') as unknown as Promise<TransformersModule>);
+  // FIX3 2.2: in a browser the engine is a dedicated worker; without one
+  // (Node unit tests, or a test-supplied module) it runs in-process.
+  const makeEngine = (): WhisperEngine & { abort?(): void } =>
+    !options.loadTransformers && workerSupported()
+      ? createWorkerEngine(
+          options.workerFake ? { fake: options.workerFake } : {},
+        )
+      : createInProcessEngine(
+          options.loadTransformers ??
+            (() =>
+              import('@huggingface/transformers') as unknown as Promise<TransformersModule>),
+        );
   const codec = options.codec ?? browserCodec;
-  let asr: Awaited<ReturnType<TransformersModule['pipeline']>> | null = null;
+  let engine: (WhisperEngine & { abort?(): void }) | null = null;
+  let loaded = false;
   let lastLoadMs: number | null = null;
 
   const total = () =>
@@ -188,7 +192,9 @@ export function createWhisperRunner(
       onProgress(1);
     },
     async remove() {
-      asr = null;
+      engine?.dispose();
+      engine = null;
+      loaded = false;
       for (const file of files)
         await store.delete(
           `${file.id}/${file.sha256 ? file.sha256.toLowerCase() : 'size-only'}`,
@@ -220,116 +226,128 @@ export function createWhisperRunner(
             new Error(`Missing ${file.id}`),
           );
       const started = performance.now();
-      if (!asr) {
-        request.onProgress?.({ phase: 'load', completed: 0, total: null });
-        try {
-          asr = await withTimeout(
-            (async () => {
-              const { env, pipeline } = await loadTransformers();
-              // Every model file comes from this browser's verified store.
-              env.allowLocalModels = false;
-              env.useBrowserCache = false;
-              env.useCustomCache = true;
-              env.customCache = {
-                match: async (input: string | Request) => {
-                  const url = typeof input === 'string' ? input : input.url;
-                  const file = files.find((f) => f.url === url);
-                  if (!file) {
-                    // Not a file we keep: say so instead of a silent fetch.
-                    console.debug('[whisper] not in the local store', url);
-                    return undefined;
-                  }
-                  const blob = await loader.load(file, { offline: true });
-                  return new Response(blob);
-                },
-                put: async () => {},
-              };
-              return pipeline('automatic-speech-recognition', config.model!, {
-                dtype: 'q8',
-                device: 'wasm',
-              });
-            })(),
-            options.loadTimeoutMs ?? 180_000,
-            signal,
-          );
-        } catch (error) {
-          asr = null;
-          throw classifyWhisperError(error, 'load', signal);
-        }
-        lastLoadMs = performance.now() - started;
-      }
-      let audio: Float32Array;
-      try {
-        request.onProgress?.({ phase: 'decode', completed: 0, total: null });
-        const blob =
-          request.blob ??
-          (await (await fetch(request.url!, { credentials: 'omit' })).blob());
-        audio = resampleMono(await codec.decode(blob), 16000);
-      } catch (error) {
-        throw classifyWhisperError(error, 'decode', signal);
-      }
-      if (!audio.length) throw new WhisperError('no-audio', 'decode');
-      // Whisper expects the bare language name; Hindi and English are the
-      // two this editor offers (FIX1 F4: checked by a unit test).
-      const language = (request.lang ?? 'en').split('-')[0]!;
-      const duration = audio.length / 16000;
-      const step = WHISPER_WINDOW_SECONDS * 16000;
-      const windows = Math.max(1, Math.ceil(audio.length / step));
-      const chunks: WordTiming[] = [];
-      const texts: string[] = [];
-      request.onProgress?.({
-        phase: 'transcription',
-        completed: 0,
-        total: windows,
-      });
-      try {
-        for (let i = 0; i < windows; i++) {
-          if (signal?.aborted) throw new WhisperError('cancelled', 'listen');
-          const part = audio.subarray(
-            i * step,
-            Math.min(audio.length, (i + 1) * step),
-          );
-          const offset = i * WHISPER_WINDOW_SECONDS;
-          const run = (timestamps: 'word' | true) =>
-            asr!(part, {
-              language: whisperLanguage(language),
-              task: 'transcribe',
-              return_timestamps: timestamps,
-            });
-          // Word timings need cross-attention outputs; fall back to segments.
-          const out = await run('word').catch(() => run(true));
-          texts.push(out.text.trim());
-          const end = offset + part.length / 16000;
-          for (const c of out.chunks ?? [])
-            chunks.push({
-              text: c.text.trim(),
-              start: offset + (c.timestamp[0] ?? 0),
-              end: Math.min(
-                end,
-                offset + (c.timestamp[1] ?? part.length / 16000),
-              ),
-            });
-          request.onProgress?.({
-            phase: 'transcription',
-            completed: i + 1,
-            total: windows,
-          });
-        }
-      } catch (error) {
-        throw classifyWhisperError(error, 'listen', signal);
-      }
-      const text = texts.filter(Boolean).join(' ').trim();
-      const timed = chunks.filter((c) => c.text);
-      if (!text || !/[\p{L}\p{N}]/u.test(text))
-        throw new WhisperError('no-speech', 'listen');
-      const words = timed.filter((c) => !/\s/.test(c.text));
-      return {
-        text,
-        language,
-        segments: timed.length ? timed : [{ text, start: 0, end: duration }],
-        ...(words.length === timed.length && words.length ? { words } : {}),
+      if (!engine) engine = makeEngine();
+      const active = engine;
+      // FIX3 2.2: Cancel stops the worker at once, mid-run included.
+      const abort = () => {
+        active.abort?.();
+        if (engine === active) engine = null;
+        loaded = false;
       };
+      signal?.addEventListener('abort', abort, { once: true });
+      try {
+        if (!loaded) {
+          request.onProgress?.({ phase: 'load', completed: 0, total: null });
+          try {
+            const blobs = [];
+            for (const file of files)
+              blobs.push({
+                url: file.url,
+                blob: await loader.load(file, { offline: true }),
+              });
+            await withTimeout(
+              active.load(blobs, config.model!, (completed, total) =>
+                request.onProgress?.({ phase: 'load', completed, total }),
+              ),
+              options.loadTimeoutMs ?? 180_000,
+              signal,
+            );
+          } catch (error) {
+            abort();
+            throw classifyWhisperError(error, 'load', signal);
+          }
+          loaded = true;
+          lastLoadMs = performance.now() - started;
+        }
+        return await listen(active, request);
+      } finally {
+        signal?.removeEventListener('abort', abort);
+      }
     },
     lastLoadMs: () => lastLoadMs,
   };
+
+  async function listen(
+    active: WhisperEngine,
+    request: SttRequest,
+  ): Promise<Transcription> {
+    const signal = request.signal;
+    let audio: Float32Array;
+    try {
+      request.onProgress?.({ phase: 'decode', completed: 0, total: null });
+      const blob =
+        request.blob ??
+        (await (await fetch(request.url!, { credentials: 'omit' })).blob());
+      audio = resampleMono(await codec.decode(blob), 16000);
+    } catch (error) {
+      throw classifyWhisperError(error, 'decode', signal);
+    }
+    if (!audio.length) throw new WhisperError('no-audio', 'decode');
+    // Whisper expects the bare language name; Hindi and English are the
+    // two this editor offers (FIX1 F4: checked by a unit test).
+    const language = (request.lang ?? 'en').split('-')[0]!;
+    const duration = audio.length / 16000;
+    const step = WHISPER_WINDOW_SECONDS * 16000;
+    const windows = Math.max(1, Math.ceil(audio.length / step));
+    const chunks: WordTiming[] = [];
+    const texts: string[] = [];
+    request.onProgress?.({
+      phase: 'transcription',
+      completed: 0,
+      total: windows,
+    });
+    try {
+      for (let i = 0; i < windows; i++) {
+        if (signal?.aborted) throw new WhisperError('cancelled', 'listen');
+        const part = audio.subarray(
+          i * step,
+          Math.min(audio.length, (i + 1) * step),
+        );
+        const offset = i * WHISPER_WINDOW_SECONDS;
+        const run = (timestamps: 'word' | true) => {
+          options.onLanguage?.(whisperLanguage(language));
+          return active.run(part, {
+            language: whisperLanguage(language),
+            task: 'transcribe',
+            return_timestamps: timestamps,
+          });
+        };
+        // Word timings need cross-attention outputs; fall back to segments
+        // (never after a cancel or a stall: the worker is gone then).
+        const out = await run('word').catch((error) => {
+          if (error instanceof WhisperError) throw error;
+          return run(true);
+        });
+        texts.push(out.text.trim());
+        const end = offset + part.length / 16000;
+        for (const c of out.chunks ?? [])
+          chunks.push({
+            text: c.text.trim(),
+            start: offset + (c.timestamp[0] ?? 0),
+            end: Math.min(
+              end,
+              offset + (c.timestamp[1] ?? part.length / 16000),
+            ),
+          });
+        request.onProgress?.({
+          phase: 'transcription',
+          completed: i + 1,
+          total: windows,
+        });
+      }
+    } catch (error) {
+      throw classifyWhisperError(error, 'listen', signal);
+    }
+    const text = texts.filter(Boolean).join(' ').trim();
+    const timed = chunks.filter((c) => c.text);
+    if (!text || !/[\p{L}\p{N}]/u.test(text))
+      throw new WhisperError('no-speech', 'listen');
+    const words = timed.filter((c) => !/\s/.test(c.text));
+    return {
+      text,
+      language,
+      segments: timed.length ? timed : [{ text, start: 0, end: duration }],
+      ...(words.length === timed.length && words.length ? { words } : {}),
+    };
+  }
 }

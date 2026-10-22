@@ -1098,6 +1098,14 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FN3-029 | P0 | W9 | Verified | Camera overlays (guides, safe areas, passepartout, name) show only in the editor; a camera background image draws through the camera and is exported only with Include in render; Track To and the focus picker set the camera (BP.8 to BP.13) |
 | FN3-030 | P0 | W9 | Verified | Spellcheck is a Settings switch (off by default); inside the text editor Ctrl+Z undoes one typing burst and Ctrl+A, Ctrl+I style the text; a camera is renamed in one step; the typewriter shows in the exported frame (T2.6, T2.9, T2.11, C3.7, T6.1) |
 
+## FX3: Fix round 3 (panels, offline captions in a worker)
+
+| ID      | Pri | Wave | Status   | Feature |
+| ------- | --- | ---- | -------- | ------- |
+| FX3-001 | P0 | W9 | Claimed | Every library shelf (Media, AI, My Templates) fills its panel to the bottom with one scroller (the cards); search, Import and the chips stay put at every window height; no nested scroller (1.1, 4.1) |
+| FX3-002 | P0 | W9 | Claimed | Offline captions run in a dedicated module Web Worker: a CPU-bound model and a flood of 20 000 progress events never freeze the page (no frame gap over 200 ms), and the cues still land (2.2, 2.7) |
+| FX3-003 | P0 | W9 | Claimed | A captions worker that sends nothing for 15 s (or 120 s during one inference run) is stopped and the dialog says "The caption engine stopped responding" with Copy diagnostics; Cancel terminates the worker (2.3) |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.
