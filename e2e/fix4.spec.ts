@@ -92,4 +92,17 @@ test('[FX4-004] AI composition card: Not built, then Built with scene count and 
   await expect(card).toContainText('3 scenes');
   await expect(card.locator('[data-thumb="image"]')).toHaveCount(1);
   await page.screenshot({ path: 'reports/fix4/a4-card.png' });
+  // A10: the starter kit cards show real pictures, not grey placeholders.
+  const kit = page.locator(
+    '#library-ai .shelf-item[data-id^="ai:kit:"], #library-ai .shelf-item:has([data-thumb])',
+  );
+  await expect(
+    page.locator('#library-ai [data-thumb="placeholder"]'),
+  ).toHaveCount(0);
+  expect(await kit.count()).toBeGreaterThan(3);
+  await page
+    .locator('#library-ai .shelf-body, #library-ai .shelf')
+    .first()
+    .evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await page.screenshot({ path: 'reports/fix4/a10-kit.png' });
 });

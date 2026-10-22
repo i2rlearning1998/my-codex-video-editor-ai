@@ -293,6 +293,7 @@ import {
   withFeelDefaults,
   type VideoPlan,
 } from '../video-plan';
+import { kitPreviewUrl } from '../video-plan/kit-preview';
 import type { FeelExtras } from '../themes/library';
 import { openPlanBuild, planServices } from './plan-build-dialog';
 import { planReviewPanel } from './plan-review';
@@ -4178,6 +4179,10 @@ export function mountEditorShell(
           ? KIT_IDS.map((id) => ({ id, name: t(`kit.name.${id}`) }))
           : [],
       insert: (id) => void insertKitItem(id).catch(reportError),
+      preview: (id) => {
+        const theme = themeById(currentThemeId()) ?? BUILT_IN_THEMES[0]!;
+        return kitPreviewUrl(id, theme.palette, t('kit.sampleText'));
+      },
     },
     insert: (id) => safely(() => insertCreatorItem(id)),
     applyPreset: (id) => applyCreatorPreset(id),

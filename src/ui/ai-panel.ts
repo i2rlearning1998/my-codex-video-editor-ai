@@ -81,6 +81,8 @@ export interface AiPanelOptions {
   readonly kit?: {
     readonly items: () => readonly { id: string; name: string }[];
     readonly insert: (id: string) => void;
+    /** FIX4 A10: a picture of the item (null: the soft placeholder). */
+    readonly preview?: (id: string) => string | null;
   };
 }
 
@@ -165,7 +167,12 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           keywords: ['kit', 'starter', item.id],
           data: { kit: item.id, kind: 'kit' },
           thumb: (slot: HTMLElement) =>
-            libraryThumb(slot, { id, type: 'kit', name: item.name }),
+            libraryThumb(slot, {
+              id,
+              type: 'kit',
+              name: item.name,
+              url: options.kit?.preview?.(item.id) ?? null,
+            }),
         };
       }),
       ...options.library.list().map((entry) => {

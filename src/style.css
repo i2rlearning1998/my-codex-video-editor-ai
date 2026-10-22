@@ -11257,3 +11257,10 @@ input[type='range'] {
   flex: 1;
   min-width: 0;
 }
+
+/* FIX4: while a dialog is open the toast moves to the top, so it never
+   covers the dialog's last lines. */
+body:has(.modal-backdrop) .toast-stack {
+  bottom: auto;
+  top: var(--space-4);
+}
