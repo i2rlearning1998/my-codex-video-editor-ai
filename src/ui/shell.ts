@@ -1,4 +1,11 @@
 import {
+  builtScenes,
+  compositionCardStatus,
+  compositionKey,
+  rememberBuilt,
+  storageOrNull,
+} from './composition-status';
+import {
   openAutoCaptions,
   openTranscribe,
   selectedSoundClip,
@@ -2703,7 +2710,18 @@ export function mountEditorShell(
         );
       },
       library: (id) => libraryActions.find(id),
-      addScenes: (project) => addBuiltScenes(project),
+      addScenes: (project) => {
+        const ids = addBuiltScenes(project);
+        // FIX3 1.3: the AI card reads Built (or Needs assets) from now on.
+        rememberBuilt(
+          storageOrNull(),
+          engine.state.id,
+          compositionKey(item.data),
+          ids,
+        );
+        aiPanel?.render();
+        return ids;
+      },
       openProject: async (project) => {
         if (
           await confirmDialog(t('composition.openConfirm'), {
@@ -4097,7 +4115,12 @@ export function mountEditorShell(
     library: creatorLibrary,
     // FINAL3 V3.5: a plan's status, and the starter kit.
     planStatus: (_id, data) => {
-      if (!isPlanV2(data)) return null;
+      // FIX3 4.6: a composition built with Build video (not a plan).
+      if (!isPlanV2(data))
+        return compositionCardStatus(
+          builtScenes(storageOrNull(), engine.state.id, compositionKey(data)),
+          engine.state.compositions,
+        ).status;
       const state = planState(engine.state.id);
       const title = (data as VideoPlan).meta.title;
       if (!state || state.plan.meta.title !== title) return 'not-built';
