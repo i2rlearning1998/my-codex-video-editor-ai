@@ -6877,9 +6877,12 @@ input[type='range'] {
 
 /* T-ALL P1 (spec 7): the left rail and panel run the full height; the
    timeline sits beside the panel (wide layout; narrower layouts keep the
-   full-width timeline so the Player bar fits). The left panel's collapse
+   full-width timeline so the Player bar fits). FIX4: the medium layout
+   (laptops, 1024 to 1439 px) uses the same shape: the panel runs full
+   height and the timeline sits beside it, as on a wide window. The left panel's collapse
    button is in its own header row. */
-.editor-shell[data-layout='wide'] {
+.editor-shell[data-layout='wide'],
+.editor-shell[data-layout='medium'] {
   grid-template-areas:
     'top top top top top'
     'rail-left library preview inspector rail-right'

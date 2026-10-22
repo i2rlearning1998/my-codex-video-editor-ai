@@ -70,3 +70,26 @@ test('[FX4-003] every overflowing left panel: its scroller reaches the panel bot
     path: `reports/fix4/a2-${testInfo.project.name}.png`,
   });
 });
+
+// FIX4: laptops use the same shape as wide windows: the left panel runs the
+// full height and the timeline sits beside it, never under it.
+test('[FX4-009] the left panel is full height and the timeline sits beside it', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await show(page, 'Media');
+  const box = await page.evaluate(() => {
+    const rect = (selector: string) =>
+      document.querySelector(selector)!.getBoundingClientRect();
+    const library = rect('.library');
+    const timeline = rect('.timeline');
+    return {
+      libraryBottom: library.bottom,
+      libraryRight: library.right,
+      timelineLeft: timeline.left,
+      windowHeight: window.innerHeight,
+    };
+  });
+  expect(box.timelineLeft).toBeGreaterThanOrEqual(box.libraryRight - 1);
+  expect(box.libraryBottom).toBeGreaterThan(box.windowHeight - 40);
+});
