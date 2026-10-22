@@ -2,6 +2,7 @@ import { validateSpec, formatIssues, CATALOG_VERSION } from './validate';
 import type { Scalar } from './schema';
 import { frozen } from './json';
 import { blockData } from './catalogs/data';
+import { graphicsBlocks } from '../blocks/graphics';
 import { compileBlock } from './vendor/blocks/sandbox/compile';
 export const COMMAND_NAMES = [
   'CREATE_COMPOSITION',
@@ -374,7 +375,8 @@ export function resolveSpec(
         const compiled = source ? compileBlock(source) : undefined;
         const paramSpecs = compiled?.ok
           ? compiled.value.info.params
-          : blockData.find((b) => b.id === item.blockId)!.params;
+          : (blockData.find((b) => b.id === item.blockId) ??
+              graphicsBlocks.find((b) => b.id === item.blockId))!.params;
         for (const key of Object.keys(item.params).sort()) {
           const v = item.params[key];
           set(

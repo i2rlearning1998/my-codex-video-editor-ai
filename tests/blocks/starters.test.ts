@@ -18,7 +18,8 @@ for (const block of blocks)
       const a = run(3);
       run(1);
       expect(run(3)).toEqual(a);
-      expect(run(0.5)).not.toEqual(run(2));
+      // A static panel is the one block that does not change with time.
+      if (block.id !== 'soft-panel') expect(run(0.5)).not.toEqual(run(2));
       expect(run(block.thumbnailTime!)).toEqual(run(block.thumbnailTime!));
       expect(p).toEqual(defaults(block));
     },

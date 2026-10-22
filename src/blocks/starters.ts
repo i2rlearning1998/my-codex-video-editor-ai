@@ -1,6 +1,7 @@
 import { defineBlock } from './render';
 import { clamp, ease, easingNames, lerp, rngFor, spring } from './helpers';
 import type { ParamSpec, Params } from './types';
+import { graphicsBlocks } from './graphics';
 const num = (
   name: string,
   label: string,
@@ -255,5 +256,6 @@ export const blocks = Object.freeze([
   particleBurst,
   dataPipeline,
   kineticLetters,
+  ...graphicsBlocks,
 ]);
 export const getBlock = (id: string) => blocks.find((b) => b.id === id);

@@ -571,13 +571,17 @@ export async function buildVideoFromPlan(
     // The editor stacks the first item of a scene on top. Order of pushing:
     // overlays first (on top), then the scenes last to first, and inside a
     // scene text and shapes, then media, then kit backgrounds (underneath).
+    // A timeline keeps the author's order (bottom to top), so art can sit
+    // above or below shapes and code graphics as written.
     const rank = (l: PlanLayer) =>
-      l.kind === 'kit' &&
-      (KIT_BACKGROUNDS as readonly string[]).includes(l.kit ?? '')
+      timeline
         ? 0
-        : l.kind === 'media'
-          ? 1
-          : 2;
+        : l.kind === 'kit' &&
+            (KIT_BACKGROUNDS as readonly string[]).includes(l.kit ?? '')
+          ? 0
+          : l.kind === 'media'
+            ? 1
+            : 2;
     const layout = (
       owner: { id: string },
       layers: readonly PlanLayer[],

@@ -7,6 +7,8 @@
 import type { Asset } from '../core';
 import type { PlanLayer } from './schema';
 import { isKitId, kitItems, type SpecItem } from './kit';
+import { getBlock } from '../blocks/starters';
+import { validateParams } from '../blocks/params';
 
 export type PlacedRole =
   | 'title'
@@ -14,6 +16,7 @@ export type PlacedRole =
   | 'media'
   | 'kit'
   | 'shape'
+  | 'block'
   | 'fallback'
   | 'voice'
   | 'narration'
@@ -258,7 +261,8 @@ export function layoutLayer(
       emitMedia(
         layer,
         when,
-        segment,
+        { ...segment, first: n === 0, last: n === segments.length - 1 },
+
         `${prefix}${n ? `p${n}` : 'm'}`,
         env,
         emit,
@@ -291,6 +295,34 @@ export function layoutLayer(
     return out;
   }
 
+  if (layer.kind === 'block') {
+    const info = layer.block ? getBlock(layer.block) : undefined;
+    if (!info) return out;
+    // A block draws on a canvas-sized transparent frame; its own settings
+    // say where things go. The layer only decides when it shows.
+    emit({
+      item: {
+        id: `${prefix}b`,
+        name: `${info.name} ${layer.id}`.slice(0, 100),
+        ...when,
+        kind: 'code-block',
+        blockId: info.id,
+        blockVersion: info.version,
+        params: { ...validateParams(info.params, layer.params ?? {}) },
+        seed: 1,
+        transform: {
+          x: 0,
+          y: 0,
+          ...(layer.opacity !== undefined ? { opacity: layer.opacity } : {}),
+        },
+      },
+      role: 'block',
+      key,
+      enter: layer.enter,
+      exit: layer.exit,
+    });
+    return out;
+  }
   if (layer.kind === 'shape') return layoutShape(layer, key, prefix, when, env);
   if (layer.kind === 'bubble')
     return layoutBubble(layer, key, prefix, when, env);
@@ -386,7 +418,13 @@ export function layoutLayer(
 function emitMedia(
   layer: PlanLayer,
   layerWhen: Timing,
-  segment: { key: string; start: number; end: number },
+  segment: {
+    key: string;
+    start: number;
+    end: number;
+    first?: boolean;
+    last?: boolean;
+  },
   idBase: string,
   env: LayoutEnv,
   emit: (e: Emitted) => void,
@@ -440,8 +478,10 @@ function emitMedia(
       },
       role: 'media',
       key: segment.key,
-      enter: layer.enter,
-      exit: layer.exit,
+      // Poses cut straight into each other: only the first picture fades in
+      // and only the last fades out.
+      enter: segment.first === false ? 'none' : layer.enter,
+      exit: segment.last === false ? 'none' : layer.exit,
       post: {
         ...(layer.feather
           ? {

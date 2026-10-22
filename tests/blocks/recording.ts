@@ -1,4 +1,5 @@
 import type { DrawContext } from '../../src/blocks/types';
+const gradient = { addColorStop: () => undefined };
 /** Canvas call-log double. Deliberately not a rasterizer or pixel-parity claim. */
 export function recording() {
   const log: unknown[][] = [];
@@ -16,6 +17,11 @@ export function recording() {
           if (depth <= 0) throw new Error('Unbalanced restore');
           depth--;
           log.push(['restore']);
+        };
+      if (key === 'createLinearGradient' || key === 'createRadialGradient')
+        return (...args: unknown[]) => {
+          log.push([key, ...args]);
+          return gradient;
         };
       if (key === 'measureText')
         return (text: string) => ({ width: text.length * 12 });

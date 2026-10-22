@@ -34,6 +34,7 @@ export function blockMeta(info: BlockInfo): FreeCodeMeta {
     version: info.version,
     category: info.category,
     duration: info.defaultDuration,
+    ...(info.fps ? { fps: info.fps } : {}),
     // Tier B is a pure function of t, so any frame can be drawn.
     seekable: true,
     keepFrame: false,

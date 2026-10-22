@@ -32,6 +32,7 @@ export const PLAN_LAYER_KINDS = [
   'kit',
   'shape',
   'bubble',
+  'block',
 ] as const;
 export const PLAN_SHAPES = [
   'rectangle',
@@ -144,6 +145,14 @@ function make(strict: boolean) {
     /** A highlight box behind the text, or its outline. */
     highlight: color.optional(),
     outline: color.optional(),
+    /** V4: a registered graphics block (code layer) and its settings. */
+    block: z
+      .string()
+      .regex(/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/)
+      .optional(),
+    params: z
+      .record(z.union([z.number(), z.string().max(200), z.boolean()]))
+      .optional(),
     shape: z.enum(PLAN_SHAPES).optional(),
     from: obj({ x: pct, y: pct }).optional(),
     to: obj({ x: pct, y: pct }).optional(),

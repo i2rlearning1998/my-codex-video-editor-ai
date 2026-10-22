@@ -120,7 +120,7 @@ describe('[FN3-019] Video Plan v2 validator and starter kit', () => {
     const failed = validatePlan(plan);
     expect(failed.ok).toBe(false);
     expect(failed.errors[0]).toBe(
-      'Scene 3 (close), layer "bg", "kind" must be one of title, text, media, kit, shape, bubble (it is "sticker").',
+      'Scene 3 (close), layer "bg", "kind" must be one of title, text, media, kit, shape, bubble, block (it is "sticker").',
     );
     plan.scenes[2].layers[0].kind = 'kit';
     expect(validatePlan(plan).errors).toEqual([

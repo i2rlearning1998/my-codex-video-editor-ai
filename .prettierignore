@@ -13,3 +13,4 @@ e2e-results/
 playwright-report/
 test-results/
 public/library/
+src/blocks/graphics/geo-data.ts

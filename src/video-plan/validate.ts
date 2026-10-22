@@ -12,6 +12,8 @@ import {
 } from './schema';
 import { isKitId } from './kit';
 import { estimateSceneDuration } from './timing';
+import { getBlock } from '../blocks/starters';
+import { validateParams } from '../blocks/params';
 
 export interface PlanCheck {
   readonly ok: boolean;
@@ -103,6 +105,22 @@ function checkLayer(
     errors.push(`${at} is media without "mediaIntent" (what to look for).`);
   if (layer.poses?.length && layer.kind !== 'media')
     errors.push(`${at}: "poses" belong on a media layer.`);
+  if (layer.kind === 'block') {
+    const info = layer.block ? getBlock(layer.block) : undefined;
+    if (!layer.block)
+      errors.push(`${at} is a block layer without "block" (which block).`);
+    else if (!info)
+      errors.push(`${at}: there is no graphics block "${layer.block}".`);
+    else {
+      try {
+        validateParams(info.params, layer.params ?? {});
+      } catch (e) {
+        errors.push(
+          `${at}: block "${layer.block}": ${String((e as Error).message ?? e)}.`,
+        );
+      }
+    }
+  }
   if (layer.kind === 'kit' && !layer.kit)
     errors.push(`${at} is a kit layer without "kit" (which item).`);
   if (layer.kind === 'kit' && layer.kit && !isKitId(layer.kit))

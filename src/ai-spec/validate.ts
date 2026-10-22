@@ -10,6 +10,7 @@ import { blockData, fxData } from './catalogs/data';
 import { compileBlock } from './vendor/blocks/sandbox/compile';
 import { validateParams } from './vendor/blocks/params';
 import type { ParamSpec } from './vendor/blocks/types';
+import { graphicsBlocks } from '../blocks/graphics';
 export interface SpecIssue {
   path: string;
   message: string;
@@ -110,12 +111,23 @@ export function validateSpec(
     const registry = new Map<
       string,
       { version: string; params: readonly ParamSpec[] }
-    >(
-      blocks.map((b) => [
-        b.id,
-        { version: b.version, params: b.params as readonly ParamSpec[] },
-      ]),
-    );
+    >([
+      ...blocks.map(
+        (b) =>
+          [
+            b.id,
+            { version: b.version, params: b.params as readonly ParamSpec[] },
+          ] as const,
+      ),
+      // Graphics blocks live in the editor itself (src/blocks/graphics).
+      ...graphicsBlocks.map(
+        (b) =>
+          [
+            b.id,
+            { version: b.version, params: b.params as readonly ParamSpec[] },
+          ] as const,
+      ),
+    ]);
     for (const [i, b] of spec.blocks.entries()) {
       if (registry.has(b.id)) {
         add(['blocks', i, 'id'], 'Block id collides with a registered block');
