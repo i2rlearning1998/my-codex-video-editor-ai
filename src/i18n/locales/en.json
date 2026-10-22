@@ -2611,6 +2611,8 @@
   "ai.kind.kit": "Starter kit",
   "plan.status.built": "Built",
   "plan.status.needs-assets": "Needs assets",
+  "plan.status.scenes": "{count} scenes",
+  "plan.rebuild": "Build again",
   "plan.status.not-built": "Not built",
   "plan.feelName": "{name} · feel",
   "plan.saveFeel": "Save feel as theme",

@@ -2611,6 +2611,8 @@
   "ai.kind.kit": "स्टार्टर किट",
   "plan.status.built": "बनाया गया",
   "plan.status.needs-assets": "एसेट चाहिए",
+  "plan.status.scenes": "{count} दृश्य",
+  "plan.rebuild": "फिर से बनाएँ",
   "plan.status.not-built": "नहीं बना",
   "plan.feelName": "{name} · फ़ील",
   "plan.saveFeel": "फ़ील को थीम के रूप में सहेजें",

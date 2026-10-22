@@ -66,5 +66,7 @@ test('[FX4-003] every overflowing left panel: its scroller reaches the panel bot
       ).toBe(true);
   }
   await testInfo.attach('geometry', { body: report.join('\n') });
-  await page.screenshot({ path: `reports/fix4/a2-${testInfo.project.name}.png` });
+  await page.screenshot({
+    path: `reports/fix4/a2-${testInfo.project.name}.png`,
+  });
 });

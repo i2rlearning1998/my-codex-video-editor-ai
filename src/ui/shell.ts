@@ -4126,6 +4126,46 @@ export function mountEditorShell(
       if (!state || state.plan.meta.title !== title) return 'not-built';
       return state.flags.length ? 'needs-assets' : 'built';
     },
+    // FIX4 A4: Built / Needs assets / Not built, the scene count and a
+    // poster from the first built scene.
+    planCard: (_id, data) => {
+      let ids: readonly string[] = [];
+      let status: 'built' | 'needs-assets' | 'not-built';
+      if (!isPlanV2(data)) {
+        const built = builtScenes(
+          storageOrNull(),
+          engine.state.id,
+          compositionKey(data),
+        );
+        const info = compositionCardStatus(built, engine.state.compositions);
+        status = info.status;
+        ids = (built ?? []).filter((id) =>
+          engine.state.compositions.some((scene) => scene.id === id),
+        );
+      } else {
+        const state = planState(engine.state.id);
+        if (!state || state.plan.meta.title !== (data as VideoPlan).meta.title)
+          return { status: 'not-built', scenes: 0 };
+        ids = state.sceneIds.filter(
+          (id): id is string =>
+            !!id && engine.state.compositions.some((scene) => scene.id === id),
+        );
+        status = !ids.length
+          ? 'not-built'
+          : state.flags.length
+            ? 'needs-assets'
+            : 'built';
+      }
+      if (status === 'not-built' || !ids.length)
+        return { status: 'not-built', scenes: 0 };
+      const poster = scenePosterUrl(engine, session, ids[0]!, frames);
+      return {
+        status,
+        scenes: ids.length,
+        ...(poster ? { poster } : {}),
+      };
+    },
+    rebuild: (id) => safely(() => insertCreatorItem(id)),
     kit: {
       // (Listed with the plans it builds, once the library holds one.)
       items: () =>

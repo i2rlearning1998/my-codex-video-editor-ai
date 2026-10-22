@@ -65,6 +65,18 @@ export interface AiPanelOptions {
     id: string,
     data: unknown,
   ) => 'built' | 'needs-assets' | 'not-built' | null;
+  /** FIX4 A4: a built plan's card: status, scene count and a poster drawn
+   *  from its first built scene (null when nothing was built). */
+  readonly planCard?: (
+    id: string,
+    data: unknown,
+  ) => {
+    status: 'built' | 'needs-assets' | 'not-built';
+    scenes: number;
+    poster?: string;
+  } | null;
+  /** FIX4 A4: runs the build again for a composition card. */
+  readonly rebuild?: (id: string) => void;
   /** FINAL3 V3.5: the starter kit's items, added to the open scene. */
   readonly kit?: {
     readonly items: () => readonly { id: string; name: string }[];
@@ -172,10 +184,16 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
               : (entry.thumbnail ?? null),
         };
         const live = kind === 'motion' || kind === 'preset';
-        const status =
+        const card =
           kind === 'composition'
-            ? (options.planStatus?.(id, entry.item.data) ?? null)
+            ? (options.planCard?.(id, entry.item.data) ?? null)
             : null;
+        const status =
+          card?.status ??
+          (kind === 'composition'
+            ? (options.planStatus?.(id, entry.item.data) ?? null)
+            : null);
+        if (card?.poster) source.url = card.poster;
         return {
           id,
           name: entry.name,
@@ -184,7 +202,14 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           title: `${entry.name} · ${entry.packName.en}`,
           keywords: [entry.packName.en, kind, ...entry.item.tags],
           data: { item: id, kind, ...(status ? { planStatus: status } : {}) },
-          ...(status ? { badge: t(`plan.status.${status}`) } : {}),
+          ...(status
+            ? {
+                badge:
+                  card && card.scenes > 0 && status !== 'not-built'
+                    ? `${t(`plan.status.${status}`)} · ${t('plan.status.scenes', { count: String(card.scenes) })}`
+                    : t(`plan.status.${status}`),
+              }
+            : {}),
           // B1: a style is never placed: no drag; "+" uses it.
           ...(style
             ? { addLabel: t('style.use') }
@@ -208,8 +233,27 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     ],
     add,
     rename: options.rename,
-    extraMenu: (id) =>
-      options.isCode?.(id)
+    extraMenu: (id) => [
+      ...(options.rebuild &&
+      options.library
+        .list()
+        .some(
+          (e) =>
+            creatorLibraryId(e.key) === id &&
+            e.item.type === 'composition' &&
+            options.planStatus?.(id, e.item.data) &&
+            options.planStatus(id, e.item.data) !== 'not-built',
+        )
+        ? [
+            {
+              id: 'ai-rebuild',
+              label: t('plan.rebuild'),
+              icon: 'duplicate',
+              run: () => options.rebuild?.(id),
+            },
+          ]
+        : []),
+      ...(options.isCode?.(id)
         ? [
             {
               id: 'ai-duplicate',
@@ -224,7 +268,8 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
               run: () => options.exportItem?.(id),
             },
           ]
-        : [],
+        : []),
+    ],
     details: options.details,
     remove: options.remove,
     prompt: options.prompt,
