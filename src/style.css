@@ -3816,10 +3816,13 @@ button.color-swatch:hover {
   /* Bottom left, above the timeline: never over the tracks or the canvas's
      toolbar, where it would block the next click. */
   bottom: calc(var(--timeline-height) + var(--space-3));
-  left: calc(var(--rail-width) + var(--space-3));
+  /* FIX4 A1: bottom-centre, over the canvas area; never over a left panel's
+     scroller, where the cards and their last row sit. */
+  left: 50%;
   right: auto;
-  align-items: flex-start;
-  max-width: min(360px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  align-items: center;
+  max-width: min(420px, calc(100vw - 32px));
 }
 .toast {
   gap: var(--space-2);
