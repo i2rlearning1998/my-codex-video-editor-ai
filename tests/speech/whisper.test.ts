@@ -114,10 +114,17 @@ test('[FX1-010] success: windows of 30 s report progress and keep their offsets;
   const result = await runner.transcribe({
     blob: new Blob(),
     lang: 'hi-IN',
-    onProgress: (p) => phases.push(`${p.phase}:${p.completed}/${p.total}`),
+    onProgress: (p) =>
+      phases.push(
+        `${p.phase}${p.stage ? `.${p.stage}` : ''}:${p.completed}/${p.total}`,
+      ),
   });
+  // FIX4 A5: the model start names its stages.
   expect(phases).toEqual([
     'load:0/null',
+    'load.library:0/null',
+    'load.pipeline:0/null',
+    'load.ready:0/null',
     'decode:0/null',
     'transcription:0/3',
     'transcription:1/3',

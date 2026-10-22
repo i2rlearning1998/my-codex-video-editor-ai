@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { test, expect, showCategory } from './fixtures';
+import { test, expect, showCategory, menuAction } from './fixtures';
 import { mockStock, GOOD_KEY } from './stock-mock';
 
 // FIX4 A1: after Import + Build two messages used to stack at the bottom-left
@@ -105,4 +105,31 @@ test('[FX4-004] AI composition card: Not built, then Built with scene count and 
     .first()
     .evaluate((el) => el.scrollTo(0, el.scrollHeight));
   await page.screenshot({ path: 'reports/fix4/a10-kit.png' });
+});
+
+test('[FX4-008] Settings › Offline › Model source saves an https address, refuses others and resets', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => '__AIVE__' in window)).toBe(true);
+  await menuAction(page, '#open-settings');
+  const settings = page.locator('.modal-dialog');
+  await settings.locator('[data-settings-tab="offline"]').click();
+  const input = settings.locator('#model-source-input');
+  const status = settings.locator('#model-source-status');
+  await input.fill('http://nope.example');
+  await settings.locator('[data-action="model-source-save"]').click();
+  await expect(status).toHaveAttribute('data-state', 'error');
+  await input.fill('https://models.example.com/hf');
+  await settings.locator('[data-action="model-source-save"]').click();
+  await expect(status).toHaveAttribute('data-state', 'ok');
+  expect(
+    await page.evaluate(() => localStorage.getItem('aive.model-source')),
+  ).toBe('https://models.example.com/hf');
+  await settings.locator('[data-action="model-source-reset"]').click();
+  await expect(input).toHaveValue('');
+  expect(
+    await page.evaluate(() => localStorage.getItem('aive.model-source')),
+  ).toBeNull();
+  await page.screenshot({ path: 'reports/fix4/a6-model-source.png' });
 });

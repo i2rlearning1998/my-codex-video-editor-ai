@@ -19,6 +19,8 @@ export interface SpeechProgress {
   completed: number;
   total: number | null;
   file?: string;
+  /** FIX4 A5: which part of the model start is running. */
+  stage?: 'library' | 'pipeline' | 'ready';
 }
 export interface TtsRequest {
   text: string;

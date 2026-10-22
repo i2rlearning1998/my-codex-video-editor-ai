@@ -6,6 +6,12 @@
 // the open scene's caption track. Media bytes are read from the media
 // store (D-004); nothing here is saved outside the project.
 import {
+  longTaskFacts,
+  watchLongTasks,
+  type LongTaskReport,
+} from './long-tasks';
+import { whisperSelfTest } from '../speech/whisper-worker-client';
+import {
   CAPTION_POSITIONS,
   CAPTION_STYLE_IDS,
   CAPTION_STYLES,
@@ -399,6 +405,7 @@ async function transcribe(
   onProgress(null, t('captions.step.start'));
   const started = performance.now();
   lastRun = { engine: engine.provider.id, lang: picks.lang, steps: [] };
+  const stopWatching = watchLongTasks();
   // FIX1 F4: every step is named while it runs, and every failure is
   // thrown to the dialog (never swallowed).
   const transcription = await engine.provider.transcribe({
@@ -409,7 +416,7 @@ async function transcribe(
       const fraction = p.total ? Math.min(1, p.completed / p.total) : null;
       const label =
         p.phase === 'load'
-          ? t('captions.step.load')
+          ? t(p.stage ? `captions.step.load.${p.stage}` : 'captions.step.load')
           : p.phase === 'decode'
             ? t('captions.step.decode')
             : p.phase === 'download'
@@ -424,7 +431,10 @@ async function transcribe(
       onProgress(fraction, label);
     },
   });
-  if (lastRun) lastRun.ms = performance.now() - started;
+  if (lastRun) {
+    lastRun.ms = performance.now() - started;
+    lastRun.longTasks = stopWatching();
+  }
   if (signal.aborted) throw new DOMException('Cancelled', 'AbortError');
   if (!transcription.text.trim()) throw new WhisperError('no-speech', 'listen');
   transcripts.set(key, transcription);
@@ -481,6 +491,8 @@ let lastRun: {
   lang: string;
   steps: string[];
   ms?: number;
+  longTasks?: LongTaskReport;
+  selfTest?: Record<string, string | number | boolean>;
 } | null = null;
 /** Shows the failure in `status`, with Copy diagnostics, and logs it. */
 const showFailure = (status: HTMLElement, error: unknown) => {
@@ -489,6 +501,11 @@ const showFailure = (status: HTMLElement, error: unknown) => {
   console.debug('[captions] failed', error);
   if (error instanceof DOMException && error.name === 'AbortError') return;
   if (error instanceof WhisperError && error.kind === 'cancelled') return;
+  // FIX4 A7: ask a fresh worker what it can do, for the report.
+  if (lastRun && error instanceof WhisperError)
+    void whisperSelfTest().then((result) => {
+      if (lastRun) lastRun.selfTest = result;
+    });
   status.append(
     ' ',
     diagnosticsButton(() => ({
@@ -501,6 +518,13 @@ const showFailure = (status: HTMLElement, error: unknown) => {
         failure: error instanceof WhisperError ? error.kind : undefined,
         language: lastRun?.lang,
         steps: lastRun?.steps.slice(-6).join(', '),
+        ...longTaskFacts(lastRun?.longTasks),
+        ...Object.fromEntries(
+          Object.entries(lastRun?.selfTest ?? {}).map(([k, v]) => [
+            `worker.${k}`,
+            v,
+          ]),
+        ),
       },
     })),
   );

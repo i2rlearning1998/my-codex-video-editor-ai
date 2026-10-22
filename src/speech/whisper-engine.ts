@@ -2,6 +2,8 @@
 // @huggingface/transformers, building the pipeline, running a window). The
 // browser runs it inside a dedicated module worker (whisper.worker.ts), so
 // the page never waits on it; unit tests in Node run it in-process.
+import { resampleMono } from './pcm';
+import type { PcmAudio } from './types';
 
 /** One window's answer from the pipeline. */
 export interface AsrOutput {
@@ -27,12 +29,22 @@ export interface EngineFile {
   url: string;
   blob: Blob;
 }
+/** FIX4 A5: the load's named stages, in order. */
+export type LoadStage = 'library' | 'pipeline' | 'ready';
+export interface LoadHooks {
+  onStage?: (stage: LoadStage) => void;
+  /** FIX4 A6: the model host (default Hugging Face). */
+  host?: string;
+}
 export interface WhisperEngine {
   load(
     files: readonly EngineFile[],
     model: string,
     onProgress?: (completed: number, total: number | null) => void,
+    hooks?: LoadHooks,
   ): Promise<void>;
+  /** FIX4 A9: mono 16 kHz samples from decoded audio, off the main thread. */
+  resample?(audio: PcmAudio): Promise<Float32Array>;
   run(
     audio: Float32Array,
     options: Record<string, unknown>,
@@ -51,8 +63,11 @@ export function createInProcessEngine(
 ): WhisperEngine {
   let asr: Awaited<ReturnType<TransformersModule['pipeline']>> | null = null;
   return {
-    async load(files, model, onProgress) {
+    async load(files, model, onProgress, hooks) {
+      hooks?.onStage?.('library');
       const { env, pipeline } = await loadTransformers();
+      hooks?.onStage?.('pipeline');
+      if (hooks?.host) env.remoteHost = hooks.host;
       // Every model file comes from this browser's verified store.
       env.allowLocalModels = false;
       env.useBrowserCache = false;
@@ -89,6 +104,10 @@ export function createInProcessEngine(
         progress_callback: (p: { loaded?: number; total?: number }) =>
           onProgress?.(p.loaded ?? 0, p.total ?? null),
       });
+      hooks?.onStage?.('ready');
+    },
+    async resample(audio) {
+      return resampleMono(audio, 16000);
     },
     run(audio, options) {
       if (!asr) return Promise.reject(new Error('The model is not loaded'));
