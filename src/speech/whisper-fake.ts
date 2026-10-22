@@ -6,15 +6,12 @@
 import type { ModelStore } from './model-cache';
 import { createWhisperRunner, type WhisperRunner } from './whisper';
 import type { AudioCodec } from './types';
+import {
+  fakeTransformers,
+  type FakeWhisperMode,
+} from './whisper-fake-transformers';
 
-export type FakeWhisperMode =
-  | 'ok'
-  | 'no-speech'
-  | 'blocked'
-  | 'memory'
-  | 'unsupported'
-  | 'no-audio'
-  | 'hang';
+export type { FakeWhisperMode };
 
 export const memoryModelStore = (): ModelStore => {
   const map = new Map<string, Blob>();
@@ -30,10 +27,8 @@ export function fakeWhisperRunner(
   extra: { codec?: AudioCodec; store?: ModelStore } = {},
 ): WhisperRunner & { languages: string[] } {
   const languages: string[] = [];
-  const fail = (error: Error) => () => Promise.reject(error);
   const runner = createWhisperRunner({
     store: extra.store ?? memoryModelStore(),
-    loadTimeoutMs: 4000,
     fetcher: (async () => new Response(new Uint8Array(2000).fill(7))) as never,
     ...(extra.codec ? { codec: extra.codec } : {}),
     ...(mode === 'no-audio'
@@ -51,38 +46,13 @@ export function fakeWhisperRunner(
         }
       : {}),
     ...(mode === 'unsupported' ? { unsupported: () => 'WebAssembly' } : {}),
-    loadTransformers:
-      mode === 'blocked'
-        ? fail(new TypeError('Failed to fetch'))
-        : mode === 'hang'
-          ? () => new Promise(() => undefined)
-          : async () => ({
-              env: {},
-              pipeline: async () => {
-                if (mode === 'memory')
-                  throw new RangeError('Out of memory: WebAssembly.Memory');
-                return async (
-                  audio: Float32Array,
-                  options: Record<string, unknown>,
-                ) => {
-                  languages.push(String(options.language));
-                  if (mode === 'no-speech') return { text: ' ', chunks: [] };
-                  const seconds = audio.length / 16000;
-                  const words = ['Hello', 'from', 'offline', 'captions'];
-                  const step = Math.min(0.5, seconds / words.length);
-                  return {
-                    text: ` ${words.join(' ')}`,
-                    chunks: words.map((text, i) => ({
-                      text: ` ${text}`,
-                      timestamp: [i * step, (i + 1) * step - 0.02] as [
-                        number,
-                        number,
-                      ],
-                    })),
-                  };
-                };
-              },
-            }),
+    // FIX3: a silent worker is caught by the heartbeat, not the start timeout.
+    loadTimeoutMs: mode === 'silent' ? 60_000 : 4000,
+    onLanguage: (language) => languages.push(language),
+    // FIX3 2.2: in a browser the fake model runs inside the real worker.
+    ...(typeof Worker !== 'undefined'
+      ? { workerFake: mode }
+      : { loadTransformers: fakeTransformers(mode) }),
   });
   return Object.assign(runner, { languages });
 }

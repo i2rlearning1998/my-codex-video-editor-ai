@@ -48,5 +48,8 @@ export default defineConfig({
   optimizeDeps: {
     include: ['mediabunny', 'typescript', '@huggingface/transformers'],
   },
+  // FIX3 2.2: the captions worker loads transformers lazily (a split chunk),
+  // which needs ES-module workers; every worker here is created as a module.
+  worker: { format: 'es' },
   test: { environment: 'node', include: ['tests/**/*.test.ts'] },
 });

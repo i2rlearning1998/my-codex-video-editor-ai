@@ -2320,6 +2320,7 @@
   "captions.fail.memory": "Out of memory: close other tabs, or try a shorter clip.",
   "captions.fail.unsupported": "Your browser does not support offline captions (WebAssembly is missing). Use Chrome or Edge.",
   "captions.fail.load-timeout": "The captions model took too long to start. Try again, or run the self-test in Settings.",
+  "captions.fail.stalled": "The caption engine stopped responding. Cancel and try again, or copy diagnostics.",
   "captions.fail.not-downloaded": "The captions model is not downloaded yet. Download it in Settings › Offline captions.",
   "captions.fail.cancelled": "Cancelled.",
   "captions.fail.failed": "Offline captions failed. Copy diagnostics and send them to us.",

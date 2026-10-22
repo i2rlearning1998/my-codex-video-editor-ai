@@ -1,0 +1,129 @@
+{
+  "format": "video-plan",
+  "version": 2,
+  "meta": {
+    "title": "शहद कहाँ से आता है",
+    "language": "hi",
+    "aspect": "16:9",
+    "fps": 30
+  },
+  "feel": {
+    "palette": {
+      "background": "#1b1a17",
+      "text": "#fff7e6",
+      "accent": "#f2a900"
+    },
+    "headingFont": "Poppins",
+    "bodyFont": "Noto Sans Devanagari",
+    "captionStyle": "bold-box",
+    "transition": "dip-to-black",
+    "cameraTendency": "gentle",
+    "pacing": "medium"
+  },
+  "scenes": [
+    {
+      "id": "open",
+      "title": "शुरुआत",
+      "narration": "शहद का हर जार एक छोटे से फूल से शुरू होता है।",
+      "durationHint": 4,
+      "layers": [
+        {
+          "id": "flower",
+          "kind": "media",
+          "size": "full",
+          "mediaIntent": {
+            "query": "bee flower macro",
+            "type": "photo",
+            "orientation": "landscape"
+          }
+        },
+        {
+          "id": "title",
+          "kind": "title",
+          "text": "शहद कहाँ से आता है",
+          "anchor": "center",
+          "enter": "slide-up"
+        }
+      ],
+      "camera": {
+        "controller": "push-in",
+        "strength": 0.6
+      }
+    },
+    {
+      "id": "hive",
+      "title": "छत्ता",
+      "narration": "छत्ते के अंदर हज़ारों मधुमक्खियाँ मिलकर फूलों के रस को शहद में बदलती हैं।",
+      "layers": [
+        {
+          "id": "hive-video",
+          "kind": "media",
+          "size": "full",
+          "mediaIntent": {
+            "query": "beehive bees working",
+            "type": "video"
+          }
+        },
+        {
+          "id": "name",
+          "kind": "kit",
+          "kit": "lower-third-1",
+          "text": "छत्ता|साठ हज़ार तक मधुमक्खियाँ",
+          "enter": "slide-right"
+        },
+        {
+          "id": "count",
+          "kind": "kit",
+          "kit": "number-counter",
+          "text": "60,000|एक छत्ते में मधुमक्खियाँ",
+          "start": 2.5,
+          "enter": "pop"
+        }
+      ],
+      "transitionOut": {
+        "type": "crossfade",
+        "duration": 0.8
+      },
+      "sfx": [
+        {
+          "query": "bees buzzing",
+          "at": 0,
+          "volume": 0.4
+        }
+      ]
+    },
+    {
+      "id": "close",
+      "title": "अंत",
+      "narration": "तो अगली बार जब आप शहद चखें, एक मधुमक्खी को धन्यवाद कहिए।",
+      "layers": [
+        {
+          "id": "bg",
+          "kind": "kit",
+          "kit": "background-spotlight"
+        },
+        {
+          "id": "thanks",
+          "kind": "kit",
+          "kit": "end-card",
+          "text": "मधुमक्खी को धन्यवाद|प्रकृति की और कहानियों के लिए सब्सक्राइब करें"
+        },
+        {
+          "id": "cta",
+          "kind": "kit",
+          "kit": "subscribe-cta",
+          "enter": "pop"
+        }
+      ]
+    }
+  ],
+  "captions": {
+    "enabled": true
+  },
+  "music": {
+    "query": "calm acoustic",
+    "volume": 0.3,
+    "ducking": true
+  },
+  "notes": "प्रकृति चैनल के लिए एक छोटा वीडियो।"
+}
