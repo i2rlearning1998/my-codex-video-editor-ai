@@ -11147,6 +11147,16 @@ input[type='range'] {
   gap: var(--space-2);
   color: var(--text-secondary);
 }
+/* FIX3 4.5: a step's name ("Voice-over") never wraps; a long detail does. */
+.plan-steps .plan-step-name {
+  min-inline-size: 12ch;
+  white-space: nowrap;
+}
+.plan-steps .plan-step-detail {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  text-align: end;
+}
 .plan-steps li[data-state='running'],
 .plan-steps li[data-state='done'] {
   color: var(--text);

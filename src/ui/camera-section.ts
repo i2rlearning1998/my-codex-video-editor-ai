@@ -266,11 +266,11 @@ export function cameraSection(deps: CameraSectionDeps): HTMLElement[] {
   // --- header ----------------------------------------------------------
   const header = document.createElement('header');
   header.className = 'right-section-header';
-  const h = document.createElement('h3');
-  h.textContent = t('cam.title');
+  // FIX3 4.4: the panel's own header already reads "Camera"; the section
+  // keeps only its hint, so the title is not shown twice.
   const hint = document.createElement('p');
   hint.textContent = t('cam.hint');
-  header.append(h, hint);
+  header.append(hint);
 
   const sceneLike = scene as never;
   const now = deps.time();
