@@ -50,12 +50,8 @@ test('[FX3-001] Media, AI and My Templates: the one scroller fills the panel to 
       .poll(async () => (await geometry(page)).gap, { message: name })
       .toBeLessThanOrEqual(2);
     const g = await geometry(page);
-    // 60 % at 1920 × 940. At 1366 × 768 the medium layout's left panel is
-    // about 458 px and its fixed header (search, Import, chips) is most of
-    // it: 51 % today, recorded as not meeting the target in reports/FIX3.md.
-    expect(g.share, name).toBeGreaterThanOrEqual(
-      testInfo.project.name === 'laptop-1366' ? 0.5 : 0.6,
-    );
+    // FIX4 A3: 60 % at both sizes (at 1366 × 768 the header is tightened).
+    expect(g.share, name).toBeGreaterThanOrEqual(0.6);
     expect(g.searchVisible, name).toBe(true);
     expect(g.nested, name).toBe(0);
     await page.screenshot({
