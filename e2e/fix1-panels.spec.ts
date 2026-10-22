@@ -240,19 +240,14 @@ test('[FX1-002] Media keeps search, Import, drop zone and chips fixed while the 
   const before = (await chips.boundingBox())!;
   const searchBefore = (await search.boundingBox())!;
   const body = page.locator('#media-body');
-  const short = (page.viewportSize()?.height ?? 940) <= 820;
-  await expect(body).toHaveCSS('overflow-y', short ? 'visible' : 'auto');
+  // FIX3 4.1 (owner): at every window height only the cards scroll; search,
+  // Import and the chips stay put (short windows used to scroll them away).
+  await expect(body).toHaveCSS('overflow-y', 'auto');
   const grid = (await body.boundingBox())!;
   await page.mouse.move(grid.x + grid.width / 2, grid.y + grid.height / 2);
   await page.mouse.wheel(0, 2000);
-  if (!short) expect((await chips.boundingBox())!.y).toBeCloseTo(before.y, 0);
-  // Short windows scroll the whole shelf and pin only the chips.
-  if (!short)
-    expect((await search.boundingBox())!.y).toBeCloseTo(searchBefore.y, 0);
-  else
-    expect((await chips.boundingBox())!.y).toBeGreaterThanOrEqual(
-      (await page.locator('#library-panel').boundingBox())!.y - 1,
-    );
+  expect((await chips.boundingBox())!.y).toBeCloseTo(before.y, 0);
+  expect((await search.boundingBox())!.y).toBeCloseTo(searchBefore.y, 0);
   // No card paints over the chips: the chip's centre hits the chip.
   const hit = await page.evaluate(() => {
     const chip = document.querySelector('#media-tabs [role="tab"]')!;
@@ -264,8 +259,7 @@ test('[FX1-002] Media keeps search, Import, drop zone and chips fixed while the 
     return !!el && chip.contains(el);
   });
   expect(hit).toBe(true);
-  if (!short)
-    expect(grid.y).toBeGreaterThanOrEqual(before.y + before.height - 1);
+  expect(grid.y).toBeGreaterThanOrEqual(before.y + before.height - 1);
   // Select the video on the canvas: the cluster and the toolbar never meet.
   await page
     .locator('#media-panel .media-item', { hasText: 'video_av_sync' })
