@@ -10753,6 +10753,27 @@ input[type='range'] {
   .shelf .media-dropzone {
     display: none;
   }
+  /* FIX4 A3: a tighter header (title, search, Import, chips) so the cards
+     get at least 60 % of a 458 px laptop panel. */
+  .library .shelf {
+    gap: 6px;
+  }
+  .library .shelf .shelf-search {
+    min-block-size: 0;
+    block-size: 32px;
+  }
+  .library .shelf .import-row #import-media,
+  .library .shelf .import-row .import-menu-button {
+    min-block-size: 0;
+    block-size: 34px;
+  }
+  .library .shelf > .shelf-tabs {
+    padding-block: 0;
+  }
+  .library .shelf > .shelf-tabs .shelf-tab {
+    min-block-size: 0;
+    block-size: 28px;
+  }
 }
 /* An idle side-panel host (no shown deep panel) takes no room, so the
    shelf above reaches the panel's bottom edge. */
