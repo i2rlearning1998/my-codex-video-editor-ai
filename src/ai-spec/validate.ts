@@ -254,8 +254,9 @@ export function validateSpec(
       }
     }
     if (duration > LIMITS.duration + 1e-9)
-      add(['scenes'], 'Total duration exceeds 180 seconds');
-    if (count > LIMITS.items) add(['scenes'], 'Total item count exceeds 128');
+      add(['scenes'], `Total duration exceeds ${LIMITS.duration} seconds`);
+    if (count > LIMITS.items)
+      add(['scenes'], `Total item count exceeds ${LIMITS.items}`);
     if (errors.length) return { ok: false, errors };
     // Cache identity includes authored bindings, defaults, explicit overrides and
     // pinned policy/catalog versions; array order is meaningful, object key order is not.

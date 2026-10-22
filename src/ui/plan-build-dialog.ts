@@ -68,8 +68,10 @@ export function planServices(
         .assets()
         .filter(
           (asset) =>
-            (asset.type === 'image' || asset.type === 'video') &&
-            (type === 'video') === (asset.type === 'video') &&
+            (type === 'audio'
+              ? asset.type === 'audio'
+              : (asset.type === 'image' || asset.type === 'video') &&
+                (type === 'video') === (asset.type === 'video')) &&
             !(asset.metadata as { removed?: boolean }).removed,
         )
         .filter((asset) => {
@@ -81,7 +83,12 @@ export function planServices(
         .map((asset): MediaCandidate => ({
           key: `asset:${asset.id}`,
           source: 'asset',
-          kind: asset.type === 'video' ? 'video' : 'image',
+          kind:
+            asset.type === 'audio'
+              ? 'audio'
+              : asset.type === 'video'
+                ? 'video'
+                : 'image',
           title: asset.name,
           tags: [],
           width: asset.width ?? 0,
@@ -89,6 +96,8 @@ export function planServices(
         }));
     },
     stock: async (query, type, orientation, page) => {
+      // Narration and other audio files come from the project's own media.
+      if (type === 'audio') throw new Error(t('plan.audioOwnMedia'));
       const kind = STOCK_KIND[type]!;
       const provider = stockProvidersFor(kind).find(hasKeys);
       if (!provider)

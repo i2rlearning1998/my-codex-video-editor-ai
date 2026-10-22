@@ -9,5 +9,6 @@ How to plan a video the editor can build on its own (FINAL3 Part D). Each chapte
 5. [05 Camera and motion](05-camera-and-motion.md)
 6. [06 Review and publish](06-review-and-publish.md)
 7. [07 Plan cheatsheet](07-plan-cheatsheet.md) (run `npm run docs:plan-cheatsheet`)
+8. [08 Story-comic explainer](08-story-comic-explainer.md): a full recipe for a Storywise-style vertical story
 
 The plan format itself is in [docs/video-plan.md](../video-plan.md); camera shots in [docs/camera.md](../camera.md).

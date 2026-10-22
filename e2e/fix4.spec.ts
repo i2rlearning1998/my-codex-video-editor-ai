@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { test, expect, showCategory, menuAction } from './fixtures';
+import { test, expect, showCategory, menuAction, hook } from './fixtures';
 import { mockStock, GOOD_KEY } from './stock-mock';
 
 // FIX4 A1: after Import + Build two messages used to stack at the bottom-left
@@ -132,4 +132,43 @@ test('[FX4-008] Settings › Offline › Model source saves an https address, re
     await page.evaluate(() => localStorage.getItem('aive.model-source')),
   ).toBeNull();
   await page.screenshot({ path: 'reports/fix4/a6-model-source.png' });
+});
+
+// FIX4 V3: a Video Plan v3 built as ONE timeline (no media needed): one
+// scene holds every layer, the shapes are real shape layers, Review & swap
+// explains that chapters are stretches of the timeline.
+test('[FX4-010] a v3 timeline plan builds one scene with shapes, a bubble and an overlay', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => '__AIVE__' in window)).toBe(true);
+  await showCategory(page, 'AI');
+  await page.locator('#library-ai #ai-import').click();
+  await page
+    .locator('#ai-import-source')
+    .fill(readFileSync('docs/samples/plan-v3-diagram.json', 'utf8'));
+  await page.locator('[data-action="build-video"]').click();
+  const dialog = page.locator('.plan-build');
+  await expect(dialog.locator('#plan-summary')).toBeVisible({
+    timeout: 60_000,
+  });
+  const { project } = await hook(page);
+  // The example project stays; the whole plan is ONE new scene.
+  const built = project.compositions.filter((c) =>
+    c.id.startsWith('ais_plan-how-big'),
+  );
+  expect(built).toHaveLength(1);
+  const refs = built[0]!.layers.map((layer) =>
+    String(
+      (layer.properties as Record<string, { value: unknown }>).planRef?.value,
+    ),
+  );
+  expect(refs).toContain('overlay/tag');
+  expect(refs).toContain('protractor/ray');
+  await dialog.locator('#plan-review').click();
+  await expect(page.locator('#plan-timeline-note')).toBeVisible();
+  await expect(
+    page.locator('.plan-review [data-action="plan-delete"]'),
+  ).toHaveCount(0);
+  await page.screenshot({ path: 'reports/fix4/v3-timeline.png' });
 });

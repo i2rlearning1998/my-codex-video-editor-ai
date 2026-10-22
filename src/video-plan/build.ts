@@ -30,13 +30,14 @@ import {
   type VideoPlan,
 } from './schema';
 import { validatePlan } from './validate';
+import { kitCaptionStyle, transitionId, type SpecItem } from './kit';
 import {
-  isKitId,
-  kitCaptionStyle,
-  kitItems,
-  transitionId,
-  type SpecItem,
-} from './kit';
+  layoutLayer,
+  type Emitted,
+  type Post,
+  type PlacedRole,
+} from './layout';
+import { setLayerMasks } from '../masks/commands';
 import { KIT_BACKGROUNDS } from './kit-ids';
 import {
   resolveMedia,
@@ -44,6 +45,8 @@ import {
   type ResolveServices,
 } from './resolve';
 import { sceneDuration } from './timing';
+
+export { anchorBox } from './layout';
 
 export const BUILD_STEPS = [
   'check',
@@ -116,7 +119,6 @@ const ASPECTS = {
   '4:5': [1080, 1350],
 } as const;
 const DEVANAGARI = /[ऀ-ॿ]/;
-const SIZE = { small: 0.3, medium: 0.5, large: 0.75, full: 1 } as const;
 const specId = (title: string) =>
   `plan-${
     title
@@ -125,47 +127,6 @@ const specId = (title: string) =>
       .replace(/^-|-$/g, '')
       .slice(0, 40) || 'video'
   }`;
-
-/** A box for a layer at its anchor (canvas px, top-left origin). */
-export function anchorBox(
-  layer: Pick<PlanLayer, 'anchor' | 'size'>,
-  width: number,
-  height: number,
-  boxWidth: number,
-  boxHeight: number,
-): { x: number; y: number } {
-  const marginX = width * 0.06,
-    marginY = height * 0.08;
-  const left = marginX,
-    right = width - marginX - boxWidth,
-    midX = (width - boxWidth) / 2;
-  const top = marginY,
-    bottom = height - marginY - boxHeight,
-    midY = (height - boxHeight) / 2;
-  if (layer.size === 'full') return { x: midX, y: midY };
-  switch (layer.anchor) {
-    case 'top':
-      return { x: midX, y: top };
-    case 'bottom':
-      return { x: midX, y: bottom };
-    case 'left':
-      return { x: left, y: midY };
-    case 'right':
-      return { x: right, y: midY };
-    case 'top-left':
-      return { x: left, y: top };
-    case 'top-right':
-      return { x: right, y: top };
-    case 'bottom-left':
-      return { x: left, y: bottom };
-    case 'bottom-right':
-      return { x: right, y: bottom };
-    case 'lower-third':
-      return { x: left, y: height * 0.72 };
-    default:
-      return { x: midX, y: midY };
-  }
-}
 
 /** Cues for one scene's narration, in video time. */
 function sceneCues(
@@ -239,6 +200,8 @@ const ENTER: Record<string, { preset: string; direction?: string } | null> = {
   zoom: { preset: 'zoom' },
   pop: { preset: 'pop' },
   typewriter: { preset: 'typewriter' },
+  wipe: { preset: 'wipe' },
+  words: { preset: 'words' },
   none: null,
 };
 /** The camera a scene gets from the feel when it names none. */
@@ -254,15 +217,42 @@ function tendencyShot(
 }
 
 interface Placed {
+  /** The composition (a scene, or the one timeline) the item is in. */
   readonly sceneIndex: number;
   readonly itemIndex: number;
   readonly key: string;
-  readonly role:
-    'title' | 'body' | 'media' | 'kit' | 'fallback' | 'voice' | 'music' | 'sfx';
-  readonly enter?: string;
-  readonly exit?: string;
-  readonly flag?: string;
+  readonly role: PlacedRole;
+  readonly enter?: string | undefined;
+  readonly exit?: string | undefined;
+  readonly flag?: string | undefined;
+  readonly post?: Post | undefined;
+  readonly volume?: number;
 }
+
+const numberProperty = (value: number) => ({
+  type: 'number' as const,
+  value,
+  animated: false,
+  keyframes: [] as [],
+  constraints: [],
+});
+const colorProperty = (value: string) => ({
+  type: 'color' as const,
+  value,
+  animated: false,
+  keyframes: [] as [],
+  constraints: [],
+});
+const booleanProperty = (value: boolean) => ({
+  type: 'boolean' as const,
+  value,
+  animated: false,
+  keyframes: [] as [],
+  constraints: [],
+});
+const LOOP_PERIOD = { pulse: 2, float: 3, wiggle: 1.2, spin: 8 } as const;
+/** The shape a media key resolves under: layers, poses, overlays, narration. */
+const OVERLAY = { id: 'overlay' };
 
 export async function buildVideoFromPlan(
   input: unknown,
@@ -290,6 +280,7 @@ export async function buildVideoFromPlan(
     };
   }
   const plan = check.plan;
+  const timeline = plan.meta.build === 'timeline';
   const warnings = [...check.warnings];
   onProgress({ step: 'check', state: 'done' });
   const [width, height] = ASPECTS[plan.meta.aspect];
@@ -300,13 +291,19 @@ export async function buildVideoFromPlan(
     text: plan.feel?.palette?.text ?? theme?.palette.text ?? '#ffffff',
     accent: plan.feel?.palette?.accent ?? theme?.palette.accent ?? '#7c5cff',
   };
+  const allLayers = [
+    ...plan.scenes.flatMap((scene) => scene.layers),
+    ...plan.overlays,
+  ];
   const hindi =
     plan.meta.language.startsWith('hi') ||
     plan.scenes.some((scene) =>
       DEVANAGARI.test(
         `${scene.narration ?? ''} ${scene.layers.map((l) => l.text ?? '').join(' ')}`,
       ),
-    );
+    ) ||
+    plan.overlays.some((layer) => DEVANAGARI.test(layer.text ?? ''));
+  void allLayers;
   const fonts = {
     heading:
       plan.feel?.headingFont ??
@@ -324,49 +321,82 @@ export async function buildVideoFromPlan(
   const alternatives: Record<string, readonly MediaCandidate[]> = {};
   const assets = new Map<string, Asset>();
   const flags: PlanFlag[] = [];
+  // The same picture asked for twice is found and added once.
+  const importedBy = new Map<string, Asset>();
   let found = 0,
     wanted = 0;
-  for (const scene of plan.scenes)
-    for (const layer of scene.layers) {
-      if (layer.kind !== 'media') continue;
-      stop();
-      wanted++;
-      const key = layerKey(scene, layer);
-      const choice = await resolveMedia(
-        layer,
-        deps.resolve,
-        plan.resolved?.[key],
-      );
-      alternatives[key] = choice.alternatives;
-      let asset: Asset | null = null;
-      for (const candidate of choice.alternatives) {
-        try {
-          asset = await deps.importCandidate(candidate, signal);
-          resolved[key] = candidate.key;
-          break;
-        } catch (error) {
-          if ((error as Error)?.name === 'AbortError') throw error;
-          warnings.push(
-            `${key}: "${candidate.title}" could not be added (${(error as Error).message}); trying the next one.`,
-          );
-        }
+  const findMedia = async (key: string, layer: PlanLayer) => {
+    stop();
+    wanted++;
+    const choice = await resolveMedia(
+      layer,
+      deps.resolve,
+      plan.resolved?.[key],
+    );
+    alternatives[key] = choice.alternatives;
+    let asset: Asset | null = null;
+    for (const candidate of choice.alternatives) {
+      try {
+        const known = importedBy.get(candidate.key);
+        asset = known ?? (await deps.importCandidate(candidate, signal));
+        importedBy.set(candidate.key, asset);
+        resolved[key] = candidate.key;
+        break;
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') throw error;
+        warnings.push(
+          `${key}: "${candidate.title}" could not be added (${(error as Error).message}); trying the next one.`,
+        );
       }
-      if (asset) {
-        assets.set(key, asset);
-        found++;
-      } else
-        flags.push({
-          key,
-          reason:
-            choice.reason ??
-            `Nothing usable for "${layer.mediaIntent?.query}".`,
-        });
-      onProgress({
-        step: 'media',
-        state: 'running',
-        detail: `${found}/${wanted}`,
-      });
     }
+    if (asset) {
+      assets.set(key, asset);
+      found++;
+    } else
+      flags.push({
+        key,
+        reason:
+          choice.reason ?? `Nothing usable for "${layer.mediaIntent?.query}".`,
+      });
+    onProgress({
+      step: 'media',
+      state: 'running',
+      detail: `${found}/${wanted}`,
+    });
+  };
+  const mediaLayers = (owner: { id: string }, layers: readonly PlanLayer[]) =>
+    layers.flatMap((layer) =>
+      layer.kind !== 'media'
+        ? []
+        : [
+            { key: layerKey(owner, layer), layer },
+            ...(layer.poses ?? []).map((pose, n) => ({
+              key: `${layerKey(owner, layer)}#p${n}`,
+              layer: {
+                ...layer,
+                mediaIntent: {
+                  ...(layer.mediaIntent ?? { type: 'photo' as const }),
+                  query: pose.query,
+                },
+              } as PlanLayer,
+            })),
+          ],
+    );
+  for (const scene of plan.scenes)
+    for (const entry of mediaLayers(scene, scene.layers))
+      await findMedia(entry.key, entry.layer);
+  for (const entry of mediaLayers(OVERLAY, plan.overlays))
+    await findMedia(entry.key, entry.layer);
+  if (plan.narrationTrack)
+    await findMedia('narration', {
+      id: 'narration',
+      kind: 'media',
+      anchor: 'center',
+      size: 'medium',
+      enter: 'none',
+      exit: 'none',
+      mediaIntent: { query: plan.narrationTrack.query, type: 'audio' },
+    } as PlanLayer);
   onProgress({
     step: 'media',
     state: wanted ? 'done' : 'skipped',
@@ -378,11 +408,12 @@ export async function buildVideoFromPlan(
   const spoken: (SpokenNarration | null)[] = [];
   let silent: string | null = null;
   const narrated = plan.scenes.some((scene) => scene.narration?.trim());
-  if (narrated && (!deps.voice || deps.voiceUnavailable))
+  const ownVoice = narrated && !plan.narrationTrack;
+  if (ownVoice && (!deps.voice || deps.voiceUnavailable))
     silent = deps.voiceUnavailable ?? 'No voice is available.';
   for (const scene of plan.scenes) {
     stop();
-    if (!scene.narration?.trim() || silent) {
+    if (!scene.narration?.trim() || silent || plan.narrationTrack) {
       spoken.push(null);
       continue;
     }
@@ -412,7 +443,18 @@ export async function buildVideoFromPlan(
   const durations = plan.scenes.map((scene, i) =>
     sceneDuration(scene, spoken[i]?.duration ?? null, plan.feel?.pacing),
   );
+  const narration = plan.narrationTrack ? assets.get('narration') : undefined;
+  if (plan.narrationTrack && narration?.duration) {
+    // The video lasts at least as long as its narration.
+    const total = durations.reduce((a, b) => a + b, 0);
+    const need = plan.narrationTrack.start + narration.duration + 0.4;
+    if (need > total + 1e-6) {
+      const last = durations.length - 1;
+      durations[last] = Math.ceil((durations[last]! + need - total) * 60) / 60;
+    }
+  }
   const short = Math.min(width, height);
+  void short;
   const slots: {
     id: string;
     type: 'image' | 'video' | 'audio';
@@ -435,6 +477,25 @@ export async function buildVideoFromPlan(
     slots.push({ id, type: kind, hint, required: false });
     specAssets.push({ id, kind, description: hint.slice(0, 1000) });
     fills[id] = { kind: 'file', asset };
+  };
+  // One slot per asset: a logo used in every scene is one slot, not twelve.
+  const slotOfAsset = new Map<string, string>();
+  const slotFor = (asset: Asset, hint: string) => {
+    const known = slotOfAsset.get(asset.id);
+    if (known) return known;
+    const id = `a${slotOfAsset.size + 1}`;
+    slotOfAsset.set(asset.id, id);
+    addSlot(
+      id,
+      asset.type === 'audio'
+        ? 'audio'
+        : asset.type === 'video'
+          ? 'video'
+          : 'image',
+      hint,
+      asset,
+    );
+    return id;
   };
   let music: { asset: Asset; duration: number } | null = null;
   const sfx = new Map<string, { asset: Asset; duration: number }>();
@@ -463,261 +524,209 @@ export async function buildVideoFromPlan(
       }
     }
   const id = specId(plan.meta.title);
-  let offset = 0;
-  const scenes = plan.scenes.map((scene, si) => {
-    const duration = durations[si]!;
+  const env = {
+    width,
+    height,
+    palette,
+    assetOf: (key: string) => assets.get(key),
+    slotFor,
+  };
+  // A timeline is ONE scene; otherwise each plan scene is its own scene.
+  const groups = timeline
+    ? [plan.scenes.map((_, i) => i)]
+    : plan.scenes.map((_, i) => [i]);
+  const sceneOffset: number[] = []; // each plan scene's start in its group
+  const groupOf: number[] = [];
+  const groupStart: number[] = [];
+  let videoOffset = 0;
+  groups.forEach((members, gi) => {
+    groupStart.push(videoOffset);
+    let within = 0;
+    for (const si of members) {
+      sceneOffset[si] = within;
+      groupOf[si] = gi;
+      within += durations[si]!;
+    }
+    videoOffset += within;
+  });
+  const scenes = groups.map((members, gi) => {
+    const groupDuration = members.reduce((sum, si) => sum + durations[si]!, 0);
     const items: SpecItem[] = [];
     const push = (
       item: SpecItem,
       place: Omit<Placed, 'sceneIndex' | 'itemIndex'>,
     ) => {
-      placed.push({ ...place, sceneIndex: si, itemIndex: items.length });
+      placed.push({ ...place, sceneIndex: gi, itemIndex: items.length });
       items.push(item);
     };
-    const timing = (layer: PlanLayer) => {
-      const start = Math.min(layer.start ?? 0, Math.max(0, duration - 0.2));
-      return {
-        start,
-        duration: Math.max(
-          0.2,
-          Math.min(layer.duration ?? duration - start, duration - start),
-        ),
-      };
+    const emit = (e: Emitted) =>
+      push(e.item, {
+        key: e.key,
+        role: e.role,
+        enter: e.enter,
+        exit: e.exit,
+        flag: e.flag,
+        post: e.post,
+      });
+    // The editor stacks the first item of a scene on top. Order of pushing:
+    // overlays first (on top), then the scenes last to first, and inside a
+    // scene text and shapes, then media, then kit backgrounds (underneath).
+    const rank = (l: PlanLayer) =>
+      l.kind === 'kit' &&
+      (KIT_BACKGROUNDS as readonly string[]).includes(l.kit ?? '')
+        ? 0
+        : l.kind === 'media'
+          ? 1
+          : 2;
+    const layout = (
+      owner: { id: string },
+      layers: readonly PlanLayer[],
+      base: number,
+      span: number,
+      prefixOf: (layer: PlanLayer) => string,
+    ) => {
+      const order = [...layers].sort((a, b) => rank(a) - rank(b));
+      for (const layer of [...order].reverse()) {
+        const start = Math.min(layer.start ?? 0, Math.max(0, span - 0.2));
+        const when = {
+          start: base + start,
+          duration: Math.max(
+            0.2,
+            Math.min(layer.duration ?? span - start, span - start),
+          ),
+        };
+        for (const e of layoutLayer(
+          layer,
+          layerKey(owner, layer),
+          prefixOf(layer),
+          when,
+          env,
+        ))
+          emit(e);
+      }
     };
-    // Order: kit backgrounds, then media, then everything else (on top).
-    const order = [...scene.layers].sort((a, b) => {
-      const rank = (l: PlanLayer) =>
-        l.kind === 'kit' &&
-        (KIT_BACKGROUNDS as readonly string[]).includes(l.kit ?? '')
-          ? 0
-          : l.kind === 'media'
-            ? 1
-            : 2;
-      return rank(a) - rank(b);
-    });
-    for (const layer of order) {
-      const key = layerKey(scene, layer);
-      const when = timing(layer);
-      const prefix = `L${si}x${layer.id.replace(/[^A-Za-z0-9]/g, '')}`.slice(
-        0,
-        40,
-      );
-      if (layer.kind === 'media') {
-        const asset = assets.get(key);
-        const frac = SIZE[layer.size];
-        const icon =
-          layer.mediaIntent?.type === 'icon' ||
-          layer.mediaIntent?.type === 'emoji';
-        const aspect =
-          asset?.width && asset.height ? asset.width / asset.height : 16 / 9;
-        let w = layer.size === 'full' ? width : width * frac * (icon ? 0.6 : 1);
-        let h = w / aspect;
-        if (layer.size === 'full') {
-          // Cover the canvas.
-          const k = Math.max(width / w, height / h);
-          w *= k;
-          h *= k;
-        } else if (h > height * 0.9) {
-          h = height * 0.9;
-          w = h * aspect;
-        }
-        const at = anchorBox(layer, width, height, w, h);
-        if (asset) {
-          // A video plays once: its clip ends with the video.
-          if (asset.type === 'video' && asset.duration && asset.duration > 0.2)
-            when.duration = Math.min(when.duration, asset.duration);
-          const slotId =
-            `m${si}x${layer.id.replace(/[^A-Za-z0-9]/g, '')}`.slice(0, 60);
-          addSlot(
-            slotId,
-            asset.type === 'video' ? 'video' : 'image',
-            layer.mediaIntent!.query,
-            asset,
-          );
-          push(
-            {
-              id: `${prefix}m`,
-              name: layer.mediaIntent!.query.slice(0, 100),
-              kind: 'media-slot',
-              slot: slotId,
-              ...when,
-              transform: { x: at.x, y: at.y },
-              width: w,
-              height: h,
-            },
-            { key, role: 'media', enter: layer.enter, exit: layer.exit },
-          );
-        } else {
-          // Fallback card: a soft panel naming what is needed.
-          push(
-            {
-              id: `${prefix}f`,
-              name: `Needs: ${layer.mediaIntent?.query ?? 'media'}`.slice(
-                0,
-                100,
-              ),
-              kind: 'shape',
-              shape: 'rectangle',
-              fill: palette.accent,
-              ...when,
-              transform: { x: at.x, y: at.y, opacity: 0.35 },
-              width: w,
-              height: h,
-            },
-            {
-              key,
-              role: 'fallback',
-              enter: layer.enter,
-              exit: layer.exit,
-              flag: 'needs-asset',
-            },
-          );
-          push(
-            {
-              id: `${prefix}t`,
-              name: 'Needs asset',
-              kind: 'text',
-              text: `Needs: ${layer.mediaIntent?.query ?? 'media'}`.slice(
-                0,
-                1000,
-              ),
-              fontSize: Math.round(short * 0.035),
-              fill: palette.text,
-              ...when,
-              transform: { x: at.x + w * 0.05, y: at.y + h / 2 - short * 0.03 },
-              width: w * 0.9,
-              height: short * 0.06,
-            },
-            { key: `${key}#label`, role: 'fallback', flag: 'needs-asset' },
-          );
-        }
-        continue;
-      }
-      if (layer.kind === 'kit') {
-        const built =
-          layer.kit && isKitId(layer.kit)
-            ? kitItems(layer.kit, {
-                width,
-                height,
-                palette,
-                text: layer.text ?? '',
-                ...when,
-                idPrefix: `${prefix}k`,
-              })
-            : null;
-        if (!built) continue;
-        built.forEach((item, n) =>
-          push(item, {
-            key: n ? `${key}#${n}` : key,
-            role: 'kit',
-            enter: layer.enter,
-            exit: layer.exit,
-          }),
+    // Overlays: the whole video in a timeline, each scene otherwise.
+    layout(OVERLAY, plan.overlays, 0, groupDuration, (layer) =>
+      `L${gi}o${layer.id.replace(/[^A-Za-z0-9]/g, '')}`.slice(0, 40),
+    );
+    for (const si of [...members].reverse()) {
+      const scene = plan.scenes[si]!;
+      const duration = durations[si]!;
+      const base = sceneOffset[si]!;
+      const voice = spoken[si];
+      // Sound first: audio items do not stack.
+      if (voice) {
+        const slotId = `v${si}`;
+        addSlot(slotId, 'audio', `Narration ${si + 1}`, voice.asset);
+        push(
+          {
+            id: `V${si}`,
+            name: `Narration ${si + 1}`,
+            kind: 'audio-slot',
+            slot: slotId,
+            start: base,
+            duration: Math.min(duration, voice.duration),
+          },
+          { key: `${scene.id}#voice`, role: 'voice' },
         );
-        continue;
       }
-      // Title and text.
-      const title = layer.kind === 'title';
-      const size = Math.round(
-        short *
-          (title ? 0.08 : 0.045) *
-          (layer.size === 'large' ? 1.3 : layer.size === 'small' ? 0.75 : 1),
-      );
-      const w =
-        width *
-        Math.min(
-          0.88,
-          SIZE[layer.size === 'full' ? 'large' : layer.size] + 0.3,
+      if (music && !timeline) {
+        if (!slots.some((slot) => slot.id === 'music'))
+          addSlot('music', 'audio', plan.music!.query, music.asset);
+        push(
+          {
+            id: `M${si}`,
+            name: 'Music',
+            kind: 'audio-slot',
+            slot: 'music',
+            start: 0,
+            duration,
+            sourceIn: music.duration > 0 ? groupStart[gi]! % music.duration : 0,
+          },
+          { key: `${scene.id}#music`, role: 'music' },
         );
-      const lineCount = Math.max(
-        1,
-        Math.ceil(((layer.text ?? '').length * size * 0.55) / w),
-      );
-      const h = size * 1.25 * lineCount;
-      const at = anchorBox(layer, width, height, w, h);
-      push(
-        {
-          id: `${prefix}x`,
-          name: (layer.text ?? layer.id).slice(0, 100),
-          kind: 'text',
-          text: (layer.text ?? '').slice(0, 1000) || ' ',
-          fontSize: size,
-          fill: palette.text,
-          ...when,
-          transform: { x: at.x, y: at.y },
-          width: w,
-          height: h,
-        },
-        {
-          key,
-          role: title ? 'title' : 'body',
-          enter: layer.enter,
-          exit: layer.exit,
-        },
+      }
+      scene.sfx.forEach((effect, k) => {
+        const got = sfx.get(`${si}-${k}`);
+        if (!got) return;
+        const slotId = `x${si}x${k}`;
+        addSlot(slotId, 'audio', effect.query, got.asset);
+        const start = Math.min(effect.at, Math.max(0, duration - 0.1));
+        push(
+          {
+            id: `X${si}x${k}`,
+            name: effect.query.slice(0, 100),
+            kind: 'audio-slot',
+            slot: slotId,
+            start: base + start,
+            duration: Math.max(
+              0.1,
+              Math.min(got.duration || 1, duration - start),
+            ),
+          },
+          { key: `${scene.id}#sfx${k}`, role: 'sfx' },
+        );
+      });
+      layout(scene, scene.layers, base, duration, (layer) =>
+        `L${si}x${layer.id.replace(/[^A-Za-z0-9]/g, '')}`.slice(0, 40),
       );
     }
-    const voice = spoken[si];
-    if (voice) {
-      const slotId = `v${si}`;
-      addSlot(slotId, 'audio', `Narration ${si + 1}`, voice.asset);
+    if (music && timeline) {
+      addSlot('music', 'audio', plan.music!.query, music.asset);
       push(
         {
-          id: `V${si}`,
-          name: `Narration ${si + 1}`,
-          kind: 'audio-slot',
-          slot: slotId,
-          start: 0,
-          duration: Math.min(duration, voice.duration),
-        },
-        { key: `${scene.id}#voice`, role: 'voice' },
-      );
-    }
-    if (music) {
-      if (!slots.some((slot) => slot.id === 'music'))
-        addSlot('music', 'audio', plan.music!.query, music.asset);
-      push(
-        {
-          id: `M${si}`,
+          id: 'M0',
           name: 'Music',
           kind: 'audio-slot',
           slot: 'music',
           start: 0,
-          duration,
-          sourceIn: music.duration > 0 ? offset % music.duration : 0,
+          duration: Math.min(groupDuration, 3600),
+          sourceIn: 0,
         },
-        { key: `${scene.id}#music`, role: 'music' },
+        { key: 'music', role: 'music' },
       );
     }
-    scene.sfx.forEach((effect, k) => {
-      const got = sfx.get(`${si}-${k}`);
-      if (!got) return;
-      const slotId = `x${si}x${k}`;
-      addSlot(slotId, 'audio', effect.query, got.asset);
-      const start = Math.min(effect.at, Math.max(0, duration - 0.1));
-      push(
-        {
-          id: `X${si}x${k}`,
-          name: effect.query.slice(0, 100),
-          kind: 'audio-slot',
-          slot: slotId,
-          start,
-          duration: Math.max(
-            0.1,
-            Math.min(got.duration || 1, duration - start),
-          ),
-        },
-        { key: `${scene.id}#sfx${k}`, role: 'sfx' },
+    // The narration track: its part inside this scene.
+    if (plan.narrationTrack && narration?.duration) {
+      const trackStart = plan.narrationTrack.start;
+      const from = Math.max(groupStart[gi]!, trackStart);
+      const to = Math.min(
+        groupStart[gi]! + groupDuration,
+        trackStart + narration.duration,
       );
-    });
-    offset += duration;
+      if (to - from > 0.05) {
+        const slotId = slotFor(narration, plan.narrationTrack.query);
+        push(
+          {
+            id: `N${gi}`,
+            name: 'Narration',
+            kind: 'audio-slot',
+            slot: slotId,
+            start: from - groupStart[gi]!,
+            duration: to - from,
+            sourceIn: from - trackStart,
+          },
+          {
+            key: 'narration',
+            role: 'narration',
+            volume: plan.narrationTrack.volume,
+          },
+        );
+      }
+    }
+    const lastScene = members.at(-1)!;
+    const scene = plan.scenes[lastScene]!;
     const kitTransition =
       scene.transitionOut?.type ?? plan.feel?.transition ?? 'crossfade';
     const transition =
-      si < plan.scenes.length - 1 ? transitionId(kitTransition) : null;
+      !timeline && gi < groups.length - 1 ? transitionId(kitTransition) : null;
     return {
-      id: `S${si}`,
-      name: (scene.title ?? `Scene ${si + 1}`).slice(0, 100),
-      duration,
+      id: `S${gi}`,
+      name: (timeline
+        ? plan.meta.title
+        : (scene.title ?? `Scene ${gi + 1}`)
+      ).slice(0, 100),
+      duration: groupDuration,
       background: scene.background ?? palette.background,
       items,
       ...(transition
@@ -726,7 +735,7 @@ export async function buildVideoFromPlan(
               id: transition,
               duration: Math.min(
                 scene.transitionOut?.duration ?? 0.6,
-                duration / 2,
+                groupDuration / 2,
               ),
             },
           }
@@ -790,6 +799,9 @@ export async function buildVideoFromPlan(
       name: plan.meta.title,
     },
   );
+  const durationsOut = groups.map((members) =>
+    members.reduce((sum, si) => sum + durations[si]!, 0),
+  );
   if (!result.project)
     return {
       project: null,
@@ -799,7 +811,7 @@ export async function buildVideoFromPlan(
       resolved,
       alternatives,
       silent,
-      durations,
+      durations: durationsOut,
       plan: { ...plan, resolved },
     };
   for (const warning of result.warnings)
@@ -820,9 +832,9 @@ export async function buildVideoFromPlan(
       warnings.push(`${label}: ${(error as Error).message}`);
     }
   };
-  const sceneLayers = (si: number) => {
-    const composition = engine.state.compositions[si];
-    return composition ? { composition, prefix: `ais_${id}_s${si}_i` } : null;
+  const sceneLayers = (gi: number) => {
+    const composition = engine.state.compositions[gi];
+    return composition ? { composition, prefix: `ais_${id}_s${gi}_i` } : null;
   };
   const layerOf = (place: Placed) => {
     const found = sceneLayers(place.sceneIndex);
@@ -832,6 +844,14 @@ export async function buildVideoFromPlan(
     );
     return layer ? { composition: found.composition, layer } : null;
   };
+  const property = (post: NonNullable<Post['props']>[number]) =>
+    post.type === 'number'
+      ? numberProperty(post.value as number)
+      : post.type === 'color'
+        ? colorProperty(post.value as string)
+        : post.type === 'boolean'
+          ? booleanProperty(post.value as boolean)
+          : plain(post.value as string);
   for (const place of placed) {
     const hit = layerOf(place);
     if (!hit) continue;
@@ -857,7 +877,75 @@ export async function buildVideoFromPlan(
           setString(composition.id, layer.id, 'textAlign', 'center'),
         );
     }
+    for (const post of place.post?.props ?? [])
+      commands.push({
+        type: 'SET_PROPERTY',
+        compositionId: composition.id,
+        layerId: layer.id,
+        target: { kind: 'property', key: post.key },
+        property: property(post),
+      } as Command);
+    const move = place.post?.move;
+    if (move)
+      commands.push({
+        type: 'SET_PROPERTY',
+        compositionId: composition.id,
+        layerId: layer.id,
+        target: { kind: 'transform', key: 'position' },
+        property: {
+          type: 'vector2',
+          value: [move.from[0], move.from[1]],
+          animated: true,
+          keyframes: [
+            {
+              time: move.start,
+              value: [move.from[0], move.from[1]],
+              easing: move.easing,
+            },
+            { time: move.end, value: [move.to[0], move.to[1]] },
+          ],
+          constraints: [],
+        },
+      } as unknown as Command);
     run('Plan layer', commands);
+    const feather = place.post?.feather;
+    if (feather) {
+      const f = feather.px;
+      const near = -f * 4;
+      const [x1, y1, x2, y2] =
+        feather.edge === 'top'
+          ? [near, f, feather.width - near, feather.height - near]
+          : feather.edge === 'bottom'
+            ? [near, near, feather.width - near, feather.height - f]
+            : feather.edge === 'left'
+              ? [f, near, feather.width - near, feather.height - near]
+              : feather.edge === 'right'
+                ? [near, near, feather.width - f, feather.height - near]
+                : [f / 2, f / 2, feather.width - f / 2, feather.height - f / 2];
+      try {
+        setLayerMasks(
+          engine,
+          {
+            compositionId: composition.id,
+            layerId: layer.id,
+            masks: [
+              {
+                id: `feather-${layer.id}`.slice(0, 120),
+                type: 'rect',
+                geometry: [
+                  [x1!, y1!],
+                  [x2!, y2!],
+                ],
+                feather: f,
+              },
+            ],
+          },
+          'Plan soft edge',
+        );
+      } catch (error) {
+        warnings.push(`Soft edge: ${(error as Error).message}`);
+      }
+    }
     const clip = findClipByLayer(
       engine.state.compositions[place.sceneIndex]!,
       layer.id,
@@ -871,7 +959,8 @@ export async function buildVideoFromPlan(
       const preset = name ? ENTER[name] : null;
       if (!preset) continue;
       const pick =
-        preset.preset === 'typewriter' && layer.type !== 'text'
+        (preset.preset === 'typewriter' || preset.preset === 'words') &&
+        layer.type !== 'text'
           ? { preset: 'fade' }
           : preset;
       animation.push({
@@ -886,8 +975,23 @@ export async function buildVideoFromPlan(
         },
       } as unknown as Command);
     }
+    if (place.post?.loop)
+      animation.push({
+        type: 'SET_CLIP_ANIMATION',
+        compositionId: composition.id,
+        clipId: clip.id,
+        slot: 'loop',
+        value: {
+          preset: place.post.loop,
+          period: LOOP_PERIOD[place.post.loop],
+        },
+      } as unknown as Command);
     run('Plan animation', animation);
-    if (place.role === 'voice' || place.role === 'music') {
+    if (
+      place.role === 'voice' ||
+      place.role === 'music' ||
+      place.role === 'narration'
+    ) {
       const settings = defaultAudioSettings();
       run('Plan sound', [
         {
@@ -896,55 +1000,79 @@ export async function buildVideoFromPlan(
             compositionId: composition.id,
             clipId: clip.id,
             settings:
-              place.role === 'voice'
-                ? { ...settings, role: 'speech' }
-                : {
+              place.role === 'music'
+                ? {
                     ...settings,
                     role: 'music',
                     volume: plan.music?.volume ?? 0.35,
                     duck: {
                       ...settings.duck,
                       enabled:
-                        plan.music?.ducking !== false && clip.duration <= 300,
+                        plan.music?.ducking !== false && clip.duration <= 3600,
                     },
+                  }
+                : {
+                    ...settings,
+                    role: 'speech',
+                    ...(place.volume !== undefined
+                      ? { volume: place.volume }
+                      : {}),
                   },
           },
         } as unknown as Command,
       ]);
     }
   }
-  // Camera: the scene's own shot, else the feel's tendency.
+  // Camera: each scene's shots (default: the feel's tendency), at the scene's
+  // place in its composition.
   const shots: CameraShotPlan[] = [];
   let shotIds = 0;
   plan.scenes.forEach((scene, si) => {
-    const composition = engine.state.compositions[si];
+    const gi = groupOf[si]!;
+    const composition = engine.state.compositions[gi];
     if (!composition) return;
-    const controller =
-      scene.camera?.controller ?? tendencyShot(plan.feel?.cameraTendency, si);
-    if (!controller) return;
-    const target = scene.camera?.target
-      ? placed.find(
-          (place) =>
-            place.sceneIndex === si &&
-            place.key === `${scene.id}/${scene.camera!.target}`,
-        )
-      : undefined;
-    const targetLayer = target ? layerOf(target)?.layer.id : undefined;
-    shots.push({
-      sceneId: composition.id,
-      start: 0,
-      duration: durations[si]!,
-      controller,
-      params: {
-        ...(scene.camera?.strength !== undefined
-          ? { strength: scene.camera.strength }
-          : plan.feel?.cameraTendency === 'gentle'
-            ? { strength: 0.5 }
-            : {}),
-        ...(scene.camera?.easing ? { easing: scene.camera.easing } : {}),
-        ...(targetLayer ? { target: targetLayer } : {}),
-      },
-    });
+    const listed = [
+      ...(scene.camera ? [scene.camera] : []),
+      ...(scene.cameras ?? []),
+    ];
+    const defaults = tendencyShot(plan.feel?.cameraTendency, si);
+    const list = listed.length
+      ? listed
+      : defaults
+        ? [{ controller: defaults } as NonNullable<PlanScene['camera']>]
+        : [];
+    for (const shot of list) {
+      const target = shot.target
+        ? placed.find(
+            (place) =>
+              place.sceneIndex === gi &&
+              place.key === `${scene.id}/${shot.target}`,
+          )
+        : undefined;
+      const targetLayer = target ? layerOf(target)?.layer.id : undefined;
+      const from = shot.start ?? 0;
+      shots.push({
+        sceneId: composition.id,
+        start: sceneOffset[si]! + from,
+        duration: Math.max(
+          0.2,
+          Math.min(
+            shot.duration ?? durations[si]! - from,
+            durations[si]! - from,
+          ),
+        ),
+        controller: shot.controller,
+        params: {
+          ...(shot.strength !== undefined
+            ? { strength: shot.strength }
+            : plan.feel?.cameraTendency === 'gentle'
+              ? { strength: 0.5 }
+              : {}),
+          ...(shot.easing ? { easing: shot.easing } : {}),
+          ...(targetLayer ? { target: targetLayer } : {}),
+        },
+      });
+    }
   });
   if (shots.length)
     try {
@@ -979,7 +1107,7 @@ export async function buildVideoFromPlan(
     resolved,
     alternatives,
     silent,
-    durations,
+    durations: durationsOut,
     plan: { ...plan, resolved },
   };
 }
