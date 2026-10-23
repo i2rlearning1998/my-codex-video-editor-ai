@@ -50,3 +50,16 @@ are rejected). Times inside `params` are seconds from the block's own start;
   copy). Free code and imported blocks still run in the sandbox.
 - Export bakes every code frame first (about 0.3 to 0.5 s per full-size frame).
   A video with ~3000 baked frames needs ~15 to 25 minutes in a slow browser.
+
+## Physics-explainer blocks (v8)
+
+| Block           | What it shows                                                                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `angle-proof`   | Two sticks on a curved Earth: parallel rays, different shadow angles, normals meeting at the centre, equal angle at the centre.                       |
+| `route-measure` | Camel walks the winding road with an odometer (distance), then the straight line (displacement). Draws over a `story-map` with the same view numbers. |
+| `well-beam`     | Noon sunbeam into a well: glow, sparkles, ripples.                                                                                                    |
+| `slice-circle`  | 7.2° wedge copied 50 times around a disc with a running km total (360 ÷ 7.2 = 50, 50 × 800 = 40,000 km).                                              |
+| `sun-scale`     | Sun pushed far away: fanning rays turn parallel.                                                                                                      |
+| `dust`          | Floating golden specks so a still picture breathes.                                                                                                   |
+
+`flat-map` gained a `cy` param (view centre y %).

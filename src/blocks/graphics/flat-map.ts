@@ -54,6 +54,7 @@ export const flatMap = defineBlock(
       num('fadeInAt', 'Fades in at (s)', 0, 600, 0.1, 0),
       num('fadeInDur', 'Fade in takes (s)', 0.01, 20, 0.1, 0.4),
       num('labelSize', 'Label size % of width', 1, 20, 0.1, 4.4),
+      num('cy', 'View centre y % of height', -50, 150, 0.5, 50),
       ...fadeParams,
     ],
   },
@@ -72,8 +73,11 @@ export const flatMap = defineBlock(
     if (a <= 0) return;
     ctx.save();
     ctx.globalAlpha *= a;
+    // The view centre can sit above the middle, so the cities land in the
+    // part of the frame a panel leaves visible.
+    ctx.translate(0, (N(p, 'cy') / 100) * h - h / 2);
     ctx.fillStyle = S(p, 'sea');
-    ctx.fillRect(0, 0, w, h);
+    ctx.fillRect(0, -h, w, h * 3);
     ctx.beginPath();
     flatLandPath(ctx, view, w, h);
     ctx.fillStyle = S(p, 'land');
