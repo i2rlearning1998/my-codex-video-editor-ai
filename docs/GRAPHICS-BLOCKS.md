@@ -60,6 +60,7 @@ are rejected). Times inside `params` are seconds from the block's own start;
 | `well-beam`     | Noon sunbeam into a well: glow, sparkles, ripples.                                                                                                    |
 | `slice-circle`  | 7.2° wedge copied 50 times around a disc with a running km total (360 ÷ 7.2 = 50, 50 × 800 = 40,000 km).                                              |
 | `sun-scale`     | Sun pushed far away: fanning rays turn parallel.                                                                                                      |
+| `noon-compare`  | Two cities, one Sun (v10): parallel rays hit a stick with no shadow (Syene) and a stick with a shadow and a 7.2° mark (Alexandria).                   |
 | `dust`          | Floating golden specks so a still picture breathes.                                                                                                   |
 
-`flat-map` gained a `cy` param (view centre y %).
+`flat-map` gained a `cy` param (view centre y %). `earth-globe` gained `gapAt` (v10): a red bar and "≈ 3°" between the Alexandria and Syene meridians; tilt the view to the pole (`lat1` ~ 60) to see them converge. A block definition may have at most 32 params.

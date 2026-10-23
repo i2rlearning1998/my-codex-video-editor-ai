@@ -1,4 +1,5 @@
 import { dust } from './dust';
+import { noonCompare } from './noon-compare';
 import { routeMeasure } from './route-measure';
 import { sliceCircle } from './slice-circle';
 import { sunScale } from './sun-scale';
@@ -14,6 +15,7 @@ import { sunEarth } from './sun-earth';
 export {
   angleProof,
   dust,
+  noonCompare,
   routeMeasure,
   sliceCircle,
   sunScale,
@@ -31,6 +33,7 @@ export const graphicsBlocks = Object.freeze([
   earthGlobe,
   angleProof,
   dust,
+  noonCompare,
   routeMeasure,
   sliceCircle,
   sunScale,

@@ -183,6 +183,7 @@ export const earthGlobe = defineBlock(
       num2('ringAt', 'Red ring at (s, -1 off)', -1, 600, -1, 0.1),
       num2('dotRingAt', 'Dotted ring at (s, -1 off)', -1, 600, -1, 0.1),
       num2('meridianAt', 'Meridians at (s, -1 off)', -1, 600, -1, 0.1),
+      num2('gapAt', 'Longitude gap bar at (s, -1 off)', -1, 600, -1, 0.1),
       num2('raysAt', 'Sun rays at (s, -1 off)', -1, 600, -1, 0.1),
       num2('rayAngle', 'Ray angle (0 = from right)', -90, 90, 45),
       num2('zoomAt', 'Zoom to limb at (s, -1 off)', -1, 600, -1, 0.1),
@@ -276,6 +277,33 @@ export const earthGlobe = defineBlock(
           strokePartial(ctx, north, mp);
           strokePartial(ctx, south, mp);
           ctx.restore();
+        }
+      }
+      if (N(p, 'gapAt') >= 0) {
+        // A red bar between the two meridians with its size in degrees, so the
+        // small gap (and how they meet at the pole) is read at a glance.
+        const gk = prog(t, N(p, 'gapAt'), 0.8, 'ease-out'),
+          la = 42,
+          g1 = globePoint(ALEXANDRIA.lon, la, view, c.x, c.y, r),
+          g2 = globePoint(SYENE.lon, la, view, c.x, c.y, r);
+        if (g1.z > 0 && g2.z > 0 && gk > 0) {
+          const mx = (g1.x + g2.x) / 2,
+            my = (g1.y + g2.y) / 2;
+          ctx.save();
+          ctx.globalAlpha *= gk;
+          ctx.strokeStyle = '#c0392b';
+          ctx.lineWidth = Math.max(2.5, dotSize * 0.7);
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(g1.x, g1.y);
+          ctx.lineTo(g2.x, g2.y);
+          ctx.stroke();
+          ctx.restore();
+          label(ctx, '≈ 3°', mx, my - dotSize * 3.2, dotSize * 3.4, {
+            color: '#c0392b',
+            strip: 'rgba(255,255,255,0.9)',
+            alpha: gk,
+          });
         }
       }
       if (N(p, 'dotsAt') >= 0) {
