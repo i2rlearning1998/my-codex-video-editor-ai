@@ -99,8 +99,10 @@ export function comparePlan(
   state: PlanState,
 ): string[] {
   const out: string[] = [];
+  // A timeline is one scene: every chapter lives in the first one.
+  const timeline = state.plan.meta.build === 'timeline';
   state.plan.scenes.forEach((scene, index) => {
-    const id = state.sceneIds[index];
+    const id = state.sceneIds[timeline ? 0 : index];
     const composition = project.compositions.find((c) => c.id === id);
     const name = `${t('plan.scene')} ${index + 1} (${scene.id})`;
     if (!composition) {
@@ -115,6 +117,18 @@ export function comparePlan(
         out.push(t('plan.diffNeedsAsset', { name, layer: layer.id }));
     }
   });
+  const home = project.compositions.find((c) => c.id === state.sceneIds[0]);
+  if (timeline && home)
+    for (const layer of state.plan.overlays) {
+      const built = byRef(home, layerKey({ id: 'overlay' }, layer));
+      if (!built)
+        out.push(
+          t('plan.diffLayerGone', {
+            name: t('plan.overlays'),
+            layer: layer.id,
+          }),
+        );
+    }
   const order = state.sceneIds.filter((id): id is string => !!id);
   const actual = project.compositions
     .map((c) => c.id)
@@ -138,6 +152,7 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     return root;
   }
   const save = () => savePlanState(project.id, state);
+  const timeline = state.plan.meta.build === 'timeline';
   const safely = async (action: () => Promise<void> | void) => {
     try {
       await action();
@@ -228,14 +243,15 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
 
   /** Builds one scene again from the (edited) plan and puts it in place. */
   const regenerate = async (index: number) => {
-    const old = state.sceneIds[index];
+    // A timeline is built again as a whole; a scene alone otherwise.
+    const slot = timeline ? 0 : index;
+    const old = state.sceneIds[slot];
     const current = deps.project();
     const at = current.compositions.findIndex((c) => c.id === old);
     if (at < 0) throw new Error(t('plan.sceneGone'));
-    const single: VideoPlan = {
-      ...state.plan,
-      scenes: [state.plan.scenes[index]!],
-    };
+    const single: VideoPlan = timeline
+      ? state.plan
+      : { ...state.plan, scenes: [state.plan.scenes[index]!] };
     const result = await buildVideoFromPlan(single, await deps.services());
     if (!result.project)
       throw new Error(result.errors[0] ?? t('plan.buildFailed'));
@@ -252,9 +268,11 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     for (const [k, v] of Object.entries(result.alternatives))
       state.alternatives[k] = [...v];
     state.flags = [
-      ...state.flags.filter(
-        (flag) => !flag.key.startsWith(`${single.scenes[0]!.id}/`),
-      ),
+      ...(timeline
+        ? []
+        : state.flags.filter(
+            (flag) => !flag.key.startsWith(`${single.scenes[0]!.id}/`),
+          )),
       ...result.flags,
     ];
     deps.addAssets(missing);
@@ -269,14 +287,21 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     ]);
     // (Only once the scene is really in place.)
     if (deps.project().compositions.some((c) => c.id === fresh.id)) {
-      state.sceneIds[index] = fresh.id;
+      state.sceneIds[slot] = fresh.id;
       save();
     }
     deps.openScene(fresh.id);
   };
 
+  if (timeline) {
+    const note = document.createElement('p');
+    note.className = 'right-note';
+    note.id = 'plan-timeline-note';
+    note.textContent = t('plan.timelineNote');
+    root.append(note);
+  }
   state.plan.scenes.forEach((scene, index) => {
-    const id = state.sceneIds[index];
+    const id = state.sceneIds[timeline ? 0 : index];
     const composition = project.compositions.find((c) => c.id === id);
     const card = document.createElement('section');
     card.className = 'plan-scene';
@@ -295,89 +320,91 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       return;
     }
     title.onclick = () => deps.openScene(composition.id);
-    // Length, order, delete, regenerate.
+    // Length, order, delete, regenerate (a timeline has none of them: its
+    // chapters are stretches of one timeline, edited there).
     const controls = document.createElement('div');
     controls.className = 'camera-row';
-    controls.append(
-      createNumberField({
-        id: `plan-length-${scene.id}`,
-        label: t('plan.length'),
-        value: composition.duration,
-        unit: 's',
-        min: 0.5,
-        max: 180,
-        step: 0.1,
-        decimals: 1,
-        onCommit: (value) =>
-          void safely(() =>
-            deps.run(
-              'Scene length',
-              sceneLengthCommands(
-                { composition, assets: project.assets } as never,
-                value,
+    if (!timeline)
+      controls.append(
+        createNumberField({
+          id: `plan-length-${scene.id}`,
+          label: t('plan.length'),
+          value: composition.duration,
+          unit: 's',
+          min: 0.5,
+          max: 180,
+          step: 0.1,
+          decimals: 1,
+          onCommit: (value) =>
+            void safely(() =>
+              deps.run(
+                'Scene length',
+                sceneLengthCommands(
+                  { composition, assets: project.assets } as never,
+                  value,
+                ),
               ),
             ),
-          ),
-        onInvalid: (message) => deps.report(new RangeError(message)),
-      }),
-      button(
-        'plan-up',
-        t('plan.up'),
-        () => {
-          const at = deps
-            .project()
-            .compositions.findIndex((c) => c.id === composition.id);
-          if (at > 0)
-            deps.run('Move scene', [
+          onInvalid: (message) => deps.report(new RangeError(message)),
+        }),
+        button(
+          'plan-up',
+          t('plan.up'),
+          () => {
+            const at = deps
+              .project()
+              .compositions.findIndex((c) => c.id === composition.id);
+            if (at > 0)
+              deps.run('Move scene', [
+                {
+                  type: 'MOVE_COMPOSITION',
+                  compositionId: composition.id,
+                  index: at - 1,
+                } as unknown as Command,
+              ]);
+          },
+          'arrowUp',
+        ),
+        button(
+          'plan-down',
+          t('plan.down'),
+          () => {
+            const list = deps.project().compositions;
+            const at = list.findIndex((c) => c.id === composition.id);
+            if (at >= 0 && at < list.length - 1)
+              deps.run('Move scene', [
+                {
+                  type: 'MOVE_COMPOSITION',
+                  compositionId: composition.id,
+                  index: at + 1,
+                } as unknown as Command,
+              ]);
+          },
+          'arrowDown',
+        ),
+        button(
+          'plan-delete',
+          t('plan.delete'),
+          () => {
+            deps.run('Delete scene', [
               {
-                type: 'MOVE_COMPOSITION',
+                type: 'DELETE_COMPOSITION',
                 compositionId: composition.id,
-                index: at - 1,
               } as unknown as Command,
             ]);
-        },
-        'arrowUp',
-      ),
-      button(
-        'plan-down',
-        t('plan.down'),
-        () => {
-          const list = deps.project().compositions;
-          const at = list.findIndex((c) => c.id === composition.id);
-          if (at >= 0 && at < list.length - 1)
-            deps.run('Move scene', [
-              {
-                type: 'MOVE_COMPOSITION',
-                compositionId: composition.id,
-                index: at + 1,
-              } as unknown as Command,
-            ]);
-        },
-        'arrowDown',
-      ),
-      button(
-        'plan-delete',
-        t('plan.delete'),
-        () => {
-          deps.run('Delete scene', [
-            {
-              type: 'DELETE_COMPOSITION',
-              compositionId: composition.id,
-            } as unknown as Command,
-          ]);
-          state.sceneIds[index] = null;
-          save();
-        },
-        'delete',
-      ),
-      button(
-        'plan-regenerate',
-        t('plan.regenerate'),
-        () => regenerate(index),
-        'magic',
-      ),
-    );
-    card.append(controls);
+            state.sceneIds[index] = null;
+            save();
+          },
+          'delete',
+        ),
+        button(
+          'plan-regenerate',
+          t('plan.regenerate'),
+          () => regenerate(index),
+          'magic',
+        ),
+      );
+    if (!timeline) card.append(controls);
     // Narration.
     const narration = document.createElement('textarea');
     narration.className = 'plan-narration';
@@ -385,23 +412,24 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     narration.rows = 3;
     narration.value = scene.narration ?? '';
     narration.setAttribute('aria-label', t('plan.narration'));
-    card.append(
-      narration,
-      button(
-        'plan-voice',
-        t('plan.updateVoice'),
-        async () => {
-          const text = narration.value.trim();
-          state.plan.scenes[index] = {
-            ...scene,
-            ...(text ? { narration: text } : { narration: undefined }),
-          } as VideoPlan['scenes'][number];
-          save();
-          await regenerate(index);
-        },
-        'audio',
-      ),
-    );
+    if (!timeline)
+      card.append(
+        narration,
+        button(
+          'plan-voice',
+          t('plan.updateVoice'),
+          async () => {
+            const text = narration.value.trim();
+            state.plan.scenes[index] = {
+              ...scene,
+              ...(text ? { narration: text } : { narration: undefined }),
+            } as VideoPlan['scenes'][number];
+            save();
+            await regenerate(index);
+          },
+          'audio',
+        ),
+      );
     // Media layers.
     for (const layer of scene.layers) {
       if (layer.kind !== 'media' || !layer.mediaIntent) continue;

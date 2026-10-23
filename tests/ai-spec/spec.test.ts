@@ -257,12 +257,12 @@ it.each([
     'too many scenes',
     (s: ReturnType<typeof base>) => ({
       ...s,
-      scenes: Array.from({ length: 13 }, (_, i) => ({
+      scenes: Array.from({ length: 41 }, (_, i) => ({
         ...s.scenes[0],
         id: 's' + i,
       })),
     }),
-    /12/,
+    /40/,
   ],
   [
     'NaN',
@@ -285,24 +285,24 @@ it('rejects negative, reversed/outside timing and total duration overflow', () =
   s.scenes[0]!.items[0]!.duration = 0;
   invalid(s, /duration/);
   const long = read('lower-third.spec.json');
-  long.scenes = Array.from({ length: 12 }, (_, i) => ({
+  long.scenes = Array.from({ length: 40 }, (_, i) => ({
     ...structuredClone(long.scenes[0]),
     id: 's' + i,
-    duration: 20,
+    duration: 50,
   }));
-  invalid(long, /180/);
+  invalid(long, /1800/);
 });
 it('checks total items across otherwise valid scenes', () => {
   const s = base();
-  s.scenes = Array.from({ length: 3 }, (_, i) => ({
+  s.scenes = Array.from({ length: 4 }, (_, i) => ({
     ...structuredClone(s.scenes[0]!),
     id: 'scene' + i,
-    items: Array.from({ length: 50 }, (_, j) => ({
+    items: Array.from({ length: 510 }, (_, j) => ({
       ...s.scenes[0]!.items[0]!,
       id: 'item' + j,
     })),
   }));
-  invalid(s, /128/);
+  invalid(s, /2000/);
 });
 it('rejects duplicate item ids, unknown/incorrect asset slots and external URLs', () => {
   const s = read('outro.spec.json');

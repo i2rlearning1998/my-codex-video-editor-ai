@@ -32,6 +32,8 @@ export interface BlockInfo {
   defaultDuration: number;
   params: readonly ParamSpec[];
   thumbnailTime?: number;
+  /** Frames per second to bake at when slower than the project (still or slow art). */
+  fps?: number;
 }
 export interface BlockModule extends BlockInfo {
   render(

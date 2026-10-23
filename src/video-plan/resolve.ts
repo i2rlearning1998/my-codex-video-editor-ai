@@ -7,7 +7,7 @@
 // layer gets a fallback card and a "needs asset" flag.
 import type { PlanLayer } from './schema';
 
-export type MediaKind = 'image' | 'video';
+export type MediaKind = 'image' | 'video' | 'audio';
 export interface MediaCandidate {
   /** "library:<id>", "asset:<id>" or "<provider>:<item id>". */
   readonly key: string;
@@ -74,7 +74,9 @@ export function scoreCandidate(
     orientationOf(candidate.width, candidate.height) === orientation
   )
     score += 4;
-  if ((type === 'video') === (candidate.kind === 'video')) score += 3;
+  if (type === 'audio') {
+    if (candidate.kind === 'audio') score += 3;
+  } else if ((type === 'video') === (candidate.kind === 'video')) score += 3;
   if (candidate.source !== 'stock') score += 1;
   return score;
 }

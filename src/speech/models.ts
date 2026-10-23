@@ -32,14 +32,46 @@ type WhisperVariant = {
 const whisper = (
   whisperConfig.variants as unknown as Record<string, WhisperVariant>
 )[whisperConfig.active]!;
+export const DEFAULT_MODEL_HOST = 'https://huggingface.co';
+const SOURCE_KEY = 'aive.model-source';
+/** FIX4 A6: the saved model host (a mirror or your own server), or the default. */
+export function modelHost(): string {
+  try {
+    const saved = localStorage.getItem(SOURCE_KEY)?.trim();
+    if (saved && /^https:\/\/[^\s]+$/.test(saved))
+      return saved.replace(/\/+$/, '');
+  } catch {
+    /* Storage blocked: the default host. */
+  }
+  return DEFAULT_MODEL_HOST;
+}
+/** Saves the model host; an empty or invalid value returns to the default. */
+export function setModelHost(value: string): boolean {
+  const clean = value.trim().replace(/\/+$/, '');
+  try {
+    if (!clean || clean === DEFAULT_MODEL_HOST) {
+      localStorage.removeItem(SOURCE_KEY);
+      return true;
+    }
+    if (!/^https:\/\/[^\s]+$/.test(clean)) return false;
+    localStorage.setItem(SOURCE_KEY, clean);
+    return true;
+  } catch {
+    return false;
+  }
+}
+/** The active Whisper variant's files, from the saved model host. */
+export const whisperFiles = (host = modelHost()): readonly ModelFile[] =>
+  whisper.files.map((f) => ({
+    id: `whisper-${whisperConfig.active}/${f.path}`,
+    url: `${host}/${whisper.model}/resolve/${whisper.revision ?? whisperConfig.revision}/${f.path}`,
+    sizeBytes: f.sizeBytes,
+    sha256: f.sha256,
+    license: whisperConfig.license,
+  }));
 /** The active Whisper variant's files, served from Hugging Face. */
-export const WHISPER_FILES: readonly ModelFile[] = whisper.files.map((f) => ({
-  id: `whisper-${whisperConfig.active}/${f.path}`,
-  url: `https://huggingface.co/${whisper.model}/resolve/${whisper.revision ?? whisperConfig.revision}/${f.path}`,
-  sizeBytes: f.sizeBytes,
-  sha256: f.sha256,
-  license: whisperConfig.license,
-}));
+export const WHISPER_FILES: readonly ModelFile[] =
+  whisperFiles(DEFAULT_MODEL_HOST);
 export const LOCAL_MODELS: readonly LocalModelConfig[] = [
   {
     id: 'local-tts',

@@ -2,7 +2,13 @@
 // message per step, watches the worker's heartbeat (no message for 15 s
 // while loading, or 120 s during one inference run, means it stopped
 // responding) and terminates the worker on Cancel or a stall.
-import type { AsrOutput, EngineFile, WhisperEngine } from './whisper-engine';
+import type {
+  AsrOutput,
+  EngineFile,
+  LoadHooks,
+  WhisperEngine,
+} from './whisper-engine';
+import type { PcmAudio } from './types';
 import type { FakeWhisperMode } from './whisper-fake-transformers';
 import { WhisperError } from './whisper';
 
@@ -12,6 +18,8 @@ export interface WorkerEngineOptions {
   beatLossMs?: number;
   /** One inference run may keep the worker busy this long (ms). */
   inferenceStallMs?: number;
+  /** FIX4 A5: loading with no stage, progress or answer for this long (ms). */
+  loadStallMs?: number;
 }
 
 export const workerSupported = () => typeof Worker !== 'undefined';
@@ -21,6 +29,10 @@ export function createWorkerEngine(
 ): WhisperEngine & { abort(): void } {
   const beatLossMs = options.beatLossMs ?? 15_000;
   const inferenceStallMs = options.inferenceStallMs ?? 120_000;
+  const loadStallMs = options.loadStallMs ?? 60_000;
+  /** The last time the worker reported real work (a stage or progress). */
+  let lastWork = 0;
+  let onStage: LoadHooks['onStage'] | null = null;
   let worker: Worker | null = null;
   let lastSeen = 0;
   let nextId = 1;
@@ -31,6 +43,7 @@ export function createWorkerEngine(
     number,
     {
       step: 'load' | 'listen';
+      started: number;
       resolve(value: unknown): void;
       reject(error: unknown): void;
     }
@@ -51,6 +64,7 @@ export function createWorkerEngine(
       name: 'whisper',
     });
     lastSeen = performance.now();
+    lastWork = lastSeen;
     worker.onmessage = (event) => {
       lastSeen = performance.now();
       const data = event.data as {
@@ -61,9 +75,16 @@ export function createWorkerEngine(
         message?: string;
         completed?: number;
         total?: number | null;
+        stage?: 'library' | 'pipeline' | 'ready';
       };
-      if (data.type === 'progress')
+      if (data.type === 'progress') {
+        lastWork = lastSeen;
         onLoadProgress?.(data.completed ?? 0, data.total ?? null);
+      }
+      if (data.type === 'stage' && data.stage) {
+        lastWork = lastSeen;
+        onStage?.(data.stage);
+      }
       if (data.type !== 'done' && data.type !== 'error') return;
       const job = pending.get(data.id!);
       if (!job) return;
@@ -83,14 +104,31 @@ export function createWorkerEngine(
     watchdog = setInterval(() => {
       if (!pending.size) return;
       const running = [...pending.values()].some((j) => j.step === 'listen');
-      const quiet = performance.now() - lastSeen;
-      if (quiet > (running ? inferenceStallMs : beatLossMs)) {
-        const step = running ? 'listen' : 'load';
+      const now = performance.now();
+      const quiet = now - lastSeen;
+      if (quiet > beatLossMs) {
         stop(
           new WhisperError(
             'stalled',
-            step,
+            running ? 'listen' : 'load',
             new Error(`No message from the worker for ${Math.round(quiet)} ms`),
+          ),
+        );
+        return;
+      }
+      // FIX4 A5: the worker beats, but a load that reports no stage or
+      // progress for a minute (a run: two minutes) is stuck, not slow.
+      const idle =
+        now -
+        Math.max(lastWork, ...[...pending.values()].map((j) => j.started));
+      if (idle > (running ? inferenceStallMs : loadStallMs)) {
+        stop(
+          new WhisperError(
+            'stalled',
+            running ? 'listen' : 'load',
+            new Error(
+              `${running ? 'Listening' : 'Loading'} made no progress for ${Math.round(idle / 1000)} s`,
+            ),
           ),
         );
       }
@@ -106,6 +144,7 @@ export function createWorkerEngine(
       const id = nextId++;
       pending.set(id, {
         step,
+        started: performance.now(),
         resolve: resolve as (value: unknown) => void,
         reject,
       });
@@ -113,12 +152,19 @@ export function createWorkerEngine(
     });
 
   return {
-    async load(files: readonly EngineFile[], model: string, onProgress) {
+    async load(
+      files: readonly EngineFile[],
+      model: string,
+      onProgress,
+      hooks?: LoadHooks,
+    ) {
       onLoadProgress = onProgress ?? null;
+      onStage = hooks?.onStage ?? null;
       await send<void>('load', {
         type: 'load',
         files: [...files],
         model,
+        ...(hooks?.host ? { host: hooks.host } : {}),
         ...(options.fake ? { fake: options.fake } : {}),
       });
     },
@@ -130,6 +176,14 @@ export function createWorkerEngine(
         [copy.buffer],
       );
     },
+    resample(audio: PcmAudio) {
+      const channels = audio.channels.map((c) => c.slice());
+      return send<Float32Array>(
+        'listen',
+        { type: 'resample', channels, rate: audio.sampleRate },
+        channels.map((c) => c.buffer),
+      );
+    },
     dispose() {
       stop(new WhisperError('cancelled', 'load'));
     },
@@ -137,4 +191,30 @@ export function createWorkerEngine(
       stop(new WhisperError('cancelled', 'listen'));
     },
   };
+}
+
+/** FIX4 A7: asks a short-lived worker what it can do (for Copy diagnostics). */
+export function whisperSelfTest(timeoutMs = 15_000) {
+  return new Promise<Record<string, string | number | boolean>>((resolve) => {
+    if (!workerSupported()) return resolve({ worker: 'not supported' });
+    const worker = new Worker(new URL('./whisper.worker.ts', import.meta.url), {
+      type: 'module',
+      name: 'whisper-selftest',
+    });
+    const finish = (result: Record<string, string | number | boolean>) => {
+      clearTimeout(timer);
+      worker.terminate();
+      resolve(result);
+    };
+    const timer = setTimeout(
+      () => finish({ worker: 'no answer', timeoutMs }),
+      timeoutMs,
+    );
+    worker.onmessage = (event) => {
+      if (event.data?.type === 'done')
+        finish({ worker: 'ok', ...(event.data.result ?? {}) });
+    };
+    worker.onerror = (event) => finish({ worker: `error: ${event.message}` });
+    worker.postMessage({ type: 'selftest', id: 0 });
+  });
 }

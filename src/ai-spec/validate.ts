@@ -10,6 +10,7 @@ import { blockData, fxData } from './catalogs/data';
 import { compileBlock } from './vendor/blocks/sandbox/compile';
 import { validateParams } from './vendor/blocks/params';
 import type { ParamSpec } from './vendor/blocks/types';
+import { graphicsBlocks } from '../blocks/graphics';
 export interface SpecIssue {
   path: string;
   message: string;
@@ -110,12 +111,23 @@ export function validateSpec(
     const registry = new Map<
       string,
       { version: string; params: readonly ParamSpec[] }
-    >(
-      blocks.map((b) => [
-        b.id,
-        { version: b.version, params: b.params as readonly ParamSpec[] },
-      ]),
-    );
+    >([
+      ...blocks.map(
+        (b) =>
+          [
+            b.id,
+            { version: b.version, params: b.params as readonly ParamSpec[] },
+          ] as const,
+      ),
+      // Graphics blocks live in the editor itself (src/blocks/graphics).
+      ...graphicsBlocks.map(
+        (b) =>
+          [
+            b.id,
+            { version: b.version, params: b.params as readonly ParamSpec[] },
+          ] as const,
+      ),
+    ]);
     for (const [i, b] of spec.blocks.entries()) {
       if (registry.has(b.id)) {
         add(['blocks', i, 'id'], 'Block id collides with a registered block');
@@ -254,8 +266,9 @@ export function validateSpec(
       }
     }
     if (duration > LIMITS.duration + 1e-9)
-      add(['scenes'], 'Total duration exceeds 180 seconds');
-    if (count > LIMITS.items) add(['scenes'], 'Total item count exceeds 128');
+      add(['scenes'], `Total duration exceeds ${LIMITS.duration} seconds`);
+    if (count > LIMITS.items)
+      add(['scenes'], `Total item count exceeds ${LIMITS.items}`);
     if (errors.length) return { ok: false, errors };
     // Cache identity includes authored bindings, defaults, explicit overrides and
     // pinned policy/catalog versions; array order is meaningful, object key order is not.

@@ -3816,10 +3816,13 @@ button.color-swatch:hover {
   /* Bottom left, above the timeline: never over the tracks or the canvas's
      toolbar, where it would block the next click. */
   bottom: calc(var(--timeline-height) + var(--space-3));
-  left: calc(var(--rail-width) + var(--space-3));
+  /* FIX4 A1: bottom-centre, over the canvas area; never over a left panel's
+     scroller, where the cards and their last row sit. */
+  left: 50%;
   right: auto;
-  align-items: flex-start;
-  max-width: min(360px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  align-items: center;
+  max-width: min(420px, calc(100vw - 32px));
 }
 .toast {
   gap: var(--space-2);
@@ -6874,9 +6877,12 @@ input[type='range'] {
 
 /* T-ALL P1 (spec 7): the left rail and panel run the full height; the
    timeline sits beside the panel (wide layout; narrower layouts keep the
-   full-width timeline so the Player bar fits). The left panel's collapse
+   full-width timeline so the Player bar fits). FIX4: the medium layout
+   (laptops, 1024 to 1439 px) uses the same shape: the panel runs full
+   height and the timeline sits beside it, as on a wide window. The left panel's collapse
    button is in its own header row. */
-.editor-shell[data-layout='wide'] {
+.editor-shell[data-layout='wide'],
+.editor-shell[data-layout='medium'] {
   grid-template-areas:
     'top top top top top'
     'rail-left library preview inspector rail-right'
@@ -10750,6 +10756,27 @@ input[type='range'] {
   .shelf .media-dropzone {
     display: none;
   }
+  /* FIX4 A3: a tighter header (title, search, Import, chips) so the cards
+     get at least 60 % of a 458 px laptop panel. */
+  .library .shelf {
+    gap: 6px;
+  }
+  .library .shelf .shelf-search {
+    min-block-size: 0;
+    block-size: 32px;
+  }
+  .library .shelf .import-row #import-media,
+  .library .shelf .import-row .import-menu-button {
+    min-block-size: 0;
+    block-size: 34px;
+  }
+  .library .shelf > .shelf-tabs {
+    padding-block: 0;
+  }
+  .library .shelf > .shelf-tabs .shelf-tab {
+    min-block-size: 0;
+    block-size: 28px;
+  }
 }
 /* An idle side-panel host (no shown deep panel) takes no room, so the
    shelf above reaches the panel's bottom edge. */
@@ -11232,4 +11259,11 @@ input[type='range'] {
 .plan-feel input {
   flex: 1;
   min-width: 0;
+}
+
+/* FIX4: while a dialog is open the toast moves to the top, so it never
+   covers the dialog's last lines. */
+body:has(.modal-backdrop) .toast-stack {
+  bottom: auto;
+  top: var(--space-4);
 }

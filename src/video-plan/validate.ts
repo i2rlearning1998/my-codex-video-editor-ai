@@ -12,6 +12,8 @@ import {
 } from './schema';
 import { isKitId } from './kit';
 import { estimateSceneDuration } from './timing';
+import { getBlock } from '../blocks/starters';
+import { validateParams } from '../blocks/params';
 
 export interface PlanCheck {
   readonly ok: boolean;
@@ -85,6 +87,77 @@ function say(issue: ZodIssue, input: unknown): string {
   }
 }
 
+/** What one layer needs, by kind. */
+function checkLayer(
+  layer: VideoPlan['scenes'][number]['layers'][number],
+  at: string,
+  errors: string[],
+  warnings: string[],
+) {
+  if (
+    (layer.kind === 'title' ||
+      layer.kind === 'text' ||
+      layer.kind === 'bubble') &&
+    !layer.text
+  )
+    errors.push(`${at} is a ${layer.kind} without "text".`);
+  if (layer.kind === 'media' && !layer.mediaIntent)
+    errors.push(`${at} is media without "mediaIntent" (what to look for).`);
+  if (layer.poses?.length && layer.kind !== 'media')
+    errors.push(`${at}: "poses" belong on a media layer.`);
+  if (layer.kind === 'block') {
+    const info = layer.block ? getBlock(layer.block) : undefined;
+    if (!layer.block)
+      errors.push(`${at} is a block layer without "block" (which block).`);
+    else if (!info)
+      errors.push(`${at}: there is no graphics block "${layer.block}".`);
+    else {
+      try {
+        validateParams(info.params, layer.params ?? {});
+      } catch (e) {
+        errors.push(
+          `${at}: block "${layer.block}": ${String((e as Error).message ?? e)}.`,
+        );
+      }
+    }
+  }
+  if (layer.kind === 'kit' && !layer.kit)
+    errors.push(`${at} is a kit layer without "kit" (which item).`);
+  if (layer.kind === 'kit' && layer.kit && !isKitId(layer.kit))
+    warnings.push(
+      `${at}: the starter kit has no "${layer.kit}"; the layer is left out.`,
+    );
+  if (layer.kind === 'shape') {
+    if (!layer.shape) errors.push(`${at} is a shape without "shape".`);
+    else if (
+      (layer.shape === 'line' || layer.shape === 'arrow') &&
+      !(layer.from && layer.to)
+    )
+      errors.push(`${at}: a ${layer.shape} needs "from" and "to".`);
+    else if (
+      layer.shape === 'arc' &&
+      (!layer.at ||
+        layer.radius === undefined ||
+        layer.startAngle === undefined ||
+        layer.endAngle === undefined)
+    )
+      errors.push(
+        `${at}: an arc needs "at" (centre), "radius", "startAngle" and "endAngle".`,
+      );
+    else if (
+      layer.shape === 'protractor' &&
+      (!layer.at || layer.radius === undefined)
+    )
+      errors.push(
+        `${at}: a protractor needs "at" (centre of its base line) and "radius".`,
+      );
+  }
+  if (layer.text && layer.text.length > 120)
+    warnings.push(
+      `${at}: ${layer.text.length} characters is a lot to read on screen.`,
+    );
+}
+
 /** Checks a plan (JSON text or a value). */
 export function validatePlan(input: unknown): PlanCheck {
   let value = input;
@@ -125,24 +198,16 @@ export function validatePlan(input: unknown): PlanCheck {
       if (layerIds.has(layer.id))
         errors.push(`${at}: another layer has this id.`);
       layerIds.add(layer.id);
-      if ((layer.kind === 'title' || layer.kind === 'text') && !layer.text)
-        errors.push(`${at} is a ${layer.kind} without "text".`);
-      if (layer.kind === 'media' && !layer.mediaIntent)
-        errors.push(`${at} is media without "mediaIntent" (what to look for).`);
-      if (layer.kind === 'kit' && !layer.kit)
-        errors.push(`${at} is a kit layer without "kit" (which item).`);
-      if (layer.kind === 'kit' && layer.kit && !isKitId(layer.kit))
-        warnings.push(
-          `${at}: the starter kit has no "${layer.kit}"; the layer is left out.`,
-        );
-      if (layer.text && layer.text.length > 120)
-        warnings.push(
-          `${at}: ${layer.text.length} characters is a lot to read on screen.`,
-        );
+      checkLayer(layer, at, errors, warnings);
     }
-    if (scene.camera?.target && !layerIds.has(scene.camera.target))
-      errors.push(
-        `${name}: the camera target "${scene.camera.target}" is not a layer of this scene.`,
+    for (const shot of [scene.camera, ...(scene.cameras ?? [])])
+      if (shot?.target && !layerIds.has(shot.target))
+        errors.push(
+          `${name}: the camera target "${shot.target}" is not a layer of this scene.`,
+        );
+    if (plan.meta.build === 'timeline' && scene.transitionOut)
+      warnings.push(
+        `${name}: a timeline is one scene, so "transitionOut" is not used (fade layers in and out instead).`,
       );
     const duration = estimateSceneDuration(scene);
     total += duration;
@@ -154,6 +219,16 @@ export function validatePlan(input: unknown): PlanCheck {
         );
     }
   });
+  const overlayIds = new Set<string>();
+  for (const layer of plan.overlays) {
+    const at = `Overlay "${layer.id}"`;
+    if (overlayIds.has(layer.id))
+      errors.push(`${at}: another overlay has this id.`);
+    overlayIds.add(layer.id);
+    checkLayer(layer, at, errors, warnings);
+  }
+  if (plan.narrationTrack && !plan.narrationTrack.query.trim())
+    errors.push('"narrationTrack" needs a "query" (the narration file name).');
   if (total > PLAN_LIMITS.duration)
     errors.push(
       `The video would be about ${Math.round(total)} s; the limit is ${PLAN_LIMITS.duration} s.`,

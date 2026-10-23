@@ -20,6 +20,9 @@ import {
 } from '../providers';
 import type { SpeechProvider } from '../speech';
 import { diagnosticsButton } from './diagnostics';
+import { longTaskFacts, watchLongTasks } from './long-tasks';
+import { whisperSelfTest } from '../speech/whisper-worker-client';
+import { DEFAULT_MODEL_HOST, modelHost, setModelHost } from '../speech/models';
 import { classifyWhisperError, WhisperError } from '../speech/whisper';
 import { encodeWav } from '../speech';
 import { lastDownloadError } from './local-engines';
@@ -321,6 +324,7 @@ function bindSelfTest(section: HTMLElement) {
     result.dataset.state = 'busy';
     const started = performance.now();
     const steps: string[] = [];
+    const stopWatching = watchLongTasks();
     try {
       if (!(await runner.isReady())) {
         result.textContent = t('settings.selftest.downloading');
@@ -346,6 +350,7 @@ function bindSelfTest(section: HTMLElement) {
         if (!(error instanceof WhisperError && error.kind === 'no-speech'))
           throw error;
       }
+      stopWatching();
       result.dataset.state = 'ok';
       result.textContent = t('settings.selftest.ok', {
         backend: backend(),
@@ -355,6 +360,8 @@ function bindSelfTest(section: HTMLElement) {
       });
     } catch (error) {
       const failure = classifyWhisperError(error, 'load');
+      const longTasks = stopWatching();
+      const worker = await whisperSelfTest();
       result.dataset.state = 'error';
       result.textContent = t('settings.selftest.failed', {
         why: t(`captions.fail.${failure.kind}`),
@@ -371,12 +378,45 @@ function bindSelfTest(section: HTMLElement) {
             failure: failure.kind,
             backend: backend(),
             steps: steps.join(', '),
+            ...longTaskFacts(longTasks),
+            ...Object.fromEntries(
+              Object.entries(worker).map(([k, v]) => [`worker.${k}`, v]),
+            ),
+            modelHost: modelHost(),
           },
         })),
       );
     } finally {
       button.disabled = false;
     }
+  };
+}
+
+/** FIX4 A6: Model source: where the offline model files are downloaded from. */
+function bindModelSource(section: HTMLElement) {
+  const input = section.querySelector<HTMLInputElement>('#model-source-input')!;
+  const status = section.querySelector<HTMLElement>('#model-source-status')!;
+  const show = () => {
+    input.value = modelHost() === DEFAULT_MODEL_HOST ? '' : modelHost();
+  };
+  show();
+  section.querySelector<HTMLButtonElement>(
+    '[data-action="model-source-save"]',
+  )!.onclick = () => {
+    const ok = setModelHost(input.value);
+    status.dataset.state = ok ? 'ok' : 'error';
+    status.textContent = t(
+      ok ? 'settings.modelSource.saved' : 'settings.modelSource.invalid',
+    );
+    if (ok) show();
+  };
+  section.querySelector<HTMLButtonElement>(
+    '[data-action="model-source-reset"]',
+  )!.onclick = () => {
+    setModelHost('');
+    show();
+    status.dataset.state = 'ok';
+    status.textContent = t('settings.modelSource.saved');
   };
 }
 
@@ -435,6 +475,16 @@ export function openSettings(
       <div class="settings-pane" role="tabpanel" id="settings-pane-offline" aria-labelledby="settings-tab-offline">
         <p class="settings-note settings-lead">${t('settings.offline.lead')}</p>
         <div class="offline-engines"></div>
+        <section class="key-block model-source" id="model-source">
+          <header class="key-block-head"><h4>${t('settings.modelSource.title')}</h4></header>
+          <p class="settings-note">${t('settings.modelSource.note')}</p>
+          <input class="key-input" id="model-source-input" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="${DEFAULT_MODEL_HOST}" aria-label="${t('settings.modelSource.title')}" />
+          <div class="key-actions">
+            <button type="button" class="button secondary sm" data-action="model-source-save">${t('settings.modelSource.save')}</button>
+            <button type="button" class="button ghost sm" data-action="model-source-reset">${t('settings.modelSource.reset')}</button>
+          </div>
+          <p class="selftest-result" id="model-source-status" role="status" aria-live="polite"></p>
+        </section>
         <section class="key-block whisper-selftest" id="whisper-selftest">
           <header class="key-block-head"><h4>${t('settings.selftest.title')}</h4></header>
           <p class="settings-note">${t('settings.selftest.note')}</p>
@@ -565,6 +615,7 @@ export function openSettings(
   unsubscribe = localEngines(speechRegistry()).subscribe(renderEngines);
   renderEngines();
   bindSelfTest(root.querySelector<HTMLElement>('#whisper-selftest')!);
+  bindModelSource(root.querySelector<HTMLElement>('#model-source')!);
 
   root.querySelector<HTMLButtonElement>('#settings-done')!.onclick = () =>
     handle.close();

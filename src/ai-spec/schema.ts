@@ -4,11 +4,15 @@ import { CAMERA_EASINGS, CONTROLLERS } from './camera-names';
 export const SPEC_VERSION = 1 as const;
 export const LIMITS = Object.freeze({
   bytes: 1_048_576,
-  scenes: 12,
-  items: 128,
-  duration: 180,
+  // V3: a long video is one timeline, so the caps are per video, not per scene.
+  scenes: 40,
+  items: 2000,
+  sceneItems: 600,
+  assets: 256,
+  cameraShots: 128,
+  duration: 1800,
   depth: 24,
-  nodes: 50000,
+  nodes: 200000,
 });
 export const safeId = z
   .string()
@@ -268,7 +272,7 @@ function makeSchema<B extends boolean>(bindings: B) {
             })
             .strict(),
         )
-        .max(32)
+        .max(LIMITS.assets)
         .default([]),
       blocks: z
         .array(
@@ -286,9 +290,12 @@ function makeSchema<B extends boolean>(bindings: B) {
               name: z.string().min(1).max(100),
               duration: positiveTime,
               background: editable(color).default('#101219'),
-              items: z.array(item).min(1).max(64),
+              items: z.array(item).min(1).max(LIMITS.sceneItems),
               cameraMoves: z.array(cameraMove).max(8).default([]),
-              cameraShots: z.array(cameraShot).max(32).default([]),
+              cameraShots: z
+                .array(cameraShot)
+                .max(LIMITS.cameraShots)
+                .default([]),
               transition: z
                 .object({
                   id: z.enum([

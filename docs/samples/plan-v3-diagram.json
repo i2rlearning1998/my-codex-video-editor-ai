@@ -1,0 +1,114 @@
+{
+  "format": "video-plan",
+  "version": 3,
+  "meta": {
+    "title": "How big is an angle?",
+    "language": "en",
+    "aspect": "16:9",
+    "fps": 30,
+    "build": "timeline"
+  },
+  "feel": {
+    "palette": {
+      "background": "#f1ede4",
+      "text": "#2b2b2b",
+      "accent": "#f0a03c"
+    },
+    "headingFont": "Poppins",
+    "bodyFont": "Poppins"
+  },
+  "overlays": [
+    {
+      "id": "tag",
+      "kind": "title",
+      "text": "Angles in 20 seconds",
+      "at": { "x": 20, "y": 7 },
+      "width": 30,
+      "fontSize": 36,
+      "weight": 700,
+      "color": "#3b1f00",
+      "highlight": "#f0a03c",
+      "enter": "none"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "protractor",
+      "title": "Measure it",
+      "durationHint": 10,
+      "layers": [
+        { "id": "bg", "kind": "kit", "kit": "background-solid" },
+        {
+          "id": "tool",
+          "kind": "shape",
+          "shape": "protractor",
+          "at": { "x": 50, "y": 82 },
+          "radius": 38,
+          "stroke": "#2b6cb0",
+          "enter": "wipe",
+          "duration": 9
+        },
+        {
+          "id": "ray",
+          "kind": "shape",
+          "shape": "arrow",
+          "from": { "x": 50, "y": 82 },
+          "to": { "x": 70, "y": 40 },
+          "stroke": "#f0a03c",
+          "strokeWidth": 10,
+          "start": 2,
+          "duration": 8,
+          "enter": "wipe"
+        },
+        {
+          "id": "angle",
+          "kind": "shape",
+          "shape": "arc",
+          "at": { "x": 50, "y": 82 },
+          "radius": 14,
+          "startAngle": -65,
+          "endAngle": 0,
+          "stroke": "#2b2b2b",
+          "strokeWidth": 8,
+          "start": 3,
+          "duration": 7,
+          "enter": "wipe"
+        },
+        {
+          "id": "value",
+          "kind": "text",
+          "text": "65°",
+          "at": { "x": 64, "y": 72 },
+          "fontSize": 80,
+          "weight": 800,
+          "highlight": "#ffffff",
+          "start": 4,
+          "duration": 6,
+          "enter": "pop"
+        }
+      ],
+      "cameras": [
+        { "controller": "push-in", "start": 0, "duration": 10, "strength": 0.2 }
+      ]
+    },
+    {
+      "id": "think",
+      "title": "A question",
+      "durationHint": 6,
+      "layers": [
+        { "id": "bg", "kind": "kit", "kit": "background-solid" },
+        {
+          "id": "q",
+          "kind": "bubble",
+          "bubble": "thought",
+          "text": "What if the angle is 7.2°?",
+          "at": { "x": 50, "y": 45 },
+          "width": 50,
+          "fontSize": 54,
+          "enter": "pop"
+        }
+      ]
+    }
+  ],
+  "captions": { "enabled": false }
+}

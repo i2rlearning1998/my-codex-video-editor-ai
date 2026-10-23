@@ -74,6 +74,37 @@ export async function openBlockSession(
     request = { compiled: compiled.value };
     meta = blockMeta(compiled.value.info);
   }
+  // A registered block is our own trusted code: draw it right here, with no
+  // worker round trip and no pixel copy (several times faster to bake).
+  if (starterId) {
+    const { getBlock } = await import('../blocks/starters');
+    const block = getBlock(starterId)!;
+    const canvas = new OffscreenCanvas(opts.width, opts.height);
+    const ctx = canvas.getContext('2d')!;
+    const direct = async (index: number) => {
+      ctx.clearRect(0, 0, opts.width, opts.height);
+      block.render(
+        ctx as unknown as Parameters<typeof block.render>[0],
+        index / opts.fps,
+        { width: opts.width, height: opts.height },
+        opts.params,
+        opts.seed,
+      );
+      return createImageBitmap(canvas);
+    };
+    return {
+      meta,
+      renderFrame: direct,
+      thumbnail: () =>
+        direct(
+          Math.min(
+            Math.ceil(opts.duration * opts.fps) - 1,
+            Math.floor(meta.thumbnailTime * opts.fps),
+          ),
+        ),
+      dispose: () => {},
+    };
+  }
   const client = createSandbox(2000);
   const frame = async (index: number) => {
     const reply = await client.render({

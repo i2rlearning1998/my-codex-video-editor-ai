@@ -56,8 +56,8 @@ underscore/hyphen; constructor/prototype/**proto** are reserved. FX IDs retain t
 library's namespace dot (`effect.glow`, `filter.retro`, `adjust.contrast`) and are
 checked by exact catalog membership. IDs are unique within their namespace (scene,
 asset slot, block, items within a scene, moves within a scene). Items may overlap
-for compositing; array order supplies layer order. Total items ≤128, ≤64 per scene.
-Total scene duration ≤180 s. All numbers are finite. No implicit frame rounding;
+for compositing; array order supplies layer order. Total items ≤2000, ≤600 per scene, ≤256 assets.
+Total scene duration ≤1800 s (30 min). All numbers are finite. No implicit frame rounding;
 scene containment tolerates only 1e-9 s for arithmetic roundoff, not a visual tolerance.
 
 A scene starts after the sum of all previous scene durations. Item and camera
@@ -194,8 +194,8 @@ Preserve uploaded asset IDs supplied by the trusted host; unknown assets stay sl
 
 Required root: version:1, safe id, title, canvas:{width,height,fps}, scenes.
 Optional parameters, assets and blocks default to empty arrays. Canvas is 16..4096
-per side and <=8388608 pixels; fps is 24,25,30,50,60. At most 12 scenes, 128 items
-in total (64 per scene), and 180 seconds total. Times are finite seconds. Scenes
+per side and <=8388608 pixels; fps is 24,25,30,50,60. At most 40 scenes, 2000 items
+in total (600 per scene), and 1800 seconds total. Times are finite seconds. Scenes
 play in array order; items start relative to their scene and must finish inside it.
 All scene/item/slot/block ids are safe and unique within their namespace.
 

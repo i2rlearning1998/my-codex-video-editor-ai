@@ -8,7 +8,12 @@ import {
   createIndexedModelStore,
   type ModelStore,
 } from './model-cache';
-import { LOCAL_MODELS, type ModelFile } from './models';
+import {
+  DEFAULT_MODEL_HOST as DEFAULT_HOST,
+  LOCAL_MODELS,
+  modelHost,
+  whisperFiles,
+} from './models';
 import { browserCodec, resampleMono } from './pcm';
 import {
   createInProcessEngine,
@@ -143,7 +148,8 @@ export function createWhisperRunner(
   } = {},
 ): WhisperRunner {
   const config = LOCAL_MODELS.find((m) => m.id === 'local-whisper')!;
-  const files: readonly ModelFile[] = config.files;
+  // FIX4 A6: the files come from the saved model host at each use.
+  const getFiles = () => whisperFiles();
   const store = options.store ?? createIndexedModelStore();
   const loader = createModelLoader(store, options.fetcher);
   // FIX3 2.2: in a browser the engine is a dedicated worker; without one
@@ -163,18 +169,22 @@ export function createWhisperRunner(
   let loaded = false;
   let lastLoadMs: number | null = null;
 
-  const total = () =>
-    files.every((f) => f.sizeBytes !== null)
+  const total = () => {
+    const files = getFiles();
+    return files.every((f) => f.sizeBytes !== null)
       ? files.reduce((sum, f) => sum + (f.sizeBytes ?? 0), 0)
       : (config.approxBytes ?? 1);
+  };
 
   return {
     async isReady() {
+      const files = getFiles();
       if (!files.length) return false;
       for (const file of files) if (!(await loader.has(file))) return false;
       return true;
     },
     async download(onProgress, signal) {
+      const files = getFiles();
       const whole = total();
       let done = 0;
       for (const file of files) {
@@ -195,7 +205,7 @@ export function createWhisperRunner(
       engine?.dispose();
       engine = null;
       loaded = false;
-      for (const file of files)
+      for (const file of getFiles())
         await store.delete(
           `${file.id}/${file.sha256 ? file.sha256.toLowerCase() : 'size-only'}`,
         );
@@ -211,6 +221,7 @@ export function createWhisperRunner(
           'check',
           new Error(`This browser has no ${missing}`),
         );
+      const files = getFiles();
       if (!files.length || !config.model)
         throw new WhisperError(
           'not-downloaded',
@@ -246,8 +257,23 @@ export function createWhisperRunner(
                 blob: await loader.load(file, { offline: true }),
               });
             await withTimeout(
-              active.load(blobs, config.model!, (completed, total) =>
-                request.onProgress?.({ phase: 'load', completed, total }),
+              active.load(
+                blobs,
+                config.model!,
+                (completed, total) =>
+                  request.onProgress?.({ phase: 'load', completed, total }),
+                {
+                  onStage: (stage) =>
+                    request.onProgress?.({
+                      phase: 'load',
+                      stage,
+                      completed: 0,
+                      total: null,
+                    }),
+                  ...(modelHost() !== DEFAULT_HOST
+                    ? { host: `${modelHost()}/` }
+                    : {}),
+                },
               ),
               options.loadTimeoutMs ?? 180_000,
               signal,
@@ -278,7 +304,11 @@ export function createWhisperRunner(
       const blob =
         request.blob ??
         (await (await fetch(request.url!, { credentials: 'omit' })).blob());
-      audio = resampleMono(await codec.decode(blob), 16000);
+      const decoded = await codec.decode(blob);
+      // FIX4 A9: the long resample loop runs in the worker.
+      audio = active.resample
+        ? await active.resample(decoded)
+        : resampleMono(decoded, 16000);
     } catch (error) {
       throw classifyWhisperError(error, 'decode', signal);
     }

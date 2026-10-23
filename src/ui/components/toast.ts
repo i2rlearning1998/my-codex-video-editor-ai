@@ -44,17 +44,17 @@ export function plainMessage(text: string): string {
 export function showToast(
   text: string,
   kind: ToastKind = 'info',
-  durationMs = 4000,
+  durationMs = 6000,
   action?: ToastAction,
 ): () => void {
   const stack = ensureContainer();
-  // Q1: the same message is shown once; a repeat replaces the visible one
-  // instead of stacking (e.g. a refused Ungroup pressed again).
+  // FIX4 A1: ONE toast at a time. A new message replaces the visible one
+  // (the latest wins, with its own action), so two toasts never stack over
+  // a panel; an error is only replaced by another message of any kind.
   for (const old of stack.querySelectorAll<HTMLElement>(
-    `.toast.toast-${kind}:not(.toast-leaving)`,
+    '.toast:not(.toast-leaving)',
   ))
-    if (old.querySelector('.toast-text')?.textContent === plainMessage(text))
-      old.remove();
+    old.remove();
   const item = document.createElement('div');
   item.className = `toast toast-${kind}`;
   item.setAttribute('role', kind === 'error' ? 'alert' : 'status');
@@ -88,7 +88,15 @@ export function showToast(
   item.append(close);
   close.addEventListener('click', remove);
   stack.append(item);
-  const timer = durationMs > 0 ? setTimeout(remove, durationMs) : undefined;
+  // FIX4 A1: the toast waits while the pointer is on it, then hides.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const arm = () => {
+    clearTimeout(timer);
+    if (durationMs > 0) timer = setTimeout(remove, durationMs);
+  };
+  item.addEventListener('pointerenter', () => clearTimeout(timer));
+  item.addEventListener('pointerleave', arm);
+  arm();
   return () => {
     clearTimeout(timer);
     remove();

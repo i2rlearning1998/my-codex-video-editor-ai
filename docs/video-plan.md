@@ -1,4 +1,4 @@
-# Video Plan v2 (FINAL3 Part D)
+# Video Plan v2 and v3 (FINAL3 Part D, FIX4 V3)
 
 A **Video Plan** describes a whole video by what it says and shows; the editor's auto-builder turns it into scenes in one step. It never names media slots: each media layer says what to look for (`mediaIntent`), and the builder finds it in the project's media, then stock. Version 1 compositions (Composition Spec plus slots, docs/COMPOSITION-ADAPTER.md) still import and still use the slot dialog.
 
@@ -8,7 +8,7 @@ Where: **AI › Import** (paste or drop the JSON, or a Creator Pack whose `compo
 
 | Field               | What                                                                                                                                                                                                     |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `format`, `version` | `"video-plan"`, `2`                                                                                                                                                                                      |
+| `format`, `version` | `"video-plan"`, `3` (`2` still reads)                                                                                                                                                                    |
 | `meta`              | `title`, `language` (`en`, `hi`, ...), `aspect` (`16:9`, `9:16`, `1:1`, `4:5`), `fps`, optional `themeId` (a built-in or My themes id)                                                                   |
 | `feel`              | optional `palette` (`background`, `text`, `accent`), `headingFont`, `bodyFont`, `captionStyle`, `transition`, `cameraTendency` (`still`, `gentle`, `dynamic`), `pacing` (`slow`, `medium`, `fast`)       |
 | `scenes[]`          | `id`, `title`, `narration`, `durationHint`, `background`, `layers[]`, `camera`, `transitionOut`, `sfx[]`, `notes`                                                                                        |
@@ -21,7 +21,31 @@ Where: **AI › Import** (paste or drop the JSON, or a Creator Pack whose `compo
 
 Unknown fields are warnings (ignored), never failures. Errors are plain sentences that name the scene and layer, for example: `Scene 1 (open), layer "flower" is media without "mediaIntent" (what to look for).`
 
-The quality gate also warns when a scene's narration is too fast for its hint, a text is too long to read, or a starter-kit id is unknown (that layer is left out); it refuses a video longer than 180 s, duplicate ids and a camera target that is not a layer of its scene.
+The quality gate also warns when a scene's narration is too fast for its hint, a text is too long to read, or a starter-kit id is unknown (that layer is left out); it refuses a video longer than 1800 s (30 min), duplicate ids and a camera target that is not a layer of its scene.
+
+## Version 3: one timeline
+
+A video is **one timeline with layers**, not a row of scenes. `meta.build: "timeline"` builds the whole plan as ONE scene: each plan scene is only a chapter (timing, narration, layers with times relative to the chapter), and every layer, shot and sound lands on the same timeline. This removes the old per-scene costs: no 12-scene or 180 s cap (now 40 chapters, 400 layers per chapter and 1800 s), no copy of the logo in every scene, and one narration file instead of one per scene. `"scenes"` (the default) keeps one editor scene per plan scene, with scene transitions.
+
+| Field (v3)                     | What                                                                                                                                                                                                |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `meta.build`                   | `timeline` or `scenes`                                                                                                                                                                              |
+| `overlays[]`                   | layers over the whole video (logo, title tag); editable layers, repeated on every scene in `scenes` mode; a picture used again is one media slot                                                    |
+| `narrationTrack`               | `query` (file name in Media), `volume`, `start`: one narration file under the whole video; the video lasts at least as long. Without it each scene's `narration` is spoken by the voice             |
+| `layer.at`, `width`, `height`  | centre of the layer in percent of the canvas; size in percent                                                                                                                                       |
+| `layer.rotation`, `opacity`    | degrees; 0 to 1                                                                                                                                                                                     |
+| `layer.move`                   | `to` (percent), `start`, `duration`, `easing`: the layer slides                                                                                                                                     |
+| `layer.loop`                   | `float`, `pulse`, `wiggle`, `spin`                                                                                                                                                                  |
+| `layer.poses[]`                | media layer only: `{ query, start }` swaps the picture at those times (a talking pose, then a pointing pose)                                                                                        |
+| `layer.feather`, `featherEdge` | soft edge of a picture or shape, all sides or one                                                                                                                                                   |
+| text look                      | `color`, `fontSize`, `weight`, `highlight` (box behind the text), `outline`                                                                                                                         |
+| `kind: "shape"`                | `rectangle`, `ellipse`, `line`, `arrow`, `arc`, `protractor` with `from`/`to`, `stroke`, `strokeWidth`, `dash`, `arrowStart`, `radius`, `startAngle`, `endAngle`; `enter: "wipe"` draws it on       |
+| `kind: "bubble"`               | `speech` or `thought` bubble around `text`; `tail`, `color`, `stroke`                                                                                                                               |
+| `kind: "block"`                | a code-drawn teaching graphic: `block` (an id from `docs/GRAPHICS-BLOCKS.md`) and `params`; times in `params` are seconds from the layer start; in a timeline the layer order is the stacking order |
+| `scene.cameras[]`              | several shots in one scene, each with `start` and `duration`                                                                                                                                        |
+| `enter` / `exit`               | also `wipe` and `words`                                                                                                                                                                             |
+
+Rules the builder follows: the later layer of a scene covers the earlier one (kit backgrounds are always underneath, overlays on top); a rotated layer turns about its centre; arcs and the protractor are drawn as shapes (editable like any shape); a thought or speech bubble is a body shape, a tail and a text. `mediaIntent.type: "audio"` finds an audio file in the project's Media (audio is never searched online). A sample is in docs/samples/plan-v3-diagram.json.
 
 ## How it is built
 
