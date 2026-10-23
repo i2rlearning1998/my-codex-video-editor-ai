@@ -89,19 +89,41 @@ export const angleProof = defineBlock(
       since = (k: string, d: number, e = 'ease-in-out') =>
         prog(t, N(p, k), d, e);
 
-    // Earth, cut open: warm disc, thin crust ring, centre mark.
+    // Earth, cut open: ocean-and-land crust, glowing mantle, bright core.
     ctx.save();
-    ctx.fillStyle = S(p, 'ground');
+    const mantle = ctx.createRadialGradient(C.x, C.y, R * 0.05, C.x, C.y, R);
+    mantle.addColorStop(0, '#fff3a6');
+    mantle.addColorStop(0.22, '#ffd35a');
+    mantle.addColorStop(0.24, '#f59a3c');
+    mantle.addColorStop(0.9, '#d9622b');
+    mantle.addColorStop(1, '#b84a1f');
+    ctx.fillStyle = mantle;
     ctx.beginPath();
     ctx.arc(C.x, C.y, R, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(107,74,43,0.22)';
-    ctx.lineWidth = R * 0.05;
+    // Crust: a teal ring with green land patches along it.
+    ctx.strokeStyle = '#2b7a99';
+    ctx.lineWidth = R * 0.075;
     ctx.beginPath();
-    ctx.arc(C.x, C.y, R * 0.93, 0, Math.PI * 2);
+    ctx.arc(C.x, C.y, R * 0.965, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.strokeStyle = '#6fae55';
+    ctx.lineWidth = R * 0.075;
+    ctx.lineCap = 'round';
+    for (const [a0, a1] of [
+      [-0.9, -0.05],
+      [0.25, 0.85],
+      [1.5, 2.3],
+      [2.8, 3.6],
+      [4.1, 4.9],
+      [5.3, 5.8],
+    ] as const) {
+      ctx.beginPath();
+      ctx.arc(C.x, C.y, R * 0.965, a0 - Math.PI / 2, a1 - Math.PI / 2);
+      ctx.stroke();
+    }
     ctx.strokeStyle = S(p, 'rim');
-    ctx.lineWidth = lw * 1.5;
+    ctx.lineWidth = lw * 1.2;
     ctx.beginPath();
     ctx.arc(C.x, C.y, R, 0, Math.PI * 2);
     ctx.stroke();

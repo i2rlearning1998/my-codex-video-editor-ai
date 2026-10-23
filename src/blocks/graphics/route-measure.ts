@@ -181,7 +181,7 @@ export const routeMeasure = defineBlock(
         ctx,
         me.x,
         me.y - w * 0.025,
-        w * 0.052,
+        w * 0.085,
         t * 9,
         Math.cos(me.a) >= 0 ? 1 : -1,
       );
@@ -192,7 +192,7 @@ export const routeMeasure = defineBlock(
         ctx,
         `${S(p, 'distText')}  ${km.toLocaleString('en-US')} km`,
         w * 0.5,
-        h * 0.065 + (N(p, 'cy') > 40 ? h * 0.0 : 0),
+        h * 0.13,
         sz * 1.05,
         {
           color: '#1b1b1b',
@@ -210,7 +210,7 @@ export const routeMeasure = defineBlock(
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         const x0 = w * 0.5 + sz * 8.2,
-          y0 = h * 0.065;
+          y0 = h * 0.13;
         strokePartial(
           ctx,
           [
