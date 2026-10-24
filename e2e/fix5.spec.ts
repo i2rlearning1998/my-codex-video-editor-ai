@@ -4,6 +4,7 @@ import {
   test,
   expect,
   hook,
+  openRight,
   showCategory as showVisibleCategory,
   toScreen,
 } from './fixtures';
@@ -437,4 +438,48 @@ test('[FX5-007] first Play press: waits for the sound to decode (Preparing audio
   expect(
     warnings.filter((text) => /AudioContext|autoplay/i.test(text)),
   ).toEqual([]);
+});
+
+// C8: the blend mode list: unique labels, a menu no taller than 60 % of the window.
+test('[FX5-008] Adjust colors blend mode: each mode once, grouped, and the open menu stays within 60 % of the window', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.goto('/');
+  await showCategory(page, 'Media');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#import-media').click();
+  await (
+    await chooser
+  ).setFiles(['tests/fixtures/media/image_testsrc_1200x800.jpg']);
+  await expect(page.locator('#media-import')).toBeHidden();
+  const card = page.locator(
+    '.media-item:has(.media-card[data-name="image_testsrc_1200x800.jpg"])',
+  );
+  await card.locator('.media-card').click({ button: 'right' });
+  await page.locator('#media-menu [data-action="media-add"]').click();
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds.length)
+    .toBe(1);
+  await openRight(page, 'Adjust');
+  await page.locator('#right-blend-mode').click();
+  const list = page.locator('.select-popover .select-list');
+  await expect(list).toBeVisible();
+  const labels = await list
+    .locator('.select-option')
+    .evaluateAll((items) => items.map((item) => item.textContent!.trim()));
+  expect(labels).toHaveLength(16);
+  expect(new Set(labels).size).toBe(16);
+  // A group heading never repeats an item's own name.
+  const headings = await list
+    .locator('.select-group')
+    .evaluateAll((items) => items.map((item) => item.textContent!.trim()));
+  expect(headings.length).toBeGreaterThan(3);
+  for (const heading of headings) expect(labels).not.toContain(heading);
+  const box = await page.locator('.select-popover').boundingBox();
+  const height = page.viewportSize()!.height;
+  expect(box!.height).toBeLessThanOrEqual(height * 0.6 + 1);
+  expect(box!.y).toBeGreaterThanOrEqual(0);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(height);
+  await page.screenshot({ path: 'reports/fix5/c8-blend.png' });
 });

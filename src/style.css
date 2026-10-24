@@ -11486,3 +11486,10 @@ body:has(.modal-backdrop) .toast-stack {
 .plan-review .plan-actions {
   margin-block-start: var(--space-3);
 }
+
+/* FIX5 C8: a select's menu is never taller than 60 % of the window; it scrolls inside. */
+.select-popover {
+  max-block-size: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
