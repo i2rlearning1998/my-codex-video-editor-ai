@@ -1,4 +1,13 @@
+import path from 'node:path';
 import type { Page } from '@playwright/test';
+import {
+  expect,
+  showCategory,
+  showSceneStrip,
+  seekKeep,
+  settled,
+} from './fixtures';
+const MEDIA = 'tests/fixtures/media';
 import { readFileSync } from 'node:fs';
 
 /** A composition pack with many scenes of text and shape items (a stress case). */
@@ -73,4 +82,25 @@ export function bigCompositionSpec(scenes = 40, perScene = 14): string {
     items: { data: { spec: unknown } }[];
   };
   return JSON.stringify(pack.items[0]!.data.spec);
+}
+
+export async function oneClip(page: Page, file: string) {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await showSceneStrip(page);
+  await page.locator('#scene-strip-add').click();
+  await page.locator('[data-action="strip-add-blank"]').click();
+  await showCategory(page, 'Media');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#import-media').click();
+  await (await chooser).setFiles([path.join(MEDIA, file)]);
+  await expect(page.locator('#media-import')).toBeHidden();
+  await page
+    .locator(`.media-item:has(.media-card[data-name="${file}"]) .media-card`)
+    .click({ button: 'right' });
+  await page.locator('#media-menu [data-action="media-add"]').click();
+  await seekKeep(page, 0.5);
+  await settled(page);
 }

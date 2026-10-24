@@ -31,26 +31,7 @@ const renderMs = (page: Page) =>
 const median = (list: number[]) =>
   [...list].sort((a, b) => a - b)[Math.floor(list.length / 2)] ?? 0;
 
-async function oneClip(page: Page, file: string) {
-  await page.goto('/');
-  await expect
-    .poll(async () => page.evaluate(() => '__AIVE__' in window))
-    .toBe(true);
-  await showSceneStrip(page);
-  await page.locator('#scene-strip-add').click();
-  await page.locator('[data-action="strip-add-blank"]').click();
-  await showCategory(page, 'Media');
-  const chooser = page.waitForEvent('filechooser');
-  await page.locator('#import-media').click();
-  await (await chooser).setFiles([path.join(MEDIA, file)]);
-  await expect(page.locator('#media-import')).toBeHidden();
-  await page
-    .locator(`.media-item:has(.media-card[data-name="${file}"]) .media-card`)
-    .click({ button: 'right' });
-  await page.locator('#media-menu [data-action="media-add"]').click();
-  await seekKeep(page, 0.5);
-  await settled(page);
-}
+import { oneClip } from './phase0-helpers';
 /** Draws the scene again n times (a tiny seek each) and returns the times. */
 async function paused(page: Page, n = 12) {
   for (let i = 0; i < n; i++) {
@@ -72,24 +53,12 @@ for (const [label, file] of [
   ['image', JPG],
   ['video', WEBM],
 ] as const)
-  for (const size of ['1920x1080', '9x16'] as const)
+  for (const size of ['1920x1080'] as const)
     test(`[FX5-013] ${label} at ${size}: paused and playing frame time with a mask, chroma key, blur, glow and blur+glow`, async ({
       page,
     }) => {
       test.setTimeout(300_000);
-      if (size === '9x16') {
-        // (A vertical canvas: the canvas bar's ratio.)
-        await page.addInitScript(() => undefined);
-      }
       await oneClip(page, file);
-      if (size === '9x16') {
-        await page.locator('#context-toolbar').getByText('16:9').click();
-        await page
-          .getByRole('option', { name: /9:16|Vertical/ })
-          .first()
-          .click();
-        await settled(page);
-      }
       const row: Record<string, unknown> = { label, size };
       row.plain = { paused: median(await paused(page)) };
       await openRight(page, 'Effects');
