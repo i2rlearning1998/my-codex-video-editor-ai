@@ -54,7 +54,12 @@ export function openCompositionBuild(
   const fills = createSlotFills(data);
   let result: BuildResult | null = null;
   let building = 0;
+  let controller: AbortController | null = null;
   const handle = openModal({
+    onClose: () => {
+      controller?.abort();
+      building++;
+    },
     titleText: t('composition.title', { name: item.name.en }),
     bodyHtml: `
       <div class="composition-build">
@@ -76,15 +81,28 @@ export function openCompositionBuild(
   const open = root.querySelector<HTMLButtonElement>('#composition-open')!;
 
   const rebuild = async () => {
+    controller?.abort();
+    const active = (controller = new AbortController());
     const mine = ++building;
     add.disabled = open.disabled = true;
-    report.textContent = t('composition.checking');
+    const progress = document.createElement('progress');
+    progress.max = 100;
+    progress.value = 0;
+    const status = document.createElement('span');
+    status.textContent = t('composition.checking');
+    report.replaceChildren(progress, status);
     const built = await buildProjectFromComposition(data, {
+      signal: active.signal,
+      onProgress: ({ step, percent }) => {
+        if (mine !== building) return;
+        progress.value = percent;
+        status.textContent = `${step} — ${percent}%`;
+      },
       slotFills: fills,
       library: deps.library,
       name: item.name.en,
     }).catch((error: unknown) => {
-      deps.report(error);
+      if (!active.signal.aborted) deps.report(error);
       return null;
     });
     if (mine !== building) return;

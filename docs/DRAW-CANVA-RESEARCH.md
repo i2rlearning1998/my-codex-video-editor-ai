@@ -14,7 +14,7 @@ Sources read (one web search, 24 Oct): Canva Help, "Brainstorm and collaborate v
 | After placing              | The tool returns to Select; Esc cancels.                                                                                       | Assumed               |
 | Tables                     | Added from Elements (a rows by columns picker); a toolbar button is not documented.                                            | Unconfirmed           |
 
-## What this editor does (D-302)
+## What this editor does (D-304)
 
 - Every placing tool (Shape, Line, Sticky note, Text, Table) opens a flyout of choices first. The choice stays selected in the flyout until changed.
 - Click places the default size centred on the pointer; drag draws the size; a dashed ghost at the default size follows the pointer. The shape is placed on release only, as one undo step. Esc cancels a drag; with no drag, Esc puts the tool away. After placing, the palette returns to Select.

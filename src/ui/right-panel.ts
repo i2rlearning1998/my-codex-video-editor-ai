@@ -1,3 +1,4 @@
+import { createFilterPreview } from './right-panel/filter-preview';
 // H4: the right panel (Clipchamp). I4: an always-visible icon rail with
 // tabs per selection. The first tab is named after what is selected
 // (Canvas, Shape, Text, Image, Video, Audio, Group or Arrange) and holds its
@@ -1372,6 +1373,7 @@ export function mountRightPanel(
       }),
     );
   };
+  const filterPreview = createFilterPreview(engine, session, run);
   /** V4: the last clicked tile per panel (its settings open under it). */
   const lastTile: { filters: string | null; effects: string | null } = {
     filters: null,
@@ -1404,8 +1406,17 @@ export function mountRightPanel(
           })),
         ],
         selected: (key) => key === current,
+        onPreview: (key) =>
+          safely(() => {
+            if (key === null) filterPreview.cancel();
+            else
+              filterPreview.preview((next) =>
+                applyPreset(next, key, intensity),
+              );
+          }),
         onClick: (key) =>
           safely(() => {
+            filterPreview.cancel();
             lastTile.filters = key;
             if (key === current) {
               rerender();
@@ -1417,14 +1428,25 @@ export function mountRightPanel(
           }),
         settingsFor: current === 'none' ? null : current,
         settings: () =>
-          intensitySlider(intensity, (value) =>
-            safely(() =>
-              setFx('Filter intensity', (next) => {
-                for (const entry of next.stack)
-                  if (isFilterEntry(entry))
-                    entry.params = { ...entry.params, intensity: value };
-              }),
-            ),
+          intensitySlider(
+            intensity,
+            (value) =>
+              safely(() =>
+                filterPreview.commit('Filter intensity', (next) => {
+                  for (const entry of next.stack)
+                    if (isFilterEntry(entry))
+                      entry.params = { ...entry.params, intensity: value };
+                }),
+              ),
+            (value) =>
+              safely(() =>
+                filterPreview.preview((next) => {
+                  for (const entry of next.stack)
+                    if (isFilterEntry(entry))
+                      entry.params = { ...entry.params, intensity: value };
+                }),
+              ),
+            filterPreview.cancel,
           ),
       }),
     ];
@@ -1716,6 +1738,7 @@ export function mountRightPanel(
   const rerender = () => api.render(lastSection);
   const api = {
     render(section: RightSection) {
+      filterPreview.cancel();
       lastSection = section;
       host.dataset.section = section;
       host.dataset.kind = kindOf(session);

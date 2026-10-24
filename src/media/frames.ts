@@ -142,11 +142,16 @@ export class MediaFrames implements FrameProvider {
       return URL.createObjectURL(typed);
     })().then(
       (url) => {
+        if (this.#disposed) {
+          if (url) URL.revokeObjectURL(url);
+          return null;
+        }
         this.#urls.set(assetId, url);
         if (url) this.changed();
         return url;
       },
       () => {
+        if (this.#disposed) return null;
         this.#urls.set(assetId, null);
         return null;
       },
@@ -164,10 +169,13 @@ export class MediaFrames implements FrameProvider {
     image.src = url;
     image.decode().then(
       () => {
+        if (this.#disposed) return;
         this.#images.set(assetId, image);
         this.changed();
       },
-      () => this.#images.set(assetId, null),
+      () => {
+        if (!this.#disposed) this.#images.set(assetId, null);
+      },
     );
     return null;
   }

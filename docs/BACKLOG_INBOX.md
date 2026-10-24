@@ -87,3 +87,6 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - FIX5 C9: with crossOriginIsolated false, local Whisper runs on one thread; dev-server COOP/COEP headers would enable threads (vite.config.ts), but break cross-origin loads (fonts, stock thumbnails) unless every host sends CORP.
 - FIX5 C10: the Media panel's Sort and the export dialog still use native selects (not the shared select, so no 60 % height rule).
 - FIX5 C10: the Audio panel's tab pills (Sound effects, Music, My audio) scroll sideways at 1366 px; they could shrink or wrap.
+
+- FIX5 P1 (Claude UI): wire plan-build-dialog and composition-card drop to the cooperative composition builder's signal/onProgress; cancel on close and honor Settings animations. These call sites are outside Codex ownership; browser <200 ms responsiveness proof remains outstanding.
+- FIX5 P2/P4: browser-proof mask/chroma/FX timing and exact export pixels at 1080p/portrait still needed; preview cache intentionally excludes video/text/backdrop blends. MediaFrames URL/image maps key by asset id, so relinking bytes under an unchanged id needs explicit fingerprint invalidation; decoder event listeners should also be detached on release (follow-up regression needed).

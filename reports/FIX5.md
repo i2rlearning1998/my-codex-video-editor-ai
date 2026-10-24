@@ -71,7 +71,7 @@ What each diagnostics line means: `failing.host` and `failing.file` name the dow
 - C10 ledger gate: added the missing FX4 rows (as Claimed, proven by existing tests) and the FX5 rows; `npm run ledger` is green. FX4 rows were not promoted to Verified here.
 
 ## 6. Decisions made
-D-302 to D-309 in `docs/DECISIONS.md`. Decisions the owner should confirm: (1) Dynamic text waits for a render-side field resolver (Codex). (2) Whether to turn on cross-origin isolation in the dev server for faster, multi-thread Whisper (backlog).
+D-303 to D-310 in `docs/DECISIONS.md`. Decisions the owner should confirm: (1) Dynamic text waits for a render-side field resolver (Codex). (2) Whether to turn on cross-origin isolation in the dev server for faster, multi-thread Whisper (backlog).
 
 ## 7. Not tested, known gaps, risks
 - The real Hugging Face model path, real Chrome on Windows, real audio output, and the owner's console warnings (C7) were not tested.

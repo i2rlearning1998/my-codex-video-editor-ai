@@ -1,0 +1,21 @@
+ CHANGELOG.md                                |    8 +
+ docs/BACKLOG_INBOX.md                       |    3 +
+ docs/DECISIONS.md                           |    5 +
+ docs/STATUS.md                              |    4 +
+ reports/FIX5-CODEX-HANDOFF.md               |    5 +
+ reports/FIX5-CODEX.md                       |  140 +++++++++++
+ src/composition/build.ts                    |   57 ++++-
+ src/core/project-build.ts                   |   39 +++
+ src/media/frames.ts                         |   10 +-
+ src/render/canvas.ts                        |  154 +++++++++++-
+ src/render/processed-cache.ts               |   51 ++++
+ src/ui/composition-dialog.ts                |   22 +-
+ src/ui/right-panel.ts                       |   39 ++-
+ src/ui/right-panel/filter-preview.ts        |   51 ++++
+ src/ui/right-panel/fx-panels.ts             |   26 +-
+ tests/fix5/composition.test.ts              |   36 +++
+ tests/fix5/filter-preview.test.ts           |   58 +++++
+ tests/fix5/fixtures/composition-before.json | 1128 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/fix5/media-dispose.test.ts            |   60 +++++
+ tests/fix5/processed-cache.test.ts          |   28 +++
+ 20 files changed, 1894 insertions(+), 30 deletions(-)
