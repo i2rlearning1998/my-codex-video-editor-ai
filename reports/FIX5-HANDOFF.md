@@ -4,4 +4,5 @@ Branch claude/fix-5 from claude/fix-4. Setup: `npm ci --ignore-scripts` (onnxrun
 - C2 done (components/audio-preview.ts, FX5-002).
 - C3 done (css + FX5-003).
 - C4 done (draw-palette.ts flyouts, FX5-004, docs/DRAW-CANVA-RESEARCH.md).
-- C5..C10: not done yet.
+- C5 done. C6 done (plan-review.ts, ai-panel Video plans, FX5-006).
+- C7..C10: not done yet.

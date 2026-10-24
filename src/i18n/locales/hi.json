@@ -2650,5 +2650,10 @@
   "palette.chooseTable": "टेबल का आकार चुनें",
   "palette.stickyColor": "नोट का रंग {n}",
   "palette.addSavedText": "सहेजा हुआ टेक्स्ट जोड़ें",
-  "text.magicWriteNeedsAi": "इसके लिए AI सेवा चाहिए (योजना में)"
+  "text.magicWriteNeedsAi": "इसके लिए AI सेवा चाहिए (योजना में)",
+  "plan.summary": "{scenes} दृश्य, लगभग {seconds} सेकंड।",
+  "plan.summaryNeeds": "{count} मीडिया स्लॉट को अभी चित्र या वीडियो चाहिए।",
+  "plan.show": "दिखाएँ",
+  "plan.videoPlans": "वीडियो योजनाएँ",
+  "plan.openReview": "समीक्षा खोलें"
 }

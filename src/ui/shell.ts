@@ -4120,6 +4120,19 @@ export function mountEditorShell(
     });
   aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    videoPlans: () => {
+      const built = planState(engine.state.id);
+      return built
+        ? [
+            {
+              id: engine.state.id,
+              title: built.plan.meta.title,
+              scenes: built.sceneIds.filter(Boolean).length,
+            },
+          ]
+        : [];
+    },
+    openReview: () => openPlanReview(),
     // FINAL3 V3.5: a plan's status, and the starter kit.
     planStatus: (_id, data) => {
       // FIX3 4.6: a composition built with Build video (not a plan).

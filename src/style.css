@@ -11361,3 +11361,128 @@ body:has(.modal-backdrop) .toast-stack {
 .place-ghost {
   opacity: 0.7;
 }
+
+/* FIX5 C6: Review video plan: a summary, then one collapsible card per scene. */
+.plan-review {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  align-content: start;
+}
+.plan-review .camera-row,
+.plan-review .plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.plan-review .plan-feel input {
+  flex: 1 1 140px;
+  min-inline-size: 0;
+}
+.plan-review-summary {
+  display: grid;
+  gap: var(--space-1);
+}
+.plan-review-summary h3 {
+  margin: 0;
+  font-size: var(--font-size-md, 14px);
+}
+.plan-review-summary-line {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm, 12px);
+}
+.plan-review .plan-scene {
+  display: block;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+  padding: 0;
+}
+.plan-review .plan-scene[open] > .plan-scene-head {
+  border-block-end: 1px solid var(--border-subtle);
+}
+.plan-review .plan-scene > :not(summary) {
+  margin-inline: var(--space-3);
+}
+.plan-review .plan-scene > :last-child {
+  margin-block-end: var(--space-3);
+}
+.plan-scene-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  cursor: pointer;
+  list-style: none;
+}
+.plan-scene-head::-webkit-details-marker {
+  display: none;
+}
+.plan-scene-head h4 {
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  cursor: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-scene-length {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm, 12px);
+}
+.plan-field {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-start: var(--space-3);
+  font-size: var(--font-size-sm, 12px);
+  color: var(--text-secondary);
+}
+.plan-review .plan-narration {
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+.plan-review .plan-scene > button[data-action='plan-voice'] {
+  margin-block-start: var(--space-2);
+}
+.plan-review .plan-layer {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+.plan-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.plan-slot-thumb {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 64px;
+  block-size: 36px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+  color: var(--text-secondary);
+}
+.plan-slot-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.plan-layer-name {
+  margin: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-sm, 12px);
+}
+.plan-review .plan-actions {
+  margin-block-start: var(--space-3);
+}

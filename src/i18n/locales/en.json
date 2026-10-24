@@ -2650,5 +2650,10 @@
   "palette.chooseTable": "Choose a table size",
   "palette.stickyColor": "Note colour {n}",
   "palette.addSavedText": "Add saved text",
-  "text.magicWriteNeedsAi": "Needs the AI service (planned)"
+  "text.magicWriteNeedsAi": "Needs the AI service (planned)",
+  "plan.summary": "{scenes} scenes, about {seconds} s.",
+  "plan.summaryNeeds": "{count} media slots still need a picture or video.",
+  "plan.show": "Show",
+  "plan.videoPlans": "Video plans",
+  "plan.openReview": "Open review"
 }

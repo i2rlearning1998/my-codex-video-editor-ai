@@ -61,6 +61,14 @@ export interface AiPanelOptions {
   readonly report: (error: unknown) => void;
   readonly toast?: (text: string) => void;
   /** FINAL3 V3.5: a plan's build status (shown as a coloured badge). */
+  /** FIX5 C6: the plans built in this project (kept in this browser). */
+  readonly videoPlans?: () => readonly {
+    id: string;
+    title: string;
+    scenes: number;
+  }[];
+  /** Opens Review video plan for a plan. */
+  readonly openReview?: (id: string) => void;
   readonly planStatus?: (
     id: string,
     data: unknown,
@@ -151,9 +159,45 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           libraryThumb(slot, { id, type: 'brief', name: brief.name, url }),
       };
     });
+  // FIX5 C6: Video plans: one card per plan built here, with Open review, so
+  // the review can be reached again after the user went to another category.
+  const plansHost = document.createElement('section');
+  plansHost.className = 'ai-video-plans';
+  plansHost.setAttribute('aria-label', t('plan.videoPlans'));
+  const renderPlans = () => {
+    const plans = options.videoPlans?.() ?? [];
+    plansHost.hidden = !plans.length;
+    plansHost.replaceChildren();
+    if (!plans.length) return;
+    const heading = document.createElement('h3');
+    heading.className = 'ai-video-plans-title';
+    heading.textContent = t('plan.videoPlans');
+    plansHost.append(heading);
+    for (const plan of plans) {
+      const card = document.createElement('div');
+      card.className = 'ai-video-plan';
+      card.dataset.planId = plan.id;
+      const name = document.createElement('strong');
+      name.textContent = plan.title;
+      const meta = document.createElement('span');
+      meta.textContent = t('plan.status.scenes', {
+        count: String(plan.scenes),
+      });
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'button secondary sm';
+      open.dataset.action = 'plan-open-review';
+      open.textContent = t('plan.openReview');
+      open.onclick = () => options.openReview?.(plan.id);
+      card.append(name, meta, open);
+      plansHost.append(card);
+    }
+  };
+  renderPlans();
   const shelf: Shelf = mountShelf({
     host,
     prefix: 'ai',
+    extra: [plansHost],
     title: t('ai.title'),
     classes: { card: 'ai-card', section: 'ai-group' },
     searchLabel: t('shelf.searchAi'),
@@ -321,7 +365,10 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
   const offBriefs = options.briefs?.onChange(() => shelf.render());
   const offFolders = AI_FOLDERS.onChange(() => shelf.render());
   return {
-    render: () => shelf.render(),
+    render: () => {
+      renderPlans();
+      shelf.render();
+    },
     shelf,
     dispose: () => {
       offLibrary();

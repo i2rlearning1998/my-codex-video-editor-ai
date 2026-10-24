@@ -161,6 +161,14 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     }
     deps.rerender();
   };
+  const labelled = (text: string, control: HTMLElement) => {
+    const label = document.createElement('label');
+    label.className = 'plan-field';
+    const caption = document.createElement('span');
+    caption.textContent = text;
+    label.append(caption, control);
+    return label;
+  };
   const button = (
     action: string,
     label: string,
@@ -179,6 +187,34 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     };
     return el;
   };
+  // FIX5 C6: a short summary first, then one collapsible card per scene.
+  {
+    const built = state.sceneIds.filter((id): id is string => !!id);
+    const scenes = project.compositions.filter((c) => built.includes(c.id));
+    const seconds = scenes.reduce((sum, c) => sum + c.duration, 0);
+    const needs = scenes.reduce(
+      (sum, c) =>
+        sum +
+        allLayers(c).filter(
+          (layer) => layer.properties.planFlag?.value === 'needs-asset',
+        ).length,
+      0,
+    );
+    const summary = document.createElement('section');
+    summary.className = 'plan-review-summary';
+    const heading = document.createElement('h3');
+    heading.textContent = state.plan.meta.title;
+    const line = document.createElement('p');
+    line.className = 'plan-review-summary-line';
+    line.textContent =
+      t('plan.summary', {
+        scenes: String(scenes.length),
+        seconds: String(Math.round(seconds)),
+      }) +
+      (needs ? ` ${t('plan.summaryNeeds', { count: String(needs) })}` : '');
+    summary.append(heading, line);
+    root.append(summary);
+  }
   if (state.silent) {
     const banner = document.createElement('p');
     banner.className = 'plan-banner';
@@ -303,10 +339,13 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
   state.plan.scenes.forEach((scene, index) => {
     const id = state.sceneIds[timeline ? 0 : index];
     const composition = project.compositions.find((c) => c.id === id);
-    const card = document.createElement('section');
+    const card = document.createElement('details');
     card.className = 'plan-scene';
     card.dataset.planScene = scene.id;
-    const head = document.createElement('header');
+    // A long plan opens its first scene only; a short one opens them all.
+    card.open = state.plan.scenes.length <= 4 || index === 0;
+    const head = document.createElement('summary');
+    head.className = 'plan-scene-head';
     const title = document.createElement('h4');
     title.textContent = `${index + 1}. ${scene.title ?? scene.id}`;
     head.append(title);
@@ -319,11 +358,23 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       root.append(card);
       return;
     }
-    title.onclick = () => deps.openScene(composition.id);
+    const length = document.createElement('span');
+    length.className = 'plan-scene-length';
+    length.textContent = `${Math.round(composition.duration * 10) / 10} s`;
+    const show = document.createElement('button');
+    show.type = 'button';
+    show.className = 'button ghost sm';
+    show.dataset.action = 'plan-open-scene';
+    show.textContent = t('plan.show');
+    show.onclick = (event) => {
+      event.preventDefault();
+      deps.openScene(composition.id);
+    };
+    head.append(length, show);
     // Length, order, delete, regenerate (a timeline has none of them: its
     // chapters are stretches of one timeline, edited there).
     const controls = document.createElement('div');
-    controls.className = 'camera-row';
+    controls.className = 'plan-actions';
     if (!timeline)
       controls.append(
         createNumberField({
@@ -404,7 +455,6 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
           'magic',
         ),
       );
-    if (!timeline) card.append(controls);
     // Narration.
     const narration = document.createElement('textarea');
     narration.className = 'plan-narration';
@@ -414,7 +464,7 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     narration.setAttribute('aria-label', t('plan.narration'));
     if (!timeline)
       card.append(
-        narration,
+        labelled(t('plan.narration'), narration),
         button(
           'plan-voice',
           t('plan.updateVoice'),
@@ -449,7 +499,27 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
         chip.textContent = t('plan.needsAsset');
         name.append(' ', chip);
       }
-      row.append(name);
+      const slot = document.createElement('div');
+      slot.className = 'plan-slot';
+      const chosen = state.plan.resolved?.[ref];
+      const picture = (state.alternatives[ref] ?? []).find(
+        (c) => c.key === chosen || !chosen,
+      )?.thumbUrl;
+      const thumb = document.createElement('span');
+      thumb.className = 'plan-slot-thumb';
+      if (picture) {
+        const img = document.createElement('img');
+        img.src = picture;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        thumb.append(img);
+      } else
+        thumb.innerHTML = iconSvg(
+          layer.mediaIntent.type === 'video' ? 'media' : 'image',
+          20,
+        );
+      slot.append(thumb, name);
+      row.append(slot);
       const strip = document.createElement('div');
       strip.className = 'plan-alternatives';
       const choose = async (candidate: MediaCandidate) => {
@@ -536,6 +606,7 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       );
       card.append(row);
     }
+    if (!timeline) card.append(controls);
     root.append(card);
   });
   return root;
