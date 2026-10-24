@@ -1,5 +1,9 @@
 # Changelog
 
+## FIX5 (owner bug round, 24 Oct)
+
+- Library cards never stay blank; AI duplicates removed; audio rows have Play / Stop (no hover play); Scene and Audio panels no longer overlap; Draw palette flyouts and Table; Text panel clean-up; readable Review video plan and AI › Video plans; first Play waits for sound; blend list and select menu height; Whisper watchdog, download errors and cloud fallback. See reports/FIX5.md.
+
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
 ## FINAL3 (leftovers, text, camera, video plans) — 2026-10-21

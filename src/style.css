@@ -11493,3 +11493,13 @@ body:has(.modal-backdrop) .toast-stack {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+
+/* FIX5 C10: the Audio panel's tabs and list never shrink into each other on a
+   short window, and its search stays inside the panel. */
+#library-audio > * {
+  flex: none;
+}
+#library-audio .sound-pack-search {
+  box-sizing: border-box;
+  inline-size: 100%;
+}

@@ -80,3 +80,10 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - X5: rotated vector shapes rasterize with slightly different anti-aliased edges in the editor view and in the export frame (up to 31/255 on the example cards' edges at 100 % zoom), independent of code layers.
 - X3: code layers have no live (unbaked) render while scrubbing for seekable or Tier B code (the spec's "may"); they show the nearest baked frame until the bake reaches the playhead.
 - code-layer-poc ANI-003 (blocks gallery scrub 3→1→3) times out at 30 s in this sandbox, also on claude/x-series; the test serializes the whole preview canvas (backlog: compare a hash in the page).
+- FIX5 C6: the scene strip's "+" menu has no "Open Video plan review" entry yet (AI > Video plans has it).
+- FIX5 C4: curved and elbow connector lines (and snapping a line to shapes) are not built; the Line flyout lists straight, dashed, dotted, arrow and double arrow only.
+- FIX5 C5: Dynamic text (TXT-037) needs live fields that the renderer resolves per frame (src/render, Codex); the Text panel card stays disabled.
+- FIX5 C7: the real cause may also include slow decoding of very large audio (whole-file decode, src/media/audio.ts, Codex): a streaming decode would shorten "Preparing audio".
+- FIX5 C9: with crossOriginIsolated false, local Whisper runs on one thread; dev-server COOP/COEP headers would enable threads (vite.config.ts), but break cross-origin loads (fonts, stock thumbnails) unless every host sends CORP.
+- FIX5 C10: the Media panel's Sort and the export dialog still use native selects (not the shared select, so no 60 % height rule).
+- FIX5 C10: the Audio panel's tab pills (Sound effects, Music, My audio) scroll sideways at 1366 px; they could shrink or wrap.

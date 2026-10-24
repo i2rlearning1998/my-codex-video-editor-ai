@@ -483,3 +483,37 @@ test('[FX5-008] Adjust colors blend mode: each mode once, grouped, and the open 
   expect(box!.y + box!.height).toBeLessThanOrEqual(height);
   await page.screenshot({ path: 'reports/fix5/c8-blend.png' });
 });
+
+// C10: the Audio panel's tabs, heading and search never overlap or leave the panel.
+test('[FX5-010] Audio panel: tabs, heading, search and first sound do not overlap and stay inside the panel', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await showCategory(page, 'Audio');
+  await expect(
+    page.locator('#library-audio .sound-tile').first(),
+  ).toBeVisible();
+  const boxes = await page.evaluate(() => {
+    const box = (selector: string) => {
+      const r = document.querySelector(selector)?.getBoundingClientRect();
+      return r
+        ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right }
+        : null;
+    };
+    return {
+      tabs: box('#library-audio .audio-library-tabs'),
+      heading: box('#library-audio .sound-pack-title'),
+      search: box('#library-audio .sound-pack-search'),
+      first: box('#library-audio .sound-tile'),
+      panel: box('.library'),
+    };
+  });
+  const { tabs, heading, search, first, panel } = boxes;
+  expect(tabs && heading && search && first && panel).toBeTruthy();
+  expect(tabs!.bottom - tabs!.top).toBeGreaterThan(24);
+  expect(tabs!.bottom).toBeLessThanOrEqual(heading!.top + 1);
+  expect(heading!.bottom).toBeLessThanOrEqual(search!.top + 1);
+  expect(search!.bottom).toBeLessThanOrEqual(first!.top + 1);
+  expect(search!.right).toBeLessThanOrEqual(panel!.right);
+  expect(first!.right).toBeLessThanOrEqual(panel!.right);
+});

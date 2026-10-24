@@ -1106,19 +1106,34 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FX3-002 | P0 | W9 | Claimed | Offline captions run in a dedicated module Web Worker: a CPU-bound model and a flood of 20 000 progress events never freeze the page (no frame gap over 200 ms), and the cues still land (2.2, 2.7) |
 | FX3-003 | P0 | W9 | Claimed | A captions worker that sends nothing for 15 s (or 120 s during one inference run) is stopped and the dialog says "The caption engine stopped responding" with Copy diagnostics; Cancel terminates the worker (2.3) |
 
+## FX4: Fix round 4 (toast, panels, composition card, Whisper stages, model source, video plan v3)
+
+| ID      | Pri | Wave | Status   | Feature |
+| ------- | --- | ---- | -------- | ------- |
+| FX4-001 | P0 | W9 | Claimed | One toast at a time, bottom-centre over the canvas area, never over a left panel's scroller |
+| FX4-002 | P0 | W9 | Claimed | A toast waits while the pointer is on it, then hides |
+| FX4-003 | P0 | W9 | Claimed | The library shelf header is tighter on short windows |
+| FX4-004 | P0 | W9 | Claimed | AI composition card: Not built, then Built with scene count and a poster |
+| FX4-006 | P0 | W9 | Claimed | Settings › Offline › Model source (an https address, default Hugging Face) |
+| FX4-007 | P0 | W9 | Claimed | The model source is used for the download address and the runner's host |
+| FX4-008 | P0 | W9 | Claimed | An invalid model source is refused with a plain message |
+| FX4-009 | P0 | W9 | Claimed | Media area is 60 % of the panel at 1366 × 768 |
+| FX4-010 | P0 | W9 | Claimed | A timeline-mode plan (one scene) builds and Review keeps the media swap |
+
 ## FX5: Fix round 5 (owner's screen recordings, 24 Oct)
 
 | ID      | Pri | Wave | Status   | Feature |
 | ------- | --- | ---- | -------- | ------- |
-| FX5-001 | P0 | W9 | Claimed | A library card (AI, My Templates, Styles) never stays blank: its picture, else the kind icon; an empty picture is replaced and the service is asked once more; the same AI item is listed once, same-named items show their pack |
-| FX5-002 | P0 | W9 | Claimed | Audio rows (Audio category, Media audio, Elements › Audio, My audio) never play on hover; each has a Play / Stop button; one preview at a time; closing the panel or switching category stops it |
-| FX5-003 | P0 | W9 | Claimed | The Scene panel's header, search and rows never overlap at 1920 × 945 and 1366 × 768 |
-| FX5-004 | P0 | W9 | Claimed | The Draw palette's Shape, Line, Sticky note, Text and Table tools open a flyout of choices before placing; the choice stays; click places the default size, drag draws the size with a live preview; one undo step; Esc cancels |
-| FX5-005 | P0 | W9 | Claimed | The Text panel has no My text styles section; Dynamic text inserts a field; Magic write is disabled and says it needs the AI service (planned) |
-| FX5-006 | P0 | W9 | Claimed | Review video plan is a single readable panel (one collapsible card per scene) and AI › Video plans reopens it after the user left |
-| FX5-007 | P0 | W9 | Claimed | The first Play press starts picture and sound together (a short Preparing audio state if decoding is needed), with no console warnings |
-| FX5-008 | P0 | W9 | Claimed | Adjust colors' blend mode list shows each mode once, grouped, in a menu no taller than 60 % of the window |
-| FX5-009 | P0 | W9 | Claimed | Local Whisper reports a download with or without a known size, is never called stalled while bytes arrive, names the step and file on a failure, and offers the cloud engines with Add key |
+| FX5-001 | P0 | W9 | Verified | A library card (AI, My Templates, Styles) never stays blank: its picture, else the kind icon; an empty picture is replaced and the service is asked once more; the same AI item is listed once, same-named items show their pack |
+| FX5-002 | P0 | W9 | Verified | Audio rows (Audio category, Media audio, Elements › Audio, My audio) never play on hover; each has a Play / Stop button; one preview at a time; closing the panel or switching category stops it |
+| FX5-003 | P0 | W9 | Verified | The Scene panel's header, search and rows never overlap at 1920 × 945 and 1366 × 768 |
+| FX5-004 | P0 | W9 | Verified | The Draw palette's Shape, Line, Sticky note, Text and Table tools open a flyout of choices before placing; the choice stays; click places the default size, drag draws the size with a live preview; one undo step; Esc cancels |
+| FX5-005 | P0 | W9 | Verified | The Text panel has no My text styles section (saved text is in My Templates and the Draw palette); Magic write is disabled and says it needs the AI service (planned); Dynamic text stays disabled (TXT-037 needs fields the renderer resolves) |
+| FX5-006 | P0 | W9 | Verified | Review video plan is a single readable panel (one collapsible card per scene) and AI › Video plans reopens it after the user left |
+| FX5-007 | P0 | W9 | Verified | The first Play press starts picture and sound together (a short Preparing audio state if decoding is needed), with no console warnings |
+| FX5-008 | P0 | W9 | Verified | Adjust colors' blend mode list shows each mode once, grouped, in a menu no taller than 60 % of the window |
+| FX5-009 | P0 | W9 | Verified | Local Whisper reports a download with or without a known size, is never called stalled while bytes arrive, names the step and file on a failure, and offers the cloud engines with Add key |
+| FX5-010 | P0 | W9 | Verified | The Audio panel's tabs, heading, search and first sound never overlap and stay inside the panel at 1920 × 945 and 1366 × 768 |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 
