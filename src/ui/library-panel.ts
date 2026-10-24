@@ -2,6 +2,12 @@
 // graphics), Text and Transitions are browse panels (browse-panel.ts) over
 // Starter Pack 1, with drawn previews; a click or a drop adds the item
 // through the Command Bus.
+import {
+  FIELDS,
+  FIELD_FORMATS,
+  fieldToken,
+  resolveFields,
+} from '../render/dynamic-text';
 import { drags } from './drag-controller';
 import {
   combinationsFor,
@@ -298,6 +304,13 @@ export interface LibraryBrowsers {
   dispose(): void;
 }
 
+/** What a dynamic-field card shows as its example. */
+const SAMPLE_FIELDS = {
+  time: 12,
+  sceneNumber: 2,
+  sceneCount: 5,
+  now: new Date(2026, 11, 5, 14, 7, 9).getTime(),
+};
 const later = (wave: number | string, id: string) =>
   t('toolbar.later', { wave: String(wave), id });
 const TEMPLATE_RECENT = 'template';
@@ -337,6 +350,8 @@ export function mountLibraryPanels(
     close(): void;
     addPreset(preset: ShapePreset): void;
     addTextBox(): void;
+    /** TXT-037: a text box holding a dynamic field, such as {{date}}. */
+    addDynamicText(token: string): void;
     /** X4: code animation templates (My Templates > Code animations). */
     code?: {
       insert(template: CodeTemplate): void;
@@ -947,15 +962,22 @@ export function mountLibraryPanels(
           id: 'dynamic',
           title: t('text.section.dynamic'),
           layout: 'list',
-          cards: () => [
-            {
-              id: 'dynamic-text',
-              label: t('text.dynamic'),
-              icon: 'text',
-              disabled: later(8, 'TXT-037'),
-              data: { action: 'dynamic-text' },
-            },
-          ],
+          cards: () =>
+            FIELDS.flatMap((field) =>
+              FIELD_FORMATS[field].map((format, index) => {
+                const token = fieldToken(field, index ? format : undefined);
+                return {
+                  id: `dynamic-${field}-${index}`,
+                  label: `${t(`text.dynamic.field.${field}`)}: ${resolveFields(
+                    fieldToken(field, format),
+                    SAMPLE_FIELDS,
+                  )}`,
+                  icon: 'text',
+                  data: { action: 'dynamic-text', token },
+                  activate: () => options.addDynamicText(token),
+                };
+              }),
+            ),
         },
         ...TEXT_SECTIONS.map((section): BrowseSection => ({
           id: section,

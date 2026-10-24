@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { meanDiff, preview } from './fx-helpers';
+import { exported, meanDiff, preview } from './fx-helpers';
 import {
   test,
   expect,
@@ -81,4 +81,62 @@ test('[FX5-015] dragging a filter intensity slider changes the canvas before rel
   await page.mouse.up();
   await expect.poll(async () => (await labels()).length).toBe(afterApply + 1);
   expect((await labels()).at(-1)).toBe('Filter intensity');
+});
+
+test('[TXT-037] dynamic text: a Scene number field draws 1 in scene 1 and 2 in the copy, in the preview and in the exported frame; Magic write stays disabled', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await showSceneStrip(page);
+  await page.locator('#scene-strip-add').click();
+  await page.locator('[data-action="strip-add-blank"]').click();
+  await showCategory(page, 'Text');
+  const magic = page.locator('[data-action="magic-write"]');
+  await expect(magic).toHaveAttribute('aria-disabled', 'true');
+  await expect(magic).toHaveAttribute('title', /AI service \(planned\)/);
+  await page
+    .locator('[data-action="dynamic-text"][data-token="{{scene}}"]')
+    .first()
+    .click();
+  const texts = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __AIVE__: {
+              getCanvas(): { texts: { id: string; text: string }[] };
+            };
+          }
+        ).__AIVE__.getCanvas().texts,
+    );
+  await expect
+    .poll(async () => (await texts()).map((x) => x.text))
+    .toEqual(['2']);
+  await settled(page);
+  const second = await exported(page, testInfo);
+  // A copy of the scene is scene 3 of 3 (after the example and this one).
+  await page.locator('#scene-strip-add').click();
+  await page.locator('[data-action="strip-add-duplicate"]').click();
+  await expect
+    .poll(async () => (await texts()).map((x) => x.text))
+    .toEqual(['3']);
+  await settled(page);
+  const third = await exported(page, testInfo);
+  expect(meanDiff(second, third)).toBeGreaterThan(0.02);
+});
+
+test('[FX5-017] the scene strip + menu has Open video plan review (a plain note when the project has no plan)', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await showSceneStrip(page);
+  await page.locator('#scene-strip-add').click();
+  await page.locator('[data-action="strip-open-plan-review"]').click();
+  await expect(page.locator('.toast', { hasText: /plan/i })).toBeVisible();
 });

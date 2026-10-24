@@ -247,6 +247,13 @@ export class EditorSession {
         (item) => item.id === this.#compositionId,
       )!.backgroundColor,
       ...(this.#editingText ? { editingTextId: this.#editingText } : {}),
+      dynamic: {
+        sceneNumber:
+          project.compositions.findIndex(
+            (item) => item.id === this.#compositionId,
+          ) + 1,
+        sceneCount: project.compositions.length,
+      },
     };
   }
   get drawBrush(): DrawMode | null {

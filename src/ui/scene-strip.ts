@@ -35,6 +35,8 @@ export function mountSceneStrip(options: {
   report: (error: unknown) => void;
   /** Opens the Templates panel ("From template"). */
   openTemplates: () => void;
+  /** Opens the Review video plan panel (or says there is no plan). */
+  openPlanReview: () => void;
   saveSceneToMine: (sceneId: string) => void;
   crossfade?: () => void;
 }): SceneStrip {
@@ -192,6 +194,12 @@ export function mountSceneStrip(options: {
           label: t('strip.fromTemplate'),
           icon: 'templates',
           run: options.openTemplates,
+        },
+        {
+          id: 'strip-open-plan-review',
+          label: t('strip.openPlanReview'),
+          icon: 'list',
+          run: options.openPlanReview,
         },
       ],
       box.left,

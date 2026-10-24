@@ -107,6 +107,7 @@ export interface LibraryActions {
     at?: readonly [number, number],
     width?: number,
     time?: number,
+    text?: string,
   ): void;
   /** I2: a template saved in this browser (My Templates). */
   insertMine(template: MyTemplate): void;
@@ -170,7 +171,7 @@ export function createLibraryActions(options: {
         ...(mode ? { mode } : {}),
       });
   /** I2: the item behind "Add a text box", `width` px wide. */
-  const textBoxItem = (width?: number) => {
+  const textBoxItem = (width?: number, content?: string) => {
     const canvas = session.source.composition;
     const w = Math.min(
       3,
@@ -190,8 +191,12 @@ export function createLibraryActions(options: {
             y: 0,
             w,
             h: 0.1,
-            text: { en: t('text.boxText'), hi: t('text.boxText') },
-            size: 0.05,
+            text: {
+              en: content ?? t('text.boxText'),
+              hi: content ?? t('text.boxText'),
+            },
+            // A dynamic field (a page number, a date) reads larger.
+            size: content ? 0.12 : 0.05,
             color: '#272b29',
             align: 'center',
           },
@@ -327,9 +332,12 @@ export function createLibraryActions(options: {
         report(error);
       }
     },
-    insertTextBox(at, width, time) {
+    insertTextBox(at, width, time, text) {
       try {
-        run(t('text.boxName'), libraryBuild(textBoxItem(width), at, time));
+        run(
+          t('text.boxName'),
+          libraryBuild(textBoxItem(width, text), at, time),
+        );
       } catch (error) {
         report(error);
       }

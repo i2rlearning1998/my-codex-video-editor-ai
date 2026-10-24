@@ -2669,5 +2669,12 @@
   "build.done": "पूरा हुआ",
   "build.failed": "पूरा नहीं हो सका: {reason}",
   "build.cancelled": "रोक दिया गया। कुछ नहीं जोड़ा गया।",
-  "build.rebuild": "फिर जाँचें"
+  "build.rebuild": "फिर जाँचें",
+  "text.dynamic.field.date": "तारीख",
+  "text.dynamic.field.time": "समय",
+  "text.dynamic.field.scene": "दृश्य संख्या",
+  "text.dynamic.field.scenes": "कुल पृष्ठ",
+  "text.dynamic.field.counter": "काउंटर (सेकंड)",
+  "text.dynamic.field.timecode": "टाइमकोड",
+  "strip.openPlanReview": "वीडियो योजना की समीक्षा खोलें"
 }

@@ -43,6 +43,7 @@ import {
 } from './rich-text';
 import { textStyleOf, type TextStyle } from './text-style';
 import { textBoxOf, textHeightFixed } from './text-box';
+import { applyDynamicText, type DynamicContext } from './dynamic-text';
 import { isCameraLayer } from '../camera/shots';
 import { textEffectsOf, type TextLook } from './text-effects';
 import { shapeOf, type ShapeStyle } from './shapes';
@@ -123,6 +124,8 @@ export interface RenderSource {
   /** W5-C: draw with the clips' animation presets (picking never sets this). */
   readonly animate?: boolean;
   readonly chromaQuality?: 'full' | 'fast';
+  /** TXT-037: what dynamic text fields (scene number, count, time) read. */
+  readonly dynamic?: DynamicContext;
   /**
    * CV-041: the multi-selection frame (four world corners) while it is being
    * resized or rotated; otherwise the frame is the selection's bounds.
@@ -337,9 +340,23 @@ export function deriveRenderItems(input: RenderSource): {
         ...input,
         animate: false,
         // J12: then the transitions in play across cuts.
-        composition: applyTransitions(
-          applyPresets(input.composition, input.assets, input.currentTime ?? 0),
-          input.currentTime ?? 0,
+        composition: applyDynamicText(
+          applyTransitions(
+            applyPresets(
+              input.composition,
+              input.assets,
+              input.currentTime ?? 0,
+            ),
+            input.currentTime ?? 0,
+          ),
+          {
+            time: (input.currentTime ?? 0) - (input.dynamic?.sceneStart ?? 0),
+            sceneNumber: input.dynamic?.sceneNumber ?? 1,
+            sceneCount: input.dynamic?.sceneCount ?? 1,
+            ...(input.dynamic?.now !== undefined
+              ? { now: input.dynamic.now }
+              : {}),
+          },
         ),
       }
     : input;

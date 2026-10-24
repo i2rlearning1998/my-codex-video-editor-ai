@@ -2669,5 +2669,12 @@
   "build.done": "Done",
   "build.failed": "Could not finish: {reason}",
   "build.cancelled": "Stopped. Nothing was added.",
-  "build.rebuild": "Check again"
+  "build.rebuild": "Check again",
+  "text.dynamic.field.date": "Date",
+  "text.dynamic.field.time": "Time",
+  "text.dynamic.field.scene": "Scene number",
+  "text.dynamic.field.scenes": "Page count",
+  "text.dynamic.field.counter": "Counter (seconds)",
+  "text.dynamic.field.timecode": "Timecode",
+  "strip.openPlanReview": "Open video plan review"
 }

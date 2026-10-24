@@ -4902,6 +4902,9 @@ export function mountEditorShell(
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
       },
+      addDynamicText: (token) => {
+        libraryActions.insertTextBox(undefined, undefined, undefined, token);
+      },
       // FINAL3 T5: a saved text style, centred at the playhead.
       insertTextStyle: (style) =>
         safely(() => {
@@ -5173,6 +5176,10 @@ export function mountEditorShell(
     frames,
     report: reportError,
     crossfade,
+    openPlanReview: () => {
+      if (planState(engine.state.id)) openPlanReview();
+      else showToast(t('plan.reviewEmpty'), 'info');
+    },
     openTemplates: () => {
       const templates = element<HTMLButtonElement>(
         '#rail-left [data-category="Templates"]',
@@ -7249,6 +7256,10 @@ export function mountEditorShell(
       textOverflow: deriveRenderItems(session.source)
         .items.filter((item) => item.textOverflow)
         .map((item) => item.id),
+      // TXT-037: the text each text layer draws now (fields resolved).
+      texts: deriveRenderItems({ ...session.source, animate: true })
+        .items.filter((item) => item.kind === 'text')
+        .map((item) => ({ id: item.id, text: item.text })),
       chip: element('#canvas-chip').hidden
         ? null
         : element('#canvas-chip').textContent,
