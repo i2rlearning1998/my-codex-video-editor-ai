@@ -7,6 +7,17 @@ export class Playback {
   #origin = 0;
   #time = 0;
   #unsubscribe: () => void;
+  #preparing = false;
+  /**
+   * FIX5 C7: resolves when what plays is ready (sound decoded), so the first
+   * Play starts picture and sound together. Absent or null: start at once.
+   */
+  prepare: (() => Promise<void> | null) | null = null;
+  /** Called with true while Play waits for `prepare`, false when it is over. */
+  onPreparing: ((preparing: boolean) => void) | null = null;
+  get preparing(): boolean {
+    return this.#preparing;
+  }
   constructor(
     private readonly session: EditorSession,
     private readonly now = () => performance.now(),
@@ -22,6 +33,23 @@ export class Playback {
     });
   }
   play(): void {
+    if (this.session.playing || this.#preparing) return;
+    const wait = this.prepare?.() ?? null;
+    if (wait) {
+      this.#preparing = true;
+      this.onPreparing?.(true);
+      const done = () => {
+        if (!this.#preparing) return;
+        this.#preparing = false;
+        this.onPreparing?.(false);
+        this.#start();
+      };
+      void wait.then(done, done);
+      return;
+    }
+    this.#start();
+  }
+  #start(): void {
     if (this.session.playing) return;
     // U6: playback starts at the scene's Start when outside its range.
     const range = playRangeOf(this.session.source.composition);
@@ -78,10 +106,15 @@ export class Playback {
     );
   }
   pause(): void {
+    // Pause while Play is still preparing cancels the start.
+    if (this.#preparing) {
+      this.#preparing = false;
+      this.onPreparing?.(false);
+    }
     this.session.setPlaying(false);
   }
   toggle(): void {
-    if (this.session.playing) this.pause();
+    if (this.session.playing || this.#preparing) this.pause();
     else this.play();
   }
   stop(): void {

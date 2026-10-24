@@ -2655,5 +2655,6 @@
   "plan.summaryNeeds": "{count} मीडिया स्लॉट को अभी चित्र या वीडियो चाहिए।",
   "plan.show": "दिखाएँ",
   "plan.videoPlans": "वीडियो योजनाएँ",
-  "plan.openReview": "समीक्षा खोलें"
+  "plan.openReview": "समीक्षा खोलें",
+  "playback.preparing": "ऑडियो तैयार हो रहा है…"
 }

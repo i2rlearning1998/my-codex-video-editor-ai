@@ -2655,5 +2655,6 @@
   "plan.summaryNeeds": "{count} media slots still need a picture or video.",
   "plan.show": "Show",
   "plan.videoPlans": "Video plans",
-  "plan.openReview": "Open review"
+  "plan.openReview": "Open review",
+  "playback.preparing": "Preparing audio…"
 }

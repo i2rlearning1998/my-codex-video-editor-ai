@@ -2087,6 +2087,46 @@ export function mountEditorShell(
     waveforms,
     codeStatus,
   );
+  // FIX5 C7: the first Play waits for the sound to be decoded, so picture and
+  // sound start together (a short "Preparing audio" note, never a dead button).
+  {
+    const decodedOnce = new Set<string>();
+    timeline.playback.prepare = () => {
+      const pending = audibleClips().filter(
+        (clip) =>
+          !decodedOnce.has(
+            `${clip.sourceAssetId}|${clip.audio?.denoise ?? 'off'}`,
+          ),
+      );
+      if (!pending.length) return null;
+      const decodes = pending.map((clip) =>
+        decoder
+          .decode(clip.sourceAssetId, clip.audio?.denoise ?? 'off')
+          .catch(() => undefined)
+          .then(() => {
+            decodedOnce.add(
+              `${clip.sourceAssetId}|${clip.audio?.denoise ?? 'off'}`,
+            );
+          }),
+      );
+      return Promise.race([
+        Promise.all(decodes).then(() => undefined),
+        new Promise<void>((resolve) => setTimeout(resolve, 15_000)),
+      ]);
+    };
+    let preparingNote = 0;
+    timeline.playback.onPreparing = (preparing) => {
+      window.clearTimeout(preparingNote);
+      const button = document.querySelector('[data-action="play"]');
+      if (preparing) {
+        button?.setAttribute('aria-busy', 'true');
+        preparingNote = window.setTimeout(
+          () => showToast(t('playback.preparing'), 'info', 4000),
+          200,
+        );
+      } else button?.removeAttribute('aria-busy');
+    };
+  }
   // FINAL2 U9: a nested clip's breadcrumb bar above the timeline.
   nestBar = mountNestBar(
     element('#timeline-foundation').parentElement!,
