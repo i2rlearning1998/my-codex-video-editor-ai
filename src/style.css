@@ -11267,3 +11267,25 @@ body:has(.modal-backdrop) .toast-stack {
   bottom: auto;
   top: var(--space-4);
 }
+
+/* FIX5 C3: the Scene panel's search row is one line (search, new collection,
+   count) under the single panel header, with room before the first row. */
+#scene-heading {
+  flex-wrap: nowrap;
+  padding: var(--space-1) var(--space-4) var(--space-3);
+  gap: var(--space-2);
+}
+#scene-heading .outliner-search {
+  order: -1;
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+#scene-heading .outliner-new {
+  flex: none;
+}
+#scene-heading .count {
+  order: 1;
+  flex: none;
+  min-inline-size: 22px;
+  text-align: center;
+}

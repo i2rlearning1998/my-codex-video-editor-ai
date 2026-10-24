@@ -150,3 +150,38 @@ test('[FX5-002] audio rows: hover never plays, Play and Stop work, one at a time
   await page.locator('[data-audio-tab="sounds"]').click();
   await expect(mine).toHaveAttribute('data-state', 'stopped');
 });
+
+// C3: the Scene panel's header, search and first row never overlap.
+test('[FX5-003] Scene panel: header, search row and first layer row do not overlap and stay aligned', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await showCategory(page, 'Scene');
+  await expect(page.locator('#scene-list .outliner-row').first()).toBeVisible();
+  const boxes = await page.evaluate(() => {
+    const box = (selector: string) => {
+      const found = document.querySelector(selector);
+      const r = found?.getBoundingClientRect();
+      return r
+        ? { top: r.top, bottom: r.bottom, left: r.left, right: r.right }
+        : null;
+    };
+    return {
+      header: box('#left-panel-title'),
+      search: box('#scene-heading .outliner-search'),
+      folder: box('#scene-heading [data-ol="new-collection"]'),
+      row: box('#scene-list .outliner-row'),
+      panel: box('.library'),
+    };
+  });
+  const { header, search, folder, row, panel } = boxes;
+  expect(header && search && folder && row && panel).toBeTruthy();
+  expect(header!.bottom).toBeLessThanOrEqual(search!.top);
+  expect(search!.bottom).toBeLessThanOrEqual(row!.top);
+  // Search and the new-collection button sit on one line without touching.
+  expect(search!.right).toBeLessThanOrEqual(folder!.left);
+  expect(Math.abs(search!.top - folder!.top)).toBeLessThan(12);
+  expect(search!.left).toBeGreaterThanOrEqual(panel!.left);
+  expect(folder!.right).toBeLessThanOrEqual(panel!.right);
+  await page.screenshot({ path: 'reports/fix5/c3-scene-panel.png' });
+});
