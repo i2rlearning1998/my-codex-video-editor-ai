@@ -835,15 +835,14 @@ export function drawComposition(
           ) &&
           (!item.media || item.media.kind === 'image'),
       );
+    const mediaItems = items.filter((item) => item.media);
     const media = reusable
-      ? items
-          .filter((item) => item.media)
-          .map((item) => source.frames?.frame(item.media!, false))
+      ? mediaItems.map((item) => source.frames?.frame(item.media!, false))
       : [];
     if (
       !reusable ||
       media.some(
-        (frame) =>
+        (frame, index) =>
           !frame ||
           !(
             (typeof ImageBitmap !== 'undefined' &&
@@ -853,7 +852,19 @@ export function drawComposition(
               frame instanceof HTMLImageElement &&
               frame.complete &&
               frame.naturalWidth > 0 &&
-              frame.src.startsWith('blob:'))
+              frame.src.startsWith('blob:') &&
+              ['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(
+                String(
+                  (
+                    source.assets as unknown as readonly {
+                      id: string;
+                      metadata: Readonly<Record<string, unknown>>;
+                    }[]
+                  ).find(
+                    (asset) => asset.id === mediaItems[index]!.media!.assetId,
+                  )?.metadata.mimeType ?? '',
+                ),
+              ))
           ),
       )
     ) {

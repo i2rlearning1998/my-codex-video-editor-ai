@@ -1,6 +1,8 @@
+import { CommandBus } from './engine';
 import { applyCommand, validateCommand, type Command } from './commands';
 import {
   assertJson,
+  freeze,
   validateProject,
   type DeepReadonly,
   type Project,
@@ -12,16 +14,24 @@ import {
  */
 export class ProjectBuild {
   #draft: Project;
+  readonly #commands: CommandBus;
   constructor(base: Project) {
     this.#draft = structuredClone(base);
+    this.#commands = new CommandBus((commands) => {
+      assertJson(commands);
+      return commands.map((command) => {
+        applyCommand(this.#draft, validateCommand(command));
+        return null;
+      });
+    });
   }
   get state(): DeepReadonly<Project> {
-    return this.#draft;
+    return freeze(
+      structuredClone(this.#draft),
+    ) as unknown as DeepReadonly<Project>;
   }
   apply(commands: readonly Command[]): void {
-    assertJson(commands);
-    for (const command of commands)
-      applyCommand(this.#draft, validateCommand(command));
+    this.#commands.transaction('Build composition', commands);
   }
   finish(): Project {
     return validateProject(this.#draft);

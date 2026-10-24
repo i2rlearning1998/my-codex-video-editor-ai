@@ -3,7 +3,7 @@ import {
   createProcessedCache,
   frameIdentity,
 } from '../../src/render/processed-cache';
-it('FX-009 reuses processed pixels and bounds retained preview memory without stale frame identities', () => {
+it('[FX-015] reuses processed pixels and bounds retained preview memory without stale frame identities', () => {
   const released: Uint8ClampedArray[] = [];
   const cache = createProcessedCache<Uint8ClampedArray>(8, (value) =>
     released.push(value),

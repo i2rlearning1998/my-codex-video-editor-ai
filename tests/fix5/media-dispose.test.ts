@@ -2,7 +2,7 @@ import { expect, it, vi } from 'vitest';
 import { MediaFrames } from '../../src/media/frames';
 import { MemoryMediaStore } from '../../src/media/store';
 import type { MediaFrameRequest } from '../../src/render/adapter';
-it('MED-006 ignores a late image decode after disposing the media provider', async () => {
+it('[MED-006] ignores a late image decode after disposing the media provider', async () => {
   let decoded!: () => void;
   class FakeImage {
     src = '';

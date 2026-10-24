@@ -1,9 +1,5 @@
-# FIX5 engine handoff
-P1 partial: isolated command construction avoids history snapshots/full validation per command; yields every 24 layout commands and per scene; cancellable progress in composition dialog. Existing editor transactions unchanged. 9 targeted tests passed; legacy documentary-mini result byte-equivalent before formatting.
-Not yet proved: Circumference fixture/browser long tasks, card drop responsiveness, plan dialog wiring (Claude-owned), animated loader.
-Next: P2 preview processing, P3 filters, P4 bug hunt; full verify once at end.
-P2 partial: preview-only 0.92 MP processing/caching for immutable image/shape passes (masks, chroma, FX), 24 MB/context LRU. Animated/video/text/backdrop blend passes bypass cache; export bypasses cache/budget. GPU chroma path reused, preview fast default. 29 targeted tests passed before budget hook; Chromium absent, no real frame/pixel measurements. Needs browser parity/budget proof.
-P3 implemented: slider input/hover/focus transient engine preview; release one transaction, cancel/leave/section render clears owned preview. Regression checks actual FX pixels, canonical history, cancel/undo. 5 tests passed. Browser pointer-event proof remains unrun.
-Next P4 focused bug hunt, then verify once/report/PR.
-P4 partial: fixed image decode/URL completions repopulating disposed MediaFrames or notifying dead editor. MED-006 fake-decode regression passes; 30 targeted tests passed. Also enabled cache for the actual blob-backed HTML images used by MediaFrames. Follow-ups in backlog: fingerprint invalidation and decoder listener release. No hour-long exhaustive audit claim.
-Next: one final verify, report and draft PR; no browser measurements available.
+# FIX5-CODEX handoff
+
+Branch codex/fix-5-engine, target claude/fix-4. P1 partial (cooperative command staging, progress/cancel), P2 partial (bounded image/shape preview cache/budget), P3 implemented (preview + one release undo), P4 partial audit (disposed media completions fixed).
+44 targeted tests pass. Verify attempted once: formatting passed, stopped at typecheck. Own deep-type errors fixed; final typecheck reports only 3 missing @huggingface/transformers declarations in speech (not edited). Browser absent; no long-task, frame-time or pixel-parity proof.
+Next: restore installed speech dependency; browser proof for Circumference/drop/1080p+portrait, video/text processing performance; Claude-owned plan/drop progress wiring and motion-aware loader. See FIX5-CODEX.md and backlog. Do not claim complete/green; do not merge.

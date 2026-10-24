@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { buildProjectFromComposition } from '../../src/composition';
 
-it('F2-070 builds cooperatively without changing IDs, ordering or timing and cancels before publication', async () => {
+it('[F2-070] builds cooperatively without changing IDs, ordering or timing and cancels before publication', async () => {
   const input: unknown = JSON.parse(
     readFileSync('tests/fixtures/compositions/documentary-mini.json', 'utf8'),
   );

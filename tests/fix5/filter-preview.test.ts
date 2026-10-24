@@ -7,7 +7,7 @@ import { applyPreset } from '../../src/ui/right-panel/fx-panels';
 import { deriveRenderItems } from '../../src/render/adapter';
 import { renderStack, surface } from '../../src/fx';
 
-it('FX-004 changes filter pixels before release and commits exactly one undo step', () => {
+it('[FX-004] changes filter pixels before release and commits exactly one undo step', () => {
   const engine = new EditorEngine(
     deserializeProject(
       readFileSync('tests/fixtures/projects/nle-example.json', 'utf8'),

@@ -14,7 +14,10 @@ export function createFilterPreview(
   const commands = (change: (fx: ClipFx) => void): Command[] =>
     selectedClips(session.source, session.selectedIds).map(({ clip }) => {
       const fx = structuredClone(
-        clipFx(clip) ?? { version: 1, stack: [] },
+        clipFx(clip as unknown as Parameters<typeof clipFx>[0]) ?? {
+          version: 1,
+          stack: [],
+        },
       ) as ClipFx;
       change(fx);
       return {
