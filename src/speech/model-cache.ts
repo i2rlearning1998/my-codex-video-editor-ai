@@ -6,6 +6,43 @@ export interface ModelStore {
   put(key: string, blob: Blob): Promise<void>;
   delete(key: string): Promise<void>;
 }
+/**
+ * FIX5 C9: a model download that failed, naming the file and the host (never
+ * a bare "network error"), with the HTTP status and the bytes that arrived.
+ */
+export class ModelDownloadError extends ProviderError {
+  readonly file: string;
+  readonly host: string;
+  readonly bytes: number;
+  readonly reason: 'network' | 'http' | 'stalled';
+  constructor(
+    reason: 'network' | 'http' | 'stalled',
+    file: ModelFile,
+    detail: { status?: number; bytes?: number; quietMs?: number } = {},
+  ) {
+    super(reason === 'http' ? 'BAD_RESPONSE' : 'NETWORK', undefined, {
+      ...(detail.status !== undefined ? { status: detail.status } : {}),
+      endpoint: file.url,
+    });
+    this.name = 'ModelDownloadError';
+    this.reason = reason;
+    this.file = file.id;
+    this.bytes = detail.bytes ?? 0;
+    let host = file.url;
+    try {
+      host = new URL(file.url).host;
+    } catch {
+      /* Keep the whole address. */
+    }
+    this.host = host;
+    this.message =
+      reason === 'http'
+        ? `The server ${host} answered HTTP ${detail.status} for ${file.id}.`
+        : reason === 'stalled'
+          ? `No data arrived from ${host} for ${Math.round((detail.quietMs ?? 0) / 1000)} s while downloading ${file.id} (${this.bytes} bytes so far).`
+          : `The connection to ${host} failed while starting ${file.id} (blocked, offline or a security rule).`;
+  }
+}
 export function createIndexedModelStore(): ModelStore {
   const run = async <T>(
     mode: IDBTransactionMode,
@@ -94,6 +131,8 @@ export function createModelLoader(
         signal?: AbortSignal;
         onProgress?: (p: SpeechProgress) => void;
         offline?: boolean;
+        /** No bytes for this long (ms) is a stall; default one minute. */
+        stallMs?: number;
       } = {},
     ): Promise<Blob> {
       check(file);
@@ -114,11 +153,17 @@ export function createModelLoader(
         });
       } catch {
         assertActive(options.signal);
-        throw new ProviderError('NETWORK');
+        throw new ModelDownloadError('network', file);
       }
       assertActive(options.signal);
       if (!response.ok || !response.body)
-        throw new ProviderError('BAD_RESPONSE');
+        throw new ModelDownloadError('http', file, { status: response.status });
+      // Sizes come from the pinned list, else the server's Content-Length
+      // (absent for chunked answers: then the total is unknown).
+      const announced = Number(response.headers.get('content-length'));
+      const total =
+        file.sizeBytes ??
+        (Number.isFinite(announced) && announced > 0 ? announced : null);
       const reader = response.body.getReader(),
         chunks: Uint8Array[] = [];
       let size = 0;
@@ -129,7 +174,23 @@ export function createModelLoader(
       try {
         for (;;) {
           assertActive(options.signal);
-          const part = await reader.read();
+          const stallMs = options.stallMs ?? 60_000;
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const part = await Promise.race([
+            reader.read(),
+            new Promise<never>((_, reject) => {
+              timer = setTimeout(
+                () =>
+                  reject(
+                    new ModelDownloadError('stalled', file, {
+                      bytes: size,
+                      quietMs: stallMs,
+                    }),
+                  ),
+                stallMs,
+              );
+            }),
+          ]).finally(() => clearTimeout(timer));
           assertActive(options.signal);
           if (part.done) break;
           size += part.value.length;
@@ -139,7 +200,7 @@ export function createModelLoader(
           options.onProgress?.({
             phase: 'download',
             completed: size,
-            total: file.sizeBytes,
+            total,
             file: file.id,
           });
         }

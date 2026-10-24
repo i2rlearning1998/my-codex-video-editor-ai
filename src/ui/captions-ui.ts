@@ -10,7 +10,11 @@ import {
   watchLongTasks,
   type LongTaskReport,
 } from './long-tasks';
-import { whisperSelfTest } from '../speech/whisper-worker-client';
+import {
+  lastWorkerMessage,
+  whisperSelfTest,
+} from '../speech/whisper-worker-client';
+import { ModelDownloadError } from '../speech/model-cache';
 import {
   CAPTION_POSITIONS,
   CAPTION_STYLE_IDS,
@@ -408,29 +412,65 @@ async function transcribe(
   const stopWatching = watchLongTasks();
   // FIX1 F4: every step is named while it runs, and every failure is
   // thrown to the dialog (never swallowed).
-  const transcription = await engine.provider.transcribe({
-    blob,
-    lang: picks.lang,
-    signal,
-    onProgress: (p) => {
-      const fraction = p.total ? Math.min(1, p.completed / p.total) : null;
-      const label =
-        p.phase === 'load'
-          ? t(p.stage ? `captions.step.load.${p.stage}` : 'captions.step.load')
-          : p.phase === 'decode'
-            ? t('captions.step.decode')
-            : p.phase === 'download'
-              ? t('captions.step.download', {
+  // FIX5 C9: while listening, say which part and how long it has been, and
+  // tick every second, so a slow computer never looks stuck (and never "0 %").
+  let listening: { part: number; total: number; since: number } | null = null;
+  const showListening = () => {
+    if (!listening) return;
+    const seconds = Math.round((performance.now() - listening.since) / 1000);
+    onProgress(
+      listening.part > 1 ? (listening.part - 1) / listening.total : null,
+      t('captions.step.listenPart', {
+        part: String(listening.part),
+        total: String(listening.total),
+        seconds: String(seconds),
+      }),
+    );
+  };
+  const ticker = setInterval(showListening, 1000);
+  let transcription: Transcription;
+  try {
+    transcription = await engine.provider.transcribe({
+      blob,
+      lang: picks.lang,
+      signal,
+      onProgress: (p) => {
+        lastRun?.steps.push(`${p.phase} ${p.completed}/${p.total ?? '?'}`);
+        if (p.phase === 'transcription' && p.total) {
+          listening =
+            p.completed < p.total
+              ? {
+                  part: p.completed + 1,
+                  total: p.total,
+                  since: performance.now(),
+                }
+              : null;
+          if (listening) showListening();
+          else onProgress(1, t('captions.step.listenDone'));
+          return;
+        }
+        listening = null;
+        const fraction = p.total ? Math.min(1, p.completed / p.total) : null;
+        onProgress(
+          fraction,
+          p.phase === 'load'
+            ? t(
+                p.stage
+                  ? `captions.step.load.${p.stage}`
+                  : 'captions.step.load',
+              )
+            : p.phase === 'decode'
+              ? t('captions.step.decode')
+              : t('captions.step.download', {
                   done: (p.completed / 1e6).toFixed(0),
                   total: p.total ? (p.total / 1e6).toFixed(0) : '?',
-                })
-              : t('captions.step.listen', {
-                  percent: String(Math.round((fraction ?? 0) * 100)),
-                });
-      lastRun?.steps.push(`${p.phase} ${p.completed}/${p.total ?? '?'}`);
-      onProgress(fraction, label);
-    },
-  });
+                }),
+        );
+      },
+    });
+  } finally {
+    clearInterval(ticker);
+  }
   if (lastRun) {
     lastRun.ms = performance.now() - started;
     lastRun.longTasks = stopWatching();
@@ -476,12 +516,23 @@ const message = () => {
   line.setAttribute('role', 'status');
   return line;
 };
+/** The failure class in words, plus the file, host or step when it is a plain fact. */
+const plainCause = (error: WhisperError) =>
+  [
+    t(`captions.fail.${error.kind}`),
+    error.cause instanceof ModelDownloadError ||
+    (error.kind === 'stalled' && error.cause instanceof Error)
+      ? (error.cause as Error).message
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
 const errorText = (error: unknown) =>
   (error instanceof DOMException && error.name === 'AbortError') ||
   (error instanceof WhisperError && error.kind === 'cancelled')
     ? t('captions.cancelled')
     : error instanceof WhisperError
-      ? t(`captions.fail.${error.kind}`)
+      ? plainCause(error)
       : error instanceof SpeechError && error.code === 'MODEL_UNAVAILABLE'
         ? t('captions.fail.not-downloaded')
         : plainMessage(error instanceof Error ? error.message : String(error));
@@ -495,7 +546,11 @@ let lastRun: {
   selfTest?: Record<string, string | number | boolean>;
 } | null = null;
 /** Shows the failure in `status`, with Copy diagnostics, and logs it. */
-const showFailure = (status: HTMLElement, error: unknown) => {
+const showFailure = (
+  status: HTMLElement,
+  error: unknown,
+  fallback?: () => { label: string; run: () => void } | null,
+) => {
   status.textContent = errorText(error);
   status.dataset.kind = 'error';
   console.debug('[captions] failed', error);
@@ -506,6 +561,18 @@ const showFailure = (status: HTMLElement, error: unknown) => {
     void whisperSelfTest().then((result) => {
       if (lastRun) lastRun.selfTest = result;
     });
+  // FIX5 C9: when local Whisper did not work, a cloud engine is one click away.
+  if (error instanceof WhisperError && lastRun?.engine === 'local-whisper') {
+    const option = fallback?.();
+    if (option) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.action = 'captions-cloud-fallback';
+      button.textContent = option.label;
+      button.onclick = option.run;
+      status.append(' ', button);
+    }
+  }
   status.append(
     ' ',
     diagnosticsButton(() => ({
@@ -516,6 +583,16 @@ const showFailure = (status: HTMLElement, error: unknown) => {
       timings: lastRun?.ms ? { run: lastRun.ms } : {},
       extra: {
         failure: error instanceof WhisperError ? error.kind : undefined,
+        ...(error instanceof WhisperError &&
+        error.cause instanceof ModelDownloadError
+          ? {
+              'failing.host': error.cause.host,
+              'failing.file': error.cause.file,
+              'failing.status': error.cause.status ?? 'none',
+              'failing.bytes': error.cause.bytes,
+            }
+          : {}),
+        'worker.lastMessage': lastWorkerMessage(),
         language: lastRun?.lang,
         steps: lastRun?.steps.slice(-6).join(', '),
         ...longTaskFacts(lastRun?.longTasks),
@@ -529,6 +606,31 @@ const showFailure = (status: HTMLElement, error: unknown) => {
     })),
   );
 };
+
+/** What the "use a cloud engine" button does for the engine the user picked. */
+function cloudFallback(
+  picks: Picks,
+  redraw: () => void,
+  update: () => void,
+): { label: string; run: () => void } | null {
+  const clouds = sttEngines().filter(
+    (e) =>
+      e.provider.id !== 'local-whisper' &&
+      e.provider.languages.some((l) => l.split('-')[0] === picks.lang),
+  );
+  if (!clouds.length) return null;
+  const ready = clouds.find((e) => e.ready);
+  return ready
+    ? {
+        label: t('captions.useCloud'),
+        run: () => {
+          picks.engine = ready.provider.id;
+          redraw();
+          update();
+        },
+      }
+    : { label: t('captions.addKey'), run: () => openSettings('keys') };
+}
 
 let open: ModalHandle | undefined;
 
@@ -618,7 +720,9 @@ export function openTranscribe(
           toCaptions.hidden = false;
           status.textContent = '';
         } catch (error) {
-          showFailure(status, error);
+          showFailure(status, error, () =>
+            cloudFallback(picks, engines.refresh, update),
+          );
         } finally {
           controller = null;
           progress.hide();
@@ -818,6 +922,17 @@ export function openAutoCaptions(
               const error = lastDownloadError.get('local-whisper');
               return error instanceof Error ? error.message : undefined;
             })(),
+            ...(() => {
+              const error = lastDownloadError.get('local-whisper');
+              return error instanceof ModelDownloadError
+                ? {
+                    'failing.host': error.host,
+                    'failing.file': error.file,
+                    'failing.status': error.status ?? 'none',
+                    'failing.bytes': error.bytes,
+                  }
+                : {};
+            })(),
           },
         })),
       );
@@ -885,7 +1000,9 @@ export function openAutoCaptions(
           if (!track.cues.length) throw new WhisperError('no-speech', 'listen');
           finish(addCaptionTrack(context, track));
         } catch (error) {
-          showFailure(status, error);
+          showFailure(status, error, () =>
+            cloudFallback(picks, engines.refresh, update),
+          );
         } finally {
           controller = null;
           progress.hide();
