@@ -230,7 +230,7 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
     await expect(button).toHaveAttribute('aria-disabled', 'true');
     await expect(button).toHaveAttribute(
       'title',
-      new RegExp(`Planned: Wave \\d+ \\(${id}\\)`),
+      /Planned for Phase 1|Needs the AI service|Needs your account/,
     );
   }
   // Shapes: Lines first, then the shape sections.
@@ -284,13 +284,13 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
     'title',
     'Needs the AI service (planned)',
   );
-  await expect(host.locator('[data-action="dynamic-text"]')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  // TXT-037: the dynamic fields are live now.
+  await expect(
+    host.locator('[data-action="dynamic-text"]').first(),
+  ).not.toHaveAttribute('aria-disabled', 'true');
   await expect(host.locator('[data-action="captions"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 8 (TXT-035)',
+    'Planned for Phase 1',
   );
   // FINAL3 T5: Canva's order: default styles, font combinations, the
   // user's own styles, then the rest.

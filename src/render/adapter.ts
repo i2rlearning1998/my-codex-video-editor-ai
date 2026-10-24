@@ -124,6 +124,8 @@ export interface RenderSource {
   /** W5-C: draw with the clips' animation presets (picking never sets this). */
   readonly animate?: boolean;
   readonly chromaQuality?: 'full' | 'fast';
+  /** CV-014/015: grid and safe-area lines over the scene (editor only). */
+  readonly viewGuides?: { readonly grid: boolean; readonly safe: boolean };
   /** TXT-037: what dynamic text fields (scene number, count, time) read. */
   readonly dynamic?: DynamicContext;
   /**

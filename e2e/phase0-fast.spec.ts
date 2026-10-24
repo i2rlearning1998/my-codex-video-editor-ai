@@ -7,6 +7,8 @@ import {
   hook,
   showCategory,
   showSceneStrip,
+  artboard,
+  toScreen,
   seekKeep,
   settled,
 } from './fixtures';
@@ -139,4 +141,55 @@ test('[FX5-017] the scene strip + menu has Open video plan review (a plain note 
   await page.locator('#scene-strip-add').click();
   await page.locator('[data-action="strip-open-plan-review"]').click();
   await expect(page.locator('.toast', { hasText: /plan/i })).toBeVisible();
+});
+
+test('[CV-014] [CV-015] [LYR-006] Guides: the grid and the safe areas draw on the canvas (editor only); Hide switches a layer off and Undo brings it back; no control says "Planned: Wave"', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  const menu = page.locator('.canvas-context-menu');
+  const board = await artboard(page);
+  const outside = { x: board.x + 20, y: board.y - 12 };
+  const before = await preview(page, true);
+  await page.keyboard.press('Escape');
+  await page.mouse.click(outside.x, outside.y, { button: 'right' });
+  await menu.locator('[data-action="guides"]').hover();
+  await menu.locator('[data-action="guides-grid"]').click();
+  await expect
+    .poll(async () => meanDiff(await preview(page, true), before))
+    .toBeGreaterThan(0.2);
+  await page.mouse.click(outside.x, outside.y, { button: 'right' });
+  await menu.locator('[data-action="guides"]').hover();
+  await expect(menu.locator('[data-action="guides-grid"]')).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await menu.locator('[data-action="guides-off"]').click();
+  await expect
+    .poll(async () => meanDiff(await preview(page, true), before))
+    .toBe(0);
+  // Hide: the layer's lane is switched off and Undo restores it.
+  const laneOn = async () => {
+    const state = await hook(page);
+    const scene = state.project.compositions.find(
+      (c) => c.id === state.session.compositionId,
+    )!;
+    return scene.tracks.find((track) =>
+      track.clips.some((clip) => clip.layerId === 'example-headline'),
+    )!.enabled;
+  };
+  expect(await laneOn()).toBe(true);
+  await page.locator('#scene-list [data-layer-id="example-headline"]').click();
+  const at = await toScreen(page, 300, 250);
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await menu.locator('[data-action="more-menu"]').hover();
+  await menu.locator('[data-action="hide"]').click();
+  expect(await laneOn()).toBe(false);
+  expect((await hook(page)).history.labels.at(-1)).toBe('Hide');
+  await page.keyboard.press('Control+z');
+  expect(await laneOn()).toBe(true);
+  await expect(page.locator('body')).not.toContainText('Planned: Wave');
 });

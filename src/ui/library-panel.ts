@@ -2,6 +2,7 @@
 // graphics), Text and Transitions are browse panels (browse-panel.ts) over
 // Starter Pack 1, with drawn previews; a click or a drop adds the item
 // through the Command Bus.
+import { plannedReason } from './planned';
 import {
   FIELDS,
   FIELD_FORMATS,
@@ -311,8 +312,7 @@ const SAMPLE_FIELDS = {
   sceneCount: 5,
   now: new Date(2026, 11, 5, 14, 7, 9).getTime(),
 };
-const later = (wave: number | string, id: string) =>
-  t('toolbar.later', { wave: String(wave), id });
+const later = (wave: number | string, id: string) => plannedReason(wave, id);
 const TEMPLATE_RECENT = 'template';
 /** FINAL2 U2: live stock tiles: [tab, icon]. */
 const STOCK_TILES: [StockTab, string][] = [

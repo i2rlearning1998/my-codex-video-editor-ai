@@ -1,6 +1,7 @@
 // H3: the toolbar's deep panels in the left side panel (Canva): Font,
 // Effects, Edit image, Replace and Crop. Controls whose systems are not built
-// are shown disabled with "Planned: Wave N (ID)".
+// are shown disabled with what they need (the AI service or Phase 1).
+import { plannedReason } from './planned';
 import { buildFontPicker } from './font-picker';
 import { textEditorFor } from './text-editor';
 import type { Command, EditorEngine } from '../core';
@@ -36,7 +37,7 @@ const planned = (label: string, icon: string, id: string, wave: number) => {
   item.type = 'button';
   item.className = 'tool-panel-item';
   item.setAttribute('aria-disabled', 'true');
-  const reason = t('toolbar.later', { wave: String(wave), id });
+  const reason = plannedReason(wave, id);
   item.title = reason;
   item.setAttribute('aria-label', `${label}: ${reason}`);
   item.innerHTML = `${iconSvg(icon, 18)}<span></span>`;

@@ -1227,3 +1227,29 @@ export function toggleClipMute(
     })),
   );
 }
+
+/** LYR-006: hides the selected layers (their lanes are switched off, as the
+ *  lane menu's Hide does); the outliner's eye or the lane menu shows them. */
+export function hideSelected(engine: EditorEngine, session: EditorSession) {
+  const tracks = [
+    ...new Map(
+      selectedClips(session.source, session.selectedIds).map(({ track }) => [
+        track.id,
+        track,
+      ]),
+    ).values(),
+  ].filter((track) => track.enabled);
+  if (!tracks.length) return;
+  engine.commands.transaction(
+    'Hide',
+    tracks.map((track) => ({
+      type: 'SET_TRACK_STATE' as const,
+      compositionId: session.source.composition.id,
+      trackId: track.id,
+      enabled: false,
+      locked: track.locked,
+      muted: track.muted,
+    })),
+  );
+  session.select(null);
+}

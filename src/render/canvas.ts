@@ -1048,6 +1048,36 @@ export function drawComposition(
       source.cameraFrame,
       device,
     );
+  // CV-014/015: a 10 % grid and the action (95 %) and title (90 %) safe
+  // areas, editor only, 1 CSS px at any zoom.
+  if (source.viewGuides) {
+    const { width, height } = source.composition;
+    const at = (x: number, y: number) =>
+      transformPoint(viewport.matrix, [x, y]);
+    context.setTransform(...pixels);
+    context.lineWidth = 1;
+    if (source.viewGuides.grid) {
+      context.strokeStyle = 'rgba(139, 108, 255, 0.55)';
+      context.beginPath();
+      for (let step = 1; step < 10; step++) {
+        context.moveTo(...at((width * step) / 10, 0));
+        context.lineTo(...at((width * step) / 10, height));
+        context.moveTo(...at(0, (height * step) / 10));
+        context.lineTo(...at(width, (height * step) / 10));
+      }
+      context.stroke();
+    }
+    if (source.viewGuides.safe) {
+      context.strokeStyle = 'rgba(255, 200, 60, 0.9)';
+      context.setLineDash([6, 4]);
+      for (const inset of [0.025, 0.05]) {
+        const [x0, y0] = at(width * inset, height * inset);
+        const [x1, y1] = at(width * (1 - inset), height * (1 - inset));
+        context.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      }
+      context.setLineDash([]);
+    }
+  }
   // CV-013: snap guides across the composition, 1 CSS px at any zoom.
   if (source.guides?.length) {
     context.setTransform(...pixels);

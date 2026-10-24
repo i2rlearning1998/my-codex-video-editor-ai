@@ -1,3 +1,4 @@
+import { plannedReason } from './planned';
 import { createFilterPreview } from './right-panel/filter-preview';
 // H4: the right panel (Clipchamp). I4: an always-visible icon rail with
 // tabs per selection. The first tab is named after what is selected
@@ -1311,7 +1312,7 @@ export function mountRightPanel(
     const [id, wave] = plannedSection(section, session)!;
     const tag = document.createElement('span');
     tag.className = 'quiet-tag';
-    tag.textContent = t('toolbar.later', { wave: String(wave), id });
+    tag.textContent = plannedReason(wave, id);
     return [
       heading(
         t(`panel.${section.toLowerCase()}`),
@@ -1324,7 +1325,7 @@ export function mountRightPanel(
   const plannedNote = (wave: string, id: string) => {
     const tag = document.createElement('span');
     tag.className = 'quiet-tag';
-    tag.textContent = t('toolbar.later', { wave, id });
+    tag.textContent = plannedReason(wave, id);
     return tag;
   };
   /** Disabled settings of a planned effect (the shared NumberField). */
@@ -1347,7 +1348,7 @@ export function mountRightPanel(
         className: 'right-row right-row-planned',
         onCommit: () => undefined,
       });
-      field.title = t('toolbar.later', { wave, id: ledger });
+      field.title = plannedReason(wave, ledger);
       return field;
     });
   // --- T-ALL P6: the FX library (filters, effects, adjustments) -------------
