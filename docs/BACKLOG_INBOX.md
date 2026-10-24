@@ -80,3 +80,5 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - X5: rotated vector shapes rasterize with slightly different anti-aliased edges in the editor view and in the export frame (up to 31/255 on the example cards' edges at 100 % zoom), independent of code layers.
 - X3: code layers have no live (unbaked) render while scrubbing for seekable or Tier B code (the spec's "may"); they show the nearest baked frame until the bake reaches the playhead.
 - code-layer-poc ANI-003 (blocks gallery scrub 3→1→3) times out at 30 s in this sandbox, also on claude/x-series; the test serializes the whole preview canvas (backlog: compare a hash in the page).
+
+- FIX5 P1 (Claude UI): wire plan-build-dialog and composition-card drop to the cooperative composition builder's signal/onProgress; cancel on close and honor Settings animations. These call sites are outside Codex ownership; browser <200 ms responsiveness proof remains outstanding.
