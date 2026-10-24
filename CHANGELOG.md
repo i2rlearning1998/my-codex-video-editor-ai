@@ -412,3 +412,11 @@ Initial Phase 1 / Tier 1 foundation in an empty repository.
 - Documented architecture, future development rules, limitations, and the recommended next milestone.
 
 Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infrastructure remain outside this release.
+
+## FIX5 engine draft — 2026-10-24
+
+- Stage composition commands and yield during construction; expose cancellable progress.
+- Bound reusable image/shape preview processing and cache; leave export full-resolution.
+- Preview filter intensity/hover without undo until release.
+- Ignore image decode/URL completions after media disposal.
+- Browser acceptance remains outstanding; see FIX5-CODEX report.

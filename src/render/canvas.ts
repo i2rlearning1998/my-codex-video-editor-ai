@@ -1,3 +1,4 @@
+import { createProcessedCache, frameIdentity } from './processed-cache';
 import { processChromaFrame } from '../chroma/process';
 import { drawMaskedItems } from '../masks/render';
 import { drawStructuredText } from '../text-engine/draw';
@@ -263,6 +264,11 @@ export class Canvas2DRenderer implements CompositionRenderer {
  * selection) look disabled; 0.6 reads as "outside the page" but still active.
  */
 const OUTSIDE_FADE = 0.6;
+const processedPreviews = new WeakMap<
+  object,
+  ReturnType<typeof createProcessedCache<OffscreenCanvas>>
+>();
+
 export interface DrawOptions {
   /** Selection handles and the composition border (false for export, W5-A). */
   readonly overlays?: boolean;
@@ -449,13 +455,23 @@ export function drawComposition(
   const base = lens
     ? multiplyMatrices(view, invertMatrix(lens) ?? IDENTITY_MATRIX)
     : view;
-  const contentFor = (item: RenderItem): AffineMatrix =>
+  let processingScale = 1;
+  const rawContentFor = (item: RenderItem): AffineMatrix =>
     rig
       ? multiplyMatrices(
           base,
           cameraMatrixFor(rig, frame, item.depth ?? 0) as AffineMatrix,
         )
       : content;
+  const scaled = (matrix: AffineMatrix): AffineMatrix =>
+    processingScale === 1
+      ? matrix
+      : multiplyMatrices(
+          [processingScale, 0, 0, processingScale, 0, 0],
+          matrix,
+        );
+  const contentFor = (item: RenderItem): AffineMatrix =>
+    scaled(rawContentFor(item));
   /** FINAL3 C1: Clip Start / End: a layer out of range is not drawn. */
   const clipped = (item: RenderItem) =>
     !!rig && !insideClip(rig.spec, rig.pose, frame, item.depth ?? 0);
@@ -596,7 +612,8 @@ export function drawComposition(
         frame = processChromaFrame(
           frame,
           item.chromaKey,
-          source.chromaQuality ?? 'full',
+          source.chromaQuality ??
+            (options.overlays === false ? 'full' : 'fast'),
         );
       // H3: cropping shows the whole source dimmed and the kept part bright.
       if (item.cropView) {
@@ -721,7 +738,11 @@ export function drawComposition(
   // scratch canvas at the output's pixel size, processed by the FX library
   // and composited once. Preview and export share this path.
   const byId = new Map(items.map((item) => [item.id, item]));
-  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
+  const paintItems = (
+    context: Target,
+    fade: number,
+    only?: (item: RenderItem) => boolean,
+  ) => {
     const selected = items
       .filter(
         (item) =>
@@ -740,7 +761,7 @@ export function drawComposition(
               ...item,
               maskScopes: item.maskScopes.map((scope) => ({
                 ...scope,
-                matrix: multiplyMatrices(content, scope.matrix),
+                matrix: multiplyMatrices(scaled(content), scope.matrix),
               })),
             }
           : item,
@@ -760,7 +781,7 @@ export function drawComposition(
               paintItem,
               item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
               errors,
-              fxFrame,
+              { ...fxFrame, matrix: scaled(fxFrame.matrix) },
             )
           )
             return;
@@ -788,11 +809,132 @@ export function drawComposition(
           paintItem,
           item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
           errors,
-          fxFrame,
+          { ...fxFrame, matrix: scaled(fxFrame.matrix) },
         )
       )
         continue;
       paintItem(context, item, fade);
+    }
+  };
+  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
+    // Cache complete processed passes, including masks/chroma, only where the
+    // inputs are immutable. Videos/canvases and text (font loading) bypass it.
+    const reusable =
+      options.overlays !== false &&
+      !source.playing &&
+      typeof OffscreenCanvas !== 'undefined' &&
+      items.some(
+        (item) => item.fx || item.chromaKey || item.maskScopes?.length,
+      ) &&
+      items.every(
+        (item) =>
+          item.kind !== 'text' &&
+          (!item.fx?.blendMode || item.fx.blendMode === 'blend.normal') &&
+          !item.maskScopes?.some(
+            (scope) => scope.blendMode && scope.blendMode !== 'normal',
+          ) &&
+          (!item.media || item.media.kind === 'image'),
+      );
+    const mediaItems = items.filter((item) => item.media);
+    const media = reusable
+      ? mediaItems.map((item) => source.frames?.frame(item.media!, false))
+      : [];
+    if (
+      !reusable ||
+      media.some(
+        (frame, index) =>
+          !frame ||
+          !(
+            (typeof ImageBitmap !== 'undefined' &&
+              frame instanceof ImageBitmap &&
+              frame.width > 0) ||
+            (typeof HTMLImageElement !== 'undefined' &&
+              frame instanceof HTMLImageElement &&
+              frame.complete &&
+              frame.naturalWidth > 0 &&
+              frame.src.startsWith('blob:') &&
+              ['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(
+                String(
+                  (
+                    source.assets as unknown as readonly {
+                      id: string;
+                      metadata: Readonly<Record<string, unknown>>;
+                    }[]
+                  ).find(
+                    (asset) => asset.id === mediaItems[index]!.media!.assetId,
+                  )?.metadata.mimeType ?? '',
+                ),
+              ))
+          ),
+      )
+    ) {
+      paintItems(context, fade, only);
+      return;
+    }
+    const width = context.canvas.width,
+      height = context.canvas.height;
+    const scale = Math.min(1, Math.sqrt(921600 / (width * height)));
+    const processWidth = Math.max(1, Math.floor(width * scale));
+    const processHeight = Math.max(1, Math.floor(height * scale));
+    const bytes = processWidth * processHeight * 4;
+    if (bytes > 24 * 1024 * 1024) {
+      paintItems(context, fade, only);
+      return;
+    }
+    let cache = processedPreviews.get(context.canvas);
+    if (!cache) {
+      cache = createProcessedCache<OffscreenCanvas>(
+        24 * 1024 * 1024,
+        (canvas) => {
+          canvas.width = canvas.height = 0;
+        },
+      );
+      processedPreviews.set(context.canvas, cache);
+    }
+    const key = JSON.stringify([
+      width,
+      height,
+      items,
+      items.map(contentFor),
+      items.filter((item) => !only || only(item)).map((item) => item.id),
+      fade,
+      source.chromaQuality,
+      source.missingLabel,
+      source.currentTime,
+      media.map((frame) => [
+        frameIdentity(frame!),
+        typeof HTMLImageElement !== 'undefined' &&
+        frame instanceof HTMLImageElement
+          ? frame.currentSrc || frame.src
+          : null,
+        (frame as ImageBitmap).width,
+        (frame as ImageBitmap).height,
+      ]),
+    ]);
+    let canvas = cache.get(key);
+    if (!canvas) {
+      canvas = new OffscreenCanvas(processWidth, processHeight);
+      const target = canvas.getContext('2d');
+      if (!target) {
+        paintItems(context, fade, only);
+        return;
+      }
+      const before = errors.length;
+      processingScale = scale;
+      try {
+        paintItems(target, fade, only);
+      } finally {
+        processingScale = 1;
+      }
+      if (errors.length === before) cache.set(key, canvas, bytes);
+    }
+    context.save();
+    try {
+      context.setTransform(1, 0, 0, 1, 0, 0);
+      context.globalAlpha = 1;
+      context.drawImage(canvas, 0, 0, width, height);
+    } finally {
+      context.restore();
     }
   };
   // G3: in the editor (not export), what lies outside the composition shows

@@ -1,0 +1,2282 @@
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index 74278da..ada4e07 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -412,3 +412,11 @@ Initial Phase 1 / Tier 1 foundation in an empty repository.
+ - Documented architecture, future development rules, limitations, and the recommended next milestone.
+ 
+ Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infrastructure remain outside this release.
++
++## FIX5 engine draft — 2026-10-24
++
++- Stage composition commands and yield during construction; expose cancellable progress.
++- Bound reusable image/shape preview processing and cache; leave export full-resolution.
++- Preview filter intensity/hover without undo until release.
++- Ignore image decode/URL completions after media disposal.
++- Browser acceptance remains outstanding; see FIX5-CODEX report.
+diff --git a/docs/BACKLOG_INBOX.md b/docs/BACKLOG_INBOX.md
+index 1018fbb..e0d1036 100644
+--- a/docs/BACKLOG_INBOX.md
++++ b/docs/BACKLOG_INBOX.md
+@@ -80,3 +80,6 @@ Codex appends here and never builds from it. Claude triages into the ledger with
+ - X5: rotated vector shapes rasterize with slightly different anti-aliased edges in the editor view and in the export frame (up to 31/255 on the example cards' edges at 100 % zoom), independent of code layers.
+ - X3: code layers have no live (unbaked) render while scrubbing for seekable or Tier B code (the spec's "may"); they show the nearest baked frame until the bake reaches the playhead.
+ - code-layer-poc ANI-003 (blocks gallery scrub 3→1→3) times out at 30 s in this sandbox, also on claude/x-series; the test serializes the whole preview canvas (backlog: compare a hash in the page).
++
++- FIX5 P1 (Claude UI): wire plan-build-dialog and composition-card drop to the cooperative composition builder's signal/onProgress; cancel on close and honor Settings animations. These call sites are outside Codex ownership; browser <200 ms responsiveness proof remains outstanding.
++- FIX5 P2/P4: browser-proof mask/chroma/FX timing and exact export pixels at 1080p/portrait still needed; preview cache intentionally excludes video/text/backdrop blends. MediaFrames URL/image maps key by asset id, so relinking bytes under an unchanged id needs explicit fingerprint invalidation; decoder event listeners should also be detached on release (follow-up regression needed).
+diff --git a/docs/DECISIONS.md b/docs/DECISIONS.md
+index f8c0c54..b4085bf 100644
+--- a/docs/DECISIONS.md
++++ b/docs/DECISIONS.md
+@@ -266,3 +266,8 @@ Append-only log. New decisions get the next number. A superseded decision stays
+ | D-299 | 2026-10-21 | FINAL3 C5: `cameraShotsCommands(project, plans, ids?)` is the plain-data hook; a Composition Spec scene may hold `cameraShots` (optional, validated against the controller and easing lists, which live in `src/ai-spec/camera-names.ts` so ai-spec keeps no imports outside itself). Plan builds pass a deterministic id generator.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Owner FINAL3 brief, C5.                                                                                                                                                                                                                                                                                                                                                                              | Approved                            |
+ | D-300 | 2026-10-21 | FINAL3 Part D Video Plan v2 (docs/video-plan.md). A plan (`format: 'video-plan'`, `version: 2`) is checked with plain sentences (unknown fields warn) and built headless: media resolved by `src/video-plan/resolve.ts` (project media, then stock; ranked by query words, orientation and kind, then key; four alternatives), voice by the first ready Text to speech engine (none: silent with a banner), scene length max(voice + 0.4 s, hint), captions from narration timing, layout by anchors, the starter kit as Composition Spec items, then the existing Composition Spec adapter builds the scenes (one validated path); fonts, In and Out presets, camera shots, audio roles (music ducks) and `planRef` and `planFlag` properties are set after. Build video adds the scenes in one step (the FIX1 rule). The plan state (plan with `resolved`, alternatives, flags, scene ids) is kept in this browser per project (`aive.videoPlan.<projectId>`), never in the project. Feel themes keep their extras beside the theme (`feel/<id>` in the media store); the project's current theme gives a plan the feel values it leaves out. The starter kit is listed in AI once the library holds a plan. Creator playbook chapter 07 is generated by `npm run docs:plan-cheatsheet`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Owner FINAL3 brief, Part D.                                                                                                                                                                                                                                                                                                                                                                          | Approved                            |
+ | D-301 | 2026-10-21 | FINAL3 final-verify fixes (the first full run had 30 e2e failures, 21 of them regressions from this round). (1) An old unwrapped text layer (no `textBox` yet, stored width and height) keeps its stored box (left-aligned: never smaller than its text and never wrapped; centred or right-aligned: its stored width, its stored height at least), and a corner drag scales that box with the font, so it is picked, outlined and marquee-selected exactly as before; a side handle or its double-click gives it a FINAL3 box; new text is auto width. This brought back TXT-003, TXT-004, TXT-023, CV-002, CV-003, CV-011, CV-040 to CV-042, CV-046, CV-058 to CV-060, LYR-001, QT-002, RA-001 to RA-003 and the `text-style.spec` boxes as they were. (2) The Text tab keeps the library's default text cards under the three Add buttons, and the library's own combinations lead the strip (TXT-001, TPL-012, QT-002). (3) Text copied inside the editor keeps its styles when pasted back; foreign text is still plain (TXT-003, T2.10). (4) The right rail's labels are 11 px again (D-196, LAY-059). (5) A canvas drop snapped to the centre or an edge drops float dust (CV-061). Test-only: the editor writes list markers itself, so TXT-024 reads the marker text; with the shorter timeline at 940 px (D-295) t1-drag closes toasts before picking up a card under them, PB-017 scrolls its clip into view, the mask handle test maps points with the hook's view matrix (exact) instead of the pixel-scanned artboard, and CODE-006 waits while a new bake is not yet listed. The earlier FINAL3 edits to TXT-036 and CV-037 that rebuilt old boxes by hand are undone (the old boxes are back).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Owner FINAL3 brief, Part E (full verify). Keeping old layers' stored boxes is T1.11's 'old layers migrate' without changing what users see.                                                                                                                                                                                                                                                          | Approved                            |
++
++### D-302 — FIX5 construction and preview processing (2026-10-24, proposed)
++
++Offline composition construction stages the existing validated semantic commands without per-command project validation/history snapshots; only its final project is published, after full validation. Draft reads are frozen copies. Yield every 24 layout commands and between scene effects; restore deterministic UUID scope before every yield. Ordinary editor Command Bus transactions retain their existing semantics.
++Preview-only processing may downscale reusable image/shape passes to 921,600 pixels and retain up to 24 MiB per canvas. Text, video, unknown/animated image formats and backdrop blends bypass that cache. Export bypasses both budget and cache. Pixel parity and browser performance are not claimed until browser proof passes.
+diff --git a/docs/STATUS.md b/docs/STATUS.md
+index 00aace4..e8a8044 100644
+--- a/docs/STATUS.md
++++ b/docs/STATUS.md
+@@ -114,3 +114,7 @@
+ - W2-F5 is on `claude/wave-2f5-text-styling`, stacked on W2-F4: the text toolbar sets the font (system fonts), weight, italic, alignment (including justify), line height, letter and paragraph spacing, and case. Verified: TXT-014, TXT-016, TXT-017 and CV-037 (reworded). TXT-010 is Claimed (no per-font weights or variable axes). The font picker stays in W3 (D-080). See reports/W2-F5.md.
+ - W5-D is on `claude/wave-5d-shapes`, stacked on W2-F5: the Elements category adds rectangles, rounded rectangles, ellipses, lines and arrows; the shape toolbar edits fill (with opacity or none), stroke (color, width, dash, caps, joins) and corner radius; two or more shapes combine by Union, Subtract, Intersect or Exclude. Verified: SHP-001, SHP-003, SHP-005, SHP-006, SHP-015 and CV-038 (reworded). New dependency: polygon-clipping 0.15.7 (MIT, D-081). See reports/W5-D.md.
+ - Schema is 4 on PR #3 and PR #4, and 5 from PR #5 on. The shell is still imperative DOM. The React migration of D-003 is approved but unscheduled (D-053).
++
++### FIX5-CODEX — draft, partial (2026-10-24)
++
++Cooperative composition construction, preview processing cache/budget, transient filter controls and disposed-media completion guards are on `codex/fix-5-engine`. No ledger item newly Verified. See `reports/FIX5-CODEX.md` for targeted tests, typecheck blockers and missing browser proof. Schema 9 unchanged.
+diff --git a/reports/FIX5-CODEX-HANDOFF.md b/reports/FIX5-CODEX-HANDOFF.md
+new file mode 100644
+index 0000000..040ce09
+--- /dev/null
++++ b/reports/FIX5-CODEX-HANDOFF.md
+@@ -0,0 +1,5 @@
++# FIX5-CODEX handoff
++
++Branch codex/fix-5-engine, target claude/fix-4. P1 partial (cooperative command staging, progress/cancel), P2 partial (bounded image/shape preview cache/budget), P3 implemented (preview + one release undo), P4 partial audit (disposed media completions fixed).
++44 targeted tests pass. Verify attempted once: formatting passed, stopped at typecheck. Own deep-type errors fixed; final typecheck reports only 3 missing @huggingface/transformers declarations in speech (not edited). Browser absent; no long-task, frame-time or pixel-parity proof.
++Next: restore installed speech dependency; browser proof for Circumference/drop/1080p+portrait, video/text processing performance; Claude-owned plan/drop progress wiring and motion-aware loader. See FIX5-CODEX.md and backlog. Do not claim complete/green; do not merge.
+diff --git a/reports/FIX5-CODEX.md b/reports/FIX5-CODEX.md
+new file mode 100644
+index 0000000..f3842f2
+--- /dev/null
++++ b/reports/FIX5-CODEX.md
+@@ -0,0 +1,140 @@
++# Report: FIX5-CODEX engine/performance (2026-10-24)
++
++## 1. Summary
++
++Draft, not ready to merge. Composition construction now stages semantic commands, validates the completed project and yields during layout. The composition slot dialog shows measured build progress and cancels its build on close/rebuild. Reusable preview passes have a pixel budget and bounded cache. Filter input/hover previews without history; release commits once. Late image decoding no longer wakes a disposed editor. Browser acceptance remains unproved.
++
++## 2. Scope and results
++
++| Part / ID | Result | Evidence |
++| --- | --- | --- |
++| P1 / F2-070, FN3-021 | Partial | `tests/fix5/composition.test.ts`: old documentary result equals new result, IDs/order/timing included; event-loop callback runs during build; cancellation restores UUID scope. |
++| P2 / FX-015 | Partial | `tests/fix5/processed-cache.test.ts`: hit/miss, invalidation keys, LRU memory bound and ownership. Existing renderer tests pass. Not a pixel/performance acceptance test. |
++| P3 / FX-004 | Implemented, browser proof missing | `tests/fix5/filter-preview.test.ts`: actual FX pixels differ before commit; canonical history remains empty; release creates one undo; cancel and undo restore. |
++| P4 / MED-006 | Partial audit; one bug fixed | `tests/fix5/media-dispose.test.ts`: fake delayed image decode does not notify after disposal. |
++
++Newly Verified ledger items: **0** (browser/verify criteria not met).
++
++### Measured numbers
++
++- Documentary-mini, Node/Vite SSR, one warmed measurement each, same process: **148.91 ms → 19.46 ms**. Output equality: **true**. This includes cooperative yields; it is not a browser long-task measurement or a statistical benchmark.
++- Initial cold measurements: 763.90 ms / 605.99 ms, dominated by lazy module loading; not a claimed renderer speedup.
++- Browser long tasks, click latency, 1920×1080 and portrait mask/chroma/blur/glow frame costs: **not measured**. Chromium launch failed because its executable is not installed.
++- Preview budget: 921,600 pixels; cache cap: 24 MiB per output canvas. These are configured limits, not measured performance.
++
++## 3. Checks (real tails)
++
++`npm run verify` invoked exactly once; exit **2**. Formatting passed, then typecheck failed. Our type inference errors were corrected afterward; only typecheck and targeted tests were rerun.
++
++```text
++npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
++
++> ai-native-video-editor@0.1.0 verify
++> npm run check && npm run e2e && node scripts/assert-no-test-hook.mjs && npm run ledger -- --report e2e-results/results.json
++
++npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
++
++> ai-native-video-editor@0.1.0 check
++> npm run format:check && npm run typecheck && npm test && npm run build
++
++npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
++
++> ai-native-video-editor@0.1.0 format:check
++> prettier --check .
++
++Checking formatting...
++All matched files use Prettier code style!
++npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
++
++> ai-native-video-editor@0.1.0 typecheck
++> tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json
++
++src/core/project-build.ts(19,5): error TS2589: Type instantiation is excessively deep and possibly infinite.
++src/speech/whisper.ts(165,22): error TS2307: Cannot find module '@huggingface/transformers' or its corresponding type declarations.
++src/speech/whisper.worker.ts(49,18): error TS2307: Cannot find module '@huggingface/transformers' or its corresponding type declarations.
++src/speech/whisper.worker.ts(78,20): error TS2307: Cannot find module '@huggingface/transformers' or its corresponding type declarations.
++```
++
++Final standalone typecheck, exit **2** (no errors in changed files):
++
++```text
++npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
++
++> ai-native-video-editor@0.1.0 typecheck
++> tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json
++
++src/speech/whisper.ts(165,22): error TS2307: Cannot find module '@huggingface/transformers' or its corresponding type declarations.
++src/speech/whisper.worker.ts(49,18): error TS2307: Cannot find module '@huggingface/transformers' or its corresponding type declarations.
++src/speech/whisper.worker.ts(78,20): error TS2307: Cannot find module '@huggingface/transformers' or its corresponding type declarations.
++```
++
++Final targeted run (only touched specs and regressions), exit **0**:
++
++```text
++npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
++
++ RUN  v4.1.11 /workspace/scratch/a2711b159a0a/my-codex-video-editor-ai
++
++
++ Test Files  8 passed (8)
++      Tests  44 passed (44)
++   Start at  18:29:49
++   Duration  4.69s (transform 5.69s, setup 0ms, import 7.63s, tests 3.68s, environment 1ms)
++```
++
++Earlier per-part runs: P1 9 passed; P2 29 passed; P3 5 passed; P4 30 passed. These overlap; do not add them. Full unit suite, build, e2e, hook assertion and ledger were **not reached**. CI not polled. No ledger-red claim; the gate did not run. The known sandbox flakes were not chased.
++
++## 4. Try-it script for the owner
++
++| # | Do this | Expect | ID | Codex ran in browser | Screenshot |
++| --- | --- | --- | --- | --- | --- |
++| 1 | Import documentary-mini composition; open Build video | Progress advances; cancel closes and stops construction | F2-070 | N | None |
++| 2 | Reopen and add the scenes, then undo | Existing single add transaction is undone; IDs/order/timing preserved | F2-070 | N | None |
++| 3 | Apply mask/chroma/filter to a PNG; redraw paused | Reuses processed pass; editing settings invalidates it | FX-015 | N | None |
++| 4 | Drag filter intensity, pause before release | Canvas changes before release; release adds one undo | FX-004 | N | None |
++| 5 | Hover another filter, then leave | Transient preview clears without history | FX-004 | N | None |
++
++These are owner acceptance steps, not completed browser proof.
++
++## 5. Deviations from the brief
++
++- Circumference plan was not found in the fixture locations searched; documentary-mini was used. No fabricated Circumference result.
++- Plan Build video's finisher and dialog/card wiring are outside the owned files. Backlog requests the Claude-owned call sites consume `signal`/`onProgress`. This does not establish the full drop flow fix.
++- Progress uses a native progress bar and step/percent text; the requested motion-aware SVG/CSS loader is not implemented.
++- Preview caching/budget currently covers reusable immutable image/shape passes. Video, text, non-normal backdrop blends and animated/unknown image formats bypass it. No claim that all reported lag is resolved.
++- P4 was a focused media/cache inspection, not an exhaustive one-hour audit.
++- No release tag or new Verified statuses: draft acceptance is incomplete. No merge.
++
++## 6. Decisions made
++
++D-302 (proposed) in `docs/DECISIONS.md`: isolated command staging with frozen draft reads, cooperative layout, bounded preview processing, export bypass. No change to ordinary EditorEngine transaction validation/history semantics.
++
++## 7. Not tested, known gaps, risks
++
++No real-browser responsiveness, animation loader, drag/drop, pixel parity, 60 ms frame budget or GPU behavior proof. Full project validation and library/camera/theme finishing still execute synchronously; unusually large individual commands may exceed a frame budget. A cached pass is eligible only with normal backdrop compositing. Full-resolution export remains on the existing path, but exact export pixels have not been compared in a browser. Paused playhead changes currently invalidate the cache conservatively. The media decoder's live URL/image maps still need fingerprint invalidation after relinking, and video event listeners need release cleanup (backlog). Speech typecheck is blocked by missing installed transformer dependency; speech files were not edited.
++
++## 8. Architecture and contract impact
++
++- Schema **9 unchanged**; no dependencies added.
++- `BuildOptions` adds optional `signal` and `onProgress({step, percent})`; abort rejects with the signal's reason. Invalid-input reports keep their existing shape.
++- `ProjectBuild` applies the existing command validators/handlers to an isolated offline project; `state` returns frozen copies, `finish` validates. Published editor edits still use Command Bus.
++- New `createProcessedCache`/`frameIdentity` renderer helpers; `createFilterPreview` uses `engine.preview` and session previewSource.
++- Existing engine/render/media files touched: `src/composition/build.ts`, `src/render/canvas.ts`, `src/media/frames.ts`. No export file edits. Core staging is new `src/core/project-build.ts`.
++- UI edits limited to owned composition dialog and Filters portions of right panel plus FX tile/slider callbacks. No speech/audio/library-card/Adjust list edits.
++
++## 9. Ledger and backlog
++
++No ledger statuses changed and no LCR applied. Two FIX5 backlog bullets record the out-of-ownership UI integration and renderer/media follow-ups. STATUS/CHANGELOG record draft status only.
++
++## 10. Git
++
++Branch `codex/fix-5-engine`, base/PR target `claude/fix-4`. Per-part changes committed and published through GitHub tree/commit/update-ref after shell push failed for credentials. One draft PR; not merged. Review patch/stat accompany this report.
++
++## Owner tick-list
++
++| ID | OK / BUG / MISSING / CHANGE | One sentence |
++| --- | --- | --- |
++| F2-070 / FN3-021 | | |
++| FX-015 | | |
++| FX-004 | | |
++| MED-006 | | |
+diff --git a/src/composition/build.ts b/src/composition/build.ts
+index 6c3f58d..ad41ceb 100644
+--- a/src/composition/build.ts
++++ b/src/composition/build.ts
+@@ -11,7 +11,6 @@
+ import {
+   createComposition,
+   createLayer,
+-  EditorEngine,
+   maxSceneTransition,
+   sceneTransitionLabel,
+   SCHEMA_VERSION,
+@@ -21,6 +20,7 @@ import {
+   type DeepReadonly,
+   type Project,
+ } from '../core';
++import { ProjectBuild } from '../core/project-build';
+ import { cameraFromTracks } from '../camera/scene';
+ import type { CameraShotPlan } from '../camera/shots';
+ import type { Shot } from '../camera/rig';
+@@ -70,6 +70,8 @@ export interface CaptionsContext {
+ export type CaptionsHook = (context: CaptionsContext) => readonly Command[];
+ 
+ export interface BuildOptions {
++  readonly signal?: AbortSignal;
++  readonly onProgress?: (progress: { step: string; percent: number }) => void;
+   /** Slot id → fill; a `SlotFills` (createSlotFills) is accepted too. */
+   readonly slotFills?: Readonly<Record<string, SlotFill>> | SlotFills;
+   readonly style?: DeepReadonly<StyleData> | null;
+@@ -176,11 +178,11 @@ function seededIds(seed: string) {
+   return () =>
+     `${prefix}-0000-4000-8000-${(++counter).toString(16).padStart(12, '0')}`;
+ }
+-function withIds<T>(seed: string, run: () => T): T {
++function withIds<T>(ids: () => string, run: () => T): T {
+   const crypto = globalThis.crypto as Crypto & { randomUUID: () => string };
+   const own = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
+   Object.defineProperty(crypto, 'randomUUID', {
+-    value: seededIds(seed),
++    value: ids,
+     configurable: true,
+     writable: true,
+   });
+@@ -284,6 +286,7 @@ export async function buildProjectFromComposition(
+   input: unknown,
+   options: BuildOptions = {},
+ ): Promise<BuildResult> {
++  options.signal?.throwIfAborted();
+   const warnings: BuildWarning[] = [];
+   const missing: BuildMissing[] = [];
+   const warn = (code: BuildWarning['code'], message: string) =>
+@@ -483,10 +486,14 @@ export async function buildProjectFromComposition(
+     )
+       warn('not-built', line);
+ 
+-  const project = withIds(spec.id, () => {
+-    const engine = new EditorEngine(base, { now: () => now });
+-    const run = (label: string, commands: readonly Command[]) => {
+-      if (commands.length) engine.commands.transaction(label, commands);
++  const build = function* (): Generator<string, Project> {
++    const engine = new ProjectBuild(base);
++    const run = (_label: string, commands: readonly Command[]) => {
++      if (commands.length) {
++        // Reserve the old history UUID so generated layer IDs stay identical.
++        crypto.randomUUID();
++        engine.apply(commands);
++      }
+     };
+     // Assets of the filled slots.
+     const added = new Set<string>();
+@@ -501,13 +508,18 @@ export async function buildProjectFromComposition(
+         };
+       run('Add asset', [{ type: 'ADD_ASSET', asset }]);
+     }
+-    run('Build composition', tier.commands);
++    crypto.randomUUID();
++    for (let offset = 0; offset < tier.commands.length; offset += 24) {
++      engine.apply(tier.commands.slice(offset, offset + 24));
++      yield 'Lay out scenes';
++    }
+     run('Remove base scene', [
+       { type: 'DELETE_COMPOSITION', compositionId: BASE_ID },
+     ]);
+ 
+     // Effects on the built items (the clip's id seeds them, not the spec's).
+-    spec.scenes.forEach((scene, sceneIndex) => {
++    for (const [sceneIndex, scene] of spec.scenes.entries()) {
++      yield `Scene ${sceneIndex + 1} of ${spec.scenes.length}`;
+       for (const item of scene.items) {
+         const clipId = builtClips.get(`${sceneIndex}/${item.id}`);
+         if (!clipId || !item.fx.length) continue;
+@@ -555,7 +567,7 @@ export async function buildProjectFromComposition(
+           },
+         ]);
+       }
+-    });
++    }
+ 
+     // FINAL3 C5: camera shots go on each scene's Camera track; a target
+     // names an item of the scene (its built layer).
+@@ -868,8 +880,29 @@ export async function buildProjectFromComposition(
+       );
+       run('Apply theme', commands as unknown as Command[]);
+     }
+-    return validateProject(structuredClone(engine.state));
+-  });
++    yield 'Validate project';
++    return engine.finish();
++  };
++  const iterator = build();
++  const ids = seededIds(spec.id);
++  let completed = 0;
++  const total = Math.ceil(tier.commands.length / 24) + spec.scenes.length + 1;
++  let project: Project;
++  while (true) {
++    options.signal?.throwIfAborted();
++    const next = withIds(ids, () => iterator.next());
++    if (next.done) {
++      project = next.value;
++      break;
++    }
++    options.onProgress?.({
++      step: next.value,
++      percent: Math.min(99, Math.round((++completed / total) * 99)),
++    });
++    await new Promise<void>((resolve) => setTimeout(resolve, 0));
++  }
++  options.signal?.throwIfAborted();
++  options.onProgress?.({ step: 'Ready', percent: 100 });
+   return { project, warnings, missing, errors: [] };
+ }
+ 
+diff --git a/src/core/project-build.ts b/src/core/project-build.ts
+new file mode 100644
+index 0000000..3ce1679
+--- /dev/null
++++ b/src/core/project-build.ts
+@@ -0,0 +1,39 @@
++import { CommandBus } from './engine';
++import { applyCommand, validateCommand, type Command } from './commands';
++import {
++  assertJson,
++  freeze,
++  validateProject,
++  type DeepReadonly,
++  type Project,
++} from './model';
++
++/** Offline construction only: no published state, listeners or history snapshots.
++ * Uses the same command handlers as CommandBus. The complete draft is validated
++ * before it can be installed through the live editor's command bus.
++ */
++export class ProjectBuild {
++  #draft: Project;
++  readonly #commands: CommandBus;
++  constructor(base: Project) {
++    this.#draft = structuredClone(base);
++    this.#commands = new CommandBus((commands) => {
++      assertJson(commands);
++      return commands.map((command) => {
++        applyCommand(this.#draft, validateCommand(command));
++        return null;
++      });
++    });
++  }
++  get state(): DeepReadonly<Project> {
++    return freeze(
++      structuredClone(this.#draft),
++    ) as unknown as DeepReadonly<Project>;
++  }
++  apply(commands: readonly Command[]): void {
++    this.#commands.transaction('Build composition', commands);
++  }
++  finish(): Project {
++    return validateProject(this.#draft);
++  }
++}
+diff --git a/src/media/frames.ts b/src/media/frames.ts
+index 7e0fa44..f332ea7 100644
+--- a/src/media/frames.ts
++++ b/src/media/frames.ts
+@@ -142,11 +142,16 @@ export class MediaFrames implements FrameProvider {
+       return URL.createObjectURL(typed);
+     })().then(
+       (url) => {
++        if (this.#disposed) {
++          if (url) URL.revokeObjectURL(url);
++          return null;
++        }
+         this.#urls.set(assetId, url);
+         if (url) this.changed();
+         return url;
+       },
+       () => {
++        if (this.#disposed) return null;
+         this.#urls.set(assetId, null);
+         return null;
+       },
+@@ -164,10 +169,13 @@ export class MediaFrames implements FrameProvider {
+     image.src = url;
+     image.decode().then(
+       () => {
++        if (this.#disposed) return;
+         this.#images.set(assetId, image);
+         this.changed();
+       },
+-      () => this.#images.set(assetId, null),
++      () => {
++        if (!this.#disposed) this.#images.set(assetId, null);
++      },
+     );
+     return null;
+   }
+diff --git a/src/render/canvas.ts b/src/render/canvas.ts
+index 05c26a1..6e0e247 100644
+--- a/src/render/canvas.ts
++++ b/src/render/canvas.ts
+@@ -1,3 +1,4 @@
++import { createProcessedCache, frameIdentity } from './processed-cache';
+ import { processChromaFrame } from '../chroma/process';
+ import { drawMaskedItems } from '../masks/render';
+ import { drawStructuredText } from '../text-engine/draw';
+@@ -263,6 +264,11 @@ export class Canvas2DRenderer implements CompositionRenderer {
+  * selection) look disabled; 0.6 reads as "outside the page" but still active.
+  */
+ const OUTSIDE_FADE = 0.6;
++const processedPreviews = new WeakMap<
++  object,
++  ReturnType<typeof createProcessedCache<OffscreenCanvas>>
++>();
++
+ export interface DrawOptions {
+   /** Selection handles and the composition border (false for export, W5-A). */
+   readonly overlays?: boolean;
+@@ -449,13 +455,23 @@ export function drawComposition(
+   const base = lens
+     ? multiplyMatrices(view, invertMatrix(lens) ?? IDENTITY_MATRIX)
+     : view;
+-  const contentFor = (item: RenderItem): AffineMatrix =>
++  let processingScale = 1;
++  const rawContentFor = (item: RenderItem): AffineMatrix =>
+     rig
+       ? multiplyMatrices(
+           base,
+           cameraMatrixFor(rig, frame, item.depth ?? 0) as AffineMatrix,
+         )
+       : content;
++  const scaled = (matrix: AffineMatrix): AffineMatrix =>
++    processingScale === 1
++      ? matrix
++      : multiplyMatrices(
++          [processingScale, 0, 0, processingScale, 0, 0],
++          matrix,
++        );
++  const contentFor = (item: RenderItem): AffineMatrix =>
++    scaled(rawContentFor(item));
+   /** FINAL3 C1: Clip Start / End: a layer out of range is not drawn. */
+   const clipped = (item: RenderItem) =>
+     !!rig && !insideClip(rig.spec, rig.pose, frame, item.depth ?? 0);
+@@ -596,7 +612,8 @@ export function drawComposition(
+         frame = processChromaFrame(
+           frame,
+           item.chromaKey,
+-          source.chromaQuality ?? 'full',
++          source.chromaQuality ??
++            (options.overlays === false ? 'full' : 'fast'),
+         );
+       // H3: cropping shows the whole source dimmed and the kept part bright.
+       if (item.cropView) {
+@@ -721,7 +738,11 @@ export function drawComposition(
+   // scratch canvas at the output's pixel size, processed by the FX library
+   // and composited once. Preview and export share this path.
+   const byId = new Map(items.map((item) => [item.id, item]));
+-  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
++  const paintItems = (
++    context: Target,
++    fade: number,
++    only?: (item: RenderItem) => boolean,
++  ) => {
+     const selected = items
+       .filter(
+         (item) =>
+@@ -740,7 +761,7 @@ export function drawComposition(
+               ...item,
+               maskScopes: item.maskScopes.map((scope) => ({
+                 ...scope,
+-                matrix: multiplyMatrices(content, scope.matrix),
++                matrix: multiplyMatrices(scaled(content), scope.matrix),
+               })),
+             }
+           : item,
+@@ -760,7 +781,7 @@ export function drawComposition(
+               paintItem,
+               item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
+               errors,
+-              fxFrame,
++              { ...fxFrame, matrix: scaled(fxFrame.matrix) },
+             )
+           )
+             return;
+@@ -788,13 +809,134 @@ export function drawComposition(
+           paintItem,
+           item.fxTransition ? byId.get(item.fxTransition.from) : undefined,
+           errors,
+-          fxFrame,
++          { ...fxFrame, matrix: scaled(fxFrame.matrix) },
+         )
+       )
+         continue;
+       paintItem(context, item, fade);
+     }
+   };
++  const drawItems = (fade: number, only?: (item: RenderItem) => boolean) => {
++    // Cache complete processed passes, including masks/chroma, only where the
++    // inputs are immutable. Videos/canvases and text (font loading) bypass it.
++    const reusable =
++      options.overlays !== false &&
++      !source.playing &&
++      typeof OffscreenCanvas !== 'undefined' &&
++      items.some(
++        (item) => item.fx || item.chromaKey || item.maskScopes?.length,
++      ) &&
++      items.every(
++        (item) =>
++          item.kind !== 'text' &&
++          (!item.fx?.blendMode || item.fx.blendMode === 'blend.normal') &&
++          !item.maskScopes?.some(
++            (scope) => scope.blendMode && scope.blendMode !== 'normal',
++          ) &&
++          (!item.media || item.media.kind === 'image'),
++      );
++    const mediaItems = items.filter((item) => item.media);
++    const media = reusable
++      ? mediaItems.map((item) => source.frames?.frame(item.media!, false))
++      : [];
++    if (
++      !reusable ||
++      media.some(
++        (frame, index) =>
++          !frame ||
++          !(
++            (typeof ImageBitmap !== 'undefined' &&
++              frame instanceof ImageBitmap &&
++              frame.width > 0) ||
++            (typeof HTMLImageElement !== 'undefined' &&
++              frame instanceof HTMLImageElement &&
++              frame.complete &&
++              frame.naturalWidth > 0 &&
++              frame.src.startsWith('blob:') &&
++              ['image/png', 'image/jpeg', 'image/webp', 'image/avif'].includes(
++                String(
++                  (
++                    source.assets as unknown as readonly {
++                      id: string;
++                      metadata: Readonly<Record<string, unknown>>;
++                    }[]
++                  ).find(
++                    (asset) => asset.id === mediaItems[index]!.media!.assetId,
++                  )?.metadata.mimeType ?? '',
++                ),
++              ))
++          ),
++      )
++    ) {
++      paintItems(context, fade, only);
++      return;
++    }
++    const width = context.canvas.width,
++      height = context.canvas.height;
++    const scale = Math.min(1, Math.sqrt(921600 / (width * height)));
++    const processWidth = Math.max(1, Math.floor(width * scale));
++    const processHeight = Math.max(1, Math.floor(height * scale));
++    const bytes = processWidth * processHeight * 4;
++    if (bytes > 24 * 1024 * 1024) {
++      paintItems(context, fade, only);
++      return;
++    }
++    let cache = processedPreviews.get(context.canvas);
++    if (!cache) {
++      cache = createProcessedCache<OffscreenCanvas>(
++        24 * 1024 * 1024,
++        (canvas) => {
++          canvas.width = canvas.height = 0;
++        },
++      );
++      processedPreviews.set(context.canvas, cache);
++    }
++    const key = JSON.stringify([
++      width,
++      height,
++      items,
++      items.map(contentFor),
++      items.filter((item) => !only || only(item)).map((item) => item.id),
++      fade,
++      source.chromaQuality,
++      source.missingLabel,
++      source.currentTime,
++      media.map((frame) => [
++        frameIdentity(frame!),
++        typeof HTMLImageElement !== 'undefined' &&
++        frame instanceof HTMLImageElement
++          ? frame.currentSrc || frame.src
++          : null,
++        (frame as ImageBitmap).width,
++        (frame as ImageBitmap).height,
++      ]),
++    ]);
++    let canvas = cache.get(key);
++    if (!canvas) {
++      canvas = new OffscreenCanvas(processWidth, processHeight);
++      const target = canvas.getContext('2d');
++      if (!target) {
++        paintItems(context, fade, only);
++        return;
++      }
++      const before = errors.length;
++      processingScale = scale;
++      try {
++        paintItems(target, fade, only);
++      } finally {
++        processingScale = 1;
++      }
++      if (errors.length === before) cache.set(key, canvas, bytes);
++    }
++    context.save();
++    try {
++      context.setTransform(1, 0, 0, 1, 0, 0);
++      context.globalAlpha = 1;
++      context.drawImage(canvas, 0, 0, width, height);
++    } finally {
++      context.restore();
++    }
++  };
+   // G3: in the editor (not export), what lies outside the composition shows
+   // faintly, so it can be seen and selected; the artboard then covers it.
+   if (options.overlays !== false && !source.playing) {
+diff --git a/src/render/processed-cache.ts b/src/render/processed-cache.ts
+new file mode 100644
+index 0000000..cd54335
+--- /dev/null
++++ b/src/render/processed-cache.ts
+@@ -0,0 +1,51 @@
++/** Bounded LRU for owned preview surfaces. Export never consults this cache. */
++export function createProcessedCache<T>(
++  maxBytes = 24 * 1024 * 1024,
++  dispose: (value: T) => void = () => {},
++) {
++  const entries = new Map<string, { value: T; bytes: number }>();
++  let used = 0;
++  const remove = (key: string) => {
++    const entry = entries.get(key);
++    if (!entry) return;
++    entries.delete(key);
++    used -= entry.bytes;
++    dispose(entry.value);
++  };
++  return {
++    get(key: string): T | undefined {
++      const entry = entries.get(key);
++      if (!entry) return undefined;
++      entries.delete(key);
++      entries.set(key, entry);
++      return entry.value;
++    },
++    set(key: string, value: T, bytes: number): boolean {
++      if (!Number.isFinite(bytes) || bytes < 0 || bytes > maxBytes)
++        return false;
++      remove(key);
++      while (used + bytes > maxBytes && entries.size)
++        remove(entries.keys().next().value!);
++      entries.set(key, { value, bytes });
++      used += bytes;
++      return true;
++    },
++    clear() {
++      for (const key of entries.keys()) remove(key);
++    },
++    get bytes() {
++      return used;
++    },
++  };
++}
++
++const identities = new WeakMap<object, number>();
++let serial = 0;
++export function frameIdentity(frame: object): number {
++  let id = identities.get(frame);
++  if (id === undefined) {
++    id = ++serial;
++    identities.set(frame, id);
++  }
++  return id;
++}
+diff --git a/src/ui/composition-dialog.ts b/src/ui/composition-dialog.ts
+index fdadf9b..6f7a26b 100644
+--- a/src/ui/composition-dialog.ts
++++ b/src/ui/composition-dialog.ts
+@@ -54,7 +54,12 @@ export function openCompositionBuild(
+   const fills = createSlotFills(data);
+   let result: BuildResult | null = null;
+   let building = 0;
++  let controller: AbortController | null = null;
+   const handle = openModal({
++    onClose: () => {
++      controller?.abort();
++      building++;
++    },
+     titleText: t('composition.title', { name: item.name.en }),
+     bodyHtml: `
+       <div class="composition-build">
+@@ -76,15 +81,28 @@ export function openCompositionBuild(
+   const open = root.querySelector<HTMLButtonElement>('#composition-open')!;
+ 
+   const rebuild = async () => {
++    controller?.abort();
++    const active = (controller = new AbortController());
+     const mine = ++building;
+     add.disabled = open.disabled = true;
+-    report.textContent = t('composition.checking');
++    const progress = document.createElement('progress');
++    progress.max = 100;
++    progress.value = 0;
++    const status = document.createElement('span');
++    status.textContent = t('composition.checking');
++    report.replaceChildren(progress, status);
+     const built = await buildProjectFromComposition(data, {
++      signal: active.signal,
++      onProgress: ({ step, percent }) => {
++        if (mine !== building) return;
++        progress.value = percent;
++        status.textContent = `${step} — ${percent}%`;
++      },
+       slotFills: fills,
+       library: deps.library,
+       name: item.name.en,
+     }).catch((error: unknown) => {
+-      deps.report(error);
++      if (!active.signal.aborted) deps.report(error);
+       return null;
+     });
+     if (mine !== building) return;
+diff --git a/src/ui/right-panel.ts b/src/ui/right-panel.ts
+index 03176a0..454944c 100644
+--- a/src/ui/right-panel.ts
++++ b/src/ui/right-panel.ts
+@@ -1,3 +1,4 @@
++import { createFilterPreview } from './right-panel/filter-preview';
+ // H4: the right panel (Clipchamp). I4: an always-visible icon rail with
+ // tabs per selection. The first tab is named after what is selected
+ // (Canvas, Shape, Text, Image, Video, Audio, Group or Arrange) and holds its
+@@ -1372,6 +1373,7 @@ export function mountRightPanel(
+       }),
+     );
+   };
++  const filterPreview = createFilterPreview(engine, session, run);
+   /** V4: the last clicked tile per panel (its settings open under it). */
+   const lastTile: { filters: string | null; effects: string | null } = {
+     filters: null,
+@@ -1404,8 +1406,17 @@ export function mountRightPanel(
+           })),
+         ],
+         selected: (key) => key === current,
++        onPreview: (key) =>
++          safely(() => {
++            if (key === null) filterPreview.cancel();
++            else
++              filterPreview.preview((next) =>
++                applyPreset(next, key, intensity),
++              );
++          }),
+         onClick: (key) =>
+           safely(() => {
++            filterPreview.cancel();
+             lastTile.filters = key;
+             if (key === current) {
+               rerender();
+@@ -1417,14 +1428,25 @@ export function mountRightPanel(
+           }),
+         settingsFor: current === 'none' ? null : current,
+         settings: () =>
+-          intensitySlider(intensity, (value) =>
+-            safely(() =>
+-              setFx('Filter intensity', (next) => {
+-                for (const entry of next.stack)
+-                  if (isFilterEntry(entry))
+-                    entry.params = { ...entry.params, intensity: value };
+-              }),
+-            ),
++          intensitySlider(
++            intensity,
++            (value) =>
++              safely(() =>
++                filterPreview.commit('Filter intensity', (next) => {
++                  for (const entry of next.stack)
++                    if (isFilterEntry(entry))
++                      entry.params = { ...entry.params, intensity: value };
++                }),
++              ),
++            (value) =>
++              safely(() =>
++                filterPreview.preview((next) => {
++                  for (const entry of next.stack)
++                    if (isFilterEntry(entry))
++                      entry.params = { ...entry.params, intensity: value };
++                }),
++              ),
++            filterPreview.cancel,
+           ),
+       }),
+     ];
+@@ -1716,6 +1738,7 @@ export function mountRightPanel(
+   const rerender = () => api.render(lastSection);
+   const api = {
+     render(section: RightSection) {
++      filterPreview.cancel();
+       lastSection = section;
+       host.dataset.section = section;
+       host.dataset.kind = kindOf(session);
+diff --git a/src/ui/right-panel/filter-preview.ts b/src/ui/right-panel/filter-preview.ts
+new file mode 100644
+index 0000000..bab54cd
+--- /dev/null
++++ b/src/ui/right-panel/filter-preview.ts
+@@ -0,0 +1,51 @@
++import { clipFx, type ClipFx } from '../../core/fx';
++import type { Command, EditorEngine } from '../../core';
++import type { EditorSession } from '../session';
++import { selectedClips } from '../editing';
++import { guardCommands } from '../editor-mode';
++
++/** J3: transient filters always start from canonical state, never the last preview. */
++export function createFilterPreview(
++  engine: EditorEngine,
++  session: EditorSession,
++  commit: (label: string, commands: Command[]) => void,
++) {
++  let active = false;
++  const commands = (change: (fx: ClipFx) => void): Command[] =>
++    selectedClips(session.source, session.selectedIds).map(({ clip }) => {
++      const fx = structuredClone(
++        clipFx(clip as unknown as Parameters<typeof clipFx>[0]) ?? {
++          version: 1,
++          stack: [],
++        },
++      ) as ClipFx;
++      change(fx);
++      return {
++        type: 'SET_CLIP_FX',
++        compositionId: session.source.composition.id,
++        clipId: clip.id,
++        fx,
++      };
++    });
++  const cancel = () => {
++    if (active) {
++      active = false;
++      session.setPreview(null);
++    }
++  };
++  return {
++    preview(change: (fx: ClipFx) => void) {
++      const list = commands(change);
++      guardCommands(session, list);
++      const project = engine.preview(list);
++      active = true;
++      session.setPreview(project);
++    },
++    commit(label: string, change: (fx: ClipFx) => void) {
++      const list = commands(change);
++      cancel();
++      commit(label, list);
++    },
++    cancel,
++  };
++}
+diff --git a/src/ui/right-panel/fx-panels.ts b/src/ui/right-panel/fx-panels.ts
+index 086c707..47c43b2 100644
+--- a/src/ui/right-panel/fx-panels.ts
++++ b/src/ui/right-panel/fx-panels.ts
+@@ -341,6 +341,7 @@ export interface TileGridOptions {
+   readonly source: TileSource;
+   readonly selected: (key: string) => boolean;
+   readonly onClick: (key: string) => void;
++  readonly onPreview?: (key: string | null) => void;
+   /** The settings shown under the row of this tile, if any. */
+   readonly settingsFor: string | null;
+   readonly settings: () => HTMLElement | null;
+@@ -496,6 +497,11 @@ function tileElement(tile: Tile, options: TileGridOptions) {
+       });
+     }
+   }
++  item.addEventListener('pointerenter', () => options.onPreview?.(tile.key));
++  item.addEventListener('pointerleave', () => options.onPreview?.(null));
++  item.addEventListener('pointercancel', () => options.onPreview?.(null));
++  item.addEventListener('focus', () => options.onPreview?.(tile.key));
++  item.addEventListener('blur', () => options.onPreview?.(null));
+   item.addEventListener('click', () => options.onClick(tile.key));
+   return item;
+ }
+@@ -505,6 +511,8 @@ function tileElement(tile: Tile, options: TileGridOptions) {
+ export function intensitySlider(
+   value: number,
+   onCommit: (value: number) => void,
++  onPreview?: (value: number) => void,
++  onCancel?: () => void,
+ ) {
+   const block = document.createElement('div');
+   const label = document.createElement('label');
+@@ -522,7 +530,23 @@ export function intensitySlider(
+   const paint = () =>
+     range.style.setProperty('--fill', `${Number(range.value)}%`);
+   paint();
+-  range.addEventListener('input', paint);
++  range.addEventListener('input', () => {
++    paint();
++    onPreview?.(Number(range.value) / 100);
++  });
++  range.addEventListener('pointercancel', () => {
++    onCancel?.();
++    range.value = String(Math.round(value * 100));
++    paint();
++  });
++  range.addEventListener('blur', () => onCancel?.());
++  range.addEventListener('keydown', (event) => {
++    if (event.key === 'Escape') {
++      onCancel?.();
++      range.value = String(Math.round(value * 100));
++      paint();
++    }
++  });
+   range.addEventListener('change', () => onCommit(Number(range.value) / 100));
+   block.append(label, range);
+   return block;
+diff --git a/tests/fix5/composition.test.ts b/tests/fix5/composition.test.ts
+new file mode 100644
+index 0000000..177ebc8
+--- /dev/null
++++ b/tests/fix5/composition.test.ts
+@@ -0,0 +1,36 @@
++import { expect, it } from 'vitest';
++import { readFileSync } from 'node:fs';
++import { buildProjectFromComposition } from '../../src/composition';
++
++it('[F2-070] builds cooperatively without changing IDs, ordering or timing and cancels before publication', async () => {
++  const input: unknown = JSON.parse(
++    readFileSync('tests/fixtures/compositions/documentary-mini.json', 'utf8'),
++  );
++  const before: unknown = JSON.parse(
++    readFileSync('tests/fix5/fixtures/composition-before.json', 'utf8'),
++  );
++  let responded = false;
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  const progress: number[] = [];
++  const result = await buildProjectFromComposition(input, {
++    onProgress: ({ percent }) => {
++      progress.push(percent);
++      timer ??= setTimeout(() => {
++        responded = true;
++      }, 0);
++    },
++  });
++  expect(result).toEqual(before);
++  expect(responded).toBe(true);
++  expect(progress.at(-1)).toBe(100);
++  expect(progress).toEqual([...progress].sort((a, b) => a - b));
++  const controller = new AbortController();
++  const randomUUID = crypto.randomUUID;
++  await expect(
++    buildProjectFromComposition(input, {
++      signal: controller.signal,
++      onProgress: () => controller.abort(),
++    }),
++  ).rejects.toMatchObject({ name: 'AbortError' });
++  expect(crypto.randomUUID).toBe(randomUUID);
++});
+diff --git a/tests/fix5/filter-preview.test.ts b/tests/fix5/filter-preview.test.ts
+new file mode 100644
+index 0000000..0395650
+--- /dev/null
++++ b/tests/fix5/filter-preview.test.ts
+@@ -0,0 +1,58 @@
++import { expect, it } from 'vitest';
++import { readFileSync } from 'node:fs';
++import { deserializeProject, EditorEngine } from '../../src/core';
++import { EditorSession } from '../../src/ui/session';
++import { createFilterPreview } from '../../src/ui/right-panel/filter-preview';
++import { applyPreset } from '../../src/ui/right-panel/fx-panels';
++import { deriveRenderItems } from '../../src/render/adapter';
++import { renderStack, surface } from '../../src/fx';
++
++it('[FX-004] changes filter pixels before release and commits exactly one undo step', () => {
++  const engine = new EditorEngine(
++    deserializeProject(
++      readFileSync('tests/fixtures/projects/nle-example.json', 'utf8'),
++    ),
++  );
++  const session = new EditorSession(engine);
++  const clip = session.source.composition.tracks
++    .flatMap((track) => track.clips)
++    .find((clip) => clip.enabled)!;
++  session.select(clip.layerId);
++  const preview = createFilterPreview(engine, session, (label, commands) =>
++    engine.commands.transaction(label, commands),
++  );
++  const change =
++    (intensity: number) => (fx: Parameters<typeof applyPreset>[0]) =>
++      applyPreset(fx, 'retro', intensity);
++  preview.preview(change(0.3));
++  preview.preview(change(0.8));
++  expect(engine.history.undo).toHaveLength(0);
++  const fx = deriveRenderItems({
++    ...session.previewSource!,
++    animate: true,
++  }).items.find((item) => item.fx)?.fx;
++  expect(fx).toBeDefined();
++  const pixels = surface(1, 1);
++  pixels.data.set([40, 120, 230, 255]);
++  const changed = renderStack(pixels, fx!.stack, {
++    time: 0,
++    duration: 2,
++    seed: 0,
++    width: 1,
++    height: 1,
++  });
++  expect([...changed.data]).not.toEqual([...pixels.data]);
++  preview.commit('Filter intensity', change(0.8));
++  expect(engine.history.undo).toHaveLength(1);
++  expect(session.previewSource).toBeNull();
++  preview.preview(change(0.1));
++  preview.cancel();
++  expect(engine.history.undo).toHaveLength(1);
++  engine.undo();
++  expect(
++    deriveRenderItems({ ...session.source, animate: true }).items.some(
++      (item) => item.fx?.stack.length,
++    ),
++  ).toBe(false);
++  session.dispose();
++});
+diff --git a/tests/fix5/fixtures/composition-before.json b/tests/fix5/fixtures/composition-before.json
+new file mode 100644
+index 0000000..3aa8d4e
+--- /dev/null
++++ b/tests/fix5/fixtures/composition-before.json
+@@ -0,0 +1,1128 @@
++{
++  "project": {
++    "schemaVersion": 9,
++    "id": "composition-documentary-mini",
++    "metadata": {
++      "name": "Bees and honey",
++      "createdAt": "2026-01-01T00:00:00.000Z",
++      "updatedAt": "2026-01-01T00:00:00.000Z"
++    },
++    "settings": { "backgroundColor": "#000000", "audioSampleRate": 48000 },
++    "compositions": [
++      {
++        "id": "ais_documentary-mini_s0_c",
++        "name": "Cold open",
++        "width": 1920,
++        "height": 1080,
++        "fps": 25,
++        "duration": 5,
++        "backgroundColor": "#000000",
++        "layers": [
++          {
++            "id": "ais_documentary-mini_s0_bg_c",
++            "name": "Scene background",
++            "type": "shape",
++            "startTime": 0,
++            "duration": 5,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [0, 0],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1920,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1080,
++                "keyframes": []
++              },
++              "shapeKind": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "rectangle",
++                "keyframes": []
++              },
++              "manualColor_fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "boolean",
++                "value": true,
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#101219"
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          },
++          {
++            "id": "ais_documentary-mini_s0_i1_layer_c",
++            "name": "Question",
++            "type": "text",
++            "startTime": 1,
++            "duration": 4,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [260, 860],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1400,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 120,
++                "keyframes": []
++              },
++              "text": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "Where does honey come from?",
++                "keyframes": []
++              },
++              "fontSize": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 48,
++                "keyframes": []
++              },
++              "fontFamily": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "Arial",
++                "keyframes": []
++              },
++              "manualColor_fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "boolean",
++                "value": true,
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#f4efe6"
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          },
++          {
++            "id": "ais_documentary-mini_s0_i0_layer_c",
++            "name": "Archive photo",
++            "type": "shape",
++            "startTime": 0,
++            "duration": 5,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [0, 0],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "shapeKind": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "rectangle",
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#8a8f9e"
++              },
++              "fillOpacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0.18,
++                "keyframes": []
++              },
++              "stroke": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#8a8f9e"
++              },
++              "strokeWidth": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 4,
++                "keyframes": []
++              },
++              "strokeDash": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "dash",
++                "keyframes": []
++              },
++              "compositionSlot": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "archive",
++                "keyframes": []
++              },
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1920,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1080,
++                "keyframes": []
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          }
++        ],
++        "tracks": [
++          {
++            "id": "ais_documentary-mini_s0_i0_track_c",
++            "name": "Archive photo",
++            "type": "video",
++            "order": 0,
++            "enabled": true,
++            "locked": false,
++            "muted": false,
++            "clips": [
++              {
++                "id": "ais_documentary-mini_s0_i0_clip_c",
++                "name": "Archive photo",
++                "layerId": "ais_documentary-mini_s0_i0_layer_c",
++                "assetId": null,
++                "startTime": 0,
++                "duration": 5,
++                "sourceIn": 0,
++                "sourceOut": 5,
++                "enabled": true,
++                "speed": 1,
++                "transitionMetadata": {},
++                "effectMetadata": {},
++                "metadata": {
++                  "fx": {
++                    "version": 1,
++                    "stack": [
++                      {
++                        "id": "effect.filmic",
++                        "params": { "intensity": 1, "speed": 1, "grain": 14 }
++                      }
++                    ]
++                  }
++                }
++              }
++            ]
++          },
++          {
++            "id": "ais_documentary-mini_s0_i1_track_c",
++            "name": "Question",
++            "type": "text",
++            "order": 1,
++            "enabled": true,
++            "locked": false,
++            "muted": false,
++            "clips": [
++              {
++                "id": "ais_documentary-mini_s0_i1_clip_c",
++                "name": "Question",
++                "layerId": "ais_documentary-mini_s0_i1_layer_c",
++                "assetId": null,
++                "startTime": 1,
++                "duration": 4,
++                "sourceIn": 0,
++                "sourceOut": 4,
++                "enabled": true,
++                "speed": 1,
++                "transitionMetadata": {},
++                "effectMetadata": {},
++                "metadata": {}
++              }
++            ]
++          }
++        ],
++        "markers": [],
++        "audioTracks": [],
++        "camera": {
++          "x": {
++            "animated": true,
++            "constraints": [],
++            "type": "number",
++            "value": 0,
++            "keyframes": [
++              { "time": 0, "value": 0, "easing": "linear" },
++              { "time": 5, "value": 0, "easing": "hold" }
++            ]
++          },
++          "y": {
++            "animated": true,
++            "constraints": [],
++            "type": "number",
++            "value": 0,
++            "keyframes": [
++              { "time": 0, "value": 0, "easing": "linear" },
++              { "time": 5, "value": 0, "easing": "hold" }
++            ]
++          },
++          "zoom": {
++            "animated": true,
++            "constraints": [],
++            "type": "number",
++            "value": 1,
++            "keyframes": [
++              { "time": 0, "value": 1, "easing": "linear" },
++              { "time": 5, "value": 1.1, "easing": "hold" }
++            ]
++          },
++          "rotation": {
++            "animated": true,
++            "constraints": [],
++            "type": "number",
++            "value": 0,
++            "keyframes": [
++              { "time": 0, "value": 0, "easing": "linear" },
++              { "time": 5, "value": 0, "easing": "hold" }
++            ]
++          }
++        }
++      },
++      {
++        "id": "ais_documentary-mini_s1_c",
++        "name": "Chapter 1",
++        "width": 1920,
++        "height": 1080,
++        "fps": 25,
++        "duration": 6,
++        "backgroundColor": "#000000",
++        "layers": [
++          {
++            "id": "ais_documentary-mini_s1_bg_c",
++            "name": "Scene background",
++            "type": "shape",
++            "startTime": 0,
++            "duration": 6,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [0, 0],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1920,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1080,
++                "keyframes": []
++              },
++              "shapeKind": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "rectangle",
++                "keyframes": []
++              },
++              "manualColor_fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "boolean",
++                "value": true,
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#101219"
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          },
++          {
++            "id": "ais_documentary-mini_s1_i2_layer_c",
++            "name": "Chapter title",
++            "type": "text",
++            "startTime": 0.5,
++            "duration": 4,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [100, 910],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 680,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 70,
++                "keyframes": []
++              },
++              "text": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "1. The hive",
++                "keyframes": []
++              },
++              "fontSize": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 48,
++                "keyframes": []
++              },
++              "fontFamily": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "Arial",
++                "keyframes": []
++              },
++              "manualColor_fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "boolean",
++                "value": true,
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#f4efe6"
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          },
++          {
++            "id": "ais_documentary-mini_s1_i1_layer_c",
++            "name": "Lower third",
++            "type": "shape",
++            "startTime": 0.5,
++            "duration": 4,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [80, 900],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 720,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 90,
++                "keyframes": []
++              },
++              "shapeKind": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "rectangle",
++                "keyframes": []
++              },
++              "manualColor_fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "boolean",
++                "value": true,
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#2f3e46"
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          },
++          {
++            "id": "ais_documentary-mini_s1_i0_layer_c",
++            "name": "Beekeeper",
++            "type": "shape",
++            "startTime": 0,
++            "duration": 6,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [0, 0],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "shapeKind": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "rectangle",
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#8a8f9e"
++              },
++              "fillOpacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0.18,
++                "keyframes": []
++              },
++              "stroke": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#8a8f9e"
++              },
++              "strokeWidth": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 4,
++                "keyframes": []
++              },
++              "strokeDash": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "dash",
++                "keyframes": []
++              },
++              "compositionSlot": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "interview",
++                "keyframes": []
++              },
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1920,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1080,
++                "keyframes": []
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          }
++        ],
++        "tracks": [
++          {
++            "id": "ais_documentary-mini_s1_i0_track_c",
++            "name": "Beekeeper",
++            "type": "video",
++            "order": 0,
++            "enabled": true,
++            "locked": false,
++            "muted": false,
++            "clips": [
++              {
++                "id": "ais_documentary-mini_s1_i0_clip_c",
++                "name": "Beekeeper",
++                "layerId": "ais_documentary-mini_s1_i0_layer_c",
++                "assetId": null,
++                "startTime": 0,
++                "duration": 6,
++                "sourceIn": 0,
++                "sourceOut": 6,
++                "enabled": true,
++                "speed": 1,
++                "transitionMetadata": {},
++                "effectMetadata": {},
++                "metadata": {}
++              }
++            ]
++          },
++          {
++            "id": "ais_documentary-mini_s1_i1_track_c",
++            "name": "Lower third",
++            "type": "object",
++            "order": 1,
++            "enabled": true,
++            "locked": false,
++            "muted": false,
++            "clips": [
++              {
++                "id": "ais_documentary-mini_s1_i1_clip_c",
++                "name": "Lower third",
++                "layerId": "ais_documentary-mini_s1_i1_layer_c",
++                "assetId": null,
++                "startTime": 0.5,
++                "duration": 4,
++                "sourceIn": 0,
++                "sourceOut": 4,
++                "enabled": true,
++                "speed": 1,
++                "transitionMetadata": {},
++                "effectMetadata": {},
++                "metadata": {}
++              }
++            ]
++          },
++          {
++            "id": "ais_documentary-mini_s1_i2_track_c",
++            "name": "Chapter title",
++            "type": "text",
++            "order": 2,
++            "enabled": true,
++            "locked": false,
++            "muted": false,
++            "clips": [
++              {
++                "id": "ais_documentary-mini_s1_i2_clip_c",
++                "name": "Chapter title",
++                "layerId": "ais_documentary-mini_s1_i2_layer_c",
++                "assetId": null,
++                "startTime": 0.5,
++                "duration": 4,
++                "sourceIn": 0,
++                "sourceOut": 4,
++                "enabled": true,
++                "speed": 1,
++                "transitionMetadata": {},
++                "effectMetadata": {},
++                "metadata": {}
++              }
++            ]
++          }
++        ],
++        "markers": [
++          {
++            "id": "scene-transition-1",
++            "time": 0,
++            "label": "aive:scene-transition {\"type\":\"crossfade\",\"duration\":1}"
++          }
++        ],
++        "audioTracks": []
++      },
++      {
++        "id": "ais_documentary-mini_s2_c",
++        "name": "Close",
++        "width": 1920,
++        "height": 1080,
++        "fps": 25,
++        "duration": 4,
++        "backgroundColor": "#000000",
++        "layers": [
++          {
++            "id": "ais_documentary-mini_s2_bg_c",
++            "name": "Scene background",
++            "type": "shape",
++            "startTime": 0,
++            "duration": 4,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [0, 0],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1920,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1080,
++                "keyframes": []
++              },
++              "shapeKind": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "rectangle",
++                "keyframes": []
++              },
++              "manualColor_fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "boolean",
++                "value": true,
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#101219"
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          },
++          {
++            "id": "ais_documentary-mini_s2_i1_layer_c",
++            "name": "Answer",
++            "type": "text",
++            "startTime": 0,
++            "duration": 4,
++            "transform": {
++              "position": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [260, 480],
++                "keyframes": []
++              },
++              "rotation": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 0,
++                "keyframes": []
++              },
++              "scale": {
++                "animated": false,
++                "constraints": [],
++                "type": "vector2",
++                "value": [1, 1],
++                "keyframes": []
++              },
++              "opacity": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1,
++                "keyframes": []
++              }
++            },
++            "properties": {
++              "width": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 1400,
++                "keyframes": []
++              },
++              "height": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 120,
++                "keyframes": []
++              },
++              "text": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "From flowers, patience and work.",
++                "keyframes": []
++              },
++              "fontSize": {
++                "animated": false,
++                "constraints": [],
++                "type": "number",
++                "value": 48,
++                "keyframes": []
++              },
++              "fontFamily": {
++                "animated": false,
++                "constraints": [],
++                "type": "string",
++                "value": "Arial",
++                "keyframes": []
++              },
++              "manualColor_fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "boolean",
++                "value": true,
++                "keyframes": []
++              },
++              "fill": {
++                "animated": false,
++                "constraints": [],
++                "type": "color",
++                "keyframes": [],
++                "value": "#1b1b1b"
++              }
++            },
++            "effects": [],
++            "masks": [],
++            "assetId": null,
++            "children": []
++          }
++        ],
++        "tracks": [
++          {
++            "id": "ais_documentary-mini_s2_i1_track_c",
++            "name": "Answer",
++            "type": "text",
++            "order": 0,
++            "enabled": true,
++            "locked": false,
++            "muted": false,
++            "clips": [
++              {
++                "id": "ais_documentary-mini_s2_i1_clip_c",
++                "name": "Answer",
++                "layerId": "ais_documentary-mini_s2_i1_layer_c",
++                "assetId": null,
++                "startTime": 0,
++                "duration": 4,
++                "sourceIn": 0,
++                "sourceOut": 4,
++                "enabled": true,
++                "speed": 1,
++                "transitionMetadata": {},
++                "effectMetadata": {},
++                "metadata": {}
++              }
++            ]
++          }
++        ],
++        "markers": [
++          {
++            "id": "scene-transition-2",
++            "time": 0,
++            "label": "aive:scene-transition {\"type\":\"fade-black\",\"duration\":1}"
++          }
++        ],
++        "audioTracks": []
++      }
++    ],
++    "assets": []
++  },
++  "warnings": [
++    {
++      "code": "slot-optional-empty",
++      "message": "Optional slot \"music\" (Calm instrumental bed (optional)) is empty; its items are left out."
++    },
++    {
++      "code": "library-missing",
++      "message": "Library item \"bg-gradient-1\" (Library reference) is not in this editor's library; left out."
++    }
++  ],
++  "missing": [
++    {
++      "kind": "slot",
++      "slot": {
++        "id": "archive",
++        "type": "image",
++        "hint": "An archive photo of a beehive",
++        "required": true
++      }
++    },
++    {
++      "kind": "slot",
++      "slot": {
++        "id": "interview",
++        "type": "video",
++        "hint": "A beekeeper speaking to camera",
++        "required": true
++      }
++    },
++    {
++      "kind": "voice-over",
++      "slot": {
++        "id": "voice-over",
++        "type": "audio",
++        "hint": "Voice-over (en): Every jar of honey starts with a single flower.",
++        "required": true
++      },
++      "request": {
++        "text": "Every jar of honey starts with a single flower.",
++        "lang": "en"
++      }
++    },
++    {
++      "kind": "captions",
++      "reason": "No captions engine is connected; pass options.captions to add them."
++    }
++  ],
++  "errors": []
++}
+diff --git a/tests/fix5/media-dispose.test.ts b/tests/fix5/media-dispose.test.ts
+new file mode 100644
+index 0000000..7a2caf8
+--- /dev/null
++++ b/tests/fix5/media-dispose.test.ts
+@@ -0,0 +1,60 @@
++import { expect, it, vi } from 'vitest';
++import { MediaFrames } from '../../src/media/frames';
++import { MemoryMediaStore } from '../../src/media/store';
++import type { MediaFrameRequest } from '../../src/render/adapter';
++it('[MED-006] ignores a late image decode after disposing the media provider', async () => {
++  let decoded!: () => void;
++  class FakeImage {
++    src = '';
++    decode() {
++      return new Promise<void>((resolve) => {
++        decoded = resolve;
++      });
++    }
++  }
++  vi.stubGlobal('Image', FakeImage);
++  vi.stubGlobal('HTMLImageElement', FakeImage);
++  try {
++    const key = 'media/' + 'a'.repeat(32);
++    const store = new MemoryMediaStore();
++    await store.write(key, new Blob(['image'], { type: 'image/png' }));
++    let loaded!: () => void;
++    const ready = new Promise<void>((resolve) => {
++      loaded = resolve;
++    });
++    const changed = vi.fn(() => loaded());
++    const frames = new MediaFrames(
++      Promise.resolve(store),
++      () => [
++        {
++          id: 'a',
++          type: 'image',
++          source: { kind: 'local', reference: key },
++          metadata: {},
++        },
++      ],
++      changed,
++    );
++    const request: MediaFrameRequest = {
++      key: 'layer',
++      assetId: 'a',
++      kind: 'image',
++      sourceTime: 0,
++      speed: 1,
++      reversed: false,
++      frozen: false,
++    };
++    frames.frame(request, false);
++    await ready;
++    frames.frame(request, false);
++    expect(decoded).toBeTypeOf('function');
++    changed.mockClear();
++    frames.dispose();
++    decoded();
++    await Promise.resolve();
++    expect(changed).not.toHaveBeenCalled();
++    expect(frames.frame(request, false)).toBeNull();
++  } finally {
++    vi.unstubAllGlobals();
++  }
++});
+diff --git a/tests/fix5/processed-cache.test.ts b/tests/fix5/processed-cache.test.ts
+new file mode 100644
+index 0000000..2a25d5b
+--- /dev/null
++++ b/tests/fix5/processed-cache.test.ts
+@@ -0,0 +1,28 @@
++import { expect, it } from 'vitest';
++import {
++  createProcessedCache,
++  frameIdentity,
++} from '../../src/render/processed-cache';
++it('[FX-015] reuses processed pixels and bounds retained preview memory without stale frame identities', () => {
++  const released: Uint8ClampedArray[] = [];
++  const cache = createProcessedCache<Uint8ClampedArray>(8, (value) =>
++    released.push(value),
++  );
++  const first = new Uint8ClampedArray([0, 255, 0, 128]);
++  const second = new Uint8ClampedArray([255, 0, 0, 255]);
++  cache.set('clip@0:mask+chroma', first, 4);
++  expect(cache.get('clip@0:mask+chroma')).toBe(first);
++  expect(cache.get('clip@1:mask+chroma')).toBeUndefined();
++  cache.set('second', second, 4);
++  cache.get('clip@0:mask+chroma');
++  cache.set('changed', second.slice(), 4);
++  expect(cache.get('second')).toBeUndefined();
++  expect(cache.bytes).toBe(8);
++  expect(released).toEqual([second]);
++  expect(cache.set('oversized', first, 9)).toBe(false);
++  expect(cache.get('clip@0:mask+chroma')).toEqual(first);
++  expect(frameIdentity(first)).toBe(frameIdentity(first));
++  expect(frameIdentity(second)).not.toBe(frameIdentity(first));
++  cache.clear();
++  expect(cache.bytes).toBe(0);
++});
