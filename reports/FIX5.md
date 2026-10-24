@@ -39,7 +39,11 @@ Not done, with reasons:
 - C1 "retry once": done in the card; the service itself was not changed (not mine).
 
 ## 3. Checks
-See section 9 (filled in from the last full `npm run verify`).
+- `npm run verify` stops at the unit step: 1260 passed, 3 failed, all known and also failing on `claude/fix-4` (2 in `tests/blocks/worker.test.ts`, no WebAssembly in the sandbox worker; `tests/ai-spec/boundaries.test.ts`). So e2e was run directly: `npx playwright test` (Chromium from /opt/pw-browsers, desktop and laptop-1366 projects): 607 passed, 17 failed, 1 skipped.
+- The 17 failures: known flakes ANI-003 (3), PB-010, TPL-015; expected DEV-006 probe; MED-003 (Claimed, no H.264). Failing on `claude/fix-4` too (checked): F2-012 (Recorder), LAY-055 (two). Laptop-1366 runs of fix4.spec (FX4-001, 002, 004, 010) time out because the AI rail button is hidden under More at that height (they were already in that project before this round).
+- Regressions that this round caused and fixed after the full run: B1-001, CODE-008, FX4-004 and CP-004 (a card picture was not inserted while its card was still being built). Re-run and passing: b1-styles, x4-templates, p2-creator-pack, fix4 FX4-004. The rest of the suite was not run again after that one-line fix.
+- Ledger: `npm run ledger` OK (FX4 rows added as Claimed, FX5 rows Verified).
+- CI: not waited for.
 
 ## 4. Try-it script for the owner (about 12 minutes; screenshots in `reports/fix5/`)
 | # | Do this | Expect | ID | Ran by me | Screenshot |

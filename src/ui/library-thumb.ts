@@ -55,7 +55,7 @@ const imageOf = (url: string) => {
   return image;
 };
 
-/** True when a picture has no visible pixel (fully transparent), or fails to decode. */
+/** True when a picture has no visible pixel (fully transparent). */
 export async function pictureIsBlank(url: string): Promise<boolean> {
   try {
     const image = new Image();
@@ -71,7 +71,8 @@ export async function pictureIsBlank(url: string): Promise<boolean> {
     for (let i = 3; i < data.length; i += 4) if (data[i]! > 8) return false;
     return true;
   } catch {
-    return true;
+    // Unreadable here (a picture the page cannot read back): keep it.
+    return false;
   }
 }
 
@@ -110,8 +111,9 @@ export function libraryThumb(slot: HTMLElement, source: ThumbSource): void {
   const base = hue(source.id);
   poster.style.background = `linear-gradient(135deg, hsl(${base} 55% 42%), hsl(${(base + 60) % 360} 60% 30%))`;
   poster.innerHTML = iconSvg(ICON[source.type] ?? 'magic', 28);
-  const show = (url: string, kind: 'image' | 'service') => {
-    if (!slot.isConnected) return;
+  const show = (url: string, kind: 'image' | 'service', later = true) => {
+    // (A late answer for a card that has left the page is dropped.)
+    if (later && !slot.isConnected) return;
     slot.dataset.thumb = kind;
     slot.replaceChildren(imageOf(url));
   };
@@ -132,7 +134,7 @@ export function libraryThumb(slot: HTMLElement, source: ThumbSource): void {
   };
   if (source.url) {
     const own = source.url;
-    show(own, 'image');
+    show(own, 'image', false);
     void pictureIsBlank(own).then((blank) => {
       if (!blank || !slot.isConnected) return;
       slot.dataset.thumb = 'placeholder';
