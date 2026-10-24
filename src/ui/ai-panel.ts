@@ -91,6 +91,38 @@ export const AI_FOLDERS = shelfFolders('ai');
 export const isBriefId = (id: string) => id.startsWith('brief:');
 export const briefIdOf = (id: string) => id.slice('brief:'.length);
 
+/** FIX5 C1: one card per real item. The same item twice (a pack imported
+ *  twice) shows once; different items sharing a name and kind show their
+ *  pack's name so the difference is clear. */
+function dedupe<
+  T extends {
+    id: string;
+    name: string;
+    category: string;
+    title?: string;
+    badge?: string;
+  },
+>(items: readonly T[]): T[] {
+  const seen = new Set<string>();
+  const kept: T[] = [];
+  for (const item of items) {
+    const signature = `${item.category}|${item.name}|${item.title ?? ''}`;
+    if (seen.has(signature)) continue;
+    seen.add(signature);
+    kept.push(item);
+  }
+  const counts = new Map<string, number>();
+  for (const item of kept) {
+    const key = `${item.category}|${item.name}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return kept.map((item) => {
+    if ((counts.get(`${item.category}|${item.name}`) ?? 0) < 2) return item;
+    const pack = item.title?.split(' · ')[1];
+    return pack && !item.badge ? { ...item, badge: pack } : item;
+  });
+}
+
 export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
   const entryOf = (id: string) =>
     options.library.list().find((entry) => creatorLibraryId(entry.key) === id);
@@ -155,89 +187,90 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
     categoryLabel: (kind) => t(`ai.kind.${kind}`),
     categoryOrder: AI_KINDS,
     folders: AI_FOLDERS,
-    items: () => [
-      ...briefItems(),
-      ...(options.kit?.items() ?? []).map((item) => {
-        const id = `kit:${item.id}`;
-        return {
-          id,
-          name: item.name,
-          category: 'kit',
-          folderId: AI_FOLDERS.folderOf(id),
-          keywords: ['kit', 'starter', item.id],
-          data: { kit: item.id, kind: 'kit' },
-          thumb: (slot: HTMLElement) =>
-            libraryThumb(slot, {
-              id,
-              type: 'kit',
-              name: item.name,
-              url: options.kit?.preview?.(item.id) ?? null,
-            }),
-        };
-      }),
-      ...options.library.list().map((entry) => {
-        const id = creatorLibraryId(entry.key);
-        const kind = entry.item.type;
-        const style = entry.item.type === 'style';
-        const source = {
-          id,
-          type: kind,
-          name: entry.name,
-          data: entry.item.data,
-          // B1: a style's card is its palette, category icon and name.
-          url:
-            entry.item.type === 'style'
-              ? styleThumbnail(entry.item.data, entry.name)
-              : (entry.thumbnail ?? null),
-        };
-        const live = kind === 'motion' || kind === 'preset';
-        const card =
-          kind === 'composition'
-            ? (options.planCard?.(id, entry.item.data) ?? null)
-            : null;
-        const status =
-          card?.status ??
-          (kind === 'composition'
-            ? (options.planStatus?.(id, entry.item.data) ?? null)
-            : null);
-        if (card?.poster) source.url = card.poster;
-        return {
-          id,
-          name: entry.name,
-          category: kind,
-          folderId: AI_FOLDERS.folderOf(id),
-          title: `${entry.name} · ${entry.packName.en}`,
-          keywords: [entry.packName.en, kind, ...entry.item.tags],
-          data: { item: id, kind, ...(status ? { planStatus: status } : {}) },
-          ...(status
-            ? {
-                badge:
-                  card && card.scenes > 0 && status !== 'not-built'
-                    ? `${t(`plan.status.${status}`)} · ${t('plan.status.scenes', { count: String(card.scenes) })}`
-                    : t(`plan.status.${status}`),
-              }
-            : {}),
-          // B1: a style is never placed: no drag; "+" uses it.
-          ...(style
-            ? { addLabel: t('style.use') }
-            : {
-                drag: () => ({
-                  kind: 'creator' as const,
-                  id,
-                  name: entry.name,
-                }),
+    items: () =>
+      dedupe([
+        ...briefItems(),
+        ...(options.kit?.items() ?? []).map((item) => {
+          const id = `kit:${item.id}`;
+          return {
+            id,
+            name: item.name,
+            category: 'kit',
+            folderId: AI_FOLDERS.folderOf(id),
+            keywords: ['kit', 'starter', item.id],
+            data: { kit: item.id, kind: 'kit' },
+            thumb: (slot: HTMLElement) =>
+              libraryThumb(slot, {
+                id,
+                type: 'kit',
+                name: item.name,
+                url: options.kit?.preview?.(item.id) ?? null,
               }),
-          thumb: (slot: HTMLElement) => libraryThumb(slot, source),
-          ...(live
-            ? {
-                preview: (slot: HTMLElement) =>
-                  options.motionPreview?.(id, slot) ??
-                  libraryPreview(slot, source),
-              }
-            : {}),
-        };
-      }),
-    ],
+          };
+        }),
+        ...options.library.list().map((entry) => {
+          const id = creatorLibraryId(entry.key);
+          const kind = entry.item.type;
+          const style = entry.item.type === 'style';
+          const source = {
+            id,
+            type: kind,
+            name: entry.name,
+            data: entry.item.data,
+            // B1: a style's card is its palette, category icon and name.
+            url:
+              entry.item.type === 'style'
+                ? styleThumbnail(entry.item.data, entry.name)
+                : (entry.thumbnail ?? null),
+          };
+          const live = kind === 'motion' || kind === 'preset';
+          const card =
+            kind === 'composition'
+              ? (options.planCard?.(id, entry.item.data) ?? null)
+              : null;
+          const status =
+            card?.status ??
+            (kind === 'composition'
+              ? (options.planStatus?.(id, entry.item.data) ?? null)
+              : null);
+          if (card?.poster) source.url = card.poster;
+          return {
+            id,
+            name: entry.name,
+            category: kind,
+            folderId: AI_FOLDERS.folderOf(id),
+            title: `${entry.name} · ${entry.packName.en}`,
+            keywords: [entry.packName.en, kind, ...entry.item.tags],
+            data: { item: id, kind, ...(status ? { planStatus: status } : {}) },
+            ...(status
+              ? {
+                  badge:
+                    card && card.scenes > 0 && status !== 'not-built'
+                      ? `${t(`plan.status.${status}`)} · ${t('plan.status.scenes', { count: String(card.scenes) })}`
+                      : t(`plan.status.${status}`),
+                }
+              : {}),
+            // B1: a style is never placed: no drag; "+" uses it.
+            ...(style
+              ? { addLabel: t('style.use') }
+              : {
+                  drag: () => ({
+                    kind: 'creator' as const,
+                    id,
+                    name: entry.name,
+                  }),
+                }),
+            thumb: (slot: HTMLElement) => libraryThumb(slot, source),
+            ...(live
+              ? {
+                  preview: (slot: HTMLElement) =>
+                    options.motionPreview?.(id, slot) ??
+                    libraryPreview(slot, source),
+                }
+              : {}),
+          };
+        }),
+      ]),
     add,
     rename: options.rename,
     extraMenu: (id) => [
