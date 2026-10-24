@@ -845,8 +845,16 @@ export function drawComposition(
       media.some(
         (frame) =>
           !frame ||
-          typeof ImageBitmap === 'undefined' ||
-          !(frame instanceof ImageBitmap),
+          !(
+            (typeof ImageBitmap !== 'undefined' &&
+              frame instanceof ImageBitmap &&
+              frame.width > 0) ||
+            (typeof HTMLImageElement !== 'undefined' &&
+              frame instanceof HTMLImageElement &&
+              frame.complete &&
+              frame.naturalWidth > 0 &&
+              frame.src.startsWith('blob:'))
+          ),
       )
     ) {
       paintItems(context, fade, only);
@@ -884,6 +892,10 @@ export function drawComposition(
       source.currentTime,
       media.map((frame) => [
         frameIdentity(frame!),
+        typeof HTMLImageElement !== 'undefined' &&
+        frame instanceof HTMLImageElement
+          ? frame.currentSrc || frame.src
+          : null,
         (frame as ImageBitmap).width,
         (frame as ImageBitmap).height,
       ]),

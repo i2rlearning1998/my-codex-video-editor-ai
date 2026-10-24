@@ -82,3 +82,4 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - code-layer-poc ANI-003 (blocks gallery scrub 3→1→3) times out at 30 s in this sandbox, also on claude/x-series; the test serializes the whole preview canvas (backlog: compare a hash in the page).
 
 - FIX5 P1 (Claude UI): wire plan-build-dialog and composition-card drop to the cooperative composition builder's signal/onProgress; cancel on close and honor Settings animations. These call sites are outside Codex ownership; browser <200 ms responsiveness proof remains outstanding.
+- FIX5 P2/P4: browser-proof mask/chroma/FX timing and exact export pixels at 1080p/portrait still needed; preview cache intentionally excludes video/text/backdrop blends. MediaFrames URL/image maps key by asset id, so relinking bytes under an unchanged id needs explicit fingerprint invalidation; decoder event listeners should also be detached on release (follow-up regression needed).
