@@ -91,3 +91,62 @@ test('[FX5-001] every AI and My Templates card has a drawn thumbnail (never blan
     .evaluateAll((items) => items.map((item) => item.textContent?.trim()));
   expect(new Set(ids).size).toBe(ids.length);
 });
+
+// C2: audio rows never play on hover; a Play / Stop button does.
+test('[FX5-002] audio rows: hover never plays, Play and Stop work, one at a time, My audio and Media audio play, a category switch stops', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await showCategory(page, 'Audio');
+  const pack = page.locator('#library-audio');
+  const riser = pack.locator('.sound-tile[data-sound="riser"] .audio-play');
+  const chime = pack.locator('.sound-tile[data-sound="chime"] .audio-play');
+  await expect(riser).toHaveAccessibleName('Play preview of Riser');
+  await expect(riser).toHaveAttribute('title', 'Play preview of Riser');
+  await pack.locator('.sound-tile[data-sound="riser"]').hover();
+  await page.waitForTimeout(400);
+  await expect(riser).toHaveAttribute('data-state', 'stopped');
+  await riser.click();
+  await expect(riser).toHaveAttribute('data-state', 'playing');
+  await expect(riser).toHaveAccessibleName('Stop preview of Riser');
+  await chime.click();
+  await expect(chime).toHaveAttribute('data-state', 'playing');
+  await expect(riser).toHaveAttribute('data-state', 'stopped');
+  await chime.click();
+  await expect(chime).toHaveAttribute('data-state', 'stopped');
+  // A finished preview resets its button (the click sound lasts 0.08 s).
+  const click = pack.locator('.sound-tile[data-sound="click"] .audio-play');
+  await click.click();
+  await expect(click).toHaveAttribute('data-state', 'stopped');
+  // Switching category stops a running preview.
+  await riser.click();
+  await expect(riser).toHaveAttribute('data-state', 'playing');
+  await showCategory(page, 'Media');
+  await expect(riser).toHaveAttribute('data-state', 'stopped');
+
+  // An uploaded audio file: Media card and Audio > My audio both play it.
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#import-media').click();
+  await (
+    await chooser
+  ).setFiles(['tests/fixtures/media/audio_tone_440hz_3s.wav']);
+  const mediaPlay = page.locator(
+    '#media-panel .media-card[data-name="audio_tone_440hz_3s.wav"]',
+  );
+  await expect(mediaPlay).toBeVisible();
+  const mediaButton = page.locator(
+    '#media-panel .shelf-item:has(.media-card[data-name="audio_tone_440hz_3s.wav"]) .audio-play',
+  );
+  await mediaButton.click();
+  await expect(mediaButton).toHaveAttribute('data-state', 'playing');
+  await mediaButton.click();
+  await expect(mediaButton).toHaveAttribute('data-state', 'stopped');
+  await showCategory(page, 'Audio');
+  await page.locator('[data-audio-tab="mine"]').click();
+  const mine = page.locator('.audio-mine-item .audio-play');
+  await expect(mine).toHaveCount(1);
+  await mine.click();
+  await expect(mine).toHaveAttribute('data-state', 'playing');
+  await page.locator('[data-audio-tab="sounds"]').click();
+  await expect(mine).toHaveAttribute('data-state', 'stopped');
+});

@@ -2639,5 +2639,8 @@
   "theme.has.transition": "transition",
   "theme.has.camera": "camera tendency",
   "theme.has.pacing": "pacing",
-  "theme.feelApplied": "{name} also sets the transition, camera and pacing for new video plans."
+  "theme.feelApplied": "{name} also sets the transition, camera and pacing for new video plans.",
+  "audioPreview.play": "Play preview of {name}",
+  "audioPreview.stop": "Stop preview of {name}",
+  "audioPreview.failed": "This sound could not be played."
 }

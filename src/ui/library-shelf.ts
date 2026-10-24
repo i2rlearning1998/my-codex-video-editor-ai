@@ -36,6 +36,8 @@ export interface ShelfItem {
   thumb(slot: HTMLElement): void;
   /** A short looping preview while hovered (one card at a time). */
   readonly preview?: (slot: HTMLElement) => () => void;
+  /** An extra control beside the card (FIX5: an audio Play / Stop button). */
+  readonly trailing?: () => HTMLElement | null;
   /** Wires a drag source or other behaviour onto the card button. */
   readonly decorate?: (card: HTMLButtonElement) => void;
 }
@@ -504,6 +506,8 @@ export function mountShelf(options: ShelfOptions): Shelf {
       }
     };
     wrap.append(button, more, plus);
+    const trailing = item.trailing?.();
+    if (trailing) wrap.append(trailing);
     return wrap;
   };
   const section = (key: string, items: readonly ShelfItem[]) => {

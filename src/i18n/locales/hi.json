@@ -2639,5 +2639,8 @@
   "theme.has.transition": "ट्रांज़िशन",
   "theme.has.camera": "कैमरा प्रवृत्ति",
   "theme.has.pacing": "गति-लय",
-  "theme.feelApplied": "{name} नई वीडियो योजनाओं के लिए ट्रांज़िशन, कैमरा और गति-लय भी तय करता है।"
+  "theme.feelApplied": "{name} नई वीडियो योजनाओं के लिए ट्रांज़िशन, कैमरा और गति-लय भी तय करता है।",
+  "audioPreview.play": "{name} का पूर्वावलोकन चलाएँ",
+  "audioPreview.stop": "{name} का पूर्वावलोकन रोकें",
+  "audioPreview.failed": "यह आवाज़ चलाई नहीं जा सकी।"
 }

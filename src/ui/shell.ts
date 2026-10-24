@@ -1,4 +1,9 @@
 import {
+  audioPlayButton,
+  mediaPreviewUrl,
+  stopAudioPreview,
+} from './components/audio-preview';
+import {
   builtScenes,
   compositionCardStatus,
   compositionKey,
@@ -4904,6 +4909,7 @@ export function mountEditorShell(
       );
   };
   const applyCategory = (category: string) => {
+    stopAudioPreview();
     syncRails();
     // FINAL2 U10: library panels get room for two 165 px card columns.
     workspace?.setLibrary(
@@ -6018,7 +6024,20 @@ export function mountEditorShell(
         ? `${formatNumber(asset.duration, { maximumFractionDigits: 1 })} s`
         : '';
       add.onclick = () => safely(() => void addOnNewAudioLane(asset.id));
-      row.append(add);
+      // FIX5 C2: My audio rows have a Play / Stop button too.
+      const play = audioPlayButton(
+        {
+          id: `asset:${asset.id}`,
+          name: asset.name,
+          url: () =>
+            mediaPreviewUrl(
+              mediaStore,
+              (asset.source as { reference?: string }).reference ?? '',
+            ),
+        },
+        'sound-tile-play',
+      );
+      row.append(add, play);
       return row;
     });
     if (!rows.length) {
@@ -6029,6 +6048,7 @@ export function mountEditorShell(
     } else mineHost.replaceChildren(...rows);
   };
   const showAudioPage = (page: keyof typeof audioPages) => {
+    stopAudioPreview();
     audioPage = page;
     for (const [name, host] of Object.entries(audioPages))
       host.hidden = name !== page;
