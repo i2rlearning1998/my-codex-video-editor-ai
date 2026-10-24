@@ -1,5 +1,12 @@
 # Changelog
 
+## PHASE 0 close (24 Oct)
+
+- Build video, the AI importer and card drops show a real loader with Cancel and never freeze the page; faster blur; effect timings measured at 1920 × 1080.
+- Dynamic text (date, time, scene number, page count, counter, timecode) in Text › Dynamic text, resolved in the preview and the export. Scene strip + menu has Open video plan review. Text › Captions opens Auto captions.
+- Hide, grid and safe-area guides work; no control says "Planned: Wave N" any more (it says what it needs).
+- Proven in the browser: 9:16 canvas ratio, filter intensity drag, first Play under the "sound after a click" policy, Devanagari conjuncts and matras. Whisper reports now name the host, status, bytes and last worker message.
+
 ## FIX5 (owner bug round, 24 Oct)
 
 - Library cards never stay blank; AI duplicates removed; audio rows have Play / Stop (no hover play); Scene and Audio panels no longer overlap; Draw palette flyouts and Table; Text panel clean-up; readable Review video plan and AI › Video plans; first Play waits for sound; blend list and select menu height; Whisper watchdog, download errors and cloud fallback. See reports/FIX5.md.
