@@ -193,3 +193,15 @@ test('[CV-014] [CV-015] [LYR-006] Guides: the grid and the safe areas draw on th
   expect(await laneOn()).toBe(true);
   await expect(page.locator('body')).not.toContainText('Planned: Wave');
 });
+
+test('[TXT-035] Text › Captions opens the Auto captions dialog', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await showCategory(page, 'Text');
+  await page.locator('[data-action="captions"]').first().click();
+  await expect(page.locator('.modal-dialog')).toBeVisible();
+});

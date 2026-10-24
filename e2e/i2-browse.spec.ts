@@ -288,9 +288,10 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   await expect(
     host.locator('[data-action="dynamic-text"]').first(),
   ).not.toHaveAttribute('aria-disabled', 'true');
-  await expect(host.locator('[data-action="captions"]')).toHaveAttribute(
-    'title',
-    'Planned for Phase 1',
+  // TXT-035: Captions opens the Auto captions dialog.
+  await expect(host.locator('[data-action="captions"]')).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
   );
   // FINAL3 T5: Canva's order: default styles, font combinations, the
   // user's own styles, then the rest.

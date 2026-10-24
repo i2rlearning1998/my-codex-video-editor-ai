@@ -4903,6 +4903,7 @@ export function mountEditorShell(
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
       },
+      openAutoCaptions: () => void openAutoCaptions(captionsContext),
       addDynamicText: (token) => {
         libraryActions.insertTextBox(undefined, undefined, undefined, token);
       },

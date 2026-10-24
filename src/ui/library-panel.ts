@@ -350,6 +350,8 @@ export function mountLibraryPanels(
     close(): void;
     addPreset(preset: ShapePreset): void;
     addTextBox(): void;
+    /** TXT-035: the Auto captions dialog (Text › Captions). */
+    openAutoCaptions(): void;
     /** TXT-037: a text box holding a dynamic field, such as {{date}}. */
     addDynamicText(token: string): void;
     /** X4: code animation templates (My Templates > Code animations). */
@@ -996,8 +998,8 @@ export function mountLibraryPanels(
               id: 'captions',
               label: t('text.captions'),
               icon: 'captions',
-              disabled: later(8, 'TXT-035'),
               data: { action: 'captions' },
+              activate: () => options.openAutoCaptions(),
             },
           ],
         },
