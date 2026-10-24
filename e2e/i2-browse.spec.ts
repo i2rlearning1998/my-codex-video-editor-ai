@@ -222,10 +222,7 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
     'Frames',
     'Grids',
   ]);
-  for (const [tile, id] of [
-    ['charts', 'SHP-016'],
-    ['frames', 'MSK-003'],
-  ] as const) {
+  for (const tile of ['charts', 'frames'] as const) {
     const button = host.locator(`[data-tile="${tile}"]`);
     await expect(button).toHaveAttribute('aria-disabled', 'true');
     await expect(button).toHaveAttribute(

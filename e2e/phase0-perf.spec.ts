@@ -1,19 +1,8 @@
-import path from 'node:path';
 import type { Page } from '@playwright/test';
-import {
-  test,
-  expect,
-  hook,
-  showCategory,
-  showSceneStrip,
-  seekKeep,
-  settled,
-  openRight,
-} from './fixtures';
+import { test, expect, hook, seekKeep, settled, openRight } from './fixtures';
 
 // PHASE 0 E2: effects, masks and chroma key, measured in the browser (the
 // renderer's own time per draw, from the read-only test hook).
-const MEDIA = 'tests/fixtures/media';
 const JPG = 'image_testsrc_1200x800.jpg';
 const WEBM = 'video_testsrc_720p_2s_vp9_opus.webm';
 const panel = (page: Page) => page.locator('#right-section');
