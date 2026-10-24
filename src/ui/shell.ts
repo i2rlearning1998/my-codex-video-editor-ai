@@ -966,6 +966,8 @@ export function mountEditorShell(
   let textEditing: TextEditor | undefined;
   // U2: how many times the canvas has been drawn (read by the test hook).
   let drawCount = 0;
+  /** PHASE 0 E2: the last 60 renderer times (ms), read by the test hook. */
+  const renderTimes: number[] = [];
   /**
    * V7 (spec 10.5): while playing across a scene cut, the canvas shows the
    * transition: the open scene with the neighbour's boundary frame, mixed.
@@ -1073,12 +1075,15 @@ export function mountEditorShell(
           }
         : {}),
     };
+    const renderStart = performance.now();
     const report = renderer.render(
       canvas,
       drawn,
       viewport(),
       session.selectedId,
     );
+    renderTimes.push(performance.now() - renderStart);
+    if (renderTimes.length > 60) renderTimes.shift();
     if (session.playing) drawSceneCut(drawn);
     else effectsTool.draw(viewport().matrix);
     frames.endFrame();
@@ -7231,6 +7236,7 @@ export function mountEditorShell(
           viewport().matrix,
         )?.corners ?? null,
       draws: drawCount,
+      renderMs: [...renderTimes],
       // FINAL3 C3: the camera frame on the canvas (canvas CSS px), if shown.
       cameraFrame:
         cameraFrameTool
