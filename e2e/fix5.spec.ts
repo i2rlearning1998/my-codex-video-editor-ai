@@ -32,7 +32,7 @@ async function thumbIsDrawn(page: Page, slot: Locator) {
   }, png.toString('base64'));
 }
 
-test('[LIB-020] every AI and My Templates card has a drawn thumbnail (never blank), one kind each', async ({
+test('[FX5-001] every AI and My Templates card has a drawn thumbnail (never blank), one kind each', async ({
   page,
 }) => {
   test.setTimeout(180_000);

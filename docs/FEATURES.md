@@ -1106,6 +1106,20 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FX3-002 | P0 | W9 | Claimed | Offline captions run in a dedicated module Web Worker: a CPU-bound model and a flood of 20 000 progress events never freeze the page (no frame gap over 200 ms), and the cues still land (2.2, 2.7) |
 | FX3-003 | P0 | W9 | Claimed | A captions worker that sends nothing for 15 s (or 120 s during one inference run) is stopped and the dialog says "The caption engine stopped responding" with Copy diagnostics; Cancel terminates the worker (2.3) |
 
+## FX5: Fix round 5 (owner's screen recordings, 24 Oct)
+
+| ID      | Pri | Wave | Status   | Feature |
+| ------- | --- | ---- | -------- | ------- |
+| FX5-001 | P0 | W9 | Claimed | A library card (AI, My Templates, Styles) never stays blank: its picture, else the kind icon; an empty picture is replaced and the service is asked once more; the same AI item is listed once, same-named items show their pack |
+| FX5-002 | P0 | W9 | Claimed | Audio rows (Audio category, Media audio, Elements › Audio, My audio) never play on hover; each has a Play / Stop button; one preview at a time; closing the panel or switching category stops it |
+| FX5-003 | P0 | W9 | Claimed | The Scene panel's header, search and rows never overlap at 1920 × 945 and 1366 × 768 |
+| FX5-004 | P0 | W9 | Claimed | The Draw palette's Shape, Line, Sticky note, Text and Table tools open a flyout of choices before placing; the choice stays; click places the default size, drag draws the size with a live preview; one undo step; Esc cancels |
+| FX5-005 | P0 | W9 | Claimed | The Text panel has no My text styles section; Dynamic text inserts a field; Magic write is disabled and says it needs the AI service (planned) |
+| FX5-006 | P0 | W9 | Claimed | Review video plan is a single readable panel (one collapsible card per scene) and AI › Video plans reopens it after the user left |
+| FX5-007 | P0 | W9 | Claimed | The first Play press starts picture and sound together (a short Preparing audio state if decoding is needed), with no console warnings |
+| FX5-008 | P0 | W9 | Claimed | Adjust colors' blend mode list shows each mode once, grouped, in a menu no taller than 60 % of the window |
+| FX5-009 | P0 | W9 | Claimed | Local Whisper reports a download with or without a known size, is never called stalled while bytes arrive, names the step and file on a failure, and offers the cloud engines with Add key |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.
