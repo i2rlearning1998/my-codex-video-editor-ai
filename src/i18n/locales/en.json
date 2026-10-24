@@ -843,10 +843,10 @@
   "palette.label": "Draw tools",
   "palette.select": "Select (V)",
   "palette.draw": "Draw",
-  "palette.shape": "Shape: drag on the canvas",
-  "palette.line": "Line: drag on the canvas",
+  "palette.shape": "Shape",
+  "palette.line": "Line",
   "palette.sticky": "Sticky note",
-  "palette.text": "Text: click, or drag for a box",
+  "palette.text": "Text",
   "palette.signature": "Signature",
   "palette.table": "Table",
   "palette.close": "Close draw tools",
@@ -2642,5 +2642,12 @@
   "theme.feelApplied": "{name} also sets the transition, camera and pacing for new video plans.",
   "audioPreview.play": "Play preview of {name}",
   "audioPreview.stop": "Stop preview of {name}",
-  "audioPreview.failed": "This sound could not be played."
+  "audioPreview.failed": "This sound could not be played.",
+  "palette.chooseShape": "Choose a shape",
+  "palette.chooseLine": "Choose a line",
+  "palette.chooseSticky": "Choose a note colour",
+  "palette.chooseText": "Choose a text style",
+  "palette.chooseTable": "Choose a table size",
+  "palette.stickyColor": "Note colour {n}",
+  "palette.addSavedText": "Add saved text"
 }

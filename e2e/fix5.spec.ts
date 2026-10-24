@@ -185,3 +185,89 @@ test('[FX5-003] Scene panel: header, search row and first layer row do not overl
   expect(folder!.right).toBeLessThanOrEqual(panel!.right);
   await page.screenshot({ path: 'reports/fix5/c3-scene-panel.png' });
 });
+
+// C4: the Draw palette opens a flyout of choices per tool before placing.
+test('[FX5-004] Draw palette: a chosen shape, line, note colour, text style and table size are what gets placed; Esc cancels; one undo step each', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await showCategory(page, 'Draw');
+  const palette = page.locator('#draw-palette');
+  const choices = page.locator('#draw-choices');
+  const layers = async () => {
+    const state = await hook(page);
+    return state.project.compositions.find(
+      (c) => c.id === state.session.compositionId,
+    )!.layers as unknown as {
+      type: string;
+      name: string;
+      properties: Record<string, { value: unknown }>;
+      children: { properties: Record<string, { value: unknown }> }[];
+    }[];
+  };
+  const before = (await layers()).length;
+  // Shape: choose Ellipse, a click places an ellipse.
+  await palette.locator('[data-palette-tool="shape"]').click();
+  await choices.locator('[data-choice="ellipse"]').click();
+  await expect(choices.locator('[data-choice="ellipse"]')).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  let at = await toScreen(page, 300, 300);
+  await page.mouse.move(at.x, at.y);
+  await expect(page.locator('.place-ghost')).toBeVisible();
+  await page.mouse.click(at.x, at.y);
+  expect((await layers()).at(-1)!.properties.shapeKind?.value).toBe('ellipse');
+  // Line: choose the double arrow; a drag draws its length.
+  await palette.locator('[data-palette-tool="line"]').click();
+  await choices.locator('[data-choice="arrow-double"]').click();
+  at = await toScreen(page, 100, 500);
+  const to = await toScreen(page, 500, 500);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 5 });
+  await page.mouse.up();
+  const arrow = (await layers()).at(-1)!;
+  expect(arrow.properties.shapeKind?.value).toBe('arrow');
+  expect(arrow.properties.width?.value as number).toBeCloseTo(400, -1);
+  // Sticky note: the third colour.
+  await palette.locator('[data-palette-tool="sticky"]').click();
+  await choices.locator('[data-choice="#a7f3d0"]').click();
+  at = await toScreen(page, 1000, 500);
+  await page.mouse.click(at.x, at.y);
+  const note = (await layers()).at(-1)!;
+  expect(note.type).toBe('group');
+  expect(note.children[0]!.properties.fill?.value).toBe('#a7f3d0');
+  // Text: the heading style.
+  await palette.locator('[data-palette-tool="text"]').click();
+  await choices.locator('[data-choice="text-add-heading"]').click();
+  at = await toScreen(page, 600, 150);
+  await page.mouse.click(at.x, at.y);
+  const heading = (await layers()).at(-1)!;
+  expect(heading.type).toBe('text');
+  expect(heading.properties.text?.value).toBe('Add a heading');
+  // Table: 2 rows by 4 columns.
+  await palette.locator('[data-palette-tool="table"]').click();
+  await choices.locator('[data-choice="2x4"]').click();
+  await expect(choices.locator('.draw-choices-size')).toHaveText(/2.*4/);
+  at = await toScreen(page, 600, 650);
+  await page.mouse.click(at.x, at.y);
+  expect((await layers()).at(-1)!.name).toBe('Table');
+  expect((await layers()).length).toBe(before + 5);
+  // One undo step each.
+  const steps = (await hook(page)).history.labels.length;
+  await page.keyboard.press('Control+z');
+  expect((await hook(page)).history.labels.length).toBe(steps - 1);
+  // Esc cancels a placing drag: nothing is added.
+  await palette.locator('[data-palette-tool="shape"]').click();
+  const count = (await layers()).length;
+  at = await toScreen(page, 200, 200);
+  const end = await toScreen(page, 400, 400);
+  await page.mouse.move(at.x, at.y);
+  await page.mouse.down();
+  await page.mouse.move(end.x, end.y, { steps: 4 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  expect((await layers()).length).toBe(count);
+  await page.screenshot({ path: 'reports/fix5/c4-flyout.png' });
+});

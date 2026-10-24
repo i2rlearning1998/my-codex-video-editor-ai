@@ -11289,3 +11289,75 @@ body:has(.modal-backdrop) .toast-stack {
   min-inline-size: 22px;
   text-align: center;
 }
+
+/* FIX5 C4: the Draw palette's choice flyouts. */
+.draw-choices {
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+.draw-choices[hidden] {
+  display: none;
+}
+.draw-choices-title {
+  margin: 0;
+  font-size: var(--font-size-sm, 12px);
+  color: var(--text-secondary);
+}
+.draw-choices-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.draw-choices-list.swatches {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.draw-choices-list.table-grid {
+  grid-template-columns: repeat(var(--u6-columns, 8), 1fr);
+  gap: 2px;
+}
+.draw-choice {
+  min-block-size: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--font-size-sm, 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.draw-choice[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.draw-swatch {
+  display: block;
+  inline-size: 100%;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+}
+.draw-table-cell {
+  min-block-size: 0;
+  padding: 0;
+  aspect-ratio: 1;
+}
+.draw-table-cell .draw-cell {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+.draw-table-cell.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.draw-choices-size {
+  margin: 0;
+  font-size: var(--font-size-sm, 12px);
+  color: var(--text-secondary);
+}
+.place-ghost {
+  opacity: 0.7;
+}

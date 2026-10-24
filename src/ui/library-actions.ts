@@ -112,6 +112,8 @@ export interface LibraryActions {
   insertMine(template: MyTemplate): void;
   /** The item a drag carries, by id. */
   find(id: string): LibraryItem | undefined;
+  /** Every item the library holds now. */
+  list(): readonly LibraryItem[];
   /**
    * T2: the commands an insert centred on `at` would run (nothing runs), to
    * measure what a drop would place; null for a template (a whole scene).
@@ -358,6 +360,7 @@ export function createLibraryActions(options: {
       }
     },
     find: (id) => items.find((item) => item.id === id),
+    list: () => items,
     setItems(next) {
       items = next;
     },

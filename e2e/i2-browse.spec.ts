@@ -430,26 +430,28 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   );
   await expect(page.locator('#draw-flyout [data-brush="pen"]')).toBeVisible();
   expect((await hook(page)).session.drawBrush).toBe('pen');
-  // Table is planned.
-  await expect(palette.locator('[data-palette-tool="table"]')).toHaveAttribute(
-    'title',
-    'Planned: Wave 8 (SHP-025)',
-  );
+  // FIX5 C4: Table is a real tool now (no longer planned).
+  await expect(
+    palette.locator('[data-palette-tool="table"]'),
+  ).not.toHaveAttribute('aria-disabled', 'true');
+  // (The choices flyout covers the canvas's left edge, so the drag starts right of it.)
   // Shape: drag a rectangle.
   await palette.locator('[data-palette-tool="shape"]').click();
-  await expect(page.locator('#draw-flyout')).toBeHidden();
-  const a = await toScreen(page, 100, 100),
-    b = await toScreen(page, 400, 300);
+  // FIX5 C4: the tool's choices show; the brushes do not.
+  await expect(page.locator('#draw-flyout [data-brush="pen"]')).toBeHidden();
+  await expect(page.locator('#draw-choices')).toBeVisible();
+  const a = await toScreen(page, 500, 100),
+    b = await toScreen(page, 800, 300);
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();
   await page.mouse.move(b.x, b.y, { steps: 6 });
-  await expect(page.locator('.place-preview')).toBeVisible();
+  await expect(page.locator('.place-preview:not(.place-ghost)')).toBeVisible();
   await page.mouse.up();
   expect((await labels(page)).at(-1)).toBe('Add shape');
   let layer = (await scene(page)).layers.at(-1)!;
   expect(layer.properties.width?.value as number).toBeCloseTo(300, -1);
   expect(layer.properties.height?.value as number).toBeCloseTo(200, -1);
-  expect(layer.transform.position.value[0]).toBeCloseTo(100, -1);
+  expect(layer.transform.position.value[0]).toBeCloseTo(500, -1);
   // The palette is back on Select after placing.
   await expect(palette.locator('[data-palette-tool="select"]')).toHaveAttribute(
     'aria-pressed',

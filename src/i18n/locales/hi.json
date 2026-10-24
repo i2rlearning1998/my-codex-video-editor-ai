@@ -2642,5 +2642,12 @@
   "theme.feelApplied": "{name} नई वीडियो योजनाओं के लिए ट्रांज़िशन, कैमरा और गति-लय भी तय करता है।",
   "audioPreview.play": "{name} का पूर्वावलोकन चलाएँ",
   "audioPreview.stop": "{name} का पूर्वावलोकन रोकें",
-  "audioPreview.failed": "यह आवाज़ चलाई नहीं जा सकी।"
+  "audioPreview.failed": "यह आवाज़ चलाई नहीं जा सकी।",
+  "palette.chooseShape": "आकार चुनें",
+  "palette.chooseLine": "रेखा चुनें",
+  "palette.chooseSticky": "नोट का रंग चुनें",
+  "palette.chooseText": "टेक्स्ट शैली चुनें",
+  "palette.chooseTable": "टेबल का आकार चुनें",
+  "palette.stickyColor": "नोट का रंग {n}",
+  "palette.addSavedText": "सहेजा हुआ टेक्स्ट जोड़ें"
 }

@@ -227,7 +227,8 @@ import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
-import { addTopLevel, myTextStyleCommands } from './library-insert';
+import { addTopLevel, itemName, myTextStyleCommands } from './library-insert';
+import { DEFAULT_TEXT_ITEMS, myTextStyles } from './text-styles';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
@@ -5126,6 +5127,68 @@ export function mountEditorShell(
       libraryActions.insertTextBox(at, width);
       editText(session.selectedId, { selectAll: true });
     },
+    library: {
+      shapes: () =>
+        libraryActions
+          .list()
+          .filter((item) => item.type === 'shape')
+          .map((item) => ({ id: item.id, name: itemName(item) })),
+      texts: () => [
+        ...DEFAULT_TEXT_ITEMS.map((item) => ({
+          id: item.id,
+          name: itemName(item),
+        })),
+        ...myLibrary
+          .list()
+          .filter((saved) => saved.kind === 'text')
+          .map((saved) => ({ id: `mine:${saved.id}`, name: saved.name })),
+        ...myTextStyles().map((style) => ({
+          id: `style:${style.id}`,
+          name: style.name,
+        })),
+      ],
+      insert: (id, at) => {
+        if (id.startsWith('mine:')) {
+          const built = mineBuilt(id.slice(5), session.currentTime, at);
+          return built
+            ? {
+                label: t('palette.addSavedText'),
+                commands: built.commands,
+                ...(built.layerIds[0] ? { layerId: built.layerIds[0] } : {}),
+              }
+            : null;
+        }
+        if (id.startsWith('style:')) {
+          const style = myTextStyles().find(
+            (entry) => entry.id === id.slice(6),
+          );
+          return style
+            ? myTextStyleCommands(
+                session.source,
+                style.layer,
+                session.currentTime,
+                at,
+              )
+            : null;
+        }
+        const item =
+          libraryActions.find(id) ??
+          DEFAULT_TEXT_ITEMS.find((entry) => entry.id === id);
+        return item ? libraryActions.commandsFor(item, at) : null;
+      },
+    },
+    insertTable: (rows, columns, at) =>
+      safely(() => {
+        session.setPlaying(false);
+        const insert = tableInsertCommands(
+          rows,
+          columns,
+          session.source.composition,
+          (item) => libraryActions.commandsFor(item, at)!,
+        );
+        engine.commands.transaction(t('textx.step.insert'), insert.commands);
+        if (insert.layerId) session.select(insert.layerId);
+      }),
     setLeftOpen: (open) => workspace?.setOpen('left', open),
     leftOpen: () => workspace?.leftOpen ?? true,
     changed: () => {
