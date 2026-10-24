@@ -1,6 +1,13 @@
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, showCategory, seekKeep } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  showCategory,
+  seekKeep,
+  toScreen,
+} from './fixtures';
 import { exported, meanDiff, preview } from './fx-helpers';
 
 // FINAL3 Part B: the Canva text rebuild at 1920 × 940: the box is as big as
@@ -312,10 +319,18 @@ test('[FN3-011] the Text tab: search, the three default styles (click and drag),
       hasText: 'Save as my text style',
     })
     .click();
-  const mine = host.locator('.my-text-style-use');
-  await expect(mine).toHaveCount(1);
+  // FIX5 C5: the Text panel has no My text styles section any more; the
+  // saved style is offered by the Draw palette's Text tool and adds a copy.
+  await expect(host.locator('.my-text-style-use')).toHaveCount(0);
+  await expect(
+    host.locator('[data-action="my-text-style-delete"]'),
+  ).toHaveCount(0);
   const count = (await hook(page)).project.compositions[0]!.layers.length;
-  await mine.click();
+  await showCategory(page, 'Draw');
+  await page.locator('#draw-palette [data-palette-tool="text"]').click();
+  await page.locator('#draw-choices [data-choice^="style:"]').click();
+  const point = await toScreen(page, 700, 150);
+  await page.mouse.click(point.x, point.y);
   await expect
     .poll(async () => (await hook(page)).project.compositions[0]!.layers.length)
     .toBe(count + 1);

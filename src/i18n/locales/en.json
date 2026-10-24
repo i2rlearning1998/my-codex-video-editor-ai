@@ -2649,5 +2649,6 @@
   "palette.chooseText": "Choose a text style",
   "palette.chooseTable": "Choose a table size",
   "palette.stickyColor": "Note colour {n}",
-  "palette.addSavedText": "Add saved text"
+  "palette.addSavedText": "Add saved text",
+  "text.magicWriteNeedsAi": "Needs the AI service (planned)"
 }

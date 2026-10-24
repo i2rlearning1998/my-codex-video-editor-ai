@@ -2649,5 +2649,6 @@
   "palette.chooseText": "टेक्स्ट शैली चुनें",
   "palette.chooseTable": "टेबल का आकार चुनें",
   "palette.stickyColor": "नोट का रंग {n}",
-  "palette.addSavedText": "सहेजा हुआ टेक्स्ट जोड़ें"
+  "palette.addSavedText": "सहेजा हुआ टेक्स्ट जोड़ें",
+  "text.magicWriteNeedsAi": "इसके लिए AI सेवा चाहिए (योजना में)"
 }

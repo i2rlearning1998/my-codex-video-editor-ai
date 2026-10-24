@@ -271,3 +271,24 @@ test('[FX5-004] Draw palette: a chosen shape, line, note colour, text style and 
   expect((await layers()).length).toBe(count);
   await page.screenshot({ path: 'reports/fix5/c4-flyout.png' });
 });
+
+// C5: the Text panel has no My text styles section; Magic write explains itself.
+test('[FX5-005] Text panel: no My text styles section; Magic write says it needs the AI service; Dynamic text stays disabled', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await showCategory(page, 'Text');
+  const host = page.locator('#library-text');
+  await expect(host.locator('.browse-section-head h3').first()).toBeVisible();
+  await expect(host.locator('.browse-section-head h3')).not.toContainText([
+    'My text styles',
+  ]);
+  await expect(host.locator('[data-action="magic-write"]')).toHaveAttribute(
+    'title',
+    'Needs the AI service (planned)',
+  );
+  await expect(host.locator('[data-action="dynamic-text"]')).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+});

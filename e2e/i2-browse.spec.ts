@@ -282,7 +282,7 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   const host = panel(page, 'text');
   await expect(host.locator('[data-action="magic-write"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 10 (AI-001)',
+    'Needs the AI service (planned)',
   );
   await expect(host.locator('[data-action="dynamic-text"]')).toHaveAttribute(
     'aria-disabled',
@@ -297,7 +297,6 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   await expect(host.locator('.browse-section-head h3')).toContainText([
     'Default text styles',
     'Font combinations',
-    'My text styles',
     'Dynamic text',
     'Plain text',
     'Text styles',
