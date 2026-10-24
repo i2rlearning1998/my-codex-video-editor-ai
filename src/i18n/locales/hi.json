@@ -2664,5 +2664,10 @@
   "captions.fail.stalled": "स्पीच इंजन चुप हो गया और रोक दिया गया। फिर कोशिश करें, क्लाउड इंजन चुनें, या डायग्नोस्टिक्स कॉपी करें।",
   "captions.useCloud": "इसके बजाय क्लाउड इंजन चुनें",
   "captions.addKey": "कुंजी जोड़ें",
-  "captions.step.listenDone": "कैप्शन पूरे किए जा रहे हैं…"
+  "captions.step.listenDone": "कैप्शन पूरे किए जा रहे हैं…",
+  "build.cancel": "रद्द करें",
+  "build.done": "पूरा हुआ",
+  "build.failed": "पूरा नहीं हो सका: {reason}",
+  "build.cancelled": "रोक दिया गया। कुछ नहीं जोड़ा गया।",
+  "build.rebuild": "फिर जाँचें"
 }

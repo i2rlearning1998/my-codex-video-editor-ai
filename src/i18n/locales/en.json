@@ -2664,5 +2664,10 @@
   "captions.fail.stalled": "The speech engine went quiet and was stopped. Try again, use a cloud engine, or copy diagnostics.",
   "captions.useCloud": "Use a cloud engine instead",
   "captions.addKey": "Add a key",
-  "captions.step.listenDone": "Finishing the captions…"
+  "captions.step.listenDone": "Finishing the captions…",
+  "build.cancel": "Cancel",
+  "build.done": "Done",
+  "build.failed": "Could not finish: {reason}",
+  "build.cancelled": "Stopped. Nothing was added.",
+  "build.rebuild": "Check again"
 }

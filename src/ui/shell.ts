@@ -96,6 +96,7 @@ import {
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
 import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
+import { buildOffline, compactNewScenes } from '../core/project-build';
 import { IN_OUT_PRESETS, LOOP_PRESETS, retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
@@ -2351,7 +2352,7 @@ export function mountEditorShell(
           mode: 'new',
           overrides,
         });
-        const project = engine.preview(built.commands);
+        const project = await buildOffline(engine.state, built.commands);
         const scene = project.compositions.find(
           (item) => item.id === built.compositionIds[0],
         );
@@ -2427,7 +2428,16 @@ export function mountEditorShell(
             overrides: (first.params ?? {}) as ParamValues,
           },
         );
-        engine.commands.transaction('Import code animation', built.commands);
+        // A long build goes in as a few whole-scene commands (built offline in
+        // chunks), so the page never waits on thousands of commands.
+        const compact =
+          built.commands.length > 200
+            ? await compactNewScenes(engine.state, built.commands)
+            : null;
+        engine.commands.transaction(
+          'Import code animation',
+          compact ?? built.commands,
+        );
         if (built.compositionIds[0])
           session.selectComposition(built.compositionIds[0]);
       } else insertCreatorItem(creatorLibraryId(`${add.packId}/${first.id}`));
@@ -2800,7 +2810,7 @@ export function mountEditorShell(
           mode: 'new',
           overrides,
         });
-        const project = engine.preview(built.commands);
+        const project = await buildOffline(engine.state, built.commands);
         const scene = project.compositions.find(
           (item) => item.id === built.compositionIds[0],
         );

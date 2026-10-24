@@ -11503,3 +11503,102 @@ body:has(.modal-backdrop) .toast-stack {
   box-sizing: border-box;
   inline-size: 100%;
 }
+
+/* PHASE 0 E1: the build loader. */
+.build-loader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+}
+.build-loader-text {
+  flex: 1;
+  min-inline-size: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+}
+.build-loader-step {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-md, 14px);
+}
+.build-loader-percent {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.build-loader-track-line {
+  grid-column: 1 / -1;
+  block-size: 4px;
+  border-radius: 2px;
+  background: var(--hover);
+  overflow: hidden;
+}
+.build-loader-track-line span {
+  display: block;
+  block-size: 100%;
+  background: var(--accent);
+  transition: inline-size var(--motion-fast, 120ms);
+}
+.build-loader-mark {
+  inline-size: 44px;
+  block-size: 44px;
+  flex: none;
+}
+.build-loader-track {
+  fill: none;
+  stroke: var(--hover);
+  stroke-width: 4;
+}
+.build-loader-arc {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset var(--motion-fast, 120ms);
+}
+.build-loader-bar {
+  fill: var(--accent-text);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.build-loader[data-state='running'] .build-loader-bar {
+  animation: build-loader-bounce 900ms ease-in-out infinite;
+}
+.build-loader[data-state='running'] .b2 {
+  animation-delay: 150ms;
+}
+.build-loader[data-state='running'] .b3 {
+  animation-delay: 300ms;
+}
+@keyframes build-loader-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.6);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+.build-loader[data-state='done'] .build-loader-arc {
+  stroke: var(--success-text, var(--accent));
+}
+.build-loader[data-state='failed'] .build-loader-arc,
+.build-loader[data-state='cancelled'] .build-loader-arc {
+  stroke: var(--warning-text, var(--accent));
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .build-loader-bar {
+    animation: none !important;
+  }
+}
+:root[data-motion='off'] .build-loader-bar {
+  animation: none !important;
+}

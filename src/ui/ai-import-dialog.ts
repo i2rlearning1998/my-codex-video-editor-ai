@@ -155,6 +155,8 @@ export function openAiImportDialog(options: AiImportOptions) {
   } | null = null;
   let checked = false;
   let run = 0;
+  /** PHASE 0 E1: a new check cancels the build check still running. */
+  let checking: AbortController | null = null;
   let fileName = options.fileName ?? '';
   let sceneMode: 'new' | 'current' = 'new';
   const handle = openModal({
@@ -182,6 +184,7 @@ export function openAiImportDialog(options: AiImportOptions) {
         <button type="button" class="button primary" id="ai-import-add" disabled>${t('aiImport.add')}</button>
       </div>`,
     onClose: () => {
+      checking?.abort();
       run++;
     },
   });
@@ -447,6 +450,8 @@ export function openAiImportDialog(options: AiImportOptions) {
   };
   const classify = async () => {
     const mine = ++run;
+    checking?.abort();
+    checking = new AbortController();
     checked = false;
     add.disabled = true;
     const text = source.value;
@@ -700,6 +705,7 @@ export function openAiImportDialog(options: AiImportOptions) {
         }
         const built = await buildProjectFromComposition(
           (raw as { data?: unknown }).data,
+          checking ? { signal: checking.signal } : {},
         ).catch((error: unknown) => ({
           project: null,
           errors: [String(error)],
