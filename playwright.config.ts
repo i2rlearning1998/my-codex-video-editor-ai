@@ -85,7 +85,8 @@ export default defineConfig({
     { name: 'desktop' },
     {
       name: 'laptop-1366',
-      testMatch: /(fix1|fix3|fix4)-(panels|whisper)\.spec\.ts|fix[45]\.spec\.ts/,
+      testMatch:
+        /(fix1|fix3|fix4)-(panels|whisper)\.spec\.ts|fix[45]\.spec\.ts/,
       use: { viewport: { width: 1366, height: 768 } },
     },
   ],
