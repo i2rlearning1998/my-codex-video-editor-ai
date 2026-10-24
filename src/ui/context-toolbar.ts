@@ -1,6 +1,7 @@
 // CV-035 to CV-038 context toolbar (UX spec 4.1): the selected layer's most used
 // controls above the canvas. Controls whose systems are not built are shown
 // disabled with the wave that builds them (D-068); nothing behind them exists.
+import { plannedReason } from './planned';
 import { fontWeights } from '../render/fonts';
 import { isCatalogFont } from '../text-engine/catalog';
 import { isSafeFamily, uploadedFonts } from '../text-engine/uploaded';
@@ -623,7 +624,7 @@ export function mountContextToolbar(
   };
   const planned = (id: string) => {
     const [key, icon, ledger, wave] = PLANNED[id]!;
-    const reason = t('toolbar.later', { wave: String(wave), id: ledger });
+    const reason = plannedReason(wave, ledger);
     const item = tool(id, icon, t(key));
     item.setAttribute('aria-disabled', 'true');
     item.title = reason;

@@ -359,7 +359,16 @@ export function openExportDialog(options: ExportDialogOptions) {
               // V7 (spec 10.5): transitions across the scene cuts.
               sceneCuts: sceneCuts(scenes),
             }
-          : {}),
+          : {
+              // TXT-037: this scene's place in the project.
+              fields: {
+                sceneNumber:
+                  scenes.findIndex(
+                    (item) => item.id === options.composition.id,
+                  ) + 1 || 1,
+                sceneCount: scenes.length,
+              },
+            }),
         settings,
       },
       {

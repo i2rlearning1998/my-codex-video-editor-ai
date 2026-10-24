@@ -194,7 +194,7 @@ test('[ANI-021] Editor | 2D Animation: keyframe tools show in 2D Animation only;
   await expect(editor).toHaveAttribute('aria-checked', 'true');
   await expect(
     page.locator('#mode-switch [data-mode="animation3d"]'),
-  ).toHaveAttribute('title', 'Planned: Wave 8 (ADV-002)');
+  ).toHaveAttribute('title', 'Planned for Phase 1');
   await select(page, 'example-badge');
   // Editor: no stopwatches, no keyframe diamonds in the Inspector.
   await expect(page.locator('#animation-panel')).toBeHidden();

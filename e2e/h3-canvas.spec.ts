@@ -531,7 +531,7 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   );
   await expect(menu.locator('[data-action="comment"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 8 (ADV-008)',
+    'Needs your account (planned)',
   );
   // Info.
   await (await revealEntry(menu, menu.locator('[data-action="info"]'))).click();
@@ -602,9 +602,9 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   ])
     await expect(menu.locator(`[data-action="${action}"]`)).toBeVisible();
   await menu.locator('[data-action="guides"]').hover();
-  await expect(menu.locator('[data-action="guides-grid"]')).toHaveAttribute(
+  await expect(menu.locator('[data-action="guides-rulers"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 2 (CV-014)',
+    'Planned for Phase 1',
   );
   await page.keyboard.press('Escape');
   await page.mouse.click(outside.x, outside.y, { button: 'right' });

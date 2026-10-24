@@ -7,6 +7,7 @@ import {
   getBlendMode,
   getItem,
   getTransition,
+  isTimeStatic,
   renderStack,
   sanitize,
   surface,
@@ -14,6 +15,7 @@ import {
   type Surface,
 } from '../fx';
 import type { RenderItem } from './adapter';
+import { createProcessedCache } from './processed-cache';
 
 type Target = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 type Paint = (
@@ -28,6 +30,30 @@ export interface FxFrame {
   readonly matrix: readonly [number, number, number, number, number, number];
   readonly width: number;
   readonly height: number;
+}
+
+/**
+ * PHASE 0 E2: a stack that does not depend on time gives the same pixels for
+ * the same picture, so a repeated picture (an image clip, a paused frame, a
+ * redraw while only a panel changed) is processed once. Keyed by two hashes
+ * of the picture's pixels plus the stack. The page only: the export worker
+ * has no window and always processes.
+ */
+const staticResults = createProcessedCache<Surface>(48 * 1024 * 1024);
+function pixelKey(data: Uint8ClampedArray): string {
+  const words = new Uint32Array(
+    data.buffer,
+    data.byteOffset,
+    data.byteLength >> 2,
+  );
+  let h1 = 0x811c9dc5,
+    h2 = 0x1234567;
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]!;
+    h1 = Math.imul(h1 ^ w, 16777619);
+    h2 = (Math.imul(h2, 31) + w + i) | 0;
+  }
+  return `${data.byteLength}:${h1 >>> 0}:${h2 >>> 0}`;
 }
 
 const scratch: OffscreenCanvas[] = [];
@@ -95,13 +121,25 @@ export function drawWithFx(
           : [];
       });
       if (!fx || !stack.length) return source;
-      return renderStack(source, stack, {
+      const cacheable =
+        typeof window !== 'undefined' &&
+        stack.every((entry) => isTimeStatic(entry.id));
+      const key = cacheable
+        ? `${pixelKey(source.data)}|${JSON.stringify(stack)}`
+        : '';
+      if (cacheable) {
+        const hit = staticResults.get(key);
+        if (hit) return hit;
+      }
+      const result = renderStack(source, stack, {
         time: fx.time,
         duration: Math.max(fx.duration, 1e-3),
         seed: fx.seed,
         width,
         height,
       });
+      if (cacheable) staticResults.set(key, result, result.data.byteLength);
+      return result;
     };
     let out = processed(item, 0);
     const transition = item.fxTransition

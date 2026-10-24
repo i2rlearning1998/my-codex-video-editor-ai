@@ -4,6 +4,7 @@
 // custom cache, so inference never goes back to the network for them. The
 // runner library loads only on the first transcription (lazy import).
 import {
+  ModelDownloadError,
   createModelLoader,
   createIndexedModelStore,
   type ModelStore,
@@ -74,6 +75,12 @@ export function classifyWhisperError(
     error instanceof Error ? `${error.name} ${error.message}` : String(error);
   if (error instanceof SpeechError && error.code === 'MODEL_UNAVAILABLE')
     return new WhisperError('not-downloaded', step, error);
+  if (error instanceof ModelDownloadError)
+    return new WhisperError(
+      error.reason === 'stalled' ? 'stalled' : 'blocked',
+      step,
+      error,
+    );
   if (
     /out of memory|memory access|allocation|RangeError|Aborted\(OOM/i.test(text)
   )
@@ -98,11 +105,16 @@ export function whisperUnsupported(needsWebAudio = true): string | null {
 /** The audio is cut into these windows so progress can be shown. */
 export const WHISPER_WINDOW_SECONDS = 30;
 
+/** FIX5 C9: bytes so far; `total` is null while no size is known. */
+export interface DownloadDetail {
+  done: number;
+  total: number | null;
+}
 export interface WhisperRunner {
   /** Every file is stored and passes its check. */
   isReady(): Promise<boolean>;
   download(
-    onProgress: (fraction: number) => void,
+    onProgress: (fraction: number, detail?: DownloadDetail) => void,
     signal: AbortSignal,
   ): Promise<void>;
   remove(): Promise<void>;
@@ -131,6 +143,15 @@ function withTimeout<T>(work: Promise<T>, ms: number, signal?: AbortSignal) {
   });
 }
 
+/** Dev and test only: shorter stall limits, so a stall can be shown quickly. */
+function stallOverride() {
+  const ms = (globalThis as { __AIVE_E2E_WHISPER_STALL_MS__?: number })
+    .__AIVE_E2E_WHISPER_STALL_MS__;
+  return typeof ms === 'number' && ms > 0
+    ? { beatLossMs: ms, loadStallMs: ms }
+    : {};
+}
+
 export function createWhisperRunner(
   options: {
     store?: ModelStore;
@@ -156,9 +177,10 @@ export function createWhisperRunner(
   // (Node unit tests, or a test-supplied module) it runs in-process.
   const makeEngine = (): WhisperEngine & { abort?(): void } =>
     !options.loadTransformers && workerSupported()
-      ? createWorkerEngine(
-          options.workerFake ? { fake: options.workerFake } : {},
-        )
+      ? createWorkerEngine({
+          ...(options.workerFake ? { fake: options.workerFake } : {}),
+          ...stallOverride(),
+        })
       : createInProcessEngine(
           options.loadTransformers ??
             (() =>
@@ -186,6 +208,8 @@ export function createWhisperRunner(
     async download(onProgress, signal) {
       const files = getFiles();
       const whole = total();
+      // The total is exact only when every file's size is pinned.
+      const exact = files.every((f) => f.sizeBytes !== null);
       let done = 0;
       for (const file of files) {
         let current = 0;
@@ -193,13 +217,19 @@ export function createWhisperRunner(
           signal,
           onProgress: (p) => {
             current = p.completed;
-            onProgress(Math.min(0.99, (done + current) / whole));
+            onProgress(Math.min(0.99, (done + current) / whole), {
+              done: done + current,
+              total: exact ? whole : null,
+            });
           },
         });
         done += blob.size;
-        onProgress(Math.min(0.99, done / whole));
+        onProgress(Math.min(0.99, done / whole), {
+          done,
+          total: exact ? whole : null,
+        });
       }
-      onProgress(1);
+      onProgress(1, { done, total: done });
     },
     async remove() {
       engine?.dispose();

@@ -222,15 +222,12 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
     'Frames',
     'Grids',
   ]);
-  for (const [tile, id] of [
-    ['charts', 'SHP-016'],
-    ['frames', 'MSK-003'],
-  ] as const) {
+  for (const tile of ['charts', 'frames'] as const) {
     const button = host.locator(`[data-tile="${tile}"]`);
     await expect(button).toHaveAttribute('aria-disabled', 'true');
     await expect(button).toHaveAttribute(
       'title',
-      new RegExp(`Planned: Wave \\d+ \\(${id}\\)`),
+      /Planned for Phase 1|Needs the AI service|Needs your account/,
     );
   }
   // Shapes: Lines first, then the shape sections.
@@ -282,22 +279,22 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   const host = panel(page, 'text');
   await expect(host.locator('[data-action="magic-write"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 10 (AI-001)',
+    'Needs the AI service (planned)',
   );
-  await expect(host.locator('[data-action="dynamic-text"]')).toHaveAttribute(
+  // TXT-037: the dynamic fields are live now.
+  await expect(
+    host.locator('[data-action="dynamic-text"]').first(),
+  ).not.toHaveAttribute('aria-disabled', 'true');
+  // TXT-035: Captions opens the Auto captions dialog.
+  await expect(host.locator('[data-action="captions"]')).not.toHaveAttribute(
     'aria-disabled',
     'true',
-  );
-  await expect(host.locator('[data-action="captions"]')).toHaveAttribute(
-    'title',
-    'Planned: Wave 8 (TXT-035)',
   );
   // FINAL3 T5: Canva's order: default styles, font combinations, the
   // user's own styles, then the rest.
   await expect(host.locator('.browse-section-head h3')).toContainText([
     'Default text styles',
     'Font combinations',
-    'My text styles',
     'Dynamic text',
     'Plain text',
     'Text styles',
@@ -430,26 +427,28 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   );
   await expect(page.locator('#draw-flyout [data-brush="pen"]')).toBeVisible();
   expect((await hook(page)).session.drawBrush).toBe('pen');
-  // Table is planned.
-  await expect(palette.locator('[data-palette-tool="table"]')).toHaveAttribute(
-    'title',
-    'Planned: Wave 8 (SHP-025)',
-  );
+  // FIX5 C4: Table is a real tool now (no longer planned).
+  await expect(
+    palette.locator('[data-palette-tool="table"]'),
+  ).not.toHaveAttribute('aria-disabled', 'true');
+  // (The choices flyout covers the canvas's left edge, so the drag starts right of it.)
   // Shape: drag a rectangle.
   await palette.locator('[data-palette-tool="shape"]').click();
-  await expect(page.locator('#draw-flyout')).toBeHidden();
-  const a = await toScreen(page, 100, 100),
-    b = await toScreen(page, 400, 300);
+  // FIX5 C4: the tool's choices show; the brushes do not.
+  await expect(page.locator('#draw-flyout [data-brush="pen"]')).toBeHidden();
+  await expect(page.locator('#draw-choices')).toBeVisible();
+  const a = await toScreen(page, 500, 100),
+    b = await toScreen(page, 800, 300);
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();
   await page.mouse.move(b.x, b.y, { steps: 6 });
-  await expect(page.locator('.place-preview')).toBeVisible();
+  await expect(page.locator('.place-preview:not(.place-ghost)')).toBeVisible();
   await page.mouse.up();
   expect((await labels(page)).at(-1)).toBe('Add shape');
   let layer = (await scene(page)).layers.at(-1)!;
   expect(layer.properties.width?.value as number).toBeCloseTo(300, -1);
   expect(layer.properties.height?.value as number).toBeCloseTo(200, -1);
-  expect(layer.transform.position.value[0]).toBeCloseTo(100, -1);
+  expect(layer.transform.position.value[0]).toBeCloseTo(500, -1);
   // The palette is back on Select after placing.
   await expect(palette.locator('[data-palette-tool="select"]')).toHaveAttribute(
     'aria-pressed',

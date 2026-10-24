@@ -19,7 +19,10 @@ export interface LocalEngineView {
 /** What a downloadable engine needs to offer Download, Cancel and Remove. */
 export interface LocalEngineDriver {
   download(
-    onProgress: (fraction: number) => void,
+    onProgress: (
+      fraction: number,
+      detail?: { done: number; total: number | null },
+    ) => void,
     signal: AbortSignal,
   ): Promise<void>;
   remove(): Promise<void>;
@@ -31,7 +34,11 @@ export const LOCAL_ENGINE_IDS = ['local-whisper', 'local-tts'] as const;
 const drivers = new Map<string, LocalEngineDriver>();
 const running = new Map<
   string,
-  { controller: AbortController; progress: number }
+  {
+    controller: AbortController;
+    progress: number;
+    detail?: { done: number; total: number | null };
+  }
 >();
 const errors = new Map<string, string>();
 const listeners = new Set<() => void>();
@@ -63,9 +70,17 @@ export function localEngines(registry: Registry) {
       return {
         id,
         state: 'downloading',
-        label: t('settings.offline.state.downloading', {
-          percent: Math.round(job.progress * 100),
-        }),
+        // FIX5 C9: bytes when they are known, else an honest "Downloading…".
+        label: job.detail
+          ? job.detail.total
+            ? t('settings.offline.state.downloadingOf', {
+                done: formatBytes(job.detail.done),
+                total: formatBytes(job.detail.total),
+              })
+            : t('settings.offline.state.downloadingSoFar', {
+                done: formatBytes(job.detail.done),
+              })
+          : t('settings.offline.state.downloadingWait'),
         note: t('settings.offline.note.downloading'),
         progress: job.progress,
         actions: ['cancel'],
@@ -126,13 +141,17 @@ export function localEngines(registry: Registry) {
         return;
       }
       if (running.has(id)) return;
-      const job = { controller: new AbortController(), progress: 0 };
+      const job: NonNullable<ReturnType<typeof running.get>> = {
+        controller: new AbortController(),
+        progress: 0,
+      };
       running.set(id, job);
       errors.delete(id);
       notify();
       try {
-        await driver.download((fraction) => {
+        await driver.download((fraction, detail) => {
           job.progress = Math.min(1, Math.max(0, fraction));
+          if (detail) job.detail = detail;
           notify();
         }, job.controller.signal);
       } catch (error) {

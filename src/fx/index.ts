@@ -7,6 +7,7 @@ import type {
   Transition,
 } from './types';
 import { copy, resize, surface } from './surface';
+import { defaults } from './definition';
 import { filters } from './filters';
 import { effects } from './effects';
 import { transitions } from './transitions';
@@ -73,3 +74,56 @@ export function renderThumbnail(
 }
 
 export { clearEffectCaches } from './effects-b';
+
+const staticIds = new Map<string, boolean>();
+/**
+ * True when an effect, filter or adjustment gives the same pixels at any time
+ * and seed (measured once per id on a small noisy picture, so a new effect
+ * needs no list). A stack of such items can be cached by its input pixels.
+ */
+export function isTimeStatic(id: string): boolean {
+  let known = staticIds.get(id);
+  if (known !== undefined) return known;
+  const def = getItem(id);
+  if (!def || def.kind === 'transition') known = false;
+  else {
+    const size = 24;
+    const base = surface(size, size);
+    let seed = 12345;
+    for (let i = 0; i < base.data.length; i++) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      base.data[i] = i % 4 === 3 ? 255 : (seed >>> 24) & 255;
+    }
+    const params = defaults(def);
+    try {
+      const run = (time: number, seedValue: number, duration: number) => {
+        const out = surface(size, size);
+        def.apply(copy(base), out, params, {
+          time,
+          duration,
+          seed: seedValue,
+          width: size,
+          height: size,
+        });
+        return out.data;
+      };
+      const first = run(0, 1, 2);
+      known = [
+        [0.13, 3, 2],
+        [0.37, 9, 3],
+        [0.7, 99, 5],
+        [1.1, 5, 2],
+        [1.9, 7, 2],
+        [3.3, 11, 8],
+        [6.1, 13, 12],
+      ].every(([time, seedValue, duration]) => {
+        const next = run(time!, seedValue!, duration!);
+        return first.every((value, i) => value === next[i]);
+      });
+    } catch {
+      known = false;
+    }
+  }
+  staticIds.set(id, known);
+  return known;
+}

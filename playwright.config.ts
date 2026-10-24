@@ -82,11 +82,28 @@ export default defineConfig({
   },
   // FIX1 F9: a small-laptop smoke run of the panel-scroll test only.
   projects: [
-    { name: 'desktop' },
+    { name: 'desktop', testIgnore: /phase0-play\.spec\.ts/ },
     {
       name: 'laptop-1366',
-      testMatch: /(fix1|fix3|fix4)-(panels|whisper)\.spec\.ts|fix4\.spec\.ts/,
+      testMatch:
+        /(fix1|fix3|fix4)-(panels|whisper)\.spec\.ts|fix[45]\.spec\.ts/,
       use: { viewport: { width: 1366, height: 768 } },
+    },
+    // PHASE 0: the owner's real Chrome blocks sound until a click; this project
+    // runs the first-Play test under that policy.
+    {
+      name: 'autoplay-policy',
+      testMatch: /phase0-play\.spec\.ts/,
+      use: {
+        launchOptions: {
+          ...('launchOptions' in browser ? browser.launchOptions : {}),
+          args: [
+            '--use-fake-ui-for-media-stream',
+            '--use-fake-device-for-media-stream',
+            '--autoplay-policy=document-user-activation-required',
+          ],
+        },
+      },
     },
   ],
   updateSnapshots: 'missing',

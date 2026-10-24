@@ -1,3 +1,9 @@
+import { plannedReason } from './planned';
+import {
+  audioPlayButton,
+  mediaPreviewUrl,
+  stopAudioPreview,
+} from './components/audio-preview';
 import {
   builtScenes,
   compositionCardStatus,
@@ -91,6 +97,7 @@ import {
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
 import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
+import { buildOffline, compactNewScenes } from '../core/project-build';
 import { IN_OUT_PRESETS, LOOP_PRESETS, retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
@@ -222,7 +229,8 @@ import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
-import { addTopLevel, myTextStyleCommands } from './library-insert';
+import { addTopLevel, itemName, myTextStyleCommands } from './library-insert';
+import { DEFAULT_TEXT_ITEMS, myTextStyles } from './text-styles';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
@@ -959,6 +967,8 @@ export function mountEditorShell(
   let textEditing: TextEditor | undefined;
   // U2: how many times the canvas has been drawn (read by the test hook).
   let drawCount = 0;
+  /** PHASE 0 E2: the last 60 renderer times (ms), read by the test hook. */
+  const renderTimes: number[] = [];
   /**
    * V7 (spec 10.5): while playing across a scene cut, the canvas shows the
    * transition: the open scene with the neighbour's boundary frame, mixed.
@@ -1066,12 +1076,15 @@ export function mountEditorShell(
           }
         : {}),
     };
+    const renderStart = performance.now();
     const report = renderer.render(
       canvas,
       drawn,
       viewport(),
       session.selectedId,
     );
+    renderTimes.push(performance.now() - renderStart);
+    if (renderTimes.length > 60) renderTimes.shift();
     if (session.playing) drawSceneCut(drawn);
     else effectsTool.draw(viewport().matrix);
     frames.endFrame();
@@ -2081,6 +2094,46 @@ export function mountEditorShell(
     waveforms,
     codeStatus,
   );
+  // FIX5 C7: the first Play waits for the sound to be decoded, so picture and
+  // sound start together (a short "Preparing audio" note, never a dead button).
+  {
+    const decodedOnce = new Set<string>();
+    timeline.playback.prepare = () => {
+      const pending = audibleClips().filter(
+        (clip) =>
+          !decodedOnce.has(
+            `${clip.sourceAssetId}|${clip.audio?.denoise ?? 'off'}`,
+          ),
+      );
+      if (!pending.length) return null;
+      const decodes = pending.map((clip) =>
+        decoder
+          .decode(clip.sourceAssetId, clip.audio?.denoise ?? 'off')
+          .catch(() => undefined)
+          .then(() => {
+            decodedOnce.add(
+              `${clip.sourceAssetId}|${clip.audio?.denoise ?? 'off'}`,
+            );
+          }),
+      );
+      return Promise.race([
+        Promise.all(decodes).then(() => undefined),
+        new Promise<void>((resolve) => setTimeout(resolve, 15_000)),
+      ]);
+    };
+    let preparingNote = 0;
+    timeline.playback.onPreparing = (preparing) => {
+      window.clearTimeout(preparingNote);
+      const button = document.querySelector('[data-action="play"]');
+      if (preparing) {
+        button?.setAttribute('aria-busy', 'true');
+        preparingNote = window.setTimeout(
+          () => showToast(t('playback.preparing'), 'info', 4000),
+          200,
+        );
+      } else button?.removeAttribute('aria-busy');
+    };
+  }
   // FINAL2 U9: a nested clip's breadcrumb bar above the timeline.
   nestBar = mountNestBar(
     element('#timeline-foundation').parentElement!,
@@ -2305,7 +2358,7 @@ export function mountEditorShell(
           mode: 'new',
           overrides,
         });
-        const project = engine.preview(built.commands);
+        const project = await buildOffline(engine.state, built.commands);
         const scene = project.compositions.find(
           (item) => item.id === built.compositionIds[0],
         );
@@ -2381,7 +2434,16 @@ export function mountEditorShell(
             overrides: (first.params ?? {}) as ParamValues,
           },
         );
-        engine.commands.transaction('Import code animation', built.commands);
+        // A long build goes in as a few whole-scene commands (built offline in
+        // chunks), so the page never waits on thousands of commands.
+        const compact =
+          built.commands.length > 200
+            ? await compactNewScenes(engine.state, built.commands)
+            : null;
+        engine.commands.transaction(
+          'Import code animation',
+          compact ?? built.commands,
+        );
         if (built.compositionIds[0])
           session.selectComposition(built.compositionIds[0]);
       } else insertCreatorItem(creatorLibraryId(`${add.packId}/${first.id}`));
@@ -2754,7 +2816,7 @@ export function mountEditorShell(
           mode: 'new',
           overrides,
         });
-        const project = engine.preview(built.commands);
+        const project = await buildOffline(engine.state, built.commands);
         const scene = project.compositions.find(
           (item) => item.id === built.compositionIds[0],
         );
@@ -4114,6 +4176,19 @@ export function mountEditorShell(
     });
   aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    videoPlans: () => {
+      const built = planState(engine.state.id);
+      return built
+        ? [
+            {
+              id: engine.state.id,
+              title: built.plan.meta.title,
+              scenes: built.sceneIds.filter(Boolean).length,
+            },
+          ]
+        : [];
+    },
+    openReview: () => openPlanReview(),
     // FINAL3 V3.5: a plan's status, and the starter kit.
     planStatus: (_id, data) => {
       // FIX3 4.6: a composition built with Build video (not a plan).
@@ -4828,6 +4903,10 @@ export function mountEditorShell(
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
       },
+      openAutoCaptions: () => void openAutoCaptions(captionsContext),
+      addDynamicText: (token) => {
+        libraryActions.insertTextBox(undefined, undefined, undefined, token);
+      },
       // FINAL3 T5: a saved text style, centred at the playhead.
       insertTextStyle: (style) =>
         safely(() => {
@@ -4904,6 +4983,7 @@ export function mountEditorShell(
       );
   };
   const applyCategory = (category: string) => {
+    stopAudioPreview();
     syncRails();
     // FINAL2 U10: library panels get room for two 165 px card columns.
     workspace?.setLibrary(
@@ -5098,6 +5178,10 @@ export function mountEditorShell(
     frames,
     report: reportError,
     crossfade,
+    openPlanReview: () => {
+      if (planState(engine.state.id)) openPlanReview();
+      else showToast(t('plan.reviewEmpty'), 'info');
+    },
     openTemplates: () => {
       const templates = element<HTMLButtonElement>(
         '#rail-left [data-category="Templates"]',
@@ -5120,6 +5204,68 @@ export function mountEditorShell(
       libraryActions.insertTextBox(at, width);
       editText(session.selectedId, { selectAll: true });
     },
+    library: {
+      shapes: () =>
+        libraryActions
+          .list()
+          .filter((item) => item.type === 'shape')
+          .map((item) => ({ id: item.id, name: itemName(item) })),
+      texts: () => [
+        ...DEFAULT_TEXT_ITEMS.map((item) => ({
+          id: item.id,
+          name: itemName(item),
+        })),
+        ...myLibrary
+          .list()
+          .filter((saved) => saved.kind === 'text')
+          .map((saved) => ({ id: `mine:${saved.id}`, name: saved.name })),
+        ...myTextStyles().map((style) => ({
+          id: `style:${style.id}`,
+          name: style.name,
+        })),
+      ],
+      insert: (id, at) => {
+        if (id.startsWith('mine:')) {
+          const built = mineBuilt(id.slice(5), session.currentTime, at);
+          return built
+            ? {
+                label: t('palette.addSavedText'),
+                commands: built.commands,
+                ...(built.layerIds[0] ? { layerId: built.layerIds[0] } : {}),
+              }
+            : null;
+        }
+        if (id.startsWith('style:')) {
+          const style = myTextStyles().find(
+            (entry) => entry.id === id.slice(6),
+          );
+          return style
+            ? myTextStyleCommands(
+                session.source,
+                style.layer,
+                session.currentTime,
+                at,
+              )
+            : null;
+        }
+        const item =
+          libraryActions.find(id) ??
+          DEFAULT_TEXT_ITEMS.find((entry) => entry.id === id);
+        return item ? libraryActions.commandsFor(item, at) : null;
+      },
+    },
+    insertTable: (rows, columns, at) =>
+      safely(() => {
+        session.setPlaying(false);
+        const insert = tableInsertCommands(
+          rows,
+          columns,
+          session.source.composition,
+          (item) => libraryActions.commandsFor(item, at)!,
+        );
+        engine.commands.transaction(t('textx.step.insert'), insert.commands);
+        if (insert.layerId) session.select(insert.layerId);
+      }),
     setLeftOpen: (open) => workspace?.setOpen('left', open),
     leftOpen: () => workspace?.leftOpen ?? true,
     changed: () => {
@@ -5423,7 +5569,7 @@ export function mountEditorShell(
             : t(`panel.${section.toLowerCase()}`);
       const planned = plannedSection(section, session);
       const title = planned
-        ? `${label}: ${t('toolbar.later', { wave: String(planned[1]), id: planned[0] })}`
+        ? `${label}: ${plannedReason(planned[1], planned[0])}`
         : label;
       el.title = title;
       el.setAttribute('aria-label', title);
@@ -6018,7 +6164,20 @@ export function mountEditorShell(
         ? `${formatNumber(asset.duration, { maximumFractionDigits: 1 })} s`
         : '';
       add.onclick = () => safely(() => void addOnNewAudioLane(asset.id));
-      row.append(add);
+      // FIX5 C2: My audio rows have a Play / Stop button too.
+      const play = audioPlayButton(
+        {
+          id: `asset:${asset.id}`,
+          name: asset.name,
+          url: () =>
+            mediaPreviewUrl(
+              mediaStore,
+              (asset.source as { reference?: string }).reference ?? '',
+            ),
+        },
+        'sound-tile-play',
+      );
+      row.append(add, play);
       return row;
     });
     if (!rows.length) {
@@ -6029,6 +6188,7 @@ export function mountEditorShell(
     } else mineHost.replaceChildren(...rows);
   };
   const showAudioPage = (page: keyof typeof audioPages) => {
+    stopAudioPreview();
     audioPage = page;
     for (const [name, host] of Object.entries(audioPages))
       host.hidden = name !== page;
@@ -7085,6 +7245,7 @@ export function mountEditorShell(
           viewport().matrix,
         )?.corners ?? null,
       draws: drawCount,
+      renderMs: [...renderTimes],
       // FINAL3 C3: the camera frame on the canvas (canvas CSS px), if shown.
       cameraFrame:
         cameraFrameTool
@@ -7097,6 +7258,10 @@ export function mountEditorShell(
       textOverflow: deriveRenderItems(session.source)
         .items.filter((item) => item.textOverflow)
         .map((item) => item.id),
+      // TXT-037: the text each text layer draws now (fields resolved).
+      texts: deriveRenderItems({ ...session.source, animate: true })
+        .items.filter((item) => item.kind === 'text')
+        .map((item) => ({ id: item.id, text: item.text })),
       chip: element('#canvas-chip').hidden
         ? null
         : element('#canvas-chip').textContent,

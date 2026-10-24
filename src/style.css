@@ -11267,3 +11267,338 @@ body:has(.modal-backdrop) .toast-stack {
   bottom: auto;
   top: var(--space-4);
 }
+
+/* FIX5 C3: the Scene panel's search row is one line (search, new collection,
+   count) under the single panel header, with room before the first row. */
+#scene-heading {
+  flex-wrap: nowrap;
+  padding: var(--space-1) var(--space-4) var(--space-3);
+  gap: var(--space-2);
+}
+#scene-heading .outliner-search {
+  order: -1;
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+#scene-heading .outliner-new {
+  flex: none;
+}
+#scene-heading .count {
+  order: 1;
+  flex: none;
+  min-inline-size: 22px;
+  text-align: center;
+}
+
+/* FIX5 C4: the Draw palette's choice flyouts. */
+.draw-choices {
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+.draw-choices[hidden] {
+  display: none;
+}
+.draw-choices-title {
+  margin: 0;
+  font-size: var(--font-size-sm, 12px);
+  color: var(--text-secondary);
+}
+.draw-choices-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.draw-choices-list.swatches {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.draw-choices-list.table-grid {
+  grid-template-columns: repeat(var(--u6-columns, 8), 1fr);
+  gap: 2px;
+}
+.draw-choice {
+  min-block-size: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--font-size-sm, 12px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.draw-choice[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.draw-swatch {
+  display: block;
+  inline-size: 100%;
+  block-size: 22px;
+  border-radius: var(--radius-sm);
+}
+.draw-table-cell {
+  min-block-size: 0;
+  padding: 0;
+  aspect-ratio: 1;
+}
+.draw-table-cell .draw-cell {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+.draw-table-cell.on {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.draw-choices-size {
+  margin: 0;
+  font-size: var(--font-size-sm, 12px);
+  color: var(--text-secondary);
+}
+.place-ghost {
+  opacity: 0.7;
+}
+
+/* FIX5 C6: Review video plan: a summary, then one collapsible card per scene. */
+.plan-review {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-4);
+  align-content: start;
+}
+.plan-review .camera-row,
+.plan-review .plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.plan-review .plan-feel input {
+  flex: 1 1 140px;
+  min-inline-size: 0;
+}
+.plan-review-summary {
+  display: grid;
+  gap: var(--space-1);
+}
+.plan-review-summary h3 {
+  margin: 0;
+  font-size: var(--font-size-md, 14px);
+}
+.plan-review-summary-line {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm, 12px);
+}
+.plan-review .plan-scene {
+  display: block;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+  padding: 0;
+}
+.plan-review .plan-scene[open] > .plan-scene-head {
+  border-block-end: 1px solid var(--border-subtle);
+}
+.plan-review .plan-scene > :not(summary) {
+  margin-inline: var(--space-3);
+}
+.plan-review .plan-scene > :last-child {
+  margin-block-end: var(--space-3);
+}
+.plan-scene-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  cursor: pointer;
+  list-style: none;
+}
+.plan-scene-head::-webkit-details-marker {
+  display: none;
+}
+.plan-scene-head h4 {
+  flex: 1;
+  min-inline-size: 0;
+  margin: 0;
+  cursor: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-scene-length {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm, 12px);
+}
+.plan-field {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-start: var(--space-3);
+  font-size: var(--font-size-sm, 12px);
+  color: var(--text-secondary);
+}
+.plan-review .plan-narration {
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+.plan-review .plan-scene > button[data-action='plan-voice'] {
+  margin-block-start: var(--space-2);
+}
+.plan-review .plan-layer {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+}
+.plan-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.plan-slot-thumb {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 64px;
+  block-size: 36px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--hover);
+  color: var(--text-secondary);
+}
+.plan-slot-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.plan-layer-name {
+  margin: 0;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-sm, 12px);
+}
+.plan-review .plan-actions {
+  margin-block-start: var(--space-3);
+}
+
+/* FIX5 C8: a select's menu is never taller than 60 % of the window; it scrolls inside. */
+.select-popover {
+  max-block-size: 60vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* FIX5 C10: the Audio panel's tabs and list never shrink into each other on a
+   short window, and its search stays inside the panel. */
+#library-audio > * {
+  flex: none;
+}
+#library-audio .sound-pack-search {
+  box-sizing: border-box;
+  inline-size: 100%;
+}
+
+/* PHASE 0 E1: the build loader. */
+.build-loader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--raised);
+}
+.build-loader-text {
+  flex: 1;
+  min-inline-size: 0;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  align-items: baseline;
+}
+.build-loader-step {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-md, 14px);
+}
+.build-loader-percent {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.build-loader-track-line {
+  grid-column: 1 / -1;
+  block-size: 4px;
+  border-radius: 2px;
+  background: var(--hover);
+  overflow: hidden;
+}
+.build-loader-track-line span {
+  display: block;
+  block-size: 100%;
+  background: var(--accent);
+  transition: inline-size var(--motion-fast, 120ms);
+}
+.build-loader-mark {
+  inline-size: 44px;
+  block-size: 44px;
+  flex: none;
+}
+.build-loader-track {
+  fill: none;
+  stroke: var(--hover);
+  stroke-width: 4;
+}
+.build-loader-arc {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: center;
+  transition: stroke-dashoffset var(--motion-fast, 120ms);
+}
+.build-loader-bar {
+  fill: var(--accent-text);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.build-loader[data-state='running'] .build-loader-bar {
+  animation: build-loader-bounce 900ms ease-in-out infinite;
+}
+.build-loader[data-state='running'] .b2 {
+  animation-delay: 150ms;
+}
+.build-loader[data-state='running'] .b3 {
+  animation-delay: 300ms;
+}
+@keyframes build-loader-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.6);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+.build-loader[data-state='done'] .build-loader-arc {
+  stroke: var(--success-text, var(--accent));
+}
+.build-loader[data-state='failed'] .build-loader-arc,
+.build-loader[data-state='cancelled'] .build-loader-arc {
+  stroke: var(--warning-text, var(--accent));
+}
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .build-loader-bar {
+    animation: none !important;
+  }
+}
+:root[data-motion='off'] .build-loader-bar {
+  animation: none !important;
+}

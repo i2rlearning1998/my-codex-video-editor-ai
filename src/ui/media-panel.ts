@@ -16,6 +16,7 @@ import {
   openModal,
   promptDialog,
 } from './components/modal';
+import { audioPlayButton, mediaPreviewUrl } from './components/audio-preview';
 import { showToast } from './components/toast';
 import { attachStockLicense, type LicenseMeta } from '../providers';
 import { iconSvg } from './icons';
@@ -260,6 +261,24 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     badge: badge(asset),
     data: { assetId: asset.id, name: asset.name, kind: asset.type },
     thumb: () => undefined,
+    // FIX5 C2: an audio card has a Play / Stop button (never plays on hover).
+    ...(asset.type === 'audio'
+      ? {
+          trailing: () =>
+            audioPlayButton(
+              {
+                id: `asset:${asset.id}`,
+                name: asset.name,
+                url: () =>
+                  mediaPreviewUrl(
+                    options.store,
+                    `media/${fingerprintOf(asset)}`,
+                  ),
+              },
+              'media-audio-play',
+            ),
+        }
+      : {}),
     // T1: one pointer-driven drag (no browser drag, no draggable thumbnail
     // image); a plain click adds the media to the scene.
     drag: () => ({

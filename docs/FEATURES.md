@@ -301,8 +301,8 @@ Everything the user does directly on the preview canvas.
 | CV-011 | P0 | W2 | Verified | Text-width grips change text box width and reflow the text without changing font size |
 | CV-012 | P1 | W2 | Claimed | Live readout of size, angle or position while dragging |
 | CV-013 | P0 | W2 | Verified | Smart guides and snapping to canvas center and edges, other layers and safe margins, with visible guide lines |
-| CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
-| CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
+| CV-014 | P1 | W2 | Claimed | Grid and rulers toggles; drag user guides from the rulers |
+| CV-015 | P1 | W2 | Verified | Safe-area overlays including 9:16 social UI zones |
 | CV-016 | P0 | W2 | Verified | Zoom controls: Fit, plus and minus change the canvas view scale |
 | CV-017 | P0 | W2 | Claimed | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
 | CV-018 | P0 | W2 | Verified | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
@@ -363,7 +363,7 @@ Scene Graph tree as the user sees it. Today it is the Scene list.
 | LYR-003 | P0 | W2 | Todo | Shift and Ctrl click multi-select in the list |
 | LYR-004 | P0 | W2 | Todo | Drag to reorder layers, into groups and out of groups |
 | LYR-005 | P0 | W2 | Todo | Rename by double-click or F2 |
-| LYR-006 | P0 | W2 | Todo | Visibility (eye) and lock toggles per layer |
+| LYR-006 | P0 | W2 | Verified | Visibility (eye) and lock toggles per layer |
 | LYR-007 | P0 | W2 | Todo | Expand and collapse groups |
 | LYR-008 | P0 | W2 | Verified | Type icons for text, shape, image, video, audio, group |
 | LYR-009 | P1 | W2 | Todo | Thumbnails per layer |
@@ -583,7 +583,7 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-022 | P1 | W3 | Todo | Text style presets (neon, outlined, retro and similar) with one-click apply |
 | TXT-023 | P1 | W2 | Verified | Range styling: bold, italic, underline, strike, color, size, font for selected characters |
 | TXT-024 | P1 | W2 | Verified | Bulleted and numbered lists |
-| TXT-025 | P0 | W3 | Todo | Correct shaping of complex scripts: Devanagari conjuncts and matras, other Indic scripts, Arabic joining (fixture: text_multilingual_samples.json) |
+| TXT-025 | P0 | W3 | Claimed | Correct shaping of complex scripts: Devanagari conjuncts and matras, other Indic scripts, Arabic joining (fixture: text_multilingual_samples.json) |
 | TXT-026 | P0 | W3 | Todo | Right-to-left and mixed bidirectional text render and edit correctly |
 | TXT-027 | P0 | W3 | Todo | Line breaking follows language rules (Intl.Segmenter) including Thai, CJK and Indic text |
 | TXT-028 | P0 | W3 | Todo | A fallback font chain per script guarantees no missing-glyph boxes |
@@ -593,9 +593,9 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-032 | P1 | W3 | Todo | Project keeps a font list with licenses and warns when a font is unavailable |
 | TXT-033 | P2 | W3 | Todo | Find and replace text across the project |
 | TXT-034 | P2 | W3 | Todo | Spellcheck while editing |
-| TXT-035 | P1 | W8 | Todo | Captions: manual caption track, import SRT and VTT, style presets, burn-in on export |
+| TXT-035 | P1 | W8 | Claimed | Captions: manual caption track, import SRT and VTT, style presets, burn-in on export |
 | TXT-036 | P0 | W2 | Verified | Underline, strikethrough and uppercase toggle from the text toolbar, and a box taller than its text anchors its lines top, middle or bottom (H3 LCR) |
-| TXT-037 | P2 | W8 | Todo | Dynamic text: page number, date and similar fields that update themselves |
+| TXT-037 | P2 | W8 | Verified | Dynamic text: page number, date and similar fields that update themselves |
 | TXT-038 | P0 | W3 | Verified | Text panel: search; Add a text box; Magic Write (planned, W10); Default text styles (click or drag); Dynamic text (planned); Font combinations, Plain text, Text styles, Titles (hover preview) and Two line with See all; Captions (planned, W8) |
 | TXT-039 | P1 | W5 | Verified | Animated titles in Text › Titles: each brings its entrance preset (pop, slide, typewriter, zoom, wipe, fade) with its clip in one undo step, and its card previews the entrance on hover |
 | TXT-040 | P0 | W2 | Verified | Bundled open-licence fonts with real weights 100 to 900 (Inter, Poppins and Noto Sans Devanagari, which also cover Devanagari) work in the preview and export; the weight list offers only what a font has (system fonts: Regular and Bold); Regular, Medium, Semibold and Bold look visibly different (J5 LCR) |
@@ -1105,6 +1105,42 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FX3-001 | P0 | W9 | Claimed | Every library shelf (Media, AI, My Templates) fills its panel to the bottom with one scroller (the cards); search, Import and the chips stay put at every window height; no nested scroller (1.1, 4.1) |
 | FX3-002 | P0 | W9 | Claimed | Offline captions run in a dedicated module Web Worker: a CPU-bound model and a flood of 20 000 progress events never freeze the page (no frame gap over 200 ms), and the cues still land (2.2, 2.7) |
 | FX3-003 | P0 | W9 | Claimed | A captions worker that sends nothing for 15 s (or 120 s during one inference run) is stopped and the dialog says "The caption engine stopped responding" with Copy diagnostics; Cancel terminates the worker (2.3) |
+
+## FX4: Fix round 4 (toast, panels, composition card, Whisper stages, model source, video plan v3)
+
+| ID      | Pri | Wave | Status   | Feature |
+| ------- | --- | ---- | -------- | ------- |
+| FX4-001 | P0 | W9 | Claimed | One toast at a time, bottom-centre over the canvas area, never over a left panel's scroller |
+| FX4-002 | P0 | W9 | Claimed | A toast waits while the pointer is on it, then hides |
+| FX4-003 | P0 | W9 | Claimed | The library shelf header is tighter on short windows |
+| FX4-004 | P0 | W9 | Claimed | AI composition card: Not built, then Built with scene count and a poster |
+| FX4-006 | P0 | W9 | Claimed | Settings › Offline › Model source (an https address, default Hugging Face) |
+| FX4-007 | P0 | W9 | Claimed | The model source is used for the download address and the runner's host |
+| FX4-008 | P0 | W9 | Claimed | An invalid model source is refused with a plain message |
+| FX4-009 | P0 | W9 | Claimed | Media area is 60 % of the panel at 1366 × 768 |
+| FX4-010 | P0 | W9 | Claimed | A timeline-mode plan (one scene) builds and Review keeps the media swap |
+
+## FX5: Fix round 5 (owner's screen recordings, 24 Oct)
+
+| ID      | Pri | Wave | Status   | Feature |
+| ------- | --- | ---- | -------- | ------- |
+| FX5-001 | P0 | W9 | Verified | A library card (AI, My Templates, Styles) never stays blank: its picture, else the kind icon; an empty picture is replaced and the service is asked once more; the same AI item is listed once, same-named items show their pack |
+| FX5-002 | P0 | W9 | Verified | Audio rows (Audio category, Media audio, Elements › Audio, My audio) never play on hover; each has a Play / Stop button; one preview at a time; closing the panel or switching category stops it |
+| FX5-003 | P0 | W9 | Verified | The Scene panel's header, search and rows never overlap at 1920 × 945 and 1366 × 768 |
+| FX5-004 | P0 | W9 | Verified | The Draw palette's Shape, Line, Sticky note, Text and Table tools open a flyout of choices before placing; the choice stays; click places the default size, drag draws the size with a live preview; one undo step; Esc cancels |
+| FX5-005 | P0 | W9 | Verified | The Text panel has no My text styles section (saved text is in My Templates and the Draw palette); Magic write is disabled and says it needs the AI service (planned); Dynamic text stays disabled (TXT-037 needs fields the renderer resolves) |
+| FX5-006 | P0 | W9 | Verified | Review video plan is a single readable panel (one collapsible card per scene) and AI › Video plans reopens it after the user left |
+| FX5-007 | P0 | W9 | Verified | The first Play press starts picture and sound together (a short Preparing audio state if decoding is needed), with no console warnings |
+| FX5-008 | P0 | W9 | Verified | Adjust colors' blend mode list shows each mode once, grouped, in a menu no taller than 60 % of the window |
+| FX5-009 | P0 | W9 | Verified | Local Whisper reports a download with or without a known size, is never called stalled while bytes arrive, names the step and file on a failure, and offers the cloud engines with Add key |
+| FX5-010 | P0 | W9 | Verified | The Audio panel's tabs, heading, search and first sound never overlap and stay inside the panel at 1920 × 945 and 1366 × 768 |
+| FX5-011 | P0 | W9 | Verified | Build video of a big composition shows a real loader (step name, moving percentage), Cancel really stops it and says so, Check again finishes; the page never freezes for long |
+| FX5-012 | P0 | W9 | Verified | Adding a big composition (a Tier A code animation) never blocks the page for long and shows the build loader |
+| FX5-013 | P1 | W9 | Claimed | Effects, masks and chroma key are measured at 1920 × 1080 (image and video); blur, glow and stacked effects are faster. Targets (paused under 60 ms, playing under 100 ms) are missed for blur and blur + glow; real GPU time is for the owner's PC |
+| FX5-014 | P0 | W9 | Verified | Changing the canvas ratio to 9:16 with a clip in the scene answers at once and sets 1080 × 1920 |
+| FX5-015 | P0 | W9 | Verified | Dragging a filter's intensity changes the canvas before release, release is one undo step, and a hover preview clears and adds no history |
+| FX5-016 | P0 | W9 | Verified | The first Play press under the browser's "sound only after a click" policy waits for the sound, then picture and sound start together, with no console warning |
+| FX5-017 | P1 | W9 | Verified | The scene strip's + menu has Open video plan review |
 
 ## ADV: Advanced and professional tools (Wave 8, later)
 

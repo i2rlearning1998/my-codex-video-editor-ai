@@ -1,0 +1,1128 @@
+{
+  "project": {
+    "schemaVersion": 9,
+    "id": "composition-documentary-mini",
+    "metadata": {
+      "name": "Bees and honey",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    "settings": { "backgroundColor": "#000000", "audioSampleRate": 48000 },
+    "compositions": [
+      {
+        "id": "ais_documentary-mini_s0_c",
+        "name": "Cold open",
+        "width": 1920,
+        "height": 1080,
+        "fps": 25,
+        "duration": 5,
+        "backgroundColor": "#000000",
+        "layers": [
+          {
+            "id": "ais_documentary-mini_s0_bg_c",
+            "name": "Scene background",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 5,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#101219"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_documentary-mini_s0_i1_layer_c",
+            "name": "Question",
+            "type": "text",
+            "startTime": 1,
+            "duration": 4,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [260, 860],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1400,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 120,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Where does honey come from?",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Arial",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#f4efe6"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_documentary-mini_s0_i0_layer_c",
+            "name": "Archive photo",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 5,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#8a8f9e"
+              },
+              "fillOpacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0.18,
+                "keyframes": []
+              },
+              "stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#8a8f9e"
+              },
+              "strokeWidth": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 4,
+                "keyframes": []
+              },
+              "strokeDash": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "dash",
+                "keyframes": []
+              },
+              "compositionSlot": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "archive",
+                "keyframes": []
+              },
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          }
+        ],
+        "tracks": [
+          {
+            "id": "ais_documentary-mini_s0_i0_track_c",
+            "name": "Archive photo",
+            "type": "video",
+            "order": 0,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_documentary-mini_s0_i0_clip_c",
+                "name": "Archive photo",
+                "layerId": "ais_documentary-mini_s0_i0_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 5,
+                "sourceIn": 0,
+                "sourceOut": 5,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "fx": {
+                    "version": 1,
+                    "stack": [
+                      {
+                        "id": "effect.filmic",
+                        "params": { "intensity": 1, "speed": 1, "grain": 14 }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_documentary-mini_s0_i1_track_c",
+            "name": "Question",
+            "type": "text",
+            "order": 1,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_documentary-mini_s0_i1_clip_c",
+                "name": "Question",
+                "layerId": "ais_documentary-mini_s0_i1_layer_c",
+                "assetId": null,
+                "startTime": 1,
+                "duration": 4,
+                "sourceIn": 0,
+                "sourceOut": 4,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {}
+              }
+            ]
+          }
+        ],
+        "markers": [],
+        "audioTracks": [],
+        "camera": {
+          "x": {
+            "animated": true,
+            "constraints": [],
+            "type": "number",
+            "value": 0,
+            "keyframes": [
+              { "time": 0, "value": 0, "easing": "linear" },
+              { "time": 5, "value": 0, "easing": "hold" }
+            ]
+          },
+          "y": {
+            "animated": true,
+            "constraints": [],
+            "type": "number",
+            "value": 0,
+            "keyframes": [
+              { "time": 0, "value": 0, "easing": "linear" },
+              { "time": 5, "value": 0, "easing": "hold" }
+            ]
+          },
+          "zoom": {
+            "animated": true,
+            "constraints": [],
+            "type": "number",
+            "value": 1,
+            "keyframes": [
+              { "time": 0, "value": 1, "easing": "linear" },
+              { "time": 5, "value": 1.1, "easing": "hold" }
+            ]
+          },
+          "rotation": {
+            "animated": true,
+            "constraints": [],
+            "type": "number",
+            "value": 0,
+            "keyframes": [
+              { "time": 0, "value": 0, "easing": "linear" },
+              { "time": 5, "value": 0, "easing": "hold" }
+            ]
+          }
+        }
+      },
+      {
+        "id": "ais_documentary-mini_s1_c",
+        "name": "Chapter 1",
+        "width": 1920,
+        "height": 1080,
+        "fps": 25,
+        "duration": 6,
+        "backgroundColor": "#000000",
+        "layers": [
+          {
+            "id": "ais_documentary-mini_s1_bg_c",
+            "name": "Scene background",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#101219"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_documentary-mini_s1_i2_layer_c",
+            "name": "Chapter title",
+            "type": "text",
+            "startTime": 0.5,
+            "duration": 4,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [100, 910],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 680,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 70,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "1. The hive",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Arial",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#f4efe6"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_documentary-mini_s1_i1_layer_c",
+            "name": "Lower third",
+            "type": "shape",
+            "startTime": 0.5,
+            "duration": 4,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [80, 900],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 720,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 90,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2f3e46"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_documentary-mini_s1_i0_layer_c",
+            "name": "Beekeeper",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#8a8f9e"
+              },
+              "fillOpacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0.18,
+                "keyframes": []
+              },
+              "stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#8a8f9e"
+              },
+              "strokeWidth": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 4,
+                "keyframes": []
+              },
+              "strokeDash": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "dash",
+                "keyframes": []
+              },
+              "compositionSlot": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "interview",
+                "keyframes": []
+              },
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          }
+        ],
+        "tracks": [
+          {
+            "id": "ais_documentary-mini_s1_i0_track_c",
+            "name": "Beekeeper",
+            "type": "video",
+            "order": 0,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_documentary-mini_s1_i0_clip_c",
+                "name": "Beekeeper",
+                "layerId": "ais_documentary-mini_s1_i0_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 6,
+                "sourceIn": 0,
+                "sourceOut": 6,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {}
+              }
+            ]
+          },
+          {
+            "id": "ais_documentary-mini_s1_i1_track_c",
+            "name": "Lower third",
+            "type": "object",
+            "order": 1,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_documentary-mini_s1_i1_clip_c",
+                "name": "Lower third",
+                "layerId": "ais_documentary-mini_s1_i1_layer_c",
+                "assetId": null,
+                "startTime": 0.5,
+                "duration": 4,
+                "sourceIn": 0,
+                "sourceOut": 4,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {}
+              }
+            ]
+          },
+          {
+            "id": "ais_documentary-mini_s1_i2_track_c",
+            "name": "Chapter title",
+            "type": "text",
+            "order": 2,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_documentary-mini_s1_i2_clip_c",
+                "name": "Chapter title",
+                "layerId": "ais_documentary-mini_s1_i2_layer_c",
+                "assetId": null,
+                "startTime": 0.5,
+                "duration": 4,
+                "sourceIn": 0,
+                "sourceOut": 4,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {}
+              }
+            ]
+          }
+        ],
+        "markers": [
+          {
+            "id": "scene-transition-1",
+            "time": 0,
+            "label": "aive:scene-transition {\"type\":\"crossfade\",\"duration\":1}"
+          }
+        ],
+        "audioTracks": []
+      },
+      {
+        "id": "ais_documentary-mini_s2_c",
+        "name": "Close",
+        "width": 1920,
+        "height": 1080,
+        "fps": 25,
+        "duration": 4,
+        "backgroundColor": "#000000",
+        "layers": [
+          {
+            "id": "ais_documentary-mini_s2_bg_c",
+            "name": "Scene background",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 4,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#101219"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_documentary-mini_s2_i1_layer_c",
+            "name": "Answer",
+            "type": "text",
+            "startTime": 0,
+            "duration": 4,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [260, 480],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1400,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 120,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "From flowers, patience and work.",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Arial",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#1b1b1b"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          }
+        ],
+        "tracks": [
+          {
+            "id": "ais_documentary-mini_s2_i1_track_c",
+            "name": "Answer",
+            "type": "text",
+            "order": 0,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_documentary-mini_s2_i1_clip_c",
+                "name": "Answer",
+                "layerId": "ais_documentary-mini_s2_i1_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 4,
+                "sourceIn": 0,
+                "sourceOut": 4,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {}
+              }
+            ]
+          }
+        ],
+        "markers": [
+          {
+            "id": "scene-transition-2",
+            "time": 0,
+            "label": "aive:scene-transition {\"type\":\"fade-black\",\"duration\":1}"
+          }
+        ],
+        "audioTracks": []
+      }
+    ],
+    "assets": []
+  },
+  "warnings": [
+    {
+      "code": "slot-optional-empty",
+      "message": "Optional slot \"music\" (Calm instrumental bed (optional)) is empty; its items are left out."
+    },
+    {
+      "code": "library-missing",
+      "message": "Library item \"bg-gradient-1\" (Library reference) is not in this editor's library; left out."
+    }
+  ],
+  "missing": [
+    {
+      "kind": "slot",
+      "slot": {
+        "id": "archive",
+        "type": "image",
+        "hint": "An archive photo of a beehive",
+        "required": true
+      }
+    },
+    {
+      "kind": "slot",
+      "slot": {
+        "id": "interview",
+        "type": "video",
+        "hint": "A beekeeper speaking to camera",
+        "required": true
+      }
+    },
+    {
+      "kind": "voice-over",
+      "slot": {
+        "id": "voice-over",
+        "type": "audio",
+        "hint": "Voice-over (en): Every jar of honey starts with a single flower.",
+        "required": true
+      },
+      "request": {
+        "text": "Every jar of honey starts with a single flower.",
+        "lang": "en"
+      }
+    },
+    {
+      "kind": "captions",
+      "reason": "No captions engine is connected; pass options.captions to add them."
+    }
+  ],
+  "errors": []
+}

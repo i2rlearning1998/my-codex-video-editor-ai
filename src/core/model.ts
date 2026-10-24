@@ -605,6 +605,7 @@ export function assertJson(
 export function validateProject(value: unknown): Project {
   assertJson(value);
   const project = projectSchema.parse(value);
+  let changed = false;
   for (const composition of project.compositions) {
     const endpoints: number[] = [];
     const linkedLayers = new Set(
@@ -641,11 +642,17 @@ export function validateProject(value: unknown): Project {
         .filter((marker) => !isReservedMarker(marker))
         .map((marker) => marker.time),
     );
-    composition.duration = endpoints.length
+    const duration = endpoints.length
       ? Math.max(1 / composition.fps, ...endpoints)
       : 10;
+    if (duration !== composition.duration) {
+      composition.duration = duration;
+      changed = true;
+    }
   }
-  return projectSchema.parse(project);
+  // (The second parse only runs when a derived length changed: it is the
+  // costly part of building a big project.)
+  return changed ? projectSchema.parse(project) : project;
 }
 
 export const DEFAULT_BACKGROUND = '#101219';

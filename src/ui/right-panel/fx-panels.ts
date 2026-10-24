@@ -341,6 +341,7 @@ export interface TileGridOptions {
   readonly source: TileSource;
   readonly selected: (key: string) => boolean;
   readonly onClick: (key: string) => void;
+  readonly onPreview?: (key: string | null) => void;
   /** The settings shown under the row of this tile, if any. */
   readonly settingsFor: string | null;
   readonly settings: () => HTMLElement | null;
@@ -496,6 +497,11 @@ function tileElement(tile: Tile, options: TileGridOptions) {
       });
     }
   }
+  item.addEventListener('pointerenter', () => options.onPreview?.(tile.key));
+  item.addEventListener('pointerleave', () => options.onPreview?.(null));
+  item.addEventListener('pointercancel', () => options.onPreview?.(null));
+  item.addEventListener('focus', () => options.onPreview?.(tile.key));
+  item.addEventListener('blur', () => options.onPreview?.(null));
   item.addEventListener('click', () => options.onClick(tile.key));
   return item;
 }
@@ -505,6 +511,8 @@ function tileElement(tile: Tile, options: TileGridOptions) {
 export function intensitySlider(
   value: number,
   onCommit: (value: number) => void,
+  onPreview?: (value: number) => void,
+  onCancel?: () => void,
 ) {
   const block = document.createElement('div');
   const label = document.createElement('label');
@@ -522,7 +530,23 @@ export function intensitySlider(
   const paint = () =>
     range.style.setProperty('--fill', `${Number(range.value)}%`);
   paint();
-  range.addEventListener('input', paint);
+  range.addEventListener('input', () => {
+    paint();
+    onPreview?.(Number(range.value) / 100);
+  });
+  range.addEventListener('pointercancel', () => {
+    onCancel?.();
+    range.value = String(Math.round(value * 100));
+    paint();
+  });
+  range.addEventListener('blur', () => onCancel?.());
+  range.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      onCancel?.();
+      range.value = String(Math.round(value * 100));
+      paint();
+    }
+  });
   range.addEventListener('change', () => onCommit(Number(range.value) / 100));
   block.append(label, range);
   return block;

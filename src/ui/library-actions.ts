@@ -107,11 +107,14 @@ export interface LibraryActions {
     at?: readonly [number, number],
     width?: number,
     time?: number,
+    text?: string,
   ): void;
   /** I2: a template saved in this browser (My Templates). */
   insertMine(template: MyTemplate): void;
   /** The item a drag carries, by id. */
   find(id: string): LibraryItem | undefined;
+  /** Every item the library holds now. */
+  list(): readonly LibraryItem[];
   /**
    * T2: the commands an insert centred on `at` would run (nothing runs), to
    * measure what a drop would place; null for a template (a whole scene).
@@ -168,7 +171,7 @@ export function createLibraryActions(options: {
         ...(mode ? { mode } : {}),
       });
   /** I2: the item behind "Add a text box", `width` px wide. */
-  const textBoxItem = (width?: number) => {
+  const textBoxItem = (width?: number, content?: string) => {
     const canvas = session.source.composition;
     const w = Math.min(
       3,
@@ -188,8 +191,12 @@ export function createLibraryActions(options: {
             y: 0,
             w,
             h: 0.1,
-            text: { en: t('text.boxText'), hi: t('text.boxText') },
-            size: 0.05,
+            text: {
+              en: content ?? t('text.boxText'),
+              hi: content ?? t('text.boxText'),
+            },
+            // A dynamic field (a page number, a date) reads larger.
+            size: content ? 0.12 : 0.05,
             color: '#272b29',
             align: 'center',
           },
@@ -325,9 +332,12 @@ export function createLibraryActions(options: {
         report(error);
       }
     },
-    insertTextBox(at, width, time) {
+    insertTextBox(at, width, time, text) {
       try {
-        run(t('text.boxName'), libraryBuild(textBoxItem(width), at, time));
+        run(
+          t('text.boxName'),
+          libraryBuild(textBoxItem(width, text), at, time),
+        );
       } catch (error) {
         report(error);
       }
@@ -358,6 +368,7 @@ export function createLibraryActions(options: {
       }
     },
     find: (id) => items.find((item) => item.id === id),
+    list: () => items,
     setItems(next) {
       items = next;
     },

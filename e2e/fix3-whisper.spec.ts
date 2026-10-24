@@ -7,11 +7,19 @@ import { expect, hook, showCategory, test, menuAction } from './fixtures';
 // free while it works, floods or stops answering.
 const WAV = path.join('tests/fixtures/media', 'audio_tone_440hz_3s.wav');
 
-async function start(page: Page, mode: string) {
-  await page.addInitScript((mode) => {
-    (window as { __AIVE_E2E_WHISPER__?: string }).__AIVE_E2E_WHISPER__ =
-      `runner:${mode}`;
-  }, mode);
+async function start(page: Page, mode: string, stallMs?: number) {
+  await page.addInitScript(
+    ([mode, stallMs]) => {
+      (window as { __AIVE_E2E_WHISPER__?: string }).__AIVE_E2E_WHISPER__ =
+        `runner:${mode}`;
+      // FIX5 C9: a short stall limit, so a stall shows within seconds.
+      if (stallMs)
+        (
+          window as { __AIVE_E2E_WHISPER_STALL_MS__?: number }
+        ).__AIVE_E2E_WHISPER_STALL_MS__ = Number(stallMs);
+    },
+    [mode, stallMs ?? 0] as const,
+  );
   await page.goto('/');
   await expect.poll(() => page.evaluate(() => '__AIVE__' in window)).toBe(true);
   await menuAction(page, '#open-settings');
@@ -100,16 +108,21 @@ test('[FX3-002] offline captions keep the page responsive through 20 000 progres
   page,
 }) => responsive(page, 'flood'));
 
-test('[FX3-003] a captions worker that stops answering is reported after 15 s with Copy diagnostics', async ({
+test('[FX3-003] a captions worker that stops answering is reported with the step and Copy diagnostics (limit shortened for the test)', async ({
   page,
 }) => {
   test.setTimeout(60_000);
-  const dialog = await start(page, 'silent');
+  const dialog = await start(page, 'silent', 4000);
   await dialog.locator('[data-action="captions-create"]').click();
   const message = dialog.locator('.caption-message');
-  await expect(message).toContainText('stopped responding', {
+  await expect(message).toContainText('went quiet', {
     timeout: 25_000,
   });
+  // FIX5 C9: it names the step, and a cloud engine is one click away.
+  await expect(message).toContainText('loading the model');
+  await expect(
+    message.locator('[data-action="captions-cloud-fallback"]'),
+  ).toBeVisible();
   await expect(
     message.locator('[data-action="copy-diagnostics"]'),
   ).toBeVisible();
@@ -131,4 +144,18 @@ test('[FX3-003] Cancel terminates the captions worker mid-run', async ({
   await expect
     .poll(() => page.workers().some((w) => w.url().includes('whisper.worker')))
     .toBe(false);
+});
+
+test('[FX5-009] a slow listening run is not called stalled: a heartbeat silent for longer than the model-start limit still finishes, and the dialog says which part it is on', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  // The model start may be silent for 2.5 s here; a run blocks the worker for 4 s.
+  const dialog = await start(page, 'slow', 2500);
+  await dialog.locator('[data-action="captions-create"]').click();
+  await expect(dialog.locator('.caption-progress-text')).toContainText(
+    'Listening to part 1 of',
+  );
+  await expect(dialog).toBeHidden({ timeout: 40_000 });
+  await expect(page.locator('.toast', { hasText: 'Found' })).toBeVisible();
 });

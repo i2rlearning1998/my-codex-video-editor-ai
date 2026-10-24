@@ -11,7 +11,6 @@
 import {
   createComposition,
   createLayer,
-  EditorEngine,
   maxSceneTransition,
   sceneTransitionLabel,
   SCHEMA_VERSION,
@@ -21,6 +20,7 @@ import {
   type DeepReadonly,
   type Project,
 } from '../core';
+import { ProjectBuild } from '../core/project-build';
 import { cameraFromTracks } from '../camera/scene';
 import type { CameraShotPlan } from '../camera/shots';
 import type { Shot } from '../camera/rig';
@@ -70,6 +70,8 @@ export interface CaptionsContext {
 export type CaptionsHook = (context: CaptionsContext) => readonly Command[];
 
 export interface BuildOptions {
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (progress: { step: string; percent: number }) => void;
   /** Slot id → fill; a `SlotFills` (createSlotFills) is accepted too. */
   readonly slotFills?: Readonly<Record<string, SlotFill>> | SlotFills;
   readonly style?: DeepReadonly<StyleData> | null;
@@ -176,11 +178,11 @@ function seededIds(seed: string) {
   return () =>
     `${prefix}-0000-4000-8000-${(++counter).toString(16).padStart(12, '0')}`;
 }
-function withIds<T>(seed: string, run: () => T): T {
+function withIds<T>(ids: () => string, run: () => T): T {
   const crypto = globalThis.crypto as Crypto & { randomUUID: () => string };
   const own = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
   Object.defineProperty(crypto, 'randomUUID', {
-    value: seededIds(seed),
+    value: ids,
     configurable: true,
     writable: true,
   });
@@ -284,6 +286,7 @@ export async function buildProjectFromComposition(
   input: unknown,
   options: BuildOptions = {},
 ): Promise<BuildResult> {
+  options.signal?.throwIfAborted();
   const warnings: BuildWarning[] = [];
   const missing: BuildMissing[] = [];
   const warn = (code: BuildWarning['code'], message: string) =>
@@ -483,10 +486,14 @@ export async function buildProjectFromComposition(
     )
       warn('not-built', line);
 
-  const project = withIds(spec.id, () => {
-    const engine = new EditorEngine(base, { now: () => now });
-    const run = (label: string, commands: readonly Command[]) => {
-      if (commands.length) engine.commands.transaction(label, commands);
+  const build = function* (): Generator<string, Project> {
+    const engine = new ProjectBuild(base);
+    const run = (_label: string, commands: readonly Command[]) => {
+      if (commands.length) {
+        // Reserve the old history UUID so generated layer IDs stay identical.
+        crypto.randomUUID();
+        engine.apply(commands);
+      }
     };
     // Assets of the filled slots.
     const added = new Set<string>();
@@ -501,13 +508,18 @@ export async function buildProjectFromComposition(
         };
       run('Add asset', [{ type: 'ADD_ASSET', asset }]);
     }
-    run('Build composition', tier.commands);
+    crypto.randomUUID();
+    for (let offset = 0; offset < tier.commands.length; offset += 24) {
+      engine.apply(tier.commands.slice(offset, offset + 24));
+      yield 'Lay out scenes';
+    }
     run('Remove base scene', [
       { type: 'DELETE_COMPOSITION', compositionId: BASE_ID },
     ]);
 
     // Effects on the built items (the clip's id seeds them, not the spec's).
-    spec.scenes.forEach((scene, sceneIndex) => {
+    for (const [sceneIndex, scene] of spec.scenes.entries()) {
+      yield `Scene ${sceneIndex + 1} of ${spec.scenes.length}`;
       for (const item of scene.items) {
         const clipId = builtClips.get(`${sceneIndex}/${item.id}`);
         if (!clipId || !item.fx.length) continue;
@@ -555,7 +567,7 @@ export async function buildProjectFromComposition(
           },
         ]);
       }
-    });
+    }
 
     // FINAL3 C5: camera shots go on each scene's Camera track; a target
     // names an item of the scene (its built layer).
@@ -868,8 +880,29 @@ export async function buildProjectFromComposition(
       );
       run('Apply theme', commands as unknown as Command[]);
     }
-    return validateProject(structuredClone(engine.state));
-  });
+    yield 'Validate project';
+    return engine.finish();
+  };
+  const iterator = build();
+  const ids = seededIds(spec.id);
+  let completed = 0;
+  const total = Math.ceil(tier.commands.length / 24) + spec.scenes.length + 1;
+  let project: Project;
+  while (true) {
+    options.signal?.throwIfAborted();
+    const next = withIds(ids, () => iterator.next());
+    if (next.done) {
+      project = next.value;
+      break;
+    }
+    options.onProgress?.({
+      step: next.value,
+      percent: Math.min(99, Math.round((++completed / total) * 99)),
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  }
+  options.signal?.throwIfAborted();
+  options.onProgress?.({ step: 'Ready', percent: 100 });
   return { project, warnings, missing, errors: [] };
 }
 
