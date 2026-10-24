@@ -49,44 +49,44 @@ async function playing(page: Page) {
 }
 
 const results: Record<string, unknown>[] = [];
-for (const [label, file] of [
-  ['image', JPG],
-  ['video', WEBM],
-] as const)
-  for (const size of ['1920x1080'] as const)
-    test(`[FX5-013] ${label} at ${size}: paused and playing frame time with a mask, chroma key, blur, glow and blur+glow`, async ({
-      page,
-    }) => {
-      test.setTimeout(300_000);
-      await oneClip(page, file);
-      const row: Record<string, unknown> = { label, size };
-      row.plain = { paused: median(await paused(page)) };
-      await openRight(page, 'Effects');
-      const masks = panel(page).locator('[data-accordion="layer-masks"]');
-      await masks.locator('[data-action="mask-add-rect"]').click();
-      row.mask = {
-        paused: median(await paused(page)),
-        playing: median(await playing(page)),
-      };
-      await openRight(page, 'Effects');
-      const chroma = panel(page).locator('[data-accordion="layer-chroma"]');
-      await chroma.locator('[data-action="chroma-enable"]').click();
-      row.maskChroma = {
-        paused: median(await paused(page)),
-        playing: median(await playing(page)),
-      };
-      await openRight(page, 'Effects');
-      await tile(page, 'effect.blur').click();
-      row.blur = {
-        paused: median(await paused(page)),
-        playing: median(await playing(page)),
-      };
-      await tile(page, 'effect.glow').click();
-      row.blurGlow = {
-        paused: median(await paused(page)),
-        playing: median(await playing(page)),
-      };
-      console.log('PERF', JSON.stringify(row));
-      results.push(row);
-      expect(hook).toBeTruthy();
-    });
+async function matrix(page: Page, label: string, file: string) {
+  const size = '1920x1080';
+  test.setTimeout(60_000);
+  await oneClip(page, file);
+  const row: Record<string, unknown> = { label, size };
+  row.plain = { paused: median(await paused(page)) };
+  await openRight(page, 'Effects');
+  const masks = panel(page).locator('[data-accordion="layer-masks"]');
+  await masks.locator('[data-action="mask-add-rect"]').click();
+  row.mask = {
+    paused: median(await paused(page)),
+    playing: median(await playing(page)),
+  };
+  await openRight(page, 'Effects');
+  const chroma = panel(page).locator('[data-accordion="layer-chroma"]');
+  await chroma.locator('[data-action="chroma-enable"]').click();
+  row.maskChroma = {
+    paused: median(await paused(page)),
+    playing: median(await playing(page)),
+  };
+  await openRight(page, 'Effects');
+  await tile(page, 'effect.blur').click();
+  row.blur = {
+    paused: median(await paused(page)),
+    playing: median(await playing(page)),
+  };
+  await tile(page, 'effect.glow').click();
+  row.blurGlow = {
+    paused: median(await paused(page)),
+    playing: median(await playing(page)),
+  };
+  console.log('PERF', JSON.stringify(row));
+  results.push(row);
+  expect(hook).toBeTruthy();
+}
+test('[FX5-013] image at 1920x1080: paused and playing frame time with a mask, chroma key, blur, glow and blur+glow', async ({
+  page,
+}) => matrix(page, 'image', JPG));
+test('[FX5-013] video at 1920x1080: paused and playing frame time with a mask, chroma key, blur, glow and blur+glow', async ({
+  page,
+}) => matrix(page, 'video', WEBM));
