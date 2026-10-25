@@ -71,6 +71,15 @@ export class Playback {
     // V7 (spec 11.1): a Manual range plays from Start and stops at End
     // (End may pass the content: the tail plays as black and silence).
     const range = playRangeOf(this.session.source.composition);
+    // AUDIT-EDITOR (PB-006): with Loop on, the end of the range (the Manual
+    // range, else the scene) starts it again instead of stopping.
+    if (this.session.loop && time >= (range.manual ? range.end : duration)) {
+      this.session.setCurrentTime(range.manual ? range.start : 0);
+      this.#origin = this.now();
+      this.#time = this.session.currentTime;
+      if (this.session.playing) this.#request = this.request(this.#tick);
+      return;
+    }
     if (range.manual) {
       if (time >= range.end) {
         this.session.setCurrentTime(range.end);

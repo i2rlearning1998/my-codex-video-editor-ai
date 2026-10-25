@@ -65,23 +65,23 @@ Top bar and main menu. Target look: hamburger, brand, project name, save status,
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | APP-001 | P0 | W1 | Verified | Top bar shows brand mark and product name; name/logo come from one config file so branding can be swapped in one place |
-| APP-002 | P0 | W1 | Todo | Hamburger menu opens a main menu with File, Edit, View and Help groups; closes on Esc and outside click |
+| APP-002 | P0 | W1 | Verified | Hamburger menu opens a main menu with File, Edit, View and Help groups; closes on Esc and outside click |
 | APP-003 | P0 | W1 | Verified | File > New project opens the New Project dialog (see PRJ) |
-| APP-004 | P0 | W1 | Claimed | File > Open project loads a project JSON file and replaces the session after validation; invalid files show a clear error and change nothing |
+| APP-004 | P0 | W1 | Verified | File > Open project loads a project JSON file and replaces the session after validation; invalid files show a clear error and change nothing |
 | APP-005 | P0 | W1 | Verified | File > Save project to file downloads the project as JSON |
-| APP-006 | P1 | W1 | Todo | File > Open recent lists recently opened local projects |
-| APP-007 | P1 | W1 | Todo | File > Delete local project asks for confirmation and removes it |
-| APP-008 | P2 | W1 | Todo | File > Duplicate project |
-| APP-009 | P0 | W1 | Todo | Edit menu lists Undo, Redo, Cut, Copy, Paste, Duplicate, Delete, Select all with live enabled/disabled state and shortcut hints |
-| APP-010 | P0 | W1 | Todo | View menu toggles panels, guides, grid, snapping, theme and language |
+| APP-006 | P1 | W1 | Verified | File > Open recent lists recently opened local projects |
+| APP-007 | P1 | W1 | Verified | File > Delete local project asks for confirmation and removes it |
+| APP-008 | P2 | W1 | Verified | File > Duplicate project |
+| APP-009 | P0 | W1 | Verified | Edit menu lists Undo, Redo, Cut, Copy, Paste, Duplicate, Delete, Select all with live enabled/disabled state and shortcut hints |
+| APP-010 | P0 | W1 | Verified | View menu toggles panels, guides, grid, snapping, theme and language |
 | APP-011 | P0 | W1 | Verified | Help menu offers shortcut cheat sheet, About and Copy debug report |
 | APP-012 | P0 | W1 | Verified | Project name is shown in the top bar; clicking edits it inline; Enter commits, Esc cancels; rename is undoable |
 | APP-013 | P0 | W1 | Todo | Save status indicator shows Saving, Saved, Unsaved changes or Error (with retry) |
-| APP-014 | P0 | W1 | Todo | Undo and Redo buttons live in the top bar, show disabled state, and their tooltip names the action to be undone or redone |
+| APP-014 | P0 | W1 | Verified | Undo and Redo buttons live in the top bar, show disabled state, and their tooltip names the action to be undone or redone |
 | APP-015 | P0 | W1 | Verified | Export button (primary) opens the Export dialog (see EXP) |
 | APP-016 | P1 | W1 | Verified | Theme toggle switches dark and light without reload and persists |
-| APP-017 | P1 | W1 | Todo | Browser tab title reflects project name and unsaved state |
-| APP-018 | P1 | W1 | Todo | Closing the tab while an autosave is pending shows a warning |
+| APP-017 | P1 | W1 | Verified | Browser tab title reflects project name and unsaved state |
+| APP-018 | P1 | W1 | Verified | Closing the tab while an autosave is pending shows a warning |
 | APP-019 | P1 | W1 | Todo | Opening the same project in two tabs shows a warning and prevents silent overwrite |
 | APP-020 | P2 | W1 | Todo | Account and avatar slot exists in the top bar but is inert until accounts are built |
 
@@ -95,7 +95,7 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-002 | P0 | W1 | Verified | Left rail has Media, Graphics, Text, Templates, Audio, Elements, Transitions; each switches the left panel content |
 | LAY-003 | P0 | W1 | Verified | Left panel can be collapsed and expanded |
 | LAY-004 | P0 | W1 | Verified | Panel dividers (left, right, timeline) are draggable with min and max sizes |
-| LAY-005 | P1 | W1 | Todo | Panel sizes and collapsed state persist across reloads |
+| LAY-005 | P1 | W1 | Verified | Panel sizes and collapsed state persist across reloads |
 | LAY-006 | P2 | W1 | Todo | Double-click a divider to reset its size |
 | LAY-007 | P0 | W1 | Verified | Right panel has tabs Properties, Effects, Transitions and an icon rail Properties, Effects, Color, Audio, Speed; selection persists while switching |
 | LAY-008 | P0 | W1 | Verified | Right panel can be collapsed and expanded |
@@ -192,11 +192,11 @@ Single registry of user commands. Shortcuts, menus, palette and context menus al
 | KEY-008 | P0 | W1 | Verified | Shortcut cheat sheet dialog (Ctrl+/ or ?) |
 | KEY-009 | P0 | W1 | Verified | Esc cancels the current gesture first, then closes the top popover, then deselects |
 | KEY-010 | P0 | W1 | Verified | Ctrl+G groups and Ctrl+Shift+G ungroups the selection |
-| KEY-011 | P0 | W1 | Todo | Left and Right step one frame; Shift+Left and Shift+Right step one second; Home and End jump to start and end |
+| KEY-011 | P0 | W1 | Verified | Left and Right step one frame; Shift+Left and Shift+Right step one second; Home and End jump to start and end |
 | KEY-012 | P1 | W1 | Todo | J K L shuttle playback, I and O set in and out points |
 | KEY-013 | P1 | W1 | Todo | Shortcut customization: rebind, conflict detection, reset to defaults, persisted |
 | KEY-014 | P1 | W1 | Verified | Cmd equivalents on macOS |
-| KEY-015 | P1 | W1 | Todo | Tool shortcuts: V select, T text, R rectangle, E ellipse |
+| KEY-015 | P1 | W1 | Verified | Tool shortcuts: V select, T text, R rectangle, E ellipse |
 | KEY-016 | P1 | W1 | Verified | Bring forward and send backward shortcuts (Ctrl+] and Ctrl+[) |
 | KEY-017 | P0 | W2 | Verified | Ctrl+Z, Ctrl+Shift+Z and Ctrl+Y undo and redo right after a panel edit (a committed field, a colour picker, a panel button) with no click elsewhere; Ctrl+Z inside a field still being typed in stays with the field, and other shortcuts never fire while typing (J2 LCR) |
 
@@ -212,17 +212,17 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-004 | P0 | W1 | Verified | Custom width and height; enforced even numbers for H.264; sane min and max |
 | PRJ-005 | P0 | W1 | Verified | Frame rate options 24, 25, 30, 50, 60 |
 | PRJ-006 | P0 | W1 | Verified | Project background: solid color or transparent |
-| PRJ-007 | P0 | W1 | Todo | Changing aspect ratio of an existing project keeps layers inside the canvas with a chosen behavior (keep position, scale to fit) |
+| PRJ-007 | P0 | W1 | Verified | Changing aspect ratio of an existing project keeps layers inside the canvas with a chosen behavior (keep position, scale to fit) |
 | PRJ-008 | P0 | W1 | Verified | Project settings dialog edits resolution, fps and background; changes are undoable |
 | PRJ-009 | P0 | W1 | Verified | Autosave keeps work across reload (recovery from unexpected close within the autosave window) |
-| PRJ-010 | P0 | W1 | Claimed | Corrupt or future-version saved data is quarantined with a message, never silently overwritten |
+| PRJ-010 | P0 | W1 | Verified | Corrupt or future-version saved data is quarantined with a message, never silently overwritten |
 | PRJ-011 | P0 | W1 | Verified | Composition (scene) duration is derived from content; empty composition falls back to 10 seconds |
 | PRJ-012 | P0 | W2 | Verified | Multiple compositions (scenes): switch active composition |
 | PRJ-013 | P0 | W2 | Verified | Scenes: add, rename, reorder, duplicate, delete |
 | PRJ-014 | P1 | W2 | Verified | Scene strip UI for switching and reordering scenes |
-| PRJ-015 | P0 | W4 | Todo | Projects persist in IndexedDB with media in OPFS; localStorage remains only for small settings |
-| PRJ-016 | P0 | W4 | Todo | Home screen lists projects with thumbnail, last edited; open, rename, duplicate, delete |
-| PRJ-017 | P0 | W4 | Todo | Crash recovery dialog offers to restore the last autosave and shows its time |
+| PRJ-015 | P0 | W4 | Verified | Projects persist in IndexedDB with media in OPFS; localStorage remains only for small settings |
+| PRJ-016 | P0 | W4 | Verified | Home screen lists projects with thumbnail, last edited; open, rename, duplicate, delete |
+| PRJ-017 | P0 | W4 | Verified | Crash recovery dialog offers to restore the last autosave and shows its time |
 | PRJ-018 | P1 | W8 | Deferred | Named version snapshots with restore |
 | PRJ-019 | P1 | W9 | Deferred | Project package export and import including media (single file) |
 | PRJ-020 | P0 | W2 | Verified | A scene board shows every scene in one row in playback order with a poster, name and length and a transition chip between scenes (transitions are Wave 6); double-click opens a scene and the timeline then shows that scene only |
@@ -255,7 +255,7 @@ Import, storage, thumbnails, waveforms, Pixabay stock. Needs the media pipeline 
 | MED-013 | P0 | W4 | Verified | Drag an asset onto a timeline track creates a clip at the drop position |
 | MED-014 | P0 | W4 | Verified | Drag an already-registered asset onto a compatible track creates a clip; a locked or incompatible track rejects it with feedback |
 | MED-015 | P0 | W4 | Verified | Drag an asset onto the canvas creates a layer at the drop point |
-| MED-016 | P0 | W4 | Todo | Double-click an asset adds it at the playhead |
+| MED-016 | P0 | W4 | Verified | Double-click an asset adds it at the playhead |
 | MED-017 | P0 | W4 | Verified | Asset details show resolution, fps, duration, codec, size, audio channels |
 | MED-018 | P0 | W4 | Verified | Thumbnails and poster frames are generated asynchronously and cached |
 | MED-019 | P0 | W4 | Verified | Audio waveforms are generated asynchronously and cached |
@@ -307,14 +307,14 @@ Everything the user does directly on the preview canvas.
 | CV-017 | P0 | W2 | Verified | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
 | CV-018 | P0 | W2 | Verified | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
-| CV-020 | P0 | W2 | Todo | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
-| CV-021 | P0 | W2 | Todo | Right-click empty canvas opens a menu: Paste, Select all, toggle grid and guides |
+| CV-020 | P0 | W2 | Verified | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
+| CV-021 | P0 | W2 | Verified | Right-click empty canvas opens a menu: Paste, Select all, toggle grid and guides |
 | CV-022 | P0 | W2 | Verified | Clicking inside a group selects the group; double-click selects the child; Esc exits |
 | CV-023 | P1 | W2 | Verified | Double-click a group enters isolation mode |
 | CV-024 | P0 | W2 | Verified | Locked layers cannot be moved or resized from the canvas; hidden layers are neither drawn nor selectable |
 | CV-025 | P0 | W2 | Verified | Align and distribute: left, center, right, top, middle, bottom, distribute horizontal and vertical, relative to canvas or selection |
 | CV-026 | P0 | W2 | Verified | Order commands: bring to front, forward, backward, to back |
-| CV-027 | P0 | W2 | Todo | Quick flip horizontal and vertical, rotate 90 degrees |
+| CV-027 | P0 | W2 | Verified | Quick flip horizontal and vertical, rotate 90 degrees |
 | CV-028 | P1 | W2 | Todo | Paste places at same position with small offset; pasting an image from the OS clipboard imports it |
 | CV-029 | P0 | W2 | Verified | Cursor changes correctly over move, resize (per handle angle) and rotate handles |
 | CV-030 | P0 | W2 | Verified | Selection outlines and handles keep constant on-screen thickness at any zoom |
@@ -390,7 +390,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-005 | P0 | W2 | Todo | Reorder tracks by dragging the handle |
 | TL-006 | P0 | W2 | Todo | Delete a track warns when it contains clips; Duplicate track |
 | TL-007 | P1 | W2 | Todo | Track height presets (compact, normal, large) and drag to resize |
-| TL-008 | P0 | W2 | Todo | Ruler shows mm:ss (hh:mm:ss when long) with frame ticks at high zoom |
+| TL-008 | P0 | W2 | Verified | Ruler shows mm:ss (hh:mm:ss when long) with frame ticks at high zoom |
 | TL-009 | P0 | W2 | Verified | Clicking or dragging the ruler moves the playhead; the canvas shows that time live |
 | TL-010 | P0 | W2 | Verified | Playhead line spans all tracks, has a draggable handle and snaps to clip edges and markers |
 | TL-011 | P0 | W2 | Verified | Timecode display is editable: click, type a time, Enter to jump |
@@ -404,14 +404,14 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-019 | P0 | W2 | Verified | Trimming the right edge changes duration and never goes past the source or into a neighbor |
 | TL-020 | P0 | W2 | Verified | Clips never overlap on the same track and never shrink below one frame |
 | TL-021 | P0 | W2 | Verified | Split at the playhead (Split button and S key) cuts the selected clip into two at that time |
-| TL-022 | P0 | W2 | Todo | With no clip selected, Split cuts every unlocked clip under the playhead |
+| TL-022 | P0 | W2 | Verified | With no clip selected, Split cuts every unlocked clip under the playhead |
 | TL-023 | P0 | W2 | Verified | Duplicate (Ctrl+D or button) creates an independent copy of the selected clip |
-| TL-024 | P0 | W2 | Todo | Alt-drag copies clips while dragging |
+| TL-024 | P0 | W2 | Verified | Alt-drag copies clips while dragging |
 | TL-025 | P0 | W2 | Verified | Delete key removes the selected clips with one undo step |
-| TL-026 | P0 | W2 | Todo | Ripple delete removes clips and closes the gap |
+| TL-026 | P0 | W2 | Verified | Ripple delete removes clips and closes the gap |
 | TL-027 | P0 | W2 | Verified | Copy, cut and paste clips at the playhead onto the selected track |
 | TL-028 | P0 | W2 | Verified | Snapping to playhead, clip edges, markers and grid with a visible snap line |
-| TL-029 | P0 | W2 | Todo | Snap toggle (magnet) in the toolbar, on by default |
+| TL-029 | P0 | W2 | Verified | Snap toggle (magnet) in the toolbar, on by default |
 | TL-030 | P0 | W2 | Verified | Insert versus overwrite rule for dropping or moving onto occupied space is explicit and shown to the user |
 | TL-031 | P1 | W2 | Todo | Ripple trim; slip, slide and roll edits |
 | TL-032 | P0 | W2 | Verified | Link video and its audio so they move and cut together; Unlink and Detach audio |
@@ -419,7 +419,7 @@ Tracks, clips, ruler, playhead and every editing gesture. Track headers follow t
 | TL-034 | P2 | W2 | Todo | Clip color labels |
 | TL-035 | P0 | W2 | Verified | The Marker button adds a marker at the playhead |
 | TL-036 | P0 | W2 | Verified | The M key adds a marker at the playhead |
-| TL-037 | P0 | W2 | Todo | Markers: rename, color, delete, jump to next or previous, list |
+| TL-037 | P0 | W2 | Claimed | Markers: rename, color, delete, jump to next or previous, list |
 | TL-038 | P1 | W2 | Verified | In and out range markers define a work area for preview and export |
 | TL-039 | P0 | W2 | Verified | Right-click a clip: Cut, Copy, Paste, Duplicate, Delete, Ripple delete, Split, Detach audio, Speed, Replace media, Disable, Properties, Reveal in media panel |
 | TL-040 | P0 | W2 | Todo | Right-click a track header: Add track above or below, Rename, Delete, Height, Lock all, Mute all |
@@ -499,7 +499,7 @@ Play controls, timecode, loop, sync. Audio-video sync arrives with the media pip
 | PB-003 | P0 | W2 | Verified | Step one frame backward and forward with buttons and arrow keys |
 | PB-004 | P0 | W2 | Verified | Jump to start, jump to end, previous and next cut |
 | PB-005 | P0 | W2 | Todo | Timecode shows current and total time as mm:ss.ff; clean formatting everywhere (no raw floating-point numbers in the UI) |
-| PB-006 | P0 | W2 | Todo | Loop toggle and loop of the in-out range |
+| PB-006 | P0 | W2 | Verified | Loop toggle and loop of the in-out range |
 | PB-007 | P1 | W2 | Todo | Preview playback speed selector 0.25x to 2x |
 | PB-008 | P0 | W2 | Verified | Time is one shared source: canvas, timeline, inspector and timecode always agree |
 | PB-009 | P0 | W4 | Verified | Video decoding keeps up with playback; frames drop rather than slow motion; a buffering indicator appears when needed |
@@ -545,7 +545,7 @@ The engine already has atomic transactions and history; this covers what the use
 |---|---|---|---|---|
 | HIS-001 | P0 | W2 | Verified | Undo and Redo buttons reverse and reapply the last action, including a full drag gesture as one step |
 | HIS-002 | P0 | W2 | Verified | Every user edit is undoable: canvas gestures, inspector edits, timeline edits |
-| HIS-003 | P0 | W2 | Todo | Undo and Redo buttons show correct enabled state and name the next action |
+| HIS-003 | P0 | W2 | Verified | Undo and Redo buttons show correct enabled state and name the next action |
 | HIS-004 | P0 | W2 | Verified | History is memory-bounded and never crashes on long sessions |
 | HIS-005 | P1 | W2 | Todo | History panel lists steps with labels and jumps to any step |
 | HIS-006 | P1 | W8 | Deferred | Named checkpoints |
@@ -679,7 +679,7 @@ Operations on media clips. Speed, freeze and chroma key are Wave 6.
 | VID-001 | P0 | W4 | Verified | Video clips can be trimmed and split with frame-exact seeking |
 | VID-002 | P0 | W4 | Verified | Picture-in-picture: clips on overlay tracks can be moved, scaled and rotated on the canvas |
 | VID-003 | P0 | W4 | Verified | Crop tool for image and video layers with aspect lock and handles |
-| VID-004 | P0 | W4 | Todo | Fit, Fill, Stretch and Custom modes handle media whose aspect differs from the canvas |
+| VID-004 | P0 | W4 | Verified | Fit, Fill, Stretch and Custom modes handle media whose aspect differs from the canvas |
 | VID-005 | P0 | W4 | Verified | Default still image duration is 5 seconds and adjustable |
 | VID-006 | P0 | W4 | Verified | Detach audio from a video clip |
 | VID-007 | P1 | W4 | Verified | Fill mismatched aspect ratios with a blurred copy of the media |
@@ -852,12 +852,12 @@ Offline frame-accurate render, never realtime capture.
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | REL-001 | P0 | W1 | Verified | Loading the app and doing standard edits produces no console errors |
-| REL-002 | P0 | W9 | Todo | A UI error never loses the project: an error boundary offers recovery |
+| REL-002 | P0 | W9 | Verified | A UI error never loses the project: an error boundary offers recovery |
 | REL-003 | P0 | W9 | Todo | Heavy work (decode, encode, thumbnails, waveforms) runs in workers so the UI stays responsive |
 | REL-004 | P1 | W9 | Todo | Frame cache and render invalidation avoid re-rendering unchanged frames |
 | REL-005 | P1 | W9 | Todo | A project with 500 layers and 200 clips stays interactive |
 | REL-006 | P1 | W9 | Todo | The app works offline after first load (bundled fonts and assets) |
-| REL-007 | P0 | W9 | Todo | Supported browsers are declared (Chrome and Edge current versions); unsupported browsers see a clear message |
+| REL-007 | P0 | W9 | Verified | Supported browsers are declared (Chrome and Edge current versions); unsupported browsers see a clear message |
 | REL-008 | P1 | W9 | Todo | Cold start under 3 seconds on the reference machine (production build) |
 | REL-009 | P1 | W9 | Todo | Memory stays within budget during 30 minute sessions |
 

@@ -254,16 +254,30 @@ test('[MED-006][MED-018] imported media and thumbnails survive a reload; the pro
     true,
   );
   // Autosave writes the project JSON: references, never bytes or data URIs.
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => localStorage.getItem('ai-native-editor:project') ?? '',
-      ),
-    )
-    .toContain(references[1]!);
-  const saved = await page.evaluate(() =>
-    localStorage.getItem('ai-native-editor:project')!,
-  );
+  // (AUDIT-EDITOR, PRJ-015: the project is a record in IndexedDB.)
+  const stored = () =>
+    page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          const id = localStorage.getItem('aive.currentProject');
+          const open = indexedDB.open('aive-projects', 1);
+          open.onsuccess = () => {
+            const request = open.result
+              .transaction('projects', 'readonly')
+              .objectStore('projects')
+              .get(id ?? '');
+            request.onsuccess = () =>
+              resolve(
+                (request.result as { primary?: string } | undefined)?.primary ??
+                  '',
+              );
+            request.onerror = () => resolve('');
+          };
+          open.onerror = () => resolve('');
+        }),
+    );
+  await expect.poll(stored).toContain(references[1]!);
+  const saved = await stored();
   expect(saved).not.toMatch(/data:|base64/);
   expect(saved.length).toBeLessThan(100_000);
   const keys = await opfsKeys(page);

@@ -36,6 +36,11 @@ const PATHS: Record<string, string> = {
   play: 'M6 4l10 6-10 6z',
   pause: 'M6 4h3v12H6z M11 4h3v12h-3z',
   stop: 'M5 5h10v10H5z',
+  // AUDIT-EDITOR: timeline snapping (a magnet), loop, rotate 90 degrees.
+  magnet: 'M5 4v6a5 5 0 0 0 10 0V4 M5 4h3v6a2 2 0 0 0 4 0V4h3 M5 7h3 M12 7h3',
+  loop: 'M4 9a5 5 0 0 1 5-5h6 M13 2l2 2-2 2 M16 11a5 5 0 0 1-5 5H5 M7 18l-2-2 2-2',
+  rotateLeft: 'M4 9a6 6 0 1 1 2 4.5 M4 4v5h5',
+  rotateRight: 'M16 9a6 6 0 1 0-2 4.5 M16 4v5h-5',
   frameBack: 'M9 5L4 10l5 5 M4 10h12 M4 5v10',
   frameForward: 'M11 5l5 5-5 5 M16 10H4 M16 5v10',
   zoomIn: 'M9 4a5 5 0 100 10 5 5 0 000-10z M13 13l4 4 M9 6v6 M6 9h6',

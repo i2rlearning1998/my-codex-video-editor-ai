@@ -88,6 +88,14 @@ export class EditorEngine {
   get canRedo(): boolean {
     return this.#redo.length > 0;
   }
+  /** AUDIT-EDITOR (APP-014): the label of the step Undo would revert. */
+  get undoLabel(): string | null {
+    return this.#undo.at(-1)?.metadata.label ?? null;
+  }
+  /** AUDIT-EDITOR (APP-014): the label of the step Redo would reapply. */
+  get redoLabel(): string | null {
+    return this.#redo.at(-1)?.metadata.label ?? null;
+  }
   get history(): DeepReadonly<{
     undo: HistoryMetadata[];
     redo: HistoryMetadata[];

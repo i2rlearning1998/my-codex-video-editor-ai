@@ -107,7 +107,7 @@ import { showToast } from './components/toast';
 import { describeSelection, selectionRoots } from './selection-context';
 import { contextActions, performEdit } from './editing';
 import { ungroupBlocker } from './ungroup';
-import { selectionLocked, setLocked } from './layer-actions';
+import { rotateSelection90, selectionLocked, setLocked } from './layer-actions';
 import { guardCommands } from './editor-mode';
 
 export type ToolbarKind = 'media' | 'text' | 'shape' | 'drawing';
@@ -935,7 +935,19 @@ export function mountContextToolbar(
       }),
       done,
     );
-    return form(t('canvasSize.title'), list, custom);
+    // AUDIT-EDITOR (PRJ-007): keep the layers where they are (default) or
+    // scale the whole design to fit the new size.
+    const scale = document.createElement('label');
+    scale.className = 'canvas-size-scale';
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.id = 'canvas-size-scale';
+    box.checked = session.scaleContent;
+    box.onchange = () => session.setScaleContent(box.checked);
+    const text = document.createElement('span');
+    text.textContent = t('canvasSize.scaleContent');
+    scale.append(box, text);
+    return form(t('canvasSize.title'), list, scale, custom);
   };
   const animateTool = (enabled = true) => {
     const item = tool(
@@ -1050,8 +1062,92 @@ export function mountContextToolbar(
         },
         { text: true },
       );
-    return form(t('toolbar.flip'), flip('horizontal'), flip('vertical'));
+    // AUDIT-EDITOR (CV-027): quarter turns about the visual centre.
+    const turn = (direction: -1 | 1) =>
+      tool(
+        direction < 0 ? 'rotate-left' : 'rotate-right',
+        direction < 0 ? 'rotateLeft' : 'rotateRight',
+        t(direction < 0 ? 'command.rotateLeft' : 'command.rotateRight'),
+        () => rotateSelection90(engine, session, direction),
+        { text: true },
+      );
+    return form(
+      t('toolbar.flip'),
+      flip('horizontal'),
+      flip('vertical'),
+      turn(-1),
+      turn(1),
+    );
   };
+  /**
+   * AUDIT-EDITOR (VID-004): Fit, Fill and Stretch place a picture or video
+   * on the canvas: unrotated and centred, scaled to fit inside, to cover, or
+   * to the canvas's exact size (one undo step each). Top-level layers only.
+   */
+  const fitContent = (layer: SceneLayer) => {
+    const compositionId = session.source.composition.id;
+    const mode = (kind: 'fit' | 'fill' | 'stretch') =>
+      tool(
+        `fit-${kind}`,
+        kind === 'fit' ? 'fit' : kind === 'fill' ? 'fullscreen' : 'corners',
+        t(`toolbar.fit.${kind}`),
+        () => {
+          const current = selected() ?? layer;
+          const bounds = selectionBounds(session.source, current.id)?.bounds;
+          if (!bounds || !bounds.width || !bounds.height) return;
+          if (
+            !session.source.composition.layers.some(
+              (item) => item.id === current.id,
+            )
+          )
+            throw new Error(t('toolbar.fit.nested'));
+          const { width, height } = session.source.composition;
+          const sx = width / bounds.width;
+          const sy = height / bounds.height;
+          const uniform = kind === 'fit' ? Math.min(sx, sy) : Math.max(sx, sy);
+          const base = current.transform as TransformValues;
+          const sign = (value: number) => (value < 0 ? -1 : 1);
+          const scaled: TransformValues = {
+            ...base,
+            rotation: { value: 0 },
+            scale: {
+              value: [
+                sign(base.scale.value[0]) * (kind === 'stretch' ? sx : uniform),
+                sign(base.scale.value[1]) * (kind === 'stretch' ? sy : uniform),
+              ],
+            },
+            position: { value: [0, 0] },
+          };
+          const center = transformPoint(localTransformMatrix(scaled), [
+            bounds.x + bounds.width / 2,
+            bounds.y + bounds.height / 2,
+          ]);
+          run(
+            kind === 'fit'
+              ? 'Fit to canvas'
+              : kind === 'fill'
+                ? 'Fill canvas'
+                : 'Stretch to canvas',
+            buildTransformCommands(
+              compositionId,
+              current,
+              {
+                ...scaled,
+                position: {
+                  value: [width / 2 - center[0], height / 2 - center[1]],
+                },
+              },
+              undefined,
+              session.currentTime,
+            ),
+          );
+        },
+        { text: true },
+      );
+    return form(t('toolbar.fit'), mode('fit'), mode('fill'), mode('stretch'));
+  };
+  const fitTool = (layer: SceneLayer) =>
+    popTool('fit', 'fit', t('toolbar.fit'), () => fitContent(layer));
   const flipTool = (layer: SceneLayer) =>
     popTool('flip', 'flipH', t('toolbar.flip'), () => flipContent(layer));
   /** Stroke (shapes) or border (pictures): colour, width, style, ends. */
@@ -1410,6 +1506,7 @@ export function mountContextToolbar(
       text: true,
     }),
     flipTool(layer),
+    fitTool(layer),
     transparencyTool(),
     divider(),
     animateTool(),

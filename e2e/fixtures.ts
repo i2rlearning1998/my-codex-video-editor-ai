@@ -98,8 +98,11 @@ export const test = base.extend<Fixtures>({
         if (response.status() >= 400)
           errors.push(`http ${response.status()}: ${response.url()}`);
       });
+      // AUDIT-EDITOR (APP-018): a reload or navigation with a save still
+      // pending asks first; tests leave as a user choosing Leave would.
       page.on('dialog', async (dialog) => {
-        if (dialog.type() === 'confirm') await dialog.accept();
+        if (dialog.type() === 'confirm' || dialog.type() === 'beforeunload')
+          await dialog.accept();
         else await dialog.dismiss();
       });
       await use();

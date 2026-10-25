@@ -70,6 +70,7 @@ export type EditAction =
   | 'group'
   | 'marker'
   | 'delete-marker'
+  | 'rename-marker'
   | 'toggle-enabled'
   | 'speed'
   | 'reverse'
@@ -113,6 +114,141 @@ export function withLinked(
       .map((clip) => clip.layerId),
   );
   return [...new Set([...ids, ...partners])];
+}
+/**
+ * AUDIT-EDITOR (TL-022): the top-level layers whose clips the playhead
+ * crosses, on unlocked tracks, that are not locked and not groups.
+ */
+export function splitCandidates(source: RenderSource, time: number): string[] {
+  const { composition } = source;
+  return composition.tracks.flatMap((track) =>
+    track.locked
+      ? []
+      : track.clips.flatMap((clip) => {
+          const layer = composition.layers.find(
+            (item) => item.id === clip.layerId,
+          );
+          return layer &&
+            layer.type !== 'group' &&
+            !isLocked(layer) &&
+            clip.startTime < time - 1e-9 &&
+            time < clip.startTime + clip.duration - 1e-9
+            ? [layer.id]
+            : [];
+        }),
+  );
+}
+/**
+ * AUDIT-EDITOR (TL-026): deletes the selected clips (with their linked
+ * partners) and closes the gaps they leave: every later clip on the same
+ * lane moves left by the length removed before it. One undo step.
+ */
+export function rippleDelete(
+  engine: EditorEngine,
+  session: EditorSession,
+): void {
+  session.setPlaying(false);
+  const source = session.source;
+  const { composition } = source;
+  const layers = selectionRoots(
+    source,
+    withLinked(source, session.selectedIds),
+  );
+  if (!layers.length) throw new Error(t('ripple.none'));
+  if (layers.some(isLocked)) throw new Error(t('ripple.locked'));
+  const removed = new Map<string, { start: number; end: number }[]>();
+  const removedClips = new Set<string>();
+  for (const layer of layers) {
+    const found = findClipByLayer(composition, layer.id);
+    if (!found) continue;
+    if (found.track.locked) throw new Error('Track is locked');
+    removedClips.add(found.clip.id);
+    removed.set(found.track.id, [
+      ...(removed.get(found.track.id) ?? []),
+      {
+        start: found.clip.startTime,
+        end: found.clip.startTime + found.clip.duration,
+      },
+    ]);
+  }
+  const commands: Command[] = layers.map((layer) => ({
+    type: 'DELETE_LAYER',
+    compositionId: composition.id,
+    layerId: layer.id,
+  }));
+  for (const [trackId, spans] of removed) {
+    const track = composition.tracks.find((item) => item.id === trackId)!;
+    for (const clip of track.clips) {
+      if (removedClips.has(clip.id)) continue;
+      const shift = spans
+        .filter((span) => span.end <= clip.startTime + 1e-9)
+        .reduce((sum, span) => sum + (span.end - span.start), 0);
+      if (shift > 1e-9)
+        commands.push({
+          type: 'SET_CLIP_TIMING',
+          compositionId: composition.id,
+          clipId: clip.id,
+          startTime: Math.max(0, clip.startTime - shift),
+          duration: clip.duration,
+        });
+    }
+  }
+  engine.commands.transaction('Ripple delete', commands);
+  session.select(null);
+}
+/** AUDIT-EDITOR (TL-037): the user's markers in time order (no reserved). */
+export function userMarkers(composition: {
+  readonly markers: readonly { id: string; time: number; label: string }[];
+}) {
+  return composition.markers
+    .filter((marker) => !isReservedMarker(marker))
+    .slice()
+    .sort((a, b) => a.time - b.time);
+}
+/** AUDIT-EDITOR (TL-037): the playhead jumps to the next or previous marker. */
+export function jumpToMarker(session: EditorSession, direction: -1 | 1): void {
+  session.setPlaying(false);
+  const time = session.currentTime;
+  const times = userMarkers(session.source.composition)
+    .map((marker) => marker.time)
+    .filter((at) => (direction > 0 ? at > time + 1e-9 : at < time - 1e-9));
+  if (times.length)
+    session.setCurrentTime(
+      direction > 0 ? Math.min(...times) : Math.max(...times),
+    );
+}
+/** AUDIT-EDITOR (TL-037): renames a marker (one undo step). */
+export function renameMarker(
+  engine: EditorEngine,
+  session: EditorSession,
+  markerId: string,
+  label: string,
+): void {
+  const { composition } = session.source;
+  const marker = composition.markers.find((item) => item.id === markerId);
+  const next = label.trim().slice(0, 256);
+  if (!marker || !next || next === marker.label) return;
+  engine.commands.transaction('Rename marker', [
+    {
+      type: 'UPDATE_MARKER',
+      compositionId: composition.id,
+      marker: { id: marker.id, time: marker.time, label: next },
+    },
+  ]);
+}
+/** AUDIT-EDITOR (TL-041): removes every marker of the scene (one step). */
+export function clearMarkers(engine: EditorEngine, session: EditorSession) {
+  const { composition } = session.source;
+  const markers = userMarkers(composition);
+  if (!markers.length) return;
+  engine.commands.transaction(
+    'Clear markers',
+    markers.map((marker) => ({
+      type: 'DELETE_MARKER' as const,
+      compositionId: composition.id,
+      markerId: marker.id,
+    })),
+  );
 }
 export interface ClipLanding {
   /** Structural so new (not yet created) clips can be planned too. */
@@ -283,9 +419,16 @@ export function contextActions(
   time: number,
   markerId?: string,
 ): EditAction[] {
-  if (markerId) return ['delete-marker'];
+  if (markerId) return ['rename-marker', 'delete-marker'];
   const layers = selectionRoots(source, ids);
-  if (!layers.length) return hasClipboard() ? ['marker', 'paste'] : ['marker'];
+  if (!layers.length) {
+    // AUDIT-EDITOR (TL-022): with nothing selected, Split cuts every
+    // unlocked clip under the playhead.
+    const base: EditAction[] = hasClipboard()
+      ? ['marker', 'paste']
+      : ['marker'];
+    return splitCandidates(source, time).length ? ['split', ...base] : base;
+  }
   // H3 (CV-024): a locked layer is not deleted or cut.
   const locked = layers.some(isLocked);
   const actions: EditAction[] = locked
@@ -344,10 +487,18 @@ export function performEdit(
   session: EditorSession,
   action: EditAction,
   markerId?: string,
+  /** AUDIT-EDITOR (TL-024): Alt-drag copies land `offset` seconds later. */
+  options: { readonly offset?: number } = {},
 ): void {
   session.setPlaying(false);
   const source = session.source,
     compositionId = source.composition.id;
+  // AUDIT-EDITOR (TL-022): Split with nothing selected splits every
+  // unlocked clip under the playhead (they become the selection first).
+  if (action === 'split' && !session.selectedIds.length) {
+    const candidates = splitCandidates(source, session.currentTime);
+    if (candidates.length) session.selectMany(candidates);
+  }
   // Q1: a blocked Ungroup reports its reason (ungroupCommands throws it).
   if (
     action === 'ungroup' &&
@@ -597,7 +748,9 @@ export function performEdit(
         relink(clipCopy);
         clipCopy.layerId = copy.id;
         clipCopy.startTime =
-          action === 'split' ? session.currentTime : timing.startTime;
+          action === 'split'
+            ? session.currentTime
+            : Math.max(0, timing.startTime + (options.offset ?? 0));
         clipCopy.duration =
           action === 'split'
             ? timing.startTime + timing.duration - session.currentTime

@@ -314,7 +314,9 @@ describe('T3 editing workspace', () => {
       'split',
     );
     expect(contextActions(s.session.source, ['a', 'b'], 2)).toContain('group');
+    // AUDIT-EDITOR (TL-037): a marker can also be renamed.
     expect(contextActions(s.session.source, [], 0, 'marker')).toEqual([
+      'rename-marker',
       'delete-marker',
     ]);
   });

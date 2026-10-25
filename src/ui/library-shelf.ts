@@ -439,7 +439,10 @@ export function mountShelf(options: ShelfOptions): Shelf {
     name.textContent = item.name;
     button.prepend(thumb);
     button.append(name);
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (event) => {
+      // AUDIT-EDITOR (MED-016): a double-click adds once, not twice (its
+      // second click has detail 2).
+      if (event.detail > 1) return;
       try {
         options.add(item.id);
       } catch (error) {

@@ -1,4 +1,6 @@
 import { plannedReason } from './planned';
+import { openProjectsDialog, type ProjectsApi } from './projects-dialog';
+import { scenePosterUrl as projectPosterUrl } from './scene-poster';
 import {
   audioPlayButton,
   mediaPreviewUrl,
@@ -123,6 +125,8 @@ import {
   nextTrackName,
   laneInsertIndex,
   trackTypeForLayer,
+  frameToTime,
+  timeToFrame,
 } from '../core';
 import {
   deriveRenderItems,
@@ -282,7 +286,11 @@ import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
 import { mountShortcutSheet } from './shortcut-sheet';
-import { runCommand, type CommandContext } from '../commands/registry';
+import {
+  commands,
+  runCommand,
+  type CommandContext,
+} from '../commands/registry';
 import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
 import { cycleThemePreference, onThemeChange, themePreference } from './theme';
@@ -370,6 +378,8 @@ export interface ShellActions {
   openExample?: () => void | Promise<void>;
   /** The media byte store (D-004); defaults to OPFS, then IndexedDB. */
   mediaStore?: Promise<MediaStore | null>;
+  /** AUDIT-EDITOR (PRJ-016): the projects kept in this browser. */
+  projects?: ProjectsApi;
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -380,6 +390,14 @@ export function mountEditorShell(
   // FIX1 F6: inside a nested clip the editor edits its inside as a scene;
   // the wrapper writes each edit back to the real engine (one undo step).
   const engine = createNestEngine(realEngine);
+  // AUDIT-EDITOR (APP-017): the tab names the project and marks unsaved
+  // changes.
+  let unsaved = false;
+  const updateTitle = () => {
+    const title = `${unsaved ? '• ' : ''}${realEngine.state.metadata.name} – ${t('app.title')}`;
+    if (document.title !== title) document.title = title;
+  };
+  realEngine.on('state:changed', () => updateTitle());
   const categoryKey = (name: string) => `library.${name.toLowerCase()}`;
   const railButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-category="${name}" aria-pressed="${pressed}" title="${t(categoryKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${t(categoryKey(name))}</span></button>`;
@@ -418,13 +436,39 @@ export function mountEditorShell(
         <div class="app-menu-group" role="group" aria-label="${t('menu.file')}">
           <div class="app-menu-label">${t('menu.file')}</div>
           <button type="button" id="new-project" role="menuitem">${iconSvg('templates')}${t('project.new')}</button>
+          <button type="button" id="projects" role="menuitem">${iconSvg('folder')}${t('projects.menu')}</button>
           <button type="button" id="example" role="menuitem">${iconSvg('open')}${t('action.example')}</button>
           <label class="button" role="menuitem" id="open-project-label">${iconSvg('open')}${t('action.open')}<input id="import" type="file" accept="application/json,.json" /></label>
           <button type="button" id="save" role="menuitem">${iconSvg('save')}${t('action.save')}</button>
           <button type="button" id="export-json" role="menuitem">${iconSvg('export')}${t('action.exportJson')}</button>
         </div>
+        <div class="app-menu-group" role="group" aria-label="${t('menu.edit')}" id="app-menu-edit">
+          <div class="app-menu-label">${t('menu.edit')}</div>
+          ${(
+            [
+              ['undo', 'undo', 'action.undo', 'Ctrl+Z'],
+              ['redo', 'redo', 'action.redo', 'Ctrl+Y'],
+              ['cut', 'cut', 'command.cut', 'Ctrl+X'],
+              ['copy', 'copy', 'command.copy', 'Ctrl+C'],
+              ['paste', 'paste', 'command.paste', 'Ctrl+V'],
+              ['duplicate', 'duplicate', 'command.duplicate', 'Ctrl+D'],
+              ['delete', 'delete', 'command.delete', 'Delete'],
+              ['select-all', 'groupSelection', 'command.selectAll', 'Ctrl+A'],
+            ] as const
+          )
+            .map(
+              ([command, icon, key, keys]) =>
+                `<button type="button" role="menuitem" data-command="${command}">${iconSvg(icon)}${t(key)}<span class="shortcut-hint">${keys}</span></button>`,
+            )
+            .join('')}
+        </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
+          <button type="button" role="menuitemcheckbox" data-view="left-panel" aria-checked="true">${iconSvg('panelLeft')}${t('menu.viewLeftPanel')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="right-panel" aria-checked="false">${iconSvg('panelRight')}${t('menu.viewRightPanel')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="grid" aria-checked="false">${iconSvg('templates')}${t('guides.grid')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="safe" aria-checked="false">${iconSvg('crop')}${t('guides.safe')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="snap" aria-checked="true">${iconSvg('magnet')}${t('menu.viewSnap')}</button>
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
           <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
           <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
@@ -1309,7 +1353,11 @@ export function mountEditorShell(
   );
   // H3, J1: a new canvas size for the open scene, with Undo in the toast.
   const resizeCanvas = (width: number, height: number) => {
-    if (!applyCanvasSize(engine, session.source.composition.id, width, height))
+    if (
+      !applyCanvasSize(engine, session.source.composition.id, width, height, {
+        scaleContent: session.scaleContent,
+      })
+    )
       return;
     showToast(
       t('canvasSize.changed', {
@@ -1849,6 +1897,17 @@ export function mountEditorShell(
     engine,
     session,
     view: canvasView,
+    // AUDIT-EDITOR (KEY-015): V leaves drawing, T adds a text box, R and E
+    // add a rectangle and an ellipse at the playhead (as Elements does).
+    tools: {
+      select: () => session.setDrawBrush(null),
+      text: () =>
+        safely(() => {
+          libraryActions.insertTextBox();
+          editText(session.selectedId, { selectAll: true });
+        }),
+      shape: (preset) => safely(() => addShape(engine, session, preset)),
+    },
     ...(actions.save ? { save: actions.save } : {}),
     togglePlayback: () =>
       element<HTMLButtonElement>('[data-action="play"]').click(),
@@ -2087,6 +2146,18 @@ export function mountEditorShell(
     );
     element<HTMLButtonElement>('#undo').disabled = !engine.canUndo;
     element<HTMLButtonElement>('#redo').disabled = !engine.canRedo;
+    // AUDIT-EDITOR (APP-014, HIS-003): the buttons name the step.
+    for (const [id, label, base, keys] of [
+      ['#undo', engine.undoLabel, 'action.undo', 'Ctrl+Z'],
+      ['#redo', engine.redoLabel, 'action.redo', 'Ctrl+Y'],
+    ] as const) {
+      const text = label ? t(`${base}Named`, { label }) : t(base);
+      const button = element<HTMLButtonElement>(id);
+      if (button.getAttribute('aria-label') !== text) {
+        button.setAttribute('aria-label', text);
+        button.title = `${text} (${keys})`;
+      }
+    }
     draw();
   };
   timeline = mountTimeline(
@@ -5747,8 +5818,82 @@ export function mountEditorShell(
     unregisterMenu?.();
     unregisterMenu = undefined;
   };
+  // AUDIT-EDITOR (APP-009, APP-010): the Edit group's live enabled state
+  // and the View group's toggles, read each time the menu opens.
+  const syncAppMenu = () => {
+    for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+      '[data-command]',
+    )) {
+      const command = commands.find(
+        (item) => item.id === button.dataset.command,
+      );
+      button.disabled = !command?.isEnabled(commandContext);
+    }
+    const checked: Record<string, boolean> = {
+      'left-panel': !!workspace?.leftOpen,
+      'right-panel': !!workspace?.rightOpen,
+      grid: session.viewGuides.grid,
+      safe: session.viewGuides.safe,
+      snap: session.timelineSnap,
+    };
+    for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+      '[data-view]',
+    ))
+      button.setAttribute(
+        'aria-checked',
+        String(checked[button.dataset.view!] ?? false),
+      );
+  };
+  for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+    '[data-command]',
+  ))
+    button.addEventListener('click', () =>
+      safely(() => {
+        runCommand(button.dataset.command!, commandContext);
+      }),
+    );
+  for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+    '[data-view]',
+  ))
+    button.addEventListener('click', () =>
+      safely(() => {
+        const view = button.dataset.view;
+        if (view === 'left-panel')
+          workspace?.setOpen('left', !workspace.leftOpen);
+        else if (view === 'right-panel')
+          workspace?.setOpen('right', !workspace.rightOpen);
+        else if (view === 'grid')
+          session.setViewGuides({ grid: !session.viewGuides.grid });
+        else if (view === 'safe')
+          session.setViewGuides({ safe: !session.viewGuides.safe });
+        else if (view === 'snap')
+          session.setTimelineSnap(!session.timelineSnap);
+      }),
+    );
+  // AUDIT-EDITOR (APP-002): Escape closes the menu (the shortcut dispatcher
+  // leaves keys to an open menu) and gives focus back to its button; the
+  // arrows move between the entries.
+  appMenu.addEventListener('keydown', (event) => {
+    const items = [
+      ...appMenu.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), label[role="menuitem"]',
+      ),
+    ].filter((item) => item.offsetParent !== null);
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    if (event.key === 'Escape') {
+      closeMenu();
+      menuTrigger.focus();
+    } else if (event.key === 'ArrowDown')
+      items[(index + 1) % items.length]?.focus();
+    else if (event.key === 'ArrowUp')
+      items[(index - 1 + items.length) % items.length]?.focus();
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
   menuTrigger.onclick = () => {
     const opening = appMenu.hidden;
+    if (opening) syncAppMenu();
     appMenu.hidden = !opening;
     menuTrigger.setAttribute('aria-expanded', String(opening));
     if (opening) {
@@ -5769,6 +5914,17 @@ export function mountEditorShell(
   });
   for (const button of appMenu.querySelectorAll('button'))
     button.addEventListener('click', () => closeMenu());
+  const projectsButton = element<HTMLButtonElement>('#projects');
+  projectsButton.disabled = !actions.projects;
+  if (!actions.projects) projectsButton.title = t('projects.unavailable');
+  projectsButton.onclick = () => {
+    const api = actions.projects;
+    if (api)
+      openProjectsDialog(
+        { ...api, create: () => runCommand('new-project', commandContext) },
+        reportError,
+      );
+  };
   element<HTMLButtonElement>('#about').onclick = () => {
     openModal({
       titleText: t('menu.about'),
@@ -7058,6 +7214,8 @@ export function mountEditorShell(
     status: 'saved' | 'saving' | 'unsaved' | 'error',
     detail?: string,
   ) => {
+    unsaved = status === 'unsaved' || status === 'saving';
+    updateTitle();
     const dot = element('#save-status-dot');
     const text = element('#save-status-text');
     dot.className = `project-dot ${status === 'unsaved' ? '' : status}`.trim();
@@ -7121,6 +7279,40 @@ export function mountEditorShell(
       closeTopOverlay() ||
       (timeline?.closeMenu() ?? false),
     localKey: (event) => {
+      // AUDIT-EDITOR (KEY-011): with nothing selected, Left and Right step a
+      // frame (Shift: a second) and Home and End jump to the scene's ends,
+      // on the canvas or anywhere outside a panel. The timeline keeps its
+      // own keys (D-035).
+      const target = event.target;
+      if (
+        ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !session.selectedIds.length &&
+        (target === canvas ||
+          target === document.body ||
+          target === document.documentElement)
+      ) {
+        event.preventDefault();
+        session.setPlaying(false);
+        const { fps, duration } = session.source.composition;
+        const step = event.shiftKey ? 1 : 1 / fps;
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? duration
+              : session.currentTime +
+                (event.key === 'ArrowLeft' ? -step : step);
+        session.setCurrentTime(
+          Math.max(
+            0,
+            Math.min(duration, frameToTime(timeToFrame(next, fps), fps)),
+          ),
+        );
+        return;
+      }
       if (
         session.drawBrush &&
         event.key.toLowerCase() === 'v' &&
@@ -7145,7 +7337,7 @@ export function mountEditorShell(
   const languageLabel = element('#language-toggle-label');
   const applyLanguage = () => {
     languageLabel.textContent = getLanguage() === 'en' ? 'हिन्दी' : 'English';
-    document.title = t('app.title');
+    updateTitle();
   };
   applyLanguage();
   element<HTMLButtonElement>('#language-toggle').onclick = () => {
@@ -7292,6 +7484,13 @@ export function mountEditorShell(
     message,
     refresh,
     setSaveStatus,
+    /** AUDIT-EDITOR (PRJ-016): a small poster of the first scene. */
+    projectPoster: () => {
+      const first = realEngine.state.compositions[0];
+      return first
+        ? projectPosterUrl(realEngine, session, first.id, undefined, 192)
+        : undefined;
+    },
     dispose: () => {
       libraryBrowsers.dispose();
       if (disposed) return;

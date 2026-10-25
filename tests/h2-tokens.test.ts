@@ -146,6 +146,8 @@ describe('H2 design tokens', () => {
       '--paragraph-spacing',
       // T6: a fixed-height text box's stored height (inline).
       '--fixed-height',
+      // AUDIT-EDITOR (TL-008): the ruler's frame width (inline).
+      '--frame-px',
     ]);
     const missing = [
       ...new Set(

@@ -42,7 +42,32 @@ Checked in the running app (probe of every button's `aria-disabled` and title) a
 Each item: why the Editor needs it, then the result. Ticked only when Done + Verified (a passing test with the ID) or Blocked with the reason.
 
 <!-- NEEDED -->
-(filled in by Part B)
+Proof for every ticked line: the named test in `e2e/editor-complete.spec.ts` (or `e2e/audit-editor.spec.ts`) passes in Chromium 153.
+
+- [x] **APP-002, APP-009, APP-010 Main menu**: a real editor needs Edit (undo, cut, paste, select all) and View toggles in the menu, and the menu must close with Escape (it did not). Done: Edit group with live enabled state and shortcut hints; View toggles left panel, right panel, grid, safe areas, timeline snapping; Escape closes and returns focus; arrows move. Test `[APP-002][APP-009][APP-010]`.
+- [x] **APP-004 Open project error**: a wrong file must say so; the message went only to a hidden live region. Done: an error toast. Test `[APP-004]`.
+- [x] **PRJ-015, PRJ-016, APP-006, APP-007, APP-008 Projects**: the editor kept exactly one project in a 5 MB localStorage slot; a teacher or YouTuber has many. Done: one IndexedDB record per project (the old slot is moved in once), File › Projects with poster, last edited, open, rename, duplicate, delete with confirmation; New project, Open file and Open example keep the current project. Test `[PRJ-015][PRJ-016][APP-006][APP-007][APP-008]`.
+- [x] **PRJ-017, PRJ-010 Recovery**: after a crash or a damaged save the user must be told what was restored. Done: a toast with the autosave time after an unexpected close; a damaged primary opens the last good copy and is kept; a newer-schema project is left untouched. Test `[PRJ-017][PRJ-010]`.
+- [x] **APP-014, HIS-003 Undo names the step**: users need to know what Undo will do. Done. Test `[APP-014][HIS-003][APP-017]`.
+- [x] **APP-017 Tab title**: several tabs must be told apart; the title was always "AI-Native". Done: "• Name – AI-Native" while unsaved. Same test.
+- [x] **APP-018 Closing with a pending save**: closing within the autosave window could lose the last edit. Done: the browser asks; the save also starts on the way out. Test `[APP-018]`.
+- [x] **LAY-005 Panel sizes persist**: a resized or closed panel came back at its default after every reload. Done (left/right width, left closed; wide and medium windows). Test `[LAY-005]`.
+- [x] **KEY-011, KEY-015 Keys**: frame stepping only worked inside the timeline; tool keys did nothing. Done: with nothing selected, ←/→ one frame, Shift one second, Home/End; V, T, R, E. Inside the timeline its own keys stay (D-035). Test `[KEY-011][KEY-015]`.
+- [x] **PRJ-007 Aspect change keeps the design**: changing 16:9 to 9:16 left the design hanging off the canvas. Done: Canvas size › Scale content to fit (default off keeps CV-055). Test `[PRJ-007]`.
+- [x] **MED-016 Double-click**: a double-click added the media twice. Done: once. Test `[MED-016]`.
+- [x] **CV-021 Select all** on the empty canvas menu; **CV-027 Rotate 90°** (canvas Layer submenu for any element, and the picture Flip popover). Tests `[CV-021][CV-020][CV-027]`. CV-020 was already built (re-check, rule 6).
+- [x] **TL-008 Ruler time**: labels read "0.125s"; editors read m:ss. Done: m:ss (h:mm:ss past an hour), m:ss:ff between seconds, frame ticks when zoomed in. Test `[TL-008]`.
+- [x] **TL-022 Split all**: with nothing selected, S / Split cuts every unlocked clip under the playhead. Test `[TL-022]`.
+- [x] **TL-024 Alt-drag copy** on the timeline (the copy lands at the dropped time on a new lane above, like Duplicate). Test `[TL-024]`.
+- [x] **TL-026 Ripple delete** (Shift+Delete, Clip menu): delete and close the gap in one step. Test `[TL-026]`.
+- [x] **TL-029 Snap toggle**: a magnet in the Player bar and in View, on by default. Test `[TL-029]`.
+- [x] **PB-006 Loop**: Loop plays the scene (or the Manual range) again. Test `[PB-006]`.
+- [x] **VID-004 Fit, Fill, Stretch** for pictures and videos (toolbar Fit popover; Custom is the free transform). Test `[VID-004]`. INS-016 stays partial (no media loop setting).
+- [x] **REL-002 Error boundary**: an uncaught UI error saves the project and offers Reload. Test `[REL-002]`.
+- [x] **REL-007 Unsupported browser** message. Test `[REL-007]`.
+- [x] **Stale disabled controls** (Part A): scene bar Transition, Edit image › Adjust colors and Filters, full-screen tooltip. Test `[TR-018][CLR-001][FX-004]`, `[LAY-010]`.
+- [ ] **TL-037 Markers** — Done: rename, delete, jump next/previous, list, clear (test `[TL-037]`). **Blocked: marker colour.** A marker is a strict `{id, time, label}` record in schema 9; a colour needs a new field and a schema bump, which this brief forbids (stop rule). TL-037 stays Claimed until the owner approves schema 10.
+- [ ] **CV-005, CV-010 Shift constrains a drag, Alt-drag duplicates, Shift snaps rotation to 15°** — **Blocked: frozen contract.** The drag and rotate maths are governed by `TRANSFORM_INTERACTION_CONTRACT.md` (AGENTS.md §4); every earlier change to it was owner-authorised (D-045, D-051, D-066, D-077, D-106, D-115). The owner needs to authorise revision 10 for these three rules; then it is a small change in `src/ui/transform-interaction.ts update()`.
 <!-- /NEEDED -->
 
 ## Not needed now (moved out of the Editor scope)

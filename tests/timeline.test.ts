@@ -116,8 +116,9 @@ describe('timeline foundation', () => {
     expect(
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
     ).toBe('996px'); // V7: 18 px padding each side (D-197)
+    // AUDIT-EDITOR (TL-008): the ruler reads m:ss.
     expect(s.root.querySelector('.timeline-ruler')!.textContent).toContain(
-      '12s',
+      '0:12',
     );
     s.timeline.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'End', bubbles: true }),
@@ -224,7 +225,7 @@ describe('timeline foundation', () => {
       s.root.querySelector<HTMLElement>('.timeline-content')!.style.width,
     ).toBe('6036px');
     expect(s.root.querySelector('.timeline-ruler')!.textContent).toContain(
-      '75s',
+      '1:15',
     );
     const scroll = s.root.querySelector<HTMLElement>('.timeline-scroll')!;
     scroll.scrollLeft = 1600;
