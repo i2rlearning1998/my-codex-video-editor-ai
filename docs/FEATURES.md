@@ -1142,6 +1142,13 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | FX5-016 | P0 | W9 | Verified | The first Play press under the browser's "sound only after a click" policy waits for the sound, then picture and sound start together, with no console warning |
 | FX5-017 | P1 | W9 | Verified | The scene strip's + menu has Open video plan review |
 
+## P13D: Phase 1, 3D models (GLB)
+
+| ID | Pri | Wave | Status | Description |
+| --- | --- | --- | --- | --- |
+| P13D-001 | P0 | W9 | Verified | A .glb model chosen in AI › Import (or dropped on the editor) becomes a Tier C code animation (the model's bytes embedded, GLTFLoader in the vendored THREE bundle) with spin, size, tilt, light and tint controls; its thumbnail shows the lit model |
+| P13D-002 | P0 | W9 | Verified | A file that is not a binary glTF 2 model, a cut-off one or one over 700 KB gets a plain sentence and cannot be added |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.

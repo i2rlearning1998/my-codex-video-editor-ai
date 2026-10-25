@@ -41,8 +41,15 @@ const manifest = [];
 for (const [name, version, released, file, global, license] of entries) {
   let code;
   if (name === 'three') {
+    // THREE plus GLTFLoader (examples/jsm), so Tier C code can load a .glb
+    // from bytes embedded in its own source (no network in the sandbox).
+    const core = path.resolve(root, file);
     const built = await build({
-      entryPoints: [path.join(root, file)],
+      stdin: {
+        contents: `export * from ${JSON.stringify(core)};export { GLTFLoader } from ${JSON.stringify(path.resolve(root, 'three/package/examples/jsm/loaders/GLTFLoader.js'))};`,
+        resolveDir: root,
+      },
+      alias: { three: core },
       bundle: true,
       minify: true,
       format: 'iife',
