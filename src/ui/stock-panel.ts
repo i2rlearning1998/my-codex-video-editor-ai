@@ -4,6 +4,7 @@
 // badge, and adds an item through `deps.add` (download, import into Media
 // with its licence, place at the playhead). Every failure is a plain sentence.
 import { t } from '../i18n';
+import { audioPlayButton } from './components/audio-preview';
 import {
   ProviderError,
   hasKeys,
@@ -232,8 +233,6 @@ if (typeof document !== 'undefined')
   });
 let menuElement: HTMLElement | null = null;
 let menu: MenuController | null = null;
-let audio: HTMLAudioElement | null = null;
-let playing: string | null = null;
 
 /** Mounts the stock page body for one tab into `host`. */
 export function mountStock(
@@ -450,40 +449,12 @@ export function mountStock(
     };
     wrap.append(button, more, plus);
     if (tab === 'audio' && item.previewUrl) {
-      const play = document.createElement('button');
-      play.type = 'button';
-      play.className = 'icon-button stock-play';
+      const previewUrl = item.previewUrl;
+      const play = audioPlayButton(
+        { id: `stock:${id}`, name: item.title, url: () => previewUrl },
+        'stock-play',
+      );
       play.dataset.action = 'stock-play';
-      const sync = () => {
-        const on = playing === id;
-        play.setAttribute('aria-pressed', String(on));
-        play.setAttribute('aria-label', t(on ? 'stock.pause' : 'stock.play'));
-        play.title = t(on ? 'stock.pause' : 'stock.play');
-        play.innerHTML = iconSvg(on ? 'pause' : 'play', 16);
-      };
-      play.onclick = (event) => {
-        event.stopPropagation();
-        if (playing === id) {
-          audio?.pause();
-          playing = null;
-        } else {
-          audio?.pause();
-          audio = new Audio(item.previewUrl);
-          audio.onended = () => {
-            playing = null;
-            sync();
-          };
-          playing = id;
-          audio.play().catch(() => {
-            playing = null;
-            sync();
-          });
-        }
-        for (const other of body.querySelectorAll<HTMLElement>('.stock-play'))
-          other.dispatchEvent(new Event('stock-sync'));
-      };
-      play.addEventListener('stock-sync', sync);
-      sync();
       wrap.append(play);
     }
     if (state.jobs.has(id) || state.failed.has(id)) showJob(wrap, id);

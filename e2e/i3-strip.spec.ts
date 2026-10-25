@@ -63,6 +63,7 @@ test('[PRJ-023] [PRJ-014] the scene strip shows each scene with a thumbnail, nam
     'Blank scene',
     'Duplicate current scene',
     'From template…',
+    'Open video plan review',
   ]);
   await page.locator('[data-action="strip-add-duplicate"]').click();
   expect((await labels(page)).at(-1)).toBe('Duplicate scene');

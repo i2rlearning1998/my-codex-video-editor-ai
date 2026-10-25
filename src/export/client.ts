@@ -31,6 +31,8 @@ export interface ExportInput {
   backgrounds?: readonly { start: number; color: string }[];
   /** V7: transitions across the cuts of joined scenes. */
   sceneCuts?: readonly SceneCut[];
+  /** TXT-037: the scene's place in the project (a single-scene export). */
+  fields?: { sceneNumber: number; sceneCount: number };
   settings: ExportSettings;
 }
 export interface ExportProgress {
@@ -196,6 +198,7 @@ export function startExport(
       background: input.background,
       ...(input.backgrounds ? { backgrounds: input.backgrounds } : {}),
       ...(input.sceneCuts?.length ? { sceneCuts: input.sceneCuts } : {}),
+      ...(input.fields ? { fields: input.fields } : {}),
       settings,
       videos,
       images,

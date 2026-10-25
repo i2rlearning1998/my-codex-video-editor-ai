@@ -21,6 +21,7 @@ function planText(text: string): unknown {
     return /"format"\s*:\s*"video-plan"/.test(trimmed) ? {} : null;
   }
 }
+import { importFileText, GlbError } from '../code-layer/glb-source';
 import { codeSeed } from '../code-layer/meta';
 import { openCodeSession } from '../code-layer/runtime';
 import type { FreeCodeMeta } from '../code-layer/runtime-types';
@@ -155,6 +156,8 @@ export function openAiImportDialog(options: AiImportOptions) {
   } | null = null;
   let checked = false;
   let run = 0;
+  /** PHASE 0 E1: a new check cancels the build check still running. */
+  let checking: AbortController | null = null;
   let fileName = options.fileName ?? '';
   let sceneMode: 'new' | 'current' = 'new';
   const handle = openModal({
@@ -166,7 +169,7 @@ export function openAiImportDialog(options: AiImportOptions) {
           <textarea id="ai-import-source" spellcheck="false" rows="8" placeholder="${t('aiImport.placeholder')}"></textarea>
           <div class="code-import-file">
             <button type="button" class="button" id="ai-import-choose">${t('code.chooseFile')}</button>
-            <input type="file" id="ai-import-file" accept=".txt,.json,.js,.mjs,.html,.htm,application/json,text/plain,text/javascript,text/html" hidden />
+            <input type="file" id="ai-import-file" accept=".txt,.json,.js,.mjs,.html,.htm,.glb,model/gltf-binary,application/json,text/plain,text/javascript,text/html" hidden />
             <span id="ai-import-file-name" class="code-muted"></span>
           </div>
         </div>
@@ -182,6 +185,7 @@ export function openAiImportDialog(options: AiImportOptions) {
         <button type="button" class="button primary" id="ai-import-add" disabled>${t('aiImport.add')}</button>
       </div>`,
     onClose: () => {
+      checking?.abort();
       run++;
     },
   });
@@ -447,6 +451,8 @@ export function openAiImportDialog(options: AiImportOptions) {
   };
   const classify = async () => {
     const mine = ++run;
+    checking?.abort();
+    checking = new AbortController();
     checked = false;
     add.disabled = true;
     const text = source.value;
@@ -700,6 +706,7 @@ export function openAiImportDialog(options: AiImportOptions) {
         }
         const built = await buildProjectFromComposition(
           (raw as { data?: unknown }).data,
+          checking ? { signal: checking.signal } : {},
         ).catch((error: unknown) => ({
           project: null,
           errors: [String(error)],
@@ -776,7 +783,13 @@ export function openAiImportDialog(options: AiImportOptions) {
     if (!file) return;
     fileName = file.name;
     $<HTMLElement>('ai-import-file-name').textContent = file.name;
-    source.value = await file.text();
+    try {
+      source.value = await importFileText(file);
+    } catch (error) {
+      if (!(error instanceof GlbError)) throw error;
+      source.value = '';
+      $<HTMLElement>('ai-import-file-name').textContent = error.message;
+    }
     void classify();
   };
   report.onclick = () => options.copy(reportText());

@@ -76,7 +76,12 @@ import {
   type ClipLanding,
   SPEED_PRESETS,
   type EditAction,
+  userMarkers,
+  jumpToMarker,
+  renameMarker,
+  clearMarkers,
 } from './editing';
+import { promptDialog } from './components/modal';
 import { Playback } from './playback';
 import {
   calculateSnappedTiming,
@@ -106,6 +111,25 @@ const CLIP_ACTIONS: readonly EditAction[] = [
   'detach-audio',
 ];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
+/**
+ * AUDIT-EDITOR (TL-008): ruler labels read m:ss (h:mm:ss for an hour or
+ * more); a label between whole seconds adds the frame, m:ss:ff.
+ */
+export function rulerLabel(time: number, fps: number, long = false): string {
+  const frames = Math.round(time * fps);
+  const perSecond = Math.max(1, Math.round(fps));
+  const whole = Math.floor(frames / perSecond);
+  const frame = frames - whole * perSecond;
+  const seconds = whole % 60;
+  const minutes = Math.floor(whole / 60) % 60;
+  const hours = Math.floor(whole / 3600);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const base =
+    long || hours
+      ? `${hours}:${pad(minutes)}:${pad(seconds)}`
+      : `${Math.floor(whole / 60)}:${pad(seconds)}`;
+  return frame ? `${base}:${pad(frame)}` : base;
+}
 /** J13: minutes, seconds and hundredths (01:05.40). */
 /** V7 (spec 10.3): the timeline's left and right padding (CSS px). */
 export const TIMELINE_PAD = 18;
@@ -406,7 +430,7 @@ export class TimelineInteraction {
         gesture.kind,
         deltaPixels,
         gesture.zoom,
-        SNAP_THRESHOLD_PX,
+        this.session.timelineSnap ? SNAP_THRESHOLD_PX : 0,
         gesture.layers.map((layer) => layer.id),
         gesture.bounds,
       );
@@ -651,7 +675,7 @@ export function mountTimeline(
   // zoom out, zoom in, fit and collapse.
   const player = (action: string, icon: string, key: string, size = 15) =>
     `<button class="icon-button" data-action="${action}" aria-label="${t(key)}" title="${t(key)}">${iconSvg(icon, size)}</button>`;
-  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="loop-toggle" aria-pressed="false" aria-label="${t('player.loop')}" title="${t('player.loop')}">${iconSvg('loop', 20)}</button><button class="icon-button" data-action="snap-toggle" aria-pressed="true" aria-label="${t('player.snap')}" title="${t('player.snap')}">${iconSvg('magnet', 20)}</button><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   // V2 (Clipchamp clone spec 2, 4): no outliner column and no lane headers in
@@ -1066,6 +1090,13 @@ export function mountTimeline(
     const trackRows = nleTimelineRows(session.source, zoom);
     const landing = controller.landingPlan;
     const playButton = root.querySelector<HTMLElement>('[data-action="play"]')!;
+    // AUDIT-EDITOR (PB-006, TL-029): the loop and magnet toggles.
+    root
+      .querySelector('[data-action="loop-toggle"]')
+      ?.setAttribute('aria-pressed', String(session.loop));
+    root
+      .querySelector('[data-action="snap-toggle"]')
+      ?.setAttribute('aria-pressed', String(session.timelineSnap));
     const playIcon = session.playing ? 'pause' : 'play';
     if (playButton.dataset.icon !== playIcon) {
       playButton.dataset.icon = playIcon;
@@ -1161,12 +1192,17 @@ export function mountTimeline(
       2 ** Math.ceil(Math.log2(70 / zoom)),
       span / 1000,
     );
+    const long = span >= 3600;
     for (let time = 0; time <= span + 1e-9; time += step) {
       const label = document.createElement('span');
-      label.textContent = `${Number(time.toFixed(3))}s`;
+      label.textContent = rulerLabel(time, composition.fps, long);
       label.style.left = `${timeToPixel(time, zoom)}px`;
       ruler.append(label);
     }
+    // AUDIT-EDITOR (TL-008): a tick per frame once frames are 6 px apart.
+    const framePx = timeToPixel(frameToTime(1, composition.fps), zoom);
+    ruler.classList.toggle('frame-ticks', framePx >= 6);
+    ruler.style.setProperty('--frame-px', `${framePx}px`);
     const rulerBar = document.createElement('div');
     rulerBar.className = 'timeline-ruler-bar';
     rulerBar.style.setProperty('--track-height', `${rowSpans().total}px`);
@@ -1907,6 +1943,7 @@ export function mountTimeline(
         raw,
         snapCandidates(session.source, zoom, [], { playhead: false }),
         zoom,
+        session.timelineSnap ? SNAP_THRESHOLD_PX : 0,
       );
       const next = snapped.snapped ? snapped.time : undefined;
       const changed = next !== pointerSnap;
@@ -1924,6 +1961,7 @@ export function mountTimeline(
             markerId: markerPreview!.id,
           }),
           zoom,
+          session.timelineSnap ? SNAP_THRESHOLD_PX : 0,
         );
         markerPreview!.time = Math.max(
           0,
@@ -2265,11 +2303,31 @@ export function mountTimeline(
         hideFloat();
         clearAssetDropTarget();
         controller.cancel();
-        if (moved && !outside && target && target.mode !== 'refused')
-          moveClipTo(laneMove.clipId, target);
+        if (moved && !outside && target && target.mode !== 'refused') {
+          // AUDIT-EDITOR (TL-024): Alt-drag copies the clip to the dropped
+          // time (on a new lane above, as Duplicate does); the original stays.
+          const found = findClip(session.source.composition, laneMove.clipId);
+          if (event.altKey && found)
+            performEdit(engine, session, 'duplicate', undefined, {
+              offset: target.time - found.clip.startTime,
+            });
+          else moveClipTo(laneMove.clipId, target);
+        }
         render();
       } else if (kind === 'clip' && outside) {
         controller.cancel();
+        render();
+      } else if (kind === 'clip' && event.altKey && moved) {
+        // AUDIT-EDITOR (TL-024): Alt-drag of a multi-selection copies it.
+        const preview = controller.preview;
+        const original = preview
+          ? findClipByLayer(session.source.composition, preview.layerId)
+          : undefined;
+        controller.cancel();
+        if (preview && original)
+          performEdit(engine, session, 'duplicate', undefined, {
+            offset: preview.startTime - original.clip.startTime,
+          });
         render();
       } else if (kind === 'clip') controller.finish();
       if (kind === 'keyframe') {
@@ -2385,6 +2443,7 @@ export function mountTimeline(
         case 'clip-menu':
         case 'code-menu':
         case 'track-menu':
+        case 'marker-list':
           openSubFor(target, true);
           return;
         // J14: the clip menu's own entries run registered commands (the
@@ -2549,6 +2608,12 @@ export function mountTimeline(
             ),
           );
           break;
+        case 'loop-toggle':
+          session.setLoop(!session.loop);
+          break;
+        case 'snap-toggle':
+          session.setTimelineSnap(!session.timelineSnap);
+          break;
         case 'zoom-fit': {
           // The whole scene fits the visible lanes.
           const visible = scroll.clientWidth - headerWidth - 24;
@@ -2588,6 +2653,38 @@ export function mountTimeline(
           break;
         case 'delete-marker':
           performEdit(engine, session, 'delete-marker', menuMarker);
+          break;
+        // AUDIT-EDITOR (TL-037, TL-041): marker rename, jumps, list, clear.
+        case 'rename-marker': {
+          const markerId = menuMarker;
+          const marker = session.source.composition.markers.find(
+            (item) => item.id === markerId,
+          );
+          if (!marker) break;
+          void promptDialog(t('marker.rename'), marker.label, {
+            label: t('marker.name'),
+            confirmLabel: t('marker.renameConfirm'),
+            cancelLabel: t('action.cancel'),
+            maxLength: 256,
+          }).then((label) => {
+            if (label !== null)
+              safely(() => renameMarker(engine, session, marker.id, label));
+          });
+          break;
+        }
+        case 'marker-previous':
+        case 'marker-next':
+          jumpToMarker(
+            session,
+            target.dataset.action === 'marker-next' ? 1 : -1,
+          );
+          break;
+        case 'marker-goto':
+          session.setPlaying(false);
+          session.setCurrentTime(Number(target.dataset.time));
+          break;
+        case 'markers-clear':
+          clearMarkers(engine, session);
           break;
         case 'marker':
           session.select(null);
@@ -2846,7 +2943,7 @@ export function mountTimeline(
         if (clip.id !== exclude)
           candidates.push(clip.startTime, clip.startTime + clip.duration);
     let best = raw;
-    let distance = SNAP_THRESHOLD_PX / zoom;
+    let distance = session.timelineSnap ? SNAP_THRESHOLD_PX / zoom : 0;
     for (const candidate of candidates)
       for (const [edge, start] of [
         [raw, candidate],
@@ -3841,9 +3938,11 @@ export function mountTimeline(
             ? 'Add marker'
             : action === 'delete-marker'
               ? 'Delete marker'
-              : action === 'toggle-enabled'
-                ? 'Enable / disable clip'
-                : action[0]!.toUpperCase() + action.slice(1),
+              : action === 'rename-marker'
+                ? t('marker.rename')
+                : action === 'toggle-enabled'
+                  ? 'Enable / disable clip'
+                  : action[0]!.toUpperCase() + action.slice(1),
           action,
         );
       });
@@ -3865,6 +3964,27 @@ export function mountTimeline(
       // still nest and group.
       if (selectionRoots(session.source, session.selectedIds).length > 1)
         earlier.push(commandItem('nest-clips'));
+      // AUDIT-EDITOR (TL-037, TL-041): with markers, jump to the previous or
+      // next one, pick one from the list, or clear them all.
+      const markers = userMarkers(session.source.composition);
+      if (markers.length && !menuMarker) {
+        builders.set('marker-list', () =>
+          markers.map((marker) => {
+            const item = menuItem(
+              `${marker.label} · ${formatTimelineTime(marker.time)}s`,
+              'marker-goto',
+            );
+            item.dataset.time = String(marker.time);
+            return item;
+          }),
+        );
+        earlier.push(
+          menuItem(t('marker.previous'), 'marker-previous'),
+          menuItem(t('marker.next'), 'marker-next'),
+          parentItem(t('marker.list'), 'marker-list'),
+          menuItem(t('marker.clear'), 'markers-clear'),
+        );
+      }
       menu.replaceChildren(
         ...earlier,
         ...(earlier.length && lane.length ? [divider()] : []),
@@ -3912,6 +4032,8 @@ export function mountTimeline(
       const items: HTMLElement[] = [];
       if (kind !== 'code') items.push(commandItem('edit-duration'));
       items.push(...earlierItems(shown));
+      // AUDIT-EDITOR (TL-026): delete and close the gap.
+      items.push(commandItem('ripple-delete'));
       if (kind === 'video') {
         const cut = menuItem(t('command.autoCut'), 'auto-cut');
         cut.setAttribute('aria-disabled', 'true');

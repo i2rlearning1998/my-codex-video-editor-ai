@@ -133,7 +133,7 @@ test('[MED-001][MED-007][MED-018] Import button adds video, audio and image card
   await waitThumbnail(page, PNG);
 });
 
-test('[MED-002] dropping files from the OS imports them and opens Project Media', async ({
+test('[MED-002][LAY-026] dropping files from the OS imports them and opens Project Media', async ({
   page,
 }) => {
   await expect(page.locator('#media-panel')).toBeHidden();
@@ -188,13 +188,15 @@ test('[MED-003] every browser-decodable format imports; other files get a clear 
   const bytes = async () =>
     (await opfsKeys(page)).filter((key) => key.startsWith('media/'));
   const before = await bytes();
-  await importWithPicker(page, ['not_media.txt', 'corrupt_random_bytes.mp4']);
+  // One toast at a time (FX4-001): each file is imported on its own.
+  await importWithPicker(page, ['not_media.txt']);
   await expect(
     page.locator('.toast', {
       hasText:
         "not_media.txt can't be imported: only video, audio and image files are supported",
     }),
   ).toBeVisible();
+  await importWithPicker(page, ['corrupt_random_bytes.mp4']);
   await expect(
     page.locator('.toast', {
       hasText:
@@ -252,16 +254,30 @@ test('[MED-006][MED-018] imported media and thumbnails survive a reload; the pro
     true,
   );
   // Autosave writes the project JSON: references, never bytes or data URIs.
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => localStorage.getItem('ai-native-editor:project') ?? '',
-      ),
-    )
-    .toContain(references[1]!);
-  const saved = await page.evaluate(() =>
-    localStorage.getItem('ai-native-editor:project')!,
-  );
+  // (AUDIT-EDITOR, PRJ-015: the project is a record in IndexedDB.)
+  const stored = () =>
+    page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          const id = localStorage.getItem('aive.currentProject');
+          const open = indexedDB.open('aive-projects', 1);
+          open.onsuccess = () => {
+            const request = open.result
+              .transaction('projects', 'readonly')
+              .objectStore('projects')
+              .get(id ?? '');
+            request.onsuccess = () =>
+              resolve(
+                (request.result as { primary?: string } | undefined)?.primary ??
+                  '',
+              );
+            request.onerror = () => resolve('');
+          };
+          open.onerror = () => resolve('');
+        }),
+    );
+  await expect.poll(stored).toContain(references[1]!);
+  const saved = await stored();
   expect(saved).not.toMatch(/data:|base64/);
   expect(saved.length).toBeLessThan(100_000);
   const keys = await opfsKeys(page);

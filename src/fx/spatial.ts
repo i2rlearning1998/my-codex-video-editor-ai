@@ -146,7 +146,10 @@ export function vignette(src: Surface, dst: Surface, strength: number): void {
   }
 }
 
-/** Opaque videos need no premultiplication or alpha accumulation. */
+/** Opaque videos need no premultiplication or alpha accumulation. The sums
+ *  and the rounding are exactly those of the plain running box (the edge
+ *  indices are looked up, not recomputed per pixel), so the result is the
+ *  same pixels, just faster (PHASE 0 E2). */
 function blurOpaque(src: Surface, dst: Surface, r: number): void {
   const w = src.width,
     h = src.height,
@@ -154,7 +157,13 @@ function blurOpaque(src: Surface, dst: Surface, r: number): void {
     a = src.data,
     o = dst.data,
     tmp = new Float32Array(w * h * 3),
-    sums = new Float64Array(w * 3);
+    sums = new Float64Array(w * 3),
+    oldX = new Int32Array(w),
+    nextX = new Int32Array(w);
+  for (let x = 0; x < w; x++) {
+    oldX[x] = Math.max(0, x - r) * 4;
+    nextX[x] = Math.min(w - 1, x + r + 1) * 4;
+  }
   for (let y = 0; y < h; y++) {
     const row = y * w * 4;
     let rr = 0,
@@ -166,35 +175,38 @@ function blurOpaque(src: Surface, dst: Surface, r: number): void {
       gg += a[i + 1]!;
       bb += a[i + 2]!;
     }
-    for (let x = 0; x < w; x++) {
-      const j = (y * w + x) * 3;
+    let j = y * w * 3;
+    for (let x = 0; x < w; x++, j += 3) {
       tmp[j] = rr / k;
       tmp[j + 1] = gg / k;
       tmp[j + 2] = bb / k;
-      const old = row + Math.max(0, x - r) * 4,
-        next = row + Math.min(w - 1, x + r + 1) * 4;
+      const old = row + oldX[x]!,
+        next = row + nextX[x]!;
       rr += a[next]! - a[old]!;
       gg += a[next + 1]! - a[old + 1]!;
       bb += a[next + 2]! - a[old + 2]!;
     }
   }
+  const rowSize = w * 3;
   for (let y = -r; y <= r; y++) {
-    const row = Math.max(0, Math.min(h - 1, y)) * w * 3;
-    for (let j = 0; j < w * 3; j++) sums[j] = sums[j]! + tmp[row + j]!;
+    const row = Math.max(0, Math.min(h - 1, y)) * rowSize;
+    for (let j = 0; j < rowSize; j++) sums[j] = sums[j]! + tmp[row + j]!;
   }
   for (let y = 0; y < h; y++) {
-    const old = Math.max(0, y - r) * w * 3,
-      next = Math.min(h - 1, y + r + 1) * w * 3;
-    for (let x = 0; x < w; x++) {
-      const j = x * 3,
-        i = (y * w + x) * 4;
-      o[i] = sums[j]! / k;
-      o[i + 1] = sums[j + 1]! / k;
-      o[i + 2] = sums[j + 2]! / k;
+    const old = Math.max(0, y - r) * rowSize,
+      next = Math.min(h - 1, y + r + 1) * rowSize;
+    let i = y * w * 4;
+    for (let j = 0; j < rowSize; j += 3, i += 4) {
+      const s0 = sums[j]!,
+        s1 = sums[j + 1]!,
+        s2 = sums[j + 2]!;
+      o[i] = s0 / k;
+      o[i + 1] = s1 / k;
+      o[i + 2] = s2 / k;
       o[i + 3] = 255;
-      sums[j] = sums[j]! + tmp[next + j]! - tmp[old + j]!;
-      sums[j + 1] = sums[j + 1]! + tmp[next + j + 1]! - tmp[old + j + 1]!;
-      sums[j + 2] = sums[j + 2]! + tmp[next + j + 2]! - tmp[old + j + 2]!;
+      sums[j] = s0 + tmp[next + j]! - tmp[old + j]!;
+      sums[j + 1] = s1 + tmp[next + j + 1]! - tmp[old + j + 1]!;
+      sums[j + 2] = s2 + tmp[next + j + 2]! - tmp[old + j + 2]!;
     }
   }
 }

@@ -40,6 +40,8 @@ import {
   trimClipToPlayhead,
   type EditAction,
   toggleClipMute,
+  rippleDelete,
+  jumpToMarker,
 } from '../ui/editing';
 
 export interface CommandContext {
@@ -76,6 +78,12 @@ export interface CommandContext {
   nesting?: { enter: (layerId: string) => void };
   /** FINAL3 V3: opens Review & swap for the plan the project was built from. */
   planReview?: () => void;
+  /** AUDIT-EDITOR (KEY-015): the V, T, R and E tools. */
+  tools?: {
+    select: () => void;
+    text: () => void;
+    shape: (preset: 'rectangle' | 'ellipse') => void;
+  };
 }
 /** P1: the one selected top-level code layer's id, or null. */
 export function selectedCodeLayer(session: EditorSession): string | null {
@@ -485,6 +493,51 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     shortcut: '',
     isEnabled: ({ planReview }) => !!planReview,
     run: ({ planReview }) => planReview?.(),
+  },
+  // AUDIT-EDITOR (TL-026): delete and close the gap, one undo step.
+  {
+    id: 'ripple-delete',
+    labelKey: 'command.rippleDelete',
+    shortcut: 'Shift+Delete',
+    isEnabled: hasClips,
+    run: ({ engine, session }) => rippleDelete(engine, session),
+  },
+  // AUDIT-EDITOR (TL-037): jump between the scene's markers.
+  ...([-1, 1] as const).map((direction): RegisteredCommand => ({
+    id: direction < 0 ? 'marker-previous' : 'marker-next',
+    labelKey: direction < 0 ? 'command.markerPrevious' : 'command.markerNext',
+    shortcut: '',
+    isEnabled: () => true,
+    run: ({ session }) => jumpToMarker(session, direction),
+  })),
+  // AUDIT-EDITOR (KEY-015): tool shortcuts.
+  {
+    id: 'tool-select',
+    labelKey: 'command.toolSelect',
+    shortcut: 'V',
+    isEnabled: () => true,
+    run: ({ tools }) => tools?.select(),
+  },
+  {
+    id: 'tool-text',
+    labelKey: 'command.toolText',
+    shortcut: 'T',
+    isEnabled: () => true,
+    run: ({ tools }) => tools?.text(),
+  },
+  {
+    id: 'tool-rectangle',
+    labelKey: 'command.toolRectangle',
+    shortcut: 'R',
+    isEnabled: () => true,
+    run: ({ tools }) => tools?.shape('rectangle'),
+  },
+  {
+    id: 'tool-ellipse',
+    labelKey: 'command.toolEllipse',
+    shortcut: 'E',
+    isEnabled: () => true,
+    run: ({ tools }) => tools?.shape('ellipse'),
   },
   {
     id: 'stop',

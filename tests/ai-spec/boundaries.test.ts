@@ -31,11 +31,14 @@ it('keeps runtime imports inside ai-spec except existing zod and TypeScript', ()
       const source = readFileSync(full, 'utf8');
       for (const match of source.matchAll(/from\s+['"]([^'"]+)['"]/g)) {
         const target = match[1]!;
-        if (target.startsWith('.'))
-          expect(
-            path.resolve(path.dirname(full), target).startsWith(root),
-          ).toBe(true);
-        else expect(['zod', 'typescript']).toContain(target);
+        if (target.startsWith('.')) {
+          const resolved = path.resolve(path.dirname(full), target);
+          // The one deliberate exception: graphics blocks live in the editor.
+          const allowed =
+            resolved.startsWith(root) ||
+            resolved === path.resolve(root, '../blocks/graphics');
+          expect(allowed, `${file.name} imports ${target}`).toBe(true);
+        } else expect(['zod', 'typescript']).toContain(target);
       }
     }
   }

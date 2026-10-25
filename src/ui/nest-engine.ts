@@ -128,6 +128,12 @@ export function createNestEngine(real: EditorEngine): NestEngine {
     get canUndo() {
       return real.canUndo;
     },
+    get undoLabel() {
+      return real.undoLabel;
+    },
+    get redoLabel() {
+      return real.redoLabel;
+    },
     get canRedo() {
       return real.canRedo;
     },

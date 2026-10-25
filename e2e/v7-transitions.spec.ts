@@ -39,7 +39,7 @@ async function secondScene(page: Page) {
   return (await scenes(page))[1]!.id;
 }
 
-test('[TR-017] one Transitions place: no left Transitions category (rail order Templates, Elements, Text, Media, Draw, Scene, Record & create, Audio); the right Transition panel has the groups, 28 drawn tiles and search', async ({
+test('[TR-017][TR-001] one Transitions place: no left Transitions category (rail order Templates, Elements, Text, Media, Draw, Scene, Record & create, Audio); the right Transition panel has the groups, 28 drawn tiles and search', async ({
   page,
 }) => {
   const rail = await page

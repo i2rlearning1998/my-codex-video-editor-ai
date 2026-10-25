@@ -107,12 +107,56 @@ export function canvasSizeCommands(
   return [{ type: 'SET_COMPOSITION_SIZE', compositionId, width, height }];
 }
 
+/**
+ * AUDIT-EDITOR (PRJ-007): "Scale content to fit": every top-level layer of
+ * the scene is scaled by the same factor and centred, so the whole design
+ * fits the new canvas (positions, scales and their keyframes).
+ */
+export function scaleContentCommands(
+  compositionId: string,
+  layers: readonly SceneLayer[],
+  from: { readonly width: number; readonly height: number },
+  to: { readonly width: number; readonly height: number },
+): Command[] {
+  const k = Math.min(to.width / from.width, to.height / from.height);
+  const dx = (to.width - from.width * k) / 2;
+  const dy = (to.height - from.height * k) / 2;
+  if (Math.abs(k - 1) < 1e-9 && !dx && !dy) return [];
+  const map = (
+    value: readonly number[],
+    kind: 'position' | 'scale',
+  ): [number, number] =>
+    kind === 'position'
+      ? [value[0]! * k + dx, value[1]! * k + dy]
+      : [value[0]! * k, value[1]! * k];
+  return layers.flatMap((layer) =>
+    (['position', 'scale'] as const).map(
+      (key) =>
+        ({
+          type: 'SET_PROPERTY',
+          compositionId,
+          layerId: layer.id,
+          target: { kind: 'transform', key },
+          property: {
+            ...copyProperty(layer.transform[key]),
+            value: map(layer.transform[key].value as readonly number[], key),
+            keyframes: layer.transform[key].keyframes.map((frame) => ({
+              ...frame,
+              value: map(frame.value as readonly number[], key),
+            })),
+          },
+        }) as Command,
+    ),
+  );
+}
+
 /** Applies a scene's canvas size as one undo step; false when nothing changed. */
 export function applyCanvasSize(
   engine: EditorEngine,
   compositionId: string,
   width: number,
   height: number,
+  options: { readonly scaleContent?: boolean } = {},
 ): boolean {
   const commands = canvasSizeCommands(
     engine.state,
@@ -121,6 +165,18 @@ export function applyCanvasSize(
     height,
   );
   if (!commands.length) return false;
+  const scene = engine.state.compositions.find(
+    (item) => item.id === compositionId,
+  );
+  if (options.scaleContent && scene)
+    commands.push(
+      ...scaleContentCommands(
+        compositionId,
+        scene.layers as readonly SceneLayer[],
+        scene,
+        { width, height },
+      ),
+    );
   engine.commands.transaction('Canvas size', commands);
   return true;
 }

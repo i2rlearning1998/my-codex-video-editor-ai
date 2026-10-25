@@ -12,6 +12,8 @@ export type FakeWhisperMode =
   | 'hang'
   /** FIX3: burns the CPU for 1.5 s per window (the page must stay free). */
   | 'cpu'
+  /** FIX5: burns the CPU for 4 s per window (longer than a short stall limit). */
+  | 'slow'
   /** FIX3: 20 000 load progress events (the page must stay free). */
   | 'flood'
   /** FIX3: the engine goes quiet while loading (no heartbeat, no answer). */
@@ -41,8 +43,8 @@ export function fakeTransformers(
       }
       return async (audio, runOptions) => {
         onLanguage?.(String(runOptions.language));
-        if (mode === 'cpu') {
-          const until = Date.now() + 1500;
+        if (mode === 'cpu' || mode === 'slow') {
+          const until = Date.now() + (mode === 'slow' ? 4000 : 1500);
           let x = 0;
           while (Date.now() < until) x += Math.sqrt(x + 1);
           if (x < 0) throw new Error('unreachable');

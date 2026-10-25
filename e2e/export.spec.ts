@@ -196,7 +196,7 @@ test.describe('frame code', () => {
     await openWithMedia(page, 'frame-code.json', [CODE], openFixtureProject);
   });
 
-  test('[EXP-001][APP-015][EXP-003][EXP-005] Export writes a frame-exact video file named as asked', async ({
+  test('[EXP-001][APP-015][EXP-003][EXP-005][EXP-012] Export writes a frame-exact video file named as asked', async ({
     page,
   }, testInfo) => {
     await expect(page.locator('#export')).toHaveText('Export');
@@ -827,7 +827,7 @@ test('[EXP-004] the audio mix is in the file and in sync with the picture', asyn
   }
 });
 
-test('[EXP-008] media missing from this browser is listed and blocks the export', async ({
+test('[EXP-008][TXT-030] media missing from this browser is listed and blocks the export', async ({
   page,
   openFixtureProject,
 }) => {

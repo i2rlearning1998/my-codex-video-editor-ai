@@ -71,6 +71,8 @@ export interface ExportJob {
   audio: { sampleRate: number; channels: Float32Array[] } | null;
   /** V7: transitions across the cuts of joined scenes (composition time). */
   sceneCuts?: readonly SceneCut[];
+  /** TXT-037: the scene's place in the project (a single-scene export). */
+  fields?: { sceneNumber: number; sceneCount: number };
 }
 export type WorkerRequest =
   | { type: 'start'; job: ExportJob }
@@ -155,6 +157,28 @@ async function run(job: ExportJob): Promise<void> {
   // FINAL3 T1: text boxes are sized with the worker's measurer, like the
   // preview's (same fonts, same metrics).
   setTextBoxMeasurer(measureText);
+  // TXT-037: a joined export numbers its scenes by their start times.
+  const now = Date.now();
+  const dynamicAt = (time: number) => {
+    const starts = job.backgrounds ?? [];
+    if (starts.length) {
+      const index = Math.max(
+        0,
+        starts.reduce((n, item, i) => (item.start <= time ? i : n), 0),
+      );
+      return {
+        sceneNumber: index + 1,
+        sceneCount: starts.length,
+        sceneStart: starts[index]!.start,
+        now,
+      };
+    }
+    return {
+      sceneNumber: job.fields?.sceneNumber ?? 1,
+      sceneCount: job.fields?.sceneCount ?? 1,
+      now,
+    };
+  };
   const sourceAt = (time: number, frames?: FrameProvider): RenderSource => ({
     // ANI-003: the same evaluation as the preview.
     composition: compositionAt(job.composition, time),
@@ -166,6 +190,7 @@ async function run(job: ExportJob): Promise<void> {
         ?.color ?? job.background,
     currentTime: time,
     measureText,
+    dynamic: dynamicAt(time),
     ...(frames ? { frames } : {}),
   });
 

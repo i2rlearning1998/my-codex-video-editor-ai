@@ -1,3 +1,11 @@
+import { plannedReason } from './planned';
+import { openProjectsDialog, type ProjectsApi } from './projects-dialog';
+import { scenePosterUrl as projectPosterUrl } from './scene-poster';
+import {
+  audioPlayButton,
+  mediaPreviewUrl,
+  stopAudioPreview,
+} from './components/audio-preview';
 import {
   builtScenes,
   compositionCardStatus,
@@ -12,6 +20,7 @@ import {
   type CaptionsContext,
 } from './captions-ui';
 import { mountNestBar } from './nest-ui';
+import { importFileText } from '../code-layer/glb-source';
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
@@ -91,6 +100,7 @@ import {
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
 import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
+import { buildOffline, compactNewScenes } from '../core/project-build';
 import { IN_OUT_PRESETS, LOOP_PRESETS, retimeClip } from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
@@ -115,6 +125,8 @@ import {
   nextTrackName,
   laneInsertIndex,
   trackTypeForLayer,
+  frameToTime,
+  timeToFrame,
 } from '../core';
 import {
   deriveRenderItems,
@@ -222,7 +234,8 @@ import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
-import { addTopLevel, myTextStyleCommands } from './library-insert';
+import { addTopLevel, itemName, myTextStyleCommands } from './library-insert';
+import { DEFAULT_TEXT_ITEMS, myTextStyles } from './text-styles';
 import {
   RIGHT_ICONS,
   RIGHT_SECTIONS,
@@ -273,7 +286,11 @@ import { showToast } from './components/toast';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
 import { mountShortcutSheet } from './shortcut-sheet';
-import { runCommand, type CommandContext } from '../commands/registry';
+import {
+  commands,
+  runCommand,
+  type CommandContext,
+} from '../commands/registry';
 import { mountCommandPalette } from './command-palette';
 import { closeTopOverlay, registerExternalOverlay } from './temporary-overlay';
 import { cycleThemePreference, onThemeChange, themePreference } from './theme';
@@ -361,6 +378,8 @@ export interface ShellActions {
   openExample?: () => void | Promise<void>;
   /** The media byte store (D-004); defaults to OPFS, then IndexedDB. */
   mediaStore?: Promise<MediaStore | null>;
+  /** AUDIT-EDITOR (PRJ-016): the projects kept in this browser. */
+  projects?: ProjectsApi;
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -371,6 +390,14 @@ export function mountEditorShell(
   // FIX1 F6: inside a nested clip the editor edits its inside as a scene;
   // the wrapper writes each edit back to the real engine (one undo step).
   const engine = createNestEngine(realEngine);
+  // AUDIT-EDITOR (APP-017): the tab names the project and marks unsaved
+  // changes.
+  let unsaved = false;
+  const updateTitle = () => {
+    const title = `${unsaved ? '• ' : ''}${realEngine.state.metadata.name} – ${t('app.title')}`;
+    if (document.title !== title) document.title = title;
+  };
+  realEngine.on('state:changed', () => updateTitle());
   const categoryKey = (name: string) => `library.${name.toLowerCase()}`;
   const railButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-category="${name}" aria-pressed="${pressed}" title="${t(categoryKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${t(categoryKey(name))}</span></button>`;
@@ -409,13 +436,40 @@ export function mountEditorShell(
         <div class="app-menu-group" role="group" aria-label="${t('menu.file')}">
           <div class="app-menu-label">${t('menu.file')}</div>
           <button type="button" id="new-project" role="menuitem">${iconSvg('templates')}${t('project.new')}</button>
+          <button type="button" id="projects" role="menuitem">${iconSvg('folder')}${t('projects.menu')}</button>
           <button type="button" id="example" role="menuitem">${iconSvg('open')}${t('action.example')}</button>
           <label class="button" role="menuitem" id="open-project-label">${iconSvg('open')}${t('action.open')}<input id="import" type="file" accept="application/json,.json" /></label>
           <button type="button" id="save" role="menuitem">${iconSvg('save')}${t('action.save')}</button>
           <button type="button" id="export-json" role="menuitem">${iconSvg('export')}${t('action.exportJson')}</button>
         </div>
+        <div class="app-menu-group" role="group" aria-label="${t('menu.edit')}" id="app-menu-edit">
+          <div class="app-menu-label">${t('menu.edit')}</div>
+          ${(
+            [
+              ['undo', 'undo', 'action.undo', 'Ctrl+Z'],
+              ['redo', 'redo', 'action.redo', 'Ctrl+Y'],
+              ['cut', 'cut', 'command.cut', 'Ctrl+X'],
+              ['copy', 'copy', 'command.copy', 'Ctrl+C'],
+              ['paste', 'paste', 'command.paste', 'Ctrl+V'],
+              ['duplicate', 'duplicate', 'command.duplicate', 'Ctrl+D'],
+              ['delete', 'delete', 'command.delete', 'Delete'],
+              ['select-all', 'groupSelection', 'command.selectAll', 'Ctrl+A'],
+            ] as const
+          )
+            .map(
+              ([command, icon, key, keys]) =>
+                `<button type="button" role="menuitem" data-command="${command}">${iconSvg(icon)}${t(key)}<span class="shortcut-hint">${keys}</span></button>`,
+            )
+            .join('')}
+        </div>
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
+          <button type="button" role="menuitemcheckbox" data-view="left-panel" aria-checked="true">${iconSvg('panelLeft')}${t('menu.viewLeftPanel')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="right-panel" aria-checked="false">${iconSvg('panelRight')}${t('menu.viewRightPanel')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="grid" aria-checked="false">${iconSvg('templates')}${t('guides.grid')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="safe" aria-checked="false">${iconSvg('crop')}${t('guides.safe')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="snap" aria-checked="true">${iconSvg('magnet')}${t('menu.viewSnap')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="loop" aria-checked="false">${iconSvg('loop')}${t('menu.viewLoop')}</button>
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
           <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
           <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
@@ -959,6 +1013,8 @@ export function mountEditorShell(
   let textEditing: TextEditor | undefined;
   // U2: how many times the canvas has been drawn (read by the test hook).
   let drawCount = 0;
+  /** PHASE 0 E2: the last 60 renderer times (ms), read by the test hook. */
+  const renderTimes: number[] = [];
   /**
    * V7 (spec 10.5): while playing across a scene cut, the canvas shows the
    * transition: the open scene with the neighbour's boundary frame, mixed.
@@ -1066,12 +1122,15 @@ export function mountEditorShell(
           }
         : {}),
     };
+    const renderStart = performance.now();
     const report = renderer.render(
       canvas,
       drawn,
       viewport(),
       session.selectedId,
     );
+    renderTimes.push(performance.now() - renderStart);
+    if (renderTimes.length > 60) renderTimes.shift();
     if (session.playing) drawSceneCut(drawn);
     else effectsTool.draw(viewport().matrix);
     frames.endFrame();
@@ -1287,10 +1346,19 @@ export function mountEditorShell(
     session,
     cropTool,
     reportError,
+    (section) =>
+      safely(() => {
+        setRightSection(section);
+        workspace?.setOpen('right', true);
+      }),
   );
   // H3, J1: a new canvas size for the open scene, with Undo in the toast.
   const resizeCanvas = (width: number, height: number) => {
-    if (!applyCanvasSize(engine, session.source.composition.id, width, height))
+    if (
+      !applyCanvasSize(engine, session.source.composition.id, width, height, {
+        scaleContent: session.scaleContent,
+      })
+    )
       return;
     showToast(
       t('canvasSize.changed', {
@@ -1830,6 +1898,17 @@ export function mountEditorShell(
     engine,
     session,
     view: canvasView,
+    // AUDIT-EDITOR (KEY-015): V leaves drawing, T adds a text box, R and E
+    // add a rectangle and an ellipse at the playhead (as Elements does).
+    tools: {
+      select: () => session.setDrawBrush(null),
+      text: () =>
+        safely(() => {
+          libraryActions.insertTextBox();
+          editText(session.selectedId, { selectAll: true });
+        }),
+      shape: (preset) => safely(() => addShape(engine, session, preset)),
+    },
     ...(actions.save ? { save: actions.save } : {}),
     togglePlayback: () =>
       element<HTMLButtonElement>('[data-action="play"]').click(),
@@ -2068,6 +2147,18 @@ export function mountEditorShell(
     );
     element<HTMLButtonElement>('#undo').disabled = !engine.canUndo;
     element<HTMLButtonElement>('#redo').disabled = !engine.canRedo;
+    // AUDIT-EDITOR (APP-014, HIS-003): the buttons name the step.
+    for (const [id, label, base, keys] of [
+      ['#undo', engine.undoLabel, 'action.undo', 'Ctrl+Z'],
+      ['#redo', engine.redoLabel, 'action.redo', 'Ctrl+Y'],
+    ] as const) {
+      const text = label ? t(`${base}Named`, { label }) : t(base);
+      const button = element<HTMLButtonElement>(id);
+      if (button.getAttribute('aria-label') !== text) {
+        button.setAttribute('aria-label', text);
+        button.title = `${text} (${keys})`;
+      }
+    }
     draw();
   };
   timeline = mountTimeline(
@@ -2081,6 +2172,46 @@ export function mountEditorShell(
     waveforms,
     codeStatus,
   );
+  // FIX5 C7: the first Play waits for the sound to be decoded, so picture and
+  // sound start together (a short "Preparing audio" note, never a dead button).
+  {
+    const decodedOnce = new Set<string>();
+    timeline.playback.prepare = () => {
+      const pending = audibleClips().filter(
+        (clip) =>
+          !decodedOnce.has(
+            `${clip.sourceAssetId}|${clip.audio?.denoise ?? 'off'}`,
+          ),
+      );
+      if (!pending.length) return null;
+      const decodes = pending.map((clip) =>
+        decoder
+          .decode(clip.sourceAssetId, clip.audio?.denoise ?? 'off')
+          .catch(() => undefined)
+          .then(() => {
+            decodedOnce.add(
+              `${clip.sourceAssetId}|${clip.audio?.denoise ?? 'off'}`,
+            );
+          }),
+      );
+      return Promise.race([
+        Promise.all(decodes).then(() => undefined),
+        new Promise<void>((resolve) => setTimeout(resolve, 15_000)),
+      ]);
+    };
+    let preparingNote = 0;
+    timeline.playback.onPreparing = (preparing) => {
+      window.clearTimeout(preparingNote);
+      const button = document.querySelector('[data-action="play"]');
+      if (preparing) {
+        button?.setAttribute('aria-busy', 'true');
+        preparingNote = window.setTimeout(
+          () => showToast(t('playback.preparing'), 'info', 4000),
+          200,
+        );
+      } else button?.removeAttribute('aria-busy');
+    };
+  }
   // FINAL2 U9: a nested clip's breadcrumb bar above the timeline.
   nestBar = mountNestBar(
     element('#timeline-foundation').parentElement!,
@@ -2305,7 +2436,7 @@ export function mountEditorShell(
           mode: 'new',
           overrides,
         });
-        const project = engine.preview(built.commands);
+        const project = await buildOffline(engine.state, built.commands);
         const scene = project.compositions.find(
           (item) => item.id === built.compositionIds[0],
         );
@@ -2381,7 +2512,16 @@ export function mountEditorShell(
             overrides: (first.params ?? {}) as ParamValues,
           },
         );
-        engine.commands.transaction('Import code animation', built.commands);
+        // A long build goes in as a few whole-scene commands (built offline in
+        // chunks), so the page never waits on thousands of commands.
+        const compact =
+          built.commands.length > 200
+            ? await compactNewScenes(engine.state, built.commands)
+            : null;
+        engine.commands.transaction(
+          'Import code animation',
+          compact ?? built.commands,
+        );
         if (built.compositionIds[0])
           session.selectComposition(built.compositionIds[0]);
       } else insertCreatorItem(creatorLibraryId(`${add.packId}/${first.id}`));
@@ -2754,7 +2894,7 @@ export function mountEditorShell(
           mode: 'new',
           overrides,
         });
-        const project = engine.preview(built.commands);
+        const project = await buildOffline(engine.state, built.commands);
         const scene = project.compositions.find(
           (item) => item.id === built.compositionIds[0],
         );
@@ -3178,6 +3318,11 @@ export function mountEditorShell(
       store: mediaStore,
       decoder,
       renderFrame,
+      // QA-002: the issue's scene opens and its layer is selected.
+      onJump: (sceneId, layerId) => {
+        session.selectComposition(sceneId);
+        if (layerId) session.select(layerId);
+      },
       // I2: Designs in Project Media (a library change, not an undo step).
       saveFrame: (blob, name) =>
         mediaPanel
@@ -3219,7 +3364,13 @@ export function mountEditorShell(
     try {
       await actions.importProject?.(file);
     } catch (error) {
-      message(t('status.openFailed', { error: String(error) }));
+      // AUDIT-EDITOR (APP-004): the status line is a hidden live region, so
+      // a refused file is also shown as an error toast.
+      const text = t('status.openFailed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      message(text);
+      showToast(text, 'error');
     } finally {
       input.value = '';
     }
@@ -4114,6 +4265,19 @@ export function mountEditorShell(
     });
   aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    videoPlans: () => {
+      const built = planState(engine.state.id);
+      return built
+        ? [
+            {
+              id: engine.state.id,
+              title: built.plan.meta.title,
+              scenes: built.sceneIds.filter(Boolean).length,
+            },
+          ]
+        : [];
+    },
+    openReview: () => openPlanReview(),
     // FINAL3 V3.5: a plan's status, and the starter kit.
     planStatus: (_id, data) => {
       // FIX3 4.6: a composition built with Build video (not a plan).
@@ -4828,6 +4992,10 @@ export function mountEditorShell(
         libraryActions.insertTextBox();
         editText(session.selectedId, { selectAll: true });
       },
+      openAutoCaptions: () => void openAutoCaptions(captionsContext),
+      addDynamicText: (token) => {
+        libraryActions.insertTextBox(undefined, undefined, undefined, token);
+      },
       // FINAL3 T5: a saved text style, centred at the playhead.
       insertTextStyle: (style) =>
         safely(() => {
@@ -4904,6 +5072,7 @@ export function mountEditorShell(
       );
   };
   const applyCategory = (category: string) => {
+    stopAudioPreview();
     syncRails();
     // FINAL2 U10: library panels get room for two 165 px card columns.
     workspace?.setLibrary(
@@ -5098,6 +5267,10 @@ export function mountEditorShell(
     frames,
     report: reportError,
     crossfade,
+    openPlanReview: () => {
+      if (planState(engine.state.id)) openPlanReview();
+      else showToast(t('plan.reviewEmpty'), 'info');
+    },
     openTemplates: () => {
       const templates = element<HTMLButtonElement>(
         '#rail-left [data-category="Templates"]',
@@ -5120,6 +5293,68 @@ export function mountEditorShell(
       libraryActions.insertTextBox(at, width);
       editText(session.selectedId, { selectAll: true });
     },
+    library: {
+      shapes: () =>
+        libraryActions
+          .list()
+          .filter((item) => item.type === 'shape')
+          .map((item) => ({ id: item.id, name: itemName(item) })),
+      texts: () => [
+        ...DEFAULT_TEXT_ITEMS.map((item) => ({
+          id: item.id,
+          name: itemName(item),
+        })),
+        ...myLibrary
+          .list()
+          .filter((saved) => saved.kind === 'text')
+          .map((saved) => ({ id: `mine:${saved.id}`, name: saved.name })),
+        ...myTextStyles().map((style) => ({
+          id: `style:${style.id}`,
+          name: style.name,
+        })),
+      ],
+      insert: (id, at) => {
+        if (id.startsWith('mine:')) {
+          const built = mineBuilt(id.slice(5), session.currentTime, at);
+          return built
+            ? {
+                label: t('palette.addSavedText'),
+                commands: built.commands,
+                ...(built.layerIds[0] ? { layerId: built.layerIds[0] } : {}),
+              }
+            : null;
+        }
+        if (id.startsWith('style:')) {
+          const style = myTextStyles().find(
+            (entry) => entry.id === id.slice(6),
+          );
+          return style
+            ? myTextStyleCommands(
+                session.source,
+                style.layer,
+                session.currentTime,
+                at,
+              )
+            : null;
+        }
+        const item =
+          libraryActions.find(id) ??
+          DEFAULT_TEXT_ITEMS.find((entry) => entry.id === id);
+        return item ? libraryActions.commandsFor(item, at) : null;
+      },
+    },
+    insertTable: (rows, columns, at) =>
+      safely(() => {
+        session.setPlaying(false);
+        const insert = tableInsertCommands(
+          rows,
+          columns,
+          session.source.composition,
+          (item) => libraryActions.commandsFor(item, at)!,
+        );
+        engine.commands.transaction(t('textx.step.insert'), insert.commands);
+        if (insert.layerId) session.select(insert.layerId);
+      }),
     setLeftOpen: (open) => workspace?.setOpen('left', open),
     leftOpen: () => workspace?.leftOpen ?? true,
     changed: () => {
@@ -5423,7 +5658,7 @@ export function mountEditorShell(
             : t(`panel.${section.toLowerCase()}`);
       const planned = plannedSection(section, session);
       const title = planned
-        ? `${label}: ${t('toolbar.later', { wave: String(planned[1]), id: planned[0] })}`
+        ? `${label}: ${plannedReason(planned[1], planned[0])}`
         : label;
       el.title = title;
       el.setAttribute('aria-label', title);
@@ -5584,8 +5819,84 @@ export function mountEditorShell(
     unregisterMenu?.();
     unregisterMenu = undefined;
   };
+  // AUDIT-EDITOR (APP-009, APP-010): the Edit group's live enabled state
+  // and the View group's toggles, read each time the menu opens.
+  const syncAppMenu = () => {
+    for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+      '[data-command]',
+    )) {
+      const command = commands.find(
+        (item) => item.id === button.dataset.command,
+      );
+      button.disabled = !command?.isEnabled(commandContext);
+    }
+    const checked: Record<string, boolean> = {
+      'left-panel': !!workspace?.leftOpen,
+      'right-panel': !!workspace?.rightOpen,
+      grid: session.viewGuides.grid,
+      safe: session.viewGuides.safe,
+      snap: session.timelineSnap,
+      loop: session.loop,
+    };
+    for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+      '[data-view]',
+    ))
+      button.setAttribute(
+        'aria-checked',
+        String(checked[button.dataset.view!] ?? false),
+      );
+  };
+  for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+    '[data-command]',
+  ))
+    button.addEventListener('click', () =>
+      safely(() => {
+        runCommand(button.dataset.command!, commandContext);
+      }),
+    );
+  for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
+    '[data-view]',
+  ))
+    button.addEventListener('click', () =>
+      safely(() => {
+        const view = button.dataset.view;
+        if (view === 'left-panel')
+          workspace?.setOpen('left', !workspace.leftOpen);
+        else if (view === 'right-panel')
+          workspace?.setOpen('right', !workspace.rightOpen);
+        else if (view === 'grid')
+          session.setViewGuides({ grid: !session.viewGuides.grid });
+        else if (view === 'safe')
+          session.setViewGuides({ safe: !session.viewGuides.safe });
+        else if (view === 'snap')
+          session.setTimelineSnap(!session.timelineSnap);
+        else if (view === 'loop') session.setLoop(!session.loop);
+      }),
+    );
+  // AUDIT-EDITOR (APP-002): Escape closes the menu (the shortcut dispatcher
+  // leaves keys to an open menu) and gives focus back to its button; the
+  // arrows move between the entries.
+  appMenu.addEventListener('keydown', (event) => {
+    const items = [
+      ...appMenu.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), label[role="menuitem"]',
+      ),
+    ].filter((item) => item.offsetParent !== null);
+    const index = items.indexOf(document.activeElement as HTMLElement);
+    if (event.key === 'Escape') {
+      closeMenu();
+      menuTrigger.focus();
+    } else if (event.key === 'ArrowDown')
+      items[(index + 1) % items.length]?.focus();
+    else if (event.key === 'ArrowUp')
+      items[(index - 1 + items.length) % items.length]?.focus();
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
   menuTrigger.onclick = () => {
     const opening = appMenu.hidden;
+    if (opening) syncAppMenu();
     appMenu.hidden = !opening;
     menuTrigger.setAttribute('aria-expanded', String(opening));
     if (opening) {
@@ -5606,6 +5917,17 @@ export function mountEditorShell(
   });
   for (const button of appMenu.querySelectorAll('button'))
     button.addEventListener('click', () => closeMenu());
+  const projectsButton = element<HTMLButtonElement>('#projects');
+  projectsButton.disabled = !actions.projects;
+  if (!actions.projects) projectsButton.title = t('projects.unavailable');
+  projectsButton.onclick = () => {
+    const api = actions.projects;
+    if (api)
+      openProjectsDialog(
+        { ...api, create: () => runCommand('new-project', commandContext) },
+        reportError,
+      );
+  };
   element<HTMLButtonElement>('#about').onclick = () => {
     openModal({
       titleText: t('menu.about'),
@@ -5663,7 +5985,7 @@ export function mountEditorShell(
   // Project Media card or library card drag that a test or browser still
   // sends as HTML5 data is a reference, never a file (MED-015 regression).
   const dropOverlay = element('#drop-overlay');
-  const CODE_FILE = /\.(json|js|mjs|html?)$/i;
+  const CODE_FILE = /\.(json|js|mjs|html?|glb)$/i;
   let dragDepth = 0;
   const isFileDrag = (event: DragEvent) =>
     !!event.dataTransfer?.types.includes('Files') &&
@@ -5710,8 +6032,7 @@ export function mountEditorShell(
     const code = dropped.filter(isText);
     const files = dropped.filter((file) => !isText(file));
     if (code[0])
-      void code[0]
-        .text()
+      void importFileText(code[0])
         .then((text) =>
           isCreatorPackText(code[0]!.name, text)
             ? openCreatorImport({ text, fileName: code[0]!.name })
@@ -6018,7 +6339,20 @@ export function mountEditorShell(
         ? `${formatNumber(asset.duration, { maximumFractionDigits: 1 })} s`
         : '';
       add.onclick = () => safely(() => void addOnNewAudioLane(asset.id));
-      row.append(add);
+      // FIX5 C2: My audio rows have a Play / Stop button too.
+      const play = audioPlayButton(
+        {
+          id: `asset:${asset.id}`,
+          name: asset.name,
+          url: () =>
+            mediaPreviewUrl(
+              mediaStore,
+              (asset.source as { reference?: string }).reference ?? '',
+            ),
+        },
+        'sound-tile-play',
+      );
+      row.append(add, play);
       return row;
     });
     if (!rows.length) {
@@ -6029,6 +6363,7 @@ export function mountEditorShell(
     } else mineHost.replaceChildren(...rows);
   };
   const showAudioPage = (page: keyof typeof audioPages) => {
+    stopAudioPreview();
     audioPage = page;
     for (const [name, host] of Object.entries(audioPages))
       host.hidden = name !== page;
@@ -6882,6 +7217,8 @@ export function mountEditorShell(
     status: 'saved' | 'saving' | 'unsaved' | 'error',
     detail?: string,
   ) => {
+    unsaved = status === 'unsaved' || status === 'saving';
+    updateTitle();
     const dot = element('#save-status-dot');
     const text = element('#save-status-text');
     dot.className = `project-dot ${status === 'unsaved' ? '' : status}`.trim();
@@ -6945,6 +7282,40 @@ export function mountEditorShell(
       closeTopOverlay() ||
       (timeline?.closeMenu() ?? false),
     localKey: (event) => {
+      // AUDIT-EDITOR (KEY-011): with nothing selected, Left and Right step a
+      // frame (Shift: a second) and Home and End jump to the scene's ends,
+      // on the canvas or anywhere outside a panel. The timeline keeps its
+      // own keys (D-035).
+      const target = event.target;
+      if (
+        ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        !session.selectedIds.length &&
+        (target === canvas ||
+          target === document.body ||
+          target === document.documentElement)
+      ) {
+        event.preventDefault();
+        session.setPlaying(false);
+        const { fps, duration } = session.source.composition;
+        const step = event.shiftKey ? 1 : 1 / fps;
+        const next =
+          event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? duration
+              : session.currentTime +
+                (event.key === 'ArrowLeft' ? -step : step);
+        session.setCurrentTime(
+          Math.max(
+            0,
+            Math.min(duration, frameToTime(timeToFrame(next, fps), fps)),
+          ),
+        );
+        return;
+      }
       if (
         session.drawBrush &&
         event.key.toLowerCase() === 'v' &&
@@ -6969,7 +7340,7 @@ export function mountEditorShell(
   const languageLabel = element('#language-toggle-label');
   const applyLanguage = () => {
     languageLabel.textContent = getLanguage() === 'en' ? 'हिन्दी' : 'English';
-    document.title = t('app.title');
+    updateTitle();
   };
   applyLanguage();
   element<HTMLButtonElement>('#language-toggle').onclick = () => {
@@ -7085,6 +7456,7 @@ export function mountEditorShell(
           viewport().matrix,
         )?.corners ?? null,
       draws: drawCount,
+      renderMs: [...renderTimes],
       // FINAL3 C3: the camera frame on the canvas (canvas CSS px), if shown.
       cameraFrame:
         cameraFrameTool
@@ -7097,6 +7469,10 @@ export function mountEditorShell(
       textOverflow: deriveRenderItems(session.source)
         .items.filter((item) => item.textOverflow)
         .map((item) => item.id),
+      // TXT-037: the text each text layer draws now (fields resolved).
+      texts: deriveRenderItems({ ...session.source, animate: true })
+        .items.filter((item) => item.kind === 'text')
+        .map((item) => ({ id: item.id, text: item.text })),
       chip: element('#canvas-chip').hidden
         ? null
         : element('#canvas-chip').textContent,
@@ -7111,6 +7487,13 @@ export function mountEditorShell(
     message,
     refresh,
     setSaveStatus,
+    /** AUDIT-EDITOR (PRJ-016): a small poster of the first scene. */
+    projectPoster: () => {
+      const first = realEngine.state.compositions[0];
+      return first
+        ? projectPosterUrl(realEngine, session, first.id, undefined, 192)
+        : undefined;
+    },
     dispose: () => {
       libraryBrowsers.dispose();
       if (disposed) return;

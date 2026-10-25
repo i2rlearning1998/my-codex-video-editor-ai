@@ -36,3 +36,34 @@ describe('[FX1-007] diagnostics', () => {
     expect(sanitize('token=abcdef123456')).toBe('token=[removed]');
   });
 });
+
+// PHASE 0 (E3): a failed model download is in the report by file, host,
+// status and bytes (the captions dialog adds the worker's last message).
+import { ModelDownloadError } from '../../src/speech/model-cache';
+it('[FX5-009] the report of a failed model download names the host, the HTTP status and the bytes', () => {
+  const error = new ModelDownloadError(
+    'http',
+    {
+      id: 'whisper-tiny/model.onnx',
+      url: 'https://huggingface.co/x/y/resolve/main/model.onnx?token=abc123456',
+    } as never,
+    { status: 503, bytes: 1024 },
+  );
+  const text = diagnosticsText({
+    feature: 'Auto captions',
+    error,
+    extra: {
+      'failing.host': error.host,
+      'failing.bytes': error.bytes,
+      'worker.lastMessage': 'progress 12 %',
+    },
+  });
+  expect(text).toContain('HTTP status: 503');
+  expect(text).toContain(
+    'Endpoint: https://huggingface.co/x/y/resolve/main/model.onnx',
+  );
+  expect(text).toContain('failing.host: huggingface.co');
+  expect(text).toContain('failing.bytes: 1024');
+  expect(text).toContain('worker.lastMessage: progress 12 %');
+  expect(text).not.toContain('abc123456');
+});

@@ -1,0 +1,1192 @@
+{
+  "schemaVersion": 9,
+  "id": "45989497-110a-4442-a517-fac412b14c5a",
+  "metadata": {
+    "name": "Preflight issues",
+    "createdAt": "2026-10-25T04:01:38.226Z",
+    "updatedAt": "2026-10-25T04:01:38.226Z"
+  },
+  "settings": {
+    "backgroundColor": "#f0eee7",
+    "audioSampleRate": 48000
+  },
+  "compositions": [
+    {
+      "id": "fd6384ec-5da4-49ae-a2a4-7f0fd394fe72",
+      "name": "Main composition",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "duration": 10,
+      "backgroundColor": "#f0eee7",
+      "layers": [
+        {
+          "id": "example-kicker",
+          "name": "Studio note",
+          "type": "text",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                6280,
+                0
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 600,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 40,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#5e625c"
+            },
+            "text": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "STUDIO NOTES  /  001",
+              "keyframes": []
+            },
+            "fontSize": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 20,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "example-headline",
+          "name": "Main headline",
+          "type": "text",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                76,
+                165
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 730,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 230,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#272b29"
+            },
+            "text": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "Make room\nfor your ideas.",
+              "keyframes": []
+            },
+            "fontSize": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 78,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "example-badge",
+          "name": "Accent label",
+          "type": "shape",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                76,
+                456
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 224,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 48,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#cbbced"
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "example-badge-text",
+          "name": "Label text",
+          "type": "text",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                93,
+                472
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 208,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 30,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#403752"
+            },
+            "text": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "NEW PERSPECTIVES",
+              "keyframes": []
+            },
+            "fontSize": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 16,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "example-subtitle",
+          "name": "Supporting line",
+          "type": "text",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                76,
+                570
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 680,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 70,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#60645e"
+            },
+            "text": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "A study in shape, space & possibility.",
+              "keyframes": []
+            },
+            "fontSize": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 24,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        },
+        {
+          "id": "example-cards",
+          "name": "Card arrangement",
+          "type": "group",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                825,
+                132
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 12,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0.92,
+              "keyframes": []
+            }
+          },
+          "properties": {},
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": [
+            {
+              "id": "example-back",
+              "name": "Lavender paper",
+              "type": "shape",
+              "startTime": 0,
+              "duration": 10,
+              "transform": {
+                "position": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    -35,
+                    50
+                  ],
+                  "keyframes": []
+                },
+                "rotation": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 0,
+                  "keyframes": []
+                },
+                "scale": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    1,
+                    1
+                  ],
+                  "keyframes": []
+                },
+                "opacity": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 1,
+                  "keyframes": []
+                }
+              },
+              "properties": {
+                "width": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 260,
+                  "keyframes": []
+                },
+                "height": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 350,
+                  "keyframes": []
+                },
+                "fill": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "color",
+                  "keyframes": [],
+                  "value": "#b4a2d5"
+                }
+              },
+              "effects": [],
+              "masks": [],
+              "assetId": null,
+              "children": []
+            },
+            {
+              "id": "example-front",
+              "name": "Front card",
+              "type": "group",
+              "startTime": 0,
+              "duration": 10,
+              "transform": {
+                "position": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    18,
+                    -12
+                  ],
+                  "keyframes": []
+                },
+                "rotation": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": -8,
+                  "keyframes": []
+                },
+                "scale": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "vector2",
+                  "value": [
+                    1,
+                    1
+                  ],
+                  "keyframes": []
+                },
+                "opacity": {
+                  "animated": false,
+                  "constraints": [],
+                  "type": "number",
+                  "value": 1,
+                  "keyframes": []
+                }
+              },
+              "properties": {},
+              "effects": [],
+              "masks": [],
+              "assetId": null,
+              "children": [
+                {
+                  "id": "example-paper",
+                  "name": "Lime paper",
+                  "type": "shape",
+                  "startTime": 0,
+                  "duration": 10,
+                  "transform": {
+                    "position": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        0,
+                        0
+                      ],
+                      "keyframes": []
+                    },
+                    "rotation": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 0,
+                      "keyframes": []
+                    },
+                    "scale": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        1,
+                        1
+                      ],
+                      "keyframes": []
+                    },
+                    "opacity": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 1,
+                      "keyframes": []
+                    }
+                  },
+                  "properties": {
+                    "width": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 260,
+                      "keyframes": []
+                    },
+                    "height": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 350,
+                      "keyframes": []
+                    },
+                    "fill": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "color",
+                      "keyframes": [],
+                      "value": "#d9e38e"
+                    }
+                  },
+                  "effects": [],
+                  "masks": [],
+                  "assetId": null,
+                  "children": []
+                },
+                {
+                  "id": "example-card-title",
+                  "name": "Card title",
+                  "type": "text",
+                  "startTime": 0,
+                  "duration": 10,
+                  "transform": {
+                    "position": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        28,
+                        42
+                      ],
+                      "keyframes": []
+                    },
+                    "rotation": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 0,
+                      "keyframes": []
+                    },
+                    "scale": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        1,
+                        1
+                      ],
+                      "keyframes": []
+                    },
+                    "opacity": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 1,
+                      "keyframes": []
+                    }
+                  },
+                  "properties": {
+                    "width": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 210,
+                      "keyframes": []
+                    },
+                    "height": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 150,
+                      "keyframes": []
+                    },
+                    "fill": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "color",
+                      "keyframes": [],
+                      "value": "#242b24"
+                    },
+                    "text": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "string",
+                      "value": "FRAME\nOF MIND",
+                      "keyframes": []
+                    },
+                    "fontSize": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 38,
+                      "keyframes": []
+                    }
+                  },
+                  "effects": [],
+                  "masks": [],
+                  "assetId": null,
+                  "children": []
+                },
+                {
+                  "id": "example-rule",
+                  "name": "Card rule",
+                  "type": "shape",
+                  "startTime": 0,
+                  "duration": 10,
+                  "transform": {
+                    "position": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        28,
+                        265
+                      ],
+                      "keyframes": []
+                    },
+                    "rotation": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 0,
+                      "keyframes": []
+                    },
+                    "scale": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        1,
+                        1
+                      ],
+                      "keyframes": []
+                    },
+                    "opacity": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 1,
+                      "keyframes": []
+                    }
+                  },
+                  "properties": {
+                    "width": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 202,
+                      "keyframes": []
+                    },
+                    "height": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 3,
+                      "keyframes": []
+                    },
+                    "fill": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "color",
+                      "keyframes": [],
+                      "value": "#394533"
+                    }
+                  },
+                  "effects": [],
+                  "masks": [],
+                  "assetId": null,
+                  "children": []
+                },
+                {
+                  "id": "example-card-note",
+                  "name": "Card edition",
+                  "type": "text",
+                  "startTime": 0,
+                  "duration": 10,
+                  "transform": {
+                    "position": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        28,
+                        288
+                      ],
+                      "keyframes": []
+                    },
+                    "rotation": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 0,
+                      "keyframes": []
+                    },
+                    "scale": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "vector2",
+                      "value": [
+                        1,
+                        1
+                      ],
+                      "keyframes": []
+                    },
+                    "opacity": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 1,
+                      "keyframes": []
+                    }
+                  },
+                  "properties": {
+                    "width": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 215,
+                      "keyframes": []
+                    },
+                    "height": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 40,
+                      "keyframes": []
+                    },
+                    "fill": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "color",
+                      "keyframes": [],
+                      "value": "#394533"
+                    },
+                    "text": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "string",
+                      "value": "A NEW PERSPECTIVE",
+                      "keyframes": []
+                    },
+                    "fontSize": {
+                      "animated": false,
+                      "constraints": [],
+                      "type": "number",
+                      "value": 14,
+                      "keyframes": []
+                    }
+                  },
+                  "effects": [],
+                  "masks": [],
+                  "assetId": null,
+                  "children": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "example-edition",
+          "name": "Edition number",
+          "type": "text",
+          "startTime": 0,
+          "duration": 10,
+          "transform": {
+            "position": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1040,
+                620
+              ],
+              "keyframes": []
+            },
+            "rotation": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 0,
+              "keyframes": []
+            },
+            "scale": {
+              "animated": false,
+              "constraints": [],
+              "type": "vector2",
+              "value": [
+                1,
+                1
+              ],
+              "keyframes": []
+            },
+            "opacity": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 1,
+              "keyframes": []
+            }
+          },
+          "properties": {
+            "width": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 180,
+              "keyframes": []
+            },
+            "height": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 36,
+              "keyframes": []
+            },
+            "fill": {
+              "animated": false,
+              "constraints": [],
+              "type": "color",
+              "keyframes": [],
+              "value": "#60645e"
+            },
+            "text": {
+              "animated": false,
+              "constraints": [],
+              "type": "string",
+              "value": "01  —  04",
+              "keyframes": []
+            },
+            "fontSize": {
+              "animated": false,
+              "constraints": [],
+              "type": "number",
+              "value": 20,
+              "keyframes": []
+            }
+          },
+          "effects": [],
+          "masks": [],
+          "assetId": null,
+          "children": []
+        }
+      ],
+      "tracks": [
+        {
+          "id": "01e0337a-7ea1-4bf0-82b7-b2e180e9038a",
+          "name": "Text 1",
+          "type": "text",
+          "order": 0,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "ec7ff9ec-e9ae-4b07-b261-07f4a55b5fcb",
+              "name": "Edition number",
+              "layerId": "example-edition",
+              "assetId": null,
+              "startTime": 0,
+              "duration": 10,
+              "sourceIn": 0,
+              "sourceOut": 10,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "d6cc3a2a-b6d7-4e98-963b-e064674dd9f9",
+          "name": "Text 2",
+          "type": "text",
+          "order": 1,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "40d17ca2-9b87-445e-9bcf-be1dce381d8e",
+              "name": "Card arrangement",
+              "layerId": "example-cards",
+              "assetId": null,
+              "startTime": 0,
+              "duration": 10,
+              "sourceIn": 0,
+              "sourceOut": 10,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "b503c27f-6177-4973-a7fd-c55b611b537f",
+          "name": "Graphics 1",
+          "type": "object",
+          "order": 2,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "0583cdff-b938-4cf5-898b-981a0abf93e3",
+              "name": "Supporting line",
+              "layerId": "example-subtitle",
+              "assetId": null,
+              "startTime": 0,
+              "duration": 10,
+              "sourceIn": 0,
+              "sourceOut": 10,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "70ab47d9-4182-48bc-8e79-d3bf421ec3b6",
+          "name": "Text 3",
+          "type": "text",
+          "order": 3,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "b6476c4b-1a01-4f54-862e-3d3553580141",
+              "name": "Label text",
+              "layerId": "example-badge-text",
+              "assetId": null,
+              "startTime": 0,
+              "duration": 10,
+              "sourceIn": 0,
+              "sourceOut": 10,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "da6f8c95-97c8-4550-b6f4-7e87e67b80e4",
+          "name": "Text 4",
+          "type": "text",
+          "order": 4,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "27973264-8a2c-4c0d-b6f8-0d96131501ef",
+              "name": "Accent label",
+              "layerId": "example-badge",
+              "assetId": null,
+              "startTime": 0,
+              "duration": 10,
+              "sourceIn": 0,
+              "sourceOut": 10,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "b64b063d-f727-4bfe-a135-5cff7defd6b8",
+          "name": "Graphics 2",
+          "type": "object",
+          "order": 5,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "f848ac33-bc1d-40bf-ab65-2fb32e800e16",
+              "name": "Main headline",
+              "layerId": "example-headline",
+              "assetId": null,
+              "startTime": 0,
+              "duration": 10,
+              "sourceIn": 0,
+              "sourceOut": 10,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        },
+        {
+          "id": "7469f7dc-9556-4224-a305-89fa3302d2a0",
+          "name": "Text 5",
+          "type": "text",
+          "order": 6,
+          "enabled": true,
+          "locked": false,
+          "muted": false,
+          "clips": [
+            {
+              "id": "bdd31774-1c6d-411c-ac9c-4b9871bd11ee",
+              "name": "Studio note",
+              "layerId": "example-kicker",
+              "assetId": null,
+              "startTime": 0,
+              "duration": 10,
+              "sourceIn": 0,
+              "sourceOut": 10,
+              "enabled": true,
+              "speed": 1,
+              "transitionMetadata": {},
+              "effectMetadata": {},
+              "metadata": {}
+            }
+          ]
+        }
+      ],
+      "markers": [],
+      "audioTracks": []
+    },
+    {
+      "id": "scene-empty",
+      "name": "Empty scene",
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "duration": 10,
+      "backgroundColor": "#f0eee7",
+      "layers": [],
+      "tracks": [],
+      "markers": [],
+      "audioTracks": []
+    }
+  ],
+  "assets": []
+}

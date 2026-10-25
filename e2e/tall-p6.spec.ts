@@ -195,9 +195,13 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   expect(near(await pixel(page, at), plain, 2)).toBe(true);
   await page.keyboard.press('Control+z');
   expect(grey(await pixel(page, at))).toBe(true);
-  // Undo removes the filter; Redo brings it back.
+  // Undo removes the filter; Redo brings it back. (The pointer leaves the
+  // tile first: hovering a tile previews it on the canvas.)
+  await page.mouse.move(2, 2);
   await page.keyboard.press('Control+z');
-  expect(near(await pixel(page, at), plain, 2)).toBe(true);
+  await expect
+    .poll(async () => near(await pixel(page, at), plain, 2))
+    .toBe(true);
   expect(await fxOf(page, first)).toBeUndefined();
   await page.keyboard.press('Control+Shift+z');
   expect(grey(await pixel(page, at))).toBe(true);
@@ -238,15 +242,30 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   await expect
     .poll(async () => (await fxOf(page, first))?.stack[0]?.id)
     .toBe('effect.pixelation');
+  // (D-320: projects are saved in IndexedDB, one record each.)
   await expect
     .poll(() =>
-      page.evaluate(() =>
-        Object.keys(localStorage).some(
-          (key) =>
-            !key.endsWith(':backup') &&
-            !key.endsWith(':recovery') &&
-            (localStorage.getItem(key) ?? '').includes('effect.pixelation'),
-        ),
+      page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const open = indexedDB.open('aive-projects', 1);
+            open.onerror = () => resolve(false);
+            open.onsuccess = () => {
+              const read = open.result
+                .transaction('projects')
+                .objectStore('projects')
+                .getAll();
+              read.onerror = () => resolve(false);
+              read.onsuccess = () => {
+                open.result.close();
+                resolve(
+                  (read.result as { primary: string }[]).some((record) =>
+                    record.primary.includes('effect.pixelation'),
+                  ),
+                );
+              };
+            };
+          }),
       ),
     )
     .toBe(true);

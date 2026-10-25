@@ -56,7 +56,7 @@ const engineOf = async (page: Page) =>
     table?: { rows: { text: string }[][]; header?: boolean };
   };
 
-test('[F2-030] [F2-031] Font picker: Hindi filter, coverage check, offline and downloaded fonts, recently used; direction RTL and a numbered list', async ({
+test('[F2-030] [F2-031][TXT-007] Font picker: Hindi filter, coverage check, offline and downloaded fonts, recently used; direction RTL and a numbered list', async ({
   page,
   context,
 }) => {
@@ -136,7 +136,7 @@ test('[F2-030] [F2-031] Font picker: Hindi filter, coverage check, offline and d
   ]);
 });
 
-test('[F2-032] [F2-033] Elements › Tables: pick 3 × 4, one undo step; edit a cell on the canvas and in the inspector; rows and header row', async ({
+test('[F2-032] [F2-033][SHP-025] Elements › Tables: pick 3 × 4, one undo step; edit a cell on the canvas and in the inspector; rows and header row', async ({
   page,
 }) => {
   await page.goto('/');

@@ -230,7 +230,7 @@ test('[MED-019] audio waveforms are made in the background and cached across rel
   ).toBe(0);
 });
 
-test('[TL-047] an audio clip draws its waveform and it follows a trim', async ({
+test('[TL-047][AUD-001] an audio clip draws its waveform and it follows a trim', async ({
   page,
 }, testInfo) => {
   await clipMenu(page, 'clip-av', 'Detach audio');

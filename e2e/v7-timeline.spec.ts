@@ -65,7 +65,7 @@ test('[TL-101] time 0 sits 18 px inside the timeline card: the 0s label, the fir
   expect(content.width - content.track - 18).toBeCloseTo(18, 0);
 });
 
-test('[TL-102] an empty project shows only the drop box, centred both ways: no ruler, playhead, dim, frame row or scrolling', async ({
+test('[TL-102][TL-043] an empty project shows only the drop box, centred both ways: no ruler, playhead, dim, frame row or scrolling', async ({
   page,
 }) => {
   // V7 (B28).

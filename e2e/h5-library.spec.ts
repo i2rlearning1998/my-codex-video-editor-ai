@@ -290,7 +290,7 @@ test('[TXT-001] Text styles add a heading, subheading, body or styled text at th
   expect((await labels(page)).at(-1)).toBe('Add text');
 });
 
-test('[TPL-011] a template becomes a new scene after this one, sized to the canvas, with clips; one undo removes it', async ({
+test('[TPL-011][TPL-001] a template becomes a new scene after this one, sized to the canvas, with clips; one undo removes it', async ({
   page,
 }) => {
   const before = (await hook(page)).project.compositions.length;

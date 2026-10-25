@@ -91,7 +91,7 @@ test('[LAY-063] the right rail is always shown (Auto Caption alone and disabled 
   expect(await centred()).toBeLessThanOrEqual(2);
 });
 
-test('[LAY-065] no rendered icon is smaller than 16 px; rail icons are 24 px and rail labels are never cut', async ({
+test('[LAY-065][LAY-021] no rendered icon is smaller than 16 px; rail icons are 24 px and rail labels are never cut', async ({
   page,
 }) => {
   // V7 (spec 10.5, B26): measure every visible icon in three states.

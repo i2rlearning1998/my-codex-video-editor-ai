@@ -1,5 +1,24 @@
 # Changelog
 
+## AUDIT-EDITOR, EDITOR-COMPLETE and Phase 1 (25 Oct)
+
+- Every unfinished ledger row was checked in the browser: 115 work (now proven by tests), 90 partly, 70 not built, 52 wait for later (animation, pro features, AI). Stale "planned" controls (scene Transition, Edit image Adjust colors and Filters, full-screen tooltip) now work.
+- Projects: File › Projects lists every project kept in this browser (open, rename, duplicate, delete); a crash or reload never loses work; the tab title shows unsaved changes; Undo and Redo name their step.
+- Timeline: m:ss ruler with frame ticks, ripple delete (Shift+Delete), Alt-drag copy, split everything under the playhead, marker rename, jump, list and clear, Snapping and Loop toggles.
+- Canvas: Fit, Fill and Stretch for pictures and videos, rotate 90°, scale content to a new canvas size, Select all, tool keys V, T, R and E, arrow keys step frames with nothing selected.
+- Cloud (Phase 1, needs a Supabase server): Log in or create an account in the top bar, Save to cloud, Open from cloud on another computer with its media, rename and delete cloud projects. Local saving works as before without it.
+
+## PHASE 0 close (24 Oct)
+
+- Build video, the AI importer and card drops show a real loader with Cancel and never freeze the page; faster blur; effect timings measured at 1920 × 1080.
+- Dynamic text (date, time, scene number, page count, counter, timecode) in Text › Dynamic text, resolved in the preview and the export. Scene strip + menu has Open video plan review. Text › Captions opens Auto captions.
+- Hide, grid and safe-area guides work; no control says "Planned: Wave N" any more (it says what it needs).
+- Proven in the browser: 9:16 canvas ratio, filter intensity drag, first Play under the "sound after a click" policy, Devanagari conjuncts and matras. Whisper reports now name the host, status, bytes and last worker message.
+
+## FIX5 (owner bug round, 24 Oct)
+
+- Library cards never stay blank; AI duplicates removed; audio rows have Play / Stop (no hover play); Scene and Audio panels no longer overlap; Draw palette flyouts and Table; Text panel clean-up; readable Review video plan and AI › Video plans; first Play waits for sound; blend list and select menu height; Whisper watchdog, download errors and cloud fallback. See reports/FIX5.md.
+
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
 ## FINAL3 (leftovers, text, camera, video plans) — 2026-10-21
@@ -412,3 +431,11 @@ Initial Phase 1 / Tier 1 foundation in an empty repository.
 - Documented architecture, future development rules, limitations, and the recommended next milestone.
 
 Canvas, timeline, playback, AI, effects, 3D, cloud storage, and production infrastructure remain outside this release.
+
+## FIX5 engine draft — 2026-10-24
+
+- Stage composition commands and yield during construction; expose cancellable progress.
+- Bound reusable image/shape preview processing and cache; leave export full-resolution.
+- Preview filter intensity/hover without undo until release.
+- Ignore image decode/URL completions after media disposal.
+- Browser acceptance remains outstanding; see FIX5-CODEX report.

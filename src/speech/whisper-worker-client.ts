@@ -1,7 +1,10 @@
 // FIX3 2.2 and 2.3: the page's side of the captions worker. It sends one
-// message per step, watches the worker's heartbeat (no message for 15 s
-// while loading, or 120 s during one inference run, means it stopped
-// responding) and terminates the worker on Cancel or a stall.
+// message per step, watches the worker's heartbeat and terminates the worker
+// on Cancel or a stall. FIX5 C9: a model start that sends nothing for a
+// minute is stuck; but one inference run is a single blocking call that
+// silences the worker's heartbeat for as long as the CPU needs (the owner's
+// real run went quiet for 16 s and was wrongly killed), so a run gets ten
+// minutes.
 import type {
   AsrOutput,
   EngineFile,
@@ -22,13 +25,16 @@ export interface WorkerEngineOptions {
   loadStallMs?: number;
 }
 
+/** The worker's last real message, for Copy diagnostics. */
+let lastMessage = 'none yet';
+export const lastWorkerMessage = () => lastMessage;
 export const workerSupported = () => typeof Worker !== 'undefined';
 
 export function createWorkerEngine(
   options: WorkerEngineOptions = {},
 ): WhisperEngine & { abort(): void } {
-  const beatLossMs = options.beatLossMs ?? 15_000;
-  const inferenceStallMs = options.inferenceStallMs ?? 120_000;
+  const beatLossMs = options.beatLossMs ?? 60_000;
+  const inferenceStallMs = options.inferenceStallMs ?? 600_000;
   const loadStallMs = options.loadStallMs ?? 60_000;
   /** The last time the worker reported real work (a stage or progress). */
   let lastWork = 0;
@@ -77,6 +83,13 @@ export function createWorkerEngine(
         total?: number | null;
         stage?: 'library' | 'pipeline' | 'ready';
       };
+      if (data.type !== 'beat')
+        lastMessage =
+          data.type === 'progress'
+            ? `progress ${data.completed ?? 0}/${data.total ?? '?'}`
+            : data.type === 'stage'
+              ? `stage ${data.stage}`
+              : data.type;
       if (data.type === 'progress') {
         lastWork = lastSeen;
         onLoadProgress?.(data.completed ?? 0, data.total ?? null);
@@ -104,33 +117,39 @@ export function createWorkerEngine(
     watchdog = setInterval(() => {
       if (!pending.size) return;
       const running = [...pending.values()].some((j) => j.step === 'listen');
+      const step = running ? 'listen' : 'load';
       const now = performance.now();
       const quiet = now - lastSeen;
-      if (quiet > beatLossMs) {
+      const limit = running ? inferenceStallMs : beatLossMs;
+      const seconds = (ms: number) => Math.round(ms / 1000);
+      if (quiet > limit) {
         stop(
           new WhisperError(
             'stalled',
-            running ? 'listen' : 'load',
-            new Error(`No message from the worker for ${Math.round(quiet)} ms`),
+            step,
+            new Error(
+              `The speech engine sent nothing for ${seconds(quiet)} s while ${running ? 'listening' : 'loading the model'} (last message: ${lastMessage}).`,
+            ),
           ),
         );
         return;
       }
-      // FIX4 A5: the worker beats, but a load that reports no stage or
-      // progress for a minute (a run: two minutes) is stuck, not slow.
-      const idle =
-        now -
-        Math.max(lastWork, ...[...pending.values()].map((j) => j.started));
-      if (idle > (running ? inferenceStallMs : loadStallMs)) {
-        stop(
-          new WhisperError(
-            'stalled',
-            running ? 'listen' : 'load',
-            new Error(
-              `${running ? 'Listening' : 'Loading'} made no progress for ${Math.round(idle / 1000)} s`,
+      // The worker beats, but a model start that reports no stage or
+      // progress for a minute is stuck, not slow.
+      if (!running) {
+        const idle =
+          now -
+          Math.max(lastWork, ...[...pending.values()].map((j) => j.started));
+        if (idle > loadStallMs)
+          stop(
+            new WhisperError(
+              'stalled',
+              step,
+              new Error(
+                `Loading the model made no progress for ${seconds(idle)} s (last message: ${lastMessage}).`,
+              ),
             ),
-          ),
-        );
+          );
       }
     }, 1000);
     return worker;

@@ -21,7 +21,7 @@ const clipAudio = async (page: Page) =>
     }
   )?.audio ?? {};
 
-test('[F2-020] [F2-021] [F2-022] [F2-023] [F2-024] Audio: master volume is saved with the project and survives a reload, meters show while playing, lane mute and solo; the clip Audio tab sets fade presets, a volume keyframe and Reduce noise, and a failed noise download says so with Turn off', async ({
+test('[F2-020] [F2-021] [F2-022] [F2-023] [F2-024][PB-013][AUD-002] Audio: master volume is saved with the project and survives a reload, meters show while playing, lane mute and solo; the clip Audio tab sets fade presets, a volume keyframe and Reduce noise, and a failed noise download says so with Turn off', async ({
   page,
 }) => {
   await page.route('https://cdn.jsdelivr.net/npm/@shiguredo/**', (route) =>

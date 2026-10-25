@@ -227,7 +227,7 @@ test('[CV-049] a flipped, rotated shape resizes from a corner and an edge', asyn
   page,
 }) => rotatedCase(page, 'flipped shape', 'h1-flip', [2, 'right']));
 
-test('[CV-049] resize cursors turn with the object and rotating shows an angle chip', async ({
+test('[CV-049][CV-012][CV-029] resize cursors turn with the object and rotating shows an angle chip', async ({
   page,
 }) => {
   await select(page, 'h1-rect');

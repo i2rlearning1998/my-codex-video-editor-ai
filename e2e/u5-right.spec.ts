@@ -41,7 +41,7 @@ test('[LAY-059] the right rail shows 24 px icons with labels; nothing selected s
   await expect(page.locator('#rail-right button:not([hidden])')).toHaveCount(3);
 });
 
-test('[PRJ-027] the canvas bar sets the scene frame rate; times re-snap to the new grid; one undo step', async ({
+test('[PRJ-027][PRJ-008] the canvas bar sets the scene frame rate; times re-snap to the new grid; one undo step', async ({
   page,
 }) => {
   // The stage around the artboard shows the canvas bar (CV-057).

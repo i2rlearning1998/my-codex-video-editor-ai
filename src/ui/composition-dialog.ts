@@ -4,6 +4,7 @@
 // result, or stay empty ("let the AI decide later": it is built as a frame).
 // The adapter's missing items and warnings show live; the result is added as
 // new scenes, or opened as a new project.
+import { createBuildLoader } from './components/build-loader';
 import { t } from '../i18n';
 import type { Asset, Project } from '../core';
 import {
@@ -54,7 +55,12 @@ export function openCompositionBuild(
   const fills = createSlotFills(data);
   let result: BuildResult | null = null;
   let building = 0;
+  let controller: AbortController | null = null;
   const handle = openModal({
+    onClose: () => {
+      controller?.abort();
+      building++;
+    },
     titleText: t('composition.title', { name: item.name.en }),
     bodyHtml: `
       <div class="composition-build">
@@ -76,18 +82,45 @@ export function openCompositionBuild(
   const open = root.querySelector<HTMLButtonElement>('#composition-open')!;
 
   const rebuild = async () => {
+    controller?.abort();
+    const active = (controller = new AbortController());
     const mine = ++building;
     add.disabled = open.disabled = true;
-    report.textContent = t('composition.checking');
+    const loader = createBuildLoader();
+    report.replaceChildren(loader.element);
+    // Cancel stops this build; the dialog stays, with a way to check again.
+    loader.signal.addEventListener('abort', () => active.abort(), {
+      once: true,
+    });
     const built = await buildProjectFromComposition(data, {
+      signal: active.signal,
+      onProgress: (progress) => {
+        if (mine !== building) return;
+        loader.update(progress);
+      },
       slotFills: fills,
       library: deps.library,
       name: item.name.en,
     }).catch((error: unknown) => {
-      deps.report(error);
+      if (!active.signal.aborted) {
+        loader.fail(error instanceof Error ? error.message : String(error));
+        deps.report(error);
+      }
       return null;
     });
     if (mine !== building) return;
+    if (loader.signal.aborted) {
+      loader.cancelled();
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.className = 'button secondary sm';
+      again.dataset.action = 'build-again';
+      again.textContent = t('build.rebuild');
+      again.onclick = () => void rebuild();
+      report.append(again);
+      return;
+    }
+    if (loader.state === 'failed') return;
     result = built;
     report.replaceChildren();
     if (!built?.project) {

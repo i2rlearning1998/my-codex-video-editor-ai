@@ -62,6 +62,8 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       editDuration: vi.fn(),
       renameClip: vi.fn(),
       moreOptions: vi.fn(),
+      // AUDIT-EDITOR (KEY-015): the V, T, R and E tools.
+      tools: { select: vi.fn(), text: vi.fn(), shape: vi.fn() },
       togglePlayback: () => session.setPlaying(!session.playing),
       // G3: the canvas view commands act on the view, never on the project.
       view: {
@@ -217,6 +219,18 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);
     // H2: the theme is a UI preference, never project history.
     else if (command.id === 'theme') expect(engine.canUndo).toBe(false);
+    // AUDIT-EDITOR: marker jumps move the playhead only; the tools call the
+    // shell (which adds the element through the Command Bus).
+    else if (command.id === 'marker-previous' || command.id === 'marker-next')
+      expect(engine.canUndo).toBe(false);
+    else if (command.id === 'tool-select')
+      expect(context.tools.select).toHaveBeenCalledOnce();
+    else if (command.id === 'tool-text')
+      expect(context.tools.text).toHaveBeenCalledOnce();
+    else if (command.id === 'tool-rectangle')
+      expect(context.tools.shape).toHaveBeenCalledWith('rectangle');
+    else if (command.id === 'tool-ellipse')
+      expect(context.tools.shape).toHaveBeenCalledWith('ellipse');
     else if (command.id.startsWith('zoom-') || command.id === 'hand-tool') {
       // View commands call the view and leave the project and history alone.
       const calls = Object.values(context.view)

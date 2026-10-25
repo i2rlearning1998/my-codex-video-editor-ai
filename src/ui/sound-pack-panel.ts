@@ -1,9 +1,10 @@
 // V7 (Clipchamp clone spec 11.3): the left "Audio" category is the built-in
-// sound pack: twelve tiles with name and length, a play / pause preview on
-// hover, click or drag to add at the playhead in a new audio lane. A click
+// sound pack: twelve tiles with name and length, a Play / Stop button (no
+// hover play), click or drag to add at the playhead in a new audio lane. A click
 // imports the sound like any file (a real audio asset, so it exports) and
 // places it. "Stock music" is honestly Planned (no external service).
 import { SOUND_PACK, encodeWav, soundSamples } from '../audio/sound-pack';
+import { audioPlayButton, stopAudioPreview } from './components/audio-preview';
 import { formatNumber, t } from '../i18n';
 import { drags } from './drag-controller';
 import { iconSvg } from './icons';
@@ -44,48 +45,7 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
   host.replaceChildren(heading, search, list, empty);
   void stock;
 
-  // Preview: one shared context, one sound at a time.
-  let context: AudioContext | null = null;
-  let playing: { id: string; node: AudioBufferSourceNode } | null = null;
-  const buffers = new Map<string, AudioBuffer>();
-  const stop = () => {
-    if (!playing) return;
-    try {
-      playing.node.stop();
-    } catch {
-      // Already over.
-    }
-    list
-      .querySelector(`[data-sound="${playing.id}"] .sound-tile-play`)
-      ?.setAttribute('aria-pressed', 'false');
-    playing = null;
-  };
-  const play = (id: string) => {
-    const sound = SOUND_PACK.find((item) => item.id === id)!;
-    stop();
-    context ??= new AudioContext({ sampleRate: 48_000 });
-    let buffer = buffers.get(id);
-    if (!buffer) {
-      buffer = context.createBuffer(
-        1,
-        Math.round(sound.duration * 48_000),
-        48_000,
-      );
-      buffer.copyToChannel(soundSamples(sound) as Float32Array<ArrayBuffer>, 0);
-      buffers.set(id, buffer);
-    }
-    const node = context.createBufferSource();
-    node.buffer = buffer;
-    node.connect(context.destination);
-    node.onended = () => {
-      if (playing?.node === node) stop();
-    };
-    node.start();
-    playing = { id, node };
-    list
-      .querySelector(`[data-sound="${id}"] .sound-tile-play`)
-      ?.setAttribute('aria-pressed', 'true');
-  };
+  const urls: Record<string, string> = {};
   const fileOf = (id: string) => {
     const sound = SOUND_PACK.find((item) => item.id === id)!;
     const name = `${t(sound.key)}.wav`;
@@ -155,22 +115,19 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
           }
         : null;
     });
-    const preview = document.createElement('button');
-    preview.type = 'button';
-    preview.className = 'icon-button sound-tile-play';
+    // FIX5 C2: no hover play; a Play / Stop button (one preview at a time).
+    const preview = audioPlayButton(
+      {
+        id: `sound:${sound.id}`,
+        name: t(sound.key),
+        url: () => {
+          urls[sound.id] ??= URL.createObjectURL(fileOf(sound.id));
+          return urls[sound.id]!;
+        },
+      },
+      'sound-tile-play',
+    );
     preview.dataset.action = 'sound-preview';
-    preview.setAttribute('aria-pressed', 'false');
-    preview.title = t('sound.preview', { name: t(sound.key) });
-    preview.setAttribute('aria-label', preview.title);
-    preview.innerHTML = iconSvg('play', 20);
-    preview.onclick = () =>
-      playing?.id === sound.id ? stop() : play(sound.id);
-    tile.addEventListener('pointerenter', () => {
-      if (playing?.id !== sound.id) play(sound.id);
-    });
-    tile.addEventListener('pointerleave', () => {
-      if (playing?.id === sound.id) stop();
-    });
     tile.append(add, preview);
     return tile;
   });
@@ -188,8 +145,8 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
   });
   return {
     dispose: () => {
-      stop();
-      void context?.close();
+      stopAudioPreview();
+      for (const url of Object.values(urls)) URL.revokeObjectURL(url);
     },
   };
 }

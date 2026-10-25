@@ -176,7 +176,7 @@ test('[CV-052] hovering outlines an object or the empty artboard; the artboard s
   expect((await debug(page)).canvasSelected).toBe(true);
 });
 
-test('[CV-053] Canva handles: round white corners, pills on the sides and the rotate handle 28 px below the box', async ({
+test('[CV-053][CV-030] Canva handles: round white corners, pills on the sides and the rotate handle 28 px below the box', async ({
   page,
 }) => {
   await select(page, 'example-badge');
@@ -460,7 +460,7 @@ test('[VID-009] Replace swaps the media and keeps position, size, crop and timin
   expect(clip.assetId).toBe(gradient.id);
 });
 
-test('[CV-051] a locked element can be selected but not moved, resized, nudged or deleted; Unlock from the toolbar', async ({
+test('[CV-051][CV-024] a locked element can be selected but not moved, resized, nudged or deleted; Unlock from the toolbar', async ({
   page,
 }) => {
   const at = await screen(page, 300, 250);
@@ -531,7 +531,7 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   );
   await expect(menu.locator('[data-action="comment"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 8 (ADV-008)',
+    'Needs your account (planned)',
   );
   // Info.
   await (await revealEntry(menu, menu.locator('[data-action="info"]'))).click();
@@ -602,9 +602,9 @@ test('[CV-056] right-click menus per type: icons and shortcuts; timing, alternat
   ])
     await expect(menu.locator(`[data-action="${action}"]`)).toBeVisible();
   await menu.locator('[data-action="guides"]').hover();
-  await expect(menu.locator('[data-action="guides-grid"]')).toHaveAttribute(
+  await expect(menu.locator('[data-action="guides-rulers"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 2 (CV-014)',
+    'Planned for Phase 1',
   );
   await page.keyboard.press('Escape');
   await page.mouse.click(outside.x, outside.y, { button: 'right' });

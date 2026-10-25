@@ -340,7 +340,7 @@ test('[CV-011] text-width grips change the text box width and reflow without cha
   expect((await hook(page)).history.labels).toHaveLength(1);
 });
 
-test('[CV-022] clicking inside a group selects the group; double-click selects the child; Esc exits', async ({
+test('[CV-022][CV-023] clicking inside a group selects the group; double-click selects the child; Esc exits', async ({
   page,
 }, testInfo) => {
   const selected = async () => (await hook(page)).session.selectedIds;

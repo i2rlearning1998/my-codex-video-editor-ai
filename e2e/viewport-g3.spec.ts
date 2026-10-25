@@ -291,7 +291,7 @@ test('[CV-047] a layer moved outside the artboard shows faintly and stays select
   await expect.poll(() => selectedIds(page)).toEqual(['example-badge']);
 });
 
-test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: background, scene length and a disabled Animate', async ({
+test('[CV-048][PRJ-006][INS-014] with nothing selected the toolbar is the scene bar: background, scene length and a disabled Animate', async ({
   page,
   openFixtureProject,
 }) => {
@@ -303,7 +303,7 @@ test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: back
   // Animate is not built for scenes yet and says which wave builds it.
   await expect(bar.locator('[data-control="scene-animate"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 8 (ANI-020)',
+    'Planned for Phase 1',
   );
   // Background: one undo step, applied to this scene (J1: each scene owns
   // its background; the project's is the default for new scenes).

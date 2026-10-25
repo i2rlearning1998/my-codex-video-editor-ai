@@ -52,6 +52,12 @@ function playableDependencies() {
   const probe = document.createElement('video');
   const playable = (mime: string) => {
     if (!mime.includes('mp4')) return true;
+    // MP4 holding VP9 or AV1 records fine but the import check cannot play it
+    // back, so record WebM then.
+    if (/vp0?9|av01|av1/i.test(mime)) return false;
+    // A bare 'video/mp4' lets the browser pick any codec (VP9 here); only an
+    // explicit H.264 / AAC list is trusted.
+    if (!mime.includes('codecs')) return false;
     const codecs = mime.includes('codecs')
       ? mime
       : mime.startsWith('audio')

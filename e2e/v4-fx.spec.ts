@@ -99,10 +99,17 @@ test('[FX-016] Filters: a 3-column tile grid with a sticky search and None first
         .evaluate((image: HTMLImageElement) => image.naturalWidth),
     )
     .toBe(160);
-  // Hover changes nothing on the canvas.
+  // Hover previews the filter on the canvas (FIX5 P3) without a history step,
+  // and leaving the tile puts the picture back.
   const before = await preview(page);
+  const stepsBefore = (await labels(page)).length;
   await tileOf(page, 'retro').hover();
-  expect(meanDiff(await preview(page), before)).toBe(0);
+  await expect
+    .poll(async () => meanDiff(await preview(page), before))
+    .toBeGreaterThan(1);
+  expect((await labels(page)).length).toBe(stepsBefore);
+  await page.mouse.move(2, 2);
+  await expect.poll(async () => meanDiff(await preview(page), before)).toBe(0);
   // A click applies the filter: one step, the canvas changes.
   await tileOf(page, 'retro').click();
   expect((await labels(page)).at(-1)).toBe('Apply filter');
@@ -139,7 +146,7 @@ test('[FX-016] Filters: a 3-column tile grid with a sticky search and None first
   expect((await fxOf(page, id)) ?? null).toBeNull();
 });
 
-test('[FX-017] Effects: several at once, a click toggles one, None clears all; a selected effect shows its own settings; hovering animates the tile but not the canvas', async ({
+test('[FX-017][FX-001] Effects: several at once, a click toggles one, None clears all; a selected effect shows its own settings; hovering animates the tile but not the canvas', async ({
   page,
 }) => {
   const id = await onePicture(page);
@@ -273,7 +280,7 @@ test('[FX-018] sweep: every filter tile changes the preview and the exported PNG
   test.setTimeout(480_000);
   await sweep(page, testInfo, 'Filters');
 });
-test('[FX-018] sweep: every effect tile changes the preview and the exported PNG frame and neither is blank; contact sheet', async ({
+test('[FX-018][FX-005][FX-006][VID-007] sweep: every effect tile changes the preview and the exported PNG frame and neither is blank; contact sheet', async ({
   page,
 }, testInfo) => {
   test.setTimeout(480_000);

@@ -2,6 +2,9 @@
 // (selection-context.ts) and rendered by the shared menu (context-menu.ts).
 // CV-020 layout: edit actions, clip actions, Group/Ungroup, Layer and Align
 // submenus, then Copy style and Paste style.
+import { rotateSelection90 } from './layer-actions';
+import { plannedReason } from './planned';
+import { hideSelected } from './editing';
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
 import { clipTimeEffects, type EditorEngine } from '../core';
 import { formatNumber, t } from '../i18n';
@@ -76,8 +79,7 @@ export interface CanvasMenuHooks {
     readonly duplicateCopy: (layerId: string) => void;
   };
 }
-const planned = (wave: number | string, id: string) =>
-  t('toolbar.later', { wave: String(wave), id });
+const planned = (wave: number | string, id: string) => plannedReason(wave, id);
 
 const ICONS: Partial<Record<EditAction, string>> = {
   split: 'split',
@@ -304,8 +306,8 @@ export function canvasMenuEntries(
       label: t('command.arrange'),
       icon: 'layers',
       ...(clipEntries.length || codeLayer ? {} : { divider: true }),
-      submenu: () =>
-        ARRANGE_ACTIONS.map((action) => ({
+      submenu: (): MenuEntry[] => [
+        ...ARRANGE_ACTIONS.map((action) => ({
           id: `arrange-${action}`,
           label: t(ARRANGE_KEYS[action]),
           ...(ARRANGE_SHORTCUTS[action]
@@ -315,6 +317,16 @@ export function canvasMenuEntries(
             ? { run: () => arrangeSelection(engine, session, action) }
             : {}),
         })),
+        // AUDIT-EDITOR (CV-027): quarter turns for any element.
+        ...([-1, 1] as const).map((direction, index) => ({
+          id: direction < 0 ? 'rotate-left' : 'rotate-right',
+          label: t(
+            direction < 0 ? 'command.rotateLeft' : 'command.rotateRight',
+          ),
+          ...(index === 0 ? { divider: true } : {}),
+          run: () => rotateSelection90(engine, session, direction),
+        })),
+      ],
     },
     {
       id: 'align',
@@ -424,7 +436,7 @@ export function canvasMenuEntries(
       id: 'hide',
       label: t('command.hide'),
       icon: 'eyeOff',
-      reason: planned(2, 'LYR-006'),
+      run: () => hideSelected(engine, session),
     },
   ];
   if (one && hooks.showTiming)
@@ -505,6 +517,21 @@ function sceneMenuEntries(
         ? { run: () => performEdit(engine, session, 'paste') }
         : {}),
     },
+    // AUDIT-EDITOR (CV-021): Select all, as Ctrl+A does.
+    {
+      id: 'select-all',
+      label: t('command.selectAll'),
+      icon: 'groupSelection',
+      shortcut: 'Ctrl+A',
+      ...(session.source.composition.layers.length
+        ? {
+            run: () =>
+              session.selectMany(
+                session.source.composition.layers.map((layer) => layer.id),
+              ),
+          }
+        : {}),
+    },
     ...(hooks.addScene
       ? [
           {
@@ -560,6 +587,15 @@ function sceneMenuEntries(
                 data: { preset: preset.id },
                 run: () => hooks.canvasSize!(preset.width, preset.height),
               })),
+              // AUDIT-EDITOR (PRJ-007): scale the design to the new size.
+              {
+                id: 'canvas-size-scale',
+                label: t('canvasSize.scaleContent'),
+                role: 'menuitemcheckbox' as const,
+                checked: session.scaleContent,
+                divider: true,
+                toggle: () => session.setScaleContent(!session.scaleContent),
+              },
               ...(hooks.customSize
                 ? [
                     {
@@ -583,13 +619,15 @@ function sceneMenuEntries(
           id: 'guides-off',
           label: t('guides.off'),
           role: 'menuitemradio' as const,
-          checked: true,
-          run: () => undefined,
+          checked: !session.viewGuides.grid && !session.viewGuides.safe,
+          run: () => session.setViewGuides({ grid: false, safe: false }),
         },
         {
           id: 'guides-grid',
           label: t('guides.grid'),
-          reason: planned(2, 'CV-014'),
+          role: 'menuitemcheckbox' as const,
+          checked: session.viewGuides.grid,
+          run: () => session.setViewGuides({ grid: !session.viewGuides.grid }),
         },
         {
           id: 'guides-rulers',
@@ -599,7 +637,9 @@ function sceneMenuEntries(
         {
           id: 'guides-safe',
           label: t('guides.safe'),
-          reason: planned(2, 'CV-015'),
+          role: 'menuitemcheckbox' as const,
+          checked: session.viewGuides.safe,
+          run: () => session.setViewGuides({ safe: !session.viewGuides.safe }),
         },
       ],
     },

@@ -8,7 +8,7 @@ const VIDEO_ID = 'media-36bca395291051be';
 const VIDEO_KEY = 'media/36bca395291051be3476a7b8694b6325';
 const MEDIA = path.resolve('tests/fixtures/media');
 
-test('[F2-050] [F2-051] a project whose media are not in this browser asks to reconnect them: a wrong file is refused in plain words, Pick folder finds every file by name and size, Reconnect restores the references and keeps clips; Details shows the probe', async ({
+test('[F2-050] [F2-051][MED-020][F2-052] a project whose media are not in this browser asks to reconnect them: a wrong file is refused in plain words, Pick folder finds every file by name and size, Reconnect restores the references and keeps clips; Details shows the probe', async ({
   page,
 }, testInfo) => {
   test.setTimeout(90_000);

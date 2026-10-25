@@ -136,6 +136,35 @@ exports[`[NEST] render identity for projects without nesting > nle-example.json 
 ]
 `;
 
+exports[`[NEST] render identity for projects without nesting > preflight-issues.json derives the same render items 1`] = `
+[
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "1fa9305e41eb31f5",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+  "c0cecb18fe7e420e",
+]
+`;
+
 exports[`[NEST] render identity for projects without nesting > two-scenes.json derives the same render items 1`] = `
 [
   "8991a03020d0fbee",

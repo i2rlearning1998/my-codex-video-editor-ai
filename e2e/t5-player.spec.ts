@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[TL-081] the Player bar shows its controls in order with 13 px labels, 20 px icons, 32 px hit areas and the largest Play button', async ({
+test('[TL-081][TL-042] the Player bar shows its controls in order with 13 px labels, 20 px icons, 32 px hit areas and the largest Play button', async ({
   page,
 }, testInfo) => {
   const playback = await page
@@ -90,7 +90,7 @@ test('[TL-081] the Player bar shows its controls in order with 13 px labels, 20 
   await page.screenshot({ path: testInfo.outputPath('player-bar.png') });
 });
 
-test('[TL-082] First and Last frame jump to the scene ends; the timecode reads 0:00 / 0:10 and a click on it takes a typed time', async ({
+test('[TL-082][TL-011] First and Last frame jump to the scene ends; the timecode reads 0:00 / 0:10 and a click on it takes a typed time', async ({
   page,
 }) => {
   await expect(timecode(page)).toHaveText('0:00 / 0:10');

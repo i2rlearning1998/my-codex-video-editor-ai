@@ -33,7 +33,7 @@ type Asset = {
 const assets = async (page: Page) =>
   (await hook(page)).project.assets as unknown as Asset[];
 
-test('[FX1-003] Pixabay videos never use an empty rendition: the default is medium (up to 1080p); Details lists the qualities with sizes; the card shows download progress', async ({
+test('[FX1-003][MED-028][MED-029] Pixabay videos never use an empty rendition: the default is medium (up to 1080p); Details lists the qualities with sizes; the card shows download progress', async ({
   page,
 }) => {
   const mock = await mockStock(page);

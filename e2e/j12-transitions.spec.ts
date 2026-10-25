@@ -93,7 +93,7 @@ async function exportedPixel(
 const near = (a: number[], b: number[], tolerance: number) =>
   a.every((value, index) => Math.abs(value - b[index]!) <= tolerance);
 
-test('[TR-011] a + where two clips touch adds a transition and opens its panel; a cross fade mixes them across the cut, in the preview and the export', async ({
+test('[TR-011][TL-051][TR-007] a + where two clips touch adds a transition and opens its panel; a cross fade mixes them across the cut, in the preview and the export', async ({
   page,
 }, testInfo) => {
   await page.goto('/');

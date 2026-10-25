@@ -95,6 +95,46 @@ function storeHeight(value: number | null): void {
     // Storage may be blocked; the height then lasts for this page only.
   }
 }
+/**
+ * AUDIT-EDITOR (LAY-005): the left and right panel widths and whether the
+ * left panel is collapsed, kept in this browser for the wide and medium
+ * layouts (a UI setting, never the project).
+ */
+const PANELS_KEY = 'aive.panels';
+interface StoredPanels {
+  left?: number;
+  right?: number;
+  leftClosed?: boolean;
+}
+function storedPanels(): StoredPanels {
+  try {
+    const value = JSON.parse(
+      localStorage.getItem(PANELS_KEY) ?? '{}',
+    ) as unknown;
+    if (!value || typeof value !== 'object') return {};
+    const { left, right, leftClosed } = value as Record<string, unknown>;
+    const width = (n: unknown, [min, max]: readonly [number, number]) =>
+      typeof n === 'number' && Number.isFinite(n)
+        ? Math.max(min, Math.min(max, n))
+        : undefined;
+    const out: StoredPanels = {};
+    const l = width(left, LIMITS.left);
+    const r = width(right, LIMITS.right);
+    if (l !== undefined) out.left = l;
+    if (r !== undefined) out.right = r;
+    if (typeof leftClosed === 'boolean') out.leftClosed = leftClosed;
+    return out;
+  } catch {
+    return {};
+  }
+}
+function storePanels(value: StoredPanels): void {
+  try {
+    localStorage.setItem(PANELS_KEY, JSON.stringify(value));
+  } catch {
+    // Storage may be blocked; the sizes then last for this page only.
+  }
+}
 
 /** Small transient panel sizing, not a docking or document-layout model. */
 export function mountWorkspace(
@@ -113,7 +153,12 @@ export function mountWorkspace(
   let left = leftSize(layout, window.innerWidth) || SIZES.wide.left,
     right = SIZES[layout].right || SIZES.wide.right,
     height: number | null = storedHeight();
-  let leftClosed = layout === 'narrow' || layout === 'phone',
+  // LAY-005: wide and medium windows start from the sizes kept last time.
+  const kept = layout === 'wide' || layout === 'medium' ? storedPanels() : {};
+  if (kept.left !== undefined) left = kept.left;
+  if (kept.right !== undefined) right = kept.right;
+  let leftClosed =
+      kept.leftClosed ?? (layout === 'narrow' || layout === 'phone'),
     // V7 (spec 10.1): the right panel opens only from its rail.
     rightClosed = true,
     empty = true,
@@ -175,6 +220,26 @@ export function mountWorkspace(
       queued = false;
       resize();
     });
+  };
+  // Written only when a size or the left panel's state differs from what
+  // is kept (or, with nothing kept, from this window's defaults), so opening
+  // a panel the way it already is never touches storage.
+  const keep = () => {
+    if (layout !== 'wide' && layout !== 'medium') return;
+    const now = storedPanels();
+    const was = {
+      left:
+        now.left ?? (leftSize(layout, window.innerWidth) || SIZES.wide.left),
+      right: now.right ?? (SIZES[layout].right || SIZES.wide.right),
+      leftClosed: now.leftClosed ?? false,
+    };
+    if (
+      was.left === left &&
+      was.right === right &&
+      was.leftClosed === leftClosed
+    )
+      return;
+    storePanels({ left, right, leftClosed });
   };
   const paint = () => {
     const sizes = SIZES[layout];
@@ -258,6 +323,7 @@ export function mountWorkspace(
       if (side === 'left') rightClosed = true;
       else leftClosed = true;
     }
+    if (side === 'left') keep();
     paint();
   };
   const togglePanel = (event: MouseEvent) => {
@@ -302,6 +368,7 @@ export function mountWorkspace(
     const release = () => {
       const id = gesture?.id;
       if (gesture && axis === 'height') storeHeight(height);
+      else if (gesture) keep();
       gesture = null;
       shell.classList.remove('resizing');
       if (id !== undefined && handle.hasPointerCapture(id))
@@ -441,6 +508,7 @@ export function mountWorkspace(
         event.preventDefault();
         apply(['ArrowLeft', 'ArrowUp'].includes(event.key) ? -10 : 10);
         if (axis === 'height') storeHeight(height);
+        else keep();
       }
     };
     window.addEventListener('blur', cancel);

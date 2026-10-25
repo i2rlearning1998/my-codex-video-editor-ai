@@ -101,7 +101,7 @@ const timelineClip = (page: Page, layerId: string) =>
     `#timeline-foundation .timeline-clip[data-action="clip"][data-id="${layerId}"]`,
   );
 
-test('[FN3-004] a selected nested clip has Effects and Speed tabs: an effect applies to the whole nest, 2x halves its length; enter and leave still work', async ({
+test('[FN3-004][FX-009] a selected nested clip has Effects and Speed tabs: an effect applies to the whole nest, 2x halves its length; enter and leave still work', async ({
   page,
 }) => {
   await page.goto('/');

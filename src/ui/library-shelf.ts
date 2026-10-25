@@ -36,6 +36,8 @@ export interface ShelfItem {
   thumb(slot: HTMLElement): void;
   /** A short looping preview while hovered (one card at a time). */
   readonly preview?: (slot: HTMLElement) => () => void;
+  /** An extra control beside the card (FIX5: an audio Play / Stop button). */
+  readonly trailing?: () => HTMLElement | null;
   /** Wires a drag source or other behaviour onto the card button. */
   readonly decorate?: (card: HTMLButtonElement) => void;
 }
@@ -437,7 +439,10 @@ export function mountShelf(options: ShelfOptions): Shelf {
     name.textContent = item.name;
     button.prepend(thumb);
     button.append(name);
-    button.addEventListener('click', () => {
+    button.addEventListener('click', (event) => {
+      // AUDIT-EDITOR (MED-016): a double-click adds once, not twice (its
+      // second click has detail 2).
+      if (event.detail > 1) return;
       try {
         options.add(item.id);
       } catch (error) {
@@ -504,6 +509,8 @@ export function mountShelf(options: ShelfOptions): Shelf {
       }
     };
     wrap.append(button, more, plus);
+    const trailing = item.trailing?.();
+    if (trailing) wrap.append(trailing);
     return wrap;
   };
   const section = (key: string, items: readonly ShelfItem[]) => {

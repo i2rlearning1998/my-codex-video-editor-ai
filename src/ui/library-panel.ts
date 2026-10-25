@@ -2,13 +2,18 @@
 // graphics), Text and Transitions are browse panels (browse-panel.ts) over
 // Starter Pack 1, with drawn previews; a click or a drop adds the item
 // through the Command Bus.
+import { plannedReason } from './planned';
+import {
+  FIELDS,
+  FIELD_FORMATS,
+  fieldToken,
+  resolveFields,
+} from '../render/dynamic-text';
 import { drags } from './drag-controller';
 import {
   combinationsFor,
   DEFAULT_TEXT_ITEMS,
-  deleteMyTextStyle,
   FONT_COMBINATIONS,
-  myTextStyles,
   onMyTextStylesChange,
   type MyTextStyle,
 } from './text-styles';
@@ -300,8 +305,14 @@ export interface LibraryBrowsers {
   dispose(): void;
 }
 
-const later = (wave: number | string, id: string) =>
-  t('toolbar.later', { wave: String(wave), id });
+/** What a dynamic-field card shows as its example. */
+const SAMPLE_FIELDS = {
+  time: 12,
+  sceneNumber: 2,
+  sceneCount: 5,
+  now: new Date(2026, 11, 5, 14, 7, 9).getTime(),
+};
+const later = (wave: number | string, id: string) => plannedReason(wave, id);
 const TEMPLATE_RECENT = 'template';
 /** FINAL2 U2: live stock tiles: [tab, icon]. */
 const STOCK_TILES: [StockTab, string][] = [
@@ -339,6 +350,10 @@ export function mountLibraryPanels(
     close(): void;
     addPreset(preset: ShapePreset): void;
     addTextBox(): void;
+    /** TXT-035: the Auto captions dialog (Text › Captions). */
+    openAutoCaptions(): void;
+    /** TXT-037: a text box holding a dynamic field, such as {{date}}. */
+    addDynamicText(token: string): void;
     /** X4: code animation templates (My Templates > Code animations). */
     code?: {
       insert(template: CodeTemplate): void;
@@ -885,7 +900,7 @@ export function mountLibraryPanels(
             magic.className = 'button browse-secondary';
             magic.dataset.action = 'magic-write';
             magic.setAttribute('aria-disabled', 'true');
-            magic.title = later(10, 'AI-001');
+            magic.title = t('text.magicWriteNeedsAi');
             magic.textContent = t('text.magicWrite');
             host.append(add, magic);
           },
@@ -943,58 +958,28 @@ export function mountLibraryPanels(
                   ],
           }),
         },
-        // FINAL3 T5: the user's saved text styles.
-        {
-          id: 'my-text-styles',
-          title: t('text.myStyles'),
-          layout: 'list',
-          render: (host) => {
-            const styles = myTextStyles();
-            if (!styles.length) {
-              const empty = document.createElement('p');
-              empty.className = 'empty-state';
-              empty.textContent = t('text.myStylesEmpty');
-              host.append(empty);
-              return;
-            }
-            for (const style of styles) {
-              const row = document.createElement('div');
-              row.className = 'my-text-style';
-              const button = document.createElement('button');
-              button.type = 'button';
-              button.className = 'my-text-style-use';
-              button.dataset.styleId = style.id;
-              button.textContent = style.name;
-              const font = style.layer.properties.fontFamily;
-              if (font?.type === 'string')
-                button.style.fontFamily = `"${font.value}", sans-serif`;
-              button.onclick = () => options.insertTextStyle?.(style);
-              const remove = document.createElement('button');
-              remove.type = 'button';
-              remove.className = 'ghost sm';
-              remove.dataset.action = 'my-text-style-delete';
-              remove.setAttribute('aria-label', t('text.myStyleDelete'));
-              remove.title = t('text.myStyleDelete');
-              remove.textContent = '×';
-              remove.onclick = () => deleteMyTextStyle(style.id);
-              row.append(button, remove);
-              host.append(row);
-            }
-          },
-        },
+        // FIX5 C5: saved text lives in My Templates (canvas right-click, Save to
+        // My Templates) and in the Draw palette's Text choices.
         {
           id: 'dynamic',
           title: t('text.section.dynamic'),
           layout: 'list',
-          cards: () => [
-            {
-              id: 'dynamic-text',
-              label: t('text.dynamic'),
-              icon: 'text',
-              disabled: later(8, 'TXT-037'),
-              data: { action: 'dynamic-text' },
-            },
-          ],
+          cards: () =>
+            FIELDS.flatMap((field) =>
+              FIELD_FORMATS[field].map((format, index) => {
+                const token = fieldToken(field, index ? format : undefined);
+                return {
+                  id: `dynamic-${field}-${index}`,
+                  label: `${t(`text.dynamic.field.${field}`)}: ${resolveFields(
+                    fieldToken(field, format),
+                    SAMPLE_FIELDS,
+                  )}`,
+                  icon: 'text',
+                  data: { action: 'dynamic-text', token },
+                  activate: () => options.addDynamicText(token),
+                };
+              }),
+            ),
         },
         ...TEXT_SECTIONS.map((section): BrowseSection => ({
           id: section,
@@ -1013,8 +998,8 @@ export function mountLibraryPanels(
               id: 'captions',
               label: t('text.captions'),
               icon: 'captions',
-              disabled: later(8, 'TXT-035'),
               data: { action: 'captions' },
+              activate: () => options.openAutoCaptions(),
             },
           ],
         },

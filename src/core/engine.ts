@@ -34,6 +34,26 @@ export interface EngineOptions {
   capabilities?: CapabilityRegistry;
 }
 
+/** A rough size of a command list: its length plus the layers of any whole
+ *  scenes it creates. */
+function commandWeight(commands: readonly EditorCommand[]): number {
+  let weight = commands.length;
+  const count = (layers: unknown): number =>
+    Array.isArray(layers)
+      ? layers.reduce(
+          (sum: number, layer: { children?: unknown }) =>
+            sum + 1 + count(layer?.children),
+          0,
+        )
+      : 0;
+  for (const command of commands)
+    if (command?.type === 'CREATE_COMPOSITION')
+      weight += count(
+        (command as { composition?: { layers?: unknown } }).composition?.layers,
+      );
+  return weight;
+}
+
 /** The sole owner of canonical project state. All ordinary edits enter its command bus. */
 export class EditorEngine {
   #state: DeepReadonly<Project>;
@@ -67,6 +87,14 @@ export class EditorEngine {
   }
   get canRedo(): boolean {
     return this.#redo.length > 0;
+  }
+  /** AUDIT-EDITOR (APP-014): the label of the step Undo would revert. */
+  get undoLabel(): string | null {
+    return this.#undo.at(-1)?.metadata.label ?? null;
+  }
+  /** AUDIT-EDITOR (APP-014): the label of the step Redo would reapply. */
+  get redoLabel(): string | null {
+    return this.#redo.at(-1)?.metadata.label ?? null;
   }
   get history(): DeepReadonly<{
     undo: HistoryMetadata[];
@@ -129,7 +157,14 @@ export class EditorEngine {
         const commands = structuredClone(inputs);
         let draft = structuredClone(this.#state) as unknown as Project;
         const results: JsonValue[] = [];
+        // A small edit validates after every command; a big one (a built
+        // composition: thousands of commands) every 48, since validating the
+        // whole project per command took minutes (PHASE 0 E1). The final
+        // state is always validated below.
+        const every = commandWeight(commands) > 300 ? 48 : 1;
+        let index = 0;
         for (const raw of commands) {
+          index++;
           activeType = typeof raw?.type === 'string' ? raw.type : 'INVALID';
           this.#events.emit('command:before', {
             type: activeType,
@@ -144,7 +179,8 @@ export class EditorEngine {
             results.push(null);
           }
           // Validate each semantic boundary, not just the transaction's final state.
-          draft = validateProject(draft);
+          if (index % every === 0 || index === commands.length)
+            draft = validateProject(draft);
         }
         // T3: a lane never stays empty. A lane whose last clip left in this
         // edit (moved, replaced, deleted or cut) goes in the same undo step.

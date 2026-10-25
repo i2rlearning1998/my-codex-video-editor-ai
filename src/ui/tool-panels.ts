@@ -1,6 +1,7 @@
 // H3: the toolbar's deep panels in the left side panel (Canva): Font,
 // Effects, Edit image, Replace and Crop. Controls whose systems are not built
-// are shown disabled with "Planned: Wave N (ID)".
+// are shown disabled with what they need (the AI service or Phase 1).
+import { plannedReason } from './planned';
 import { buildFontPicker } from './font-picker';
 import { textEditorFor } from './text-editor';
 import type { Command, EditorEngine } from '../core';
@@ -36,7 +37,7 @@ const planned = (label: string, icon: string, id: string, wave: number) => {
   item.type = 'button';
   item.className = 'tool-panel-item';
   item.setAttribute('aria-disabled', 'true');
-  const reason = t('toolbar.later', { wave: String(wave), id });
+  const reason = plannedReason(wave, id);
   item.title = reason;
   item.setAttribute('aria-label', `${label}: ${reason}`);
   item.innerHTML = `${iconSvg(icon, 18)}<span></span>`;
@@ -58,6 +59,8 @@ export function mountToolPanels(
   session: EditorSession,
   crop: CropTool,
   report: (error: unknown) => void,
+  /** AUDIT-EDITOR: opens a right-panel section (Adjust colors, Filters). */
+  openRight?: (section: 'Adjust' | 'Filters') => void,
 ) {
   const selected = (): SceneLayer | null =>
     session.selectedIds.length === 1 && session.selectedId
@@ -70,6 +73,22 @@ export function mountToolPanels(
     } catch (error) {
       report(error);
     }
+  };
+  const openItem = (
+    label: string,
+    icon: string,
+    action: string,
+    target: 'Adjust' | 'Filters',
+  ) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'tool-panel-item';
+    item.dataset.action = action;
+    item.innerHTML = `${iconSvg(icon, 18)}<span></span>`;
+    item.querySelector('span')!.textContent = label;
+    item.disabled = !openRight;
+    item.onclick = () => openRight?.(target);
+    return item;
   };
   const font = () => {
     const layer = selected();
@@ -182,10 +201,13 @@ export function mountToolPanels(
         planned(t('toolbar.bgRemover'), 'magic', 'AI-007', 10),
         planned(t('toolbar.magicEraser'), 'eraser', 'AI-007', 10),
       ),
+      // AUDIT-EDITOR: Adjust colors and Filters are built in the right
+      // panel (CLR-001, FX-004); these open them instead of a stale
+      // "planned" state.
       section(
         t('panels.adjust'),
-        planned(t('panels.adjust'), 'adjust', 'CLR-001', 6),
-        planned(t('panels.filters'), 'effects', 'FX-004', 6),
+        openItem(t('panels.adjust'), 'adjust', 'edit-adjust', 'Adjust'),
+        openItem(t('panels.filters'), 'effects', 'edit-filters', 'Filters'),
       ),
     );
     return wrap;

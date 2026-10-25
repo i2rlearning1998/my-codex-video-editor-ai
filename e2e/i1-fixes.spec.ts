@@ -502,7 +502,7 @@ test('[HIS-007] [HIS-008] importing media and renaming the project are not undon
   expect((await hook(page)).project.metadata.name).toBe('Renamed project');
 });
 
-test('[MED-037] the media item menu renames (not undoable), moves to a folder, shows details and adds to the scene', async ({
+test('[MED-037][MED-010] the media item menu renames (not undoable), moves to a folder, shows details and adds to the scene', async ({
   page,
 }) => {
   await showCategory(page, 'Media');
@@ -560,7 +560,7 @@ test('[MED-037] the media item menu renames (not undoable), moves to a folder, s
   expect(layer.type).toBe('image');
 });
 
-test('[MED-036] deleting unused media can be restored for 8 s; media in use asks first and its clip shows Missing media', async ({
+test('[MED-036][MED-011][MED-020] deleting unused media can be restored for 8 s; media in use asks first and its clip shows Missing media', async ({
   page,
 }) => {
   await showCategory(page, 'Media');

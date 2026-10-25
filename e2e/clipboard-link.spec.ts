@@ -156,7 +156,7 @@ test('[TL-027] copy, cut and paste clips at the playhead onto the selected track
   expect(await trackIds()).toContain('video-2');
 });
 
-test('[TL-032] linked clips move, split, delete and copy together; unlink and detach audio', async ({
+test('[TL-032][AUD-004] linked clips move, split, delete and copy together; unlink and detach audio', async ({
   page,
 }, testInfo) => {
   // Link clip-a (Video 1) with clip-c (Video 2).

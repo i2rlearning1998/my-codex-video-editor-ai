@@ -5,7 +5,11 @@ import type { Command, EditorEngine } from '../core';
 import { formatNumber, t } from '../i18n';
 import { layerSize, locateLayer, type SceneLayer } from '../render/adapter';
 import { selectionBounds } from '../render/selection';
-import { transformPoint } from '../core';
+import {
+  rotateAroundCenter,
+  transformPoint,
+  type TransformValues,
+} from '../core';
 import { layerGeometry } from './geometry';
 import type { RenderSource } from '../render/adapter';
 import { isLocked } from '../render/transform-capabilities';
@@ -78,6 +82,41 @@ export function setLocked(
     );
   if (commands.length)
     engine.commands.transaction(locked ? 'Lock' : 'Unlock', commands);
+}
+
+/**
+ * AUDIT-EDITOR (CV-027): turns every selected element a quarter turn about
+ * its visual centre (one undo step); locked elements are left alone.
+ */
+export function rotateSelection90(
+  engine: EditorEngine,
+  session: EditorSession,
+  direction: -1 | 1,
+): void {
+  const compositionId = session.source.composition.id;
+  const commands = selectionRoots(session.source, session.selectedIds)
+    .filter((layer) => !isLocked(layer))
+    .flatMap((layer) => {
+      const bounds = selectionBounds(session.source, layer.id)?.bounds;
+      if (!bounds) return [];
+      const base = layer.transform as TransformValues;
+      const turned =
+        ((((base.rotation.value + direction * 90 + 180) % 360) + 360) % 360) -
+        180;
+      const next = Math.round(turned * 1e6) / 1e6;
+      return buildTransformCommands(
+        compositionId,
+        layer,
+        rotateAroundCenter(base, bounds, next === -180 ? 180 : next),
+        undefined,
+        session.currentTime,
+      );
+    });
+  if (commands.length)
+    engine.commands.transaction(
+      direction < 0 ? 'Rotate left' : 'Rotate right',
+      commands,
+    );
 }
 
 const single = (session: EditorSession): SceneLayer | null =>

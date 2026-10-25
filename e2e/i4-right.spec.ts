@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, background and frame rate (U5)', async ({
+test('[LAY-041][PRJ-008][INS-014] nothing selected: no Canvas panel; the canvas bar holds size, background and frame rate (U5)', async ({
   page,
 }) => {
   // T-ALL (D-183): nothing selected shows no right panel at all.
@@ -117,7 +117,7 @@ test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and
   await expect(panel(page).locator('#right-shadow-blur')).toBeDisabled();
   await expect(
     panel(page).locator('.right-row-planned').first(),
-  ).toHaveAttribute('title', 'Planned: Wave 6 (FX-001)');
+  ).toHaveAttribute('title', 'Planned for Phase 1');
 });
 
 test('[LAY-043] text: font, size, B I U S, case, align, colour and spacing in the Text tab, one step each', async ({

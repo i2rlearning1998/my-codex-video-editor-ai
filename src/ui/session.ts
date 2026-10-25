@@ -74,6 +74,14 @@ export class EditorSession {
   #canvasSelected = true;
   /** H3: the picture layer being cropped on the canvas, if any. Transient. */
   #cropLayer: string | null = null;
+  /** CV-014/015: the editor's grid and safe-area lines (never saved). */
+  #viewGuides: { grid: boolean; safe: boolean } = { grid: false, safe: false };
+  /** AUDIT-EDITOR (TL-029): timeline snapping, on by default (transient). */
+  #timelineSnap = true;
+  /** AUDIT-EDITOR (PB-006): playback loops (transient, never saved). */
+  #loop = false;
+  /** AUDIT-EDITOR (PRJ-007): a new canvas size scales the content to fit. */
+  #scaleContent = false;
   #canvasZoom = 1;
   /** G3: the canvas pan in CSS pixels (transient, never saved). */
   #canvasPan: readonly [number, number] = [0, 0];
@@ -247,6 +255,16 @@ export class EditorSession {
         (item) => item.id === this.#compositionId,
       )!.backgroundColor,
       ...(this.#editingText ? { editingTextId: this.#editingText } : {}),
+      ...(this.#viewGuides.grid || this.#viewGuides.safe
+        ? { viewGuides: this.#viewGuides }
+        : {}),
+      dynamic: {
+        sceneNumber:
+          project.compositions.findIndex(
+            (item) => item.id === this.#compositionId,
+          ) + 1,
+        sceneCount: project.compositions.length,
+      },
     };
   }
   get drawBrush(): DrawMode | null {
@@ -309,6 +327,37 @@ export class EditorSession {
   setAlignToCanvas(value: boolean): void {
     if (value === this.#alignToCanvas) return;
     this.#alignToCanvas = value;
+    this.#notify();
+  }
+  get viewGuides(): Readonly<{ grid: boolean; safe: boolean }> {
+    return this.#viewGuides;
+  }
+  setViewGuides(next: Partial<{ grid: boolean; safe: boolean }>): void {
+    this.#viewGuides = Object.freeze({ ...this.#viewGuides, ...next });
+    this.#notify();
+  }
+  get timelineSnap(): boolean {
+    return this.#timelineSnap;
+  }
+  setTimelineSnap(value: boolean): void {
+    if (this.#timelineSnap === value) return;
+    this.#timelineSnap = value;
+    this.#notify();
+  }
+  get scaleContent(): boolean {
+    return this.#scaleContent;
+  }
+  setScaleContent(value: boolean): void {
+    if (this.#scaleContent === value) return;
+    this.#scaleContent = value;
+    this.#notify();
+  }
+  get loop(): boolean {
+    return this.#loop;
+  }
+  setLoop(value: boolean): void {
+    if (this.#loop === value) return;
+    this.#loop = value;
     this.#notify();
   }
   get soloTrackIds(): readonly string[] {

@@ -32,7 +32,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[LAY-048] the Player bar is the top edge of the timeline and its resize grip; the height is clamped and remembered', async ({
+test('[LAY-048][LAY-009] the Player bar is the top edge of the timeline and its resize grip; the height is clamped and remembered', async ({
   page,
 }, testInfo) => {
   // No "Timeline" title row: the bar starts at the timeline's top.
