@@ -6596,8 +6596,16 @@ input[type='range'] {
     max-inline-size: 140px;
   }
 }
-@media (max-width: 1100px) {
+/* (The Loop and Snapping toggles, D-322, need the room below 1440 px.) */
+@media (max-width: 1439px) {
   .timeline-controls .transport-clip-tools button span {
+    display: none;
+  }
+}
+/* Below 1100 px Loop and Snapping are in View (D-322). */
+@media (max-width: 1100px) {
+  .timeline-controls
+    :is([data-action='loop-toggle'], [data-action='snap-toggle']) {
     display: none;
   }
 }

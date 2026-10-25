@@ -242,15 +242,30 @@ test('[FX-004][FX-015][CLR-001][MSK-001] filters, effects and colour adjustments
   await expect
     .poll(async () => (await fxOf(page, first))?.stack[0]?.id)
     .toBe('effect.pixelation');
+  // (D-320: projects are saved in IndexedDB, one record each.)
   await expect
     .poll(() =>
-      page.evaluate(() =>
-        Object.keys(localStorage).some(
-          (key) =>
-            !key.endsWith(':backup') &&
-            !key.endsWith(':recovery') &&
-            (localStorage.getItem(key) ?? '').includes('effect.pixelation'),
-        ),
+      page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const open = indexedDB.open('aive-projects', 1);
+            open.onerror = () => resolve(false);
+            open.onsuccess = () => {
+              const read = open.result
+                .transaction('projects')
+                .objectStore('projects')
+                .getAll();
+              read.onerror = () => resolve(false);
+              read.onsuccess = () => {
+                open.result.close();
+                resolve(
+                  (read.result as { primary: string }[]).some((record) =>
+                    record.primary.includes('effect.pixelation'),
+                  ),
+                );
+              };
+            };
+          }),
       ),
     )
     .toBe(true);

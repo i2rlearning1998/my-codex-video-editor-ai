@@ -139,6 +139,9 @@ export function allowError(
 }
 export { expect };
 export async function hook(page: Page) {
+  // The editor boots after its project library opens (PRJ-015), so the
+  // read-only hook can appear a moment after the page loads.
+  await page.waitForFunction(() => '__AIVE__' in window);
   return page.evaluate(() => {
     const api = (window as unknown as { __AIVE__: HookSnapshot }).__AIVE__;
     return {

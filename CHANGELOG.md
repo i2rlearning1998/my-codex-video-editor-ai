@@ -1,5 +1,13 @@
 # Changelog
 
+## AUDIT-EDITOR, EDITOR-COMPLETE and Phase 1 (25 Oct)
+
+- Every unfinished ledger row was checked in the browser: 115 work (now proven by tests), 90 partly, 70 not built, 52 wait for later (animation, pro features, AI). Stale "planned" controls (scene Transition, Edit image Adjust colors and Filters, full-screen tooltip) now work.
+- Projects: File › Projects lists every project kept in this browser (open, rename, duplicate, delete); a crash or reload never loses work; the tab title shows unsaved changes; Undo and Redo name their step.
+- Timeline: m:ss ruler with frame ticks, ripple delete (Shift+Delete), Alt-drag copy, split everything under the playhead, marker rename, jump, list and clear, Snapping and Loop toggles.
+- Canvas: Fit, Fill and Stretch for pictures and videos, rotate 90°, scale content to a new canvas size, Select all, tool keys V, T, R and E, arrow keys step frames with nothing selected.
+- Cloud (Phase 1, needs a Supabase server): Log in or create an account in the top bar, Save to cloud, Open from cloud on another computer with its media, rename and delete cloud projects. Local saving works as before without it.
+
 ## PHASE 0 close (24 Oct)
 
 - Build video, the AI importer and card drops show a real loader with Cancel and never freeze the page; faster blur; effect timings measured at 1920 × 1080.

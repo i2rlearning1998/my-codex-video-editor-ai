@@ -221,9 +221,25 @@ export function mountWorkspace(
       resize();
     });
   };
+  // Written only when a size or the left panel's state differs from what
+  // is kept (or, with nothing kept, from this window's defaults), so opening
+  // a panel the way it already is never touches storage.
   const keep = () => {
-    if (layout === 'wide' || layout === 'medium')
-      storePanels({ left, right, leftClosed });
+    if (layout !== 'wide' && layout !== 'medium') return;
+    const now = storedPanels();
+    const was = {
+      left:
+        now.left ?? (leftSize(layout, window.innerWidth) || SIZES.wide.left),
+      right: now.right ?? (SIZES[layout].right || SIZES.wide.right),
+      leftClosed: now.leftClosed ?? false,
+    };
+    if (
+      was.left === left &&
+      was.right === right &&
+      was.leftClosed === leftClosed
+    )
+      return;
+    storePanels({ left, right, leftClosed });
   };
   const paint = () => {
     const sizes = SIZES[layout];

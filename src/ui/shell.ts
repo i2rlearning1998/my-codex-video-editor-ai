@@ -469,6 +469,7 @@ export function mountEditorShell(
           <button type="button" role="menuitemcheckbox" data-view="grid" aria-checked="false">${iconSvg('templates')}${t('guides.grid')}</button>
           <button type="button" role="menuitemcheckbox" data-view="safe" aria-checked="false">${iconSvg('crop')}${t('guides.safe')}</button>
           <button type="button" role="menuitemcheckbox" data-view="snap" aria-checked="true">${iconSvg('magnet')}${t('menu.viewSnap')}</button>
+          <button type="button" role="menuitemcheckbox" data-view="loop" aria-checked="false">${iconSvg('loop')}${t('menu.viewLoop')}</button>
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
           <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
           <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
@@ -5835,6 +5836,7 @@ export function mountEditorShell(
       grid: session.viewGuides.grid,
       safe: session.viewGuides.safe,
       snap: session.timelineSnap,
+      loop: session.loop,
     };
     for (const button of appMenu.querySelectorAll<HTMLButtonElement>(
       '[data-view]',
@@ -5868,6 +5870,7 @@ export function mountEditorShell(
           session.setViewGuides({ safe: !session.viewGuides.safe });
         else if (view === 'snap')
           session.setTimelineSnap(!session.timelineSnap);
+        else if (view === 'loop') session.setLoop(!session.loop);
       }),
     );
   // AUDIT-EDITOR (APP-002): Escape closes the menu (the shortcut dispatcher
