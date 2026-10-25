@@ -876,8 +876,9 @@ Offline frame-accurate render, never realtime capture.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| QA-001 | P1 | W9 | Todo | Preflight before export: missing media or fonts, text overflow, clips outside the canvas, empty tracks, low-resolution upscaling, audio clipping, safe zones |
-| QA-002 | P1 | W9 | Todo | Warnings panel lists issues and jumps to the affected item |
+| QA-001 | P1 | W9 | Verified | The export dialog checks before export and warns about: a scene without clips, an empty lane, a layer completely outside the picture, a picture or video enlarged more than 1.5 times and text closer than 5 % to the edge (missing media already blocks the export, EXP-008) |
+| QA-002 | P1 | W9 | Verified | The warnings list in the export dialog has a Show button that opens the scene and selects the layer |
+| QA-003 | P1 | W9 | Todo | Preflight also checks missing fonts, text overflow and audio clipping |
 
 ## CODE: Code animations (X-series, CODE-TIERS-SPEC)
 

@@ -2546,6 +2546,31 @@ input[type='number'],
   color: var(--danger-text);
   font-size: var(--font-size-sm);
 }
+.export-preflight {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised, var(--color-surface));
+  font-size: var(--font-size-sm);
+}
+.export-preflight p,
+.export-preflight ul {
+  margin: 0;
+}
+.export-preflight ul {
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+.export-preflight li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--warning-text);
+}
 .export-missing[hidden],
 .export-progress[hidden] {
   display: none;

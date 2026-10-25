@@ -3241,6 +3241,11 @@ export function mountEditorShell(
       store: mediaStore,
       decoder,
       renderFrame,
+      // QA-002: the issue's scene opens and its layer is selected.
+      onJump: (sceneId, layerId) => {
+        session.selectComposition(sceneId);
+        if (layerId) session.select(layerId);
+      },
       // I2: Designs in Project Media (a library change, not an undo step).
       saveFrame: (blob, name) =>
         mediaPanel

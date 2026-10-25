@@ -26,6 +26,7 @@ import { formatDuration, formatNumber, t } from '../i18n';
 import { openModal } from './components/modal';
 import { joinScenes } from '../export/join';
 import { sceneCuts } from '../core';
+import { preflight } from '../export/preflight';
 
 export interface ExportDialogOptions {
   composition: DeepReadonly<Composition>;
@@ -43,6 +44,8 @@ export interface ExportDialogOptions {
   /** I2: keeps the frame in Project Media as a Design. */
   saveFrame?(blob: Blob, name: string): Promise<void>;
   toast(text: string, kind: 'info' | 'success' | 'error'): void;
+  /** QA-002: opens the scene and selects the layer an issue names. */
+  onJump?(sceneId: string, layerId: string | undefined): void;
   /** X1: bakes code animations at Full quality first. */
   prepareCode?(
     composition: DeepReadonly<Composition>,
@@ -132,6 +135,7 @@ export function openExportDialog(options: ExportDialogOptions) {
           </details>
           <p class="export-format" id="export-format" role="status"></p>
           <div class="export-missing" id="export-missing" role="alert" hidden></div>
+          <section class="export-preflight" id="export-preflight" aria-label="${t('export.preflight.title')}"></section>
           <div class="export-progress" id="export-progress" hidden>
             <progress id="export-bar" max="100" value="0"></progress>
             <span id="export-status" role="status"></span>
@@ -440,6 +444,41 @@ export function openExportDialog(options: ExportDialogOptions) {
         () => options.toast(t('export.savedToMedia'), 'success'),
         (error: unknown) => options.toast(String(error), 'error'),
       );
+  // QA-001 / QA-002: warnings that do not block the export.
+  const box = find('export-preflight');
+  const issues = preflight(scenes, options.assets);
+  box.innerHTML = `<strong>${t('export.preflight.title')}</strong>`;
+  if (!issues.length) {
+    const none = document.createElement('p');
+    none.dataset.preflight = 'none';
+    none.textContent = t('export.preflight.none');
+    box.append(none);
+  }
+  const list = document.createElement('ul');
+  for (const issue of issues) {
+    const item = document.createElement('li');
+    item.dataset.preflight = issue.code;
+    const text = document.createElement('span');
+    text.textContent = t(`export.preflight.${issue.code}`, {
+      scene: issue.sceneName,
+      name: issue.layerName ?? '',
+      value: issue.value ?? 0,
+    });
+    item.append(text);
+    if (options.onJump && issue.code !== 'empty-track') {
+      const show = document.createElement('button');
+      show.type = 'button';
+      show.className = 'button';
+      show.textContent = t('export.preflight.show');
+      show.addEventListener('click', () => {
+        modal.close();
+        options.onJump?.(issue.sceneId, issue.layerId);
+      });
+      item.append(show);
+    }
+    list.append(item);
+  }
+  if (issues.length) box.append(list);
   show();
   describeFormat();
   void checkMissing();

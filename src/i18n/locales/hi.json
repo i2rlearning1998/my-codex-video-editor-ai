@@ -2678,5 +2678,13 @@
   "strip.openPlanReview": "वीडियो योजना की समीक्षा खोलें",
   "planned.ai": "AI सेवा चाहिए (योजना में)",
   "planned.account": "आपका खाता चाहिए (योजना में)",
-  "planned.later": "फ़ेज़ 1 के लिए योजना में"
+  "planned.later": "फ़ेज़ 1 के लिए योजना में",
+  "export.preflight.title": "एक्सपोर्ट से पहले जाँच",
+  "export.preflight.none": "कोई समस्या नहीं मिली।",
+  "export.preflight.show": "दिखाएँ",
+  "export.preflight.empty-scene": "{scene} में कोई क्लिप नहीं है।",
+  "export.preflight.empty-track": "{scene}: लेन {name} खाली है।",
+  "export.preflight.outside-canvas": "{scene}: {name} पूरी तरह तस्वीर के बाहर है।",
+  "export.preflight.low-resolution": "{scene}: {name} को {value} गुना बड़ा किया गया है, इसलिए धुंधला दिख सकता है।",
+  "export.preflight.outside-safe-area": "{scene}: {name} किनारे के पास है और कुछ स्क्रीन पर कट सकता है।"
 }

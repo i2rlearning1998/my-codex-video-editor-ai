@@ -2678,5 +2678,13 @@
   "strip.openPlanReview": "Open video plan review",
   "planned.ai": "Needs the AI service (planned)",
   "planned.account": "Needs your account (planned)",
-  "planned.later": "Planned for Phase 1"
+  "planned.later": "Planned for Phase 1",
+  "export.preflight.title": "Check before export",
+  "export.preflight.none": "No problems found.",
+  "export.preflight.show": "Show",
+  "export.preflight.empty-scene": "{scene} has no clips.",
+  "export.preflight.empty-track": "{scene}: lane {name} is empty.",
+  "export.preflight.outside-canvas": "{scene}: {name} is completely outside the picture.",
+  "export.preflight.low-resolution": "{scene}: {name} is enlarged {value} times, so it may look soft.",
+  "export.preflight.outside-safe-area": "{scene}: {name} is close to the edge and may be cut on some screens."
 }
