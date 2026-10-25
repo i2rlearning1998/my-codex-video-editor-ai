@@ -17,6 +17,8 @@ import type { ProjectsApi } from './ui/projects-dialog';
 import { showToast } from './ui/components/toast';
 import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
+import { mountCloud } from './ui/cloud-ui';
+import { openMediaStore } from './media/store';
 import { confirmDialog } from './ui/components/modal';
 import { getLanguage, t } from './i18n';
 import { initTheme } from './ui/theme';
@@ -297,10 +299,12 @@ async function boot() {
       }
     : undefined;
 
+  const mediaStore = openMediaStore();
   shell = mountEditorShell(
     document.querySelector<HTMLDivElement>('#app')!,
     engine,
     {
+      mediaStore,
       ...(library
         ? {
             save: () => {
@@ -368,6 +372,22 @@ async function boot() {
     },
   );
   shell.message(initialMessage);
+  // Phase 1 (APP-020): the account slot and cloud save, beside Export.
+  const cloudSlot = document.createElement('div');
+  cloudSlot.className = 'account-slot';
+  document.querySelector('#export')?.before(cloudSlot);
+  const removeCloud = mountCloud(cloudSlot, {
+    engine,
+    mediaStore,
+    localId: () => currentId,
+    poster: () => shell.projectPoster(),
+    openProject: async (project) => {
+      await writeNow();
+      engine.load(openable(project).project);
+      await writeNow();
+      return currentId;
+    },
+  });
   shell.setSaveStatus(
     library || store ? 'saved' : 'error',
     library || store ? undefined : t('status.localUnavailable'),
@@ -473,6 +493,7 @@ async function boot() {
       disposed = true;
       removeTestHook?.();
       removeDebugReport();
+      removeCloud();
       diagnostics.dispose();
       flush();
       autosave?.dispose();

@@ -83,7 +83,7 @@ Top bar and main menu. Target look: hamburger, brand, project name, save status,
 | APP-017 | P1 | W1 | Verified | Browser tab title reflects project name and unsaved state |
 | APP-018 | P1 | W1 | Verified | Closing the tab while an autosave is pending shows a warning |
 | APP-019 | P1 | W1 | Todo | Opening the same project in two tabs shows a warning and prevents silent overwrite |
-| APP-020 | P2 | W1 | Todo | Account and avatar slot exists in the top bar but is inert until accounts are built |
+| APP-020 | P2 | W1 | Verified | Account slot in the top bar: Log in or sign up (email and password), the email when logged in, Save to cloud, Open from cloud (rename, delete), Log out; local work never depends on it (Phase 1, D-326) |
 
 ## LAY: Layout, panels and shared UI components (Wave 1)
 

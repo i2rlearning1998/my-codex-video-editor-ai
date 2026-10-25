@@ -11726,3 +11726,93 @@ body:has(.modal-backdrop) .toast-stack {
   padding: var(--space-2) 0;
   font-size: var(--font-size-sm);
 }
+
+/* Phase 1 (APP-020): the account slot and cloud dialogs. */
+.account-slot {
+  display: inline-flex;
+  align-items: center;
+}
+.account-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--hit-min);
+  max-inline-size: 220px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: var(--text);
+}
+.account-button .account-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-menu {
+  z-index: var(--z-popover, 60);
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 220px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 12px);
+  background: var(--color-bg-raised);
+  box-shadow: var(--shadow-lg);
+}
+.account-menu[hidden] {
+  display: none;
+}
+.account-menu button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding-inline: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+}
+.account-menu button:hover,
+.account-menu button:focus-visible {
+  background: var(--raised-hover);
+}
+.account-menu-email {
+  padding: var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+}
+.cloud-login .field-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-block-end: var(--space-3);
+}
+.cloud-error {
+  color: var(--danger-text);
+}
+.cloud-project-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cloud-project {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cloud-project-time {
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+}
+@media (max-width: 1023px) {
+  .account-button .account-label {
+    display: none;
+  }
+}

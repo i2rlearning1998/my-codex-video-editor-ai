@@ -62,6 +62,7 @@ const PATHS: Record<string, string> = {
   split: 'M10 3v4 M10 13v4 M5 9a5 5 0 0110 0v2a5 5 0 01-10 0z',
   duplicate: 'M5 5h9v9H5z M8 8h9v9H8z',
   delete: 'M5 6h10 M8 6V4h4v2 M6 6l1 11h6l1-11',
+  user: 'M10 10a3.5 3.5 0 100-7 3.5 3.5 0 000 7z M3.5 17a6.5 6.5 0 0113 0',
   marker: 'M10 3l4 4v10H6V7z',
   close: 'M5 5l10 10 M15 5L5 15',
   chevronDown: 'M5 8l5 5 5-5',
