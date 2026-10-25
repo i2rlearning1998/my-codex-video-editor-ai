@@ -289,7 +289,7 @@ test('[FX5-004] Draw palette: a chosen shape, line, note colour, text style and 
 });
 
 // C5: the Text panel has no My text styles section; Magic write explains itself.
-test('[FX5-005] Text panel: no My text styles section; Magic write says it needs the AI service; Dynamic text stays disabled', async ({
+test('[FX5-005] Text panel: no My text styles section; Magic write says it needs the AI service; Dynamic text cards are enabled', async ({
   page,
 }) => {
   await page.goto('/');
@@ -303,10 +303,10 @@ test('[FX5-005] Text panel: no My text styles section; Magic write says it needs
     'title',
     'Needs the AI service (planned)',
   );
-  await expect(host.locator('[data-action="dynamic-text"]')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  // Dynamic text is live since Phase 0 (TXT-037, D-313): its field cards work.
+  await expect(
+    host.locator('[data-action="dynamic-text"]').first(),
+  ).not.toHaveAttribute('aria-disabled', 'true');
 });
 
 // C6: Review video plan is readable, and AI > Video plans reopens it.
