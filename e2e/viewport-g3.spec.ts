@@ -291,7 +291,7 @@ test('[CV-047] a layer moved outside the artboard shows faintly and stays select
   await expect.poll(() => selectedIds(page)).toEqual(['example-badge']);
 });
 
-test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: background, scene length and a disabled Animate', async ({
+test('[CV-048][PRJ-006][INS-014] with nothing selected the toolbar is the scene bar: background, scene length and a disabled Animate', async ({
   page,
   openFixtureProject,
 }) => {

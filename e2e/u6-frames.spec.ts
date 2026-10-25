@@ -60,7 +60,7 @@ test('[TL-087] the frame row steps, types and shows the current frame at the sce
   expect((await hook(page)).history.labels).toEqual([]);
 });
 
-test('[PB-016] Manual mode: Start and End set the playback and export range; play runs from Start and stops at End; the ruler and lanes dim outside; Start < End; Auto removes it; undoable', async ({
+test('[PB-016][TL-038] Manual mode: Start and End set the playback and export range; play runs from Start and stops at End; the ruler and lanes dim outside; Start < End; Auto removes it; undoable', async ({
   page,
 }) => {
   // V7 (spec 10.2, 11.1): entering Manual sets Start 0 and End the project

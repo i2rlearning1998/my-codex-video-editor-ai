@@ -119,7 +119,7 @@ test('[FX4-004] AI composition card: Not built, then Built with scene count and 
   await page.screenshot({ path: 'reports/fix4/a10-kit.png' });
 });
 
-test('[FX4-008] Settings › Offline › Model source saves an https address, refuses others and resets', async ({
+test('[FX4-008][FX4-006] Settings › Offline › Model source saves an https address, refuses others and resets', async ({
   page,
 }) => {
   await page.goto('/');

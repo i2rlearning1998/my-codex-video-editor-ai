@@ -18,7 +18,7 @@ const assets = async (page: Page) =>
     metadata: Record<string, unknown>;
   }[];
 
-test('[F2-003] Photos: search, add to the scene with its credit in Media, Pexels attribution, drag to the timeline; Charts and Frames stay disabled', async ({
+test('[F2-003][MED-028][MED-030][MED-031] Photos: search, add to the scene with its credit in Media, Pexels attribution, drag to the timeline; Charts and Frames stay disabled', async ({
   page,
 }) => {
   const mock = await mockStock(page);
@@ -93,7 +93,7 @@ test('[F2-003] Photos: search, add to the scene with its credit in Media, Pexels
     .toBe(layers + 1);
 });
 
-test('[F2-004] Stock states: no key shows a card that opens Settings; a rate limit says when to try again; a blocked download never crashes', async ({
+test('[F2-004][MED-031] Stock states: no key shows a card that opens Settings; a rate limit says when to try again; a blocked download never crashes', async ({
   page,
 }) => {
   const mock = await mockStock(page);

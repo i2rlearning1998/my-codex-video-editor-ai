@@ -200,7 +200,7 @@ test('[AUD-020][AUD-003] Fade: an audio clip fades its sound 0 to 5 s; a video F
   ).toBe(false);
 });
 
-test('[AUD-021] the left Audio category is a sound pack: 12 sounds with length, Play / Stop preview (no hover play), search, stock music in its own tab; a click adds a real audio clip at the playhead on a new audio lane', async ({
+test('[AUD-021][AUD-013] the left Audio category is a sound pack: 12 sounds with length, Play / Stop preview (no hover play), search, stock music in its own tab; a click adds a real audio clip at the playhead on a new audio lane', async ({
   page,
 }) => {
   await page.goto('/');

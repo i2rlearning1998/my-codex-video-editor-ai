@@ -47,7 +47,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt ones are disabled and name their wave', async ({
+test('[LAY-035][LAY-007][INS-001] the right rail lists the tabs that fit the selection; unbuilt ones are disabled and name their wave', async ({
   page,
   openFixtureProject,
 }) => {
@@ -116,7 +116,7 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   await expect(page.locator('#right-panel-empty')).toBeHidden();
 });
 
-test('[LAY-036] the Inspector stacks Position and size, Timing and Details, folded under the first tab; a header opens its section, the chevron folds it', async ({
+test('[LAY-036][INS-015] the Inspector stacks Position and size, Timing and Details, folded under the first tab; a header opens its section, the chevron folds it', async ({
   page,
 }) => {
   await select(page, 'example-headline');

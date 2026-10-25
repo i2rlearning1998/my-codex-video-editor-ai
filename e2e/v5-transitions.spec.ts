@@ -90,7 +90,7 @@ const marker = (page: Page, clipId: string) =>
 const band = (page: Page, clipId: string) =>
   page.locator(`#timeline-foundation .transition-band[data-id="${clipId}"]`);
 
-test('[TR-013] a "+" on the cut adds Fade through black; the marker and its band; the right panel swaps it, sets its duration and None removes it; Delete and the menu remove it; one step each', async ({
+test('[TR-013][TL-051][TR-002][TR-005] a "+" on the cut adds Fade through black; the marker and its band; the right panel swaps it, sets its duration and None removes it; Delete and the menu remove it; one step each', async ({
   page,
 }) => {
   const { first, second, clip } = await twoPictures(page);
@@ -206,7 +206,7 @@ test('[TR-014] the canvas and the exported frame show the transition at its midp
   expect(spread(await preview(page))).toBeGreaterThan(5);
 });
 
-test('[TR-016] sweep: every transition changes the canvas and the exported frame inside its window and neither is blank; contact sheet', async ({
+test('[TR-016][TR-007] sweep: every transition changes the canvas and the exported frame inside its window and neither is blank; contact sheet', async ({
   page,
 }, testInfo) => {
   test.setTimeout(480_000);

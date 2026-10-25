@@ -56,7 +56,7 @@ test.beforeEach(async ({ page }) => {
   await expect.poll(() => page.evaluate(() => '__AIVE__' in window)).toBe(true);
 });
 
-test('[FN3-026] text format tools: aA cycles UPPER, lower and Title; superscript; kerning, ligatures and Change all; a gradient of up to 10 colours; the format painter copies a whole text format', async ({
+test('[FN3-026][TXT-013] text format tools: aA cycles UPPER, lower and Title; superscript; kerning, ligatures and Change all; a gradient of up to 10 colours; the format painter copies a whole text format', async ({
   page,
 }) => {
   const first = await addHeading(page);
@@ -150,7 +150,7 @@ test('[FN3-026] text format tools: aA cycles UPPER, lower and Title; superscript
   );
 });
 
-test('[FN3-027] every text effect has its settings and Remove effect, and draws differently from plain text', async ({
+test('[FN3-027][TXT-019][TXT-020] every text effect has its settings and Remove effect, and draws differently from plain text', async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -374,7 +374,7 @@ const boxCentre = async (page: Page) => {
   };
 };
 
-test('[FN3-030] spellcheck is a setting; inside the editor Ctrl+Z undoes one typing burst and Ctrl+A, Ctrl+I style the text; a camera can be renamed; the typewriter shows in the export', async ({
+test('[FN3-030][TXT-034] spellcheck is a setting; inside the editor Ctrl+Z undoes one typing burst and Ctrl+A, Ctrl+I style the text; a camera can be renamed; the typewriter shows in the export', async ({
   page,
 }, testInfo) => {
   test.setTimeout(150_000);

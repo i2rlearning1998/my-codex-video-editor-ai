@@ -128,7 +128,7 @@ test('[LAY-052] light: no visible text under 12.5 px, no control icon under 20 p
   page,
 }, testInfo) => caseLAY052('light', { page }, testInfo));
 
-test('[LAY-053] the placeholder wordmark shows in the top bar, the loading screen, the empty canvas and the export dialog', async ({
+test('[LAY-053][APP-001] the placeholder wordmark shows in the top bar, the loading screen, the empty canvas and the export dialog', async ({
   page,
 }) => {
   // Loading screen: hold the app's script so the page stays on it.
@@ -292,7 +292,7 @@ async function caseLAY054(
   await page.mouse.up();
   expect(marqueeContrast).toBeGreaterThanOrEqual(3);
 }
-test('[LAY-054] dark: hover, selected, marquee, the gap trash button and the transition + and chip stay readable', async ({
+test('[LAY-054][ACC-003] dark: hover, selected, marquee, the gap trash button and the transition + and chip stay readable', async ({
   page,
   openFixtureProject,
 }, testInfo) => caseLAY054('dark', { page, openFixtureProject }, testInfo));

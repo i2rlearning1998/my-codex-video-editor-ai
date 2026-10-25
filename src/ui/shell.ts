@@ -1301,6 +1301,11 @@ export function mountEditorShell(
     session,
     cropTool,
     reportError,
+    (section) =>
+      safely(() => {
+        setRightSection(section);
+        workspace?.setOpen('right', true);
+      }),
   );
   // H3, J1: a new canvas size for the open scene, with Undo in the toast.
   const resizeCanvas = (width: number, height: number) => {
@@ -3287,7 +3292,13 @@ export function mountEditorShell(
     try {
       await actions.importProject?.(file);
     } catch (error) {
-      message(t('status.openFailed', { error: String(error) }));
+      // AUDIT-EDITOR (APP-004): the status line is a hidden live region, so
+      // a refused file is also shown as an error toast.
+      const text = t('status.openFailed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      message(text);
+      showToast(text, 'error');
     } finally {
       input.value = '';
     }

@@ -130,7 +130,7 @@ test('[TXT-003] double-click edits a text layer on the canvas with a caret; typi
   expect(await textOf(page, id)).toBe('Replaced');
 });
 
-test('[TXT-023] bold, italic, colour and size apply to the selected characters only; the toolbar mirrors the selection; undo inside the session', async ({
+test('[TXT-023][TXT-012] bold, italic, colour and size apply to the selected characters only; the toolbar mirrors the selection; undo inside the session', async ({
   page,
 }) => {
   const id = 'example-subtitle';

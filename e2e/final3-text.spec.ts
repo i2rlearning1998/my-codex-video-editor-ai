@@ -112,7 +112,7 @@ test('[FN3-005] a new heading is about 8 % of the canvas tall, one line tall, an
   await page.screenshot({ path: 'reports/final3/b-text-one-line.png' });
 });
 
-test('[FN3-005] dragging a side handle makes the box fixed width: the text wraps and the height grows; double-clicking the handle goes back to auto width', async ({
+test('[FN3-005][TXT-018] dragging a side handle makes the box fixed width: the text wraps and the height grows; double-clicking the handle goes back to auto width', async ({
   page,
 }) => {
   await addHeading(page);
@@ -261,7 +261,7 @@ test('[FN3-006] a list on one line gives one bullet; on three paragraphs three; 
   await page.screenshot({ path: 'reports/final3/b-text-list.png' });
 });
 
-test('[FN3-011] the Text tab: search, the three default styles (click and drag), 24 font combinations in English and Hindi, My text styles', async ({
+test('[FN3-011][TXT-022] the Text tab: search, the three default styles (click and drag), 24 font combinations in English and Hindi, My text styles', async ({
   page,
 }) => {
   await showCategory(page, 'Text');
@@ -337,7 +337,7 @@ test('[FN3-011] the Text tab: search, the three default styles (click and drag),
   await page.screenshot({ path: 'reports/final3/b-text-tab.png' });
 });
 
-test('[FN3-008] a text effect draws the same in the preview and the export; Curve bends the text', async ({
+test('[FN3-008][TXT-031] a text effect draws the same in the preview and the export; Curve bends the text', async ({
   page,
 }, testInfo) => {
   test.setTimeout(120_000);
@@ -407,7 +407,7 @@ test('[FN3-008] the typewriter shows part of the text half way through its In', 
   expect(half).toBeLessThan(full);
 });
 
-test('[FN3-012] an uploaded font (.woff2) is listed under Uploaded fonts and used by the text', async ({
+test('[FN3-012][TXT-009][TXT-030] an uploaded font (.woff2) is listed under Uploaded fonts and used by the text', async ({
   page,
 }) => {
   await addHeading(page);

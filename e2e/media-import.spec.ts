@@ -133,7 +133,7 @@ test('[MED-001][MED-007][MED-018] Import button adds video, audio and image card
   await waitThumbnail(page, PNG);
 });
 
-test('[MED-002] dropping files from the OS imports them and opens Project Media', async ({
+test('[MED-002][LAY-026] dropping files from the OS imports them and opens Project Media', async ({
   page,
 }) => {
   await expect(page.locator('#media-panel')).toBeHidden();

@@ -195,7 +195,7 @@ test('[ANI-002][ANI-003] easing from the keyframe menu and the Inspector changes
   expect(await xAt1()).toBeLessThan(176);
 });
 
-test('[ANI-004] keyframes move, copy, paste, duplicate and delete on the timeline and in the Inspector', async ({
+test('[ANI-004][TL-048] keyframes move, copy, paste, duplicate and delete on the timeline and in the Inspector', async ({
   page,
 }, testInfo) => {
   await animateBadge(page);

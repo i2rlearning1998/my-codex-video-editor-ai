@@ -77,7 +77,7 @@ test('[TL-073] the player bar: wand planned, scissors split; previous cut, back 
   await page.screenshot({ path: testInfo.outputPath('player.png') });
 });
 
-test('[TL-074] Collapse leaves a large preview over the player bar; Expand brings the lanes back (no history)', async ({
+test('[TL-074][LAY-009] Collapse leaves a large preview over the player bar; Expand brings the lanes back (no history)', async ({
   page,
 }) => {
   const canvasBefore = (await page

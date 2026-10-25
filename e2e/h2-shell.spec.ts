@@ -22,7 +22,7 @@ const paper = (page: Page) =>
     return [...canvas.getContext('2d')!.getImageData(x, y, 1, 1).data];
   });
 
-test('[LAY-032][LAY-020] dark by default; the top bar, menu and palette switch dark, light and system; the choice is kept and applied before first paint; the artboard is never themed', async ({
+test('[LAY-032][LAY-020][APP-016] dark by default; the top bar, menu and palette switch dark, light and system; the choice is kept and applied before first paint; the artboard is never themed', async ({
   page,
 }) => {
   await page.goto('/');
@@ -69,7 +69,7 @@ test('[LAY-032][LAY-020] dark by default; the top bar, menu and palette switch d
   expect((await hook(page)).project).toBeTruthy();
 });
 
-test('[LAY-033][LAY-003][LAY-008] side panels open and close in 150 to 300 ms, and about 0 ms with reduced motion', async ({
+test('[LAY-033][LAY-003][LAY-008][ACC-004] side panels open and close in 150 to 300 ms, and about 0 ms with reduced motion', async ({
   page,
 }) => {
   await page.goto('/');
@@ -234,7 +234,7 @@ async function layoutCase(
     });
   }
 }
-test('[LAY-013][LAY-014] dark: every target window size has no horizontal scrollbar, no overlapping or clipped top-bar controls, and room for the canvas', async ({
+test('[LAY-013][LAY-014][LAY-001] dark: every target window size has no horizontal scrollbar, no overlapping or clipped top-bar controls, and room for the canvas', async ({
   page,
 }, testInfo) => layoutCase(page, 'dark', (name) => testInfo.outputPath(name)));
 test('[LAY-013][LAY-014] light: every target window size has no horizontal scrollbar, no overlapping or clipped top-bar controls, and room for the canvas', async ({

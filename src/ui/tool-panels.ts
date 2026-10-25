@@ -59,6 +59,8 @@ export function mountToolPanels(
   session: EditorSession,
   crop: CropTool,
   report: (error: unknown) => void,
+  /** AUDIT-EDITOR: opens a right-panel section (Adjust colors, Filters). */
+  openRight?: (section: 'Adjust' | 'Filters') => void,
 ) {
   const selected = (): SceneLayer | null =>
     session.selectedIds.length === 1 && session.selectedId
@@ -71,6 +73,22 @@ export function mountToolPanels(
     } catch (error) {
       report(error);
     }
+  };
+  const openItem = (
+    label: string,
+    icon: string,
+    action: string,
+    target: 'Adjust' | 'Filters',
+  ) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'tool-panel-item';
+    item.dataset.action = action;
+    item.innerHTML = `${iconSvg(icon, 18)}<span></span>`;
+    item.querySelector('span')!.textContent = label;
+    item.disabled = !openRight;
+    item.onclick = () => openRight?.(target);
+    return item;
   };
   const font = () => {
     const layer = selected();
@@ -183,10 +201,13 @@ export function mountToolPanels(
         planned(t('toolbar.bgRemover'), 'magic', 'AI-007', 10),
         planned(t('toolbar.magicEraser'), 'eraser', 'AI-007', 10),
       ),
+      // AUDIT-EDITOR: Adjust colors and Filters are built in the right
+      // panel (CLR-001, FX-004); these open them instead of a stale
+      // "planned" state.
       section(
         t('panels.adjust'),
-        planned(t('panels.adjust'), 'adjust', 'CLR-001', 6),
-        planned(t('panels.filters'), 'effects', 'FX-004', 6),
+        openItem(t('panels.adjust'), 'adjust', 'edit-adjust', 'Adjust'),
+        openItem(t('panels.filters'), 'effects', 'edit-filters', 'Filters'),
       ),
     );
     return wrap;

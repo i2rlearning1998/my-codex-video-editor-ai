@@ -2,6 +2,11 @@
 // controls above the canvas. Controls whose systems are not built are shown
 // disabled with the wave that builds them (D-068); nothing behind them exists.
 import { plannedReason } from './planned';
+import {
+  addSceneTransition,
+  focusSceneTransition,
+} from './scene-transition-actions';
+import { sceneTransitionOf } from '../core';
 import { fontWeights } from '../render/fonts';
 import { isCatalogFont } from '../text-engine/catalog';
 import { isSafeFamily, uploadedFonts } from '../text-engine/uploaded';
@@ -620,6 +625,39 @@ export function mountContextToolbar(
     if (options.pressed !== undefined)
       item.setAttribute('aria-pressed', String(options.pressed));
     if (onClick) item.onclick = () => safely(onClick);
+    return item;
+  };
+  /**
+   * AUDIT-EDITOR: the scene bar's Transition adds (or opens) the transition
+   * from this scene into the next one, as the scene strip's "+" does (TR-018).
+   * With no next scene it is disabled and says why.
+   */
+  const sceneTransitionTool = () => {
+    const scenes = engine.state.compositions;
+    const index = scenes.findIndex(
+      (scene) => scene.id === session.source.composition.id,
+    );
+    const next = index >= 0 ? scenes[index + 1] : undefined;
+    const item = tool(
+      'transition',
+      'transitions',
+      t('toolbar.transition'),
+      next
+        ? () =>
+            sceneTransitionOf(next)
+              ? focusSceneTransition(next.id)
+              : addSceneTransition(engine, next.id)
+        : undefined,
+      { text: true },
+    );
+    if (!next) {
+      item.setAttribute('aria-disabled', 'true');
+      item.title = t('toolbar.transitionNeedsScene');
+      item.setAttribute(
+        'aria-label',
+        `${t('toolbar.transition')}: ${t('toolbar.transitionNeedsScene')}`,
+      );
+    }
     return item;
   };
   const planned = (id: string) => {
@@ -1281,7 +1319,7 @@ export function mountContextToolbar(
           ),
         { text: true },
       ),
-      planned('transition'),
+      sceneTransitionTool(),
       tool('scene-order', 'scenes', t('scene.order'), () => hooks.scenes?.(), {
         text: true,
       }),

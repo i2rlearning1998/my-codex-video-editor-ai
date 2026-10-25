@@ -64,7 +64,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#media-import')).toBeHidden();
 });
 
-test('[TL-075] a video clip menu: its own section with shortcuts, then the earlier entries; Audio, Edit duration, Rename and More options work, by mouse and keyboard', async ({
+test('[TL-075][TL-039] a video clip menu: its own section with shortcuts, then the earlier entries; Audio, Edit duration, Rename and More options work, by mouse and keyboard', async ({
   page,
 }, testInfo) => {
   const video = await addToScene(page, WEBM);

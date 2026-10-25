@@ -135,7 +135,7 @@ async function localToScreen(page: Page, id: string, x: number, y: number) {
   return { x: box.x + a * cx + c * cy + e, y: box.y + b * cx + d * cy + f };
 }
 
-test('[F2-040][F2-043] masks: add a rectangle, drag its handle on the canvas, and the PNG frame matches the preview', async ({
+test('[F2-040][F2-043][MSK-003] masks: add a rectangle, drag its handle on the canvas, and the PNG frame matches the preview', async ({
   page,
 }, testInfo) => {
   test.setTimeout(90_000);
@@ -213,7 +213,7 @@ test('[F2-041] blend: one grouped blend control sets the layer blend mode', asyn
   expect(near(await pixel(page, at), plain, 3)).toBe(true);
 });
 
-test('[F2-042] chroma key: eyedropper on the canvas removes the picked colour; CPU notice when the GPU path is off', async ({
+test('[F2-042][VID-013] chroma key: eyedropper on the canvas removes the picked colour; CPU notice when the GPU path is off', async ({
   page,
 }) => {
   test.setTimeout(60_000);

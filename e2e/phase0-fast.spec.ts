@@ -142,7 +142,7 @@ test('[FX5-017] the scene strip + menu has Open video plan review (a plain note 
   await expect(page.locator('.toast', { hasText: /plan/i })).toBeVisible();
 });
 
-test('[CV-014] [CV-015] [LYR-006] Guides: the grid and the safe areas draw on the canvas (editor only); Hide switches a layer off and Undo brings it back; no control says "Planned: Wave"', async ({
+test('[CV-014] [CV-015] [LYR-006][CV-024] Guides: the grid and the safe areas draw on the canvas (editor only); Hide switches a layer off and Undo brings it back; no control says "Planned: Wave"', async ({
   page,
 }) => {
   await page.goto('/');

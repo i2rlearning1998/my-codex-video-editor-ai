@@ -41,7 +41,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[QT-010][QT-011][QT-009] Spin turns a rectangle about its anchor (the centre by default); the Anchor grid moves the pivot; diamonds are readable', async ({
+test('[QT-010][QT-011][QT-009][INS-005] Spin turns a rectangle about its anchor (the centre by default); the Anchor grid moves the pivot; diamonds are readable', async ({
   page,
 }) => {
   await importPack(page, SPIN);

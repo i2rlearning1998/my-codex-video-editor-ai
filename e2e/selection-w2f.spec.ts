@@ -211,7 +211,7 @@ test.describe('default example', () => {
     await expect(ungroup).toHaveAttribute('title', /stretched and rotated/);
   });
 
-  test('[CV-026] Layer order from the Layer submenu and Ctrl+[ / Ctrl+] moves a layer behind or in front', async ({
+  test('[CV-026][KEY-016] Layer order from the Layer submenu and Ctrl+[ / Ctrl+] moves a layer behind or in front', async ({
     page,
   }) => {
     const label: [number, number, number, number] = [95, 474, 290, 500];

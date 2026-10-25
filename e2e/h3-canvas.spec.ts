@@ -176,7 +176,7 @@ test('[CV-052] hovering outlines an object or the empty artboard; the artboard s
   expect((await debug(page)).canvasSelected).toBe(true);
 });
 
-test('[CV-053] Canva handles: round white corners, pills on the sides and the rotate handle 28 px below the box', async ({
+test('[CV-053][CV-030] Canva handles: round white corners, pills on the sides and the rotate handle 28 px below the box', async ({
   page,
 }) => {
   await select(page, 'example-badge');
@@ -460,7 +460,7 @@ test('[VID-009] Replace swaps the media and keeps position, size, crop and timin
   expect(clip.assetId).toBe(gradient.id);
 });
 
-test('[CV-051] a locked element can be selected but not moved, resized, nudged or deleted; Unlock from the toolbar', async ({
+test('[CV-051][CV-024] a locked element can be selected but not moved, resized, nudged or deleted; Unlock from the toolbar', async ({
   page,
 }) => {
   const at = await screen(page, 300, 250);

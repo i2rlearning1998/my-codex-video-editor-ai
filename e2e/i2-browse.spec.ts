@@ -101,7 +101,7 @@ test('[LAY-040] a browse panel has a header with Back and Close, a sticky search
   await expect.poll(() => leftOpen(page)).toBe(false);
 });
 
-test('[TPL-014] Templates: category rows open pages with subcategory chips; Recently used shows what was added; Education is a flat list', async ({
+test('[TPL-014][TPL-001][TPL-002] Templates: category rows open pages with subcategory chips; Recently used shows what was added; Education is a flat list', async ({
   page,
 }) => {
   await showCategory(page, 'Templates');

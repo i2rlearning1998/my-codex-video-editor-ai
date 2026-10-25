@@ -120,7 +120,7 @@ test('[TXT-043] a fixed-width box wraps as it is typed and keeps its width', asy
   expect(Math.abs((await drawnHeight(page)) - live)).toBeLessThan(1);
 });
 
-test('[TXT-044] with Auto height off the box keeps its height, clips the text past it and shows an overflow mark', async ({
+test('[TXT-044][TXT-018] with Auto height off the box keeps its height, clips the text past it and shows an overflow mark', async ({
   page,
 }) => {
   await addTextBox(page);

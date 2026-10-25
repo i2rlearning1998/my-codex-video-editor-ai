@@ -441,7 +441,7 @@ test('[FX5-007] first Play press: waits for the sound to decode (Preparing audio
 });
 
 // C8: the blend mode list: unique labels, a menu no taller than 60 % of the window.
-test('[FX5-008] Adjust colors blend mode: each mode once, grouped, and the open menu stays within 60 % of the window', async ({
+test('[FX5-008][MSK-002] Adjust colors blend mode: each mode once, grouped, and the open menu stays within 60 % of the window', async ({
   page,
 }) => {
   test.setTimeout(90_000);

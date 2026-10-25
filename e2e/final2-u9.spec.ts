@@ -83,7 +83,7 @@ test('[F2-060] Transcribe from the clip menu: engines show their status (Deepgra
   expect(await labels(page)).not.toContain('Add captions');
 });
 
-test('[F2-061] Auto captions: style gallery, captions on a new lane in one step, inline edit keeps the cue, SRT download', async ({
+test('[F2-061][TXT-035] Auto captions: style gallery, captions on a new lane in one step, inline edit keeps the cue, SRT download', async ({
   page,
 }, testInfo) => {
   const tone = await addSound(page);
@@ -167,7 +167,7 @@ test('[F2-061] Auto captions: style gallery, captions on a new lane in one step,
   expect(text).toMatch(/00:00:\d\d,\d{3} --> /);
 });
 
-test('[F2-062] Nest two clips, open the nested clip and leave by the breadcrumb, then Un-nest (never Ungroup)', async ({
+test('[F2-062][TL-052][TPL-005] Nest two clips, open the nested clip and leave by the breadcrumb, then Un-nest (never Ungroup)', async ({
   page,
 }) => {
   const current = await scene(page);

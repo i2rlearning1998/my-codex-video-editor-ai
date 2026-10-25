@@ -220,7 +220,7 @@ test('[TL-078] over a clip: the left third inserts before it, the right third af
   );
 });
 
-test('[TL-079] a "+" line at a lane edge makes a new lane; a lane of another group refuses; lanes are 36 px (text) and clips at least 28 px', async ({
+test('[TL-079][TL-002] a "+" line at a lane edge makes a new lane; a lane of another group refuses; lanes are 36 px (text) and clips at least 28 px', async ({
   page,
 }) => {
   await addRectangle(page);

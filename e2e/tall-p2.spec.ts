@@ -76,7 +76,7 @@ test.beforeEach(async ({ page }) => {
   await blankScene(page);
 });
 
-test('[TL-088] an empty scene shows one drop lane and no ruler or playhead; one lane shows ghost lanes; two lanes hide them', async ({
+test('[TL-088][TL-043] an empty scene shows one drop lane and no ruler or playhead; one lane shows ghost lanes; two lanes hide them', async ({
   page,
 }) => {
   const drop = page.locator('#timeline-foundation .timeline-empty-drop');
@@ -125,7 +125,7 @@ test('[TL-088] an empty scene shows one drop lane and no ruler or playhead; one 
   await expect(page.locator('.timeline-ghost-lane')).toHaveCount(0);
 });
 
-test('[TL-089] every kind opens a new lane above, between or below; a lane of another group only shows the blocked cursor', async ({
+test('[TL-089][TL-002] every kind opens a new lane above, between or below; a lane of another group only shows the blocked cursor', async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -218,7 +218,9 @@ test('[TL-089] every kind opens a new lane above, between or below; a lane of an
   await page.mouse.up();
 });
 
-test('[TL-090] the playhead is drawn above the lanes', async ({ page }) => {
+test('[TL-090][TL-010] the playhead is drawn above the lanes', async ({
+  page,
+}) => {
   await (await source(page, 'shape')).click();
   const z = await page
     .locator('#timeline-foundation .timeline-playhead')

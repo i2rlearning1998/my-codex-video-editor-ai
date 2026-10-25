@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[LAY-041] nothing selected: no Canvas panel; the canvas bar holds size, background and frame rate (U5)', async ({
+test('[LAY-041][PRJ-008][INS-014] nothing selected: no Canvas panel; the canvas bar holds size, background and frame rate (U5)', async ({
   page,
 }) => {
   // T-ALL (D-183): nothing selected shows no right panel at all.

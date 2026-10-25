@@ -117,7 +117,7 @@ test('[F2-010][F2-011] Voice-over: type, Preview, Save to Media (the WAV is in M
   await expect(page.locator('.modal-dialog')).toBeVisible();
 });
 
-test('[F2-012][F2-013] Recorder: Camera with countdown, level, Pause / Resume, Stop, review, Save to Media and the timeline; Screen and camera saves two files with the camera as picture-in-picture; a refused screen is explained with Retry', async ({
+test('[F2-012][F2-013][MED-034] Recorder: Camera with countdown, level, Pause / Resume, Stop, review, Save to Media and the timeline; Screen and camera saves two files with the camera as picture-in-picture; a refused screen is explained with Retry', async ({
   page,
 }) => {
   await showCategory(page, 'Record');
