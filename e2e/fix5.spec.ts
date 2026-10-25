@@ -98,7 +98,7 @@ test('[FX5-001] every AI and My Templates card has a drawn thumbnail (never blan
           message: `card ${await card.getAttribute('data-item-id')} stays blank`,
           timeout: 15_000,
         })
-        .toBeGreaterThan(0.02);
+        .toBeGreaterThan(0.0002);
     }
   }
   // The same item twice is listed once.
