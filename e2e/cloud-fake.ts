@@ -27,8 +27,22 @@ interface Row {
 export interface FakeCloud {
   users: Map<string, { id: string; email: string; password: string }>;
   projects: Row[];
-  media: { owner_id: string; fingerprint: string; name: string }[];
+  media: {
+    owner_id: string;
+    fingerprint: string;
+    name: string;
+    size?: number;
+    created_at?: string;
+  }[];
   files: Map<string, Buffer>;
+  /** P1-31: training-data records, one per owner and project. */
+  training?: {
+    owner_id: string;
+    project_id: string;
+    brief: string | null;
+    plan: unknown;
+    edits: unknown[];
+  }[];
   requests: string[];
 }
 const b64 = (value: object) =>
@@ -65,6 +79,7 @@ export async function fakeCloud(
     projects: [],
     media: [],
     files: new Map(),
+    training: [],
     requests: [],
   },
 ): Promise<FakeCloud> {
@@ -152,6 +167,37 @@ export async function fakeCloud(
     }
     if (url.pathname === '/auth/v1/logout') return json(route, 200, {});
     const owner = caller(route);
+    // Storage remove: DELETE /object/media with {prefixes: [...]}, own folder only.
+    if (
+      url.pathname === '/storage/v1/object/media' &&
+      request.method() === 'DELETE'
+    ) {
+      const { prefixes = [] } = (body() ?? {}) as { prefixes?: string[] };
+      const removed = prefixes.filter(
+        (key) => key.startsWith(`${owner}/`) && cloud.files.delete(key),
+      );
+      return json(
+        route,
+        200,
+        removed.map((name) => ({ name })),
+      );
+    }
+    // P1-31: training records (upsert on owner and project).
+    if (url.pathname === '/rest/v1/training_records') {
+      cloud.training ??= [];
+      const input = body() as {
+        project_id: string;
+        brief: string | null;
+        plan: unknown;
+        edits: unknown[];
+      };
+      cloud.training = cloud.training.filter(
+        (row) =>
+          !(row.owner_id === owner && row.project_id === input.project_id),
+      );
+      cloud.training.push({ owner_id: owner!, ...input });
+      return route.fulfill({ status: 201, headers: cors, body: '' });
+    }
     // Storage: <bucket>/<owner>/<fingerprint>, owner folder only.
     const object =
       /^\/storage\/v1\/object\/media\/([^/]+)\/([0-9a-f]{32})$/.exec(
@@ -240,6 +286,26 @@ export async function fakeCloud(
       }
     }
     if (url.pathname === '/rest/v1/media') {
+      if (request.method() === 'DELETE') {
+        const fingerprint = eq('fingerprint');
+        cloud.media = cloud.media.filter(
+          (row) => !(row.owner_id === owner && row.fingerprint === fingerprint),
+        );
+        return route.fulfill({ status: 200, headers: cors, body: '' });
+      }
+      if (request.method() === 'GET' && !url.searchParams.has('fingerprint'))
+        return json(
+          route,
+          200,
+          cloud.media
+            .filter((row) => row.owner_id === owner)
+            .map((row) => ({
+              fingerprint: row.fingerprint,
+              name: row.name,
+              size: row.size ?? 0,
+              created_at: row.created_at ?? new Date().toISOString(),
+            })),
+        );
       if (request.method() === 'GET') {
         const wanted = (url.searchParams.get('fingerprint') ?? '')
           .replace(/^in\.\(|\)$/g, '')
@@ -256,7 +322,11 @@ export async function fakeCloud(
             .map((row) => ({ fingerprint: row.fingerprint })),
         );
       }
-      const input = body() as { fingerprint: string; name: string };
+      const input = body() as {
+        fingerprint: string;
+        name: string;
+        size?: number;
+      };
       if (
         !cloud.media.some(
           (row) =>

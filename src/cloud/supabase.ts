@@ -7,6 +7,7 @@ import {
   type CloudBackend,
   type CloudConfig,
   type CloudMediaInfo,
+  type CloudMediaRow,
   type CloudProjectInput,
   type CloudProjectSummary,
   type CloudUser,
@@ -228,6 +229,45 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
           .from(BUCKET)
           .download(await path(fingerprint)),
       ) as Blob;
+    },
+    async listMedia() {
+      const rows = check(
+        await (
+          await supabase()
+        )
+          .from('media')
+          .select('fingerprint, name, size, created_at')
+          .order('created_at', { ascending: false }),
+      ) as {
+        fingerprint: string;
+        name: string;
+        size: number;
+        created_at: string;
+      }[];
+      return rows.map((row): CloudMediaRow => ({
+        fingerprint: row.fingerprint,
+        name: row.name,
+        size: Number(row.size),
+        createdAt: row.created_at,
+      }));
+    },
+    async deleteMedia(fingerprint) {
+      const sb = await supabase();
+      check(await sb.storage.from(BUCKET).remove([await path(fingerprint)]));
+      check(await sb.from('media').delete().eq('fingerprint', fingerprint));
+    },
+    async saveTrainingRecord(record) {
+      check(
+        await (await supabase()).from('training_records').upsert(
+          {
+            project_id: record.projectId,
+            brief: record.brief,
+            plan: record.plan,
+            edits: record.edits,
+          },
+          { onConflict: 'owner_id,project_id' },
+        ),
+      );
     },
   };
 }

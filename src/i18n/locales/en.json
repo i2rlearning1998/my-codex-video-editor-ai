@@ -2788,5 +2788,15 @@
   "library.mediaFailed": "{name} could not be downloaded. It plays from its small preview until it can.",
   "library.retry": "Retry",
   "elements.section.media": "Videos and photos",
-  "library.fallback": "The library could not be loaded, so only a few basic items are shown. {problem}"
+  "library.fallback": "The library could not be loaded, so only a few basic items are shown. {problem}",
+  "cloud.freeSpace": "Free space",
+  "cloud.freeSpaceTitle": "Free space in the cloud",
+  "cloud.freeSpaceIntro": "{count} uploaded files ({size}) are not used by any of your cloud projects. Deleting one removes it from the cloud only; this browser keeps its copy.",
+  "cloud.freeSpaceNone": "Every uploaded file is used by one of your cloud projects.",
+  "cloud.freeSpaceAsk": "Delete \"{name}\" from the cloud? No cloud project uses it.",
+  "cloud.freeSpaceDone": "\"{name}\" was deleted from the cloud.",
+  "cloud.sizeKb": "{size} KB",
+  "cloud.sizeMb": "{size} MB",
+  "cloud.google": "Continue with Google",
+  "cloud.googleOff": "Google sign-in is not set up for this editor yet."
 }

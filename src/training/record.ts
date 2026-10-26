@@ -84,6 +84,7 @@ export class TrainingLog {
   constructor(
     private readonly store: Promise<TrainingStore>,
     private readonly clock: () => string = () => new Date().toISOString(),
+    private readonly limit = MAX_EDITS,
   ) {}
   /** The brief text last copied for an AI (kept for the next build). */
   noteBrief(text: string) {
@@ -128,7 +129,7 @@ export class TrainingLog {
       if (!record) return;
       await store.put({
         ...record,
-        edits: [...record.edits, edit].slice(-MAX_EDITS),
+        edits: [...record.edits, edit].slice(-this.limit),
       });
     });
   }

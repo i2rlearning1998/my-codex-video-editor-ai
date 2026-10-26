@@ -187,3 +187,145 @@ async function logInDown(page: Page) {
   await expect(page.locator('.cloud-error')).toContainText('cannot be reached');
   await expect(page.locator('#account')).toHaveText('Log in');
 }
+
+test('[LIB-033][LIB-031] the Open list shows each project picture, Free space lists and deletes only unused cloud files, Google sign-in shows only when set up, and a training record goes up with Save', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const cloud = await fakeCloud(page.context());
+  await ready(page);
+  // Logged out, without a Google client id: no Google button, one line why.
+  await page.locator('#account').click();
+  await expect(
+    page.locator('#account-menu [data-note="google-off"]'),
+  ).toHaveText('Google sign-in is not set up for this editor yet.');
+  await page.keyboard.press('Escape');
+
+  const project = (await hook(page)).project;
+  // P1-31: this project was built by AI (the record the editor keeps for it).
+  await page.evaluate(
+    (projectId) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('aive-training', 1);
+        open.onupgradeneeded = () =>
+          open.result.createObjectStore('records', { keyPath: 'projectId' });
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const put = open.result
+            .transaction('records', 'readwrite')
+            .objectStore('records')
+            .put({
+              version: 1,
+              projectId,
+              createdAt: '2026-10-26T10:00:00.000Z',
+              brief: 'A short lesson',
+              plan: { format: 'video-plan', version: 2 },
+              edits: [
+                {
+                  at: '2026-10-26T10:01:00.000Z',
+                  label: 'Move',
+                  commands: ['SET_PROPERTY'],
+                },
+              ],
+            });
+          put.onsuccess = () => resolve();
+          put.onerror = () => reject(put.error);
+        };
+      }),
+    project.id,
+  );
+  // After a reload the editor records this project's later edits.
+  await page.reload();
+  await hook(page);
+  await showCategory(page, 'Media');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#import-media').click();
+  await (await chooser).setFiles(path.join(MEDIA, PICTURE));
+  await expect(page.locator('#media-import')).toBeHidden({ timeout: 30_000 });
+  await page.locator(`.media-card[data-name="${PICTURE}"]`).dblclick();
+  const edits = () =>
+    page.evaluate(
+      (projectId) =>
+        new Promise<string[]>((resolve) => {
+          const open = indexedDB.open('aive-training', 1);
+          open.onsuccess = () => {
+            const get = open.result
+              .transaction('records')
+              .objectStore('records')
+              .get(projectId);
+            get.onsuccess = () =>
+              resolve(
+                ((get.result?.edits ?? []) as { label: string }[]).map(
+                  (edit) => edit.label,
+                ),
+              );
+          };
+        }),
+      project.id,
+    );
+  await expect.poll(async () => (await edits()).length).toBeGreaterThan(1);
+  expect((await edits())[0]).toBe('Move');
+
+  await logIn(page, true);
+  await accountAction(page, 'cloud-save');
+  await expect(page.locator('.toast')).toContainText(/^Saved "/);
+  await expect.poll(() => cloud.training?.length ?? 0).toBe(1);
+  expect(cloud.training![0]).toMatchObject({
+    project_id: project.id,
+    brief: 'A short lesson',
+    plan: { format: 'video-plan', version: 2 },
+  });
+
+  // The Open list shows the project's picture.
+  await accountAction(page, 'cloud-open');
+  const thumb = page.locator('.cloud-project .cloud-project-thumb').first();
+  await expect(thumb).toBeVisible();
+  if (cloud.projects[0]!.thumbnail)
+    await expect(thumb.locator('img')).toHaveAttribute('src', /^data:image\//);
+  else await expect(thumb.locator('svg')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // An old upload no project uses any more.
+  const owner = cloud.projects[0]!.owner_id;
+  const old = 'f'.repeat(32);
+  cloud.media.push({
+    owner_id: owner,
+    fingerprint: old,
+    name: 'old-clip.webm',
+    size: 2048,
+  });
+  cloud.files.set(`${owner}/${old}`, Buffer.alloc(2048));
+  const used = cloud.media.find((row) => row.fingerprint !== old)!.fingerprint;
+  await accountAction(page, 'cloud-free-space');
+  const rows = page.locator('.cloud-free-space .cloud-media');
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first().locator('.cloud-media-name')).toHaveText(
+    'old-clip.webm',
+  );
+  await expect(rows.first().locator('.cloud-media-size')).toHaveText('2 KB');
+  await rows.first().locator('[data-action="cloud-media-delete"]').click();
+  await page.locator('.modal-dialog [data-role="confirm"]').last().click();
+  await expect(rows).toHaveCount(0);
+  expect(cloud.media.map((row) => row.fingerprint)).toEqual([used]);
+  expect(cloud.files.has(`${owner}/${old}`)).toBe(false);
+  expect(cloud.files.has(`${owner}/${used}`)).toBe(true);
+  await page.keyboard.press('Escape');
+  await accountAction(page, 'cloud-logout');
+
+  // With a Google client id the sign-in dialog offers Google.
+  await page.addInitScript(() => {
+    (
+      window as { __AIVE_GOOGLE_CLIENT_ID__?: string }
+    ).__AIVE_GOOGLE_CLIENT_ID__ = 'e2e-google';
+  });
+  await page.reload();
+  await hook(page);
+  await page.locator('#account').click();
+  await expect(
+    page.locator('#account-menu [data-note="google-off"]'),
+  ).toHaveCount(0);
+  await page.locator('#account-menu [data-action="cloud-login"]').click();
+  await expect(page.locator('[data-action="cloud-google"]')).toHaveText(
+    'Continue with Google',
+  );
+});

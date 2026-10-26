@@ -287,6 +287,7 @@ import { showToast } from './components/toast';
 import { catalogMediaKey, libraryClient } from '../library-client';
 import { catalogAsset } from '../library-client/media';
 import type { CatalogEntry } from '../library-client/format';
+import { TrainingLog, openTrainingStore } from '../training/record';
 import type { LibraryItem } from '../library/schema';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
@@ -762,6 +763,35 @@ export function mountEditorShell(
   const codeCache = new FrameCache(mediaStore);
   // P2: My library (Creator Pack items), beside My Templates.
   const creatorLibrary = new CreatorLibrary(mediaStore);
+  // Phase 1 (P1-31): training-data records for AI-built videos (no UI).
+  const training = new TrainingLog(openTrainingStore());
+  {
+    let pending: string[] = [];
+    // The project open at start was loaded before the shell listened.
+    void training.has(engine.state.id);
+    engine.on('command:applied', (event) => pending.push(event.type));
+    engine.on('state:changed', (event) => {
+      const id = engine.state.id;
+      if (event.reason === 'load') {
+        pending = [];
+        void training.has(id);
+        return;
+      }
+      if (event.reason === 'library') return void (pending = []);
+      const label =
+        event.reason === 'undo'
+          ? 'Undo'
+          : event.reason === 'redo'
+            ? 'Redo'
+            : (engine.undoLabel ?? '');
+      void training.edit(
+        id,
+        label,
+        event.reason === 'undo' || event.reason === 'redo' ? [] : pending,
+      );
+      pending = [];
+    });
+  }
   // R5: My Templates, the user's own saved elements and scenes (this
   // browser, not the project, never an undo step). Old scene templates in
   // localStorage move in once.
@@ -2845,6 +2875,7 @@ export function mountEditorShell(
             count: String(result.project!.compositions.length),
           }),
         );
+        void training.start(engine.state.id, result.plan ?? plan);
         session.select(null);
         savePlanState(engine.state.id, {
           plan: result.plan!,
@@ -2960,6 +2991,7 @@ export function mountEditorShell(
       library: (id) => libraryActions.find(id),
       addScenes: (project) => {
         const ids = addBuiltScenes(project);
+        void training.start(engine.state.id, item.data);
         // FIX3 1.3: the AI card reads Built (or Needs assets) from now on.
         rememberBuilt(
           storageOrNull(),
@@ -3034,6 +3066,11 @@ export function mountEditorShell(
   };
   /** T2: Copy AI brief, built from the live registries (src/ai-brief). */
   const briefText = async (request: string, form?: BriefFormValues) => {
+    const made = await briefTextOf(request, form);
+    training.noteBrief(made.text);
+    return made;
+  };
+  const briefTextOf = async (request: string, form?: BriefFormValues) => {
     await creatorLibrary.ready;
     const manifest = await loadLibrary().catch(() => null);
     const { aiBrief } = await import('../ai-brief');

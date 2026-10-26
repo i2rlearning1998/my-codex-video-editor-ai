@@ -15,6 +15,7 @@ import {
   CloudConflictError,
   CloudNotConfiguredError,
   cloudConfig,
+  googleClientId,
   type CloudBackend,
   type CloudProjectSummary,
   type CloudUser,
@@ -29,6 +30,8 @@ import {
   promptDialog,
 } from './components/modal';
 import { iconSvg } from './icons';
+import { openTrainingStore } from '../training/record';
+import { formatNumber } from '../i18n';
 
 export interface CloudHost {
   readonly engine: EditorEngine;
@@ -174,12 +177,27 @@ export function mountCloud(
         head,
         item('cloud-save', 'save', t('cloud.save'), () => void save()),
         item('cloud-open', 'folder', t('cloud.open'), () => void openList()),
+        item(
+          'cloud-free-space',
+          'delete',
+          t('cloud.freeSpace'),
+          () => void freeSpace(),
+        ),
         item('cloud-logout', 'close', t('cloud.logOut'), () => void logOut()),
       );
-    } else
+    } else {
       menu.append(
         item('cloud-login', 'user', t('cloud.logInOrSignUp'), () => signIn()),
       );
+      // P1-33: Google sign-in shows only when it is set up.
+      if (!googleClientId()) {
+        const note = document.createElement('p');
+        note.className = 'account-menu-note';
+        note.dataset.note = 'google-off';
+        note.textContent = t('cloud.googleOff');
+        menu.append(note);
+      }
+    }
     const box = button.getBoundingClientRect();
     menu.style.position = 'fixed';
     menu.style.top = `${box.bottom + 6}px`;
@@ -241,6 +259,7 @@ export function mountCloud(
           <label class="field-row">${escapeHtml(t('cloud.email'))}<input id="cloud-email" type="email" autocomplete="email" required /></label>
           <label class="field-row">${escapeHtml(t('cloud.password'))}<input id="cloud-password" type="password" autocomplete="current-password" minlength="8" required /></label>
           <p class="cloud-error" role="alert" hidden></p>
+          ${googleClientId() ? `<button type="button" class="button cloud-google" data-action="cloud-google">${escapeHtml(t('cloud.google'))}</button>` : ''}
           <div class="modal-actions">
             <button type="button" class="button" data-action="cloud-signup">${escapeHtml(t('cloud.signUp'))}</button>
             <button type="button" class="button primary" data-action="cloud-signin">${escapeHtml(t('cloud.logIn'))}</button>
@@ -291,6 +310,19 @@ export function mountCloud(
     password.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') void attempt(false);
     });
+    const google = root.querySelector<HTMLButtonElement>(
+      '[data-action="cloud-google"]',
+    );
+    if (google)
+      google.onclick = async () => {
+        error.hidden = true;
+        try {
+          await (await get()).signInWithProvider('google');
+        } catch (failure) {
+          error.textContent = cloudErrorText(failure);
+          error.hidden = false;
+        }
+      };
     email.focus();
   };
 
@@ -382,6 +414,22 @@ export function mountCloud(
           }
         else saved = await made.createProject(input);
         writeLink(localId, { cloudId: saved.id, revision: saved.revision });
+        // P1-31: the training-data record of an AI-built video goes along
+        // (quietly; it never blocks the save).
+        const record = await (
+          await openTrainingStore()
+        )
+          .get(project.id)
+          .catch(() => undefined);
+        if (record)
+          await made
+            .saveTrainingRecord({
+              projectId: record.projectId,
+              brief: record.brief,
+              plan: record.plan,
+              edits: record.edits,
+            })
+            .catch(() => undefined);
       } catch (error) {
         dismiss();
         throw error;
@@ -460,6 +508,15 @@ export function mountCloud(
             const row = document.createElement('li');
             row.className = 'cloud-project';
             row.dataset.cloudId = summary.id;
+            // P1-33: the project's picture (or its icon when it has none).
+            const thumb = document.createElement('span');
+            thumb.className = 'cloud-project-thumb';
+            if (summary.thumbnail?.startsWith('data:image/')) {
+              const image = document.createElement('img');
+              image.src = summary.thumbnail;
+              image.alt = '';
+              thumb.append(image);
+            } else thumb.innerHTML = iconSvg('folder', 20);
             const name = document.createElement('span');
             name.className = 'cloud-project-name';
             name.textContent = summary.name;
@@ -520,10 +577,93 @@ export function mountCloud(
                 row.remove();
               });
             };
-            row.append(name, time, open, rename, remove);
+            row.append(thumb, name, time, open, rename, remove);
             rows.append(row);
           }
           body.append(rows);
+        },
+      });
+      handle.root.classList.add('cloud-dialog');
+    });
+
+  // P1-33: Free space: the uploaded files no cloud project uses any more.
+  const freeSpace = () =>
+    run(async () => {
+      const made = await get();
+      const [media, projects] = await Promise.all([
+        made.listMedia(),
+        made.listProjects(),
+      ]);
+      const used = new Set<string>();
+      for (const summary of projects) {
+        const { document: text } = await made.loadProject(summary.id);
+        for (const match of text.matchAll(/media\/([0-9a-f]{32})/g))
+          used.add(match[1]!);
+      }
+      const unused = media.filter((row) => !used.has(row.fingerprint));
+      const size = (bytes: number) =>
+        bytes < 1048576
+          ? t('cloud.sizeKb', {
+              size: formatNumber(Math.max(1, Math.round(bytes / 1024))),
+            })
+          : t('cloud.sizeMb', {
+              size: formatNumber(Math.round((bytes / 1048576) * 10) / 10),
+            });
+      const handle = openModal({
+        titleText: t('cloud.freeSpaceTitle'),
+        bodyBuilder: (body) => {
+          body.classList.add('cloud-free-space');
+          const intro = document.createElement('p');
+          intro.className = 'modal-message';
+          intro.textContent = unused.length
+            ? t('cloud.freeSpaceIntro', {
+                count: unused.length,
+                size: size(unused.reduce((sum, row) => sum + row.size, 0)),
+              })
+            : t('cloud.freeSpaceNone');
+          body.append(intro);
+          const rows = document.createElement('ul');
+          rows.className = 'cloud-media-list';
+          for (const row of unused) {
+            const item = document.createElement('li');
+            item.className = 'cloud-media';
+            item.dataset.fingerprint = row.fingerprint;
+            const name = document.createElement('span');
+            name.className = 'cloud-media-name';
+            name.textContent = row.name;
+            const bytes = document.createElement('span');
+            bytes.className = 'cloud-media-size';
+            bytes.textContent = size(row.size);
+            const remove = document.createElement('button');
+            remove.type = 'button';
+            remove.className = 'button danger';
+            remove.dataset.action = 'cloud-media-delete';
+            remove.textContent = t('projects.delete');
+            remove.onclick = async () => {
+              if (
+                !(await confirmDialog(
+                  escapeHtml(t('cloud.freeSpaceAsk', { name: row.name })),
+                  {
+                    titleText: t('cloud.freeSpaceTitle'),
+                    confirmLabel: t('projects.delete'),
+                    danger: true,
+                  },
+                ))
+              )
+                return;
+              await run(async () => {
+                await made.deleteMedia(row.fingerprint);
+                item.remove();
+                showToast(
+                  t('cloud.freeSpaceDone', { name: row.name }),
+                  'success',
+                );
+              });
+            };
+            item.append(name, bytes, remove);
+            rows.append(item);
+          }
+          if (unused.length) body.append(rows);
         },
       });
       handle.root.classList.add('cloud-dialog');
