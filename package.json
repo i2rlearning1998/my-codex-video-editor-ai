@@ -30,7 +30,12 @@
     "docs:plan-cheatsheet": "node scripts/plan-cheatsheet.mjs",
     "cloud:start": "npx --yes supabase@2.122.0 start",
     "cloud:stop": "npx --yes supabase@2.122.0 stop",
-    "cloud:test": "node scripts/cloud-sql-test.mjs"
+    "cloud:test": "node scripts/cloud-sql-test.mjs",
+    "library:keys": "node owner/run.mjs /owner/cli.ts keys",
+    "library:seed": "node owner/run.mjs /owner/cli.ts seed",
+    "library:publish": "node owner/run.mjs /owner/cli.ts publish",
+    "library:rollback": "node owner/run.mjs /owner/cli.ts rollback",
+    "library:versions": "node owner/run.mjs /owner/cli.ts versions"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1",
