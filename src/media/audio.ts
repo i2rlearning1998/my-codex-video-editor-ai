@@ -136,12 +136,23 @@ export class AudioDecoder {
     }
     return known;
   }
+  /** Phase 1 library: the full file arrived; decode it again (P1-25). */
+  forget(assetId: string): void {
+    for (const key of [...this.#decoded.keys()])
+      if (key === assetId || key.startsWith(`${assetId}|`) || key.startsWith(`${assetId}:`))
+        this.#decoded.delete(key);
+  }
   async #load(assetId: string): Promise<Decoded> {
     const asset = this.assets().find((item) => item.id === assetId);
     const fingerprint = asset && assetFingerprint(asset);
     const store = await this.store;
-    const blob =
+    let blob =
       fingerprint && store ? await store.read(mediaKey(fingerprint)) : null;
+    // Phase 1 library: a catalog sound plays its proxy until the full file
+    // is here (P1-25).
+    const proxy = (asset?.metadata as Record<string, unknown> | undefined)?.catalogProxy;
+    if (!blob && store && typeof proxy === 'string')
+      blob = await store.read(proxy).catch(() => null);
     if (!blob) return 'missing';
     if (blob.size > MAX_DECODE_BYTES) return 'too-large';
     try {

@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { BRAND } from './src/brand/brand';
-import { ownerGuard } from './vite.library';
+import { catalogDev, libraryPublicKey, ownerGuard } from './vite.library';
 
 let gitCommit = 'unknown';
 try {
@@ -23,12 +23,13 @@ const { version } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
 ) as { version: string };
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   // T7: index.html (title, loading screen) takes the wordmark from
   // src/brand/brand.ts, the one place the brand is defined.
   plugins: [
     // Phase 1 library (P1-11): the owner app is never served by the editor.
     ownerGuard(),
+    catalogDev(),
     {
       name: 'brand-html',
       transformIndexHtml: (html) =>
@@ -41,6 +42,8 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
     __GIT_COMMIT__: JSON.stringify(gitCommit),
+    // Phase 1 library (P1-06): the catalog's public key, fixed at build time.
+    __LIBRARY_PUBLIC_KEY__: JSON.stringify(libraryPublicKey(command)),
   },
   // The export worker imports mediabunny; pre-bundling it at startup avoids the dev
   // server reloading the page when it first discovers the dependency (W5-A).
@@ -54,5 +57,9 @@ export default defineConfig({
   // FIX3 2.2: the captions worker loads transformers lazily (a split chunk),
   // which needs ES-module workers; every worker here is created as a module.
   worker: { format: 'es' },
-  test: { environment: 'node', include: ['tests/**/*.test.ts'] },
-});
+  test: {
+    environment: 'node',
+    include: ['tests/**/*.test.ts'],
+    setupFiles: ['tests/setup-library.ts'],
+  },
+}));

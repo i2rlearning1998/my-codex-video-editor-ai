@@ -2783,5 +2783,6 @@
   "cloud.unreachable": "The cloud server cannot be reached. Your work is saved in this browser.",
   "cloud.conflict": "This project was saved from somewhere else since it was opened.",
   "cloud.failed": "Cloud action failed: {error}. Your work is saved in this browser.",
-  "menu.viewLoop": "Loop playback"
+  "menu.viewLoop": "Loop playback",
+  "library.locked": "Part of a plan: this item unlocks with a plan (coming later)."
 }

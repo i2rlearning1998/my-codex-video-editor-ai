@@ -11,15 +11,14 @@ import {
 } from '../render/dynamic-text';
 import { drags } from './drag-controller';
 import {
-  combinationsFor,
   DEFAULT_TEXT_ITEMS,
-  FONT_COMBINATIONS,
   onMyTextStylesChange,
   type MyTextStyle,
 } from './text-styles';
 import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
-import { loadLibrary } from '../library/loader';
+import { loadLibrary, onLibraryChange } from '../library/loader';
+import { libraryClient } from '../library-client';
 import type { LibraryItem, TemplateCategory } from '../library/schema';
 import type { RenderSource } from '../render/adapter';
 import type { TextMeasurer } from '../render/text-layout';
@@ -375,12 +374,10 @@ export function mountLibraryPanels(
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
-  // FINAL3 T5: the default text styles and the font combinations are built
-  // in code, so they work before (and without) the library manifest.
-  const BUILT_IN: readonly LibraryItem[] = [
-    ...DEFAULT_TEXT_ITEMS,
-    ...FONT_COMBINATIONS,
-  ];
+  // FINAL3 T5: the default text styles are built in code, so they work
+  // before (and without) the catalog; the font combinations are catalog
+  // items (Phase 1 library).
+  const BUILT_IN: readonly LibraryItem[] = [...DEFAULT_TEXT_ITEMS];
   let items: readonly LibraryItem[] = BUILT_IN;
   let taxonomy: readonly TemplateCategory[] = [];
   let status: { kind: 'loading' | 'error'; text: string } | null = {
@@ -411,9 +408,15 @@ export function mountLibraryPanels(
         : 16 / 9;
     const transition = item.type === 'transition';
     const own = fromCreator(item.id);
+    // Phase 1 library (P1-23): the catalog's tiny placeholder shows until
+    // the preview is drawn, and a plan key shows the card as locked.
+    const entry = own ? undefined : libraryClient().entry(item.id);
+    const locked = entry?.planKey ? t('library.locked') : undefined;
     return {
       id: item.id,
       label: itemName(item),
+      ...(entry ? { placeholder: entry.blur } : {}),
+      ...(locked ? { locked } : {}),
       keywords: [item.name.en, item.name.hi, ...item.tags],
       preview: () => preview(item.id, item),
       ...(own
@@ -842,13 +845,21 @@ export function mountLibraryPanels(
   // --- Text -----------------------------------------------------------------
   // The library's own combinations lead (they were the strip before
   // FINAL3), then the 24 built in code.
-  const combinationItems = () => [
-    ...of('text').filter(
-      (item) =>
-        item.section === 'combinations' && !item.id.startsWith('combo-'),
-    ),
-    ...combinationsFor(getLanguage()),
-  ];
+  const combinationItems = () => {
+    const combos = of('text').filter(
+      (item) => item.section === 'combinations' && item.id.startsWith('combo-'),
+    );
+    const hindi = combos.filter((item) => item.tags.includes('hindi'));
+    const english = combos.filter((item) => !item.tags.includes('hindi'));
+    return [
+      ...of('text').filter(
+        (item) =>
+          item.section === 'combinations' && !item.id.startsWith('combo-'),
+      ),
+      // Combinations in the UI language's order (Hindi first in Hindi).
+      ...(getLanguage() === 'hi' ? [...hindi, ...english] : [...english, ...hindi]),
+    ];
+  };
   const textCards = (section: string) =>
     of('text')
       .filter((item) => item.section === section)
@@ -1035,14 +1046,17 @@ export function mountLibraryPanels(
     actions.setItems(allItems());
     refreshAll();
   });
+  const apply = (manifest: Awaited<ReturnType<typeof loadLibrary>>) => {
+    items = [...manifest.items, ...BUILT_IN];
+    taxonomy = manifest.templates ?? [];
+    status = null;
+    actions.setItems(allItems());
+    refreshAll();
+  };
+  // Phase 1 library: a newer catalog (an idle refresh) updates the panels.
+  const stopChange = onLibraryChange(() => void loadLibrary().then(apply));
   loadLibrary().then(
-    (manifest) => {
-      items = [...manifest.items, ...BUILT_IN];
-      taxonomy = manifest.templates ?? [];
-      status = null;
-      actions.setItems(allItems());
-      refreshAll();
-    },
+    apply,
     (error: unknown) => {
       status = {
         kind: 'error',
@@ -1060,6 +1074,7 @@ export function mountLibraryPanels(
     reset: () => Object.values(panels).forEach((panel) => panel.reset()),
     dispose: () => {
       disposed = true;
+      stopChange();
     },
   };
 }

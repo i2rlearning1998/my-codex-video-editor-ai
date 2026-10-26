@@ -11824,3 +11824,26 @@ body:has(.modal-backdrop) .toast-stack {
     display: none;
   }
 }
+
+/* Phase 1 library (P1-23): a card shows the catalog's tiny placeholder
+   until its preview is drawn (never blank); cards off screen are skipped
+   by the browser's layout and paint (content-visibility), so long grids
+   stay light; a plan key shows a lock. */
+.browse-thumb.has-placeholder {
+  background-size: cover;
+  background-position: center;
+}
+.browse-card-grid,
+.browse-card-strip {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+.browse-lock {
+  inset-block-start: 4px;
+  inset-inline-end: 4px;
+  inset-inline-start: auto;
+  inset-block-end: auto;
+}
+.browse-card[data-locked='true'] .browse-thumb img {
+  opacity: 0.6;
+}
