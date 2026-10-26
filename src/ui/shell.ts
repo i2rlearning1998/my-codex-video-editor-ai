@@ -54,6 +54,7 @@ import { briefSections, type BriefFormValues } from '../ai-brief/form';
 import { mountThemePanel } from './theme-panel';
 import {
   BUILT_IN_THEMES,
+  registerBuiltInThemes,
   MOTION_STYLES,
   applyThemeCommands,
   isManualColor,
@@ -283,6 +284,9 @@ import {
 } from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
+import { catalogMediaKey, libraryClient } from '../library-client';
+import { catalogAsset } from '../library-client/media';
+import type { CatalogEntry } from '../library-client/format';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
 import { mountShortcutSheet } from './shortcut-sheet';
@@ -665,6 +669,72 @@ export function mountEditorShell(
     },
   });
   setTimeout(() => void mediaRelink.check(), 0);
+  // Phase 1 library (P1-25): a catalog sound, video or picture becomes an
+  // asset at once; it draws its poster and plays its proxy until the full
+  // file (fetched here, in the background) is in this browser, then swaps
+  // in place. A failed download never blocks: the layer stays, a toast
+  // offers Retry.
+  const catalog = libraryClient();
+  frames.posterOf = (assetId) => {
+    const asset = (
+      session.source.assets as unknown as readonly {
+        id: string;
+        type: string;
+        metadata: Record<string, unknown>;
+      }[]
+    ).find((item) => item.id === assetId);
+    const sha = asset?.metadata.catalogPoster;
+    return asset && asset.type !== 'audio' && typeof sha === 'string'
+      ? catalog.poster(sha)
+      : null;
+  };
+  const fullJobs = new Map<string, Promise<void>>();
+  const fetchCatalogFull = (entry: CatalogEntry, assetId: string) => {
+    const full = entry.media?.full;
+    if (!full) return Promise.resolve();
+    let job = fullJobs.get(assetId);
+    if (!job) {
+      job = catalog
+        .file(full, catalogMediaKey(full.sha256))
+        .then((blob) => {
+          if (!blob) throw new Error('missing');
+          frames.upgrade(assetId);
+          decoder.forget(assetId);
+          waveforms.retry();
+          previews.retry();
+        })
+        .catch(() => {
+          showToast(t('library.mediaFailed', { name: entry.name[getLanguage()] || entry.name.en }), 'error', 10000, {
+            label: t('library.retry'),
+            run: () => void fetchCatalogFull(entry, assetId),
+          });
+        })
+        .finally(() => fullJobs.delete(assetId));
+      fullJobs.set(assetId, job);
+    }
+    return job;
+  };
+  /** The asset of a heavy catalog entry (made or restored now, one id). */
+  const ensureCatalogAsset = (entry: CatalogEntry): string => {
+    const asset = catalogAsset(entry, getLanguage());
+    const known = (
+      engine.state.assets as unknown as readonly {
+        id: string;
+        metadata: Record<string, unknown>;
+      }[]
+    ).find((item) => item.id === asset.id);
+    if (!known)
+      engine.library('Add from library', [{ type: 'ADD_ASSET', asset } as Command]);
+    else if (known.metadata.removed === true) {
+      const { removed: _removed, ...metadata } = known.metadata;
+      void _removed;
+      engine.library('Restore media', [
+        { type: 'REPLACE_ASSET', asset: { ...known, metadata } } as unknown as Command,
+      ]);
+    }
+    void fetchCatalogFull(entry, asset.id);
+    return asset.id;
+  };
   engine.on('state:changed', (event) => {
     if (event.reason === 'load') setTimeout(() => void mediaRelink.check(), 0);
   });
@@ -2676,7 +2746,17 @@ export function mountEditorShell(
     planServices({
       assets: () => session.source.assets as unknown as readonly Asset[],
       importFile: importQuiet,
+      sfx: catalogSfx,
     });
+  const catalogSfx = (wanted: readonly string[]) => {
+    const entry = catalog
+      .entries('audio')
+      .find((item) => item.kind === 'sound' && wanted.some((word) => item.id.includes(word)));
+    if (!entry) return null;
+    const id = ensureCatalogAsset(entry);
+    const asset = (session.source.assets as unknown as readonly Asset[]).find((item) => item.id === id);
+    return asset ? { asset, duration: entry.media?.duration ?? 0 } : null;
+  };
   const planThemeById = async (id: string) =>
     BUILT_IN_THEMES.find((theme) => theme.id === id) ??
     (await (await themeLibrary)?.listThemes())?.find(
@@ -2698,6 +2778,7 @@ export function mountEditorShell(
     openPlanBuild(plan, {
       assets: () => session.source.assets as unknown as readonly Asset[],
       importFile: importQuiet,
+      sfx: catalogSfx,
       theme: planThemeById,
       addScenes: (result) => {
         // FINAL3 V3.5: the plan's feel is listed in AI as a Theme.
@@ -4631,7 +4712,10 @@ export function mountEditorShell(
   const themeLibrary = mediaStore.then((store) =>
     store ? createThemeLibrary(store) : null,
   );
-  const builtInThemeIds = new Set(BUILT_IN_THEMES.map((theme) => theme.id));
+  // Phase 1 library: the built-in themes come from the catalog (P1-22).
+  const builtInThemeIds = {
+    has: (id: string) => BUILT_IN_THEMES.some((theme) => theme.id === id),
+  };
   const feelExtras = new Map<string, FeelExtras>();
   const refreshThemes = async () => {
     const library = await themeLibrary;
@@ -4654,6 +4738,37 @@ export function mountEditorShell(
       .then(refreshThemes)
       .catch(reportError);
   migrateProjectThemes();
+  // Phase 1 library (P1-22): catalog themes, styles, motion and presets.
+  const syncCatalog = () => {
+    const styles = catalog.payloads('styles');
+    registerBuiltInThemes(
+      styles.flatMap(({ entry, payload }) => (entry.kind === 'theme' ? [payload] : [])),
+    );
+    creatorLibrary.setBuiltIn(
+      styles.flatMap(({ entry, payload }): CreatorEntry[] =>
+        entry.kind === 'style' || entry.kind === 'motion' || entry.kind === 'preset'
+          ? [
+              {
+                key: `catalog/${entry.id}`,
+                packId: 'catalog',
+                packName: { en: 'Library', hi: 'लाइब्रेरी' },
+                packVersion: entry.itemVersion,
+                item: payload as CreatorEntry['item'],
+                name: entry.name[getLanguage()] || entry.name.en,
+                addedAt: entry.publishAt ?? '2026-10-26T00:00:00.000Z',
+                ...(entry.kind === 'motion' &&
+                (payload as { meta?: unknown }).meta
+                  ? { motionMeta: (payload as { meta: CreatorEntry['motionMeta'] }).meta! }
+                  : {}),
+              },
+            ]
+          : [],
+      ),
+    );
+    void refreshThemes();
+  };
+  void catalog.ready.then(syncCatalog, reportError);
+  catalog.onChange(syncCatalog);
   engine.on('state:changed', (event) => {
     if (event.reason === 'load') setTimeout(migrateProjectThemes, 0);
   });
@@ -4995,6 +5110,47 @@ export function mountEditorShell(
       openAutoCaptions: () => void openAutoCaptions(captionsContext),
       addDynamicText: (token) => {
         libraryActions.insertTextBox(undefined, undefined, undefined, token);
+      },
+      // Phase 1 library (P1-25): catalog videos and pictures.
+      media: {
+        entries: () =>
+          catalog
+            .entries('elements')
+            .filter((entry) => entry.kind === 'video' || entry.kind === 'image'),
+        place: (entry) =>
+          safely(() => {
+            const id = ensureCatalogAsset(entry);
+            const asset = session.source.assets.find((item) => item.id === id);
+            if (!asset) return;
+            const { width, height } = session.source.composition;
+            placeAsset(asset, {
+              time: session.currentTime,
+              point: [width / 2, height / 2],
+            });
+          }),
+        drag: (entry) => {
+          try {
+            return {
+              kind: 'asset',
+              id: ensureCatalogAsset(entry),
+              name: entry.name[getLanguage()] || entry.name.en,
+              media: entry.kind === 'video' ? 'video' : 'image',
+              ...(entry.media?.duration !== undefined ? { duration: entry.media.duration } : {}),
+              ...(entry.media?.width ? { width: entry.media.width } : {}),
+              ...(entry.media?.height ? { height: entry.media.height } : {}),
+            };
+          } catch {
+            return null;
+          }
+        },
+        prefetch: (entry) => void catalog.prefetch(entry).catch(() => undefined),
+        thumb: async (entry) => {
+          if (entry.media?.poster) {
+            const blob = await catalog.file(entry.media.poster).catch(() => null);
+            return blob ? URL.createObjectURL(blob) : null;
+          }
+          return entry.thumbUrl ? catalog.url(entry.thumbUrl) : null;
+        },
       },
       // FINAL3 T5: a saved text style, centred at the playhead.
       insertTextStyle: (style) =>
@@ -6404,21 +6560,24 @@ export function mountEditorShell(
     meters: audio.meters,
     report: reportError,
   });
+  const previewUrls = new Map<string, string>();
   const soundPack = mountSoundPack(soundPackHost, {
-    importSound: (file) =>
-      mediaPanel.importFiles([file]).then((ids) => ids[0] ?? null),
-    existing: (fileName) =>
-      (
-        engine.state.assets as unknown as readonly {
-          id: string;
-          metadata: { fileName?: unknown; removed?: unknown };
-        }[]
-      ).find(
-        (asset) =>
-          asset.metadata.fileName === fileName &&
-          asset.metadata.removed !== true,
-      )?.id ?? null,
+    entries: () => catalog.entries('audio').filter((entry) => entry.kind === 'sound'),
+    onChange: (listener) => catalog.onChange(listener),
+    prefetch: (entry) => void catalog.prefetch(entry).catch(() => undefined),
+    ensure: (entry) => ensureCatalogAsset(entry),
     add: (assetId) => safely(() => void addOnNewAudioLane(assetId)),
+    previewUrl: async (entry) => {
+      const ref = entry.media?.proxy ?? entry.media?.full;
+      if (!ref) return null;
+      const known = previewUrls.get(ref.sha256);
+      if (known) return known;
+      const blob = await catalog.file(ref, catalogMediaKey(ref.sha256)).catch(() => null);
+      if (!blob) return null;
+      const url = URL.createObjectURL(blob);
+      previewUrls.set(ref.sha256, url);
+      return url;
+    },
     report: reportError,
   });
   /** The commands adding an asset as a layer with a clip, at a composition

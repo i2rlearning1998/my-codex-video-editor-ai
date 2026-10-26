@@ -12,7 +12,6 @@ import {
   type StockItem,
   type StockKind,
 } from '../providers';
-import { SOUND_PACK, encodeWav, soundSamples } from '../audio/sound-pack';
 import { synthesizeToMedia } from '../speech';
 import type { Theme } from '../themes/themes';
 import {
@@ -36,6 +35,11 @@ export interface PlanBuildDeps {
   assets(): readonly Asset[];
   /** Imports a file into Media (quietly) with an optional stock licence. */
   importFile(file: File, license?: LicenseMeta): Promise<Asset | null>;
+  /**
+   * Phase 1 library: a sound effect from the catalog whose name fits one
+   * of the words (its asset, made at once), or null.
+   */
+  sfx?(words: readonly string[]): { asset: Asset; duration: number } | null;
   /** A built-in or saved theme by id. */
   theme(id: string): Promise<Theme | null>;
   /** Adds the built scenes in one step and opens the first. */
@@ -59,7 +63,7 @@ const words = (text: string) =>
 
 /** The builder's media services over the project's media and stock. */
 export function planServices(
-  deps: Pick<PlanBuildDeps, 'assets' | 'importFile'>,
+  deps: Pick<PlanBuildDeps, 'assets' | 'importFile' | 'sfx'>,
 ) {
   const resolve: ResolveServices = {
     local: (query, type) => {
@@ -244,24 +248,10 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
               }
             : { voiceUnavailable: t('plan.noVoice') }),
           sound: async (query, kind, signal) => {
-            // A sound effect from the built-in sound pack when its name fits.
+            // A sound effect from the library catalog when its name fits.
             if (kind === 'sfx') {
-              const wanted = words(query);
-              const sound = SOUND_PACK.find((item) =>
-                wanted.some((word) => item.id.includes(word)),
-              );
-              if (sound) {
-                const asset = await deps.importFile(
-                  new File(
-                    [encodeWav(soundSamples(sound)) as BlobPart],
-                    `${sound.id}.wav`,
-                    {
-                      type: 'audio/wav',
-                    },
-                  ),
-                );
-                if (asset) return { asset, duration: sound.duration };
-              }
+              const found = deps.sfx?.(words(query));
+              if (found) return found;
             }
             const provider = stockProvidersFor('stock-audio').find(hasKeys);
             if (!provider) return null;

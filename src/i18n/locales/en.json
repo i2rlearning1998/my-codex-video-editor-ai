@@ -2784,5 +2784,8 @@
   "cloud.conflict": "This project was saved from somewhere else since it was opened.",
   "cloud.failed": "Cloud action failed: {error}. Your work is saved in this browser.",
   "menu.viewLoop": "Loop playback",
-  "library.locked": "Part of a plan: this item unlocks with a plan (coming later)."
+  "library.locked": "Part of a plan: this item unlocks with a plan (coming later).",
+  "library.mediaFailed": "{name} could not be downloaded. It plays from its small preview until it can.",
+  "library.retry": "Retry",
+  "elements.section.media": "Videos and photos"
 }

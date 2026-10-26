@@ -19,6 +19,8 @@ import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
 import { loadLibrary, onLibraryChange } from '../library/loader';
 import { libraryClient } from '../library-client';
+import type { CatalogEntry } from '../library-client/format';
+import type { DragPayload } from './drag-controller';
 import type { LibraryItem, TemplateCategory } from '../library/schema';
 import type { RenderSource } from '../render/adapter';
 import type { TextMeasurer } from '../render/text-layout';
@@ -371,6 +373,17 @@ export function mountLibraryPanels(
     };
     /** FINAL3 T5: adds a saved "My text style" (centred, or at a point). */
     insertTextStyle?: (style: MyTextStyle) => void;
+    /**
+     * Phase 1 library (P1-25): catalog videos and pictures (Elements ›
+     * Videos and photos), placed at once from their poster and proxy.
+     */
+    media?: {
+      entries(): readonly CatalogEntry[];
+      place(entry: CatalogEntry): void;
+      drag(entry: CatalogEntry): DragPayload | null;
+      prefetch(entry: CatalogEntry): void;
+      thumb(entry: CatalogEntry): Promise<string | null>;
+    };
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
@@ -448,6 +461,29 @@ export function mountLibraryPanels(
             },
           }
         : {}),
+    };
+  };
+  const mediaCard = (entry: CatalogEntry): BrowseCard => {
+    const media = options.media!;
+    // P1-24: a card that shows makes its poster and proxy local.
+    media.prefetch(entry);
+    const ratio =
+      entry.media?.width && entry.media.height
+        ? entry.media.width / entry.media.height
+        : 16 / 9;
+    return {
+      id: `catalog-${entry.id}`,
+      label: name(entry.name),
+      keywords: [entry.name.en, entry.name.hi, ...entry.tags],
+      placeholder: entry.blur,
+      preview: () => media.thumb(entry),
+      prefetch: () => media.prefetch(entry),
+      aspect: Math.max(0.6, Math.min(2, ratio)),
+      className: 'library-card catalog-media-card',
+      data: { catalogId: entry.id, media: entry.kind },
+      ...(entry.planKey ? { locked: t('library.locked') } : {}),
+      activate: () => media.place(entry),
+      drag: () => media.drag(entry),
     };
   };
   const presetCard = (preset: ShapePreset): BrowseCard => ({
@@ -838,6 +874,16 @@ export function mountLibraryPanels(
           cards: () => of('background').map(libraryCard),
           seeAll: graphicsPage,
         },
+        ...(options.media && options.media.entries().length
+          ? [
+              {
+                id: 'catalog-media',
+                title: t('elements.section.media'),
+                layout: 'strip',
+                cards: () => options.media!.entries().map(mediaCard),
+              } as BrowseSection,
+            ]
+          : []),
       ];
     },
   };
