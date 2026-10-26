@@ -153,7 +153,7 @@ export function buildCatalog(
   store: ItemStore,
   outDir: string,
   keys: CatalogKeys,
-  options: { now: string; rolledBackTo?: number } = {
+  options: { now: string; rolledBackTo?: number; force?: boolean } = {
     now: new Date().toISOString(),
   },
 ): BuildResult {
@@ -178,7 +178,7 @@ export function buildCatalog(
     if (item.published)
       indexes[item.category].entries.push(entryFor(store, outDir, item));
   const categories = {} as CatalogManifest['categories'];
-  let changed = !previous;
+  let changed = !previous || options.force === true;
   // An unchanged index keeps its old file (and its old version number);
   // a rollback re-points to the target version's own files.
   const known: CatalogManifest[] = [];

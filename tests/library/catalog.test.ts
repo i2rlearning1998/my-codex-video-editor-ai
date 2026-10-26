@@ -278,7 +278,7 @@ describe('Phase 1 library catalog', () => {
     );
   });
 
-  it('[LIB-010] the catalog server: ETag and 304 on manifest.json, immutable files, ranges, GET only, nothing outside the catalog', () => {
+  it('[LIB-010][LIB-015] the catalog server: ETag and 304 on manifest.json, immutable files, ranges, GET only, nothing outside the catalog', () => {
     const { outDir } = seeded();
     const first = catalogResponse(outDir, 'GET', '/manifest.json', {});
     expect(first.status).toBe(200);

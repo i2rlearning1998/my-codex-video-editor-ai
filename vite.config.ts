@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { BRAND } from './src/brand/brand';
+import { ownerGuard } from './vite.library';
 
 let gitCommit = 'unknown';
 try {
@@ -26,6 +27,8 @@ export default defineConfig({
   // T7: index.html (title, loading screen) takes the wordmark from
   // src/brand/brand.ts, the one place the brand is defined.
   plugins: [
+    // Phase 1 library (P1-11): the owner app is never served by the editor.
+    ownerGuard(),
     {
       name: 'brand-html',
       transformIndexHtml: (html) =>
