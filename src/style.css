@@ -11898,3 +11898,16 @@ body:has(.modal-backdrop) .toast-stack {
   inline-size: 100%;
   margin-block-end: var(--space-2);
 }
+
+/* P1-30: a feature that a plan would unlock. */
+.feature-upgrade {
+  margin-inline-start: var(--space-2);
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--raised-hover);
+  color: var(--text-secondary);
+  font-size: var(--font-caption);
+}
+[data-feature-state='locked'] {
+  opacity: 0.85;
+}

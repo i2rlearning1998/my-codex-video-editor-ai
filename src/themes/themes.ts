@@ -70,7 +70,11 @@ export function registerBuiltInThemes(themes: readonly unknown[]): void {
     const parsed = themeSchema.safeParse(value);
     return parsed.success ? [parsed.data] : [];
   });
-  BUILT_IN_THEMES.splice(0, BUILT_IN_THEMES.length, ...(valid.length ? valid : [FALLBACK_THEME]));
+  BUILT_IN_THEMES.splice(
+    0,
+    BUILT_IN_THEMES.length,
+    ...(valid.length ? valid : [FALLBACK_THEME]),
+  );
 }
 
 // --- Storage in the project (reserved markers) -----------------------------

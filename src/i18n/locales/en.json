@@ -2798,5 +2798,7 @@
   "cloud.sizeKb": "{size} KB",
   "cloud.sizeMb": "{size} MB",
   "cloud.google": "Continue with Google",
-  "cloud.googleOff": "Google sign-in is not set up for this editor yet."
+  "cloud.googleOff": "Google sign-in is not set up for this editor yet.",
+  "features.upgrade": "Upgrade",
+  "features.locked": "This feature is part of a plan. Plans are coming later."
 }

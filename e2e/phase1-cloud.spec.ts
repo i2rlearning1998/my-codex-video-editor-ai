@@ -188,7 +188,7 @@ async function logInDown(page: Page) {
   await expect(page.locator('#account')).toHaveText('Log in');
 }
 
-test('[LIB-033][LIB-031] the Open list shows each project picture, Free space lists and deletes only unused cloud files, Google sign-in shows only when set up, and a training record goes up with Save', async ({
+test('[LIB-032][LIB-031] the Open list shows each project picture, Free space lists and deletes only unused cloud files, Google sign-in shows only when set up, and a training record goes up with Save', async ({
   page,
 }) => {
   test.setTimeout(90_000);

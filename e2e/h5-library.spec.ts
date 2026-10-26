@@ -168,7 +168,10 @@ test('[TPL-010] a library that cannot load says so in its panels', async ({
     () =>
       new Promise<void>((resolve) => {
         const request = indexedDB.deleteDatabase('aive-library');
-        request.onsuccess = request.onerror = request.onblocked = () => resolve();
+        request.onsuccess =
+          request.onerror =
+          request.onblocked =
+            () => resolve();
       }),
   );
   await page.reload();

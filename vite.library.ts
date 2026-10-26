@@ -52,7 +52,8 @@ export const libraryDirs = () => ({
 });
 
 export function libraryPublicKey(command: 'serve' | 'build'): string {
-  if (process.env.VITE_LIBRARY_PUBLIC_KEY) return process.env.VITE_LIBRARY_PUBLIC_KEY;
+  if (process.env.VITE_LIBRARY_PUBLIC_KEY)
+    return process.env.VITE_LIBRARY_PUBLIC_KEY;
   const { keysDir } = libraryDirs();
   if (command === 'serve') return ensureKeys(keysDir).publicKey;
   return readPublicKey(keysDir) ?? '';
@@ -69,8 +70,12 @@ export function catalogDev(): Plugin {
         const answer = async () => {
           if (!existsSync(path.join(catalogDir, 'manifest.json'))) {
             seeding ??= (async () => {
-              const seed = (await server.ssrLoadModule('/owner/catalog/seed.ts')) as typeof import('./owner/catalog/seed');
-              const sources = (await server.ssrLoadModule('/owner/catalog/sources.ts')) as typeof import('./owner/catalog/sources');
+              const seed = (await server.ssrLoadModule(
+                '/owner/catalog/seed.ts',
+              )) as typeof import('./owner/catalog/seed');
+              const sources = (await server.ssrLoadModule(
+                '/owner/catalog/sources.ts',
+              )) as typeof import('./owner/catalog/sources');
               seed.seedCatalog(sources.defaultSeedSources(), {
                 dataDir,
                 outDir: catalogDir,
@@ -79,10 +84,15 @@ export function catalogDev(): Plugin {
             })();
             await seeding;
           }
-          const result = catalogResponse(catalogDir, request.method ?? 'GET', request.url ?? '/', {
-            'if-none-match': request.headers['if-none-match'],
-            range: request.headers.range,
-          });
+          const result = catalogResponse(
+            catalogDir,
+            request.method ?? 'GET',
+            request.url ?? '/',
+            {
+              'if-none-match': request.headers['if-none-match'],
+              range: request.headers.range,
+            },
+          );
           response.writeHead(result.status, result.headers);
           response.end(result.body ?? undefined);
         };

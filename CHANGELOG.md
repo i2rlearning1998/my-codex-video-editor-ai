@@ -1,5 +1,12 @@
 # Changelog
 
+## Phase 1 library (26 Oct)
+
+- The shared library (shapes, backgrounds, text styles, font combinations, templates, transitions, themes, styles, sounds) now lives in the owner's signed catalog; the editor only reads it, keeps a copy in the browser and opens with a tiny basic pack when there is neither. The editor is about 106 KB smaller.
+- Library items are placed in the same frame as the click or drop, even on a slow network; catalog videos, photos and sounds appear at once from a small preview and switch to the full file without moving. A failed download keeps the item and offers Retry.
+- The owner's library manager (separate app, 2-step login, audit log): upload packs, media and zips with automatic checks, edit names, tags, licence, order, featured, hidden and schedule, publish, unpublish and roll back. `npm run owner` starts it with the catalog server.
+- Cloud: project pictures in Open from cloud, Free space for uploaded files no project uses, Google sign-in only when it is set up. AI-built videos keep a training record (saved to the cloud with the project). Feature keys for later plans (all on today).
+
 ## AUDIT-EDITOR, EDITOR-COMPLETE and Phase 1 (25 Oct)
 
 - Every unfinished ledger row was checked in the browser: 115 work (now proven by tests), 90 partly, 70 not built, 52 wait for later (animation, pro features, AI). Stale "planned" controls (scene Transition, Edit image Adjust colors and Filters, full-screen tooltip) now work.

@@ -288,6 +288,7 @@ import { catalogMediaKey, libraryClient } from '../library-client';
 import { catalogAsset } from '../library-client/media';
 import type { CatalogEntry } from '../library-client/format';
 import { TrainingLog, openTrainingStore } from '../training/record';
+import { gateControl } from '../features/registry';
 import type { LibraryItem } from '../library/schema';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
@@ -3488,6 +3489,13 @@ export function mountEditorShell(
     });
   };
   element<HTMLButtonElement>('#export').onclick = () => safely(openExport);
+  // P1-30: the one place a plan feature shows as locked or hidden.
+  gateControl(
+    element<HTMLButtonElement>('#export'),
+    'export.video',
+    { upgrade: t('features.upgrade'), locked: t('features.locked') },
+    (message) => showToast(message, 'info'),
+  );
   for (const [id, action] of [
     ['#save', actions.save],
     ['#export-json', actions.exportProject],

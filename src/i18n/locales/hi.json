@@ -2798,5 +2798,7 @@
   "cloud.sizeKb": "{size} KB",
   "cloud.sizeMb": "{size} MB",
   "cloud.google": "Google से जारी रखें",
-  "cloud.googleOff": "इस एडिटर में अभी Google साइन-इन सेट नहीं है।"
+  "cloud.googleOff": "इस एडिटर में अभी Google साइन-इन सेट नहीं है।",
+  "features.upgrade": "अपग्रेड",
+  "features.locked": "यह सुविधा किसी प्लान का हिस्सा है। प्लान बाद में आएँगे।"
 }
