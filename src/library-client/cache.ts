@@ -14,7 +14,9 @@ export interface CacheStore {
 export class MemoryCache implements CacheStore {
   readonly #data = new Map<string, unknown>();
   get<T>(key: string) {
-    return Promise.resolve(structuredClone(this.#data.get(key)) as T | undefined);
+    return Promise.resolve(
+      structuredClone(this.#data.get(key)) as T | undefined,
+    );
   }
   put(entries: Record<string, unknown>) {
     for (const [key, value] of Object.entries(entries))
@@ -45,7 +47,8 @@ class IndexedCache implements CacheStore {
 }
 
 export function openCache(): Promise<CacheStore> {
-  if (typeof indexedDB === 'undefined') return Promise.resolve(new MemoryCache());
+  if (typeof indexedDB === 'undefined')
+    return Promise.resolve(new MemoryCache());
   return new Promise((resolve) => {
     const request = indexedDB.open(DB, 1);
     request.onupgradeneeded = () => request.result.createObjectStore(STORE);

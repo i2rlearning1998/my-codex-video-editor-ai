@@ -73,8 +73,12 @@ describe('Phase 1 library client', () => {
     await first.ready;
     expect(first.status).toMatchObject({ source: 'catalog', problem: null });
     expect(first.entries('elements').length).toBeGreaterThan(50);
-    expect(first.entries('audio').map((entry) => entry.id)).toContain('sound-ding');
-    expect(net.calls.filter((url) => url.endsWith('manifest.json'))).toHaveLength(1);
+    expect(first.entries('audio').map((entry) => entry.id)).toContain(
+      'sound-ding',
+    );
+    expect(
+      net.calls.filter((url) => url.endsWith('manifest.json')),
+    ).toHaveLength(1);
 
     // A second page: the cache fills the panels before any request.
     const later = catalogFetch();
@@ -85,7 +89,9 @@ describe('Phase 1 library client', () => {
     expect(second.entries('elements')).toEqual(first.entries('elements'));
     // The idle refresh asks with the ETag and gets 304.
     expect(await second.refresh()).toBe('unchanged');
-    expect(later.calls.filter((url) => url.endsWith('manifest.json'))).toHaveLength(1);
+    expect(
+      later.calls.filter((url) => url.endsWith('manifest.json')),
+    ).toHaveLength(1);
   });
 
   it('[LIB-021] with no catalog and no cache the tiny fallback pack is used, and the reason is given', async () => {
@@ -96,8 +102,12 @@ describe('Phase 1 library client', () => {
     expect(offline.status.source).toBe('fallback');
     expect(offline.status.problem).toMatch(/cannot be reached/);
     const manifest = offline.manifest();
-    expect(manifest.items.map((item) => item.id)).toEqual(FALLBACK_ITEMS.map((item) => item.id));
-    expect(manifest.items.some((item) => item.type === 'background')).toBe(true);
+    expect(manifest.items.map((item) => item.id)).toEqual(
+      FALLBACK_ITEMS.map((item) => item.id),
+    );
+    expect(manifest.items.some((item) => item.type === 'background')).toBe(
+      true,
+    );
     // No catalog address at all: the same fallback.
     const none = client(net, new MemoryCache(), { url: null });
     await none.ready;
@@ -117,20 +127,29 @@ describe('Phase 1 library client', () => {
     const { cpSync } = await import('node:fs');
     cpSync(outDir, bad, { recursive: true });
     const manifestPath = path.join(bad, 'manifest.json');
-    const wrapper = JSON.parse(readFileSync(manifestPath, 'utf8')) as { signed: string };
-    wrapper.signed = wrapper.signed.replace('"catalogVersion":1', '"catalogVersion":9');
+    const wrapper = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      signed: string;
+    };
+    wrapper.signed = wrapper.signed.replace(
+      '"catalogVersion":1',
+      '"catalogVersion":9',
+    );
     writeFileSync(manifestPath, JSON.stringify(wrapper));
     const tampered = catalogFetch(bad);
     const next = client(tampered, cache);
     await next.ready;
     expect(await next.refresh()).toBe('rejected');
-    expect(next.status.problem).toMatch(/signature is wrong.*saved copy is used/);
+    expect(next.status.problem).toMatch(
+      /signature is wrong.*saved copy is used/,
+    );
     expect(next.status.catalogVersion).toBe(1);
     expect(next.entries('text')).toEqual(before);
 
     // Another key: rejected the same way.
     const other = generateKeys(path.join(root, 'other-keys'));
-    const stranger = client(catalogFetch(), new MemoryCache(), { publicKey: other.publicKey });
+    const stranger = client(catalogFetch(), new MemoryCache(), {
+      publicKey: other.publicKey,
+    });
     await stranger.ready;
     expect(stranger.status.source).toBe('fallback');
     expect(stranger.status.problem).toMatch(/key this editor does not know/);
@@ -143,7 +162,9 @@ describe('Phase 1 library client', () => {
     const out = path.join(dir, 'out');
     seedCatalog(defaultSeedSources(), { dataDir: data, outDir: out, keys });
     const store = new ItemStore(data);
-    const ids = store.data.items.filter((item) => item.category === 'audio').map((item) => item.id);
+    const ids = store.data.items
+      .filter((item) => item.category === 'audio')
+      .map((item) => item.id);
     const [hidden, later, ended, featured, locked] = ids;
     for (const item of store.data.items) {
       if (item.id === hidden) item.hidden = true;
@@ -174,12 +195,15 @@ describe('Phase 1 library client', () => {
     await fresh.ready;
     // The 200 Starter Pack items plus the 24 font combinations (P1-01).
     await vi.waitFor(
-      () => expect(fresh.manifest().items).toHaveLength(bundled.items.length + 24),
+      () =>
+        expect(fresh.manifest().items).toHaveLength(bundled.items.length + 24),
       { timeout: 10_000 },
     );
     const byId = new Map(fresh.manifest().items.map((item) => [item.id, item]));
     for (const item of bundled.items) expect(byId.get(item.id)).toEqual(item);
-    expect([...byId.keys()].filter((id) => id.startsWith('combo-'))).toHaveLength(24);
+    expect(
+      [...byId.keys()].filter((id) => id.startsWith('combo-')),
+    ).toHaveLength(24);
     expect(fresh.manifest().templates).toEqual(bundled.templates);
   });
 
@@ -191,13 +215,22 @@ describe('Phase 1 library client', () => {
     expect(assetSchema.safeParse(asset).success).toBe(true);
     expect(asset).toEqual(catalogAsset(entry)); // Same id every time.
     expect(asset.type).toBe('audio');
-    expect(asset.source.reference).toBe(`media/${entry.media!.full.sha256.slice(0, 32)}`);
-    expect(asset.metadata.catalogProxy).toBe(`media/${entry.media!.proxy!.sha256.slice(0, 32)}`);
-    expect(asset.metadata.catalog).toEqual({ id: 'sound-ding', itemVersion: entry.itemVersion });
+    expect(asset.source.reference).toBe(
+      `media/${entry.media!.full.sha256.slice(0, 32)}`,
+    );
+    expect(asset.metadata.catalogProxy).toBe(
+      `media/${entry.media!.proxy!.sha256.slice(0, 32)}`,
+    );
+    expect(asset.metadata.catalog).toEqual({
+      id: 'sound-ding',
+      itemVersion: entry.itemVersion,
+    });
     // The proxy is local after prefetch; the full file only when asked.
     const media = new MemoryMediaStore();
     const net = catalogFetch();
-    const warm = client(net, new MemoryCache(), { media: Promise.resolve(media) });
+    const warm = client(net, new MemoryCache(), {
+      media: Promise.resolve(media),
+    });
     await warm.ready;
     await warm.prefetch(warm.entry('sound-ding')!);
     expect(await media.has(String(asset.metadata.catalogProxy))).toBe(true);

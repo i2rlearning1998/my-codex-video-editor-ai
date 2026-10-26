@@ -27,7 +27,8 @@ export interface SoundPackHost {
 }
 
 /** The tile's stable name: the catalog id without its `sound-` prefix. */
-export const soundTileId = (entry: CatalogEntry) => entry.id.replace(/^sound-/, '');
+export const soundTileId = (entry: CatalogEntry) =>
+  entry.id.replace(/^sound-/, '');
 
 export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
   host.classList.add('sound-pack');
@@ -48,7 +49,8 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
   empty.hidden = true;
   host.replaceChildren(heading, search, list, empty);
 
-  const nameOf = (entry: CatalogEntry) => entry.name[getLanguage()] || entry.name.en;
+  const nameOf = (entry: CatalogEntry) =>
+    entry.name[getLanguage()] || entry.name.en;
   let shown: CatalogEntry[] = [];
   const tileFor = (entry: CatalogEntry) => {
     const tile = document.createElement('div');
@@ -92,7 +94,11 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
     });
     // FIX5 C2: no hover play; a Play / Stop button (one preview at a time).
     const preview = audioPlayButton(
-      { id: `sound:${soundTileId(entry)}`, name: nameOf(entry), url: () => options.previewUrl(entry) },
+      {
+        id: `sound:${soundTileId(entry)}`,
+        name: nameOf(entry),
+        url: () => options.previewUrl(entry),
+      },
       'sound-tile-play',
     );
     preview.dataset.action = 'sound-preview';

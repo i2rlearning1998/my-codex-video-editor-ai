@@ -24,10 +24,14 @@ export function isHeavy(entry: CatalogEntry): boolean {
 }
 
 /** The project asset for a heavy catalog entry (pure; same id every time). */
-export function catalogAsset(entry: CatalogEntry, language: 'en' | 'hi' = 'en'): CatalogAsset {
+export function catalogAsset(
+  entry: CatalogEntry,
+  language: 'en' | 'hi' = 'en',
+): CatalogAsset {
   const media = entry.media;
   const type = TYPES[entry.kind as keyof typeof TYPES];
-  if (!media || !type) throw new Error('This library item is not a media file.');
+  if (!media || !type)
+    throw new Error('This library item is not a media file.');
   const fingerprint = media.full.sha256.slice(0, 32);
   const name = (entry.name[language] || entry.name.en).slice(0, 256);
   const extension = media.full.url.split('.').pop() ?? 'bin';
@@ -42,9 +46,15 @@ export function catalogAsset(entry: CatalogEntry, language: 'en' | 'hi' = 'en'):
       fileName: `${name}.${extension}`,
       fingerprint,
       catalog: { id: entry.id, itemVersion: entry.itemVersion },
-      ...(media.proxy ? { catalogProxy: catalogMediaKey(media.proxy.sha256) } : {}),
+      ...(media.proxy
+        ? { catalogProxy: catalogMediaKey(media.proxy.sha256) }
+        : {}),
       ...(media.poster ? { catalogPoster: media.poster.sha256 } : {}),
-      ...(entry.license.credit ? { license: { name: entry.license.name, credit: entry.license.credit } } : {}),
+      ...(entry.license.credit
+        ? {
+            license: { name: entry.license.name, credit: entry.license.credit },
+          }
+        : {}),
     },
     ...(media.width ? { width: media.width } : {}),
     ...(media.height ? { height: media.height } : {}),

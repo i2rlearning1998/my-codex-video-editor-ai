@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build",
+    "build": "vite build && node scripts/assert-editor-bundle.mjs",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",

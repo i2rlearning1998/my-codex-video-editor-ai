@@ -287,6 +287,7 @@ import { showToast } from './components/toast';
 import { catalogMediaKey, libraryClient } from '../library-client';
 import { catalogAsset } from '../library-client/media';
 import type { CatalogEntry } from '../library-client/format';
+import type { LibraryItem } from '../library/schema';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
 import { mountShortcutSheet } from './shortcut-sheet';
@@ -704,10 +705,17 @@ export function mountEditorShell(
           previews.retry();
         })
         .catch(() => {
-          showToast(t('library.mediaFailed', { name: entry.name[getLanguage()] || entry.name.en }), 'error', 10000, {
-            label: t('library.retry'),
-            run: () => void fetchCatalogFull(entry, assetId),
-          });
+          showToast(
+            t('library.mediaFailed', {
+              name: entry.name[getLanguage()] || entry.name.en,
+            }),
+            'error',
+            10000,
+            {
+              label: t('library.retry'),
+              run: () => void fetchCatalogFull(entry, assetId),
+            },
+          );
         })
         .finally(() => fullJobs.delete(assetId));
       fullJobs.set(assetId, job);
@@ -724,15 +732,26 @@ export function mountEditorShell(
       }[]
     ).find((item) => item.id === asset.id);
     if (!known)
-      engine.library('Add from library', [{ type: 'ADD_ASSET', asset } as Command]);
+      engine.library('Add from library', [
+        { type: 'ADD_ASSET', asset } as Command,
+      ]);
     else if (known.metadata.removed === true) {
       const { removed: _removed, ...metadata } = known.metadata;
       void _removed;
       engine.library('Restore media', [
-        { type: 'REPLACE_ASSET', asset: { ...known, metadata } } as unknown as Command,
+        {
+          type: 'REPLACE_ASSET',
+          asset: { ...known, metadata },
+        } as unknown as Command,
       ]);
     }
-    void fetchCatalogFull(entry, asset.id);
+    // After the placing step (P1-24: nothing on the critical path waits on
+    // the network).
+    // Two frames later: the placed item is drawn first.
+    const later = () => void fetchCatalogFull(entry, asset.id);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => setTimeout(later, 0)),
+    );
     return asset.id;
   };
   engine.on('state:changed', (event) => {
@@ -2368,6 +2387,7 @@ export function mountEditorShell(
   const unsubscribePreview = session.onPreview(() => safely(draw));
   // J5: bundled fonts the project uses load, then the canvas redraws.
   const disposeFonts = mountFonts(engine, () => safely(draw));
+  const fontsPrefetched = new Set<string>();
   element<HTMLButtonElement>('#undo').onclick = () =>
     safely(() => {
       runCommand('undo', commandContext);
@@ -2751,10 +2771,16 @@ export function mountEditorShell(
   const catalogSfx = (wanted: readonly string[]) => {
     const entry = catalog
       .entries('audio')
-      .find((item) => item.kind === 'sound' && wanted.some((word) => item.id.includes(word)));
+      .find(
+        (item) =>
+          item.kind === 'sound' &&
+          wanted.some((word) => item.id.includes(word)),
+      );
     if (!entry) return null;
     const id = ensureCatalogAsset(entry);
-    const asset = (session.source.assets as unknown as readonly Asset[]).find((item) => item.id === id);
+    const asset = (session.source.assets as unknown as readonly Asset[]).find(
+      (item) => item.id === id,
+    );
     return asset ? { asset, duration: entry.media?.duration ?? 0 } : null;
   };
   const planThemeById = async (id: string) =>
@@ -4742,11 +4768,15 @@ export function mountEditorShell(
   const syncCatalog = () => {
     const styles = catalog.payloads('styles');
     registerBuiltInThemes(
-      styles.flatMap(({ entry, payload }) => (entry.kind === 'theme' ? [payload] : [])),
+      styles.flatMap(({ entry, payload }) =>
+        entry.kind === 'theme' ? [payload] : [],
+      ),
     );
     creatorLibrary.setBuiltIn(
       styles.flatMap(({ entry, payload }): CreatorEntry[] =>
-        entry.kind === 'style' || entry.kind === 'motion' || entry.kind === 'preset'
+        entry.kind === 'style' ||
+        entry.kind === 'motion' ||
+        entry.kind === 'preset'
           ? [
               {
                 key: `catalog/${entry.id}`,
@@ -4758,7 +4788,11 @@ export function mountEditorShell(
                 addedAt: entry.publishAt ?? '2026-10-26T00:00:00.000Z',
                 ...(entry.kind === 'motion' &&
                 (payload as { meta?: unknown }).meta
-                  ? { motionMeta: (payload as { meta: CreatorEntry['motionMeta'] }).meta! }
+                  ? {
+                      motionMeta: (
+                        payload as { meta: CreatorEntry['motionMeta'] }
+                      ).meta!,
+                    }
                   : {}),
               },
             ]
@@ -5111,12 +5145,40 @@ export function mountEditorShell(
       addDynamicText: (token) => {
         libraryActions.insertTextBox(undefined, undefined, undefined, token);
       },
+      prefetchItem: (item) => {
+        if (fontsPrefetched.has(item.id)) return;
+        fontsPrefetched.add(item.id);
+        try {
+          const elements =
+            item.type === 'template' || item.type === 'text'
+              ? (item.data.elements as readonly { kind: string }[]).filter(
+                  (element) => element.kind === 'text',
+                )
+              : [];
+          // Text items hold at most four elements: probe in fours.
+          for (let start = 0; start < elements.length; start += 4) {
+            const built = libraryActions.commandsFor({
+              ...item,
+              type: 'text',
+              data: { elements: elements.slice(start, start + 4) },
+            } as unknown as LibraryItem);
+            if (built)
+              disposeFonts.prefetch(
+                engine.preview(built.commands).compositions as never,
+              );
+          }
+        } catch {
+          // A preview that cannot be built only skips the prefetch.
+        }
+      },
       // Phase 1 library (P1-25): catalog videos and pictures.
       media: {
         entries: () =>
           catalog
             .entries('elements')
-            .filter((entry) => entry.kind === 'video' || entry.kind === 'image'),
+            .filter(
+              (entry) => entry.kind === 'video' || entry.kind === 'image',
+            ),
         place: (entry) =>
           safely(() => {
             const id = ensureCatalogAsset(entry);
@@ -5135,7 +5197,9 @@ export function mountEditorShell(
               id: ensureCatalogAsset(entry),
               name: entry.name[getLanguage()] || entry.name.en,
               media: entry.kind === 'video' ? 'video' : 'image',
-              ...(entry.media?.duration !== undefined ? { duration: entry.media.duration } : {}),
+              ...(entry.media?.duration !== undefined
+                ? { duration: entry.media.duration }
+                : {}),
               ...(entry.media?.width ? { width: entry.media.width } : {}),
               ...(entry.media?.height ? { height: entry.media.height } : {}),
             };
@@ -5143,10 +5207,13 @@ export function mountEditorShell(
             return null;
           }
         },
-        prefetch: (entry) => void catalog.prefetch(entry).catch(() => undefined),
+        prefetch: (entry) =>
+          void catalog.prefetch(entry).catch(() => undefined),
         thumb: async (entry) => {
           if (entry.media?.poster) {
-            const blob = await catalog.file(entry.media.poster).catch(() => null);
+            const blob = await catalog
+              .file(entry.media.poster)
+              .catch(() => null);
             return blob ? URL.createObjectURL(blob) : null;
           }
           return entry.thumbUrl ? catalog.url(entry.thumbUrl) : null;
@@ -6562,7 +6629,8 @@ export function mountEditorShell(
   });
   const previewUrls = new Map<string, string>();
   const soundPack = mountSoundPack(soundPackHost, {
-    entries: () => catalog.entries('audio').filter((entry) => entry.kind === 'sound'),
+    entries: () =>
+      catalog.entries('audio').filter((entry) => entry.kind === 'sound'),
     onChange: (listener) => catalog.onChange(listener),
     prefetch: (entry) => void catalog.prefetch(entry).catch(() => undefined),
     ensure: (entry) => ensureCatalogAsset(entry),
@@ -6572,7 +6640,9 @@ export function mountEditorShell(
       if (!ref) return null;
       const known = previewUrls.get(ref.sha256);
       if (known) return known;
-      const blob = await catalog.file(ref, catalogMediaKey(ref.sha256)).catch(() => null);
+      const blob = await catalog
+        .file(ref, catalogMediaKey(ref.sha256))
+        .catch(() => null);
       if (!blob) return null;
       const url = URL.createObjectURL(blob);
       previewUrls.set(ref.sha256, url);

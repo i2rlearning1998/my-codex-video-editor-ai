@@ -19,7 +19,8 @@ export function libraryConfig(): { url: string | null; publicKey: string } {
   };
   const testable = env.DEV === true || env.MODE === 'e2e';
   const fromEnv =
-    typeof env.VITE_LIBRARY_CATALOG_URL === 'string' && env.VITE_LIBRARY_CATALOG_URL
+    typeof env.VITE_LIBRARY_CATALOG_URL === 'string' &&
+    env.VITE_LIBRARY_CATALOG_URL
       ? env.VITE_LIBRARY_CATALOG_URL
       : null;
   const url =
@@ -30,7 +31,9 @@ export function libraryConfig(): { url: string | null; publicKey: string } {
     (testable ? page.__AIVE_LIBRARY_KEY__ : undefined) ??
     (typeof __LIBRARY_PUBLIC_KEY__ === 'string' ? __LIBRARY_PUBLIC_KEY__ : '');
   return {
-    url: url ? new URL(url.endsWith('/') ? url : `${url}/`, location.href).href : null,
+    url: url
+      ? new URL(url.endsWith('/') ? url : `${url}/`, location.href).href
+      : null,
     publicKey,
   };
 }

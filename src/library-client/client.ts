@@ -7,7 +7,11 @@
 // cache and no catalog the tiny bundled fallback pack is used. Nothing here
 // blocks the UI: every call is asynchronous and a refresh never runs twice
 // at once.
-import type { LibraryItem, LibraryManifest, TemplateCategory } from '../library/schema';
+import type {
+  LibraryItem,
+  LibraryManifest,
+  TemplateCategory,
+} from '../library/schema';
 import { libraryItemSchema } from '../library/schema';
 import type { MediaStore } from '../media/store';
 import type { CacheStore } from './cache';
@@ -64,7 +68,11 @@ export const catalogMediaKey = (sha: string) => `media/${sha.slice(0, 32)}`;
 export class LibraryClient {
   #manifest: CatalogManifest | null = null;
   #indexes = new Map<CatalogCategory, CategoryIndex>();
-  #status: ClientStatus = { source: 'fallback', catalogVersion: null, problem: null };
+  #status: ClientStatus = {
+    source: 'fallback',
+    catalogVersion: null,
+    problem: null,
+  };
   #refreshing: Promise<RefreshResult> | null = null;
   readonly #listeners = new Set<() => void>();
   readonly #posters = new Map<string, ImageBitmap | HTMLImageElement>();
@@ -97,7 +105,10 @@ export class LibraryClient {
       const cached = await cache.get<CachedManifest>(MANIFEST_KEY);
       if (cached) {
         // The cached text was checked when it arrived; check it again (cheap).
-        const manifest = await verifyManifest(cached.text, this.options.publicKey);
+        const manifest = await verifyManifest(
+          cached.text,
+          this.options.publicKey,
+        );
         const indexes = new Map<CatalogCategory, CategoryIndex>();
         for (const category of CATALOG_CATEGORIES) {
           const entry = await cache.get<CachedIndex>(indexKey(category));
@@ -107,7 +118,11 @@ export class LibraryClient {
         }
         this.#manifest = manifest;
         this.#indexes = indexes;
-        this.#status = { source: 'cache', catalogVersion: manifest.catalogVersion, problem: null };
+        this.#status = {
+          source: 'cache',
+          catalogVersion: manifest.catalogVersion,
+          problem: null,
+        };
         void this.#prefetchFiles();
       }
     } catch {
@@ -118,32 +133,48 @@ export class LibraryClient {
       await this.refresh();
     } else {
       const later = () => void this.refresh();
-      if (typeof requestIdleCallback === 'function') requestIdleCallback(later, { timeout: 3000 });
+      if (typeof requestIdleCallback === 'function')
+        requestIdleCallback(later, { timeout: 3000 });
       else setTimeout(later, 500);
     }
   }
 
   /** Checks for a newer catalog; safe to call at any time. */
   refresh(): Promise<RefreshResult> {
-    this.#refreshing ??= this.#refresh().finally(() => (this.#refreshing = null));
+    this.#refreshing ??= this.#refresh().finally(
+      () => (this.#refreshing = null),
+    );
     return this.#refreshing;
   }
   async #refresh(): Promise<RefreshResult> {
     if (!this.options.url) {
-      this.#status = { ...this.#status, problem: 'No library catalog is set up for this editor.' };
+      this.#status = {
+        ...this.#status,
+        problem: 'No library catalog is set up for this editor.',
+      };
       this.#emit();
       return 'offline';
     }
     const cache = await this.options.cache;
-    const cached = await cache.get<CachedManifest>(MANIFEST_KEY).catch(() => undefined);
+    const cached = await cache
+      .get<CachedManifest>(MANIFEST_KEY)
+      .catch(() => undefined);
     let response: Response;
     try {
       response = await this.#fetch(this.#href('manifest.json'), {
         cache: 'no-cache',
-        headers: cached?.etag && this.#manifest ? { 'if-none-match': cached.etag } : {},
+        headers:
+          cached?.etag && this.#manifest
+            ? { 'if-none-match': cached.etag }
+            : {},
       });
     } catch {
-      this.#status = { ...this.#status, problem: 'The library catalog cannot be reached; the saved copy is used.' };
+      this.#status = {
+        ...this.#status,
+        problem: this.#manifest
+          ? 'The library catalog cannot be reached; the saved copy is used.'
+          : 'The library catalog cannot be reached.',
+      };
       this.#emit();
       return 'offline';
     }
@@ -155,7 +186,10 @@ export class LibraryClient {
       return 'unchanged';
     }
     if (!response.ok) {
-      this.#status = { ...this.#status, problem: `The library catalog answered ${response.status}; the saved copy is used.` };
+      this.#status = {
+        ...this.#status,
+        problem: `The library catalog answered ${response.status}${this.#manifest ? '; the saved copy is used' : ''}.`,
+      };
       this.#emit();
       return 'offline';
     }
@@ -164,9 +198,17 @@ export class LibraryClient {
       const manifest = await verifyManifest(text, this.options.publicKey);
       const have = this.#manifest?.catalogVersion ?? 0;
       if (manifest.catalogVersion < have)
-        throw new CatalogRejected('The catalog is older than the one already saved here.');
+        throw new CatalogRejected(
+          'The catalog is older than the one already saved here.',
+        );
       if (manifest.catalogVersion === have && this.#manifest) {
-        await cache.put({ [MANIFEST_KEY]: { text, etag: response.headers.get('etag'), catalogVersion: have } });
+        await cache.put({
+          [MANIFEST_KEY]: {
+            text,
+            etag: response.headers.get('etag'),
+            catalogVersion: have,
+          },
+        });
         return 'unchanged';
       }
       const indexes = new Map<CatalogCategory, CategoryIndex>();
@@ -180,22 +222,38 @@ export class LibraryClient {
           continue;
         }
         const indexResponse = await this.#fetch(this.#href(ref.url));
-        if (!indexResponse.ok) throw new Error(`The ${category} index answered ${indexResponse.status}.`);
+        if (!indexResponse.ok)
+          throw new Error(
+            `The ${category} index answered ${indexResponse.status}.`,
+          );
         const indexText = await indexResponse.text();
         if ((await sha256(indexText)) !== ref.sha256)
-          throw new CatalogRejected(`The ${category} index does not match the signed catalog.`);
+          throw new CatalogRejected(
+            `The ${category} index does not match the signed catalog.`,
+          );
         const index = categoryIndexSchema.parse(JSON.parse(indexText));
         indexes.set(category, index);
-        writes[indexKey(category)] = { sha256: ref.sha256, index } satisfies CachedIndex;
+        writes[indexKey(category)] = {
+          sha256: ref.sha256,
+          index,
+        } satisfies CachedIndex;
       }
       // Indexes first, the manifest last: a cut-off write keeps the old one.
       await cache.put(writes);
       await cache.put({
-        [MANIFEST_KEY]: { text, etag: response.headers.get('etag'), catalogVersion: manifest.catalogVersion },
+        [MANIFEST_KEY]: {
+          text,
+          etag: response.headers.get('etag'),
+          catalogVersion: manifest.catalogVersion,
+        },
       });
       this.#manifest = manifest;
       this.#indexes = indexes;
-      this.#status = { source: 'catalog', catalogVersion: manifest.catalogVersion, problem: null };
+      this.#status = {
+        source: 'catalog',
+        catalogVersion: manifest.catalogVersion,
+        problem: null,
+      };
       this.#emit();
       void this.#prefetchFiles();
       return 'updated';
@@ -204,8 +262,8 @@ export class LibraryClient {
       this.#status = {
         ...this.#status,
         problem: rejected
-          ? `${error.message} The saved copy is used.`
-          : 'The library catalog could not be read; the saved copy is used.',
+          ? `${error.message}${this.#manifest ? ' The saved copy is used.' : ''}`
+          : `The library catalog could not be read${this.#manifest ? '; the saved copy is used' : ''}.`,
       };
       this.#emit();
       return rejected ? 'rejected' : 'offline';
@@ -244,7 +302,8 @@ export class LibraryClient {
     return {
       version: 1,
       pack: { id: 'catalog', name: { en: 'Library', hi: 'लाइब्रेरी' } },
-      templates: (this.#indexes.get('templates')?.taxonomy ?? []) as TemplateCategory[],
+      templates: (this.#indexes.get('templates')?.taxonomy ??
+        []) as TemplateCategory[],
       items,
     };
   }
@@ -260,9 +319,13 @@ export class LibraryClient {
     return record;
   }
   /** Inline payloads of a category (themes, styles, motion, presets). */
-  payloads(category: CatalogCategory): { entry: CatalogEntry; payload: unknown }[] {
+  payloads(
+    category: CatalogCategory,
+  ): { entry: CatalogEntry; payload: unknown }[] {
     return this.entries(category).flatMap((entry) =>
-      'inline' in entry.payload ? [{ entry, payload: entry.payload.inline }] : [],
+      'inline' in entry.payload
+        ? [{ entry, payload: entry.payload.inline }]
+        : [],
     );
   }
   url(path: string): string {
@@ -277,12 +340,14 @@ export class LibraryClient {
     const loading = (async () => {
       const store = await this.options.media;
       const cached = await store?.read(key).catch(() => null);
-      if (cached) return cached.type ? cached : cached.slice(0, cached.size, ref.mime);
+      if (cached)
+        return cached.type ? cached : cached.slice(0, cached.size, ref.mime);
       if (!this.options.url) return null;
       const response = await this.#fetch(this.#href(ref.url));
       if (!response.ok) throw new Error(`answered ${response.status}`);
       const bytes = await response.arrayBuffer();
-      if ((await sha256(bytes)) !== ref.sha256) throw new Error('The file does not match the catalog.');
+      if ((await sha256(bytes)) !== ref.sha256)
+        throw new Error('The file does not match the catalog.');
       const blob = new Blob([bytes], { type: ref.mime });
       await store?.write(key, blob).catch(() => undefined);
       return blob;
@@ -317,8 +382,12 @@ export class LibraryClient {
         if (image) this.#posters.set(media.poster.sha256, image);
       }
     }
-    if (media?.proxy) await this.file(media.proxy, catalogMediaKey(media.proxy.sha256)).catch(() => null);
-    if ('file' in entry.payload) await this.file(entry.payload.file).catch(() => null);
+    if (media?.proxy)
+      await this.file(media.proxy, catalogMediaKey(media.proxy.sha256)).catch(
+        () => null,
+      );
+    if ('file' in entry.payload)
+      await this.file(entry.payload.file).catch(() => null);
   }
   /**
    * Prefetches every payload file of the catalog (idle time), so an item
@@ -344,8 +413,13 @@ export class LibraryClient {
   }
 }
 
-async function decodePicture(blob: Blob): Promise<ImageBitmap | HTMLImageElement> {
-  if (blob.type === 'image/svg+xml' || typeof createImageBitmap !== 'function') {
+async function decodePicture(
+  blob: Blob,
+): Promise<ImageBitmap | HTMLImageElement> {
+  if (
+    blob.type === 'image/svg+xml' ||
+    typeof createImageBitmap !== 'function'
+  ) {
     const image = new Image();
     image.src = URL.createObjectURL(blob);
     await image.decode();

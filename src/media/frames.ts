@@ -265,7 +265,10 @@ export class MediaFrames implements FrameProvider {
           reverse: request.reversed,
           nudge: NUDGE,
         });
-        if (Math.abs(element.currentTime - target) > NUDGE / 2 && !element.seeking)
+        if (
+          Math.abs(element.currentTime - target) > NUDGE / 2 &&
+          !element.seeking
+        )
           this.#seek(next, target);
         if (
           element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&

@@ -373,6 +373,8 @@ export function mountLibraryPanels(
     };
     /** FINAL3 T5: adds a saved "My text style" (centred, or at a point). */
     insertTextStyle?: (style: MyTextStyle) => void;
+    /** Phase 1 library (P1-24): makes what an item needs local (its fonts). */
+    prefetchItem?: (item: LibraryItem) => void;
     /**
      * Phase 1 library (P1-25): catalog videos and pictures (Elements ›
      * Videos and photos), placed at once from their poster and proxy.
@@ -393,7 +395,11 @@ export function mountLibraryPanels(
   const BUILT_IN: readonly LibraryItem[] = [...DEFAULT_TEXT_ITEMS];
   let items: readonly LibraryItem[] = BUILT_IN;
   let taxonomy: readonly TemplateCategory[] = [];
-  let status: { kind: 'loading' | 'error'; text: string } | null = {
+  let status: {
+    kind: 'loading' | 'error';
+    text: string;
+    keep?: boolean;
+  } | null = {
     kind: 'loading',
     text: t('library.loading'),
   };
@@ -425,9 +431,15 @@ export function mountLibraryPanels(
     // the preview is drawn, and a plan key shows the card as locked.
     const entry = own ? undefined : libraryClient().entry(item.id);
     const locked = entry?.planKey ? t('library.locked') : undefined;
+    // P1-24: a text or template card loads its fonts when it shows.
+    if (item.type === 'text' || item.type === 'template')
+      options.prefetchItem?.(item);
     return {
       id: item.id,
       label: itemName(item),
+      ...(options.prefetchItem
+        ? { prefetch: () => options.prefetchItem!(item) }
+        : {}),
       ...(entry ? { placeholder: entry.blur } : {}),
       ...(locked ? { locked } : {}),
       keywords: [item.name.en, item.name.hi, ...item.tags],
@@ -903,7 +915,9 @@ export function mountLibraryPanels(
           item.section === 'combinations' && !item.id.startsWith('combo-'),
       ),
       // Combinations in the UI language's order (Hindi first in Hindi).
-      ...(getLanguage() === 'hi' ? [...hindi, ...english] : [...english, ...hindi]),
+      ...(getLanguage() === 'hi'
+        ? [...hindi, ...english]
+        : [...english, ...hindi]),
     ];
   };
   const textCards = (section: string) =>
@@ -1102,7 +1116,10 @@ export function mountLibraryPanels(
       client.source === 'fallback'
         ? {
             kind: 'error',
-            text: t('library.fallback', { problem: client.problem ?? '' }).trim(),
+            keep: true,
+            text: t('library.fallback', {
+              problem: client.problem ?? '',
+            }).trim(),
           }
         : null;
     actions.setItems(allItems());
@@ -1110,18 +1127,15 @@ export function mountLibraryPanels(
   };
   // Phase 1 library: a newer catalog (an idle refresh) updates the panels.
   const stopChange = onLibraryChange(() => void loadLibrary().then(apply));
-  loadLibrary().then(
-    apply,
-    (error: unknown) => {
-      status = {
-        kind: 'error',
-        text: t('library.loadFailed', {
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      };
-      refreshAll();
-    },
-  );
+  loadLibrary().then(apply, (error: unknown) => {
+    status = {
+      kind: 'error',
+      text: t('library.loadFailed', {
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    };
+    refreshAll();
+  });
   void engine;
   void session;
   void report;

@@ -28,7 +28,8 @@ export const OWNER_MARKERS = [
 export const PAYLOAD_MARKERS = [
   '"shape-star-5"',
   'Starter Pack 1',
-  '"clean-light"',
+  '"dark-neon"',
+  'Corporate Blue',
   'Cinematic Teal',
   'shape-flowchart-decision',
 ];

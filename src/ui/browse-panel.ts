@@ -73,7 +73,12 @@ export interface BrowsePage {
     readonly chip: string | null;
   }) => readonly BrowseSection[];
   /** Status shown instead of the sections (loading or error). */
-  readonly status?: () => { kind: 'loading' | 'error'; text: string } | null;
+  readonly status?: () => {
+    kind: 'loading' | 'error';
+    text: string;
+    /** Phase 1 library: the cards still show under the message. */
+    keep?: boolean;
+  } | null;
 }
 
 const CHUNK = 48;
@@ -450,7 +455,8 @@ export function createBrowsePanel(
         }
         body.append(skeletons);
       }
-    } else {
+    }
+    if (!status || status.keep) {
       const sections = page.sections({
         query: frame.query.trim().toLowerCase(),
         chip: frame.chip,
