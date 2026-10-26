@@ -17,7 +17,7 @@ const read = (name: string) =>
     readFileSync(`tests/fixtures/compositions/${name}.json`, 'utf8'),
   ) as unknown;
 const manifest = JSON.parse(
-  readFileSync('public/library/index.json', 'utf8'),
+  readFileSync('library/seed/starter-pack-1.json', 'utf8'),
 ) as { items: unknown[] };
 const items = new Map<string, LibraryItem>();
 for (const raw of manifest.items) {

@@ -120,5 +120,59 @@ begin
     raise exception 'Asha could not delete her own project';
   end if;
 end $$;
+-- P1-31: training-data records follow the same owner rule.
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+insert into public.training_records (project_id, brief, plan, edits)
+values ('local-1', 'A short lesson', '{"format":"video-plan"}',
+  '[{"at":"2026-10-26T10:00:00Z","label":"Move","commands":["SET_PROPERTY"]}]');
+do $$
+begin
+  if (select owner_id from public.training_records where project_id = 'local-1')
+    <> '11111111-1111-1111-1111-111111111111' then
+    raise exception 'training record owner was not filled from auth.uid()';
+  end if;
+  begin
+    insert into public.training_records (owner_id, project_id, plan)
+    values ('22222222-2222-2222-2222-222222222222', 'forged', '{}');
+    raise exception 'inserted a training record owned by someone else';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+select set_config('request.jwt.claims',
+  '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
+do $$
+declare
+  n integer;
+begin
+  select count(*) into n from public.training_records;
+  if n <> 0 then raise exception 'Ravi sees Asha''s training records'; end if;
+  update public.training_records set brief = 'Hacked';
+  delete from public.training_records;
+end $$;
+reset role;
+set local role anon;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+do $$
+begin
+  begin
+    perform 1 from public.training_records;
+    raise exception 'anon can read training records';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
+do $$
+begin
+  if not exists (select 1 from public.training_records
+    where project_id = 'local-1' and brief = 'A short lesson') then
+    raise exception 'Ravi changed or deleted Asha''s training record';
+  end if;
+end $$;
 rollback;
 select 'policy tests passed' as result;

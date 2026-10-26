@@ -4,7 +4,7 @@
 // Preview and Save. After a save, edits show "You have unsaved changes"
 // with Discard. A text to speech clip reopens the panel with its values;
 // Save then replaces its audio in one step.
-import { encodeWav } from '../../audio/sound-pack';
+import { encodeWav } from '../../audio/wav';
 import { readTtsSettings, type TtsSettings } from '../../audio/tts/commands';
 import { voiceProviders } from '../../audio/tts/registry';
 import {

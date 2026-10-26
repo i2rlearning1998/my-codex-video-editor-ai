@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// H5: generates Starter Pack 1 (public/library/index.json). Everything is
+// H5: generates Starter Pack 1 (library/seed/starter-pack-1.json; Phase 1:
+// the owner seed publishes it into the catalog, the editor no longer bundles it). Everything is
 // original and made from code: shapes are polygons in a 100 × 100 box;
 // backgrounds, text styles and templates are elements placed in fractions of
 // the canvas. The output is deterministic (a seeded random source), so the
@@ -9,7 +10,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const out = resolve(root, 'public/library/index.json');
+const out = resolve(root, 'library/seed/starter-pack-1.json');
 
 // --- helpers -----------------------------------------------------------------
 let seed = 20260930;

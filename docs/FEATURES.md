@@ -1150,6 +1150,45 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | P13D-001 | P0 | W9 | Verified | A .glb model chosen in AI › Import (or dropped on the editor) becomes a Tier C code animation (the model's bytes embedded, GLTFLoader in the vendored THREE bundle) with spin, size, tilt, light and tint controls; its thumbnail shows the lit model |
 | P13D-002 | P0 | W9 | Verified | A file that is not a binary glTF 2 model, a cut-off one or one over 700 KB gets a plain sentence and cannot be added |
 
+## LIB: Phase 1 library (owner catalog, editor client)
+
+| ID | Pri | Wave | Status | Description |
+| --- | --- | --- | --- | --- |
+| LIB-001 | P0 | W9 | Verified | The audit lists every place shared library content was bundled or generated, with a move or stay decision for each (reports/PHASE1-LIB-AUDIT.md), and what it says moved is no longer in the editor |
+| LIB-002 | P0 | W9 | Verified | The audit lists the Phase 1 cloud leftovers against the code, with their true state and action |
+| LIB-003 | P0 | W9 | Verified | The audit lists what is reused (Creator Pack format, library records, themes, checks) so no new item format is invented |
+| LIB-004 | P0 | W9 | Verified | The catalog has a signed manifest (catalog version, time, one index per category with its address and SHA-256) and content-hashed, immutable files |
+| LIB-005 | P0 | W9 | Verified | Small items are inline (under 8 KB); heavy media carry a poster or waveform, a small proxy and the full file; every entry has id, kind, names in English and Hindi, tags, licence and credit, version, thumbnail, blur, size and the owner fields |
+| LIB-006 | P0 | W9 | Verified | The manifest is signed with Ed25519; a wrong byte, a wrong signature or another key is rejected; the private key is only in the git-ignored owner/keys/ |
+| LIB-007 | P0 | W9 | Verified | `npm run library:publish` runs the pack check and the editor's render checks in a headless browser, fails closed without one, gives one plain sentence per rejection, and skips a second publish of the same content |
+| LIB-008 | P0 | W9 | Verified | Every catalog version is kept; a rollback publishes a new version that lists what an older one listed |
+| LIB-009 | P0 | W9 | Verified | `npm run library:seed` publishes the editor's former library (244 items) deterministically |
+| LIB-010 | P0 | W9 | Verified | The catalog server answers ETag and 304 for the manifest, immutable caching for files, byte ranges, GET and HEAD only, and nothing outside the catalog folder |
+| LIB-011 | P0 | W9 | Verified | The owner app is never imported by, bundled into or reachable from the editor (dev server and built files checked) |
+| LIB-012 | P0 | W9 | Verified | The owner app has one owner account made from the command line (no sign-up), scrypt passwords and a 2-step code (TOTP, RFC 6238) |
+| LIB-013 | P0 | W9 | Verified | Every owner action, failed ones included, is a row of an append-only, chained audit log; a changed row is found |
+| LIB-014 | P0 | W9 | Verified | The owner logs in with password and 2-step code, browses the library by category with search, uploads single files and zips, and edits names, tags, licence and credit |
+| LIB-015 | P0 | W9 | Verified | A tiny read-only server serves the catalog folder on its own port |
+| LIB-016 | P0 | W9 | Verified | The owner publishes, unpublishes and rolls back; dangerous actions ask again for the password and a fresh code; a rejected upload shows its reasons; English and Hindi labels |
+| LIB-017 | P0 | W9 | Verified | One command starts the owner app and the catalog server; an item the owner unpublishes disappears from the editor after a refresh |
+| LIB-018 | P0 | W9 | Verified | Owner login locks after 5 failures, compares in constant time, needs a CSRF token and a same-origin request, and uses strict security headers and an HttpOnly, SameSite=Strict cookie |
+| LIB-019 | P0 | W9 | Verified | Unpublish, delete, rollback and key rotation need a fresh password and code within 5 minutes |
+| LIB-020 | P0 | W9 | Verified | The editor reads the signed catalog with its ETag, checks the signature before use, keeps it in this browser and starts from that copy without waiting for the network |
+| LIB-021 | P0 | W9 | Verified | With no catalog and no saved copy the editor opens with a tiny fallback pack and says why; a catalog with a wrong signature is rejected and the saved copy stays |
+| LIB-022 | P0 | W9 | Verified | Templates, Elements, Draw shapes, Text, Audio, Themes and AI styles come from the catalog, with catalog videos and photos in Elements |
+| LIB-023 | P0 | W9 | Verified | Cards show a placeholder before their picture; hidden, scheduled, featured and ordered items follow the owner; an item with a plan key shows locked and is not added |
+| LIB-024 | P0 | W9 | Verified | A small item is placed in the first frame after the click or drop, with no network request on the way, even on a slow network |
+| LIB-025 | P0 | W9 | Verified | A catalog video, photo or sound is placed at once from its poster and proxy and switches to the full file without moving |
+| LIB-026 | P0 | W9 | Verified | A failed download never blocks: the item stays placed, a toast offers Retry, and Retry fetches the file |
+| LIB-027 | P0 | W9 | Verified | A project keeps its own copy of what it uses; a catalog rollback or unpublish never changes it |
+| LIB-028 | P0 | W9 | Verified | The editor bundles no shared library any more (only the fallback pack); `npm run build` checks the built files |
+| LIB-029 | P0 | W9 | Verified | The catalog gives the panels exactly the records the editor used to bundle (render identity) |
+| LIB-030 | P0 | W9 | Verified | Feature keys exist for later plans; every feature is on; the Export button shows Upgrade when locked and is gone when hidden |
+| LIB-031 | P0 | W9 | Verified | An AI-built video keeps a training record (brief, final plan, later edits with times) in this browser, and Save to cloud stores it in an owner-only table |
+| LIB-032 | P0 | W9 | Verified | The Open from cloud list shows each project's picture; Free space lists and deletes only cloud files no project uses; Google sign-in shows only when set up, else one line says why |
+| LIB-033 | P0 | W9 | Verified | Every new text of this phase has Hindi, in the editor and in the owner app |
+| LIB-034 | P0 | W9 | Verified | The ledger, status, decisions, changelog and library docs describe the Phase 1 library |
+
 ## ADV: Advanced and professional tools (Wave 8, later)
 
 Each of these becomes its own program of work when reached.

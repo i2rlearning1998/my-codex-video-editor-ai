@@ -35,6 +35,12 @@ export interface BrowseCard {
   readonly menu?: (x: number, y: number) => void;
   /** A small badge over the thumbnail (for example a size). */
   readonly badge?: string;
+  /** Phase 1 library (P1-23): a tiny picture shown until the preview. */
+  readonly placeholder?: string;
+  /** Phase 1 library (P1-23): locked by a plan, with this reason. */
+  readonly locked?: string;
+  /** Phase 1 library (P1-24): makes the item local (pointer enter, down). */
+  readonly prefetch?: () => void;
 }
 export type BrowseLayout = 'strip' | 'grid' | 'tiles' | 'list';
 export interface BrowseSection {
@@ -67,7 +73,12 @@ export interface BrowsePage {
     readonly chip: string | null;
   }) => readonly BrowseSection[];
   /** Status shown instead of the sections (loading or error). */
-  readonly status?: () => { kind: 'loading' | 'error'; text: string } | null;
+  readonly status?: () => {
+    kind: 'loading' | 'error';
+    text: string;
+    /** Phase 1 library: the cards still show under the message. */
+    keep?: boolean;
+  } | null;
 }
 
 const CHUNK = 48;
@@ -167,12 +178,36 @@ export function createBrowsePanel(
       badge.textContent = card.badge;
       thumb.append(badge);
     }
+    if (card.placeholder) {
+      thumb.style.backgroundImage = `url("${card.placeholder}")`;
+      thumb.classList.add('has-placeholder');
+    }
+    if (card.locked) {
+      const lock = document.createElement('span');
+      lock.className = 'browse-badge browse-lock';
+      lock.innerHTML = iconSvg('lock', 14);
+      lock.setAttribute('aria-hidden', 'true');
+      thumb.append(lock);
+      button.dataset.locked = 'true';
+      button.title = card.locked;
+      button.setAttribute('aria-label', `${card.label}. ${card.locked}`);
+    }
     if (card.disabled) button.setAttribute('aria-disabled', 'true');
     button.onclick = () => {
       if (card.disabled) return;
+      if (card.locked) {
+        void import('./components/toast').then(({ showToast }) =>
+          showToast(card.locked!, 'info'),
+        );
+        return;
+      }
       card.activate?.();
     };
-    if (card.drag && !card.disabled) {
+    if (card.prefetch) {
+      button.addEventListener('pointerenter', card.prefetch);
+      button.addEventListener('pointerdown', card.prefetch);
+    }
+    if (card.drag && !card.disabled && !card.locked) {
       const payload = card.drag;
       // T1: the ghost shows the card's preview once it is drawn.
       drags().source(button, () => {
@@ -193,7 +228,8 @@ export function createBrowsePanel(
         card.menu!(event.clientX, event.clientY);
       };
     if (card.preview) {
-      thumb.classList.add('skeleton');
+      // A card with a placeholder is never blank, so no skeleton shimmer.
+      if (!card.placeholder) thumb.classList.add('skeleton');
       watch(button, () => {
         const settle = (url: string | null) => {
           thumb.classList.remove('skeleton');
@@ -419,7 +455,8 @@ export function createBrowsePanel(
         }
         body.append(skeletons);
       }
-    } else {
+    }
+    if (!status || status.keep) {
       const sections = page.sections({
         query: frame.query.trim().toLowerCase(),
         chip: frame.chip,

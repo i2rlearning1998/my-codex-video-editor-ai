@@ -76,6 +76,24 @@ export interface CloudBackend {
     info: CloudMediaInfo,
   ): Promise<void>;
   downloadMedia(fingerprint: string): Promise<Blob>;
+  /** Phase 1 library brief (P1-33): every media file the person uploaded. */
+  listMedia(): Promise<CloudMediaRow[]>;
+  /** Removes one uploaded file and its row (Free space). */
+  deleteMedia(fingerprint: string): Promise<void>;
+  /** P1-31: stores (or replaces) one training-data record. */
+  saveTrainingRecord(record: CloudTrainingRecord): Promise<void>;
+}
+export interface CloudMediaRow {
+  readonly fingerprint: string;
+  readonly name: string;
+  readonly size: number;
+  readonly createdAt: string;
+}
+export interface CloudTrainingRecord {
+  readonly projectId: string;
+  readonly brief: string | null;
+  readonly plan: unknown;
+  readonly edits: readonly unknown[];
 }
 
 export interface CloudConfig {
@@ -86,6 +104,18 @@ export interface CloudConfig {
  * The cloud address and public key: `.env.local` (VITE_SUPABASE_URL,
  * VITE_SUPABASE_ANON_KEY), or in dev and e2e builds a page-provided value.
  */
+/**
+ * P1-33: the Google sign-in client id (`VITE_GOOGLE_CLIENT_ID`, set when
+ * Google is enabled in the Supabase project); without it there is no
+ * Google button. Dev and e2e pages may set it (`__AIVE_GOOGLE_CLIENT_ID__`).
+ */
+export function googleClientId(): string | null {
+  const env = import.meta.env as Record<string, string | undefined>;
+  const page = (globalThis as { __AIVE_GOOGLE_CLIENT_ID__?: string })
+    .__AIVE_GOOGLE_CLIENT_ID__;
+  const allowPage = env.DEV || env.MODE === 'e2e';
+  return (allowPage ? page : undefined) ?? env.VITE_GOOGLE_CLIENT_ID ?? null;
+}
 export function cloudConfig(): CloudConfig | null {
   const page = (globalThis as { __AIVE_CLOUD_CONFIG__?: Partial<CloudConfig> })
     .__AIVE_CLOUD_CONFIG__;

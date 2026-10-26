@@ -89,11 +89,20 @@ export const test = base.extend<Fixtures>({
       page.on('pageerror', (error) =>
         errors.push(`pageerror: ${error.message}`),
       );
-      page.on('requestfailed', (request) =>
+      page.on('requestfailed', (request) => {
+        // Phase 1 library (D-340): the editor checks the library catalog in
+        // the background; a reload or navigation cuts that request off
+        // (ERR_ABORTED) by design. Only that abort of a catalog request is
+        // ignored; a catalog request failing in any other way still counts.
+        if (
+          request.failure()?.errorText === 'net::ERR_ABORTED' &&
+          /\/__catalog\/|^http:\/\/127\.0\.0\.1:43\d\d\//.test(request.url())
+        )
+          return;
         errors.push(
           `requestfailed: ${request.url()} ${request.failure()?.errorText}`,
-        ),
-      );
+        );
+      });
       page.on('response', (response) => {
         if (response.status() >= 400)
           errors.push(`http ${response.status()}: ${response.url()}`);

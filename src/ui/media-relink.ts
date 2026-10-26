@@ -85,7 +85,12 @@ export function mountMediaRelink(options: MediaRelinkOptions) {
     }
     const ids = new Set(
       detectMissingMedia(
-        assets().filter((asset) => !isRemoved(asset)),
+        // Phase 1 library: catalog media fetch their own file (P1-25).
+        assets().filter(
+          (asset) =>
+            !isRemoved(asset) &&
+            !(asset.metadata as Record<string, unknown>).catalog,
+        ),
         new Set(keys),
       ).map((item) => item.id),
     );

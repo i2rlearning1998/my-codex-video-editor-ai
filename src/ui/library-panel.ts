@@ -11,15 +11,16 @@ import {
 } from '../render/dynamic-text';
 import { drags } from './drag-controller';
 import {
-  combinationsFor,
   DEFAULT_TEXT_ITEMS,
-  FONT_COMBINATIONS,
   onMyTextStylesChange,
   type MyTextStyle,
 } from './text-styles';
 import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
-import { loadLibrary } from '../library/loader';
+import { loadLibrary, onLibraryChange } from '../library/loader';
+import { libraryClient } from '../library-client';
+import type { CatalogEntry } from '../library-client/format';
+import type { DragPayload } from './drag-controller';
 import type { LibraryItem, TemplateCategory } from '../library/schema';
 import type { RenderSource } from '../render/adapter';
 import type { TextMeasurer } from '../render/text-layout';
@@ -372,18 +373,33 @@ export function mountLibraryPanels(
     };
     /** FINAL3 T5: adds a saved "My text style" (centred, or at a point). */
     insertTextStyle?: (style: MyTextStyle) => void;
+    /** Phase 1 library (P1-24): makes what an item needs local (its fonts). */
+    prefetchItem?: (item: LibraryItem) => void;
+    /**
+     * Phase 1 library (P1-25): catalog videos and pictures (Elements ›
+     * Videos and photos), placed at once from their poster and proxy.
+     */
+    media?: {
+      entries(): readonly CatalogEntry[];
+      place(entry: CatalogEntry): void;
+      drag(entry: CatalogEntry): DragPayload | null;
+      prefetch(entry: CatalogEntry): void;
+      thumb(entry: CatalogEntry): Promise<string | null>;
+    };
   },
 ): LibraryBrowsers {
   const preview = createPreviews(measureText);
-  // FINAL3 T5: the default text styles and the font combinations are built
-  // in code, so they work before (and without) the library manifest.
-  const BUILT_IN: readonly LibraryItem[] = [
-    ...DEFAULT_TEXT_ITEMS,
-    ...FONT_COMBINATIONS,
-  ];
+  // FINAL3 T5: the default text styles are built in code, so they work
+  // before (and without) the catalog; the font combinations are catalog
+  // items (Phase 1 library).
+  const BUILT_IN: readonly LibraryItem[] = [...DEFAULT_TEXT_ITEMS];
   let items: readonly LibraryItem[] = BUILT_IN;
   let taxonomy: readonly TemplateCategory[] = [];
-  let status: { kind: 'loading' | 'error'; text: string } | null = {
+  let status: {
+    kind: 'loading' | 'error';
+    text: string;
+    keep?: boolean;
+  } | null = {
     kind: 'loading',
     text: t('library.loading'),
   };
@@ -411,9 +427,21 @@ export function mountLibraryPanels(
         : 16 / 9;
     const transition = item.type === 'transition';
     const own = fromCreator(item.id);
+    // Phase 1 library (P1-23): the catalog's tiny placeholder shows until
+    // the preview is drawn, and a plan key shows the card as locked.
+    const entry = own ? undefined : libraryClient().entry(item.id);
+    const locked = entry?.planKey ? t('library.locked') : undefined;
+    // P1-24: a text or template card loads its fonts when it shows.
+    if (item.type === 'text' || item.type === 'template')
+      options.prefetchItem?.(item);
     return {
       id: item.id,
       label: itemName(item),
+      ...(options.prefetchItem
+        ? { prefetch: () => options.prefetchItem!(item) }
+        : {}),
+      ...(entry ? { placeholder: entry.blur } : {}),
+      ...(locked ? { locked } : {}),
       keywords: [item.name.en, item.name.hi, ...item.tags],
       preview: () => preview(item.id, item),
       ...(own
@@ -445,6 +473,29 @@ export function mountLibraryPanels(
             },
           }
         : {}),
+    };
+  };
+  const mediaCard = (entry: CatalogEntry): BrowseCard => {
+    const media = options.media!;
+    // P1-24: a card that shows makes its poster and proxy local.
+    media.prefetch(entry);
+    const ratio =
+      entry.media?.width && entry.media.height
+        ? entry.media.width / entry.media.height
+        : 16 / 9;
+    return {
+      id: `catalog-${entry.id}`,
+      label: name(entry.name),
+      keywords: [entry.name.en, entry.name.hi, ...entry.tags],
+      placeholder: entry.blur,
+      preview: () => media.thumb(entry),
+      prefetch: () => media.prefetch(entry),
+      aspect: Math.max(0.6, Math.min(2, ratio)),
+      className: 'library-card catalog-media-card',
+      data: { catalogId: entry.id, media: entry.kind },
+      ...(entry.planKey ? { locked: t('library.locked') } : {}),
+      activate: () => media.place(entry),
+      drag: () => media.drag(entry),
     };
   };
   const presetCard = (preset: ShapePreset): BrowseCard => ({
@@ -835,6 +886,16 @@ export function mountLibraryPanels(
           cards: () => of('background').map(libraryCard),
           seeAll: graphicsPage,
         },
+        ...(options.media && options.media.entries().length
+          ? [
+              {
+                id: 'catalog-media',
+                title: t('elements.section.media'),
+                layout: 'strip',
+                cards: () => options.media!.entries().map(mediaCard),
+              } as BrowseSection,
+            ]
+          : []),
       ];
     },
   };
@@ -842,13 +903,23 @@ export function mountLibraryPanels(
   // --- Text -----------------------------------------------------------------
   // The library's own combinations lead (they were the strip before
   // FINAL3), then the 24 built in code.
-  const combinationItems = () => [
-    ...of('text').filter(
-      (item) =>
-        item.section === 'combinations' && !item.id.startsWith('combo-'),
-    ),
-    ...combinationsFor(getLanguage()),
-  ];
+  const combinationItems = () => {
+    const combos = of('text').filter(
+      (item) => item.section === 'combinations' && item.id.startsWith('combo-'),
+    );
+    const hindi = combos.filter((item) => item.tags.includes('hindi'));
+    const english = combos.filter((item) => !item.tags.includes('hindi'));
+    return [
+      ...of('text').filter(
+        (item) =>
+          item.section === 'combinations' && !item.id.startsWith('combo-'),
+      ),
+      // Combinations in the UI language's order (Hindi first in Hindi).
+      ...(getLanguage() === 'hi'
+        ? [...hindi, ...english]
+        : [...english, ...hindi]),
+    ];
+  };
   const textCards = (section: string) =>
     of('text')
       .filter((item) => item.section === section)
@@ -1035,24 +1106,36 @@ export function mountLibraryPanels(
     actions.setItems(allItems());
     refreshAll();
   });
-  loadLibrary().then(
-    (manifest) => {
-      items = [...manifest.items, ...BUILT_IN];
-      taxonomy = manifest.templates ?? [];
-      status = null;
-      actions.setItems(allItems());
-      refreshAll();
-    },
-    (error: unknown) => {
-      status = {
-        kind: 'error',
-        text: t('library.loadFailed', {
-          error: error instanceof Error ? error.message : String(error),
-        }),
-      };
-      refreshAll();
-    },
-  );
+  const apply = (manifest: Awaited<ReturnType<typeof loadLibrary>>) => {
+    items = [...manifest.items, ...BUILT_IN];
+    taxonomy = manifest.templates ?? [];
+    // P1-21: with neither a catalog nor a saved copy the tiny fallback pack
+    // shows, and the panels say why.
+    const client = libraryClient().status;
+    status =
+      client.source === 'fallback'
+        ? {
+            kind: 'error',
+            keep: true,
+            text: t('library.fallback', {
+              problem: client.problem ?? '',
+            }).trim(),
+          }
+        : null;
+    actions.setItems(allItems());
+    refreshAll();
+  };
+  // Phase 1 library: a newer catalog (an idle refresh) updates the panels.
+  const stopChange = onLibraryChange(() => void loadLibrary().then(apply));
+  loadLibrary().then(apply, (error: unknown) => {
+    status = {
+      kind: 'error',
+      text: t('library.loadFailed', {
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    };
+    refreshAll();
+  });
   void engine;
   void session;
   void report;
@@ -1060,6 +1143,7 @@ export function mountLibraryPanels(
     reset: () => Object.values(panels).forEach((panel) => panel.reset()),
     dispose: () => {
       disposed = true;
+      stopChange();
     },
   };
 }

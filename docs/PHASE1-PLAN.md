@@ -53,6 +53,10 @@ All of this lives in the repository under `supabase/` (SQL migrations), so the s
 - **Local-only keeps working.** If the server is off, not configured, or the network drops, cloud actions show a clear message and nothing local changes. The project is never lost: the local autosave runs as before.
 - Keys: only the public "anon" key and the server address go into `.env.local` (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`). The rules above protect the data; the secret "service role" key is never in the editor. `.env.example` shows the names; real keys are never committed.
 
+### Training-data records (Phase 1 library brief, P1-31, D-341)
+
+Every AI-built video (Build video from a video plan or an AI composition) keeps one record: the brief last copied for the AI, the final plan JSON it was built from, and the person's later edits as step names and command names with their times (at most 5,000, newest kept). It lives in this browser (IndexedDB `aive-training`, one record per project) and, when the person saves to the cloud while signed in, in the table `training_records` (owner, project id, brief, plan, edits; row-level security: owner only; migration `20261026000000_phase1_training_records.sql`, tested by `npm run cloud:test`). There is no screen for it; it is collected now for later use.
+
 ## 4. Running it on your PC (no account, no cost)
 
 1. Install Docker Desktop once.

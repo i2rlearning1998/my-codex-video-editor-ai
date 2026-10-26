@@ -12,3 +12,9 @@ review.zip
 .env*
 !.env.example
 .claude/worktrees/
+
+# Phase 1 library: owner keys, data and the local catalog (never committed)
+owner/keys/
+owner-data/
+catalog-out/
+.e2e-library/

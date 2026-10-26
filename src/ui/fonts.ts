@@ -11,8 +11,13 @@ import { showToast } from './components/toast';
 import { t } from '../i18n';
 import type { SceneLayer } from '../render/adapter';
 
-export function mountFonts(engine: EditorEngine, loaded: () => void) {
-  if (typeof FontFace === 'undefined' || !document.fonts) return () => {};
+type Scenes = readonly { readonly layers: readonly SceneLayer[] }[];
+export function mountFonts(
+  engine: EditorEngine,
+  loaded: () => void,
+): (() => void) & { prefetch(scenes: Scenes): void } {
+  if (typeof FontFace === 'undefined' || !document.fonts)
+    return Object.assign(() => {}, { prefetch: () => {} });
   const faces = bundledFaces(import.meta.env.BASE_URL).map((source) => {
     const face = new FontFace(
       source.family,
@@ -28,12 +33,14 @@ export function mountFonts(engine: EditorEngine, loaded: () => void) {
   });
   const requested = new Set<string>();
   const warned = new Set<string>();
-  const ensure = () => {
-    const used = usedFaces(
-      engine.state.compositions as unknown as readonly {
-        readonly layers: readonly SceneLayer[];
-      }[],
-    );
+  const failedAt = new Map<string, number>();
+  const ensure = () =>
+    ensureFor(engine.state.compositions as unknown as Scenes);
+  // Phase 1 library (P1-24): the faces a library card would use load when
+  // the card shows or the pointer reaches it, so placing it needs no font
+  // request.
+  const ensureFor = (scenes: Scenes) => {
+    const used = usedFaces(scenes);
     for (const { source, face } of faces)
       if (
         face.status === 'unloaded' &&
@@ -64,12 +71,15 @@ export function mountFonts(engine: EditorEngine, loaded: () => void) {
       }
       if (!family || !isCatalogFont(family) || isBundledFont(family)) continue;
       if (requested.has(key)) continue;
+      // A failed font is asked for again after 30 s, not on every edit.
+      if (Date.now() - (failedAt.get(key) ?? -Infinity) < 30_000) continue;
       requested.add(key);
       loadFont(family, [Number(weight) || 400], ['latin'], {
         offline: navigator.onLine === false,
         italic: italic === 'i',
       }).then(loaded, () => {
         requested.delete(key);
+        failedAt.set(key, Date.now());
         if (warned.has(family)) return;
         warned.add(family);
         showToast(t('fonts.error.project', { font: family }), 'error');
@@ -77,5 +87,7 @@ export function mountFonts(engine: EditorEngine, loaded: () => void) {
     }
   };
   ensure();
-  return engine.on('state:changed', ensure);
+  return Object.assign(engine.on('state:changed', ensure), {
+    prefetch: (scenes: Scenes) => ensureFor(scenes),
+  });
 }
