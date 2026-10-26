@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readStylePacks, type SeedSources } from './seed';
+import type { SeedSources } from './seed';
 import { FONT_COMBINATIONS } from '../../library/seed/text-combinations';
 import { SEED_THEMES } from '../../library/seed/themes';
 import {
@@ -44,14 +44,22 @@ export function defaultSeedSources(): SeedSources {
       rate: SOUND_RATE,
     })),
     encodeWav,
-    stylePacks: readStylePacks(path.join(root, 'examples/creator-packs')),
+    // The Creator Pack style examples were never in the editor (they are
+    // test and docs fixtures), so the seed leaves them out (D-344); the
+    // owner publishes styles with library:publish.
+    stylePacks: [],
   };
 }
 
 /** Every filter, effect, adjustment and transition id (as pack:check). */
 export function fxCatalog(): string[] {
   const lists = fx as unknown as Record<string, unknown>;
+  // The lists hold definitions ({id, ...}); the checker wants their ids.
   return ['filters', 'effects', 'adjustments', 'transitions'].flatMap((name) =>
-    Array.isArray(lists[name]) ? (lists[name] as string[]) : [],
+    Array.isArray(lists[name])
+      ? (lists[name] as (string | { id: string })[]).map((item) =>
+          typeof item === 'string' ? item : item.id,
+        )
+      : [],
   );
 }

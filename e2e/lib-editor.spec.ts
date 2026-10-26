@@ -56,6 +56,11 @@ test.beforeAll(async () => {
     path.join(media, 'photo.jpg.meta.json'),
     meta('photo-test', 'Test photo', 'टेस्ट फ़ोटो'),
   );
+  // A Creator Pack style, published by the owner, shows in AI › Styles.
+  copyFileSync(
+    'examples/creator-packs/style-documentary.json',
+    path.join(media, 'style-documentary.json'),
+  );
   const out = cli('publish', media);
   if (!/Catalog version \d+ is live/.test(out)) throw new Error(out);
   // A plan key (Phase 2 sets these in the manager): the heart shape.

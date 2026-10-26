@@ -1162,7 +1162,7 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | LIB-006 | P0 | W9 | Verified | The manifest is signed with Ed25519; a wrong byte, a wrong signature or another key is rejected; the private key is only in the git-ignored owner/keys/ |
 | LIB-007 | P0 | W9 | Verified | `npm run library:publish` runs the pack check and the editor's render checks in a headless browser, fails closed without one, gives one plain sentence per rejection, and skips a second publish of the same content |
 | LIB-008 | P0 | W9 | Verified | Every catalog version is kept; a rollback publishes a new version that lists what an older one listed |
-| LIB-009 | P0 | W9 | Verified | `npm run library:seed` publishes the editor's former library (247 items) deterministically |
+| LIB-009 | P0 | W9 | Verified | `npm run library:seed` publishes the editor's former library (244 items) deterministically |
 | LIB-010 | P0 | W9 | Verified | The catalog server answers ETag and 304 for the manifest, immutable caching for files, byte ranges, GET and HEAD only, and nothing outside the catalog folder |
 | LIB-011 | P0 | W9 | Verified | The owner app is never imported by, bundled into or reachable from the editor (dev server and built files checked) |
 | LIB-012 | P0 | W9 | Verified | The owner app has one owner account made from the command line (no sign-up), scrypt passwords and a 2-step code (TOTP, RFC 6238) |

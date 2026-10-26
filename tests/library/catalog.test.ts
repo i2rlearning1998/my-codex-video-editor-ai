@@ -104,7 +104,7 @@ describe('Phase 1 library catalog', () => {
         expect(entry.thumbUrl).toMatch(/^files\/[0-9a-f]{64}\.svg$/);
       }
     }
-    expect(total).toBe(247);
+    expect(total).toBe(244);
     // Every file is named by the SHA-256 of its bytes.
     for (const name of readdirSync(path.join(outDir, 'files')))
       expect(sha256Hex(readFileSync(path.join(outDir, 'files', name)))).toBe(
@@ -159,6 +159,12 @@ describe('Phase 1 library catalog', () => {
       verifyManifest(JSON.stringify({ signed: signed.signed }), keys.publicKey),
     ).rejects.toThrow(/no valid signature/);
     await expect(verifyManifest(text, '')).rejects.toThrow(/no catalog key/);
+  });
+
+  it('[LIB-007] the gate knows the editor\'s effect and transition ids (a style naming one is accepted)', () => {
+    const ids = fxCatalog();
+    expect(ids).toContain('transition.cross-blur');
+    expect(ids.every((id) => typeof id === 'string')).toBe(true);
   });
 
   it('[LIB-007] the gate rejects with one plain sentence per reason, fails closed without a browser, and a second publish is skipped', async () => {

@@ -47,7 +47,18 @@ Every item P1-01 to P1-34 is ledger row LIB-001 to LIB-034 (same number).
 
 ## 3. Checks
 
-VERIFY_RESULTS
+- `npm run verify` (one full run, Node 20.19, sandbox): exit 1: format, typecheck, unit tests, build and ledger passed; e2e 676 passed, 9 failed, 5 skipped (1.4 h).
+- Format: all files pass Prettier. Typecheck: clean. Build: passed; `scripts/assert-editor-bundle.mjs`: "Editor bundle: 69 files, no owner app, no bundled library payloads." The built editor is 105,769 bytes smaller than `claude/fix-5` (37,547,471 → 37,441,702 bytes).
+- Unit and jsdom tests: 1308 passed, 1 skipped, in 152 files (Vitest).
+- The 9 e2e failures, then re-run alone:
+  - 5 came from this work: the 3 Creator Pack style examples I had put into the seed showed in a fresh AI panel (FX1-016, FX4-004, RA-009/RA-010, S1-003, S1-004, S1-008). Fixed by leaving them out of the seed (D-344). That also found a real bug in the owner's publish gate: it passed effect and transition objects instead of their ids, so every uploaded style naming one was refused. Fixed, with a regression test (`[LIB-007] the gate knows the editor's effect and transition ids`).
+  - AUD-021/AUD-013: a press on a sound tile no longer prepared the sound (V7 behaviour). Restored.
+  - LAY-038 and LAY-057: passed alone without changes (LAY-057 is a known long-run flake, D-328).
+  - Re-run after the fixes: those 9 specs, plus `lib-editor` (6 tests), `b1-styles`, `lib-owner`, `lib-features` and `phase1-cloud`: all passed. The library unit tests passed too (33).
+- E2E browser: Playwright's Chromium 153 (HeadlessChrome/153.0.0.0), at 1920 × 940.
+- Ledger validation: "Ledger OK" (LIB-001 to LIB-034 Verified).
+- `npm run cloud:test`: "policy tests passed" (PostgreSQL 16 with the stand-in Supabase schemas; it fails when the training table's rules are removed).
+- CI: not watched (limit mode; the local verify is the gate).
 
 ## 4. Try-it script for the owner (about 10 minutes)
 
@@ -93,7 +104,7 @@ D-329 to D-343 in docs/DECISIONS.md: catalog format (D-329), JSON store (D-330),
 
 - Real Google sign-in and a real Supabase server (blocked, see above).
 - Real CDN, HTTPS, passkeys, Cloudflare Access or a VPN in front of the owner app: launch-gate deployment steps, not built (owner/README.md).
-- Measured release-to-first-frame times in this sandbox (software rendering, throttled network, all with zero requests on the way): INSTANT_TIMES.
+- Measured release-to-first-frame times in this sandbox (software rendering, throttled network, all with zero requests on the way): elements click 113.9 ms and drag 118.7; draw (flowchart) 81.3 and 111.8; text 122.0 and 159.8; audio 209.6 and 121.7; template 174.4; video 278.6 and 146.5; photo 288.2 and 166.7. Each was the first frame after the release, and no network request was made..
 - A catalog item whose payload is larger than 8 KB arrives as a file during idle prefetch; until then its card is not listed (the seed has none over 8 KB in the panels' kinds).
 - Catalog styles, motion and presets show in AI next to your own items; Rename and Delete do nothing for them (they belong to the catalog).
 - Uploading a large video through the manager runs the proxy encode in the headless browser; only small fixtures were tried here.

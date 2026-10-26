@@ -78,7 +78,16 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
     };
     const warm = () => options.prefetch(entry);
     add.addEventListener('pointerenter', warm);
-    add.addEventListener('pointerdown', warm);
+    // A press prepares the asset (as before), so a drag that follows
+    // carries it; nothing waits for the network.
+    add.addEventListener('pointerdown', () => {
+      warm();
+      try {
+        options.ensure(entry);
+      } catch (error) {
+        options.report(error);
+      }
+    });
     drags().source(add, () => {
       try {
         return {
