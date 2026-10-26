@@ -32,7 +32,7 @@ if (!file) {
     );
     // The built-in library, as the editor loads it.
     const manifest = JSON.parse(
-      await readFile(new URL('../public/library/index.json', import.meta.url)),
+      await readFile(new URL('../library/seed/starter-pack-1.json', import.meta.url)),
     );
     const library = new Map();
     for (const raw of manifest.items) {

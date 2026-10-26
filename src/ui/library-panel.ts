@@ -1095,7 +1095,16 @@ export function mountLibraryPanels(
   const apply = (manifest: Awaited<ReturnType<typeof loadLibrary>>) => {
     items = [...manifest.items, ...BUILT_IN];
     taxonomy = manifest.templates ?? [];
-    status = null;
+    // P1-21: with neither a catalog nor a saved copy the tiny fallback pack
+    // shows, and the panels say why.
+    const client = libraryClient().status;
+    status =
+      client.source === 'fallback'
+        ? {
+            kind: 'error',
+            text: t('library.fallback', { problem: client.problem ?? '' }).trim(),
+          }
+        : null;
     actions.setItems(allItems());
     refreshAll();
   };

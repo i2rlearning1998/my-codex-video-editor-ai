@@ -9,7 +9,7 @@ and exported like anything else.
 
 | Path                        | What it is                                                            |
 | --------------------------- | --------------------------------------------------------------------- |
-| `public/library/index.json` | The manifest (generated; do not edit by hand)                         |
+| `library/seed/starter-pack-1.json` | The manifest (generated; do not edit by hand)                         |
 | `scripts/build-library.mjs` | Generates Starter Pack 1 (`npm run library`), deterministically       |
 | `src/library/schema.ts`     | The manifest format and its validator (`parseLibrary`)                |
 | `src/library/loader.ts`     | Loads and validates the manifest once per session                     |
@@ -79,6 +79,6 @@ No icon pack is bundled. An ISC-licensed set such as Lucide draws icons as strok
 
 1. Edit `scripts/build-library.mjs` (all content is made from code; nothing is copied from elsewhere).
 2. Run `npm run library`, then `npm test` (the manifest test checks the format, the pack sizes, both languages and fonts).
-3. Commit the script and the regenerated `public/library/index.json` together.
+3. Commit the script and the regenerated `library/seed/starter-pack-1.json` together.
 
 Rules: original content only; no external images or fonts; names in English and Hindi; schema 5 stays unchanged (everything an item adds is ordinary layer properties).

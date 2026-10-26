@@ -2787,5 +2787,6 @@
   "library.locked": "Part of a plan: this item unlocks with a plan (coming later).",
   "library.mediaFailed": "{name} could not be downloaded. It plays from its small preview until it can.",
   "library.retry": "Retry",
-  "elements.section.media": "Videos and photos"
+  "elements.section.media": "Videos and photos",
+  "library.fallback": "The library could not be loaded, so only a few basic items are shown. {problem}"
 }

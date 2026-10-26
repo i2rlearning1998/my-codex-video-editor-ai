@@ -12,5 +12,5 @@ tests/fixtures/
 e2e-results/
 playwright-report/
 test-results/
-public/library/
+library/seed/starter-pack-1.json
 src/blocks/graphics/geo-data.ts

@@ -6,7 +6,7 @@
 import { runtimeCheck, type RuntimeResult } from '../../src/ui/creator-checks';
 import { freeCodeRuntime } from '../../src/code-layer/runtime';
 import { canvasMeasureText } from '../../src/render/canvas';
-import { encodeWav } from '../../src/audio/sound-pack';
+import { encodeWav } from '../../src/audio/wav';
 import type { CreatorItem } from '../../src/creator-pack';
 
 export interface MediaProbe {
