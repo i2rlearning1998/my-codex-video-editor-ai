@@ -161,7 +161,7 @@ describe('Phase 1 library catalog', () => {
     await expect(verifyManifest(text, '')).rejects.toThrow(/no catalog key/);
   });
 
-  it('[LIB-007] the gate knows the editor\'s effect and transition ids (a style naming one is accepted)', () => {
+  it("[LIB-007] the gate knows the editor's effect and transition ids (a style naming one is accepted)", () => {
     const ids = fxCatalog();
     expect(ids).toContain('transition.cross-blur');
     expect(ids.every((id) => typeof id === 'string')).toBe(true);
