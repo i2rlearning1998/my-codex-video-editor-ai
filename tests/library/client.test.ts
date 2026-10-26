@@ -187,7 +187,7 @@ describe('Phase 1 library client', () => {
     expect(listed.entry(locked!)?.planKey).toBe('pro');
   });
 
-  it('[LIB-026] render identity: the catalog gives the panels exactly the records the editor used to bundle', async () => {
+  it('[LIB-029] render identity: the catalog gives the panels exactly the records the editor used to bundle', async () => {
     const bundled = JSON.parse(
       readFileSync('tests/fixtures/library/bundled-before.json', 'utf8'),
     ) as { items: { id: string }[]; templates: unknown[] };

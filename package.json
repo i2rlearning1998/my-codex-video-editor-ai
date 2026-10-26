@@ -34,6 +34,7 @@
     "library:keys": "node owner/run.mjs /owner/cli.ts keys",
     "library:seed": "node owner/run.mjs /owner/cli.ts seed",
     "library:publish": "node owner/run.mjs /owner/cli.ts publish",
+    "library:build": "node owner/run.mjs /owner/cli.ts build",
     "library:rollback": "node owner/run.mjs /owner/cli.ts rollback",
     "library:versions": "node owner/run.mjs /owner/cli.ts versions",
     "owner": "node owner/run.mjs /owner/server/main.ts serve",

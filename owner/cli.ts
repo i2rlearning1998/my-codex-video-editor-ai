@@ -2,6 +2,7 @@
 //   library:keys            make the catalog signing key (owner/keys/)
 //   library:seed            publish the first catalog from the seed content
 //   library:publish <path>  gate and publish packs, media, folders or zips
+//   library:build           re-sign the catalog from the stored items
 //   library:rollback <n>    re-point the catalog to version n
 //   library:versions        list the published versions
 // Folders: LIBRARY_DATA_DIR (owner-data/), LIBRARY_CATALOG_DIR
@@ -13,7 +14,12 @@ import { seedCatalog } from './catalog/seed';
 import { defaultSeedSources, fxCatalog } from './catalog/sources';
 import { publish, summary } from './catalog/publish';
 import { openGateBrowser } from './catalog/browser';
-import { listVersions, readManifest, rollbackCatalog } from './catalog/build';
+import {
+  buildCatalog,
+  listVersions,
+  readManifest,
+  rollbackCatalog,
+} from './catalog/build';
 import { ItemStore } from './catalog/store';
 import type { GateFile } from './catalog/gate';
 
@@ -115,6 +121,24 @@ export async function main(argv: string[]): Promise<number> {
       );
       return 0;
     }
+    case 'build': {
+      // Re-signs the catalog from the stored items (after editing them on
+      // disk, for example a plan key, which the manager does not set yet).
+      const result = buildCatalog(
+        new ItemStore(dataDir),
+        outDir,
+        loadKeys(keysDir),
+        {
+          now: new Date().toISOString(),
+        },
+      );
+      say(
+        result.changed
+          ? `Catalog version ${result.catalogVersion} is live.`
+          : 'The catalog did not change.',
+      );
+      return 0;
+    }
     case 'versions': {
       const current = existsSync(path.join(outDir, 'manifest.json'))
         ? readManifest(outDir).manifest.catalogVersion
@@ -131,7 +155,7 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
     default:
-      say('Commands: keys, seed, publish, rollback, versions');
+      say('Commands: keys, seed, publish, build, rollback, versions');
       return 2;
   }
 }

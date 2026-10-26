@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { CDPSession, Page } from '@playwright/test';
 import { test, expect, hook, showCategory, allowError } from './fixtures';
@@ -58,6 +58,14 @@ test.beforeAll(async () => {
   );
   const out = cli('publish', media);
   if (!/Catalog version \d+ is live/.test(out)) throw new Error(out);
+  // A plan key (Phase 2 sets these in the manager): the heart shape.
+  const itemsFile = path.join(stack.env.LIBRARY_DATA_DIR!, 'items.json');
+  const items = JSON.parse(readFileSync(itemsFile, 'utf8')) as {
+    items: { id: string; planKey?: string | null }[];
+  };
+  items.items.find((item) => item.id === 'shape-heart')!.planKey = 'pro';
+  writeFileSync(itemsFile, JSON.stringify(items));
+  cli('build');
 });
 test.afterAll(() => stack?.stop());
 
@@ -86,7 +94,7 @@ const clientStatus = (page: Page) =>
 const layerCount = async (page: Page) =>
   (await hook(page)).project.compositions[0]!.layers.length;
 
-test('[LIB-022][LIB-020] every library category loads from the signed catalog: shapes, flowchart (Draw), text, templates, sounds, themes, styles, videos and photos', async ({
+test('[LIB-022][LIB-020][LIB-023][LIB-029] every library category loads from the signed catalog: shapes, flowchart (Draw), text, templates, sounds, themes, styles, videos and photos; cards show a placeholder before their picture, and a plan item shows locked', async ({
   page,
 }) => {
   const asked: string[] = [];
@@ -540,6 +548,62 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
     type: 'release-to-first-frame-ms',
     description: JSON.stringify(results),
   });
+});
+
+test('[LIB-026] a failed download never blocks: the video is placed from its proxy, a toast offers Retry, and Retry fetches the full file', async ({
+  page,
+}) => {
+  allowError(
+    page,
+    (message) =>
+      message.includes(`${stack.catalogUrl}files/`) &&
+      /ERR_FAILED|failed/i.test(message),
+    'The full video file is blocked on purpose to show the Retry toast.',
+  );
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  const full = await page.evaluate(async () => {
+    const mod = (await import('/src/library-client/index.ts' as string)) as {
+      libraryClient(): {
+        entry(id: string): { media: { full: { url: string } } };
+      };
+    };
+    return mod.libraryClient().entry('video-test-clip').media.full.url;
+  });
+  let blocked = true;
+  await page.route(`${stack.catalogUrl}${full}`, (route) =>
+    blocked ? route.abort() : route.continue(),
+  );
+  await showCategory(page, 'Elements');
+  const before = await layerCount(page);
+  await page
+    .locator('#library-elements [data-catalog-id="video-test-clip"]')
+    .click();
+  await expect.poll(() => layerCount(page)).toBe(before + 1);
+  const toast = page.locator('.toast:not(.toast-leaving)');
+  await expect(toast).toContainText('could not be downloaded');
+  blocked = false;
+  await toast.getByRole('button', { name: 'Retry' }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const mod = (await import(
+          '/src/library-client/index.ts' as string
+        )) as {
+          libraryClient(): {
+            entry(id: string): { media: { full: { sha256: string } } };
+            has(ref: unknown, key?: string): Promise<boolean>;
+          };
+          catalogMediaKey(sha: string): string;
+        };
+        const ref = mod.libraryClient().entry('video-test-clip').media.full;
+        return mod.libraryClient().has(ref, mod.catalogMediaKey(ref.sha256));
+      }),
+    )
+    .toBe(true);
+  expect(await layerCount(page)).toBe(before + 1);
 });
 
 test('[LIB-023][LIB-017] what the owner hides, features, orders, schedules or unpublishes in the manager shows in the editor after a refresh', async ({
