@@ -8,15 +8,37 @@ import { isNestedClip } from './nesting';
 export const SCHEMA_VERSION = 9;
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
-export const jsonSchema: z.ZodType<JsonValue> = z.lazy(() =>
-  z.union([
-    z.null(),
-    z.boolean(),
-    z.number().finite(),
-    z.string(),
-    z.array(jsonSchema),
-    z.record(jsonSchema),
-  ]),
+/** A plain JSON value (checked by loop: no schema objects, no issue lists). */
+function isJsonValue(value: unknown, depth = 0): value is JsonValue {
+  if (depth > 100) return false;
+  if (value === null) return true;
+  switch (typeof value) {
+    case 'string':
+    case 'boolean':
+      return true;
+    case 'number':
+      return Number.isFinite(value);
+    case 'object': {
+      if (Array.isArray(value)) {
+        for (let i = 0; i < value.length; i++)
+          if (!isJsonValue(value[i], depth + 1)) return false;
+        return true;
+      }
+      for (const key in value as Record<string, unknown>)
+        if (!isJsonValue((value as Record<string, unknown>)[key], depth + 1))
+          return false;
+      return true;
+    }
+    default:
+      return false;
+  }
+}
+// FIX6: this was a lazy zod union of five branches, whose failed branches
+// built and threw away an issue list for every value. A built video holds
+// thousands of such values and validating the project took minutes.
+export const jsonSchema: z.ZodType<JsonValue> = z.custom<JsonValue>(
+  (value) => isJsonValue(value),
+  'Expected a JSON value',
 );
 export const idSchema = z
   .string()
@@ -605,6 +627,7 @@ export function assertJson(
 export function validateProject(value: unknown): Project {
   assertJson(value);
   const project = projectSchema.parse(value);
+  let changed = false;
   for (const composition of project.compositions) {
     const endpoints: number[] = [];
     const linkedLayers = new Set(
@@ -641,11 +664,17 @@ export function validateProject(value: unknown): Project {
         .filter((marker) => !isReservedMarker(marker))
         .map((marker) => marker.time),
     );
-    composition.duration = endpoints.length
+    const duration = endpoints.length
       ? Math.max(1 / composition.fps, ...endpoints)
       : 10;
+    if (duration !== composition.duration) {
+      composition.duration = duration;
+      changed = true;
+    }
   }
-  return projectSchema.parse(project);
+  // (The second parse only runs when a derived length changed: it is the
+  // costly part of building a big project.)
+  return changed ? projectSchema.parse(project) : project;
 }
 
 export const DEFAULT_BACKGROUND = '#101219';
