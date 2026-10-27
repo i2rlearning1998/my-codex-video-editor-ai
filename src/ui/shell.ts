@@ -12,6 +12,7 @@ import {
   type CaptionsContext,
 } from './captions-ui';
 import { mountNestBar } from './nest-ui';
+import { importFileText } from '../code-layer/glb-source';
 import { FrameCache } from '../code-layer/cache';
 import { CodeBaker } from '../code-layer/baker';
 import { CodeFrames, bakeSpecOf } from '../code-layer/frames';
@@ -5939,7 +5940,7 @@ export function mountEditorShell(
   // Project Media card or library card drag that a test or browser still
   // sends as HTML5 data is a reference, never a file (MED-015 regression).
   const dropOverlay = element('#drop-overlay');
-  const CODE_FILE = /\.(json|js|mjs|html?)$/i;
+  const CODE_FILE = /\.(json|js|mjs|html?|glb)$/i;
   let dragDepth = 0;
   const isFileDrag = (event: DragEvent) =>
     !!event.dataTransfer?.types.includes('Files') &&
@@ -5986,8 +5987,7 @@ export function mountEditorShell(
     const code = dropped.filter(isText);
     const files = dropped.filter((file) => !isText(file));
     if (code[0])
-      void code[0]
-        .text()
+      void importFileText(code[0])
         .then((text) =>
           isCreatorPackText(code[0]!.name, text)
             ? openCreatorImport({ text, fileName: code[0]!.name })

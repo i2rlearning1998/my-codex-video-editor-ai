@@ -4,9 +4,9 @@
     "package": "three",
     "version": "0.170.0",
     "released": "2024-10-31T07:08:27.705Z",
-    "bytes": 684980,
-    "gzipBytes": 175921,
-    "sha256": "c6f0d8fa452692ab9ae95e4efdcfc3cf3db09b7a1281c9d4f6a7e3c4d3de0137"
+    "bytes": 730289,
+    "gzipBytes": 188903,
+    "sha256": "b03ca85dd61b976ac6205026e1ae8fe05ac18ac03aa3d12d62bb82099ad292c8"
   },
   {
     "name": "pixi",
