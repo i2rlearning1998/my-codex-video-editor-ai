@@ -29,6 +29,8 @@ import { sceneLengthCommands } from './scene-length';
 
 export interface PlanReviewDeps {
   project(): DeepReadonly<Project>;
+  /** FIX6: review the plan built under this title (default: the latest). */
+  title?: string;
   run(label: string, commands: Command[]): void;
   /** FINAL3 V4.1: saves the plan's feel as a theme in My themes. */
   saveFeel?(name: string, plan: VideoPlan): Promise<void>;
@@ -141,7 +143,7 @@ export function comparePlan(
 const comparing = new Set<string>();
 export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
   const project = deps.project();
-  const state = planState(project.id);
+  const state = planState(project.id, deps.title);
   const root = document.createElement('div');
   root.className = 'plan-review';
   if (!state) {

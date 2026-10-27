@@ -16,6 +16,17 @@ export interface PlanState {
   pages: Record<string, number>;
 }
 const key = (projectId: string) => `aive.videoPlan.${projectId}`;
+// FIX6: every built plan keeps its own state (by title), so a second import
+// no longer turns the first card into "Not built" or takes its Review away.
+const allKey = (projectId: string) => `aive.videoPlans.${projectId}`;
+function readAll(projectId: string): Record<string, PlanState> {
+  try {
+    const text = localStorage.getItem(allKey(projectId));
+    return text ? (JSON.parse(text) as Record<string, PlanState>) : {};
+  } catch {
+    return {};
+  }
+}
 export function loadPlanState(projectId: string): PlanState | null {
   try {
     const text = localStorage.getItem(key(projectId));
@@ -27,12 +38,28 @@ export function loadPlanState(projectId: string): PlanState | null {
 export function savePlanState(projectId: string, state: PlanState): void {
   try {
     localStorage.setItem(key(projectId), JSON.stringify(state));
+    localStorage.setItem(
+      allKey(projectId),
+      JSON.stringify({ ...readAll(projectId), [state.plan.meta.title]: state }),
+    );
   } catch {
     // Browser storage full or off: Review still works for this session.
   }
   memory.set(projectId, state);
+  (
+    memoryAll.get(projectId) ??
+    memoryAll.set(projectId, new Map()).get(projectId)!
+  ).set(state.plan.meta.title, state);
 }
 const memory = new Map<string, PlanState>();
-/** The plan state, also when browser storage refused it. */
-export const planState = (projectId: string) =>
-  memory.get(projectId) ?? loadPlanState(projectId);
+const memoryAll = new Map<string, Map<string, PlanState>>();
+/**
+ * The plan state, also when browser storage refused it: the one built for
+ * `title`, else the latest one built in this project.
+ */
+export const planState = (projectId: string, title?: string) =>
+  title === undefined
+    ? (memory.get(projectId) ?? loadPlanState(projectId))
+    : (memoryAll.get(projectId)?.get(title) ??
+      readAll(projectId)[title] ??
+      null);

@@ -399,3 +399,36 @@ test('[FIX6-006] while a plan builds the dialog shows that it is working (spinne
   });
   await expect(dialog.locator('.plan-working')).toBeHidden();
 });
+
+test('[FIX6-007] two imported plans: building the second leaves the first built, and each card opens its own Review & swap', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await withKey(page);
+  await withVoice(page);
+  await mockStock(page);
+  await page.goto('/');
+  await emptyProject(page);
+  const first = await build(page);
+  await first.locator('#plan-cancel').click();
+  await expect(page.locator('.plan-build')).toHaveCount(0);
+  await importPlan(
+    page,
+    readFileSync('tests/fixtures/plans/chai-hi.json', 'utf8'),
+  );
+  await page.locator('[data-action="build-video"]').click();
+  await expect(page.locator('.plan-build #plan-summary')).toBeVisible({
+    timeout: 90_000,
+  });
+  await page.locator('.plan-build #plan-cancel').click();
+  await expect(page.locator('.plan-build')).toHaveCount(0);
+  const honey = page
+    .locator('#library-ai .shelf-item', { hasText: 'Where honey comes from' })
+    .first();
+  await expect(honey).not.toContainText('Not built');
+  await honey.locator('[data-action$="more"], .shelf-more').first().click();
+  await page.getByRole('menuitem', { name: 'Review & swap media' }).click();
+  // The honey plan's own scenes (the other plan has different ones).
+  await expect(page.locator('.plan-review')).toContainText('Cold open');
+  await expect(page.locator('.plan-review')).toContainText('The hive');
+});

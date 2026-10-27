@@ -2626,6 +2626,7 @@
   "plan.status.built": "बनाया गया",
   "plan.status.needs-assets": "एसेट चाहिए",
   "plan.status.scenes": "{count} दृश्य",
+  "plan.reviewMedia": "मीडिया देखें और बदलें",
   "plan.rebuild": "फिर से बनाएँ",
   "plan.status.not-built": "नहीं बना",
   "plan.feelName": "{name} · फ़ील",

@@ -2611,14 +2611,15 @@ export function mountEditorShell(
         });
         aiPanel?.render();
       },
-      review: () => openPlanReview(),
+      review: () => openPlanReview(plan.meta.title),
       report: reportError,
     });
   };
   /** FINAL3 V3: Review & swap, a left side panel. */
-  const openPlanReview = () =>
+  const openPlanReview = (title?: string) =>
     sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
       planReviewPanel({
+        ...(title !== undefined ? { title } : {}),
         project: () => engine.state,
         run: (label, commands) =>
           safely(() => {
@@ -2644,7 +2645,7 @@ export function mountEditorShell(
             );
         },
         services: async () => {
-          const plan = planState(engine.state.id)?.plan;
+          const plan = planState(engine.state.id, title)?.plan;
           const voice = await planVoiceEngine(
             plan?.meta.language ?? 'en',
           ).catch(() => null);
@@ -4122,9 +4123,9 @@ export function mountEditorShell(
           builtScenes(storageOrNull(), engine.state.id, compositionKey(data)),
           engine.state.compositions,
         ).status;
-      const state = planState(engine.state.id);
       const title = (data as VideoPlan).meta.title;
-      if (!state || state.plan.meta.title !== title) return 'not-built';
+      const state = planState(engine.state.id, title);
+      if (!state) return 'not-built';
       return state.flags.length ? 'needs-assets' : 'built';
     },
     // FIX4 A4: Built / Needs assets / Not built, the scene count and a
@@ -4144,9 +4145,11 @@ export function mountEditorShell(
           engine.state.compositions.some((scene) => scene.id === id),
         );
       } else {
-        const state = planState(engine.state.id);
-        if (!state || state.plan.meta.title !== (data as VideoPlan).meta.title)
-          return { status: 'not-built', scenes: 0 };
+        const state = planState(
+          engine.state.id,
+          (data as VideoPlan).meta.title,
+        );
+        if (!state) return { status: 'not-built', scenes: 0 };
         ids = state.sceneIds.filter(
           (id): id is string =>
             !!id && engine.state.compositions.some((scene) => scene.id === id),
@@ -4167,6 +4170,19 @@ export function mountEditorShell(
       };
     },
     rebuild: (id) => safely(() => insertCreatorItem(id)),
+    // FIX6: each built video opens its own Review & swap (with 3 or 4 plans
+    // imported, "the" review would not say which one).
+    review: (id) => {
+      const entry = creatorLibrary
+        .list()
+        .find((item) => creatorLibraryId(item.key) === id);
+      const title = isPlanV2(entry?.item.data)
+        ? (entry!.item.data as unknown as VideoPlan).meta.title
+        : undefined;
+      if (title !== undefined && planState(engine.state.id, title))
+        openPlanReview(title);
+      else showToast(t('plan.reviewEmpty'), 'info');
+    },
     kit: {
       // (Listed with the plans it builds, once the library holds one.)
       items: () =>

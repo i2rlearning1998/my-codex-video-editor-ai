@@ -77,6 +77,8 @@ export interface AiPanelOptions {
   } | null;
   /** FIX4 A4: runs the build again for a composition card. */
   readonly rebuild?: (id: string) => void;
+  /** FIX6: opens Review & swap for the plan a composition card built. */
+  readonly review?: (id: string) => void;
   /** FINAL3 V3.5: the starter kit's items, added to the open scene. */
   readonly kit?: {
     readonly items: () => readonly { id: string; name: string }[];
@@ -252,6 +254,12 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
             options.planStatus(id, e.item.data) !== 'not-built',
         )
         ? [
+            {
+              id: 'ai-review',
+              label: t('plan.reviewMedia'),
+              icon: 'replace',
+              run: () => options.review?.(id),
+            },
             {
               id: 'ai-rebuild',
               label: t('plan.rebuild'),
