@@ -295,7 +295,7 @@
   "toolbar.strokeWidth": "Width",
   "toolbar.corners": "Corners",
   "toolbar.boolean": "Boolean",
-  "toolbar.later": "Planned: Wave {wave} ({id})",
+  "toolbar.later": "Coming soon",
   "toolbar.number": "Enter a number.",
   "toolbar.scaleRange": "Scale must be above 0%.",
   "toolbar.opacityRange": "Opacity must be between 0% and 100%.",

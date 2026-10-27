@@ -35,7 +35,7 @@ test('[TL-073] the player bar: wand planned, scissors split; previous cut, back 
   await expect(control(page, 'ai-tools')).toBeDisabled();
   await expect(control(page, 'ai-tools')).toHaveAttribute(
     'title',
-    'Planned: Wave 10 (AI-001)',
+    'Coming soon',
   );
   await expect(control(page, 'split').locator('svg')).toHaveCount(1);
   // Back and forward 5 s, clamped to the scene.

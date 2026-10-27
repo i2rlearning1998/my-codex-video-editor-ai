@@ -303,7 +303,7 @@ test('[CV-048][PRJ-006] with nothing selected the toolbar is the scene bar: back
   // Animate is not built for scenes yet and says which wave builds it.
   await expect(bar.locator('[data-control="scene-animate"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 8 (ANI-020)',
+    'Coming soon',
   );
   // Background: one undo step, applied to this scene (J1: each scene owns
   // its background; the project's is the default for new scenes).

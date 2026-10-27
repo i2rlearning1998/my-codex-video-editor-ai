@@ -159,7 +159,7 @@ test('[CV-036] image and video toolbar: Position holds X, Y, width, height and r
   await expect(control(page, 'edit-image')).toBeEnabled();
   await expect(control(page, 'bg-remover')).toHaveAttribute(
     'title',
-    'Planned: Wave 10 (AI-007)',
+    'Coming soon',
   );
   await select(page, 'layer-a');
   // X, Y, W, H and rotation are in the Position panel (G2.1 fields).

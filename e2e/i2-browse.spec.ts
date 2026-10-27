@@ -228,10 +228,7 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
   ] as const) {
     const button = host.locator(`[data-tile="${tile}"]`);
     await expect(button).toHaveAttribute('aria-disabled', 'true');
-    await expect(button).toHaveAttribute(
-      'title',
-      new RegExp(`Planned: Wave \\d+ \\(${id}\\)`),
-    );
+    await expect(button).toHaveAttribute('title', 'Coming soon');
   }
   // Shapes: Lines first, then the shape sections.
   await host.locator('[data-tile="shapes"]').click();
@@ -282,28 +279,22 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   const host = panel(page, 'text');
   await expect(host.locator('[data-action="magic-write"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 10 (AI-001)',
+    'Coming soon',
   );
-  await expect(host.locator('[data-action="dynamic-text"]')).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
-  await expect(host.locator('[data-action="captions"]')).toHaveAttribute(
-    'title',
-    'Planned: Wave 8 (TXT-035)',
-  );
+  // FIX6: no disabled tiles that repeat another feature or have no plan:
+  // Auto Caption lives in the right rail, page number and date is dropped.
+  await expect(host.locator('[data-action="dynamic-text"]')).toHaveCount(0);
+  await expect(host.locator('[data-action="captions"]')).toHaveCount(0);
   // FINAL3 T5: Canva's order: default styles, font combinations, the
   // user's own styles, then the rest.
   await expect(host.locator('.browse-section-head h3')).toContainText([
     'Default text styles',
     'Font combinations',
     'My text styles',
-    'Dynamic text',
     'Plain text',
     'Text styles',
     'Titles',
     'Two line',
-    'Captions',
   ]);
   // Add a text box: one step, centred, selected.
   await host.locator('#add-text-box').click();
@@ -433,7 +424,7 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   // Table is planned.
   await expect(palette.locator('[data-palette-tool="table"]')).toHaveAttribute(
     'title',
-    'Planned: Wave 8 (SHP-025)',
+    'Coming soon',
   );
   // Shape: drag a rectangle.
   await palette.locator('[data-palette-tool="shape"]').click();

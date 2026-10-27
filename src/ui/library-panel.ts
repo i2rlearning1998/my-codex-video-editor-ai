@@ -1069,20 +1069,6 @@ export function mountLibraryPanels(
             }
           },
         },
-        {
-          id: 'dynamic',
-          title: t('text.section.dynamic'),
-          layout: 'list',
-          cards: () => [
-            {
-              id: 'dynamic-text',
-              label: t('text.dynamic'),
-              icon: 'text',
-              disabled: later(8, 'TXT-037'),
-              data: { action: 'dynamic-text' },
-            },
-          ],
-        },
         ...TEXT_SECTIONS.map((section): BrowseSection => ({
           id: section,
           title: t(`text.section.${section}`),
@@ -1091,20 +1077,6 @@ export function mountLibraryPanels(
           seeAll: () => textPage(section),
           empty: null,
         })),
-        {
-          id: 'captions',
-          title: t('text.section.captions'),
-          layout: 'list',
-          cards: () => [
-            {
-              id: 'captions',
-              label: t('text.captions'),
-              icon: 'captions',
-              disabled: later(8, 'TXT-035'),
-              data: { action: 'captions' },
-            },
-          ],
-        },
       ];
     },
   };

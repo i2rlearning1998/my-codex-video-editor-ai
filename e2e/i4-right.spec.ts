@@ -117,7 +117,7 @@ test('[LAY-042] a shape: Color, Outline (weight, dash, caps, joins), Corners and
   await expect(panel(page).locator('#right-shadow-blur')).toBeDisabled();
   await expect(
     panel(page).locator('.right-row-planned').first(),
-  ).toHaveAttribute('title', 'Planned: Wave 6 (FX-001)');
+  ).toHaveAttribute('title', 'Coming soon');
 });
 
 test('[LAY-043] text: font, size, B I U S, case, align, colour and spacing in the Text tab, one step each', async ({

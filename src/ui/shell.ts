@@ -214,6 +214,12 @@ import {
   type MineKind,
 } from './my-library';
 import { mountMyTemplatesPanel } from './my-templates-panel';
+import {
+  DEFAULT_EDITOR_LAYOUT,
+  railCategories,
+  railIcon,
+  resolveEditorLayout,
+} from './editor-layout';
 import { scenePosterUrl } from './scene-poster';
 import { mountContextToolbar } from './context-toolbar';
 import { CropTool } from './crop-tool';
@@ -330,37 +336,11 @@ import {
 } from '../i18n';
 
 // H2: the order a user reaches for them; below 800 px of height the rail
-// shows the first six and a More button for the rest.
-const RAIL_CATEGORIES = [
-  'Templates',
-  'Elements',
-  'Text',
-  'Media',
-  'Draw',
-  'Scene',
-  // V7 (spec 11.4): Record & create, before Audio.
-  'Record',
-  'Audio',
-  // Q4: everything imported from Creator Packs.
-  'AI',
-  // R5: the user's own saved elements and scenes.
-  'MyTemplates',
-  // T1: one-click themes.
-  'Theme',
-] as const;
-const RAIL_ICONS: Record<(typeof RAIL_CATEGORIES)[number], string> = {
-  Media: 'media',
-  Text: 'text',
-  Templates: 'templates',
-  Audio: 'audio',
-  Elements: 'elements',
-  Draw: 'pen',
-  Scene: 'layers',
-  Record: 'mic',
-  AI: 'magic',
-  MyTemplates: 'folder',
-  Theme: 'color',
-};
+// shows the first six and a More button for the rest. FIX6: which categories
+// show, in what order and with which icon comes from the editor layout
+// (src/ui/editor-layout.ts), so a published layout can change it later.
+const EDITOR_LAYOUT = resolveEditorLayout(DEFAULT_EDITOR_LAYOUT);
+const RAIL_CATEGORIES = railCategories(EDITOR_LAYOUT);
 export interface ShellActions {
   save?: () => void;
   exportProject?: () => void;
@@ -435,7 +415,7 @@ export function mountEditorShell(
           <button type="button" id="about" role="menuitem">${iconSvg('info')}${t('menu.about')}</button>
         </div>
       </div>
-      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, RAIL_ICONS[name], false)).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
+      <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, railIcon(EDITOR_LAYOUT, name), false)).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
       <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
         <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><button type="button" class="button primary import-menu-button" id="import-menu" aria-haspopup="menu" aria-expanded="false" aria-label="${t('code.importMenu')}" title="${t('code.importMenu')}">${iconSvg('chevronDown', 16)}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
         <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>

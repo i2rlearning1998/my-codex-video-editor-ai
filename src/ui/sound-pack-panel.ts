@@ -131,15 +131,36 @@ export function mountSoundPack(host: HTMLElement, options: SoundPackHost) {
   const render = () => {
     shown = options.entries();
     list.replaceChildren(...shown.map(tileFor));
-    for (const entry of shown) options.prefetch(entry);
+    // FIX6: a tile warms its sound when it is on screen. Warming every
+    // tile at start-up (the panel is built hidden) downloaded all the
+    // sounds before anyone opened Audio.
+    seen?.disconnect();
+    if (seen)
+      [...list.children].forEach((tile, index) => {
+        tiles.set(tile, shown[index]!);
+        seen!.observe(tile);
+      });
     filter();
   };
+  const tiles = new WeakMap<Element, CatalogEntry>();
+  const seen =
+    typeof IntersectionObserver === 'undefined'
+      ? null
+      : new IntersectionObserver((records) => {
+          for (const record of records) {
+            if (!record.isIntersecting) continue;
+            seen?.unobserve(record.target);
+            const entry = tiles.get(record.target);
+            if (entry) options.prefetch(entry);
+          }
+        });
   search.addEventListener('input', filter);
   render();
   const stop = options.onChange(render);
   return {
     dispose: () => {
       stop();
+      seen?.disconnect();
       stopAudioPreview();
     },
   };

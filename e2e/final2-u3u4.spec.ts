@@ -110,7 +110,7 @@ test('[F2-010][F2-011] Voice-over: type, Preview, Save to Media (the WAV is in M
   // Hindi without a paid key.
   await vo.locator('#vo-language').selectOption('hi-IN');
   await expect(vo.locator('.voiceover-hint')).toContainText(
-    'Hindi needs a paid voice (Sarvam / Google / ElevenLabs)',
+    'Hindi voices will come with the platform voice service',
   );
   await vo.locator('#vo-text').fill('नमस्ते');
   await vo.scrollIntoViewIfNeeded();

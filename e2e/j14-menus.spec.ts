@@ -106,7 +106,7 @@ test('[TL-075] a video clip menu: its own section with shortcuts, then the earli
   await expect(row('freeze')).toHaveAttribute('aria-keyshortcuts', 'F');
   const autoCut = menu(page).locator('[data-action="auto-cut"]');
   await expect(autoCut).toBeDisabled();
-  await expect(autoCut).toHaveAttribute('title', 'Planned: Wave 10 (AI-008)');
+  await expect(autoCut).toHaveAttribute('title', 'Coming soon');
   await page.screenshot({ path: testInfo.outputPath('video-menu.png') });
   // Reopen the menu for the keyboard part.
   await page.keyboard.press('Escape');
