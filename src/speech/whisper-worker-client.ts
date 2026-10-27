@@ -106,7 +106,12 @@ export function createWorkerEngine(
       const running = [...pending.values()].some((j) => j.step === 'listen');
       const now = performance.now();
       const quiet = now - lastSeen;
-      if (quiet > beatLossMs) {
+      // FIX6: while the worker is deep in one chunk of listening its own
+      // timer cannot beat (a slow computer blocks it for many seconds), so
+      // a quiet worker is only given up on after the listening limit.
+      if (
+        quiet > (running ? Math.max(beatLossMs, inferenceStallMs) : beatLossMs)
+      ) {
         stop(
           new WhisperError(
             'stalled',

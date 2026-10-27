@@ -113,10 +113,60 @@ export function toCaptionCues(
     }
   }
   for (const [i, cue] of cues.entries()) {
-    const end = Math.max(cue.end, cue.start + min);
-    if (end > (cues[i + 1]?.start ?? Infinity))
-      throw new SpeechError('INVALID_INPUT');
-    cue.end = end;
+    // A short cue is held to the minimum, but never into the next cue: a
+    // run of quick words keeps its timing instead of failing the whole job.
+    const next = cues[i + 1]?.start ?? Infinity;
+    cue.end = Math.min(Math.max(cue.end, cue.start + min), next);
   }
   return cues;
+}
+
+/**
+ * FIX6: speech engines (Whisper above all, in Hindi) hand back word times
+ * that overlap, have no length, or run long. One such word used to fail the
+ * whole caption job with "speech input is invalid". This puts the times in
+ * order, gives every word a short length and caps a runaway word; text is
+ * never dropped or changed (a word too long for a line is still refused).
+ */
+export function repairTranscription(
+  result: Transcription,
+  options: { maxWordSeconds?: number } = {},
+): Transcription {
+  const longest = options.maxWordSeconds ?? 2;
+  const breakLong = (text: string): string[] =>
+    text.trim() ? [text.trim()] : [];
+  const mend = <T extends { text: string; start: number; end: number }>(
+    items: readonly T[],
+    cap: number,
+  ): T[] => {
+    const out: T[] = [];
+    let previousEnd = 0;
+    for (const item of items) {
+      const pieces = breakLong(item.text);
+      if (!pieces.length) continue;
+      const start = Number.isFinite(item.start)
+        ? Math.max(item.start, previousEnd)
+        : previousEnd;
+      let end = Number.isFinite(item.end) ? item.end : start + 0.3;
+      if (end <= start) end = start + 0.15 * pieces.length;
+      end = Math.min(end, start + cap * pieces.length);
+      const each = (end - start) / pieces.length;
+      pieces.forEach((text, i) =>
+        out.push({
+          ...item,
+          text,
+          start: start + each * i,
+          end: start + each * (i + 1),
+        }),
+      );
+      previousEnd = end;
+    }
+    return out;
+  };
+  const words = result.words?.length ? mend(result.words, longest) : undefined;
+  return {
+    ...result,
+    segments: mend(result.segments, Number.POSITIVE_INFINITY),
+    ...(words ? { words } : {}),
+  };
 }

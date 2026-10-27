@@ -4,6 +4,7 @@
 // is plain JSON-safe data; captionCommands (layers.ts) turns it into
 // ordinary layers and clips.
 import {
+  repairTranscription,
   toCaptionCues,
   type CaptionCue,
   type CaptionOptions,
@@ -77,7 +78,10 @@ export function captionTrackFromTranscription(
     version: 1,
     language: options.language ?? transcription.language,
     style,
-    cues: toCaptionCues(transcription, splitOptions(style, options)),
+    cues: toCaptionCues(
+      repairTranscription(transcription),
+      splitOptions(style, options),
+    ),
   };
 }
 

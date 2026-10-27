@@ -58,4 +58,48 @@ describe('caption cues', () => {
       }),
     ).toThrow();
   });
+
+  it('[FIX6-001] repair keeps every word when the engine times them badly', async () => {
+    const { repairTranscription } = await import('../../src/speech/captions');
+    const bad = {
+      text: 'एक दो तीन चार',
+      language: 'hi',
+      segments: [{ start: 0, end: 9, text: 'एक दो तीन चार' }],
+      words: [
+        { text: 'एक', start: 0, end: 0 }, // no length
+        { text: 'दो', start: 0.1, end: 0.6 }, // overlaps the one before
+        { text: 'तीन', start: 0.6, end: 9 }, // runs for 8 seconds
+        { text: 'चार', start: 9, end: 9.4 },
+      ],
+    };
+    expect(() => toCaptionCues(bad)).toThrow();
+    const cues = toCaptionCues(repairTranscription(bad));
+    expect(cues.flatMap((cue) => cue.words.map((word) => word.text))).toEqual([
+      'एक',
+      'दो',
+      'तीन',
+      'चार',
+    ]);
+    for (const [i, cue] of cues.entries()) {
+      expect(cue.end).toBeGreaterThan(cue.start);
+      if (i) expect(cue.start).toBeGreaterThanOrEqual(cues[i - 1]!.end);
+    }
+  });
+  it('[FIX6-001] a run of quick words keeps its timing, not an error', async () => {
+    const { repairTranscription } = await import('../../src/speech/captions');
+    const quick = Array.from({ length: 30 }, (_, i) => ({
+      text: `शब्द${i}`,
+      start: i * 0.1,
+      end: i * 0.1 + 0.1,
+    }));
+    const cues = toCaptionCues(
+      repairTranscription({
+        text: quick.map((w) => w.text).join(' '),
+        language: 'hi',
+        segments: [],
+        words: quick,
+      }),
+    );
+    expect(cues.length).toBeGreaterThan(0);
+  });
 });
