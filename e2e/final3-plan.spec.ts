@@ -367,3 +367,15 @@ test('[FN3-025] the AI category lists the plan with its status, its feel as a Th
   )!;
   expect(again.backgroundColor).toBe('#1b1a17');
 });
+
+test('[FIX6-004] a pasted video plan offers Build video; Add to AI, Also add to the scene and Copy report are not shown', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await importPlan(page);
+  await expect(page.locator('[data-action="build-video"]')).toBeVisible();
+  await expect(page.locator('#ai-import-add')).toBeHidden();
+  await expect(page.locator('#ai-import-scene-row')).toBeHidden();
+  await expect(page.locator('#ai-import-report')).toBeHidden();
+  await expect(page.locator('#ai-import-cancel')).toBeVisible();
+});

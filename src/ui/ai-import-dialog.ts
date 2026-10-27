@@ -204,6 +204,7 @@ export function openAiImportDialog(options: AiImportOptions) {
           `li[data-item="${CSS.escape(row.id)}"] input.ai-import-keep`,
         )?.checked,
     );
+  const sceneRow = () => $<HTMLElement>('ai-import-scene-row');
   const syncAdd = () => (add.disabled = !checked || !selected().length);
 
   /** A code item's thumbnail at its thumbnail time (after edits too). */
@@ -417,7 +418,7 @@ export function openAiImportDialog(options: AiImportOptions) {
       }),
     );
     $<HTMLElement>('ai-import-scene-row').hidden =
-      mode !== 'code' || !rows.some(usable);
+      root.dataset.kind === 'plan' || mode !== 'code' || !rows.some(usable);
     syncAdd();
   };
   const reportText = () =>
@@ -452,10 +453,24 @@ export function openAiImportDialog(options: AiImportOptions) {
     const text = source.value;
     if (!text.trim()) return clear();
     root.dataset.checking = 'true';
-    if (planText(text)) classifyPlan(text);
+    const isPlan = Boolean(planText(text));
+    // FIX6: a pasted video plan has one job, Build video. The buttons made
+    // for code animations and packs (Add to AI, Also add it to the scene) are
+    // not shown for it, and Copy report only when something is wrong.
+    root.dataset.kind = isPlan ? 'plan' : 'other';
+    if (isPlan) classifyPlan(text);
     else if (looksLikePack(text)) await classifyPack(text, mine);
     else await classifyCodeText(text, mine);
     if (mine === run) delete root.dataset.checking;
+    if (isPlan) {
+      const row = rows[0];
+      add.hidden = true;
+      sceneRow().hidden = true;
+      report.hidden = !row || row.status === 'ok';
+    } else {
+      add.hidden = false;
+      report.hidden = false;
+    }
   };
   /** FINAL3 V1: a Video Plan v2: checked here, built by Build video. */
   const classifyPlan = (text: string) => {
