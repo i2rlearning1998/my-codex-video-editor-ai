@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { createLayer, createProject, validateProject } from '../src/core/model';
 
 describe('[FIX6-009] validating a project twice', () => {
-  it('gives the same project, and still rejects an edit that breaks a scene', () => {
+  it('[FIX6-009] gives the same project, and still rejects an edit that breaks a scene', () => {
     const project = createProject();
     const first = validateProject(structuredClone(project));
     const second = validateProject(structuredClone(first));

@@ -24,12 +24,12 @@ const layer = (query: string) =>
   }) as never;
 
 describe('[FIX6-008] stock never replaces a named file', () => {
-  it('reads file names', () => {
+  it('[FIX6-008] reads file names', () => {
     expect(namesAFile('stone-well.png')).toBe(true);
     expect(namesAFile(' Narration.MP3 ')).toBe(true);
     expect(namesAFile('a stone well')).toBe(false);
   });
-  it('flags a named file as needing an asset and keeps stock as a suggestion', async () => {
+  it('[FIX6-008] flags a named file as needing an asset and keeps stock as a suggestion', async () => {
     const choice = await resolveMedia(
       layer('stone-well.png'),
       services as never,
@@ -40,7 +40,7 @@ describe('[FIX6-008] stock never replaces a named file', () => {
       'mock:well-1',
     ]);
   });
-  it('still uses stock for a described query, and for a swap the person chose', async () => {
+  it('[FIX6-008] still uses stock for a described query, and for a swap the person chose', async () => {
     expect(
       (await resolveMedia(layer('stone well'), services as never)).chosen?.key,
     ).toBe('mock:well-1');

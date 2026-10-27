@@ -1141,7 +1141,7 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 | LIB-029 | P0 | W9 | Verified | The catalog gives the panels exactly the records the editor used to bundle (render identity) |
 | LIB-030 | P0 | W9 | Verified | Feature keys exist for later plans; every feature is on; the Export button shows Upgrade when locked and is gone when hidden |
 | LIB-031 | P0 | W9 | Verified | An AI-built video keeps a training record (brief, final plan, later edits with times) in this browser, and Save to cloud stores it in an owner-only table |
-| LIB-032 | P0 | W9 | Verified | The Open from cloud list shows each project's picture; Free space lists and deletes only cloud files no project uses; Google sign-in shows only when set up, else one line says why |
+| LIB-032 | P0 | W9 | Todo | The Open from cloud list shows each project's picture; Free space lists and deletes only cloud files no project uses; Google sign-in shows only when set up, else one line says why |
 | LIB-033 | P0 | W9 | Verified | Every new text of this phase has Hindi, in the editor and in the owner app |
 | LIB-034 | P0 | W9 | Verified | The ledger, status, decisions, changelog and library docs describe the Phase 1 library |
 
@@ -1179,3 +1179,30 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | AI-011 | P2 | W10 | Todo | AI noise reduction and audio cleanup |
 | AI-012 | P2 | W10 | Todo | AI generated templates and layouts from a prompt |
 | AI-013 | P2 | W10 | Todo | AI provider abstraction with a backend proxy; API keys never in the browser |
+
+## Fix-6 (fix-4 base plus the Phase 1 library)
+
+| ID | Pri | Wave | Status | Description |
+| --- | --- | --- | --- | --- |
+| FIX6-001 | P0 | W9 | Verified | Auto captions never fail on odd word times: they are put in order, zero-length and runaway words get a sensible length, and a run of quick words keeps its timing |
+| FIX6-002 | P0 | W9 | Verified | The speech worker is not called stuck while a long chunk is computing |
+| FIX6-003 | P0 | W9 | Verified | Importing a deleted file again brings it back under the name of the file just chosen |
+| FIX6-004 | P0 | W9 | Verified | A pasted video plan offers Build video only; Add to AI, Also add to the scene and Copy report are not shown |
+| FIX6-005 | P0 | W9 | Verified | A project is checked without the slow whole-value check, so building a video no longer freezes the tool |
+| FIX6-006 | P0 | W9 | Verified | While a plan builds, the dialog shows a spinner and a note; both go when it is done |
+| FIX6-007 | P0 | W9 | Verified | Two imported plans: building the second leaves the first built, and each card opens its own Review & swap |
+| FIX6-008 | P0 | W9 | Verified | A plan layer that names a file (x.png) never gets a stock picture in its place: it shows needs asset and the stock picture waits in Review & swap |
+| FIX6-009 | P0 | W9 | Verified | A scene that was already checked is not checked again, so editing a project with many scenes stays fast |
+| FIX6-010 | P0 | W9 | Verified | The left rail is read from an editor layout (categories, order, icons); an invalid layout gives the default |
+| FIX6-011 | P1 | W9 | Verified | Every disabled planned control reads Coming soon; no duplicate disabled tiles in Text |
+| P13D-001 | P0 | W9 | Verified | A .glb model chosen in AI › Import (or dropped on the editor) becomes a Tier C code animation with spin, size, tilt, light and tint controls |
+| P13D-002 | P0 | W9 | Verified | A file that is not a binary glTF 2 model, a cut-off one or one over 700 KB gets a plain sentence and cannot be added |
+| FX4-001 | P1 | W9 | Verified | One toast at a time, never over a left panel |
+| FX4-002 | P1 | W9 | Verified | A toast waits while the pointer is on it, then hides |
+| FX4-003 | P1 | W9 | Verified | Every overflowing left panel: its scroller reaches the panel bottom and fills most of it |
+| FX4-004 | P1 | W9 | Verified | The AI composition card shows Not built, then Built with scene count and poster |
+| FX4-006 | P1 | W9 | Verified | The model host defaults to Hugging Face and files follow the saved source |
+| FX4-007 | P1 | W9 | Verified | An address without https is refused; empty returns to the default |
+| FX4-008 | P1 | W9 | Verified | Settings › Offline › Model source saves an https address, refuses others and resets |
+| FX4-009 | P1 | W9 | Verified | The left panel is full height and the timeline sits beside it |
+| FX4-010 | P1 | W9 | Verified | A v3 timeline plan builds one scene with shapes, a bubble and an overlay |

@@ -9,13 +9,13 @@ import {
 } from '../src/ui/editor-layout';
 
 describe('[FIX6-010] editor layout', () => {
-  it('the default shows every category in the shipped order', () => {
+  it('[FIX6-010] the default shows every category in the shipped order', () => {
     expect(railCategories(DEFAULT_EDITOR_LAYOUT)).toEqual([
       ...RAIL_CATEGORY_IDS,
     ]);
     expect(railIcon(DEFAULT_EDITOR_LAYOUT, 'Media')).toBe('media');
   });
-  it('a valid layout can hide and reorder categories', () => {
+  it('[FIX6-010] a valid layout can hide and reorder categories', () => {
     const layout = resolveEditorLayout({
       version: 1,
       id: 'simple',
@@ -28,7 +28,7 @@ describe('[FIX6-010] editor layout', () => {
     expect(layout.id).toBe('simple');
     expect(railCategories(layout)).toEqual(['Media', 'Text']);
   });
-  it('an invalid layout (unknown category, duplicates, nothing visible, extra fields) gives the default', () => {
+  it('[FIX6-010] an invalid layout (unknown category, duplicates, nothing visible, extra fields) gives the default', () => {
     const bad = [
       { version: 1, id: 'x', rail: [{ id: 'Nope', icon: 'a' }] },
       {

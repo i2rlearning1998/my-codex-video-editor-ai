@@ -18,7 +18,7 @@ afterEach(() => {
 });
 
 describe('[FIX6-002] worker heartbeat', () => {
-  it('waits past 15 s of silence while listening, but not while loading', async () => {
+  it('[FIX6-002] waits past 15 s of silence while listening, but not while loading', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('Worker', SilentWorker);
     const engine = createWorkerEngine({

@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { jsonSchema } from '../src/core/model';
 
 describe('[FIX6-005] jsonSchema', () => {
-  it('accepts plain JSON trees', () => {
+  it('[FIX6-005] accepts plain JSON trees', () => {
     for (const value of [
       null,
       true,
@@ -18,7 +18,7 @@ describe('[FIX6-005] jsonSchema', () => {
     ])
       expect(jsonSchema.safeParse(value).success).toBe(true);
   });
-  it('refuses what JSON cannot hold', () => {
+  it('[FIX6-005] refuses what JSON cannot hold', () => {
     const deep: unknown[] = [];
     let cursor = deep;
     for (let i = 0; i < 120; i++) {
@@ -40,7 +40,7 @@ describe('[FIX6-005] jsonSchema', () => {
     ])
       expect(jsonSchema.safeParse(value).success).toBe(false);
   });
-  it('checks a large value quickly', () => {
+  it('[FIX6-005] checks a large value quickly', () => {
     const big = Array.from({ length: 20000 }, (_, i) => ({
       id: `n${i}`,
       values: [i, i + 1, i + 2],
