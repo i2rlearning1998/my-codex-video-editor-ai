@@ -416,9 +416,10 @@ export function mountLibraryPanels(
     // the preview is drawn, and a plan key shows the card as locked.
     const entry = own ? undefined : libraryClient().entry(item.id);
     const locked = entry?.planKey ? t('library.locked') : undefined;
-    // P1-24: a text or template card loads its fonts when it shows.
-    if (item.type === 'text' || item.type === 'template')
-      options.prefetchItem?.(item);
+    // P1-24: a text or template card loads its fonts when its preview is
+    // drawn (the card is on screen), not when the card is built: building
+    // every card of a long panel made it open slowly.
+    const showsText = item.type === 'text' || item.type === 'template';
     return {
       id: item.id,
       label: itemName(item),
@@ -428,7 +429,10 @@ export function mountLibraryPanels(
       ...(entry ? { placeholder: entry.blur } : {}),
       ...(locked ? { locked } : {}),
       keywords: [item.name.en, item.name.hi, ...item.tags],
-      preview: () => preview(item.id, item),
+      preview: () => {
+        if (showsText) options.prefetchItem?.(item);
+        return preview(item.id, item);
+      },
       ...(own
         ? {
             badge: t('creator.badge'),
@@ -854,6 +858,28 @@ export function mountLibraryPanels(
             })),
           ],
         },
+        // Videos and photos from the catalog sit right after the tiles,
+        // each in its own section, so they are not buried under shapes.
+        ...(['video', 'image'] as const).flatMap((kind): BrowseSection[] => {
+          const entries = () =>
+            (options.media?.entries() ?? []).filter(
+              (entry) => entry.kind === kind,
+            );
+          return entries().length
+            ? [
+                {
+                  id: `catalog-${kind}`,
+                  title: t(
+                    kind === 'video'
+                      ? 'elements.section.videos'
+                      : 'elements.section.photos',
+                  ),
+                  layout: 'strip',
+                  cards: () => entries().map(mediaCard),
+                },
+              ]
+            : [];
+        }),
         {
           id: 'shapes',
           title: t('elements.shapes'),
@@ -871,16 +897,6 @@ export function mountLibraryPanels(
           cards: () => of('background').map(libraryCard),
           seeAll: graphicsPage,
         },
-        ...(options.media && options.media.entries().length
-          ? [
-              {
-                id: 'catalog-media',
-                title: t('elements.section.media'),
-                layout: 'strip',
-                cards: () => options.media!.entries().map(mediaCard),
-              } as BrowseSection,
-            ]
-          : []),
       ];
     },
   };

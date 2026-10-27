@@ -478,6 +478,38 @@ export const assetSchema = z
   })
   .strict();
 export type Asset = z.infer<typeof assetSchema>;
+/**
+ * FIX6: a scene that was already validated (and came out of the schema as
+ * this very text) is not parsed again. Every command re-validated the whole
+ * project, so one small edit in a long, many-scene video cost seconds. Only
+ * a scene whose text changed is parsed; the cross-scene checks still run on
+ * all of them. The key is a 2x32-bit hash of the scene's JSON plus its length.
+ */
+const validatedScenes = new Set<string>();
+const sceneKey = (text: string): string => {
+  let a = 0x811c9dc5;
+  let b = 0x01000193;
+  for (let index = 0; index < text.length; index++) {
+    const code = text.charCodeAt(index);
+    a = Math.imul(a ^ code, 0x01000193) >>> 0;
+    b = Math.imul(b + code, 0x85ebca6b) >>> 0;
+  }
+  return `${text.length}:${a}:${b}`;
+};
+function validatedOnce<T extends z.ZodTypeAny>(schema: T): T {
+  return z.unknown().transform((value) => {
+    const before = sceneKey(JSON.stringify(value));
+    // A frozen scene is copied: validateProject may set its length.
+    if (validatedScenes.has(before))
+      return Object.isFrozen(value) ? structuredClone(value) : value;
+    const result = schema.safeParse(value);
+    // Stop here: the cross-scene checks below must not run on a bad scene.
+    if (!result.success) throw result.error;
+    if (validatedScenes.size > 512) validatedScenes.clear();
+    validatedScenes.add(sceneKey(JSON.stringify(result.data)));
+    return result.data;
+  }) as unknown as T;
+}
 export const projectSchema = z
   .object({
     schemaVersion: z.literal(SCHEMA_VERSION),
@@ -497,7 +529,7 @@ export const projectSchema = z
         masterVolume: finite.min(0).max(2).optional(),
       })
       .strict(),
-    compositions: z.array(compositionSchema).min(1),
+    compositions: z.array(validatedOnce(compositionSchema)).min(1),
     assets: z.array(assetSchema),
   })
   .strict()

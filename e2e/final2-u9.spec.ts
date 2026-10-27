@@ -57,7 +57,7 @@ test('[F2-060] Transcribe from the clip menu: engines show their status (Deepgra
   // Failure state: Deepgram has no key, so it says so and offers Add key.
   const deepgram = dialog.locator('.caption-engine[data-engine="deepgram"]');
   await expect(deepgram).toHaveAttribute('data-ready', 'false');
-  await expect(deepgram).toContainText('Needs a key');
+  await expect(deepgram).toContainText('Not available yet');
   await deepgram.locator('.caption-engine-pick').click();
   await expect(
     dialog.locator('[data-action="transcribe-start"]'),

@@ -11,15 +11,17 @@ export function drawScenePoster(
   session: EditorSession,
   sceneId: string,
   frames?: FrameProvider,
+  /** The second to draw (default the start). */
+  at = 0,
 ) {
   const scene = engine.state.compositions.find((item) => item.id === sceneId);
   const context = canvas.getContext('2d');
   if (!scene || !context) return false;
   const source: RenderSource = {
-    composition: compositionAt(scene, 0),
+    composition: compositionAt(scene, at),
     assets: engine.state.assets,
     background: scene.backgroundColor,
-    currentTime: 0,
+    currentTime: at,
     ...(frames ? { frames, playing: false } : {}),
     ...(session.source.measureText
       ? { measureText: session.source.measureText }
@@ -42,6 +44,8 @@ export function scenePosterUrl(
   sceneId: string,
   frames?: FrameProvider,
   width = 256,
+  /** A built video's card shows a moment when its text is in, not the blank start. */
+  at = 0,
 ) {
   const scene = engine.state.compositions.find((item) => item.id === sceneId);
   if (!scene) return undefined;
@@ -49,7 +53,7 @@ export function scenePosterUrl(
   canvas.width = width;
   canvas.height = Math.max(1, Math.round((width * scene.height) / scene.width));
   try {
-    return drawScenePoster(canvas, engine, session, sceneId, frames)
+    return drawScenePoster(canvas, engine, session, sceneId, frames, at)
       ? canvas.toDataURL('image/jpeg', 0.75)
       : undefined;
   } catch {

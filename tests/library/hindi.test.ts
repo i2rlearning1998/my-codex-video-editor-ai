@@ -9,7 +9,8 @@ const NEW_KEYS = [
   'library.fallback',
   'library.mediaFailed',
   'library.retry',
-  'elements.section.media',
+  'elements.section.videos',
+  'elements.section.photos',
   'features.upgrade',
   'features.locked',
 ] as const;

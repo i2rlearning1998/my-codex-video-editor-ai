@@ -75,7 +75,33 @@ export class OpfsMediaStore implements MediaStore {
       throw error;
     }
   }
+  /** FIX6: writes of one key wait for each other (see write). */
+  readonly #writing = new Map<string, Promise<unknown>>();
   async write(key: string, data: Blob, options: WriteOptions = {}) {
+    // Two writes of the same file at once (a plan asking for the same
+    // picture twice) fought over the swap file and one failed with "A
+    // requested file or directory could not be found". They now go one after
+    // the other, and a write that still meets NotFoundError is tried once more.
+    const before = this.#writing.get(key) ?? Promise.resolve();
+    const run = before
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          await this.#write(key, data, options);
+        } catch (error) {
+          if ((error as DOMException)?.name !== 'NotFoundError') throw error;
+          aborted(options.signal);
+          await this.#write(key, data, options);
+        }
+      });
+    this.#writing.set(key, run);
+    try {
+      await run;
+    } finally {
+      if (this.#writing.get(key) === run) this.#writing.delete(key);
+    }
+  }
+  async #write(key: string, data: Blob, options: WriteOptions) {
     const [folderName, name] = checkKey(key);
     aborted(options.signal);
     const folder = (await this.#folder(folderName, true))!;

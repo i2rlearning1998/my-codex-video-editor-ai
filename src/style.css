@@ -11344,3 +11344,16 @@ body:has(.modal-backdrop) .toast-stack {
 [data-feature-state='locked'] {
   opacity: 0.85;
 }
+
+/* FIX6: a built video's card shows the whole picture (a 9:16 video was
+   cropped to a thin middle strip by the 16:9 box). */
+.shelf .shelf-card[data-category='composition'] .shelf-thumb {
+  background: #0d0d10;
+}
+.shelf .shelf-card[data-category='composition'] .shelf-thumb img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}

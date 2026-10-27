@@ -29,12 +29,21 @@ export async function main(args: string[]): Promise<number> {
     const email = flag(rest, '--email');
     if (!email) {
       console.log(
-        'Usage: npm run owner:create -- --email you@example.com [--password ...] [--replace]',
+        'Usage: npm run owner:create -- --email you@example.com [--replace]   (password: set OWNER_PASSWORD, or one is made)',
       );
       return 2;
     }
+    // A password on the command line shows in the process list and the shell
+    // history: prefer OWNER_PASSWORD, or let a random one be made and shown.
+    const fromFlag = flag(rest, '--password');
+    if (fromFlag)
+      console.log(
+        'Note: --password is visible in the process list. Prefer the OWNER_PASSWORD environment variable, or leave it out for a random one.',
+      );
     const password =
-      flag(rest, '--password') ?? randomBytes(15).toString('base64url');
+      fromFlag ??
+      process.env.OWNER_PASSWORD ??
+      randomBytes(15).toString('base64url');
     const secret = process.env.OWNER_TOTP_SECRET ?? newTotpSecret();
     const accounts = new Accounts(dataDir);
     accounts.create(email, password, secret, rest.includes('--replace'));
@@ -44,7 +53,8 @@ export async function main(args: string[]): Promise<number> {
       target: email,
     });
     console.log(`The owner account ${email} is ready.`);
-    if (!flag(rest, '--password')) console.log(`Password: ${password}`);
+    if (!fromFlag && !process.env.OWNER_PASSWORD)
+      console.log(`Password: ${password}`);
     console.log(`2-step secret (add it to an authenticator app): ${secret}`);
     console.log(
       `Or scan: otpauth://totp/AI-Native%20Library:${encodeURIComponent(email)}?secret=${secret}&issuer=AI-Native%20Library`,

@@ -40,6 +40,7 @@ import {
 import { setLayerMasks } from '../masks/commands';
 import { KIT_BACKGROUNDS } from './kit-ids';
 import {
+  namesAFile,
   resolveMedia,
   type MediaCandidate,
   type ResolveServices,
@@ -335,7 +336,14 @@ export async function buildVideoFromPlan(
     );
     alternatives[key] = choice.alternatives;
     let asset: Asset | null = null;
-    for (const candidate of choice.alternatives) {
+    // Only a candidate that may be used on its own (see resolveMedia).
+    const preferredKey = plan.resolved?.[key];
+    for (const candidate of choice.alternatives.filter(
+      (item) =>
+        item.source !== 'stock' ||
+        item.key === preferredKey ||
+        !namesAFile(layer.mediaIntent?.query ?? ''),
+    )) {
       try {
         const known = importedBy.get(candidate.key);
         asset = known ?? (await deps.importCandidate(candidate, signal));

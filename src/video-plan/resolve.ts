@@ -103,6 +103,12 @@ export function rankCandidates(
     .map((entry) => entry.candidate);
 }
 
+const FILE_NAME =
+  /\.(png|jpe?g|webp|gif|svg|avif|bmp|mp4|mov|webm|m4v|mkv|mp3|wav|m4a|ogg|aac|flac)\s*$/i;
+/** True when a media query is a file name rather than a description. */
+export const namesAFile = (query: string): boolean =>
+  FILE_NAME.test(query.trim());
+
 /**
  * Resolves one media layer. A `preferred` key (a swap kept in the plan's
  * `resolved`) wins when it is still among the candidates or is a local one.
@@ -152,13 +158,28 @@ export async function resolveMedia(
     ? [keep, ...ranked.filter((candidate) => candidate !== keep)]
     : ranked;
   const alternatives = ordered.slice(0, 4);
-  const chosen = alternatives[0] ?? null;
+  // FIX6: when the query names a file ("stone-well.png"), a stock picture
+  // is only a suggestion. It is used when the person chose it (a swap kept
+  // in the plan), never silently in place of the file the plan expected:
+  // then the layer shows "needs asset" and the stock picture waits in
+  // Review & swap. A described query ("a bee on a flower") still gets the
+  // best stock match.
+  const usable = alternatives.filter(
+    (candidate) =>
+      candidate.source !== 'stock' ||
+      candidate.key === preferred ||
+      !namesAFile(intent.query),
+  );
+  const chosen = usable[0] ?? null;
   return chosen
     ? { chosen, alternatives, flag: null }
     : {
         chosen: null,
-        alternatives: [],
+        alternatives,
         flag: 'needs-asset',
-        reason: reason ?? `Nothing found for "${intent.query}".`,
+        reason:
+          alternatives.length > 0
+            ? `No file of yours matches "${intent.query}". Add one, or pick a suggestion in Review & swap.`
+            : (reason ?? `Nothing found for "${intent.query}".`),
       };
 }

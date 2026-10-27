@@ -99,7 +99,9 @@ test('[F2-010][F2-011] Voice-over: type, Preview, Save to Media (the WAV is in M
 
   // No key: the status says so and the button opens Settings › keys.
   await vo.locator('#vo-engine').selectOption('sarvam');
-  await expect(vo.locator('.voiceover-status')).toContainText('Needs a key');
+  await expect(vo.locator('.voiceover-status')).toContainText(
+    'Voice service not set up',
+  );
   await expect(vo.locator('[data-action="vo-save"]')).toBeDisabled();
   await vo.locator('[data-action="vo-fix"]').click();
   await expect(page.locator('.modal-dialog')).toBeVisible();

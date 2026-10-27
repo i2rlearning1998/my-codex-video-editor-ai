@@ -4314,7 +4314,19 @@ export function mountEditorShell(
       }
       if (status === 'not-built' || !ids.length)
         return { status: 'not-built', scenes: 0 };
-      const poster = scenePosterUrl(engine, session, ids[0]!, frames);
+      // FIX6: the card shows the first scene a moment in (text and
+      // pictures are in), not the blank first frame.
+      const first = engine.state.compositions.find(
+        (item) => item.id === ids[0],
+      );
+      const poster = scenePosterUrl(
+        engine,
+        session,
+        ids[0]!,
+        frames,
+        256,
+        first ? Math.min(first.duration * 0.4, 2.5) : 0,
+      );
       return {
         status,
         scenes: ids.length,

@@ -394,22 +394,33 @@ export class LibraryClient {
    * too large to inline is local before its card is used.
    */
   async #prefetchFiles() {
-    let added = false;
+    const queue: CatalogEntry[] = [];
     for (const category of CATALOG_CATEGORIES)
-      for (const entry of this.entries(category)) {
+      for (const entry of this.entries(category))
+        if ('file' in entry.payload) queue.push(entry);
+    let sinceEmit = 0;
+    // Four at a time, and items show in batches as they arrive, so a long
+    // list of large items fills in while the panel is open.
+    const worker = async () => {
+      for (let entry = queue.shift(); entry; entry = queue.shift()) {
         if (!('file' in entry.payload)) continue;
-        const blob = await this.file(entry.payload.file).catch(() => null);
         const key = `${entry.id}@${entry.itemVersion}`;
-        if (!blob || this.#records.get(key)) continue;
+        if (this.#records.get(key)) continue;
+        const blob = await this.file(entry.payload.file).catch(() => null);
+        if (!blob) continue;
         const parsed = libraryItemSchema.safeParse(
           JSON.parse(await blob.text()) as unknown,
         );
-        if (parsed.success) {
-          this.#records.set(key, parsed.data);
-          added = true;
+        if (!parsed.success) continue;
+        this.#records.set(key, parsed.data);
+        if (++sinceEmit >= 12) {
+          sinceEmit = 0;
+          this.#emit();
         }
       }
-    if (added) this.#emit();
+    };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    if (sinceEmit) this.#emit();
   }
 }
 

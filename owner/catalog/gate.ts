@@ -50,7 +50,7 @@ export interface GateOptions {
 }
 
 export const NO_BROWSER =
-  'The publish gate needs a headless browser for its render checks and none could be started, so nothing was published.';
+  'The publish gate needs a headless browser for its render checks and none could be started, so nothing was published. Install one with: npx playwright install chromium (or set PLAYWRIGHT_CHROMIUM_PATH to a Chrome or Chromium program), then publish again.';
 const MAX_MEDIA = 500 * 1024 * 1024;
 const MEDIA_TYPES: Record<string, string> = {
   wav: 'audio/wav',
