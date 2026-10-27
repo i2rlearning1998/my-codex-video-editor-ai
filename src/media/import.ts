@@ -25,7 +25,8 @@ export interface ImportOutcome {
 export interface ImportDependencies {
   store: MediaStore;
   probe(blob: Blob, kind: MediaKind, signal?: AbortSignal): Promise<MediaProbe>;
-  hasAsset(id: string): boolean;
+  /** `fileName` is the name of the file being imported. */
+  hasAsset(id: string, fileName?: string): boolean;
   /** Adds the asset to the project as one undoable step. */
   addAsset(asset: Asset): void;
   onProgress?(progress: ImportProgress): void;
@@ -82,7 +83,7 @@ export async function importMediaFiles(
       const id = assetIdFor(fingerprint);
       key = mediaKey(fingerprint);
       stored = await deps.store.has(key);
-      if (deps.hasAsset(id)) {
+      if (deps.hasAsset(id, file.name)) {
         // Already referenced: only restore the bytes if this browser lacks them
         // (for example a project file opened on another machine).
         if (!stored)

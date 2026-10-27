@@ -704,12 +704,17 @@ export function mountMediaPanel(options: MediaPanelOptions) {
         store: media,
         probe: probeMedia,
         signal: controller.signal,
-        hasAsset: (id) => {
+        hasAsset: (id, fileName) => {
           const asset = assetById(id);
           // I1.7: importing a deleted file again brings it back.
           if (asset && removed(asset)) {
             restore(id);
             restoredIds.add(id);
+            // FIX6: ... under the name of the file just chosen, not whatever
+            // name the deleted copy had (it could be an old or generated one).
+            const back = assetById(id);
+            if (back && fileName && back.name !== fileName)
+              replaceAsset('Rename media', { ...back, name: fileName });
           }
           return !!asset;
         },

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { copyFileSync, readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import {
   test,
@@ -486,4 +486,28 @@ test('[DEV-008] the media fixture project resolves its references once its files
   await waitThumbnail(page, PNG);
   await waitThumbnail(page, WEBM);
   expect((await hook(page)).history.labels).toEqual([]);
+});
+
+test('[FIX6-003] importing a deleted file again brings it back under the name of the file just chosen', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  await hook(page);
+  await openMediaTab(page);
+  const first = await importWithPicker(page, [PNG]).then(() => PNG);
+  await expect(card(page, first)).toHaveCount(1);
+  await card(page, first)
+    .locator('xpath=..')
+    .locator('[data-action=media-more]')
+    .click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await expect(card(page, first)).toHaveCount(0);
+  // The same picture, another file name.
+  const renamed = testInfo.outputPath('street-rider-talking.png');
+  copyFileSync(fixture(PNG), renamed);
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#import-media').click();
+  await (await chooser).setFiles(renamed);
+  await expect(card(page, 'street-rider-talking.png')).toHaveCount(1);
+  await expect(card(page, first)).toHaveCount(0);
 });
