@@ -157,11 +157,22 @@ test('[TPL-010] a library that cannot load says so in its panels', async ({
   // The 404 is the point of this test.
   allowError(
     page,
-    (message) => /404|index\.json/.test(message),
+    (message) => /404|manifest\.json/.test(message),
     'the library file is removed on purpose to show the error state',
   );
-  await page.route('**/library/index.json', (route) =>
+  // Phase 1 library (P1-21): no catalog and no saved copy.
+  await page.route('**/__catalog/manifest.json', (route) =>
     route.fulfill({ status: 404, body: 'missing' }),
+  );
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const request = indexedDB.deleteDatabase('aive-library');
+        request.onsuccess =
+          request.onerror =
+          request.onblocked =
+            () => resolve();
+      }),
   );
   await page.reload();
   await expect

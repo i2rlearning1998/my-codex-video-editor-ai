@@ -1,5 +1,31 @@
 # Changelog
 
+## Phase 1 library (26 Oct)
+
+- The shared library (shapes, backgrounds, text styles, font combinations, templates, transitions, themes, styles, sounds) now lives in the owner's signed catalog; the editor only reads it, keeps a copy in the browser and opens with a tiny basic pack when there is neither. The editor is about 106 KB smaller.
+- Library items are placed in the same frame as the click or drop, even on a slow network; catalog videos, photos and sounds appear at once from a small preview and switch to the full file without moving. A failed download keeps the item and offers Retry.
+- The owner's library manager (separate app, 2-step login, audit log): upload packs, media and zips with automatic checks, edit names, tags, licence, order, featured, hidden and schedule, publish, unpublish and roll back. `npm run owner` starts it with the catalog server.
+- Cloud: project pictures in Open from cloud, Free space for uploaded files no project uses, Google sign-in only when it is set up. AI-built videos keep a training record (saved to the cloud with the project). Feature keys for later plans (all on today).
+
+## AUDIT-EDITOR, EDITOR-COMPLETE and Phase 1 (25 Oct)
+
+- Every unfinished ledger row was checked in the browser: 115 work (now proven by tests), 90 partly, 70 not built, 52 wait for later (animation, pro features, AI). Stale "planned" controls (scene Transition, Edit image Adjust colors and Filters, full-screen tooltip) now work.
+- Projects: File › Projects lists every project kept in this browser (open, rename, duplicate, delete); a crash or reload never loses work; the tab title shows unsaved changes; Undo and Redo name their step.
+- Timeline: m:ss ruler with frame ticks, ripple delete (Shift+Delete), Alt-drag copy, split everything under the playhead, marker rename, jump, list and clear, Snapping and Loop toggles.
+- Canvas: Fit, Fill and Stretch for pictures and videos, rotate 90°, scale content to a new canvas size, Select all, tool keys V, T, R and E, arrow keys step frames with nothing selected.
+- Cloud (Phase 1, needs a Supabase server): Log in or create an account in the top bar, Save to cloud, Open from cloud on another computer with its media, rename and delete cloud projects. Local saving works as before without it.
+
+## PHASE 0 close (24 Oct)
+
+- Build video, the AI importer and card drops show a real loader with Cancel and never freeze the page; faster blur; effect timings measured at 1920 × 1080.
+- Dynamic text (date, time, scene number, page count, counter, timecode) in Text › Dynamic text, resolved in the preview and the export. Scene strip + menu has Open video plan review. Text › Captions opens Auto captions.
+- Hide, grid and safe-area guides work; no control says "Planned: Wave N" any more (it says what it needs).
+- Proven in the browser: 9:16 canvas ratio, filter intensity drag, first Play under the "sound after a click" policy, Devanagari conjuncts and matras. Whisper reports now name the host, status, bytes and last worker message.
+
+## FIX5 (owner bug round, 24 Oct)
+
+- Library cards never stay blank; AI duplicates removed; audio rows have Play / Stop (no hover play); Scene and Audio panels no longer overlap; Draw palette flyouts and Table; Text panel clean-up; readable Review video plan and AI › Video plans; first Play waits for sound; blend list and select menu height; Whisper watchdog, download errors and cloud fallback. See reports/FIX5.md.
+
 > Status note: historical Tier restrictions and future-work statements record their original milestones; they no longer define current scope. See [AGENTS.md](AGENTS.md), [docs/DECISIONS.md](docs/DECISIONS.md), and [docs/STATUS.md](docs/STATUS.md). The current baseline is schema 8 (X-series).
 
 ## FINAL3 (leftovers, text, camera, video plans) — 2026-10-21

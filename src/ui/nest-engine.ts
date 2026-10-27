@@ -131,6 +131,12 @@ export function createNestEngine(real: EditorEngine): NestEngine {
     get canRedo() {
       return real.canRedo;
     },
+    get undoLabel() {
+      return real.undoLabel;
+    },
+    get redoLabel() {
+      return real.redoLabel;
+    },
     get history() {
       return real.history;
     },

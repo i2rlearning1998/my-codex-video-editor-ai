@@ -10,7 +10,7 @@ const read = () =>
   ) as unknown;
 const items = new Map<string, LibraryItem>();
 for (const raw of (
-  JSON.parse(readFileSync('public/library/index.json', 'utf8')) as {
+  JSON.parse(readFileSync('library/seed/starter-pack-1.json', 'utf8')) as {
     items: unknown[];
   }
 ).items) {

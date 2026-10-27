@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build",
+    "build": "vite build && node scripts/assert-editor-bundle.mjs",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
@@ -27,7 +27,15 @@
     "verify": "npm run check && npm run e2e && node scripts/assert-no-test-hook.mjs && npm run ledger -- --report e2e-results/results.json",
     "freecode:gallery": "vite --config freecode-gallery/vite.config.ts",
     "models:pin": "node scripts/models-pin.mjs",
-    "docs:plan-cheatsheet": "node scripts/plan-cheatsheet.mjs"
+    "docs:plan-cheatsheet": "node scripts/plan-cheatsheet.mjs",
+    "library:keys": "node owner/run.mjs /owner/cli.ts keys",
+    "library:seed": "node owner/run.mjs /owner/cli.ts seed",
+    "library:publish": "node owner/run.mjs /owner/cli.ts publish",
+    "library:build": "node owner/run.mjs /owner/cli.ts build",
+    "library:rollback": "node owner/run.mjs /owner/cli.ts rollback",
+    "library:versions": "node owner/run.mjs /owner/cli.ts versions",
+    "owner": "node owner/run.mjs /owner/server/main.ts serve",
+    "owner:create": "node owner/run.mjs /owner/server/main.ts create-owner"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1",

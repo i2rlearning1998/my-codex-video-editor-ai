@@ -18,6 +18,8 @@ const MAX_STEER = 0.2;
 interface VideoDecoder {
   element: HTMLVideoElement;
   assetId: string;
+  /** Phase 1 library: the bytes it plays (the proxy, then the full file). */
+  url: string;
   /** The seek target still to issue once the current seek completes. */
   wanted: number | null;
   seekStarted: number;
@@ -39,7 +41,19 @@ const CACHE_WIDTH = 480;
 export class MediaFrames implements FrameProvider {
   readonly #urls = new Map<string, Promise<string | null> | string | null>();
   readonly #images = new Map<string, HTMLImageElement | 'loading' | null>();
+  readonly #pendingImages = new Set<string>();
   readonly #videos = new Map<string, VideoDecoder>();
+  /** Phase 1 library: the full file's decoder while it gets its first frame. */
+  readonly #next = new Map<string, VideoDecoder>();
+  /** Assets drawn from their catalog proxy until the full file arrives. */
+  readonly #provisional = new Set<string>();
+  /** Old object URLs kept until their replacement draws. */
+  readonly #stale = new Map<string, string>();
+  /**
+   * Phase 1 library (P1-25): a picture to draw while an asset has no frame
+   * yet (a catalog poster, decoded in memory). Set by the shell.
+   */
+  posterOf: ((assetId: string) => CanvasImageSource | null) | null = null;
   #requested = new Set<string>();
   #buffering = false;
   #disposed = false;
@@ -78,10 +92,25 @@ export class MediaFrames implements FrameProvider {
     if (request.kind === 'code')
       return this.code?.frame(request, playing) ?? null;
     const url = this.#url(request.assetId);
-    if (!url) return null;
-    return request.kind === 'image'
-      ? this.#image(request.assetId, url)
-      : this.#video(request, url, playing);
+    const drawn = url
+      ? request.kind === 'image'
+        ? this.#image(request.assetId, url)
+        : this.#video(request, url, playing)
+      : null;
+    return drawn ?? this.posterOf?.(request.assetId) ?? null;
+  }
+
+  /**
+   * Phase 1 library (P1-25): the full file of an asset drawn from its proxy
+   * has arrived. The next frames read it; the proxy keeps drawing until the
+   * full file has its first frame, so nothing blinks or moves.
+   */
+  upgrade(assetId: string): void {
+    if (!this.#provisional.delete(assetId)) return this.retry();
+    const old = this.#urls.get(assetId);
+    if (typeof old === 'string') this.#stale.set(assetId, old);
+    this.#urls.delete(assetId);
+    this.changed();
   }
 
   /** Bytes may have arrived (an import): look again for media that had none. */
@@ -112,8 +141,10 @@ export class MediaFrames implements FrameProvider {
 
   dispose(): void {
     this.#disposed = true;
-    for (const decoder of this.#videos.values()) this.#release(decoder);
+    for (const decoder of [...this.#videos.values(), ...this.#next.values()])
+      this.#release(decoder);
     this.#videos.clear();
+    this.#next.clear();
     for (const url of this.#urls.values())
       if (typeof url === 'string') URL.revokeObjectURL(url);
     this.#urls.clear();
@@ -132,7 +163,14 @@ export class MediaFrames implements FrameProvider {
     }
     const loading = (async () => {
       const store = await this.store;
-      const stored = store ? await store.read(mediaKey(fingerprint)) : null;
+      let stored = store ? await store.read(mediaKey(fingerprint)) : null;
+      // Phase 1 library: a catalog item plays its small proxy until the full
+      // file is here (P1-25).
+      const proxy = (asset.metadata as Record<string, unknown>).catalogProxy;
+      if (!stored && store && typeof proxy === 'string') {
+        stored = await store.read(proxy).catch(() => null);
+        if (stored) this.#provisional.add(assetId);
+      }
       if (!stored || this.#disposed) return null;
       // Stored files can lose their MIME type (OPFS); SVG needs it to decode.
       const typed =
@@ -157,11 +195,30 @@ export class MediaFrames implements FrameProvider {
 
   #image(assetId: string, url: string): HTMLImageElement | null {
     const known = this.#images.get(assetId);
-    if (known instanceof HTMLImageElement) return known;
-    if (known !== undefined) return null;
-    this.#images.set(assetId, 'loading');
+    if (known instanceof HTMLImageElement && known.src === url) return known;
+    if (known === 'loading' || known === null) return null;
+    // Phase 1 library: a new file for the same asset (the full one after the
+    // proxy): the old picture stays until the new one is decoded.
+    const previous = known instanceof HTMLImageElement ? known : null;
+    if (!previous) this.#images.set(assetId, 'loading');
     const image = new Image();
     image.src = url;
+    if (previous) {
+      if (!this.#pendingImages.has(assetId)) {
+        this.#pendingImages.add(assetId);
+        image.decode().then(
+          () => {
+            this.#pendingImages.delete(assetId);
+            if (this.#disposed) return;
+            this.#images.set(assetId, image);
+            this.#revokeStale(assetId);
+            this.changed();
+          },
+          () => this.#pendingImages.delete(assetId),
+        );
+      }
+      return previous;
+    }
     image.decode().then(
       () => {
         this.#images.set(assetId, image);
@@ -182,6 +239,41 @@ export class MediaFrames implements FrameProvider {
       this.#release(decoder);
       this.#videos.delete(request.key);
       decoder = undefined;
+    }
+    // Phase 1 library: the full file replaces the proxy only once it has a
+    // frame at the wanted time; until then the proxy keeps drawing.
+    if (decoder && decoder.url !== url) {
+      let next = this.#next.get(request.key);
+      if (!next || next.url !== url) {
+        if (next) this.#release(next);
+        next = this.#make(request, url);
+        this.#next.set(request.key, next);
+      }
+      next.used = this.#frame;
+      const element = next.element;
+      if (element.readyState >= HTMLMediaElement.HAVE_METADATA) {
+        const target = mediaSeekTime(request.sourceTime, {
+          end: Math.max(0, element.duration - NUDGE),
+          reverse: request.reversed,
+          nudge: NUDGE,
+        });
+        if (
+          Math.abs(element.currentTime - target) > NUDGE / 2 &&
+          !element.seeking
+        )
+          this.#seek(next, target);
+        if (
+          element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+          !element.seeking &&
+          Math.abs(element.currentTime - target) <= NUDGE
+        ) {
+          this.#release(decoder);
+          this.#videos.set(request.key, next);
+          this.#next.delete(request.key);
+          this.#revokeStale(request.assetId);
+          decoder = next;
+        }
+      }
     }
     if (!decoder) decoder = this.#create(request, url);
     decoder.used = this.#frame;
@@ -266,6 +358,18 @@ export class MediaFrames implements FrameProvider {
   }
 
   #create(request: MediaFrameRequest, url: string): VideoDecoder {
+    const decoder = this.#make(request, url);
+    this.#videos.set(request.key, decoder);
+    return decoder;
+  }
+
+  #revokeStale(assetId: string): void {
+    const stale = this.#stale.get(assetId);
+    if (stale) URL.revokeObjectURL(stale);
+    this.#stale.delete(assetId);
+  }
+
+  #make(request: MediaFrameRequest, url: string): VideoDecoder {
     if (this.#videos.size >= MAX_DECODERS) {
       // Free the least recently drawn decoder.
       const [oldest] = [...this.#videos.entries()].sort(
@@ -283,6 +387,7 @@ export class MediaFrames implements FrameProvider {
     const decoder: VideoDecoder = {
       element,
       assetId: request.assetId,
+      url,
       wanted: null,
       seekStarted: 0,
       used: this.#frame,
@@ -319,7 +424,6 @@ export class MediaFrames implements FrameProvider {
       this.changed();
     });
     element.src = url;
-    this.#videos.set(request.key, decoder);
     return decoder;
   }
 

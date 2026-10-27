@@ -4,9 +4,9 @@ import { parseLibrary } from '../src/library/schema';
 import { formatGradient, parseGradient } from '../src/render/paint';
 import { SYSTEM_FONTS } from '../src/render/text-style';
 
-// H5: Starter Pack 1 (public/library/index.json) and gradient fills.
+// H5: Starter Pack 1 (library/seed/starter-pack-1.json) and gradient fills.
 const manifest = parseLibrary(
-  JSON.parse(readFileSync('public/library/index.json', 'utf8')),
+  JSON.parse(readFileSync('library/seed/starter-pack-1.json', 'utf8')),
 );
 const count = (type: string) =>
   manifest.items.filter((item) => item.type === type).length;

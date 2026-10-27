@@ -1,0 +1,142 @@
+/* Phase 1 library manager: a plain placeholder look on the editor's design
+   tokens (src/ui/tokens.css). The final design comes later. */
+body {
+  margin: 0;
+  background: var(--color-bg-app);
+  color: var(--text);
+  font-family: var(--font-family);
+  font-size: var(--font-size-md);
+}
+main {
+  max-inline-size: 1200px;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+h1,
+h2 {
+  font-size: var(--font-size-lg);
+  margin: var(--space-3) 0;
+}
+.card {
+  background: var(--color-bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-block-end: var(--space-4);
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-block-end: var(--space-3);
+  color: var(--text-secondary);
+}
+input,
+select,
+button {
+  font: inherit;
+  color: var(--text);
+  background: var(--color-bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  min-height: 32px;
+}
+button {
+  cursor: pointer;
+  background: var(--color-bg-raised);
+}
+button.primary {
+  background: var(--accent-fill);
+  color: var(--text-on-accent);
+  border-color: var(--accent-fill);
+}
+button.danger {
+  color: var(--danger-text);
+}
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.bar .grow {
+  flex: 1;
+}
+.tabs button[aria-selected='true'] {
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+.error {
+  color: var(--danger-text);
+}
+.ok {
+  color: var(--success-text);
+}
+.items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-3);
+}
+.item {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: var(--space-3);
+  background: var(--color-bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+}
+.item img {
+  inline-size: 96px;
+  block-size: 54px;
+  object-fit: contain;
+  background: var(--color-bg-sunken);
+  border-radius: var(--radius-sm);
+}
+.item .fields {
+  display: grid;
+  gap: var(--space-2);
+}
+.item .fields label {
+  margin: 0;
+}
+.item .state {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+.item .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.item .row label {
+  flex-direction: row;
+  align-items: center;
+}
+table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+td,
+th {
+  border-block-end: 1px solid var(--border-subtle);
+  padding: var(--space-1) var(--space-2);
+  text-align: start;
+  vertical-align: top;
+}
+dialog {
+  background: var(--color-bg-panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+.lines li {
+  margin-block-end: var(--space-1);
+}

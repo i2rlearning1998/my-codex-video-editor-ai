@@ -39,6 +39,12 @@ export const isCreatorLibraryId = (id: string) => id.includes('--');
 
 export class CreatorLibrary {
   #entries: CreatorEntry[] = [];
+  /**
+   * Phase 1 library (P1-22): the catalog's styles, motion and presets,
+   * listed with the user's own items (keys `catalog/<id>`). They are read
+   * from the catalog, never saved here, so rename and delete leave them.
+   */
+  #builtIn: CreatorEntry[] = [];
   readonly #listeners = new Set<() => void>();
   readonly ready: Promise<void>;
   #write: Promise<void> = Promise.resolve();
@@ -77,10 +83,24 @@ export class CreatorLibrary {
 
   /** Items shown in the panels (soft-deleted ones are hidden). */
   list(): readonly CreatorEntry[] {
-    return this.#entries.filter((entry) => !entry.removed);
+    const own = this.#entries.filter((entry) => !entry.removed);
+    const keys = new Set(own.map((entry) => entry.key));
+    return [...this.#builtIn.filter((entry) => !keys.has(entry.key)), ...own];
   }
   find(key: string): CreatorEntry | undefined {
-    return this.#entries.find((entry) => entry.key === key);
+    return (
+      this.#entries.find((entry) => entry.key === key) ??
+      this.#builtIn.find((entry) => entry.key === key)
+    );
+  }
+  /** Phase 1 library: replaces the catalog's items (after a refresh). */
+  setBuiltIn(entries: readonly CreatorEntry[]) {
+    this.#builtIn = [...entries];
+    this.#emit();
+  }
+  /** Whether the entry comes from the catalog (not the user's own). */
+  isBuiltIn(key: string): boolean {
+    return key.startsWith('catalog/');
   }
   /** The version of a pack already in the library, or null. */
   packVersion(packId: string): number | null {
