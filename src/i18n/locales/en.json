@@ -2590,6 +2590,7 @@
   "plan.sceneGone": "This scene was deleted.",
   "plan.searchMore": "Search more",
   "plan.silentBanner": "Built without voice: {reason}",
+  "plan.working": "Building your video. A long one can take a while.",
   "plan.step.check": "Check the plan",
   "plan.step.media": "Find media",
   "plan.step.voice": "Voice-over",

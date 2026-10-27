@@ -172,7 +172,8 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
     },
     bodyBuilder: (body) => {
       body.classList.add('plan-build');
-      body.innerHTML = `<ol class="plan-steps" id="plan-steps"></ol>
+      body.innerHTML = `<p class="plan-working" id="plan-working" role="status"><span class="plan-spinner" aria-hidden="true"></span><span>${t('plan.working')}</span></p>
+        <ol class="plan-steps" id="plan-steps"></ol>
         <p class="plan-banner" id="plan-banner" role="status" hidden></p>
         <div class="plan-summary" id="plan-summary" hidden></div>
         <div class="modal-actions">
@@ -217,6 +218,10 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
   };
   void (async () => {
     try {
+      // FIX6: let the dialog (and its spinner) paint before heavy work.
+      await new Promise<void>((done) =>
+        requestAnimationFrame(() => setTimeout(done)),
+      );
       const services = planServices(deps);
       const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
       const theme = plan.meta.themeId
@@ -291,6 +296,7 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
         controller.signal,
       );
       finished = true;
+      $('plan-working').hidden = true;
       cancel.textContent = t('plan.close');
       if (!result.project) {
         const summary = $('plan-summary');
@@ -350,6 +356,7 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
       };
     } catch (error) {
       finished = true;
+      $('plan-working').hidden = true;
       cancel.textContent = t('plan.close');
       const summary = $('plan-summary');
       summary.hidden = false;

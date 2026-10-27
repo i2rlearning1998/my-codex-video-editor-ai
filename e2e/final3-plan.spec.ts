@@ -379,3 +379,23 @@ test('[FIX6-004] a pasted video plan offers Build video; Add to AI, Also add to 
   await expect(page.locator('#ai-import-report')).toBeHidden();
   await expect(page.locator('#ai-import-cancel')).toBeVisible();
 });
+
+test('[FIX6-006] while a plan builds the dialog shows that it is working (spinner and a note); both go when it is done', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await withKey(page);
+  await withVoice(page);
+  await mockStock(page);
+  await page.goto('/');
+  await emptyProject(page);
+  await importPlan(page);
+  await page.locator('[data-action="build-video"]').click();
+  const dialog = page.locator('.plan-build');
+  await expect(dialog.locator('.plan-working')).toBeVisible();
+  await expect(dialog.locator('.plan-spinner')).toBeVisible();
+  await expect(dialog.locator('#plan-summary')).toBeVisible({
+    timeout: 60_000,
+  });
+  await expect(dialog.locator('.plan-working')).toBeHidden();
+});

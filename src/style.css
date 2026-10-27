@@ -11191,6 +11191,47 @@ input[type='range'] {
 .plan-steps li[data-state='failed'] {
   color: var(--warning-text);
 }
+.plan-working {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+}
+.plan-working[hidden] {
+  display: none;
+}
+/* A spinner turns on the compositor, so it keeps moving while a long
+   build keeps the page's own thread busy. */
+.plan-spinner,
+.plan-steps li[data-state='running'] .plan-step-icon::before {
+  display: block;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--accent, currentColor);
+  border-right-color: transparent;
+  border-radius: 50%;
+  will-change: transform;
+  animation: plan-spin 0.9s linear infinite;
+}
+.plan-spinner {
+  flex: none;
+}
+.plan-steps li[data-state='running'] .plan-step-icon::before {
+  content: '';
+}
+@keyframes plan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan-spinner,
+  .plan-steps li[data-state='running'] .plan-step-icon::before {
+    animation-duration: 3s;
+  }
+}
 .plan-banner {
   padding: var(--space-2);
   border-radius: var(--radius-md);
