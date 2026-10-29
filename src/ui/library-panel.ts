@@ -433,10 +433,31 @@ export function mountLibraryPanels(
       )
       .map(({ card }) => card);
   };
+  /** Catalog pictures, videos and sounds listed in a place. */
+  const entryCards = (test: (place: Place) => boolean, extra = false) =>
+    (options.media?.entries() ?? [])
+      .filter((entry) => {
+        // (their own panels draw them where the owner has not moved them)
+        const home = defaultPlace(entry.kind, undefined);
+        if (extra && !entry.place && !entry.alsoIn?.length) return false;
+        void home;
+        return placesOf(entry.kind, undefined, entry.place, entry.alsoIn).some(
+          (place) => test(place) && !(extra && sameSpot(place, home)),
+        );
+      })
+      .map(mediaCard);
+  const sameSpot = (a: Place, b: Place) =>
+    a.category === b.category && a.sub === b.sub;
   /** The cards listed under a sub-category (and section): library items
    *  of any kind plus AI-pack cards. */
   const cardsAt = (category: string, sub: string, section?: string) => [
     ...at(category, sub, section).map(libraryCard),
+    ...entryCards(
+      (place) =>
+        place.category === category &&
+        place.sub === sub &&
+        (section === undefined || place.section === section),
+    ),
     ...foreign(
       (place) =>
         place.category === category &&
@@ -832,7 +853,19 @@ export function mountLibraryPanels(
                 layout: 'grid',
                 cards: () =>
                   (options.media?.entries() ?? [])
-                    .filter((entry) => entry.kind === kind)
+                    .filter(
+                      (entry) =>
+                        entry.kind === kind &&
+                        placesOf(
+                          entry.kind,
+                          undefined,
+                          entry.place,
+                          entry.alsoIn,
+                        ).some(
+                          (place) =>
+                            place.category === 'Elements' && place.sub === tab,
+                        ),
+                    )
                     .map(mediaCard),
                 empty: {
                   title: t(`elements.mineEmpty.${tab}`),
@@ -1263,6 +1296,7 @@ export function mountLibraryPanels(
         ),
       )
       .map(libraryCard),
+    ...entryCards((place) => place.category === category && test(place)),
     ...foreign((place) => place.category === category && test(place)),
   ];
   /** What the owner put into an editor category that its own panel does
@@ -1285,6 +1319,11 @@ export function mountLibraryPanels(
             ),
         )
         .map(libraryCard),
+      ...entryCards(
+        (place) =>
+          place.category === category && !(place.sub && own.has(place.sub)),
+        true,
+      ),
       ...foreign(
         (place) =>
           place.category === category && !(place.sub && own.has(place.sub)),

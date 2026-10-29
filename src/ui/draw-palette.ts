@@ -94,6 +94,8 @@ export function mountDrawPalette(options: {
   openSignature: () => void;
   /** Library shapes for the Shape flyout. */
   shapeItems: () => readonly LibraryItem[];
+  /** FIX7: items the owner listed under Draw (any kind, any sub-category). */
+  ownerItems?: () => readonly LibraryItem[];
   insertItem: (item: LibraryItem) => void;
   insertTable: (rows: number, columns: number) => void;
   pickTable: (pick: (rows: number, columns: number) => void) => void;
@@ -285,7 +287,23 @@ export function mountDrawPalette(options: {
             () => options.insertItem(item),
           ),
         );
+      const shown = new Set(options.shapeItems().map((item) => item.id));
+      const owner = (options.ownerItems?.() ?? [])
+        .filter((item) => !shown.has(item.id))
+        .map((item) =>
+          tile(
+            typeof item.name === 'string'
+              ? item.name
+              : (item.name.en ?? item.id),
+            item.type === 'shape'
+              ? itemSvg(item as Extract<LibraryItem, { type: 'shape' }>)
+              : `<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><rect x="8" y="8" width="32" height="32" rx="6" fill="#8b6cff" opacity=".5"/></svg>`,
+            false,
+            () => options.insertItem(item),
+          ),
+        );
       extra.append(section(t('palette.shape.title'), ...tiles, ...library));
+      if (owner.length) extra.append(section(t('library.extras'), ...owner));
     } else if (tool === 'line') {
       const presets: ShapePreset[] = [
         'line',

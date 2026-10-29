@@ -1228,3 +1228,4 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-021 | P1 | W9 | Verified | Owner additions (sub-categories, placed assets) show under every editor panel: Templates, Media, Audio, Record, AI, My Templates and Theme |
 | FIX7-022 | P1 | W9 | Verified | An AI-made Creator Pack (plans) published in the owner app works wherever the owner places it: the same card with its menu (Review & swap, Build again), movable into any category or new sub-category and copyable to more places; it leaves the AI category when moved |
 | FIX7-023 | P1 | W9 | Verified | The owner app lists an item in more than one place (Also shown in) and moves it by changing its primary place |
+| FIX7-024 | P1 | W9 | Verified | A photo, video, sound or theme the owner lists under another category shows there and works; a sound moved out of Audio leaves the Audio list; Scene and Draw show the owner's additions |

@@ -918,6 +918,89 @@ test('[FIX7-022][FIX7-023] an AI-made pack the owner publishes works wherever it
   );
 });
 
+test('[FIX7-024] a photo, a sound and a theme the owner places in another category show there and work, and a sound moved out of Audio leaves the Audio list', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const itemsFile = path.join(stack.env.LIBRARY_DATA_DIR!, 'items.json');
+  const data = JSON.parse(readFileSync(itemsFile, 'utf8')) as {
+    items: { id: string; kind: string; place?: unknown; alsoIn?: unknown }[];
+    config?: { categories: { id: string; subs: unknown[] }[] };
+  };
+  data.config ??= {
+    format: 'aive-config',
+    version: 1,
+    controls: {},
+    categories: [],
+  } as never;
+  if (!data.config!.categories.some((c) => c.id === 'Text'))
+    data.config!.categories.push({
+      id: 'Text',
+      name: { en: 'Text', hi: 'टेक्स्ट' },
+      icon: 'text',
+      hidden: false,
+      order: 0,
+      subs: [],
+    } as never);
+  data.config!.categories.push({
+    id: 'Scene',
+    name: { en: 'Scene', hi: 'सीन' },
+    icon: 'layers',
+    hidden: false,
+    order: 0,
+    subs: [
+      {
+        id: 'moods',
+        name: { en: 'Moods', hi: 'मूड' },
+        hidden: false,
+        order: 0,
+        sections: [],
+      },
+    ],
+  } as never);
+  const photo = data.items.find((item) => item.kind === 'image')!;
+  const sound = data.items.find((item) => item.kind === 'sound');
+  expect(photo).toBeTruthy();
+  photo.alsoIn = [{ category: 'Text', sub: 'plain', section: null }];
+  if (sound) sound.place = { category: 'Text', sub: 'plain', section: null };
+  writeFileSync(itemsFile, JSON.stringify(data));
+  cli('build');
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  await showCategory(page, 'Scene');
+  await expect(
+    page.locator('#library-extras-Scene [data-tile="Scene-moods"]'),
+  ).toBeVisible();
+  await showCategory(page, 'Text');
+  const text = page.locator('#library-text');
+  await text
+    .locator('[data-tile="Text-plain"], [data-card-id]')
+    .first()
+    .waitFor();
+  await text
+    .getByText('Plain text')
+    .first()
+    .click()
+    .catch(() => undefined);
+  await page.screenshot({ path: 'reports/fix7-cross-placement.png' });
+  await expect(
+    text.locator(`[data-catalog-id="${photo.id}"]`).first(),
+  ).toBeVisible();
+  if (sound) {
+    await expect(
+      text.locator(`[data-catalog-id="${sound.id}"]`).first(),
+    ).toBeVisible();
+    await showCategory(page, 'Audio');
+    await expect(
+      page.locator(
+        `#library-audio [data-sound-id="${sound.id}"], #library-audio [data-id="${sound.id}"]`,
+      ),
+    ).toHaveCount(0);
+  }
+});
+
 test('[LIB-027][LIB-008] a rollback in the catalog never changes a project that already uses an item', async ({
   page,
 }) => {

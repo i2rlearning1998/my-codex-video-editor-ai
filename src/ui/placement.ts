@@ -2,11 +2,7 @@
 // AI-made Creator Pack (styles, motion, presets, plans, effects …). Items
 // imported by the user themselves always belong to the AI category.
 import { libraryClient } from '../library-client';
-import {
-  defaultPlace,
-  placesOf,
-  type Place,
-} from '../library-client/taxonomy';
+import { defaultPlace, placesOf, type Place } from '../library-client/taxonomy';
 import type { CreatorEntry } from './creator-library';
 
 const KIND: Record<string, string> = { transition: 'xtransition' };

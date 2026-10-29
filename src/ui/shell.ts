@@ -231,8 +231,9 @@ import { escapeTopPopover } from './components/popover';
 import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
 import { creatorPlaces } from './placement';
+import { libraryThumbUrl } from './library-thumb';
 import type { BrowseCard } from './browse-panel';
-import { mergeTaxonomy } from '../library-client/taxonomy';
+import { mergeTaxonomy, placesOf } from '../library-client/taxonomy';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
 import { addTopLevel, myTextStyleCommands } from './library-insert';
@@ -436,7 +437,7 @@ export function mountEditorShell(
         <div id="library-mine" class="mine-panel" data-rail-panel="MyTemplates" hidden></div><div id="library-extras-MyTemplates" class="library-extras extras-empty" data-rail-panel="MyTemplates" hidden></div>
         <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div><div id="library-extras-Theme" class="library-extras extras-empty" data-rail-panel="Theme" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><span id="layer-count" class="count"></span></div>
-        <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
+        <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div><div id="library-extras-Scene" class="library-extras extras-empty" data-rail-panel="Scene" hidden></div>
         <div id="side-panel-host"></div>
       </aside>
       <main class="preview-panel" aria-label="${t('canvas.preview')}">
@@ -5306,14 +5307,22 @@ export function mountEditorShell(
       },
       // Phase 1 library (P1-25): catalog videos and pictures.
       media: {
-        entries: () =>
-          catalog
+        // FIX7: pictures, videos and sounds, so the owner can list any of
+        // them under any category.
+        entries: () => [
+          ...catalog
             .entries('elements')
             .filter(
               (entry) => entry.kind === 'video' || entry.kind === 'image',
             ),
+          ...catalog.entries('audio').filter((entry) => entry.kind === 'sound'),
+        ],
         place: (entry) =>
           safely(() => {
+            if (entry.kind === 'sound') {
+              addOnNewAudioLane(ensureCatalogAsset(entry));
+              return;
+            }
             const id = ensureCatalogAsset(entry);
             const asset = session.source.assets.find((item) => item.id === id);
             if (!asset) return;
@@ -5329,7 +5338,12 @@ export function mountEditorShell(
               kind: 'asset',
               id: ensureCatalogAsset(entry),
               name: entry.name[getLanguage()] || entry.name.en,
-              media: entry.kind === 'video' ? 'video' : 'image',
+              media:
+                entry.kind === 'video'
+                  ? 'video'
+                  : entry.kind === 'sound'
+                    ? 'audio'
+                    : 'image',
               ...(entry.media?.duration !== undefined
                 ? { duration: entry.media.duration }
                 : {}),
@@ -5373,8 +5387,29 @@ export function mountEditorShell(
         importFile: () => codeTemplateInput.click(),
       },
       creator: { library: creatorLibrary, menu: creatorMenu },
-      creatorCards: () =>
-        creatorLibrary
+      creatorCards: () => [
+        ...catalog.payloads('styles').flatMap(({ entry, payload }) => {
+          if (entry.kind !== 'theme') return [];
+          const theme = payload as Theme;
+          const card: BrowseCard = {
+            id: `theme-${entry.id}`,
+            label: entry.name[getLanguage()] || entry.name.en,
+            preview: () =>
+              libraryThumbUrl({
+                id: entry.id,
+                type: 'theme',
+                name: entry.name.en,
+                url: entry.thumbUrl ? catalog.url(entry.thumbUrl) : null,
+              }),
+            className: 'library-card creator-card',
+            data: { itemId: `theme-${entry.id}`, kind: 'theme' },
+            activate: () => applyTheme(theme, false),
+          };
+          return placesOf('theme', undefined, entry.place, entry.alsoIn).map(
+            (place) => ({ place, card }),
+          );
+        }),
+        ...creatorLibrary
           .list()
           .filter((entry) => entry.packId === 'catalog')
           .flatMap((entry) =>
@@ -5383,6 +5418,7 @@ export function mountEditorShell(
               card: aiPanel!.cardFor(entry),
             })),
           ),
+      ],
       // FINAL2 U6: Elements › Tables inserts a table at the playhead.
       table: () =>
         openTablePicker((rows, columns) =>
@@ -5584,6 +5620,7 @@ export function mountEditorShell(
     'AI',
     'MyTemplates',
     'Theme',
+    'Scene',
   ])
     libraryBrowsers.mountExtras(cat, element(`#library-extras-${cat}`));
   void loadLibrary().then(syncCategories, () => undefined);
@@ -5741,6 +5778,15 @@ export function mountEditorShell(
     openSignature: () => signature.open(),
     shapeItems: () =>
       libraryActions.items().filter((item) => item.type === 'shape'),
+    ownerItems: () =>
+      libraryActions
+        .items()
+        .filter((item) =>
+          placesOf(item.type, item.section, item.place, item.alsoIn).some(
+            (place, index) =>
+              place.category === 'Draw' && (index > 0 || !!item.place),
+          ),
+        ),
     insertItem: (item) => libraryActions.insert(item),
     insertTable: (rows, columns) =>
       safely(() => {
@@ -6710,7 +6756,15 @@ export function mountEditorShell(
   const previewUrls = new Map<string, string>();
   const soundPack = mountSoundPack(soundPackHost, {
     entries: () =>
-      catalog.entries('audio').filter((entry) => entry.kind === 'sound'),
+      catalog
+        .entries('audio')
+        .filter(
+          (entry) =>
+            entry.kind === 'sound' &&
+            placesOf('sound', undefined, entry.place, entry.alsoIn).some(
+              (place) => place.category === 'Audio',
+            ),
+        ),
     onChange: (listener) => catalog.onChange(listener),
     prefetch: (entry) => void catalog.prefetch(entry).catch(() => undefined),
     ensure: (entry) => ensureCatalogAsset(entry),
