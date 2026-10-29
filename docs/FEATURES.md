@@ -1217,3 +1217,5 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-010 | P1 | W9 | Verified | The Draw palette is Canva's: pen gallery with colours, size and transparency, shape tiles, line styles, sticky colours and table sizes |
 | FIX7-011 | P1 | W9 | Verified | Importing a plan or composition and Export code show only in Developer mode (development and test builds, or the aive.developer switch) |
 | FIX7-012 | P1 | W9 | Verified | Review & swap shows one status line (N found · M missing, or Ready), one Choose file or Swap per row, Find stock only on click, and Export, Compare and Save feel under More |
+| FIX7-013 | P1 | W9 | Verified | Captions on a 9:16 video stay out of the lowest fifth of the picture |
+| FIX7-014 | P1 | W9 | Verified | The editor shows no API-key fields or Add key buttons outside Developer mode; stock says it is not available yet |

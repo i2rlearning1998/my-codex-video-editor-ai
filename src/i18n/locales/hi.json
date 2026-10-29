@@ -2709,5 +2709,6 @@
   "plan.findStock": "स्टॉक खोजें",
   "plan.type.video": "वीडियो",
   "plan.type.image": "फ़ोटो",
-  "plan.type.audio": "ऑडियो"
+  "plan.type.audio": "ऑडियो",
+  "stock.notAvailable": "स्टॉक खोज अभी उपलब्ध नहीं है।"
 }

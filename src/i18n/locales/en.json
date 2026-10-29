@@ -2709,5 +2709,6 @@
   "plan.findStock": "Find stock",
   "plan.type.video": "video",
   "plan.type.image": "image",
-  "plan.type.audio": "audio"
+  "plan.type.audio": "audio",
+  "stock.notAvailable": "Stock search is not available yet."
 }

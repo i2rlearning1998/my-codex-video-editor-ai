@@ -17,6 +17,7 @@ import { drags } from './drag-controller';
 import { createMenu, placeMenuAt, type MenuController } from './context-menu';
 import { stockProvidersFor, KEYS_CHANGED } from './services';
 import { openModal, type ModalHandle } from './components/modal';
+import { developerMode } from './developer-mode';
 import { diagnosticsButton } from './diagnostics';
 
 export type StockTab = 'photos' | 'videos' | 'icons' | 'stickers' | 'audio';
@@ -751,11 +752,16 @@ export function mountStock(
     const p = provider();
     if (!hasKeys(p)) {
       body.append(
-        message(
-          t('stock.noKey', { provider: p.name, what: t(`stock.what.${tab}`) }),
-          'key',
-          { label: t('stock.addKey'), run: deps.openKeys },
-        ),
+        developerMode()
+          ? message(
+              t('stock.noKey', {
+                provider: p.name,
+                what: t(`stock.what.${tab}`),
+              }),
+              'key',
+              { label: t('stock.addKey'), run: deps.openKeys },
+            )
+          : message(t('stock.notAvailable'), 'empty'),
       );
       return;
     }

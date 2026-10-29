@@ -92,17 +92,25 @@ export function captionLayout(
   const textHeight = Math.ceil(fontSize * LINE_HEIGHT * lines);
   const height = textHeight + pad * 2;
   const margin = Math.round(canvas.height * 0.07);
+  // FIX7: a tall (9:16) video plays under the app's own buttons and title
+  // at the bottom, so its captions keep out of the lowest fifth.
+  const portrait = canvas.height > canvas.width;
+  const bottomSafe = portrait ? Math.round(canvas.height * 0.2) : margin;
   const x = lower
     ? Math.round(canvas.width * 0.06)
     : (canvas.width - width) / 2;
-  const y =
+  const raw =
     style.position === 'top'
       ? margin
       : style.position === 'middle'
         ? (canvas.height - height) / 2
         : style.position === 'lower-third'
           ? Math.round(canvas.height * 0.72)
-          : canvas.height - margin - height;
+          : canvas.height - bottomSafe - height;
+  const y = Math.max(
+    margin,
+    Math.min(raw, canvas.height - bottomSafe - height),
+  );
   return { fontSize, pad, x, y, width, height, textHeight };
 }
 

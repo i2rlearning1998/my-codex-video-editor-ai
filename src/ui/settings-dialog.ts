@@ -41,10 +41,14 @@ import {
   speechRegistry,
   KEYS_CHANGED,
 } from './services';
+import { developerMode } from './developer-mode';
 import { localEngines, type LocalEngineView } from './local-engines';
 
 export type SettingsTab = 'general' | 'appearance' | 'keys' | 'offline';
-const TABS: SettingsTab[] = ['general', 'appearance', 'keys', 'offline'];
+// FIX7: the editor never asks for third-party keys; that tab is Developer mode.
+const TABS: SettingsTab[] = developerMode()
+  ? ['general', 'appearance', 'keys', 'offline']
+  : ['general', 'appearance', 'offline'];
 
 const esc = (value: string) =>
   value.replace(
