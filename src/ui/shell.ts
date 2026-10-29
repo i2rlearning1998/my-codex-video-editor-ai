@@ -218,7 +218,10 @@ import {
   type MineKind,
 } from './my-library';
 import { mountMyTemplatesPanel } from './my-templates-panel';
-import { openSceneBreakdown } from './scene-breakdown';
+import { buildAssetView } from './asset-view';
+import type { Shelf } from './library-shelf';
+import { hasReview, openSceneView, partCards } from './scene-breakdown';
+import { partItem, sceneParts } from './scene-parts';
 import { kindMismatch, recommendedKind } from './scene-parts';
 import {
   DEFAULT_EDITOR_LAYOUT,
@@ -2780,6 +2783,7 @@ export function mountEditorShell(
   let aiPanel: {
     render(): void;
     cardFor(entry: CreatorEntry): BrowseCard;
+    readonly shelf: Shelf;
   } | null = null;
   const openPlanBuildFor = (
     input: VideoPlan,
@@ -4419,8 +4423,87 @@ export function mountEditorShell(
       cancelLabel: t('media.cancel'),
       maxLength: 80,
     });
+  /** Scenes a composition card built that are still in the project. */
+  const builtSceneIds = (data: unknown): string[] => {
+    const live = (id: string | null | undefined): id is string =>
+      !!id && engine.state.compositions.some((scene) => scene.id === id);
+    if (!isPlanV2(data))
+      return (
+        builtScenes(storageOrNull(), engine.state.id, compositionKey(data)) ??
+        []
+      ).filter(live);
+    return (
+      planState(engine.state.id, (data as VideoPlan).meta.title)?.sceneIds ?? []
+    ).filter(live);
+  };
+  /** FIX9: an AI composition card opens its assets in the same panel: every
+   *  item of the scenes it built, each with its own thumbnail. */
+  const openAiComposition = (id: string) => {
+    const entry = creatorEntryOf(id);
+    const shelf = aiPanel?.shelf;
+    if (!entry || !shelf) return;
+    const data = entry.item.data;
+    const title = isPlanV2(data)
+      ? (data as unknown as VideoPlan).meta.title
+      : undefined;
+    const ids = builtSceneIds(data);
+    const entries = ids.flatMap((sceneId) => {
+      const scene = engine.state.compositions.find(
+        (item) => item.id === sceneId,
+      )!;
+      const template = templateFromScene(
+        engine.state,
+        sceneId,
+        scene.name,
+        'my',
+        undefined,
+        true,
+      );
+      return sceneParts(template).map((part) => ({ template, part }));
+    });
+    myLibrary.setParts(
+      entries.map(({ template, part }) => partItem(template, part)),
+    );
+    const view = buildAssetView({
+      title: entry.name,
+      subtitle: t('assetView.scenes', {
+        count: String(ids.length),
+        items: String(entries.length),
+      }),
+      parts: partCards(entries, frames),
+      add: (partId) => insertMine(partId),
+      back: () => {
+        view.dispose();
+        shelf.closeDetail();
+      },
+      actions: [
+        ...(ids.length && title !== undefined
+          ? [
+              {
+                id: 'ai-assets-review',
+                label: t('plan.reviewMedia'),
+                icon: 'replace',
+                run: () => openPlanReview(title),
+              },
+            ]
+          : []),
+        {
+          id: 'ai-assets-build',
+          label: ids.length ? t('plan.rebuild') : t('assetView.build'),
+          icon: ids.length ? 'duplicate' : 'magic',
+          primary: !ids.length,
+          run: () => insertCreatorItem(id),
+        },
+      ],
+      emptyTitle: t('assetView.buildFirst.title'),
+      emptyText: t('assetView.buildFirst.text'),
+      report: reportError,
+    });
+    shelf.openDetail(view.element);
+  };
   aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    open: (id) => safely(() => openAiComposition(id)),
     // FIX7: the ⋯ menu of an AI card listed in another category.
     menu: (id, x, y) => aiCardMenu(id, x, y),
     // FINAL3 V3.5: a plan's status, and the starter kit.
@@ -4787,35 +4870,45 @@ export function mountEditorShell(
       engine.commands.transaction(t('mine.addStep'), built.commands);
       session.selectMany(built.layerIds);
     });
-  /** FIX7: a saved scene's card opens its breakdown; it never drops. */
-  const openMineScene = (id: string) =>
-    openSceneBreakdown(id, {
-      library: myLibrary,
-      add: (itemId) => insertMine(itemId),
-      addScene: (sceneId) => {
-        const scene = myLibrary.find(sceneId)?.scene;
-        if (scene) libraryActions.insertMine(scene);
+  /** FIX9: a saved scene's card opens its assets in this panel; it never
+   *  drops the scene. (The panel is mounted just below.) */
+  const openMineScene = (id: string, review = false) =>
+    openSceneView(
+      id,
+      {
+        library: myLibrary,
+        shelf: minePanel.shelf,
+        add: (itemId) => insertMine(itemId),
+        addScene: (sceneId) => {
+          const scene = myLibrary.find(sceneId)?.scene;
+          if (scene) libraryActions.insertMine(scene);
+        },
+        pickFile: (accept) =>
+          new Promise((resolve) => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = accept;
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              resolve(file ? await importQuiet(file) : null);
+            };
+            input.click();
+          }),
+        frames: () => frames,
+        report: reportError,
+        toast: (text) => showToast(text, 'success'),
       },
-      pickFile: (accept) =>
-        new Promise((resolve) => {
-          const input = document.createElement('input');
-          input.type = 'file';
-          input.accept = accept;
-          input.onchange = async () => {
-            const file = input.files?.[0];
-            resolve(file ? await importQuiet(file) : null);
-          };
-          input.click();
-        }),
-      report: reportError,
-      toast: (text) => showToast(text, 'success'),
-    });
+      review,
+    );
   const minePanel = mountMyTemplatesPanel(element('#library-mine'), {
     library: myLibrary,
-    add: (id) =>
-      myLibrary.find(id)?.kind === 'scene'
-        ? void openMineScene(id)
-        : insertMine(id),
+    add: (id) => insertMine(id),
+    open: (id) => openMineScene(id),
+    review: (id) => openMineScene(id, true),
+    hasReview: (id) => {
+      const scene = myLibrary.find(id)?.scene;
+      return !!scene && hasReview(scene);
+    },
     // S1 Part 4: a saved code animation can be duplicated and exported.
     isCode: (id) => {
       const item = myLibrary.find(id);

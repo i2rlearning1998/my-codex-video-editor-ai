@@ -13,6 +13,11 @@ export const MINE_FOLDERS = shelfFolders('mine');
 export interface MyTemplatesPanelOptions {
   readonly library: MyLibrary;
   readonly add: (id: string) => void;
+  /** FIX9: a saved scene's card opens its asset view (it never adds). */
+  readonly open: (id: string) => void;
+  /** FIX9: Review & swap for a saved scene (AI-made or with media files). */
+  readonly review?: (id: string) => void;
+  readonly hasReview?: (id: string) => boolean;
   readonly rename: (id: string) => void;
   /** S1: a code animation's Duplicate and Export (absent for others). */
   readonly duplicate?: (id: string) => void;
@@ -50,6 +55,7 @@ export function mountMyTemplatesPanel(
           id: item.id,
           name: item.name,
           category: item.kind,
+          ...(item.kind === 'scene' ? { opens: true } : {}),
           folderId: MINE_FOLDERS.folderOf(item.id),
           keywords: [item.kind],
           data: { mine: item.id, kind: item.kind },
@@ -65,9 +71,22 @@ export function mountMyTemplatesPanel(
         };
       }),
     add: options.add,
+    open: options.open,
     rename: options.rename,
-    extraMenu: (id) =>
-      options.isCode?.(id)
+    extraMenu: (id) => [
+      // FIX9: an AI scene's menu is the AI category's (Review & swap), but
+      // never Build again: a saved scene is a copy, not a plan.
+      ...(options.hasReview?.(id)
+        ? [
+            {
+              id: 'mine-review',
+              label: t('plan.reviewMedia'),
+              icon: 'replace',
+              run: () => options.review?.(id),
+            },
+          ]
+        : []),
+      ...(options.isCode?.(id)
         ? [
             {
               id: 'mine-duplicate',
@@ -82,7 +101,8 @@ export function mountMyTemplatesPanel(
               run: () => options.exportItem?.(id),
             },
           ]
-        : [],
+        : []),
+    ],
     details: options.details,
     remove: options.remove,
     prompt: options.prompt,

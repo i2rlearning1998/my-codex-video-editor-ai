@@ -86,6 +86,8 @@ export interface AiPanelOptions {
     scenes: number;
     poster?: string;
   } | null;
+  /** FIX9: a composition card's click opens its assets in this panel. */
+  readonly open?: (id: string) => void;
   /** FIX4 A4: runs the build again for a composition card. */
   readonly rebuild?: (id: string) => void;
   /** FIX6: opens Review & swap for the plan a composition card built. */
@@ -294,6 +296,7 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
             keywords: [entry.packName.en, kind, ...entry.item.tags],
             data: { item: id, kind, ...(status ? { planStatus: status } : {}) },
             ...(badge ? { badge } : {}),
+            ...(kind === 'composition' && options.open ? { opens: true } : {}),
             // B1: a style is never placed: no drag; "+" uses it.
             ...(style
               ? { addLabel: t('style.use') }
@@ -316,6 +319,7 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
         }),
     ],
     add,
+    ...(options.open ? { open: options.open } : {}),
     rename: options.rename,
     extraMenu: (id) => [
       ...(options.rebuild &&

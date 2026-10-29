@@ -5330,7 +5330,7 @@ button.color-swatch-trigger {
   margin-block-start: var(--space-2);
 }
 .draw-tile {
-  color: var(--text-primary, currentColor);
+  color: var(--text);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -11458,110 +11458,127 @@ body:has(.modal-backdrop) .toast-stack {
   block-size: 100%;
   object-fit: contain;
 }
-.scene-breakdown {
-  position: fixed;
-  inset-block: 56px 12px;
-  inline-size: 320px;
-  z-index: 40;
+/* FIX9: the asset view (a saved scene's or an AI composition's items) opens
+   inside the left panel in place of the shelf. */
+.shelf.shelf-detail-open > :not(.shelf-detail) {
+  display: none;
+}
+.shelf-detail[hidden] {
+  display: none;
+}
+.asset-view {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-3);
-  overflow-y: auto;
-  background: var(--raised);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
-  color: var(--text);
+  min-inline-size: 0;
 }
-.scene-breakdown-head {
+.asset-view-head {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
+  padding-block: var(--space-1);
+  background: var(--region-panel);
 }
-.scene-breakdown-title {
+.asset-view-back {
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.asset-view-titles {
+  min-inline-size: 0;
+}
+.asset-view-title {
   margin: 0;
   font-size: 16px;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.scene-breakdown-close,
-.scene-part-add {
-  display: grid;
-  place-items: center;
-  inline-size: 28px;
-  block-size: 28px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
+.asset-view-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
 }
-.scene-breakdown-close:hover,
-.scene-part-add:hover {
-  background: var(--raised-hover);
-}
-.scene-breakdown-poster {
-  align-self: center;
-  max-block-size: 260px;
-  max-inline-size: 100%;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: #0d0d10;
-}
-.scene-breakdown-poster img {
-  display: block;
-  inline-size: 100%;
-  block-size: 100%;
-  object-fit: contain;
-}
-.scene-breakdown-counts {
+.asset-view-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.scene-count {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--color-bg-sunken);
-  font-size: 12px;
+.asset-view-actions .button {
+  flex: 1 1 auto;
 }
-.scene-parts {
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.asset-card {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.scene-part {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
   gap: var(--space-2);
-  padding: 6px 8px;
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-sunken);
-  cursor: grab;
+  inline-size: 100%;
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
 }
-.scene-part:hover {
-  outline: 1px solid var(--accent);
-}
-.scene-part-kind {
-  font-size: 11px;
-  color: var(--color-text-faint);
-}
-.scene-part-name {
+.asset-thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  inline-size: 100%;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  font-size: 14px;
+  box-sizing: border-box;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  /* The parts are drawn for a light page, so they sit on light squares. */
+  background: repeating-conic-gradient(#e4e1d9 0 25%, #f3f1ea 0 50%) 0 0 / 14px
+    14px;
 }
-.scene-review h4 {
+.asset-thumb.asset-thumb-icon {
+  color: var(--color-text-faint);
+  background: var(--color-bg-sunken);
+}
+.asset-thumb canvas,
+.asset-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.asset-card:hover .asset-thumb,
+.asset-card:focus-visible .asset-thumb {
+  border-color: var(--accent);
+}
+.asset-name {
+  white-space: normal;
+  inline-size: 100%;
+  min-inline-size: 0;
+  font-size: 13px;
+  line-height: 18px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.asset-view-empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.asset-view-empty h4 {
   margin: 0 0 var(--space-2);
-  font-size: 14px;
+  color: var(--text);
 }
 .scene-review-status,
 .scene-review-empty {

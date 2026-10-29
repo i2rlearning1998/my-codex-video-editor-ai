@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
     .toBe(true);
 });
 
-test('[FIX7-005] a saved scene card opens a breakdown with counts and every part; a part adds on its own; the card never drops the scene', async ({
+test('[FIX7-005] a saved scene card opens its assets in the same panel (2 columns, a thumbnail and "Name (Kind)" each, scrolling); a click or a drag adds one asset; the card itself never adds the scene', async ({
   page,
 }) => {
   const point = await toScreen(page, 30, 700);
@@ -28,29 +28,64 @@ test('[FIX7-005] a saved scene card opens a breakdown with counts and every part
     .locator('#canvas-context-menu [data-action="save-scene-to-mine"]')
     .click();
   await showCategory(page, 'MyTemplates');
+  // A short window: the view must scroll inside the panel.
+  await page.setViewportSize({ width: 1280, height: 720 });
   const before = (await scene(page)).layers.length;
   const scenes = (await hook(page)).project.compositions.length;
   await page.locator('#library-mine .mine-card').click();
-  // No dialog, nothing added.
+  // No dialog, no side panel, nothing added: the view is in the same panel.
   await expect(page.locator('.modal-dialog')).toHaveCount(0);
-  const panel = page.locator('.scene-breakdown');
-  await expect(panel).toBeVisible();
+  await expect(page.locator('.scene-breakdown')).toHaveCount(0);
+  const view = page.locator('#library-mine .asset-view');
+  await expect(view).toBeVisible();
   expect((await hook(page)).project.compositions).toHaveLength(scenes);
   expect((await scene(page)).layers).toHaveLength(before);
-  // Counts and one row per layer, in their real format.
-  await expect(panel.locator('.scene-count')).toHaveCount(4);
-  const rows = panel.locator('.scene-part');
-  await expect(rows).toHaveCount(before);
-  // A part adds on its own (one more layer, the scene untouched otherwise).
-  await rows.first().click();
-  expect((await scene(page)).layers).toHaveLength(before + 1);
-  // The poster is whole (contain), the panel closes with Escape.
-  await expect(page.locator('#library-mine .mine-card img')).toHaveCSS(
-    'object-fit',
-    'contain',
+  // The shelf (search, tabs, scene cards) gives way to the view.
+  await expect(page.locator('#library-mine .shelf-tabs')).toBeHidden();
+  const cards = view.locator('.asset-card');
+  await expect(cards).toHaveCount(before);
+  // Two columns; every card has its own picture and a "Name (Kind)" label.
+  const first = (await cards.nth(0).boundingBox())!;
+  const second = (await cards.nth(1).boundingBox())!;
+  expect(Math.abs(first.y - second.y)).toBeLessThan(2);
+  expect(second.x).toBeGreaterThan(first.x + first.width / 2);
+  for (let i = 0; i < before; i++) {
+    await expect(cards.nth(i).locator('.asset-name')).toHaveText(
+      /^.+ \((Shape|Text|Image|Video|Group|Animation|Background|Sticker|Annotation)\)$/,
+    );
+    await expect(cards.nth(i).locator('canvas')).toHaveCount(1);
+  }
+  const filled = await cards.locator('canvas').evaluateAll(
+    (list) =>
+      list.filter((canvas) => {
+        const c = canvas as HTMLCanvasElement;
+        const data = c
+          .getContext('2d')!
+          .getImageData(0, 0, c.width, c.height).data;
+        for (let i = 3; i < data.length; i += 4) if (data[i]) return true;
+        return false;
+      }).length,
   );
-  await page.keyboard.press('Escape');
-  await expect(panel).toHaveCount(0);
+  expect(filled).toBeGreaterThan(before / 2);
+  // It scrolls inside the panel: the last card can be reached.
+  const body = page.locator('#mine-detail');
+  await expect(body).toHaveCSS('overflow-y', 'auto');
+  await cards.last().scrollIntoViewIfNeeded();
+  await expect(cards.last()).toBeInViewport();
+  await page.screenshot({ path: 'reports/fix9/mine-assets.png' });
+  // A click adds that one asset.
+  await cards.first().click();
+  expect((await scene(page)).layers).toHaveLength(before + 1);
+  // A drag onto the canvas adds it too.
+  await cards.nth(1).dragTo(page.locator('#composition-canvas'));
+  await expect
+    .poll(async () => (await scene(page)).layers.length)
+    .toBe(before + 2);
+  // Back returns to the scene cards.
+  await view.locator('[data-action="asset-view-back"]').click();
+  await expect(view).toHaveCount(0);
+  await expect(page.locator('#library-mine .mine-card')).toBeVisible();
+  expect((await hook(page)).project.compositions).toHaveLength(scenes);
 });
 
 test('[FIX7-006] saving a shape as Text explains the mismatch, recommends Shape, and still saves as Text when asked', async ({

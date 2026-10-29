@@ -128,6 +128,8 @@ export function templateFromScene(
   name: string,
   category: string,
   poster?: string,
+  /** FIX9: keep every media layer however large (a view, not a saved copy). */
+  keepMedia = false,
 ): MyTemplate {
   const scene = project.compositions.find((item) => item.id === sceneId);
   if (!scene) throw new Error('Unknown scene');
@@ -146,7 +148,7 @@ export function templateFromScene(
   const copy = JSON.parse(JSON.stringify(scene)) as Composition;
   let mediaIncluded = true;
   let kept = assets;
-  if (media.length && bytes > MEDIA_LIMIT) {
+  if (!keepMedia && media.length && bytes > MEDIA_LIMIT) {
     mediaIncluded = false;
     const dropped = new Set<string>();
     const strip = (layers: Layer[]): Layer[] =>

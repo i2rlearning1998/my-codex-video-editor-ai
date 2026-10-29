@@ -36,6 +36,9 @@ export interface ShelfItem {
   thumb(slot: HTMLElement): void;
   /** A short looping preview while hovered (one card at a time). */
   readonly preview?: (slot: HTMLElement) => () => void;
+  /** FIX9: a click opens the item's own view (options.open) instead of
+   *  adding it; the "+" and the menu's Add still add. */
+  readonly opens?: boolean;
   /** Wires a drag source or other behaviour onto the card button. */
   readonly decorate?: (card: HTMLButtonElement) => void;
 }
@@ -88,6 +91,8 @@ export interface ShelfOptions {
   };
   readonly items: () => readonly ShelfItem[];
   readonly add: (id: string) => void;
+  /** FIX9: opens an item's own view (a card marked `opens`). */
+  readonly open?: (id: string) => void;
   readonly rename: (id: string) => void;
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
@@ -113,6 +118,11 @@ export interface Shelf {
   readonly tab: string;
   readonly grid: HTMLElement;
   openMenu(id: string, x: number, y: number): void;
+  /** FIX9: shows a view in the same panel in place of the shelf (Back
+   *  restores it). */
+  openDetail(view: HTMLElement): void;
+  closeDetail(): void;
+  readonly detailOpen: boolean;
   dispose(): void;
 }
 
@@ -205,13 +215,30 @@ export function mountShelf(options: ShelfOptions): Shelf {
   body.className = 'shelf-body';
   body.id = `${prefix}-body`;
   body.append(state, grid);
+  // FIX9: an item's own view (the asset view) takes the panel's place.
+  const detail = document.createElement('div');
+  detail.className = 'shelf-body shelf-detail';
+  detail.id = `${prefix}-detail`;
+  detail.hidden = true;
   host.replaceChildren(
     searchRow,
     ...(options.actions?.length ? [actions] : []),
     ...(options.extra ?? []),
     tabs,
     body,
+    detail,
   );
+  const openDetail = (view: HTMLElement) => {
+    detail.replaceChildren(view);
+    detail.hidden = false;
+    host.classList.add('shelf-detail-open');
+    detail.scrollTop = 0;
+  };
+  const closeDetail = () => {
+    detail.replaceChildren();
+    detail.hidden = true;
+    host.classList.remove('shelf-detail-open');
+  };
 
   // The item menu (also the "⋯" button's).
   const menuElement = document.createElement('div');
@@ -439,7 +466,8 @@ export function mountShelf(options: ShelfOptions): Shelf {
     button.append(name);
     button.addEventListener('click', () => {
       try {
-        options.add(item.id);
+        if (item.opens && options.open) options.open(item.id);
+        else options.add(item.id);
       } catch (error) {
         options.report(error);
       }
@@ -599,6 +627,11 @@ export function mountShelf(options: ShelfOptions): Shelf {
     },
     grid,
     openMenu,
+    openDetail,
+    closeDetail,
+    get detailOpen() {
+      return !detail.hidden;
+    },
     dispose() {
       disposed = true;
       stopPreview?.();
