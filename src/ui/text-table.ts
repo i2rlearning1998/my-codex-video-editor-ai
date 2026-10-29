@@ -104,7 +104,24 @@ export function tableInsertCommands(
     text: t('textx.table.headerCell', { n: String(i + 1) }),
   }));
   const width = Math.min(canvas.width * 0.8, Math.max(240, columns * 180));
-  const height = rows * (FONT_SIZE * 1.2 + 2 * (table.padding ?? 8));
+  // FIX7: the type fits the columns (a header never wraps) and the rows fit
+  // the canvas, so a wide or tall table is born inside the picture.
+  const padding = table.padding ?? 8;
+  const header = Math.max(...table.rows[0]!.map((cell) => cell.text.length), 4);
+  let fontSize = Math.max(
+    12,
+    Math.min(
+      FONT_SIZE,
+      Math.floor((width / columns - 2 * padding) / (header * 0.62)),
+    ),
+  );
+  const rowsHeight = (size: number) => rows * (size * 1.2 + 2 * padding);
+  if (rowsHeight(fontSize) > canvas.height * 0.85)
+    fontSize = Math.max(
+      10,
+      Math.floor((canvas.height * 0.85) / rows / 1.2 - (2 * padding) / 1.2),
+    );
+  const height = rowsHeight(fontSize);
   const item = {
     id: 'table',
     type: 'text',
@@ -121,7 +138,7 @@ export function tableInsertCommands(
           w: width / canvas.width,
           h: height / canvas.height,
           text: { en: tablePlainText(table), hi: tablePlainText(table) },
-          size: FONT_SIZE / canvas.height,
+          size: fontSize / canvas.height,
           color: '#272b29',
           align: 'left',
         },
@@ -146,7 +163,7 @@ export function tableInsertCommands(
     const engineProperty: unknown = textEngineProperty({ table } as never);
     (layer as unknown as { properties: Record<string, unknown> }).properties = {
       ...properties,
-      fontSize: { ...properties.fontSize!, value: FONT_SIZE },
+      fontSize: { ...properties.fontSize!, value: fontSize },
       textEngine: engineProperty,
     };
   }

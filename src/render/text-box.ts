@@ -23,6 +23,7 @@ import {
 import { fallbackTextMeasure, type TextMeasurer } from './text-layout';
 import { textStyleOf, type TextStyle } from './text-style';
 import type { SceneLayer } from './adapter';
+import { layoutStructured } from '../text-engine/layout';
 
 export type TextBoxMode = 'auto' | 'fixed';
 const string = (layer: SceneLayer, key: string) => {
@@ -226,4 +227,40 @@ export function textBoxOf(
     cache.set(key, box);
   }
   return box;
+}
+
+const tableCache = new Map<string, number>();
+/**
+ * FIX7: the height a table's rows really need at its width and font size
+ * (a header that wraps makes its row taller). The selection box, the
+ * handles and a corner scale all read this, so they always cover the whole
+ * table; a stored fixed height is kept.
+ */
+export function tableHeightOf(layer: SceneLayer, width: number): number {
+  const style = textStyleOf(layer);
+  const engine = style.engine;
+  const stored = numeric(layer, 'height') ?? 0;
+  if (!engine?.table) return stored;
+  if (textHeightFixed(layer) && stored > 0) return stored;
+  const fontSize = fontSizeOf(layer);
+  const key = JSON.stringify([epoch, width, fontSize, style, engine]);
+  const hit = tableCache.get(key);
+  if (hit !== undefined) return hit;
+  let needed = stored;
+  try {
+    const cells = layoutStructured(
+      '',
+      width,
+      fontSize * style.lineHeight,
+      engine,
+      (value, bold) =>
+        measurer(value, fontSize, bold ? { ...style, weight: 700 } : style),
+    );
+    needed = Math.max(0, ...cells.map((cell) => cell.y + cell.height));
+  } catch {
+    /* An invalid table keeps its stored box. */
+  }
+  if (tableCache.size > 500) tableCache.clear();
+  tableCache.set(key, needed);
+  return needed;
 }

@@ -2130,7 +2130,7 @@
   "textx.table.insert": "तालिका जोड़ें",
   "textx.table.pick": "Choose rows and columns",
   "textx.table.size": "{rows} × {columns}",
-  "textx.table.headerCell": "Column {n}",
+  "textx.table.headerCell": "कॉलम {n}",
   "textx.table.rows": "Rows",
   "textx.table.columns": "Columns",
   "textx.table.header": "Header row",
@@ -2690,5 +2690,9 @@
   "mine.mismatch.body": "\"{name}\" एक {real} है, लेकिन आप इसे {chosen} के रूप में सेव कर रहे हैं। यह {chosen} में दिखेगा और शायद वैसा काम न करे।",
   "mine.mismatch.recommended": "{real} के रूप में सेव करें (सुझाया गया)",
   "mine.mismatch.anyway": "फिर भी {chosen} के रूप में सेव करें",
-  "mine.mismatch.cancel": "रद्द करें"
+  "mine.mismatch.cancel": "रद्द करें",
+  "textx.table.addRow": "पंक्ति जोड़ें",
+  "textx.table.removeRow": "पंक्ति हटाएँ",
+  "textx.table.addColumn": "कॉलम जोड़ें",
+  "textx.table.removeColumn": "कॉलम हटाएँ"
 }

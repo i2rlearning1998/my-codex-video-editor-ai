@@ -96,6 +96,12 @@ const FPS_PRESETS = [
 import { pictureOf } from '../render/picture';
 import { formatGradient, parseGradient, type Gradient } from '../render/paint';
 import { canCopyStyle, copyStyle } from './style-clipboard';
+import {
+  engineCommands,
+  engineOf,
+  resizeTable,
+  tableOf,
+} from './text-structure-model';
 import { showToast } from './components/toast';
 import { describeSelection, selectionRoots } from './selection-context';
 import { contextActions, performEdit } from './editing';
@@ -1531,7 +1537,50 @@ export function mountContextToolbar(
     );
     align.id = 'toolbar-align';
     align.dataset.value = style.align;
+    // FIX7: a table also gets its own row and column buttons.
+    const table = tableOf(layer);
+    const resize = (rows: number, columns: number) =>
+      run(
+        t('textx.step.table'),
+        engineCommands(compositionId, selected() ?? layer, {
+          ...engineOf(layer)!,
+          table: resizeTable(table!, rows, columns),
+        }),
+      );
+    const tableTools = table
+      ? [
+          tool(
+            'table-row-add',
+            'plus',
+            t('textx.table.addRow'),
+            () => resize(table.rows.length + 1, table.columnWidths.length),
+            { text: true },
+          ),
+          tool(
+            'table-row-remove',
+            'minus',
+            t('textx.table.removeRow'),
+            () => resize(table.rows.length - 1, table.columnWidths.length),
+            { text: true },
+          ),
+          tool(
+            'table-column-add',
+            'plus',
+            t('textx.table.addColumn'),
+            () => resize(table.rows.length, table.columnWidths.length + 1),
+            { text: true },
+          ),
+          tool(
+            'table-column-remove',
+            'minus',
+            t('textx.table.removeColumn'),
+            () => resize(table.rows.length, table.columnWidths.length - 1),
+            { text: true },
+          ),
+        ]
+      : [];
     return [
+      ...tableTools,
       font,
       sizeGroup,
       colorField(

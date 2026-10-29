@@ -42,7 +42,7 @@ import {
   type RichLayout,
 } from './rich-text';
 import { textStyleOf, type TextStyle } from './text-style';
-import { textBoxOf, textHeightFixed } from './text-box';
+import { tableHeightOf, textBoxOf, textHeightFixed } from './text-box';
 import { isCameraLayer } from '../camera/shots';
 import { textEffectsOf, type TextLook } from './text-effects';
 import { shapeOf, type ShapeStyle } from './shapes';
@@ -289,8 +289,13 @@ export function layerSize(
   }
   const asset = assets.find((item) => item.id === layer.assetId);
   const box = preview?.layerId === layer.id ? preview.textBox : undefined;
-  const width = box?.width ?? numericProperty(layer, 'width'),
-    height = box?.height ?? numericProperty(layer, 'height');
+  const width = box?.width ?? numericProperty(layer, 'width');
+  // FIX7: a table's box is the height its rows need, not a stored guess.
+  const height =
+    box?.height ??
+    (layer.type === 'text' && textStyleOf(layer).engine?.table
+      ? tableHeightOf(layer, width ?? 360)
+      : numericProperty(layer, 'height'));
   const widthSource =
     width !== undefined
       ? 'properties'

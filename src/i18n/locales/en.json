@@ -2690,5 +2690,9 @@
   "mine.mismatch.body": "\"{name}\" is a {real}, but you are saving it as {chosen}. It will be listed under {chosen} and may not behave like one.",
   "mine.mismatch.recommended": "Save as {real} (recommended)",
   "mine.mismatch.anyway": "Save as {chosen} anyway",
-  "mine.mismatch.cancel": "Cancel"
+  "mine.mismatch.cancel": "Cancel",
+  "textx.table.addRow": "Add row",
+  "textx.table.removeRow": "Remove row",
+  "textx.table.addColumn": "Add column",
+  "textx.table.removeColumn": "Remove column"
 }
