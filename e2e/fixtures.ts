@@ -465,3 +465,67 @@ export async function revealEntry(menu: Locator, entry: Locator) {
   }
   return target;
 }
+
+/**
+ * FIX7: a plan build ends in the missing-files list when the person has not
+ * added a file of the name the plan expects. This waits for that list or the
+ * summary; the list is answered with "Continue without them".
+ */
+export async function settleBuild(page: Page, timeout = 90_000) {
+  const dialog = page.locator('.plan-build');
+  const missing = dialog.locator('#plan-missing:not([hidden])');
+  const summary = dialog.locator('#plan-summary:not([hidden])');
+  await missing.or(summary).first().waitFor({ timeout });
+  if (await missing.isVisible()) await dialog.locator('#plan-continue').click();
+  await expect(dialog.locator('#plan-summary')).toBeVisible({ timeout });
+}
+
+/** FIX7: puts media named like a plan's queries into Media (small test files). */
+export async function addOwnMedia(
+  page: Page,
+  names: readonly { name: string; file: string; mimeType: string }[],
+) {
+  const { readFileSync } = await import('node:fs');
+  await showCategory(page, 'Media');
+  await page.locator('#import-media-input').setInputFiles(
+    names.map((item) => ({
+      name: item.name,
+      mimeType: item.mimeType,
+      buffer: readFileSync(`tests/fixtures/media/${item.file}`),
+    })),
+  );
+  await expect
+    .poll(async () => (await hook(page)).project.assets.length, {
+      timeout: 30_000,
+    })
+    .toBeGreaterThanOrEqual(names.length);
+}
+export const HONEY_MEDIA = [
+  {
+    name: 'bee flower macro.jpg',
+    file: 'image_testsrc_1200x800.jpg',
+    mimeType: 'image/jpeg',
+  },
+  {
+    name: 'beehive bees working.webm',
+    file: 'video_frame_code_320x180_4s.webm',
+    mimeType: 'video/webm',
+  },
+  {
+    name: 'calm acoustic.wav',
+    file: 'audio_tone_440hz_3s.wav',
+    mimeType: 'audio/wav',
+  },
+] as const;
+export const CHAI_MEDIA = [
+  {
+    name: 'masala chai cup.jpg',
+    file: 'image_testsrc_1200x800.jpg',
+    mimeType: 'image/jpeg',
+  },
+  {
+    name: 'tea garden assam.jpg',
+    file: 'image_testsrc_800x600.webp',
+    mimeType: 'image/webp',
+  },
+] as const;

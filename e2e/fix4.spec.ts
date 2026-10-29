@@ -1,5 +1,14 @@
 import { readFileSync } from 'node:fs';
-import { test, expect, showCategory, menuAction, hook } from './fixtures';
+import {
+  test,
+  expect,
+  showCategory,
+  menuAction,
+  hook,
+  settleBuild,
+  addOwnMedia,
+  HONEY_MEDIA,
+} from './fixtures';
 import { mockStock, GOOD_KEY } from './stock-mock';
 
 // FIX4 A1: after Import + Build two messages used to stack at the bottom-left
@@ -15,6 +24,7 @@ test('[FX4-001] one toast at a time, never over a left panel', async ({
     .locator('#ai-import-source')
     .fill(readFileSync('docs/samples/plan-en-honey.json', 'utf8'));
   await page.locator('[data-action="build-video"]').click();
+  await settleBuild(page);
   await expect(
     page.locator('.toast', { hasText: 'Built 3 scenes' }),
   ).toBeVisible();
@@ -48,6 +58,7 @@ test('[FX4-002] a toast waits while the pointer is on it (longer than its 10 s),
     .locator('#ai-import-source')
     .fill(readFileSync('docs/samples/plan-en-honey.json', 'utf8'));
   await page.locator('[data-action="build-video"]').click();
+  await settleBuild(page);
   const toast = page.locator('.toast', { hasText: 'Built 3 scenes' });
   await expect(toast).toBeVisible();
   await toast.hover();
@@ -76,6 +87,8 @@ test('[FX4-004] AI composition card: Not built, then Built with scene count and 
   );
   await mockStock(page);
   await page.goto('/');
+  // FIX7: a build uses only the person's own files, added first.
+  await addOwnMedia(page, HONEY_MEDIA);
   await showCategory(page, 'AI');
   await page.locator('#library-ai #ai-import').click();
   await page
@@ -83,9 +96,7 @@ test('[FX4-004] AI composition card: Not built, then Built with scene count and 
     .fill(readFileSync('tests/fixtures/plans/honey-en.json', 'utf8'));
   await page.locator('[data-action="build-video"]').click();
   const dialog = page.locator('.plan-build');
-  await expect(dialog.locator('#plan-summary')).toBeVisible({
-    timeout: 60_000,
-  });
+  await settleBuild(page);
   await page.keyboard.press('Escape');
   const card = page.locator('#library-ai .shelf-item').first();
   await expect(card).toContainText('Built');
@@ -149,9 +160,7 @@ test('[FX4-010] a v3 timeline plan builds one scene with shapes, a bubble and an
     .fill(readFileSync('docs/samples/plan-v3-diagram.json', 'utf8'));
   await page.locator('[data-action="build-video"]').click();
   const dialog = page.locator('.plan-build');
-  await expect(dialog.locator('#plan-summary')).toBeVisible({
-    timeout: 60_000,
-  });
+  await settleBuild(page);
   const { project } = await hook(page);
   // The example project stays; the whole plan is ONE new scene.
   const built = project.compositions.filter((c) =>

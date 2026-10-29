@@ -50,6 +50,15 @@ export interface PlanBuildDeps {
    * card is saved here, never earlier). A cancelled build never calls it.
    */
   onCommit?(): Promise<void> | void;
+  /**
+   * FIX7: renders the built scenes' code animations (so the video plays
+   * smoothly at once). Rejects on cancel; `progress` gets 0..1.
+   */
+  prepare?(
+    project: NonNullable<PlanBuildResult['project']>,
+    signal: AbortSignal,
+    progress: (fraction: number) => void,
+  ): Promise<void>;
   /** FIX7: takes media the build imported away again (cancel, failure). */
   discardAssets?(ids: readonly string[]): Promise<void> | void;
   /** Opens the Review panel for the built plan. */
@@ -307,6 +316,26 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
   const commit = async (result: PlanBuildResult) => {
     $('plan-missing').hidden = true;
     proceed.hidden = true;
+    // FIX7: nothing is added (and Play stays unreachable) until every code
+    // animation is rendered; Cancel here leaves nothing behind.
+    if (deps.prepare) {
+      $('plan-working').hidden = false;
+      show({ step: 'prepare', state: 'running', detail: '0%' });
+      try {
+        await deps.prepare(result.project!, controller.signal, (fraction) =>
+          show({
+            step: 'prepare',
+            state: 'running',
+            detail: `${Math.round(fraction * 100)}%`,
+          }),
+        );
+        show({ step: 'prepare', state: 'done' });
+      } catch (error) {
+        show({ step: 'prepare', state: 'failed' });
+        throw error;
+      }
+      $('plan-working').hidden = true;
+    } else show({ step: 'prepare', state: 'skipped' });
     try {
       await deps.onCommit?.();
     } catch (error) {
@@ -337,11 +366,8 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
         found: String(media - result.flags.length),
         total: String(media),
       }),
-      ...result.flags.map((flag) =>
-        t('plan.summaryFlag', {
-          key: flag.name ?? flag.key,
-          reason: flag.reason,
-        }),
+      ...[...new Set(result.flags.map((flag) => flag.name ?? flag.key))].map(
+        (name) => t('plan.summaryFlag', { key: name }),
       ),
     ];
     summary.replaceChildren(
@@ -359,7 +385,13 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
   };
   /** FIX7: the files the plan expects and the person has not added. */
   const askMissing = (result: PlanBuildResult) => {
-    const missing = result.flags.filter((flag) => flag.name);
+    // Each file once, however many layers use it.
+    const seen = new Set<string>();
+    const missing = result.flags.filter((flag) => {
+      if (!flag.name) return false;
+      const id = `${flag.type ?? 'photo'}:${flag.name}`;
+      return seen.has(id) ? false : (seen.add(id), true);
+    });
     const box = $('plan-missing');
     box.hidden = false;
     const title = document.createElement('p');
@@ -375,7 +407,7 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
       const name = document.createElement('strong');
       name.textContent = flag.name!;
       const kind = document.createElement('span');
-      kind.textContent = t(`plan.kind.${flag.type ?? 'photo'}`);
+      kind.textContent = t(`plan.kindOne.${flag.type ?? 'photo'}`);
       li.append(name, ' ', kind);
       list.append(li);
     }
@@ -410,7 +442,7 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
     box.append(choose);
     proceed.hidden = false;
     proceed.textContent = t('plan.continueWithout');
-    proceed.onclick = () => void commit(result);
+    proceed.onclick = () => void guarded(() => commit(result));
   };
   const run = async () => {
     try {
@@ -436,6 +468,11 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
       if (result.flags.some((flag) => flag.name)) askMissing(result);
       else await commit(result);
     } catch (error) {
+      await fail(error);
+    }
+  };
+  const fail = async (error: unknown) => {
+    {
       finished = true;
       $('plan-working').hidden = true;
       cancel.textContent = t('plan.close');
@@ -449,6 +486,13 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
       );
       await rollback();
       if (!aborted) deps.report(error);
+    }
+  };
+  const guarded = async (action: () => Promise<void>) => {
+    try {
+      await action();
+    } catch (error) {
+      await fail(error);
     }
   };
   cancel.onclick = () => {

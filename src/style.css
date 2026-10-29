@@ -11357,3 +11357,39 @@ body:has(.modal-backdrop) .toast-stack {
   block-size: 100%;
   object-fit: contain;
 }
+
+/* FIX7: the files a plan expects and the person has not added. */
+.plan-missing {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+}
+.plan-missing-title {
+  margin: 0;
+  font-weight: 600;
+}
+.plan-missing-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.plan-missing-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--raised);
+  overflow-wrap: anywhere;
+}
+.plan-missing-list li span {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.7;
+}

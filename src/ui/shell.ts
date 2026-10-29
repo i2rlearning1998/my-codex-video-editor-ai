@@ -799,6 +799,82 @@ export function mountEditorShell(
       quality ?? codeFrames.qualityOf(layerId),
     );
   };
+  /**
+   * FIX7: renders every code animation of a built (not yet added) project,
+   * so the video plays smoothly the moment it appears. The frames go to the
+   * same cache the preview reads; a cancel stops the work.
+   */
+  const prepareBuilt = async (
+    project: { compositions: readonly unknown[] },
+    signal: AbortSignal,
+    progress: (fraction: number) => void,
+  ) => {
+    type Walked = {
+      layers: readonly { code?: unknown; children: readonly unknown[] }[];
+    };
+    const specs = new Map<string, ReturnType<typeof bakeSpecOf>>();
+    const walk = (
+      scene: { width: number; height: number; fps: number },
+      layers: readonly unknown[],
+    ) => {
+      for (const layer of layers as Walked['layers']) {
+        const code = layer.code as CodeData | undefined;
+        if (code) {
+          const fps = codeFps(code, scene.fps);
+          const spec = bakeSpecOf(
+            code,
+            {
+              tier: code.tier,
+              bakeKey: code.bakeKey,
+              width: scene.width,
+              height: scene.height,
+              fps,
+              frames: frameCount(codeMeta(code).duration, fps),
+              frame: 0,
+            },
+            'full',
+          );
+          specs.set(spec.cacheKey, spec);
+        }
+        walk(scene, layer.children);
+      }
+    };
+    for (const scene of project.compositions as (Walked & {
+      width: number;
+      height: number;
+      fps: number;
+    })[])
+      walk(scene, scene.layers);
+    const all = [...specs.values()];
+    const stop = () => {
+      for (const spec of all) codeBaker.cancel(spec.cacheKey);
+      throw new DOMException('Cancelled', 'AbortError');
+    };
+    let done = 0;
+    progress(all.length ? 0 : 1);
+    for (const spec of all) {
+      if (signal.aborted) stop();
+      const timer = window.setInterval(
+        () => progress((done + codeBaker.progress(spec.cacheKey)) / all.length),
+        250,
+      );
+      const aborted = new Promise<never>((_, reject) =>
+        signal.addEventListener('abort', () => reject(new Error('aborted')), {
+          once: true,
+        }),
+      );
+      try {
+        await Promise.race([codeBaker.complete(spec), aborted]);
+      } catch (error) {
+        if (signal.aborted) stop();
+        throw error;
+      } finally {
+        window.clearInterval(timer);
+      }
+      done++;
+      progress(done / all.length);
+    }
+  };
   const codeStatus: CodeClipStatus = {
     status(layerId) {
       const spec = codeSpec(layerId);
@@ -2684,6 +2760,8 @@ export function mountEditorShell(
       // FIX7: the AI card is saved once the build is complete, never before.
       ...(keep ? { onCommit: () => void keep() } : {}),
       discardAssets: (ids) => mediaPanel.discard(ids),
+      prepare: (project, signal, progress) =>
+        prepareBuilt(project as never, signal, progress),
       addScenes: (result) => {
         // FINAL3 V3.5: the plan's feel is listed in AI as a Theme.
         if (plan.feel?.palette || plan.feel?.headingFont) {
@@ -2830,8 +2908,10 @@ export function mountEditorShell(
   const openBuildVideo = (
     item: { name: { en: string }; data: unknown },
     keep?: () => Promise<unknown>,
-  ) =>
-    openCompositionBuild(item, {
+  ) => {
+    // A composition pack (not a plan) keeps its card when Build is pressed.
+    void keep?.();
+    return openCompositionBuild(item, {
       assets: () => session.source.assets as unknown as readonly Asset[],
       importFile: async (file) => {
         const id = await importMade(file);
@@ -2842,7 +2922,6 @@ export function mountEditorShell(
       },
       library: (id) => libraryActions.find(id),
       addScenes: (project) => {
-        void keep?.();
         const ids = addBuiltScenes(project);
         void training.start(engine.state.id, item.data);
         // FIX3 1.3: the AI card reads Built (or Needs assets) from now on.
@@ -2867,6 +2946,7 @@ export function mountEditorShell(
       openKeys: () => openSettings('keys'),
       report: reportError,
     });
+  };
   const openCreatorImport = (
     initial: { text?: string; fileName?: string } = {},
   ) => {

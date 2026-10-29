@@ -1,6 +1,16 @@
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
-import { test, expect, hook, menuAction, showCategory } from './fixtures';
+import {
+  test,
+  expect,
+  hook,
+  menuAction,
+  showCategory,
+  settleBuild,
+  addOwnMedia,
+  HONEY_MEDIA,
+  CHAI_MEDIA,
+} from './fixtures';
 import { mockStock, GOOD_KEY } from './stock-mock';
 
 // FINAL3 Part D at 1920 × 940: a Video Plan v2 imported in AI › Import is
@@ -62,19 +72,19 @@ async function importPlan(page: Page, text = PLAN) {
   await page.locator('#library-ai #ai-import').click();
   await page.locator('#ai-import-source').fill(text);
 }
-async function build(page: Page) {
+/** FIX7: the person's own files first (a build never fetches any itself). */
+async function build(page: Page, own = true) {
+  if (own) await addOwnMedia(page, HONEY_MEDIA);
   await importPlan(page);
   await page.locator('[data-action="build-video"]').click();
   const dialog = page.locator('.plan-build');
   await expect(dialog).toBeVisible();
   await expect(page.locator('.composition-dialog')).toHaveCount(0);
-  await expect(dialog.locator('#plan-summary')).toBeVisible({
-    timeout: 60_000,
-  });
+  await settleBuild(page);
   return dialog;
 }
 
-test('[FN3-021] a v2 plan builds end to end: progress, media from stock with alternatives, voice, captions, camera, transitions; it replaces the empty scene in one undo step and opens the strip', async ({
+test('[FN3-021] a v2 plan builds end to end: progress, your own media, voice, captions, camera, transitions; it replaces the empty scene in one undo step and opens the strip', async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -107,7 +117,8 @@ test('[FN3-021] a v2 plan builds end to end: progress, media from stock with alt
   expect(state.history.labels.at(-1)).toBe('Build video');
   expect(state.session.selectedIds).toEqual([]);
   expect(state.session.compositionId).toBe(state.project.compositions[0]!.id);
-  expect(mock.downloads.length).toBeGreaterThan(0);
+  // Nothing is fetched from stock: the media are the person's own.
+  expect(mock.downloads.length).toBe(0);
   await expect(
     page.locator('.toast', { hasText: 'Built 3 scenes' }),
   ).toBeVisible();
@@ -139,15 +150,14 @@ test('[FN3-021] a v2 plan builds end to end: progress, media from stock with alt
     .toBe(1);
 });
 
-test('[FN3-022] without a voice key the video is silent with a banner; with stock down media get fallback cards and "needs asset" flags and the build still completes', async ({
+test('[FN3-022] without a voice key the video is silent with a banner; files the person did not add are listed by name, get fallback cards and "needs asset" flags and the build still completes', async ({
   page,
 }) => {
   test.setTimeout(120_000);
   await withKey(page);
-  const mock = await mockStock(page);
-  mock.mode = 'down';
+  await mockStock(page);
   await page.goto('/');
-  const dialog = await build(page);
+  const dialog = await build(page, false);
   await expect(dialog.locator('#plan-banner')).toContainText(
     'Built without voice',
   );
@@ -155,9 +165,9 @@ test('[FN3-022] without a voice key the video is silent with a banner; with stoc
     'data-state',
     'failed',
   );
-  await expect(dialog.locator('#plan-summary')).toContainText('needs an asset');
+  await expect(dialog.locator('#plan-summary')).toContainText('Missing:');
   await expect(dialog.locator('#plan-summary')).toContainText(
-    'could not be reached',
+    'bee flower macro',
   );
   const flagged = (await allLayers(page)).filter(
     (l) => l.properties.planFlag?.value === 'needs-asset',
@@ -358,9 +368,7 @@ test('[FN3-025] the AI category lists the plan with its status, its feel as a Th
   plan.scenes = [plan.scenes[2]];
   await importPlan(page, JSON.stringify(plan));
   await page.locator('[data-action="build-video"]').click();
-  await expect(page.locator('.plan-build #plan-summary')).toBeVisible({
-    timeout: 60_000,
-  });
+  await settleBuild(page);
   const { project, session } = await hook(page);
   const again = project.compositions.find(
     (c) => c.id === session.compositionId,
@@ -394,9 +402,7 @@ test('[FIX6-006] while a plan builds the dialog shows that it is working (spinne
   const dialog = page.locator('.plan-build');
   await expect(dialog.locator('.plan-working')).toBeVisible();
   await expect(dialog.locator('.plan-spinner')).toBeVisible();
-  await expect(dialog.locator('#plan-summary')).toBeVisible({
-    timeout: 60_000,
-  });
+  await settleBuild(page);
   await expect(dialog.locator('.plan-working')).toBeHidden();
 });
 
@@ -412,14 +418,13 @@ test('[FIX6-007] two imported plans: building the second leaves the first built,
   const first = await build(page);
   await first.locator('#plan-cancel').click();
   await expect(page.locator('.plan-build')).toHaveCount(0);
+  await addOwnMedia(page, CHAI_MEDIA);
   await importPlan(
     page,
     readFileSync('tests/fixtures/plans/chai-hi.json', 'utf8'),
   );
   await page.locator('[data-action="build-video"]').click();
-  await expect(page.locator('.plan-build #plan-summary')).toBeVisible({
-    timeout: 90_000,
-  });
+  await settleBuild(page);
   await page.locator('.plan-build #plan-cancel').click();
   await expect(page.locator('.plan-build')).toHaveCount(0);
   const honey = page

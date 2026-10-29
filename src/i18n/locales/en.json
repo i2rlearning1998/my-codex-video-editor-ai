@@ -2656,5 +2656,11 @@
   "plan.missingTitle": "{count} files are missing",
   "plan.missingHint": "Nothing was picked for you. Choose these files from your computer (or add them to Media later with the same name) and they fill in by themselves.",
   "plan.chooseFiles": "Choose files…",
-  "plan.continueWithout": "Continue without them"
+  "plan.continueWithout": "Continue without them",
+  "plan.step.prepare": "Render animations",
+  "plan.kindOne.photo": "photo",
+  "plan.kindOne.video": "video",
+  "plan.kindOne.audio": "audio",
+  "plan.kindOne.icon": "icon",
+  "plan.kindOne.emoji": "emoji"
 }

@@ -57,6 +57,8 @@ export const BUILD_STEPS = [
   'captions',
   'camera',
   'sound',
+  // FIX7: the animations are rendered before the video can be played.
+  'prepare',
 ] as const;
 export type BuildStep = (typeof BUILD_STEPS)[number];
 export interface BuildProgress {

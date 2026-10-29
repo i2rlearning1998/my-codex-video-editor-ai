@@ -2656,5 +2656,11 @@
   "plan.missingTitle": "{count} फ़ाइलें नहीं मिलीं",
   "plan.missingHint": "आपके लिए कुछ अपने-आप नहीं चुना गया। ये फ़ाइलें अपने कंप्यूटर से चुनें (या बाद में इसी नाम से Media में जोड़ें), वे अपने-आप लग जाएँगी।",
   "plan.chooseFiles": "फ़ाइलें चुनें…",
-  "plan.continueWithout": "इनके बिना आगे बढ़ें"
+  "plan.continueWithout": "इनके बिना आगे बढ़ें",
+  "plan.step.prepare": "एनिमेशन तैयार करना",
+  "plan.kindOne.photo": "फ़ोटो",
+  "plan.kindOne.video": "वीडियो",
+  "plan.kindOne.audio": "ऑडियो",
+  "plan.kindOne.icon": "आइकन",
+  "plan.kindOne.emoji": "इमोजी"
 }
