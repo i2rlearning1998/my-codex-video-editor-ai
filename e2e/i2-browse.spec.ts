@@ -289,10 +289,10 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   await expect(host.locator('[data-action="dynamic-text"]')).toHaveCount(0);
   await expect(host.locator('[data-action="captions"]')).toHaveCount(0);
   // FINAL3 T5: Canva's order: default styles, font combinations, the
-  // user's own styles, then the rest.
+  // then the rest.
   await expect(host.locator('.browse-section-head h3')).toContainText([
     'Default text styles',
-    'My text styles',
+    'Font combinations',
     'Plain text',
     'Text styles',
     'Titles',
