@@ -1215,3 +1215,5 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FX4-009 | P1 | W9 | Verified | The left panel is full height and the timeline sits beside it |
 | FX4-010 | P1 | W9 | Verified | A v3 timeline plan builds one scene with shapes, a bubble and an overlay |
 | FIX7-010 | P1 | W9 | Verified | The Draw palette is Canva's: pen gallery with colours, size and transparency, shape tiles, line styles, sticky colours and table sizes |
+| FIX7-011 | P1 | W9 | Verified | Importing a plan or composition and Export code show only in Developer mode (development and test builds, or the aive.developer switch) |
+| FIX7-012 | P1 | W9 | Verified | Review & swap shows one status line (N found · M missing, or Ready), one Choose file or Swap per row, Find stock only on click, and Export, Compare and Save feel under More |

@@ -11596,3 +11596,32 @@ body:has(.modal-backdrop) .toast-stack {
 .icon-rail:not(.icon-rail-right) button {
   padding-inline: 1px;
 }
+
+/* FIX7: Review & swap — one status line, one clear action per row. */
+.plan-status {
+  margin: 0 0 var(--space-3);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+.plan-status[data-state='missing'] {
+  color: var(--color-warning, #c77700);
+}
+.plan-status[data-state='ready'] {
+  color: var(--color-success, #1a8a4a);
+}
+.plan-more {
+  margin-block-end: var(--space-3);
+}
+.plan-more > summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+.plan-layer-actions {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.plan-found {
+  color: var(--color-success, #1a8a4a);
+  font-size: var(--font-size-xs);
+}

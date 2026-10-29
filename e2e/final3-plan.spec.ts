@@ -187,7 +187,7 @@ test('[FN3-022] without a voice key the video is silent with a banner; files the
   await page.screenshot({ path: 'reports/final3/d-fallback.png' });
 });
 
-test('[FN3-023] Review & swap: an alternative swaps the media keeping its place and animation; changing the narration speaks it again and remakes the scene; Export plan and Compare', async ({
+test('[FN3-023] [FIX7-012] Review & swap: an alternative swaps the media keeping its place and animation; changing the narration speaks it again and remakes the scene; Export plan and Compare', async ({
   page,
 }) => {
   test.setTimeout(150_000);
@@ -199,7 +199,11 @@ test('[FN3-023] Review & swap: an alternative swaps the media keeping its place 
   await dialog.locator('#plan-review').click();
   const panel = page.locator('.plan-review');
   const row = panel.locator('[data-plan-layer="open/flower"]');
-  // The chosen stock picture is the pressed alternative.
+  await expect(panel.locator('#plan-review-status')).toBeVisible();
+  await expect(row.locator('[data-action="plan-use-own"]')).toHaveText('Swap');
+  await expect(row.locator('.plan-alternatives')).toBeHidden();
+  // The chosen stock picture is the pressed alternative (Find stock shows them).
+  await row.locator('[data-action="plan-find-stock"]').click();
   await expect(
     row.locator('.plan-alternative[aria-pressed="true"]'),
   ).toHaveCount(1);
@@ -252,6 +256,7 @@ test('[FN3-023] Review & swap: an alternative swaps the media keeping its place 
     JSON.stringify(captions.map((c) => c.properties.captionCue!.value)),
   ).toContain('Thank');
   // Compare and export.
+  await panel.locator('.plan-more > summary').click();
   await panel.locator('[data-action="plan-compare"]').click();
   await expect(panel.locator('.plan-compare')).toBeVisible();
   const download = page.waitForEvent('download');
@@ -328,6 +333,7 @@ test('[FN3-025] the AI category lists the plan with its status, its feel as a Th
   await page.locator('#command-palette input').fill('Review video plan');
   await page.keyboard.press('Enter');
   const review = page.locator('.plan-review');
+  await review.locator('.plan-more > summary').click();
   await review.locator('#plan-feel-name').fill('Honey feel');
   await review.locator('[data-action="plan-save-feel"]').click();
   await expect(page.locator('.toast', { hasText: 'Honey feel' })).toBeVisible();

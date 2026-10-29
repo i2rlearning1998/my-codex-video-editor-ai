@@ -2698,5 +2698,16 @@
   "draw.transparency": "पारदर्शिता",
   "palette.shape.title": "आकृतियाँ",
   "palette.line.title": "लाइनें",
-  "palette.table.custom": "अपना साइज़…"
+  "palette.table.custom": "अपना साइज़…",
+  "plan.more": "और",
+  "plan.statusMissing": "{found} मिले · {missing} बाकी",
+  "plan.statusReady": "तैयार",
+  "plan.missing": "कमी",
+  "plan.found": "मिला",
+  "plan.chooseFile": "फ़ाइल चुनें",
+  "plan.swap": "बदलें",
+  "plan.findStock": "स्टॉक खोजें",
+  "plan.type.video": "वीडियो",
+  "plan.type.image": "फ़ोटो",
+  "plan.type.audio": "ऑडियो"
 }

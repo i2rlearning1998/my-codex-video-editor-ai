@@ -2698,5 +2698,16 @@
   "draw.transparency": "Transparency",
   "palette.shape.title": "Shapes",
   "palette.line.title": "Lines",
-  "palette.table.custom": "Custom size…"
+  "palette.table.custom": "Custom size…",
+  "plan.more": "More",
+  "plan.statusMissing": "{found} found · {missing} missing",
+  "plan.statusReady": "Ready",
+  "plan.missing": "Missing",
+  "plan.found": "Found",
+  "plan.chooseFile": "Choose file",
+  "plan.swap": "Swap",
+  "plan.findStock": "Find stock",
+  "plan.type.video": "video",
+  "plan.type.image": "image",
+  "plan.type.audio": "audio"
 }

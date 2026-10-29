@@ -6,6 +6,7 @@
 // the selected layer; a theme is applied. The header holds Import and Copy
 // AI brief. Rename, folders and Delete never touch layers already placed.
 import { t } from '../i18n';
+import { developerMode } from './developer-mode';
 import { creatorLibraryId, type CreatorLibrary } from './creator-library';
 import { briefThumbnail, styleThumbnail } from './style-card';
 import type { BriefLibrary } from './brief-library';
@@ -140,12 +141,16 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
             },
           ]
         : []),
-      {
-        id: 'ai-import',
-        label: t('aiImport.button'),
-        icon: 'upload',
-        run: () => options.importPack(),
-      },
+      ...(developerMode()
+        ? [
+            {
+              id: 'ai-import',
+              label: t('aiImport.button'),
+              icon: 'upload',
+              run: () => options.importPack(),
+            },
+          ]
+        : []),
       {
         id: 'ai-copy-brief',
         label: t('brief.copy'),

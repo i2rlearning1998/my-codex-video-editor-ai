@@ -5,6 +5,7 @@
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
 import { clipTimeEffects, type EditorEngine } from '../core';
 import { formatNumber, t } from '../i18n';
+import { developerMode } from './developer-mode';
 import {
   ALIGN_EDGES,
   alignSelection,
@@ -249,12 +250,16 @@ export function canvasMenuEntries(
           icon: 'timing',
           run: () => code.editDuration(),
         },
-        {
-          id: 'code-export',
-          label: t('command.codeExport'),
-          icon: 'download',
-          run: () => code.exportCode(codeLayer),
-        },
+        ...(developerMode()
+          ? [
+              {
+                id: 'code-export',
+                label: t('command.codeExport'),
+                icon: 'download',
+                run: () => code.exportCode(codeLayer),
+              },
+            ]
+          : []),
         {
           id: 'code-duplicate',
           label: t('command.codeDuplicate'),

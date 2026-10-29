@@ -139,6 +139,8 @@ export function comparePlan(
   return out.length ? out : [t('plan.diffNone')];
 }
 
+/** Layers whose stock choices were asked for (transient). */
+const stockOpen = new Set<string>();
 /** Projects whose Compare to plan list is open (transient). */
 const comparing = new Set<string>();
 export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
@@ -217,10 +219,47 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     ),
     button('plan-compare', t('plan.compare'), () => {
       comparing.add(project.id);
+      more.open = true;
       showCompare();
     }),
   );
-  root.append(top, compare);
+  // FIX7: the panel says first whether the video still misses media; the
+  // plan's own tools (Export, Compare, Save feel) sit under "More".
+  const flaggedCount = () => {
+    let missing = 0;
+    let found = 0;
+    state.plan.scenes.forEach((scene, index) => {
+      const composition = project.compositions.find(
+        (c) => c.id === state.sceneIds[timeline ? 0 : index],
+      );
+      if (!composition) return;
+      for (const layer of scene.layers) {
+        if (layer.kind !== 'media' || !layer.mediaIntent) continue;
+        const built = byRef(composition, layerKey(scene, layer));
+        if (built?.properties.planFlag?.value === 'needs-asset') missing++;
+        else found++;
+      }
+    });
+    return { missing, found };
+  };
+  const counts = flaggedCount();
+  const status = document.createElement('p');
+  status.className = 'plan-status';
+  status.id = 'plan-review-status';
+  status.dataset.state = counts.missing ? 'missing' : 'ready';
+  status.textContent = counts.missing
+    ? t('plan.statusMissing', {
+        found: String(counts.found),
+        missing: String(counts.missing),
+      })
+    : t('plan.statusReady');
+  const more = document.createElement('details');
+  more.className = 'plan-more';
+  more.open = comparing.has(project.id);
+  const moreSummary = document.createElement('summary');
+  moreSummary.textContent = t('plan.more');
+  more.append(moreSummary, top, compare);
+  root.append(status, more);
   if (deps.saveFeel) {
     const feelRow = document.createElement('div');
     feelRow.className = 'camera-row plan-feel';
@@ -240,7 +279,7 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
         'color',
       ),
     );
-    root.append(feelRow);
+    more.append(feelRow);
   }
 
   /** Builds one scene again from the (edited) plan and puts it in place. */
@@ -444,16 +483,15 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       row.dataset.flag = flagged ? 'needs-asset' : 'ok';
       const name = document.createElement('p');
       name.className = 'plan-layer-name';
-      name.textContent = `${layer.id} · ${layer.mediaIntent.query}`;
-      if (flagged) {
-        const chip = document.createElement('span');
-        chip.className = 'plan-flag';
-        chip.textContent = t('plan.needsAsset');
-        name.append(' ', chip);
-      }
+      name.textContent = `${layer.id} · ${layer.mediaIntent.query} (${t(`plan.type.${layer.mediaIntent.type}`)})`;
+      const chip = document.createElement('span');
+      chip.className = flagged ? 'plan-flag' : 'plan-found';
+      chip.textContent = flagged ? t('plan.missing') : t('plan.found');
+      name.append(' ', chip);
       row.append(name);
       const strip = document.createElement('div');
       strip.className = 'plan-alternatives';
+      strip.hidden = true;
       const choose = async (candidate: MediaCandidate) => {
         (state.plan.resolved ??= {})[ref] = candidate.key;
         save();
@@ -495,47 +533,66 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
         };
         strip.append(option);
       }
-      row.append(
-        strip,
-        button(
-          'plan-search-more',
-          t('plan.searchMore'),
-          async () => {
-            const page = (state.pages[ref] ?? 0) + 2;
-            const more = await deps.searchMore(layer.mediaIntent!, page);
-            const known = new Set(
-              (state.alternatives[ref] ?? []).map((c) => c.key),
-            );
-            state.alternatives[ref] = [
-              ...(state.alternatives[ref] ?? []),
-              ...more.filter((c) => !known.has(c.key)).slice(0, 4),
-            ];
-            state.pages[ref] = page - 1;
-            save();
-          },
-          'search',
-        ),
-        button(
-          'plan-use-own',
-          t('plan.useOwn'),
-          async () => {
-            const asset = await deps.pickFile(
-              layer.mediaIntent!.type === 'video' ? 'video/*' : 'image/*',
-            );
-            if (!asset) return;
-            await choose({
-              key: `asset:${asset.id}`,
-              source: 'asset',
-              kind: asset.type === 'video' ? 'video' : 'image',
-              title: asset.name,
-              tags: [],
-              width: asset.width ?? 0,
-              height: asset.height ?? 0,
-            });
-          },
-          'upload',
-        ),
+      const searchMore = button(
+        'plan-search-more',
+        t('plan.searchMore'),
+        async () => {
+          const page = (state.pages[ref] ?? 0) + 2;
+          const more = await deps.searchMore(layer.mediaIntent!, page);
+          const known = new Set(
+            (state.alternatives[ref] ?? []).map((c) => c.key),
+          );
+          state.alternatives[ref] = [
+            ...(state.alternatives[ref] ?? []),
+            ...more.filter((c) => !known.has(c.key)).slice(0, 4),
+          ];
+          state.pages[ref] = page - 1;
+          save();
+          stockOpen.add(ref);
+        },
+        'search',
       );
+      searchMore.hidden = true;
+      const own = button(
+        'plan-use-own',
+        flagged ? t('plan.chooseFile') : t('plan.swap'),
+        async () => {
+          const asset = await deps.pickFile(
+            layer.mediaIntent!.type === 'video' ? 'video/*' : 'image/*',
+          );
+          if (!asset) return;
+          await choose({
+            key: `asset:${asset.id}`,
+            source: 'asset',
+            kind: asset.type === 'video' ? 'video' : 'image',
+            title: asset.name,
+            tags: [],
+            width: asset.width ?? 0,
+            height: asset.height ?? 0,
+          });
+        },
+        'upload',
+      );
+      own.classList.toggle('primary', flagged);
+      const find = document.createElement('button');
+      find.type = 'button';
+      find.className = 'button secondary sm';
+      find.dataset.action = 'plan-find-stock';
+      find.textContent = t('plan.findStock');
+      const reveal = () => {
+        strip.hidden = false;
+        searchMore.hidden = false;
+        find.hidden = true;
+      };
+      find.onclick = () => {
+        stockOpen.add(ref);
+        reveal();
+      };
+      if (stockOpen.has(ref)) reveal();
+      const actions = document.createElement('div');
+      actions.className = 'camera-row plan-layer-actions';
+      actions.append(own, find, searchMore);
+      row.append(actions, strip);
       card.append(row);
     }
     root.append(card);
