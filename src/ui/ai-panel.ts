@@ -5,12 +5,20 @@
 // item with the usual library insert (one undo step); a preset is applied to
 // the selected layer; a theme is applied. The header holds Import and Copy
 // AI brief. Rename, folders and Delete never touch layers already placed.
-import { t } from '../i18n';
+import { getLanguage, t } from '../i18n';
 import { developerMode } from './developer-mode';
-import { creatorLibraryId, type CreatorLibrary } from './creator-library';
+import {
+  creatorLibraryId,
+  type CreatorEntry,
+  type CreatorLibrary,
+} from './creator-library';
+import { creatorPlaces } from './placement';
+import { libraryClient } from '../library-client';
+import { mergeTaxonomy } from '../library-client/taxonomy';
+import type { BrowseCard } from './browse-panel';
 import { briefThumbnail, styleThumbnail } from './style-card';
 import type { BriefLibrary } from './brief-library';
-import { libraryPreview, libraryThumb } from './library-thumb';
+import { libraryPreview, libraryThumb, libraryThumbUrl } from './library-thumb';
 import { mountShelf, type Shelf } from './library-shelf';
 import { shelfFolders } from './shelf-folders';
 
@@ -56,6 +64,8 @@ export interface AiPanelOptions {
   readonly newVideo?: () => void;
   readonly briefs?: BriefLibrary;
   readonly useBrief?: (id: string) => void;
+  /** The ⋯ menu of an AI card shown in another category. */
+  readonly menu?: (id: string, x: number, y: number) => void;
   readonly details: (id: string) => void;
   readonly remove: (id: string) => void;
   readonly prompt: (title: string, value: string) => Promise<string | null>;
@@ -122,6 +132,75 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
           libraryThumb(slot, { id, type: 'brief', name: brief.name, url }),
       };
     });
+  /** What a creator entry's card shows (shared by the AI panel's shelf and
+   *  by the same card listed in another category). */
+  const describe = (entry: CreatorEntry) => {
+    const id = creatorLibraryId(entry.key);
+    const kind = entry.item.type;
+    const source = {
+      id,
+      type: kind,
+      name: entry.name,
+      data: entry.item.data,
+      // B1: a style's card is its palette, category icon and name.
+      url:
+        entry.item.type === 'style'
+          ? styleThumbnail(entry.item.data, entry.name)
+          : (entry.thumbnail ?? null),
+    };
+    const card =
+      kind === 'composition'
+        ? (options.planCard?.(id, entry.item.data) ?? null)
+        : null;
+    const status =
+      card?.status ??
+      (kind === 'composition'
+        ? (options.planStatus?.(id, entry.item.data) ?? null)
+        : null);
+    if (card?.poster) source.url = card.poster;
+    const badge = status
+      ? card && card.scenes > 0 && status !== 'not-built'
+        ? `${t(`plan.status.${status}`)} · ${t('plan.status.scenes', { count: String(card.scenes) })}`
+        : t(`plan.status.${status}`)
+      : undefined;
+    return { id, kind, source, status, badge };
+  };
+  /** The same card for another category's panel (Templates, Audio …). */
+  const cardFor = (entry: CreatorEntry): BrowseCard => {
+    const { id, kind, source, badge } = describe(entry);
+    return {
+      id,
+      label: entry.name,
+      keywords: [entry.packName.en, kind, ...entry.item.tags],
+      preview: () => libraryThumbUrl(source),
+      ...(badge ? { badge } : {}),
+      className: 'library-card creator-card',
+      data: { itemId: id, creator: 'true', kind },
+      activate: () => add(id),
+      ...(kind === 'style'
+        ? {}
+        : {
+            drag: () => ({
+              kind: 'creator' as const,
+              id,
+              name: entry.name,
+            }),
+          }),
+      menu: (x: number, y: number) => options.menu?.(id, x, y),
+    };
+  };
+  // The owner's own sub-categories inside AI become groups of their own.
+  const order: string[] = [...AI_KINDS];
+  const aiSub = (entry: CreatorEntry) => {
+    const place = creatorPlaces(entry).find((item) => item.category === 'AI');
+    if (!place?.sub) return null;
+    const known = mergeTaxonomy(libraryClient().config())
+      .find((c) => c.id === 'AI')
+      ?.subs.find((s) => s.id === place.sub);
+    return known && !['styles', 'plans', 'motion', 'effects'].includes(known.id)
+      ? known
+      : null;
+  };
   const shelf: Shelf = mountShelf({
     host,
     prefix: 'ai',
@@ -159,8 +238,20 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
         run: () => options.copyBrief(),
       },
     ],
-    categoryLabel: (kind) => t(`ai.kind.${kind}`),
-    categoryOrder: AI_KINDS,
+    categoryLabel: (kind) => {
+      if (kind.startsWith('sub:')) {
+        const node = mergeTaxonomy(libraryClient().config())
+          .find((c) => c.id === 'AI')
+          ?.subs.find((s) => s.id === kind.slice(4));
+        return node
+          ? getLanguage() === 'hi'
+            ? node.name.hi
+            : node.name.en
+          : kind.slice(4);
+      }
+      return t(`ai.kind.${kind}`);
+    },
+    categoryOrder: order,
     folders: AI_FOLDERS,
     items: () => [
       ...briefItems(),
@@ -182,68 +273,47 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
             }),
         };
       }),
-      ...options.library.list().map((entry) => {
-        const id = creatorLibraryId(entry.key);
-        const kind = entry.item.type;
-        const style = entry.item.type === 'style';
-        const source = {
-          id,
-          type: kind,
-          name: entry.name,
-          data: entry.item.data,
-          // B1: a style's card is its palette, category icon and name.
-          url:
-            entry.item.type === 'style'
-              ? styleThumbnail(entry.item.data, entry.name)
-              : (entry.thumbnail ?? null),
-        };
-        const live = kind === 'motion' || kind === 'preset';
-        const card =
-          kind === 'composition'
-            ? (options.planCard?.(id, entry.item.data) ?? null)
-            : null;
-        const status =
-          card?.status ??
-          (kind === 'composition'
-            ? (options.planStatus?.(id, entry.item.data) ?? null)
-            : null);
-        if (card?.poster) source.url = card.poster;
-        return {
-          id,
-          name: entry.name,
-          category: kind,
-          folderId: AI_FOLDERS.folderOf(id),
-          title: `${entry.name} · ${entry.packName.en}`,
-          keywords: [entry.packName.en, kind, ...entry.item.tags],
-          data: { item: id, kind, ...(status ? { planStatus: status } : {}) },
-          ...(status
-            ? {
-                badge:
-                  card && card.scenes > 0 && status !== 'not-built'
-                    ? `${t(`plan.status.${status}`)} · ${t('plan.status.scenes', { count: String(card.scenes) })}`
-                    : t(`plan.status.${status}`),
-              }
-            : {}),
-          // B1: a style is never placed: no drag; "+" uses it.
-          ...(style
-            ? { addLabel: t('style.use') }
-            : {
-                drag: () => ({
-                  kind: 'creator' as const,
-                  id,
-                  name: entry.name,
+      ...options.library
+        .list()
+        .filter((entry) =>
+          creatorPlaces(entry).some((place) => place.category === 'AI'),
+        )
+        .map((entry) => {
+          const { id, kind, source, status, badge } = describe(entry);
+          const style = kind === 'style';
+          const live = kind === 'motion' || kind === 'preset';
+          const sub = aiSub(entry);
+          const group = sub ? `sub:${sub.id}` : kind;
+          if (!order.includes(group)) order.push(group);
+          return {
+            id,
+            name: entry.name,
+            category: group,
+            folderId: AI_FOLDERS.folderOf(id),
+            title: `${entry.name} · ${entry.packName.en}`,
+            keywords: [entry.packName.en, kind, ...entry.item.tags],
+            data: { item: id, kind, ...(status ? { planStatus: status } : {}) },
+            ...(badge ? { badge } : {}),
+            // B1: a style is never placed: no drag; "+" uses it.
+            ...(style
+              ? { addLabel: t('style.use') }
+              : {
+                  drag: () => ({
+                    kind: 'creator' as const,
+                    id,
+                    name: entry.name,
+                  }),
                 }),
-              }),
-          thumb: (slot: HTMLElement) => libraryThumb(slot, source),
-          ...(live
-            ? {
-                preview: (slot: HTMLElement) =>
-                  options.motionPreview?.(id, slot) ??
-                  libraryPreview(slot, source),
-              }
-            : {}),
-        };
-      }),
+            thumb: (slot: HTMLElement) => libraryThumb(slot, source),
+            ...(live
+              ? {
+                  preview: (slot: HTMLElement) =>
+                    options.motionPreview?.(id, slot) ??
+                    libraryPreview(slot, source),
+                }
+              : {}),
+          };
+        }),
     ],
     add,
     rename: options.rename,
@@ -302,6 +372,7 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
   const offFolders = AI_FOLDERS.onChange(() => shelf.render());
   return {
     render: () => shelf.render(),
+    cardFor,
     shelf,
     dispose: () => {
       offLibrary();

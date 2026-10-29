@@ -31,6 +31,13 @@ export const CATALOG_KINDS = [
   'sound',
   'video',
   'image',
+  // FIX7: the other things an AI-made Creator Pack holds. They behave in the
+  // editor exactly like the same items imported into the AI category.
+  'composition',
+  'adjust',
+  'filter',
+  'effect',
+  'xtransition',
 ] as const;
 export type CatalogKind = (typeof CATALOG_KINDS)[number];
 /** Kinds whose payload is a file too large to inline (P1-05). */
@@ -100,6 +107,8 @@ export const catalogEntrySchema = z
     // Owner-controlled fields.
     /** FIX7: where the owner lists it (default: by its kind). */
     place: placeSchema.optional(),
+    /** FIX7: more places it is also listed in (copies). */
+    alsoIn: z.array(placeSchema).max(8).optional(),
     hidden: z.boolean(),
     featured: z.boolean(),
     order: z.number().int(),
@@ -199,6 +208,11 @@ export function categoryOf(
     case 'style':
     case 'motion':
     case 'preset':
+    case 'composition':
+    case 'adjust':
+    case 'filter':
+    case 'effect':
+    case 'xtransition':
       return 'styles';
   }
 }

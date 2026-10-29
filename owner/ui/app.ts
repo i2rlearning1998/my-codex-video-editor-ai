@@ -40,6 +40,9 @@ const STRINGS = {
     removeNodeAsk:
       'Delete this from the library tree? Items inside must be moved first.',
     whereListed: 'Listed under',
+    alsoShown: 'Also shown in (copies)',
+    addCopy: 'Show in another place',
+    removeCopy: 'Remove this copy',
     noneSub: '(no sub-category)',
     noneSection: '(no section)',
     uploadInto: 'Upload into',
@@ -118,6 +121,9 @@ const STRINGS = {
     removeNodeAsk:
       'इसे लाइब्रेरी ट्री से हटाएँ? अंदर के आइटम पहले दूसरी जगह ले जाएँ।',
     whereListed: 'यहाँ दिखता है',
+    alsoShown: 'यहाँ भी दिखे (कॉपी)',
+    addCopy: 'एक और जगह दिखाएँ',
+    removeCopy: 'यह कॉपी हटाएँ',
     noneSub: '(कोई उप-श्रेणी नहीं)',
     noneSection: '(कोई सेक्शन नहीं)',
     uploadInto: 'यहाँ अपलोड करें',
@@ -184,6 +190,7 @@ interface Item {
   thumb: string | null;
   place: { category: string; sub: string | null; section: string | null };
   placed: boolean;
+  alsoIn: { category: string; sub: string | null; section: string | null }[];
 }
 interface TaxSection {
   id: string;
@@ -852,6 +859,31 @@ function itemCard(item: Item, status: HTMLElement, tree: TaxCategory[]) {
     'data-field': 'unpublish-at',
   });
   const where = placePicker(tree, item.place, 'place');
+  // Copies: the same asset listed in more places (a shape under Audio too).
+  const copyRows: ReturnType<typeof placePicker>[] = [];
+  const copyBox = el('div', { class: 'copies' });
+  const addCopyRow = (from: Item['place']) => {
+    const picker = placePicker(tree, from, `copy${copyRows.length}`);
+    copyRows.push(picker);
+    const remove = el(
+      'button',
+      { type: 'button', class: 'danger', 'data-action': 'remove-copy' },
+      t('removeCopy'),
+    );
+    const row = el('div', { class: 'row copy-row' }, picker.node, remove);
+    remove.onclick = () => {
+      copyRows.splice(copyRows.indexOf(picker), 1);
+      row.remove();
+    };
+    copyBox.append(row);
+  };
+  for (const copy of item.alsoIn) addCopyRow(copy);
+  const addCopy = el(
+    'button',
+    { type: 'button', 'data-action': 'add-copy' },
+    t('addCopy'),
+  );
+  addCopy.onclick = () => addCopyRow(where.get());
   const version = el('select', { 'data-field': 'version' });
   for (const v of item.versions) {
     const option = el(
@@ -892,6 +924,7 @@ function itemCard(item: Item, status: HTMLElement, tree: TaxCategory[]) {
         : null,
       current: Number(version.value),
       place: where.get(),
+      alsoIn: copyRows.map((row) => row.get()),
     }).then((r) => done(r.catalogVersion), fail);
   const toggle = el(
     'button',
@@ -964,6 +997,7 @@ function itemCard(item: Item, status: HTMLElement, tree: TaxCategory[]) {
           el('label', {}, t('unpublishAt'), unpublishAt),
         ),
         el('label', {}, t('whereListed'), where.node),
+        el('div', {}, el('strong', {}, t('alsoShown')), copyBox, addCopy),
         el('label', {}, t('version'), version),
         el('div', { class: 'row' }, save, remove),
       ),

@@ -1226,3 +1226,5 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-019 | P1 | W9 | Verified | The owner app's Editor controls tab lists every control per kind of selection with on/off switches; Save publishes them |
 | FIX7-020 | P1 | W9 | Verified | The controls registry names only real right-panel tabs and kinds, and bad settings are ignored |
 | FIX7-021 | P1 | W9 | Verified | Owner additions (sub-categories, placed assets) show under every editor panel: Templates, Media, Audio, Record, AI, My Templates and Theme |
+| FIX7-022 | P1 | W9 | Verified | An AI-made Creator Pack (plans) published in the owner app works wherever the owner places it: the same card with its menu (Review & swap, Build again), movable into any category or new sub-category and copyable to more places; it leaves the AI category when moved |
+| FIX7-023 | P1 | W9 | Verified | The owner app lists an item in more than one place (Also shown in) and moves it by changing its primary place |

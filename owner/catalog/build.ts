@@ -52,6 +52,7 @@ export interface VersionSnapshot {
     readonly publishAt: string | null;
     readonly unpublishAt: string | null;
     readonly place?: Place;
+    readonly alsoIn?: Place[];
   }[];
 }
 
@@ -140,6 +141,7 @@ function entryFor(
         }
       : {}),
     ...(item.place ? { place: item.place } : {}),
+    ...(item.alsoIn?.length ? { alsoIn: item.alsoIn } : {}),
     hidden: item.hidden,
     featured: item.featured,
     order: item.order,
@@ -275,6 +277,7 @@ export function buildCatalog(
       publishAt: item.publishAt,
       unpublishAt: item.unpublishAt,
       ...(item.place ? { place: item.place } : {}),
+      ...(item.alsoIn?.length ? { alsoIn: item.alsoIn } : {}),
     })),
   };
   const versions = path.join(outDir, 'versions');
@@ -314,8 +317,10 @@ export function rollbackCatalog(
       continue;
     }
     delete item.place;
+    delete item.alsoIn;
     Object.assign(item, {
       ...(old.place ? { place: old.place } : {}),
+      ...(old.alsoIn?.length ? { alsoIn: old.alsoIn } : {}),
       current: old.itemVersion,
       published: old.published,
       hidden: old.hidden,

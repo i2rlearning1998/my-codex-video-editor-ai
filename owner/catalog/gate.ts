@@ -14,11 +14,11 @@ import type { MediaProbe } from '../gate/harness';
 import {
   libraryItemCandidate,
   mediaCandidate,
+  recordVersion,
   styleCandidate,
   themeCandidate,
 } from './candidates';
-import { sha256Hex } from './keys';
-import { canonicalJson, type Candidate, type ItemStore } from './store';
+import type { Candidate, ItemStore } from './store';
 import { readZip } from './zip';
 
 export interface GateFile {
@@ -173,6 +173,11 @@ export async function runGate(
   return result;
 }
 
+/** The first reason that is a problem, not a hint (a missing Hindi name). */
+const realReason = (reasons: readonly string[]) =>
+  reasons.find((reason) => !reason.includes('supply a distinct Hindi name')) ??
+  reasons[0];
+
 async function gatePack(
   file: GateFile,
   store: ItemStore,
@@ -201,13 +206,24 @@ async function gatePack(
         file: file.name,
         item: item.id,
         reason: sentence(
-          item.reasons[0] ?? 'The item did not pass the checks.',
+          realReason(item.reasons) ?? 'The item did not pass the checks.',
         ),
       });
   if (!passing.length) return;
-  const runtime = await (
-    await page()
-  ).checkItems(passing.map((item) => item.item!));
+  // A plan (composition) is built by the editor, not rendered by a check:
+  // the offline pack check above is its gate.
+  const toRender = passing.filter((item) => item.item!.type !== 'composition');
+  const rendered = toRender.length
+    ? await (await page()).checkItems(toRender.map((item) => item.item!))
+    : [];
+  const runtime = passing.map((checkedItem) =>
+    checkedItem.item!.type === 'composition'
+      ? ({
+          status: 'ok',
+          reasons: ['A plan is built by the editor when it is used.'],
+        } as RuntimeResult)
+      : rendered[toRender.indexOf(checkedItem)]!,
+  );
   const license = options.license ?? DEFAULT_LICENSE;
   passing.forEach((checkedItem, index) => {
     const item = checkedItem.item!;
@@ -278,7 +294,12 @@ function toCandidate(
     case 'style':
       return styleCandidate(store, item as never, source, license);
     case 'motion':
-    case 'preset': {
+    case 'preset':
+    case 'composition':
+    case 'adjust':
+    case 'filter':
+    case 'effect':
+    case 'transition': {
       const payload = {
         creator: item,
         ...(render.motionMeta ? { motionMeta: render.motionMeta } : {}),
@@ -292,14 +313,15 @@ function toCandidate(
         : undefined;
       return {
         id: item.id,
-        kind: item.type,
+        // The Creator Pack "transition" is the catalog's `xtransition`
+        // (the library's own `transition` is a different thing).
+        kind: item.type === 'transition' ? 'xtransition' : item.type,
         category: 'styles',
         name,
         tags: item.tags,
         license,
         version: {
-          contentHash: sha256Hex(canonicalJson(payload)),
-          inline: payload,
+          ...recordVersion(store, payload),
           ...(thumb ? { thumb } : {}),
           blur:
             render.thumbnail && render.thumbnail.length < 1600
@@ -313,7 +335,7 @@ function toCandidate(
       };
     }
     default:
-      return `Not supported yet: ${item.type} items cannot go into the shared library.`;
+      return 'This kind of item cannot go into the shared library yet.';
   }
 }
 

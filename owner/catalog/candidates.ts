@@ -28,7 +28,7 @@ const svgFile = (store: ItemStore, svg: string) =>
   store.putFile(Buffer.from(svg, 'utf8'), 'svg', 'image/svg+xml');
 
 /** A small record, inlined when under 8 KB, else a payload file (P1-05). */
-function recordVersion(store: ItemStore, record: unknown) {
+export function recordVersion(store: ItemStore, record: unknown) {
   const text = canonicalJson(record);
   const contentHash = sha256Hex(text);
   if (Buffer.byteLength(text) < INLINE_LIMIT)

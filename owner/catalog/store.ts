@@ -65,6 +65,8 @@ export interface StoredItem {
   unpublishAt: string | null;
   /** FIX7: where the owner lists it (absent: by its kind). */
   place?: Place;
+  /** FIX7: copies: more places it is also listed in. */
+  alsoIn?: Place[];
 }
 export interface StoreData {
   version: 1;

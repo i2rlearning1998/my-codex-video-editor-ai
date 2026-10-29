@@ -16,6 +16,8 @@ import {
   BUILTIN_TAXONOMY,
   defaultPlace,
   mergeTaxonomy,
+  placesOf,
+  type Place,
   type TaxSection,
   type TaxSub,
 } from '../library-client/taxonomy';
@@ -352,6 +354,9 @@ export function mountLibraryPanels(
     table?: () => void;
     /** FINAL2 U2: stock search (Photos, Videos, Icons, Stickers, Audio). */
     stock?: StockDeps;
+    /** FIX7: AI-pack items (plans, styles, effects …) as cards, with the
+     *  places the owner lists them in. They work as in the AI category. */
+    creatorCards?: () => readonly { place: Place; card: BrowseCard }[];
     /** P2: Creator Pack items in My library (badged, with their menu). */
     creator?: {
       library: CreatorLibrary;
@@ -403,17 +408,42 @@ export function mountLibraryPanels(
   // FIX7: the owner's tree (built-in plus theirs) and where each asset is
   // listed: its own placement, else the panel that shows its kind.
   const tree = () => mergeTaxonomy(libraryClient().config());
-  const placeOf = (item: LibraryItem) =>
-    item.place ?? defaultPlace(item.type, item.section);
+  /** Every place an item is listed: its own and its copies. */
+  const placesFor = (item: LibraryItem) =>
+    placesOf(item.type, item.section, item.place, item.alsoIn);
   const at = (category: string, sub: string, section?: string) =>
-    items.filter((item) => {
-      const place = placeOf(item);
-      return (
+    items.filter((item) =>
+      placesFor(item).some(
+        (place) =>
+          place.category === category &&
+          place.sub === sub &&
+          (section === undefined || place.section === section),
+      ),
+    );
+  /** AI-pack cards the owner lists here (the AI panel shows its own). */
+  const foreign = (test: (place: Place) => boolean) => {
+    const seen = new Set<string>();
+    return (options.creatorCards?.() ?? [])
+      .filter(
+        ({ place, card }) =>
+          place.category !== 'AI' &&
+          test(place) &&
+          !seen.has(card.id) &&
+          !!seen.add(card.id),
+      )
+      .map(({ card }) => card);
+  };
+  /** The cards listed under a sub-category (and section): library items
+   *  of any kind plus AI-pack cards. */
+  const cardsAt = (category: string, sub: string, section?: string) => [
+    ...at(category, sub, section).map(libraryCard),
+    ...foreign(
+      (place) =>
         place.category === category &&
         place.sub === sub &&
-        (section === undefined || place.section === section)
-      );
-    });
+        (section === undefined || place.section === section),
+    ),
+  ];
   const subOf = (category: string, sub: string) =>
     tree()
       .find((c) => c.id === category)
@@ -712,7 +742,7 @@ export function mountLibraryPanels(
     return item ? libraryCard(item) : undefined;
   };
   const shapeCards = (section: string) =>
-    at('Elements', 'shapes', section).map(libraryCard);
+    cardsAt('Elements', 'shapes', section);
   const shapesPage = (): BrowsePage => ({
     id: 'elements-shapes',
     title: t('elements.shapes'),
@@ -843,7 +873,7 @@ export function mountLibraryPanels(
               'graphics',
             ),
             layout: 'grid',
-            cards: () => at('Elements', 'graphics', node.id).map(libraryCard),
+            cards: () => cardsAt('Elements', 'graphics', node.id),
           })),
       ];
     },
@@ -855,11 +885,13 @@ export function mountLibraryPanels(
     search: t('elements.search'),
     status: () => status,
     sections: ({ query }) => {
-      if (query)
-        return searchResults(at(category, node.id).map(libraryCard), query);
+      if (query) return searchResults(cardsAt(category, node.id), query);
       const sections = node.sections.filter((item) => !item.hidden);
-      const loose = at(category, node.id).filter(
-        (item) => !sections.some((x) => x.id === placeOf(item).section),
+      const loose = cardsAt(category, node.id).filter(
+        (card) =>
+          !sections.some((x) =>
+            cardsAt(category, node.id, x.id).some((c) => c.id === card.id),
+          ),
       );
       return [
         ...sections.map((item): BrowseSection => ({
@@ -873,7 +905,7 @@ export function mountLibraryPanels(
           id: 'all',
           layout: 'grid',
           columns: 3,
-          cards: () => loose.map(libraryCard),
+          cards: () => loose,
         },
       ];
     },
@@ -1042,7 +1074,7 @@ export function mountLibraryPanels(
         : [...english, ...hindi]),
     ];
   };
-  const textCards = (section: string) => at('Text', section).map(libraryCard);
+  const textCards = (section: string) => cardsAt('Text', section);
   const textRoot: BrowsePage = {
     id: 'text',
     title: t('library.text'),
@@ -1179,13 +1211,7 @@ export function mountLibraryPanels(
       search: t('elements.search'),
       status: () => status,
       sections: ({ query }) => {
-        if (query)
-          return searchResults(
-            items
-              .filter((item) => placeOf(item).category === category)
-              .map(libraryCard),
-            query,
-          );
+        if (query) return searchResults(categoryCards(category), query);
         const subs = (cat()?.subs ?? []).filter((node) => !node.hidden);
         return [
           {
@@ -1203,13 +1229,7 @@ export function mountLibraryPanels(
             id: 'loose',
             layout: 'grid',
             columns: 3,
-            cards: () =>
-              items
-                .filter((item) => {
-                  const place = placeOf(item);
-                  return place.category === category && !place.sub;
-                })
-                .map(libraryCard),
+            cards: () => categoryCards(category, (place) => !place.sub),
           },
         ];
       },
@@ -1231,18 +1251,46 @@ export function mountLibraryPanels(
           (x) => x.id === node.id,
         ),
     );
-  const extraLoose = (category: string) =>
-    items.filter((item) => {
-      const place = item.place;
-      if (!place || place.category !== category) return false;
-      const own = defaultPlace(item.type, item.section);
-      const sub = place.sub ? subOf(category, place.sub) : undefined;
-      return (
-        !place.sub ||
-        !sub ||
-        !(own.category === category && own.sub === place.sub)
-      );
-    });
+  /** Everything listed under a category (optionally only some places). */
+  const categoryCards = (
+    category: string,
+    test: (place: Place) => boolean = () => true,
+  ) => [
+    ...items
+      .filter((item) =>
+        placesFor(item).some(
+          (place) => place.category === category && test(place),
+        ),
+      )
+      .map(libraryCard),
+    ...foreign((place) => place.category === category && test(place)),
+  ];
+  /** What the owner put into an editor category that its own panel does
+   *  not draw: another kind of asset, or a card from an AI pack. */
+  const extraLoose = (category: string) => {
+    const own = new Set(extraSubs(category).map((node) => node.id));
+    const natural = (item: LibraryItem) => {
+      const home = defaultPlace(item.type, item.section);
+      return home.category === category && !item.place && !item.alsoIn;
+    };
+    return [
+      ...items
+        .filter(
+          (item) =>
+            !natural(item) &&
+            placesFor(item).some(
+              (place) =>
+                place.category === category &&
+                !(place.sub && own.has(place.sub)),
+            ),
+        )
+        .map(libraryCard),
+      ...foreign(
+        (place) =>
+          place.category === category && !(place.sub && own.has(place.sub)),
+      ),
+    ];
+  };
   const extrasRoot = (category: string): BrowsePage => ({
     id: `extras-${category}`,
     title: t('library.extras'),
@@ -1264,7 +1312,7 @@ export function mountLibraryPanels(
         id: 'loose',
         layout: 'grid',
         columns: 3,
-        cards: () => extraLoose(category).map(libraryCard),
+        cards: () => extraLoose(category),
         empty: null,
       },
     ],

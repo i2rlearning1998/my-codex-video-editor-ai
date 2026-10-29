@@ -846,6 +846,78 @@ test('[FIX7-018] what the owner switches off for a kind of selection disappears 
   ).toHaveCount(1);
 });
 
+test('[FIX7-022][FIX7-023] an AI-made pack the owner publishes works wherever it is placed: a plan card moved into a new Templates sub-category and copied to Audio opens its card menu (Review & swap, Build again) and builds, and it leaves the AI category', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const packs = path.join(stack.root, 'packs');
+  mkdirSync(packs, { recursive: true });
+  copyFileSync(
+    'examples/creator-packs/composition.json',
+    path.join(packs, 'plan.json'),
+  );
+  const out = cli('publish', packs);
+  if (!/Published/.test(out)) throw new Error(out);
+  const itemsFile = path.join(stack.env.LIBRARY_DATA_DIR!, 'items.json');
+  const data = JSON.parse(readFileSync(itemsFile, 'utf8')) as {
+    items: { id: string; kind: string; place?: unknown; alsoIn?: unknown }[];
+    config: { categories: { id: string; subs: unknown[] }[] };
+  };
+  const plan = data.items.find((item) => item.kind === 'composition')!;
+  expect(plan, out).toBeTruthy();
+  data.config ??= {
+    format: 'aive-config',
+    version: 1,
+    controls: {},
+    categories: [],
+  } as never;
+  data.config.categories.push({
+    id: 'Templates',
+    name: { en: 'Templates', hi: 'टेम्पलेट' },
+    icon: 'templates',
+    hidden: false,
+    order: 0,
+    subs: [
+      {
+        id: 'documentary',
+        name: { en: 'Documentary', hi: 'डॉक्यूमेंट्री' },
+        hidden: false,
+        order: 0,
+        sections: [],
+      },
+    ],
+  } as never);
+  plan.place = { category: 'Templates', sub: 'documentary', section: null };
+  plan.alsoIn = [{ category: 'Audio', sub: null, section: null }];
+  writeFileSync(itemsFile, JSON.stringify(data));
+  cli('build');
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  const cardId = `catalog--${plan.id}`;
+  await showCategory(page, 'Templates');
+  const templates = page.locator('#library-extras-Templates');
+  await templates.locator('[data-tile="Templates-documentary"]').click();
+  const card = templates.locator(`[data-item-id="${cardId}"]`);
+  await expect(card).toBeVisible();
+  await page.screenshot({ path: 'reports/fix7-ai-card-in-templates.png' });
+  await card.click({ button: 'right' });
+  await expect(page.locator('[data-action="ai-review"]')).toBeVisible();
+  await expect(page.locator('[data-action="ai-rebuild"]')).toBeVisible();
+  await page.keyboard.press('Escape');
+  // The copy under Audio.
+  await showCategory(page, 'Audio');
+  await expect(
+    page.locator(`#library-extras-Audio [data-item-id="${cardId}"]`),
+  ).toBeVisible();
+  // It left the AI category.
+  await showCategory(page, 'AI');
+  await expect(page.locator(`#library-ai [data-item="${cardId}"]`)).toHaveCount(
+    0,
+  );
+});
+
 test('[LIB-027][LIB-008] a rollback in the catalog never changes a project that already uses an item', async ({
   page,
 }) => {

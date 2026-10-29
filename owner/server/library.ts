@@ -72,6 +72,7 @@ export interface ItemView {
   /** FIX7: where the editor lists it (the owner's choice or its kind's). */
   readonly place: Place;
   readonly placed: boolean;
+  readonly alsoIn: Place[];
   /** The owner app's own URL of the thumbnail (owner data, not the CDN). */
   readonly thumb: string | null;
 }
@@ -85,6 +86,12 @@ const placeOf = (item: StoredItem): Place => {
     typeof record?.section === 'string' ? record.section : undefined,
   );
 };
+
+/** Every place an item is listed in: its own and its copies. */
+const placesOfItem = (item: StoredItem): Place[] => [
+  placeOf(item),
+  ...(item.alsoIn ?? []),
+];
 
 const view = (item: StoredItem): ItemView => {
   const version = item.versions.find((v) => v.itemVersion === item.current);
@@ -110,6 +117,7 @@ const view = (item: StoredItem): ItemView => {
     unpublishAt: item.unpublishAt,
     place: placeOf(item),
     placed: !!item.place,
+    alsoIn: item.alsoIn ?? [],
     thumb: version?.thumb
       ? `/api/file/${version.thumb.sha256}.${version.thumb.ext}`
       : null,
@@ -143,9 +151,12 @@ export class OwnerLibrary {
     return this.store()
       .data.items.filter(
         (item) =>
-          (!filter.category || placeOf(item).category === filter.category) &&
-          (!filter.sub || placeOf(item).sub === filter.sub) &&
-          (!filter.section || placeOf(item).section === filter.section) &&
+          placesOfItem(item).some(
+            (place) =>
+              (!filter.category || place.category === filter.category) &&
+              (!filter.sub || place.sub === filter.sub) &&
+              (!filter.section || place.section === filter.section),
+          ) &&
           (!q ||
             item.id.includes(q) ||
             item.name.en.toLowerCase().includes(q) ||
@@ -172,7 +183,7 @@ export class OwnerLibrary {
   } {
     const store = this.store();
     const config = store.data.config ?? emptyConfig();
-    const places = store.data.items.map(placeOf);
+    const places = store.data.items.flatMap(placesOfItem);
     const count = (test: (place: Place) => boolean) =>
       places.filter(test).length;
     const tree = mergeTaxonomy(config).map((cat) => ({
@@ -217,8 +228,8 @@ export class OwnerLibrary {
       return !place.section || sub.sections.some((x) => x.id === place.section);
     };
     for (const item of store.data.items) {
-      const place = placeOf(item);
-      if (!has(place))
+      const gone = placesOfItem(item).find((place) => !has(place));
+      if (gone)
         throw new Error(
           `"${item.name.en}" is still listed in something you removed. Move it first.`,
         );
@@ -341,6 +352,7 @@ export class OwnerLibrary {
       published: boolean;
       current: number;
       place: Place | null;
+      alsoIn: Place[];
     }>,
   ): { item: ItemView; build: BuildResult } {
     const store = this.store();
@@ -383,28 +395,40 @@ export class OwnerLibrary {
           throw new Error('The schedule time is not a date.');
         item[key] = value === null ? null : new Date(value).toISOString();
       }
+    const tree = mergeTaxonomy(store.data.config ?? null);
+    const checked = (given: Place): Place => {
+      const cat = tree.find((c) => c.id === given.category);
+      const sub = given.sub
+        ? cat?.subs.find((x) => x.id === given.sub)
+        : undefined;
+      if (!cat) throw new Error('That category does not exist.');
+      if (given.sub && !sub)
+        throw new Error('That sub-category does not exist.');
+      if (given.section && !sub?.sections.some((x) => x.id === given.section))
+        throw new Error('That section does not exist.');
+      return {
+        category: given.category,
+        sub: given.sub ?? null,
+        section: given.section ?? null,
+      };
+    };
     if (change.place !== undefined) {
       if (change.place === null) delete item.place;
-      else {
-        const tree = mergeTaxonomy(store.data.config ?? null);
-        const cat = tree.find((c) => c.id === change.place!.category);
-        const sub = change.place.sub
-          ? cat?.subs.find((x) => x.id === change.place!.sub)
-          : undefined;
-        if (!cat) throw new Error('That category does not exist.');
-        if (change.place.sub && !sub)
-          throw new Error('That sub-category does not exist.');
-        if (
-          change.place.section &&
-          !sub?.sections.some((x) => x.id === change.place!.section)
-        )
-          throw new Error('That section does not exist.');
-        item.place = {
-          category: change.place.category,
-          sub: change.place.sub ?? null,
-          section: change.place.section ?? null,
-        };
+      else item.place = checked(change.place);
+    }
+    if (change.alsoIn !== undefined) {
+      const own = placeOf(item);
+      const seen = new Set([JSON.stringify(own)]);
+      const copies: Place[] = [];
+      for (const given of change.alsoIn.slice(0, 8)) {
+        const place = checked(given);
+        const key = JSON.stringify(place);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        copies.push(place);
       }
+      if (copies.length) item.alsoIn = copies;
+      else delete item.alsoIn;
     }
     if (change.current !== undefined) {
       if (!item.versions.some((v) => v.itemVersion === change.current))

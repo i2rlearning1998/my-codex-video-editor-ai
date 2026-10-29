@@ -55,13 +55,7 @@ const imageOf = (url: string) => {
   return image;
 };
 
-/** Fills a card's thumbnail slot with a 16:9 picture. */
-export function libraryThumb(slot: HTMLElement, source: ThumbSource): void {
-  slot.dataset.thumb = source.url ? 'image' : 'placeholder';
-  if (source.url) {
-    slot.replaceChildren(imageOf(source.url));
-    return;
-  }
+function serviceUrl(source: ThumbSource): Promise<string | null> {
   let url = urls.get(keyOf(source));
   if (!url) {
     url = getThumbnail(
@@ -78,6 +72,21 @@ export function libraryThumb(slot: HTMLElement, source: ThumbSource): void {
     );
     urls.set(keyOf(source), url);
   }
+  return url;
+}
+/** A card's picture as a URL (its own, else the thumbnail service's). */
+export function libraryThumbUrl(source: ThumbSource): Promise<string | null> {
+  return source.url ? Promise.resolve(source.url) : serviceUrl(source);
+}
+
+/** Fills a card's thumbnail slot with a 16:9 picture. */
+export function libraryThumb(slot: HTMLElement, source: ThumbSource): void {
+  slot.dataset.thumb = source.url ? 'image' : 'placeholder';
+  if (source.url) {
+    slot.replaceChildren(imageOf(source.url));
+    return;
+  }
+  const url = serviceUrl(source);
   void url.then((found) => {
     if (!found || !slot.isConnected) return;
     slot.dataset.thumb = 'service';

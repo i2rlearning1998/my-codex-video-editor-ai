@@ -157,15 +157,13 @@ export const BUILTIN_TAXONOMY: readonly TaxCategory[] = [
   ]),
   category('AI', 'AI', 'एआई', 'sparkle', [
     sub('styles', 'Styles', 'स्टाइल'),
-    sub('templates', 'AI templates', 'एआई टेम्पलेट'),
+    sub('plans', 'AI videos', 'एआई वीडियो'),
+    sub('motion', 'Motion and presets', 'मोशन और प्रीसेट'),
+    sub('effects', 'Effects and filters', 'इफ़ेक्ट और फ़िल्टर'),
   ]),
   category('Record', 'Record', 'रिकॉर्ड', 'record', []),
   category('MyTemplates', 'My Templates', 'मेरे टेम्पलेट', 'templates', []),
-  category('Theme', 'Theme', 'थीम', 'color', [
-    sub('themes', 'Themes', 'थीम'),
-    sub('styles', 'Styles', 'स्टाइल'),
-    sub('motion', 'Motion and presets', 'मोशन और प्रीसेट'),
-  ]),
+  category('Theme', 'Theme', 'थीम', 'color', [sub('themes', 'Themes', 'थीम')]),
 ];
 
 /**
@@ -211,6 +209,16 @@ export function mergeTaxonomy(config: CatalogConfig | null): TaxCategory[] {
       sections: byOrder(s.sections),
     })),
   }));
+}
+
+/** Every place an item is listed: its own (or its kind's) and its copies. */
+export function placesOf(
+  kind: string,
+  section: string | undefined,
+  place: Place | undefined,
+  alsoIn: readonly Place[] | undefined,
+): Place[] {
+  return [place ?? defaultPlace(kind, section), ...(alsoIn ?? [])];
 }
 
 /** Whether an id names one of the editor's own categories. */
@@ -267,10 +275,17 @@ export function defaultPlace(kind: string, section: string | undefined): Place {
     case 'theme':
       return { category: 'Theme', sub: 'themes', section: null };
     case 'style':
-      return { category: 'Theme', sub: 'styles', section: null };
+      return { category: 'AI', sub: 'styles', section: null };
+    case 'composition':
+      return { category: 'AI', sub: 'plans', section: null };
     case 'motion':
     case 'preset':
-      return { category: 'Theme', sub: 'motion', section: null };
+      return { category: 'AI', sub: 'motion', section: null };
+    case 'adjust':
+    case 'filter':
+    case 'effect':
+    case 'xtransition':
+      return { category: 'AI', sub: 'effects', section: null };
     default:
       return { category: 'Elements', sub: null, section: null };
   }

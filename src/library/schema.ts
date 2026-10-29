@@ -95,6 +95,7 @@ const base = {
   section: slug.optional(),
   /** FIX7: where the owner lists it (set by the catalog, not the payload). */
   place: placeSchema.optional(),
+  alsoIn: z.array(placeSchema).max(8).optional(),
 };
 const shapeItem = z
   .object({

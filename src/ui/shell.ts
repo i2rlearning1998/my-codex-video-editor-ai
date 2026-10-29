@@ -230,6 +230,8 @@ import { AnimatedInEditorError } from './editor-mode';
 import { escapeTopPopover } from './components/popover';
 import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
+import { creatorPlaces } from './placement';
+import type { BrowseCard } from './browse-panel';
 import { mergeTaxonomy } from '../library-client/taxonomy';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
@@ -2741,7 +2743,10 @@ export function mountEditorShell(
     ) ??
     null;
   /** FINAL3 V2: Build video for a Video Plan v2 (no slot dialog). */
-  let aiPanel: { render(): void } | null = null;
+  let aiPanel: {
+    render(): void;
+    cardFor(entry: CreatorEntry): BrowseCard;
+  } | null = null;
   const openPlanBuildFor = (
     input: VideoPlan,
     keep?: () => Promise<unknown>,
@@ -4343,6 +4348,8 @@ export function mountEditorShell(
     });
   aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    // FIX7: the ⋯ menu of an AI card listed in another category.
+    menu: (id, x, y) => aiCardMenu(id, x, y),
     // FINAL3 V3.5: a plan's status, and the starter kit.
     planStatus: (_id, data) => {
       // FIX3 4.6: a composition built with Build video (not a plan).
@@ -4844,31 +4851,42 @@ export function mountEditorShell(
       ),
     );
     creatorLibrary.setBuiltIn(
-      styles.flatMap(({ entry, payload }): CreatorEntry[] =>
-        entry.kind === 'style' ||
-        entry.kind === 'motion' ||
-        entry.kind === 'preset'
-          ? [
-              {
-                key: `catalog/${entry.id}`,
-                packId: 'catalog',
-                packName: { en: 'Library', hi: 'लाइब्रेरी' },
-                packVersion: entry.itemVersion,
-                item: payload as CreatorEntry['item'],
-                name: entry.name[getLanguage()] || entry.name.en,
-                addedAt: entry.publishAt ?? '2026-10-26T00:00:00.000Z',
-                ...(entry.kind === 'motion' &&
-                (payload as { meta?: unknown }).meta
-                  ? {
-                      motionMeta: (
-                        payload as { meta: CreatorEntry['motionMeta'] }
-                      ).meta!,
-                    }
-                  : {}),
-              },
-            ]
-          : [],
-      ),
+      styles.flatMap(({ entry, payload }): CreatorEntry[] => {
+        if (
+          ![
+            'style',
+            'motion',
+            'preset',
+            'composition',
+            'adjust',
+            'filter',
+            'effect',
+            'xtransition',
+          ].includes(entry.kind)
+        )
+          return [];
+        // A pack item the owner published is wrapped ({ creator, motionMeta });
+        // the older styles are the item itself.
+        const wrapped = payload as {
+          creator?: CreatorEntry['item'];
+          motionMeta?: CreatorEntry['motionMeta'];
+          meta?: CreatorEntry['motionMeta'];
+        };
+        const item = (wrapped.creator ?? payload) as CreatorEntry['item'];
+        const meta = wrapped.motionMeta ?? wrapped.meta;
+        return [
+          {
+            key: `catalog/${entry.id}`,
+            packId: 'catalog',
+            packName: { en: 'Library', hi: 'लाइब्रेरी' },
+            packVersion: entry.itemVersion,
+            item,
+            name: entry.name[getLanguage()] || entry.name.en,
+            addedAt: entry.publishAt ?? '2026-10-26T00:00:00.000Z',
+            ...(entry.kind === 'motion' && meta ? { motionMeta: meta } : {}),
+          },
+        ];
+      }),
     );
     void refreshThemes();
   };
@@ -5075,6 +5093,54 @@ export function mountEditorShell(
     },
   };
   mountThemePanel(element('#library-theme'), themeOptions);
+  /** The ⋯ menu of an AI-pack card in any category: the same actions as in
+   *  the AI category (use it, Review & swap, Build again). */
+  const aiCardMenu = (id: string, x: number, y: number) => {
+    const entry = creatorEntryOf(id);
+    if (!entry) return;
+    const plan = entry.item.type === 'composition';
+    codeMenu.open(() => [
+      {
+        id: 'ai-insert',
+        label:
+          entry.item.type === 'style'
+            ? t('style.use')
+            : t('code.templateInsert'),
+        icon: 'plus',
+        run: () =>
+          entry.item.type === 'style'
+            ? openNewVideo(id)
+            : insertCreatorItem(id),
+      },
+      ...(plan
+        ? [
+            {
+              id: 'ai-review',
+              label: t('plan.reviewMedia'),
+              icon: 'replace',
+              run: () => {
+                const title = isPlanV2(entry.item.data)
+                  ? (entry.item.data as unknown as VideoPlan).meta.title
+                  : undefined;
+                if (title !== undefined && planState(engine.state.id, title))
+                  openPlanReview(title);
+                else showToast(t('plan.reviewEmpty'), 'info');
+              },
+            },
+            {
+              id: 'ai-rebuild',
+              label: t('plan.rebuild'),
+              icon: 'duplicate',
+              run: () => insertCreatorItem(id),
+            },
+          ]
+        : []),
+    ]);
+    const width = codeMenuElement.offsetWidth,
+      height = codeMenuElement.offsetHeight;
+    codeMenuElement.style.left = `${Math.max(8, Math.min(x, window.innerWidth - width - 8))}px`;
+    codeMenuElement.style.top = `${Math.max(8, Math.min(y, window.innerHeight - height - 8))}px`;
+  };
   const creatorMenu = (id: string, x: number, y: number) => {
     const entry = creatorEntryOf(id);
     if (!entry) return;
@@ -5307,6 +5373,16 @@ export function mountEditorShell(
         importFile: () => codeTemplateInput.click(),
       },
       creator: { library: creatorLibrary, menu: creatorMenu },
+      creatorCards: () =>
+        creatorLibrary
+          .list()
+          .filter((entry) => entry.packId === 'catalog')
+          .flatMap((entry) =>
+            creatorPlaces(entry).map((place) => ({
+              place,
+              card: aiPanel!.cardFor(entry),
+            })),
+          ),
       // FINAL2 U6: Elements › Tables inserts a table at the playhead.
       table: () =>
         openTablePicker((rows, columns) =>

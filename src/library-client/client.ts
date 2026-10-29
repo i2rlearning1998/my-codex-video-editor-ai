@@ -18,6 +18,7 @@ import type { CacheStore } from './cache';
 import {
   CATALOG_CATEGORIES,
   categoryIndexSchema,
+  categoryOf,
   isListed,
   orderEntries,
   type CatalogCategory,
@@ -343,7 +344,11 @@ export class LibraryClient {
       for (const entry of this.entries(category)) {
         const record = this.#record(entry);
         if (record)
-          items.push(entry.place ? { ...record, place: entry.place } : record);
+          items.push({
+            ...record,
+            ...(entry.place ? { place: entry.place } : {}),
+            ...(entry.alsoIn ? { alsoIn: entry.alsoIn } : {}),
+          });
       }
     return {
       version: 1,
@@ -354,6 +359,8 @@ export class LibraryClient {
     };
   }
   #records = new Map<string, LibraryItem | null>();
+  /** Payload files of the styles category, read as JSON once they arrive. */
+  #loaded = new Map<string, unknown>();
   /** A library record from an inline payload (validated once). */
   #record(entry: CatalogEntry): LibraryItem | null {
     const key = `${entry.id}@${entry.itemVersion}`;
@@ -368,11 +375,13 @@ export class LibraryClient {
   payloads(
     category: CatalogCategory,
   ): { entry: CatalogEntry; payload: unknown }[] {
-    return this.entries(category).flatMap((entry) =>
-      'inline' in entry.payload
-        ? [{ entry, payload: entry.payload.inline }]
-        : [],
-    );
+    return this.entries(category).flatMap((entry) => {
+      if ('inline' in entry.payload)
+        return [{ entry, payload: entry.payload.inline }];
+      // A larger payload (an AI video plan) once its file has arrived.
+      const loaded = this.#loaded.get(`${entry.id}@${entry.itemVersion}`);
+      return loaded === undefined ? [] : [{ entry, payload: loaded }];
+    });
   }
   url(path: string): string {
     return this.#href(path);
@@ -451,9 +460,18 @@ export class LibraryClient {
       for (let entry = queue.shift(); entry; entry = queue.shift()) {
         if (!('file' in entry.payload)) continue;
         const key = `${entry.id}@${entry.itemVersion}`;
-        if (this.#records.get(key)) continue;
+        if (this.#records.get(key) || this.#loaded.has(key)) continue;
         const blob = await this.file(entry.payload.file).catch(() => null);
         if (!blob) continue;
+        if (categoryOf(entry.kind) === 'styles') {
+          try {
+            this.#loaded.set(key, JSON.parse(await blob.text()) as unknown);
+            sinceEmit++;
+          } catch {
+            /* A broken payload stays unlisted. */
+          }
+          continue;
+        }
         const parsed = libraryItemSchema.safeParse(
           JSON.parse(await blob.text()) as unknown,
         );
