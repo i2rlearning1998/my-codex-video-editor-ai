@@ -1199,6 +1199,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-006 | P0 | W9 | Verified | Saving an object in a format that does not fit (a shape as Text) explains it, recommends the right format and still saves when the person insists |
 | FIX7-007 | P1 | W9 | Verified | Text styles are saved to My Templates (Text); the Text panel no longer has My text styles |
 | FIX7-008 | P0 | W9 | Verified | A table is born inside the canvas with type that fits its columns, its box covers every row, and the toolbar adds and removes rows and columns |
+| FIX7-009 | P0 | W9 | Verified | Left panel sections never shrink into each other (Audio tabs, Scene) at 1366 and 1024 px; rail labels break only between words |
 | FIX6-009 | P0 | W9 | Verified | A scene that was already checked is not checked again, so editing a project with many scenes stays fast |
 | FIX6-010 | P0 | W9 | Verified | The left rail is read from an editor layout (categories, order, icons); an invalid layout gives the default |
 | FIX6-011 | P1 | W9 | Verified | Every disabled planned control reads Coming soon; no duplicate disabled tiles in Text |

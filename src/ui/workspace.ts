@@ -46,9 +46,9 @@ const SIZES: Record<
   // T-ALL P4: +52 px for the frame row under the lanes (D-186).
   // V1 (spec 1.5): the right panel is 300 px.
   wide: { rail: 64, left: 320, right: 300, timeline: 332 },
-  medium: { rail: 56, left: 280, right: 280, timeline: 272 },
-  narrow: { rail: 56, left: 300, right: 300, timeline: 252 },
-  phone: { rail: 56, left: 0, right: 0, timeline: 180 },
+  medium: { rail: 64, left: 280, right: 280, timeline: 272 },
+  narrow: { rail: 64, left: 300, right: 300, timeline: 252 },
+  phone: { rail: 64, left: 0, right: 0, timeline: 180 },
 };
 /**
  * S1 Part 2: from 1800 px wide every left panel is 380 px, so the library

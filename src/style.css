@@ -11531,3 +11531,21 @@ body:has(.modal-backdrop) .toast-stack {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* FIX7: the sections of a left panel never shrink into each other (the
+   Audio tabs were squeezed to a sliver under the first list; Scene and the
+   others overlapped at some widths). The panel scrolls instead. */
+.library [id^='library-'] > * {
+  flex-shrink: 0;
+}
+/* FIX7: a rail label breaks only between words ("Templat/es" never). */
+.icon-rail-label {
+  overflow-wrap: normal;
+  word-break: keep-all;
+  hyphens: none;
+  font-size: 10px;
+  letter-spacing: -0.03em;
+}
+.icon-rail:not(.icon-rail-right) button {
+  padding-inline: 1px;
+}
