@@ -1,6 +1,6 @@
 {
-  "$comment": "Local Whisper files. sizeBytes and sha256 stay null until the owner runs `npm run models:pin` (docs/SPEECH-API.md, Offline captions setup); until then downloads are checked by size only once known. approxBytes is the published size, shown before the first download.",
-  "active": "tiny",
+  "$comment": "Local Whisper files. Every variant is a MULTILINGUAL model (never the .en ones), so Hindi works. `active` is the default; the owner can switch it from the Admin app (signed config controls.captions.whisperModel). tiny ~41 MB is the quick draft, base ~80 MB a middle step, small ~250 MB is the one that understands Hindi well. sizeBytes and sha256 stay null until the owner runs `npm run models:pin`; approxBytes is the published size shown before the first download.",
+  "active": "small",
   "revision": "main",
   "license": "MIT (OpenAI Whisper); Apache-2.0 (ONNX conversion)",
   "variants": {
@@ -8,15 +8,31 @@
       "model": "Xenova/whisper-tiny",
       "approxBytes": 41000000,
       "files": [
-        { "path": "config.json", "sizeBytes": null, "sha256": null },
-        { "path": "generation_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
         {
           "path": "preprocessor_config.json",
           "sizeBytes": null,
           "sha256": null
         },
-        { "path": "tokenizer.json", "sizeBytes": null, "sha256": null },
-        { "path": "tokenizer_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "tokenizer.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
         {
           "path": "onnx/encoder_model_quantized.onnx",
           "sizeBytes": null,
@@ -33,15 +49,72 @@
       "model": "Xenova/whisper-base",
       "approxBytes": 80000000,
       "files": [
-        { "path": "config.json", "sizeBytes": null, "sha256": null },
-        { "path": "generation_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
         {
           "path": "preprocessor_config.json",
           "sizeBytes": null,
           "sha256": null
         },
-        { "path": "tokenizer.json", "sizeBytes": null, "sha256": null },
-        { "path": "tokenizer_config.json", "sizeBytes": null, "sha256": null },
+        {
+          "path": "tokenizer.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "onnx/encoder_model_quantized.onnx",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "onnx/decoder_model_merged_quantized.onnx",
+          "sizeBytes": null,
+          "sha256": null
+        }
+      ]
+    },
+    "small": {
+      "model": "Xenova/whisper-small",
+      "approxBytes": 250000000,
+      "files": [
+        {
+          "path": "config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "generation_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "preprocessor_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
+        {
+          "path": "tokenizer_config.json",
+          "sizeBytes": null,
+          "sha256": null
+        },
         {
           "path": "onnx/encoder_model_quantized.onnx",
           "sizeBytes": null,

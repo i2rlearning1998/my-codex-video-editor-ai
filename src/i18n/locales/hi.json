@@ -2313,6 +2313,7 @@
   "voiceover.error.keyOrQuota": "The voice service refused (error 403): check the key, or your free quota may be used up.",
   "captions.step.start": "Getting ready…",
   "captions.step.download": "Downloading model {done} / {total} MB",
+  "captions.step.model": "बोली पहचानने का मॉडल तैयार हो रहा है (सिर्फ़ पहली बार) {percent}%",
   "captions.step.load.library": "स्पीच इंजन लोड हो रहा है…",
   "captions.step.load.pipeline": "मॉडल तैयार हो रहा है…",
   "captions.step.load.ready": "मॉडल तैयार…",

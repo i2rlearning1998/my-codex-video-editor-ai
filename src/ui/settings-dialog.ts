@@ -48,7 +48,8 @@ export type SettingsTab = 'general' | 'appearance' | 'keys' | 'offline';
 // FIX7: the editor never asks for third-party keys; that tab is Developer mode.
 const TABS: SettingsTab[] = developerMode()
   ? ['general', 'appearance', 'keys', 'offline']
-  : ['general', 'appearance', 'offline'];
+  : // FIX9: engines, keys and the offline model are the owner's, not theirs.
+    ['general', 'appearance'];
 
 const esc = (value: string) =>
   value.replace(

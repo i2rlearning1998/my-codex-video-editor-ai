@@ -20,7 +20,7 @@ test('[FX4-006] the model host defaults to Hugging Face and files follow the sav
   expect(setModelHost('https://models.example.com/hf/')).toBe(true);
   expect(modelHost()).toBe('https://models.example.com/hf');
   expect(whisperFiles()[0]!.url).toMatch(
-    /^https:\/\/models\.example\.com\/hf\/Xenova\/whisper-tiny\/resolve\//,
+    /^https:\/\/models\.example\.com\/hf\/Xenova\/whisper-small\/resolve\//,
   );
   // The cache key (id) does not change with the source.
   expect(whisperFiles()[0]!.id).toBe(whisperFiles(DEFAULT_MODEL_HOST)[0]!.id);

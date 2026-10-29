@@ -18,6 +18,7 @@ import { buildProjectFromComposition } from '../composition';
 import type { SlotFill } from '../composition/slots';
 import type { Theme } from '../themes/themes';
 import { createCaptionsHook } from '../captions/hook';
+import { captionMaxChars } from '../captions/layers';
 import { toCaptionCues, type CaptionCue } from '../speech/captions';
 import type { WordTiming } from '../speech/types';
 import { cameraShotsCommands } from '../camera/shot-commands';
@@ -143,6 +144,7 @@ function sceneCues(
   spoken: SpokenNarration | null,
   language: string,
   style: ReturnType<typeof kitCaptionStyle>,
+  canvas: { readonly width: number; readonly height: number },
 ): CaptionCue[] {
   const text = scene.narration?.trim();
   if (!text) return [];
@@ -169,7 +171,11 @@ function sceneCues(
   }
   return toCaptionCues(
     { text, language, segments: [], words },
-    { maxCharsPerLine: style.maxCharsPerLine, maxLines: style.maxLines },
+    {
+      // FIX9: a line is as long as the canvas lets it be (never wrapped again).
+      maxCharsPerLine: captionMaxChars(style, canvas, language),
+      maxLines: style.maxLines,
+    },
   ).map((cue) => ({
     ...cue,
     id: `s${index + 1}-${cue.id}`,
@@ -796,6 +802,7 @@ export async function buildVideoFromPlan(
           spoken[si] ?? null,
           plan.meta.language,
           style,
+          { width, height },
         ),
       );
       start += durations[si]!;

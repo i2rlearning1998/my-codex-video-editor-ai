@@ -16,7 +16,7 @@ test('[F2-090] Offline captions: Whisper shows Needs download with its size and 
   await dialog.locator('[data-settings-tab="offline"]').click();
   const whisper = dialog.locator('[data-engine="local-whisper"]');
   await expect(whisper.locator('.key-state')).toHaveText(
-    'Needs download (41 MB)',
+    'Needs download (250 MB)',
   );
   await expect(whisper.locator('.settings-note')).toContainText(
     'checked by size only',
@@ -25,7 +25,7 @@ test('[F2-090] Offline captions: Whisper shows Needs download with its size and 
   await whisper.locator('[data-engine-action="download"]').click();
   await whisper.locator('[data-engine-action="cancel"]').click();
   await expect(whisper.locator('.key-state')).toHaveText(
-    'Needs download (41 MB)',
+    'Needs download (250 MB)',
   );
   await whisper.locator('[data-engine-action="download"]').click();
   await expect(whisper.locator('.key-state')).toHaveText('Ready');

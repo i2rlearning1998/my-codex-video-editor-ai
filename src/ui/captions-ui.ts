@@ -18,6 +18,7 @@ import {
   captionCommands,
   captionStyle,
   captionTrackFromTranscription,
+  captionMaxChars,
   captionTrackOf,
   findCaptions,
   parseSrt,
@@ -34,7 +35,16 @@ import type { MediaStore } from '../media/store';
 import type { SttProvider, Transcription, WordTiming } from '../speech/types';
 import { openModal, type ModalHandle } from './components/modal';
 import { plainMessage, showToast } from './components/toast';
-import { lastDownloadError, localEngines } from './local-engines';
+import {
+  ensureLocalEngine,
+  lastDownloadError,
+  localEngines,
+} from './local-engines';
+import { developerMode } from './developer-mode';
+import {
+  applyOwnerCaptionSettings,
+  ownerCaptionSettings,
+} from './caption-settings';
 import { speechRegistry } from './services';
 import { openSettings } from './settings-dialog';
 import { diagnosticsButton } from './diagnostics';
@@ -96,6 +106,7 @@ const fakeEnabled = () =>
   !!(window as { __AIVE_E2E_STT__?: boolean }).__AIVE_E2E_STT__;
 
 export function sttEngines(): SttEngine[] {
+  applyOwnerCaptionSettings();
   const registry = speechRegistry();
   const status = registry.getSpeechStatus();
   const local = localEngines(registry);
@@ -324,12 +335,36 @@ function sourcePicker(
   );
 }
 
+/**
+ * FIX9: the engine the captions run on. The owner's choice (Admin app) when
+ * it is ready for this language, else the offline engine, which fetches its
+ * own model on first use. The person is never asked.
+ */
+export function autoEngineId(lang: string): string | null {
+  const engines = sttEngines().filter((e) =>
+    e.provider.languages.some((l) => l.split('-')[0] === lang),
+  );
+  const owner = ownerCaptionSettings().engine;
+  return (
+    engines.find((e) => e.provider.id === owner && e.ready)?.provider.id ??
+    engines.find((e) => e.provider.id === 'local-whisper')?.provider.id ??
+    engines.find((e) => e.ready)?.provider.id ??
+    null
+  );
+}
+
 function enginePicker(picks: Picks, onChange: () => void) {
   const wrap = document.createElement('div');
   wrap.className = 'caption-engines';
   wrap.setAttribute('role', 'radiogroup');
   wrap.setAttribute('aria-label', t('captions.engine'));
+  // The list of engines is for developers; everyone else gets the auto one.
+  wrap.hidden = !developerMode();
   const draw = () => {
+    if (wrap.hidden) {
+      picks.engine = autoEngineId(picks.lang);
+      return;
+    }
     const engines = sttEngines().filter((e) =>
       e.provider.languages.some((l) => l.split('-')[0] === picks.lang),
     );
@@ -384,6 +419,11 @@ function enginePicker(picks: Picks, onChange: () => void) {
 }
 const selectedEngine = (picks: Picks) =>
   sttEngines().find((e) => e.provider.id === picks.engine);
+/** FIX9: ready, or the offline engine (it fetches its model when asked). */
+const canRun = (picks: Picks) => {
+  const engine = selectedEngine(picks);
+  return !!engine && (engine.ready || engine.provider.id === 'local-whisper');
+};
 
 /** Runs (or reuses) the transcription of the picked clip. */
 async function transcribe(
@@ -397,11 +437,26 @@ async function transcribe(
   );
   if (!clip) throw new Error(t('captions.noClips'));
   const engine = selectedEngine(picks);
-  if (!engine?.ready) throw new Error(t('captions.error.engine'));
+  if (!engine || !canRun(picks)) throw new Error(t('captions.error.engine'));
   const key = transcriptKey(clip.assetId, engine.provider.id, picks.lang);
   const cached = transcripts.get(key);
   if (cached) return { clip, transcription: cached };
   const blob = await mediaBlob(context, clip.assetId);
+  if (!engine.ready) {
+    // First use on this device: the model comes down now, with its progress.
+    onProgress(0, t('captions.step.model', { percent: '0' }));
+    await ensureLocalEngine(
+      engine.provider.id,
+      (fraction) =>
+        onProgress(
+          fraction,
+          t('captions.step.model', {
+            percent: String(Math.round(fraction * 100)),
+          }),
+        ),
+      signal,
+    );
+  }
   onProgress(null, t('captions.step.start'));
   const started = performance.now();
   lastRun = { engine: engine.provider.id, lang: picks.lang, steps: [] };
@@ -591,14 +646,11 @@ export function openTranscribe(
       toCaptions.hidden = true;
       actions.append(copy, toCaptions, start);
       const update = () => {
-        start.disabled =
-          !picks.layerId || !selectedEngine(picks)?.ready || !!controller;
+        start.disabled = !picks.layerId || !canRun(picks) || !!controller;
         // FIX1 F4: a shown failure stays until the next run (it used to
         // be cleared here right after it was written: "silently nothing").
         if (status.dataset.kind === 'error') return;
-        status.textContent = !selectedEngine(picks)?.ready
-          ? t('captions.hint.engine')
-          : '';
+        status.textContent = !canRun(picks) ? t('captions.hint.engine') : '';
       };
       start.onclick = async () => {
         controller = new AbortController();
@@ -807,7 +859,7 @@ export function openAutoCaptions(
           feature: 'Auto captions',
           ...(picks.engine ? { providerId: picks.engine } : {}),
           extra: {
-            engineReady: selectedEngine(picks)?.ready ?? false,
+            engineReady: canRun(picks),
             engineState: selectedEngine(picks)?.label,
             language: picks.lang,
             lastSteps: lastRun?.steps.slice(-6).join(', '),
@@ -849,14 +901,13 @@ export function openAutoCaptions(
       const hasCaptions = () =>
         findCaptions(context.session.source.composition as never).length > 0;
       const update = () => {
-        create.disabled =
-          !picks.layerId || !selectedEngine(picks)?.ready || !!controller;
+        create.disabled = !picks.layerId || !canRun(picks) || !!controller;
         exportSrt.disabled = exportVtt.disabled = !hasCaptions();
         // FIX1 F4: a shown failure stays until the next run.
         if (status.dataset.kind === 'error') return;
         status.textContent = !picks.layerId
           ? ''
-          : !selectedEngine(picks)?.ready
+          : !canRun(picks)
             ? t('captions.hint.engine')
             : '';
       };
@@ -878,7 +929,18 @@ export function openAutoCaptions(
           );
           const track = captionTrackFromTranscription(
             onTimeline(transcription, clip),
-            { style: styleId, position, maxLines, language: picks.lang },
+            {
+              style: styleId,
+              position,
+              maxLines,
+              language: picks.lang,
+              // FIX9: a line is as long as this canvas lets it be.
+              maxCharsPerLine: captionMaxChars(
+                captionStyle(styleId, position),
+                context.session.source.composition,
+                picks.lang,
+              ),
+            },
           );
           controller = null;
           // FIX1 F4: no cue is a visible failure, never a silent close.

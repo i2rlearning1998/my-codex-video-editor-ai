@@ -62,11 +62,10 @@ export function toCaptionCues(
     const lines: string[] = [];
     let line = '';
     for (const word of text.trim().split(/\s+/u)) {
-      // A single unbreakable word cannot fit this caller's layout contract.
-      if (Array.from(word).length > width)
-        throw new SpeechError('INVALID_INPUT');
+      // FIX9: a word longer than a line (a long Hindi compound on a narrow
+      // 9:16 video) stands alone on its line instead of failing the job.
       const next = line ? `${line} ${word}` : word;
-      if (Array.from(next).length <= width) line = next;
+      if (!line || Array.from(next).length <= width) line = next;
       else {
         lines.push(line);
         line = word;

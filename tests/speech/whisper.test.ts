@@ -38,7 +38,7 @@ test('downloads every unpinned file once (size only), reports progress, serves t
       return {
         env,
         pipeline: async (_task, model) => {
-          expect(model).toBe('Xenova/whisper-tiny');
+          expect(model).toBe('Xenova/whisper-small');
           const cache = env.customCache as {
             match(url: string): Promise<Response | undefined>;
           };

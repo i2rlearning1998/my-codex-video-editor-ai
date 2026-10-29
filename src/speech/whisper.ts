@@ -13,6 +13,7 @@ import {
   LOCAL_MODELS,
   modelHost,
   whisperFiles,
+  whisperVariant,
 } from './models';
 import { browserCodec, resampleMono } from './pcm';
 import {
@@ -167,6 +168,7 @@ export function createWhisperRunner(
   const codec = options.codec ?? browserCodec;
   let engine: (WhisperEngine & { abort?(): void }) | null = null;
   let loaded = false;
+  let loadedVariant = '';
   let lastLoadMs: number | null = null;
 
   const total = () => {
@@ -237,6 +239,12 @@ export function createWhisperRunner(
             new Error(`Missing ${file.id}`),
           );
       const started = performance.now();
+      // FIX9: the owner switched the model: the old one is let go.
+      if (loaded && loadedVariant !== whisperVariant()) {
+        engine?.dispose();
+        engine = null;
+        loaded = false;
+      }
       if (!engine) engine = makeEngine();
       const active = engine;
       // FIX3 2.2: Cancel stops the worker at once, mid-run included.
@@ -283,6 +291,7 @@ export function createWhisperRunner(
             throw classifyWhisperError(error, 'load', signal);
           }
           loaded = true;
+          loadedVariant = whisperVariant();
           lastLoadMs = performance.now() - started;
         }
         return await listen(active, request);

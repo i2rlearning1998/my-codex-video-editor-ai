@@ -29,9 +29,21 @@ type WhisperVariant = {
   approxBytes: number;
   files: { path: string; sizeBytes: number | null; sha256: string | null }[];
 };
-const whisper = (
-  whisperConfig.variants as unknown as Record<string, WhisperVariant>
-)[whisperConfig.active]!;
+const variants = whisperConfig.variants as unknown as Record<
+  string,
+  WhisperVariant
+>;
+/** The variants the owner can choose from (all multilingual). */
+export const WHISPER_VARIANTS: readonly string[] = Object.keys(variants);
+let activeVariant: string = whisperConfig.active;
+/** FIX9: the owner's choice of Whisper model (Admin app). Unknown: ignored. */
+export function setWhisperVariant(name: string | null | undefined): boolean {
+  if (!name || !(name in variants)) return false;
+  activeVariant = name;
+  return true;
+}
+export const whisperVariant = () => activeVariant;
+const whisper = () => variants[activeVariant]!;
 export const DEFAULT_MODEL_HOST = 'https://huggingface.co';
 const SOURCE_KEY = 'aive.model-source';
 /** FIX4 A6: the saved model host (a mirror or your own server), or the default. */
@@ -62,9 +74,9 @@ export function setModelHost(value: string): boolean {
 }
 /** The active Whisper variant's files, from the saved model host. */
 export const whisperFiles = (host = modelHost()): readonly ModelFile[] =>
-  whisper.files.map((f) => ({
-    id: `whisper-${whisperConfig.active}/${f.path}`,
-    url: `${host}/${whisper.model}/resolve/${whisper.revision ?? whisperConfig.revision}/${f.path}`,
+  whisper().files.map((f) => ({
+    id: `whisper-${activeVariant}/${f.path}`,
+    url: `${host}/${whisper().model}/resolve/${whisper().revision ?? whisperConfig.revision}/${f.path}`,
     sizeBytes: f.sizeBytes,
     sha256: f.sha256,
     license: whisperConfig.license,
@@ -83,11 +95,20 @@ export const LOCAL_MODELS: readonly LocalModelConfig[] = [
   {
     // FINAL2 U11: downloadable in the user's browser from Hugging Face.
     id: 'local-whisper',
-    files: WHISPER_FILES,
+    // FIX9: read each time, so the owner's model choice takes effect.
+    get files() {
+      return whisperFiles(DEFAULT_MODEL_HOST);
+    },
     languages: ['en', 'hi'],
-    model: whisper.model,
-    approxBytes: whisper.approxBytes,
-    pinned: WHISPER_FILES.every((f) => !!f.sha256),
+    get model() {
+      return whisper().model;
+    },
+    get approxBytes() {
+      return whisper().approxBytes;
+    },
+    get pinned() {
+      return whisperFiles(DEFAULT_MODEL_HOST).every((f) => !!f.sha256);
+    },
   },
 ];
 /** Research URLs are not runtime download URLs and never imply verified artefacts. */

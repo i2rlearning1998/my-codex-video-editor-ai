@@ -84,7 +84,9 @@ export function captionLayout(
   lines: number,
   canvas: { readonly width: number; readonly height: number },
 ) {
-  const scale = canvas.height / 1080;
+  // FIX9: sizes follow the SHORT side, so a tall 9:16 video does not get
+  // captions 1.8 times too big (they wrapped into extra lines and were cut).
+  const scale = Math.min(canvas.width, canvas.height) / 1080;
   const fontSize = Math.round(style.fontSize * scale);
   const pad = style.box ? Math.round(style.box.padding * scale) : 0;
   const lower = style.position === 'lower-third';
@@ -112,6 +114,32 @@ export function captionLayout(
     Math.min(raw, canvas.height - bottomSafe - height),
   );
   return { fontSize, pad, x, y, width, height, textHeight };
+}
+
+/** Scripts whose letters run wider than Latin ones (Devanagari and kin). */
+const WIDE_SCRIPT =
+  /^(hi|mr|ne|sa|bn|gu|pa|ta|te|kn|ml|or|as|ur|ar|fa|th)\b/i;
+
+/**
+ * FIX9: how many characters fit on one caption line of this style on this
+ * canvas. Cues used to break at a fixed 42 characters whatever the canvas was,
+ * so on a narrow (9:16) video a line wrapped again inside its box and the
+ * last words were cut off. The average advance is taken a little wide so a
+ * line never wraps on its own; the style's own limit is the ceiling.
+ */
+export function captionMaxChars(
+  style: CaptionStyle,
+  canvas: { readonly width: number; readonly height: number },
+  language = 'en',
+): number {
+  const layout = captionLayout(style, 1, canvas);
+  const inner = layout.width - layout.pad * 2;
+  const em =
+    (WIDE_SCRIPT.test(language) ? 0.66 : 0.58) *
+    (style.textCase === 'upper' ? 1.2 : 1) *
+    (style.fontWeight >= 700 ? 1.06 : 1);
+  const fit = Math.floor(inner / (layout.fontSize * em));
+  return Math.max(16, Math.min(style.maxCharsPerLine, fit));
 }
 
 export function captionMarker(

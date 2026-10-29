@@ -46,7 +46,12 @@ describe('caption cues', () => {
     ).toEqual(words);
   });
   it('reports impossible layouts instead of silently losing text or timing', () => {
-    expect(() => toCaptionCues(result, { maxCharsPerLine: 2 })).toThrow();
+    // FIX9: a word longer than the line stands alone on its line (no throw,
+    // no lost text).
+    const narrow = toCaptionCues(result, { maxCharsPerLine: 2 });
+    expect(narrow.flatMap((cue) => cue.lines).join(' ')).toBe(
+      result.text.trim().replace(/\s+/g, ' '),
+    );
     expect(() =>
       toCaptionCues(result, { minDuration: 2, maxDuration: 1 }),
     ).toThrow();

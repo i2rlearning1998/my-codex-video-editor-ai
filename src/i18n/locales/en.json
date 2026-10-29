@@ -2313,6 +2313,7 @@
   "voiceover.error.keyOrQuota": "The voice service refused (error 403): check the key, or your free quota may be used up.",
   "captions.step.start": "Getting ready…",
   "captions.step.download": "Downloading model {done} / {total} MB",
+  "captions.step.model": "Getting the speech model ready (first time only) {percent}%",
   "captions.step.load.library": "Loading the speech engine…",
   "captions.step.load.pipeline": "Preparing the model…",
   "captions.step.load.ready": "Model ready…",

@@ -55,6 +55,28 @@ export const formatBytes = (bytes: number) =>
     ? `${(bytes / 1e9).toFixed(1)} GB`
     : `${Math.max(1, Math.round(bytes / 1e6))} MB`;
 
+/**
+ * FIX9: Auto captions never ask the person to set an engine up: when the
+ * offline model is not on this device yet it is fetched right here (first
+ * time only) and the caller shows the progress. Failures are thrown.
+ */
+export async function ensureLocalEngine(
+  id: string,
+  onProgress: (fraction: number) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  const driver = drivers.get(id);
+  if (!driver) throw new Error(`No offline engine ${id}`);
+  try {
+    await driver.download(onProgress, signal);
+  } catch (error) {
+    lastDownloadError.set(id, error);
+    throw classifyWhisperError(error, 'load', signal);
+  } finally {
+    notify();
+  }
+}
+
 export function localEngines(registry: Registry) {
   const view = (id: string): LocalEngineView => {
     const status = registry.getSpeechStatus().find((s) => s.id === id);

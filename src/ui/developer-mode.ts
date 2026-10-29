@@ -3,10 +3,15 @@
 // it. They show in development and test builds, and in a production build
 // only when Developer mode is switched on (localStorage `aive.developer`).
 export function developerMode(): boolean {
-  if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') return true;
+  let saved: string | null = null;
   try {
-    return localStorage.getItem('aive.developer') === '1';
+    saved = localStorage.getItem('aive.developer');
   } catch {
-    return false;
+    /* Storage blocked: the build's default. */
   }
+  // FIX9: "0" is an explicit off (also in development), so the view people
+  // get can be checked: no engines, no keys, no offline model screen.
+  if (saved === '0') return false;
+  if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') return true;
+  return saved === '1';
 }
