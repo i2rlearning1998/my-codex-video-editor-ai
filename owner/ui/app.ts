@@ -15,6 +15,12 @@ const STRINGS = {
     logIn: 'Log in',
     logOut: 'Log out',
     library: 'Library',
+    controls: 'Editor controls',
+    controlsHelp:
+      'Choose a kind of selection, then switch buttons, tabs and menu entries on or off. Saved changes reach the editor with the next catalog version, no release.',
+    saveControls: 'Save controls',
+    controlsOn: 'On',
+    controlsOff: 'Off',
     upload: 'Upload',
     versions: 'Versions',
     audit: 'Audit log',
@@ -87,6 +93,12 @@ const STRINGS = {
     logIn: 'लॉग इन',
     logOut: 'लॉग आउट',
     library: 'लाइब्रेरी',
+    controls: 'एडिटर कंट्रोल',
+    controlsHelp:
+      'चुने हुए एलिमेंट का प्रकार चुनें, फिर बटन, टैब और मेन्यू एंट्री चालू या बंद करें। सेव करते ही नया कैटलॉग संस्करण बनता है, रिलीज़ की ज़रूरत नहीं।',
+    saveControls: 'कंट्रोल सेव करें',
+    controlsOn: 'चालू',
+    controlsOff: 'बंद',
     upload: 'अपलोड',
     versions: 'संस्करण',
     audit: 'ऑडिट लॉग',
@@ -195,7 +207,7 @@ interface TaxCategory {
 
 let lang: Lang = localStorage.getItem('owner.lang') === 'hi' ? 'hi' : 'en';
 let csrf = '';
-let tab: 'library' | 'upload' | 'versions' | 'audit' = 'library';
+let tab: 'library' | 'controls' | 'upload' | 'versions' | 'audit' = 'library';
 const app = document.getElementById('app')!;
 const t = (key: Key, values: Record<string, string | number> = {}) =>
   STRINGS[lang][key].replace(/\{(\w+)\}/g, (_, name: string) =>
@@ -340,7 +352,13 @@ function header() {
     void render();
   };
   const tabs = el('div', { class: 'bar tabs', role: 'tablist' });
-  for (const name of ['library', 'upload', 'versions', 'audit'] as const) {
+  for (const name of [
+    'library',
+    'controls',
+    'upload',
+    'versions',
+    'audit',
+  ] as const) {
     const button = el(
       'button',
       {
@@ -1038,6 +1056,98 @@ function uploadScreen() {
   );
 }
 
+let controlsType = 'text';
+async function controlsScreen(status: HTMLElement) {
+  const data = await api<{
+    surfaces: Record<string, { en: string; hi: string }>;
+    types: { id: string; name: { en: string; hi: string } }[];
+    registry: {
+      surface: string;
+      id: string;
+      label: { en: string; hi: string };
+      types: string[];
+    }[];
+    off: string[];
+  }>('GET', '/api/controls');
+  const off = new Set(data.off);
+  const chips = el('div', { class: 'bar chips', role: 'tablist' });
+  for (const type of data.types) {
+    const chip = el(
+      'button',
+      {
+        type: 'button',
+        role: 'tab',
+        'data-type': type.id,
+        'aria-selected': String(controlsType === type.id),
+      },
+      type.name[lang],
+    );
+    chip.onclick = () => {
+      controlsType = type.id;
+      void render(true);
+    };
+    chips.append(chip);
+  }
+  const groups = ['panel', 'toolbar', 'menu'].map((surface) => {
+    const rows = data.registry
+      .filter((d) => d.surface === surface && d.types.includes(controlsType))
+      .map((d) => {
+        const key = `${surface}.${controlsType}.${d.id}`;
+        const box = el('input', {
+          type: 'checkbox',
+          'data-control': key,
+        }) as HTMLInputElement;
+        box.checked = !off.has(key);
+        box.onchange = () => {
+          if (box.checked) off.delete(key);
+          else off.add(key);
+        };
+        return el(
+          'label',
+          { class: 'control-row' },
+          box,
+          el('span', {}, d.label[lang]),
+        );
+      });
+    return el(
+      'section',
+      { class: 'card control-group', 'data-surface': surface },
+      el('h3', {}, data.surfaces[surface]![lang]),
+      ...(rows.length ? rows : [el('p', {}, '–')]),
+    );
+  });
+  const save = el(
+    'button',
+    { type: 'button', class: 'primary', id: 'save-controls' },
+    t('saveControls'),
+  );
+  save.onclick = () =>
+    guarded(() =>
+      api<{ catalogVersion: number }>('POST', '/api/controls', {
+        off: [...off],
+      }),
+    ).then(
+      (r) => {
+        if (!r) return;
+        status.className = 'ok';
+        status.textContent = t('saved', { v: r.catalogVersion });
+      },
+      (error: unknown) => {
+        status.className = 'error';
+        status.textContent =
+          error instanceof Error ? error.message : String(error);
+      },
+    );
+  return el(
+    'section',
+    { id: 'controls' },
+    el('p', {}, t('controlsHelp')),
+    chips,
+    ...groups,
+    save,
+  );
+}
+
 async function versionsScreen(status: HTMLElement) {
   const data = await api<{
     versions: {
@@ -1189,11 +1299,13 @@ async function render(keepStatus = false) {
     body =
       tab === 'library'
         ? await libraryScreen(status)
-        : tab === 'upload'
-          ? uploadScreen()
-          : tab === 'versions'
-            ? await versionsScreen(status)
-            : await auditScreen();
+        : tab === 'controls'
+          ? await controlsScreen(status)
+          : tab === 'upload'
+            ? uploadScreen()
+            : tab === 'versions'
+              ? await versionsScreen(status)
+              : await auditScreen();
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       csrf = '';

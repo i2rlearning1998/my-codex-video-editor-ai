@@ -9,6 +9,14 @@ import {
   rollbackCatalog,
   type BuildResult,
 } from '../catalog/build';
+import {
+  ASSET_LABELS,
+  ASSET_TYPES,
+  CONTROL_REGISTRY,
+  SURFACE_LABELS,
+  controlKey,
+  offKeys,
+} from '../../src/library-client/controls';
 import { generateKeys, loadKeys, type CatalogKeys } from '../catalog/keys';
 import { publish, summary, type PublishResult } from '../catalog/publish';
 import type { GateBrowser, GateFile } from '../catalog/gate';
@@ -218,6 +226,33 @@ export class OwnerLibrary {
     store.data.config = {
       ...(store.data.config ?? emptyConfig()),
       ...parsed.data,
+    };
+    return this.rebuild(store);
+  }
+  /** The controls the owner can switch, and which are off now. */
+  controls() {
+    return {
+      surfaces: SURFACE_LABELS,
+      types: ASSET_TYPES.map((id) => ({ id, name: ASSET_LABELS[id] })),
+      registry: CONTROL_REGISTRY,
+      off: [...offKeys(this.store().data.config?.controls)],
+    };
+  }
+  /** Saves the switched-off list (only keys the editor really has). */
+  saveControls(off: unknown): BuildResult {
+    if (!Array.isArray(off))
+      throw new Error('Send the list of switched-off controls.');
+    const known = new Set(
+      CONTROL_REGISTRY.flatMap((def) =>
+        def.types.map((type) => controlKey(def.surface, type, def.id)),
+      ),
+    );
+    const clean = [...new Set(off.map(String))].filter((key) => known.has(key));
+    const store = this.store();
+    const config = store.data.config ?? emptyConfig();
+    store.data.config = {
+      ...config,
+      controls: { ...config.controls, off: clean },
     };
     return this.rebuild(store);
   }

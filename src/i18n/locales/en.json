@@ -663,6 +663,7 @@
   "library.search.shape": "Search shapes",
   "library.search.text": "Search text styles",
   "library.search.background": "Search backgrounds",
+  "library.extras": "From the owner",
   "library.loading": "Loading the library…",
   "library.loadFailed": "The library could not be loaded: {error}",
   "library.noResults": "Nothing matches “{query}”.",

@@ -1,6 +1,7 @@
 // CV-035 to CV-038 context toolbar (UX spec 4.1): the selected layer's most used
 // controls above the canvas. Controls whose systems are not built are shown
 // disabled with the wave that builds them (D-068); nothing behind them exists.
+import { controlOn } from './controls';
 import { fontWeights } from '../render/fonts';
 import { isCatalogFont } from '../text-engine/catalog';
 import { isSafeFamily, uploadedFonts } from '../text-engine/uploaded';
@@ -2438,7 +2439,15 @@ export function mountContextToolbar(
                   ? drawingControls(layer!)
                   : groupControls(mode === 'multi');
     overflow = [];
-    bar.replaceChildren(...controls);
+    // FIX7: what the owner switched off for this kind of selection.
+    bar.replaceChildren(
+      ...controls.filter((item) => {
+        const id =
+          item.dataset.control ??
+          item.querySelector<HTMLElement>('[data-control]')?.dataset.control;
+        return !id || controlOn('toolbar', mode, id);
+      }),
+    );
     fit();
     restoreFieldFocus(bar);
     refreshAttached(mode === 'scene' || mode === 'canvas' ? null : layer);

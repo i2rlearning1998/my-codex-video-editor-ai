@@ -689,7 +689,7 @@ test('[LIB-023][LIB-017] what the owner hides, features, orders, schedules or un
   expect(shown).toHaveLength(9);
 });
 
-test('[FIX7-017] a category and sub-categories the owner adds appear in the editor with their assets: a new rail category, a new Elements tile, and an asset moved into them, with no release', async ({
+test('[FIX7-017][FIX7-021] a category and sub-categories the owner adds appear in the editor with their assets: a new rail category, a new Elements tile, and an asset moved into them, with no release', async ({
   page,
 }) => {
   const itemsFile = path.join(stack.env.LIBRARY_DATA_DIR!, 'items.json');
@@ -737,6 +737,22 @@ test('[FIX7-017] a category and sub-categories the owner adds appear in the edit
       },
     ],
   };
+  (data.config as { categories: unknown[] }).categories.push({
+    id: 'Audio',
+    name: name('Audio', 'ऑडियो'),
+    icon: 'audio',
+    hidden: false,
+    order: 0,
+    subs: [
+      {
+        id: 'ambience',
+        name: name('Ambience', 'माहौल'),
+        hidden: false,
+        order: 0,
+        sections: [],
+      },
+    ],
+  });
   data.items.find((item) => item.id === 'shape-star-5')!.place = {
     category: 'x-festivals',
     sub: 'diwali',
@@ -767,6 +783,67 @@ test('[FIX7-017] a category and sub-categories the owner adds appear in the edit
   await elements.locator('[data-tile="Elements-lanterns"]').click();
   await expect(elements.locator('[data-item-id="shape-heart"]')).toBeVisible();
   await page.screenshot({ path: 'reports/fix7-editor-custom-sub.png' });
+  // The same works under every editor panel: Audio lists the new sub-category.
+  await showCategory(page, 'Audio');
+  await expect(
+    page.locator('#library-extras-Audio [data-tile="Audio-ambience"]'),
+  ).toBeVisible();
+  await page.screenshot({ path: 'reports/fix7-editor-audio-extra.png' });
+  await expect(page.locator('#library-extras-Theme')).toBeHidden();
+});
+
+test('[FIX7-018] what the owner switches off for a kind of selection disappears from the editor: a right-panel tab, a toolbar button and a right-click entry, for shapes only', async ({
+  page,
+}) => {
+  const itemsFile = path.join(stack.env.LIBRARY_DATA_DIR!, 'items.json');
+  const data = JSON.parse(readFileSync(itemsFile, 'utf8')) as {
+    config: { controls: unknown };
+  };
+  data.config.controls = {
+    off: ['panel.shape.Effects', 'toolbar.shape.fill', 'menu.shape.lock'],
+  };
+  writeFileSync(itemsFile, JSON.stringify(data));
+  cli('build');
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  await showCategory(page, 'Elements');
+  await page.locator('[data-shape="rectangle"]').click();
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds.length)
+    .toBe(1);
+  const tabs = page.locator('#rail-right button[data-section]:visible');
+  await expect(tabs.filter({ hasText: /Animate/ })).toHaveCount(1);
+  await expect(
+    page.locator('#rail-right [data-section="Effects"]'),
+  ).toBeHidden();
+  await expect(
+    page.locator('#context-toolbar [data-control="fill"]'),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('#context-toolbar [data-control="position"]'),
+  ).toHaveCount(1);
+  const canvas = (await page.locator('#composition-canvas').boundingBox())!;
+  await page.mouse.click(
+    canvas.x + canvas.width / 2,
+    canvas.y + canvas.height / 2,
+    { button: 'right' },
+  );
+  await expect(
+    page.locator('#canvas-context-menu [data-action="duplicate"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator('#canvas-context-menu [data-action="lock"]'),
+  ).toHaveCount(0);
+  await page.screenshot({ path: 'reports/fix7-editor-controls-off.png' });
+  await page.keyboard.press('Escape');
+  // Text keeps all of its own controls.
+  await showCategory(page, 'Text');
+  await page.locator('#add-text-box').click();
+  await expect(
+    page.locator('#context-toolbar [data-control="font"]'),
+  ).toHaveCount(1);
 });
 
 test('[LIB-027][LIB-008] a rollback in the catalog never changes a project that already uses an item', async ({

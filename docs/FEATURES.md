@@ -1222,3 +1222,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-015 | P1 | W9 | Verified | The owner app lists categories and kinds as tabs, keeps each card compact (details under Edit), and flowchart shapes belong to Elements › Shapes |
 | FIX7-016 | P1 | W9 | Verified | The owner builds the library tree: categories with sub-categories and sections, adds new ones, renames, hides, re-orders and moves assets into them; the signed catalog carries it |
 | FIX7-017 | P1 | W9 | Verified | The editor reads the owner's signed settings: a category the owner adds gets its own rail button and panel, added sub-categories and sections show as tiles/sections, and assets moved by the owner appear where they were put, with no release |
+| FIX7-018 | P1 | W9 | Verified | Controls the owner switches off for a kind of selection (a right-panel tab, a toolbar button, a right-click entry) disappear from the editor from the signed catalog, with no release |
+| FIX7-019 | P1 | W9 | Verified | The owner app's Editor controls tab lists every control per kind of selection with on/off switches; Save publishes them |
+| FIX7-020 | P1 | W9 | Verified | The controls registry names only real right-panel tabs and kinds, and bad settings are ignored |
+| FIX7-021 | P1 | W9 | Verified | Owner additions (sub-categories, placed assets) show under every editor panel: Templates, Media, Audio, Record, AI, My Templates and Theme |

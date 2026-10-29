@@ -141,3 +141,26 @@ test('[LIB-017][LIB-014][LIB-016][FIX7-015] one command starts the manager and i
   await page.locator('#language').click();
   await expect(page.locator('[data-tab="library"]')).toHaveText('लाइब्रेरी');
 });
+
+test('[FIX7-019] the Editor controls tab switches buttons, tabs and menu entries on and off per kind of selection, and Save reaches the signed catalog', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await logIn(page);
+  await page.locator('[data-tab="controls"]').click();
+  await page.locator('#controls [data-type="shape"]').click();
+  await expect(page.locator('#controls .control-group')).toHaveCount(3);
+  const box = page.locator('#controls [data-control="panel.shape.Effects"]');
+  await expect(box).toBeChecked();
+  await box.uncheck();
+  await page.locator('#controls [data-control="menu.shape.lock"]').uncheck();
+  await page.screenshot({ path: 'reports/fix7-owner-controls.png' });
+  await page.locator('#save-controls').click();
+  await expect(page.locator('#status')).toContainText(
+    /Catalog version \d+ is live/,
+  );
+  const saved = (await (
+    await page.request.get(`${stack.ownerUrl}api/controls`)
+  ).json()) as { off: string[] };
+  expect(saved.off.sort()).toEqual(['menu.shape.lock', 'panel.shape.Effects']);
+});

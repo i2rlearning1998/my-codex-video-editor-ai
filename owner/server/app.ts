@@ -293,6 +293,19 @@ export function createOwnerApp(config: OwnerAppConfig): {
       log(session, 'reauth');
       return json(response, 200, { ok: true });
     }
+    if (route === 'GET /api/controls')
+      return json(response, 200, library.controls());
+    if (route === 'POST /api/controls') {
+      const input = await body();
+      const build = library.saveControls(input.off);
+      log(
+        session,
+        'controls',
+        'save',
+        `${(input.off as unknown[]).length} off`,
+      );
+      return json(response, 200, { catalogVersion: build.catalogVersion });
+    }
     if (route === 'GET /api/taxonomy')
       return json(response, 200, library.taxonomy());
     if (route === 'POST /api/taxonomy') {

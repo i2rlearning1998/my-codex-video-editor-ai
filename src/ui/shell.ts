@@ -422,17 +422,17 @@ export function mountEditorShell(
       <nav class="icon-rail" id="rail-left" aria-label="${t('library.categories')}">${RAIL_CATEGORIES.map((name) => railButton(name, railIcon(EDITOR_LAYOUT, name), false)).join('')}<button type="button" class="rail-more" id="rail-more" aria-haspopup="menu" aria-expanded="false" title="${t('library.more')}">${iconSvg('more')}<span class="icon-rail-label">${t('library.more')}</span></button></nav>
       <aside class="library panel" id="library-panel" aria-label="${t('library.title')}">
         <div class="import-row" data-rail-panel="Media" hidden><button type="button" class="button primary" id="import-media" title="${t('media.importButton')}">${iconSvg('export')}${t('library.import')}</button><button type="button" class="button primary import-menu-button" id="import-menu" aria-haspopup="menu" aria-expanded="false" aria-label="${t('code.importMenu')}" title="${t('code.importMenu')}">${iconSvg('chevronDown', 16)}</button><input type="file" id="import-media-input" multiple accept="video/*,audio/*,image/*,.mov,.m4a,.mkv,.svg" hidden /></div>
-        <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div>
+        <div class="media-panel" id="media-panel" data-rail-panel="Media" hidden></div><div id="library-extras-Media" class="library-extras extras-empty" data-rail-panel="Media" hidden></div>
         <div class="library-placeholder" data-rail-panel="placeholder" hidden><div class="placeholder-icon" aria-hidden="true">${iconSvg('info', 22)}</div><h3 id="library-title">${t('library.assetsTitle')}</h3><p id="library-description">${t('library.assetsDescription')}</p><span class="quiet-tag">${t('library.later')}</span></div>
         <div class="draw-panel" id="draw-panel" hidden></div>
         <div id="library-elements" data-rail-panel="Elements" hidden></div>
-        <div id="library-templates" data-rail-panel="Templates" hidden></div>
+        <div id="library-templates" data-rail-panel="Templates" hidden></div><div id="library-extras-Templates" class="library-extras extras-empty" data-rail-panel="Templates" hidden></div>
         <div id="library-text" data-rail-panel="Text" hidden></div>
-        <div id="library-audio" data-rail-panel="Audio" hidden></div>
-        <div id="library-record" data-rail-panel="Record" hidden></div>
-        <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div>
-        <div id="library-mine" class="mine-panel" data-rail-panel="MyTemplates" hidden></div>
-        <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div>
+        <div id="library-audio" data-rail-panel="Audio" hidden></div><div id="library-extras-Audio" class="library-extras extras-empty" data-rail-panel="Audio" hidden></div>
+        <div id="library-record" data-rail-panel="Record" hidden></div><div id="library-extras-Record" class="library-extras extras-empty" data-rail-panel="Record" hidden></div>
+        <div id="library-ai" class="ai-panel" data-rail-panel="AI" hidden></div><div id="library-extras-AI" class="library-extras extras-empty" data-rail-panel="AI" hidden></div>
+        <div id="library-mine" class="mine-panel" data-rail-panel="MyTemplates" hidden></div><div id="library-extras-MyTemplates" class="library-extras extras-empty" data-rail-panel="MyTemplates" hidden></div>
+        <div id="library-theme" class="theme-panel" data-rail-panel="Theme" hidden></div><div id="library-extras-Theme" class="library-extras extras-empty" data-rail-panel="Theme" hidden></div>
         <div class="scene-heading" id="scene-heading" data-rail-panel="Scene"><span id="layer-count" class="count"></span></div>
         <div id="scene-list" class="scene-list" data-rail-panel="Scene" aria-label="${t('scene.layers')}"></div>
         <div id="side-panel-host"></div>
@@ -5500,6 +5500,16 @@ export function mountEditorShell(
       }
     syncRails();
   };
+  for (const cat of [
+    'Templates',
+    'Media',
+    'Audio',
+    'Record',
+    'AI',
+    'MyTemplates',
+    'Theme',
+  ])
+    libraryBrowsers.mountExtras(cat, element(`#library-extras-${cat}`));
   void loadLibrary().then(syncCategories, () => undefined);
   onLibraryChange(() => void loadLibrary().then(syncCategories));
   // H2: on a short window the rail shows six categories; More lists the rest.

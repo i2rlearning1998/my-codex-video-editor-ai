@@ -663,6 +663,7 @@
   "library.search.shape": "आकृतियाँ खोजें",
   "library.search.text": "टेक्स्ट शैलियाँ खोजें",
   "library.search.background": "पृष्ठभूमि खोजें",
+  "library.extras": "ओनर की लाइब्रेरी",
   "library.loading": "लाइब्रेरी लोड हो रही है…",
   "library.loadFailed": "लाइब्रेरी लोड नहीं हो सकी: {error}",
   "library.noResults": "“{query}” से कुछ मेल नहीं खाता।",

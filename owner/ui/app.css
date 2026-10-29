@@ -247,3 +247,20 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 }
+
+.control-group h3 {
+  margin: 0 0 8px;
+}
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.control-row input {
+  width: auto;
+}
+.chips button[aria-selected='true'] {
+  font-weight: 600;
+  outline: 2px solid currentColor;
+}

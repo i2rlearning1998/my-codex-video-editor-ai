@@ -306,6 +306,8 @@ export interface LibraryBrowsers {
   dispose(): void;
   /** Mounts the panel of an owner-added category into its host. */
   mountCustom(category: string, host: HTMLElement): void;
+  /** Lists the owner's additions under an editor category's own panel. */
+  mountExtras(category: string, host: HTMLElement): void;
 }
 
 const later = (wave: number | string, id: string) =>
@@ -1214,6 +1216,67 @@ export function mountLibraryPanels(
     };
   };
   const customPanels = new Map<string, ReturnType<typeof createBrowsePanel>>();
+  // The owner's additions to an editor category that has its own panel
+  // (Audio, Theme, AI …): sub-categories they added, and assets they placed
+  // there, listed under that panel.
+  const extraPanels = new Map<
+    string,
+    { panel: ReturnType<typeof createBrowsePanel>; host: HTMLElement }
+  >();
+  const extraSubs = (category: string) =>
+    (tree().find((c) => c.id === category)?.subs ?? []).filter(
+      (node) =>
+        !node.hidden &&
+        !BUILTIN_TAXONOMY.find((c) => c.id === category)?.subs.some(
+          (x) => x.id === node.id,
+        ),
+    );
+  const extraLoose = (category: string) =>
+    items.filter((item) => {
+      const place = item.place;
+      if (!place || place.category !== category) return false;
+      const own = defaultPlace(item.type, item.section);
+      const sub = place.sub ? subOf(category, place.sub) : undefined;
+      return (
+        !place.sub ||
+        !sub ||
+        !(own.category === category && own.sub === place.sub)
+      );
+    });
+  const extrasRoot = (category: string): BrowsePage => ({
+    id: `extras-${category}`,
+    title: t('library.extras'),
+    status: () => status,
+    sections: () => [
+      {
+        id: 'categories',
+        layout: 'tiles',
+        columns: 3,
+        cards: () =>
+          extraSubs(category).map((node) =>
+            customTile(category, node, (page) =>
+              extraPanels.get(category)?.panel.push(page),
+            ),
+          ),
+        empty: null,
+      },
+      {
+        id: 'loose',
+        layout: 'grid',
+        columns: 3,
+        cards: () => extraLoose(category).map(libraryCard),
+        empty: null,
+      },
+    ],
+  });
+  const syncExtras = () =>
+    extraPanels.forEach(({ panel, host }, category) => {
+      panel.refresh();
+      host.classList.toggle(
+        'extras-empty',
+        extraSubs(category).length === 0 && extraLoose(category).length === 0,
+      );
+    });
   const panels = {
     Templates: createBrowsePanel(hosts.Templates, templatesRoot, {
       id: 'templates',
@@ -1235,6 +1298,7 @@ export function mountLibraryPanels(
     if (disposed) return;
     Object.values(panels).forEach((panel) => panel.refresh());
     customPanels.forEach((panel) => panel.refresh());
+    syncExtras();
   };
   recent.onChange(refreshAll);
   onMyTextStylesChange(() => panels.Text.refresh());
@@ -1286,6 +1350,16 @@ export function mountLibraryPanels(
           close: options.close,
         }),
       );
+    },
+    mountExtras: (category: string, host: HTMLElement) => {
+      extraPanels.set(category, {
+        host,
+        panel: createBrowsePanel(host, extrasRoot(category), {
+          id: `extras-${category}`,
+          close: options.close,
+        }),
+      });
+      syncExtras();
     },
     reset: () => {
       Object.values(panels).forEach((panel) => panel.reset());

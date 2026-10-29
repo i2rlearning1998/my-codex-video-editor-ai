@@ -2,6 +2,8 @@
 // (selection-context.ts) and rendered by the shared menu (context-menu.ts).
 // CV-020 layout: edit actions, clip actions, Group/Ungroup, Layer and Align
 // submenus, then Copy style and Paste style.
+import { filterMenu } from './controls';
+import { kindOf } from './right-panel';
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
 import { clipTimeEffects, type EditorEngine } from '../core';
 import { formatNumber, t } from '../i18n';
@@ -489,7 +491,8 @@ export function canvasMenuEntries(
     icon: 'more',
     submenu: () => more,
   });
-  return entries;
+  // FIX7: what the owner switched off for this kind of selection.
+  return filterMenu(entries, kindOf(session));
 }
 
 /** H3: a right-click on the empty canvas: paste, scenes, size and guides. */

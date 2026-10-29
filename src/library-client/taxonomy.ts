@@ -155,6 +155,12 @@ export const BUILTIN_TAXONOMY: readonly TaxCategory[] = [
     sub('sound-effects', 'Sound effects', 'साउंड इफ़ेक्ट'),
     sub('music', 'Music', 'संगीत'),
   ]),
+  category('AI', 'AI', 'एआई', 'sparkle', [
+    sub('styles', 'Styles', 'स्टाइल'),
+    sub('templates', 'AI templates', 'एआई टेम्पलेट'),
+  ]),
+  category('Record', 'Record', 'रिकॉर्ड', 'record', []),
+  category('MyTemplates', 'My Templates', 'मेरे टेम्पलेट', 'templates', []),
   category('Theme', 'Theme', 'थीम', 'color', [
     sub('themes', 'Themes', 'थीम'),
     sub('styles', 'Styles', 'स्टाइल'),

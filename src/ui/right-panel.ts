@@ -103,6 +103,7 @@ import { listCommands } from './text-box-commands';
 import type { EditorSession } from './session';
 import { BOOLEAN_OPS, canCombine, combineShapes } from './shapes';
 import { cameraUi, isShotLayer } from './camera-section';
+import { controlOn } from './controls';
 
 export const RIGHT_SECTIONS = [
   'Properties',
@@ -309,7 +310,14 @@ export function sectionsFor(session: EditorSession): RightSection[] {
   const controlled = controlledLayer(session);
   if (controlled && hasControls(controlled) && !tabs.includes('Code'))
     tabs = [tabs[0]!, 'Code', ...tabs.slice(1)];
-  return focusedClip(session) ? [...tabs, 'Transitions'] : tabs;
+  const all: RightSection[] = focusedClip(session)
+    ? [...tabs, 'Transitions']
+    : tabs;
+  // FIX7: the owner can switch a tab off per kind of selection.
+  const kind = kindOf(session);
+  return all.filter(
+    (tab) => tab === 'Properties' || controlOn('panel', kind, tab),
+  );
 }
 /**
  * A shown tab that cannot be used yet: its ledger item and wave. Audio fades
