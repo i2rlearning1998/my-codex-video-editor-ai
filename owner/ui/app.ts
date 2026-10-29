@@ -18,7 +18,9 @@ const STRINGS = {
     upload: 'Upload',
     versions: 'Versions',
     audit: 'Audit log',
-    all: 'All categories',
+    all: 'All',
+    allKinds: 'All types',
+    edit: 'Edit details',
     search: 'Search by name or tag',
     noItems: 'Nothing matches.',
     tags: 'Tags (comma separated)',
@@ -66,7 +68,9 @@ const STRINGS = {
     upload: 'अपलोड',
     versions: 'संस्करण',
     audit: 'ऑडिट लॉग',
-    all: 'सभी श्रेणियाँ',
+    all: 'सभी',
+    allKinds: 'सभी प्रकार',
+    edit: 'विवरण बदलें',
     search: 'नाम या टैग से खोजें',
     noItems: 'कुछ नहीं मिला।',
     tags: 'टैग (कॉमा से अलग)',
@@ -348,7 +352,7 @@ async function loginScreen() {
   app.replaceChildren(form);
 }
 
-let filter = { category: '', q: '' };
+let filter = { category: '', kind: '', q: '' };
 function stateOf(item: Item) {
   if (!item.published) return t('notPublished');
   if (item.publishAt && Date.parse(item.publishAt) > Date.now())
@@ -368,20 +372,47 @@ async function libraryScreen(status: HTMLElement) {
     'GET',
     `/api/items?${new URLSearchParams({ ...(filter.category ? { category: filter.category } : {}), ...(filter.q ? { q: filter.q } : {}) })}`,
   );
-  const category = el(
-    'select',
-    { id: 'category' },
-    el('option', { value: '' }, t('all')),
-  );
-  for (const name of data.categories) {
-    const option = el('option', { value: name }, name);
-    if (name === filter.category) option.setAttribute('selected', '');
-    category.append(option);
-  }
-  category.onchange = () => {
-    filter.category = category.value;
-    void render();
+  // FIX7: categories and, inside one, its kinds are tab rows, not a dropdown.
+  const tabRow = (
+    id: string,
+    names: readonly string[],
+    current: string,
+    allLabel: string,
+    pick: (name: string) => void,
+  ) => {
+    const row = el('div', { class: 'bar tabs sub', id, role: 'tablist' });
+    for (const name of ['', ...names]) {
+      const button = el(
+        'button',
+        {
+          type: 'button',
+          role: 'tab',
+          'data-value': name,
+          'aria-selected': String(name === current),
+        },
+        name || allLabel,
+      );
+      button.onclick = () => pick(name);
+      row.append(button);
+    }
+    return row;
   };
+  const category = tabRow(
+    'category',
+    data.categories,
+    filter.category,
+    t('all'),
+    (name) => {
+      filter.category = name;
+      filter.kind = '';
+      void render();
+    },
+  );
+  const kinds = [...new Set(data.items.map((item) => item.kind))].sort();
+  const kindRow = tabRow('kinds', kinds, filter.kind, t('allKinds'), (name) => {
+    filter.kind = name;
+    void render();
+  });
   const search = el('input', {
     type: 'search',
     id: 'search',
@@ -393,12 +424,15 @@ async function libraryScreen(status: HTMLElement) {
     void render();
   };
   const list = el('div', { class: 'items', id: 'items' });
-  if (!data.items.length) list.append(el('p', {}, t('noItems')));
-  for (const item of data.items) list.append(itemCard(item, status));
+  const shown = data.items.filter(
+    (item) => !filter.kind || item.kind === filter.kind,
+  );
+  if (!shown.length) list.append(el('p', {}, t('noItems')));
+  for (const item of shown) list.append(itemCard(item, status));
   return el(
     'section',
     {},
-    el('div', { class: 'bar card' }, category, search),
+    el('div', { class: 'card compact' }, category, kindRow, search),
     list,
   );
 }
@@ -534,29 +568,35 @@ function itemCard(item: Item, status: HTMLElement) {
         { class: 'state', 'data-state': '' },
         `${item.kind} · ${item.category} · ${stateOf(item)}`,
       ),
-      el('div', { class: 'row' }, nameEn, nameHi),
-      el('label', {}, t('tags'), tags),
       el(
-        'div',
-        { class: 'row' },
-        el('label', {}, t('license'), license),
-        el('label', {}, t('credit'), credit),
+        'details',
+        { class: 'edit' },
+        el('summary', {}, t('edit')),
+        el('div', { class: 'row' }, nameEn, nameHi),
+        el('label', {}, t('tags'), tags),
+        el(
+          'div',
+          { class: 'row' },
+          el('label', {}, t('license'), license),
+          el('label', {}, t('credit'), credit),
+        ),
+        el(
+          'div',
+          { class: 'row' },
+          el('label', {}, featured, t('featured')),
+          el('label', {}, hidden, t('hidden')),
+          el('label', {}, t('order'), order),
+        ),
+        el(
+          'div',
+          { class: 'row' },
+          el('label', {}, t('publishAt'), publishAt),
+          el('label', {}, t('unpublishAt'), unpublishAt),
+        ),
+        el('label', {}, t('version'), version),
+        el('div', { class: 'row' }, save, remove),
       ),
-      el(
-        'div',
-        { class: 'row' },
-        el('label', {}, featured, t('featured')),
-        el('label', {}, hidden, t('hidden')),
-        el('label', {}, t('order'), order),
-      ),
-      el(
-        'div',
-        { class: 'row' },
-        el('label', {}, t('publishAt'), publishAt),
-        el('label', {}, t('unpublishAt'), unpublishAt),
-      ),
-      el('label', {}, t('version'), version),
-      el('div', { class: 'row' }, save, toggle, remove),
+      el('div', { class: 'row' }, toggle),
     ),
   );
 }

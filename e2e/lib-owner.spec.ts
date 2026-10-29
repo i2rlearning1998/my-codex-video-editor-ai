@@ -41,7 +41,7 @@ async function upload(page: Page, file: string) {
   return result;
 }
 
-test('[LIB-017][LIB-014][LIB-016] one command starts the manager and its catalog; the owner logs in with a 2-step code, a good pack is published, a bad one is rejected with its reason, and Unpublish asks again for the password and code', async ({
+test('[LIB-017][LIB-014][LIB-016][FIX7-015] one command starts the manager and its catalog; the owner logs in with a 2-step code, a good pack is published, a bad one is rejected with its reason, and Unpublish asks again for the password and code', async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -70,6 +70,8 @@ test('[LIB-017][LIB-014][LIB-016] one command starts the manager and its catalog
   );
 
   await page.locator('[data-tab="library"]').click();
+  await expect(page.locator('#category [data-value="elements"]')).toBeVisible();
+  await expect(page.locator('#kinds')).toBeVisible();
   await page.locator('#search').fill('kite');
   await page.locator('#search').press('Enter');
   const card = page.locator('.item[data-id="shape-pack-shape-kite"]');
@@ -77,6 +79,7 @@ test('[LIB-017][LIB-014][LIB-016] one command starts the manager and its catalog
   await expect(card.locator('img')).toHaveJSProperty('complete', true);
   await expect(card.locator('[data-state]')).toContainText('Published');
   // Featured, order and a licence: one save.
+  await card.locator('summary').click();
   await card.locator('[data-field="featured"]').check();
   await card.locator('[data-field="license"]').fill('CC BY 4.0');
   await card.locator('[data-field="credit"]').fill('Kite by the owner');

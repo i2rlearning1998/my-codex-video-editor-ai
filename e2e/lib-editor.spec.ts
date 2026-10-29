@@ -636,21 +636,31 @@ test('[LIB-023][LIB-017] what the owner hides, features, orders, schedules or un
   await owner.locator('#code').fill(ownerCode());
   await owner.getByRole('button', { name: 'Log in' }).click();
   await expect(owner.locator('[data-tab="library"]')).toBeVisible();
-  await owner.locator('#category').selectOption('audio');
+  await owner.locator('#category [data-value="audio"]').click();
   const card = (id: string) => owner.locator(`.item[data-id="${id}"]`);
+  const edit = async (id: string) => {
+    const details = card(id).locator('details.edit');
+    if (!(await details.evaluate((node: HTMLDetailsElement) => node.open)))
+      await card(id).locator('summary').click();
+  };
   const save = async (id: string) => {
     const status = owner.locator('#status');
     const before = (await status.textContent()) ?? '';
+    await edit(id);
     await card(id).locator('[data-action="save"]').click();
     await expect(status).not.toHaveText(before);
     await expect(status).toContainText(/Catalog version \d+ is live/);
   };
+  await edit('sound-ding');
   await card('sound-ding').locator('[data-field="hidden"]').check();
   await save('sound-ding');
+  await edit('sound-riser');
   await card('sound-riser').locator('[data-field="featured"]').check();
   await save('sound-riser');
+  await edit('sound-pop');
   await card('sound-pop').locator('[data-field="order"]').fill('-5');
   await save('sound-pop');
+  await edit('sound-click');
   await card('sound-click')
     .locator('[data-field="publish-at"]')
     .fill('2030-01-01T09:00');

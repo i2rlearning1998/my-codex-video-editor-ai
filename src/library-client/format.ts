@@ -176,7 +176,9 @@ export function categoryOf(
 ): CatalogCategory {
   switch (kind) {
     case 'shape':
-      return section === 'flowchart' ? 'draw' : 'elements';
+      // FIX7: flowchart shapes are Elements › Shapes (Draw holds the pens).
+      void section;
+      return 'elements';
     case 'background':
     case 'transition':
     case 'image':
