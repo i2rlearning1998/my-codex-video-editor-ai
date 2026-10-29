@@ -5571,6 +5571,22 @@ export function mountEditorShell(
     toCanvas: (point) => transformPoint(viewport().matrix, point),
     report: reportError,
     openSignature: () => signature.open(),
+    shapeItems: () =>
+      libraryActions.items().filter((item) => item.type === 'shape'),
+    insertItem: (item) => libraryActions.insert(item),
+    insertTable: (rows, columns) =>
+      safely(() => {
+        session.setPlaying(false);
+        const insert = tableInsertCommands(
+          rows,
+          columns,
+          session.source.composition,
+          (item) => libraryActions.commandsFor(item, undefined)!,
+        );
+        engine.commands.transaction(t('textx.step.insert'), insert.commands);
+        if (insert.layerId) session.select(insert.layerId);
+      }),
+    pickTable: (pick) => openTablePicker(pick),
     insertTextBox: (at, width) => {
       libraryActions.insertTextBox(at, width);
       editText(session.selectedId, { selectAll: true });

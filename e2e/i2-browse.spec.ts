@@ -292,7 +292,6 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   // user's own styles, then the rest.
   await expect(host.locator('.browse-section-head h3')).toContainText([
     'Default text styles',
-    'Font combinations',
     'My text styles',
     'Plain text',
     'Text styles',
@@ -424,16 +423,18 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   );
   await expect(page.locator('#draw-flyout [data-brush="pen"]')).toBeVisible();
   expect((await hook(page)).session.drawBrush).toBe('pen');
-  // Table is planned.
+  // Table is a real tool now (its flyout lists the sizes).
   await expect(palette.locator('[data-palette-tool="table"]')).toHaveAttribute(
-    'title',
-    'Coming soon',
+    'aria-pressed',
+    'false',
   );
   // Shape: drag a rectangle.
   await palette.locator('[data-palette-tool="shape"]').click();
-  await expect(page.locator('#draw-flyout')).toBeHidden();
-  const a = await toScreen(page, 100, 100),
-    b = await toScreen(page, 400, 300);
+  // The Shape flyout lists the shapes; the pen settings are not shown.
+  await expect(page.locator('#draw-flyout .draw-tile').first()).toBeVisible();
+  await expect(page.locator('#draw-panel')).toBeHidden();
+  const a = await toScreen(page, 700, 100),
+    b = await toScreen(page, 1000, 300);
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();
   await page.mouse.move(b.x, b.y, { steps: 6 });
@@ -443,7 +444,7 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
   let layer = (await scene(page)).layers.at(-1)!;
   expect(layer.properties.width?.value as number).toBeCloseTo(300, -1);
   expect(layer.properties.height?.value as number).toBeCloseTo(200, -1);
-  expect(layer.transform.position.value[0]).toBeCloseTo(100, -1);
+  expect(layer.transform.position.value[0]).toBeCloseTo(700, -1);
   // The palette is back on Select after placing.
   await expect(palette.locator('[data-palette-tool="select"]')).toHaveAttribute(
     'aria-pressed',

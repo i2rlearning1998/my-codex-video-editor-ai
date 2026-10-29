@@ -2694,5 +2694,9 @@
   "textx.table.addRow": "Add row",
   "textx.table.removeRow": "Remove row",
   "textx.table.addColumn": "Add column",
-  "textx.table.removeColumn": "Remove column"
+  "textx.table.removeColumn": "Remove column",
+  "draw.transparency": "Transparency",
+  "palette.shape.title": "Shapes",
+  "palette.line.title": "Lines",
+  "palette.table.custom": "Custom size…"
 }

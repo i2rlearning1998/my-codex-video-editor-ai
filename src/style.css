@@ -5280,7 +5280,7 @@ button.color-swatch-trigger {
   inset-inline-start: calc(var(--space-3) + 56px);
   inset-block-start: var(--space-3);
   z-index: var(--z-toolbar);
-  inline-size: 260px;
+  inline-size: 290px;
   max-block-size: calc(100% - 2 * var(--space-3));
   overflow-y: auto;
   border: 1px solid var(--border-subtle);
@@ -5291,6 +5291,53 @@ button.color-swatch-trigger {
 }
 .draw-flyout .draw-panel {
   padding: var(--space-4);
+}
+.draw-brushes button svg {
+  display: block;
+}
+.draw-swatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--space-1);
+}
+.draw-swatch {
+  min-width: 0;
+  inline-size: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  padding: 0;
+}
+.draw-flyout-extra {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.draw-flyout-extra[hidden] {
+  display: none;
+}
+.draw-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+.draw-tile {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+  cursor: pointer;
+}
+.draw-tile:hover,
+.draw-tile[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--color-accent-soft);
 }
 .place-preview {
   position: absolute;

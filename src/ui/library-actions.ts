@@ -122,6 +122,8 @@ export interface LibraryActions {
     time?: number,
   ): LibraryInsert | null;
   setItems(items: readonly LibraryItem[]): void;
+  /** The library items loaded now (the Draw palette's Shape tiles). */
+  items(): readonly LibraryItem[];
 }
 
 export function createLibraryActions(options: {
@@ -361,5 +363,6 @@ export function createLibraryActions(options: {
     setItems(next) {
       items = next;
     },
+    items: () => items,
   };
 }

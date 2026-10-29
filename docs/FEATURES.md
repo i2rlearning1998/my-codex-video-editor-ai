@@ -1214,3 +1214,4 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FX4-008 | P1 | W9 | Verified | Settings › Offline › Model source saves an https address, refuses others and resets |
 | FX4-009 | P1 | W9 | Verified | The left panel is full height and the timeline sits beside it |
 | FX4-010 | P1 | W9 | Verified | A v3 timeline plan builds one scene with shapes, a bubble and an overlay |
+| FIX7-010 | P1 | W9 | Verified | The Draw palette is Canva's: pen gallery with colours, size and transparency, shape tiles, line styles, sticky colours and table sizes |

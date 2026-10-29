@@ -9,17 +9,43 @@ import { t } from '../i18n';
 import { DRAW_MODES, type DrawMode } from '../render/drawing';
 import { createColorField } from './components/color-picker';
 import { createNumberField, syncNumberField } from './components/number-field';
-import { iconSvg } from './icons';
 import { documentColors } from './palette';
 import type { EditorSession } from './session';
 
-const ICONS: Record<DrawMode, string> = {
-  pen: 'pen',
-  marker: 'brush',
-  highlighter: 'highlighter',
-  glow: 'glow',
-  eraser: 'eraser',
+/**
+ * A drawn pen for the gallery (Canva's Draw shows each pen as its own
+ * picture, not an icon): a barrel and a tip shaped like that pen's mark.
+ */
+const penSvg = (brush: DrawMode, color: string) => {
+  const tip =
+    brush === 'pen'
+      ? '<path d="M16 8l-5 20h10z" fill="#d6d9de"/><path d="M16 4l-2 6h4z" fill="CURRENT"/>'
+      : brush === 'marker'
+        ? '<path d="M10 30l2-14h8l2 14z" fill="#d6d9de"/><path d="M12 16l2-8h4l2 8z" fill="CURRENT"/>'
+        : brush === 'highlighter'
+          ? '<path d="M9 30l1-12h12l1 12z" fill="#d6d9de"/><path d="M10 18l2-9h8l2 9z" fill="CURRENT" fill-opacity=".75"/>'
+          : brush === 'glow'
+            ? '<path d="M11 30l1-13h8l1 13z" fill="#d6d9de"/><path d="M12 17l2-8h4l2 8z" fill="CURRENT"/><circle cx="16" cy="8" r="6" fill="CURRENT" fill-opacity=".25"/>'
+            : '<path d="M9 30V16h14v14z" fill="#f6b9c4"/><path d="M9 16h14v6H9z" fill="#e8e8ee"/>';
+  return `<svg viewBox="0 0 32 48" width="32" height="48" aria-hidden="true"><g transform="translate(0 10)">${tip.replaceAll('CURRENT', color)}<rect x="11" y="30" width="10" height="14" rx="2" fill="#8a8f99"/></g></svg>`;
 };
+const BRUSH_COLOR: Record<DrawMode, string> = {
+  pen: '#2f6bff',
+  marker: '#ff5a6a',
+  highlighter: '#ffe04a',
+  glow: '#7af0ff',
+  eraser: '#f6b9c4',
+};
+export const DRAW_SWATCHES = [
+  '#000000',
+  '#ffffff',
+  '#ff3b30',
+  '#ff9500',
+  '#ffcc00',
+  '#34c759',
+  '#0a84ff',
+  '#af52de',
+] as const;
 
 export function mountDrawPanel(
   panel: HTMLElement,
@@ -35,15 +61,22 @@ export function mountDrawPanel(
   };
   panel.innerHTML = `
     <h3 class="draw-title">${t('draw.title')}</h3>
-    <p class="draw-hint">${t('draw.hint')}</p>
     <div class="draw-brushes" role="radiogroup" aria-label="${t('draw.brush')}">
       ${DRAW_MODES.map(
         (brush) =>
-          `<button type="button" role="radio" data-brush="${brush}" aria-checked="false" title="${t(`draw.${brush}`)}">${iconSvg(ICONS[brush])}<span>${t(`draw.${brush}`)}</span></button>`,
+          `<button type="button" role="radio" data-brush="${brush}" aria-checked="false" title="${t(`draw.${brush}`)}">${penSvg(brush, BRUSH_COLOR[brush])}<span>${t(`draw.${brush}`)}</span></button>`,
       ).join('')}
+    </div>
+    <div class="draw-swatches" role="group" aria-label="${t('draw.color')}">
+      ${DRAW_SWATCHES.map((color) => `<button type="button" class="draw-swatch" data-swatch="${color}" style="background:${color}" aria-label="${color}"></button>`).join('')}
     </div>
     <div class="draw-settings"></div>
     <button type="button" class="button" id="draw-exit">${t('draw.exit')}</button>`;
+  for (const swatch of panel.querySelectorAll<HTMLButtonElement>(
+    '[data-swatch]',
+  ))
+    swatch.onclick = () =>
+      safely(() => session.setDrawStyle({ color: swatch.dataset.swatch! }));
   const settings = panel.querySelector<HTMLElement>('.draw-settings')!;
   for (const button of panel.querySelectorAll<HTMLButtonElement>(
     '[data-brush]',
@@ -82,7 +115,7 @@ export function mountDrawPanel(
       }),
       createNumberField({
         id: 'draw-opacity',
-        label: t('draw.opacity'),
+        label: t('draw.transparency'),
         value: Math.round(style.opacity * 100),
         unit: '%',
         min: 1,

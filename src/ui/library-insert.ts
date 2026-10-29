@@ -551,6 +551,7 @@ export function stickyNoteCommands(
   time: number,
   text: string,
   name: string,
+  color = '#fde68a',
 ): LibraryInsert {
   const composition = source.composition;
   const side = Math.round(Math.min(composition.width, composition.height) / 4);
@@ -564,7 +565,7 @@ export function stickyNoteCommands(
       h: 1,
       shape: 'rectangle',
       radius: 0.04,
-      fill: '#fde68a',
+      fill: color,
     },
     box,
     name,

@@ -18,7 +18,8 @@ import { t } from '../i18n';
 import { iconSvg } from './icons';
 import { stickyNoteCommands } from './library-insert';
 import type { EditorSession } from './session';
-import { addShapeCommands, type ShapePreset } from './shapes';
+import { addShapeCommands, SHAPE_PRESETS, type ShapePreset } from './shapes';
+import type { LibraryItem } from '../library/schema';
 
 export type PaletteTool =
   | 'select'
@@ -30,6 +31,26 @@ export type PaletteTool =
   | 'signature'
   | 'table';
 type PlaceKind = 'shape' | 'line' | 'sticky' | 'text';
+const FLYOUT: readonly PaletteTool[] = [
+  'draw',
+  'shape',
+  'line',
+  'sticky',
+  'table',
+];
+const STICKY_COLORS = [
+  '#fde68a',
+  '#fecaca',
+  '#fbcfe8',
+  '#bfdbfe',
+  '#bbf7d0',
+  '#e9d5ff',
+] as const;
+const TABLE_SIZES: readonly [number, number][] = [
+  [2, 2],
+  [3, 3],
+  [4, 4],
+];
 const TOOLS: readonly [PaletteTool, string][] = [
   ['select', 'hand'],
   ['draw', 'pen'],
@@ -71,6 +92,11 @@ export function mountDrawPalette(options: {
   toCanvas: (point: Point2) => Point2;
   report: (error: unknown) => void;
   openSignature: () => void;
+  /** Library shapes for the Shape flyout. */
+  shapeItems: () => readonly LibraryItem[];
+  insertItem: (item: LibraryItem) => void;
+  insertTable: (rows: number, columns: number) => void;
+  pickTable: (pick: (rows: number, columns: number) => void) => void;
   insertTextBox: (at: Point2, width?: number) => void;
   /** The left panel: collapse while open, restore after. */
   setLeftOpen: (open: boolean) => void;
@@ -89,7 +115,9 @@ export function mountDrawPalette(options: {
   flyout.className = 'draw-flyout';
   flyout.id = 'draw-flyout';
   flyout.hidden = true;
-  flyout.append(options.drawPanel);
+  const extra = document.createElement('div');
+  extra.className = 'draw-flyout-extra';
+  flyout.append(options.drawPanel, extra);
   options.drawPanel.hidden = false;
   stage.append(bar, flyout);
   const preview = document.createElement('div');
@@ -101,6 +129,8 @@ export function mountDrawPalette(options: {
   let tool: PaletteTool = 'draw';
   let lastBrush: NonNullable<EditorSession['drawBrush']> = 'pen';
   let leftWasOpen = true;
+  let shapePreset: ShapePreset = 'rectangle';
+  let linePreset: ShapePreset = 'line';
   const safely = (action: () => void) => {
     try {
       action();
@@ -117,16 +147,9 @@ export function mountDrawPalette(options: {
     if (id === 'signature') button.id = 'palette-signature';
     const label = t(`palette.${id}`);
     button.innerHTML = iconSvg(icon, 18);
-    if (id === 'table') {
-      const reason = t('toolbar.later', { wave: '8', id: 'SHP-025' });
-      button.setAttribute('aria-disabled', 'true');
-      button.title = reason;
-      button.setAttribute('aria-label', `${label}: ${reason}`);
-    } else {
-      button.title = label;
-      button.setAttribute('aria-label', label);
-      button.setAttribute('aria-pressed', 'false');
-    }
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', 'false');
     button.onclick = () => safely(() => choose(id));
     return button;
   });
@@ -151,7 +174,6 @@ export function mountDrawPalette(options: {
   });
 
   const choose = (id: PaletteTool) => {
-    if (id === 'table') return;
     if (id === 'signature') {
       options.openSignature();
       return;
@@ -167,16 +189,166 @@ export function mountDrawPalette(options: {
     // Esc or V left draw mode: the palette goes back to Select.
     if (open && tool === 'draw' && !session.drawBrush) tool = 'select';
     for (const button of buttons)
-      if (button.dataset.paletteTool !== 'table')
-        button.setAttribute(
-          'aria-pressed',
-          String(open && button.dataset.paletteTool === tool),
-        );
-    flyout.hidden = !open || tool !== 'draw';
+      button.setAttribute(
+        'aria-pressed',
+        String(open && button.dataset.paletteTool === tool),
+      );
+    flyout.hidden = !open || !FLYOUT.includes(tool);
+    options.drawPanel.hidden = tool !== 'draw';
+    extra.hidden = tool === 'draw';
+    if (builtTool !== tool) {
+      builtTool = tool;
+      buildExtra();
+    }
     canvas.classList.toggle(
       'placing',
       open && ['shape', 'line', 'sticky', 'text'].includes(tool),
     );
+  };
+
+  // --- Flyouts (Canva's Draw: each tool shows its own choices) -------------
+  let builtTool: PaletteTool | null = null;
+  const tile = (label: string, svg: string, on: boolean, run: () => void) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'draw-tile';
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.setAttribute('aria-pressed', String(on));
+    button.innerHTML = svg;
+    button.onclick = () => {
+      safely(run);
+      buildExtra();
+    };
+    return button;
+  };
+  const presetSvg = (preset: ShapePreset) => {
+    const spec = SHAPE_PRESETS[preset];
+    const stroke = '#272b29';
+    const body =
+      spec.kind === 'ellipse'
+        ? `<ellipse cx="24" cy="24" rx="19" ry="19" fill="#8b6cff"/>`
+        : spec.kind === 'rectangle'
+          ? `<rect x="5" y="9" width="38" height="30" rx="${spec.radius ? 9 : 0}" fill="#8b6cff"/>`
+          : `<line x1="${spec.kind === 'arrow' && 'both' in spec ? 10 : 5}" y1="24" x2="${spec.kind === 'arrow' ? 38 : 43}" y2="24" stroke="${stroke}" stroke-width="3" stroke-linecap="round" ${'dash' in spec ? (spec.dash === 'dot' ? 'stroke-dasharray="1 6"' : 'stroke-dasharray="7 5"') : ''}/>${spec.kind === 'arrow' ? `<path d="M34 17l10 7-10 7" fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>${'both' in spec ? `<path d="M14 17L4 24l10 7" fill="none" stroke="${stroke}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` : ''}` : ''}`;
+    return `<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">${body}</svg>`;
+  };
+  const itemSvg = (item: Extract<LibraryItem, { type: 'shape' }>) => {
+    const paths = item.data.polygons
+      .map((polygon) =>
+        polygon
+          .map(
+            (ring) =>
+              `M${ring.map(([x, y]) => `${(x * 0.48).toFixed(1)} ${(y * 0.48).toFixed(1)}`).join('L')}Z`,
+          )
+          .join(''),
+      )
+      .join('');
+    return `<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><path d="${paths}" fill="#8b6cff" fill-rule="evenodd"/></svg>`;
+  };
+  const section = (title: string, ...tiles: HTMLElement[]) => {
+    const wrap = document.createElement('section');
+    wrap.className = 'draw-section';
+    const heading = document.createElement('h3');
+    heading.className = 'draw-title';
+    heading.textContent = title;
+    const grid = document.createElement('div');
+    grid.className = 'draw-tiles';
+    grid.append(...tiles);
+    wrap.append(heading, grid);
+    return wrap;
+  };
+  const buildExtra = () => {
+    extra.replaceChildren();
+    if (tool === 'shape') {
+      const presets: ShapePreset[] = ['rectangle', 'rounded', 'ellipse'];
+      const tiles = presets.map((preset) =>
+        tile(
+          t(`shape.${preset}`),
+          presetSvg(preset),
+          shapePreset === preset,
+          () => {
+            shapePreset = preset;
+            placeCentred(preset, canvasCentre());
+          },
+        ),
+      );
+      const library = options
+        .shapeItems()
+        .map((item) =>
+          tile(
+            typeof item.name === 'string'
+              ? item.name
+              : (item.name.en ?? item.id),
+            itemSvg(item as Extract<LibraryItem, { type: 'shape' }>),
+            false,
+            () => options.insertItem(item),
+          ),
+        );
+      extra.append(section(t('palette.shape.title'), ...tiles, ...library));
+    } else if (tool === 'line') {
+      const presets: ShapePreset[] = [
+        'line',
+        'line-dashed',
+        'line-dotted',
+        'arrow',
+        'arrow-double',
+      ];
+      extra.append(
+        section(
+          t('palette.line.title'),
+          ...presets.map((preset) =>
+            tile(
+              t(`shape.${preset}`),
+              presetSvg(preset),
+              linePreset === preset,
+              () => {
+                linePreset = preset;
+                placeCentred(preset, canvasCentre());
+              },
+            ),
+          ),
+        ),
+      );
+    } else if (tool === 'sticky') {
+      extra.append(
+        section(
+          t('palette.sticky'),
+          ...STICKY_COLORS.map((color) =>
+            tile(
+              color,
+              `<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><rect x="6" y="6" width="36" height="36" rx="3" fill="${color}"/></svg>`,
+              stickyColor === color,
+              () => {
+                stickyColor = color;
+                commit('sticky', canvasCentre(), canvasCentre());
+                tool = 'sticky';
+                sync();
+              },
+            ),
+          ),
+        ),
+      );
+    } else if (tool === 'table') {
+      const tiles = TABLE_SIZES.map(([rows, columns]) =>
+        tile(
+          t('textx.table.size', {
+            rows: String(rows),
+            columns: String(columns),
+          }),
+          `<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true">${Array.from({ length: rows * columns }, (_, i) => `<rect x="${6 + (i % columns) * (36 / columns)}" y="${6 + Math.floor(i / columns) * (36 / rows)}" width="${36 / columns - 2}" height="${36 / rows - 2}" fill="#8b6cff"/>`).join('')}</svg>`,
+          false,
+          () => options.insertTable(rows, columns),
+        ),
+      );
+      const custom = document.createElement('button');
+      custom.type = 'button';
+      custom.className = 'button draw-table-custom';
+      custom.textContent = t('palette.table.custom');
+      custom.onclick = () =>
+        safely(() => options.pickTable(options.insertTable));
+      extra.append(section(t('palette.table'), ...tiles), custom);
+    }
   };
 
   // --- Placing ---------------------------------------------------------------
@@ -222,7 +394,10 @@ export function mountDrawPalette(options: {
     ) as Extract<Command, { type: 'CREATE_LAYER' }>;
     const layer = create.layer;
     const properties = layer.properties as Record<string, { value: unknown }>;
-    if (preset === 'line') {
+    if (
+      SHAPE_PRESETS[preset].kind === 'line' ||
+      SHAPE_PRESETS[preset].kind === 'arrow'
+    ) {
       const length = Math.max(
         8,
         Math.hypot(end[0] - start[0], end[1] - start[1]),
@@ -263,25 +438,30 @@ export function mountDrawPalette(options: {
     engine.commands.transaction('Add shape', commands);
     session.select(layer.id);
   };
+  /** A click places the preset's own size, centred on the point. */
+  const placeCentred = (preset: ShapePreset, at: Point2) => {
+    const spec = SHAPE_PRESETS[preset];
+    const line = spec.kind === 'line' || spec.kind === 'arrow';
+    placeShape(
+      preset,
+      [at[0] - spec.width / 2, at[1] - (line ? 0 : spec.height / 2)],
+      [at[0] + spec.width / 2, at[1] + (line ? 0 : spec.height / 2)],
+    );
+  };
+  const canvasCentre = (): Point2 => [
+    session.source.composition.width / 2,
+    session.source.composition.height / 2,
+  ];
+  let stickyColor: string = STICKY_COLORS[0];
   const commit = (kind: PlaceKind, start: Point2, end: Point2) => {
     const dragged = Math.hypot(end[0] - start[0], end[1] - start[1]) >= 6;
     if (kind === 'shape') {
       // A click places the preset's own size, centred on the point.
-      if (!dragged)
-        placeShape(
-          'rectangle',
-          [start[0] - 120, start[1] - 80],
-          [start[0] + 120, start[1] + 80],
-        );
-      else placeShape('rectangle', start, end);
+      if (!dragged) placeCentred(shapePreset, start);
+      else placeShape(shapePreset, start, end);
     } else if (kind === 'line') {
-      if (!dragged)
-        placeShape(
-          'line',
-          [start[0] - 120, start[1]],
-          [start[0] + 120, start[1]],
-        );
-      else placeShape('line', start, end);
+      if (!dragged) placeCentred(linePreset, start);
+      else placeShape(linePreset, start, end);
     } else if (kind === 'sticky') {
       const insert = stickyNoteCommands(
         session.source,
@@ -289,6 +469,7 @@ export function mountDrawPalette(options: {
         session.currentTime,
         t('palette.stickyText'),
         t('palette.sticky'),
+        stickyColor,
       );
       session.setPlaying(false);
       engine.commands.transaction(insert.label, insert.commands);

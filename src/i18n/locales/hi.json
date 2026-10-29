@@ -2694,5 +2694,9 @@
   "textx.table.addRow": "पंक्ति जोड़ें",
   "textx.table.removeRow": "पंक्ति हटाएँ",
   "textx.table.addColumn": "कॉलम जोड़ें",
-  "textx.table.removeColumn": "कॉलम हटाएँ"
+  "textx.table.removeColumn": "कॉलम हटाएँ",
+  "draw.transparency": "पारदर्शिता",
+  "palette.shape.title": "आकृतियाँ",
+  "palette.line.title": "लाइनें",
+  "palette.table.custom": "अपना साइज़…"
 }
