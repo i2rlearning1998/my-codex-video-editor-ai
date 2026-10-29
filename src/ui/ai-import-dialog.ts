@@ -73,7 +73,11 @@ export interface AiImportOptions extends CheckDeps {
   readonly copy: (text: string) => void;
   readonly openAi?: () => void;
   /** FINAL2 U10: a checked composition item offers "Build video". */
-  readonly buildComposition?: (item: CreatorItem) => void;
+  readonly buildComposition?: (
+    item: CreatorItem,
+    /** FIX7: saves the picked items; run only once the build is kept. */
+    keep?: () => Promise<unknown>,
+  ) => void;
 }
 
 type Status = 'ok' | 'warning' | 'rejected' | 'unsupported' | 'checking';
@@ -399,18 +403,21 @@ export function openAiImportDialog(options: AiImportOptions) {
           build.textContent = t('composition.build');
           // FIX1 F7: Build video also keeps the ticked items (a style)
           // and the composition itself in the AI library.
-          build.onclick = async () => {
+          build.onclick = () => {
             build.disabled = true;
             const rows = [...selected().filter((other) => other !== row), row];
-            if (envelope)
-              await options
-                .onAdd(payload(rows, false))
-                .catch((error: unknown) => {
-                  console.debug('[ai-import] keep before build failed', error);
-                  return false as const;
-                });
+            // FIX7: nothing is saved until the build is complete.
+            const keep = async () => {
+              if (envelope)
+                await options
+                  .onAdd(payload(rows, false))
+                  .catch((error: unknown) => {
+                    console.debug('[ai-import] keep after build failed', error);
+                    return false as const;
+                  });
+            };
             handle.close();
-            options.buildComposition!(row.item!);
+            options.buildComposition!(row.item!, keep);
           };
           body.append(build);
         }

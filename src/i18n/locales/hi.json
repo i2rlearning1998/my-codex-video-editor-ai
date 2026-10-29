@@ -2598,7 +2598,7 @@
   "plan.step.captions": "कैप्शन",
   "plan.step.camera": "कैमरा और एनिमेशन",
   "plan.step.sound": "संगीत और ध्वनियाँ",
-  "plan.summaryFlag": "{key} को एसेट चाहिए: {reason}",
+  "plan.summaryFlag": "नहीं मिली: {key}",
   "plan.summaryMedia": "{total} में से {found} लेयर के लिए मीडिया मिला।",
   "plan.summaryScenes": "{count} दृश्य, लगभग {seconds} सेकंड।",
   "plan.up": "ऊपर",
@@ -2652,5 +2652,9 @@
   "audioPreview.stop": "{name} का पूर्वावलोकन रोकें",
   "audioPreview.failed": "यह आवाज़ चलाई नहीं जा सकी।",
   "elements.section.videos": "वीडियो",
-  "elements.section.photos": "फ़ोटो"
+  "elements.section.photos": "फ़ोटो",
+  "plan.missingTitle": "{count} फ़ाइलें नहीं मिलीं",
+  "plan.missingHint": "आपके लिए कुछ अपने-आप नहीं चुना गया। ये फ़ाइलें अपने कंप्यूटर से चुनें (या बाद में इसी नाम से Media में जोड़ें), वे अपने-आप लग जाएँगी।",
+  "plan.chooseFiles": "फ़ाइलें चुनें…",
+  "plan.continueWithout": "इनके बिना आगे बढ़ें"
 }

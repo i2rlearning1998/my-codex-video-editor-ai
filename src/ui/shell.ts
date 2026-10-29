@@ -2663,7 +2663,10 @@ export function mountEditorShell(
     null;
   /** FINAL3 V2: Build video for a Video Plan v2 (no slot dialog). */
   let aiPanel: { render(): void } | null = null;
-  const openPlanBuildFor = (input: VideoPlan) => {
+  const openPlanBuildFor = (
+    input: VideoPlan,
+    keep?: () => Promise<unknown>,
+  ) => {
     session.setPlaying(false);
     // FINAL3 V4.2 and V4.3: the plan's theme, else the project's current
     // theme, gives the feel values the plan leaves out.
@@ -2678,6 +2681,9 @@ export function mountEditorShell(
       importFile: importQuiet,
       sfx: catalogSfx,
       theme: planThemeById,
+      // FIX7: the AI card is saved once the build is complete, never before.
+      ...(keep ? { onCommit: () => void keep() } : {}),
+      discardAssets: (ids) => mediaPanel.discard(ids),
       addScenes: (result) => {
         // FINAL3 V3.5: the plan's feel is listed in AI as a Theme.
         if (plan.feel?.palette || plan.feel?.headingFont) {
@@ -2821,7 +2827,10 @@ export function mountEditorShell(
       }),
     );
   /** FINAL2 U10: Build video from an AI composition (slots, then scenes). */
-  const openBuildVideo = (item: { name: { en: string }; data: unknown }) =>
+  const openBuildVideo = (
+    item: { name: { en: string }; data: unknown },
+    keep?: () => Promise<unknown>,
+  ) =>
     openCompositionBuild(item, {
       assets: () => session.source.assets as unknown as readonly Asset[],
       importFile: async (file) => {
@@ -2833,6 +2842,7 @@ export function mountEditorShell(
       },
       library: (id) => libraryActions.find(id),
       addScenes: (project) => {
+        void keep?.();
         const ids = addBuiltScenes(project);
         void training.start(engine.state.id, item.data);
         // FIX3 1.3: the AI card reads Built (or Needs assets) from now on.
@@ -2895,10 +2905,10 @@ export function mountEditorShell(
       onAdd: addCreatorItems,
       openAi: () => openCategory('AI'),
       // FINAL2 U10: a composition builds into scenes (slot dialog).
-      buildComposition: (item) =>
+      buildComposition: (item, keep) =>
         isPlanV2(item.data)
-          ? openPlanBuildFor(item.data as unknown as VideoPlan)
-          : openBuildVideo(item),
+          ? openPlanBuildFor(item.data as unknown as VideoPlan, keep)
+          : openBuildVideo(item, keep),
       copy: (text) => {
         void navigator.clipboard
           .writeText(text)

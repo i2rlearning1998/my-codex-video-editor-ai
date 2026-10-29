@@ -103,11 +103,39 @@ export function rankCandidates(
     .map((entry) => entry.candidate);
 }
 
-const FILE_NAME =
+const EXTENSION =
   /\.(png|jpe?g|webp|gif|svg|avif|bmp|mp4|mov|webm|m4v|mkv|mp3|wav|m4a|ogg|aac|flac)\s*$/i;
-/** True when a media query is a file name rather than a description. */
-export const namesAFile = (query: string): boolean =>
-  FILE_NAME.test(query.trim());
+/** A name or query as plain lowercase words (no extension, no dashes). */
+export const nameWords = (text: string): string[] =>
+  text
+    .trim()
+    .replace(EXTENSION, '')
+    .toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean);
+/**
+ * The person's own file for a query: its name (without extension, dashes or
+ * case) holds every word of the query ("globe-earth" is "Globe Earth.PNG").
+ */
+export function namesMatch(title: string, query: string): boolean {
+  const wanted = nameWords(query);
+  if (!wanted.length) return false;
+  const have = new Set(nameWords(title));
+  return wanted.every((word) => have.has(word));
+}
+/**
+ * FIX7: what a build may use on its own. Only the person's own media whose
+ * name fits the query (or a candidate the person chose and the plan kept).
+ * Stock and library picks are suggestions, never filled in silently: a
+ * missing file stays missing and is listed by name.
+ */
+export const mayUse = (
+  candidate: MediaCandidate,
+  query: string,
+  preferred?: string,
+): boolean =>
+  candidate.key === preferred ||
+  (candidate.source === 'asset' && namesMatch(candidate.title, query));
 
 /**
  * Resolves one media layer. A `preferred` key (a swap kept in the plan's
@@ -129,11 +157,9 @@ export async function resolveMedia(
   const local = services.local(intent.query, intent.type);
   let stock: readonly MediaCandidate[] = [];
   let reason: string | undefined;
-  // The library first: stock is asked only when it has nothing good.
-  const goodLocal = local.some(
-    (candidate) => scoreCandidate(candidate, intent.query, intent.type) >= 10,
-  );
-  if (!goodLocal || preferred?.includes(':') === true) {
+  // FIX7: stock is searched only for a pick the person made earlier; a
+  // build never goes looking for anything the person has not added.
+  if (preferred && !/^(asset|library):/.test(preferred)) {
     try {
       stock = await services.stock(
         intent.query,
@@ -158,17 +184,8 @@ export async function resolveMedia(
     ? [keep, ...ranked.filter((candidate) => candidate !== keep)]
     : ranked;
   const alternatives = ordered.slice(0, 4);
-  // FIX6: when the query names a file ("stone-well.png"), a stock picture
-  // is only a suggestion. It is used when the person chose it (a swap kept
-  // in the plan), never silently in place of the file the plan expected:
-  // then the layer shows "needs asset" and the stock picture waits in
-  // Review & swap. A described query ("a bee on a flower") still gets the
-  // best stock match.
-  const usable = alternatives.filter(
-    (candidate) =>
-      candidate.source !== 'stock' ||
-      candidate.key === preferred ||
-      !namesAFile(intent.query),
+  const usable = alternatives.filter((candidate) =>
+    mayUse(candidate, intent.query, preferred),
   );
   const chosen = usable[0] ?? null;
   return chosen
@@ -179,7 +196,8 @@ export async function resolveMedia(
         flag: 'needs-asset',
         reason:
           alternatives.length > 0
-            ? `No file of yours matches "${intent.query}". Add one, or pick a suggestion in Review & swap.`
-            : (reason ?? `Nothing found for "${intent.query}".`),
+            ? `Missing: "${intent.query}". Add a file with this name to Media.`
+            : (reason ??
+              `Missing: "${intent.query}". Add a file with this name to Media.`),
       };
 }

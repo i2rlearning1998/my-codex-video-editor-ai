@@ -1191,7 +1191,9 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX6-005 | P0 | W9 | Verified | A project is checked without the slow whole-value check, so building a video no longer freezes the tool |
 | FIX6-006 | P0 | W9 | Verified | While a plan builds, the dialog shows a spinner and a note; both go when it is done |
 | FIX6-007 | P0 | W9 | Verified | Two imported plans: building the second leaves the first built, and each card opens its own Review & swap |
-| FIX6-008 | P0 | W9 | Verified | A plan layer that names a file (x.png) never gets a stock picture in its place: it shows needs asset and the stock picture waits in Review & swap |
+| FIX7-001 | P0 | W9 | Verified | A plan media name matches the person's own file without extension, dashes or case (globe-earth is Globe Earth.PNG) |
+| FIX7-002 | P0 | W9 | Verified | A build never picks, downloads or even searches stock or library media for a plan layer: a missing file stays missing and is listed by name |
+| FIX7-003 | P0 | W9 | Verified | A layer is filled only by the person's own media with the same name, or by a pick the person made |
 | FIX6-009 | P0 | W9 | Verified | A scene that was already checked is not checked again, so editing a project with many scenes stays fast |
 | FIX6-010 | P0 | W9 | Verified | The left rail is read from an editor layout (categories, order, icons); an invalid layout gives the default |
 | FIX6-011 | P1 | W9 | Verified | Every disabled planned control reads Coming soon; no duplicate disabled tiles in Text |

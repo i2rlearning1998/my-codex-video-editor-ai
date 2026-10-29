@@ -40,7 +40,7 @@ import {
 import { setLayerMasks } from '../masks/commands';
 import { KIT_BACKGROUNDS } from './kit-ids';
 import {
-  namesAFile,
+  mayUse,
   resolveMedia,
   type MediaCandidate,
   type ResolveServices,
@@ -97,6 +97,9 @@ export interface PlanBuildDeps {
 export interface PlanFlag {
   readonly key: string;
   readonly reason: string;
+  /** FIX7: the file the plan expects (its query) and what kind it is. */
+  readonly name?: string;
+  readonly type?: 'photo' | 'video' | 'audio' | 'icon' | 'emoji';
 }
 export interface PlanBuildResult {
   readonly project: Project | null;
@@ -338,11 +341,8 @@ export async function buildVideoFromPlan(
     let asset: Asset | null = null;
     // Only a candidate that may be used on its own (see resolveMedia).
     const preferredKey = plan.resolved?.[key];
-    for (const candidate of choice.alternatives.filter(
-      (item) =>
-        item.source !== 'stock' ||
-        item.key === preferredKey ||
-        !namesAFile(layer.mediaIntent?.query ?? ''),
+    for (const candidate of choice.alternatives.filter((item) =>
+      mayUse(item, layer.mediaIntent?.query ?? '', preferredKey),
     )) {
       try {
         const known = importedBy.get(candidate.key);
@@ -365,6 +365,9 @@ export async function buildVideoFromPlan(
         key,
         reason:
           choice.reason ?? `Nothing usable for "${layer.mediaIntent?.query}".`,
+        ...(layer.mediaIntent
+          ? { name: layer.mediaIntent.query, type: layer.mediaIntent.type }
+          : {}),
       });
     onProgress({
       step: 'media',
@@ -512,7 +515,13 @@ export async function buildVideoFromPlan(
   if (plan.music && deps.sound)
     try {
       music = await deps.sound(plan.music.query, 'music', signal);
-      if (!music) warnings.push(`No music found for "${plan.music.query}".`);
+      if (!music)
+        flags.push({
+          key: 'music',
+          name: plan.music.query,
+          type: 'audio',
+          reason: `Missing: "${plan.music.query}". Add a file with this name to Media.`,
+        });
     } catch (error) {
       if ((error as Error)?.name === 'AbortError') throw error;
       warnings.push(`Music could not be added: ${(error as Error).message}`);

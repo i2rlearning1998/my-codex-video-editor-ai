@@ -2598,7 +2598,7 @@
   "plan.step.captions": "Captions",
   "plan.step.camera": "Camera and animation",
   "plan.step.sound": "Music and sounds",
-  "plan.summaryFlag": "{key} needs an asset: {reason}",
+  "plan.summaryFlag": "Missing: {key}",
   "plan.summaryMedia": "Media found for {found} of {total} layers.",
   "plan.summaryScenes": "{count} scenes, about {seconds} s.",
   "plan.up": "Up",
@@ -2652,5 +2652,9 @@
   "audioPreview.stop": "Stop preview of {name}",
   "audioPreview.failed": "This sound could not be played.",
   "elements.section.videos": "Videos",
-  "elements.section.photos": "Photos"
+  "elements.section.photos": "Photos",
+  "plan.missingTitle": "{count} files are missing",
+  "plan.missingHint": "Nothing was picked for you. Choose these files from your computer (or add them to Media later with the same name) and they fill in by themselves.",
+  "plan.chooseFiles": "Choose files…",
+  "plan.continueWithout": "Continue without them"
 }

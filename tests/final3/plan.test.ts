@@ -39,11 +39,24 @@ const stockFor = (query: string, type: string): MediaCandidate[] =>
     width: 1920,
     height: 1080,
   }));
-function deps(options: { stockDown?: boolean; voice?: boolean } = {}) {
+const ownFor = (query: string, type: string): MediaCandidate => ({
+  key: `asset:own-${query.replace(/\W+/g, '-')}`,
+  source: 'asset',
+  kind: type === 'video' ? 'video' : 'image',
+  title: query,
+  tags: [],
+  width: 1920,
+  height: 1080,
+});
+function deps(
+  options: { stockDown?: boolean; voice?: boolean; own?: boolean } = {},
+) {
   const imported: string[] = [];
   const value: PlanBuildDeps = {
     resolve: {
-      local: () => [],
+      // FIX7: the person's own media (named like the plan's) are used.
+      local: (query, type) =>
+        options.own === false ? [] : [ownFor(query, type)],
       stock: async (query, type) => {
         if (options.stockDown)
           throw new Error('The stock service could not be reached.');
@@ -166,10 +179,10 @@ describe('[FN3-020] the auto-builder', { timeout: 60_000 }, () => {
     ]);
     // Scene length = max(voice + 0.4, hint): 9 words × 0.5 s + 0.4 > 4.
     expect(first.durations[0]).toBeCloseTo(9 * 0.5 + 0.4, 1);
-    // The best-matching stock item is chosen; four alternatives are kept.
-    expect(first.resolved['open/flower']).toBe('mock:bee-flower-macro-3');
-    expect(first.alternatives['open/flower']).toHaveLength(4);
-    expect(imported).toContain('mock:beehive-bees-working-3');
+    // The person's own file of that name is used; nothing is searched.
+    expect(first.resolved['open/flower']).toBe('asset:own-bee-flower-macro');
+    expect(first.alternatives['open/flower']).toHaveLength(1);
+    expect(imported).toContain('asset:own-beehive-bees-working');
     // Every plan layer is findable; captions, camera shots, transitions.
     const layers = layersOf(project);
     expect(
@@ -209,7 +222,7 @@ describe('[FN3-020] the auto-builder', { timeout: 60_000 }, () => {
     const rebuilt = await buildVideoFromPlan(swapped, deps().value);
     expect(rebuilt.resolved['open/flower']).toBe('mock:bee-flower-macro-2');
   });
-  it('[FN3-020] without a voice key builds silent with a banner and proportional captions; stock down gives fallback cards and flags, and still builds', async () => {
+  it('[FN3-020] without a voice key builds silent with a banner and proportional captions; files the person did not add give fallback cards and flags named after the file, and still builds', async () => {
     const silent = await buildVideoFromPlan(
       read('honey-en'),
       deps({ voice: false }).value,
@@ -220,14 +233,15 @@ describe('[FN3-020] the auto-builder', { timeout: 60_000 }, () => {
     ).toBeGreaterThan(2);
     const down = await buildVideoFromPlan(
       read('honey-en'),
-      deps({ stockDown: true }).value,
+      deps({ own: false }).value,
     );
     expect(down.project).not.toBeNull();
     expect(down.flags.map((f) => f.key)).toEqual([
       'open/flower',
       'hive/hive-video',
     ]);
-    expect(down.flags[0]!.reason).toContain('could not be reached');
+    expect(down.flags[0]!.reason).toContain('Missing');
+    expect(down.flags[0]!.name).toBe('bee flower macro');
     expect(
       layersOf(down.project!).filter(
         (l) => l.properties.planFlag?.value === 'needs-asset',

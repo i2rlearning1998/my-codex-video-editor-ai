@@ -782,10 +782,23 @@ export function mountMediaPanel(options: MediaPanelOptions) {
     return ids;
   };
 
+  /**
+   * FIX7: takes media away at once (no Restore): what a cancelled build
+   * had imported. Their stored files go too.
+   */
+  const discard = async (ids: readonly string[]) => {
+    for (const id of ids) {
+      if (!assetById(id)) continue;
+      setRemoved(id, true);
+      await purge(id);
+    }
+  };
+
   render();
   return {
     render,
     importFiles,
+    discard,
     get importing() {
       return controller !== null;
     },

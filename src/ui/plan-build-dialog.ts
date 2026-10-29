@@ -21,6 +21,7 @@ import {
   type MediaCandidate,
   type PlanBuildResult,
   type ResolveServices,
+  namesMatch,
   type VideoPlan,
 } from '../video-plan';
 import { openModal } from './components/modal';
@@ -44,6 +45,13 @@ export interface PlanBuildDeps {
   theme(id: string): Promise<Theme | null>;
   /** Adds the built scenes in one step and opens the first. */
   addScenes(result: PlanBuildResult): void;
+  /**
+   * FIX7: runs once the build is complete and about to be kept (the AI
+   * card is saved here, never earlier). A cancelled build never calls it.
+   */
+  onCommit?(): Promise<void> | void;
+  /** FIX7: takes media the build imported away again (cancel, failure). */
+  discardAssets?(ids: readonly string[]): Promise<void> | void;
   /** Opens the Review panel for the built plan. */
   review(result: PlanBuildResult): void;
   report(error: unknown): void;
@@ -168,20 +176,35 @@ export function planServices(
 export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
   const controller = new AbortController();
   let finished = false;
+  // FIX7: all or nothing. What the build imports is remembered, and taken
+  // away again unless the video is really added.
+  const before = new Set(deps.assets().map((asset) => asset.id));
+  let committed = false;
+  const rollback = async () => {
+    if (committed) return;
+    const added = deps
+      .assets()
+      .map((asset) => asset.id)
+      .filter((id) => !before.has(id));
+    if (added.length) await deps.discardAssets?.(added);
+  };
   const handle = openModal({
     titleText: t('plan.buildTitle', { name: plan.meta.title }),
     persistent: true,
     onClose: () => {
       if (!finished) controller.abort();
+      void rollback();
     },
     bodyBuilder: (body) => {
       body.classList.add('plan-build');
       body.innerHTML = `<p class="plan-working" id="plan-working" role="status"><span class="plan-spinner" aria-hidden="true"></span><span>${t('plan.working')}</span></p>
         <ol class="plan-steps" id="plan-steps"></ol>
         <p class="plan-banner" id="plan-banner" role="status" hidden></p>
+        <div class="plan-missing" id="plan-missing" hidden></div>
         <div class="plan-summary" id="plan-summary" hidden></div>
         <div class="modal-actions">
           <button type="button" class="button secondary" id="plan-cancel"></button>
+          <button type="button" class="button secondary" id="plan-continue" hidden></button>
           <button type="button" class="button primary" id="plan-review" hidden></button>
         </div>`;
     },
@@ -200,10 +223,7 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
   }
   const cancel = $<HTMLButtonElement>('plan-cancel');
   cancel.textContent = t('code.cancel');
-  cancel.onclick = () => {
-    if (finished) handle.close();
-    else controller.abort();
-  };
+  const proceed = $<HTMLButtonElement>('plan-continue');
   const reviewButton = $<HTMLButtonElement>('plan-review');
   reviewButton.textContent = t('plan.review');
   const show = (progress: BuildProgress) => {
@@ -220,75 +240,186 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
           : '';
     li.querySelector('.plan-step-detail')!.textContent = progress.detail ?? '';
   };
-  void (async () => {
-    try {
-      // FIX6: let the dialog (and its spinner) paint before heavy work.
-      await new Promise<void>((done) =>
-        requestAnimationFrame(() => setTimeout(done)),
-      );
-      const services = planServices(deps);
-      const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
-      const theme = plan.meta.themeId
-        ? await deps.theme(plan.meta.themeId)
-        : null;
-      const result = await buildVideoFromPlan(
-        plan,
-        {
-          ...services,
-          theme,
-          ...(voice
-            ? {
-                voice: async (text, lang, signal) => {
-                  const made = await synthesizeToMedia(text, {
-                    provider: voice.provider,
-                    voiceId: voice.voiceId,
-                    lang,
-                    ...(signal ? { signal } : {}),
-                  });
-                  const asset = await deps.importFile(
-                    new File([made.blob], `Narration.wav`, { type: made.mime }),
-                  );
-                  return asset ? { asset, duration: made.durationSec } : null;
-                },
-              }
-            : { voiceUnavailable: t('plan.noVoice') }),
-          sound: async (query, kind, signal) => {
-            // A sound effect from the library catalog when its name fits.
-            if (kind === 'sfx') {
-              const found = deps.sfx?.(words(query));
-              if (found) return found;
+  const message = (text: string, state: 'error' | 'ok' | 'warning') => {
+    const summary = $('plan-summary');
+    summary.hidden = false;
+    summary.dataset.state = state;
+    summary.textContent = text;
+  };
+  /** The voice is made once, however often the build runs again. */
+  const spokenBefore = new Map<
+    string,
+    { asset: Asset; duration: number } | null
+  >();
+  const build = async () => {
+    const services = planServices(deps);
+    const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
+    const theme = plan.meta.themeId
+      ? await deps.theme(plan.meta.themeId)
+      : null;
+    return buildVideoFromPlan(
+      plan,
+      {
+        ...services,
+        theme,
+        ...(voice
+          ? {
+              voice: async (text, lang, signal) => {
+                const known = `${lang}|${text}`;
+                if (spokenBefore.has(known)) return spokenBefore.get(known)!;
+                const made = await synthesizeToMedia(text, {
+                  provider: voice.provider,
+                  voiceId: voice.voiceId,
+                  lang,
+                  ...(signal ? { signal } : {}),
+                });
+                const asset = await deps.importFile(
+                  new File([made.blob], `Narration.wav`, { type: made.mime }),
+                );
+                const spoken = asset
+                  ? { asset, duration: made.durationSec }
+                  : null;
+                spokenBefore.set(known, spoken);
+                return spoken;
+              },
             }
-            const provider = stockProvidersFor('stock-audio').find(hasKeys);
-            if (!provider) return null;
-            const found = await provider.search({
-              kind: 'stock-audio',
-              query,
-              perPage: 6,
-              ...(signal ? { signal } : {}),
-            });
-            const item = found.items[0];
-            if (!item) return null;
-            const got = await importStockItem(
-              item,
-              stockQuality(item),
-              signal ? { signal } : {},
+          : { voiceUnavailable: t('plan.noVoice') }),
+        sound: async (query, kind) => {
+          // A sound effect from our own library catalog when its name fits.
+          if (kind === 'sfx') return deps.sfx?.(words(query)) ?? null;
+          // FIX7: music is the person's own file (by name), never stock.
+          const own = deps
+            .assets()
+            .find(
+              (asset) =>
+                asset.type === 'audio' &&
+                !(asset.metadata as { removed?: boolean }).removed &&
+                namesMatch(asset.name, query),
             );
-            const asset = await deps.importFile(
-              new File([got.blob], got.name, { type: got.mime }),
-              got.licenseMeta,
-            );
-            return asset
-              ? { asset, duration: item.durationSec || asset.duration || 0 }
-              : null;
-          },
+          return own ? { asset: own, duration: own.duration ?? 0 } : null;
         },
-        show,
-        controller.signal,
-      );
-      finished = true;
+      },
+      show,
+      controller.signal,
+    );
+  };
+  /** Keeps the video: scenes, the AI card, then the summary. */
+  const commit = async (result: PlanBuildResult) => {
+    $('plan-missing').hidden = true;
+    proceed.hidden = true;
+    try {
+      await deps.onCommit?.();
+    } catch (error) {
+      console.debug('[plan-build] keeping the card failed', error);
+    }
+    committed = true;
+    finished = true;
+    deps.addScenes(result);
+    cancel.textContent = t('plan.close');
+    cancel.onclick = () => handle.close();
+    const banner = $('plan-banner');
+    if (result.silent) {
+      banner.hidden = false;
+      banner.textContent = t('plan.silentBanner', { reason: result.silent });
+    }
+    const media = Object.keys(result.alternatives).length;
+    const summary = $('plan-summary');
+    summary.hidden = false;
+    summary.dataset.state = result.flags.length ? 'warning' : 'ok';
+    const lines = [
+      t('plan.summaryScenes', {
+        count: String(result.project!.compositions.length),
+        seconds: String(
+          Math.round(result.durations.reduce((a, b) => a + b, 0)),
+        ),
+      }),
+      t('plan.summaryMedia', {
+        found: String(media - result.flags.length),
+        total: String(media),
+      }),
+      ...result.flags.map((flag) =>
+        t('plan.summaryFlag', {
+          key: flag.name ?? flag.key,
+          reason: flag.reason,
+        }),
+      ),
+    ];
+    summary.replaceChildren(
+      ...lines.map((line) => {
+        const p = document.createElement('p');
+        p.textContent = line;
+        return p;
+      }),
+    );
+    reviewButton.hidden = false;
+    reviewButton.onclick = () => {
+      handle.close();
+      deps.review(result);
+    };
+  };
+  /** FIX7: the files the plan expects and the person has not added. */
+  const askMissing = (result: PlanBuildResult) => {
+    const missing = result.flags.filter((flag) => flag.name);
+    const box = $('plan-missing');
+    box.hidden = false;
+    const title = document.createElement('p');
+    title.className = 'plan-missing-title';
+    title.textContent = t('plan.missingTitle', {
+      count: String(missing.length),
+    });
+    const list = document.createElement('ul');
+    list.className = 'plan-missing-list';
+    for (const flag of missing) {
+      const li = document.createElement('li');
+      li.dataset.missing = flag.key;
+      const name = document.createElement('strong');
+      name.textContent = flag.name!;
+      const kind = document.createElement('span');
+      kind.textContent = t(`plan.kind.${flag.type ?? 'photo'}`);
+      li.append(name, ' ', kind);
+      list.append(li);
+    }
+    const hint = document.createElement('p');
+    hint.className = 'right-note';
+    hint.textContent = t('plan.missingHint');
+    box.replaceChildren(title, list, hint);
+    $('plan-working').hidden = true;
+    const choose = document.createElement('button');
+    choose.type = 'button';
+    choose.className = 'button';
+    choose.id = 'plan-choose-files';
+    choose.textContent = t('plan.chooseFiles');
+    choose.onclick = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.accept = 'image/*,video/*,audio/*';
+      input.onchange = async () => {
+        const files = [...(input.files ?? [])];
+        if (!files.length) return;
+        choose.disabled = true;
+        for (const file of files) await deps.importFile(file);
+        // The build runs again (fast: nothing is searched) with the files in.
+        box.hidden = true;
+        proceed.hidden = true;
+        $('plan-working').hidden = false;
+        await run();
+      };
+      input.click();
+    };
+    box.append(choose);
+    proceed.hidden = false;
+    proceed.textContent = t('plan.continueWithout');
+    proceed.onclick = () => void commit(result);
+  };
+  const run = async () => {
+    try {
+      const result = await build();
       $('plan-working').hidden = true;
-      cancel.textContent = t('plan.close');
       if (!result.project) {
+        finished = true;
+        cancel.textContent = t('plan.close');
+        cancel.onclick = () => handle.close();
         const summary = $('plan-summary');
         summary.hidden = false;
         summary.dataset.state = 'error';
@@ -299,64 +430,40 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
             return p;
           }),
         );
+        await rollback();
         return;
       }
-      deps.addScenes(result);
-      const banner = $('plan-banner');
-      if (result.silent) {
-        banner.hidden = false;
-        banner.textContent = t('plan.silentBanner', { reason: result.silent });
-      }
-      const media = Object.keys(result.alternatives).length;
-      const summary = $('plan-summary');
-      summary.hidden = false;
-      summary.dataset.state = result.flags.length ? 'warning' : 'ok';
-      const lines = [
-        t('plan.summaryScenes', {
-          count: String(result.project.compositions.length),
-          seconds: String(
-            Math.round(result.durations.reduce((a, b) => a + b, 0)),
-          ),
-        }),
-        t('plan.summaryMedia', {
-          found: String(media - result.flags.length),
-          total: String(media),
-        }),
-        ...result.flags.map((flag) =>
-          t('plan.summaryFlag', { key: flag.key, reason: flag.reason }),
-        ),
-        ...result.warnings
-          .filter(
-            (warning) =>
-              !result.flags.some((flag) => warning.startsWith(flag.key)),
-          )
-          .slice(0, 6),
-      ];
-      summary.replaceChildren(
-        ...lines.map((line) => {
-          const p = document.createElement('p');
-          p.textContent = line;
-          return p;
-        }),
-      );
-      reviewButton.hidden = false;
-      reviewButton.onclick = () => {
-        handle.close();
-        deps.review(result);
-      };
+      if (result.flags.some((flag) => flag.name)) askMissing(result);
+      else await commit(result);
     } catch (error) {
       finished = true;
       $('plan-working').hidden = true;
       cancel.textContent = t('plan.close');
-      const summary = $('plan-summary');
-      summary.hidden = false;
-      summary.dataset.state = 'error';
-      summary.textContent =
-        (error as Error)?.name === 'AbortError'
+      cancel.onclick = () => handle.close();
+      const aborted = (error as Error)?.name === 'AbortError';
+      message(
+        aborted
           ? t('plan.cancelled')
-          : plainMessage(String((error as Error)?.message ?? error));
-      if ((error as Error)?.name !== 'AbortError') deps.report(error);
+          : plainMessage(String((error as Error)?.message ?? error)),
+        'error',
+      );
+      await rollback();
+      if (!aborted) deps.report(error);
     }
+  };
+  cancel.onclick = () => {
+    if (finished) handle.close();
+    else {
+      controller.abort();
+      handle.close();
+    }
+  };
+  void (async () => {
+    // FIX6: let the dialog (and its spinner) paint before heavy work.
+    await new Promise<void>((done) =>
+      requestAnimationFrame(() => setTimeout(done)),
+    );
+    await run();
   })();
   return handle;
 }
