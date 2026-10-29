@@ -2826,6 +2826,8 @@ export function mountEditorShell(
     sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
       planReviewPanel({
         ...(title !== undefined ? { title } : {}),
+        poster: (sceneId) =>
+          scenePosterUrl(engine, session, sceneId, frames, 160, 1),
         project: () => engine.state,
         run: (label, commands) =>
           safely(() => {

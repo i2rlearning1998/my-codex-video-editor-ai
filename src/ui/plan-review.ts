@@ -53,6 +53,8 @@ export interface PlanReviewDeps {
   download(name: string, text: string): void;
   report(error: unknown): void;
   rerender(): void;
+  /** A small picture of a scene (its first frame), when available. */
+  poster?(sceneId: string): string | undefined;
 }
 
 type Layerish = {
@@ -139,8 +141,8 @@ export function comparePlan(
   return out.length ? out : [t('plan.diffNone')];
 }
 
-/** Layers whose stock choices were asked for (transient). */
-const stockOpen = new Set<string>();
+/** The slot (per project) whose stock choices are open (transient). */
+const swapping = new Map<string, string>();
 /** Projects whose Compare to plan list is open (transient). */
 const comparing = new Set<string>();
 export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
@@ -334,6 +336,169 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     deps.openScene(fresh.id);
   };
 
+  type Slot = {
+    scene: VideoPlan['scenes'][number];
+    layer: VideoPlan['scenes'][number]['layers'][number];
+    index: number;
+    ref: string;
+    composition: DeepReadonly<Composition>;
+    built: ReturnType<typeof byRef>;
+    flagged: boolean;
+  };
+  const slotFor = (ref: string): Slot | null => {
+    for (const [index, scene] of state.plan.scenes.entries()) {
+      const composition = project.compositions.find(
+        (c) => c.id === state.sceneIds[timeline ? 0 : index],
+      );
+      if (!composition) continue;
+      for (const layer of scene.layers) {
+        if (layer.kind !== 'media' || !layer.mediaIntent) continue;
+        if (layerKey(scene, layer) !== ref) continue;
+        const built = byRef(composition, ref);
+        return {
+          scene,
+          layer,
+          index,
+          ref,
+          composition,
+          built,
+          flagged: built?.properties.planFlag?.value === 'needs-asset',
+        };
+      }
+    }
+    return null;
+  };
+  const choose = async (slot: Slot, candidate: MediaCandidate) => {
+    swapping.delete(project.id);
+    (state.plan.resolved ??= {})[slot.ref] = candidate.key;
+    save();
+    const target = slot.built && !slot.flagged ? slot.built : null;
+    if (!target) return regenerate(slot.index);
+    const asset = await deps.importCandidate(candidate);
+    if (asset.type !== target.type) return regenerate(slot.index);
+    deps.run('Swap media', [
+      {
+        type: 'SET_LAYER_ASSET',
+        compositionId: slot.composition.id,
+        layerId: target.id,
+        assetId: asset.id,
+      } as unknown as Command,
+    ]);
+  };
+  const useOwn = (slot: Slot) =>
+    button(
+      'plan-use-own',
+      slot.flagged ? t('plan.chooseFile') : t('plan.useOwn'),
+      async () => {
+        const asset = await deps.pickFile(
+          slot.layer.mediaIntent!.type === 'video' ? 'video/*' : 'image/*',
+        );
+        if (!asset) return;
+        await choose(slot, {
+          key: `asset:${asset.id}`,
+          source: 'asset',
+          kind: asset.type === 'video' ? 'video' : 'image',
+          title: asset.name,
+          tags: [],
+          width: asset.width ?? 0,
+          height: asset.height ?? 0,
+        });
+      },
+      'upload',
+    );
+  const sceneThumb = (id: string) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'plan-scene-thumb';
+    const url = deps.poster?.(id);
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      wrap.append(img);
+    }
+    return wrap;
+  };
+
+  // The swap view: one slot's stock choices, replacing the list until done.
+  const swapRef = swapping.get(project.id);
+  const swapSlot = swapRef ? slotFor(swapRef) : null;
+  if (swapRef && !swapSlot) swapping.delete(project.id);
+  if (swapSlot) {
+    const view = document.createElement('div');
+    view.className = 'plan-swap';
+    view.dataset.planLayer = swapSlot.ref;
+    const bar = document.createElement('header');
+    bar.className = 'plan-swap-head';
+    const back = button('plan-swap-back', t('plan.back'), () => {
+      swapping.delete(project.id);
+    });
+    const heading = document.createElement('h4');
+    heading.textContent = `${t('plan.swapTitle')}: ${swapSlot.layer.mediaIntent!.query}`;
+    bar.append(back, heading);
+    const grid = document.createElement('div');
+    grid.className = 'plan-alternatives';
+    const current = state.plan.resolved?.[swapSlot.ref];
+    const options = (state.alternatives[swapSlot.ref] ?? []).slice(
+      0,
+      4 + 4 * (state.pages[swapSlot.ref] ?? 0),
+    );
+    if (!options.length) {
+      const none = document.createElement('p');
+      none.className = 'right-note';
+      none.textContent = t('plan.noStock');
+      grid.append(none);
+    }
+    for (const candidate of options) {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.className = 'plan-alternative';
+      option.dataset.candidate = candidate.key;
+      option.setAttribute('aria-pressed', String(candidate.key === current));
+      option.title = candidate.title;
+      option.setAttribute('aria-label', candidate.title);
+      if (candidate.thumbUrl) {
+        const img = document.createElement('img');
+        img.src = candidate.thumbUrl;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        option.append(img);
+      } else option.textContent = candidate.title.slice(0, 24);
+      option.onclick = () => {
+        option.disabled = true;
+        void safely(() => choose(swapSlot, candidate));
+      };
+      grid.append(option);
+    }
+    const actions = document.createElement('div');
+    actions.className = 'plan-swap-actions';
+    actions.append(
+      button(
+        'plan-search-more',
+        t('plan.searchMore'),
+        async () => {
+          const page = (state.pages[swapSlot.ref] ?? 0) + 2;
+          const more = await deps.searchMore(swapSlot.layer.mediaIntent!, page);
+          const known = new Set(
+            (state.alternatives[swapSlot.ref] ?? []).map((c) => c.key),
+          );
+          state.alternatives[swapSlot.ref] = [
+            ...(state.alternatives[swapSlot.ref] ?? []),
+            ...more.filter((c) => !known.has(c.key)).slice(0, 4),
+          ];
+          state.pages[swapSlot.ref] = page - 1;
+          save();
+        },
+        'search',
+      ),
+      useOwn(swapSlot),
+    );
+    view.append(bar, grid, actions);
+    const wrap = document.createElement('div');
+    wrap.className = 'plan-review';
+    wrap.append(view);
+    return wrap;
+  }
+
   if (timeline) {
     const note = document.createElement('p');
     note.className = 'right-note';
@@ -347,10 +512,24 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     const card = document.createElement('section');
     card.className = 'plan-scene';
     card.dataset.planScene = scene.id;
+    const mediaLayers = scene.layers.filter(
+      (layer) => layer.kind === 'media' && layer.mediaIntent,
+    );
     const head = document.createElement('header');
+    head.className = 'plan-scene-head';
+    const titleBox = document.createElement('div');
     const title = document.createElement('h4');
     title.textContent = `${index + 1}. ${scene.title ?? scene.id}`;
-    head.append(title);
+    const meta = document.createElement('span');
+    meta.className = 'plan-scene-meta';
+    meta.textContent = composition
+      ? t('plan.sceneMeta', {
+          seconds: composition.duration.toFixed(1),
+          media: String(mediaLayers.length),
+        })
+      : '';
+    titleBox.append(title, meta);
+    head.append(composition ? sceneThumb(composition.id) : '', titleBox);
     card.append(head);
     if (!composition) {
       const gone = document.createElement('p');
@@ -360,12 +539,74 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       root.append(card);
       return;
     }
-    title.onclick = () => deps.openScene(composition.id);
-    // Length, order, delete, regenerate (a timeline has none of them: its
-    // chapters are stretches of one timeline, edited there).
-    const controls = document.createElement('div');
-    controls.className = 'camera-row';
-    if (!timeline)
+    head.onclick = () => deps.openScene(composition.id);
+    // Media slots: a picture, its name, whether it was found, one action.
+    for (const layer of mediaLayers) {
+      const ref = layerKey(scene, layer);
+      const slot = slotFor(ref);
+      if (!slot) continue;
+      const row = document.createElement('div');
+      row.className = 'plan-layer';
+      row.dataset.planLayer = ref;
+      row.dataset.flag = slot.flagged ? 'needs-asset' : 'ok';
+      const thumb = document.createElement('div');
+      thumb.className = 'plan-slot-thumb';
+      const chosenKey = state.plan.resolved?.[ref];
+      const chosen = (state.alternatives[ref] ?? []).find(
+        (c) => c.key === chosenKey,
+      );
+      if (chosen?.thumbUrl && !slot.flagged) {
+        const img = document.createElement('img');
+        img.src = chosen.thumbUrl;
+        img.alt = '';
+        img.referrerPolicy = 'no-referrer';
+        thumb.append(img);
+      } else thumb.textContent = t(`plan.type.${layer.mediaIntent!.type}`);
+      const text = document.createElement('div');
+      text.className = 'plan-slot-text';
+      const name = document.createElement('b');
+      name.className = 'plan-layer-name';
+      name.textContent = chosen?.title ?? layer.mediaIntent!.query;
+      const state2 = document.createElement('span');
+      state2.className = slot.flagged ? 'plan-flag' : 'plan-found';
+      state2.textContent = slot.flagged ? t('plan.missing') : t('plan.found');
+      text.append(name, state2);
+      row.append(thumb, text);
+      if (slot.flagged) {
+        const own = useOwn(slot);
+        own.classList.add('primary');
+        const find = button('plan-swap', t('plan.findStock'), () => {
+          swapping.set(project.id, ref);
+        });
+        find.classList.add('ghost');
+        const actions = document.createElement('div');
+        actions.className = 'plan-slot-actions';
+        actions.append(own, find);
+        row.append(actions);
+      } else {
+        row.append(
+          button('plan-swap', t('plan.swap'), () => {
+            swapping.set(project.id, ref);
+          }),
+        );
+      }
+      card.append(row);
+    }
+    // Everything else about the scene sits under one fold.
+    const options = document.createElement('details');
+    options.className = 'plan-scene-options';
+    const summary = document.createElement('summary');
+    summary.textContent = t('plan.sceneOptions');
+    options.append(summary);
+    const narration = document.createElement('textarea');
+    narration.className = 'plan-narration';
+    narration.id = `plan-narration-${scene.id}`;
+    narration.rows = 3;
+    narration.value = scene.narration ?? '';
+    narration.setAttribute('aria-label', t('plan.narration'));
+    if (!timeline) {
+      const controls = document.createElement('div');
+      controls.className = 'camera-row';
       controls.append(
         createNumberField({
           id: `plan-length-${scene.id}`,
@@ -445,16 +686,8 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
           'magic',
         ),
       );
-    if (!timeline) card.append(controls);
-    // Narration.
-    const narration = document.createElement('textarea');
-    narration.className = 'plan-narration';
-    narration.id = `plan-narration-${scene.id}`;
-    narration.rows = 3;
-    narration.value = scene.narration ?? '';
-    narration.setAttribute('aria-label', t('plan.narration'));
-    if (!timeline)
-      card.append(
+      options.append(
+        controls,
         narration,
         button(
           'plan-voice',
@@ -471,129 +704,7 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
           'audio',
         ),
       );
-    // Media layers.
-    for (const layer of scene.layers) {
-      if (layer.kind !== 'media' || !layer.mediaIntent) continue;
-      const ref = layerKey(scene, layer);
-      const built = byRef(composition, ref);
-      const flagged = built?.properties.planFlag?.value === 'needs-asset';
-      const row = document.createElement('div');
-      row.className = 'plan-layer';
-      row.dataset.planLayer = ref;
-      row.dataset.flag = flagged ? 'needs-asset' : 'ok';
-      const name = document.createElement('p');
-      name.className = 'plan-layer-name';
-      name.textContent = `${layer.id} · ${layer.mediaIntent.query} (${t(`plan.type.${layer.mediaIntent.type}`)})`;
-      const chip = document.createElement('span');
-      chip.className = flagged ? 'plan-flag' : 'plan-found';
-      chip.textContent = flagged ? t('plan.missing') : t('plan.found');
-      name.append(' ', chip);
-      row.append(name);
-      const strip = document.createElement('div');
-      strip.className = 'plan-alternatives';
-      strip.hidden = true;
-      const choose = async (candidate: MediaCandidate) => {
-        (state.plan.resolved ??= {})[ref] = candidate.key;
-        save();
-        const target = built && !flagged ? built : null;
-        if (!target) return regenerate(index);
-        const asset = await deps.importCandidate(candidate);
-        if (asset.type !== target.type) return regenerate(index);
-        deps.run('Swap media', [
-          {
-            type: 'SET_LAYER_ASSET',
-            compositionId: composition.id,
-            layerId: target.id,
-            assetId: asset.id,
-          } as unknown as Command,
-        ]);
-      };
-      const current = state.plan.resolved?.[ref];
-      for (const candidate of (state.alternatives[ref] ?? []).slice(
-        0,
-        4 + 4 * (state.pages[ref] ?? 0),
-      )) {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.className = 'plan-alternative';
-        option.dataset.candidate = candidate.key;
-        option.setAttribute('aria-pressed', String(candidate.key === current));
-        option.title = candidate.title;
-        option.setAttribute('aria-label', candidate.title);
-        if (candidate.thumbUrl) {
-          const img = document.createElement('img');
-          img.src = candidate.thumbUrl;
-          img.alt = '';
-          img.referrerPolicy = 'no-referrer';
-          option.append(img);
-        } else option.textContent = candidate.title.slice(0, 24);
-        option.onclick = () => {
-          option.disabled = true;
-          void safely(() => choose(candidate));
-        };
-        strip.append(option);
-      }
-      const searchMore = button(
-        'plan-search-more',
-        t('plan.searchMore'),
-        async () => {
-          const page = (state.pages[ref] ?? 0) + 2;
-          const more = await deps.searchMore(layer.mediaIntent!, page);
-          const known = new Set(
-            (state.alternatives[ref] ?? []).map((c) => c.key),
-          );
-          state.alternatives[ref] = [
-            ...(state.alternatives[ref] ?? []),
-            ...more.filter((c) => !known.has(c.key)).slice(0, 4),
-          ];
-          state.pages[ref] = page - 1;
-          save();
-          stockOpen.add(ref);
-        },
-        'search',
-      );
-      searchMore.hidden = true;
-      const own = button(
-        'plan-use-own',
-        flagged ? t('plan.chooseFile') : t('plan.swap'),
-        async () => {
-          const asset = await deps.pickFile(
-            layer.mediaIntent!.type === 'video' ? 'video/*' : 'image/*',
-          );
-          if (!asset) return;
-          await choose({
-            key: `asset:${asset.id}`,
-            source: 'asset',
-            kind: asset.type === 'video' ? 'video' : 'image',
-            title: asset.name,
-            tags: [],
-            width: asset.width ?? 0,
-            height: asset.height ?? 0,
-          });
-        },
-        'upload',
-      );
-      own.classList.toggle('primary', flagged);
-      const find = document.createElement('button');
-      find.type = 'button';
-      find.className = 'button secondary sm';
-      find.dataset.action = 'plan-find-stock';
-      find.textContent = t('plan.findStock');
-      const reveal = () => {
-        strip.hidden = false;
-        searchMore.hidden = false;
-        find.hidden = true;
-      };
-      find.onclick = () => {
-        stockOpen.add(ref);
-        reveal();
-      };
-      if (stockOpen.has(ref)) reveal();
-      const actions = document.createElement('div');
-      actions.className = 'camera-row plan-layer-actions';
-      actions.append(own, find, searchMore);
-      row.append(actions, strip);
-      card.append(row);
+      card.append(options);
     }
     root.append(card);
   });

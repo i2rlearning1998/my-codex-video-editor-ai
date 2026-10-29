@@ -200,13 +200,17 @@ test('[FN3-023] [FIX7-012] Review & swap: an alternative swaps the media keeping
   const panel = page.locator('.plan-review');
   const row = panel.locator('[data-plan-layer="open/flower"]');
   await expect(panel.locator('#plan-review-status')).toBeVisible();
-  await expect(row.locator('[data-action="plan-use-own"]')).toHaveText('Swap');
-  await expect(row.locator('.plan-alternatives')).toBeHidden();
+  await expect(row.locator('[data-action="plan-swap"]')).toHaveText('Swap');
+  await expect(panel.locator('.plan-alternatives')).toHaveCount(0);
   // The chosen stock picture is the pressed alternative (Find stock shows them).
-  await row.locator('[data-action="plan-find-stock"]').click();
+  await page.screenshot({ path: 'reports/fix7-review-closed.png' });
+  await row.locator('[data-action="plan-swap"]').click();
+  const swap = panel.locator('.plan-swap');
+  await page.screenshot({ path: 'reports/fix7-review-stock.png' });
   await expect(
-    row.locator('.plan-alternative[aria-pressed="true"]'),
+    swap.locator('.plan-alternative[aria-pressed="true"]'),
   ).toHaveCount(1);
+  await swap.locator('[data-action="plan-swap-back"]').click();
   const before = (await allLayers(page)).find(
     (l) => l.properties.planRef?.value === 'open/flower',
   )!;
@@ -217,8 +221,9 @@ test('[FN3-023] [FIX7-012] Review & swap: an alternative swaps the media keeping
   const animation = await animationOf(before.id);
   expect(animation).toBeTruthy();
   // Use my own: a picture from disk replaces it in place.
+  await row.locator('[data-action="plan-swap"]').click();
   const chooser = page.waitForEvent('filechooser');
-  await row.locator('[data-action="plan-use-own"]').click();
+  await panel.locator('[data-action="plan-use-own"]').click();
   await (
     await chooser
   ).setFiles('tests/fixtures/media/image_gradient_1920x1080.png');
@@ -238,6 +243,9 @@ test('[FN3-023] [FIX7-012] Review & swap: an alternative swaps the media keeping
   const closeScene = async () =>
     (await hook(page)).project.compositions.find((c) => c.name === 'Close')!;
   const sceneBefore = (await closeScene()).id;
+  await panel
+    .locator('[data-plan-scene="close"] .plan-scene-options > summary')
+    .click();
   await panel.locator('#plan-narration-close').fill('Thank a bee today.');
   await panel
     .locator('[data-plan-scene="close"] [data-action="plan-voice"]')

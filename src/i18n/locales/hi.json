@@ -2710,5 +2710,11 @@
   "plan.type.video": "वीडियो",
   "plan.type.image": "फ़ोटो",
   "plan.type.audio": "ऑडियो",
-  "stock.notAvailable": "स्टॉक खोज अभी उपलब्ध नहीं है।"
+  "stock.notAvailable": "स्टॉक खोज अभी उपलब्ध नहीं है।",
+  "plan.back": "वापस",
+  "plan.swapTitle": "बदलें",
+  "plan.noStock": "अभी स्टॉक विकल्प नहीं हैं। अपनी फ़ाइल चुनें।",
+  "plan.sceneMeta": "{seconds} सेकंड · {media} मीडिया",
+  "plan.sceneOptions": "सीन विकल्प: लंबाई, क्रम, आवाज़",
+  "plan.type.photo": "फ़ोटो"
 }

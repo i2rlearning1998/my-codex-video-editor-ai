@@ -11631,3 +11631,123 @@ body:has(.modal-backdrop) .toast-stack {
   color: var(--color-success, #1a8a4a);
   font-size: var(--font-size-xs);
 }
+
+/* FIX7: Review & swap — scene cards with picture slots. */
+.plan-review {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.plan-scene {
+  background: var(--color-bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.plan-scene-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  cursor: pointer;
+}
+.plan-scene-head h4 {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+.plan-scene-meta {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+.plan-scene-thumb {
+  inline-size: 64px;
+  block-size: 36px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  overflow: hidden;
+}
+.plan-scene-thumb img,
+.plan-slot-thumb img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+  display: block;
+}
+.plan-layer {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding-block-start: var(--space-2);
+  border-block-start: 1px solid var(--border-subtle);
+}
+.plan-slot-thumb {
+  inline-size: 44px;
+  block-size: 44px;
+  flex: none;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-sunken);
+  display: grid;
+  place-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  overflow: hidden;
+}
+.plan-slot-text {
+  flex: 1;
+  min-inline-size: 0;
+  display: flex;
+  flex-direction: column;
+}
+.plan-slot-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-slot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.plan-scene-options > summary {
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+.plan-swap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.plan-swap-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.plan-swap-head h4 {
+  margin: 0;
+  font-size: var(--font-size-md);
+}
+.plan-swap .plan-alternatives {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.plan-swap .plan-alternative {
+  aspect-ratio: 1.4;
+  padding: 0;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+.plan-swap .plan-alternative img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.plan-swap-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}

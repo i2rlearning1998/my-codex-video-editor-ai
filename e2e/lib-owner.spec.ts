@@ -73,6 +73,7 @@ test('[LIB-017][LIB-014][LIB-016][FIX7-015] one command starts the manager and i
   await expect(page.locator('#category [data-value="elements"]')).toBeVisible();
   await expect(page.locator('#kinds')).toBeVisible();
   await page.locator('#search').fill('kite');
+  await page.screenshot({ path: 'reports/fix7-owner.png' });
   await page.locator('#search').press('Enter');
   const card = page.locator('.item[data-id="shape-pack-shape-kite"]');
   await expect(card).toBeVisible();

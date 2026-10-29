@@ -2710,5 +2710,11 @@
   "plan.type.video": "video",
   "plan.type.image": "image",
   "plan.type.audio": "audio",
-  "stock.notAvailable": "Stock search is not available yet."
+  "stock.notAvailable": "Stock search is not available yet.",
+  "plan.back": "Back",
+  "plan.swapTitle": "Swap",
+  "plan.noStock": "No stock choices yet. Use your own file.",
+  "plan.sceneMeta": "{seconds} s · {media} media",
+  "plan.sceneOptions": "Scene options: length, order, voice",
+  "plan.type.photo": "photo"
 }

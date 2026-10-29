@@ -34,6 +34,8 @@ test('[FIX7-009] Audio and Scene panels keep their sections apart at 1366, 1024 
     const h = (await heading.boundingBox())!;
     expect(t.height).toBeGreaterThan(28);
     expect(t.y + t.height).toBeLessThanOrEqual(h.y + 1);
+    if (width === 900)
+      await page.screenshot({ path: 'reports/fix7-900-audio.png' });
     await open('Scene');
     const labels = await page.evaluate(() =>
       [...document.querySelectorAll<HTMLElement>('#rail-left .icon-rail-label')]
