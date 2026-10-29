@@ -689,6 +689,86 @@ test('[LIB-023][LIB-017] what the owner hides, features, orders, schedules or un
   expect(shown).toHaveLength(9);
 });
 
+test('[FIX7-017] a category and sub-categories the owner adds appear in the editor with their assets: a new rail category, a new Elements tile, and an asset moved into them, with no release', async ({
+  page,
+}) => {
+  const itemsFile = path.join(stack.env.LIBRARY_DATA_DIR!, 'items.json');
+  const data = JSON.parse(readFileSync(itemsFile, 'utf8')) as {
+    items: { id: string; place?: unknown }[];
+    config?: unknown;
+  };
+  const name = (en: string, hi: string) => ({ en, hi });
+  data.config = {
+    format: 'aive-config',
+    version: 1,
+    controls: {},
+    categories: [
+      {
+        id: 'x-festivals',
+        name: name('Festivals', 'त्योहार'),
+        icon: 'elements',
+        hidden: false,
+        order: 0,
+        subs: [
+          {
+            id: 'diwali',
+            name: name('Diwali', 'दिवाली'),
+            hidden: false,
+            order: 0,
+            sections: [],
+          },
+        ],
+      },
+      {
+        id: 'Elements',
+        name: name('Elements', 'एलिमेंट'),
+        icon: 'elements',
+        hidden: false,
+        order: 0,
+        subs: [
+          {
+            id: 'lanterns',
+            name: name('Lanterns', 'लालटेन'),
+            hidden: false,
+            order: 0,
+            sections: [],
+          },
+        ],
+      },
+    ],
+  };
+  data.items.find((item) => item.id === 'shape-star-5')!.place = {
+    category: 'x-festivals',
+    sub: 'diwali',
+    section: null,
+  };
+  data.items.find((item) => item.id === 'shape-heart')!.place = {
+    category: 'Elements',
+    sub: 'lanterns',
+    section: null,
+  };
+  writeFileSync(itemsFile, JSON.stringify(data));
+  cli('build');
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  const rail = page.locator('#rail-left [data-category="x-festivals"]');
+  await expect(rail).toBeVisible();
+  await rail.click();
+  const panel = page.locator('#library-x-festivals');
+  await expect(panel).toBeVisible();
+  await panel.locator('[data-tile="x-festivals-diwali"]').click();
+  await expect(panel.locator('[data-item-id="shape-star-5"]')).toBeVisible();
+  await page.screenshot({ path: 'reports/fix7-editor-custom-category.png' });
+  // The star left Basic shapes; the new Lanterns tile lists the heart.
+  await showCategory(page, 'Elements');
+  const elements = page.locator('#library-elements');
+  await elements.locator('[data-tile="Elements-lanterns"]').click();
+  await expect(elements.locator('[data-item-id="shape-heart"]')).toBeVisible();
+  await page.screenshot({ path: 'reports/fix7-editor-custom-sub.png' });
+});
+
 test('[LIB-027][LIB-008] a rollback in the catalog never changes a project that already uses an item', async ({
   page,
 }) => {

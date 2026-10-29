@@ -110,14 +110,14 @@ export const BUILTIN_TAXONOMY: readonly TaxCategory[] = [
   category('Elements', 'Elements', 'एलिमेंट', 'elements', [
     sub('shapes', 'Shapes', 'आकृतियाँ', [
       section('basic', 'Basic shapes', 'बुनियादी आकृतियाँ'),
-      section('arrows', 'Arrows', 'तीर'),
       section('polygons', 'Polygons', 'बहुभुज'),
       section('stars', 'Stars', 'तारे'),
+      section('arrows', 'Arrows', 'तीर'),
       section('flowchart', 'Flowchart shapes', 'फ़्लोचार्ट आकृतियाँ'),
     ]),
     sub('graphics', 'Graphics', 'ग्राफ़िक्स', [
-      section('backgrounds', 'Backgrounds', 'बैकग्राउंड'),
       section('gradients', 'Gradients', 'ग्रेडिएंट'),
+      section('backgrounds', 'Backgrounds', 'बैकग्राउंड'),
     ]),
     sub('transitions', 'Transitions', 'ट्रांज़िशन', [
       section('fades', 'Fades and blurs', 'फ़ेड और ब्लर'),

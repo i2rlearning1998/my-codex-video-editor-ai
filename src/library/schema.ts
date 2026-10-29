@@ -4,6 +4,7 @@
 // polygons, and backgrounds, text styles and templates are lists of elements
 // placed in fractions of the canvas, so they fit every canvas size.
 import { z } from 'zod';
+import { placeSchema } from '../library-client/taxonomy';
 import { clipAnimationSchema } from '../core/clip-animation';
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -92,6 +93,8 @@ const base = {
   tags: z.array(z.string().min(1).max(30)).max(12),
   /** I2: the browse-panel section the item is listed in (by type). */
   section: slug.optional(),
+  /** FIX7: where the owner lists it (set by the catalog, not the payload). */
+  place: placeSchema.optional(),
 };
 const shapeItem = z
   .object({

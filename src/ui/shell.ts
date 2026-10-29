@@ -78,7 +78,7 @@ import {
   openAiImportDialog,
   type AiImportAdd,
 } from './ai-import-dialog';
-import { loadLibrary } from '../library/loader';
+import { loadLibrary, onLibraryChange } from '../library/loader';
 import { adjustments, effects, filters, transitions } from '../fx';
 import type { ParamValues } from './code-params';
 import { bakeForExport, codeLayersOf } from '../code-layer/export-bake';
@@ -230,6 +230,7 @@ import { AnimatedInEditorError } from './editor-mode';
 import { escapeTopPopover } from './components/popover';
 import { mountToolPanels } from './tool-panels';
 import { mountLibraryPanels } from './library-panel';
+import { mergeTaxonomy } from '../library-client/taxonomy';
 import { createLibraryActions, LIBRARY_DRAG_TYPE } from './library-actions';
 import { mountSignature } from './signature';
 import { addTopLevel, myTextStyleCommands } from './library-insert';
@@ -5366,7 +5367,7 @@ export function mountEditorShell(
     workspace?.setLibrary(
       ['Media', 'AI', 'MyTemplates', 'Templates', 'Elements', 'Text'].includes(
         category,
-      ),
+      ) || category.startsWith('x-'),
     );
     const hidden = root.querySelector<HTMLElement>(
       `#rail-left [data-category="${category}"]`,
@@ -5387,7 +5388,10 @@ export function mountEditorShell(
       ?.setAttribute('data-active-category', category);
     // S1 Part 1: the shared header names the category.
     const leftTitle = root.querySelector('#left-panel-title');
-    if (leftTitle) leftTitle.textContent = t(categoryKey(category));
+    if (leftTitle)
+      leftTitle.textContent = category.startsWith('x-')
+        ? (customLabel(category) ?? category)
+        : t(categoryKey(category));
     if (category !== 'Draw') session.setDrawBrush(null);
     if (shown === 'placeholder') {
       const [titleKey, descriptionKey] = descriptions[category]!;
@@ -5396,9 +5400,7 @@ export function mountEditorShell(
     }
   };
   applyCategory(activeCategory);
-  for (const button of root.querySelectorAll<HTMLButtonElement>(
-    '[data-category]',
-  ))
+  const bindCategory = (button: HTMLButtonElement) => {
     button.onclick = () => {
       const category = button.dataset.category!;
       // I2: Draw toggles the palette at the canvas's left edge instead of
@@ -5422,6 +5424,84 @@ export function mountEditorShell(
       applyCategory(activeCategory);
       workspace?.setOpen('left', true);
     };
+  };
+  for (const button of root.querySelectorAll<HTMLButtonElement>(
+    '[data-category]',
+  ))
+    bindCategory(button);
+  // FIX7: the owner's categories (x-…) get their own rail button and panel,
+  // and the editor's own can be hidden or re-ordered, all from the signed
+  // settings; nothing here needs a release.
+  function customLabel(id: string): string | undefined {
+    const cat = mergeTaxonomy(libraryClient().config()).find(
+      (item) => item.id === id,
+    );
+    return cat
+      ? getLanguage() === 'hi'
+        ? cat.name.hi
+        : cat.name.en
+      : undefined;
+  }
+  const syncCategories = () => {
+    const rail = element('#rail-left');
+    const more = element('#rail-more');
+    const tree = mergeTaxonomy(libraryClient().config());
+    const wanted = tree.filter((cat) => cat.id.startsWith('x-') && !cat.hidden);
+    for (const button of [
+      ...rail.querySelectorAll<HTMLButtonElement>('[data-category^="x-"]'),
+    ])
+      if (!wanted.some((cat) => cat.id === button.dataset.category)) {
+        const id = button.dataset.category!;
+        button.remove();
+        root.querySelector(`[data-rail-panel="${id}"]`)?.remove();
+        OWN_PANELS.delete(id);
+        if (activeCategory === id) {
+          activeCategory = 'Elements';
+          applyCategory(activeCategory);
+        }
+      }
+    for (const cat of wanted) {
+      const label = getLanguage() === 'hi' ? cat.name.hi : cat.name.en;
+      let button = rail.querySelector<HTMLButtonElement>(
+        `[data-category="${cat.id}"]`,
+      );
+      if (!button) {
+        button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.category = cat.id;
+        button.setAttribute('aria-pressed', 'false');
+        rail.insertBefore(button, more);
+        bindCategory(button);
+        const host = document.createElement('div');
+        host.id = `library-${cat.id}`;
+        host.dataset.railPanel = cat.id;
+        host.hidden = true;
+        element('#library-text').after(host);
+        railPanels.push(host);
+        OWN_PANELS.add(cat.id);
+        libraryBrowsers.mountCustom(cat.id, host);
+      }
+      button.title = label;
+      let icon = '';
+      try {
+        icon = iconSvg(cat.icon);
+      } catch {
+        icon = iconSvg('elements');
+      }
+      button.innerHTML = `${icon}<span class="icon-rail-label"></span>`;
+      button.querySelector('.icon-rail-label')!.textContent = label;
+    }
+    for (const cat of tree)
+      if (!cat.id.startsWith('x-')) {
+        const button = rail.querySelector<HTMLElement>(
+          `[data-category="${cat.id}"]`,
+        );
+        if (button) button.hidden = cat.hidden;
+      }
+    syncRails();
+  };
+  void loadLibrary().then(syncCategories, () => undefined);
+  onLibraryChange(() => void loadLibrary().then(syncCategories));
   // H2: on a short window the rail shows six categories; More lists the rest.
   const moreButton = element<HTMLButtonElement>('#rail-more');
   let morePopover: PopoverHandle | null = null;

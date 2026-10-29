@@ -12,6 +12,13 @@ import type { EditorEngine } from '../core';
 import { getLanguage, t } from '../i18n';
 import { loadLibrary, onLibraryChange } from '../library/loader';
 import { libraryClient } from '../library-client';
+import {
+  BUILTIN_TAXONOMY,
+  defaultPlace,
+  mergeTaxonomy,
+  type TaxSection,
+  type TaxSub,
+} from '../library-client/taxonomy';
 import type { CatalogEntry } from '../library-client/format';
 import type { DragPayload } from './drag-controller';
 import type { LibraryItem, TemplateCategory } from '../library/schema';
@@ -297,6 +304,8 @@ export interface LibraryBrowsers {
   reset(): void;
   /** Stops drawing (a late manifest is ignored). */
   dispose(): void;
+  /** Mounts the panel of an owner-added category into its host. */
+  mountCustom(category: string, host: HTMLElement): void;
 }
 
 const later = (wave: number | string, id: string) =>
@@ -318,14 +327,6 @@ const PLANNED_TILES: [string, string, string, number][] = [
   ['frames', 'crop', 'MSK-003', 6],
   ['grids', 'templates', 'MSK-003', 6],
 ];
-const SHAPE_SECTIONS = [
-  'basic',
-  'polygons',
-  'stars',
-  'arrows',
-  'flowchart',
-] as const;
-const TEXT_SECTIONS = ['plain', 'styles', 'titles', 'two-line'] as const;
 
 export function mountLibraryPanels(
   hosts: LibraryHosts,
@@ -397,6 +398,39 @@ export function mountLibraryPanels(
     items.filter(
       (item): item is Extract<LibraryItem, { type: T }> => item.type === type,
     );
+  // FIX7: the owner's tree (built-in plus theirs) and where each asset is
+  // listed: its own placement, else the panel that shows its kind.
+  const tree = () => mergeTaxonomy(libraryClient().config());
+  const placeOf = (item: LibraryItem) =>
+    item.place ?? defaultPlace(item.type, item.section);
+  const at = (category: string, sub: string, section?: string) =>
+    items.filter((item) => {
+      const place = placeOf(item);
+      return (
+        place.category === category &&
+        place.sub === sub &&
+        (section === undefined || place.section === section)
+      );
+    });
+  const subOf = (category: string, sub: string) =>
+    tree()
+      .find((c) => c.id === category)
+      ?.subs.find((s) => s.id === sub);
+  /** A node's title: the editor's own wording unless the owner renamed it. */
+  const nodeTitle = (
+    node: TaxSub | TaxSection,
+    category: string,
+    key: string,
+    sub?: string,
+  ) => {
+    const base = BUILTIN_TAXONOMY.find((c) => c.id === category)?.subs.find(
+      (x) => x.id === (sub ?? node.id),
+    );
+    const builtin = sub ? base?.sections.find((x) => x.id === node.id) : base;
+    return builtin && builtin.name.en === node.name.en
+      ? t(key)
+      : name(node.name);
+  };
   const byId = (id: string) => items.find((item) => item.id === id);
   const fromCreator = (id: string) => !!creator && isCreatorLibraryId(id);
   const name = (value: { en: string; hi: string }) =>
@@ -676,9 +710,7 @@ export function mountLibraryPanels(
     return item ? libraryCard(item) : undefined;
   };
   const shapeCards = (section: string) =>
-    of('shape')
-      .filter((item) => item.section === section)
-      .map(libraryCard);
+    at('Elements', 'shapes', section).map(libraryCard);
   const shapesPage = (): BrowsePage => ({
     id: 'elements-shapes',
     title: t('elements.shapes'),
@@ -702,21 +734,28 @@ export function mountLibraryPanels(
           columns: 3,
           cards: () => LINE_PRESETS.map(presetCard),
         },
-        ...SHAPE_SECTIONS.map((section): BrowseSection => ({
-          id: section,
-          title: t(`elements.section.${section}`),
-          layout: 'grid',
-          columns: 3,
-          cards: () => [
-            ...(section === 'basic'
-              ? BASIC_PRESETS.filter((p) => !LINE_PRESETS.includes(p)).map(
-                  presetCard,
-                )
-              : []),
-            ...shapeCards(section),
-          ],
-          empty: null,
-        })),
+        ...(subOf('Elements', 'shapes')?.sections ?? [])
+          .filter((node) => !node.hidden)
+          .map((node): BrowseSection => ({
+            id: node.id,
+            title: nodeTitle(
+              node,
+              'Elements',
+              `elements.section.${node.id}`,
+              'shapes',
+            ),
+            layout: 'grid',
+            columns: 3,
+            cards: () => [
+              ...(node.id === 'basic'
+                ? BASIC_PRESETS.filter((p) => !LINE_PRESETS.includes(p)).map(
+                    presetCard,
+                  )
+                : []),
+              ...shapeCards(node.id),
+            ],
+            empty: null,
+          })),
       ];
     },
   });
@@ -777,7 +816,7 @@ export function mountLibraryPanels(
     search: t('library.search.background'),
     status: () => status,
     sections: ({ query }) => {
-      const backgrounds = of('background');
+      const backgrounds = at('Elements', 'graphics');
       if (query) return searchResults(backgrounds.map(libraryCard), query);
       return [
         recentSection('graphic', elementCard),
@@ -791,26 +830,63 @@ export function mountLibraryPanels(
               .map(libraryCard),
           empty: null,
         },
-        {
-          id: 'gradients',
-          title: t('elements.section.gradients'),
+        ...(subOf('Elements', 'graphics')?.sections ?? [])
+          .filter((node) => !node.hidden)
+          .map((node): BrowseSection => ({
+            id: node.id,
+            title: nodeTitle(
+              node,
+              'Elements',
+              `elements.section.${node.id}`,
+              'graphics',
+            ),
+            layout: 'grid',
+            cards: () => at('Elements', 'graphics', node.id).map(libraryCard),
+          })),
+      ];
+    },
+  });
+  /** A sub-category the owner added: its sections (or all its assets). */
+  const subPage = (category: string, node: TaxSub): BrowsePage => ({
+    id: `sub-${category}-${node.id}`,
+    title: name(node.name),
+    search: t('elements.search'),
+    status: () => status,
+    sections: ({ query }) => {
+      if (query)
+        return searchResults(at(category, node.id).map(libraryCard), query);
+      const sections = node.sections.filter((item) => !item.hidden);
+      const loose = at(category, node.id).filter(
+        (item) => !sections.some((x) => x.id === placeOf(item).section),
+      );
+      return [
+        ...sections.map((item): BrowseSection => ({
+          id: item.id,
+          title: name(item.name),
           layout: 'grid',
-          cards: () =>
-            backgrounds
-              .filter((item) => item.section === 'gradients')
-              .map(libraryCard),
-        },
+          columns: 3,
+          cards: () => at(category, node.id, item.id).map(libraryCard),
+        })),
         {
-          id: 'backgrounds',
-          title: t('elements.section.backgrounds'),
+          id: 'all',
           layout: 'grid',
-          cards: () =>
-            backgrounds
-              .filter((item) => item.section === 'backgrounds')
-              .map(libraryCard),
+          columns: 3,
+          cards: () => loose.map(libraryCard),
         },
       ];
     },
+  });
+  const customTile = (
+    category: string,
+    node: TaxSub,
+    open: (page: BrowsePage) => void,
+  ): BrowseCard => ({
+    id: `tile-${category}-${node.id}`,
+    label: name(node.name),
+    icon: 'graphics',
+    className: 'browse-tile',
+    data: { tile: `${category}-${node.id}` },
+    activate: () => open(subPage(category, node)),
   });
   const elementsRoot: BrowsePage = {
     id: 'elements',
@@ -844,22 +920,44 @@ export function mountLibraryPanels(
           layout: 'tiles',
           columns: 3,
           cards: () => [
-            {
-              id: 'tile-shapes',
-              label: t('elements.shapes'),
-              icon: 'shape-rectangle',
-              className: 'browse-tile',
-              data: { tile: 'shapes' },
-              activate: () => panels.Elements.push(shapesPage()),
-            },
-            {
-              id: 'tile-graphics',
-              label: t('elements.graphics'),
-              icon: 'graphics',
-              className: 'browse-tile',
-              data: { tile: 'graphics' },
-              activate: () => panels.Elements.push(graphicsPage()),
-            },
+            ...(subOf('Elements', 'shapes')?.hidden
+              ? []
+              : [
+                  {
+                    id: 'tile-shapes',
+                    label: t('elements.shapes'),
+                    icon: 'shape-rectangle',
+                    className: 'browse-tile',
+                    data: { tile: 'shapes' },
+                    activate: () => panels.Elements.push(shapesPage()),
+                  } as BrowseCard,
+                ]),
+            ...(subOf('Elements', 'graphics')?.hidden
+              ? []
+              : [
+                  {
+                    id: 'tile-graphics',
+                    label: t('elements.graphics'),
+                    icon: 'graphics',
+                    className: 'browse-tile',
+                    data: { tile: 'graphics' },
+                    activate: () => panels.Elements.push(graphicsPage()),
+                  } as BrowseCard,
+                ]),
+            ...(tree()
+              .find((c) => c.id === 'Elements')
+              ?.subs.filter(
+                (node) =>
+                  !node.hidden &&
+                  !BUILTIN_TAXONOMY.find((c) => c.id === 'Elements')?.subs.some(
+                    (x) => x.id === node.id,
+                  ),
+              )
+              .map((node) =>
+                customTile('Elements', node, (page) =>
+                  panels.Elements.push(page),
+                ),
+              ) ?? []),
             // FINAL2 U2: the stock categories open their own search page.
             ...(options.stock
               ? STOCK_TILES.map(([key, icon]): BrowseCard => ({
@@ -942,10 +1040,7 @@ export function mountLibraryPanels(
         : [...english, ...hindi]),
     ];
   };
-  const textCards = (section: string) =>
-    of('text')
-      .filter((item) => item.section === section)
-      .map(libraryCard);
+  const textCards = (section: string) => at('Text', section).map(libraryCard);
   const textRoot: BrowsePage = {
     id: 'text',
     title: t('library.text'),
@@ -955,7 +1050,12 @@ export function mountLibraryPanels(
       if (query) return searchResults(of('text').map(libraryCard), query);
       const textPage = (section: string): BrowsePage => ({
         id: `text-${section}`,
-        title: t(`text.section.${section}`),
+        title: (() => {
+          const node = subOf('Text', section);
+          return node
+            ? nodeTitle(node, 'Text', `text.section.${section}`)
+            : section;
+        })(),
         search: t('library.search.text'),
         sections: ({ query: inner }) =>
           inner
@@ -1051,18 +1151,69 @@ export function mountLibraryPanels(
                   ],
           }),
         },
-        ...TEXT_SECTIONS.map((section): BrowseSection => ({
-          id: section,
-          title: t(`text.section.${section}`),
-          layout: 'strip',
-          cards: () => textCards(section),
-          seeAll: () => textPage(section),
-          empty: null,
-        })),
+        ...(tree().find((c) => c.id === 'Text')?.subs ?? [])
+          .filter(
+            (node) =>
+              !node.hidden && !['default', 'combinations'].includes(node.id),
+          )
+          .map((node): BrowseSection => ({
+            id: node.id,
+            title: nodeTitle(node, 'Text', `text.section.${node.id}`),
+            layout: 'strip',
+            cards: () => textCards(node.id),
+            seeAll: () => textPage(node.id),
+            empty: null,
+          })),
       ];
     },
   };
 
+  // A category the owner added (x-…): its own rail button and panel.
+  const customRoot = (category: string): BrowsePage => {
+    const cat = () => tree().find((c) => c.id === category);
+    return {
+      id: `custom-${category}`,
+      title: cat() ? name(cat()!.name) : category,
+      search: t('elements.search'),
+      status: () => status,
+      sections: ({ query }) => {
+        if (query)
+          return searchResults(
+            items
+              .filter((item) => placeOf(item).category === category)
+              .map(libraryCard),
+            query,
+          );
+        const subs = (cat()?.subs ?? []).filter((node) => !node.hidden);
+        return [
+          {
+            id: 'categories',
+            layout: 'tiles',
+            columns: 3,
+            cards: () =>
+              subs.map((node) =>
+                customTile(category, node, (page) =>
+                  customPanels.get(category)?.push(page),
+                ),
+              ),
+          },
+          {
+            id: 'loose',
+            layout: 'grid',
+            columns: 3,
+            cards: () =>
+              items
+                .filter((item) => {
+                  const place = placeOf(item);
+                  return place.category === category && !place.sub;
+                })
+                .map(libraryCard),
+          },
+        ];
+      },
+    };
+  };
+  const customPanels = new Map<string, ReturnType<typeof createBrowsePanel>>();
   const panels = {
     Templates: createBrowsePanel(hosts.Templates, templatesRoot, {
       id: 'templates',
@@ -1083,6 +1234,7 @@ export function mountLibraryPanels(
   const refreshAll = () => {
     if (disposed) return;
     Object.values(panels).forEach((panel) => panel.refresh());
+    customPanels.forEach((panel) => panel.refresh());
   };
   recent.onChange(refreshAll);
   onMyTextStylesChange(() => panels.Text.refresh());
@@ -1125,7 +1277,20 @@ export function mountLibraryPanels(
   void session;
   void report;
   return {
-    reset: () => Object.values(panels).forEach((panel) => panel.reset()),
+    /** Mounts the panel of an owner-added category into its host. */
+    mountCustom: (category: string, host: HTMLElement) => {
+      customPanels.set(
+        category,
+        createBrowsePanel(host, customRoot(category), {
+          id: `custom-${category}`,
+          close: options.close,
+        }),
+      );
+    },
+    reset: () => {
+      Object.values(panels).forEach((panel) => panel.reset());
+      customPanels.forEach((panel) => panel.reset());
+    },
     dispose: () => {
       disposed = true;
       stopChange();

@@ -27,6 +27,7 @@ import {
   type FileRef,
 } from './format';
 import { CatalogRejected, sha256, verifyManifest } from './verify';
+import { catalogConfigSchema, type CatalogConfig } from './taxonomy';
 import { FALLBACK_ITEMS } from './fallback';
 
 export type CatalogSource = 'catalog' | 'cache' | 'fallback';
@@ -44,6 +45,11 @@ interface CachedManifest {
   readonly catalogVersion: number;
 }
 const MANIFEST_KEY = 'manifest';
+const CONFIG_KEY = 'config';
+interface CachedConfig {
+  readonly sha256: string;
+  readonly config: CatalogConfig;
+}
 const indexKey = (category: CatalogCategory) => `index:${category}`;
 interface CachedIndex {
   readonly sha256: string;
@@ -67,6 +73,7 @@ export const catalogMediaKey = (sha: string) => `media/${sha.slice(0, 32)}`;
 
 export class LibraryClient {
   #manifest: CatalogManifest | null = null;
+  #config: CatalogConfig | null = null;
   #indexes = new Map<CatalogCategory, CategoryIndex>();
   #status: ClientStatus = {
     source: 'fallback',
@@ -115,6 +122,11 @@ export class LibraryClient {
           if (!entry || entry.sha256 !== manifest.categories[category].sha256)
             throw new Error('incomplete');
           indexes.set(category, entry.index);
+        }
+        if (manifest.config) {
+          const own = await cache.get<CachedConfig>(CONFIG_KEY);
+          if (own && own.sha256 === manifest.config.sha256)
+            this.#config = own.config;
         }
         this.#manifest = manifest;
         this.#indexes = indexes;
@@ -238,6 +250,34 @@ export class LibraryClient {
           index,
         } satisfies CachedIndex;
       }
+      // The owner's settings (taxonomy, controls): fetched when changed.
+      let config: CatalogConfig | null = null;
+      if (manifest.config) {
+        if (
+          this.#config &&
+          this.#manifest?.config?.sha256 === manifest.config.sha256
+        )
+          config = this.#config;
+        else {
+          const configResponse = await this.#fetch(
+            this.#href(manifest.config.url),
+          );
+          if (!configResponse.ok)
+            throw new Error(
+              `The settings file answered ${configResponse.status}.`,
+            );
+          const configText = await configResponse.text();
+          if ((await sha256(configText)) !== manifest.config.sha256)
+            throw new CatalogRejected(
+              'The settings file does not match the signed catalog.',
+            );
+          config = catalogConfigSchema.parse(JSON.parse(configText));
+          writes[CONFIG_KEY] = {
+            sha256: manifest.config.sha256,
+            config,
+          } satisfies CachedConfig;
+        }
+      }
       // Indexes first, the manifest last: a cut-off write keeps the old one.
       await cache.put(writes);
       await cache.put({
@@ -248,6 +288,7 @@ export class LibraryClient {
         },
       });
       this.#manifest = manifest;
+      this.#config = config;
       this.#indexes = indexes;
       this.#status = {
         source: 'catalog',
@@ -270,6 +311,10 @@ export class LibraryClient {
     }
   }
 
+  /** The owner's settings document (taxonomy, controls), or null. */
+  config(): CatalogConfig | null {
+    return this.#config;
+  }
   /** Entries listed now in a category (hidden and scheduled ones left out). */
   entries(category: CatalogCategory): CatalogEntry[] {
     const index = this.#indexes.get(category);
@@ -297,7 +342,8 @@ export class LibraryClient {
     for (const category of ['elements', 'draw', 'text', 'templates'] as const)
       for (const entry of this.entries(category)) {
         const record = this.#record(entry);
-        if (record) items.push(record);
+        if (record)
+          items.push(entry.place ? { ...record, place: entry.place } : record);
       }
     return {
       version: 1,
