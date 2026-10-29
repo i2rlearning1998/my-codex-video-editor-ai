@@ -2,13 +2,13 @@ import { test, expect } from './fixtures';
 
 // FIX7: the sections of a left panel never overlap or shrink into each
 // other at common widths, and the rail labels break only between words.
-for (const [width, height] of [
-  [1366, 768],
-  [1024, 720],
-] as const)
-  test(`[FIX7-009] Audio and Scene panels keep their sections apart at ${width} px`, async ({
-    page,
-  }) => {
+test('[FIX7-009] Audio and Scene panels keep their sections apart at 1366 and 1024 px', async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [1366, 768],
+    [1024, 720],
+  ] as const) {
     await page.setViewportSize({ width, height });
     await page.goto('/');
     await expect
@@ -37,4 +37,5 @@ for (const [width, height] of [
         .map((el) => [el.textContent, el.scrollWidth <= el.clientWidth + 1]),
     );
     expect(labels.filter(([, fits]) => !fits)).toEqual([]);
-  });
+  }
+});
