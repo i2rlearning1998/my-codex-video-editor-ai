@@ -11393,3 +11393,141 @@ body:has(.modal-backdrop) .toast-stack {
   font-size: 12px;
   opacity: 0.7;
 }
+
+/* FIX7: My Templates scene breakdown (a side panel beside the library). */
+.shelf .shelf-card[data-category='scene'] .shelf-thumb {
+  background: #0d0d10;
+}
+.shelf .shelf-card[data-category='scene'] .shelf-thumb img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.scene-breakdown {
+  position: fixed;
+  inset-block: 56px 12px;
+  inline-size: 320px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  overflow-y: auto;
+  background: var(--raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  color: var(--text);
+}
+.scene-breakdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.scene-breakdown-title {
+  margin: 0;
+  font-size: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.scene-breakdown-close,
+.scene-part-add {
+  display: grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.scene-breakdown-close:hover,
+.scene-part-add:hover {
+  background: var(--raised-hover);
+}
+.scene-breakdown-poster {
+  align-self: center;
+  max-block-size: 260px;
+  max-inline-size: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: #0d0d10;
+}
+.scene-breakdown-poster img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+}
+.scene-breakdown-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.scene-count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--color-bg-sunken);
+  font-size: 12px;
+}
+.scene-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.scene-part {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-sunken);
+  cursor: grab;
+}
+.scene-part:hover {
+  outline: 1px solid var(--accent);
+}
+.scene-part-kind {
+  font-size: 11px;
+  color: var(--color-text-faint);
+}
+.scene-part-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 14px;
+}
+.scene-review h4 {
+  margin: 0 0 var(--space-2);
+  font-size: 14px;
+}
+.scene-review-status,
+.scene-review-empty {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+  color: var(--color-text-faint);
+}
+.scene-review-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 0;
+}
+.scene-review-row[data-state='missing'] .scene-review-state {
+  color: var(--warning, #e0a030);
+}
+.scene-review-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

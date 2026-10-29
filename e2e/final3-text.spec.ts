@@ -254,7 +254,7 @@ test('[FN3-006] a list on one line gives one bullet; on three paragraphs three; 
   await page.screenshot({ path: 'reports/final3/b-text-list.png' });
 });
 
-test('[FN3-011] the Text tab: search, the three default styles (click and drag), 24 font combinations in English and Hindi, My text styles', async ({
+test('[FN3-011][FIX7-007] the Text tab: search, the three default styles (click and drag), 24 font combinations in English and Hindi, text styles saved to My Templates', async ({
   page,
 }) => {
   await showCategory(page, 'Text');
@@ -309,16 +309,14 @@ test('[FN3-011] the Text tab: search, the three default styles (click and drag),
   await page.locator('#context-toolbar [data-control="text-more"]').click();
   await page
     .locator('.toolbar-popover .select-option', {
-      hasText: 'Save as my text style',
+      hasText: 'Save to My Templates',
     })
     .click();
-  const mine = host.locator('.my-text-style-use');
-  await expect(mine).toHaveCount(1);
-  const count = (await hook(page)).project.compositions[0]!.layers.length;
-  await mine.click();
-  await expect
-    .poll(async () => (await hook(page)).project.compositions[0]!.layers.length)
-    .toBe(count + 1);
+  // FIX7: it is kept in My Templates (Text), not in the Text panel.
+  await expect(host.locator('.my-text-style-use')).toHaveCount(0);
+  await expect(
+    page.locator('.toast', { hasText: 'Saved to My Templates' }),
+  ).toBeVisible();
   await page.screenshot({ path: 'reports/final3/b-text-tab.png' });
 });
 

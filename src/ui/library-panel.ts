@@ -5,8 +5,6 @@
 import { drags } from './drag-controller';
 import {
   DEFAULT_TEXT_ITEMS,
-  deleteMyTextStyle,
-  myTextStyles,
   onMyTextStylesChange,
   type MyTextStyle,
 } from './text-styles';
@@ -1052,45 +1050,6 @@ export function mountLibraryPanels(
                     },
                   ],
           }),
-        },
-        // FINAL3 T5: the user's saved text styles.
-        {
-          id: 'my-text-styles',
-          title: t('text.myStyles'),
-          layout: 'list',
-          render: (host) => {
-            const styles = myTextStyles();
-            if (!styles.length) {
-              const empty = document.createElement('p');
-              empty.className = 'empty-state';
-              empty.textContent = t('text.myStylesEmpty');
-              host.append(empty);
-              return;
-            }
-            for (const style of styles) {
-              const row = document.createElement('div');
-              row.className = 'my-text-style';
-              const button = document.createElement('button');
-              button.type = 'button';
-              button.className = 'my-text-style-use';
-              button.dataset.styleId = style.id;
-              button.textContent = style.name;
-              const font = style.layer.properties.fontFamily;
-              if (font?.type === 'string')
-                button.style.fontFamily = `"${font.value}", sans-serif`;
-              button.onclick = () => options.insertTextStyle?.(style);
-              const remove = document.createElement('button');
-              remove.type = 'button';
-              remove.className = 'ghost sm';
-              remove.dataset.action = 'my-text-style-delete';
-              remove.setAttribute('aria-label', t('text.myStyleDelete'));
-              remove.title = t('text.myStyleDelete');
-              remove.textContent = '×';
-              remove.onclick = () => deleteMyTextStyle(style.id);
-              row.append(button, remove);
-              host.append(row);
-            }
-          },
         },
         ...TEXT_SECTIONS.map((section): BrowseSection => ({
           id: section,

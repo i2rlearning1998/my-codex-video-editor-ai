@@ -185,6 +185,9 @@ test('[TPL-015] Save scene to My Templates keeps a scene in My Templates (not an
   await showCategory(page, 'MyTemplates');
   const before = (await hook(page)).project.compositions.length;
   await page.locator('#library-mine .mine-card').click();
+  // FIX7: a click opens the scene's breakdown; the whole scene is added
+  // from its button (or by dragging the card).
+  await page.locator('.scene-breakdown [data-action="scene-add-all"]').click();
   await page.locator('.modal-dialog [data-template-mode="new"]').click();
   await page.locator('.modal-dialog [data-action="template-confirm"]').click();
   const project = (await hook(page)).project;

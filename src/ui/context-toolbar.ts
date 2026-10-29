@@ -19,7 +19,6 @@ import {
   typographyCommands,
 } from './text-box-commands';
 import { textBoxOf } from '../render/text-box';
-import { saveMyTextStyle } from './text-styles';
 import { buildTextGradientEditor, textGradientCommands } from './text-gradient';
 import {
   localTransformMatrix,
@@ -1681,15 +1680,12 @@ export function mountContextToolbar(
               safely(() => {
                 if (value === 'lock') setLocked(engine, session, true);
                 else if (value === 'save-style') {
-                  const current = selected() ?? layer;
-                  const text = current.properties.text;
-                  saveMyTextStyle(
-                    current,
-                    (text?.type === 'string' ? text.value : current.name)
-                      .replace(/\s+/gu, ' ')
-                      .slice(0, 40),
-                  );
-                  showToast(t('text.styleSaved'), 'success', 3000);
+                  // FIX7: text styles live in My Templates (Text).
+                  document
+                    .querySelector('#timeline-foundation')
+                    ?.dispatchEvent(
+                      new CustomEvent('timeline-save-mine', { detail: 'text' }),
+                    );
                 } else
                   performEdit(engine, session, value as 'duplicate' | 'delete');
               });

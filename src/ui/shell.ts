@@ -215,6 +215,8 @@ import {
   type MineKind,
 } from './my-library';
 import { mountMyTemplatesPanel } from './my-templates-panel';
+import { openSceneBreakdown } from './scene-breakdown';
+import { kindMismatch, recommendedKind } from './scene-parts';
 import {
   DEFAULT_EDITOR_LAYOUT,
   railCategories,
@@ -4506,6 +4508,55 @@ export function mountEditorShell(
     small.getContext('2d')?.drawImage(canvas, 0, 0, small.width, small.height);
     return small.toDataURL('image/png');
   };
+  const askKindMismatch = (
+    layer: CoreLayer,
+    chosenLabel: string,
+  ): Promise<'recommended' | 'anyway' | null> =>
+    new Promise((resolve) => {
+      let answer: 'recommended' | 'anyway' | null = null;
+      const real = mineKindLabel(recommendedKind(layer as never));
+      openModal({
+        titleText: t('mine.mismatch.title'),
+        onClose: () => resolve(answer),
+        bodyBuilder: (body) => {
+          const text = document.createElement('p');
+          text.className = 'mine-mismatch-text';
+          text.textContent = t('mine.mismatch.body', {
+            name: layer.name,
+            real,
+            chosen: chosenLabel,
+          });
+          const row = document.createElement('div');
+          row.className = 'mine-mismatch-actions';
+          const make = (
+            label: string,
+            value: 'recommended' | 'anyway' | null,
+            primary = false,
+          ) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = primary ? 'btn btn-primary' : 'btn';
+            button.dataset.action = `mine-mismatch-${value ?? 'cancel'}`;
+            button.textContent = label;
+            button.onclick = () => {
+              answer = value;
+              (
+                body
+                  .closest('.modal-backdrop')
+                  ?.querySelector('.modal-close') as HTMLElement | null
+              )?.click();
+            };
+            return button;
+          };
+          row.append(
+            make(t('mine.mismatch.recommended', { real }), 'recommended', true),
+            make(t('mine.mismatch.anyway', { chosen: chosenLabel }), 'anyway'),
+            make(t('mine.mismatch.cancel'), null),
+          );
+          body.append(text, row);
+        },
+      });
+    });
   /** Save to My Templates: the selection as one item of `kind` (several
    *  layers are one Group item); nothing selected saves the scene. */
   const saveToMine = async (kind: MineKind) => {
@@ -4514,6 +4565,17 @@ export function mountEditorShell(
       return saveSceneToMine(session.source.composition.id);
     const composition = session.source.composition;
     const finalKind: MineKind = roots.length > 1 ? 'group' : kind;
+    // FIX7: a format that does not fit the object is explained first; the
+    // person may take the recommended one, keep theirs, or cancel.
+    if (roots.length === 1 && kindMismatch(roots[0] as never, kind)) {
+      const chosen = await askKindMismatch(
+        roots[0] as never,
+        mineKindLabel(kind),
+      );
+      if (chosen === null) return;
+      if (chosen === 'recommended')
+        return saveToMine(recommendedKind(roots[0] as never));
+    }
     const clips = roots.flatMap((layer) => {
       const found = findClipByLayer(composition, layer.id);
       return found
@@ -4642,9 +4704,35 @@ export function mountEditorShell(
       engine.commands.transaction(t('mine.addStep'), built.commands);
       session.selectMany(built.layerIds);
     });
+  /** FIX7: a saved scene's card opens its breakdown; it never drops. */
+  const openMineScene = (id: string) =>
+    openSceneBreakdown(id, {
+      library: myLibrary,
+      add: (itemId) => insertMine(itemId),
+      addScene: (sceneId) => {
+        const scene = myLibrary.find(sceneId)?.scene;
+        if (scene) libraryActions.insertMine(scene);
+      },
+      pickFile: (accept) =>
+        new Promise((resolve) => {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = accept;
+          input.onchange = async () => {
+            const file = input.files?.[0];
+            resolve(file ? await importQuiet(file) : null);
+          };
+          input.click();
+        }),
+      report: reportError,
+      toast: (text) => showToast(text, 'success'),
+    });
   const minePanel = mountMyTemplatesPanel(element('#library-mine'), {
     library: myLibrary,
-    add: (id) => insertMine(id),
+    add: (id) =>
+      myLibrary.find(id)?.kind === 'scene'
+        ? void openMineScene(id)
+        : insertMine(id),
     // S1 Part 4: a saved code animation can be duplicated and exported.
     isCode: (id) => {
       const item = myLibrary.find(id);

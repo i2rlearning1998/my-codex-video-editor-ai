@@ -133,7 +133,24 @@ export class MyLibrary {
     return this.#items;
   }
   find(id: string): MineItem | undefined {
-    return this.#items.find((item) => item.id === id);
+    return this.#items.find((item) => item.id === id) ?? this.#parts.get(id);
+  }
+  /**
+   * Records for the parts of a saved scene, so one part can be added or
+   * dragged on its own. They are never listed and never saved.
+   */
+  readonly #parts = new Map<string, MineItem>();
+  setParts(items: readonly MineItem[]) {
+    this.#parts.clear();
+    for (const item of items) this.#parts.set(item.id, item);
+  }
+  /** Replaces a saved scene with an edited copy (a swapped file). */
+  async updateScene(id: string, scene: MyTemplate) {
+    this.#items = this.#items.map((item) =>
+      item.id === id ? { ...item, scene } : item,
+    );
+    this.#emit();
+    await this.#save();
   }
   async add(item: MineItem) {
     this.#items = [

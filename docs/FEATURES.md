@@ -1195,6 +1195,9 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-002 | P0 | W9 | Verified | A build never picks, downloads or even searches stock or library media for a plan layer: a missing file stays missing and is listed by name |
 | FIX7-003 | P0 | W9 | Verified | A layer is filled only by the person's own media with the same name, or by a pick the person made |
 | FIX7-004 | P0 | W9 | Verified | Your own media shorter than its slot or the music never makes a clip longer than the file, so the build completes |
+| FIX7-005 | P0 | W9 | Verified | A saved scene's card opens a breakdown (AI, code, Media and editor counts, every part addable or draggable, Review & swap for media) and never drops the scene; the card shows the whole picture |
+| FIX7-006 | P0 | W9 | Verified | Saving an object in a format that does not fit (a shape as Text) explains it, recommends the right format and still saves when the person insists |
+| FIX7-007 | P1 | W9 | Verified | Text styles are saved to My Templates (Text); the Text panel no longer has My text styles |
 | FIX6-009 | P0 | W9 | Verified | A scene that was already checked is not checked again, so editing a project with many scenes stays fast |
 | FIX6-010 | P0 | W9 | Verified | The left rail is read from an editor layout (categories, order, icons); an invalid layout gives the default |
 | FIX6-011 | P1 | W9 | Verified | Every disabled planned control reads Coming soon; no duplicate disabled tiles in Text |
