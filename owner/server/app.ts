@@ -293,12 +293,31 @@ export function createOwnerApp(config: OwnerAppConfig): {
       log(session, 'reauth');
       return json(response, 200, { ok: true });
     }
+    if (route === 'GET /api/taxonomy')
+      return json(response, 200, library.taxonomy());
+    if (route === 'POST /api/taxonomy') {
+      const input = await body();
+      const { build, id } = library.taxonomyOp(input as never);
+      log(
+        session,
+        'taxonomy',
+        String(input.op),
+        JSON.stringify(input).slice(0, 200),
+      );
+      return json(response, 200, { catalogVersion: build.catalogVersion, id });
+    }
     if (route === 'GET /api/items')
       return json(response, 200, {
         categories: library.categories(),
         items: library.list({
           ...(url.searchParams.get('category')
             ? { category: url.searchParams.get('category')! }
+            : {}),
+          ...(url.searchParams.get('sub')
+            ? { sub: url.searchParams.get('sub')! }
+            : {}),
+          ...(url.searchParams.get('section')
+            ? { section: url.searchParams.get('section')! }
             : {}),
           ...(url.searchParams.get('q')
             ? { q: url.searchParams.get('q')! }
@@ -329,9 +348,18 @@ export function createOwnerApp(config: OwnerAppConfig): {
       const bytes = await readBody(request, UPLOAD_LIMIT);
       const license = url.searchParams.get('license')?.trim();
       const credit = url.searchParams.get('credit')?.trim();
+      const placeCategory = url.searchParams.get('category');
+      const place = placeCategory
+        ? {
+            category: placeCategory,
+            sub: url.searchParams.get('sub') || null,
+            section: url.searchParams.get('section') || null,
+          }
+        : undefined;
       const { result, lines } = await library.upload(
         [{ name, bytes }],
         license ? { name: license, ...(credit ? { credit } : {}) } : undefined,
+        place,
       );
       log(
         session,

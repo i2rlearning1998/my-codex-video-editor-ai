@@ -20,6 +20,28 @@ const STRINGS = {
     audit: 'Audit log',
     all: 'All',
     allKinds: 'All types',
+    addCategory: 'New category',
+    addSub: 'New sub-category',
+    addSection: 'New section',
+    nameEn: 'Name in English',
+    nameHi: 'हिन्दी नाम',
+    rename: 'Rename',
+    hide: 'Hide in editor',
+    show: 'Show in editor',
+    up: 'Move up',
+    down: 'Move down',
+    removeNode: 'Delete',
+    removeNodeAsk:
+      'Delete this from the library tree? Items inside must be moved first.',
+    whereListed: 'Listed under',
+    noneSub: '(no sub-category)',
+    noneSection: '(no section)',
+    uploadInto: 'Upload into',
+    builtIn: 'in the editor',
+    hiddenNode: 'hidden',
+    treeTitle: 'Library',
+    emptyNode: 'Nothing here yet. Upload assets into this place.',
+    uploadHere: 'Upload here',
     edit: 'Edit details',
     search: 'Search by name or tag',
     noItems: 'Nothing matches.',
@@ -70,6 +92,28 @@ const STRINGS = {
     audit: 'ऑडिट लॉग',
     all: 'सभी',
     allKinds: 'सभी प्रकार',
+    addCategory: 'नई श्रेणी',
+    addSub: 'नई उप-श्रेणी',
+    addSection: 'नया सेक्शन',
+    nameEn: 'English name',
+    nameHi: 'हिन्दी नाम',
+    rename: 'नाम बदलें',
+    hide: 'एडिटर में छिपाएँ',
+    show: 'एडिटर में दिखाएँ',
+    up: 'ऊपर',
+    down: 'नीचे',
+    removeNode: 'हटाएँ',
+    removeNodeAsk:
+      'इसे लाइब्रेरी ट्री से हटाएँ? अंदर के आइटम पहले दूसरी जगह ले जाएँ।',
+    whereListed: 'यहाँ दिखता है',
+    noneSub: '(कोई उप-श्रेणी नहीं)',
+    noneSection: '(कोई सेक्शन नहीं)',
+    uploadInto: 'यहाँ अपलोड करें',
+    builtIn: 'एडिटर में है',
+    hiddenNode: 'छिपा',
+    treeTitle: 'लाइब्रेरी',
+    emptyNode: 'यहाँ अभी कुछ नहीं। इस जगह में अपलोड करें।',
+    uploadHere: 'यहाँ अपलोड करें',
     edit: 'विवरण बदलें',
     search: 'नाम या टैग से खोजें',
     noItems: 'कुछ नहीं मिला।',
@@ -126,6 +170,27 @@ interface Item {
   publishAt: string | null;
   unpublishAt: string | null;
   thumb: string | null;
+  place: { category: string; sub: string | null; section: string | null };
+  placed: boolean;
+}
+interface TaxSection {
+  id: string;
+  name: { en: string; hi: string };
+  hidden: boolean;
+  builtin: boolean;
+  count: number;
+}
+interface TaxSub extends Omit<TaxSection, 'count'> {
+  count: number;
+  sections: TaxSection[];
+}
+interface TaxCategory {
+  id: string;
+  name: { en: string; hi: string };
+  hidden: boolean;
+  builtin: boolean;
+  count: number;
+  subs: TaxSub[];
 }
 
 let lang: Lang = localStorage.getItem('owner.lang') === 'hi' ? 'hi' : 'en';
@@ -352,7 +417,8 @@ async function loginScreen() {
   app.replaceChildren(form);
 }
 
-let filter = { category: '', kind: '', q: '' };
+let filter = { category: '', sub: '', section: '', q: '' };
+const expanded = new Set<string>(['Elements']);
 function stateOf(item: Item) {
   if (!item.published) return t('notPublished');
   if (item.publishAt && Date.parse(item.publishAt) > Date.now())
@@ -367,52 +433,251 @@ const localTime = (iso: string | null) => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 };
 
-async function libraryScreen(status: HTMLElement) {
-  const data = await api<{ categories: string[]; items: Item[] }>(
-    'GET',
-    `/api/items?${new URLSearchParams({ ...(filter.category ? { category: filter.category } : {}), ...(filter.q ? { q: filter.q } : {}) })}`,
-  );
-  // FIX7: categories and, inside one, its kinds are tab rows, not a dropdown.
-  const tabRow = (
-    id: string,
-    names: readonly string[],
-    current: string,
-    allLabel: string,
-    pick: (name: string) => void,
-  ) => {
-    const row = el('div', { class: 'bar tabs sub', id, role: 'tablist' });
-    for (const name of ['', ...names]) {
-      const button = el(
-        'button',
-        {
-          type: 'button',
-          role: 'tab',
-          'data-value': name,
-          'aria-selected': String(name === current),
-        },
-        name || allLabel,
-      );
-      button.onclick = () => pick(name);
-      row.append(button);
-    }
-    return row;
-  };
-  const category = tabRow(
-    'category',
-    data.categories,
-    filter.category,
-    t('all'),
-    (name) => {
-      filter.category = name;
-      filter.kind = '';
-      void render();
-    },
-  );
-  const kinds = [...new Set(data.items.map((item) => item.kind))].sort();
-  const kindRow = tabRow('kinds', kinds, filter.kind, t('allKinds'), (name) => {
-    filter.kind = name;
-    void render();
+/** A small dialog asking for a name in both languages. */
+function nameDialog(
+  title: string,
+  initial?: { en: string; hi: string },
+): Promise<{ en: string; hi: string } | null> {
+  return new Promise((resolve) => {
+    const en = el('input', {
+      id: 'name-en',
+      value: initial?.en ?? '',
+      maxlength: '40',
+    });
+    const hi = el('input', {
+      id: 'name-hi',
+      value: initial?.hi ?? '',
+      maxlength: '40',
+    });
+    const ok = el(
+      'button',
+      { class: 'primary', type: 'submit', id: 'name-ok' },
+      t('confirm'),
+    );
+    const cancel = el('button', { type: 'button' }, t('cancel'));
+    const form = el(
+      'form',
+      { method: 'dialog' },
+      el('h2', {}, title),
+      el('label', {}, t('nameEn'), en),
+      el('label', {}, t('nameHi'), hi),
+      el('div', { class: 'bar' }, ok, cancel),
+    );
+    const dialog = el('dialog', { id: 'name-dialog' }, form);
+    document.body.append(dialog);
+    dialog.showModal();
+    en.focus();
+    cancel.onclick = () => {
+      dialog.remove();
+      resolve(null);
+    };
+    form.onsubmit = (event) => {
+      event.preventDefault();
+      dialog.remove();
+      resolve({ en: en.value.trim(), hi: hi.value.trim() });
+    };
   });
+}
+
+/** One node of the tree: its row and, when open, its children. */
+function treeNode(
+  tree: TaxCategory[],
+  status: HTMLElement,
+  level: 0 | 1 | 2,
+  cat: TaxCategory,
+  sub?: TaxSub,
+  section?: TaxSection,
+): HTMLElement {
+  const node = section ?? sub ?? cat;
+  const key = [cat.id, sub?.id, section?.id].filter(Boolean).join('/');
+  const selected =
+    filter.category === cat.id &&
+    (filter.sub || '') === (sub?.id ?? '') &&
+    (filter.section || '') === (section?.id ?? '');
+  const children =
+    level === 0 ? cat.subs : level === 1 ? (sub?.sections ?? []) : [];
+  const open = expanded.has(key);
+  const row = el('div', {
+    class: `tree-row level-${level}${selected ? ' selected' : ''}${node.hidden ? ' off' : ''}`,
+    'data-node': key,
+  });
+  const caret = el(
+    'button',
+    {
+      type: 'button',
+      class: 'tree-caret',
+      'aria-label': open ? 'Collapse' : 'Expand',
+      ...(children.length ? {} : { disabled: '' }),
+    },
+    children.length ? (open ? '▾' : '▸') : '',
+  );
+  caret.onclick = () => {
+    if (open) expanded.delete(key);
+    else expanded.add(key);
+    void render(true);
+  };
+  const label = el(
+    'button',
+    { type: 'button', class: 'tree-label' },
+    lang === 'hi' ? node.name.hi : node.name.en,
+    el('span', { class: 'tree-count' }, String(node.count)),
+    ...(node.hidden
+      ? [el('span', { class: 'tree-flag' }, t('hiddenNode'))]
+      : []),
+  );
+  label.onclick = () => {
+    filter = {
+      ...filter,
+      category: cat.id,
+      sub: sub?.id ?? '',
+      section: section?.id ?? '',
+    };
+    if (children.length) expanded.add(key);
+    void render(true);
+  };
+  const path = {
+    category: cat.id,
+    ...(sub ? { sub: sub.id } : {}),
+    ...(section ? { section: section.id } : {}),
+  };
+  const act = (
+    action: string,
+    text: string,
+    title: string,
+    run: () => Promise<unknown>,
+  ) => {
+    const button = el(
+      'button',
+      {
+        type: 'button',
+        class: 'tree-act',
+        'data-act': action,
+        title,
+        'aria-label': title,
+      },
+      text,
+    );
+    button.onclick = (event) => {
+      event.stopPropagation();
+      run().then(
+        () => {
+          status.className = 'ok';
+          status.textContent = '';
+          void render(true);
+        },
+        (error: unknown) => {
+          status.className = 'error';
+          status.textContent =
+            error instanceof Error ? error.message : String(error);
+        },
+      );
+    };
+    return button;
+  };
+  const post = (body: unknown) =>
+    api<{ catalogVersion: number; id?: string }>('POST', '/api/taxonomy', body);
+  const actions = el('span', { class: 'tree-acts' });
+  if (level < 2)
+    actions.append(
+      act('add', '+', level === 0 ? t('addSub') : t('addSection'), async () => {
+        const name = await nameDialog(
+          level === 0 ? t('addSub') : t('addSection'),
+        );
+        if (!name) return;
+        const made = await post({
+          op: level === 0 ? 'addSub' : 'addSection',
+          ...path,
+          name,
+        });
+        expanded.add(key);
+        filter = {
+          ...filter,
+          category: cat.id,
+          sub: level === 0 ? (made.id ?? '') : (sub?.id ?? ''),
+          section: level === 1 ? (made.id ?? '') : '',
+        };
+      }),
+    );
+  actions.append(
+    act('rename', '✎', t('rename'), async () => {
+      const name = await nameDialog(t('rename'), node.name);
+      if (name) await post({ op: 'patch', ...path, patch: { name } });
+    }),
+    act(
+      'hide',
+      node.hidden ? '◌' : '●',
+      node.hidden ? t('show') : t('hide'),
+      () => post({ op: 'patch', ...path, patch: { hidden: !node.hidden } }),
+    ),
+    act('up', '↑', t('up'), () => post({ op: 'move', ...path, direction: -1 })),
+    act('down', '↓', t('down'), () =>
+      post({ op: 'move', ...path, direction: 1 }),
+    ),
+  );
+  if (!node.builtin)
+    actions.append(
+      act('remove', '🗑', t('removeNode'), async () => {
+        if (!confirm(t('removeNodeAsk'))) return;
+        await post({ op: 'remove', ...path });
+        filter = { ...filter, category: cat.id, sub: '', section: '' };
+      }),
+    );
+  row.append(caret, label, actions);
+  const wrap = el('div', { class: 'tree-node' }, row);
+  if (open)
+    for (const child of children)
+      wrap.append(
+        level === 0
+          ? treeNode(tree, status, 1, cat, child as TaxSub)
+          : treeNode(tree, status, 2, cat, sub, child as TaxSection),
+      );
+  return wrap;
+}
+async function libraryScreen(status: HTMLElement) {
+  const taxonomy = await api<{ tree: TaxCategory[] }>('GET', '/api/taxonomy');
+  knownTree = taxonomy.tree;
+  const data = await api<{ items: Item[] }>(
+    'GET',
+    `/api/items?${new URLSearchParams({
+      ...(filter.category ? { category: filter.category } : {}),
+      ...(filter.sub ? { sub: filter.sub } : {}),
+      ...(filter.section ? { section: filter.section } : {}),
+      ...(filter.q ? { q: filter.q } : {}),
+    })}`,
+  );
+  const add = el(
+    'button',
+    { type: 'button', id: 'add-category' },
+    `+ ${t('addCategory')}`,
+  );
+  add.onclick = async () => {
+    const name = await nameDialog(t('addCategory'));
+    if (!name) return;
+    try {
+      const made = await api<{ id?: string }>('POST', '/api/taxonomy', {
+        op: 'addCategory',
+        name,
+      });
+      filter = { ...filter, category: made.id ?? '', sub: '', section: '' };
+      void render(true);
+    } catch (error) {
+      status.className = 'error';
+      status.textContent =
+        error instanceof Error ? error.message : String(error);
+    }
+  };
+  const tree = el(
+    'nav',
+    { class: 'tree card compact', id: 'tree', 'aria-label': t('treeTitle') },
+    el(
+      'div',
+      { class: 'bar' },
+      el('strong', { class: 'grow' }, t('treeTitle')),
+      add,
+    ),
+  );
+  for (const cat of taxonomy.tree)
+    tree.append(treeNode(taxonomy.tree, status, 0, cat));
   const search = el('input', {
     type: 'search',
     id: 'search',
@@ -421,23 +686,108 @@ async function libraryScreen(status: HTMLElement) {
   });
   search.onchange = () => {
     filter.q = search.value;
+    void render(true);
+  };
+  const crumbs = [filter.category, filter.sub, filter.section]
+    .filter(Boolean)
+    .join(' › ');
+  const list = el('div', { class: 'items', id: 'items' });
+  if (!data.items.length)
+    list.append(el('p', {}, filter.category ? t('emptyNode') : t('noItems')));
+  for (const item of data.items)
+    list.append(itemCard(item, status, taxonomy.tree));
+  const uploadHere = el(
+    'button',
+    { type: 'button', id: 'upload-here' },
+    t('uploadHere'),
+  );
+  uploadHere.onclick = () => {
+    tab = 'upload';
     void render();
   };
-  const list = el('div', { class: 'items', id: 'items' });
-  const shown = data.items.filter(
-    (item) => !filter.kind || item.kind === filter.kind,
-  );
-  if (!shown.length) list.append(el('p', {}, t('noItems')));
-  for (const item of shown) list.append(itemCard(item, status));
   return el(
     'section',
-    {},
-    el('div', { class: 'card compact' }, category, kindRow, search),
-    list,
+    { class: 'lib-layout' },
+    tree,
+    el(
+      'div',
+      { class: 'lib-main' },
+      el(
+        'div',
+        { class: 'bar card compact' },
+        el('strong', { class: 'grow', id: 'crumbs' }, crumbs || t('all')),
+        search,
+        ...(filter.category ? [uploadHere] : []),
+      ),
+      list,
+    ),
   );
 }
 
-function itemCard(item: Item, status: HTMLElement) {
+/** Three linked selects: category, sub-category, section. */
+let knownTree: TaxCategory[] = [];
+function placePicker(
+  initialTree: TaxCategory[],
+  initial: { category: string; sub: string | null; section: string | null },
+  prefix: string,
+) {
+  let tree = initialTree;
+  const cat = el('select', { 'data-field': `${prefix}-category` });
+  const sub = el('select', { 'data-field': `${prefix}-sub` });
+  const section = el('select', { 'data-field': `${prefix}-section` });
+  const label = (node: { name: { en: string; hi: string } }) =>
+    lang === 'hi' ? node.name.hi : node.name.en;
+  const fillSubs = (selected: string | null) => {
+    sub.replaceChildren(el('option', { value: '' }, t('noneSub')));
+    for (const x of tree.find((c) => c.id === cat.value)?.subs ?? [])
+      sub.append(el('option', { value: x.id }, label(x)));
+    sub.value = selected ?? '';
+  };
+  const fillSections = (selected: string | null) => {
+    section.replaceChildren(el('option', { value: '' }, t('noneSection')));
+    const subs = tree.find((c) => c.id === cat.value)?.subs ?? [];
+    for (const x of subs.find((y) => y.id === sub.value)?.sections ?? [])
+      section.append(el('option', { value: x.id }, label(x)));
+    section.value = selected ?? '';
+  };
+  const fill = (from: {
+    category: string;
+    sub: string | null;
+    section: string | null;
+  }) => {
+    cat.replaceChildren(
+      ...tree.map((c) => el('option', { value: c.id }, label(c))),
+    );
+    cat.value = from.category;
+    fillSubs(from.sub);
+    fillSections(from.section);
+  };
+  fill(initial);
+  cat.onchange = () => {
+    fillSubs(null);
+    fillSections(null);
+  };
+  sub.onchange = () => fillSections(null);
+  return {
+    node: el('div', { class: 'row place-picker' }, cat, sub, section),
+    get: () => ({
+      category: cat.value,
+      sub: sub.value || null,
+      section: section.value || null,
+    }),
+    /** The tree arrived (or changed) after the picker was made. */
+    setTree(next: TaxCategory[]) {
+      tree = next;
+      fill({
+        category: cat.value || initial.category,
+        sub: sub.value || initial.sub,
+        section: section.value || initial.section,
+      });
+    },
+  };
+}
+
+function itemCard(item: Item, status: HTMLElement, tree: TaxCategory[]) {
   const thumb = item.thumb
     ? el('img', { src: item.thumb, alt: '' })
     : el('div', {});
@@ -483,6 +833,7 @@ function itemCard(item: Item, status: HTMLElement) {
     value: localTime(item.unpublishAt),
     'data-field': 'unpublish-at',
   });
+  const where = placePicker(tree, item.place, 'place');
   const version = el('select', { 'data-field': 'version' });
   for (const v of item.versions) {
     const option = el(
@@ -522,6 +873,7 @@ function itemCard(item: Item, status: HTMLElement) {
         ? new Date(unpublishAt.value).toISOString()
         : null,
       current: Number(version.value),
+      place: where.get(),
     }).then((r) => done(r.catalogVersion), fail);
   const toggle = el(
     'button',
@@ -566,7 +918,7 @@ function itemCard(item: Item, status: HTMLElement) {
       el(
         'span',
         { class: 'state', 'data-state': '' },
-        `${item.kind} · ${item.category} · ${stateOf(item)}`,
+        `${item.kind} · ${[item.place.category, item.place.sub, item.place.section].filter(Boolean).join(' › ')} · ${stateOf(item)}`,
       ),
       el(
         'details',
@@ -593,6 +945,7 @@ function itemCard(item: Item, status: HTMLElement) {
           el('label', {}, t('publishAt'), publishAt),
           el('label', {}, t('unpublishAt'), unpublishAt),
         ),
+        el('label', {}, t('whereListed'), where.node),
         el('label', {}, t('version'), version),
         el('div', { class: 'row' }, save, remove),
       ),
@@ -602,6 +955,19 @@ function itemCard(item: Item, status: HTMLElement) {
 }
 
 function uploadScreen() {
+  const into = placePicker(
+    knownTree,
+    {
+      category: filter.category || 'Elements',
+      sub: filter.sub || null,
+      section: filter.section || null,
+    },
+    'upload',
+  );
+  void api<{ tree: TaxCategory[] }>('GET', '/api/taxonomy').then((data) => {
+    knownTree = data.tree;
+    into.setTree(data.tree);
+  });
   const file = el('input', { type: 'file', id: 'upload-file' });
   const license = el('input', { id: 'upload-license' });
   const credit = el('input', { id: 'upload-credit' });
@@ -624,6 +990,9 @@ function uploadScreen() {
       const params = new URLSearchParams({
         ...(license.value ? { license: license.value } : {}),
         ...(credit.value ? { credit: credit.value } : {}),
+        category: into.get().category,
+        ...(into.get().sub ? { sub: into.get().sub! } : {}),
+        ...(into.get().section ? { section: into.get().section! } : {}),
       });
       const data = await api<{ lines: string[]; rejected: unknown[] }>(
         'POST',
@@ -657,6 +1026,7 @@ function uploadScreen() {
     'section',
     { class: 'card' },
     el('label', {}, t('file'), file),
+    el('label', {}, t('uploadInto'), into.node),
     el(
       'div',
       { class: 'row bar' },

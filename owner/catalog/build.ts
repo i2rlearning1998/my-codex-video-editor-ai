@@ -28,11 +28,19 @@ import {
   type FileRef,
   type SignedManifest,
 } from '../../src/library-client/format';
+import type { CatalogConfig, Place } from '../../src/library-client/taxonomy';
 import { signBytes, sha256Hex, type CatalogKeys } from './keys';
-import type { ItemStore, StoredFile, StoredItem } from './store';
+import {
+  canonicalJson,
+  type ItemStore,
+  type StoredFile,
+  type StoredItem,
+} from './store';
 
 export interface VersionSnapshot {
   readonly catalogVersion: number;
+  /** FIX7: the settings document that version carried. */
+  readonly config?: CatalogConfig;
   readonly items: readonly {
     readonly id: string;
     readonly itemVersion: number;
@@ -43,6 +51,7 @@ export interface VersionSnapshot {
     readonly planKey: string | null;
     readonly publishAt: string | null;
     readonly unpublishAt: string | null;
+    readonly place?: Place;
   }[];
 }
 
@@ -130,6 +139,7 @@ function entryFor(
           },
         }
       : {}),
+    ...(item.place ? { place: item.place } : {}),
     hidden: item.hidden,
     featured: item.featured,
     order: item.order,
@@ -218,6 +228,21 @@ export function buildCatalog(
     categories[category] = { url, sha256, count: index.entries.length };
     changed = true;
   }
+  // FIX7: the owner's settings document, signed through the manifest.
+  let config: CatalogManifest['config'];
+  if (store.data.config) {
+    const text = canonicalJson(store.data.config);
+    const sha256 = sha256Hex(text);
+    const url = `files/${sha256}.json`;
+    if (!existsSync(path.join(outDir, url)))
+      writeFileSync(path.join(outDir, url), text);
+    config = {
+      url,
+      sha256,
+      count: store.data.config.categories.length,
+    };
+  }
+  if (config?.sha256 !== previous?.config?.sha256) changed = true;
   if (!changed) return { catalogVersion: previous!.catalogVersion, changed };
   const manifest: CatalogManifest = {
     format: 'aive-catalog',
@@ -227,6 +252,7 @@ export function buildCatalog(
       ? { rolledBackTo: options.rolledBackTo }
       : {}),
     categories,
+    ...(config ? { config } : {}),
   };
   catalogManifestSchema.parse(manifest);
   const signedText = JSON.stringify(manifest);
@@ -237,6 +263,7 @@ export function buildCatalog(
   };
   const snapshot: VersionSnapshot = {
     catalogVersion,
+    ...(store.data.config ? { config: store.data.config } : {}),
     items: store.data.items.map((item) => ({
       id: item.id,
       itemVersion: item.current,
@@ -247,6 +274,7 @@ export function buildCatalog(
       planKey: item.planKey,
       publishAt: item.publishAt,
       unpublishAt: item.unpublishAt,
+      ...(item.place ? { place: item.place } : {}),
     })),
   };
   const versions = path.join(outDir, 'versions');
@@ -285,7 +313,9 @@ export function rollbackCatalog(
       item.published = false;
       continue;
     }
+    delete item.place;
     Object.assign(item, {
+      ...(old.place ? { place: old.place } : {}),
       current: old.itemVersion,
       published: old.published,
       hidden: old.hidden,
@@ -296,6 +326,8 @@ export function rollbackCatalog(
       unpublishAt: old.unpublishAt,
     });
   }
+  if (snapshot.config) store.data.config = snapshot.config;
+  else delete store.data.config;
   store.save();
   return buildCatalog(store, outDir, keys, { now, rolledBackTo: to });
 }

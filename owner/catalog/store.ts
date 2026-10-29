@@ -14,6 +14,7 @@ import type {
   CatalogCategory,
   CatalogKind,
 } from '../../src/library-client/format';
+import type { CatalogConfig, Place } from '../../src/library-client/taxonomy';
 import { sha256Hex } from './keys';
 
 export interface StoredFile {
@@ -62,12 +63,16 @@ export interface StoredItem {
   planKey: string | null;
   publishAt: string | null;
   unpublishAt: string | null;
+  /** FIX7: where the owner lists it (absent: by its kind). */
+  place?: Place;
 }
 export interface StoreData {
   version: 1;
   /** The Templates panel's categories (D-143). */
   taxonomy: unknown[];
   items: StoredItem[];
+  /** FIX7: the owner's taxonomy and controls (published, signed). */
+  config?: CatalogConfig;
 }
 
 const empty = (): StoreData => ({ version: 1, taxonomy: [], items: [] });

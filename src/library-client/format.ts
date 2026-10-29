@@ -4,6 +4,7 @@
 // Creator Pack themes and styles, and media files (P1-03). Pure data and
 // zod schemas, shared by the editor client and the owner's publish pipeline.
 import { z } from 'zod';
+import { placeSchema } from './taxonomy';
 
 /** One index file per library category (P1-04). */
 export const CATALOG_CATEGORIES = [
@@ -97,6 +98,8 @@ export const catalogEntrySchema = z
       .strict()
       .optional(),
     // Owner-controlled fields.
+    /** FIX7: where the owner lists it (default: by its kind). */
+    place: placeSchema.optional(),
     hidden: z.boolean(),
     featured: z.boolean(),
     order: z.number().int(),
@@ -152,6 +155,8 @@ export const catalogManifestSchema = z
         styles: categoryRef,
       })
       .strict(),
+    /** FIX7: the owner's taxonomy and controls (a signed settings file). */
+    config: categoryRef.optional(),
   })
   .strict();
 export type CatalogManifest = z.infer<typeof catalogManifestSchema>;

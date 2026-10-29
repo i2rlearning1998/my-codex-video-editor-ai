@@ -70,8 +70,30 @@ test('[LIB-017][LIB-014][LIB-016][FIX7-015] one command starts the manager and i
   );
 
   await page.locator('[data-tab="library"]').click();
-  await expect(page.locator('#category [data-value="elements"]')).toBeVisible();
-  await expect(page.locator('#kinds')).toBeVisible();
+  // FIX7: the tree lists the editor's categories, each with its sub-categories.
+  await expect(page.locator('#tree [data-node="Elements"]')).toBeVisible();
+  await page.locator('#tree [data-node="Elements"] .tree-label').click();
+  await expect(
+    page.locator('#tree [data-node="Elements/shapes"]'),
+  ).toBeVisible();
+  // The owner adds a category and a sub-category of their own.
+  await page.locator('#add-category').click();
+  await page.locator('#name-en').fill('Festivals');
+  await page.locator('#name-hi').fill('त्योहार');
+  await page.locator('#name-ok').click();
+  await expect(page.locator('#tree [data-node="x-festivals"]')).toBeVisible();
+  await page.locator('#tree [data-node="x-festivals"]').hover();
+  await page
+    .locator('#tree [data-node="x-festivals"] [data-act="add"]')
+    .click();
+  await page.locator('#name-en').fill('Diwali');
+  await page.locator('#name-hi').fill('दिवाली');
+  await page.locator('#name-ok').click();
+  await expect(
+    page.locator('#tree [data-node="x-festivals/diwali"]'),
+  ).toBeVisible();
+  await page.locator('#tree [data-node="Elements"] .tree-label').click();
+  await page.screenshot({ path: 'reports/fix7-owner-tree.png' });
   await page.locator('#search').fill('kite');
   await page.screenshot({ path: 'reports/fix7-owner.png' });
   await page.locator('#search').press('Enter');

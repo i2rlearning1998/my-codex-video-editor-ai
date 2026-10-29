@@ -1220,3 +1220,4 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-013 | P1 | W9 | Verified | Captions on a 9:16 video stay out of the lowest fifth of the picture |
 | FIX7-014 | P1 | W9 | Verified | The editor shows no API-key fields or Add key buttons outside Developer mode; stock says it is not available yet |
 | FIX7-015 | P1 | W9 | Verified | The owner app lists categories and kinds as tabs, keeps each card compact (details under Edit), and flowchart shapes belong to Elements › Shapes |
+| FIX7-016 | P1 | W9 | Verified | The owner builds the library tree: categories with sub-categories and sections, adds new ones, renames, hides, re-orders and moves assets into them; the signed catalog carries it |

@@ -636,7 +636,7 @@ test('[LIB-023][LIB-017] what the owner hides, features, orders, schedules or un
   await owner.locator('#code').fill(ownerCode());
   await owner.getByRole('button', { name: 'Log in' }).click();
   await expect(owner.locator('[data-tab="library"]')).toBeVisible();
-  await owner.locator('#category [data-value="audio"]').click();
+  await owner.locator('#tree [data-node="Audio"] .tree-label').click();
   const card = (id: string) => owner.locator(`.item[data-id="${id}"]`);
   const edit = async (id: string) => {
     const details = card(id).locator('details.edit');
