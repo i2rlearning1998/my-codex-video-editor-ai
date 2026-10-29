@@ -1,4 +1,3 @@
-import type { PlaceTool } from './draw-palette';
 import { invertMatrix, transformPoint, type Point2 } from '../core';
 import { pickLayer, type Viewport } from '../render/canvas';
 import { deriveRenderItems, locateLayer } from '../render/adapter';
@@ -90,8 +89,6 @@ export function bindCanvasInteraction(
   crop?: CropTool,
   /** H3: the object or empty artboard under the pointer changed. */
   onHover?: (target: string | 'artboard' | null) => void,
-  /** I2: the Draw palette's Shape, Line, Sticky note and Text tools. */
-  place?: PlaceTool,
   /** J4: edit a text layer on the canvas (caret at a page point, or all). */
   editText?: (
     id: string,
@@ -157,7 +154,6 @@ export function bindCanvasInteraction(
     if (effectsDrag) effects?.cancel();
     effectsDrag = false;
     draw?.cancel();
-    place?.cancel();
     interaction.cancel();
     marquee?.box.remove();
     marquee = null;
@@ -203,15 +199,6 @@ export function bindCanvasInteraction(
           canvas.focus({ preventScroll: true });
           event.preventDefault();
         } else crop.done();
-        return;
-      }
-      if (place?.armed) {
-        suppressClick = true;
-        place.begin(compositionPoint(point));
-        pointer = event.pointerId;
-        canvas.setPointerCapture(pointer);
-        canvas.focus({ preventScroll: true });
-        event.preventDefault();
         return;
       }
       if (drawing()) {
@@ -324,10 +311,6 @@ export function bindCanvasInteraction(
     }
     if (draw?.active) {
       draw.add(compositionPoint(point), event.shiftKey);
-      return;
-    }
-    if (place?.active) {
-      place.update(compositionPoint(point));
       return;
     }
     if (marquee) {
@@ -457,11 +440,6 @@ export function bindCanvasInteraction(
       if (draw?.active) {
         release();
         draw.finish();
-        return;
-      }
-      if (place?.active) {
-        release();
-        place.finish();
         return;
       }
       if (marquee) {
@@ -672,8 +650,7 @@ export function bindCanvasInteraction(
         pointer !== null ||
         interaction.active ||
         marquee !== null ||
-        !!draw?.active ||
-        !!place?.active
+        !!draw?.active
       );
     },
     handleKey: keydown,

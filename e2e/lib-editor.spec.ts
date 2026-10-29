@@ -144,10 +144,10 @@ test('[LIB-022][LIB-020][LIB-023][LIB-029] every library category loads from the
   await expect(page.locator('#library-audio .sound-tile')).toHaveCount(12);
   await showCategory(page, 'Theme');
   await expect(
-    page.locator('#library-theme [data-group="builtin"] .theme-card'),
+    page.locator('#library-extras-Theme [data-kind="theme"]'),
   ).toHaveCount(8);
   await expect(
-    page.locator('#library-theme .theme-card[data-theme-id="dark-neon"]'),
+    page.locator('#library-extras-Theme [data-card-id="theme-dark-neon"]'),
   ).toBeVisible();
   await showCategory(page, 'AI');
   await expect(

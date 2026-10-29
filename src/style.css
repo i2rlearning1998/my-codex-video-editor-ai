@@ -5257,8 +5257,7 @@ button.color-swatch-trigger {
   box-shadow: var(--shadow-2);
 }
 .draw-palette[hidden],
-.draw-flyout[hidden],
-.place-preview[hidden] {
+.draw-flyout[hidden] {
   display: none;
 }
 .draw-palette-tool,
@@ -5331,6 +5330,7 @@ button.color-swatch-trigger {
   margin-block-start: var(--space-2);
 }
 .draw-tile {
+  color: var(--text-primary, currentColor);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
@@ -5345,22 +5345,6 @@ button.color-swatch-trigger {
   border-color: var(--accent);
   background: var(--color-accent-soft);
 }
-.place-preview {
-  position: absolute;
-  z-index: 2;
-  border: 1.5px dashed var(--accent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
-  pointer-events: none;
-  transform-origin: 0 0;
-}
-.place-preview.line {
-  border-width: 1.5px 0 0;
-  background: none;
-}
-canvas.placing {
-  cursor: crosshair;
-}
-
 /* I3: the scene strip under the canvas. */
 .scene-strip {
   position: relative;
@@ -11604,8 +11588,21 @@ body:has(.modal-backdrop) .toast-stack {
 /* FIX7: the sections of a left panel never shrink into each other (the
    Audio tabs were squeezed to a sliver under the first list; Scene and the
    others overlapped at some widths). The panel scrolls instead. */
-.library [id^='library-'] > * {
+.library [id^='library-'] > :not(.shelf-body) {
   flex-shrink: 0;
+}
+/* FIX9: ...but the body of a shelf (AI, My Templates) is the part that
+   scrolls, so it must shrink to the panel, and the headings of the Scene,
+   Media and deep panels keep their whole height (the Scene search box sat on
+   top of the first row when the heading was squeezed). */
+.library [id^='library-'] > .shelf-body {
+  flex-shrink: 1;
+  min-block-size: 0;
+}
+.library .scene-heading,
+.library .deep-panel-header,
+.library .import-row {
+  flex: none;
 }
 /* FIX7: a rail label breaks only between words ("Templat/es" never). */
 .icon-rail-label {
@@ -11857,4 +11854,41 @@ body:has(.modal-backdrop) .toast-stack {
 #canvas-stage,
 #timeline-foundation {
   direction: ltr;
+}
+
+/* FIX9: the Text flyout of the Draw palette (Canva's Text styles). */
+.draw-text-add {
+  inline-size: 100%;
+}
+.draw-text-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-start: var(--space-2);
+}
+.draw-text-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  /* The styles are drawn for a light page, so the preview sits on paper. */
+  background: #f4f2ec;
+  color: #1f2433;
+  text-align: start;
+  cursor: pointer;
+  overflow: hidden;
+}
+.draw-text-tile > span {
+  max-inline-size: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+.draw-text-tile:hover {
+  border-color: var(--accent);
+  background: #fff;
 }

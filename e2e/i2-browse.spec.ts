@@ -408,7 +408,7 @@ test('[MED-038] Media: type tabs, sort, folders with drag in, Designs from Save 
   await expect(cards).toHaveCount(1);
 });
 
-test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky note and Text place on the canvas; Signature and the brushes work; closing restores the panel', async ({
+test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky note and Text add from their flyouts (the canvas adds nothing); Signature and the brushes work; closing restores the panel', async ({
   page,
 }) => {
   expect(await leftOpen(page)).toBe(true);
@@ -428,58 +428,38 @@ test('[SHP-027] the Draw palette: Draw collapses the panel; Shape, Line, Sticky 
     'aria-pressed',
     'false',
   );
-  // Shape: drag a rectangle.
+  // FIX9: the canvas never creates an object. With the Shape tool open, a
+  // click or a drag on the canvas adds nothing; the tiles do.
   await palette.locator('[data-palette-tool="shape"]').click();
-  // The Shape flyout lists the shapes; the pen settings are not shown.
   await expect(page.locator('#draw-flyout .draw-tile').first()).toBeVisible();
   await expect(page.locator('#draw-panel')).toBeHidden();
+  const before = (await scene(page)).layers.length;
   const a = await toScreen(page, 700, 100),
     b = await toScreen(page, 1000, 300);
   await page.mouse.move(a.x, a.y);
   await page.mouse.down();
   await page.mouse.move(b.x, b.y, { steps: 6 });
-  await expect(page.locator('.place-preview')).toBeVisible();
   await page.mouse.up();
+  await page.mouse.click(b.x, b.y);
+  expect((await scene(page)).layers.length).toBe(before);
+  // A shape tile adds that shape, centred, as one undo step.
+  await page.locator('#draw-flyout .draw-tile').nth(2).click();
   expect((await labels(page)).at(-1)).toBe('Add shape');
-  let layer = (await scene(page)).layers.at(-1)!;
-  expect(layer.properties.width?.value as number).toBeCloseTo(300, -1);
-  expect(layer.properties.height?.value as number).toBeCloseTo(200, -1);
-  expect(layer.transform.position.value[0]).toBeCloseTo(700, -1);
-  // The palette is back on Select after placing.
-  await expect(palette.locator('[data-palette-tool="select"]')).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  // Line: drag diagonally.
+  expect((await scene(page)).layers.length).toBe(before + 1);
+  // Line, Sticky note: their tiles add; Text: a text style adds text.
   await palette.locator('[data-palette-tool="line"]').click();
-  const c = await toScreen(page, 600, 100),
-    d = await toScreen(page, 900, 400);
-  await page.mouse.move(c.x, c.y);
-  await page.mouse.down();
-  await page.mouse.move(d.x, d.y, { steps: 6 });
-  await page.mouse.up();
-  layer = (await scene(page)).layers.at(-1)!;
-  expect(layer.properties.shapeKind?.value).toBe('line');
-  expect(layer.properties.width?.value as number).toBeCloseTo(424, -1);
-  expect(layer.transform.rotation.value).toBeCloseTo(45, 0);
-  // Sticky note: one group at the click.
+  await page.locator('#draw-flyout .draw-tile').nth(3).click();
+  let layer = (await scene(page)).layers.at(-1)!;
+  expect(layer.properties.shapeKind?.value).toBe('arrow');
   await palette.locator('[data-palette-tool="sticky"]').click();
-  const e = await toScreen(page, 1000, 500);
-  await page.mouse.click(e.x, e.y);
+  await page.locator('#draw-flyout .draw-tile').nth(2).click();
   expect((await labels(page)).at(-1)).toBe('Add sticky note');
   layer = (await scene(page)).layers.at(-1)!;
   expect(layer.type).toBe('group');
   expect(layer.children.map((child) => child.type)).toEqual(['shape', 'text']);
-  // Text: a click adds a text box there.
   await palette.locator('[data-palette-tool="text"]').click();
-  const f = await toScreen(page, 300, 600);
-  await page.mouse.click(f.x, f.y);
-  layer = (await scene(page)).layers.at(-1)!;
-  expect(layer.type).toBe('text');
-  const width = layer.properties.width?.value as number;
-  expect(
-    Math.abs(layer.transform.position.value[0] + width / 2 - 300),
-  ).toBeLessThan(3);
+  await page.locator('#draw-flyout .draw-text-tile').first().click();
+  expect((await scene(page)).layers.at(-1)!.type).toBe('text');
   // Each placement is one undo step.
   const steps = (await labels(page)).length;
   await page.keyboard.press('Control+z');

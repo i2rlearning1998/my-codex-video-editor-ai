@@ -1,11 +1,11 @@
-// I2: the Draw rail item toggles a compact vertical palette at the canvas's
-// left edge (Canva's whiteboard tools): Select; Draw (a flyout with the
-// brushes, colour, weight and transparency: the existing Draw panel);
-// Shape and Line (drag on the canvas); Sticky note and Text (click, or drag
-// for a text box's width); Signature (the H6 panel); Table (planned). The
-// left panel collapses while the palette is on and comes back when it
-// closes. A placing drag previews a frame over the canvas and commits once,
-// on release, as one undo step.
+// I2, FIX9: the Draw rail item toggles a compact vertical palette at the
+// canvas's left edge (Canva's whiteboard tools): Select; Draw (a flyout with
+// the brushes, colour, weight and transparency: the existing Draw panel);
+// Shape, Line, Sticky note, Text and Table (each tool's flyout lists its
+// choices; a click on a choice adds it, centred, as one undo step);
+// Signature (the H6 panel). The canvas itself never creates an object: a
+// click on it only selects, whatever tool is open. The left panel collapses
+// while the palette is on and comes back when it closes.
 import {
   rotateAroundCenter,
   vector2,
@@ -30,12 +30,12 @@ export type PaletteTool =
   | 'text'
   | 'signature'
   | 'table';
-type PlaceKind = 'shape' | 'line' | 'sticky' | 'text';
 const FLYOUT: readonly PaletteTool[] = [
   'draw',
   'shape',
   'line',
   'sticky',
+  'text',
   'table',
 ];
 const STICKY_COLORS = [
@@ -62,34 +62,19 @@ const TOOLS: readonly [PaletteTool, string][] = [
   ['table', 'list'],
 ];
 
-/** The canvas side of the placing tools (canvas-interaction.ts calls it). */
-export interface PlaceTool {
-  /** A placing tool is armed (the canvas places instead of picking). */
-  readonly armed: boolean;
-  readonly active: boolean;
-  begin(at: Point2): void;
-  update(at: Point2): void;
-  finish(): void;
-  cancel(): void;
-}
-
 export interface DrawPalette {
   readonly open: boolean;
   toggle(): void;
   close(): void;
   sync(): void;
-  readonly place: PlaceTool;
 }
 
 export function mountDrawPalette(options: {
   stage: HTMLElement;
-  canvas: HTMLCanvasElement;
   engine: EditorEngine;
   session: EditorSession;
   /** The existing Draw panel (brushes and their settings). */
   drawPanel: HTMLElement;
-  /** Composition point → canvas CSS point. */
-  toCanvas: (point: Point2) => Point2;
   report: (error: unknown) => void;
   openSignature: () => void;
   /** Library shapes for the Shape flyout. */
@@ -100,12 +85,14 @@ export function mountDrawPalette(options: {
   insertTable: (rows: number, columns: number) => void;
   pickTable: (pick: (rows: number, columns: number) => void) => void;
   insertTextBox: (at: Point2, width?: number) => void;
+  /** FIX9: the text styles the Text flyout lists (default styles + combinations). */
+  textItems: () => readonly LibraryItem[];
   /** The left panel: collapse while open, restore after. */
   setLeftOpen: (open: boolean) => void;
   leftOpen: () => boolean;
   changed: () => void;
 }): DrawPalette {
-  const { stage, canvas, engine, session, report } = options;
+  const { stage, engine, session, report } = options;
   const bar = document.createElement('div');
   bar.className = 'draw-palette';
   bar.id = 'draw-palette';
@@ -122,10 +109,6 @@ export function mountDrawPalette(options: {
   flyout.append(options.drawPanel, extra);
   options.drawPanel.hidden = false;
   stage.append(bar, flyout);
-  const preview = document.createElement('div');
-  preview.className = 'place-preview';
-  preview.hidden = true;
-  stage.append(preview);
 
   let open = false;
   let tool: PaletteTool = 'draw';
@@ -181,7 +164,6 @@ export function mountDrawPalette(options: {
       return;
     }
     tool = id;
-    placing = null;
     if (id === 'draw') session.setDrawBrush(lastBrush);
     else session.setDrawBrush(null);
     sync();
@@ -202,10 +184,6 @@ export function mountDrawPalette(options: {
       builtTool = tool;
       buildExtra();
     }
-    canvas.classList.toggle(
-      'placing',
-      open && ['shape', 'line', 'sticky', 'text'].includes(tool),
-    );
   };
 
   // --- Flyouts (Canva's Draw: each tool shows its own choices) -------------
@@ -226,7 +204,7 @@ export function mountDrawPalette(options: {
   };
   const presetSvg = (preset: ShapePreset) => {
     const spec = SHAPE_PRESETS[preset];
-    const stroke = '#272b29';
+    const stroke = 'currentColor';
     const body =
       spec.kind === 'ellipse'
         ? `<ellipse cx="24" cy="24" rx="19" ry="19" fill="#8b6cff"/>`
@@ -247,6 +225,40 @@ export function mountDrawPalette(options: {
       )
       .join('');
     return `<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><path d="${paths}" fill="#8b6cff" fill-rule="evenodd"/></svg>`;
+  };
+  /** A sticky note as Canva draws it: paper, a folded corner, soft shadow, lines of writing. */
+  const stickySvg = (color: string) =>
+    `<svg viewBox="0 0 48 48" width="44" height="44" aria-hidden="true"><rect x="7" y="9" width="34" height="34" rx="2" fill="#000" opacity=".16"/><path d="M6 6h36v26l-10 10H6z" fill="${color}"/><path d="M42 32L32 42V34a2 2 0 0 1 2-2z" fill="#000" opacity=".16"/><path d="M12 15h24M12 21h24M12 27h14" stroke="#3f3a1f" stroke-width="2" stroke-linecap="round" opacity=".55"/></svg>`;
+  const textTile = (item: LibraryItem) => {
+    const elements =
+      item.type === 'text'
+        ? (item as Extract<LibraryItem, { type: 'text' }>).data.elements
+        : [];
+    const name =
+      typeof item.name === 'string' ? item.name : (item.name.en ?? item.id);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'draw-text-tile';
+    button.dataset.itemId = item.id;
+    button.title = name;
+    button.setAttribute('aria-label', name);
+    for (const element of elements.slice(0, 3)) {
+      if (element.kind !== 'text') continue;
+      const line = document.createElement('span');
+      const words =
+        typeof element.text === 'string'
+          ? element.text
+          : (element.text.en ?? name);
+      line.textContent = words;
+      line.style.fontSize = `${Math.min(26, Math.max(12, Math.round(element.size * 300)))}px`;
+      line.style.fontWeight = String(element.weight ?? 400);
+      if (element.font) line.style.fontFamily = `"${element.font}", sans-serif`;
+      line.style.color = element.color ?? 'inherit';
+      button.append(line);
+    }
+    if (!button.childElementCount) button.textContent = name;
+    button.onclick = () => safely(() => options.insertItem(item));
+    return button;
   };
   const section = (title: string, ...tiles: HTMLElement[]) => {
     const wrap = document.createElement('section');
@@ -334,19 +346,35 @@ export function mountDrawPalette(options: {
           t('palette.sticky'),
           ...STICKY_COLORS.map((color) =>
             tile(
-              color,
-              `<svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><rect x="6" y="6" width="36" height="36" rx="3" fill="${color}"/></svg>`,
+              t('palette.sticky'),
+              stickySvg(color),
               stickyColor === color,
               () => {
                 stickyColor = color;
-                commit('sticky', canvasCentre(), canvasCentre());
-                tool = 'sticky';
-                sync();
+                placeSticky(color);
               },
             ),
           ),
         ),
       );
+    } else if (tool === 'text') {
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'button primary draw-text-add';
+      add.id = 'draw-add-text-box';
+      add.textContent = t('text.addBox');
+      add.onclick = () =>
+        safely(() => options.insertTextBox(canvasCentre(), undefined));
+      const wrap = document.createElement('section');
+      wrap.className = 'draw-section';
+      const heading = document.createElement('h3');
+      heading.className = 'draw-title';
+      heading.textContent = t('palette.text.title');
+      const list = document.createElement('div');
+      list.className = 'draw-text-list';
+      list.append(...options.textItems().map(textTile));
+      wrap.append(heading, list);
+      extra.append(add, wrap);
     } else if (tool === 'table') {
       const tiles = TABLE_SIZES.map(([rows, columns]) =>
         tile(
@@ -369,37 +397,6 @@ export function mountDrawPalette(options: {
     }
   };
 
-  // --- Placing ---------------------------------------------------------------
-  let placing: { kind: PlaceKind; start: Point2; end: Point2 } | null = null;
-  const showPreview = () => {
-    if (!placing) {
-      preview.hidden = true;
-      return;
-    }
-    const a = options.toCanvas(placing.start),
-      b = options.toCanvas(placing.end);
-    preview.hidden = false;
-    preview.classList.toggle('line', placing.kind === 'line');
-    if (placing.kind === 'line') {
-      const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      const angle = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      Object.assign(preview.style, {
-        left: `${canvas.offsetLeft + a[0]}px`,
-        top: `${canvas.offsetTop + a[1]}px`,
-        width: `${length}px`,
-        height: '0px',
-        transform: `rotate(${angle}rad)`,
-      });
-      return;
-    }
-    Object.assign(preview.style, {
-      left: `${canvas.offsetLeft + Math.min(a[0], b[0])}px`,
-      top: `${canvas.offsetTop + Math.min(a[1], b[1])}px`,
-      width: `${Math.abs(b[0] - a[0])}px`,
-      height: `${Math.abs(b[1] - a[1])}px`,
-      transform: 'none',
-    });
-  };
   /** A preset shape resized and placed by the drag (one undo step). */
   const placeShape = (preset: ShapePreset, start: Point2, end: Point2) => {
     const commands = addShapeCommands(
@@ -471,65 +468,18 @@ export function mountDrawPalette(options: {
     session.source.composition.height / 2,
   ];
   let stickyColor: string = STICKY_COLORS[0];
-  const commit = (kind: PlaceKind, start: Point2, end: Point2) => {
-    const dragged = Math.hypot(end[0] - start[0], end[1] - start[1]) >= 6;
-    if (kind === 'shape') {
-      // A click places the preset's own size, centred on the point.
-      if (!dragged) placeCentred(shapePreset, start);
-      else placeShape(shapePreset, start, end);
-    } else if (kind === 'line') {
-      if (!dragged) placeCentred(linePreset, start);
-      else placeShape(linePreset, start, end);
-    } else if (kind === 'sticky') {
-      const insert = stickyNoteCommands(
-        session.source,
-        start,
-        session.currentTime,
-        t('palette.stickyText'),
-        t('palette.sticky'),
-        stickyColor,
-      );
-      session.setPlaying(false);
-      engine.commands.transaction(insert.label, insert.commands);
-      if (insert.layerId) session.select(insert.layerId);
-    } else {
-      const width = dragged ? Math.abs(end[0] - start[0]) : undefined;
-      const centre: Point2 = dragged
-        ? [(start[0] + end[0]) / 2, (start[1] + end[1]) / 2]
-        : start;
-      options.insertTextBox(centre, width);
-    }
-    // Canva: after placing, the palette returns to Select.
-    tool = 'select';
-    sync();
-  };
-  const place: PlaceTool = {
-    get armed() {
-      return open && ['shape', 'line', 'sticky', 'text'].includes(tool);
-    },
-    get active() {
-      return placing !== null;
-    },
-    begin(at) {
-      placing = { kind: tool as PlaceKind, start: at, end: at };
-      showPreview();
-    },
-    update(at) {
-      if (!placing) return;
-      placing.end = at;
-      showPreview();
-    },
-    finish() {
-      const done = placing;
-      placing = null;
-      showPreview();
-      if (done) safely(() => commit(done.kind, done.start, done.end));
-      options.changed();
-    },
-    cancel() {
-      placing = null;
-      showPreview();
-    },
+  const placeSticky = (color: string) => {
+    const insert = stickyNoteCommands(
+      session.source,
+      canvasCentre(),
+      session.currentTime,
+      t('palette.stickyText'),
+      t('palette.sticky'),
+      color,
+    );
+    session.setPlaying(false);
+    engine.commands.transaction(insert.label, insert.commands);
+    if (insert.layerId) session.select(insert.layerId);
   };
 
   const palette: DrawPalette = {
@@ -550,8 +500,6 @@ export function mountDrawPalette(options: {
     close() {
       if (!open) return;
       open = false;
-      placing = null;
-      showPreview();
       bar.hidden = true;
       session.setDrawBrush(null);
       sync();
@@ -559,7 +507,6 @@ export function mountDrawPalette(options: {
       options.changed();
     },
     sync,
-    place,
   };
   return palette;
 }

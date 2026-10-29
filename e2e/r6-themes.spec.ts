@@ -28,10 +28,11 @@ const textFill = async (page: Page) => {
   )!;
   return { id: text.id, fill: String(text.properties.fill?.value) };
 };
+// FIX9-006: the ready-made themes are the library's cards under the panel.
+const tiles = (page: Page) =>
+  page.locator('#library-extras-Theme [data-kind="theme"]');
 const apply = (page: Page, id: string) =>
-  panel(page)
-    .locator(`.theme-card[data-theme-id="${id}"] .theme-apply`)
-    .click();
+  page.locator(`#library-extras-Theme [data-card-id="${id}"]`).click();
 /** Closes every toast (they sit above menus near the panel's foot). */
 async function closeToasts(page: Page) {
   for (const close of await page.locator('.toast .toast-close').all())
@@ -52,11 +53,9 @@ test('[RA-017] a text recoloured by hand keeps its colour when another theme is 
   page,
 }) => {
   await showCategory(page, 'Theme');
-  const ids = await panel(page)
-    .locator('[data-group="builtin"] .theme-card')
-    .evaluateAll((cards) =>
-      cards.map((card) => (card as HTMLElement).dataset.themeId!),
-    );
+  const ids = await tiles(page).evaluateAll((cards) =>
+    cards.map((card) => (card as HTMLElement).dataset.cardId!),
+  );
   await apply(page, ids[0]!);
   const { id } = await textFill(page);
   // Recolour that text by hand (the toolbar's text colour).
@@ -87,10 +86,7 @@ test('[RA-018][RA-019] Save current as theme needs a unique name and lists it on
   const save = panel(page).locator('#library-theme-save');
   await expect(save).toBeDisabled();
   // A built-in name is taken.
-  const builtIn = await panel(page)
-    .locator('[data-group="builtin"] .theme-name')
-    .first()
-    .textContent();
+  const builtIn = await tiles(page).first().getAttribute('title');
   await name.fill(builtIn!);
   await expect(save).toBeDisabled();
   await expect(panel(page).locator('#library-theme-save-message')).toHaveText(

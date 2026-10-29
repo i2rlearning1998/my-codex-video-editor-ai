@@ -18,6 +18,9 @@ export interface ThemePanelOptions {
   };
   readonly current: () => string | null;
   readonly apply: (theme: Theme, override: boolean) => void;
+  /** "Also override manual colors": one switch for this panel and the
+   *  library's theme cards below it. */
+  readonly override: { get(): boolean; set(value: boolean): void };
   readonly save: (name: string) => void;
   readonly rename: (id: string, name: string) => void;
   readonly remove: (id: string) => void;
@@ -55,7 +58,6 @@ function preview(theme: Theme): HTMLElement {
 }
 
 export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
-  let override = false;
   let draft = '';
   const prefix = host.id || 'theme';
   const menuElement = document.createElement('div');
@@ -126,8 +128,8 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
     const box = document.createElement('input');
     box.type = 'checkbox';
     box.id = `${prefix}-override`;
-    box.checked = override;
-    box.onchange = () => (override = box.checked);
+    box.checked = options.override.get();
+    box.onchange = () => options.override.set(box.checked);
     overrideLabel.append(box, document.createTextNode(t('theme.override')));
     const group = (
       kind: 'builtin' | 'saved',
@@ -154,7 +156,7 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
         name.className = 'theme-name';
         name.textContent = theme.name;
         apply.append(preview(theme), name);
-        apply.onclick = () => options.apply(theme, override);
+        apply.onclick = () => options.apply(theme, options.override.get());
         card.append(apply);
         const contains = kind === 'saved' ? options.describe?.(theme) : null;
         if (contains) {
@@ -253,10 +255,11 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
     };
     sync();
     saveRow.append(saveName, save);
+    // FIX9: the ready-made themes are the library's (the cards under this
+    // panel, owner-managed); this panel keeps only the person's own.
     host.replaceChildren(
       line,
       overrideLabel,
-      group('builtin', t('theme.builtIn'), builtIn),
       group('saved', t('theme.mine'), saved),
       saveRow,
       message,

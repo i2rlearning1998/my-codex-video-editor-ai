@@ -190,6 +190,7 @@ import { drawSceneTransition } from '../render/scene-transitions';
 import { mountWorkspace, type Workspace } from './workspace';
 import { DrawTool, withErasedPaths } from './draw-tool';
 import { mountDrawPanel } from './draw-panel';
+import { DEFAULT_TEXT_ITEMS } from './text-styles';
 import { addShape, addShapeCommands, type ShapePreset } from './shapes';
 import { myTemplates, templateFromScene } from './my-templates';
 import { groupNameFor } from './ungroup';
@@ -202,7 +203,7 @@ import { configureAudioTab } from './right-panel/audio-tab';
 import { mountRecordPanel } from './record-panel';
 import { recordPanelHooks } from './record-panel-hooks';
 import { newTts, ttsState } from './right-panel/tts-panel';
-import { projectAudioState, themeState } from './right-panel';
+import { projectAudioState } from './right-panel';
 import {
   registerTtsCommands,
   ttsCommand,
@@ -320,7 +321,7 @@ import { kitPreviewUrl } from '../video-plan/kit-preview';
 import type { FeelExtras } from '../themes/library';
 import { openPlanBuild, planServices } from './plan-build-dialog';
 import { planReviewPanel, type PlanReviewDeps } from './plan-review';
-import { planState, savePlanState } from './plan-state';
+import { bindPlanProject, planState, savePlanState } from './plan-state';
 import { planVoiceEngine } from './voiceover';
 import { synthesizeToMedia } from '../speech';
 import type { LicenseMeta } from '../providers';
@@ -369,6 +370,8 @@ export function mountEditorShell(
   // FIX1 F6: inside a nested clip the editor edits its inside as a scene;
   // the wrapper writes each edit back to the real engine (one undo step).
   const engine = createNestEngine(realEngine);
+  // FIX9: a built plan's scenes are found again by their plan references.
+  bindPlanProject(() => engine.state);
   // APP-017: the tab title carries the project name and an unsaved mark.
   let saveState: 'saved' | 'saving' | 'unsaved' | 'error' = 'saved';
   const updateTitle = () => {
@@ -1400,13 +1403,6 @@ export function mountEditorShell(
       projectAudio: () => projectAudioHost,
       // X2: the selected code layer's Animation settings.
       codeBody: () => codeBody(),
-      themeBody: () => {
-        const host = document.createElement('div');
-        host.className = 'theme-panel';
-        host.id = 'right-theme';
-        mountThemePanel(host, { ...themeOptions, onChange: () => () => {} });
-        return host;
-      },
       // FINAL3 C3: the Camera section (cameras, shots, Blender settings).
       cameraBody: () =>
         cameraSection({
@@ -1564,7 +1560,6 @@ export function mountEditorShell(
   /** FINAL3 C3: the scene toolbar's Camera opens the right Camera section. */
   const openCameraSection = () => {
     cameraUi.open = true;
-    themeState.open = false;
     projectAudioState.open = false;
     transitionFocus.sceneId = null;
     root.querySelector('.editor-shell')?.classList.remove('right-empty');
@@ -2012,19 +2007,6 @@ export function mountEditorShell(
       if (target === hover) return;
       hover = target;
       safely(draw);
-    },
-    {
-      // I2: the Draw palette is mounted later; its tools are read lazily.
-      get armed() {
-        return drawPalette?.place.armed ?? false;
-      },
-      get active() {
-        return drawPalette?.place.active ?? false;
-      },
-      begin: (at) => drawPalette?.place.begin(at),
-      update: (at) => drawPalette?.place.update(at),
-      finish: () => drawPalette?.place.finish(),
-      cancel: () => drawPalette?.place.cancel(),
     },
     (id, options) => editText(id, options ?? { selectAll: true }),
     effectsTool,
@@ -4166,7 +4148,7 @@ export function mountEditorShell(
     // R2: a theme item is applied (themes live in the AI category too).
     if (entry.item.type === 'theme') {
       const theme = themeById(id);
-      if (theme) applyTheme(theme, false);
+      if (theme) applyTheme(theme, themeOverride);
       return;
     }
     if (entry.item.type === 'motion' || entry.item.type === 'composition') {
@@ -5106,8 +5088,17 @@ export function mountEditorShell(
       if (feelExtras.has(theme.id))
         showToast(t('theme.feelApplied', { name: theme.name }), 'info');
     });
+  // "Also override manual colors" (the Theme panel's switch) also governs
+  // the library's theme cards under it.
+  let themeOverride = false;
   const themeOptions = {
     themes: themeLists,
+    override: {
+      get: () => themeOverride,
+      set: (value: boolean) => {
+        themeOverride = value;
+      },
+    },
     // FINAL3 V4: what a theme holds, and its Creator Pack export.
     describe: (theme: Theme) => {
       const extras = feelExtras.get(theme.id);
@@ -5511,7 +5502,7 @@ export function mountEditorShell(
               }),
             className: 'library-card creator-card',
             data: { itemId: `theme-${entry.id}`, kind: 'theme' },
-            activate: () => applyTheme(theme, false),
+            activate: () => applyTheme(theme, themeOverride),
           };
           return placesOf('theme', undefined, entry.place, entry.alsoIn).map(
             (place) => ({ place, card }),
@@ -5877,11 +5868,9 @@ export function mountEditorShell(
   // I2: the Draw palette (the Draw rail item).
   drawPalette = mountDrawPalette({
     stage,
-    canvas,
     engine,
     session,
     drawPanel: element('#draw-panel'),
-    toCanvas: (point) => transformPoint(viewport().matrix, point),
     report: reportError,
     openSignature: () => signature.open(),
     shapeItems: () =>
@@ -5896,6 +5885,17 @@ export function mountEditorShell(
           ),
         ),
     insertItem: (item) => libraryActions.insert(item),
+    textItems: () => {
+      const named = (item: LibraryItem) =>
+        typeof item.name === 'string' ? item.name : (item.name.en ?? item.id);
+      const seen = new Set(DEFAULT_TEXT_ITEMS.map(named));
+      return [
+        ...DEFAULT_TEXT_ITEMS,
+        ...libraryActions
+          .items()
+          .filter((item) => item.type === 'text' && !seen.has(named(item))),
+      ];
+    },
     insertTable: (rows, columns) =>
       safely(() => {
         session.setPlaying(false);
@@ -6111,7 +6111,6 @@ export function mountEditorShell(
       (kindOf(session) === 'none' &&
         !focusedScene(session) &&
         !ttsState.open &&
-        !themeState.open &&
         !cameraUi.open &&
         !projectAudioState.open)
     ) {
@@ -6132,10 +6131,9 @@ export function mountEditorShell(
         '.icon-rail-right button',
       )) {
         const caption = el.dataset.section === 'Captions';
-        // T1: Theme is the one tab that works with nothing selected.
-        // FIX1 F5: so is Audio: Project audio (the Mixer).
-        const theme =
-          el.dataset.section === 'Theme' || el.dataset.section === 'Audio';
+        // FIX1 F5: Audio works with nothing selected: Project audio (the
+        // Mixer). (Themes live in the left Theme category only.)
+        const theme = el.dataset.section === 'Audio';
         el.hidden = !caption && !theme;
         if (el.dataset.section === 'Audio') {
           el.title = t('mixer.projectAudio');
@@ -6184,13 +6182,11 @@ export function mountEditorShell(
       kind === 'none'
         ? ttsState.open
           ? 'tts.title'
-          : themeState.open
-            ? 'panel.theme'
-            : cameraUi.open
-              ? 'cam.title'
-              : projectAudioState.open
-                ? 'mixer.projectAudio'
-                : 'transition.title'
+          : cameraUi.open
+            ? 'cam.title'
+            : projectAudioState.open
+              ? 'mixer.projectAudio'
+              : 'transition.title'
         : kind === 'video' || kind === 'image'
           ? `right.tab.${kind}`
           : firstTabKey(kind),
@@ -6275,13 +6271,6 @@ export function mountEditorShell(
   stage.addEventListener(
     'pointerdown',
     () => {
-      if (themeState.open && !session.selectedIds.length) {
-        themeState.open = false;
-        root.querySelector('.editor-shell')?.classList.add('right-empty');
-        renderedRight = '';
-        syncRightRail();
-        if (workspace?.rightOpen) workspace.setOpen('right', false);
-      }
       if (projectAudioState.open && !session.selectedIds.length) {
         projectAudioState.open = false;
         root.querySelector('.editor-shell')?.classList.add('right-empty');
@@ -6334,25 +6323,12 @@ export function mountEditorShell(
         !projectAudioState.open
       ) {
         projectAudioState.open = true;
-        themeState.open = false;
         transitionFocus.sceneId = null;
         root.querySelector('.editor-shell')?.classList.remove('right-empty');
         workspace?.setEmpty(false);
         renderedRight = '';
         syncRightRail();
         setRightSection('Audio');
-        workspace?.setOpen('right', true);
-        return;
-      }
-      // T1: the Theme tab with nothing selected.
-      if (name === 'Theme' && !session.selectedIds.length && !themeState.open) {
-        themeState.open = true;
-        projectAudioState.open = false;
-        transitionFocus.sceneId = null;
-        root.querySelector('.editor-shell')?.classList.remove('right-empty');
-        renderedRight = '';
-        syncRightRail();
-        setRightSection('Theme');
         workspace?.setOpen('right', true);
         return;
       }
@@ -6608,7 +6584,6 @@ export function mountEditorShell(
       key === '' &&
         !transitionFocus.sceneId &&
         !ttsState.open &&
-        !themeState.open &&
         !cameraUi.open &&
         !projectAudioState.open,
     );
@@ -6629,7 +6604,6 @@ export function mountEditorShell(
           !session.selectedIds.length &&
           !transitionFocus.sceneId &&
           !ttsState.open &&
-          !themeState.open &&
           !cameraUi.open &&
           workspace?.rightOpen
         )
