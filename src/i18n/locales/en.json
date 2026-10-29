@@ -2585,6 +2585,7 @@
   "plan.noVoice": "Voice-over is not available yet, so the video is silent. Add a recording, or use your own voice key (optional) in Settings.",
   "plan.regenerate": "Regenerate",
   "plan.review": "Review & swap",
+  "plan.autoFilled": "Filled {count} missing media from the files you added.",
   "plan.reviewEmpty": "Build a video from a plan first: AI › Import a Video Plan, then Build video.",
   "plan.reviewTitle": "Review video plan",
   "plan.scene": "Scene",

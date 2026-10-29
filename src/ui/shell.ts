@@ -316,7 +316,7 @@ import {
 import { kitPreviewUrl } from '../video-plan/kit-preview';
 import type { FeelExtras } from '../themes/library';
 import { openPlanBuild, planServices } from './plan-build-dialog';
-import { planReviewPanel } from './plan-review';
+import { planReviewPanel, type PlanReviewDeps } from './plan-review';
 import { planState, savePlanState } from './plan-state';
 import { planVoiceEngine } from './voiceover';
 import { synthesizeToMedia } from '../speech';
@@ -2829,92 +2829,131 @@ export function mountEditorShell(
     });
   };
   /** FINAL3 V3: Review & swap, a left side panel. */
+  const planReviewDeps = (title?: string): PlanReviewDeps => ({
+    ...(title !== undefined ? { title } : {}),
+    poster: (sceneId) =>
+      scenePosterUrl(engine, session, sceneId, frames, 160, 1),
+    project: () => engine.state,
+    run: (label, commands) =>
+      safely(() => {
+        engine.commands.transaction(label, commands);
+      }),
+    saveFeel: async (name, plan) => {
+      const library = await themeLibrary;
+      if (!library) throw new Error(t('theme.storageUnavailable'));
+      const { theme, extras } = feelTheme(plan);
+      const saved = await library
+        .saveFeelTheme(name, theme, extras)
+        .catch((error: unknown) => {
+          throw themeError(error);
+        });
+      await refreshThemes();
+      showToast(t('theme.savedToast', { name: saved.name }), 'success');
+    },
+    addAssets: (assets) => {
+      if (assets.length)
+        engine.library(
+          'Import media',
+          assets.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
+        );
+    },
+    services: async () => {
+      const plan = planState(engine.state.id, title)?.plan;
+      const voice = await planVoiceEngine(plan?.meta.language ?? 'en').catch(
+        () => null,
+      );
+      return {
+        ...planBuildServices(),
+        ...(plan?.meta.themeId
+          ? { theme: await planThemeById(plan.meta.themeId) }
+          : {}),
+        ...(voice
+          ? {
+              voice: async (text: string, lang: string) => {
+                const made = await synthesizeToMedia(text, {
+                  provider: voice.provider,
+                  voiceId: voice.voiceId,
+                  lang,
+                });
+                const asset = await importQuiet(
+                  new File([made.blob], 'Narration.wav', {
+                    type: made.mime,
+                  }),
+                );
+                return asset ? { asset, duration: made.durationSec } : null;
+              },
+            }
+          : { voiceUnavailable: t('plan.noVoice') }),
+      };
+    },
+    importCandidate: (candidate) =>
+      planBuildServices().importCandidate(candidate),
+    searchMore: async (intent, page) => [
+      ...(await planBuildServices().resolve.stock(
+        intent.query,
+        intent.type,
+        intent.orientation,
+        page,
+      )),
+    ],
+    pickFile: (accept) =>
+      new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = accept;
+        input.onchange = async () => {
+          const file = input.files?.[0];
+          resolve(file ? await importQuiet(file) : null);
+        };
+        input.click();
+      }),
+    openScene: (id) => session.selectComposition(id),
+    download: (name, text) => downloadText(text, name, 'application/json'),
+    report: reportError,
+    rerender: () => sidePanels.refresh(),
+  });
   const openPlanReview = (title?: string) =>
     sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
-      planReviewPanel({
-        ...(title !== undefined ? { title } : {}),
-        poster: (sceneId) =>
-          scenePosterUrl(engine, session, sceneId, frames, 160, 1),
-        project: () => engine.state,
-        run: (label, commands) =>
-          safely(() => {
-            engine.commands.transaction(label, commands);
-          }),
-        saveFeel: async (name, plan) => {
-          const library = await themeLibrary;
-          if (!library) throw new Error(t('theme.storageUnavailable'));
-          const { theme, extras } = feelTheme(plan);
-          const saved = await library
-            .saveFeelTheme(name, theme, extras)
-            .catch((error: unknown) => {
-              throw themeError(error);
-            });
-          await refreshThemes();
-          showToast(t('theme.savedToast', { name: saved.name }), 'success');
-        },
-        addAssets: (assets) => {
-          if (assets.length)
-            engine.library(
-              'Import media',
-              assets.map((asset) => ({ type: 'ADD_ASSET' as const, asset })),
-            );
-        },
-        services: async () => {
-          const plan = planState(engine.state.id, title)?.plan;
-          const voice = await planVoiceEngine(
-            plan?.meta.language ?? 'en',
-          ).catch(() => null);
-          return {
-            ...planBuildServices(),
-            ...(plan?.meta.themeId
-              ? { theme: await planThemeById(plan.meta.themeId) }
-              : {}),
-            ...(voice
-              ? {
-                  voice: async (text: string, lang: string) => {
-                    const made = await synthesizeToMedia(text, {
-                      provider: voice.provider,
-                      voiceId: voice.voiceId,
-                      lang,
-                    });
-                    const asset = await importQuiet(
-                      new File([made.blob], 'Narration.wav', {
-                        type: made.mime,
-                      }),
-                    );
-                    return asset ? { asset, duration: made.durationSec } : null;
-                  },
-                }
-              : { voiceUnavailable: t('plan.noVoice') }),
-          };
-        },
-        importCandidate: (candidate) =>
-          planBuildServices().importCandidate(candidate),
-        searchMore: async (intent, page) => [
-          ...(await planBuildServices().resolve.stock(
-            intent.query,
-            intent.type,
-            intent.orientation,
-            page,
-          )),
-        ],
-        pickFile: (accept) =>
-          new Promise((resolve) => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = accept;
-            input.onchange = async () => {
-              const file = input.files?.[0];
-              resolve(file ? await importQuiet(file) : null);
-            };
-            input.click();
-          }),
-        openScene: (id) => session.selectComposition(id),
-        download: (name, text) => downloadText(text, name, 'application/json'),
-        report: reportError,
-        rerender: () => sidePanels.refresh(),
-      }),
+      planReviewPanel(planReviewDeps(title)),
     );
+  // FIX7: media added to the project later fill the plan slots that wait
+  // for a file with that name (nothing else is ever filled on its own).
+  let knownAssets = new Set(engine.state.assets.map((asset) => asset.id));
+  let relinkTimer: ReturnType<typeof setTimeout> | undefined;
+  let relinking = false;
+  const fillWaitingSlots = async () => {
+    if (relinking) return;
+    relinking = true;
+    try {
+      let total = 0;
+      for (let round = 0; round < 8; round++) {
+        if (!planState(engine.state.id)?.flags.length) break;
+        let api: { fillMissing(): Promise<number> } | undefined;
+        planReviewPanel({
+          ...planReviewDeps(),
+          onReady: (ready) => (api = ready),
+        });
+        const filled = (await api?.fillMissing()) ?? 0;
+        total += filled;
+        if (!filled) break;
+      }
+      if (total)
+        showToast(t('plan.autoFilled', { count: String(total) }), 'success');
+    } catch (error) {
+      reportError(error);
+    } finally {
+      relinking = false;
+    }
+  };
+  engine.on('state:changed', (event) => {
+    const ids = new Set(engine.state.assets.map((asset) => asset.id));
+    const added = [...ids].some((id) => !knownAssets.has(id));
+    knownAssets = ids;
+    if (event.reason === 'load' || !added) return;
+    if (!planState(engine.state.id)?.flags.length) return;
+    clearTimeout(relinkTimer);
+    relinkTimer = setTimeout(() => void fillWaitingSlots(), 800);
+  });
   /** FINAL2 U10: Build video from an AI composition (slots, then scenes). */
   const openBuildVideo = (
     item: { name: { en: string }; data: unknown },

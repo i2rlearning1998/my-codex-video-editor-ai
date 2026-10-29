@@ -187,6 +187,28 @@ test('[FN3-022] without a voice key the video is silent with a banner; files the
   await page.screenshot({ path: 'reports/final3/d-fallback.png' });
 });
 
+test('[FIX7-025] a file added to Media after the build fills the slot waiting for it when its name holds the slot words, and nothing else is filled', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await withKey(page);
+  await mockStock(page);
+  await page.goto('/');
+  const dialog = await build(page, false);
+  await dialog.locator('#plan-continue, #plan-cancel').first().click();
+  await expect(page.locator('.plan-build')).toHaveCount(0);
+  const waiting = async () =>
+    (await allLayers(page)).filter(
+      (l) => l.properties.planFlag?.value === 'needs-asset',
+    ).length;
+  const before = await waiting();
+  expect(before).toBeGreaterThanOrEqual(2);
+  // Only the picture named like the first slot is added.
+  await addOwnMedia(page, [HONEY_MEDIA[0]]);
+  await expect.poll(waiting, { timeout: 60_000 }).toBeLessThan(before);
+  expect(await waiting()).toBeGreaterThanOrEqual(1);
+});
+
 test('[FN3-023] [FIX7-012] Review & swap: an alternative swaps the media keeping its place and animation; changing the narration speaks it again and remakes the scene; Export plan and Compare', async ({
   page,
 }) => {

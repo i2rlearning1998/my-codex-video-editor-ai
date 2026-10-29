@@ -18,6 +18,8 @@ import type {
 import {
   buildVideoFromPlan,
   layerKey,
+  mayUse,
+  rankCandidates,
   type MediaCandidate,
   type PlanBuildDeps as BuilderDeps,
   type VideoPlan,
@@ -55,6 +57,8 @@ export interface PlanReviewDeps {
   rerender(): void;
   /** A small picture of a scene (its first frame), when available. */
   poster?(sceneId: string): string | undefined;
+  /** FIX7: hands out a way to fill missing media from the project's Media. */
+  onReady?(api: { fillMissing(): Promise<number> }): void;
 }
 
 type Layerish = {
@@ -707,6 +711,44 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       card.append(options);
     }
     root.append(card);
+  });
+  // FIX7: a file added to Media later fills the slot that waits for it, when
+  // its name holds the slot's words (the same rule as the build).
+  deps.onReady?.({
+    fillMissing: async () => {
+      let filled = 0;
+      const services = await deps.services();
+      for (const [index, scene] of state.plan.scenes.entries()) {
+        const composition = deps
+          .project()
+          .compositions.find(
+            (c) => c.id === state.sceneIds[timeline ? 0 : index],
+          );
+        if (!composition) continue;
+        for (const layer of scene.layers) {
+          if (layer.kind !== 'media' || !layer.mediaIntent) continue;
+          const ref = layerKey(scene, layer);
+          const flagged =
+            byRef(composition, ref)?.properties.planFlag?.value ===
+            'needs-asset';
+          if (!flagged) continue;
+          const { query, type, orientation } = layer.mediaIntent;
+          const found = rankCandidates(
+            services.resolve.local(query, type),
+            query,
+            type,
+            orientation,
+          ).find((candidate) => mayUse(candidate, query));
+          if (!found) continue;
+          const slot = slotFor(ref);
+          if (!slot) continue;
+          await choose(slot, found);
+          filled++;
+          break; // (the scene was rebuilt: look at the next scene)
+        }
+      }
+      return filled;
+    },
   });
   return root;
 }
