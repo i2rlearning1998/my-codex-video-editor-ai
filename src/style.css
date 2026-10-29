@@ -3449,6 +3449,12 @@ button.color-swatch:hover {
 .editor-shell {
   position: relative;
 }
+.editor-shell.left-drawer #rail-left {
+  /* FIX7: the rail stays usable above the scrim, so a category can be
+     switched without closing the drawer first. */
+  position: relative;
+  z-index: var(--z-drawer);
+}
 .drawer-scrim {
   position: absolute;
   inset: var(--topbar-height) 0 0;
@@ -8790,8 +8796,8 @@ input[type='range'] {
 }
 .shelf-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
-  overflow-x: auto;
   scrollbar-width: thin;
   padding-block-end: var(--space-1);
 }
