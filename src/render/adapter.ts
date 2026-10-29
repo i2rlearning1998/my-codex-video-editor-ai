@@ -128,6 +128,11 @@ export interface RenderSource {
    * resized or rotated; otherwise the frame is the selection's bounds.
    */
   readonly selectionFrame?: readonly Point2[];
+  /**
+   * CV-015: the safe-area overlay (editor only, never exported): title and
+   * action margins, or the parts of a tall picture that a social app covers.
+   */
+  readonly safeAreas?: 'margins' | 'social';
   /** CV-013: transient snap guides of the active canvas gesture. */
   readonly guides?: readonly {
     readonly axis: 'x' | 'y';

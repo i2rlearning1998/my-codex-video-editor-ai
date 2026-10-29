@@ -36,6 +36,29 @@ export const MAX_CANVAS_ZOOM = 16;
 /** H4: the editor's modes; 3D Animation is planned (ADV-002). */
 export type EditorMode = 'editor' | 'animation2d';
 
+function readFlag(key: string, fallback: boolean): boolean {
+  try {
+    const value = localStorage.getItem(key);
+    return value === null ? fallback : value === '1';
+  } catch {
+    return fallback;
+  }
+}
+function readSafe(): 'off' | 'margins' | 'social' {
+  try {
+    const value = localStorage.getItem('aive.canvas.safe');
+    return value === 'margins' || value === 'social' ? value : 'off';
+  } catch {
+    return 'off';
+  }
+}
+function writeFlag(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, value ? '1' : '0');
+  } catch {
+    /* a preference only */
+  }
+}
 export class EditorSession {
   #currentTime = 0;
   #timelineZoom = 80;
@@ -47,6 +70,12 @@ export class EditorSession {
   #playing = false;
   /** CV-025: align relative to the canvas instead of the selection. */
   #alignToCanvas = false;
+  /** TL-029: clips, the playhead and markers snap to edges (on by default). */
+  #timelineSnap = readFlag('aive.timeline.snap', true);
+  /** CV-015: the safe-area overlay on the canvas. */
+  #safeAreas: 'off' | 'margins' | 'social' = readSafe();
+  /** PB-006: playback repeats the scene, or its Start-End range. */
+  #loop = readFlag('aive.player.loop', false);
   /** H4: Editor or 2D Animation (transient UI state, like selection). */
   #mode: EditorMode = 'editor';
   /** ANI-004: selected timeline keyframes (a layer and a time); transient. */
@@ -301,6 +330,37 @@ export class EditorSession {
   setMode(mode: EditorMode): void {
     if (mode === this.#mode) return;
     this.#mode = mode;
+    this.#notify();
+  }
+  get safeAreas(): 'off' | 'margins' | 'social' {
+    return this.#safeAreas;
+  }
+  setSafeAreas(value: 'off' | 'margins' | 'social'): void {
+    if (value === this.#safeAreas) return;
+    this.#safeAreas = value;
+    try {
+      localStorage.setItem('aive.canvas.safe', value);
+    } catch {
+      /* a preference only */
+    }
+    this.#notify();
+  }
+  get timelineSnap(): boolean {
+    return this.#timelineSnap;
+  }
+  setTimelineSnap(value: boolean): void {
+    if (value === this.#timelineSnap) return;
+    this.#timelineSnap = value;
+    writeFlag('aive.timeline.snap', value);
+    this.#notify();
+  }
+  get loop(): boolean {
+    return this.#loop;
+  }
+  setLoop(value: boolean): void {
+    if (value === this.#loop) return;
+    this.#loop = value;
+    writeFlag('aive.player.loop', value);
     this.#notify();
   }
   get alignToCanvas(): boolean {

@@ -27,6 +27,20 @@ export const httpUrl = z
     }
   });
 export const dimension = z.number().finite().nonnegative();
+/** MED-032: colour names both Pexels and Pixabay understand. */
+export const STOCK_COLORS = [
+  'red',
+  'orange',
+  'yellow',
+  'green',
+  'turquoise',
+  'blue',
+  'pink',
+  'brown',
+  'black',
+  'gray',
+  'white',
+] as const;
 export interface ProviderDependencies {
   network?: Network;
   keys?: KeyStore;
@@ -164,6 +178,7 @@ export function stockProvider(
     requiresKey: def.requiresKey,
     keyFields: def.keyFields,
     attribution: def.attribution,
+    ...(def.filters ? { filters: def.filters } : {}),
     search: (options) => search(options),
     getDownload: async (item, quality, signal) =>
       download(item, quality, def.id, signal),

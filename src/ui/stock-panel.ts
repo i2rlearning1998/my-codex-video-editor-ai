@@ -149,6 +149,9 @@ interface TabState {
   providerId: string;
   query: string;
   orientation: Orientation;
+  /** MED-032: '' means any. */
+  category: string;
+  color: string;
   items: StockItem[];
   nextPage: number | null;
   status: 'idle' | 'loading' | 'more' | 'done' | 'error';
@@ -204,6 +207,8 @@ const stateOf = (tab: StockTab, providers: readonly Provider[]): TabState => {
       providerId: (withKey ?? providers[0])!.id,
       query: '',
       orientation: '',
+      category: '',
+      color: '',
       items: [],
       nextPage: null,
       status: 'idle',
@@ -300,6 +305,8 @@ export function mountStock(
         if (state.providerId === p.id) return;
         state.controller?.abort();
         state.providerId = p.id;
+        state.category = '';
+        state.color = '';
         state.items = [];
         state.status = 'idle';
         mountStock(host, tab, deps);
@@ -329,6 +336,29 @@ export function mountStock(
       group.append(button);
     }
     filters.append(group);
+  }
+  // MED-032: category and colour, only where this provider can apply them.
+  const supported = provider().filters?.[KIND[tab]];
+  for (const [field, values] of [
+    ['category', supported?.category],
+    ['color', supported?.color],
+  ] as const) {
+    if (!values?.length) continue;
+    const select = document.createElement('select');
+    select.className = `stock-select stock-${field}`;
+    select.setAttribute('aria-label', t(`stock.${field}`));
+    for (const value of ['', ...values]) {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = t(`stock.${field}.${value || 'any'}`);
+      select.append(option);
+    }
+    select.value = state[field];
+    select.onchange = () => {
+      state[field] = select.value;
+      void runSearch(true);
+    };
+    filters.append(select);
   }
   if (filters.childElementCount) host.append(filters);
 
@@ -847,6 +877,12 @@ export function mountStock(
             page,
             perPage: queries.length > 1 ? 32 : 20,
             ...(state.orientation ? { orientation: state.orientation } : {}),
+            ...(supported?.category?.includes(state.category)
+              ? { category: state.category }
+              : {}),
+            ...(supported?.color?.includes(state.color)
+              ? { color: state.color }
+              : {}),
             signal: controller.signal,
           }),
         ),

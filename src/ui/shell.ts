@@ -292,6 +292,7 @@ import type { CatalogEntry } from '../library-client/format';
 import { TrainingLog, openTrainingStore } from '../training/record';
 import { gateControl } from '../features/registry';
 import type { LibraryItem } from '../library/schema';
+import { openProjectsDialog, type ProjectsApi } from './projects-dialog';
 import { mountNewProjectForm } from './new-project-form';
 import { bindShortcuts } from '../commands/shortcuts';
 import { mountShortcutSheet } from './shortcut-sheet';
@@ -354,6 +355,7 @@ export interface ShellActions {
   save?: () => void;
   exportProject?: () => void;
   importProject?: (file: File) => Promise<void>;
+  projects?: ProjectsApi;
   openExample?: () => void | Promise<void>;
   /** The media byte store (D-004); defaults to OPFS, then IndexedDB. */
   mediaStore?: Promise<MediaStore | null>;
@@ -367,6 +369,15 @@ export function mountEditorShell(
   // FIX1 F6: inside a nested clip the editor edits its inside as a scene;
   // the wrapper writes each edit back to the real engine (one undo step).
   const engine = createNestEngine(realEngine);
+  // APP-017: the tab title carries the project name and an unsaved mark.
+  let saveState: 'saved' | 'saving' | 'unsaved' | 'error' = 'saved';
+  const updateTitle = () => {
+    const name = realEngine.state.metadata.name;
+    document.title = t(
+      saveState === 'saved' ? 'app.projectTitle' : 'app.unsavedTitle',
+      { name, app: t('app.title') },
+    );
+  };
   const categoryKey = (name: string) => `library.${name.toLowerCase()}`;
   const railButton = (name: string, icon: string, pressed: boolean) =>
     `<button type="button" data-category="${name}" aria-pressed="${pressed}" title="${t(categoryKey(name))}">${iconSvg(icon)}<span class="icon-rail-label">${t(categoryKey(name))}</span></button>`;
@@ -405,6 +416,7 @@ export function mountEditorShell(
         <div class="app-menu-group" role="group" aria-label="${t('menu.file')}">
           <div class="app-menu-label">${t('menu.file')}</div>
           <button type="button" id="new-project" role="menuitem">${iconSvg('templates')}${t('project.new')}</button>
+          <button type="button" id="open-projects" role="menuitem">${iconSvg('open')}${t('projects.menu')}</button>
           <button type="button" id="example" role="menuitem">${iconSvg('open')}${t('action.example')}</button>
           <label class="button" role="menuitem" id="open-project-label">${iconSvg('open')}${t('action.open')}<input id="import" type="file" accept="application/json,.json" /></label>
           <button type="button" id="save" role="menuitem">${iconSvg('save')}${t('action.save')}</button>
@@ -413,6 +425,8 @@ export function mountEditorShell(
         <div class="app-menu-group" role="group" aria-label="${t('menu.view')}">
           <div class="app-menu-label">${t('menu.view')}</div>
           <button type="button" id="open-palette" role="menuitem">${iconSvg('search')}${t('palette.title')}<span class="shortcut-hint">Ctrl+K</span></button>
+          <button type="button" id="view-snap" role="menuitemcheckbox" aria-checked="true">${iconSvg('magnet')}${t('timeline.snap')}</button>
+          <button type="button" id="view-loop" role="menuitemcheckbox" aria-checked="false">${iconSvg('loop')}${t('player.loop')}</button>
           <button type="button" id="language-toggle" role="menuitem">${iconSvg('language')}<span id="language-toggle-label"></span></button>
           <button type="button" id="theme-menu" role="menuitem">${iconSvg('themeDark')}<span id="theme-menu-label"></span></button>
           <button type="button" id="open-brief" role="menuitem">${iconSvg('copy')}${t('brief.copy')}</button>
@@ -455,6 +469,7 @@ export function mountEditorShell(
             <button type="button" class="icon-button" data-canvas-zoom="in" aria-label="${t('canvas.zoomIn')}" title="${t('canvas.zoomIn')} (Ctrl+=)">${iconSvg('zoomIn', 20)}</button>
             <button type="button" class="button sm ghost" data-canvas-zoom="fit" title="${t('canvas.fit')} (Ctrl+0)">${iconSvg('fit', 20)}<span>${t('canvas.fit')}</span></button>
             <button type="button" class="button sm ghost" data-canvas-zoom="actual" title="${t('canvas.actualSizeTip')}">${t('canvas.actualSize')}</button>
+            <button type="button" class="icon-button" id="safe-areas" aria-pressed="false" aria-label="${t('canvas.safe.off')}" title="${t('canvas.safe.off')}">${iconSvg('border', 20)}</button>
             <button type="button" class="icon-button" id="fullscreen-preview" aria-label="${t('canvas.fullscreen')}" title="${t('canvas.fullscreen')}" disabled>${iconSvg('fullscreen', 20)}</button>
           </div>
         </div>
@@ -1205,6 +1220,7 @@ export function mountEditorShell(
     const drawn = {
       ...base,
       ...(cameraOff ? { camera: false } : {}),
+      ...(session.safeAreas !== 'off' ? { safeAreas: session.safeAreas } : {}),
       ...(shotFrame ? { cameraFrame: shotFrame } : {}),
       ...(!session.playing && cameraView.preview ? { cameraInView: true } : {}),
       // G4: the eraser's cuts show while dragging; release commits them.
@@ -2020,6 +2036,13 @@ export function mountEditorShell(
     ...(actions.save ? { save: actions.save } : {}),
     togglePlayback: () =>
       element<HTMLButtonElement>('[data-action="play"]').click(),
+    // KEY-015: tool shortcuts.
+    addText: () =>
+      safely(() => {
+        libraryActions.insertTextBox();
+        editText(session.selectedId, { selectAll: true });
+      }),
+    addShape: (preset) => safely(() => addShape(engine, session, preset)),
     // J14: the clip menu's Edit duration, Rename and More options.
     editDuration: () =>
       safely(() => {
@@ -2142,6 +2165,7 @@ export function mountEditorShell(
     contextToolbar.render();
     if (!element('#inspector-content').hidden) animationPanel.render();
     element('#project-name').textContent = engine.state.metadata.name;
+    updateTitle();
     element('#composition-summary').textContent = t('canvas.summary', {
       width: formatNumber(source.composition.width),
       height: formatNumber(source.composition.height),
@@ -2363,6 +2387,29 @@ export function mountEditorShell(
     safely(() => {
       runCommand('redo', commandContext);
     });
+  // CV-015: Off, Safe margins, and (for a tall picture) Social zones.
+  const safeButton = element<HTMLButtonElement>('#safe-areas');
+  const paintSafe = () => {
+    const label = t(`canvas.safe.${session.safeAreas}`);
+    safeButton.setAttribute(
+      'aria-pressed',
+      String(session.safeAreas !== 'off'),
+    );
+    safeButton.setAttribute('aria-label', label);
+    safeButton.title = label;
+  };
+  safeButton.onclick = () => {
+    const composition = session.source.composition;
+    const tall = composition.height >= composition.width * 1.3;
+    const order: ('off' | 'margins' | 'social')[] = tall
+      ? ['off', 'margins', 'social']
+      : ['off', 'margins'];
+    const next =
+      order[(order.indexOf(session.safeAreas) + 1) % order.length] ?? 'off';
+    session.setSafeAreas(next);
+  };
+  session.onChange(paintSafe);
+  paintSafe();
   const fullscreenButton = element<HTMLButtonElement>('#fullscreen-preview');
   fullscreenButton.disabled = !document.fullscreenEnabled;
   fullscreenButton.onclick = () =>
@@ -7641,6 +7688,8 @@ export function mountEditorShell(
     status: 'saved' | 'saving' | 'unsaved' | 'error',
     detail?: string,
   ) => {
+    saveState = status;
+    updateTitle();
     const dot = element('#save-status-dot');
     const text = element('#save-status-text');
     dot.className = `project-dot ${status === 'unsaved' ? '' : status}`.trim();
@@ -7662,6 +7711,12 @@ export function mountEditorShell(
   const shortcutSheet = mountShortcutSheet();
   const newProjectForm = mountNewProjectForm(engine, message);
   commandContext.newProject = newProjectForm.open;
+  if (actions.projects) {
+    const projectsApi = actions.projects;
+    commandContext.openProjects = () => openProjectsDialog(projectsApi);
+  }
+  element<HTMLButtonElement>('#open-projects').onclick = () =>
+    runCommand('projects', commandContext);
   commandContext.openPalette = palette.open;
   commandContext.openShortcuts = shortcutSheet.open;
   element<HTMLButtonElement>('#new-project').onclick = () =>
@@ -7723,12 +7778,28 @@ export function mountEditorShell(
     report: reportError,
   });
 
+  // TL-029 / PB-006: Snapping and Loop also live in View, because the Player
+  // bar hides them in a narrow window.
+  for (const [id, get, set] of [
+    [
+      '#view-snap',
+      () => session.timelineSnap,
+      (on: boolean) => session.setTimelineSnap(on),
+    ],
+    ['#view-loop', () => session.loop, (on: boolean) => session.setLoop(on)],
+  ] as const) {
+    const item = element<HTMLButtonElement>(id);
+    const paint = () => item.setAttribute('aria-checked', String(get()));
+    item.onclick = () => set(!get());
+    paint();
+    session.onChange(paint);
+  }
   // Language switcher (temporary location in the View menu; a dedicated control may move
   // it later). Re-applies every translated string that was only evaluated once at mount.
   const languageLabel = element('#language-toggle-label');
   const applyLanguage = () => {
     languageLabel.textContent = getLanguage() === 'en' ? 'हिन्दी' : 'English';
-    document.title = t('app.title');
+    updateTitle();
   };
   applyLanguage();
   element<HTMLButtonElement>('#language-toggle').onclick = () => {

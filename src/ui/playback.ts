@@ -35,6 +35,13 @@ export class Playback {
     this.session.setPlaying(true);
     this.#request = this.request(this.#tick);
   }
+  /** PB-006: back to the start and keep playing. */
+  #restart(start: number) {
+    this.session.setCurrentTime(start);
+    this.#origin = this.now();
+    this.#time = start;
+    this.#request = this.request(this.#tick);
+  }
   #tick = (timestamp: number) => {
     this.#request = null;
     if (!this.session.playing) return;
@@ -44,6 +51,10 @@ export class Playback {
     // (End may pass the content: the tail plays as black and silence).
     const range = playRangeOf(this.session.source.composition);
     if (range.manual) {
+      if (time >= range.end && this.session.loop) {
+        this.#restart(range.start);
+        return;
+      }
       if (time >= range.end) {
         this.session.setCurrentTime(range.end);
         this.session.setPlaying(false);
@@ -51,6 +62,10 @@ export class Playback {
       }
       this.session.setCurrentTime(frameToTime(timeToFrame(time, fps), fps));
       if (this.session.playing) this.#request = this.request(this.#tick);
+      return;
+    }
+    if (time >= duration && this.session.loop) {
+      this.#restart(0);
       return;
     }
     if (time >= duration) {

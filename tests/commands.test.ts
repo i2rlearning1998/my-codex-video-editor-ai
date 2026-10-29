@@ -57,6 +57,9 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       save: vi.fn(),
       openPalette: vi.fn(),
       newProject: vi.fn(),
+      openProjects: vi.fn(),
+      addText: vi.fn(),
+      addShape: vi.fn(),
       openShortcuts: vi.fn(),
       // J14: the clip menu's UI entries open a popover, a field or a panel.
       editDuration: vi.fn(),
@@ -175,6 +178,14 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     expect(runCommand(command.id, context), command.id).toBe(true);
     if (command.id === 'new-project')
       expect(context.newProject).toHaveBeenCalledOnce();
+    else if (command.id === 'tool-text')
+      expect(context.addText).toHaveBeenCalledOnce();
+    else if (command.id === 'tool-rectangle')
+      expect(context.addShape).toHaveBeenCalledWith('rectangle');
+    else if (command.id === 'tool-ellipse')
+      expect(context.addShape).toHaveBeenCalledWith('ellipse');
+    else if (command.id === 'projects')
+      expect(context.openProjects).toHaveBeenCalledOnce();
     else if (command.id === 'palette')
       expect(context.openPalette).toHaveBeenCalledOnce();
     else if (command.id === 'shortcuts')
@@ -215,6 +226,9 @@ test('[KEY-001] every registered action has translated labels, enablement and an
     else if (command.id === 'align-to-canvas')
       expect(session.alignToCanvas).toBe(true);
     else if (command.id === 'cut-next') expect(session.currentTime).toBe(2);
+    // KEY-015: tool shortcuts only change the tool or call the shell.
+    else if (command.id.startsWith('tool-') || command.id === 'projects')
+      expect(engine.canUndo).toBe(false);
     // H2: the theme is a UI preference, never project history.
     else if (command.id === 'theme') expect(engine.canUndo).toBe(false);
     else if (command.id.startsWith('zoom-') || command.id === 'hand-tool') {

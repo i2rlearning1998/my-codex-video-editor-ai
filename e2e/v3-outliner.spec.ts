@@ -182,7 +182,7 @@ test('[LYR-016] collections: create, rename, nest by drag, move layers in and ou
   expect((await hook(page)).history.labels.at(-1)).toBe('Delete hierarchy');
 });
 
-test('[LYR-017] selection follows both ways, a collapsed parent opens for a canvas selection, search keeps parents, rubber band, eye / lock / mute and the context menus', async ({
+test('[LYR-017][LYR-003][LYR-006][LYR-007] selection follows both ways, a collapsed parent opens for a canvas selection, search keeps parents, rubber band, eye / lock / mute and the context menus', async ({
   page,
 }) => {
   // Outliner -> canvas and timeline.

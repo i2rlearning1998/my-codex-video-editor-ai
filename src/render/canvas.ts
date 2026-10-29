@@ -928,6 +928,50 @@ export function drawComposition(
     }
     context.stroke();
   }
+  // CV-015: safe areas. 'margins' draws the action-safe (93 %) and
+  // title-safe (90 %) rectangles; 'social' shades where a short-video app puts
+  // its own controls on a tall (9:16) picture: top 14 %, bottom 22 %, right 12 %.
+  if (source.safeAreas) {
+    const { width: w, height: h } = source.composition;
+    const box = (x: number, y: number, bw: number, bh: number) => {
+      const a = transformPoint(viewport.matrix, [x, y]);
+      const b = transformPoint(viewport.matrix, [x + bw, y + bh]);
+      return [a[0], a[1], b[0] - a[0], b[1] - a[1]] as const;
+    };
+    context.setTransform(...pixels);
+    context.globalAlpha = 1;
+    if (source.safeAreas === 'margins') {
+      context.lineWidth = 1;
+      context.setLineDash([6, 4]);
+      for (const [inset, color] of [
+        [0.035, '#ffd23f'],
+        [0.05, '#3fd0ff'],
+      ] as const) {
+        context.strokeStyle = color;
+        context.strokeRect(
+          ...box(
+            w * inset,
+            h * inset,
+            w * (1 - 2 * inset),
+            h * (1 - 2 * inset),
+          ),
+        );
+      }
+      context.setLineDash([]);
+    } else {
+      context.fillStyle = 'rgba(255, 60, 90, 0.28)';
+      context.strokeStyle = 'rgba(255, 60, 90, 0.9)';
+      context.lineWidth = 1;
+      for (const zone of [
+        box(0, 0, w, h * 0.14),
+        box(0, h * 0.78, w, h * 0.22),
+        box(w * 0.88, h * 0.14, w * 0.12, h * 0.64),
+      ]) {
+        context.fillRect(...zone);
+        context.strokeRect(...zone);
+      }
+    }
+  }
   // H3: overlays (editor only). Colours are fixed, not themed: they sit on
   // project content, which is never themed.
   const ACCENT = '#8b6cff';

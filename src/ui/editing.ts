@@ -66,6 +66,7 @@ export function cloneLayer(
 export type EditAction =
   | 'duplicate'
   | 'delete'
+  | 'ripple-delete'
   | 'split'
   | 'group'
   | 'marker'
@@ -277,6 +278,28 @@ export function selectedClips(
   );
   return layers.length && clips.every(Boolean) ? (clips as ClipLocation[]) : [];
 }
+/**
+ * TL-022: with nothing selected, Split cuts every unlocked clip the playhead
+ * is inside of. These are their layer ids.
+ */
+export function splittableAtPlayhead(
+  source: RenderSource,
+  time: number,
+): string[] {
+  const ids: string[] = [];
+  for (const track of source.composition.tracks) {
+    if (track.locked) continue;
+    for (const clip of track.clips) {
+      if (!(clip.startTime < time && time < clip.startTime + clip.duration))
+        continue;
+      const found = locateLayer(source.composition.layers, clip.layerId);
+      if (!found || found.layer.type === 'group' || isLocked(found.layer))
+        continue;
+      ids.push(clip.layerId);
+    }
+  }
+  return ids;
+}
 export function contextActions(
   source: RenderSource,
   ids: readonly string[],
@@ -285,7 +308,12 @@ export function contextActions(
 ): EditAction[] {
   if (markerId) return ['delete-marker'];
   const layers = selectionRoots(source, ids);
-  if (!layers.length) return hasClipboard() ? ['marker', 'paste'] : ['marker'];
+  if (!layers.length) {
+    const none: EditAction[] = splittableAtPlayhead(source, time).length
+      ? ['split', 'marker']
+      : ['marker'];
+    return hasClipboard() ? [...none, 'paste'] : none;
+  }
   // H3 (CV-024): a locked layer is not deleted or cut.
   const locked = layers.some(isLocked);
   const actions: EditAction[] = locked
@@ -297,6 +325,7 @@ export function contextActions(
   const clips = selectedClips(source, ids);
   if (selection.every('clip')) {
     actions.push('toggle-enabled');
+    if (!locked) actions.push('ripple-delete');
     if (selection.every('time-effects'))
       actions.push('speed', 'reverse', 'freeze');
     actions.push(
@@ -344,8 +373,13 @@ export function performEdit(
   session: EditorSession,
   action: EditAction,
   markerId?: string,
+  options: { shift?: number } = {},
 ): void {
   session.setPlaying(false);
+  if (action === 'split' && !session.selectedIds.length)
+    session.selectMany(
+      splittableAtPlayhead(session.source, session.currentTime),
+    );
   const source = session.source,
     compositionId = source.composition.id;
   // Q1: a blocked Ungroup reports its reason (ungroupCommands throws it).
@@ -368,6 +402,7 @@ export function performEdit(
     ['copy', 'cut', 'paste', 'link', 'unlink', 'detach-audio'].includes(action)
   )
     return clipAction(engine, session, action);
+  if (action === 'ripple-delete') return rippleDelete(engine, session);
   if (action === 'ungroup') {
     const plan = ungroupCommands(source, session.selectedIds);
     const groups = selectionRoots(source, session.selectedIds);
@@ -597,7 +632,9 @@ export function performEdit(
         relink(clipCopy);
         clipCopy.layerId = copy.id;
         clipCopy.startTime =
-          action === 'split' ? session.currentTime : timing.startTime;
+          action === 'split'
+            ? session.currentTime
+            : Math.max(0, timing.startTime + (options.shift ?? 0));
         clipCopy.duration =
           action === 'split'
             ? timing.startTime + timing.duration - session.currentTime
@@ -1226,4 +1263,49 @@ export function toggleClipMute(
       muted,
     })),
   );
+}
+
+/**
+ * TL-026: deletes the selected clips and closes the gaps they leave, one
+ * undo step. On each lane, every later clip moves left by the length of the
+ * deleted clips that were before it.
+ */
+export function rippleDelete(
+  engine: EditorEngine,
+  session: EditorSession,
+): void {
+  const source = session.source;
+  const composition = source.composition;
+  const gone = selectedClips(source, withLinked(source, session.selectedIds));
+  if (!gone.length) throw new Error('Select a clip to delete');
+  const doomed = new Set(gone.map(({ clip }) => clip.id));
+  const commands: Command[] = selectionRoots(
+    source,
+    gone.map(({ clip }) => clip.layerId),
+  ).map((layer) => ({
+    type: 'DELETE_LAYER' as const,
+    compositionId: composition.id,
+    layerId: layer.id,
+  }));
+  for (const track of composition.tracks) {
+    if (track.locked) continue;
+    const removed = track.clips.filter((clip) => doomed.has(clip.id));
+    if (!removed.length) continue;
+    for (const clip of track.clips) {
+      if (doomed.has(clip.id)) continue;
+      const shift = removed
+        .filter((item) => item.startTime < clip.startTime + 1e-9)
+        .reduce((total, item) => total + item.duration, 0);
+      if (shift > 1e-9)
+        commands.push({
+          type: 'SET_CLIP_TIMING',
+          compositionId: composition.id,
+          clipId: clip.id,
+          startTime: Math.max(0, clip.startTime - shift),
+          duration: clip.duration,
+        });
+    }
+  }
+  engine.commands.transaction('Ripple delete', commands);
+  session.select(null);
 }

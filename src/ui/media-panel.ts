@@ -4,6 +4,7 @@ import {
   importMediaFiles,
   isAbort,
   probeMedia,
+  STRIP_FRAMES,
   type ImportOutcome,
   type MediaPreviews,
   type MediaStore,
@@ -209,7 +210,63 @@ export function mountMediaPanel(options: MediaPanelOptions) {
       if (asset) setThumb(card, asset);
     }
   };
+  // MED-012: moving the pointer across a video's picture scrubs through its
+  // filmstrip (made once in the background, cached with the thumbnails).
+  const scrubbed = new Map<HTMLElement, number>();
+  const scrubAt = (card: HTMLElement, x: number) => {
+    const asset = (session.source.assets as unknown as readonly Asset[]).find(
+      (item) => item.id === card.dataset.assetId,
+    );
+    const slot = card.querySelector<HTMLElement>('.media-thumb');
+    if (!asset || asset.type !== 'video' || !slot) return;
+    const strip = options.previews.strip(asset);
+    if (strip.state !== 'ready') return;
+    const box = slot.getBoundingClientRect();
+    const ratio = box.width
+      ? Math.min(1, Math.max(0, (x - box.left) / box.width))
+      : 0;
+    const index = Math.min(STRIP_FRAMES - 1, Math.floor(ratio * STRIP_FRAMES));
+    let layer = slot.querySelector<HTMLElement>('.media-scrub');
+    if (!layer) {
+      layer = document.createElement('span');
+      layer.className = 'media-scrub';
+      layer.setAttribute('aria-hidden', 'true');
+      layer.style.backgroundImage = `url("${strip.url}")`;
+      layer.style.backgroundSize = `${STRIP_FRAMES * 100}% 100%`;
+      slot.append(layer);
+    }
+    layer.dataset.frame = String(index);
+    layer.style.backgroundPosition = `${(index / (STRIP_FRAMES - 1)) * 100}% 0`;
+    scrubbed.set(card, index);
+  };
+  const stopScrub = (card: HTMLElement) => {
+    card.querySelector('.media-scrub')?.remove();
+    scrubbed.delete(card);
+  };
   const unsubscribePreviews = options.previews.onChange(updateThumbnails);
+  container.addEventListener('pointermove', (event) => {
+    const card = (event.target as HTMLElement).closest<HTMLElement>(
+      '.media-card',
+    );
+    if (card) scrubAt(card, event.clientX);
+  });
+  container.addEventListener(
+    'pointerout',
+    (event) => {
+      const card = (event.target as HTMLElement).closest<HTMLElement>(
+        '.media-card',
+      );
+      if (
+        card &&
+        !(
+          event.relatedTarget instanceof Node &&
+          card.contains(event.relatedTarget)
+        )
+      )
+        stopScrub(card);
+    },
+    true,
+  );
   const unsubscribeWaveforms = options.waveforms.onChange(updateThumbnails);
 
   const badge = (asset: Asset) =>

@@ -52,6 +52,7 @@ import { measureWithContext } from '../render/text-style';
 import type { TextMeasurer } from '../render/text-layout';
 import { fitMatrix, frameTimes, type ExportSettings } from './settings';
 import { openMediaStore } from '../media/store';
+import { gifFrameAt, type GifFrames } from '../media/gif';
 import { frameKey, pngCodec } from '../code-layer/cache';
 import { cacheKeyOf } from '../code-layer/meta';
 
@@ -67,6 +68,8 @@ export interface ExportJob {
   videos: Record<string, Blob>;
   /** Decoded images (the main thread can decode SVG; workers cannot). */
   images: Record<string, ImageBitmap>;
+  /** VID-008: the frames of animated GIFs, shown by the clip's time. */
+  gifs?: Record<string, GifFrames>;
   /** The pre-mixed stereo audio of the range, or null when silent. */
   audio: { sampleRate: number; channels: Float32Array[] } | null;
   /** V7: transitions across the cuts of joined scenes (composition time). */
@@ -348,7 +351,9 @@ async function run(job: ExportJob): Promise<void> {
         const frames: FrameProvider = {
           frame: (request) =>
             request.kind === 'image'
-              ? (job.images[request.assetId] ?? null)
+              ? job.gifs?.[request.assetId]
+                ? gifFrameAt(job.gifs[request.assetId]!, request.sourceTime)
+                : (job.images[request.assetId] ?? null)
               : (ready.get(request.key) ?? null),
         };
         providers.push(frames);

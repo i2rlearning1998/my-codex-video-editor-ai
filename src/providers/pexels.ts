@@ -7,6 +7,7 @@ import {
   scaled,
   stockProvider,
   type ProviderDependencies,
+  STOCK_COLORS,
 } from './shared';
 import type { StockFile, StockItem, StockLicense } from './types';
 export const PEXELS_LICENSE: StockLicense = {
@@ -90,6 +91,7 @@ export function createPexels(deps: ProviderDependencies = {}) {
       id: 'pexels',
       name: 'Pexels',
       kinds: ['stock-image', 'stock-video'],
+      filters: { 'stock-image': { color: STOCK_COLORS } },
       requiresKey: true,
       keyFields: apiKeyField,
       attribution: {
@@ -115,6 +117,7 @@ export function createPexels(deps: ProviderDependencies = {}) {
           page: String(o.page),
           per_page: String(o.perPage),
           ...(o.orientation ? { orientation: o.orientation } : {}),
+          ...(o.kind === 'stock-image' && o.color ? { color: o.color } : {}),
         }).toString();
         return { url: url.href, headers: { Authorization: key } };
       },

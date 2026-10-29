@@ -1,6 +1,9 @@
 /** Minimal inline-SVG line-icon set. No external icon library dependency (offline build).
  *  One style: a 24-unit grid, 1.75 stroke, round caps, inherits currentColor. Usage: element.innerHTML = icon('menu'). */
 const PATHS: Record<string, string> = {
+  // TL-029, PB-006: the Snap magnet and the Loop arrows.
+  magnet: 'M4 3v7a6 6 0 0 0 12 0V3 M4 7h3 M13 7h3',
+  loop: 'M4 9V8a3 3 0 0 1 3-3h8 M13 2l3 3-3 3 M16 11v1a3 3 0 0 1-3 3H5 M7 18l-3-3 3-3',
   // J13: the Player panel.
   scissors:
     'M7 6a2 2 0 1 1-4 0 2 2 0 0 1 4 0z M7 14a2 2 0 1 1-4 0 2 2 0 0 1 4 0z M6.5 7.5L17 15 M6.5 12.5L17 5',

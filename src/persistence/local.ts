@@ -83,6 +83,7 @@ export class Autosave {
   #timer: ReturnType<typeof setTimeout> | undefined;
   #dirty = false;
   #disposed = false;
+  #paused = false;
   #unsubscribe: () => void;
   #delay: number;
 
@@ -104,8 +105,26 @@ export class Autosave {
     });
   }
 
+  /** APP-018: edits that are not saved yet. */
+  get pending(): boolean {
+    return this.#dirty && !this.#disposed;
+  }
+  /** APP-019: while another tab owns the project, nothing is written. */
+  get paused(): boolean {
+    return this.#paused;
+  }
+  pause(): void {
+    this.#paused = true;
+    clearTimeout(this.#timer);
+    this.#timer = undefined;
+  }
+  resume(): void {
+    this.#paused = false;
+    if (this.#dirty) this.flush();
+  }
+
   flush(): boolean {
-    if (this.#disposed) return false;
+    if (this.#disposed || this.#paused) return false;
     clearTimeout(this.#timer);
     this.#timer = undefined;
     if (!this.#dirty) return true;

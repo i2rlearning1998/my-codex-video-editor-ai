@@ -48,6 +48,10 @@ export interface CommandContext {
   save?: () => void;
   openPalette?: () => void;
   newProject?: () => void;
+  openProjects?: () => void;
+  /** KEY-015: T adds a text box; R and E add a rectangle and an ellipse. */
+  addText?: () => void;
+  addShape?: (preset: 'rectangle' | 'ellipse') => void;
   openShortcuts?: () => void;
   togglePlayback: () => void;
   /** J14: the clip menu's Edit duration (a popover) and Rename (inline). */
@@ -147,6 +151,41 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     run: (context) => context.newProject?.(),
   },
   {
+    id: 'tool-select',
+    labelKey: 'command.tool-select',
+    shortcut: 'V',
+    isEnabled: () => true,
+    run: ({ session }) => session.setDrawBrush(null),
+  },
+  {
+    id: 'tool-text',
+    labelKey: 'command.tool-text',
+    shortcut: 'T',
+    isEnabled: (context) => !!context.addText,
+    run: (context) => context.addText?.(),
+  },
+  {
+    id: 'tool-rectangle',
+    labelKey: 'command.tool-rectangle',
+    shortcut: 'R',
+    isEnabled: (context) => !!context.addShape,
+    run: (context) => context.addShape?.('rectangle'),
+  },
+  {
+    id: 'tool-ellipse',
+    labelKey: 'command.tool-ellipse',
+    shortcut: 'E',
+    isEnabled: (context) => !!context.addShape,
+    run: (context) => context.addShape?.('ellipse'),
+  },
+  {
+    id: 'projects',
+    labelKey: 'projects.menu',
+    shortcut: '',
+    isEnabled: (context) => !!context.openProjects,
+    run: (context) => context.openProjects?.(),
+  },
+  {
     id: 'palette',
     labelKey: 'palette.title',
     shortcut: 'Ctrl+K',
@@ -197,6 +236,7 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
   },
   edit('duplicate', 'Ctrl+D'),
   edit('delete', 'Delete / Backspace'),
+  edit('ripple-delete', 'Shift+Delete'),
   edit('split', 'S'),
   edit('marker', 'M'),
   edit('group', 'Ctrl+G'),

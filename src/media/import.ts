@@ -138,6 +138,7 @@ export async function importMediaFiles(
           lastModified: file.lastModified,
           fingerprint,
           ...(probe.details ? { mediaProbe: { ...probe.details } } : {}),
+          ...(probe.gifLoop ? { gifLoop: probe.gifLoop } : {}),
         },
         ...(probe.width ? { width: Math.max(1, Math.round(probe.width)) } : {}),
         ...(probe.height

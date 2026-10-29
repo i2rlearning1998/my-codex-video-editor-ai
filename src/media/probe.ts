@@ -1,3 +1,4 @@
+import { gifLoopSeconds } from './gif';
 import { probeMedia as inspectMedia } from '../media-probe/probe';
 import type { MediaDetails } from '../media-probe/types';
 // Browser-side media inspection: what kind a file is, its size and duration, and a
@@ -44,6 +45,8 @@ export interface MediaProbe {
   width?: number;
   height?: number;
   duration?: number;
+  /** VID-008: one loop of an animated GIF, in seconds. */
+  gifLoop?: number;
 }
 
 const TIMEOUT_MS = 15_000;
@@ -159,7 +162,10 @@ export async function probeMedia(
         // Vector images without an intrinsic size get a square default.
         const width = element.naturalWidth || 512,
           height = element.naturalHeight || 512;
-        return { width, height };
+        // VID-008: an animated GIF is an animated clip; remember one loop.
+        const gifLoop =
+          blob.type === 'image/gif' ? await gifLoopSeconds(blob) : undefined;
+        return { width, height, ...(gifLoop ? { gifLoop } : {}) };
       }
       const duration = element.duration;
       if (!Number.isFinite(duration) || duration <= 0)

@@ -12,6 +12,7 @@ import {
   type MediaStore,
   type PreviewAsset,
 } from '../media';
+import { decodeGif, type GifFrames } from '../media/gif';
 import { mixdown } from './mixdown';
 import {
   usedAssetIds,
@@ -170,6 +171,7 @@ export function startExport(
     ];
     const videos: Record<string, Blob> = {};
     const images: Record<string, ImageBitmap> = {};
+    const gifs: Record<string, GifFrames> = {};
     for (const id of used) {
       const asset = assets.find((item) => item.id === id);
       if (!asset || !store) continue;
@@ -179,6 +181,13 @@ export function startExport(
       if (asset.type === 'image') {
         const bitmap = await decodeImage(blob);
         if (bitmap) images[id] = bitmap;
+        // VID-008: an animated GIF exports every frame, by the clip's time.
+        if (
+          typeof (asset.metadata as { gifLoop?: unknown }).gifLoop === 'number'
+        ) {
+          const gif = await decodeGif(blob);
+          if (gif) gifs[id] = gif;
+        }
       }
     }
     const audio = await mixdown(
@@ -199,6 +208,7 @@ export function startExport(
       settings,
       videos,
       images,
+      ...(Object.keys(gifs).length ? { gifs } : {}),
       // Copies: the rendered buffer's channel views must not be detached.
       audio: audio && {
         sampleRate: audio.sampleRate,
@@ -239,6 +249,7 @@ export function startExport(
     });
     worker.postMessage({ type: 'start', job }, [
       ...Object.values(images),
+      ...Object.values(gifs).flatMap((gif) => gif.frames),
       ...(job.audio?.channels.map((channel) => channel.buffer) ?? []),
     ]);
     try {

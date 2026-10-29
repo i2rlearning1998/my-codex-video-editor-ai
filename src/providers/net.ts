@@ -211,6 +211,8 @@ export function searchCacheKey(
     options.page ?? 1,
     options.perPage ?? 20,
     options.orientation ?? null,
+    options.category ?? null,
+    options.color ?? null,
     options.minWidth ?? null,
     options.minDuration ?? null,
     options.maxDuration ?? null,

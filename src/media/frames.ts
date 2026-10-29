@@ -1,5 +1,6 @@
 import { mediaSeekTime } from '../media-probe/timing';
 import type { FrameProvider, MediaFrameRequest } from '../render/adapter';
+import { decodeGif, gifFrameAt, type GifFrames } from './gif';
 import { assetFingerprint, mediaKey } from './import';
 import type { PreviewAsset } from './previews';
 import type { MediaStore } from './store';
@@ -42,6 +43,8 @@ export class MediaFrames implements FrameProvider {
   readonly #urls = new Map<string, Promise<string | null> | string | null>();
   readonly #images = new Map<string, HTMLImageElement | 'loading' | null>();
   readonly #pendingImages = new Set<string>();
+  /** VID-008: decoded frames of animated GIFs. */
+  readonly #gifs = new Map<string, GifFrames | 'loading' | null>();
   readonly #videos = new Map<string, VideoDecoder>();
   /** Phase 1 library: the full file's decoder while it gets its first frame. */
   readonly #next = new Map<string, VideoDecoder>();
@@ -92,11 +95,15 @@ export class MediaFrames implements FrameProvider {
     if (request.kind === 'code')
       return this.code?.frame(request, playing) ?? null;
     const url = this.#url(request.assetId);
-    const drawn = url
-      ? request.kind === 'image'
-        ? this.#image(request.assetId, url)
-        : this.#video(request, url, playing)
-      : null;
+    const gif =
+      url && request.kind === 'image' ? this.#gif(request, url) : null;
+    const drawn = gif
+      ? gif
+      : url
+        ? request.kind === 'image'
+          ? this.#image(request.assetId, url)
+          : this.#video(request, url, playing)
+        : null;
     return drawn ?? this.posterOf?.(request.assetId) ?? null;
   }
 
@@ -149,6 +156,10 @@ export class MediaFrames implements FrameProvider {
       if (typeof url === 'string') URL.revokeObjectURL(url);
     this.#urls.clear();
     this.#images.clear();
+    for (const gif of this.#gifs.values())
+      if (gif && gif !== 'loading')
+        gif.frames.forEach((frame) => frame.close());
+    this.#gifs.clear();
   }
 
   #url(assetId: string): string | null {
@@ -190,6 +201,35 @@ export class MediaFrames implements FrameProvider {
       },
     );
     this.#urls.set(assetId, loading);
+    return null;
+  }
+
+  /** VID-008: the frame of an animated GIF for the clip's time (it repeats). */
+  #gif(request: MediaFrameRequest, url: string): ImageBitmap | null {
+    const asset = this.assets().find((item) => item.id === request.assetId);
+    if (
+      typeof (asset?.metadata as { gifLoop?: unknown } | undefined)?.gifLoop !==
+      'number'
+    )
+      return null;
+    const known = this.#gifs.get(request.assetId);
+    if (known && known !== 'loading')
+      return gifFrameAt(known, request.sourceTime);
+    if (known === undefined) {
+      this.#gifs.set(request.assetId, 'loading');
+      void fetch(url)
+        .then((response) => response.blob())
+        .then((blob) => decodeGif(blob))
+        .then((decoded) => {
+          if (this.#disposed) {
+            decoded?.frames.forEach((frame) => frame.close());
+            return;
+          }
+          this.#gifs.set(request.assetId, decoded);
+          this.changed();
+        })
+        .catch(() => this.#gifs.set(request.assetId, null));
+    }
     return null;
   }
 

@@ -104,6 +104,7 @@ const CLIP_ACTIONS: readonly EditAction[] = [
   'link',
   'unlink',
   'detach-audio',
+  'ripple-delete',
 ];
 const formatTimelineTime = (time: number) => String(Number(time.toFixed(3)));
 /** J13: minutes, seconds and hundredths (01:05.40). */
@@ -406,7 +407,7 @@ export class TimelineInteraction {
         gesture.kind,
         deltaPixels,
         gesture.zoom,
-        SNAP_THRESHOLD_PX,
+        this.session.timelineSnap ? SNAP_THRESHOLD_PX : 0,
         gesture.layers.map((layer) => layer.id),
         gesture.bounds,
       );
@@ -651,7 +652,7 @@ export function mountTimeline(
   // zoom out, zoom in, fit and collapse.
   const player = (action: string, icon: string, key: string, size = 15) =>
     `<button class="icon-button" data-action="${action}" aria-label="${t(key)}" title="${t(key)}">${iconSvg(icon, size)}</button>`;
-  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
+  root.innerHTML = `<div class="timeline-controls" data-resize-grip><div class="transport-group transport-clip-tools" role="group" aria-label="Clip actions"><button class="icon-button" data-action="ai-tools" aria-label="${t('player.ai')}" title="${t('player.aiPlanned')}" disabled>${iconSvg('magic', 20)}</button><button data-action="split" title="${t('player.split')}">${iconSvg('scissors', 20)}<span>${t('player.splitLabel')}</span></button><button data-action="duplicate" title="${t('player.duplicate')}">${iconSvg('duplicate', 20)}<span>${t('player.duplicateLabel')}</span></button><button data-action="marker" title="${t('player.marker')}">${iconSvg('marker', 20)}<span>${t('player.markerLabel')}</span></button></div><div class="transport-group transport-playback" role="group" aria-label="Playback">${player('first-frame', 'firstFrame', 'player.first', 20)}${player('back-5', 'back5', 'player.back5', 20)}<button class="icon-button" data-action="frame-back" aria-label="Previous frame" title="Previous frame (←)">${iconSvg('frameBack', 20)}</button><button class="transport-play-button" data-action="play" aria-label="Play or pause" title="Play/Pause (Space)">${iconSvg('play', 24)}</button><button class="icon-button" data-action="frame-forward" aria-label="Next frame" title="Next frame (→)">${iconSvg('frameForward', 20)}</button>${player('forward-5', 'forward5', 'player.forward5', 20)}${player('last-frame', 'lastFrame', 'player.last', 20)}<button class="icon-button" data-action="loop" aria-pressed="false" aria-label="${t('player.loop')}" title="${t('player.loop')}">${iconSvg('loop', 20)}</button><div class="transport-time"><span role="button" tabindex="0" class="player-timecode" data-timecode data-action="timecode" title="${t('player.timecodeTip')}"></span><output class="sr-only" data-current-time aria-label="Current time"></output><span class="sr-only" data-derived-duration></span></div><input type="range" class="player-scrub" data-action="scrub" min="0" step="any" aria-label="${t('player.scrub')}" title="${t('player.scrub')}" /></div><div class="transport-group transport-meta" role="group" aria-label="Composition and zoom"><span class="sr-only" data-composition-strip></span><button class="icon-button" data-action="snap" aria-pressed="true" aria-label="${t('timeline.snap')}" title="${t('timeline.snap')}">${iconSvg('magnet', 20)}</button><button class="icon-button" data-action="zoom-out" aria-label="Timeline zoom out" title="${t('player.zoomOut')}">${iconSvg('zoomOut', 20)}</button><button class="icon-button" data-action="zoom-in" aria-label="Timeline zoom in" title="${t('player.zoomIn')}">${iconSvg('zoomIn', 20)}</button>${player('zoom-fit', 'fit', 'player.fit', 20)}<button class="icon-button" data-action="collapse-timeline" aria-expanded="true" aria-label="${t('player.collapse')}" title="${t('player.collapse')}">${iconSvg('chevronDown', 20)}</button></div></div><div class="timeline-scroll" tabindex="0"><div class="timeline-content"></div></div><div class="timeline-menu" role="menu" hidden><button role="menuitem" data-action="select">Select</button><button role="menuitem" data-action="delete">Delete</button></div>`;
   const scroll = root.querySelector<HTMLElement>('.timeline-scroll')!;
   const content = root.querySelector<HTMLElement>('.timeline-content')!;
   // V2 (Clipchamp clone spec 2, 4): no outliner column and no lane headers in
@@ -981,6 +982,8 @@ export function mountTimeline(
     scroll: number;
     originalTime: number;
     moved: boolean;
+    /** TL-024: Alt was held at the press; the drop copies instead of moving. */
+    copy?: boolean;
     /** T3: a single clip being moved follows the lane drop rules. */
     laneMove?: {
       clipId: string;
@@ -1076,6 +1079,13 @@ export function mountTimeline(
       session.selectedIds,
       session.currentTime,
     );
+    for (const [action, on] of [
+      ['loop', session.loop],
+      ['snap', session.timelineSnap],
+    ] as const)
+      root
+        .querySelector(`[data-action="${action}"]`)!
+        .setAttribute('aria-pressed', String(on));
     for (const action of ['split', 'duplicate'])
       (
         root.querySelector(`[data-action="${action}"]`) as HTMLButtonElement
@@ -1905,7 +1915,9 @@ export function mountTimeline(
       );
       const snapped = nearestSnap(
         raw,
-        snapCandidates(session.source, zoom, [], { playhead: false }),
+        session.timelineSnap
+          ? snapCandidates(session.source, zoom, [], { playhead: false })
+          : [],
         zoom,
       );
       const next = snapped.snapped ? snapped.time : undefined;
@@ -1920,9 +1932,11 @@ export function mountTimeline(
         const zoom = session.timelineZoom;
         const snapped = nearestSnap(
           markerPreview!.origin + pixelToTime(deltaPixels, zoom),
-          snapCandidates(session.source, zoom, [], {
-            markerId: markerPreview!.id,
-          }),
+          session.timelineSnap
+            ? snapCandidates(session.source, zoom, [], {
+                markerId: markerPreview!.id,
+              })
+            : [],
           zoom,
         );
         markerPreview!.time = Math.max(
@@ -2163,6 +2177,7 @@ export function mountTimeline(
         scroll: scroll.scrollLeft,
         originalTime: session.currentTime,
         moved: false,
+        ...(event.altKey && clip && !target.dataset.trim ? { copy: true } : {}),
       };
       // T3: one unlinked clip on an unlocked lane moves by the lane drop
       // rules (before, after, Replace, a new lane); several clips, linked
@@ -2248,6 +2263,16 @@ export function mountTimeline(
       const kind = pointer?.kind;
       const moved = pointer?.moved ?? false;
       const laneMove = pointer?.laneMove;
+      const copyShift =
+        pointer?.copy && moved
+          ? pixelToTime(
+              event.clientX -
+                pointer.start +
+                scroll.scrollLeft -
+                pointer.scroll,
+              session.timelineZoom,
+            )
+          : null;
       release();
       pointerSnap = undefined;
       // J9: a clip released outside the timeline stays where it was.
@@ -2260,7 +2285,19 @@ export function mountTimeline(
           event.clientY < area.top ||
           event.clientY > area.bottom);
       root.classList.remove('drag-outside');
-      if (kind === 'clip' && laneMove) {
+      if (kind === 'clip' && copyShift !== null) {
+        // TL-024: Alt-drag leaves the originals and drops copies, one step.
+        hideFloat();
+        clearAssetDropTarget();
+        controller.cancel();
+        if (!outside) {
+          const { fps } = session.source.composition;
+          const shift = frameToTime(timeToFrame(copyShift, fps), fps);
+          if (shift !== 0)
+            performEdit(engine, session, 'duplicate', undefined, { shift });
+        }
+        render();
+      } else if (kind === 'clip' && laneMove) {
         const target = laneDrop?.target;
         hideFloat();
         clearAssetDropTarget();
@@ -2515,6 +2552,12 @@ export function mountTimeline(
         case 'play':
           playback.toggle();
           break;
+        case 'loop':
+          session.setLoop(!session.loop);
+          break;
+        case 'snap':
+          session.setTimelineSnap(!session.timelineSnap);
+          break;
         case 'stop':
           playback.stop();
           break;
@@ -2607,6 +2650,7 @@ export function mountTimeline(
         case 'link':
         case 'unlink':
         case 'detach-audio':
+        case 'ripple-delete':
           performEdit(engine, session, target.dataset.action as EditAction);
           break;
       }
@@ -2708,7 +2752,10 @@ export function mountTimeline(
         ].includes(event.key)
       ) {
         event.preventDefault();
-        if (event.key === 'Delete' || event.key === 'Backspace') {
+        if (event.key === 'Delete' && event.shiftKey && !selectedMarkerId) {
+          // TL-026: Shift+Delete closes the gap the clips leave.
+          performEdit(engine, session, 'ripple-delete');
+        } else if (event.key === 'Delete' || event.key === 'Backspace') {
           if (selectedMarkerId) {
             const markerId = selectedMarkerId;
             selectedMarkerId = undefined;
@@ -2846,7 +2893,7 @@ export function mountTimeline(
         if (clip.id !== exclude)
           candidates.push(clip.startTime, clip.startTime + clip.duration);
     let best = raw;
-    let distance = SNAP_THRESHOLD_PX / zoom;
+    let distance = session.timelineSnap ? SNAP_THRESHOLD_PX / zoom : 0;
     for (const candidate of candidates)
       for (const [edge, start] of [
         [raw, candidate],

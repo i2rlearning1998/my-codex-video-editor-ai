@@ -6,6 +6,12 @@ import {
   serializeProject,
 } from './core';
 import { Autosave, LocalProjectStore } from './persistence/local';
+import {
+  canvasThumb,
+  IdbBackend,
+  ProjectLibrary,
+} from './persistence/projects';
+import { TabGuard } from './persistence/tab-guard';
 import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
 import { confirmDialog } from './ui/components/modal';
@@ -48,16 +54,20 @@ const openable = (project: unknown) => {
 let initialProject = openable(createExampleProject()).project;
 let initialMessage =
   'Example project · All artwork is part of the canonical scene.';
+// PRJ-017: a backup that replaced an unreadable save is offered, not forced.
+let recoveredProject: ReturnType<typeof openable> | undefined;
 try {
   store = new LocalProjectStore(window.localStorage);
   const loaded = store.load();
   if (loaded.project) {
     const opened = openable(loaded.project);
-    initialProject = opened.project;
-    initialMessage =
-      (loaded.recovered
-        ? `Recovered the last good backup. ${loaded.warning ?? ''}`
-        : 'Project loaded from this browser.') + opened.note;
+    if (loaded.recovered) {
+      recoveredProject = opened;
+      initialMessage = `Recovered the last good backup. ${loaded.warning ?? ''}`;
+    } else {
+      initialProject = opened.project;
+      initialMessage = 'Project loaded from this browser.' + opened.note;
+    }
   }
 } catch (error) {
   store = undefined;
@@ -68,6 +78,27 @@ const engine = new EditorEngine(initialProject, {
   onListenerError: (error) => console.error('Editor observer failed', error),
 });
 const diagnostics = observeDiagnostics(engine);
+// PRJ-015/016: every saved project also lives in the Projects library.
+const library = new ProjectLibrary(new IdbBackend());
+const thumbNow = () => {
+  const canvas = document.querySelector<HTMLCanvasElement>(
+    '#composition-canvas',
+  );
+  return canvas ? canvasThumb(canvas) : '';
+};
+let mirrorTimer: ReturnType<typeof setTimeout> | undefined;
+const mirrorNow = async () => {
+  clearTimeout(mirrorTimer);
+  try {
+    await library.save(engine.state, thumbNow());
+  } catch {
+    /* The library is a convenience copy; the main save already happened. */
+  }
+};
+const mirrorSoon = () => {
+  clearTimeout(mirrorTimer);
+  mirrorTimer = setTimeout(() => void mirrorNow(), 800);
+};
 const shell = mountEditorShell(
   document.querySelector<HTMLDivElement>('#app')!,
   engine,
@@ -106,6 +137,38 @@ const shell = mountEditorShell(
         engine.load(opened.project);
         shell.message(t('project.opened') + opened.note);
       }
+    },
+    projects: {
+      list: () => library.list(),
+      currentId: () => engine.state.id,
+      open: async (id) => {
+        autosave?.flush();
+        await mirrorNow();
+        const project = await library.open(id);
+        if (!project) throw new Error('Project not found');
+        const opened = openable(project);
+        engine.load(opened.project);
+        tabGuard?.announce();
+        shell.message(
+          t('projects.opened', { name: opened.project.metadata.name }) +
+            opened.note,
+        );
+      },
+      rename: async (id, name) => {
+        if (id === engine.state.id) {
+          engine.library('Rename project', [
+            { type: 'SET_PROJECT_NAME', name },
+          ]);
+          await mirrorNow();
+          return true;
+        }
+        return library.rename(id, name);
+      },
+      duplicate: async (id) => {
+        if (id === engine.state.id) await mirrorNow();
+        await library.duplicate(id, t('projects.copy'));
+      },
+      remove: (id) => library.remove(id),
     },
     openExample: async () => {
       if (
@@ -152,7 +215,11 @@ const autosave = store
       onDirty: () => shell.setSaveStatus('unsaved'),
       // H2: the top bar shows the save state; a background save does not
       // replace the last message (a refusal must stay readable).
-      onSaved: () => shell.setSaveStatus('saved'),
+      onSaved: () => {
+        shell.setSaveStatus('saved');
+        mirrorSoon();
+        tabGuard?.saved();
+      },
       onError: (error) => {
         shell.message(t('status.saveFailed', { error: String(error) }));
         shell.setSaveStatus('error', t('status.saveError'));
@@ -163,6 +230,75 @@ const flush = () => {
   autosave?.flush();
 };
 window.addEventListener('pagehide', flush);
+// APP-018: closing while a save is still pending (it could not be written)
+// asks the browser to warn first.
+const beforeUnload = (event: BeforeUnloadEvent) => {
+  if (!autosave?.pending) return;
+  autosave.flush();
+  if (autosave.pending) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+};
+window.addEventListener('beforeunload', beforeUnload);
+// APP-019: the same project in two tabs never overwrites silently.
+let tabGuard: TabGuard | undefined;
+let conflictOpen = false;
+if (typeof BroadcastChannel !== 'undefined') {
+  tabGuard = new TabGuard(
+    new BroadcastChannel('aive-project-tabs'),
+    () => engine.state.id,
+    (kind) => {
+      if (conflictOpen || !autosave) return;
+      conflictOpen = true;
+      autosave.pause();
+      void confirmDialog(
+        t(
+          kind === 'open-elsewhere'
+            ? 'tabs.openElsewhere'
+            : 'tabs.savedElsewhere',
+        ),
+        {
+          titleText: t('tabs.title'),
+          confirmLabel: t('tabs.keep'),
+          cancelLabel: t('tabs.reload'),
+        },
+      ).then((keep) => {
+        conflictOpen = false;
+        if (keep) autosave.resume();
+        else {
+          // Leave without saving this tab's copy; the other tab's save wins.
+          window.removeEventListener('pagehide', flush);
+          window.removeEventListener('beforeunload', beforeUnload);
+          location.reload();
+        }
+      });
+    },
+  );
+  tabGuard.announce();
+}
+// PRJ-017: offer the backup that replaced an unreadable save.
+if (recoveredProject) {
+  const backup = recoveredProject;
+  const time = new Date(backup.project.metadata.updatedAt).toLocaleString();
+  void confirmDialog(t('recovery.body', { time }), {
+    titleText: t('recovery.title'),
+    confirmLabel: t('recovery.restore'),
+    cancelLabel: t('recovery.skip'),
+  }).then(async (restore) => {
+    if (restore) {
+      engine.load(backup.project);
+      shell.message(t('recovery.restored', { time }) + backup.note);
+    } else {
+      // Keep the backup reachable from the Projects list.
+      try {
+        await library.save(backup.project);
+      } catch {
+        /* best effort */
+      }
+    }
+  });
+}
 if (import.meta.hot)
   import.meta.hot.dispose(() => {
     disposed = true;

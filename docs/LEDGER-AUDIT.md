@@ -16,7 +16,9 @@ APP-001, APP-002, APP-003, APP-010, APP-011, APP-012, APP-013, APP-014, APP-016,
 
 APP-008, APP-020, LAY-012, LOC-011, LOC-012, PRJ-018, PRJ-019, MED-025, MED-026, MED-027, MED-033, MED-034, CV-034, TL-052, TL-053, HIS-006, TXT-021, TXT-034, TXT-035, TXT-037, SHP-017, SHP-025, ANI-011, ANI-013, ANI-014, ANI-015, ANI-016, ANI-017, ANI-018, ANI-019, ANI-020, VID-014, FX-003, FX-014, MSK-004, CLR-002, CLR-003, CLR-004, CLR-005, CLR-006, CLR-007, CLR-008, CLR-009, TPL-001, TPL-002, TPL-003, TPL-004, TPL-005, TPL-006, TPL-007, TPL-008, TPL-009, EXP-010, EXP-011, EXP-012, EXP-015, EXP-016, REL-002, REL-003, REL-004, REL-005, REL-007, REL-008, REL-009, ACC-001, ACC-002, ACC-003, ACC-004, ACC-005, ACC-006, QA-001, QA-002, LIB-032, ADV-001, ADV-002, ADV-003, ADV-004, ADV-005, ADV-006, ADV-007, ADV-008, AI-001, AI-002, AI-003, AI-004, AI-005, AI-006, AI-007, AI-008, AI-009, AI-010, AI-011, AI-012, AI-013
 
-## D. Not built, not yet classified (23)
+## D. Not built, not yet classified (23): all built in FIX8 (30 Oct 2026)
+
+Each one now has a passing test with its ID in the title and is Verified, except PRJ-015: the Projects library is in IndexedDB, but the current project's autosave slot deliberately stays in localStorage because it must be written synchronously when the tab closes. So PRJ-015 is Claimed, not Verified (decision, not a gap).
 
 DEV-012, APP-006, APP-007, APP-017, APP-018, APP-019, LOC-008, LOC-010, KEY-015, PRJ-015, PRJ-016, PRJ-017, MED-012, MED-032, CV-015, LYR-006, TL-022, TL-024, TL-026, TL-029, PB-006, VID-004, VID-008
 

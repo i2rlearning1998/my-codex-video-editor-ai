@@ -35,7 +35,9 @@
     "library:rollback": "node owner/run.mjs /owner/cli.ts rollback",
     "library:versions": "node owner/run.mjs /owner/cli.ts versions",
     "owner": "node owner/run.mjs /owner/server/main.ts serve",
-    "owner:create": "node owner/run.mjs /owner/server/main.ts create-owner"
+    "owner:create": "node owner/run.mjs /owner/server/main.ts create-owner",
+    "visual": "playwright test e2e/visual.spec.ts --project=desktop",
+    "visual:update": "playwright test e2e/visual.spec.ts --project=desktop --update-snapshots"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1",

@@ -7,8 +7,33 @@ import {
   scaled,
   stockProvider,
   type ProviderDependencies,
+  STOCK_COLORS,
 } from './shared';
 import type { StockFile, StockItem, StockLicense } from './types';
+
+/** MED-032: the categories Pixabay documents for its search. */
+const PIXABAY_CATEGORIES = [
+  'backgrounds',
+  'fashion',
+  'nature',
+  'science',
+  'education',
+  'feelings',
+  'health',
+  'people',
+  'religion',
+  'places',
+  'animals',
+  'industry',
+  'computer',
+  'food',
+  'sports',
+  'transportation',
+  'travel',
+  'buildings',
+  'business',
+  'music',
+] as const;
 export const PIXABAY_LICENSE: StockLicense = {
   name: 'Pixabay Content License',
   url: 'https://pixabay.com/service/license-summary/',
@@ -53,6 +78,10 @@ export function createPixabay(deps: ProviderDependencies = {}) {
       id: 'pixabay',
       name: 'Pixabay',
       kinds: ['stock-image', 'stock-video'],
+      filters: {
+        'stock-image': { category: PIXABAY_CATEGORIES, color: STOCK_COLORS },
+        'stock-video': { category: PIXABAY_CATEGORIES },
+      },
       requiresKey: true,
       keyFields: apiKeyField,
       attribution: {
@@ -77,6 +106,10 @@ export function createPixabay(deps: ProviderDependencies = {}) {
           page: String(options.page),
           per_page: String(options.perPage),
           safesearch: 'true',
+          ...(options.category ? { category: options.category } : {}),
+          ...(options.kind === 'stock-image' && options.color
+            ? { colors: options.color }
+            : {}),
           ...(options.minWidth === undefined
             ? {}
             : { min_width: String(options.minWidth) }),

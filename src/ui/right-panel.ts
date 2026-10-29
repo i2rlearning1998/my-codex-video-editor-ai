@@ -7,6 +7,7 @@
 // shown disabled and name their wave. The controls are the toolbar's own
 // builders (one implementation), so values, ratio lock and the 2D Animation
 // rules (guardCommands) are shared.
+import { currentFitMode, fitCommands, fitLocked, FIT_MODES } from './fit-mode';
 import {
   transitionKey,
   transitionOf,
@@ -809,6 +810,52 @@ export function mountRightPanel(
       }),
     ];
   };
+  /** VID-004: Fit, Fill, Stretch and Custom for a picture or video. */
+  const fitRow = () => {
+    const layer = single();
+    if (!layer || (layer.type !== 'image' && layer.type !== 'video'))
+      return null;
+    const scene = session.source.composition;
+    const mode = currentFitMode(layer, session.source.assets, scene);
+    const locked = fitLocked(layer);
+    const wrap = row(
+      ...FIT_MODES.map((name) => {
+        const item = button(
+          `right-fit-${name}`,
+          name === 'fit'
+            ? 'fit'
+            : name === 'fill'
+              ? 'crop'
+              : name === 'stretch'
+                ? 'fullscreen'
+                : 'edit',
+          t(`right.fit.${name}`),
+          name === 'custom' || locked
+            ? null
+            : () =>
+                safely(() =>
+                  run(
+                    t(`right.fit.${name}`),
+                    fitCommands(
+                      scene.id,
+                      layer,
+                      name,
+                      session.source.assets,
+                      scene,
+                    ),
+                  ),
+                ),
+          {
+            pressed: mode === name,
+            ...(locked ? { reason: t('right.fit.animated') } : {}),
+          },
+        );
+        return item;
+      }),
+    );
+    wrap.classList.add('right-fit-row');
+    return wrap;
+  };
   const pictureTab = (video: boolean) => {
     return [
       heading(t('right.tab.advanced'), t('right.advancedHint')),
@@ -816,6 +863,7 @@ export function mountRightPanel(
         video ? 'video-video' : 'image-image',
         t(video ? 'right.tab.video' : 'right.tab.image'),
         [
+          fitRow(),
           row(
             button('right-crop', 'crop', t('toolbar.crop'), hooks.crop ?? null),
           ),

@@ -1,5 +1,6 @@
 import en from './locales/en.json';
 import hi from './locales/hi.json';
+import { pseudoLocalize } from './pseudo';
 
 export type Language = 'en' | 'hi';
 const locales: Record<Language, Record<string, string>> = { en, hi };
@@ -23,10 +24,22 @@ function initialLanguage(): Language {
   );
 }
 let language = initialLanguage();
+// LOC-008/LOC-010: the layout test modes. They exist only while developing
+// and testing (`?pseudo` for long accented text, `?dir=rtl` for a mirrored
+// layout); a production build ignores them.
+const testParams =
+  import.meta.env.DEV && typeof location !== 'undefined'
+    ? new URLSearchParams(location.search)
+    : new URLSearchParams();
+const pseudo = testParams.has('pseudo');
+/** Languages written right to left (Urdu, Arabic, Hebrew, Persian). */
+const RTL_LANGUAGES: ReadonlySet<string> = new Set(['ur', 'ar', 'he', 'fa']);
+export const isRtl = (code: string = language): boolean =>
+  testParams.get('dir') === 'rtl' || RTL_LANGUAGES.has(code);
 function syncDocument() {
   if (typeof document === 'undefined') return;
   document.documentElement.lang = language;
-  document.documentElement.dir = 'ltr';
+  document.documentElement.dir = isRtl() ? 'rtl' : 'ltr';
 }
 syncDocument();
 export const getLanguage = () => language;
@@ -65,6 +78,8 @@ export function translate(
     if (import.meta.env.DEV) console.warn(`[i18n] ${locale}: ${resolved}`);
     template = dictionaries.en[resolved] ?? key;
   }
+  if (pseudo && locale === language && dictionaries === locales)
+    template = pseudoLocalize(template);
   return template.replace(/\{(\w+)\}/g, (match, name: string) => {
     const value = params[name];
     return value === undefined

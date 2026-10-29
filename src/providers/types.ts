@@ -45,6 +45,9 @@ export interface SearchOptions {
   page?: number;
   perPage?: number;
   orientation?: 'landscape' | 'portrait' | 'square';
+  /** MED-032: only the providers that list a filter in `filters` use it. */
+  category?: string;
+  color?: string;
   minWidth?: number;
   minDuration?: number;
   maxDuration?: number;
@@ -68,6 +71,13 @@ export interface Provider {
     quality: string,
     signal?: AbortSignal,
   ): Promise<StockFile>;
+  /** MED-032: the category and color filters this provider can apply, by kind. */
+  filters?: Partial<
+    Record<
+      ProviderKind,
+      { category?: readonly string[]; color?: readonly string[] }
+    >
+  >;
   /** One uncached minimal request. Optional for future providers without stock search. */
   probe?: (signal?: AbortSignal) => Promise<void>;
 }
