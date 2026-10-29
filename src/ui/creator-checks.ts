@@ -21,6 +21,8 @@ import type {
   FreeCodeSession,
 } from '../code-layer/runtime-types';
 import { libraryCommands } from './library-insert';
+import { getTransition, renderStack, surface, type Surface } from '../fx';
+import { FX_KINDS, toLibraryFx } from './library-fx';
 
 export interface RuntimeResult {
   status: 'ok' | 'warning' | 'rejected' | 'unsupported';
@@ -36,14 +38,7 @@ export interface CheckDeps {
 }
 
 /** Kinds this build does not register yet (never silently dropped). */
-export const UNSUPPORTED_KINDS = new Set([
-  'composition',
-  'adjust',
-  'filter',
-  'effect',
-  'transition',
-  'font',
-]);
+export const UNSUPPORTED_KINDS = new Set(['composition', 'font']);
 const W = 1280,
   H = 720;
 /** Spec 6 step 4: per frame and whole-check time budgets. */
@@ -397,6 +392,69 @@ async function checkPreset(
   };
 }
 
+/** FIX7: a recipe filter, effect, adjustment or transition. It is applied
+ *  to a test picture, and every pixel must stay finite and in range. */
+function checkFxItem(item: CreatorItem): RuntimeResult {
+  const data = (item as { data: { mode?: string } }).data;
+  if (data.mode === 'code')
+    return {
+      status: 'unsupported',
+      reasons: [
+        'Code filters and effects are not supported. Publish a recipe made of the built-in steps.',
+      ],
+    };
+  const made = toLibraryFx('check', item.name.en, item);
+  if (!made)
+    return {
+      status: 'rejected',
+      reasons: ['The recipe could not be resolved to built-in steps.'],
+    };
+  try {
+    const w = 64,
+      h = 36;
+    const sample = surface(w, h);
+    for (let i = 0; i < sample.data.length; i += 4) {
+      const x = (i / 4) % w;
+      sample.data[i] = (x / w) * 255;
+      sample.data[i + 1] = 90 + (i % 60);
+      sample.data[i + 2] = 255 - (x / w) * 255;
+      sample.data[i + 3] = 255;
+    }
+    const ctx = { time: 0.5, duration: 1, seed: 7, width: w, height: h };
+    let out: Surface;
+    if (made.kind === 'transition') {
+      const step = made.steps[0]!;
+      const transition = getTransition(step.id)!;
+      out = surface(w, h);
+      transition.apply(sample, shiftedCopy(sample), out, 0.5, step.params, ctx);
+    } else out = renderStack(sample, made.steps, ctx);
+    for (const value of out.data)
+      if (!Number.isFinite(value))
+        return {
+          status: 'rejected',
+          reasons: ['The result has pixels that are not numbers.'],
+        };
+  } catch (error) {
+    return { status: 'rejected', reasons: [message(error)] };
+  }
+  return {
+    status: 'ok',
+    reasons: [
+      `Applied ${made.steps.length} built-in step(s) to a test picture.`,
+    ],
+  };
+}
+function shiftedCopy(source: Surface): Surface {
+  const out = surface(source.width, source.height);
+  for (let i = 0; i < source.data.length; i += 4) {
+    out.data[i] = source.data[i + 2]!;
+    out.data[i + 1] = source.data[i]!;
+    out.data[i + 2] = source.data[i + 1]!;
+    out.data[i + 3] = 255;
+  }
+  return out;
+}
+
 /** The runtime check of one item that passed `checkPack`. */
 export async function runtimeCheck(
   item: CreatorItem,
@@ -409,6 +467,8 @@ export async function runtimeCheck(
         `Not supported yet: ${item.type} items are not built in this version.`,
       ],
     };
+  if (FX_KINDS.includes(item.type as (typeof FX_KINDS)[number]))
+    return checkFxItem(item);
   try {
     if (item.type === 'motion') return await checkMotion(item, deps);
     if (item.type === 'preset') return await checkPreset(item);

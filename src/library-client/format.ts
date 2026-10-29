@@ -38,10 +38,17 @@ export const CATALOG_KINDS = [
   'filter',
   'effect',
   'xtransition',
+  // FIX7: a font file (.ttf, .otf, .woff, .woff2); it joins the font picker.
+  'font',
 ] as const;
 export type CatalogKind = (typeof CATALOG_KINDS)[number];
 /** Kinds whose payload is a file too large to inline (P1-05). */
-export const HEAVY_KINDS: readonly CatalogKind[] = ['sound', 'video', 'image'];
+export const HEAVY_KINDS: readonly CatalogKind[] = [
+  'sound',
+  'video',
+  'image',
+  'font',
+];
 /** A payload under this many bytes is inlined in its category index. */
 export const INLINE_LIMIT = 8 * 1024;
 
@@ -199,6 +206,7 @@ export function categoryOf(
     case 'video':
       return 'elements';
     case 'text':
+    case 'font':
       return 'text';
     case 'template':
       return 'templates';

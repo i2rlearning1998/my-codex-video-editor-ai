@@ -5,6 +5,7 @@
 // tile works between scenes too.
 import {
   defaults as fxDefaults,
+  sanitize,
   getTransition,
   surface,
   type Surface,
@@ -14,18 +15,34 @@ import { EASING_CURVES, cubicBezier, type SceneCut } from '../core';
 type Target = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 /** The transition `type` from `a` to `b` at progress `p`. */
-export function mixFrames(type: string, a: Surface, b: Surface, p: number) {
+export function mixFrames(
+  type: string,
+  a: Surface,
+  b: Surface,
+  p: number,
+  params?: Readonly<Record<string, number | boolean | string>>,
+) {
   const { width, height } = b;
   const out = surface(width, height);
   const library = getTransition(type);
   if (library) {
-    library.apply(a, b, out, p, fxDefaults(library), {
-      time: 0,
-      duration: 1,
-      seed: 7,
-      width,
-      height,
-    });
+    library.apply(
+      a,
+      b,
+      out,
+      p,
+      {
+        ...fxDefaults(library),
+        ...(params ? sanitize(library.params, params) : {}),
+      },
+      {
+        time: 0,
+        duration: 1,
+        seed: 7,
+        width,
+        height,
+      },
+    );
     return out;
   }
   for (let y = 0; y < height; y++)
@@ -119,6 +136,7 @@ export function drawSceneTransition(
     read(0, 'from'),
     read(1, 'to'),
     ease(Math.min(1, Math.max(0, p))),
+    cut.transition.params,
   );
   context.save();
   context.setTransform(1, 0, 0, 1, 0, 0);

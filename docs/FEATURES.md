@@ -112,8 +112,8 @@ Layout of the target UI plus the reusable component set every later feature uses
 | LAY-019 | P0 | W1 | Todo | Every panel has designed loading, empty and error states |
 | LAY-020 | P0 | W1 | Verified | Design tokens (color, spacing, radius, type scale, elevation) live in one place; a theme swap needs no component edits |
 | LAY-021 | P0 | W1 | Todo | One consistent line-icon set replaces all unicode glyph icons |
-| LAY-022 | P0 | W1 | Claimed | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
-| LAY-023 | P0 | W1 | Claimed | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
+| LAY-022 | P0 | W1 | Verified | Color picker component: saturation/hue area, hex, RGB, HSL, alpha, swatches, document colors, EyeDropper where supported |
+| LAY-023 | P0 | W1 | Verified | Slider, numeric scrub input, segmented control, toggle, tabs, tooltip components share one behavior spec |
 | LAY-024 | P0 | W1 | Verified | Focus rings are visible on every interactive element |
 | LAY-025 | P1 | W1 | Todo | Crisp rendering on high-DPI displays for icons, canvas overlays and timeline |
 | LAY-026 | P0 | W1 | Todo | Drop overlay appears when files are dragged over the app and explains what will happen |
@@ -211,7 +211,7 @@ Project lifecycle, aspect ratios, scenes. Wave 1 for dialogs and settings; Wave 
 | PRJ-003 | P0 | W1 | Verified | Resolution presets per aspect ratio (720p, 1080p, 1440p, 4K equivalents) |
 | PRJ-004 | P0 | W1 | Verified | Custom width and height; enforced even numbers for H.264; sane min and max |
 | PRJ-005 | P0 | W1 | Verified | Frame rate options 24, 25, 30, 50, 60 |
-| PRJ-006 | P0 | W1 | Claimed | Project background: solid color or transparent |
+| PRJ-006 | P0 | W1 | Verified | Project background: solid color or transparent |
 | PRJ-007 | P0 | W1 | Todo | Changing aspect ratio of an existing project keeps layers inside the canvas with a chosen behavior (keep position, scale to fit) |
 | PRJ-008 | P0 | W1 | Todo | Project settings dialog edits resolution, fps and background; changes are undoable |
 | PRJ-009 | P0 | W1 | Claimed | Autosave keeps work across reload (recovery from unexpected close within the autosave window) |
@@ -304,7 +304,7 @@ Everything the user does directly on the preview canvas.
 | CV-014 | P1 | W2 | Todo | Grid and rulers toggles; drag user guides from the rulers |
 | CV-015 | P1 | W2 | Todo | Safe-area overlays including 9:16 social UI zones |
 | CV-016 | P0 | W2 | Verified | Zoom controls: Fit, plus and minus change the canvas view scale |
-| CV-017 | P0 | W2 | Claimed | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
+| CV-017 | P0 | W2 | Verified | Zoom dropdown presets (Fit, Fill, 25 to 400 percent, 100 percent actual pixels), Ctrl+wheel and Ctrl +/- and Ctrl+0 |
 | CV-018 | P0 | W2 | Verified | Pan with Space+drag, middle mouse or trackpad scroll when zoomed in |
 | CV-019 | P1 | W2 | Todo | Checkerboard background toggle for transparency |
 | CV-020 | P0 | W2 | Todo | Right-click a layer opens a menu: Cut, Copy, Paste, Duplicate, Delete, Group, Ungroup, Bring forward, Send backward, Bring to front, Send to back, Lock, Hide, Rename, Flip horizontal, Flip vertical, Align |
@@ -568,7 +568,7 @@ Users must be able to type text in any language and choose from very many fonts,
 | TXT-007 | P0 | W3 | Todo | Bundled curated fonts work offline; the wider Google Fonts catalog loads on demand and is cached |
 | TXT-008 | P0 | W3 | Todo | Font picker can filter by script or language: Latin, Devanagari, Gujarati, Bengali, Tamil, Telugu, Kannada, Malayalam, Gurmukhi, Odia, Arabic, Hebrew, Thai, CJK, Cyrillic, Greek |
 | TXT-009 | P0 | W3 | Todo | Users can upload their own .ttf, .otf, .woff and .woff2 fonts; they are stored with the project |
-| TXT-010 | P1 | W2 | Claimed | Weight and style choices reflect what the font offers; variable font axes are adjustable |
+| TXT-010 | P1 | W2 | Verified | Weight and style choices reflect what the font offers; variable font axes are adjustable |
 | TXT-011 | P0 | W3 | Todo | Size numeric field and slider; auto-fit text to box option |
 | TXT-012 | P0 | W3 | Todo | Text color; solid fill first, gradient fill later |
 | TXT-013 | P1 | W3 | Todo | Gradient text fill |
@@ -749,7 +749,7 @@ Between clips and at clip edges.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| MSK-001 | P0 | W6 | Claimed | Blend modes: Normal, Multiply, Screen, Overlay, Add, Darken, Lighten |
+| MSK-001 | P0 | W6 | Verified | Blend modes: Normal, Multiply, Screen, Overlay, Add, Darken, Lighten |
 | MSK-002 | P1 | W6 | Todo | More blend modes: Soft Light, Hard Light, Difference, Color Dodge, Color Burn, and similar |
 | MSK-003 | P0 | W6 | Todo | Masks: rectangle and ellipse with feather, invert and opacity |
 | MSK-004 | P1 | W6 | Todo | Freehand bezier masks; animated mask paths |
@@ -760,7 +760,7 @@ Between clips and at clip edges.
 
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
-| CLR-001 | P0 | W6 | Claimed | Color panel: exposure, contrast, highlights, shadows, whites, blacks, saturation, vibrance, temperature, tint, sharpen |
+| CLR-001 | P0 | W6 | Verified | Color panel: exposure, contrast, highlights, shadows, whites, blacks, saturation, vibrance, temperature, tint, sharpen |
 | CLR-002 | P1 | W6 | Todo | RGB and luma curves |
 | CLR-003 | P1 | W6 | Todo | Color wheels (lift, gamma, gain) |
 | CLR-004 | P2 | W6 | Todo | HSL secondary color selection |
@@ -777,7 +777,7 @@ Real audio engine. Currently mute is only metadata.
 | ID | Pri | Wave | Status | Item |
 |---|---|---|---|---|
 | AUD-001 | P0 | W7 | Todo | Multiple audio tracks with waveforms |
-| AUD-002 | P0 | W7 | Claimed | Clip volume in dB, keyframeable; clip mute; master volume |
+| AUD-002 | P0 | W7 | Verified | Clip volume in dB, keyframeable; clip mute; master volume |
 | AUD-003 | P0 | W7 | Verified | Fade in and fade out handles |
 | AUD-004 | P0 | W7 | Todo | Detach or extract audio from video into an audio track |
 | AUD-005 | P0 | W4 | Verified | Audio plays during preview and scrubbing and stays in sync |
@@ -917,7 +917,7 @@ Group timing, presets and controls, keyframes and pivot, AI import, motion setti
 | QT-010 | P1 | W8 | Verified | Every layer has an Anchor (pivot) control in Properties, a 9-point grid with the centre by default; rotation and scale turn about it (Q3) |
 | QT-011 | P1 | W8 | Verified | The Spin preset rotates about the anchor (the centre by default), so a rectangle spun 90 degrees keeps its centre fixed (Q3) |
 | QT-012 | P1 | W8 | Verified | The left rail has an AI category that lists everything imported from Creator Packs, grouped by kind (Q4) |
-| QT-013 | P1 | W8 | Claimed | AI-made items show a small AI chip in every library panel and the Media panel (Q4) |
+| QT-013 | P1 | W8 | Verified | AI-made items show a small AI chip in every library panel and the Media panel (Q4) |
 | QT-014 | P1 | W8 | Verified | The creator pack dialog checks a pasted or chosen pack automatically; Add selected to library is enabled as soon as one item passed; each item says pass, warning or rejected with a plain reason (Q4) |
 | QT-015 | P1 | W8 | Verified | After an import a result card says how many items were added and opens the AI category (Q4) |
 | QT-016 | P1 | W8 | Verified | Settings > Animations (Auto, On, Off; default Auto) controls panel transitions, with a system reduce-motion diagnostic; On animates even when the system asks for reduced motion (Q5) |
@@ -995,7 +995,7 @@ Creator Pack items imported, checked and registered in the user's library, and t
 | CP-007 | P1 | W8 | Verified | Creator items appear in their panels with a Creator pack badge (shapes in Elements > Shapes, text in Text > Styles, backgrounds in Elements > Backgrounds, motion in Elements > Animations and My Templates > Code animations, templates in Templates > Creator packs), insert in one undo step, and can be renamed, exported, deleted and restored (P2, spec 4) |
 | CP-008 | P1 | W8 | Verified | Kinds not built yet (composition, adjust, filter, effect, transition, font) show "Not supported yet" in the review dialog and are never silently dropped (P2) |
 | CP-009 | P1 | W8 | Verified | A creator preset appears in Animate > Creator; applying it writes ordinary keyframes and the layer's preset record {id, params} (a `preset` string property, schema 8 unchanged, D-239) in one undo step (P3, spec 5.3) |
-| CP-010 | P1 | W8 | Claimed | The right rail's Controls category shows only what the selected layer really has: a preset's controls grouped by animated property (a Move preset shows only Move controls), a motion layer's params, or for hand or AI keyframes a simple From, To, Duration, Delay, Easing, Loop group per keyframed property; basic first, advanced under More (P3, spec 5.1b) |
+| CP-010 | P1 | W8 | Verified | The right rail's Controls category shows only what the selected layer really has: a preset's controls grouped by animated property (a Move preset shows only Move controls), a motion layer's params, or for hand or AI keyframes a simple From, To, Duration, Delay, Easing, Loop group per keyframed property; basic first, advanced under More (P3, spec 5.1b) |
 | CP-011 | P1 | W8 | Verified | Changing a control regenerates the preset's keyframes in one undo step; editing those keyframes by hand marks the layer Edited manually: the controls grey out with a note and Reset to controls (with a confirm) (P3, spec 5.3) |
 | CP-012 | P1 | W8 | Verified | Add animation adds one more property animation from the Animate presets; only its controls appear (P3, spec 5.1b) |
 | CP-013 | P1 | W8 | Dropped | Copy library index for AI (Import menu) copies a compact text (under 40 KB) of library and creator items, Blocks, Animate presets, effect, filter and transition ids, fonts, canvas size and frame rate (P4, spec 8) |
@@ -1102,9 +1102,9 @@ The optional engines merged in FINAL1 wired into the editor (FINAL2 brief, parts
 
 | ID      | Pri | Wave | Status   | Feature |
 | ------- | --- | ---- | -------- | ------- |
-| FX3-001 | P0 | W9 | Claimed | Every library shelf (Media, AI, My Templates) fills its panel to the bottom with one scroller (the cards); search, Import and the chips stay put at every window height; no nested scroller (1.1, 4.1) |
-| FX3-002 | P0 | W9 | Claimed | Offline captions run in a dedicated module Web Worker: a CPU-bound model and a flood of 20 000 progress events never freeze the page (no frame gap over 200 ms), and the cues still land (2.2, 2.7) |
-| FX3-003 | P0 | W9 | Claimed | A captions worker that sends nothing for 15 s (or 120 s during one inference run) is stopped and the dialog says "The caption engine stopped responding" with Copy diagnostics; Cancel terminates the worker (2.3) |
+| FX3-001 | P0 | W9 | Verified | Every library shelf (Media, AI, My Templates) fills its panel to the bottom with one scroller (the cards); search, Import and the chips stay put at every window height; no nested scroller (1.1, 4.1) |
+| FX3-002 | P0 | W9 | Verified | Offline captions run in a dedicated module Web Worker: a CPU-bound model and a flood of 20 000 progress events never freeze the page (no frame gap over 200 ms), and the cues still land (2.2, 2.7) |
+| FX3-003 | P0 | W9 | Verified | A captions worker that sends nothing for 15 s (or 120 s during one inference run) is stopped and the dialog says "The caption engine stopped responding" with Copy diagnostics; Cancel terminates the worker (2.3) |
 
 ## LIB: Phase 1 library (owner catalog, editor client)
 
@@ -1230,3 +1230,9 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-023 | P1 | W9 | Verified | The owner app lists an item in more than one place (Also shown in) and moves it by changing its primary place |
 | FIX7-024 | P1 | W9 | Verified | A photo, video, sound or theme the owner lists under another category shows there and works; a sound moved out of Audio leaves the Audio list; Scene and Draw show the owner's additions |
 | FIX7-025 | P1 | W9 | Verified | A file added to Media after a plan was built fills the plan slot that waits for it when its name holds the slot's words; nothing else is filled on its own |
+| FIX7-026 | P2 | W9 | Verified | Compare to plan shows at most 12 differences, then "and N more" |
+| FIX7-027 | P0 | W9 | Verified | A built plan adds nothing and offers no Play until every code animation is rendered (a Preparing step with progress); Cancel leaves nothing behind |
+| FIX7-028 | P1 | W9 | Verified | Filters, effects, colour adjustments and transitions the owner publishes (recipes over the built-in FX library) pass the publish check, show as Library tiles in the right panel and apply; a clip stores only built-in ids and settings, so saved projects play and export without the library |
+| FIX7-029 | P1 | W9 | Verified | The owner switches any built-in filter, effect or transition tile off per kind of selection (Editor controls tab, "Filters, effects and transitions shown"); it disappears from the editor from the signed catalog, with no release |
+| FIX7-030 | P1 | W9 | Verified | A font file (.ttf, .otf, .woff, .woff2) the owner publishes passes the gate (a fake one is refused), reaches the editor through the signed catalog and shows in the font picker under Library fonts; it sets the text and is cached for export and reopened projects |
+| FIX7-031 | P1 | W9 | Verified | Every toolbar button the editor shows for text, shapes, several selected and a group, and every right-click entry for text and shapes, is one the owner can switch off (Drawing, Group, Several and Text menu are all in the registry) |

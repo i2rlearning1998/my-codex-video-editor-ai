@@ -12,7 +12,7 @@ import {
 } from '../../src/library-client/taxonomy';
 
 describe('[FIX7-016] library taxonomy: category → sub-category → section', () => {
-  it('adds a category, a sub-category and a section; the merged tree lists them', () => {
+  it('[FIX7-016] adds a category, a sub-category and a section; the merged tree lists them', () => {
     let config = emptyConfig();
     let tree = mergeTaxonomy(config);
     const cat = addCategory(config, tree, { en: 'Festivals', hi: 'त्योहार' });
@@ -32,7 +32,7 @@ describe('[FIX7-016] library taxonomy: category → sub-category → section', (
     expect(found.subs[0]!.sections[0]!.id).toBe('lamps');
     expect(catalogConfigSchema.safeParse(config).success).toBe(true);
   });
-  it('adds a sub-category to an editor category and renames or hides built-in nodes', () => {
+  it('[FIX7-016] adds a sub-category to an editor category and renames or hides built-in nodes', () => {
     let config = emptyConfig();
     let tree = mergeTaxonomy(config);
     config = addSub(config, tree, 'Elements', {
@@ -57,7 +57,7 @@ describe('[FIX7-016] library taxonomy: category → sub-category → section', (
     expect(shapes.name.en).toBe('Forms');
     expect(shapes.sections.length).toBeGreaterThan(3);
   });
-  it('re-orders siblings and refuses to delete the editor’s own nodes', () => {
+  it('[FIX7-016] re-orders siblings and refuses to delete the editor’s own nodes', () => {
     let config = emptyConfig();
     let tree = mergeTaxonomy(config);
     const before = tree.map((c) => c.id);

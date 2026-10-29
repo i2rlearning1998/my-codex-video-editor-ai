@@ -8,6 +8,7 @@ import { surface, type Surface } from '../../fx';
 import { mixFrames as mix } from '../../render/scene-transitions';
 import { t } from '../../i18n';
 import type { Tile } from './fx-panels';
+import { libraryFx } from '../library-fx';
 
 export interface TransitionTile {
   /** The stored transition type: a J12 layer transition or an FX id. */
@@ -47,6 +48,35 @@ export const TRANSITION_TILES: readonly TransitionTile[] = [
 /** Spec 6: a click on "+" adds Fade through black. */
 export const DEFAULT_TRANSITION_TYPE = 'fade-black';
 
+type Stored = {
+  type: string;
+  params?: Readonly<Record<string, number | boolean | string>> | undefined;
+};
+const sameParams = (
+  a: Record<string, unknown> | undefined,
+  b: Record<string, unknown>,
+) => Object.entries(b).every(([key, value]) => (a ?? {})[key] === value);
+/** The tile a stored transition belongs to: a library one when its type and
+ *  settings are the library item's, else the built-in type. */
+export function transitionKey(current: Stored | null): string | null {
+  if (!current) return null;
+  const match = libraryFx
+    .transitions()
+    .find(
+      (item) =>
+        item.steps[0]!.id === current.type &&
+        sameParams(current.params, item.steps[0]!.params),
+    );
+  return match ? match.marker : current.type;
+}
+/** The type and settings a tile stores. */
+export function transitionOf(key: string): Stored {
+  const item = libraryFx.byMarker(key);
+  return item
+    ? { type: item.steps[0]!.id, params: item.steps[0]!.params }
+    : { type: key };
+}
+
 export const transitionLabel = (type: string) =>
   type.startsWith('transition.')
     ? t(`fx.${type}`)
@@ -67,7 +97,9 @@ function shifted(source: Surface): Surface {
 export { mixFrames as mix } from '../../render/scene-transitions';
 
 /** The tiles for a tile grid (None first). */
-export function transitionTiles(): Tile[] {
+export function transitionTiles(
+  shown: (type: string) => boolean = () => true,
+): Tile[] {
   const groups: Record<TransitionTile['group'], string> = {
     fades: t('transition.group.fadesBlurs'),
     tiles: t('transition.group.tiles'),
@@ -76,14 +108,29 @@ export function transitionTiles(): Tile[] {
   };
   return [
     { key: 'none', label: t('fx.none'), stack: [] },
-    ...TRANSITION_TILES.map((item): Tile => ({
-      key: item.type,
-      label: transitionLabel(item.type),
-      stack: [],
-      group: groups[item.group],
-      animated: true,
-      still: 0.4,
-      draw: (source, phase) => mix(item.type, shifted(source), source, phase),
-    })),
+    ...TRANSITION_TILES.filter((item) => shown(item.type)).map(
+      (item): Tile => ({
+        key: item.type,
+        label: transitionLabel(item.type),
+        stack: [],
+        group: groups[item.group],
+        animated: true,
+        still: 0.4,
+        draw: (source, phase) => mix(item.type, shifted(source), source, phase),
+      }),
+    ),
+    ...libraryFx.transitions().map((item): Tile => {
+      const step = item.steps[0]!;
+      return {
+        key: item.marker,
+        label: item.label,
+        stack: [],
+        group: t('fx.library'),
+        animated: true,
+        still: 0.4,
+        draw: (source, phase) =>
+          mix(step.id, shifted(source), source, phase, step.params),
+      };
+    }),
   ];
 }

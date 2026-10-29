@@ -28,6 +28,7 @@ import { t } from '../../i18n';
 import { createNumberField } from '../components/number-field';
 import { createSelect } from '../components/select';
 import { iconSvg } from '../icons';
+import { libraryFx } from '../library-fx';
 
 type Entry = { id: string; params: Record<string, number | boolean | string> };
 
@@ -36,9 +37,20 @@ export interface FilterPreset {
   readonly key: string;
   readonly stack: readonly {
     readonly id: string;
-    readonly params?: Readonly<Record<string, number>>;
+    readonly params?: Readonly<Record<string, number | boolean | string>>;
   }[];
 }
+/** The built-in presets and the ones the owner published (FIX7). */
+export const presetList = (): readonly FilterPreset[] => [
+  ...FILTER_PRESETS,
+  ...libraryFx.filters().map((item) => ({
+    key: item.marker,
+    stack: item.steps,
+  })),
+];
+/** A library tile's own name (built-in ones are translated by key). */
+export const presetLabel = (key: string): string | null =>
+  libraryFx.byMarker(key)?.label ?? null;
 const one = (key: string, id = `filter.${key}`): FilterPreset => ({
   key,
   stack: [{ id }],
@@ -168,17 +180,24 @@ export function presetEntries(preset: FilterPreset, intensity: number) {
  *  filter is matched by its id), and its intensity. */
 export function activePreset(fx: ClipFx | null) {
   const stack = fx?.stack ?? [];
-  const marked = stack.find((item) => typeof item.params.preset === 'string');
+  const marked = stack.find(
+    (item) =>
+      typeof item.params.preset === 'string' &&
+      typeof item.params.libfx !== 'string',
+  );
   if (marked) {
-    const preset = FILTER_PRESETS.find(
+    const preset = presetList().find(
       (item) => item.key === marked.params.preset,
     );
     if (preset)
       return { preset, intensity: Number(marked.params.intensity ?? 1) };
   }
-  const plain = stack.find((item) => item.id.startsWith('filter.'));
+  const plain = stack.find(
+    (item) =>
+      item.id.startsWith('filter.') && typeof item.params.libfx !== 'string',
+  );
   if (!plain) return null;
-  const preset = FILTER_PRESETS.find(
+  const preset = presetList().find(
     (item) => item.stack.length === 1 && item.stack[0]!.id === plain.id,
   );
   return preset
@@ -189,7 +208,9 @@ export function activePreset(fx: ClipFx | null) {
 export const isFilterEntry = (item: {
   id: string;
   params: Readonly<Record<string, unknown>>;
-}) => typeof item.params.preset === 'string' || item.id.startsWith('filter.');
+}) =>
+  typeof item.params.libfx !== 'string' &&
+  (typeof item.params.preset === 'string' || item.id.startsWith('filter.'));
 
 // --- Thumbnails ------------------------------------------------------------------
 const THUMB_W = 160,
@@ -607,7 +628,11 @@ export function effectSettings(
 export const selectedEffects = (fx: ClipFx | null) =>
   new Set(
     (fx?.stack ?? [])
-      .filter((item) => item.id.startsWith('effect.'))
+      .filter(
+        (item) =>
+          item.id.startsWith('effect.') &&
+          typeof item.params.libfx !== 'string',
+      )
       .map((item) => item.id),
   );
 /** Adds or removes an effect (at most MAX_FX_STACK entries). */
@@ -624,9 +649,31 @@ export function applyPreset(
   intensity: number,
 ): void {
   next.stack = next.stack.filter((item) => !isFilterEntry(item));
-  const preset = FILTER_PRESETS.find((item) => item.key === key);
+  const preset = presetList().find((item) => item.key === key);
   if (!preset) return;
   // Colour first, so later effects (zooms, blurs) work on the graded picture.
   next.stack.unshift(...presetEntries(preset, intensity));
   next.stack.splice(MAX_FX_STACK);
+}
+
+/** Library effects switched on in a stack (their markers). */
+export const selectedLibraryEffects = (fx: ClipFx | null) =>
+  new Set(
+    (fx?.stack ?? []).flatMap((item) =>
+      typeof item.params.libfx === 'string' ? [item.params.libfx] : [],
+    ),
+  );
+/** Switches a library effect (all of its steps) on or off. */
+export function toggleLibraryEffect(next: ClipFx, marker: string) {
+  const had = next.stack.some((item) => item.params.libfx === marker);
+  next.stack = next.stack.filter((item) => item.params.libfx !== marker);
+  if (had) return;
+  const effect = libraryFx.byMarker(marker);
+  if (!effect) return;
+  for (const step of effect.steps)
+    if (next.stack.length < MAX_FX_STACK)
+      next.stack.push({
+        id: step.id,
+        params: { ...step.params, libfx: marker },
+      });
 }

@@ -4,7 +4,11 @@
 import { controlOn } from './controls';
 import { fontWeights } from '../render/fonts';
 import { isCatalogFont } from '../text-engine/catalog';
-import { isSafeFamily, uploadedFonts } from '../text-engine/uploaded';
+import {
+  isSafeFamily,
+  libraryFonts,
+  uploadedFonts,
+} from '../text-engine/uploaded';
 import { LIST_STYLES, parseListStyle } from '../render/rich-text';
 import {
   clearRunKeys,
@@ -252,7 +256,7 @@ const TEXT_STYLE_KEYS = {
     // FINAL3 T4: an uploaded font (marked with fontSource in the same step).
     (typeof value === 'string' &&
       isSafeFamily(value) &&
-      uploadedFonts().includes(value)),
+      (uploadedFonts().includes(value) || libraryFonts().includes(value))),
   fontWeight: (value: unknown) =>
     (FONT_WEIGHTS as readonly unknown[]).includes(value),
   fontStyle: (value: unknown) => value === 'italic' || value === 'normal',
@@ -1484,6 +1488,7 @@ export function mountContextToolbar(
       );
     const sizeGroup = document.createElement('div');
     sizeGroup.className = 'toolbar-group toolbar-size';
+    sizeGroup.dataset.controlGroup = 'size';
     sizeGroup.append(
       tool('size-down', 'minus', t('toolbar.sizeDown'), () =>
         setSize(Math.max(1, Math.round(fontSize) - 1)),
@@ -2443,6 +2448,7 @@ export function mountContextToolbar(
     bar.replaceChildren(
       ...controls.filter((item) => {
         const id =
+          item.dataset.controlGroup ??
           item.dataset.control ??
           item.querySelector<HTMLElement>('[data-control]')?.dataset.control;
         return !id || controlOn('toolbar', mode, id);

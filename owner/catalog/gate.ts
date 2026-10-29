@@ -63,6 +63,18 @@ const MEDIA_TYPES: Record<string, string> = {
   webp: 'image/webp',
   mp4: 'video/mp4',
   webm: 'video/webm',
+  ttf: 'font/ttf',
+  otf: 'font/otf',
+  woff: 'font/woff',
+  woff2: 'font/woff2',
+};
+const MAX_FONT = 10 * 1024 * 1024;
+/** The first bytes of the font formats the library takes. */
+const FONT_MAGIC: Record<string, readonly string[]> = {
+  ttf: ['00010000', '74727565'],
+  otf: ['4f54544f', '00010000'],
+  woff: ['774f4646'],
+  woff2: ['774f4632'],
 };
 const DEFAULT_LICENSE = { name: "Owner's own" };
 
@@ -155,7 +167,7 @@ export async function runGate(
         result.rejected.push({
           file: file.name,
           reason:
-            'This is not a Creator Pack (.json) or a picture, sound or video file, so it cannot go into the library.',
+            'This is not a Creator Pack (.json), a picture, sound, video or font file (.ttf, .otf, .woff, .woff2), so it cannot go into the library.',
         });
     }
   } catch (error) {
@@ -339,6 +351,57 @@ function toCandidate(
   }
 }
 
+/** A font file: its first bytes must be those of its format. */
+function gateFont(
+  file: GateFile,
+  ext: string,
+  meta: MediaMeta | undefined,
+  license: NonNullable<MediaMeta['license']>,
+  store: ItemStore,
+  result: GateResult,
+) {
+  const head = Buffer.from(file.bytes.subarray(0, 4)).toString('hex');
+  if (file.bytes.length < 64 || file.bytes.length > MAX_FONT) {
+    result.rejected.push({
+      file: file.name,
+      reason: 'The font file is empty or larger than 10 MB.',
+    });
+    return;
+  }
+  if (!FONT_MAGIC[ext]?.includes(head)) {
+    result.rejected.push({
+      file: file.name,
+      reason: `This is not a real .${ext} font file.`,
+    });
+    return;
+  }
+  const id = meta?.id ?? slug(file.name);
+  const name = meta?.name ?? {
+    en: file.name.replace(/\.[^.]+$/u, '').replace(/[-_]+/gu, ' '),
+  };
+  const blur =
+    'data:image/svg+xml;base64,' +
+    Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 9"><rect width="16" height="9" fill="#1d2030"/></svg>',
+    ).toString('base64');
+  result.candidates.push(
+    mediaCandidate(
+      store,
+      {
+        id,
+        kind: 'font',
+        name: { en: name.en, hi: name.hi ?? name.en },
+        tags: meta?.tags ?? ['font'],
+        full: { bytes: file.bytes, ext, mime: MEDIA_TYPES[ext]! },
+        blur,
+      },
+      file.name,
+      license,
+    ),
+  );
+  result.accepted.push({ file: file.name, item: id });
+}
+
 async function gateMedia(
   file: GateFile,
   ext: string,
@@ -365,6 +428,10 @@ async function gateMedia(
     return;
   }
   const mime = MEDIA_TYPES[ext]!;
+  if (mime.startsWith('font/')) {
+    gateFont(file, ext, meta, license, store, result);
+    return;
+  }
   const probe = await (await page()).probeMedia(file.bytes, mime);
   if (!probe.ok || !probe.kind) {
     result.rejected.push({

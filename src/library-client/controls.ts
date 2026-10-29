@@ -3,8 +3,9 @@
 // really shows (a test keeps it honest); the owner's choice travels in the
 // signed settings as `controls.off`, a list of keys, so no release is needed.
 import { z } from 'zod';
+import { FX_TILE_DEFS } from './fx-keys';
 
-export type ControlSurface = 'panel' | 'toolbar' | 'menu';
+export type ControlSurface = 'panel' | 'toolbar' | 'menu' | 'fx';
 export const ASSET_TYPES = [
   'text',
   'shape',
@@ -33,6 +34,10 @@ export const SURFACE_LABELS: Record<
   panel: { en: 'Right panel tabs', hi: 'दाएँ पैनल के टैब' },
   toolbar: { en: 'Toolbar above the canvas', hi: 'कैनवास के ऊपर का टूलबार' },
   menu: { en: 'Right-click menu', hi: 'राइट-क्लिक मेन्यू' },
+  fx: {
+    en: 'Filters, effects and transitions shown',
+    hi: 'दिखने वाले फ़िल्टर, इफ़ेक्ट और ट्रांज़िशन',
+  },
 };
 
 export interface ControlDef {
@@ -43,6 +48,7 @@ export interface ControlDef {
 }
 const L = (en: string, hi: string) => ({ en, hi });
 const VISUAL: AssetType[] = ['text', 'shape', 'drawing', 'image', 'video'];
+const MANY: AssetType[] = [...VISUAL, 'group', 'multi'];
 const def = (
   surface: ControlSurface,
   id: string,
@@ -62,7 +68,7 @@ const PN = (id: string, en: string, hi: string, types: readonly AssetType[]) =>
   def('panel', id, en, hi, types);
 
 /** Everything the owner can switch off. Properties (the first tab) cannot be. */
-export const CONTROL_REGISTRY: readonly ControlDef[] = [
+export const CONTROL_REGISTRY: ControlDef[] = [
   // Right panel tabs
   PN('Animate', 'Animate', 'एनिमेट', [
     'text',
@@ -103,7 +109,10 @@ export const CONTROL_REGISTRY: readonly ControlDef[] = [
   // Toolbar above the canvas
   TB('font', 'Font', 'फ़ॉन्ट', ['text']),
   TB('size', 'Font size', 'फ़ॉन्ट साइज़', ['text']),
-  TB('color', 'Text colour', 'टेक्स्ट रंग', ['text']),
+  TB('color', 'Colour', 'रंग', ['text', 'drawing']),
+  TB('brush-size', 'Brush size', 'ब्रश साइज़', ['drawing']),
+  TB('group', 'Group', 'ग्रुप', ['multi']),
+  TB('ungroup', 'Ungroup', 'अनग्रुप', ['group']),
   TB('bold', 'Bold', 'बोल्ड', ['text']),
   TB('italic', 'Italic', 'इटैलिक', ['text']),
   TB('underline', 'Underline', 'अंडरलाइन', ['text']),
@@ -113,6 +122,12 @@ export const CONTROL_REGISTRY: readonly ControlDef[] = [
   TB('list', 'List', 'लिस्ट', ['text']),
   TB('spacing', 'Spacing', 'स्पेसिंग', ['text']),
   TB('effects', 'Effects', 'इफ़ेक्ट', ['text']),
+  TB(
+    'text-more',
+    'More (lock, duplicate, delete)',
+    'और (लॉक, डुप्लिकेट, डिलीट)',
+    ['text'],
+  ),
   TB('fill', 'Fill', 'फ़िल', ['shape']),
   TB('stroke-style', 'Border / stroke', 'बॉर्डर', ['shape', 'image']),
   TB('corners-menu', 'Corners', 'कोने', ['shape', 'image']),
@@ -123,10 +138,10 @@ export const CONTROL_REGISTRY: readonly ControlDef[] = [
   TB('eraser', 'Magic eraser', 'मैजिक इरेज़र', ['image']),
   TB('crop', 'Crop', 'क्रॉप', ['image', 'video']),
   TB('flip', 'Flip', 'फ़्लिप', ['image', 'video']),
-  TB('transparency', 'Transparency', 'पारदर्शिता', VISUAL),
-  TB('animate', 'Animate', 'एनिमेट', VISUAL),
-  TB('position', 'Position', 'पोज़िशन', VISUAL),
-  TB('copy-style', 'Copy style', 'स्टाइल कॉपी', VISUAL),
+  TB('transparency', 'Transparency', 'पारदर्शिता', MANY),
+  TB('animate', 'Animate', 'एनिमेट', MANY),
+  TB('position', 'Position', 'पोज़िशन', MANY),
+  TB('copy-style', 'Copy style', 'स्टाइल कॉपी', MANY),
   // Right-click menu
   MN('duplicate', 'Duplicate', 'डुप्लिकेट'),
   MN('copy', 'Copy', 'कॉपी'),
@@ -136,7 +151,10 @@ export const CONTROL_REGISTRY: readonly ControlDef[] = [
   MN('arrange', 'Layer order submenu', 'लेयर ऑर्डर सबमेन्यू'),
   MN('align', 'Align submenu', 'अलाइन सबमेन्यू'),
   MN('style-menu', 'Style submenu', 'स्टाइल सबमेन्यू'),
-  MN('lock', 'Lock', 'लॉक'),
+  MN('lock', 'Lock / Unlock', 'लॉक / अनलॉक'),
+  MN('ungroup', 'Ungroup', 'अनग्रुप', ['group']),
+  MN('combine', 'Combine shapes', 'आकृतियाँ जोड़ें', ['shape', 'multi']),
+  MN('code-menu', 'Code animation submenu', 'कोड एनिमेशन सबमेन्यू', ['video']),
   MN('save-to-mine', 'Save to My Templates', 'मेरे टेम्पलेट में सेव'),
   MN('more-menu', 'More submenu', 'और सबमेन्यू'),
   MN('hide', 'Hide', 'छुपाएँ'),
@@ -159,6 +177,18 @@ export const CONTROL_REGISTRY: readonly ControlDef[] = [
     'video',
   ]),
 ];
+
+/** The built-in filter, effect and transition tiles (FIX7). */
+export const FX_REGISTRY: readonly ControlDef[] = FX_TILE_DEFS.map((tile) => ({
+  surface: 'fx' as const,
+  id: tile.id,
+  label: {
+    en: `${tile.group} · ${tile.label.en}`,
+    hi: `${tile.group} · ${tile.label.hi}`,
+  },
+  types: tile.types,
+}));
+CONTROL_REGISTRY.push(...FX_REGISTRY);
 
 export const controlKey = (
   surface: ControlSurface,

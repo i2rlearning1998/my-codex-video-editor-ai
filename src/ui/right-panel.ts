@@ -7,7 +7,12 @@
 // shown disabled and name their wave. The controls are the toolbar's own
 // builders (one implementation), so values, ratio lock and the 2D Animation
 // rules (guardCommands) are shared.
-import { transitionTiles } from './right-panel/transition-tiles';
+import {
+  transitionKey,
+  transitionOf,
+  transitionTiles,
+} from './right-panel/transition-tiles';
+import { libraryFx } from './library-fx';
 import { transitionFocus } from './transition-focus';
 import {
   sceneTransitionLimit,
@@ -79,7 +84,10 @@ import {
   applyPreset,
   EFFECT_TILES,
   effectSettings,
-  FILTER_PRESETS,
+  presetList,
+  presetLabel,
+  selectedLibraryEffects,
+  toggleLibraryEffect,
   intensitySlider,
   isFilterEntry,
   presetEntries,
@@ -1405,11 +1413,17 @@ export function mountRightPanel(
         source: source(),
         tiles: [
           { key: 'none', label: t('fx.none'), stack: [] },
-          ...FILTER_PRESETS.map((preset) => ({
-            key: preset.key,
-            label: t(`fx.preset.${preset.key}`),
-            stack: presetEntries(preset, 1),
-          })),
+          ...presetList()
+            .filter(
+              (preset) =>
+                !!presetLabel(preset.key) ||
+                controlOn('fx', kindOf(session), `filter:${preset.key}`),
+            )
+            .map((preset) => ({
+              key: preset.key,
+              label: presetLabel(preset.key) ?? t(`fx.preset.${preset.key}`),
+              stack: presetEntries(preset, 1),
+            })),
         ],
         selected: (key) => key === current,
         onClick: (key) =>
@@ -1443,8 +1457,13 @@ export function mountRightPanel(
     if (!clips.length) return [];
     const fx = fxOf(clips[0]!.clip);
     const on = selectedEffects(fx);
+    const libOn = selectedLibraryEffects(fx);
     const pictures = ['video', 'image'].includes(kindOf(session));
-    const tiles = EFFECT_TILES.filter((tile) => pictures || !tile.pictures);
+    const tiles = EFFECT_TILES.filter(
+      (tile) =>
+        (pictures || !tile.pictures) &&
+        controlOn('fx', kindOf(session), `effect:${tile.id}`),
+    );
     const shown =
       lastTile.effects && on.has(lastTile.effects)
         ? lastTile.effects
@@ -1465,18 +1484,39 @@ export function mountRightPanel(
             badge: getEffect(tile.id)!.params.length > 1,
             group: tile.more ? t('fx.more') : undefined,
           })),
+          ...libraryFx.effects().map((item) => ({
+            key: item.marker,
+            label: item.label,
+            stack: item.steps.map((step) => ({
+              id: step.id,
+              params: step.params,
+            })),
+            animated: true,
+            group: t('fx.library'),
+          })),
         ],
-        selected: (key) => (key === 'none' ? on.size === 0 : on.has(key)),
+        selected: (key) =>
+          key === 'none'
+            ? on.size + libOn.size === 0
+            : on.has(key) || libOn.has(key),
         onClick: (key) =>
           safely(() => {
             lastTile.effects = key === 'none' ? null : key;
             if (key === 'none') {
-              if (on.size)
+              if (on.size + libOn.size)
                 setFx('Remove effects', (next) => {
                   next.stack = next.stack.filter(
-                    (item) => !item.id.startsWith('effect.'),
+                    (item) =>
+                      !item.id.startsWith('effect.') &&
+                      typeof item.params.libfx !== 'string',
                   );
                 });
+              return;
+            }
+            if (libraryFx.byMarker(key)) {
+              setFx(libOn.has(key) ? 'Remove effect' : 'Add effect', (next) =>
+                toggleLibraryEffect(next, key),
+              );
               return;
             }
             setFx(on.has(key) ? 'Remove effect' : 'Add effect', (next) =>
@@ -1572,20 +1612,22 @@ export function mountRightPanel(
         search: t('transition.search'),
         query: transitionQuery,
         source: source(),
-        tiles: transitionTiles(),
-        selected: (key) => key === (current?.type ?? 'none'),
+        tiles: transitionTiles((type) =>
+          controlOn('fx', 'group', `transition:${type}`),
+        ),
+        selected: (key) => key === (transitionKey(current) ?? 'none'),
         onClick: (key) => {
           if (key === 'none') {
             if (current) set('Remove transition', null);
             return;
           }
-          if (key === current?.type) return;
+          if (key === transitionKey(current)) return;
           set(current ? 'Change transition' : 'Add transition', {
-            type: key as Transition['type'],
+            ...(transitionOf(key) as Pick<Transition, 'type' | 'params'>),
             duration: Math.min(current?.duration ?? DEFAULT_TRANSITION, limit),
           });
         },
-        settingsFor: current?.type ?? null,
+        settingsFor: transitionKey(current),
         settings: () => {
           if (!current) return null;
           const block = document.createElement('div');
@@ -1637,7 +1679,12 @@ export function mountRightPanel(
     const limit = before ? maxTransition(before, clip) : DEFAULT_TRANSITION;
     const set = (
       label: string,
-      transition: { type: string; duration: number } | null,
+      transition: {
+        type: string;
+        duration: number;
+        params?:
+          Readonly<Record<string, number | boolean | string>> | undefined;
+      } | null,
     ) =>
       safely(() =>
         run(label, [
@@ -1656,20 +1703,22 @@ export function mountRightPanel(
         search: t('transition.search'),
         query: transitionQuery,
         source: source(),
-        tiles: transitionTiles(),
-        selected: (key) => key === (current?.type ?? 'none'),
+        tiles: transitionTiles((type) =>
+          controlOn('fx', kindOf(session), `transition:${type}`),
+        ),
+        selected: (key) => key === (transitionKey(current) ?? 'none'),
         onClick: (key) => {
           if (key === 'none') {
             if (current) set('Remove transition', null);
             return;
           }
-          if (key === current?.type) return;
+          if (key === transitionKey(current)) return;
           set(current ? 'Change transition' : 'Add transition', {
-            type: key,
+            ...transitionOf(key),
             duration: Math.min(current?.duration ?? DEFAULT_TRANSITION, limit),
           });
         },
-        settingsFor: current?.type ?? null,
+        settingsFor: transitionKey(current),
         settings: () => {
           if (!current) return null;
           const block = document.createElement('div');
@@ -1686,10 +1735,7 @@ export function mountRightPanel(
               slider: true,
               onCommit: (value) => {
                 if (value !== current.duration)
-                  set('Transition duration', {
-                    type: current.type,
-                    duration: value,
-                  });
+                  set('Transition duration', { ...current, duration: value });
               },
               onInvalid: (message) => report(new RangeError(message)),
             }),

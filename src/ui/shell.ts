@@ -5,6 +5,8 @@ import {
   rememberBuilt,
   storageOrNull,
 } from './composition-status';
+import { installLibraryFont } from '../text-engine/uploaded';
+import { syncLibraryFx } from './library-fx';
 import {
   openAutoCaptions,
   openTranscribe,
@@ -697,6 +699,8 @@ export function mountEditorShell(
   const codeCache = new FrameCache(mediaStore);
   // P2: My library (Creator Pack items), beside My Templates.
   const creatorLibrary = new CreatorLibrary(mediaStore);
+  // FIX7: published filters, effects, adjustments and transitions.
+  creatorLibrary.onChange(() => syncLibraryFx(creatorLibrary.list()));
   // Phase 1 (P1-31): training-data records for AI-built videos (no UI).
   const training = new TrainingLog(openTrainingStore());
   {
@@ -4929,7 +4933,25 @@ export function mountEditorShell(
       }),
     );
     void refreshThemes();
+    // FIX7: fonts the owner published join the font picker (Library fonts).
+    for (const entry of catalog.entries('text')) {
+      const full = entry.kind === 'font' ? entry.media?.full : undefined;
+      if (!full || installedFonts.has(full.sha256)) continue;
+      installedFonts.add(full.sha256);
+      void catalog
+        .file(full, catalogMediaKey(full.sha256))
+        .then(async (blob) =>
+          blob
+            ? installLibraryFont(entry.name.en, await blob.arrayBuffer())
+            : null,
+        )
+        .then((family) => {
+          if (family) safely(draw);
+        })
+        .catch(() => installedFonts.delete(full.sha256));
+    }
   };
+  const installedFonts = new Set<string>();
   void catalog.ready.then(syncCatalog, reportError);
   catalog.onChange(syncCatalog);
   engine.on('state:changed', (event) => {

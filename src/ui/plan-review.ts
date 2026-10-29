@@ -145,8 +145,19 @@ export function comparePlan(
   return out.length ? out : [t('plan.diffNone')];
 }
 
+/** A long list of differences is cut to COMPARE_CAP lines plus "and N more". */
+export function capCompare(lines: readonly string[]): string[] {
+  if (lines.length <= COMPARE_CAP + 1) return [...lines];
+  return [
+    ...lines.slice(0, COMPARE_CAP),
+    t('plan.diffMore', { count: String(lines.length - COMPARE_CAP) }),
+  ];
+}
+
 /** The slot (per project) whose stock choices are open (transient). */
 const swapping = new Map<string, string>();
+/** Compare to plan shows this many differences, then "and N more". */
+const COMPARE_CAP = 12;
 /** Projects whose Compare to plan list is open (transient). */
 const comparing = new Set<string>();
 export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
@@ -201,7 +212,7 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
   const showCompare = () => {
     compare.hidden = false;
     compare.replaceChildren(
-      ...comparePlan(deps.project(), state).map((line) => {
+      ...capCompare(comparePlan(deps.project(), state)).map((line) => {
         const li = document.createElement('li');
         li.textContent = line;
         return li;

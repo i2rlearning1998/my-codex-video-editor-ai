@@ -13,7 +13,7 @@ import { SYSTEM_FONTS } from '../render/text-style';
 import { FONT_CATALOG, type FontCategory } from '../text-engine/catalog';
 import { FontLoadError, loadFont, loadFontPreview } from '../text-engine/fonts';
 import { glyphCoverage } from '../text-engine/layout';
-import { uploadedFonts } from '../text-engine/uploaded';
+import { libraryFonts, uploadedFonts } from '../text-engine/uploaded';
 import { iconSvg } from './icons';
 
 export const FONT_RECENT_KEY = 'aive.fonts.recent';
@@ -26,7 +26,7 @@ const CHIPS: readonly ('all' | FontCategory)[] = [
   'handwriting',
   'monospace',
 ];
-type Source = 'bundled' | 'system' | 'catalog' | 'uploaded';
+type Source = 'bundled' | 'system' | 'catalog' | 'uploaded' | 'library';
 interface Entry {
   readonly family: string;
   readonly category: FontCategory;
@@ -85,6 +85,12 @@ export function drawsOwnGlyphs(family: string, text: string): boolean {
 function allEntries(): Entry[] {
   return [
     ...ENTRIES,
+    ...libraryFonts().map((family): Entry => ({
+      family,
+      category: 'sans-serif',
+      devanagari: false,
+      source: 'library',
+    })),
     ...uploadedFonts().map((family): Entry => ({
       family,
       category: 'sans-serif',
@@ -268,7 +274,10 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
   };
   const pick = async (entry: Entry) => {
     if (entry.source !== 'catalog') {
-      done(entry.family, entry.source === 'uploaded');
+      done(
+        entry.family,
+        entry.source === 'uploaded' || entry.source === 'library',
+      );
       return;
     }
     states.set(entry.family, { kind: 'loading' });
@@ -427,6 +436,7 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
       .map((name) => known.find((entry) => entry.family === name))
       .filter((entry): entry is Entry => !!entry);
     const uploaded = known.filter((entry) => entry.source === 'uploaded');
+    const libraryList = known.filter((entry) => entry.source === 'library');
     const uploadSection = section('uploaded', t('fonts.uploaded'), uploaded);
     if (options.upload) uploadSection.append(uploadButton());
     lists.replaceChildren(
@@ -438,6 +448,9 @@ export function buildFontPicker(options: FontPickerOptions): HTMLElement {
               : []),
             ...(documentFonts.length
               ? [section('document', t('fonts.documentFonts'), documentFonts)]
+              : []),
+            ...(libraryList.length
+              ? [section('library', t('fonts.library'), libraryList)]
               : []),
             uploadSection,
             section(

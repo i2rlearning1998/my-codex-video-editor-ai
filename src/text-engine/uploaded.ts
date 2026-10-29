@@ -46,6 +46,29 @@ function remember(family: string) {
   }
 }
 
+export const LIBRARY_KEY = 'aive.fonts.library';
+/** FIX7: the families the owner's library gave this browser. */
+export function libraryFonts(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LIBRARY_KEY) ?? '[]');
+    return Array.isArray(raw)
+      ? raw.filter((name): name is string => typeof name === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+function rememberLibrary(family: string) {
+  try {
+    localStorage.setItem(
+      LIBRARY_KEY,
+      JSON.stringify([family, ...libraryFonts().filter((n) => n !== family)]),
+    );
+  } catch {
+    /* Storage blocked: the font still works in this page. */
+  }
+}
+
 let store: FontStore | null = null;
 const fontStore = () => (store ??= createFontStore());
 
@@ -109,4 +132,34 @@ export async function loadUploadedFont(
   } catch {
     return false;
   }
+}
+
+/**
+ * FIX7: a font file from the owner's library. It is registered with the page
+ * and kept in the same cache as uploaded fonts (so the export worker and a
+ * reopened project find it), and listed under Library fonts.
+ */
+export async function installLibraryFont(
+  name: string,
+  bytes: ArrayBuffer,
+  set: FontFaceSet = document.fonts,
+): Promise<string | null> {
+  const family = uploadedFamilyName(`${name}.ttf`);
+  if (!isSafeFamily(family) || bytes.byteLength > MAX_BYTES) return null;
+  try {
+    await register(set, family, bytes);
+  } catch {
+    return null;
+  }
+  await fontStore().put(PREFIX + family, [
+    {
+      family,
+      weight: '100 900',
+      style: 'normal',
+      unicodeRange: 'U+0-10FFFF',
+      bytes,
+    },
+  ]);
+  rememberLibrary(family);
+  return family;
 }

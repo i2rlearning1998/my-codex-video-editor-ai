@@ -1,0 +1,80 @@
+{
+  "format": "creator-pack",
+  "version": 1,
+  "pack": {
+    "id": "owner-fx",
+    "name": { "en": "Owner looks", "hi": "ओनर लुक्स" },
+    "version": 1,
+    "author": "ai",
+    "createdWith": "claude-chat",
+    "notes": "Recipes over the built-in FX library; no external assets."
+  },
+  "items": [
+    {
+      "id": "doc-warm",
+      "name": { "en": "Documentary warm", "hi": "डॉक्यूमेंट्री वार्म" },
+      "tags": ["original"],
+      "type": "filter",
+      "controls": [
+        {
+          "type": "number",
+          "name": "intensity",
+          "label": { "en": "Intensity", "hi": "तीव्रता" },
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "default": 1
+        }
+      ],
+      "data": {
+        "mode": "recipe",
+        "steps": [
+          { "fx": "filter.retro", "params": {} },
+          { "fx": "adjust.contrast", "params": { "amount": 0.2 } }
+        ]
+      }
+    },
+    {
+      "id": "dream-glow",
+      "name": { "en": "Dream glow", "hi": "ड्रीम ग्लो" },
+      "tags": ["original"],
+      "type": "effect",
+      "controls": [
+        {
+          "type": "number",
+          "name": "intensity",
+          "label": { "en": "Intensity", "hi": "तीव्रता" },
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "default": 1
+        }
+      ],
+      "data": {
+        "mode": "recipe",
+        "steps": [{ "fx": "effect.glow", "params": {} }]
+      }
+    },
+    {
+      "id": "swirl-in",
+      "name": { "en": "Swirl in", "hi": "स्विर्ल" },
+      "tags": ["original"],
+      "type": "transition",
+      "controls": [
+        {
+          "type": "number",
+          "name": "intensity",
+          "label": { "en": "Intensity", "hi": "तीव्रता" },
+          "min": 0,
+          "max": 1,
+          "step": 0.01,
+          "default": 1
+        }
+      ],
+      "data": {
+        "mode": "recipe",
+        "steps": [{ "fx": "transition.swirl", "params": {} }]
+      }
+    }
+  ]
+}

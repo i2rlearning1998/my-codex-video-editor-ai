@@ -84,7 +84,7 @@ async function build(page: Page, own = true) {
   return dialog;
 }
 
-test('[FN3-021] a v2 plan builds end to end: progress, your own media, voice, captions, camera, transitions; it replaces the empty scene in one undo step and opens the strip', async ({
+test('[FN3-021] [FIX7-027] a v2 plan builds end to end: progress, your own media, voice, captions, camera, transitions; it replaces the empty scene in one undo step and opens the strip', async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -101,6 +101,7 @@ test('[FN3-021] a v2 plan builds end to end: progress, your own media, voice, ca
     'layout',
     'captions',
     'camera',
+    'prepare',
   ])
     await expect(dialog.locator(`[data-step="${step}"]`)).toHaveAttribute(
       'data-state',

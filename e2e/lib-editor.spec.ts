@@ -1032,3 +1032,179 @@ test('[LIB-027][LIB-008] a rollback in the catalog never changes a project that 
   );
   expect(after.project.assets).toEqual(before.project.assets);
 });
+
+test('[FIX7-028] filters, effects and transitions the owner publishes as recipes show in the right panel as Library tiles and apply: a filter and an effect on a picture, with only built-in ids stored', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const packs = path.join(stack.root, 'fx-packs');
+  mkdirSync(packs, { recursive: true });
+  copyFileSync(
+    'examples/creator-packs/fx-recipes.json',
+    path.join(packs, 'fx.json'),
+  );
+  const out = cli('publish', packs);
+  if (!/Published/.test(out)) throw new Error(out);
+  expect(out).not.toMatch(/rejected/i);
+  cli('build');
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  await showCategory(page, 'Media');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#import-media').click();
+  await (
+    await chooser
+  ).setFiles(['tests/fixtures/media/image_testsrc_1200x800.jpg']);
+  await expect(page.locator('#media-import')).toBeHidden();
+  await page
+    .locator(
+      '.media-item:has(.media-card[data-name="image_testsrc_1200x800.jpg"]) .media-card',
+    )
+    .click({ button: 'right' });
+  await page.locator('#media-menu [data-action="media-add"]').click();
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds.length)
+    .toBe(1);
+  const tab = (name: string) =>
+    page.locator(`#rail-right [data-section="${name}"]`);
+  await tab('Filters').click();
+  const tile = page.locator('#right-section .fx-tile', {
+    hasText: 'Documentary warm',
+  });
+  await expect(tile).toBeVisible();
+  await tile.click();
+  const fxIds = async () => {
+    const state = await hook(page);
+    const scene = state.project.compositions.find(
+      (item) => item.id === state.session.compositionId,
+    )!;
+    return (
+      scene.tracks.flatMap((track) => track.clips)[0]!.metadata as {
+        fx?: { stack: { id: string }[] };
+      }
+    ).fx?.stack.map((entry) => entry.id);
+  };
+  await expect.poll(fxIds).toEqual(['filter.retro', 'adjust.contrast']);
+  await page.screenshot({ path: 'reports/fix7-library-filter.png' });
+  await tab('Effects').click();
+  const effect = page.locator('#right-section .fx-tile', {
+    hasText: 'Dream glow',
+  });
+  await expect(effect).toBeVisible();
+  await effect.click();
+  await expect
+    .poll(fxIds)
+    .toEqual(['filter.retro', 'adjust.contrast', 'effect.glow']);
+  await page.screenshot({ path: 'reports/fix7-library-effect.png' });
+});
+
+test('[FIX7-029] built-in filter and effect tiles the owner switches off for photos disappear from the right panel; the others stay', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const itemsFile = path.join(stack.env.LIBRARY_DATA_DIR!, 'items.json');
+  const data = JSON.parse(readFileSync(itemsFile, 'utf8')) as {
+    config: { controls: unknown };
+  };
+  data.config ??= {
+    format: 'aive-config',
+    version: 1,
+    controls: {},
+    categories: [],
+  } as never;
+  data.config.controls = {
+    off: ['fx.image.filter:retro', 'fx.image.effect:effect.glow'],
+  };
+  writeFileSync(itemsFile, JSON.stringify(data));
+  cli('build');
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  await showCategory(page, 'Media');
+  const chooser = page.waitForEvent('filechooser');
+  await page.locator('#import-media').click();
+  await (
+    await chooser
+  ).setFiles(['tests/fixtures/media/image_testsrc_1200x800.jpg']);
+  await expect(page.locator('#media-import')).toBeHidden();
+  await page
+    .locator(
+      '.media-item:has(.media-card[data-name="image_testsrc_1200x800.jpg"]) .media-card',
+    )
+    .click({ button: 'right' });
+  await page.locator('#media-menu [data-action="media-add"]').click();
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds.length)
+    .toBe(1);
+  await page.locator('#rail-right [data-section="Filters"]').click();
+  await expect(
+    page.locator('#right-section .fx-tile[data-tile="golden-hour"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator('#right-section .fx-tile[data-tile="retro"]'),
+  ).toHaveCount(0);
+  await page.locator('#rail-right [data-section="Effects"]').click();
+  await expect(
+    page.locator('#right-section .fx-tile[data-tile="effect.flash"]'),
+  ).toBeVisible();
+  await expect(
+    page.locator('#right-section .fx-tile[data-tile="effect.glow"]'),
+  ).toHaveCount(0);
+  await page.screenshot({ path: 'reports/fix7-fx-tiles-off.png' });
+});
+
+test('[FIX7-030] a font file the owner publishes joins the font picker under Library fonts, sets the text and survives a reload from the cache', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const fonts = path.join(stack.root, 'font-pack');
+  mkdirSync(fonts, { recursive: true });
+  copyFileSync(
+    'public/fonts/poppins/poppins-latin-600-normal.woff2',
+    path.join(fonts, 'brand.woff2'),
+  );
+  writeFileSync(
+    path.join(fonts, 'brand.woff2.meta.json'),
+    JSON.stringify({
+      id: 'font-owner-brand',
+      name: { en: 'Owner Brand Sans', hi: 'ओनर ब्रांड सैंस' },
+      tags: ['font'],
+      license: { name: 'OFL', credit: 'Poppins' },
+    }),
+  );
+  writeFileSync(
+    path.join(fonts, 'fake.ttf'),
+    'this is not a font file at all, just words. '.repeat(5),
+  );
+  writeFileSync(
+    path.join(fonts, 'fake.ttf.meta.json'),
+    JSON.stringify({ license: { name: 'OFL' } }),
+  );
+  const out = cli('publish', fonts);
+  expect(out).toMatch(/Published/);
+  expect(out).toMatch(/not a real \.ttf/);
+  cli('build');
+  await openEditor(page);
+  await expect
+    .poll(async () => (await clientStatus(page)).source)
+    .toBe('catalog');
+  await showCategory(page, 'Text');
+  await page.locator('#add-text-box').click();
+  await page.keyboard.insertText('Library font');
+  await page.keyboard.press('Escape');
+  await page.locator('#toolbar-font').click();
+  const panel = page.locator('[data-tool-panel="font"]');
+  const mine = panel.locator('[data-font="Owner Brand Sans"]');
+  await expect(mine).toBeVisible({ timeout: 30_000 });
+  await expect(panel.locator('[data-font-section="library"]')).toBeVisible();
+  await page.screenshot({ path: 'reports/fix7-library-font.png' });
+  await mine.click();
+  await expect
+    .poll(async () =>
+      page.evaluate(() => document.fonts.check('16px "Owner Brand Sans"')),
+    )
+    .toBe(true);
+});

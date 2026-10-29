@@ -192,7 +192,7 @@ export function mediaCandidate(
   store: ItemStore,
   media: {
     id: string;
-    kind: Extract<CatalogKind, 'sound' | 'video' | 'image'>;
+    kind: Extract<CatalogKind, 'sound' | 'video' | 'image' | 'font'>;
     name: { en: string; hi: string };
     tags: string[];
     full: { bytes: Uint8Array; ext: string; mime: string };

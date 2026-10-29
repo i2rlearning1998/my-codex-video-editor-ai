@@ -1122,7 +1122,7 @@ async function controlsScreen(status: HTMLElement) {
     };
     chips.append(chip);
   }
-  const groups = ['panel', 'toolbar', 'menu'].map((surface) => {
+  const groups = Object.keys(data.surfaces).map((surface) => {
     const rows = data.registry
       .filter((d) => d.surface === surface && d.types.includes(controlsType))
       .map((d) => {

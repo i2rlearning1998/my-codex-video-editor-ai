@@ -14,7 +14,7 @@ export function controlOn(
   id: string,
 ): boolean {
   const off = offKeys(libraryClient().config()?.controls);
-  return !off.has(controlKey(surface, type, id));
+  return !off.has(controlKey(surface, type, id === 'unlock' ? 'lock' : id));
 }
 
 /** The menu without the entries the owner switched off (submenus too). */
