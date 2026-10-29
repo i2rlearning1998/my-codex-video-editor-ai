@@ -2662,5 +2662,10 @@
   "plan.kindOne.video": "वीडियो",
   "plan.kindOne.audio": "ऑडियो",
   "plan.kindOne.icon": "आइकन",
-  "plan.kindOne.emoji": "इमोजी"
+  "plan.kindOne.emoji": "इमोजी",
+  "elements.mine": "मेरी",
+  "elements.stock": "स्टॉक",
+  "elements.mineEmpty.photos": "आपकी लाइब्रेरी में अभी कोई फ़ोटो नहीं",
+  "elements.mineEmpty.videos": "आपकी लाइब्रेरी में अभी कोई वीडियो नहीं",
+  "elements.mineEmptyHint": "लाइब्रेरी मैनेजर में जो जोड़ेंगे वह यहाँ दिखेगा।"
 }

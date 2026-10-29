@@ -2662,5 +2662,10 @@
   "plan.kindOne.video": "video",
   "plan.kindOne.audio": "audio",
   "plan.kindOne.icon": "icon",
-  "plan.kindOne.emoji": "emoji"
+  "plan.kindOne.emoji": "emoji",
+  "elements.mine": "Mine",
+  "elements.stock": "Stock",
+  "elements.mineEmpty.photos": "No photos in your library yet",
+  "elements.mineEmpty.videos": "No videos in your library yet",
+  "elements.mineEmptyHint": "What you add in the library manager shows here."
 }

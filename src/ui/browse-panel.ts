@@ -68,6 +68,8 @@ export interface BrowsePage {
   /** Search placeholder; absent hides the search box. */
   readonly search?: string;
   readonly chips?: readonly BrowseChip[];
+  /** FIX7: the chip selected when the page opens (no "All" chip then). */
+  readonly defaultChip?: string;
   readonly sections: (state: {
     readonly query: string;
     readonly chip: string | null;
@@ -407,7 +409,9 @@ export function createBrowsePanel(
       chips.setAttribute('role', 'tablist');
       chips.setAttribute('aria-label', page.title);
       for (const chip of [
-        { id: '', label: t('browse.chipAll') },
+        ...(page.defaultChip !== undefined
+          ? []
+          : [{ id: '', label: t('browse.chipAll') }]),
         ...page.chips,
       ]) {
         const button = document.createElement('button');
@@ -492,7 +496,12 @@ export function createBrowsePanel(
     refresh: () => render(),
     push(page) {
       top().scroll = viewport.scrollTop;
-      stack.push({ page, query: '', chip: null, scroll: 0 });
+      stack.push({
+        page,
+        query: '',
+        chip: page.defaultChip ?? null,
+        scroll: 0,
+      });
       render('forward');
       backButton.focus();
     },

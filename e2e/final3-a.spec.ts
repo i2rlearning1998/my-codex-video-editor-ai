@@ -12,6 +12,9 @@ const openTile = async (page: Page, tile: string) => {
   const back = elements(page).locator('[data-action="browse-back"]');
   while (await back.isVisible()) await back.click();
   await elements(page).locator(`[data-tile="${tile}"]`).click();
+  // FIX7: Photos and Videos open on Mine; Stock is its own tab.
+  if (tile === 'photos' || tile === 'videos')
+    await elements(page).locator('.browse-chip[data-chip="stock"]').click();
 };
 const withKey = (page: Page, provider: string) =>
   page.addInitScript(

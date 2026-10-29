@@ -45,7 +45,7 @@ export interface TierAItem {
 }
 export type TierAItemDecision =
   | 'skip'
-  | { readonly assetId: string }
+  | { readonly assetId: string; readonly assetDuration?: number }
   | { readonly placeholder: Readonly<Record<string, unknown>> };
 export interface TierAResult {
   readonly commands: Command[];
@@ -198,8 +198,20 @@ export async function tierACommands(
       if (decision && 'assetId' in decision) {
         if (c.type === 'CREATE_LAYER')
           (c.layer as Record<string, unknown>).assetId = decision.assetId;
-        if (c.type === 'CREATE_CLIP')
-          (c.clip as Record<string, unknown>).assetId = decision.assetId;
+        if (c.type === 'CREATE_CLIP') {
+          const clip = c.clip as Record<string, unknown>;
+          clip.assetId = decision.assetId;
+          // A file shorter than the slot: the clip never reads past its end.
+          const limit = decision.assetDuration;
+          if (limit && limit > 0) {
+            const from = Number(clip.sourceIn) || 0;
+            const out = Math.min(Number(clip.sourceOut), limit);
+            if (out > from) {
+              clip.sourceOut = out;
+              clip.duration = Math.min(Number(clip.duration), out - from);
+            }
+          }
+        }
       } else if (decision && 'placeholder' in decision) {
         if (c.type === 'CREATE_LAYER') {
           const layer = c.layer as Record<string, unknown>;

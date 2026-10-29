@@ -467,7 +467,13 @@ export async function buildProjectFromComposition(
         });
         return 'skip';
       }
-      if (fill) return { assetId: fill.asset.id };
+      if (fill)
+        return {
+          assetId: fill.asset.id,
+          ...((fill.asset.duration ?? 0) > 0
+            ? { assetDuration: fill.asset.duration as number }
+            : {}),
+        };
       if (!slot.required || slot.type === 'audio') {
         builtClips.delete(`${sceneIndex}/${item.id}`);
         return 'skip';
@@ -662,27 +668,33 @@ export async function buildProjectFromComposition(
       run(
         'Replace slot',
         added.flatMap((track) =>
-          track.clips.flatMap(
-            (clip) =>
-              [
-                {
-                  type: 'SET_CLIP_TIMING',
-                  compositionId,
-                  clipId: clip.id,
-                  startTime: entry.item.start,
-                  duration: entry.item.duration,
-                  sourceIn: 0,
-                  sourceOut: entry.item.duration,
-                },
-                {
-                  type: 'SET_LAYER_TIMING',
-                  compositionId,
-                  layerId: clip.layerId,
-                  startTime: entry.item.start,
-                  duration: entry.item.duration,
-                },
-              ] as Command[],
-          ),
+          track.clips.flatMap((clip) => {
+            const known = engine.state.assets.find(
+              (a) => a.id === clip.assetId,
+            )?.duration;
+            const length =
+              known && known > 0
+                ? Math.min(entry.item.duration, known)
+                : entry.item.duration;
+            return [
+              {
+                type: 'SET_CLIP_TIMING',
+                compositionId,
+                clipId: clip.id,
+                startTime: entry.item.start,
+                duration: length,
+                sourceIn: 0,
+                sourceOut: length,
+              },
+              {
+                type: 'SET_LAYER_TIMING',
+                compositionId,
+                layerId: clip.layerId,
+                startTime: entry.item.start,
+                duration: length,
+              },
+            ] as Command[];
+          }),
         ),
       );
       const items = spec.scenes[entry.sceneIndex]!.items;

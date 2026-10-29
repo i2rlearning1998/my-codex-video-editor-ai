@@ -656,6 +656,10 @@ export async function buildVideoFromPlan(
       if (music && !timeline) {
         if (!slots.some((slot) => slot.id === 'music'))
           addSlot('music', 'audio', plan.music!.query, music.asset);
+        // A music file shorter than the video ends where the file ends (a
+        // clip never runs past its source).
+        const musicIn =
+          music.duration > 0 ? groupStart[gi]! % music.duration : 0;
         push(
           {
             id: `M${si}`,
@@ -663,8 +667,11 @@ export async function buildVideoFromPlan(
             kind: 'audio-slot',
             slot: 'music',
             start: 0,
-            duration,
-            sourceIn: music.duration > 0 ? groupStart[gi]! % music.duration : 0,
+            duration:
+              music.duration > 0
+                ? Math.max(0.1, Math.min(duration, music.duration - musicIn))
+                : duration,
+            sourceIn: musicIn,
           },
           { key: `${scene.id}#music`, role: 'music' },
         );
@@ -703,7 +710,11 @@ export async function buildVideoFromPlan(
           kind: 'audio-slot',
           slot: 'music',
           start: 0,
-          duration: Math.min(groupDuration, 3600),
+          duration: Math.min(
+            groupDuration,
+            3600,
+            music.duration > 0 ? music.duration : Infinity,
+          ),
           sourceIn: 0,
         },
         { key: 'music', role: 'music' },

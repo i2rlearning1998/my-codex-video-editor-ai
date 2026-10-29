@@ -10,6 +10,9 @@ const elements = (page: Page) => page.locator('#library-elements');
 const openTile = async (page: Page, tile: string) => {
   await showCategory(page, 'Elements');
   await elements(page).locator(`[data-tile="${tile}"]`).click();
+  // FIX7: Photos and Videos open on Mine; Stock is its own tab.
+  if (tile === 'photos' || tile === 'videos')
+    await elements(page).locator('.browse-chip[data-chip="stock"]').click();
 };
 const assets = async (page: Page) =>
   (await hook(page)).project.assets as unknown as {

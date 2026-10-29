@@ -2758,7 +2758,7 @@ export function mountEditorShell(
       sfx: catalogSfx,
       theme: planThemeById,
       // FIX7: the AI card is saved once the build is complete, never before.
-      ...(keep ? { onCommit: () => void keep() } : {}),
+      ...(keep ? { onCommit: async () => void (await keep()) } : {}),
       discardAssets: (ids) => mediaPanel.discard(ids),
       prepare: (project, signal, progress) =>
         prepareBuilt(project as never, signal, progress),

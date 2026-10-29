@@ -1194,6 +1194,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-001 | P0 | W9 | Verified | A plan media name matches the person's own file without extension, dashes or case (globe-earth is Globe Earth.PNG) |
 | FIX7-002 | P0 | W9 | Verified | A build never picks, downloads or even searches stock or library media for a plan layer: a missing file stays missing and is listed by name |
 | FIX7-003 | P0 | W9 | Verified | A layer is filled only by the person's own media with the same name, or by a pick the person made |
+| FIX7-004 | P0 | W9 | Verified | Your own media shorter than its slot or the music never makes a clip longer than the file, so the build completes |
 | FIX6-009 | P0 | W9 | Verified | A scene that was already checked is not checked again, so editing a project with many scenes stays fast |
 | FIX6-010 | P0 | W9 | Verified | The left rail is read from an editor layout (categories, order, icons); an invalid layout gives the default |
 | FIX6-011 | P1 | W9 | Verified | Every disabled planned control reads Coming soon; no duplicate disabled tiles in Text |

@@ -363,7 +363,14 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
         ),
       }),
       t('plan.summaryMedia', {
-        found: String(media - result.flags.length),
+        found: String(
+          Math.max(
+            0,
+            media -
+              result.flags.filter((flag) => flag.key in result.alternatives)
+                .length,
+          ),
+        ),
         total: String(media),
       }),
       ...[...new Set(result.flags.map((flag) => flag.name ?? flag.key))].map(

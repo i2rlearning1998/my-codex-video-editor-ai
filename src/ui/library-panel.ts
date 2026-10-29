@@ -733,6 +733,46 @@ export function mountLibraryPanels(
       },
     ],
   });
+  /**
+   * FIX7: Photos and Videos hold two tabs: Mine (your own library, from the
+   * owner app) and Stock (Pexels, Pixabay and any source you added).
+   */
+  const mediaPage = (tab: 'photos' | 'videos'): BrowsePage => {
+    const kind = tab === 'photos' ? 'image' : 'video';
+    return {
+      id: `media-${tab}`,
+      title: t(`elements.tile.${tab}`),
+      defaultChip: 'mine',
+      chips: [
+        { id: 'mine', label: t('elements.mine') },
+        ...(options.stock ? [{ id: 'stock', label: t('elements.stock') }] : []),
+      ],
+      status: () => status,
+      sections: ({ chip }) =>
+        chip === 'stock' && options.stock
+          ? [
+              {
+                id: `stock-${tab}`,
+                layout: 'list',
+                render: (host) => mountStock(host, tab, options.stock!),
+              },
+            ]
+          : [
+              {
+                id: `mine-${tab}`,
+                layout: 'grid',
+                cards: () =>
+                  (options.media?.entries() ?? [])
+                    .filter((entry) => entry.kind === kind)
+                    .map(mediaCard),
+                empty: {
+                  title: t(`elements.mineEmpty.${tab}`),
+                  hint: t('elements.mineEmptyHint'),
+                },
+              },
+            ],
+    };
+  };
   const graphicsPage = (): BrowsePage => ({
     id: 'elements-graphics',
     title: t('elements.graphics'),
@@ -830,7 +870,12 @@ export function mountLibraryPanels(
                   icon,
                   className: 'browse-tile',
                   data: { tile: key },
-                  activate: () => panels.Elements.push(stockPage(key)),
+                  activate: () =>
+                    panels.Elements.push(
+                      key === 'photos' || key === 'videos'
+                        ? mediaPage(key)
+                        : stockPage(key),
+                    ),
                 }))
               : []),
             // FINAL2 U6: Tables opens the rows × columns picker.
@@ -858,28 +903,6 @@ export function mountLibraryPanels(
             })),
           ],
         },
-        // Videos and photos from the catalog sit right after the tiles,
-        // each in its own section, so they are not buried under shapes.
-        ...(['video', 'image'] as const).flatMap((kind): BrowseSection[] => {
-          const entries = () =>
-            (options.media?.entries() ?? []).filter(
-              (entry) => entry.kind === kind,
-            );
-          return entries().length
-            ? [
-                {
-                  id: `catalog-${kind}`,
-                  title: t(
-                    kind === 'video'
-                      ? 'elements.section.videos'
-                      : 'elements.section.photos',
-                  ),
-                  layout: 'strip',
-                  cards: () => entries().map(mediaCard),
-                },
-              ]
-            : [];
-        }),
         {
           id: 'shapes',
           title: t('elements.shapes'),

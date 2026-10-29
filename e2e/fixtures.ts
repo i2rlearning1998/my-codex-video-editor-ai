@@ -96,7 +96,12 @@ export const test = base.extend<Fixtures>({
         // ignored; a catalog request failing in any other way still counts.
         if (
           request.failure()?.errorText === 'net::ERR_ABORTED' &&
-          /\/__catalog\/|^http:\/\/127\.0\.0\.1:43\d\d\//.test(request.url())
+          // A media element dropped while a build swaps its file cancels
+          // its own blob read; that abort is not an error either.
+          (/\/__catalog\/|^http:\/\/127\.0\.0\.1:43\d\d\//.test(
+            request.url(),
+          ) ||
+            request.url().startsWith('blob:'))
         )
           return;
         errors.push(
