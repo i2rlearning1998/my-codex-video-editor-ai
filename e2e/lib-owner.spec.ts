@@ -149,7 +149,7 @@ test('[FIX7-019] the Editor controls tab switches buttons, tabs and menu entries
   await logIn(page);
   await page.locator('[data-tab="controls"]').click();
   await page.locator('#controls [data-type="shape"]').click();
-  await expect(page.locator('#controls .control-group')).toHaveCount(3);
+  await expect(page.locator('#controls .control-group')).toHaveCount(4);
   const box = page.locator('#controls [data-control="panel.shape.Effects"]');
   await expect(box).toBeChecked();
   await box.uncheck();

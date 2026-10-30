@@ -226,14 +226,20 @@ test('[AUD-021] the left Audio category is a sound pack: 12 sounds with length, 
   ]);
   // FIX1 F5 (D-291): stock music is its own library tab, not a planned tile.
   await expect(pack.locator('.sound-pack-stock')).toHaveCount(0);
-  // Hover plays a preview; leaving stops it.
+  // FIX5 C2: no preview on hover; the Play button starts it and a second
+  // press stops it (one preview at a time).
   const ding = pack.locator('.sound-tile[data-sound="ding"]');
   await ding.hover();
   await expect(ding.locator('.sound-tile-play')).toHaveAttribute(
     'aria-pressed',
+    'false',
+  );
+  await ding.locator('.sound-tile-play').click();
+  await expect(ding.locator('.sound-tile-play')).toHaveAttribute(
+    'aria-pressed',
     'true',
   );
-  await page.mouse.move(2, 2);
+  await ding.locator('.sound-tile-play').click();
   await expect(ding.locator('.sound-tile-play')).toHaveAttribute(
     'aria-pressed',
     'false',

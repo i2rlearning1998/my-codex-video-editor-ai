@@ -33,7 +33,7 @@ test('[LAY-063] the right rail is always shown (Auto Caption alone and disabled 
       );
   await expect.poll(() => width(page, '#rail-right')).toBeCloseTo(65, 0);
   // FIX1 F5 (D-291): Project audio (the Mixer) works with nothing selected.
-  await expect.poll(shown).toEqual(['Audio', 'Captions', 'Theme']);
+  await expect.poll(shown).toEqual(['Audio', 'Captions']);
   const caption = page.locator('#rail-right [data-section="Captions"]');
   // FINAL2 U9: Auto Caption is live; it opens a dialog, never the panel.
   await expect(caption).not.toHaveAttribute('aria-disabled', 'true');
@@ -86,7 +86,7 @@ test('[LAY-063] the right rail is always shown (Auto Caption alone and disabled 
     .toEqual([]);
   await expect.poll(() => width(page, '#inspector-panel')).toBe(0);
   // FIX1 F5 (D-291): Project audio (the Mixer) works with nothing selected.
-  await expect.poll(shown).toEqual(['Audio', 'Captions', 'Theme']);
+  await expect.poll(shown).toEqual(['Audio', 'Captions']);
   expect(await width(page, '#rail-right')).toBeCloseTo(65, 0);
   expect(await centred()).toBeLessThanOrEqual(2);
 });

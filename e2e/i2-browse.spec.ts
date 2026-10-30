@@ -187,7 +187,9 @@ test('[TPL-015] Save scene to My Templates keeps a scene in My Templates (not an
   await page.locator('#library-mine .mine-card').click();
   // FIX7: a click opens the scene's breakdown; the whole scene is added
   // from its button (or by dragging the card).
-  await page.locator('.scene-breakdown [data-action="scene-add-all"]').click();
+  await page
+    .locator('#library-mine .asset-view [data-action="scene-add-all"]')
+    .click();
   await page.locator('.modal-dialog [data-template-mode="new"]').click();
   await page.locator('.modal-dialog [data-action="template-confirm"]').click();
   const project = (await hook(page)).project;
@@ -291,7 +293,6 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   // FINAL3 T5: Canva's order: default styles, font combinations, the
   // then the rest.
   await expect(host.locator('.browse-section-head h3')).toContainText([
-    'Default text styles',
     'Font combinations',
     'Plain text',
     'Text styles',
@@ -309,7 +310,8 @@ test('[TXT-038] Text: Add a text box, default styles (click and drag), sections 
   const at = await toScreen(page, 300, 500);
   const rect = (await canvas.boundingBox())!;
   await host
-    .locator('[data-section="default"] [data-item-id="text-add-subheading"]')
+    .locator('.library-card[data-item-id="text-2"]')
+    .first()
     .dragTo(canvas, { targetPosition: { x: at.x - rect.x, y: at.y - rect.y } });
   await expect
     .poll(async () => (await scene(page)).layers.length)

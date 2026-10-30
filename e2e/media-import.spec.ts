@@ -188,13 +188,15 @@ test('[MED-003] every browser-decodable format imports; other files get a clear 
   const bytes = async () =>
     (await opfsKeys(page)).filter((key) => key.startsWith('media/'));
   const before = await bytes();
-  await importWithPicker(page, ['not_media.txt', 'corrupt_random_bytes.mp4']);
+  // (One toast at a time, FIX4 A1: each file is imported on its own.)
+  await importWithPicker(page, ['not_media.txt']);
   await expect(
     page.locator('.toast', {
       hasText:
         "not_media.txt can't be imported: only video, audio and image files are supported",
     }),
   ).toBeVisible();
+  await importWithPicker(page, ['corrupt_random_bytes.mp4']);
   await expect(
     page.locator('.toast', {
       hasText:

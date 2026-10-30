@@ -74,6 +74,13 @@ test.beforeAll(async () => {
 });
 test.afterAll(() => stack?.stop());
 
+/** Elements › a browse tile (Videos, Photos): out to the tiles, then in. */
+async function openElementsKind(page: Page, tile: string) {
+  await showCategory(page, 'Elements');
+  const back = page.locator('#library-elements [data-action="browse-back"]');
+  while (await back.isVisible()) await back.click();
+  await page.locator(`#library-elements [data-tile="${tile}"]`).click();
+}
 async function openEditor(page: Page) {
   await page.addInitScript((url) => {
     (window as { __AIVE_LIBRARY_CATALOG__?: string }).__AIVE_LIBRARY_CATALOG__ =
@@ -120,12 +127,20 @@ test('[LIB-022][LIB-020][LIB-023][LIB-029] every library category loads from the
   await expect(
     elements.locator('[data-item-id="shape-star-5"]').first(),
   ).toBeVisible();
+  // Videos and photos are browse categories of Elements (open, then back).
+  const openKind = async (tile: string) => {
+    await elements.locator(`[data-tile="${tile}"]`).click();
+  };
+  await openKind('videos');
   await expect(
     elements.locator('[data-catalog-id="video-test-clip"]'),
   ).toBeVisible();
+  await elements.locator('[data-action="browse-back"]').click();
+  await openKind('photos');
   await expect(
     elements.locator('[data-catalog-id="photo-test"]'),
   ).toBeVisible();
+  await elements.locator('[data-action="browse-back"]').click();
   await elements.locator('.browse-search-input').fill('terminator');
   await expect(
     elements.locator('[data-item-id="shape-flow-terminator"]'),
@@ -143,12 +158,14 @@ test('[LIB-022][LIB-020][LIB-023][LIB-029] every library category loads from the
   await showCategory(page, 'Audio');
   await expect(page.locator('#library-audio .sound-tile')).toHaveCount(12);
   await showCategory(page, 'Theme');
+  // The panel lists the ready-made themes once; the catalog's copies of the
+  // same themes are not shown a second time (FIX9-006).
   await expect(
-    page.locator('#library-extras-Theme [data-kind="theme"]'),
+    page.locator('#library-theme [data-group="builtin"] .theme-card'),
   ).toHaveCount(8);
   await expect(
-    page.locator('#library-extras-Theme [data-card-id="theme-dark-neon"]'),
-  ).toBeVisible();
+    page.locator('#library-extras-Theme [data-kind="theme"]'),
+  ).toHaveCount(0);
   await showCategory(page, 'AI');
   await expect(
     page.locator('#library-ai .shelf-tab[data-tab="style"]'),
@@ -350,8 +367,9 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
     .poll(async () => (await clientStatus(page)).source)
     .toBe('catalog');
   // Show every category once, so their cards (and prefetches) are in place.
-  for (const category of ['Templates', 'Text', 'Audio', 'Elements'])
+  for (const category of ['Templates', 'Text', 'Audio'])
     await showCategory(page, category);
+  await openElementsKind(page, 'videos');
   const elements = page.locator('#library-elements');
   await expect(
     elements.locator('[data-catalog-id="video-test-clip"]'),
@@ -408,7 +426,11 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
   };
   const center = await stage(page);
 
-  // Elements: a shape, by click and by drag.
+  // Elements: a shape, by click and by drag (found by search from the top).
+  await showCategory(page, 'Elements');
+  const top = page.locator('#library-elements [data-action="browse-back"]');
+  while (await top.isVisible()) await top.click();
+  await elements.locator('.browse-search-input').fill('star');
   await check('elements click', () =>
     elements.locator('[data-item-id="shape-star-5"]').first().click(),
   );
@@ -527,6 +549,7 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
   await check('video drag', () =>
     drag(page, '#library-elements [data-catalog-id="video-test-clip"]', center),
   );
+  await openElementsKind(page, 'photos');
   await check('photo click', () =>
     elements.locator('[data-catalog-id="photo-test"]').click(),
   );

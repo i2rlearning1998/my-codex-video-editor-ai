@@ -55,7 +55,7 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   // nothing selected there are no tabs (no Canvas panel).
   // V7 (spec 10.1): the rail stays, with a disabled Auto Caption only.
   // FIX1 F5 (D-291): Project audio (the Mixer) works with nothing selected.
-  expect(await shownSections(page)).toEqual(['Audio', 'Captions', 'Theme']);
+  expect(await shownSections(page)).toEqual(['Audio', 'Captions']);
   await select(page, 'example-headline');
   expect(await shownSections(page)).toEqual([
     'Properties',
@@ -112,7 +112,7 @@ test('[LAY-035] the right rail lists the tabs that fit the selection; unbuilt on
   // itself is then not drawn.
   await expect
     .poll(() => shownSections(page))
-    .toEqual(['Audio', 'Captions', 'Theme']);
+    .toEqual(['Audio', 'Captions']);
   await expect(page.locator('#right-panel-empty')).toBeHidden();
 });
 

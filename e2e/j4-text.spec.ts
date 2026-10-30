@@ -289,15 +289,26 @@ test('[TXT-003] copy and paste inside the editor, plain and rich', async ({
   expect(runs[1]).toMatchObject({ start: text.length, weight: 700 });
 });
 
-test('[TXT-002] the Text tool adds a text box at the click and opens it for typing', async ({
+test('[TXT-002] the Draw Text flyout adds a text box (a click on the canvas adds nothing) that is selected and can be typed into', async ({
   page,
 }) => {
   await page.locator('#rail-left [data-category="Draw"]').click();
   await page.locator('[data-palette-tool="text"]').click();
+  const before = (await hook(page)).project.compositions[0]!.layers.length;
   const at = await toScreen(page, 900, 120);
   await page.mouse.click(at.x, at.y);
-  await expect(editor(page)).toBeFocused();
+  expect((await hook(page)).project.compositions[0]!.layers.length).toBe(
+    before,
+  );
+  await page.locator('#draw-flyout .draw-text-tile').first().click();
+  await expect
+    .poll(async () => (await hook(page)).session.selectedIds.length)
+    .toBe(1);
   const id = (await hook(page)).session.selectedIds[0]!;
+  const centre = await toScreen(page, 640, 360);
+  await page.mouse.dblclick(centre.x, centre.y);
+  await expect(editor(page)).toBeFocused();
+  await page.keyboard.press('Control+a');
   await page.keyboard.type('Hello class');
   await page.keyboard.press('Escape');
   expect(await textOf(page, id)).toBe('Hello class');

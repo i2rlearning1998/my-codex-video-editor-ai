@@ -37,6 +37,7 @@ test('[TL-081] the Player bar shows its controls in order with 13 px labels, 20 
     'frame-forward',
     'forward-5',
     'last-frame',
+    'loop',
   ]);
   const left = page.locator('#timeline-foundation .transport-clip-tools');
   await expect(left.locator('button')).toHaveText([
