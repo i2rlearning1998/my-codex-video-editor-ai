@@ -143,6 +143,12 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
       h.textContent = heading;
       const grid = document.createElement('div');
       grid.className = 'theme-grid';
+      if (kind === 'saved' && !items.length) {
+        const empty = document.createElement('p');
+        empty.className = 'theme-empty';
+        empty.textContent = t('theme.mineEmpty');
+        grid.append(empty);
+      }
       for (const theme of items) {
         const card = document.createElement('div');
         card.className = 'theme-card';
@@ -255,11 +261,12 @@ export function mountThemePanel(host: HTMLElement, options: ThemePanelOptions) {
     };
     sync();
     saveRow.append(saveName, save);
-    // FIX9: the ready-made themes are the library's (the cards under this
-    // panel, owner-managed); this panel keeps only the person's own.
+    // The panel keeps its first layout: ready-made themes, then My themes,
+    // then Save. (FIX9: the library cards under it skip these same themes.)
     host.replaceChildren(
       line,
       overrideLabel,
+      group('builtin', t('theme.builtIn'), builtIn),
       group('saved', t('theme.mine'), saved),
       saveRow,
       message,

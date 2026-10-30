@@ -40,7 +40,7 @@ async function addHeading(page: Page) {
   const before = (await scene(page)).layers.length;
   await page
     .locator(
-      '#library-text .text-default-button[data-item-id="text-add-heading"]',
+      '#library-text .library-card[data-item-id="text-1"]',
     )
     .click();
   await expect

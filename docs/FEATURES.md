@@ -636,7 +636,7 @@ Vector shapes, stickers, icons, backgrounds and image styling.
 | SHP-024 | P1 | W2 | Verified | Signature (Draw panel): type a name in a script style, draw it on a pad or upload an image; it is added centred as one undo step and can be kept in this browser and added again with one click (H6 LCR) |
 | SHP-025 | P2 | W8 | Todo | Tables: insert and edit a table of cells |
 | SHP-026 | P0 | W5 | Verified | Elements panel: Recently used, Browse categories (Shapes and Graphics live; Photos, Videos, 3D, Animations, Audio, Tables, Charts, Frames and Grids planned with their wave), a Shapes page (Lines with solid, dashed, dotted, arrow and double arrow; Basic shapes; Polygons; Stars; Arrows; Flowchart shapes) and a Graphics page (Featured, Gradients, Backgrounds) |
-| SHP-027 | P0 | W2 | Verified | Draw palette at the canvas edge: Select; Draw with the brush flyout; Shape and Line drawn by dragging; Sticky note and Text by click (Text by drag for its width); Signature; Table planned; the left panel collapses while it is open and comes back when it closes; each placement is one undo step |
+| SHP-027 | P0 | W2 | Verified | Draw palette at the canvas edge: Select; Draw with the brush flyout; Shape, Line, Sticky note, Text and Table each add from their flyout (the canvas itself adds nothing); Signature; the left panel collapses while it is open and comes back when it closes; each placement is one undo step |
 | SHP-028 | P1 | W5 | Verified | Flowchart shapes in Elements › Shapes: terminator, process, decision, data, document, predefined process, connector, manual input, preparation, manual operation, delay, merge, off-page connector and display |
 | SHP-029 | P0 | W2 | Verified | A shape's Solid, Linear and Radial fills share one stop list: Solid shows the first stop, and switching away and back restores the stops exactly (J2 LCR) |
 
@@ -1195,7 +1195,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-002 | P0 | W9 | Verified | A build never picks, downloads or even searches stock or library media for a plan layer: a missing file stays missing and is listed by name |
 | FIX7-003 | P0 | W9 | Verified | A layer is filled only by the person's own media with the same name, or by a pick the person made |
 | FIX7-004 | P0 | W9 | Verified | Your own media shorter than its slot or the music never makes a clip longer than the file, so the build completes |
-| FIX7-005 | P0 | W9 | Verified | A saved scene's card opens a breakdown (AI, code, Media and editor counts, every part addable or draggable, Review & swap for media) and never drops the scene; the card shows the whole picture |
+| FIX7-005 | P0 | W9 | Verified | A saved scene's card opens its assets in the same panel (2 columns, a thumbnail and "Name (Kind)" each, scrolling, click or drag adds one, Back, Review & swap) and never drops the scene |
 | FIX7-006 | P0 | W9 | Verified | Saving an object in a format that does not fit (a shape as Text) explains it, recommends the right format and still saves when the person insists |
 | FIX7-007 | P1 | W9 | Verified | Text styles are saved to My Templates (Text); the Text panel no longer has My text styles |
 | FIX7-008 | P0 | W9 | Verified | A table is born inside the canvas with type that fits its columns, its box covers every row, and the toolbar adds and removes rows and columns |
@@ -1236,3 +1236,12 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-029 | P1 | W9 | Verified | The owner switches any built-in filter, effect or transition tile off per kind of selection (Editor controls tab, "Filters, effects and transitions shown"); it disappears from the editor from the signed catalog, with no release |
 | FIX7-030 | P1 | W9 | Verified | A font file (.ttf, .otf, .woff, .woff2) the owner publishes passes the gate (a fake one is refused), reaches the editor through the signed catalog and shows in the font picker under Library fonts; it sets the text and is cached for export and reopened projects |
 | FIX7-031 | P1 | W9 | Verified | Every toolbar button the editor shows for text, shapes, several selected and a group, and every right-click entry for text and shapes, is one the owner can switch off (Drawing, Group, Several and Text menu are all in the registry) |
+| FIX9-001 | P0 | W9 | Verified | Left panels never overlap: the Scene panel's search box sits above its first row at every window height |
+| FIX9-002 | P0 | W9 | Verified | Review & swap opened from an AI card finds its built scenes again (the saved scene list is healed against the project) and never says a scene was deleted while it is on the canvas |
+| FIX9-003 | P0 | W9 | Verified | Every left panel scrolls to its last card (AI, My Templates, Scene, Media, Audio, Theme, Draw) |
+| FIX9-004 | P0 | W9 | Verified | An AI composition card opens its assets in the same panel (never builds or adds by a click); an AI scene saved to My Templates has the AI menu with Review & swap and without Build again |
+| FIX9-005 | P0 | W9 | Verified | Auto captions run without an engine list (no Whisper or Deepgram for the person; the owner's engine and Whisper model come from the signed config), the multilingual small model is the default and downloads itself on first use, and caption lines fit the canvas so nothing is cut off on 9:16 |
+| FIX9-006 | P0 | W9 | Verified | Theme keeps its first layout on the left (Built-in themes, My themes with saved themes, Save); each theme is listed once (the shelf under it skips the built-in ones); no right-side Theme tab |
+| FIX9-007 | P0 | W9 | Verified | The Draw panel is Canva's: a click on the canvas never adds an object, Lines and Sticky note thumbnails draw real lines and notes, and a Text styles flyout adds text |
+| FIX9-008 | P1 | W9 | Verified | The Text panel lists each default text style once (the library cards); the duplicate built-in "Default text styles" buttons are gone |
+| FIX9-009 | P0 | W9 | Verified | Review & swap never says "This scene was deleted": media rows come from the plan, and a missing scene is built again by one button |

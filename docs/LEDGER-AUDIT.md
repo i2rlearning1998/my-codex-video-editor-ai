@@ -22,6 +22,10 @@ Each one now has a passing test with its ID in the title and is Verified, except
 
 DEV-012, APP-006, APP-007, APP-017, APP-018, APP-019, LOC-008, LOC-010, KEY-015, PRJ-015, PRJ-016, PRJ-017, MED-012, MED-032, CV-015, LYR-006, TL-022, TL-024, TL-026, TL-029, PB-006, VID-004, VID-008
 
+## E. FIX9 (30 Oct 2026)
+
+FIX9-001 to FIX9-007 (scene panel, review from card, scroll, in-panel asset views, captions and Whisper, themes, Draw) each have a passing test with the ID in its title.
+
 ## Not promoted
 
 - MED-003: its e2e fails on the base branch too (headless Chromium here lacks the codecs); run it on the Windows PC.

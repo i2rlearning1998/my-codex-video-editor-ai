@@ -1165,31 +1165,8 @@ export function mountLibraryPanels(
             host.append(add, magic);
           },
         },
-        // FINAL3 T5 (Canva): Default text styles: three big buttons, each
-        // drawn in its size; click adds it centred, drag places it.
-        {
-          id: 'default',
-          title: t('text.section.default'),
-          layout: 'list',
-          render: (host) => {
-            for (const item of DEFAULT_TEXT_ITEMS) {
-              const button = document.createElement('button');
-              button.type = 'button';
-              button.className = `text-default-button ${item.id}`;
-              button.dataset.itemId = item.id;
-              button.textContent = itemName(item);
-              button.onclick = () => actions.insert(item);
-              drags().source(button, () => ({
-                kind: 'library',
-                id: item.id,
-                name: itemName(item),
-              }));
-              host.append(button);
-            }
-          },
-        },
-        // The library's default styles (bold heading, subheading, body) stay
-        // as cards under the three buttons.
+        // FIX9: the library is the single source of the default styles (no
+        // second built-in copy above it).
         {
           id: 'default-library',
           layout: 'list',

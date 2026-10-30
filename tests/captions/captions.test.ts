@@ -120,10 +120,10 @@ describe('[CAP] auto caption', () => {
     expect(again.cues.every((cue) => cue.lines.length === 1)).toBe(true);
   });
 
-  it('refuses a word longer than a line', () => {
+  it('[FIX9-005] a word longer than a line stands alone on its own line', () => {
     expect(() =>
       captionTrackFromTranscription(transcription, { maxCharsPerLine: 3 }),
-    ).toThrow();
+    ).not.toThrow();
     expect(() =>
       captionTrackFromTranscription(transcription, { style: 'nope' as never }),
     ).toThrow(/Unknown caption style/);

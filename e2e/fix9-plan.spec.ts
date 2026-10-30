@@ -159,3 +159,55 @@ test('[FIX9-004] an AI composition card opens its assets in the same panel (neve
     page.locator('#library-mine .asset-view[data-page="review"]'),
   ).toBeVisible();
 });
+
+test('[FIX9-009] Review & swap never says "scene deleted": with the built scenes deleted the media rows still show and a scene that is missing is built again by one button', async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await page.addInitScript(() => {
+    (window as { __AIVE_E2E_SPEECH__?: boolean }).__AIVE_E2E_SPEECH__ = true;
+  });
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto('/');
+  await expect
+    .poll(async () => page.evaluate(() => '__AIVE__' in window))
+    .toBe(true);
+  await addOwnMedia(page, HONEY_MEDIA);
+  await showCategory(page, 'AI');
+  await page.locator('#library-ai #ai-import').click();
+  await page.locator('#ai-import-source').fill(PLAN);
+  await page.locator('[data-action="build-video"]').click();
+  await settleBuild(page);
+  await page.locator('.plan-build #plan-cancel').click();
+  await expect(page.locator('.plan-build')).toHaveCount(0);
+  const before = (await hook(page)).project.compositions.map((c) => c.id);
+  expect(before.length).toBeGreaterThanOrEqual(3);
+  // Delete the built scenes (the last scene of a project always stays), as
+  // the person did with the default template's scene.
+  await page.locator('#scene-board-toggle').click();
+  for (const id of before.slice(0, -1)) {
+    await page
+      .locator(
+        `.scene-card[data-scene-id="${id}"] [data-action="delete-scene"]`,
+      )
+      .click();
+  }
+  await expect
+    .poll(async () => (await hook(page)).project.compositions.length)
+    .toBe(1);
+  const card = page
+    .locator('#library-ai .shelf-item', { hasText: 'Where honey comes from' })
+    .first();
+  await showCategory(page, 'AI');
+  await card.locator('.shelf-card').click();
+  await page.locator('#library-ai [data-action="ai-assets-review"]').click();
+  const panel = page.locator('.plan-review');
+  await expect(panel.locator('[data-plan-layer]')).toHaveCount(2);
+  await expect(panel).not.toContainText('deleted');
+  // One button builds the missing scene again; still no message.
+  await panel.locator('[data-action="plan-regenerate"]').first().click();
+  await expect
+    .poll(async () => (await hook(page)).project.compositions.length)
+    .toBeGreaterThan(0);
+  await expect(page.locator('.plan-review')).not.toContainText('deleted');
+});

@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { test, expect, hook, showCategory } from './fixtures';
 import { importPack } from './creator-helpers';
 
-// T1: one-click themes, My themes and theme items from Creator Packs.
+// T1: one-click themes, My themes, the right Theme tab and theme items from
+// Creator Packs.
 const SUNNY = readFileSync('examples/creator-packs/theme-sunny.json', 'utf8');
 const SHAPE = readFileSync('examples/creator-packs/shape.json', 'utf8');
 const scene = async (page: import('@playwright/test').Page) =>
@@ -20,21 +21,22 @@ test('[QT-017][QT-018][QT-020] apply Dark Neon in one step, undo and redo; save,
 }) => {
   await showCategory(page, 'Theme');
   const panel = page.locator('#library-theme');
-  // FIX9-006: one list of ready-made themes (the library's cards), never a
-  // second built-in list above it.
-  await expect(panel.locator('.theme-group[data-group="builtin"]')).toHaveCount(
-    0,
-  );
-  const tiles = page.locator('#library-extras-Theme [data-kind="theme"]');
-  await expect(tiles).toHaveCount(8);
+  await expect(
+    panel.locator('.theme-group[data-group="builtin"] .theme-card'),
+  ).toHaveCount(8);
   const before = await scene(page);
   const steps = (await hook(page)).history.labels.length;
-  await tiles.filter({ hasText: 'Dark Neon' }).click();
+  await panel
+    .locator('.theme-card[data-theme-id="dark-neon"] .theme-apply')
+    .click();
   await expect
     .poll(async () => (await hook(page)).history.labels.length)
     .toBe(steps + 1);
   expect((await hook(page)).history.labels.at(-1)).toBe('Apply theme');
   expect((await scene(page)).backgroundColor).toBe('#0b0b1a');
+  await expect(
+    panel.locator('.theme-card[data-theme-id="dark-neon"] .theme-apply'),
+  ).toHaveAttribute('aria-pressed', 'true');
   await expect(panel.locator('.theme-current')).toHaveText(
     'Current theme: Dark Neon',
   );

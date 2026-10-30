@@ -4477,7 +4477,7 @@ export function mountEditorShell(
         shelf.closeDetail();
       },
       actions: [
-        ...(ids.length && title !== undefined
+        ...(title !== undefined && planState(engine.state.id, title)
           ? [
               {
                 id: 'ai-assets-review',
@@ -5582,6 +5582,9 @@ export function mountEditorShell(
       creatorCards: () => [
         ...catalog.payloads('styles').flatMap(({ entry, payload }) => {
           if (entry.kind !== 'theme') return [];
+          // The Theme panel lists the ready-made themes itself; this shelf
+          // shows only the ones it does not already have (no duplicates).
+          if (BUILT_IN_THEMES.some((built) => built.id === entry.id)) return [];
           const theme = payload as Theme;
           const card: BrowseCard = {
             id: `theme-${entry.id}`,

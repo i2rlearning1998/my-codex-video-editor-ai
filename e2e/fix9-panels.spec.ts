@@ -78,11 +78,13 @@ async function categories(page: Page) {
   );
 }
 
-for (const height of [773, 900]) {
-  test(`[FIX9-003] every left panel scrolls down to its last item (window ${height} px high, with an AI video built and a scene saved)`, async ({
-    page,
-  }) => {
-    test.setTimeout(240_000);
+const scrollCheck =
+  (height: number) =>
+  async (
+    { page }: { page: Page },
+    testInfo: { setTimeout(ms: number): void },
+  ) => {
+    testInfo.setTimeout(240_000);
     await page.setViewportSize({ width: 1600, height });
     await page.addInitScript(() => {
       (window as { __AIVE_E2E_SPEECH__?: boolean }).__AIVE_E2E_SPEECH__ = true;
@@ -195,17 +197,25 @@ for (const height of [773, 900]) {
       });
       expect(left, `${name}: content stays cut off below the panel`).toBe(0);
     }
-  });
-}
+  };
 
-test('[FIX9-006] Theme lives only on the left: each theme is listed once and the right side has no Theme tab or panel', async ({
+test(
+  '[FIX9-003] every left panel scrolls down to its last item (a 773 px high window, with an AI video built and a scene saved)',
+  scrollCheck(773),
+);
+test(
+  '[FIX9-003] every left panel scrolls down to its last item (a 900 px high window, with an AI video built and a scene saved)',
+  scrollCheck(900),
+);
+
+test('[FIX9-006] Theme keeps its first layout on the left (Built-in themes, My themes, Save) with each theme listed once; a saved theme appears under My themes; the right side has no Theme tab', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1600, height: 900 });
   await showCategory(page, 'Theme');
-  await expect(
-    page.locator('#library-extras-Theme [data-kind="theme"]').first(),
-  ).toBeVisible();
+  const panel = page.locator('#library-theme');
+  const built = panel.locator('[data-group="builtin"] .theme-card');
+  await expect(built).toHaveCount(8);
   const names = await page.evaluate(() =>
     [
       ...document.querySelectorAll(
@@ -217,6 +227,17 @@ test('[FIX9-006] Theme lives only on the left: each theme is listed once and the
   );
   expect(names.length).toBeGreaterThanOrEqual(8);
   expect(new Set(names).size, names.join(', ')).toBe(names.length);
+  // Order on the panel: ready-made, then My themes, then the Save row.
+  const order = await panel.evaluate((root) =>
+    [...root.children].map((child) => (child as HTMLElement).className),
+  );
+  expect(order.findIndex((c) => c.includes('theme-group'))).toBeGreaterThan(-1);
+  // Saving puts the theme under My themes in the same panel.
+  await panel.locator('#library-theme-save-name').fill('Mera test');
+  await panel.locator('#library-theme-save').click();
+  await expect(
+    panel.locator('[data-group="saved"] .theme-card', { hasText: 'Mera test' }),
+  ).toBeVisible();
   await expect(page.locator('#rail-right [data-section="Theme"]')).toBeHidden();
   await expect(page.locator('#right-theme')).toHaveCount(0);
   await page.screenshot({ path: 'reports/fix9/theme-panel.png' });

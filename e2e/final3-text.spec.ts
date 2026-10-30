@@ -63,7 +63,7 @@ async function addHeading(page: Page) {
   await showCategory(page, 'Text');
   await page
     .locator(
-      '#library-text .text-default-button[data-item-id="text-add-heading"]',
+      '#library-text .library-card[data-item-id="text-1"]',
     )
     .click();
   await expect.poll(async () => (await selectedLayer(page))?.type).toBe('text');
@@ -82,7 +82,7 @@ test.beforeEach(async ({ page }) => {
   await expect.poll(() => page.evaluate(() => '__AIVE__' in window)).toBe(true);
 });
 
-test('[FN3-005] a new heading is about 8 % of the canvas tall, one line tall, and "Shyam Monani" never wraps in auto width', async ({
+test('[FN3-005] a new heading (the Bold heading card) is about 10 % of the canvas tall, one line tall, and "Shyam Monani" never wraps in auto width', async ({
   page,
 }) => {
   await addHeading(page);
@@ -92,7 +92,7 @@ test('[FN3-005] a new heading is about 8 % of the canvas tall, one line tall, an
   )!;
   const layer = await selectedLayer(page);
   const size = layer.properties.fontSize!.value as number;
-  expect(size).toBeCloseTo(0.08 * scene.height, 0);
+  expect(size).toBeCloseTo(0.1 * scene.height, 0);
   expect(layer.properties.textBox!.value).toBe('auto');
   await typeInto(page, 'Shyam Monani');
   expect((await selectedLayer(page)).properties.text!.value).toBe(
@@ -254,16 +254,18 @@ test('[FN3-006] a list on one line gives one bullet; on three paragraphs three; 
   await page.screenshot({ path: 'reports/final3/b-text-list.png' });
 });
 
-test('[FN3-011][FIX7-007] the Text tab: search, the three default styles (click and drag), 24 font combinations in English and Hindi, text styles saved to My Templates', async ({
+test('[FN3-011][FIX7-007][FIX9-008] the Text tab: search, the three default styles (click and drag), 24 font combinations in English and Hindi, text styles saved to My Templates', async ({
   page,
 }) => {
   await showCategory(page, 'Text');
   const host = page.locator('#library-text');
-  await expect(host.locator('.text-default-button')).toHaveText([
-    'Add a heading',
-    'Add a subheading',
-    'Add a little bit of body text',
-  ]);
+  for (const id of ['text-1', 'text-2', 'text-3']) {
+    await expect(
+      host.locator(`.library-card[data-item-id="${id}"]`).first(),
+    ).toBeVisible();
+  }
+  // FIX9: the built-in duplicate block is gone; one set of styles only.
+  await expect(host.locator('.text-default-button')).toHaveCount(0);
   // The strip shows the first combinations; See all lists every one.
   await expect(
     host.locator('[data-section="combinations-built"] .library-card').first(),
@@ -300,7 +302,7 @@ test('[FN3-011][FIX7-007] the Text tab: search, the three default styles (click 
   // Drag "Add a subheading" onto the canvas.
   const canvas = page.locator('#composition-canvas');
   await host
-    .locator('.text-default-button[data-item-id="text-add-subheading"]')
+    .locator('.library-card[data-item-id="text-2"]').first()
     .dragTo(canvas);
   await expect
     .poll(async () => (await selectedLayer(page))?.properties.text?.value)

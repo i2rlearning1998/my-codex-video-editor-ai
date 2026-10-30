@@ -305,8 +305,10 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     const slot = timeline ? 0 : index;
     const old = state.sceneIds[slot];
     const current = deps.project();
-    const at = current.compositions.findIndex((c) => c.id === old);
-    if (at < 0) throw new Error(t('plan.sceneGone'));
+    const found = current.compositions.findIndex((c) => c.id === old);
+    // A scene that is no longer in the project is simply built again
+    // (never an error): it goes back where the plan has it.
+    const at = found >= 0 ? found : Math.min(slot, current.compositions.length);
     const single: VideoPlan = timeline
       ? state.plan
       : { ...state.plan, scenes: [state.plan.scenes[index]!] };
@@ -341,7 +343,14 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
         compositionId: fresh.id,
         index: at,
       } as unknown as Command,
-      { type: 'DELETE_COMPOSITION', compositionId: old } as unknown as Command,
+      ...(found >= 0
+        ? [
+            {
+              type: 'DELETE_COMPOSITION',
+              compositionId: old,
+            } as unknown as Command,
+          ]
+        : []),
     ]);
     // (Only once the scene is really in place.)
     if (deps.project().compositions.some((c) => c.id === fresh.id)) {
@@ -356,7 +365,8 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     layer: VideoPlan['scenes'][number]['layers'][number];
     index: number;
     ref: string;
-    composition: DeepReadonly<Composition>;
+    /** Absent when the scene is no longer in the project. */
+    composition: DeepReadonly<Composition> | undefined;
     built: ReturnType<typeof byRef>;
     flagged: boolean;
   };
@@ -365,11 +375,10 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       const composition = project.compositions.find(
         (c) => c.id === state.sceneIds[timeline ? 0 : index],
       );
-      if (!composition) continue;
       for (const layer of scene.layers) {
         if (layer.kind !== 'media' || !layer.mediaIntent) continue;
         if (layerKey(scene, layer) !== ref) continue;
-        const built = byRef(composition, ref);
+        const built = composition ? byRef(composition, ref) : undefined;
         return {
           scene,
           layer,
@@ -394,7 +403,7 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     deps.run('Swap media', [
       {
         type: 'SET_LAYER_ASSET',
-        compositionId: slot.composition.id,
+        compositionId: slot.composition!.id,
         layerId: target.id,
         assetId: asset.id,
       } as unknown as Command,
@@ -546,15 +555,9 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
     titleBox.append(title, meta);
     head.append(composition ? sceneThumb(composition.id) : '', titleBox);
     card.append(head);
-    if (!composition) {
-      const gone = document.createElement('p');
-      gone.className = 'right-note';
-      gone.textContent = t('plan.sceneGone');
-      card.append(gone);
-      root.append(card);
-      return;
-    }
-    head.onclick = () => deps.openScene(composition.id);
+    // The media always show (they come from the plan); a scene that is not
+    // in the project has one button: build it again.
+    if (composition) head.onclick = () => deps.openScene(composition.id);
     // Media slots: a picture, its name, whether it was found, one action.
     for (const layer of mediaLayers) {
       const ref = layerKey(scene, layer);
@@ -606,6 +609,18 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
         );
       }
       card.append(row);
+    }
+    if (!composition) {
+      card.append(
+        button(
+          'plan-regenerate',
+          t('plan.rebuild'),
+          () => regenerate(index),
+          'magic',
+        ),
+      );
+      root.append(card);
+      return;
     }
     // Everything else about the scene sits under one fold.
     const options = document.createElement('details');
