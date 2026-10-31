@@ -189,6 +189,17 @@ export class MyLibrary {
     this.#emit();
     await this.#save();
   }
+  /** FX10: Duplicate project: its items get a copy owned by `to`. */
+  async copyProject(from: string, to: string) {
+    const copies = this.#items
+      .filter((item) => item.projectId === from)
+      .map((item) => ({ ...item, id: crypto.randomUUID(), projectId: to }));
+    if (!copies.length) return 0;
+    this.#items = [...copies, ...this.#items];
+    this.#emit();
+    await this.#save();
+    return copies.length;
+  }
   async add(item: MineItem) {
     this.#items = [
       { ...item, projectId: this.scope() },

@@ -2808,6 +2808,7 @@
   "importLib.selectAll": "सभी चुनें",
   "importLib.empty": "आपके दूसरे प्रोजेक्ट में अभी कुछ सेव नहीं है।",
   "importLib.noMatch": "खोज से कुछ नहीं मिला।",
+  "importLib.theme": "थीम",
   "importLib.earlier": "पहले के आइटम (प्रोजेक्ट से पहले सेव किए)",
   "importLib.mine.button": "अपने क्लाउड से टेम्पलेट इम्पोर्ट करें",
   "importLib.mine.title": "अपने क्लाउड से टेम्पलेट इम्पोर्ट करें",

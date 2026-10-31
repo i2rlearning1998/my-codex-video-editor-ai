@@ -187,6 +187,7 @@ export function mountShelf(options: ShelfOptions): Shelf {
     button.id = action.id;
     button.innerHTML = `${iconSvg(action.icon, 16)}<span></span>`;
     button.querySelector('span')!.textContent = action.label;
+    button.title = action.label;
     button.onclick = () => {
       try {
         action.run();

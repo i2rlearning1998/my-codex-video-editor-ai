@@ -2808,6 +2808,7 @@
   "importLib.selectAll": "Select all",
   "importLib.empty": "Nothing saved in your other projects yet.",
   "importLib.noMatch": "Nothing matches your search.",
+  "importLib.theme": "Theme",
   "importLib.earlier": "Earlier items (saved before projects)",
   "importLib.mine.button": "Import Templates from your Cloud",
   "importLib.mine.title": "Import Templates from your Cloud",

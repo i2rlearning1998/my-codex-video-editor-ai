@@ -216,6 +216,34 @@ export function createThemeLibrary(store: ThemeStore) {
         return null;
       }
     });
+  /**
+   * FX10: a copy of a saved theme (and the feel beside it) under a new id and
+   * a name no other theme uses; the original stays where it is.
+   */
+  const copyTheme = (id: string) =>
+    serial(async () => {
+      const all = await read();
+      const theme = all.find((entry) => entry.id === id);
+      if (!theme) throw new ThemeError('NOT_FOUND', 'Saved theme not found.');
+      const taken = new Set(
+        [...BUILT_IN_THEMES, ...all].map((entry) => entry.name.toLowerCase()),
+      );
+      let name = theme.name;
+      for (let n = 2; taken.has(name.toLowerCase()); n++)
+        name = `${theme.name.slice(0, 34)} (${n})`;
+      const prefix = id.startsWith('feel-') ? 'feel' : 'my';
+      const value: Theme = {
+        ...structuredClone(theme),
+        id: `${prefix}-${crypto.randomUUID()}`,
+        name,
+      };
+      await write(value);
+      const feel = (await store.keys()).includes(`feel/${id}`)
+        ? await store.read(`feel/${id}`)
+        : null;
+      if (feel) await store.write(`feel/${value.id}`, feel);
+      return value;
+    });
   const migrateThemes = (
     project: EditorEngine,
     onMoved?: (id: string) => void,
@@ -292,6 +320,7 @@ export function createThemeLibrary(store: ThemeStore) {
     saveTheme,
     renameTheme,
     deleteTheme,
+    copyTheme,
     migrateThemes,
     applyTheme,
     saveFeelTheme,

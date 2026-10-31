@@ -161,8 +161,9 @@ export function mountWorkspace(
       // T-ALL P3 (spec 6): the preview keeps at least 260 px.
       Math.min(
         window.innerHeight * LIMITS.timeline[1],
-        // V2 (spec 2): the preview keeps at least 160 px.
-        Math.max(LIMITS.timeline[0], window.innerHeight - 160 - 56),
+        // FX11: the stage (toolbars plus canvas) keeps at least 400 px, so
+        // the canvas never shrinks to a thumbnail when the timeline grows.
+        Math.max(LIMITS.timeline[0], window.innerHeight - 400),
         value,
       ),
     );

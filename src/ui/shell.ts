@@ -4576,7 +4576,7 @@ export function mountEditorShell(
     shelf.openDetail(view.element);
   };
   // FX10: Import Templates / AI templates from the user's other projects.
-  const importGroups = async <T extends { projectId?: string }>(
+  const importGroups = async <T extends { projectId?: string | undefined }>(
     all: readonly T[],
     toItem: (entry: T) => ImportGroup['items'][number],
   ): Promise<ImportGroup[]> => {
@@ -4606,21 +4606,53 @@ export function mountEditorShell(
       role: 'mine',
       title: t('importLib.mine.title'),
       intro: t('importLib.mine.intro'),
-      groups: () =>
-        importGroups(myLibrary.listAll(), (item) => ({
-          id: item.id,
-          name: item.name,
-          ...(item.poster ? { thumb: item.poster } : {}),
-          detail: mineKindLabel(item.kind),
-        })),
+      groups: async () => {
+        const library = await themeLibrary;
+        const themes = library
+          ? (await library.listThemes()).filter(
+              (theme) => !builtInThemeIds.has(theme.id),
+            )
+          : [];
+        return importGroups(
+          [
+            ...myLibrary.listAll().map((item) => ({
+              projectId: item.projectId,
+              row: {
+                id: item.id,
+                name: item.name,
+                ...(item.poster ? { thumb: item.poster } : {}),
+                detail: mineKindLabel(item.kind),
+              },
+            })),
+            ...themes.map((theme) => ({
+              projectId: owners.ownerOf(theme.id),
+              row: {
+                id: `theme:${theme.id}`,
+                name: theme.name,
+                detail: t('importLib.theme'),
+              },
+            })),
+          ],
+          (entry) => entry.row,
+        );
+      },
       importItems: async (ids) => {
         let count = 0;
         for (const id of ids) {
+          if (id.startsWith('theme:')) {
+            const library = await themeLibrary;
+            if (!library) continue;
+            const copy = await library.copyTheme(id.slice(6));
+            owners.claim(copy.id, engine.state.id);
+            count++;
+            continue;
+          }
           const item = myLibrary.listAll().find((entry) => entry.id === id);
           if (!item) continue;
           await myLibrary.importCopy(item);
           count++;
         }
+        await refreshThemes();
         return count;
       },
       done: (count) =>
@@ -5146,9 +5178,14 @@ export function mountEditorShell(
   const refreshThemes = async () => {
     const library = await themeLibrary;
     if (!library) return;
+    // FX10: themes saved before projects existed join the open project once.
+    const everything = await library.listThemes();
+    for (const theme of everything)
+      if (!builtInThemeIds.has(theme.id) && !owners.ownerOf(theme.id))
+        owners.claim(theme.id, engine.state.id);
     // FX10: only this project's saved themes are listed.
     const owned = owners.ownedBy(engine.state.id);
-    libraryThemes = (await library.listThemes()).filter(
+    libraryThemes = everything.filter(
       (theme) => !builtInThemeIds.has(theme.id) && owned.has(theme.id),
     );
     // FINAL3 V4: what a feel theme adds (transition, camera, pacing).
@@ -8265,6 +8302,21 @@ export function mountEditorShell(
     message,
     refresh,
     setSaveStatus,
+    /** FX10: Duplicate project copies the project-wise libraries too. */
+    copyProjectLibraries: async (from: string, to: string) => {
+      await myLibrary.copyProject(from, to);
+      await creatorLibrary.copyProject(from, to);
+      const library = await themeLibrary;
+      if (!library) return;
+      for (const id of owners.ownedBy(from)) {
+        try {
+          const copy = await library.copyTheme(id);
+          owners.claim(copy.id, to);
+        } catch {
+          // A theme that is gone is simply not copied.
+        }
+      }
+    },
     dispose: () => {
       libraryBrowsers.dispose();
       if (disposed) return;

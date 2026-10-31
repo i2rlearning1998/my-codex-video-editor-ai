@@ -1259,3 +1259,6 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FX10-013 | P0 | W10 | Verified | A file another import added while this one was being stored counts as already in Project Media; it never fails with "Asset ID already exists" |
 | FX10-014 | P0 | W10 | Verified | The build dialog and Review & swap count the same missing files (each file once, music and sound effects included) |
 | FX10-015 | P0 | W10 | Verified | Building a video again asks first (Replace, Keep both, Cancel): Replace swaps the earlier scenes for the new ones in one step that Undo brings back; Keep both adds the new ones beside the earlier ones |
+| FX11-001 | P1 | W10 | Verified | Duplicate project copies its My Templates, AI compositions and saved themes into the copy; the original keeps its own |
+| FX11-002 | P1 | W10 | Verified | Import Templates from your Cloud also lists the saved themes of other projects (grouped by project) and copies the chosen ones under a free name |
+| FX11-004 | P2 | W10 | Verified | The timeline cannot be dragged so tall that the stage drops under 400 px (the canvas stays usable); a long panel action label ends in an ellipsis inside its button |

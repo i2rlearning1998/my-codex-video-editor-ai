@@ -52,13 +52,13 @@ test('[LAY-048] the Player bar is the top edge of the timeline and its resize gr
       .locator('#timeline-foundation [data-action="play"]')
       .evaluate((item) => getComputedStyle(item).cursor),
   ).not.toBe('row-resize');
-  // Dragging the bar up by 120 px makes the timeline 120 px taller.
+  // Dragging the bar up by 60 px makes the timeline 60 px taller.
   const before = await height(page);
   await page.mouse.move(spot.x, spot.y);
   await page.mouse.down();
-  await page.mouse.move(spot.x, spot.y - 120, { steps: 8 });
+  await page.mouse.move(spot.x, spot.y - 60, { steps: 8 });
   await page.mouse.up();
-  await expect.poll(() => height(page)).toBeCloseTo(before + 120, 0);
+  await expect.poll(() => height(page)).toBeCloseTo(before + 60, 0);
   await page.screenshot({ path: testInfo.outputPath('taller.png') });
   // A press on a control does not resize.
   const play = page.locator('#timeline-foundation [data-action="split"]');
@@ -83,17 +83,18 @@ test('[LAY-048] the Player bar is the top edge of the timeline and its resize gr
   await expect(page.locator('.editor-shell')).not.toHaveClass(
     /timeline-collapsed/,
   );
-  // At most 60% of the window.
+  // At most 60% of the window, and the stage keeps 400 px (FX11-004).
   from = await emptySpot(page);
   await page.mouse.move(from.x, from.y);
   await page.mouse.down();
   await page.mouse.move(from.x, 2, { steps: 8 });
   await page.mouse.up();
   const window = page.viewportSize()!.height;
-  await expect.poll(() => height(page)).toBeCloseTo(window * 0.6, 0);
+  const limit = Math.min(window * 0.6, window - 400);
+  await expect.poll(() => height(page)).toBeCloseTo(limit, 0);
   // Remembered after a reload.
   await page.reload();
-  await expect.poll(() => height(page)).toBeCloseTo(window * 0.6, 0);
+  await expect.poll(() => height(page)).toBeCloseTo(limit, 0);
 });
 
 test('[LAY-049] the scene strip is hidden by default; the button left of Scenes slides it in and out and the choice is remembered', async ({

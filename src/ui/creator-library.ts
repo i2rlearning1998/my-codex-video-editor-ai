@@ -165,6 +165,17 @@ export class CreatorLibrary {
     this.#emit();
     await this.#save();
   }
+  /** FX10: Duplicate project: its items get a copy owned by `to`. */
+  async copyProject(from: string, to: string) {
+    const copies = this.#entries
+      .filter((entry) => entry.projectId === from && !entry.removed)
+      .map((entry) => ({ ...entry, projectId: to }));
+    if (!copies.length) return 0;
+    this.#entries = [...this.#entries, ...copies];
+    this.#emit();
+    await this.#save();
+    return copies.length;
+  }
   async #update(key: string, change: Partial<CreatorEntry>) {
     this.#entries = this.#entries.map((entry) =>
       entry.key === key && this.#mine(entry) ? { ...entry, ...change } : entry,

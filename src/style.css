@@ -12067,3 +12067,18 @@ body:has(.modal-backdrop) .toast-stack {
   animation-duration: 2s !important;
   animation-iteration-count: infinite !important;
 }
+
+/* FX11: a long action label ends in an ellipsis inside its button (the
+   full text is the button's title) instead of running out of it. */
+.shelf .shelf-actions .button {
+  overflow: hidden;
+}
+.shelf .shelf-actions .button > svg {
+  flex: none;
+}
+.shelf .shelf-actions .button > span {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

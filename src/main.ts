@@ -174,7 +174,9 @@ const shell = mountEditorShell(
       },
       duplicate: async (id) => {
         if (id === engine.state.id) await mirrorNow();
-        await library.duplicate(id, t('projects.copy'));
+        const copyId = await library.duplicate(id, t('projects.copy'));
+        // FX10: its My Templates, AI compositions and themes come along.
+        if (copyId) await shell.copyProjectLibraries(id, copyId);
       },
       remove: (id) => library.remove(id),
     },
