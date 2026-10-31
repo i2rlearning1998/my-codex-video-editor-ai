@@ -47,6 +47,8 @@ export interface AiPanelOptions {
   /** Applies a preset to the selected layer (library id). */
   readonly applyPreset: (id: string) => void;
   readonly importPack: () => void;
+  /** FX10: copy AI templates from the user's other projects into this one. */
+  readonly importLibrary?: () => void;
   readonly copyBrief: () => void;
   /** A motion item's live hover preview (returns its stop), if any. */
   readonly motionPreview?: (
@@ -239,6 +241,17 @@ export function mountAiPanel(host: HTMLElement, options: AiPanelOptions) {
         primary: !options.newVideo,
         run: () => options.copyBrief(),
       },
+      ...(options.importLibrary
+        ? [
+            {
+              id: 'ai-import-library',
+              label: t('importLib.ai.button'),
+              icon: 'download',
+              wide: true,
+              run: () => options.importLibrary!(),
+            },
+          ]
+        : []),
     ],
     categoryLabel: (kind) => {
       if (kind.startsWith('sub:')) {

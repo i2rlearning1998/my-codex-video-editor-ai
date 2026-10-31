@@ -52,8 +52,25 @@ export class IdbBackend implements ProjectBackend {
       const request = indexedDB.open(this.name, 1);
       request.onupgradeneeded = () =>
         request.result.createObjectStore(STORE, { keyPath: 'id' });
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const db = request.result;
+        // FX10: the browser may close the connection; the next call opens
+        // it again instead of failing with "The database connection is
+        // closing" (which left the Projects list empty).
+        const forget = () => {
+          this.#db = undefined;
+        };
+        db.onclose = forget;
+        db.onversionchange = () => {
+          db.close();
+          forget();
+        };
+        resolve(db);
+      };
+      request.onerror = () => {
+        this.#db = undefined;
+        reject(request.error);
+      };
     });
     return this.#db;
   }
@@ -61,12 +78,21 @@ export class IdbBackend implements ProjectBackend {
     mode: IDBTransactionMode,
     work: (store: IDBObjectStore) => IDBRequest<T>,
   ): Promise<T> {
-    const db = await this.#open();
-    return new Promise<T>((resolve, reject) => {
-      const request = work(db.transaction(STORE, mode).objectStore(STORE));
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    const attempt = async () => {
+      const db = await this.#open();
+      return new Promise<T>((resolve, reject) => {
+        const request = work(db.transaction(STORE, mode).objectStore(STORE));
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    };
+    try {
+      return await attempt();
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'InvalidStateError') throw error;
+      this.#db = undefined;
+      return attempt();
+    }
   }
   all() {
     return this.#run('readonly', (store) => store.getAll());

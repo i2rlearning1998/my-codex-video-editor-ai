@@ -216,7 +216,10 @@ export function createThemeLibrary(store: ThemeStore) {
         return null;
       }
     });
-  const migrateThemes = (project: EditorEngine) =>
+  const migrateThemes = (
+    project: EditorEngine,
+    onMoved?: (id: string) => void,
+  ) =>
     serial(async () => {
       // Existing library values win; never overwrite a newer rename with an old marker.
       const existing = new Set((await read()).map((theme) => theme.id));
@@ -226,6 +229,7 @@ export function createThemeLibrary(store: ThemeStore) {
           const theme = decodeTheme(marker.label);
           if (!theme || existing.has(theme.id)) continue;
           await write(theme);
+          onMoved?.(theme.id);
           existing.add(theme.id);
           moved++;
         }

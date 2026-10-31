@@ -243,8 +243,13 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
   // FIX7: the panel says first whether the video still misses media; the
   // plan's own tools (Export, Compare, Save feel) sit under "More".
   const flaggedCount = () => {
-    let missing = 0;
-    let found = 0;
+    // FX10: each FILE once, as the build dialog counts them ("10 files are
+    // missing" there and "11 missing" here was one file used by two layers).
+    const missingFiles = new Set<string>();
+    const foundFiles = new Set<string>();
+    // The same list the build dialog shows: music and sound effects count too.
+    for (const flag of state.flags)
+      if (flag.name) missingFiles.add(`${flag.type ?? 'photo'}:${flag.name}`);
     state.plan.scenes.forEach((scene, index) => {
       const composition = project.compositions.find(
         (c) => c.id === state.sceneIds[timeline ? 0 : index],
@@ -253,11 +258,16 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       for (const layer of scene.layers) {
         if (layer.kind !== 'media' || !layer.mediaIntent) continue;
         const built = byRef(composition, layerKey(scene, layer));
-        if (built?.properties.planFlag?.value === 'needs-asset') missing++;
-        else found++;
+        const file = `${layer.mediaIntent.type ?? 'photo'}:${layer.mediaIntent.query}`;
+        if (built?.properties.planFlag?.value === 'needs-asset')
+          missingFiles.add(file);
+        else foundFiles.add(file);
       }
     });
-    return { missing, found };
+    return {
+      missing: missingFiles.size,
+      found: [...foundFiles].filter((file) => !missingFiles.has(file)).length,
+    };
   };
   const counts = flaggedCount();
   const status = document.createElement('p');

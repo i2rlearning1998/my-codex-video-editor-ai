@@ -20,7 +20,16 @@ export interface PlanState {
   sceneIds: (string | null)[];
   /** Further stock pages already fetched per layer. */
   pages: Record<string, number>;
+  /** FX10: scenes of earlier builds of this plan. Undo may bring one back,
+   *  and the card then reads Built again: it follows the canvas. */
+  earlier?: string[];
 }
+
+/** Every scene id this state ever built (the current build first). */
+export const allSceneIds = (state: PlanState): string[] => [
+  ...state.sceneIds.filter((id): id is string => !!id),
+  ...(state.earlier ?? []),
+];
 const key = (projectId: string) => `aive.videoPlan.${projectId}`;
 // FIX6: every built plan keeps its own state (by title), so a second import
 // no longer turns the first card into "Not built" or takes its Review away.
@@ -152,7 +161,11 @@ function intern(projectId: string, state: PlanState): PlanState {
   const all =
     memoryAll.get(projectId) ??
     memoryAll.set(projectId, new Map()).get(projectId)!;
-  const known = all.get(title) ?? (memory.get(projectId)?.plan.meta.title === title ? memory.get(projectId) : undefined);
+  const known =
+    all.get(title) ??
+    (memory.get(projectId)?.plan.meta.title === title
+      ? memory.get(projectId)
+      : undefined);
   if (known) {
     all.set(title, known);
     return known;
@@ -175,9 +188,7 @@ export function planState(projectId: string, title?: string): PlanState | null {
     }
   } else {
     found =
-      memoryAll.get(projectId)?.get(title) ??
-      readAll(projectId)[title] ??
-      null;
+      memoryAll.get(projectId)?.get(title) ?? readAll(projectId)[title] ?? null;
     if (found) found = intern(projectId, found);
   }
   return found ? heal(projectId, found) : null;

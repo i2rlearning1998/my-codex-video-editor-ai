@@ -183,6 +183,16 @@ test('[TPL-015] Save scene to My Templates keeps a scene in My Templates (not an
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
   await showCategory(page, 'MyTemplates');
+  // FX10: the reloaded editor opens a new project; the saved scene comes
+  // back by "Import Templates from your Cloud".
+  await page.locator('#mine-import-library').click();
+  await page
+    .locator('.import-dialog [data-role="mine-import-all"]')
+    .first()
+    .click();
+  await page
+    .locator('.import-dialog [data-role="mine-import-confirm"]')
+    .click();
   const before = (await hook(page)).project.compositions.length;
   await page.locator('#library-mine .mine-card').click();
   // FIX7: a click opens the scene's breakdown; the whole scene is added

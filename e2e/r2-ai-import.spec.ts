@@ -192,5 +192,10 @@ test('[RA-007] code animations saved in Templates before move to AI › Motion; 
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
   await showCategory(page, 'AI');
-  await expect(card).toHaveCount(1);
+  // FX10: the reloaded editor opens a new project; the animation is kept
+  // once in the library and comes back by import, not as a second copy.
+  await page.locator('#ai-import-library').click();
+  await expect(
+    page.locator('.import-dialog .import-row', { hasText: 'Old pulse' }),
+  ).toHaveCount(1);
 });

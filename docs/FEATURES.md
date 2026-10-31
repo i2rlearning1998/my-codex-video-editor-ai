@@ -1245,3 +1245,17 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX9-007 | P0 | W9 | Verified | The Draw panel is Canva's: a click on the canvas never adds an object, Lines and Sticky note thumbnails draw real lines and notes, and a Text styles flyout adds text |
 | FIX9-008 | P1 | W9 | Verified | The Text panel lists each default text style once (the library cards); the duplicate built-in "Default text styles" buttons are gone |
 | FIX9-009 | P0 | W9 | Verified | Review & swap never says "This scene was deleted": media rows come from the plan, and a missing scene is built again by one button |
+| FX10-001 | P0 | W10 | Verified | The media store (IndexedDB fallback) opens its connection again when the browser closed it, so an import never fails with "The database connection is closing"; a browser that never answers OPFS falls back after 4 s |
+| FX10-002 | P0 | W10 | Verified | A new project starts with no AI composition of the earlier project: AI items (My library), My Templates and saved themes belong to the project they were made in |
+| FX10-003 | P0 | W10 | Verified | An AI card keeps every build of its composition listed, so its Built, Needs assets or Not built follows the scenes on the canvas, also after Undo and Redo |
+| FX10-004 | P0 | W10 | Verified | My Templates and AI have an import button (Import Templates from your Cloud, Import AI templates from your AI libraries): a dialog lists other projects' items grouped by project with search and many-at-once choice, and copies only the chosen ones into the open project |
+| FX10-005 | P0 | W10 | Verified | Deleting an AI composition card leaves its feel theme card, and Undo and Redo never change the AI list |
+| FX10-007 | P0 | W10 | Verified | The Projects library storage opens its connection again when the browser closed it, so the Projects list is never empty because of a closed connection |
+| FX10-008 | P0 | W10 | Verified | The editor has a Cloud storage button: a master switch plus one switch per group (Project, Media, My Templates and Themes, AI compositions) with its count and size, kept across reloads; ON sends what exists and then follows every change, and the panel says when no cloud account is connected yet |
+| FX10-009 | P0 | W10 | Verified | The browser Back button first asks "Save to your cloud?" (Save, Leave without saving, Stay here); Save sends once without turning the switch on |
+| FX10-010 | P0 | W10 | Verified | Play never fails with "setValueCurveAtTime overlaps": a long clip's gain curves are scheduled in chunks that never touch |
+| FX10-011 | P0 | W10 | Verified | A loader (build and import spinners, stock and effect loading) keeps turning, slowly, when the system asks for reduced motion or Animations is Off, so a build or import never looks frozen |
+| FX10-012 | P0 | W10 | Verified | Choosing the right rail Animate tab right after selecting an object shows the Animate presets at once (not only the "Open 2D animation" button) |
+| FX10-013 | P0 | W10 | Verified | A file another import added while this one was being stored counts as already in Project Media; it never fails with "Asset ID already exists" |
+| FX10-014 | P0 | W10 | Verified | The build dialog and Review & swap count the same missing files (each file once, music and sound effects included) |
+| FX10-015 | P0 | W10 | Verified | Building a video again asks first (Replace, Keep both, Cancel): Replace swaps the earlier scenes for the new ones in one step that Undo brings back; Keep both adds the new ones beside the earlier ones |

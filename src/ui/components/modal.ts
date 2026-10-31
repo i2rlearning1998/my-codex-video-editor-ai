@@ -145,6 +145,43 @@ export function confirmDialog(
   });
 }
 
+/** FX10: a message with several buttons; resolves with the chosen id, or
+ *  null when closed (Escape, the x, the backdrop). */
+export function choiceDialog(
+  message: string,
+  options: {
+    titleText: string;
+    choices: readonly { id: string; label: string; primary?: boolean }[];
+  },
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value: string | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const handle = openModal({
+      titleText: options.titleText,
+      bodyHtml: `<p class="modal-message">${message}</p>
+        <div class="modal-actions">${options.choices
+          .map(
+            (choice) =>
+              `<button type="button" class="button ${choice.primary ? 'primary' : ''}" data-choice="${escapeHtml(choice.id)}">${escapeHtml(choice.label)}</button>`,
+          )
+          .join('')}</div>`,
+      onClose: () => settle(null),
+    });
+    for (const button of handle.root.querySelectorAll<HTMLButtonElement>(
+      '[data-choice]',
+    ))
+      button.addEventListener('click', () => {
+        settle(button.dataset.choice!);
+        handle.close();
+      });
+  });
+}
+
 /** I1.7: a one-field text dialog. Resolves to the trimmed text, or null when
  *  cancelled or left empty. Enter confirms, Escape cancels. */
 export function promptDialog(

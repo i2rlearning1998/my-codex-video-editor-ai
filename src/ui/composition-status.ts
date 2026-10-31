@@ -73,7 +73,14 @@ export function rememberBuilt(
     const all = JSON.parse(
       storage?.getItem(storeKey(projectId)) ?? '{}',
     ) as Record<string, unknown>;
-    all[key] = [...sceneIds];
+    // FX10: earlier builds stay listed; the card follows what is on the
+    // canvas (Undo can bring an earlier scene back).
+    const before = Array.isArray(all[key])
+      ? (all[key] as unknown[]).filter(
+          (id): id is string => typeof id === 'string',
+        )
+      : [];
+    all[key] = [...new Set([...sceneIds, ...before])];
     storage?.setItem(storeKey(projectId), JSON.stringify(all));
   } catch {
     // Browser storage is a convenience: a card simply reads "Not built".

@@ -31,6 +31,8 @@ export interface CreatorEntry {
   /** Soft-deleted (Restore brings it back). */
   readonly removed?: boolean;
   readonly addedAt: string;
+  /** FX10: the project this item belongs to (none: saved before projects). */
+  readonly projectId?: string;
 }
 
 /** The library id of a creator item (library ids allow no slash). */
@@ -49,8 +51,31 @@ export class CreatorLibrary {
   readonly ready: Promise<void>;
   #write: Promise<void> = Promise.resolve();
 
-  constructor(private readonly store: Promise<MediaStore | null>) {
+  /**
+   * FX10: an item belongs to one project; a panel lists only the open
+   * project's (a new project starts empty). `scope` names the open project.
+   */
+  constructor(
+    private readonly store: Promise<MediaStore | null>,
+    private readonly scope: () => string = () => '',
+  ) {
     this.ready = this.#load();
+  }
+  #mine = (entry: CreatorEntry) => entry.projectId === this.scope();
+  /** The open project changed: panels read the list again. */
+  rescope() {
+    this.#emit();
+  }
+  /** FX10: every project's own items (for Import AI templates), newest first. */
+  listAll(): readonly CreatorEntry[] {
+    return this.#entries
+      .filter((entry) => !entry.removed)
+      .sort((a, b) => b.addedAt.localeCompare(a.addedAt));
+  }
+  /** FX10: a copy of another project's item, owned by the open project. */
+  async importCopy(entry: CreatorEntry) {
+    const { projectId: _from, removed: _removed, ...rest } = entry;
+    await this.add([{ ...rest, addedAt: new Date().toISOString() }]);
   }
   async #load() {
     try {
@@ -59,6 +84,14 @@ export class CreatorLibrary {
       if (Array.isArray(parsed)) this.#entries = parsed as CreatorEntry[];
     } catch {
       this.#entries = [];
+    }
+    // FX10: an item saved before projects existed joins the open project.
+    const project = this.scope();
+    if (project && this.#entries.some((entry) => !entry.projectId)) {
+      this.#entries = this.#entries.map((entry) =>
+        entry.projectId ? entry : { ...entry, projectId: project },
+      );
+      void this.#save().catch(() => undefined);
     }
     this.#emit();
   }
@@ -83,13 +116,15 @@ export class CreatorLibrary {
 
   /** Items shown in the panels (soft-deleted ones are hidden). */
   list(): readonly CreatorEntry[] {
-    const own = this.#entries.filter((entry) => !entry.removed);
+    const own = this.#entries.filter(
+      (entry) => !entry.removed && this.#mine(entry),
+    );
     const keys = new Set(own.map((entry) => entry.key));
     return [...this.#builtIn.filter((entry) => !keys.has(entry.key)), ...own];
   }
   find(key: string): CreatorEntry | undefined {
     return (
-      this.#entries.find((entry) => entry.key === key) ??
+      this.#entries.find((entry) => entry.key === key && this.#mine(entry)) ??
       this.#builtIn.find((entry) => entry.key === key)
     );
   }
@@ -105,7 +140,7 @@ export class CreatorLibrary {
   /** The version of a pack already in the library, or null. */
   packVersion(packId: string): number | null {
     const entry = this.#entries.find(
-      (item) => item.packId === packId && !item.removed,
+      (item) => item.packId === packId && !item.removed && this.#mine(item),
     );
     return entry ? entry.packVersion : null;
   }
@@ -115,20 +150,24 @@ export class CreatorLibrary {
    */
   async add(entries: readonly CreatorEntry[], replacePack?: string) {
     const keys = new Set(entries.map((entry) => entry.key));
+    const project = this.scope();
     this.#entries = [
       ...this.#entries.filter(
         (entry) =>
-          !keys.has(entry.key) &&
-          (replacePack === undefined || entry.packId !== replacePack),
+          !(
+            this.#mine(entry) &&
+            (keys.has(entry.key) ||
+              (replacePack !== undefined && entry.packId === replacePack))
+          ),
       ),
-      ...entries,
+      ...entries.map((entry) => ({ ...entry, projectId: project })),
     ];
     this.#emit();
     await this.#save();
   }
   async #update(key: string, change: Partial<CreatorEntry>) {
     this.#entries = this.#entries.map((entry) =>
-      entry.key === key ? { ...entry, ...change } : entry,
+      entry.key === key && this.#mine(entry) ? { ...entry, ...change } : entry,
     );
     this.#emit();
     await this.#save();

@@ -28,6 +28,8 @@ export interface MyTemplatesPanelOptions {
   readonly prompt: (title: string, value: string) => Promise<string | null>;
   readonly report: (error: unknown) => void;
   readonly toast?: (text: string) => void;
+  /** FX10: copy templates from the user's other projects into this one. */
+  readonly importLibrary?: () => void;
 }
 
 export function mountMyTemplatesPanel(
@@ -40,6 +42,19 @@ export function mountMyTemplatesPanel(
     title: t('mine.title'),
     classes: { card: 'mine-card', section: 'mine-group' },
     searchLabel: t('shelf.searchMine'),
+    ...(options.importLibrary
+      ? {
+          actions: [
+            {
+              id: 'mine-import-library',
+              label: t('importLib.mine.button'),
+              icon: 'download',
+              wide: true,
+              run: () => options.importLibrary!(),
+            },
+          ],
+        }
+      : {}),
     categoryLabel: (kind) => t(`mine.kind.${kind}`),
     categoryOrder: MINE_KINDS,
     folders: MINE_FOLDERS,

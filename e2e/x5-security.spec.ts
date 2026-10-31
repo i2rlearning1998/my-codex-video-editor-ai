@@ -188,8 +188,17 @@ test.describe('X5 hostile and heavy free code', () => {
       .poll(async () => page.evaluate(() => '__AIVE__' in window))
       .toBe(true);
     await newProject(page);
-    // R2: a code animation is kept in AI › Motion.
+    // FX10: a new project is fresh; the animation comes by import.
     await showCategory(page, 'AI');
+    await page.locator('#ai-import-library').click();
+    await page
+      .locator('.import-dialog [data-role="ai-import-all"]')
+      .first()
+      .click();
+    await page
+      .locator('.import-dialog [data-role="ai-import-confirm"]')
+      .click();
+    // R2: a code animation is kept in AI › Motion.
     const card = page.locator(
       '#library-ai .ai-group[data-kind="motion"] .ai-card',
     );

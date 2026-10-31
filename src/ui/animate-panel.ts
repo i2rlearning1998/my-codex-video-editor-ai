@@ -129,8 +129,7 @@ export function mountAnimatePanel(
         ),
     });
   };
-  const render = () => {
-    if (!handle.isOpen) return;
+  const draw = () => {
     const found = target();
     if (!found) {
       close();
@@ -284,6 +283,11 @@ export function mountAnimatePanel(
     }
     panel.replaceChildren(tabs, cards, ...extras);
   };
+  // FX10: the right panel's Animate tab builds the body itself (it is on
+  // screen by definition); only the session's own updates wait for "open".
+  const render = () => {
+    if (handle.isOpen) draw();
+  };
   const close = () => handle.close();
   const open = () => {
     if (!target()) return;
@@ -297,6 +301,7 @@ export function mountAnimatePanel(
     close,
     toggle: () => (handle.isOpen ? close() : open()),
     render,
+    renderNow: draw,
     dispose: () => {
       unsubscribe();
       close();

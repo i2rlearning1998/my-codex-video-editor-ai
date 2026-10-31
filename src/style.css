@@ -11909,3 +11909,161 @@ body:has(.modal-backdrop) .toast-stack {
   border-color: var(--accent);
   background: #fff;
 }
+
+/* FX10: Import from your other projects (My Templates and AI). */
+.import-dialog {
+  width: min(560px, 94vw);
+}
+.import-intro {
+  margin: 0 0 10px;
+  color: var(--text-secondary);
+}
+.import-search {
+  width: 100%;
+  margin-bottom: 10px;
+}
+.import-groups {
+  display: grid;
+  gap: 12px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+}
+.import-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.import-list {
+  display: grid;
+  gap: 6px;
+}
+.import-row {
+  display: grid;
+  grid-template-columns: auto 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  cursor: pointer;
+}
+.import-thumb {
+  width: 64px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+.import-text {
+  display: grid;
+  min-width: 0;
+}
+.import-text strong,
+.import-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.import-text small {
+  color: var(--text-secondary);
+}
+.import-empty {
+  margin: 12px 0;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.import-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* FX10: Cloud storage button, panel and exit dialog. */
+#cloud-sync {
+  position: relative;
+}
+#cloud-sync .cloud-dot {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: transparent;
+}
+#cloud-sync[data-state='synced'] .cloud-dot {
+  background: var(--success, #3ecf8e);
+}
+#cloud-sync[data-state='syncing'] .cloud-dot {
+  background: var(--accent, #7c5cff);
+}
+#cloud-sync[data-state='waiting'] .cloud-dot {
+  background: var(--warning, #f5a524);
+}
+.cloud-dialog {
+  width: min(520px, 94vw);
+}
+.cloud-groups {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0;
+}
+.cloud-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}
+.cloud-row-text {
+  display: grid;
+  gap: 2px;
+}
+.cloud-row-text small {
+  color: var(--text-secondary);
+}
+.cloud-status {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+}
+.cloud-exit-note {
+  color: var(--text-secondary);
+}
+.cloud-exit-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+/* FX10: a loader says "still working", so it keeps turning, slowly, also
+   when the system asks for reduced motion or Settings > Animations is Off.
+   The general rule above stopped every spinner after one 1 ms turn, and a
+   build or import then looked frozen. */
+:root:not([data-motion='on']) .plan-spinner,
+:root:not([data-motion='on'])
+  .plan-steps
+  li[data-state='running']
+  .plan-step-icon::before,
+:root:not([data-motion='on']) .stock-spinner,
+:root:not([data-motion='on']) .fx-tile-loading::after,
+:root[data-motion='off'] .plan-spinner,
+:root[data-motion='off']
+  .plan-steps
+  li[data-state='running']
+  .plan-step-icon::before,
+:root[data-motion='off'] .stock-spinner,
+:root[data-motion='off'] .fx-tile-loading::after {
+  animation-duration: 2.4s !important;
+  animation-iteration-count: infinite !important;
+}
+:root:not([data-motion='on']) .media-thumb-loading,
+:root[data-motion='off'] .media-thumb-loading {
+  animation-duration: 2s !important;
+  animation-iteration-count: infinite !important;
+}

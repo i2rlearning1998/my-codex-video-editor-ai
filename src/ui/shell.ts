@@ -59,6 +59,13 @@ import {
   type ThemeScene,
 } from '../themes/themes';
 import { ThemeError, createThemeLibrary } from '../themes/library';
+import { themeOwners } from '../themes/owners';
+import {
+  createCloudSync,
+  localBackend,
+  type GroupSize,
+} from '../sync/cloud-sync';
+import { openCloudDialog, openExitDialog } from './cloud-dialog';
 import { applyMotion, readMotion, reducedNow } from './motion';
 import { presetControls } from '../creator-pack/preset';
 import { blocks } from '../blocks/starters';
@@ -218,6 +225,10 @@ import {
   type MineKind,
 } from './my-library';
 import { mountMyTemplatesPanel } from './my-templates-panel';
+import {
+  openLibraryImportDialog,
+  type ImportGroup,
+} from './library-import-dialog';
 import { buildAssetView } from './asset-view';
 import type { Shelf } from './library-shelf';
 import { hasReview, openSceneView, partCards } from './scene-breakdown';
@@ -287,6 +298,7 @@ import {
   escapeHtml,
   openModal,
   promptDialog,
+  choiceDialog,
 } from './components/modal';
 import { openPopover, type PopoverHandle } from './components/popover';
 import { showToast } from './components/toast';
@@ -324,7 +336,12 @@ import { kitPreviewUrl } from '../video-plan/kit-preview';
 import type { FeelExtras } from '../themes/library';
 import { openPlanBuild, planServices } from './plan-build-dialog';
 import { planReviewPanel, type PlanReviewDeps } from './plan-review';
-import { bindPlanProject, planState, savePlanState } from './plan-state';
+import {
+  allSceneIds,
+  bindPlanProject,
+  planState,
+  savePlanState,
+} from './plan-state';
 import { planVoiceEngine } from './voiceover';
 import { synthesizeToMedia } from '../speech';
 import type { LicenseMeta } from '../providers';
@@ -414,6 +431,7 @@ export function mountEditorShell(
           <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
           <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
           <span class="topbar-divider" aria-hidden="true"></span>
+          <button type="button" id="cloud-sync" class="icon-button" data-state="off" aria-label="${t('cloud.label')}" title="${t('cloud.label')}">${iconSvg('upload')}<span class="cloud-dot" aria-hidden="true"></span></button>
           <button type="button" id="theme-toggle" class="icon-button" aria-label="${t('theme.label')}" title="${t('theme.label')}">${iconSvg('themeDark')}</button>
           <button type="button" id="export" class="primary">${iconSvg('export')}<span class="export-label">${t('action.export')}</span></button>
         </div>
@@ -719,7 +737,11 @@ export function mountEditorShell(
   // preview and the export share; the baker fills it one job at a time.
   const codeCache = new FrameCache(mediaStore);
   // P2: My library (Creator Pack items), beside My Templates.
-  const creatorLibrary = new CreatorLibrary(mediaStore);
+  // FX10: AI items belong to the open project; a new project starts empty.
+  const creatorLibrary = new CreatorLibrary(mediaStore, () => engine.state.id);
+  engine.on('state:changed', (event) => {
+    if (event.reason === 'load') creatorLibrary.rescope();
+  });
   // FIX7: published filters, effects, adjustments and transitions.
   creatorLibrary.onChange(() => syncLibraryFx(creatorLibrary.list()));
   // Phase 1 (P1-31): training-data records for AI-built videos (no UI).
@@ -754,13 +776,21 @@ export function mountEditorShell(
   // R5: My Templates, the user's own saved elements and scenes (this
   // browser, not the project, never an undo step). Old scene templates in
   // localStorage move in once.
-  const myLibrary = new MyLibrary(mediaStore, () => ({
-    list: myTemplates.list(),
-    clear: () => {
-      for (const template of myTemplates.list())
-        myTemplates.remove(template.id);
-    },
-  }));
+  const myLibrary = new MyLibrary(
+    mediaStore,
+    () => ({
+      list: myTemplates.list(),
+      clear: () => {
+        for (const template of myTemplates.list())
+          myTemplates.remove(template.id);
+      },
+    }),
+    // FX10: My Templates belong to the open project.
+    () => engine.state.id,
+  );
+  engine.on('state:changed', (event) => {
+    if (event.reason === 'load') myLibrary.rescope();
+  });
   const codeBaker = new CodeBaker(codeCache, openCodeSession);
   const codeOf = (layerId: string): CodeData | null => {
     const find = (
@@ -1395,7 +1425,7 @@ export function mountEditorShell(
     reportError,
     {
       animateBody: () => {
-        animatePanel.render();
+        animatePanel.renderNow();
         return animateBody;
       },
       openTool: (id) =>
@@ -2788,6 +2818,8 @@ export function mountEditorShell(
   const openPlanBuildFor = (
     input: VideoPlan,
     keep?: () => Promise<unknown>,
+    /** FX10: scenes of the earlier build this one replaces. */
+    replace: readonly string[] = [],
   ) => {
     session.setPlaying(false);
     // FINAL3 V4.2 and V4.3: the plan's theme, else the project's current
@@ -2847,10 +2879,27 @@ export function mountEditorShell(
             count: String(result.project!.compositions.length),
           }),
         );
+        // FX10: the person chose to replace the earlier build: its scenes go
+        // (one step, so Undo brings them back).
+        const gone = replace.filter((id) =>
+          engine.state.compositions.some((scene) => scene.id === id),
+        );
+        if (gone.length)
+          engine.commands.transaction(
+            'Replace built scenes',
+            gone.map((compositionId) => ({
+              type: 'DELETE_COMPOSITION' as const,
+              compositionId,
+            })),
+          );
         void training.start(engine.state.id, result.plan ?? plan);
         session.select(null);
+        const previous = planState(engine.state.id, result.plan!.meta.title);
         savePlanState(engine.state.id, {
           plan: result.plan!,
+          earlier: previous
+            ? allSceneIds(previous).filter((id) => !ids.includes(id))
+            : [],
           alternatives: Object.fromEntries(
             Object.entries(result.alternatives).map(([k, v]) => [k, [...v]]),
           ),
@@ -2884,6 +2933,7 @@ export function mountEditorShell(
         .catch((error: unknown) => {
           throw themeError(error);
         });
+      owners.claim(saved.id, engine.state.id);
       await refreshThemes();
       showToast(t('theme.savedToast', { name: saved.name }), 'success');
     },
@@ -4144,7 +4194,32 @@ export function mountEditorShell(
     const entry = creatorEntryOf(id);
     // FINAL3 V2: a Video Plan builds into scenes.
     if (entry?.item.type === 'composition' && isPlanV2(entry.item.data)) {
-      openPlanBuildFor(entry.item.data as unknown as VideoPlan);
+      const plan = entry.item.data as unknown as VideoPlan;
+      const earlier = builtSceneIds(entry.item.data);
+      // FX10: building again with scenes already there asks first; it used
+      // to leave the first scenes beside the new ones as copies.
+      if (!earlier.length) {
+        openPlanBuildFor(plan);
+        return;
+      }
+      void choiceDialog(
+        escapeHtml(t('plan.rebuildBody', { count: String(earlier.length) })),
+        {
+          titleText: escapeHtml(t('plan.rebuildTitle')),
+          choices: [
+            {
+              id: 'replace',
+              label: t('plan.rebuildReplace'),
+              primary: true,
+            },
+            { id: 'keep', label: t('plan.rebuildKeep') },
+            { id: 'cancel', label: t('plan.rebuildCancel') },
+          ],
+        },
+      ).then((choice) => {
+        if (choice === 'replace') openPlanBuildFor(plan, undefined, earlier);
+        else if (choice === 'keep') openPlanBuildFor(plan);
+      });
       return;
     }
     // B1: a style is never placed on the canvas.
@@ -4432,9 +4507,8 @@ export function mountEditorShell(
         builtScenes(storageOrNull(), engine.state.id, compositionKey(data)) ??
         []
       ).filter(live);
-    return (
-      planState(engine.state.id, (data as VideoPlan).meta.title)?.sceneIds ?? []
-    ).filter(live);
+    const state = planState(engine.state.id, (data as VideoPlan).meta.title);
+    return (state ? allSceneIds(state) : []).filter(live);
   };
   /** FIX9: an AI composition card opens its assets in the same panel: every
    *  item of the scenes it built, each with its own thumbnail. */
@@ -4501,8 +4575,89 @@ export function mountEditorShell(
     });
     shelf.openDetail(view.element);
   };
+  // FX10: Import Templates / AI templates from the user's other projects.
+  const importGroups = async <T extends { projectId?: string }>(
+    all: readonly T[],
+    toItem: (entry: T) => ImportGroup['items'][number],
+  ): Promise<ImportGroup[]> => {
+    const names = new Map(
+      (
+        await (actions.projects?.list() ?? Promise.resolve([])).catch(() => [])
+      ).map((project) => [project.id, project.name] as const),
+    );
+    const byProject = new Map<string, ImportGroup['items'][number][]>();
+    for (const entry of all) {
+      if (entry.projectId === engine.state.id) continue;
+      const key = entry.projectId ?? '';
+      const list = byProject.get(key) ?? [];
+      list.push(toItem(entry));
+      byProject.set(key, list);
+    }
+    return [...byProject].map(([id, items]) => ({
+      id: id || 'earlier',
+      name: id
+        ? (names.get(id) ?? t('importLib.otherProject'))
+        : t('importLib.earlier'),
+      items,
+    }));
+  };
+  const openImportMine = () =>
+    openLibraryImportDialog({
+      role: 'mine',
+      title: t('importLib.mine.title'),
+      intro: t('importLib.mine.intro'),
+      groups: () =>
+        importGroups(myLibrary.listAll(), (item) => ({
+          id: item.id,
+          name: item.name,
+          ...(item.poster ? { thumb: item.poster } : {}),
+          detail: mineKindLabel(item.kind),
+        })),
+      importItems: async (ids) => {
+        let count = 0;
+        for (const id of ids) {
+          const item = myLibrary.listAll().find((entry) => entry.id === id);
+          if (!item) continue;
+          await myLibrary.importCopy(item);
+          count++;
+        }
+        return count;
+      },
+      done: (count) =>
+        showToast(t('importLib.done', { count: String(count) }), 'success'),
+      report: reportError,
+    });
+  const openImportAi = () =>
+    openLibraryImportDialog({
+      role: 'ai',
+      title: t('importLib.ai.title'),
+      intro: t('importLib.ai.intro'),
+      groups: () =>
+        importGroups(creatorLibrary.listAll(), (entry) => ({
+          id: `${entry.projectId ?? ''}|${entry.key}`,
+          name: entry.name,
+          ...(entry.thumbnail ? { thumb: entry.thumbnail } : {}),
+          detail: entry.item.type,
+        })),
+      importItems: async (ids) => {
+        let count = 0;
+        for (const id of ids) {
+          const entry = creatorLibrary
+            .listAll()
+            .find((item) => `${item.projectId ?? ''}|${item.key}` === id);
+          if (!entry) continue;
+          await creatorLibrary.importCopy(entry);
+          count++;
+        }
+        return count;
+      },
+      done: (count) =>
+        showToast(t('importLib.done', { count: String(count) }), 'success'),
+      report: reportError,
+    });
   aiPanel = mountAiPanel(element('#library-ai'), {
     library: creatorLibrary,
+    importLibrary: () => openImportAi(),
     open: (id) => safely(() => openAiComposition(id)),
     // FIX7: the ⋯ menu of an AI card listed in another category.
     menu: (id, x, y) => aiCardMenu(id, x, y),
@@ -4541,9 +4696,8 @@ export function mountEditorShell(
           (data as VideoPlan).meta.title,
         );
         if (!state) return { status: 'not-built', scenes: 0 };
-        ids = state.sceneIds.filter(
-          (id): id is string =>
-            !!id && engine.state.compositions.some((scene) => scene.id === id),
+        ids = allSceneIds(state).filter((id) =>
+          engine.state.compositions.some((scene) => scene.id === id),
         );
         status = !ids.length
           ? 'not-built'
@@ -4901,6 +5055,7 @@ export function mountEditorShell(
       review,
     );
   const minePanel = mountMyTemplatesPanel(element('#library-mine'), {
+    importLibrary: () => openImportMine(),
     library: myLibrary,
     add: (id) => insertMine(id),
     open: (id) => openMineScene(id),
@@ -4982,6 +5137,7 @@ export function mountEditorShell(
   const themeLibrary = mediaStore.then((store) =>
     store ? createThemeLibrary(store) : null,
   );
+  const owners = themeOwners(storageOrNull());
   // Phase 1 library: the built-in themes come from the catalog (P1-22).
   const builtInThemeIds = {
     has: (id: string) => BUILT_IN_THEMES.some((theme) => theme.id === id),
@@ -4990,8 +5146,10 @@ export function mountEditorShell(
   const refreshThemes = async () => {
     const library = await themeLibrary;
     if (!library) return;
+    // FX10: only this project's saved themes are listed.
+    const owned = owners.ownedBy(engine.state.id);
     libraryThemes = (await library.listThemes()).filter(
-      (theme) => !builtInThemeIds.has(theme.id),
+      (theme) => !builtInThemeIds.has(theme.id) && owned.has(theme.id),
     );
     // FINAL3 V4: what a feel theme adds (transition, camera, pacing).
     feelExtras.clear();
@@ -5004,7 +5162,11 @@ export function mountEditorShell(
   // After a project opens: old project themes move into the library once.
   const migrateProjectThemes = () =>
     void themeLibrary
-      .then((library) => library?.migrateThemes(engine))
+      .then((library) =>
+        library?.migrateThemes(engine, (id) =>
+          owners.claim(id, engine.state.id),
+        ),
+      )
       .then(refreshThemes)
       .catch(reportError);
   migrateProjectThemes();
@@ -5251,6 +5413,7 @@ export function mountEditorShell(
           .catch((error: unknown) => {
             throw themeError(error);
           });
+        owners.claim(theme.id, engine.state.id);
         await refreshThemes();
         showToast(t('theme.savedToast', { name: theme.name }), 'success');
       }),
@@ -5273,6 +5436,7 @@ export function mountEditorShell(
         if (!library) throw new Error(t('theme.storageUnavailable'));
         const name = libraryThemes.find((item) => item.id === id)?.name ?? '';
         await library.deleteTheme(id);
+        owners.forget(id);
         await refreshThemes();
         showToast(t('theme.deletedToast', { name }), 'info');
       }),
@@ -7917,6 +8081,96 @@ export function mountEditorShell(
     safely(draw);
   });
   applyThemeControls();
+  // FX10: Cloud storage (docs/EDITOR-OWNERSHIP.md). The switch, what each
+  // group holds, and the Back button's "Save to your cloud?" dialog.
+  const cloudStorage = storageOrNull();
+  const cloudSync = createCloudSync({
+    storage: cloudStorage,
+    backend: localBackend(cloudStorage),
+    projectId: () => engine.state.id,
+    measure: (group): GroupSize => {
+      const bytesOf = (value: unknown) => JSON.stringify(value)?.length ?? 0;
+      if (group === 'project')
+        return { count: 1, bytes: bytesOf(engine.state) };
+      if (group === 'media') {
+        const media = (
+          engine.state.assets as unknown as readonly Asset[]
+        ).filter(
+          (asset) => asset.type !== 'font' && asset.source.kind === 'local',
+        );
+        return {
+          count: media.length,
+          bytes: media.reduce(
+            (sum, asset) =>
+              sum +
+              (typeof asset.metadata.size === 'number'
+                ? asset.metadata.size
+                : 0),
+            0,
+          ),
+        };
+      }
+      if (group === 'templates') {
+        const mine = myLibrary.list();
+        return {
+          count: mine.length + libraryThemes.length,
+          bytes: bytesOf(mine) + bytesOf(libraryThemes),
+        };
+      }
+      const own = creatorLibrary
+        .list()
+        .filter((entry) => !creatorLibrary.isBuiltIn(entry.key));
+      return { count: own.length, bytes: bytesOf(own) };
+    },
+  });
+  const cloudButton = element<HTMLButtonElement>('#cloud-sync');
+  const paintCloud = () => {
+    cloudButton.dataset.state = cloudSync.status();
+    cloudButton.title = `${t('cloud.label')}: ${t(`cloud.status.${cloudSync.status()}`)}`;
+  };
+  cloudSync.onChange(paintCloud);
+  paintCloud();
+  cloudButton.onclick = () => openCloudDialog(cloudSync);
+  const cloudChanged = () => cloudSync.changed();
+  const offCloudWatch = [
+    engine.on('state:changed', cloudChanged),
+    myLibrary.onChange(cloudChanged),
+    creatorLibrary.onChange(cloudChanged),
+    (() => {
+      themeListeners.add(cloudChanged);
+      return () => themeListeners.delete(cloudChanged);
+    })(),
+  ];
+  // The browser's Back button leaves the editor for the user panel (Phase 2).
+  // It first offers to keep the project in the cloud. Closing the tab can
+  // only show the browser's own warning; the local autosave is the net.
+  let leaving = false;
+  let exitOpen = false;
+  const armBack = () => {
+    history.replaceState({ aive: 'editor-base' }, '');
+    history.pushState({ aive: 'editor' }, '');
+  };
+  const onPop = () => {
+    if (leaving || exitOpen) return;
+    // Stay on the page until the person has chosen.
+    history.pushState({ aive: 'editor' }, '');
+    const settings = cloudSync.settings();
+    if (settings.on && cloudSync.status() !== 'syncing') {
+      leaving = true;
+      history.go(-2);
+      return;
+    }
+    exitOpen = true;
+    void openExitDialog(cloudSync).then(async (choice) => {
+      exitOpen = false;
+      if (choice === 'stay') return;
+      if (choice === 'save') await cloudSync.syncNow().catch(reportError);
+      leaving = true;
+      history.go(-2);
+    });
+  };
+  armBack();
+  window.addEventListener('popstate', onPop);
   const translateStatic = bindDomTranslations(root);
   const unsubscribeLanguage = subscribe(() => {
     translateStatic();
@@ -8015,6 +8269,9 @@ export function mountEditorShell(
       libraryBrowsers.dispose();
       if (disposed) return;
       disposed = true;
+      window.removeEventListener('popstate', onPop);
+      for (const off of offCloudWatch) off();
+      cloudSync.dispose();
       disposeShortcuts();
       sceneOutliner?.dispose();
       shortcutSheet.dispose();

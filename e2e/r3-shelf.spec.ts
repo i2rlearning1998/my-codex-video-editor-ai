@@ -37,8 +37,8 @@ test('[RA-008] Media, AI and My Templates share one panel: title and collapse, s
 }) => {
   for (const [category, host, actions] of [
     ['Media', '#media-panel', ['import-media']],
-    ['AI', '#library-ai', ['ai-import', 'ai-copy-brief']],
-    ['MyTemplates', '#library-mine', []],
+    ['AI', '#library-ai', ['ai-import', 'ai-copy-brief', 'ai-import-library']],
+    ['MyTemplates', '#library-mine', ['mine-import-library']],
   ] as const) {
     await showCategory(page, category);
     const panel = page.locator(host);

@@ -62,6 +62,8 @@ export interface MineItem {
   readonly assets?: readonly Asset[];
   /** A whole scene (kind scene). */
   readonly scene?: MyTemplate;
+  /** FX10: the project this item belongs to (none: saved before projects). */
+  readonly projectId?: string;
 }
 
 export class MyLibrary {
@@ -74,8 +76,27 @@ export class MyLibrary {
     private readonly store: Promise<MediaStore | null>,
     /** Old scene templates (localStorage) moved in once. */
     legacy?: () => { list: readonly MyTemplate[]; clear(): void },
+    /** FX10: the open project; a panel lists only its items. */
+    private readonly scope: () => string = () => '',
   ) {
     this.ready = this.#load(legacy);
+  }
+  #mine = (item: MineItem) => item.projectId === this.scope();
+  /** The open project changed: panels read the list again. */
+  rescope() {
+    this.#emit();
+  }
+  /** FX10: every project's items (for Import Templates), newest first. */
+  listAll(): readonly MineItem[] {
+    return this.#items;
+  }
+  /** FX10: a copy of another project's item, owned by the open project. */
+  async importCopy(item: MineItem) {
+    await this.add({
+      ...item,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+    });
   }
   async #load(legacy?: () => { list: readonly MyTemplate[]; clear(): void }) {
     try {
@@ -108,7 +129,20 @@ export class MyLibrary {
         // Kept where they were; the move is tried again next time.
       }
     }
+    this.#adopt();
     this.#emit();
+  }
+  /**
+   * FX10: an item saved before projects existed joins the project that is
+   * open now (once), so nothing a user saved is lost from view.
+   */
+  #adopt() {
+    const project = this.scope();
+    if (!project || !this.#items.some((item) => !item.projectId)) return;
+    this.#items = this.#items.map((item) =>
+      item.projectId ? item : { ...item, projectId: project },
+    );
+    void this.#save().catch(() => undefined);
   }
   #save(): Promise<void> {
     const text = JSON.stringify(this.#items);
@@ -130,10 +164,13 @@ export class MyLibrary {
     return () => this.#listeners.delete(listener);
   }
   list(): readonly MineItem[] {
-    return this.#items;
+    return this.#items.filter(this.#mine);
   }
   find(id: string): MineItem | undefined {
-    return this.#items.find((item) => item.id === id) ?? this.#parts.get(id);
+    return (
+      this.#items.find((item) => item.id === id && this.#mine(item)) ??
+      this.#parts.get(id)
+    );
   }
   /**
    * Records for the parts of a saved scene, so one part can be added or
@@ -154,7 +191,7 @@ export class MyLibrary {
   }
   async add(item: MineItem) {
     this.#items = [
-      item,
+      { ...item, projectId: this.scope() },
       ...this.#items.filter((entry) => entry.id !== item.id),
     ];
     this.#emit();

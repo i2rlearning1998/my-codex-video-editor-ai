@@ -173,27 +173,66 @@ export class OpfsMediaStore implements MediaStore {
 /** IndexedDB fallback for browsers without OPFS. Blobs stay disk-backed. */
 export class IndexedDbMediaStore implements MediaStore {
   readonly kind = 'indexeddb';
-  constructor(private readonly db: IDBDatabase) {}
+  #db: IDBDatabase;
+  constructor(db: IDBDatabase) {
+    this.#db = db;
+    this.#watch(db);
+  }
   static open(): Promise<IndexedDbMediaStore> {
+    return IndexedDbMediaStore.#connect().then(
+      (db) => new IndexedDbMediaStore(db),
+    );
+  }
+  static #connect(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(ROOT, 1);
       request.onupgradeneeded = () => request.result.createObjectStore('blobs');
-      request.onsuccess = () =>
-        resolve(new IndexedDbMediaStore(request.result));
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
   }
-  #run<T>(
+  /** FX10: the browser may close the connection (another tab upgrading, a
+   *  storage clean-up); the next call opens it again instead of failing with
+   *  "The database connection is closing". */
+  #closed = false;
+  #watch(db: IDBDatabase) {
+    db.onclose = () => {
+      if (this.#db === db) this.#closed = true;
+    };
+    db.onversionchange = () => {
+      db.close();
+      if (this.#db === db) this.#closed = true;
+    };
+  }
+  async #connection(): Promise<IDBDatabase> {
+    if (this.#closed) {
+      this.#db = await IndexedDbMediaStore.#connect();
+      this.#closed = false;
+      this.#watch(this.#db);
+    }
+    return this.#db;
+  }
+  async #run<T>(
     mode: IDBTransactionMode,
     body: (store: IDBObjectStore) => IDBRequest<T>,
   ): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const transaction = this.db.transaction('blobs', mode);
-      const request = body(transaction.objectStore('blobs'));
-      transaction.oncomplete = () => resolve(request.result);
-      transaction.onerror = () => reject(transaction.error);
-      transaction.onabort = () => reject(transaction.error);
-    });
+    const attempt = async () => {
+      const db = await this.#connection();
+      return new Promise<T>((resolve, reject) => {
+        const transaction = db.transaction('blobs', mode);
+        const request = body(transaction.objectStore('blobs'));
+        transaction.oncomplete = () => resolve(request.result);
+        transaction.onerror = () => reject(transaction.error);
+        transaction.onabort = () => reject(transaction.error);
+      });
+    };
+    try {
+      return await attempt();
+    } catch (error) {
+      if ((error as DOMException)?.name !== 'InvalidStateError') throw error;
+      this.#closed = true;
+      return attempt();
+    }
   }
   async write(key: string, data: Blob, options: WriteOptions = {}) {
     checkKey(key);
@@ -231,7 +270,14 @@ export async function openMediaStore(): Promise<MediaStore | null> {
     typeof navigator.storage?.getDirectory === 'function'
   )
     try {
-      return await OpfsMediaStore.open();
+      // FX10: a browser that never answers must not leave the panel on
+      // "Opening media storage" for good; after 4 s the fallback is used.
+      return await Promise.race([
+        OpfsMediaStore.open(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('OPFS timeout')), 4000),
+        ),
+      ]);
     } catch {
       // Fall through to IndexedDB (for example in a private window).
     }

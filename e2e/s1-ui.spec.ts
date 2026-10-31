@@ -171,7 +171,7 @@ test('[S1-002] Media, AI and My Templates share one layout: the same panel width
       expect(a.top).toBeCloseTo(b.top, 0);
     }
     if (category === 'MyTemplates')
-      await expect(page.locator(`${host} .shelf-actions`)).toHaveCount(0);
+      rows.push(await box(page, '#mine-import-library'));
     for (const row of rows) {
       expect(row.left).toBeCloseTo(search.left, 0);
       expect(row.right).toBeCloseTo(folder.right, 0);

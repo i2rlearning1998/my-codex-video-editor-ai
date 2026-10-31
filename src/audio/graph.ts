@@ -80,15 +80,23 @@ export function scheduleAudioClip(
   node.connect(stereo);
   tail.connect(gain).connect(pan).connect(normalized).connect(destination);
   // Small chunks bound automation memory, 200 samples/s; exact endpoints.
+  // FX10: Web Audio refuses a curve that overlaps the one before it, and two
+  // chunks that only touch can overlap by a sample after rounding (a long
+  // narration failed on Play with "setValueCurveAtTime overlaps"). Every
+  // chunk but the last ends 2 ms early; the gain holds the last value of a
+  // curve until the next one starts.
   const chunkLength = 10;
+  const gap = 0.002;
   for (let elapsed = 0; elapsed < duration; elapsed += chunkLength) {
     const seconds = Math.min(chunkLength, duration - elapsed);
-    const curve = new Float32Array(Math.max(2, Math.ceil(seconds * 200) + 1));
+    const last = elapsed + chunkLength >= duration;
+    const span = last ? seconds : seconds - gap;
+    const curve = new Float32Array(Math.max(2, Math.ceil(span * 200) + 1));
     for (let i = 0; i < curve.length; i++) {
-      const localTime = local + elapsed + (seconds * i) / (curve.length - 1);
+      const localTime = local + elapsed + (span * i) / (curve.length - 1);
       curve[i] = mixedGainAt(clip, localTime);
     }
-    gain.gain.setValueCurveAtTime(curve, start + elapsed, seconds);
+    gain.gain.setValueCurveAtTime(curve, start + elapsed, span);
   }
   let disposed = false;
   const dispose = () => {

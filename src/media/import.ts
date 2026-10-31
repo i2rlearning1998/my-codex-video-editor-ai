@@ -146,6 +146,18 @@ export async function importMediaFiles(
           : {}),
         ...(probe.duration !== undefined ? { duration: probe.duration } : {}),
       };
+      // FX10: while the bytes were written and probed, another import (a
+      // build filling the same picture) may have added this very media.
+      // Adding it again failed with "Asset ID already exists".
+      if (deps.hasAsset(id, file.name)) {
+        outcomes.push({
+          fileName: file.name,
+          status: 'duplicate',
+          assetId: id,
+        });
+        report(1);
+        continue;
+      }
       deps.addAsset(asset);
       outcomes.push({ fileName: file.name, status: 'imported', assetId: id });
       report(1);

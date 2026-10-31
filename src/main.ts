@@ -95,6 +95,9 @@ const mirrorNow = async () => {
     /* The library is a convenience copy; the main save already happened. */
   }
 };
+// FX10: ask the browser to keep this site's data (projects and media) when
+// the disk runs low; a refusal changes nothing.
+void navigator.storage?.persist?.().catch(() => false);
 const mirrorSoon = () => {
   clearTimeout(mirrorTimer);
   mirrorTimer = setTimeout(() => void mirrorNow(), 800);
@@ -139,7 +142,12 @@ const shell = mountEditorShell(
       }
     },
     projects: {
-      list: () => library.list(),
+      // FX10: the open project is always in the list, even before its
+      // first background copy was written.
+      list: async () => {
+        await mirrorNow();
+        return library.list();
+      },
       currentId: () => engine.state.id,
       open: async (id) => {
         autosave?.flush();
