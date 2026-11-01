@@ -50,6 +50,9 @@ export function applyBrand(c: Services['config']) {
   for (const [key, value] of Object.entries(c.brand.colors))
     if (BRAND_VARS[key] && /^#[0-9a-f]{6}$/i.test(value))
       root.style.setProperty(BRAND_VARS[key]!, value);
+  // The editor's tokens (dark/light theme rules) also read --accent.
+  if (/^#[0-9a-f]{6}$/i.test(c.brand.colors.accent ?? ''))
+    root.style.setProperty('--accent', c.brand.colors.accent!);
   document.title = c.brand.name;
 }
 export const brandMark = (c: Services['config'], cls = 'brand') =>

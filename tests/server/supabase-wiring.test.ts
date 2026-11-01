@@ -41,7 +41,7 @@ describe('P2-R2 Supabase wiring', () => {
     120_000,
   );
 
-  it('[P2R2-009] [P2R2-011] the migration: tables, owner-only reads, server-only writes, append-only ledger, profile trigger, admin-only config writes', () => {
+  it('[P2R2-009] [P2R2-010] [P2R2-011] the migration: tables, owner-only reads, server-only writes, append-only ledger, profile trigger, admin-only config writes', () => {
     for (const table of [
       'profiles',
       'credit_ledger',
