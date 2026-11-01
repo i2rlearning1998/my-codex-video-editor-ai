@@ -33,6 +33,21 @@ export const PAYLOAD_MARKERS = [
   'Cinematic Teal',
   'shape-flowchart-decision',
 ];
+// P2-R2 (P2B-38): server code never reaches any browser bundle: no
+// server-only secret names and no hosts of the gateway's providers. (The
+// editor's own voice and stock tools, which use the person's own keys from
+// Settings (D-276), keep their hosts; they are not the gateway.)
+export const SERVER_MARKERS = [
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'service_role',
+  'SUPABASE_JWT_SECRET',
+  'LOCAL_AUTH_SECRET',
+  'api.anthropic.com',
+  'api.openai.com',
+  'api.x.ai',
+  'generateContent',
+  'is not connected: its key was refused',
+];
 const problems = [];
 for (const file of files) {
   const relative = path.relative(dist, file);
@@ -40,6 +55,9 @@ for (const file of files) {
     problems.push(`${relative}: bundled library file`);
   if (!/\.(js|html|json|css)$/.test(file)) continue;
   const text = readFileSync(file, 'utf8');
+  for (const marker of SERVER_MARKERS)
+    if (text.includes(marker))
+      problems.push(`${relative}: contains server-only code (${marker})`);
   for (const marker of OWNER_MARKERS)
     if (text.includes(marker))
       problems.push(`${relative}: contains the owner app (${marker})`);
@@ -111,5 +129,5 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(
-  `Editor bundle: ${files.length} files, no owner app, no bundled library payloads.${pages}`,
+  `Editor bundle: ${files.length} files, no owner app, no server code, no bundled library payloads.${pages}`,
 );

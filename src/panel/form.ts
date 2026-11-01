@@ -204,6 +204,23 @@ export function renderForm(
     }
   };
   const rows = new Map<string, HTMLElement>();
+  // P2B-30: fields grouped into collapsible sections from the config.
+  const groups = new Map<string, HTMLElement>();
+  const groupOf = (f: BriefField): HTMLElement => {
+    const g = f.group && style.brief.groups.find((x) => x.id === f.group);
+    if (!g) return el;
+    let box = groups.get(g.id);
+    if (!box) {
+      box = h(
+        'details',
+        { class: 'field-group', 'data-group': g.id, open: g.open },
+        h('summary', { text: say(g.label) }),
+      );
+      groups.set(g.id, box);
+      el.append(box);
+    }
+    return box;
+  };
   const paint = () => {
     const issues = shown ? validateBrief(style, a) : [];
     const visible = new Set(visibleFields(style, a).map((f) => f.id));
@@ -226,7 +243,7 @@ export function renderForm(
           h('p', { class: 'field-error', role: 'alert' }),
         );
         rows.set(f.id, row);
-        el.append(row);
+        groupOf(f).append(row);
       }
       row.hidden = !visible.has(f.id) || !isVisible(f, a);
       const issue = issues.find((i) => i.field === f.id);

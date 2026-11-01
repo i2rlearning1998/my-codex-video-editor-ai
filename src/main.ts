@@ -1,3 +1,5 @@
+import { takeHandoffFiles } from './handoff-store';
+import { gatewayBase, usageReporter } from './usage-report';
 import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 import {
   EditorEngine,
@@ -16,7 +18,14 @@ import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
 import { confirmDialog } from './ui/components/modal';
 import { t } from './i18n';
-import { ASPECT_SIZES, HANDOFF_KEY, readHandoff } from './auth-gate';
+import {
+  ASPECT_SIZES,
+  HANDOFF_KEY,
+  autosaveKey,
+  claimLocalData,
+  readHandoff,
+  signedInUserId,
+} from './auth-gate';
 import { createProjectFromSettings } from './project/new-project';
 import { initTheme } from './ui/theme';
 import { initAccent } from './ui/accent';
@@ -43,6 +52,10 @@ document.addEventListener(
 );
 
 let store: LocalProjectStore | undefined;
+// P2-R2 (P2B-13): each signed-in person has their own autosave slot and
+// Projects; the data made before accounts goes to the first person.
+const me = signedInUserId(window.localStorage) ?? 'local';
+const legacy = claimLocalData(window.localStorage, me);
 // TL-001: documents open with every top-level layer as a clip on a track.
 const openable = (project: unknown) => {
   const { project: adopted, adopted: count } = adoptFreeLayers(
@@ -59,7 +72,10 @@ let initialMessage =
 // PRJ-017: a backup that replaced an unreadable save is offered, not forced.
 let recoveredProject: ReturnType<typeof openable> | undefined;
 try {
-  store = new LocalProjectStore(window.localStorage);
+  store = new LocalProjectStore(
+    window.localStorage,
+    autosaveKey('ai-native-editor:project', me, legacy),
+  );
   const loaded = store.load();
   if (loaded.project) {
     const opened = openable(loaded.project);
@@ -81,7 +97,12 @@ const engine = new EditorEngine(initialProject, {
 });
 const diagnostics = observeDiagnostics(engine);
 // PRJ-015/016: every saved project also lives in the Projects library.
-const library = new ProjectLibrary(new IdbBackend());
+const library = new ProjectLibrary(
+  new IdbBackend(),
+  undefined,
+  undefined,
+  () => ({ id: me, legacy }),
+);
 const thumbNow = () => {
   const canvas = document.querySelector<HTMLCanvasElement>(
     '#composition-canvas',
@@ -117,6 +138,8 @@ const shell = mountEditorShell(
           },
         }
       : {}),
+    // P2-R2: the plan's export limit; each finished export is reported.
+    usage: usageReporter(me, localStorage, gatewayBase()),
     exportProject: () => {
       const url = URL.createObjectURL(
         new Blob([serializeProject(engine.state)], {
@@ -356,7 +379,23 @@ if (handoff) {
         /* the importer reports a bad plan itself */
       }
       fresh(title, aspect);
-      shell.buildHandedPlan(text);
+      // P2-R2: the build's AI pictures and voice, then the plan finds them.
+      const plan = text;
+      const id = handoff.id;
+      void takeHandoffFiles(id)
+        .then(async (files) => {
+          if (files.length)
+            await shell.importHandedFiles(
+              files.map(
+                (f) =>
+                  new File([f.bytes as BlobPart], f.name, { type: f.type }),
+              ),
+            );
+          // The panel moves this build's Asset Library rows to the project.
+          localStorage.setItem(`${HANDOFF_KEY(id)}.project`, engine.state.id);
+        })
+        .catch(() => undefined)
+        .finally(() => shell.buildHandedPlan(plan));
     }
   }
 }

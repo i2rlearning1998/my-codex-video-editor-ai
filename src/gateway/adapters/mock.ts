@@ -107,3 +107,19 @@ export function mockAdapter(opts: MockOptions = {}): ProviderAdapter {
   };
   return self;
 }
+
+/** Readable answers from the offline mock model (it stands in for a real one). */
+export function mockRespond(req: GatewayRequest): string {
+  const input = req.messages
+    .map((m) => m.content)
+    .join(' ')
+    .trim();
+  switch (req.system) {
+    case 'studio:write':
+      return `${input}\n\n${input.split(/\s+/).slice(0, 12).join(' ')}: a short draft written by the test model.`;
+    case 'studio:youtube-pack':
+      return `Title: ${input.split('\n')[0]}\nDescription: ${input}\nTags: video, explainer, learning`;
+    default:
+      return input || 'ok';
+  }
+}

@@ -18,6 +18,7 @@
     "src",
     "tests",
     "owner",
+    "server",
     "library",
     "vite.config.ts",
     "vite.library.ts"

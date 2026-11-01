@@ -4,6 +4,8 @@
 import {
   canUse,
   defaultModelFor,
+  modelAvailability,
+  modelsForRole,
   enabledStudios,
   needsConsent,
   studioById,
@@ -12,11 +14,12 @@ import {
 } from '../../platform-config';
 import { estimateStudio, GatewayError, hash } from '../../gateway';
 import { h, clear, put } from '../dom';
+import { waveSvg } from '../art';
 import type { Ctx, Screen } from '../app';
 import { renderForm } from '../form';
 import type { Asset } from '../services';
 import { t } from '../strings';
-import { card, empty, when } from './common';
+import { bestModels, card, empty, limitAlert, when } from './common';
 
 const UNSORTED = 'unsorted';
 async function projectOptions(ctx: Ctx) {
@@ -145,7 +148,11 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
     );
     return;
   }
-  const model = defaultModelFor(c, plan, s.role);
+  // A connected model the plan allows, a real one before the offline mock.
+  const model =
+    bestModels(ctx, modelsForRole(c, s.role)).find(
+      (m) => modelAvailability(c, plan, m.id).ok && ctx.s.connected(m.id),
+    ) ?? defaultModelFor(c, plan, s.role);
   let answers: Answers = {};
   const cost = h('p', {
     class: 'estimate',
@@ -225,7 +232,14 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
             ...(s.toolId ? { toolId: s.toolId } : {}),
             ...(answers.mode === 'clone'
               ? { action: 'voice-clone' as const }
-              : {}),
+              : { action: 'store' as const }),
+            // P2B-27: what the result will add to the plan's storage.
+            addMb:
+              s.output === 'video'
+                ? 20
+                : s.output === 'image' || s.output === 'audio'
+                  ? 2
+                  : 0.01,
             key: `studio-${s.id}-${Date.now().toString(36)}`,
           });
           const seed = `${prompt}:${Date.now()}`;
@@ -240,7 +254,11 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
             bytes: 0,
             createdAt: new Date().toISOString(),
           };
-          if (s.output === 'image' || s.output === 'video')
+          const made = r.result.media;
+          if (made?.base64 && made.mime)
+            // A real model's file (through the server).
+            asset.dataUrl = `data:${made.mime};base64,${made.base64}`;
+          else if (s.output === 'image' || s.output === 'video')
             asset.dataUrl = mockImage(seed, prompt);
           else if (s.output === 'audio') asset.dataUrl = mockAudio(seed);
           else if (s.output === 'captions')
@@ -260,8 +278,13 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
             }),
             assetView(asset),
           );
+          await ctx.s.sync(ctx.user.id).catch(() => undefined);
           ctx.refreshTop();
         } catch (e) {
+          if (e instanceof GatewayError && e.code.startsWith('limit-')) {
+            clear(result, limitAlert('studio-error', e.message));
+            return;
+          }
           const msg =
             e instanceof GatewayError
               ? e.code === 'shortage'
@@ -280,6 +303,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
               text: msg,
             }),
           );
+          await ctx.s.sync(ctx.user.id).catch(() => undefined);
           ctx.refreshTop();
         } finally {
           run.disabled = false;
@@ -288,8 +312,29 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
     },
     t('studio.run'),
   );
+  // P2B-32: tool tabs, and a waveform beside each voice choice.
+  const tabs = h(
+    'nav',
+    { class: 'tool-tabs', 'aria-label': t('studio.title') },
+    enabledStudios(c).map((x) =>
+      h(
+        'a',
+        {
+          href: `#/studio/${x.id}`,
+          class: 'tool-tab',
+          'data-tab': x.id,
+          'aria-current': x.id === s.id ? 'page' : undefined,
+        },
+        ctx.say(x.name),
+      ),
+    ),
+  );
+  if (s.output === 'audio')
+    for (const choice of form.el.querySelectorAll<HTMLElement>('.choice'))
+      choice.append(waveSvg(choice.textContent ?? ''));
   put(
     out,
+    tabs,
     h('h1', { text: ctx.say(s.name) }),
     h('p', { class: 'muted', text: t('studio.mockNote') }),
     form.el,

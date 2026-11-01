@@ -28,6 +28,7 @@
     "freecode:gallery": "vite --config freecode-gallery/vite.config.ts",
     "models:pin": "node scripts/models-pin.mjs",
     "docs:plan-cheatsheet": "node scripts/plan-cheatsheet.mjs",
+    "docs:capability-sheet": "node scripts/capability-sheet.mjs",
     "cloud:start": "npx --yes supabase@2.122.0 start",
     "cloud:stop": "npx --yes supabase@2.122.0 stop",
     "cloud:test": "node scripts/cloud-sql-test.mjs",
@@ -39,6 +40,9 @@
     "library:versions": "node owner/run.mjs /owner/cli.ts versions",
     "owner": "node owner/run.mjs /owner/server/main.ts serve",
     "owner:create": "node owner/run.mjs /owner/server/main.ts create-owner",
+    "server": "node server/run.mjs /server/main.ts",
+    "server:test": "vitest run tests/server",
+    "keys:check": "node scripts/keys-check.mjs",
     "visual": "playwright test e2e/visual.spec.ts --project=desktop",
     "visual:update": "playwright test e2e/visual.spec.ts --project=desktop --update-snapshots"
   },

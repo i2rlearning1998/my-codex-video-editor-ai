@@ -1,0 +1,104 @@
+[
+  {
+    "name": "VITE_SUPABASE_URL",
+    "where": ".env.local (browser build)",
+    "unlocks": "Real accounts and cloud projects in the panel, website and editor",
+    "check": "The website's Sign up sends a confirmation email"
+  },
+  {
+    "name": "VITE_SUPABASE_ANON_KEY",
+    "where": ".env.local (browser build)",
+    "unlocks": "Same as VITE_SUPABASE_URL (the public anon key, safe in the browser)",
+    "check": "Log in works; the panel shows your email in Settings"
+  },
+  {
+    "name": "VITE_GOOGLE_CLIENT_ID",
+    "where": ".env.local (browser build), optional",
+    "unlocks": "The Continue with Google button",
+    "check": "The button shows on Log in"
+  },
+  {
+    "name": "VITE_GATEWAY_URL",
+    "where": ".env.local (browser build)",
+    "unlocks": "The panel uses the gateway server (real models, server credits)",
+    "check": "Credits & Plan shows the server's ledger"
+  },
+  {
+    "name": "SUPABASE_URL",
+    "where": "server environment",
+    "unlocks": "The server stores credits, usage and settings in Supabase",
+    "check": "npm run server prints store: supabase"
+  },
+  {
+    "name": "SUPABASE_SERVICE_ROLE_KEY",
+    "where": "server environment only (never the browser)",
+    "unlocks": "Same as SUPABASE_URL (writes the ledger and usage)",
+    "check": "npm run server prints store: supabase"
+  },
+  {
+    "name": "SUPABASE_JWT_SECRET",
+    "where": "server environment (or SUPABASE_JWKS_URL)",
+    "unlocks": "The server accepts Supabase sign-ins (AUTH_MODE=supabase)",
+    "check": "GET /v1/me with a logged-in panel answers 200"
+  },
+  {
+    "name": "SUPABASE_JWKS_URL",
+    "where": "server environment (instead of SUPABASE_JWT_SECRET)",
+    "unlocks": "Same, with the project's public keys",
+    "check": "Same as SUPABASE_JWT_SECRET"
+  },
+  {
+    "name": "ANTHROPIC_API_KEY",
+    "where": "server environment only",
+    "unlocks": "Claude models (Director, Write)",
+    "check": "Panel model picker shows Balanced without 'Not connected yet'"
+  },
+  {
+    "name": "OPENAI_API_KEY",
+    "where": "server environment only",
+    "unlocks": "GPT models and OpenAI images (Images, Thumbnail, AI image scenes)",
+    "check": "Studio › Images makes a picture"
+  },
+  {
+    "name": "GEMINI_API_KEY",
+    "where": "server environment only",
+    "unlocks": "Gemini models",
+    "check": "GET /v1/models shows gemini-fast connected"
+  },
+  {
+    "name": "XAI_API_KEY",
+    "where": "server environment only",
+    "unlocks": "Grok models",
+    "check": "GET /v1/models shows grok-balanced connected"
+  },
+  {
+    "name": "ELEVENLABS_API_KEY",
+    "where": "server environment only",
+    "unlocks": "ElevenLabs voices (Studio › Voice, voice-over scenes)",
+    "check": "Studio › Voice plays the result"
+  },
+  {
+    "name": "VIDEO_JOBS_API_KEY",
+    "where": "server environment only (plus the provider's address in Admin)",
+    "unlocks": "AI video scenes through a video-job service",
+    "check": "GET /v1/models shows video-standard connected"
+  },
+  {
+    "name": "AUTH_MODE",
+    "where": "server environment",
+    "unlocks": "supabase for real sign-ins; local for tests and offline",
+    "check": "npm run server prints the auth mode"
+  },
+  {
+    "name": "LOCAL_AUTH_SECRET",
+    "where": "server environment (local mode only)",
+    "unlocks": "Local test sign-ins; never on a public server",
+    "check": "npm run server starts"
+  },
+  {
+    "name": "SERVER_ORIGINS",
+    "where": "server environment",
+    "unlocks": "Which sites may call the server",
+    "check": "The panel's calls are not refused with 'This site may not use the server.'"
+  }
+]

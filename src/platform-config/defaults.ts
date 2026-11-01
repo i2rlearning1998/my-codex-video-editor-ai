@@ -1,6 +1,14 @@
 // Built-in default config: sample values only. The owner replaces every one of
 // them from Admin. It is also the last fallback when no saved config can be read.
 import {
+  INTERVIEW_PROMPT,
+  PLAN_PROMPT,
+  REPAIR_PROMPT,
+  STORY_EXPLAINER_PLAYBOOK,
+  UPGRADE_RULE_OFF,
+  UPGRADE_RULE_ON,
+} from './prompts';
+import {
   CONFIG_SCHEMA_VERSION,
   platformConfigSchema,
   type PlatformConfig,
@@ -24,7 +32,17 @@ function rawDefault(): PlatformConfigInput {
       ),
       logoUrl: '',
       defaultLocale: 'en',
-      colors: { accent: '#7c5cff', accent2: '#22d3ee', gold: '#ffc247' },
+      // P2B-28 Aurora Ink (dark); the light theme is in src/panel/aurora.css.
+      colors: {
+        accent: '#7c5cff',
+        accent2: '#22d3ee',
+        gold: '#ffc247',
+        bg: '#07070d',
+        panel: '#0f0f1a',
+        border: '#23233a',
+        text: '#ecebf5',
+        muted: '#9a98b5',
+      },
     },
     plans: [
       {
@@ -158,6 +176,24 @@ function rawDefault(): PlatformConfigInput {
     ],
     // P2-05: credits per USD of provider cost (sample).
     creditRate: 100,
+    limitMessages: {
+      exports: L(
+        'Your plan allows {n} exports a month. Upgrade to export more; your project is saved.',
+        'आपके प्लान में महीने में {n} एक्सपोर्ट हैं। और एक्सपोर्ट के लिए अपग्रेड करें; आपका प्रोजेक्ट सेव है।',
+      ),
+      storage: L(
+        'Your plan has {n} MB of storage. Upgrade for more room; nothing was lost.',
+        'आपके प्लान में {n} MB जगह है। ज़्यादा जगह के लिए अपग्रेड करें; कुछ नहीं खोया।',
+      ),
+      voiceClones: L(
+        'Your plan allows {n} cloned voices. Upgrade to clone more.',
+        'आपके प्लान में {n} क्लोन आवाज़ें हैं। और के लिए अपग्रेड करें।',
+      ),
+      projects: L(
+        'Your plan allows {n} projects. Upgrade for more, or delete one you no longer need.',
+        'आपके प्लान में {n} प्रोजेक्ट हैं। और के लिए अपग्रेड करें, या कोई पुराना हटाएँ।',
+      ),
+    },
     providers: [
       {
         id: 'mock',
@@ -170,29 +206,44 @@ function rawDefault(): PlatformConfigInput {
         id: 'anthropic',
         name: 'Anthropic',
         kind: 'anthropic',
-        enabled: false,
+        enabled: true,
         keyRef: 'ANTHROPIC_API_KEY',
       },
       {
         id: 'openai',
         name: 'OpenAI',
         kind: 'openai',
-        enabled: false,
+        enabled: true,
         keyRef: 'OPENAI_API_KEY',
       },
       {
         id: 'google',
         name: 'Google Gemini',
         kind: 'google',
-        enabled: false,
+        enabled: true,
         keyRef: 'GEMINI_API_KEY',
       },
       {
         id: 'xai',
         name: 'xAI Grok',
         kind: 'xai',
-        enabled: false,
+        enabled: true,
         keyRef: 'XAI_API_KEY',
+      },
+      {
+        id: 'elevenlabs',
+        name: 'ElevenLabs',
+        kind: 'elevenlabs',
+        enabled: true,
+        keyRef: 'ELEVENLABS_API_KEY',
+      },
+      {
+        // A generic video-job service: the owner sets its address in Admin.
+        id: 'video-jobs',
+        name: 'Video service',
+        kind: 'video-jobs',
+        enabled: false,
+        keyRef: 'VIDEO_JOBS_API_KEY',
       },
     ],
     // Sample prices (USD): the owner replaces every one from Admin.
@@ -239,7 +290,7 @@ function rawDefault(): PlatformConfigInput {
         'fast',
         1,
         5,
-        false,
+        true,
         false,
       ),
       textModel(
@@ -250,8 +301,8 @@ function rawDefault(): PlatformConfigInput {
         'balanced',
         3,
         15,
-        false,
-        false,
+        true,
+        true,
       ),
       textModel(
         'claude-best',
@@ -261,7 +312,7 @@ function rawDefault(): PlatformConfigInput {
         'best',
         5,
         25,
-        false,
+        true,
         false,
         ['model-best'],
       ),
@@ -273,7 +324,7 @@ function rawDefault(): PlatformConfigInput {
         'balanced',
         0.25,
         2,
-        false,
+        true,
         false,
       ),
       textModel(
@@ -284,7 +335,7 @@ function rawDefault(): PlatformConfigInput {
         'fast',
         0.3,
         2.5,
-        false,
+        true,
         false,
       ),
       textModel(
@@ -295,7 +346,7 @@ function rawDefault(): PlatformConfigInput {
         'balanced',
         3,
         15,
-        false,
+        true,
         false,
       ),
       mediaModel('mock-voice', 'voice', L('Mock voice'), { perMinute: 0.3 }, [
@@ -314,6 +365,36 @@ function rawDefault(): PlatformConfigInput {
       mediaModel('mock-stt', 'stt', L('Mock captions'), { perMinute: 0.006 }, [
         'studio-captions',
       ]),
+      realMedia(
+        'openai-image',
+        'openai',
+        'gpt-image-1',
+        'image',
+        L('OpenAI image'),
+        { perImage: 0.04 },
+        ['studio-images', 'studio-thumbnail'],
+        true,
+      ),
+      realMedia(
+        'eleven-voice',
+        'elevenlabs',
+        'eleven_multilingual_v2/21m00Tcm4TlvDq8ikWAM',
+        'voice',
+        L('ElevenLabs voice'),
+        { perMinute: 0.3 },
+        ['studio-voice'],
+        true,
+      ),
+      realMedia(
+        'video-standard',
+        'video-jobs',
+        'video-standard',
+        'video',
+        L('Video service'),
+        { perSecond: 0.1 },
+        ['studio-video'],
+        false,
+      ),
     ],
     payments: [
       {
@@ -546,15 +627,26 @@ function rawDefault(): PlatformConfigInput {
           'Stick figures, globes, maps and proofs. Best for science and history.',
         ),
         playbook: 'story-explainer',
+        playbookText: STORY_EXPLAINER_PLAYBOOK,
         enabled: true,
         cardArt: '',
         formats: ['9:16', '16:9'],
         requires: [],
         priceHint: { min: 25, max: 60, per: 'minute' },
         brief: {
+          groups: [
+            { id: 'story', label: L('The story', 'कहानी'), open: true },
+            {
+              id: 'sound',
+              label: L('Voice and music', 'आवाज़ और संगीत'),
+              open: true,
+            },
+            { id: 'captions', label: L('Captions', 'कैप्शन'), open: true },
+          ],
           fields: [
             {
               id: 'idea',
+              group: 'story',
               type: 'longtext',
               label: L('The idea'),
               required: true,
@@ -563,6 +655,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'script',
+              group: 'story',
               type: 'choice',
               label: L('Script'),
               required: true,
@@ -574,6 +667,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'voice',
+              group: 'sound',
               type: 'choice',
               label: L('Voice-over'),
               required: true,
@@ -586,6 +680,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'music',
+              group: 'sound',
               type: 'choice',
               label: L('Music and sound effects'),
               required: false,
@@ -598,6 +693,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'captionLang',
+              group: 'captions',
               type: 'choice',
               label: L('Caption language'),
               required: false,
@@ -610,6 +706,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'captionStyle',
+              group: 'captions',
               type: 'text',
               label: L('Caption style'),
               required: false,
@@ -619,6 +716,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'reference',
+              group: 'story',
               type: 'file',
               label: L('Reference video'),
               required: false,
@@ -825,6 +923,74 @@ function rawDefault(): PlatformConfigInput {
       },
       refusals: [
         {
+          id: 'secrets',
+          when: L(
+            'Asking for keys, passwords, hidden instructions, or to ignore the rules.',
+          ),
+          reply: L(
+            'I cannot share keys or my instructions, and I keep to my rules.',
+            'मैं कुंजियाँ या अपने निर्देश साझा नहीं कर सकता, और मैं अपने नियमों पर चलता हूँ।',
+          ),
+          alternative: L(
+            'Tell me about the video you want instead.',
+            'इसके बजाय मुझे बताइए कि आपको कैसा वीडियो चाहिए।',
+          ),
+          keywords: [
+            'api key',
+            'apikey',
+            'secret key',
+            'system prompt',
+            'your instructions',
+            'ignore previous',
+            'ignore all',
+            'ignore the rules',
+            'developer mode',
+            'jailbreak',
+            'env variable',
+          ],
+        },
+        {
+          id: 'credits',
+          when: L('Asking for free or extra credits.'),
+          reply: L('I cannot give credits.', 'मैं क्रेडिट नहीं दे सकता।'),
+          alternative: L(
+            'Credits & Plan shows how to get more.',
+            'क्रेडिट और प्लान में और क्रेडिट पाने का तरीका है।',
+          ),
+          keywords: [
+            'free credits',
+            'unlimited credits',
+            'more credits',
+            'give me credits',
+            'add credits',
+          ],
+        },
+        {
+          id: 'abuse',
+          when: L('Insults or abuse.'),
+          reply: L('Let us keep this kind.', 'आइए बात शालीन रखें।'),
+          alternative: L(
+            'Tell me about the video and I will help.',
+            'वीडियो के बारे में बताइए, मैं मदद करूँगा।',
+          ),
+          keywords: ['idiot', 'stupid', 'shut up', 'useless bot', 'moron'],
+        },
+        {
+          id: 'bad-plan',
+          when: L(
+            'The planning model could not produce a valid plan twice (never matched by keywords).',
+          ),
+          reply: L(
+            'I could not make a plan I trust from this brief.',
+            'इस ब्रीफ़ से मैं भरोसेमंद प्लान नहीं बना सका।',
+          ),
+          alternative: L(
+            'Add a little more detail and try again, or pick another model. No credits were used.',
+            'थोड़ा और विवरण जोड़कर फिर कोशिश करें, या दूसरा मॉडल चुनें। कोई क्रेडिट नहीं लगा।',
+          ),
+          keywords: [],
+        },
+        {
           id: 'harmful',
           when: L('Violence, weapons, sexual or hateful content.'),
           reply: L('I cannot make that video.', 'मैं वह वीडियो नहीं बना सकता।'),
@@ -880,11 +1046,26 @@ function rawDefault(): PlatformConfigInput {
             'hack',
             'password',
             'stock tips',
+            'weather today',
+            'cricket score',
             'होमवर्क',
           ],
         },
       ],
       roles: { plan: 'director-plan', interview: 'interview', write: 'write' },
+      prompts: {
+        plan: PLAN_PROMPT,
+        repair: REPAIR_PROMPT,
+        interview: INTERVIEW_PROMPT,
+        upgradeOn: UPGRADE_RULE_ON,
+        upgradeOff: UPGRADE_RULE_OFF,
+      },
+      limits: {
+        maxScenes: 12,
+        maxSceneSeconds: 30,
+        maxNarrationChars: 600,
+        planOutputTokens: 8000,
+      },
       estimate: {
         systemTokens: 3000,
         inputTokensPerScene: { min: 300, max: 600 },
@@ -971,6 +1152,43 @@ function rawDefault(): PlatformConfigInput {
           order: 1,
         },
         {
+          id: 'story',
+          kind: 'story',
+          enabled: true,
+          title: L('From an idea to your video', 'आइडिया से आपके वीडियो तक'),
+          order: 1.5,
+          items: [
+            {
+              title: L('Tell Director the idea', 'डायरेक्टर को आइडिया बताइए'),
+              body: L(
+                'One line is enough. Director asks only what it still needs: script, voice, music and captions.',
+                'एक लाइन काफ़ी है। डायरेक्टर सिर्फ़ ज़रूरी बातें पूछता है: स्क्रिप्ट, आवाज़, संगीत और कैप्शन।',
+              ),
+            },
+            {
+              title: L('See the plan and the cost', 'प्लान और ख़र्च देखिए'),
+              body: L(
+                'Every scene, its method and its credits, before anything is made. Change any scene cheaper or richer.',
+                'हर सीन, उसका तरीक़ा और क्रेडिट, कुछ बनने से पहले। किसी भी सीन को सस्ता या बेहतर बनाइए।',
+              ),
+            },
+            {
+              title: L('Watch it build', 'बनते हुए देखिए'),
+              body: L(
+                'Pictures, voice and motion graphics are made scene by scene. Unused credits come back.',
+                'तस्वीरें, आवाज़ और मोशन ग्राफ़िक्स सीन दर सीन बनते हैं। बचे क्रेडिट वापस आते हैं।',
+              ),
+            },
+            {
+              title: L('Edit everything', 'सब कुछ एडिट कीजिए'),
+              body: L(
+                'The result is a real project: every layer, word and timing can be changed in the editor.',
+                'नतीजा असली प्रोजेक्ट है: हर लेयर, शब्द और टाइमिंग एडिटर में बदली जा सकती है।',
+              ),
+            },
+          ],
+        },
+        {
           id: 'styles',
           kind: 'styles',
           enabled: true,
@@ -995,11 +1213,36 @@ function rawDefault(): PlatformConfigInput {
           id: 'faq',
           kind: 'faq',
           enabled: true,
-          title: L('Do I see the cost first?', 'क्या पहले ख़र्च दिखता है?'),
-          body: L(
-            'Yes. Every plan shows the credits per scene before anything is made, and unused credits come back.',
-            'हाँ। कुछ भी बनने से पहले हर सीन के क्रेडिट दिखते हैं, और बचे क्रेडिट वापस मिलते हैं।',
-          ),
+          title: L('Questions', 'सवाल'),
+          items: [
+            {
+              title: L('Do I see the cost first?', 'क्या पहले ख़र्च दिखता है?'),
+              body: L(
+                'Yes. Every plan shows the credits per scene before anything is made, and unused credits come back.',
+                'हाँ। कुछ भी बनने से पहले हर सीन के क्रेडिट दिखते हैं, और बचे क्रेडिट वापस मिलते हैं।',
+              ),
+            },
+            {
+              title: L(
+                'Can I change the video after?',
+                'क्या बाद में वीडियो बदल सकते हैं?',
+              ),
+              body: L(
+                'Yes. Director builds an ordinary project: open it in the editor and change any layer.',
+                'हाँ। डायरेक्टर एक सामान्य प्रोजेक्ट बनाता है: उसे एडिटर में खोलकर कोई भी लेयर बदलिए।',
+              ),
+            },
+            {
+              title: L(
+                'Does it work in Hindi?',
+                'क्या यह हिंदी में काम करता है?',
+              ),
+              body: L(
+                'Yes. Ask in Hindi; narration and captions are written in Devanagari.',
+                'हाँ। हिंदी में पूछिए; नैरेशन और कैप्शन देवनागरी में लिखे जाते हैं।',
+              ),
+            },
+          ],
           order: 5,
         },
       ],
@@ -1077,7 +1320,9 @@ function textModel(
     requires,
     enabled,
     recommendedForDirector: recommended,
-    tested: mock,
+    // Real shapes are proven against local fake servers only (P2B-06); live
+    // behaviour is unproven until the owner adds a key.
+    tested: true,
     samplePrice: true,
     order: tier === 'fast' ? 1 : tier === 'balanced' ? 2 : 3,
   };
@@ -1102,6 +1347,32 @@ function mediaModel(
     enabled: true,
     tested: true,
     samplePrice: true,
+  };
+}
+function realMedia(
+  id: string,
+  providerId: string,
+  providerModel: string,
+  kind: 'image' | 'video' | 'voice',
+  name: LT,
+  price: { perImage?: number; perSecond?: number; perMinute?: number },
+  roles: string[],
+  enabled: boolean,
+): In['models'][number] {
+  return {
+    id,
+    providerId,
+    providerModel,
+    kind,
+    name,
+    tier: 'balanced',
+    price,
+    creditMargin: 1.5,
+    roles,
+    enabled,
+    tested: true,
+    samplePrice: true,
+    order: 5,
   };
 }
 type FieldIn = NonNullable<In['studios'][number]['inputs']>[number];

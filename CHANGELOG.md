@@ -1,5 +1,15 @@
 # Changelog
 
+## Phase 2 round 2 (P2-R2): real connections, tested without keys (1 Nov)
+
+- A gateway server (`npm run server`) holds every provider key by name in its environment, checks the sign-in, keeps credits under a per-person lock and enforces the plan (D-355).
+- Real adapters for Anthropic, OpenAI, Gemini, Grok, OpenAI images, ElevenLabs voice and async video jobs, proven against local fake servers; a missing key reads "not connected".
+- Supabase wiring: profiles, an append-only credit ledger, usage, exports, counters and live config versions, all behind row-level security with SQL policy tests; Supabase accounts in the panel and website; each person sees only their own projects (D-356).
+- Director plans with a real model from config prompts and a capability sheet made from code, repairs once, refuses with the owner's text, offers optional upgrades, and makes AI pictures and the voice that the editor imports (D-357).
+- The editor reports exports; the server counts and enforces plan limits with the owner's sentences and an Upgrade link (D-358).
+- Aurora Ink look for the panel and website (tokens, fonts, generated art, Director orb, scroll story, FAQ), AA contrast tested, screenshots in reports/p2-r2/ (D-359).
+- Schema 9 unchanged; no new npm dependencies; the editor side is 3,361 bytes smaller.
+
 ## Phase 2 round 1 (P2-R1): user panel, Director, gateway, website (1 Nov, local test mode)
 
 - A website (`/site/`) with the landing page, Styles, showcase, pricing and FAQ from the Platform Config, plus sign up, log in and password reset. Nobody reaches the panel or the editor without logging in.

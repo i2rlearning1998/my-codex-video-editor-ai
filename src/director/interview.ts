@@ -177,3 +177,89 @@ export function reply(
     interview: advance(c, style, { ...withUser, answers, notes }, locale),
   };
 }
+
+/** What a model may do with a reply (P2B-21): fill a config field or pick an allowed follow-up. */
+export interface ModelTurn {
+  fill?: { field: string; value: string } | null;
+  followUp?: string | null;
+}
+/**
+ * The interview with a model. Refusals are matched first and never reach the
+ * model. The model may only fill a field one of the Style's questions fills
+ * (a choice must be one of its options) or ask one of the Style's follow-ups;
+ * anything else is ignored and the deterministic interview runs.
+ */
+export async function modelReply(
+  c: PlatformConfig,
+  style: Style,
+  iv: Interview,
+  textIn: string,
+  locale: Locale,
+  ask: (system: string, user: string) => Promise<string>,
+): Promise<ReplyResult> {
+  const t = textIn.trim();
+  if (!t || refusalFor(c.director, t) || !c.director.prompts)
+    return reply(c, style, iv, textIn, locale);
+  const fields = style.interview.questions
+    .map((q) => q.fills)
+    .filter((f): f is string => !!f)
+    .map((id) => style.brief.fields.find((f) => f.id === id))
+    .filter(
+      (f): f is NonNullable<typeof f> => !!f && iv.answers[f.id] === undefined,
+    );
+  const open = [...iv.messages].reverse().find((m) => m.kind === 'question');
+  const system = c.director.prompts.interview
+    .replace(
+      /\{\{\s*fields\s*\}\}/g,
+      fields
+        .map(
+          (f) =>
+            `${f.id}${f.options.length ? ` (one of ${f.options.map((o) => o.value).join('|')})` : ''}`,
+        )
+        .join(', ') || 'none',
+    )
+    .replace(
+      /\{\{\s*followUps\s*\}\}/g,
+      style.interview.followUps.map((x) => x.id).join(', ') || 'none',
+    )
+    .replace(/\{\{\s*question\s*\}\}/g, open?.text ?? '');
+  let turn: ModelTurn = {};
+  try {
+    const raw = await ask(system, t);
+    const s = raw.indexOf('{');
+    const e = raw.lastIndexOf('}');
+    turn =
+      s >= 0 && e > s ? (JSON.parse(raw.slice(s, e + 1)) as ModelTurn) : {};
+  } catch {
+    turn = {};
+  }
+  const base = reply(c, style, iv, textIn, locale);
+  let answers = base.interview.answers;
+  const f = turn.fill && fields.find((x) => x.id === turn.fill!.field);
+  if (
+    f &&
+    typeof turn.fill!.value === 'string' &&
+    answers[f.id] === undefined
+  ) {
+    const v = turn.fill!.value.slice(0, 2000);
+    if (!f.options.length || f.options.some((o) => o.value === v))
+      answers = { ...answers, [f.id]: v };
+  }
+  let next: Interview = { ...base.interview, answers };
+  const follow = style.interview.followUps.find((x) => x.id === turn.followUp);
+  if (follow && !next.asked.includes(`follow:${follow.id}`))
+    next = {
+      ...next,
+      asked: [...next.asked, `follow:${follow.id}`],
+      messages: [
+        ...next.messages,
+        {
+          from: 'director',
+          text: say(follow.ask, locale),
+          kind: 'question',
+          questionId: `follow:${follow.id}`,
+        },
+      ],
+    };
+  return { refused: false, interview: next };
+}

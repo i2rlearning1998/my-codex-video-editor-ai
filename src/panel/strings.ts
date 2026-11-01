@@ -53,6 +53,7 @@ const S = {
   'common.all': ['All', 'सब'],
   'common.upgrade': ['Upgrade', 'अपग्रेड करें'],
   'common.locked': ['Not on your plan', 'आपके प्लान में नहीं'],
+  'common.notConnected': ['Not connected yet', 'अभी जुड़ा नहीं है'],
   'common.credits': ['{n} credits', '{n} क्रेडिट'],
   'common.range': ['{min}–{max} credits', '{min}–{max} क्रेडिट'],
   'common.none': ['Nothing here yet.', 'यहाँ अभी कुछ नहीं।'],
@@ -103,6 +104,17 @@ const S = {
     'That is all I need. Make the plan when you are ready.',
     'मुझे बस इतना चाहिए था। जब तैयार हों, प्लान बनाएँ।',
   ],
+  'build.picture': [
+    'Making the picture for scene {i}',
+    'दृश्य {i} की तस्वीर बन रही है',
+  ],
+  'build.voice': ['Recording the voice', 'आवाज़ रिकॉर्ड हो रही है'],
+  'build.planCode': ['The plan (read-only)', 'प्लान (सिर्फ़ पढ़ने के लिए)'],
+  'plan.upgrades': [
+    'Optional upgrades from Director',
+    'डायरेक्टर के वैकल्पिक सुधार',
+  ],
+  'plan.upgradeCost': ['{n} credits at most', 'अधिकतम {n} क्रेडिट'],
   'plan.title': ['The plan', 'प्लान'],
   'plan.scene': ['Scene {n}', 'सीन {n}'],
   'plan.cheaper': ['Cheaper', 'सस्ता'],
@@ -269,6 +281,11 @@ const S = {
     'If this email has an account, a code was sent. (Local mode: the code is in this browser outbox: {code})',
     'अगर इस ईमेल का खाता है, तो कोड भेजा गया। (लोकल मोड: कोड इस ब्राउज़र के आउटबॉक्स में है: {code})',
   ],
+  'site.codeEmailed': [
+    'If this email has an account, a code was sent to it.',
+    'अगर इस ईमेल का खाता है, तो उस पर कोड भेजा गया।',
+  ],
+  'site.google': ['Continue with Google', 'Google से जारी रखें'],
   'site.haveAccount': [
     'Already have an account? Log in',
     'पहले से खाता है? लॉग इन करें',

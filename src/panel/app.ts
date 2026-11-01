@@ -34,15 +34,25 @@ const NAV: { route: string; key: Key; icon: string }[] = [
   { route: 'settings', key: 'nav.settings', icon: '⚙' },
 ];
 
-/** P2-19: the brand comes from the config (name, logo, colours). */
+/** P2-19, P2B-28: the brand comes from the config (name, logo, colours). */
+const BRAND_VARS: Record<string, string> = {
+  accent: '--brand-accent',
+  accent2: '--brand-accent2',
+  gold: '--brand-gold',
+  bg: '--brand-bg',
+  panel: '--brand-panel',
+  border: '--brand-border',
+  text: '--brand-text',
+  muted: '--brand-muted',
+};
 export function applyBrand(c: Services['config']) {
   const root = document.documentElement;
-  const accent = c.brand.colors.accent;
-  if (accent && /^#[0-9a-f]{6}$/i.test(accent)) {
-    root.style.setProperty('--accent', accent);
-    root.style.setProperty('--color-accent', accent);
-    root.style.setProperty('--accent-fill', accent);
-  }
+  for (const [key, value] of Object.entries(c.brand.colors))
+    if (BRAND_VARS[key] && /^#[0-9a-f]{6}$/i.test(value))
+      root.style.setProperty(BRAND_VARS[key]!, value);
+  // The editor's tokens (dark/light theme rules) also read --accent.
+  if (/^#[0-9a-f]{6}$/i.test(c.brand.colors.accent ?? ''))
+    root.style.setProperty('--accent', c.brand.colors.accent!);
   document.title = c.brand.name;
 }
 export const brandMark = (c: Services['config'], cls = 'brand') =>
@@ -64,6 +74,14 @@ export function mountPanel(
   let prefs = s.prefs(user.id);
   if (!prefs.name)
     prefs = { ...prefs, name: (user.email ?? '').split('@')[0] ?? '' };
+  // Always the stored settings: a plan switch or another screen may have
+  // changed them since this copy was read.
+  const fresh = () =>
+    (prefs = {
+      ...prefs,
+      ...s.prefs(user.id),
+      name: s.prefs(user.id).name || prefs.name,
+    });
   setLocale(prefs.locale);
   document.documentElement.dataset.theme = prefs.theme;
   applyBrand(s.config);
@@ -112,13 +130,12 @@ export function mountPanel(
   const ctx: Ctx = {
     s,
     user,
-    prefs: () => prefs,
+    prefs: () => fresh(),
     setPrefs: (change) => {
-      prefs = { ...prefs, ...change };
+      prefs = { ...fresh(), ...change };
       s.savePrefs(user.id, prefs);
       if (change.locale) setLocale(change.locale);
       if (change.theme) document.documentElement.dataset.theme = change.theme;
-      if (change.plan) s.monthlyGrant(user.id);
       ctx.refreshTop();
     },
     go: (r) => {

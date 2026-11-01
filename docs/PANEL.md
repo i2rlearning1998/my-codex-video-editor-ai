@@ -56,3 +56,12 @@ local outbox that the reset form shows. The Supabase backend
 
 Supabase accounts and storage, real AI providers, real payments, the Admin
 app. Each is behind its interface and says "not connected" when asked.
+
+## P2-R2 changes
+
+- **Server or offline.** With `VITE_GATEWAY_URL` the panel talks to the gateway server (`src/panel/remote.ts`): credits, ledger, usage, plan switch, top-up, models and every model call. Without it the in-browser mock gateway runs, and only the mock models are offered. Real provider adapters never ship to the browser.
+- **Accounts.** With `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` the website and panel use Supabase (email confirmation, reset with an emailed code, refreshing sessions; Google only with `VITE_GOOGLE_CLIENT_ID`); else the local account backend.
+- **One person's data.** Projects, the Asset Library and the editor's autosave belong to the signed-in person; data made before accounts goes to the first person who signs in on the browser.
+- **Director.** The Plan card asks the chosen model (the free planner with the mock), shows optional upgrades with their credit effect and the server's estimate plus the media models. The chat uses a connected model to read answers; refusals never reach a model. Live Build makes AI pictures and the voice through the server; the editor imports them before Build video.
+- **Limits.** New project and Studio runs check the plan's limits first and show the owner's sentence with Upgrade; the editor stops an export over the plan's monthly limit the same way. The panel writes the plan's export limit to `aive.limits.<user>` for the editor when no server is used.
+- **Aurora Ink.** `src/panel/aurora.css` is the one token file (colours from `src/panel/aurora-tokens.ts` and the config's `brand.colors`; Plus Jakarta Sans, Noto Sans Devanagari, JetBrains Mono; light theme). The aurora gradient is used only for Director, build progress and primary actions; gold for credits. Card pictures are drawn from the config (`src/panel/art.ts`). Brief fields sit in the config's `brief.groups`; the website has a scroll story and FAQ items from `site.sections[].items`.

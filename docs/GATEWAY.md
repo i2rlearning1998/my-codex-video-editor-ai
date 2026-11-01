@@ -36,3 +36,10 @@ Keys never go into the config or the browser. The config names them
 and passes a `Transport` to the adapters; then the owner switches the provider
 and its models on in Admin, replaces the sample prices, and marks a model
 `tested` after a real run.
+
+## P2-R2 changes
+
+- **The server is the authority** (`server/`, docs/SERVER.md): keys only in its environment, credits under a per-person lock, jobs refunded when abandoned. The browser gateway is now the offline mock only.
+- **Real adapters** speak each provider's documented HTTP shape through `fetchTransport` (`secret:<NAME>` headers filled from the environment, retries on 429 and 5xx, time-outs, truncation and malformed answers mapped to sentences). New shapes: OpenAI Images, ElevenLabs voice (audio bytes), a generic async video job.
+- **Planning is charged** as one job at the planning model's price (two calls at most: plan and one repair); a refused plan gives the whole hold back. The build's hold includes the AI pictures, AI video seconds and the voice.
+- **Limits** (`preCheck`) speak the owner's sentences from `limitMessages` in the person's language, with `upgrade` in the detail. Storage takes the megabytes a run will add (`addMb`); the editor's exports are counted per person and month.

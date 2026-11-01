@@ -2,24 +2,34 @@
 // the Platform Config's site section, plus log in, sign up and password
 // reset. No live demo and no guest editor (owner rule 5).
 import '../ui/tokens.css';
+import '../panel/aurora.css';
 import '../panel/panel.css';
 import { localAccountBackend, indexedBlobStore } from '../cloud/local';
 import {
+  cloudConfig,
+  googleClientId,
+  type CloudBackend,
+} from '../cloud/backend';
+import { createSupabaseBackend } from '../cloud/supabase';
+import {
   enabledStyles,
-  localConfigSource,
   publicPlans,
   text as say,
   type PlatformConfig,
 } from '../platform-config';
 import { applyBrand, brandMark } from '../panel/app';
 import { h, clear, put } from '../panel/dom';
+import { styleArt } from '../panel/art';
 import { setLocale, t } from '../panel/strings';
+import { liveConfig } from '../panel/live-config';
 
 const root = document.getElementById('site')!;
-const account = localAccountBackend({
-  storage: localStorage,
-  blobs: indexedBlobStore(),
-});
+// P2B-12: Supabase accounts when its public settings exist, else local.
+const cloud = cloudConfig();
+const account: CloudBackend & { lastResetCode?(email: string): string | null } =
+  cloud
+    ? createSupabaseBackend(cloud)
+    : localAccountBackend({ storage: localStorage, blobs: indexedBlobStore() });
 let config: PlatformConfig;
 let currency: 'INR' | 'USD' = 'INR';
 let signedIn = false;
@@ -77,6 +87,8 @@ function landing(out: HTMLElement) {
   const sections = [...config.site.sections]
     .filter((s) => s.enabled)
     .sort((a, b) => a.order - b.order);
+  // Steps light up as they scroll into view (none with reduced motion).
+  queueMicrotask(revealOnScroll);
   for (const s of sections) {
     const sec = h('section', {
       class: `site-section ${s.kind}`,
@@ -98,6 +110,42 @@ function landing(out: HTMLElement) {
           h('a', { class: 'button', href: '#/login' }, t('site.login')),
         ),
       );
+    // P2B-33: the story as a scroll timeline; the FAQ as open/close items.
+    if (s.kind === 'story')
+      sec.append(
+        h(
+          'ol',
+          { class: 'story-line', id: 'story' },
+          s.items.map((step, i) =>
+            h(
+              'li',
+              { class: 'story-step', 'data-step': String(i + 1) },
+              h('span', {
+                class: 'story-dot',
+                'aria-hidden': 'true',
+                text: String(i + 1),
+              }),
+              h('h3', { text: L(step.title) }),
+              h('p', { class: 'muted', text: L(step.body) }),
+            ),
+          ),
+        ),
+      );
+    if (s.kind === 'faq')
+      sec.append(
+        h(
+          'div',
+          { class: 'faq', id: 'faq' },
+          s.items.map((q) =>
+            h(
+              'details',
+              { class: 'faq-item' },
+              h('summary', { text: L(q.title) }),
+              h('p', { class: 'muted', text: L(q.body) }),
+            ),
+          ),
+        ),
+      );
     if (s.kind === 'styles')
       sec.append(
         h(
@@ -106,7 +154,8 @@ function landing(out: HTMLElement) {
           enabledStyles(config).map((st) =>
             h(
               'article',
-              { class: 'card', 'data-style': st.id },
+              { class: 'card style-card', 'data-style': st.id },
+              styleArt(st, config),
               h('h3', { text: L(st.name) }),
               h('p', { class: 'muted', text: L(st.blurb) }),
             ),
@@ -181,6 +230,22 @@ function landing(out: HTMLElement) {
   }
 }
 
+function revealOnScroll() {
+  const steps = document.querySelectorAll<HTMLElement>('.story-step');
+  if (!('IntersectionObserver' in window)) {
+    for (const el of steps) el.dataset.seen = 'true';
+    return;
+  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries)
+        if (e.isIntersecting) (e.target as HTMLElement).dataset.seen = 'true';
+    },
+    { threshold: 0.3 },
+  );
+  for (const el of steps) io.observe(el);
+}
+
 function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
   const email = h('input', {
     type: 'email',
@@ -216,9 +281,11 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
       else if (!codeSent) {
         await account.requestPasswordReset(email.value);
         codeSent = true;
-        note.textContent = t('site.codeSent', {
-          code: account.lastResetCode(email.value) ?? '—',
-        });
+        note.textContent = account.lastResetCode
+          ? t('site.codeSent', {
+              code: account.lastResetCode(email.value) ?? '—',
+            })
+          : t('site.codeEmailed');
         paint();
         return;
       } else
@@ -288,7 +355,25 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
             { href: `#/login?next=${encodeURIComponent(next())}` },
             t('site.haveAccount'),
           ),
-      h('p', { class: 'muted', text: t('site.localMode') }),
+      // Google sign-in only when its client id is set (and Supabase is used).
+      cloud && googleClientId() && mode !== 'reset'
+        ? h(
+            'button',
+            {
+              type: 'button',
+              class: 'button',
+              id: 'auth-google',
+              onclick: () =>
+                void account
+                  .signInWithProvider('google')
+                  .catch((err: Error) => {
+                    error.textContent = err.message;
+                  }),
+            },
+            t('site.google'),
+          )
+        : null,
+      cloud ? null : h('p', { class: 'muted', text: t('site.localMode') }),
     );
   paint();
   out.append(form);
@@ -304,7 +389,7 @@ function route() {
 }
 
 async function start() {
-  config = (await localConfigSource(localStorage).getLive()).config;
+  config = (await liveConfig(localStorage)).config;
   setLocale(config.brand.defaultLocale);
   applyBrand(config);
   signedIn = !!(await account.user());

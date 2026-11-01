@@ -10,7 +10,18 @@ import {
   serializeProject,
 } from '../core';
 import type { EditorEngine, Project } from '../core';
-import { t } from '../i18n';
+import { getLanguage, t as appT } from '../i18n';
+import { CLOUD_UI_STRINGS } from './cloud-ui-strings';
+
+/** The slot's own words first (cloud-ui-strings.ts), then the editor's. */
+const t = (key: string, params?: Record<string, string | number>): string => {
+  const own = CLOUD_UI_STRINGS[key];
+  if (!own) return appT(key, params);
+  return Object.entries(params ?? {}).reduce(
+    (text, [k, v]) => text.replaceAll(`{${k}}`, String(v)),
+    getLanguage() === 'hi' ? own[1] : own[0],
+  );
+};
 import {
   CloudConflictError,
   CloudNotConfiguredError,

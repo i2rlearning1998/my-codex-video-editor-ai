@@ -45,6 +45,11 @@ export class CloudNotConfiguredError extends Error {
 export interface CloudBackend {
   /** The signed-in person, or null. */
   user(): Promise<CloudUser | null>;
+  /**
+   * P2-R2: the signed-in person's access token (a Supabase JWT) for the
+   * gateway server, refreshed when needed; null for the local backend.
+   */
+  accessToken(): Promise<string | null>;
   /** Called with the person after every sign in, sign out or refresh. */
   onUserChange(listener: (user: CloudUser | null) => void): () => void;
   signUp(email: string, password: string): Promise<CloudUser>;

@@ -19,7 +19,15 @@ describe('P2-R1 config: providers, models, payments', () => {
   it('[P2R1-004] providers name a server secret, never a key', () => {
     const c = defaultConfig();
     expect(c.providers.map((p) => p.kind).sort()).toEqual(
-      ['anthropic', 'google', 'mock', 'openai', 'xai'].sort(),
+      [
+        'anthropic',
+        'elevenlabs',
+        'google',
+        'mock',
+        'openai',
+        'video-jobs',
+        'xai',
+      ].sort(),
     );
     expect(providerById(c, 'anthropic')?.keyRef).toBe('ANTHROPIC_API_KEY');
     const bad = defaultConfig() as unknown as {
@@ -33,11 +41,18 @@ describe('P2-R1 config: providers, models, payments', () => {
   it('[P2R1-005] models: lookups, roles, tiers, plan gating and sample prices', () => {
     const c = defaultConfig();
     expect(c.creditRate).toBeGreaterThan(0);
-    // Real providers are off until the owner adds keys; the mock serves every role.
+    // P2-R2: real providers are on in the config; the server says "not
+    // connected" until their key is set. The mock serves every role offline.
     expect(modelsForRole(c, 'director-plan').map((m) => m.id)).toEqual([
       'mock-fast',
+      'claude-fast',
+      'gemini-fast',
       'mock-balanced',
+      'claude-balanced',
+      'openai-balanced',
+      'grok-balanced',
       'mock-best',
+      'claude-best',
     ]);
     const free = planFor(c, 'free');
     const pro = planFor(c, 'pro');
@@ -47,7 +62,8 @@ describe('P2-R1 config: providers, models, payments', () => {
       reason: 'plan',
     });
     expect(modelAvailability(c, pro, 'mock-best')).toEqual({ ok: true });
-    expect(modelAvailability(c, pro, 'claude-best')).toEqual({
+    expect(modelAvailability(c, pro, 'claude-best')).toEqual({ ok: true });
+    expect(modelAvailability(c, pro, 'video-standard')).toEqual({
       ok: false,
       reason: 'disabled',
     });
@@ -61,16 +77,18 @@ describe('P2-R1 config: providers, models, payments', () => {
       'mock-balanced',
       'mock-best',
     ]);
-    // Real adapters are untested and every price is marked a sample.
+    // Real shapes are proven against fake servers; every price is a sample.
     expect(modelById(c, 'claude-balanced')).toMatchObject({
-      tested: false,
+      tested: true,
       samplePrice: true,
       providerId: 'anthropic',
     });
     expect(c.models.every((m) => m.samplePrice)).toBe(true);
     // Turning a provider off hides its models.
     c.providers.find((p) => p.id === 'mock')!.enabled = false;
-    expect(modelsForRole(c, 'studio-voice')).toEqual([]);
+    expect(modelsForRole(c, 'studio-voice').map((m) => m.id)).toEqual([
+      'eleven-voice',
+    ]);
   });
   it('[P2R1-006] payments and top-ups come from config; a mock works offline', () => {
     const c = defaultConfig();

@@ -1,5 +1,6 @@
 // P2-17: the user panel's entry (its own page, never part of the editor bundle).
 import '../ui/tokens.css';
+import './aurora.css';
 import './panel.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
@@ -69,6 +70,8 @@ async function start() {
       );
       return;
     }
+    // Plan, credits and usage (the server's, when it is used).
+    await services.sync(user.id);
     mountPanel(root, services, user, screens);
   } catch (e) {
     console.debug('[panel] start failed', e);

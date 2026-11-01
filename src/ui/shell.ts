@@ -1,3 +1,4 @@
+import type { UsageReporter } from '../usage-report';
 import {
   builtScenes,
   compositionCardStatus,
@@ -380,6 +381,8 @@ export interface ShellActions {
   openExample?: () => void | Promise<void>;
   /** The media byte store (D-004); defaults to OPFS, then IndexedDB. */
   mediaStore?: Promise<MediaStore | null>;
+  /** P2-R2: export limits and reports (the person's plan). */
+  usage?: UsageReporter;
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -3550,6 +3553,16 @@ export function mountEditorShell(
       // X1: code animations are baked at Full quality first.
       prepareCode: (composition, progress, cancelled) =>
         bakeForExport(codeBaker, composition, progress, cancelled),
+      // P2-R2: the plan's export limit; the project is saved first.
+      ...(actions.usage
+        ? {
+            allowExport: () => {
+              actions.save?.();
+              return actions.usage!.allowExport();
+            },
+            exported: (kind: string) => actions.usage!.exported(kind),
+          }
+        : {}),
     });
   };
   element<HTMLButtonElement>('#export').onclick = () => safely(openExport);
@@ -8305,6 +8318,9 @@ export function mountEditorShell(
     message,
     refresh,
     setSaveStatus,
+    /** P2-R2: files the panel's build made go to Project Media first. */
+    importHandedFiles: (files: readonly File[]) =>
+      mediaPanel.importFiles(files, { quiet: true }),
     /** P2-R1: a plan Director approved, built by the AI importer's Build video. */
     buildHandedPlan: (text: string) =>
       openCreatorImport({

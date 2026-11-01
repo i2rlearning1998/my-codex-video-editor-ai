@@ -71,8 +71,9 @@ describe('P2-R1 Director', () => {
     expect(r.refused).toBe(true);
     const last = r.interview.messages.at(-1)!;
     expect(last.kind).toBe('refusal');
-    expect(last.text).toContain(c.director.refusals[1]!.reply.en);
-    expect(last.text).toContain(c.director.refusals[1]!.alternative!.en);
+    const imp = c.director.refusals.find((x) => x.id === 'impersonation')!;
+    expect(last.text).toContain(imp.reply.en);
+    expect(last.text).toContain(imp.alternative!.en);
     expect(r.interview.answers).toEqual(iv.answers);
   });
 

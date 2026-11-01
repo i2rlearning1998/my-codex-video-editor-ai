@@ -139,7 +139,8 @@ describe('P2-R1 gateway', () => {
     ] as const;
     for (const [name, adapter, modelId, path, header] of cases) {
       const model = modelById(c, modelId)!;
-      expect(model.tested).toBe(false);
+      // P2-R2: proven against the fake provider servers (tests/server).
+      expect(model.tested).toBe(true);
       const ctx = { model, provider: providerById(c, model.providerId)! };
       const http = adapter.buildRequest(req, ctx);
       expect(http.url).toContain(path);
@@ -267,7 +268,12 @@ describe('P2-R1 gateway', () => {
     };
     expect(code({ modelId: 'mock-balanced' })).toBe('ok');
     expect(code({ modelId: 'mock-best' })).toBe('model-plan');
-    expect(code({ modelId: 'claude-best' })).toBe('model-disabled');
+    expect(code({ modelId: 'claude-best' })).toBe('model-plan');
+    const off = defaultConfig();
+    off.models.find((m) => m.id === 'claude-best')!.enabled = false;
+    expect(code({ config: off, modelId: 'claude-best' })).toBe(
+      'model-disabled',
+    );
     expect(code({ modelId: 'zzz' })).toBe('model-unknown');
     expect(code({ toolId: 'ai-video' })).toBe('tool-plan');
     expect(code({ toolId: 'rm-rf' })).toBe('tool-unknown');

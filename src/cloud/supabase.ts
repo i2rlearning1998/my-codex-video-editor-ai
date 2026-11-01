@@ -74,6 +74,11 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
       const { data } = await (await supabase()).auth.getSession();
       return userOf(data.session?.user);
     },
+    async accessToken() {
+      // getSession refreshes an expired session first (autoRefreshToken).
+      const { data } = await (await supabase()).auth.getSession();
+      return data.session?.access_token ?? null;
+    },
     onUserChange(listener) {
       let stop: (() => void) | null = null;
       let stopped = false;
@@ -91,7 +96,14 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
     },
     async signUp(email, password) {
       const data = check(
-        await (await supabase()).auth.signUp({ email, password }),
+        await (
+          await supabase()
+        ).auth.signUp({
+          email,
+          password,
+          // The confirmation email brings the person back to the log-in page.
+          options: { emailRedirectTo: `${location.origin}/site/#/login` },
+        }),
       );
       const user = userOf(data.user);
       if (!user) throw new Error('Sign up failed');
@@ -123,12 +135,19 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
     },
     async confirmPasswordReset(email, code, password) {
       const sb = await supabase();
-      const verified = check(
-        await sb.auth.verifyOtp({ email, token: code, type: 'recovery' }),
-      ) as { user: User | null };
+      let verified: { user: User | null; session: unknown } | null = null;
+      try {
+        verified = check(
+          await sb.auth.verifyOtp({ email, token: code, type: 'recovery' }),
+        ) as { user: User | null; session: unknown };
+      } catch {
+        verified = null;
+      }
+      // A wrong or old code: say so before touching the password.
+      const user = userOf(verified?.user);
+      if (!user || !verified?.session)
+        throw new Error('The code is wrong or has expired');
       check(await sb.auth.updateUser({ password }));
-      const user = userOf(verified.user);
-      if (!user) throw new Error('The code is wrong or has expired');
       return user;
     },
     async signOut() {

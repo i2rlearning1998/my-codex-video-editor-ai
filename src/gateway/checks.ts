@@ -33,6 +33,8 @@ export interface PreCheck {
   /** Credits for a whole video (Director budget), when this is one. */
   readonly videoCredits?: number;
   readonly usage: LimitUsage;
+  /** The language of the owner's limit sentences (default English). */
+  readonly locale?: 'en' | 'hi';
 }
 
 const refuse = (
@@ -47,6 +49,16 @@ const refuse = (
 export function preCheck(x: PreCheck): void {
   const { config: c, plan, usage: u } = x;
   const L = plan.limits;
+  // P2B-26: the owner's sentence from the config, else the built-in one.
+  const said = (
+    k: 'exports' | 'storage' | 'voiceClones' | 'projects',
+    n: number,
+    fallback: string,
+  ) => {
+    const m = c.limitMessages?.[k];
+    const t = m ? (x.locale === 'hi' && m.hi) || m.en : fallback;
+    return t.replace(/\{n\}/g, String(n));
+  };
   if (x.modelId) {
     const a = modelAvailability(c, plan, x.modelId);
     if (!a.ok) {
@@ -92,26 +104,42 @@ export function preCheck(x: PreCheck): void {
   )
     refuse(
       'limit-exports',
-      `Your plan allows ${L.exportsPerMonth} exports a month.`,
-      { limit: L.exportsPerMonth },
+      said(
+        'exports',
+        L.exportsPerMonth,
+        `Your plan allows ${L.exportsPerMonth} exports a month.`,
+      ),
+      { limit: L.exportsPerMonth, upgrade: 1 },
     );
   if (x.action === 'voice-clone' && u.voiceClones >= L.voiceClones)
     refuse(
       'limit-voice-clones',
-      `Your plan allows ${L.voiceClones} cloned voices.`,
-      { limit: L.voiceClones },
+      said(
+        'voiceClones',
+        L.voiceClones,
+        `Your plan allows ${L.voiceClones} cloned voices.`,
+      ),
+      { limit: L.voiceClones, upgrade: 1 },
     );
   if (x.action === 'project' && L.projects !== null && u.projects >= L.projects)
-    refuse('limit-projects', `Your plan allows ${L.projects} projects.`, {
-      limit: L.projects,
-    });
+    refuse(
+      'limit-projects',
+      said('projects', L.projects, `Your plan allows ${L.projects} projects.`),
+      { limit: L.projects, upgrade: 1 },
+    );
   if (
     (x.action === 'store' || (x.addMb ?? 0) > 0) &&
     u.storageMb + (x.addMb ?? 0) > L.storageMb
   )
-    refuse('limit-storage', `Your plan has ${L.storageMb} MB of storage.`, {
-      limit: L.storageMb,
-    });
+    refuse(
+      'limit-storage',
+      said(
+        'storage',
+        L.storageMb,
+        `Your plan has ${L.storageMb} MB of storage.`,
+      ),
+      { limit: L.storageMb, upgrade: 1 },
+    );
   const budget = c.director.budget.maxCreditsPerVideo;
   if (
     x.videoCredits !== undefined &&
