@@ -4,6 +4,8 @@
 import {
   canUse,
   defaultModelFor,
+  modelAvailability,
+  modelsForRole,
   enabledStudios,
   needsConsent,
   studioById,
@@ -16,7 +18,7 @@ import type { Ctx, Screen } from '../app';
 import { renderForm } from '../form';
 import type { Asset } from '../services';
 import { t } from '../strings';
-import { card, empty, when } from './common';
+import { bestModels, card, empty, when } from './common';
 
 const UNSORTED = 'unsorted';
 async function projectOptions(ctx: Ctx) {
@@ -145,7 +147,11 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
     );
     return;
   }
-  const model = defaultModelFor(c, plan, s.role);
+  // A connected model the plan allows, a real one before the offline mock.
+  const model =
+    bestModels(ctx, modelsForRole(c, s.role)).find(
+      (m) => modelAvailability(c, plan, m.id).ok && ctx.s.connected(m.id),
+    ) ?? defaultModelFor(c, plan, s.role);
   let answers: Answers = {};
   const cost = h('p', {
     class: 'estimate',
@@ -260,6 +266,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
             }),
             assetView(asset),
           );
+          await ctx.s.sync(ctx.user.id).catch(() => undefined);
           ctx.refreshTop();
         } catch (e) {
           const msg =
@@ -280,6 +287,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
               text: msg,
             }),
           );
+          await ctx.s.sync(ctx.user.id).catch(() => undefined);
           ctx.refreshTop();
         } finally {
           run.disabled = false;

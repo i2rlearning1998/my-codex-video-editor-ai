@@ -74,6 +74,11 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
       const { data } = await (await supabase()).auth.getSession();
       return userOf(data.session?.user);
     },
+    async accessToken() {
+      // getSession refreshes an expired session first (autoRefreshToken).
+      const { data } = await (await supabase()).auth.getSession();
+      return data.session?.access_token ?? null;
+    },
     onUserChange(listener) {
       let stop: (() => void) | null = null;
       let stopped = false;
@@ -91,7 +96,14 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
     },
     async signUp(email, password) {
       const data = check(
-        await (await supabase()).auth.signUp({ email, password }),
+        await (
+          await supabase()
+        ).auth.signUp({
+          email,
+          password,
+          // The confirmation email brings the person back to the log-in page.
+          options: { emailRedirectTo: `${location.origin}/site/#/login` },
+        }),
       );
       const user = userOf(data.user);
       if (!user) throw new Error('Sign up failed');

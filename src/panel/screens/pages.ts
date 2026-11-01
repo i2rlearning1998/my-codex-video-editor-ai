@@ -527,21 +527,10 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
               class: 'button primary',
               id: 'pay-confirm',
               onclick: async () => {
-                const key = `${pack.id}-${Date.now().toString(36)}`;
-                const r = await provider.pay({
-                  credits: pack.credits,
-                  amount: cur === 'INR' ? pack.price.inr : pack.price.usd,
-                  currency: cur,
-                  key,
-                });
+                const r = await ctx.s.topUp(ctx.user.id, pack.id, cur);
                 dialog.close();
                 dialog.remove();
                 if (!r.ok) return ctx.toast(r.message, 'error');
-                ledger.grant(
-                  pack.credits,
-                  `topup:${r.paymentId}`,
-                  `${pack.id} ${provider.id}`,
-                );
                 ctx.toast(t('credits.paid', { n: pack.credits }));
                 ctx.refreshTop();
                 paint();
@@ -604,8 +593,9 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
                     type: 'button',
                     class: 'button sm',
                     'data-switch': p.id,
-                    onclick: () => {
-                      ctx.setPrefs({ plan: p.id });
+                    onclick: async () => {
+                      await ctx.s.switchPlan(ctx.user.id, p.id);
+                      ctx.refreshTop();
                       ctx.toast(
                         t('credits.planChanged', { plan: ctx.say(p.name) }),
                       );

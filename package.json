@@ -39,6 +39,9 @@
     "library:versions": "node owner/run.mjs /owner/cli.ts versions",
     "owner": "node owner/run.mjs /owner/server/main.ts serve",
     "owner:create": "node owner/run.mjs /owner/server/main.ts create-owner",
+    "server": "node server/run.mjs /server/main.ts",
+    "server:test": "vitest run tests/server",
+    "keys:check": "node scripts/keys-check.mjs",
     "visual": "playwright test e2e/visual.spec.ts --project=desktop",
     "visual:update": "playwright test e2e/visual.spec.ts --project=desktop --update-snapshots"
   },

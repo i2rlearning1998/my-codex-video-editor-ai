@@ -28,11 +28,16 @@ const spec = (
   }),
   parse: (json) => {
     const r = json as {
-      choices?: { message?: { content?: string | null } }[];
+      choices?: {
+        message?: { content?: string | null };
+        finish_reason?: string;
+      }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
     const text = r?.choices?.[0]?.message?.content;
     if (typeof text !== 'string') bad('no message');
+    if (r.choices?.[0]?.finish_reason === 'length')
+      bad('the answer was cut off');
     const usage = emptyUsage();
     usage.inputTokens = num(r.usage?.prompt_tokens);
     usage.outputTokens = num(r.usage?.completion_tokens);

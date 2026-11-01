@@ -64,6 +64,14 @@ export function mountPanel(
   let prefs = s.prefs(user.id);
   if (!prefs.name)
     prefs = { ...prefs, name: (user.email ?? '').split('@')[0] ?? '' };
+  // Always the stored settings: a plan switch or another screen may have
+  // changed them since this copy was read.
+  const fresh = () =>
+    (prefs = {
+      ...prefs,
+      ...s.prefs(user.id),
+      name: s.prefs(user.id).name || prefs.name,
+    });
   setLocale(prefs.locale);
   document.documentElement.dataset.theme = prefs.theme;
   applyBrand(s.config);
@@ -112,13 +120,12 @@ export function mountPanel(
   const ctx: Ctx = {
     s,
     user,
-    prefs: () => prefs,
+    prefs: () => fresh(),
     setPrefs: (change) => {
-      prefs = { ...prefs, ...change };
+      prefs = { ...fresh(), ...change };
       s.savePrefs(user.id, prefs);
       if (change.locale) setLocale(change.locale);
       if (change.theme) document.documentElement.dataset.theme = change.theme;
-      if (change.plan) s.monthlyGrant(user.id);
       ctx.refreshTop();
     },
     go: (r) => {

@@ -30,9 +30,11 @@ export const anthropicAdapter = (transport?: Transport) =>
           content?: { type: string; text?: string }[];
           usage?: { input_tokens?: number; output_tokens?: number };
           type?: string;
+          stop_reason?: string;
         };
         if (!r || r.type === 'error' || !Array.isArray(r.content))
           bad('no content');
+        if (r.stop_reason === 'max_tokens') bad('the answer was cut off');
         const text = r.content
           .filter((c) => c.type === 'text')
           .map((c) => c.text ?? '')

@@ -2,19 +2,27 @@
 // account backend (CloudBackend: local now, Supabase later), the gateway with
 // its ledger and usage log, and this person's panel data.
 import { localAccountBackend, indexedBlobStore } from '../cloud/local';
-import type { CloudBackend, CloudUser } from '../cloud/backend';
+import {
+  cloudConfig,
+  type CloudBackend,
+  type CloudUser,
+} from '../cloud/backend';
+import { createSupabaseBackend } from '../cloud/supabase';
+import { paymentProviders } from '../payments';
+import { remoteGateway, type PanelGateway, type RemoteGateway } from './remote';
 import {
   CreditLedger,
   anthropicAdapter,
   createGateway,
   googleAdapter,
   mockAdapter,
+  mockRespond,
   openaiAdapter,
   openaiCompatibleAdapter,
   storageLedgerStore,
   storageUsageLog,
   xaiAdapter,
-  type Gateway,
+  estimateDirector,
   type GatewayRequest,
   type MockFailure,
   type UsageLog,
@@ -26,6 +34,7 @@ import {
   type PlatformConfig,
 } from '../platform-config';
 import { IdbBackend, ProjectLibrary } from '../persistence/projects';
+import { claimLocalData } from '../auth-gate';
 import type { Answers } from '../platform-config';
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -64,9 +73,29 @@ export interface Services {
   readonly config: PlatformConfig;
   readonly configFallback: boolean;
   readonly account: CloudBackend & {
-    lastResetCode(email: string): string | null;
+    lastResetCode?(email: string): string | null;
   };
-  readonly gateway: Gateway;
+  /** The in-browser mock gateway, or the server (VITE_GATEWAY_URL). */
+  readonly gateway: PanelGateway;
+  /** The server client when VITE_GATEWAY_URL is set, else null. */
+  readonly remote: RemoteGateway | null;
+  /** Reads plan, credits and usage again (the server's, when used). */
+  sync(userId: string): Promise<void>;
+  /** Test-mode plan switch (mock payment); real payments come with Admin. */
+  switchPlan(userId: string, planId: string): Promise<void>;
+  topUp(
+    userId: string,
+    packId: string,
+    currency: 'INR' | 'USD',
+  ): Promise<{ ok: true; credits: number } | { ok: false; message: string }>;
+  /** Whether a model can be called now (the server knows which keys it has). */
+  connected(modelId: string): boolean;
+  /** The Plan card's numbers: the server's estimate when it is used. */
+  estimate(
+    modelId: string,
+    methods: readonly string[],
+    briefChars: number,
+  ): Promise<ReturnType<typeof estimateDirector> | null>;
   readonly usageLog: UsageLog;
   readonly projects: ProjectLibrary;
   ledger(userId: string): CreditLedger;
@@ -92,20 +121,14 @@ const DEFAULT_PREFS = (c: PlatformConfig): Prefs => ({
   trash: [],
 });
 
-/** Readable answers from the offline mock model (it stands in for a real one). */
-function mockText(req: GatewayRequest): string {
-  const input = req.messages
-    .map((m) => m.content)
-    .join(' ')
-    .trim();
-  switch (req.system) {
-    case 'studio:write':
-      return `${input}\n\n${input.split(/\s+/).slice(0, 12).join(' ')}: a short draft written by the test model.`;
-    case 'studio:youtube-pack':
-      return `Title: ${input.split('\n')[0]}\nDescription: ${input}\nTags: video, explainer, learning`;
-    default:
-      return input || 'ok';
-  }
+/** VITE_GATEWAY_URL, or in dev and e2e builds a page-provided value. */
+export function gatewayBase(): string | null {
+  const env = import.meta.env as Record<string, string | undefined>;
+  const page = (globalThis as { __AIVE_GATEWAY_URL__?: string })
+    .__AIVE_GATEWAY_URL__;
+  return (
+    ((env.DEV || env.MODE === 'e2e') && page) || env.VITE_GATEWAY_URL || null
+  );
 }
 
 export async function createServices(
@@ -118,7 +141,12 @@ export async function createServices(
   const source = localConfigSource(storage);
   const live = await source.getLive();
   const config = live.config;
-  const account = localAccountBackend({ storage, blobs: indexedBlobStore() });
+  // P2B-12: Supabase accounts when its public settings exist, else local.
+  const cloud = cloudConfig();
+  const account = cloud
+    ? createSupabaseBackend(cloud)
+    : localAccountBackend({ storage, blobs: indexedBlobStore() });
+  const gatewayUrl = gatewayBase();
   const usageLog = storageUsageLog(storage);
   const ledgers = new Map<string, CreditLedger>();
   const ledger = (u: string) => {
@@ -148,7 +176,17 @@ export async function createServices(
       return [];
     }
   };
-  const projects = new ProjectLibrary(new IdbBackend());
+  // P2B-13: projects belong to the person who made them.
+  let ownerId = '';
+  const projects = new ProjectLibrary(
+    new IdbBackend(),
+    undefined,
+    undefined,
+    () =>
+      ownerId
+        ? { id: ownerId, legacy: claimLocalData(storage, ownerId) }
+        : null,
+  );
   let projectCount = 0;
   void projects
     .list()
@@ -159,6 +197,12 @@ export async function createServices(
     configFallback:
       live.version === 0 && storage.getItem('aive.platformConfig') !== null,
     account,
+    remote: null,
+    sync: async () => {},
+    switchPlan: async () => {},
+    topUp: async () => ({ ok: false, message: '' }),
+    connected: () => true,
+    estimate: async () => null,
     usageLog,
     projects,
     ledger,
@@ -179,14 +223,14 @@ export async function createServices(
     saveAsset: (a) =>
       storage.setItem(ASSETS, JSON.stringify([...allAssets(), a])),
     now: () => new Date(),
-    gateway: undefined as unknown as Gateway,
+    gateway: undefined as unknown as PanelGateway,
   };
   const gateway = createGateway({
     config: () => config,
     adapters: {
       mock: mockAdapter({
         latencyMs: options.latencyMs ?? 150,
-        respond: mockText,
+        respond: mockRespond,
         ...(options.mockFailure ? { failure: options.mockFailure } : {}),
       }),
       // Real adapters have no server transport this round: "not connected".
@@ -210,7 +254,135 @@ export async function createServices(
       };
     },
   });
-  (services as { gateway: Gateway }).gateway = gateway;
+  const local: PanelGateway = {
+    remote: false,
+    run: async (x) => gateway.run(x),
+    startJob: async (x) => gateway.startJob(x),
+    counts: (u) => gateway.counts(u),
+  };
+  const w = services as unknown as Record<string, unknown>;
+  w.gateway = local;
+  w.sync = async (u: string) => {
+    ownerId = u;
+  };
+  w.switchPlan = async (u: string, planId: string) => {
+    services.savePrefs(u, { ...services.prefs(u), plan: planId });
+    services.monthlyGrant(u);
+  };
+  w.topUp = async (u: string, packId: string, currency: 'INR' | 'USD') => {
+    const pack = config.topUps.find((t) => t.id === packId);
+    const provider = paymentProviders(config, currency)[0];
+    if (!pack || !provider)
+      return { ok: false, message: 'No payment method is switched on.' };
+    const r = await provider.pay({
+      credits: pack.credits,
+      amount: currency === 'INR' ? pack.price.inr : pack.price.usd,
+      currency,
+      key: `${pack.id}-${Date.now().toString(36)}`,
+    });
+    if (!r.ok) return r;
+    ledger(u).grant(
+      pack.credits,
+      `topup:${r.paymentId}`,
+      `${pack.id} ${provider.id}`,
+    );
+    return { ok: true, credits: pack.credits };
+  };
+  // The offline mock gateway can only reach the mock models.
+  w.connected = (modelId: string) =>
+    config.models.find((m) => m.id === modelId)?.providerId === 'mock';
+  w.estimate = async (
+    modelId: string,
+    methods: readonly string[],
+    briefChars: number,
+  ) => {
+    const model = config.models.find((m) => m.id === modelId);
+    return model
+      ? estimateDirector(config, model, { briefChars, methods })
+      : null;
+  };
+  if (gatewayUrl) {
+    // P2B-08: the server holds the keys and the credits.
+    let local: { email: string; token: string; exp: number } | null = null;
+    const token = async () => {
+      const jwt = await account.accessToken();
+      if (jwt) return jwt;
+      const me = await account.user();
+      if (!me?.email) throw new Error('Please log in first.');
+      if (
+        !local ||
+        local.email !== me.email ||
+        local.exp < Date.now() / 1000 + 60
+      ) {
+        const res = await fetch(
+          `${gatewayUrl.replace(/\/$/, '')}/v1/local/token`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email: me.email }),
+          },
+        );
+        const body = (await res.json().catch(() => ({}))) as { token?: string };
+        if (!body.token) throw new Error('Please log in first.');
+        local = {
+          email: me.email,
+          token: body.token,
+          exp: JSON.parse(
+            atob(
+              body.token.split('.')[1]!.replace(/-/g, '+').replace(/_/g, '/'),
+            ),
+          ).exp,
+        };
+      }
+      return local.token;
+    };
+    const remote = remoteGateway(gatewayUrl, token);
+    w.remote = remote;
+    w.gateway = remote.gateway;
+    w.sync = async (u: string) => {
+      ownerId = u;
+      await remote.sync();
+    };
+    w.ledger = () => remote.ledger();
+    w.planOf = (u: string) =>
+      planFor(config, remote.plan() ?? services.prefs(u).plan);
+    w.monthlyGrant = () => {};
+    w.switchPlan = async (u: string, planId: string) => {
+      await remote.api('/plan', {
+        plan: planId,
+        paymentKey: `plan-${planId}-${Date.now().toString(36)}`,
+      });
+      await services.sync(u);
+    };
+    w.topUp = async (u: string, packId: string, currency: 'INR' | 'USD') => {
+      try {
+        await remote.api('/topup', {
+          packId,
+          currency,
+          paymentKey: `${packId}-${Date.now().toString(36)}`,
+        });
+        await services.sync(u);
+        return {
+          ok: true,
+          credits: config.topUps.find((t) => t.id === packId)?.credits ?? 0,
+        };
+      } catch (e) {
+        return { ok: false, message: (e as Error).message };
+      }
+    };
+    w.connected = (modelId: string) =>
+      remote.models().some((m) => m.id === modelId && m.connected);
+    w.estimate = async (
+      modelId: string,
+      methods: readonly string[],
+      briefChars: number,
+    ) =>
+      remote.api<ReturnType<typeof estimateDirector>>('/estimate', {
+        modelId,
+        methods,
+        briefChars,
+      });
+  }
   return services;
 }
 export type { CloudUser };

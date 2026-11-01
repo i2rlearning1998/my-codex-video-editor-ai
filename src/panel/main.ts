@@ -69,6 +69,8 @@ async function start() {
       );
       return;
     }
+    // Plan, credits and usage (the server's, when it is used).
+    await services.sync(user.id);
     mountPanel(root, services, user, screens);
   } catch (e) {
     console.debug('[panel] start failed', e);

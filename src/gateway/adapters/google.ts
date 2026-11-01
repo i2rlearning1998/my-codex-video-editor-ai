@@ -30,7 +30,10 @@ export const googleAdapter = (transport?: Transport) =>
       }),
       parse: (json) => {
         const r = json as {
-          candidates?: { content?: { parts?: { text?: string }[] } }[];
+          candidates?: {
+            content?: { parts?: { text?: string }[] };
+            finishReason?: string;
+          }[];
           usageMetadata?: {
             promptTokenCount?: number;
             candidatesTokenCount?: number;
@@ -38,6 +41,8 @@ export const googleAdapter = (transport?: Transport) =>
         };
         const parts = r?.candidates?.[0]?.content?.parts;
         if (!Array.isArray(parts)) bad('no candidate');
+        if (r.candidates?.[0]?.finishReason === 'MAX_TOKENS')
+          bad('the answer was cut off');
         const usage = emptyUsage();
         usage.inputTokens = num(r.usageMetadata?.promptTokenCount);
         usage.outputTokens = num(r.usageMetadata?.candidatesTokenCount);

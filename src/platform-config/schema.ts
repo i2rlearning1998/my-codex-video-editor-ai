@@ -153,6 +153,8 @@ export const PROVIDER_KINDS = [
   'google',
   'xai',
   'openai-compatible',
+  'elevenlabs',
+  'video-jobs',
   'mock',
 ] as const;
 export const providerSchema = z.object({

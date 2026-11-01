@@ -183,6 +183,8 @@ export function localAccountBackend(
     `${ownerId}/${fingerprint}`;
 
   return {
+    // The local backend has no JWT; the gateway server issues a dev token.
+    accessToken: async () => null,
     async user() {
       return userOf(current());
     },

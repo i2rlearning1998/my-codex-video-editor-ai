@@ -28,18 +28,32 @@ export interface Usage {
 }
 export interface AdapterResult {
   readonly text?: string;
-  readonly media?: { kind: Model['kind']; url: string; units: number };
+  /** Media: a URL (mock, a provider link) and/or the bytes as base64. */
+  readonly media?: {
+    kind: Model['kind'];
+    url: string;
+    units: number;
+    mime?: string;
+    base64?: string;
+  };
   readonly usage: Usage;
 }
 /** An HTTP request with secrets referenced by name, never inlined. */
 export interface HttpRequest {
   readonly url: string;
-  readonly method: 'POST';
+  readonly method: 'POST' | 'GET';
   /** Values starting with `secret:` are resolved by the server transport. */
   readonly headers: Readonly<Record<string, string>>;
   readonly body: unknown;
+  /** The answer is bytes (audio, an image), not JSON. */
+  readonly expect?: 'json' | 'binary';
 }
-/** Sends an HttpRequest and returns the parsed JSON body (server side only). */
+/** A binary answer from a transport. */
+export interface BinaryBody {
+  readonly binary: Uint8Array;
+  readonly contentType: string;
+}
+/** Sends an HttpRequest and returns the parsed JSON body or the bytes (server side only). */
 export type Transport = (req: HttpRequest) => Promise<unknown>;
 
 export interface AdapterContext {

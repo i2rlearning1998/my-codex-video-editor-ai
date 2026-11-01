@@ -8,7 +8,9 @@ import {
   type Plan,
   type PlatformConfig,
 } from '../platform-config';
-import { hash, type Gateway } from '../gateway';
+import { hash } from '../gateway';
+import type { JobInput, JobLike } from '../panel/remote';
+// (types only: the director stays free of panel code at run time)
 import type { VideoPlan } from '../video-plan';
 import { checkPlan, methodOf } from './planner';
 
@@ -20,7 +22,8 @@ export type BuildEvent =
   | { step: 'failed'; message: string; refunded: number };
 
 export interface BuildInput {
-  readonly gateway: Gateway;
+  /** The in-browser gateway or the server (src/panel/remote.ts). */
+  readonly gateway: { startJob(x: JobInput): JobLike | Promise<JobLike> };
   readonly config: PlatformConfig;
   readonly userId: string;
   readonly plan: Plan;
@@ -53,7 +56,7 @@ export async function runBuild(
     id,
     maxCredits: Math.ceil(x.maxCredits / Math.max(1, methods.length)),
   }));
-  const job = x.gateway.startJob({
+  const job = await x.gateway.startJob({
     userId: x.userId,
     plan: x.plan,
     role: c.director.roles.write,
@@ -92,11 +95,11 @@ export async function runBuild(
     x.onEvent({ step: 'check' });
     const checked = checkPlan(x.video);
     if (!checked.ok) throw new Error(checked.message);
-    const credits = job.finish(work);
+    const credits = await job.finish(work);
     x.onEvent({ step: 'done', credits, refunded: job.reserved - credits });
     return { plan: checked.plan, credits };
   } catch (e) {
-    job.fail();
+    await job.fail();
     const message =
       e instanceof Error && e.message !== 'empty'
         ? e.message

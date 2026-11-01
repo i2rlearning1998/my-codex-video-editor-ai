@@ -53,6 +53,7 @@ const S = {
   'common.all': ['All', 'सब'],
   'common.upgrade': ['Upgrade', 'अपग्रेड करें'],
   'common.locked': ['Not on your plan', 'आपके प्लान में नहीं'],
+  'common.notConnected': ['Not connected yet', 'अभी जुड़ा नहीं है'],
   'common.credits': ['{n} credits', '{n} क्रेडिट'],
   'common.range': ['{min}–{max} credits', '{min}–{max} क्रेडिट'],
   'common.none': ['Nothing here yet.', 'यहाँ अभी कुछ नहीं।'],

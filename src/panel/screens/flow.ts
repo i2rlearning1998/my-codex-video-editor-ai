@@ -4,6 +4,7 @@ import {
   buildBrief,
   canUse,
   defaultModelFor,
+  modelsForRole,
   modelAvailability,
   styleById,
   type Answers,
@@ -28,7 +29,7 @@ import { h, clear, put } from '../dom';
 import type { Ctx, Screen } from '../app';
 import { renderForm } from '../form';
 import { t } from '../strings';
-import { modelPicker, empty } from './common';
+import { bestModels, modelPicker, empty } from './common';
 
 interface Flow {
   styleId: string;
@@ -54,8 +55,14 @@ export function currentModel(ctx: Ctx): string {
   const c = ctx.s.config;
   const plan = ctx.s.planOf(ctx.user.id);
   const saved = ctx.prefs().model;
-  if (saved && modelAvailability(c, plan, saved).ok) return saved;
-  return defaultModelFor(c, plan, roleOf(c))?.id ?? '';
+  const usable = (id: string) =>
+    modelAvailability(c, plan, id).ok && ctx.s.connected(id);
+  if (saved && usable(saved)) return saved;
+  // The recommended model the plan allows and the server can reach.
+  const list = bestModels(ctx, modelsForRole(c, roleOf(c))).filter((m) =>
+    usable(m.id),
+  );
+  return list[0]?.id ?? defaultModelFor(c, plan, roleOf(c))?.id ?? '';
 }
 /** The answers with the Brand Kit's colour and fonts (P2-37). */
 function withBrand(ctx: Ctx, style: Style, a: Answers): Answers {
@@ -697,7 +704,7 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
       maxCredits: j.max,
       key: j.key,
       onEvent: (e) => {
-        ctx.refreshTop();
+        void ctx.s.sync(ctx.user.id).then(ctx.refreshTop, () => undefined);
         if (e.step === 'reserve') step(t('build.reserve', { n: e.credits }));
         else if (e.step === 'scene') {
           step(t('build.scene', { i: e.index + 1, n: e.total }));
@@ -761,6 +768,7 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           : t('gw.refused', { message: e.message });
       status.dataset.state = 'failed';
     }
+    await ctx.s.sync(ctx.user.id).catch(() => undefined);
     ctx.refreshTop();
     actions.append(
       h(

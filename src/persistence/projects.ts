@@ -17,6 +17,8 @@ export interface ProjectRecord {
   readonly json: string;
   /** A small JPEG data URL, or empty. */
   readonly thumb: string;
+  /** P2-R2: the signed-in person who owns it (none: made before accounts). */
+  readonly owner?: string;
 }
 export type ProjectSummary = Omit<ProjectRecord, 'json'>;
 
@@ -128,11 +130,24 @@ export class ProjectLibrary {
     private readonly now: () => Date = () => new Date(),
     private readonly newId: () => string = () =>
       `p-${crypto.randomUUID().slice(0, 12)}`,
+    /**
+     * P2-R2 (P2B-13): who is signed in, and whether they inherited the
+     * projects made before accounts. Without it every project is listed.
+     */
+    private readonly owner: () => { id: string; legacy: boolean } | null = () =>
+      null,
   ) {}
 
-  /** Newest first, without the project text. */
+  private mine(record: { owner?: string } | undefined): boolean {
+    const me = this.owner();
+    if (!record) return false;
+    if (!me) return true;
+    return record.owner ? record.owner === me.id : me.legacy;
+  }
+
+  /** Newest first, without the project text (only the signed-in person's). */
   async list(): Promise<ProjectSummary[]> {
-    const records = await this.backend.all();
+    const records = (await this.backend.all()).filter((r) => this.mine(r));
     return records
       .map(({ json: _json, ...summary }) => summary)
       .sort((a, b) => b.updated.localeCompare(a.updated));
@@ -141,7 +156,11 @@ export class ProjectLibrary {
   async save(project: Readonlyish, thumb = ''): Promise<void> {
     const json = serializeProject(project);
     const previous = await this.backend.get(project.id);
+    // Another person's project with the same id is never overwritten.
+    if (previous && !this.mine(previous)) return;
+    const owner = previous?.owner ?? this.owner()?.id;
     await this.backend.put({
+      ...(owner ? { owner } : {}),
       id: project.id,
       name: project.metadata.name,
       updated: this.now().toISOString(),
@@ -152,13 +171,13 @@ export class ProjectLibrary {
 
   async open(id: string): Promise<Project | null> {
     const record = await this.backend.get(id);
-    return record ? deserializeProject(record.json) : null;
+    return record && this.mine(record) ? deserializeProject(record.json) : null;
   }
 
   async rename(id: string, name: string): Promise<boolean> {
     const record = await this.backend.get(id);
     const parsed = nameSchema.safeParse(name);
-    if (!record || !parsed.success) return false;
+    if (!record || !this.mine(record) || !parsed.success) return false;
     const project = withIdentity(
       deserializeProject(record.json),
       id,
@@ -174,7 +193,7 @@ export class ProjectLibrary {
 
   async duplicate(id: string, copyWord: string): Promise<string | null> {
     const record = await this.backend.get(id);
-    if (!record) return null;
+    if (!record || !this.mine(record)) return null;
     const copyId = this.newId();
     const name = `${record.name} ${copyWord}`.slice(0, 256);
     const project = withIdentity(deserializeProject(record.json), copyId, name);
@@ -184,11 +203,15 @@ export class ProjectLibrary {
       updated: this.now().toISOString(),
       json: serializeProject(project),
       thumb: record.thumb,
+      ...(record.owner || this.owner()
+        ? { owner: record.owner ?? this.owner()!.id }
+        : {}),
     });
     return copyId;
   }
 
   async remove(id: string): Promise<void> {
+    if (!this.mine(await this.backend.get(id))) return;
     await this.backend.delete(id);
   }
 }

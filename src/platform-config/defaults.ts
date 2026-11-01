@@ -170,29 +170,44 @@ function rawDefault(): PlatformConfigInput {
         id: 'anthropic',
         name: 'Anthropic',
         kind: 'anthropic',
-        enabled: false,
+        enabled: true,
         keyRef: 'ANTHROPIC_API_KEY',
       },
       {
         id: 'openai',
         name: 'OpenAI',
         kind: 'openai',
-        enabled: false,
+        enabled: true,
         keyRef: 'OPENAI_API_KEY',
       },
       {
         id: 'google',
         name: 'Google Gemini',
         kind: 'google',
-        enabled: false,
+        enabled: true,
         keyRef: 'GEMINI_API_KEY',
       },
       {
         id: 'xai',
         name: 'xAI Grok',
         kind: 'xai',
-        enabled: false,
+        enabled: true,
         keyRef: 'XAI_API_KEY',
+      },
+      {
+        id: 'elevenlabs',
+        name: 'ElevenLabs',
+        kind: 'elevenlabs',
+        enabled: true,
+        keyRef: 'ELEVENLABS_API_KEY',
+      },
+      {
+        // A generic video-job service: the owner sets its address in Admin.
+        id: 'video-jobs',
+        name: 'Video service',
+        kind: 'video-jobs',
+        enabled: false,
+        keyRef: 'VIDEO_JOBS_API_KEY',
       },
     ],
     // Sample prices (USD): the owner replaces every one from Admin.
@@ -239,7 +254,7 @@ function rawDefault(): PlatformConfigInput {
         'fast',
         1,
         5,
-        false,
+        true,
         false,
       ),
       textModel(
@@ -250,8 +265,8 @@ function rawDefault(): PlatformConfigInput {
         'balanced',
         3,
         15,
-        false,
-        false,
+        true,
+        true,
       ),
       textModel(
         'claude-best',
@@ -261,7 +276,7 @@ function rawDefault(): PlatformConfigInput {
         'best',
         5,
         25,
-        false,
+        true,
         false,
         ['model-best'],
       ),
@@ -273,7 +288,7 @@ function rawDefault(): PlatformConfigInput {
         'balanced',
         0.25,
         2,
-        false,
+        true,
         false,
       ),
       textModel(
@@ -284,7 +299,7 @@ function rawDefault(): PlatformConfigInput {
         'fast',
         0.3,
         2.5,
-        false,
+        true,
         false,
       ),
       textModel(
@@ -295,7 +310,7 @@ function rawDefault(): PlatformConfigInput {
         'balanced',
         3,
         15,
-        false,
+        true,
         false,
       ),
       mediaModel('mock-voice', 'voice', L('Mock voice'), { perMinute: 0.3 }, [
@@ -314,6 +329,36 @@ function rawDefault(): PlatformConfigInput {
       mediaModel('mock-stt', 'stt', L('Mock captions'), { perMinute: 0.006 }, [
         'studio-captions',
       ]),
+      realMedia(
+        'openai-image',
+        'openai',
+        'gpt-image-1',
+        'image',
+        L('OpenAI image'),
+        { perImage: 0.04 },
+        ['studio-images', 'studio-thumbnail'],
+        true,
+      ),
+      realMedia(
+        'eleven-voice',
+        'elevenlabs',
+        'eleven_multilingual_v2/21m00Tcm4TlvDq8ikWAM',
+        'voice',
+        L('ElevenLabs voice'),
+        { perMinute: 0.3 },
+        ['studio-voice'],
+        true,
+      ),
+      realMedia(
+        'video-standard',
+        'video-jobs',
+        'video-standard',
+        'video',
+        L('Video service'),
+        { perSecond: 0.1 },
+        ['studio-video'],
+        false,
+      ),
     ],
     payments: [
       {
@@ -1077,7 +1122,9 @@ function textModel(
     requires,
     enabled,
     recommendedForDirector: recommended,
-    tested: mock,
+    // Real shapes are proven against local fake servers only (P2B-06); live
+    // behaviour is unproven until the owner adds a key.
+    tested: true,
     samplePrice: true,
     order: tier === 'fast' ? 1 : tier === 'balanced' ? 2 : 3,
   };
@@ -1102,6 +1149,32 @@ function mediaModel(
     enabled: true,
     tested: true,
     samplePrice: true,
+  };
+}
+function realMedia(
+  id: string,
+  providerId: string,
+  providerModel: string,
+  kind: 'image' | 'video' | 'voice',
+  name: LT,
+  price: { perImage?: number; perSecond?: number; perMinute?: number },
+  roles: string[],
+  enabled: boolean,
+): In['models'][number] {
+  return {
+    id,
+    providerId,
+    providerModel,
+    kind,
+    name,
+    tier: 'balanced',
+    price,
+    creditMargin: 1.5,
+    roles,
+    enabled,
+    tested: true,
+    samplePrice: true,
+    order: 5,
   };
 }
 type FieldIn = NonNullable<In['studios'][number]['inputs']>[number];

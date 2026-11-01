@@ -16,7 +16,14 @@ import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
 import { confirmDialog } from './ui/components/modal';
 import { t } from './i18n';
-import { ASPECT_SIZES, HANDOFF_KEY, readHandoff } from './auth-gate';
+import {
+  ASPECT_SIZES,
+  HANDOFF_KEY,
+  autosaveKey,
+  claimLocalData,
+  readHandoff,
+  signedInUserId,
+} from './auth-gate';
 import { createProjectFromSettings } from './project/new-project';
 import { initTheme } from './ui/theme';
 import { initAccent } from './ui/accent';
@@ -43,6 +50,10 @@ document.addEventListener(
 );
 
 let store: LocalProjectStore | undefined;
+// P2-R2 (P2B-13): each signed-in person has their own autosave slot and
+// Projects; the data made before accounts goes to the first person.
+const me = signedInUserId(window.localStorage) ?? 'local';
+const legacy = claimLocalData(window.localStorage, me);
 // TL-001: documents open with every top-level layer as a clip on a track.
 const openable = (project: unknown) => {
   const { project: adopted, adopted: count } = adoptFreeLayers(
@@ -59,7 +70,10 @@ let initialMessage =
 // PRJ-017: a backup that replaced an unreadable save is offered, not forced.
 let recoveredProject: ReturnType<typeof openable> | undefined;
 try {
-  store = new LocalProjectStore(window.localStorage);
+  store = new LocalProjectStore(
+    window.localStorage,
+    autosaveKey('ai-native-editor:project', me, legacy),
+  );
   const loaded = store.load();
   if (loaded.project) {
     const opened = openable(loaded.project);
@@ -81,7 +95,12 @@ const engine = new EditorEngine(initialProject, {
 });
 const diagnostics = observeDiagnostics(engine);
 // PRJ-015/016: every saved project also lives in the Projects library.
-const library = new ProjectLibrary(new IdbBackend());
+const library = new ProjectLibrary(
+  new IdbBackend(),
+  undefined,
+  undefined,
+  () => ({ id: me, legacy }),
+);
 const thumbNow = () => {
   const canvas = document.querySelector<HTMLCanvasElement>(
     '#composition-canvas',
