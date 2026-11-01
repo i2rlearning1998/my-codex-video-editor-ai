@@ -3085,7 +3085,7 @@ export function mountEditorShell(
     });
   };
   const openCreatorImport = (
-    initial: { text?: string; fileName?: string } = {},
+    initial: { text?: string; fileName?: string; autoBuild?: boolean } = {},
   ) => {
     session.setPlaying(false);
     const composition = session.source.composition;
@@ -8305,6 +8305,13 @@ export function mountEditorShell(
     message,
     refresh,
     setSaveStatus,
+    /** P2-R1: a plan Director approved, built by the AI importer's Build video. */
+    buildHandedPlan: (text: string) =>
+      openCreatorImport({
+        text,
+        fileName: 'director.plan.json',
+        autoBuild: true,
+      }),
     /** FX10: Duplicate project copies the project-wise libraries too. */
     copyProjectLibraries: async (from: string, to: string) => {
       await myLibrary.copyProject(from, to);

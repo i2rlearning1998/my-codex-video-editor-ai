@@ -16,6 +16,8 @@ import { createExampleProject } from './ui/example';
 import { mountEditorShell } from './ui/shell';
 import { confirmDialog } from './ui/components/modal';
 import { t } from './i18n';
+import { ASPECT_SIZES, HANDOFF_KEY, readHandoff } from './auth-gate';
+import { createProjectFromSettings } from './project/new-project';
 import { initTheme } from './ui/theme';
 import { initAccent } from './ui/accent';
 import { mountTooltips } from './ui/components/tooltip';
@@ -308,6 +310,53 @@ if (recoveredProject) {
       }
     }
   });
+}
+// P2-R1: the user panel opens the editor on a project, a new blank project,
+// or a plan Director approved (built by the AI importer's own Build video).
+const handoff = readHandoff(location.search);
+if (handoff) {
+  history.replaceState(null, '', location.pathname);
+  const fresh = (name: string, aspect: string) => {
+    const [width, height] = ASPECT_SIZES[aspect] ?? ASPECT_SIZES['16:9']!;
+    autosave?.flush();
+    createProjectFromSettings(
+      { name, width, height, fps: 30, background: '#ffffff' },
+      engine,
+    );
+  };
+  if (handoff.kind === 'open') {
+    if (handoff.projectId !== engine.state.id)
+      void library
+        .open(handoff.projectId)
+        .then((project) => {
+          if (project) engine.load(openable(project).project);
+        })
+        .catch(() => shell.message(t('projects.openFailed')));
+  } else if (handoff.kind === 'new') fresh(handoff.name, handoff.aspect);
+  else {
+    let text: string | null = null;
+    try {
+      text = localStorage.getItem(HANDOFF_KEY(handoff.id));
+      localStorage.removeItem(HANDOFF_KEY(handoff.id));
+    } catch {
+      text = null;
+    }
+    if (text) {
+      let title = 'Director';
+      let aspect = '16:9';
+      try {
+        const meta = (
+          JSON.parse(text) as { meta?: { title?: string; aspect?: string } }
+        ).meta;
+        title = meta?.title ?? title;
+        aspect = meta?.aspect ?? aspect;
+      } catch {
+        /* the importer reports a bad plan itself */
+      }
+      fresh(title, aspect);
+      shell.buildHandedPlan(text);
+    }
+  }
 }
 if (import.meta.hot)
   import.meta.hot.dispose(() => {

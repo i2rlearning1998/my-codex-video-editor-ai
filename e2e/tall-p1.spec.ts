@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { test, expect, hook, menuAction } from './fixtures';
+import { autoLogin, test, expect, hook, menuAction } from './fixtures';
 
 // T-ALL P1 (spec 7): first load, panels and layout.
 const box = async (page: Page, selector: string) =>
@@ -12,6 +12,7 @@ test('[LAY-060] the first load opens Media with an illustrated empty state; a ne
   const context = await browser.newContext({
     viewport: { width: 1600, height: 1072 },
   });
+  await context.addInitScript(autoLogin);
   const page = await context.newPage();
   await page.goto('/');
   await expect

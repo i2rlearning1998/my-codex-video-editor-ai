@@ -34,11 +34,54 @@ type Fixtures = {
   errorGuard: void;
   openFixtureProject: (name: string) => Promise<void>;
 };
+/**
+ * P2-R1: signs a test person in to the local account store before the page
+ * runs, so the editor's login gate lets the earlier tests in. It never
+ * replaces a real session (the panel tests sign up themselves), and a test
+ * that must stay logged out sets `aive.e2e.noAutoLogin` first.
+ */
+export function autoLogin() {
+  try {
+    if (localStorage.getItem('aive.e2e.noAutoLogin')) return;
+    const key = 'aive.localCloud';
+    const store = JSON.parse(localStorage.getItem(key) ?? 'null') as {
+      session?: string | null;
+      users?: { id: string }[];
+    } | null;
+    if (store?.session) return;
+    const users = store?.users ?? [];
+    if (!users.some((user) => user.id === 'e2e-user'))
+      users.push({
+        id: 'e2e-user',
+        email: 'e2e@example.com',
+        salt: '',
+        hash: '',
+        createdAt: '2026-11-01T00:00:00.000Z',
+      } as { id: string });
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        projects: [],
+        media: [],
+        training: [],
+        outbox: [],
+        ...store,
+        users,
+        session: 'e2e-user',
+      }),
+    );
+  } catch {
+    /* no storage: the gate sends the page to the website */
+  }
+}
+
 export const test = base.extend<Fixtures>({
   errorGuard: [
     async ({ page }, use, testInfo) => {
       // T-ALL P1 (D-183): the app opens Media first; earlier tests were
       // written for the Scene panel, so the fixture keeps that start.
+      // P2-R1 (owner rule 5): the editor opens only for a signed-in person.
+      await page.addInitScript(autoLogin);
       await page.addInitScript(() => {
         (window as { __AIVE_E2E_START__?: string }).__AIVE_E2E_START__ =
           'Scene';

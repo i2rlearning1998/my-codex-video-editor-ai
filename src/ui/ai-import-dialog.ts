@@ -73,6 +73,8 @@ export interface AiImportOptions extends CheckDeps {
   readonly copy: (text: string) => void;
   readonly openAi?: () => void;
   /** FINAL2 U10: a checked composition item offers "Build video". */
+  /** P2-R1: press Build video at once (a plan handed over by Director). */
+  readonly autoBuild?: boolean;
   readonly buildComposition?: (
     item: CreatorItem,
     /** FIX7: saves the picked items; run only once the build is kept. */
@@ -162,6 +164,7 @@ export function openAiImportDialog(options: AiImportOptions) {
   let run = 0;
   let fileName = options.fileName ?? '';
   let sceneMode: 'new' | 'current' = 'new';
+  let autoBuilt = false;
   const handle = openModal({
     titleText: t('aiImport.title'),
     bodyHtml: `
@@ -420,6 +423,10 @@ export function openAiImportDialog(options: AiImportOptions) {
             options.buildComposition!(row.item!, keep);
           };
           body.append(build);
+          if (options.autoBuild && !autoBuilt) {
+            autoBuilt = true;
+            queueMicrotask(() => build.click());
+          }
         }
         li.append(box, thumb, body);
         return li;

@@ -2883,5 +2883,6 @@
   "cloud.sizeKb": "{size} KB",
   "cloud.sizeMb": "{size} MB",
   "cloud.unreachable": "क्लाउड सर्वर तक नहीं पहुँच पा रहे। आपका काम इस ब्राउज़र में सेव है।",
-  "cloud.uploading": "मीडिया अपलोड {done} / {total}…"
+  "cloud.uploading": "मीडिया अपलोड {done} / {total}…",
+  "projects.openFailed": "यह प्रोजेक्ट नहीं खुल सका।"
 }

@@ -1,4 +1,4 @@
-import { test, expect, hook, menuAction } from './fixtures';
+import { autoLogin, test, expect, hook, menuAction } from './fixtures';
 import type { Page } from '@playwright/test';
 
 // The Projects library (PRJ-015/016, APP-006/007), crash recovery (PRJ-017),
@@ -157,6 +157,7 @@ test('[APP-019] the same project in two tabs warns and holds back saving until c
   browser,
 }) => {
   const context = await browser.newContext();
+  await context.addInitScript(autoLogin);
   const first = await context.newPage();
   await first.goto('/');
   await expect(first.locator('#project-name')).toBeVisible();
