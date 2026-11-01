@@ -30,7 +30,7 @@ describe('P2-R1 integration and docs', () => {
       'How the Phase 1 cloud was integrated',
       'BLOCKED',
       'Not tested',
-      'Owner try-it script',
+      'Try-it script for the owner',
       'Real keys later',
     ])
       expect(report, part).toContain(part);
