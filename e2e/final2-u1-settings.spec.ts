@@ -82,7 +82,8 @@ test('[F2-002] Accent colour: a light and a dark choice are kept separately, fol
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect.poll(accent).not.toBe('#2dd4bf');
-  expect(await page.locator('html').getAttribute('data-accent')).toBe('pink');
+  // P2-R1: the editor (and its accent) starts after its login check.
+  await expect(page.locator('html')).toHaveAttribute('data-accent', 'pink');
   await page.evaluate(() => localStorage.setItem('aive.theme', 'dark'));
   await page.reload();
   await expect.poll(accent).toBe('#2dd4bf');

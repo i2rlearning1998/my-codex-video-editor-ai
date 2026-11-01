@@ -195,6 +195,9 @@ export function allowError(
 }
 export { expect };
 export async function hook(page: Page) {
+  // P2-R1: the editor starts after its login check (src/boot.ts), so the
+  // read-only hook can appear a moment after the first paint.
+  await page.waitForFunction(() => '__AIVE__' in window);
   return page.evaluate(() => {
     const api = (window as unknown as { __AIVE__: HookSnapshot }).__AIVE__;
     return {
