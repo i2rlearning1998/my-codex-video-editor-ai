@@ -1262,3 +1262,11 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FX11-001 | P1 | W10 | Verified | Duplicate project copies its My Templates, AI compositions and saved themes into the copy; the original keeps its own |
 | FX11-002 | P1 | W10 | Verified | Import Templates from your Cloud also lists the saved themes of other projects (grouped by project) and copies the chosen ones under a free name |
 | FX11-004 | P2 | W10 | Verified | The timeline cannot be dragged so tall that the stage drops under 400 px (the canvas stays usable); a long panel action label ends in an ellipsis inside its button |
+| P20-001 | P0 | W10 | Verified | The built-in default Platform Config is valid |
+| P20-002 | P0 | W10 | Verified | A bad Platform Config (unknown cost, unknown field, newer schema) is refused with readable errors |
+| P20-003 | P0 | W10 | Verified | Plans, limits, features and credit costs are read from the config, with English and Hindi text |
+| P20-004 | P0 | W10 | Verified | The gateway rule: a Director tool that is unknown, switched off or above the user's plan is refused |
+| P20-005 | P0 | W10 | Verified | The Brief form is built from the Style's fields: show-if, validation and the Brief JSON for Director |
+| P20-006 | P0 | W10 | Verified | The Director interview skips answered questions and respects the owner's cap |
+| P20-007 | P0 | W10 | Verified | Config versions are saved, published and rolled back; a bad save changes nothing |
+| P20-008 | P0 | W10 | Verified | An unreadable saved config falls back to the built-in default |
