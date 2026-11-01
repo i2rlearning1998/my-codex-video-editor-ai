@@ -1,6 +1,6 @@
 # Changelog
 
-## Phase 2 round 1: user panel, Director, gateway, website (1 Nov, local test mode)
+## Phase 2 round 1 (P2-R1): user panel, Director, gateway, website (1 Nov, local test mode)
 
 - A website (`/site/`) with the landing page, Styles, showcase, pricing and FAQ from the Platform Config, plus sign up, log in and password reset. Nobody reaches the panel or the editor without logging in.
 - A user panel (`/panel/`): Home with a Director prompt, Styles, the Brief Room (form, brief strength, model choice, cost estimate, saved drafts), the Director chat (asks only what is missing, refuses what the owner forbids), the Plan card (cost per scene and in total before anything is made, cheaper or richer scenes, shortage options), Live Build (credits held, used, the rest back; a failure gives everything back) and Open in editor, which builds editable scenes with the editor's own builder.
