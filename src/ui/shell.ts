@@ -5951,6 +5951,9 @@ export function mountEditorShell(
       : undefined;
   }
   const syncCategories = () => {
+    // The catalog can answer after the shell was taken down (tests, a new
+    // project): then there is no rail to update.
+    if (disposed || !root.querySelector('#rail-left')) return;
     const rail = element('#rail-left');
     const more = element('#rail-more');
     const tree = mergeTaxonomy(libraryClient().config());

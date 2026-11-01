@@ -62,9 +62,7 @@ const boxCentre = async (page: Page) => {
 async function addHeading(page: Page) {
   await showCategory(page, 'Text');
   await page
-    .locator(
-      '#library-text .library-card[data-item-id="text-1"]',
-    )
+    .locator('#library-text .library-card[data-item-id="text-1"]')
     .click();
   await expect.poll(async () => (await selectedLayer(page))?.type).toBe('text');
 }
@@ -302,7 +300,8 @@ test('[FN3-011][FIX7-007][FIX9-008] the Text tab: search, the three default styl
   // Drag "Add a subheading" onto the canvas.
   const canvas = page.locator('#composition-canvas');
   await host
-    .locator('.library-card[data-item-id="text-2"]').first()
+    .locator('.library-card[data-item-id="text-2"]')
+    .first()
     .dragTo(canvas);
   await expect
     .poll(async () => (await selectedLayer(page))?.properties.text?.value)

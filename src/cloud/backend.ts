@@ -1,0 +1,140 @@
+// Phase 1 (docs/PHASE1-PLAN.md): what the editor needs from a cloud
+// service, as one interface. The Supabase implementation is in
+// ./supabase.ts; src/core never imports anything from here (AGENTS.md §4).
+
+export interface CloudUser {
+  readonly id: string;
+  readonly email: string | null;
+}
+export interface CloudProjectSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly schemaVersion: number;
+  readonly revision: number;
+  readonly updatedAt: string;
+  readonly thumbnail: string | null;
+}
+export interface CloudProjectInput {
+  readonly name: string;
+  readonly schemaVersion: number;
+  /** The project JSON exactly as serialised (no media bytes, D-004). */
+  readonly document: string;
+  readonly thumbnail?: string | null;
+}
+export interface CloudMediaInfo {
+  readonly name: string;
+  readonly mimeType: string;
+  readonly size: number;
+}
+
+/** A save named a revision the server no longer has: someone saved since. */
+export class CloudConflictError extends Error {
+  constructor() {
+    super('This project was saved from somewhere else since it was opened');
+    this.name = 'CloudConflictError';
+  }
+}
+/** The cloud is not set up (no address or key) on this computer. */
+export class CloudNotConfiguredError extends Error {
+  constructor() {
+    super('Cloud save is not set up on this computer');
+    this.name = 'CloudNotConfiguredError';
+  }
+}
+
+export interface CloudBackend {
+  /** The signed-in person, or null. */
+  user(): Promise<CloudUser | null>;
+  /** Called with the person after every sign in, sign out or refresh. */
+  onUserChange(listener: (user: CloudUser | null) => void): () => void;
+  signUp(email: string, password: string): Promise<CloudUser>;
+  signIn(email: string, password: string): Promise<CloudUser>;
+  /**
+   * OAuth sign in (Google now, the Claude connector of Phase 2 later): the
+   * browser leaves for the provider and comes back signed in.
+   */
+  signInWithProvider(provider: 'google'): Promise<void>;
+  signOut(): Promise<void>;
+  /**
+   * P2-R1 (P2-18): sends a password-reset code to the address (an email in
+   * Supabase; the local backend's outbox in this round). Says nothing about
+   * whether the address has an account.
+   */
+  requestPasswordReset(email: string): Promise<void>;
+  /** Sets a new password with the emailed code and signs the person in. */
+  confirmPasswordReset(
+    email: string,
+    code: string,
+    password: string,
+  ): Promise<CloudUser>;
+  listProjects(): Promise<CloudProjectSummary[]>;
+  loadProject(
+    id: string,
+  ): Promise<{ summary: CloudProjectSummary; document: string }>;
+  createProject(input: CloudProjectInput): Promise<CloudProjectSummary>;
+  /** Saves over `id` only if the server still has `revision`. */
+  saveProject(
+    id: string,
+    revision: number,
+    input: CloudProjectInput,
+  ): Promise<CloudProjectSummary>;
+  renameProject(id: string, name: string): Promise<void>;
+  deleteProject(id: string): Promise<void>;
+  /** Which of these fingerprints the person's media already has. */
+  hasMedia(fingerprints: readonly string[]): Promise<Set<string>>;
+  uploadMedia(
+    fingerprint: string,
+    data: Blob,
+    info: CloudMediaInfo,
+  ): Promise<void>;
+  downloadMedia(fingerprint: string): Promise<Blob>;
+  /** Phase 1 library brief (P1-33): every media file the person uploaded. */
+  listMedia(): Promise<CloudMediaRow[]>;
+  /** Removes one uploaded file and its row (Free space). */
+  deleteMedia(fingerprint: string): Promise<void>;
+  /** P1-31: stores (or replaces) one training-data record. */
+  saveTrainingRecord(record: CloudTrainingRecord): Promise<void>;
+}
+export interface CloudMediaRow {
+  readonly fingerprint: string;
+  readonly name: string;
+  readonly size: number;
+  readonly createdAt: string;
+}
+export interface CloudTrainingRecord {
+  readonly projectId: string;
+  readonly brief: string | null;
+  readonly plan: unknown;
+  readonly edits: readonly unknown[];
+}
+
+export interface CloudConfig {
+  readonly url: string;
+  readonly anonKey: string;
+}
+/**
+ * The cloud address and public key: `.env.local` (VITE_SUPABASE_URL,
+ * VITE_SUPABASE_ANON_KEY), or in dev and e2e builds a page-provided value.
+ */
+/**
+ * P1-33: the Google sign-in client id (`VITE_GOOGLE_CLIENT_ID`, set when
+ * Google is enabled in the Supabase project); without it there is no
+ * Google button. Dev and e2e pages may set it (`__AIVE_GOOGLE_CLIENT_ID__`).
+ */
+export function googleClientId(): string | null {
+  const env = import.meta.env as Record<string, string | undefined>;
+  const page = (globalThis as { __AIVE_GOOGLE_CLIENT_ID__?: string })
+    .__AIVE_GOOGLE_CLIENT_ID__;
+  const allowPage = env.DEV || env.MODE === 'e2e';
+  return (allowPage ? page : undefined) ?? env.VITE_GOOGLE_CLIENT_ID ?? null;
+}
+export function cloudConfig(): CloudConfig | null {
+  const page = (globalThis as { __AIVE_CLOUD_CONFIG__?: Partial<CloudConfig> })
+    .__AIVE_CLOUD_CONFIG__;
+  const env = import.meta.env as Record<string, string | undefined>;
+  const allowPage = env.DEV || env.MODE === 'e2e';
+  const url = (allowPage ? page?.url : undefined) ?? env.VITE_SUPABASE_URL;
+  const anonKey =
+    (allowPage ? page?.anonKey : undefined) ?? env.VITE_SUPABASE_ANON_KEY;
+  return url && anonKey ? { url, anonKey } : null;
+}

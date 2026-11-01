@@ -117,8 +117,7 @@ export function captionLayout(
 }
 
 /** Scripts whose letters run wider than Latin ones (Devanagari and kin). */
-const WIDE_SCRIPT =
-  /^(hi|mr|ne|sa|bn|gu|pa|ta|te|kn|ml|or|as|ur|ar|fa|th)\b/i;
+const WIDE_SCRIPT = /^(hi|mr|ne|sa|bn|gu|pa|ta|te|kn|ml|or|as|ur|ar|fa|th)\b/i;
 
 /**
  * FIX9: how many characters fit on one caption line of this style on this
