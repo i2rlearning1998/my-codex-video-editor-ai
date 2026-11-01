@@ -27,7 +27,9 @@ import {
   type GatewayRequest,
   type MockFailure,
   type UsageLog,
+  preCheck,
 } from '../gateway';
+import { EXPORTS_KEY, LIMITS_KEY } from '../usage-report';
 import { planFor, type Plan, type PlatformConfig } from '../platform-config';
 import { IdbBackend, ProjectLibrary } from '../persistence/projects';
 import { claimLocalData } from '../auth-gate';
@@ -92,6 +94,12 @@ export interface Services {
     methods: readonly string[],
     briefChars: number,
   ): Promise<ReturnType<typeof estimateDirector> | null>;
+  /** P2B-26: null when the plan allows it, else the owner's sentence. */
+  checkLimit(
+    userId: string,
+    action: 'export' | 'store' | 'voice-clone' | 'project',
+    addMb?: number,
+  ): Promise<string | null>;
   readonly usageLog: UsageLog;
   readonly projects: ProjectLibrary;
   ledger(userId: string): CreditLedger;
@@ -180,6 +188,23 @@ export async function createServices(
     .list()
     .then((l) => (projectCount = l.length))
     .catch(() => undefined);
+  // P2B-25: exports the editor made in this browser (no server).
+  const exportsThisMonth = (u: string) => {
+    try {
+      const m = new Date().toISOString().slice(0, 7);
+      return (
+        JSON.parse(storage.getItem(EXPORTS_KEY(u)) ?? '[]') as { at: string }[]
+      ).filter((e) => e.at.startsWith(m)).length;
+    } catch {
+      return 0;
+    }
+  };
+  const storageMbOf = (u: string) =>
+    Math.ceil(
+      allAssets()
+        .filter((a) => a.userId === u)
+        .reduce((s, a) => s + a.bytes, 0) / 1_048_576,
+    );
   const services: Services = {
     config,
     configFallback:
@@ -191,6 +216,7 @@ export async function createServices(
     topUp: async () => ({ ok: false, message: '' }),
     connected: () => true,
     estimate: async () => null,
+    checkLimit: async () => null,
     usageLog,
     projects,
     ledger,
@@ -233,7 +259,7 @@ export async function createServices(
     limits: (u) => {
       const mine = services.assets(u);
       return {
-        exportsThisMonth: 0,
+        exportsThisMonth: exportsThisMonth(u),
         storageMb: Math.ceil(mine.reduce((s, a) => s + a.bytes, 0) / 1_048_576),
         voiceClones: mine.filter(
           (a) => a.studioId === 'voice' && a.name.includes('clone'),
@@ -250,8 +276,49 @@ export async function createServices(
   };
   const w = services as unknown as Record<string, unknown>;
   w.gateway = local;
+  // P2B-26: the editor reads the plan's export limit from this bridge.
+  const bridge = (u: string) => {
+    const plan = services.planOf(u);
+    const m = config.limitMessages.exports;
+    const n = plan.limits.exportsPerMonth;
+    storage.setItem(
+      LIMITS_KEY(u),
+      JSON.stringify({
+        exportsPerMonth: n,
+        message: (
+          (m && ((services.prefs(u).locale === 'hi' && m.hi) || m.en)) ||
+          'Your plan allows {n} exports a month.'
+        ).replace(/\{n\}/g, String(n)),
+      }),
+    );
+  };
+  const projectsNow = async () =>
+    (projectCount = (await projects.list().catch(() => [])).length);
   w.sync = async (u: string) => {
     ownerId = u;
+    await projectsNow();
+    bridge(u);
+  };
+  w.checkLimit = async (
+    u: string,
+    action: 'export' | 'store' | 'voice-clone' | 'project',
+    addMb?: number,
+  ) => {
+    await projectsNow();
+    try {
+      preCheck({
+        config,
+        plan: services.planOf(u),
+        action,
+        ...(addMb !== undefined ? { addMb } : {}),
+        maxCredits: 0,
+        locale: services.prefs(u).locale,
+        usage: { ...gateway.counts(u), callsLastMinute: 0, creditsToday: 0 },
+      });
+      return null;
+    } catch (e) {
+      return (e as Error).message;
+    }
   };
   w.switchPlan = async (u: string, planId: string) => {
     services.savePrefs(u, { ...services.prefs(u), plan: planId });
@@ -329,7 +396,33 @@ export async function createServices(
     w.gateway = remote.gateway;
     w.sync = async (u: string) => {
       ownerId = u;
+      // P2B-27: the server keeps the real project count and storage.
+      await remote
+        .api('/usage/report', {
+          projects: await projectsNow(),
+          storageMb: storageMbOf(u),
+        })
+        .catch(() => undefined);
       await remote.sync();
+      bridge(u);
+    };
+    w.checkLimit = async (
+      _u: string,
+      action: 'export' | 'store' | 'voice-clone' | 'project',
+      addMb?: number,
+    ) => {
+      await remote
+        .api('/usage/report', { projects: await projectsNow() })
+        .catch(() => undefined);
+      try {
+        await remote.api('/limits/check', {
+          action,
+          ...(addMb !== undefined ? { addMb } : {}),
+        });
+        return null;
+      } catch (e) {
+        return (e as Error).message;
+      }
     };
     w.ledger = () => remote.ledger();
     w.planOf = (u: string) =>

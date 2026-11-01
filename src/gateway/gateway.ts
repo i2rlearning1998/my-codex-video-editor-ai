@@ -43,6 +43,8 @@ export interface RunInput {
   readonly toolId?: string;
   readonly requires?: readonly string[];
   readonly action?: LimitedAction;
+  /** Megabytes the result will store (the storage limit). */
+  readonly addMb?: number;
   readonly videoCredits?: number;
   /** Checks the answer; returns an error sentence to refuse it. */
   readonly accept?: (r: AdapterResult) => string | null;
@@ -97,6 +99,7 @@ export function createGateway(d: GatewayDeps) {
         ...(x.toolId ? { toolId: x.toolId } : {}),
         ...(x.requires ? { requires: x.requires } : {}),
         ...(x.action ? { action: x.action } : {}),
+        ...(x.addMb !== undefined ? { addMb: x.addMb } : {}),
         ...(x.videoCredits !== undefined
           ? { videoCredits: x.videoCredits }
           : {}),

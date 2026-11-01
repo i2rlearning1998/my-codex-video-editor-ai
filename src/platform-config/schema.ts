@@ -272,7 +272,15 @@ export const styleSchema = z.object({
   priceHint: z
     .object({ min: z.number(), max: z.number(), per: z.string() })
     .optional(),
-  brief: z.object({ fields: z.array(fieldSchema) }),
+  brief: z.object({
+    fields: z.array(fieldSchema),
+    /** P2B-30: the Brief room's collapsible sections (a field's `group`). */
+    groups: z
+      .array(
+        z.object({ id, label: textSchema, open: z.boolean().default(true) }),
+      )
+      .default([]),
+  }),
   interview: z.object({
     maxQuestions: z.number().int().min(0).max(20).default(5),
     questions: z.array(interviewQuestionSchema).default([]),
@@ -375,10 +383,22 @@ export const siteSchema = z.object({
   sections: z.array(
     z.object({
       id,
-      kind: z.enum(['hero', 'showcase', 'styles', 'pricing', 'faq', 'text']),
+      kind: z.enum([
+        'hero',
+        'story',
+        'showcase',
+        'styles',
+        'pricing',
+        'faq',
+        'text',
+      ]),
       enabled: z.boolean().default(true),
       title: textSchema.optional(),
       body: textSchema.optional(),
+      /** P2B-33: the story's steps, or the FAQ's questions and answers. */
+      items: z
+        .array(z.object({ title: textSchema, body: textSchema }))
+        .default([]),
       order: z.number().default(0),
     }),
   ),

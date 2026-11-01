@@ -354,12 +354,16 @@ export function openExportDialog(options: ExportDialogOptions) {
           }),
         );
         status.dataset.state = 'limit';
+        progress.hidden = false;
+        find('export-bar').hidden = true;
         return;
       }
     }
     settings = read();
     setRunning(true);
     find<HTMLProgressElement>('export-bar').value = 0;
+    find('export-bar').hidden = false;
+    delete status.dataset.state;
     status.textContent = t('export.preparing');
     const started = performance.now();
     run = startExport(

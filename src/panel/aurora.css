@@ -1,0 +1,120 @@
+/* P2-R2 (P2B-28): Aurora Ink, the one token file of the panel and website.
+   Colours come from src/panel/aurora-tokens.ts (the contrast test reads both);
+   the config's brand.colors override the dark ones (applyBrand). Components
+   in panel.css use only these tokens. */
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/plus-jakarta-sans-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 500;
+  font-display: swap;
+  src: url('./fonts/plus-jakarta-sans-latin-500-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/plus-jakarta-sans-latin-600-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/plus-jakarta-sans-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 800;
+  font-display: swap;
+  src: url('./fonts/plus-jakarta-sans-latin-800-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/jetbrains-mono-latin-400-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-weight: 600;
+  font-display: swap;
+  src: url('./fonts/jetbrains-mono-latin-600-normal.woff2') format('woff2');
+}
+/* Devanagari: the editor's vendored Noto Sans Devanagari (public/fonts). */
+@font-face {
+  font-family: 'Noto Sans Devanagari';
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/fonts/noto-sans-devanagari/noto-sans-devanagari-devanagari-400-normal.woff2')
+    format('woff2');
+  unicode-range:
+    U+0900-097F, U+1CD0-1CF9, U+200C-200D, U+20A8, U+20B9, U+25CC, U+A830-A839,
+    U+A8E0-A8FF;
+}
+
+body.panel-page,
+body.site-page {
+  --ink-bg: var(--brand-bg, #07070d);
+  --ink-panel: var(--brand-panel, #0f0f1a);
+  --ink-raised: #161627;
+  --ink-border: var(--brand-border, #23233a);
+  --ink-text: var(--brand-text, #ecebf5);
+  --ink-muted: var(--brand-muted, #9a98b5);
+  --ink-accent-text: #a591ff;
+  --ink-gold-text: #ffc247;
+  --ink-danger: #ff8a8a;
+  --ink-success: #5ee0a0;
+  --aurora-a: var(--brand-accent, #7c5cff);
+  --aurora-b: var(--brand-accent2, #22d3ee);
+  --gold: var(--brand-gold, #ffc247);
+  --on-aurora: #07070d;
+  --aurora: linear-gradient(135deg, var(--aurora-a), var(--aurora-b));
+  --aurora-soft: color-mix(in srgb, var(--aurora-a) 16%, transparent);
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --font-ui: 'Plus Jakarta Sans', 'Noto Sans Devanagari', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --focus: 0 0 0 3px color-mix(in srgb, var(--aurora-b) 70%, transparent);
+
+  /* The editor tokens panel.css already reads, pointed at Aurora Ink. */
+  --color-bg-app: var(--ink-bg);
+  --color-bg-panel: var(--ink-panel);
+  --color-bg-raised: var(--ink-raised);
+  --color-bg-sunken: var(--ink-bg);
+  --color-bg-hover: color-mix(in srgb, var(--ink-text) 7%, transparent);
+  --raised-hover: color-mix(in srgb, var(--ink-text) 10%, var(--ink-raised));
+  --color-border: var(--ink-border);
+  --color-text: var(--ink-text);
+  --color-text-muted: var(--ink-muted);
+  --color-accent: var(--aurora-a);
+  --accent-text: var(--ink-accent-text);
+  --accent-soft: var(--aurora-soft);
+  --accent-fill: var(--aurora-a);
+  --danger-text: var(--ink-danger);
+  --success-text: var(--ink-success);
+  --radius-md: var(--r-sm);
+  --radius-lg: var(--r-md);
+  --font-family: var(--font-ui);
+}
+:root[data-theme='light'] body.panel-page,
+:root[data-theme='light'] body.site-page {
+  --ink-bg: #f6f5fb;
+  --ink-panel: #ffffff;
+  --ink-raised: #efeef8;
+  --ink-border: #d9d7ea;
+  --ink-text: #14131f;
+  --ink-muted: #575670;
+  --ink-accent-text: #5b37f0;
+  --ink-gold-text: #8a5a00;
+  --ink-danger: #b42318;
+  --ink-success: #0f7a43;
+}
+:lang(hi) body.panel-page,
+:lang(hi) body.site-page {
+  line-height: 1.6;
+}

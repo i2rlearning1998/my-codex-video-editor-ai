@@ -153,7 +153,7 @@ export function studioForm(s: Studio): Style {
     cardArt: '',
     formats: ['16:9'],
     requires: s.requires,
-    brief: { fields: s.inputs as BriefField[] },
+    brief: { fields: s.inputs as BriefField[], groups: [] },
     interview: {
       maxQuestions: 0,
       questions: [],

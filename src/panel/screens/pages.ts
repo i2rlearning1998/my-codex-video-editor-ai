@@ -13,14 +13,20 @@ import { ASPECT_SIZES } from '../../auth-gate';
 import { h, clear, put } from '../dom';
 import type { Ctx, Screen } from '../app';
 import { t, type Key } from '../strings';
-import { card, empty, when } from './common';
+import { card, empty, limitAlert, when } from './common';
+import { styleArt } from '../art';
 
 const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
   const plan = ctx.s.planOf(ctx.user.id);
   const ok = canUse(plan, s.requires);
   const hint = s.priceHint;
   return card(
-    { 'data-style': s.id, 'data-locked': String(!ok) },
+    {
+      'data-style': s.id,
+      'data-locked': String(!ok),
+      class: 'card style-card',
+    },
+    styleArt(s, ctx.s.config),
     h('h3', { text: ctx.say(s.name) }),
     h('p', { class: 'muted', text: ctx.say(s.blurb) }),
     h('p', { class: 'formats', text: s.formats.join(' · ') }),
@@ -57,7 +63,30 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
     placeholder: t('home.promptPlaceholder'),
     'aria-label': t('home.prompt'),
   });
-  const first = enabledStyles(c).find((s) => canUse(plan, s.requires));
+  const usable = enabledStyles(c).filter((s) => canUse(plan, s.requires));
+  let first = usable[0];
+  // P2B-29: option chips choose the Style Director starts with.
+  const chips = h(
+    'div',
+    { class: 'option-chips', role: 'group', 'aria-label': t('home.styles') },
+    usable.map((st) =>
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'chip',
+          'data-start-style': st.id,
+          'aria-pressed': String(st === first),
+          onclick: (e: Event) => {
+            first = st;
+            for (const b of chips.querySelectorAll('[data-start-style]'))
+              b.setAttribute('aria-pressed', String(b === e.currentTarget));
+          },
+        },
+        ctx.say(st.name),
+      ),
+    ),
+  );
   let projects: Awaited<ReturnType<Ctx['s']['projects']['list']>> = [];
   try {
     const trash = new Set(ctx.prefs().trash);
@@ -83,13 +112,19 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
     }),
     h(
       'section',
-      { class: 'director-box' },
-      h('label', {
-        for: 'home-prompt',
-        class: 'field-label',
-        text: t('home.prompt'),
-      }),
+      { class: 'director-box aurora-card', id: 'director-card' },
+      h(
+        'div',
+        { class: 'director-head' },
+        h('span', { class: 'orb', 'aria-hidden': 'true' }),
+        h('label', {
+          for: 'home-prompt',
+          class: 'field-label',
+          text: t('home.prompt'),
+        }),
+      ),
       prompt,
+      chips,
       h(
         'button',
         {
@@ -265,8 +300,15 @@ export const projectsScreen: Screen = async (ctx, _a, out) => {
       class: 'inline-form',
       id: 'blank-form',
       hidden: true,
-      onsubmit: (e: Event) => {
+      onsubmit: async (e: Event) => {
         e.preventDefault();
+        // P2B-27: the plan's project limit (nothing is made when it is hit).
+        blank.querySelector('#project-limit')?.remove();
+        const refused = await ctx.s.checkLimit(ctx.user.id, 'project');
+        if (refused) {
+          blank.append(limitAlert('project-limit', refused));
+          return;
+        }
         const name =
           (
             blank.querySelector('#blank-name') as HTMLInputElement

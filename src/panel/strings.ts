@@ -109,6 +109,7 @@ const S = {
     'दृश्य {i} की तस्वीर बन रही है',
   ],
   'build.voice': ['Recording the voice', 'आवाज़ रिकॉर्ड हो रही है'],
+  'build.planCode': ['The plan (read-only)', 'प्लान (सिर्फ़ पढ़ने के लिए)'],
   'plan.upgrades': [
     'Optional upgrades from Director',
     'डायरेक्टर के वैकल्पिक सुधार',

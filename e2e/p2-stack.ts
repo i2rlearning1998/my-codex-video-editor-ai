@@ -18,6 +18,8 @@ export interface Stack {
   readonly url: string;
   readonly fake: FakeProviders;
   readonly logs: string[];
+  /** The server's store (tests read counts and seed usage). */
+  readonly store: ReturnType<typeof memoryStore>;
   /** Points the page at the gateway (before it loads). */
   use(page: Page): Promise<void>;
   close(): Promise<void>;
@@ -76,6 +78,7 @@ export async function startStack(
     url,
     fake,
     logs,
+    store,
     use: async (page) => {
       await page.addInitScript((u) => {
         (window as { __AIVE_GATEWAY_URL__?: string }).__AIVE_GATEWAY_URL__ = u;

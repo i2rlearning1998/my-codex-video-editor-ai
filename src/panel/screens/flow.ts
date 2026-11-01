@@ -3,6 +3,7 @@
 import {
   buildBrief,
   canUse,
+  costById,
   defaultModelFor,
   modelsForRole,
   modelAvailability,
@@ -30,6 +31,7 @@ import {
 } from '../../director';
 import { GatewayError } from '../../gateway';
 import { putHandoffFiles, fromBase64 } from '../../handoff-store';
+import { artSvg } from '../art';
 import type { VideoPlan } from '../../video-plan';
 import { HANDOFF_KEY } from '../../auth-gate';
 import { h, clear, put } from '../dom';
@@ -296,15 +298,49 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
     'aria-label': t('director.placeholder'),
   });
   const paint = () => {
+    const last = iv.messages.length - 1;
     clear(
       log,
-      ...iv.messages.map((m) =>
-        h('li', {
-          class: `msg ${m.from} ${m.kind}`,
-          'data-kind': m.kind,
-          text: m.text,
-        }),
-      ),
+      ...iv.messages.map((m, i) => {
+        // P2B-31: Director speaks with its orb; the open question is a card
+        // with the config's answers as chips.
+        const q =
+          m.kind === 'question' && i === last
+            ? style.interview.questions.find((x) => x.id === m.questionId)
+            : undefined;
+        return h(
+          'li',
+          {
+            class: `msg ${m.from} ${m.kind}${q ? ' question-card' : ''}`,
+            'data-kind': m.kind,
+          },
+          m.from === 'director'
+            ? h('span', { class: 'orb sm', 'aria-hidden': 'true' })
+            : null,
+          h('span', { class: 'msg-text', text: m.text }),
+          q && q.answers.length
+            ? h(
+                'div',
+                { class: 'answer-chips' },
+                q.answers.map((a) =>
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      class: 'chip',
+                      'data-answer': ctx.say(a),
+                      onclick: () => {
+                        input.value = ctx.say(a);
+                        void send();
+                      },
+                    },
+                    ctx.say(a),
+                  ),
+                ),
+              )
+            : null,
+        );
+      }),
     );
     const open = iv.messages.at(-1);
     if (
@@ -484,6 +520,13 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
     const tool = c.director.tools.find((x) => x.id === id);
     return tool?.name ? ctx.say(tool.name) : id;
   };
+  /** P2B-31: the method chip's colour by its cost (free, low, high). */
+  const costClass = (m: string) => {
+    const tool = c.director.tools.find((x) => x.id === m);
+    const cost = tool?.costId ? costById(c, tool.costId) : undefined;
+    const most = cost?.max ?? 0;
+    return most === 0 ? 'free' : most < 10 ? 'low' : 'high';
+  };
   const allowed = (m: string) => {
     const tool = c.director.tools.find((x) => x.id === m);
     return !!tool && tool.enabled && canUse(userPlan, tool.requires);
@@ -550,6 +593,12 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
       return h(
         'li',
         { class: 'scene', 'data-scene': s.id, 'data-method': m },
+        // P2B-31: a picture per scene, drawn from its id in brand colours.
+        h(
+          'div',
+          { class: 'scene-thumb' },
+          artSvg(s.id, c, `${i + 1}`, 160, 90),
+        ),
         h(
           'div',
           { class: 'scene-head' },
@@ -557,7 +606,11 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
             text: `${t('plan.scene', { n: i + 1 })}: ${s.title ?? ''}`,
           }),
           reveal.methods
-            ? h('span', { class: 'chip method', text: toolName(m) })
+            ? h('span', {
+                class: `chip method cost-${costClass(m)}`,
+                'data-cost': costClass(m),
+                text: toolName(m),
+              })
             : null,
           reveal.credits && est
             ? h('span', {
@@ -842,12 +895,24 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
       ),
     ),
   );
+  // P2B-31: the plan being built, read-only, in the mono face.
+  const code = h(
+    'details',
+    { class: 'code-view' },
+    h('summary', { text: t('build.planCode') }),
+    h('pre', {
+      class: 'code',
+      id: 'build-code',
+      text: JSON.stringify(job.plan, null, 2).slice(0, 20000),
+    }),
+  );
   out.append(
     h('h1', { text: t('build.title') }),
     bar,
     steps,
     status,
     preview,
+    code,
     actions,
   );
   const step = (text: string, kind = '') =>

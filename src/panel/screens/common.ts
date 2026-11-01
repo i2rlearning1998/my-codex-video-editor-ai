@@ -88,3 +88,13 @@ export const when = (iso: string, locale: string) =>
     month: 'short',
     year: 'numeric',
   });
+
+/** P2B-26: a plan limit: the owner's sentence and an Upgrade link. */
+export function limitAlert(id: string, message: string): HTMLElement {
+  return h(
+    'p',
+    { class: 'error-state', role: 'alert', id },
+    `${message} `,
+    h('a', { href: '#/credits', class: 'upgrade-link' }, t('common.upgrade')),
+  );
+}

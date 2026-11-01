@@ -27,6 +27,7 @@ export interface RunInput {
   readonly toolId?: string;
   readonly requires?: readonly string[];
   readonly action?: 'export' | 'store' | 'voice-clone' | 'project';
+  readonly addMb?: number;
 }
 export interface JobInput {
   readonly userId: string;

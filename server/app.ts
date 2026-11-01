@@ -416,6 +416,9 @@ export function createServerApp(o: ServerOptions) {
             ? { requires: b.requires.map((x) => str(x, 60)) }
             : {}),
           ...(action ? { action } : {}),
+          ...(b.addMb !== undefined
+            ? { addMb: n(b.addMb, 0, 1_000_000, false) }
+            : {}),
           maxCredits,
           usage: gateway.counts(c.userId),
         });

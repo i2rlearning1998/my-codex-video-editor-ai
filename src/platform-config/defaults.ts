@@ -32,7 +32,17 @@ function rawDefault(): PlatformConfigInput {
       ),
       logoUrl: '',
       defaultLocale: 'en',
-      colors: { accent: '#7c5cff', accent2: '#22d3ee', gold: '#ffc247' },
+      // P2B-28 Aurora Ink (dark); the light theme is in src/panel/aurora.css.
+      colors: {
+        accent: '#7c5cff',
+        accent2: '#22d3ee',
+        gold: '#ffc247',
+        bg: '#07070d',
+        panel: '#0f0f1a',
+        border: '#23233a',
+        text: '#ecebf5',
+        muted: '#9a98b5',
+      },
     },
     plans: [
       {
@@ -624,9 +634,19 @@ function rawDefault(): PlatformConfigInput {
         requires: [],
         priceHint: { min: 25, max: 60, per: 'minute' },
         brief: {
+          groups: [
+            { id: 'story', label: L('The story', 'कहानी'), open: true },
+            {
+              id: 'sound',
+              label: L('Voice and music', 'आवाज़ और संगीत'),
+              open: true,
+            },
+            { id: 'captions', label: L('Captions', 'कैप्शन'), open: true },
+          ],
           fields: [
             {
               id: 'idea',
+              group: 'story',
               type: 'longtext',
               label: L('The idea'),
               required: true,
@@ -635,6 +655,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'script',
+              group: 'story',
               type: 'choice',
               label: L('Script'),
               required: true,
@@ -646,6 +667,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'voice',
+              group: 'sound',
               type: 'choice',
               label: L('Voice-over'),
               required: true,
@@ -658,6 +680,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'music',
+              group: 'sound',
               type: 'choice',
               label: L('Music and sound effects'),
               required: false,
@@ -670,6 +693,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'captionLang',
+              group: 'captions',
               type: 'choice',
               label: L('Caption language'),
               required: false,
@@ -682,6 +706,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'captionStyle',
+              group: 'captions',
               type: 'text',
               label: L('Caption style'),
               required: false,
@@ -691,6 +716,7 @@ function rawDefault(): PlatformConfigInput {
             },
             {
               id: 'reference',
+              group: 'story',
               type: 'file',
               label: L('Reference video'),
               required: false,
@@ -1126,6 +1152,43 @@ function rawDefault(): PlatformConfigInput {
           order: 1,
         },
         {
+          id: 'story',
+          kind: 'story',
+          enabled: true,
+          title: L('From an idea to your video', 'आइडिया से आपके वीडियो तक'),
+          order: 1.5,
+          items: [
+            {
+              title: L('Tell Director the idea', 'डायरेक्टर को आइडिया बताइए'),
+              body: L(
+                'One line is enough. Director asks only what it still needs: script, voice, music and captions.',
+                'एक लाइन काफ़ी है। डायरेक्टर सिर्फ़ ज़रूरी बातें पूछता है: स्क्रिप्ट, आवाज़, संगीत और कैप्शन।',
+              ),
+            },
+            {
+              title: L('See the plan and the cost', 'प्लान और ख़र्च देखिए'),
+              body: L(
+                'Every scene, its method and its credits, before anything is made. Change any scene cheaper or richer.',
+                'हर सीन, उसका तरीक़ा और क्रेडिट, कुछ बनने से पहले। किसी भी सीन को सस्ता या बेहतर बनाइए।',
+              ),
+            },
+            {
+              title: L('Watch it build', 'बनते हुए देखिए'),
+              body: L(
+                'Pictures, voice and motion graphics are made scene by scene. Unused credits come back.',
+                'तस्वीरें, आवाज़ और मोशन ग्राफ़िक्स सीन दर सीन बनते हैं। बचे क्रेडिट वापस आते हैं।',
+              ),
+            },
+            {
+              title: L('Edit everything', 'सब कुछ एडिट कीजिए'),
+              body: L(
+                'The result is a real project: every layer, word and timing can be changed in the editor.',
+                'नतीजा असली प्रोजेक्ट है: हर लेयर, शब्द और टाइमिंग एडिटर में बदली जा सकती है।',
+              ),
+            },
+          ],
+        },
+        {
           id: 'styles',
           kind: 'styles',
           enabled: true,
@@ -1150,11 +1213,36 @@ function rawDefault(): PlatformConfigInput {
           id: 'faq',
           kind: 'faq',
           enabled: true,
-          title: L('Do I see the cost first?', 'क्या पहले ख़र्च दिखता है?'),
-          body: L(
-            'Yes. Every plan shows the credits per scene before anything is made, and unused credits come back.',
-            'हाँ। कुछ भी बनने से पहले हर सीन के क्रेडिट दिखते हैं, और बचे क्रेडिट वापस मिलते हैं।',
-          ),
+          title: L('Questions', 'सवाल'),
+          items: [
+            {
+              title: L('Do I see the cost first?', 'क्या पहले ख़र्च दिखता है?'),
+              body: L(
+                'Yes. Every plan shows the credits per scene before anything is made, and unused credits come back.',
+                'हाँ। कुछ भी बनने से पहले हर सीन के क्रेडिट दिखते हैं, और बचे क्रेडिट वापस मिलते हैं।',
+              ),
+            },
+            {
+              title: L(
+                'Can I change the video after?',
+                'क्या बाद में वीडियो बदल सकते हैं?',
+              ),
+              body: L(
+                'Yes. Director builds an ordinary project: open it in the editor and change any layer.',
+                'हाँ। डायरेक्टर एक सामान्य प्रोजेक्ट बनाता है: उसे एडिटर में खोलकर कोई भी लेयर बदलिए।',
+              ),
+            },
+            {
+              title: L(
+                'Does it work in Hindi?',
+                'क्या यह हिंदी में काम करता है?',
+              ),
+              body: L(
+                'Yes. Ask in Hindi; narration and captions are written in Devanagari.',
+                'हाँ। हिंदी में पूछिए; नैरेशन और कैप्शन देवनागरी में लिखे जाते हैं।',
+              ),
+            },
+          ],
           order: 5,
         },
       ],
