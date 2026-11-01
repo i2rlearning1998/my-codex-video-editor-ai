@@ -38,8 +38,7 @@ export const putHandoffFiles = (id: string, files: readonly HandoffFile[]) =>
 export async function takeHandoffFiles(id: string): Promise<HandoffFile[]> {
   try {
     const files = (await tx('readonly', (s) => s.get(id))) as
-      | HandoffFile[]
-      | undefined;
+      HandoffFile[] | undefined;
     await tx('readwrite', (s) => s.delete(id));
     return files ?? [];
   } catch {

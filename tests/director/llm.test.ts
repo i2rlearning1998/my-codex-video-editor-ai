@@ -106,7 +106,9 @@ describe('P2-R2 Director planner', () => {
     expect(p.system).not.toMatch(/\{\{/);
     expect(sheet.text).toContain('angle-proof');
     // The docs copy is the same text (npm run docs:capability-sheet).
-    expect(readFileSync('docs/CAPABILITY-SHEET.md', 'utf8')).toContain(sheet.text);
+    expect(readFileSync('docs/CAPABILITY-SHEET.md', 'utf8')).toContain(
+      sheet.text,
+    );
     const plan = await goodPlan();
     const h = harness(
       () => '```json\n' + JSON.stringify({ plan, upgrades: [] }) + '\n```',
