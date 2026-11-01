@@ -39,6 +39,10 @@ export const planSchema = z.object({
       storageMb: z.number().int().min(0).default(2048),
       voiceClones: z.number().int().min(0).default(0),
       projects: z.number().int().min(0).nullable().default(null),
+      /** Gateway calls a person may make per minute. */
+      callsPerMinute: z.number().int().min(1).default(30),
+      /** Credits a person may spend in one day (null: no cap). */
+      creditsPerDay: z.number().int().min(0).nullable().default(null),
     })
     .default({}),
   features: z.array(id).default([]),
@@ -58,17 +62,15 @@ export const costSchema = z.object({
 });
 export type Cost = z.infer<typeof costSchema>;
 
-export const studioSchema = z.object({
-  id,
-  name: textSchema,
-  enabled: z.boolean().default(true),
-  /** Which gateway provider/model serves this studio (names only, no keys). */
-  provider: z.string().default(''),
-  model: z.string().default(''),
-  costId: id.optional(),
-  requires: z.array(id).default([]),
-  order: z.number().default(0),
-});
+export const STUDIO_OUTPUTS = [
+  'text',
+  'audio',
+  'image',
+  'video',
+  'captions',
+  'pack',
+] as const;
+// (fieldSchema is declared below; studios reuse it for their inputs.)
 
 export const FIELD_TYPES = [
   'text',
@@ -103,6 +105,146 @@ export const fieldSchema = z.object({
   order: z.number().default(0),
 });
 export type BriefField = z.infer<typeof fieldSchema>;
+
+/** P2-05: the roles a model can serve (Director, interview, Studio tools). */
+export const roleId = z
+  .string()
+  .regex(
+    /^(director-plan|interview|write|studio-[a-z0-9-]{1,40})$/,
+    'role: director-plan, interview, write or studio-…',
+  );
+
+export const studioSchema = z.object({
+  id,
+  name: textSchema,
+  blurb: textSchema.optional(),
+  enabled: z.boolean().default(true),
+  /** P2-07: the model role that serves this studio (models list it in `roles`). */
+  role: roleId,
+  /** Which Director tool this studio is (its allow-list entry), if any. */
+  toolId: id.optional(),
+  /** What it makes: drives the result view and the Asset Library kind. */
+  output: z.enum(STUDIO_OUTPUTS).default('text'),
+  /** The form the person fills (same field types as the Brief). */
+  inputs: z.array(fieldSchema).default([]),
+  /** A tick the person must give before it runs (a voice clone's consent). */
+  consent: textSchema.optional(),
+  /** Ask for the consent only when an input has one of these values. */
+  consentIf: z.object({ field: id, in: z.array(z.string()).min(1) }).optional(),
+  /** Which input sets the workload: its length in characters, or a count. */
+  workload: z
+    .object({
+      textField: id.optional(),
+      countField: id.optional(),
+      /** Fixed units per run (images, seconds or minutes) when no count field. */
+      units: z.number().min(0).default(1),
+    })
+    .default({}),
+  costId: id.optional(),
+  requires: z.array(id).default([]),
+  order: z.number().default(0),
+});
+export type Studio = z.infer<typeof studioSchema>;
+
+/** P2-04: a model provider. `keyRef` is the NAME of a server secret, never a key. */
+export const PROVIDER_KINDS = [
+  'anthropic',
+  'openai',
+  'google',
+  'xai',
+  'openai-compatible',
+  'mock',
+] as const;
+export const providerSchema = z.object({
+  id,
+  name: z.string().min(1),
+  kind: z.enum(PROVIDER_KINDS),
+  enabled: z.boolean().default(true),
+  keyRef: z
+    .string()
+    .regex(
+      /^[A-Z][A-Z0-9_]{1,63}$/,
+      'keyRef: the NAME of a server secret, like ANTHROPIC_API_KEY',
+    ),
+  baseUrl: z.string().url().optional(),
+});
+export type Provider = z.infer<typeof providerSchema>;
+
+export const MODEL_KINDS = [
+  'text',
+  'image',
+  'video',
+  'voice',
+  'music',
+  'stt',
+] as const;
+export const MODEL_TIERS = ['fast', 'balanced', 'best'] as const;
+/** P2-05: a model, its price in USD and what it may be used for. */
+export const modelSchema = z.object({
+  id,
+  providerId: id,
+  /** The provider's own model name (sent in the request). */
+  providerModel: z.string().min(1).max(100),
+  kind: z.enum(MODEL_KINDS),
+  name: textSchema,
+  tier: z.enum(MODEL_TIERS),
+  capabilities: z
+    .object({
+      json: z.boolean().default(false),
+      tools: z.boolean().default(false),
+      vision: z.boolean().default(false),
+    })
+    .default({}),
+  contextTokens: z.number().int().min(0).default(0),
+  /** USD. Text: per million tokens; media: per image, second or minute. */
+  price: z
+    .object({
+      inputPerMTok: z.number().min(0).default(0),
+      outputPerMTok: z.number().min(0).default(0),
+      perImage: z.number().min(0).default(0),
+      perSecond: z.number().min(0).default(0),
+      perMinute: z.number().min(0).default(0),
+    })
+    .default({}),
+  /** Multiplies the provider cost before it becomes credits (1 = at cost). */
+  creditMargin: z.number().min(1).default(1),
+  roles: z.array(roleId).min(1),
+  /** Plan features needed to pick this model ([] means every plan). */
+  requires: z.array(id).default([]),
+  enabled: z.boolean().default(true),
+  recommendedForDirector: z.boolean().default(false),
+  /** False until the adapter has been run against the real provider. */
+  tested: z.boolean().default(false),
+  /** The price is a sample the owner must replace. */
+  samplePrice: z.boolean().default(true),
+  order: z.number().default(0),
+});
+export type Model = z.infer<typeof modelSchema>;
+
+/** P2-06: a payment provider (interface only in this round; a mock works). */
+export const paymentSchema = z.object({
+  id,
+  name: z.string().min(1),
+  kind: z.enum(['mock', 'razorpay', 'stripe']),
+  enabled: z.boolean().default(true),
+  countries: z.array(z.string().regex(/^[A-Z]{2}$/)).default([]),
+  currencies: z.array(z.enum(['INR', 'USD'])).min(1),
+});
+/** Credit packs a person can buy on top of the plan. */
+export const topUpSchema = z.object({
+  id,
+  credits: z.number().int().min(1),
+  price: z.object({ inr: z.number().min(0), usd: z.number().min(0) }),
+});
+/** Learn: a list of guides and videos for the panel. */
+export const learnSchema = z.object({
+  id,
+  title: textSchema,
+  body: textSchema.optional(),
+  url: z.string().default(''),
+  minutes: z.number().min(0).default(0),
+  order: z.number().default(0),
+});
 
 export const interviewQuestionSchema = z.object({
   id,
@@ -146,8 +288,36 @@ export const directorSchema = z.object({
       when: textSchema,
       reply: textSchema,
       alternative: textSchema.optional(),
+      /** Words or phrases that mark a request as this refusal (lower case). */
+      keywords: z.array(z.string().min(2)).default([]),
     }),
   ),
+  /** Opening line of the chat, and the creative-upgrade suggestion. */
+  greeting: textSchema.optional(),
+  creativeUpgrade: z
+    .object({ enabled: z.boolean().default(true), text: textSchema })
+    .optional(),
+  /** P2-07: which model role plans, interviews and writes. */
+  roles: z
+    .object({
+      plan: roleId.default('director-plan'),
+      interview: roleId.default('interview'),
+      write: roleId.default('write'),
+    })
+    .default({}),
+  /** Token sizes the estimator uses (owner can tune). */
+  estimate: z
+    .object({
+      systemTokens: z.number().int().min(0).default(3000),
+      inputTokensPerScene: z
+        .object({ min: z.number().min(0), max: z.number().min(0) })
+        .default({ min: 300, max: 600 }),
+      outputTokensPerScene: z
+        .object({ min: z.number().min(0), max: z.number().min(0) })
+        .default({ min: 500, max: 1200 }),
+      secondsPerScene: z.number().min(1).default(8),
+    })
+    .default({}),
   /** Allow-list of gateway tools with per-tool rules. */
   tools: z.array(
     z.object({
@@ -156,6 +326,9 @@ export const directorSchema = z.object({
       needsApproval: z.boolean().default(true),
       maxCreditsPerRun: z.number().min(0).nullable().default(null),
       requires: z.array(id).default([]),
+      /** The credit cost of one scene made this way (a scene method). */
+      costId: id.optional(),
+      name: textSchema.optional(),
     }),
   ),
   methodOrder: z.array(id),
@@ -209,6 +382,13 @@ export const platformConfigSchema = z
     brand: brandSchema,
     plans: z.array(planSchema).min(1),
     costs: z.array(costSchema),
+    /** P2-05: credits per USD of provider cost. */
+    creditRate: z.number().min(0),
+    providers: z.array(providerSchema),
+    models: z.array(modelSchema),
+    payments: z.array(paymentSchema),
+    topUps: z.array(topUpSchema).default([]),
+    learn: z.array(learnSchema).default([]),
     studios: z.array(studioSchema),
     styles: z.array(styleSchema),
     director: directorSchema,
@@ -243,7 +423,53 @@ export const platformConfigSchema = z
       'style',
       c.styles.map((x) => x.id),
     );
+    dup(
+      'provider',
+      c.providers.map((x) => x.id),
+    );
+    dup(
+      'model',
+      c.models.map((x) => x.id),
+    );
+    dup(
+      'payment',
+      c.payments.map((x) => x.id),
+    );
+    const providerIds = new Set(c.providers.map((x) => x.id));
+    for (const m of c.models)
+      if (!providerIds.has(m.providerId))
+        ctx.addIssue({
+          code: 'custom',
+          message: `model ${m.id}: unknown provider ${m.providerId}`,
+        });
+    const roleModels = (role: string) =>
+      c.models.filter((m) => m.roles.includes(role as never));
+    for (const s of c.studios)
+      if (s.enabled && roleModels(s.role).length === 0)
+        ctx.addIssue({
+          code: 'custom',
+          message: `studio ${s.id}: no model serves role ${s.role}`,
+        });
+    for (const role of Object.values(c.director.roles))
+      if (roleModels(role).length === 0)
+        ctx.addIssue({
+          code: 'custom',
+          message: `director: no model serves role ${role}`,
+        });
+    const toolIds = new Set(c.director.tools.map((t) => t.id));
+    for (const m of c.director.methodOrder)
+      if (!toolIds.has(m))
+        ctx.addIssue({
+          code: 'custom',
+          message: `director: method ${m} is not a tool`,
+        });
     const costIds = new Set(c.costs.map((x) => x.id));
+    for (const t of c.director.tools)
+      if (t.costId && !costIds.has(t.costId))
+        ctx.addIssue({
+          code: 'custom',
+          message: `tool ${t.id}: unknown cost ${t.costId}`,
+        });
     for (const s of c.studios)
       if (s.costId && !costIds.has(s.costId))
         ctx.addIssue({
@@ -280,6 +506,7 @@ export const platformConfigSchema = z
     }
   });
 export type PlatformConfig = z.infer<typeof platformConfigSchema>;
+export type PlatformConfigInput = z.input<typeof platformConfigSchema>;
 
 /** A saved version of the config. Versions are immutable once saved. */
 export interface ConfigVersion {

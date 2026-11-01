@@ -1,10 +1,14 @@
 // Helpers every reader uses, so no screen re-implements a rule.
 import type {
+  BriefField,
   Cost,
   DirectorRules,
   LText,
+  Model,
   Plan,
   PlatformConfig,
+  Provider,
+  Studio,
   Style,
 } from './schema';
 
@@ -63,3 +67,95 @@ export function toolDecision(
 /** Whether Director may attempt `action`; otherwise the refusal to show. */
 export const inScope = (d: DirectorRules, action: string): boolean =>
   d.scope.includes(action);
+
+// P2-05: providers and models.
+export const providerById = (
+  c: PlatformConfig,
+  id: string,
+): Provider | undefined => c.providers.find((p) => p.id === id);
+export const modelById = (c: PlatformConfig, id: string): Model | undefined =>
+  c.models.find((m) => m.id === id);
+
+export type ModelAvailability =
+  | { ok: true }
+  | { ok: false; reason: 'unknown' | 'disabled' | 'provider-off' | 'plan' };
+/** Whether `plan` may use the model right now. */
+export function modelAvailability(
+  c: PlatformConfig,
+  plan: Plan,
+  modelId: string,
+): ModelAvailability {
+  const m = modelById(c, modelId);
+  if (!m) return { ok: false, reason: 'unknown' };
+  if (!m.enabled) return { ok: false, reason: 'disabled' };
+  if (!providerById(c, m.providerId)?.enabled)
+    return { ok: false, reason: 'provider-off' };
+  if (!canUse(plan, m.requires)) return { ok: false, reason: 'plan' };
+  return { ok: true };
+}
+/** Enabled models (provider on) that serve `role`, in the owner's order. */
+export const modelsForRole = (c: PlatformConfig, role: string): Model[] =>
+  c.models
+    .filter(
+      (m) =>
+        m.enabled &&
+        m.roles.includes(role) &&
+        providerById(c, m.providerId)?.enabled,
+    )
+    .sort((a, b) => a.order - b.order);
+/** The model to use for a role: the recommended one the plan allows, else the first allowed. */
+export function defaultModelFor(
+  c: PlatformConfig,
+  plan: Plan,
+  role: string,
+): Model | undefined {
+  const allowed = modelsForRole(c, role).filter((m) =>
+    canUse(plan, m.requires),
+  );
+  return allowed.find((m) => m.recommendedForDirector) ?? allowed[0];
+}
+/** Director's model for each tier the person may pick (Fast, Balanced, Best). */
+export function tierModels(
+  c: PlatformConfig,
+  role: string,
+): Record<Model['tier'], Model | undefined> {
+  const list = modelsForRole(c, role);
+  const pick = (tier: Model['tier']) =>
+    list.find((m) => m.tier === tier && m.recommendedForDirector) ??
+    list.find((m) => m.tier === tier);
+  return { fast: pick('fast'), balanced: pick('balanced'), best: pick('best') };
+}
+
+// P2-07: studios.
+export const studioById = (c: PlatformConfig, id: string): Studio | undefined =>
+  c.studios.find((s) => s.id === id);
+export const enabledStudios = (c: PlatformConfig): Studio[] =>
+  c.studios.filter((s) => s.enabled).sort((a, b) => a.order - b.order);
+/** Whether this run of a studio needs the consent tick. */
+export function needsConsent(
+  s: Studio,
+  answers: Record<string, unknown>,
+): boolean {
+  if (!s.consent) return false;
+  if (!s.consentIf) return true;
+  const v = answers[s.consentIf.field];
+  return typeof v === 'string' && s.consentIf.in.includes(v);
+}
+/** A studio's inputs as a Style-like object, so the Brief form code renders it. */
+export function studioForm(s: Studio): Style {
+  return {
+    id: s.id,
+    name: s.name,
+    blurb: s.blurb ?? { en: '' },
+    playbook: '',
+    enabled: s.enabled,
+    cardArt: '',
+    formats: ['16:9'],
+    requires: s.requires,
+    brief: { fields: s.inputs as BriefField[] },
+    interview: { maxQuestions: 0, questions: [], creativeUpgrade: false },
+    order: s.order,
+  };
+}
+export const learnItems = (c: PlatformConfig) =>
+  [...c.learn].sort((a, b) => a.order - b.order);
