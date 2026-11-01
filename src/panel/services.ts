@@ -9,6 +9,7 @@ import {
 } from '../cloud/backend';
 import { createSupabaseBackend } from '../cloud/supabase';
 import { paymentProviders } from '../payments';
+import { gatewayBase, liveConfig } from './live-config';
 import { remoteGateway, type PanelGateway, type RemoteGateway } from './remote';
 import {
   CreditLedger,
@@ -27,12 +28,7 @@ import {
   type MockFailure,
   type UsageLog,
 } from '../gateway';
-import {
-  localConfigSource,
-  planFor,
-  type Plan,
-  type PlatformConfig,
-} from '../platform-config';
+import { planFor, type Plan, type PlatformConfig } from '../platform-config';
 import { IdbBackend, ProjectLibrary } from '../persistence/projects';
 import { claimLocalData } from '../auth-gate';
 import type { Answers } from '../platform-config';
@@ -121,15 +117,7 @@ const DEFAULT_PREFS = (c: PlatformConfig): Prefs => ({
   trash: [],
 });
 
-/** VITE_GATEWAY_URL, or in dev and e2e builds a page-provided value. */
-export function gatewayBase(): string | null {
-  const env = import.meta.env as Record<string, string | undefined>;
-  const page = (globalThis as { __AIVE_GATEWAY_URL__?: string })
-    .__AIVE_GATEWAY_URL__;
-  return (
-    ((env.DEV || env.MODE === 'e2e') && page) || env.VITE_GATEWAY_URL || null
-  );
-}
+export { gatewayBase } from './live-config';
 
 export async function createServices(
   storage: KV,
@@ -138,15 +126,15 @@ export async function createServices(
     latencyMs?: number;
   } = {},
 ): Promise<Services> {
-  const source = localConfigSource(storage);
-  const live = await source.getLive();
+  // P2B-14: the live config (server, else Supabase, else this browser).
+  const gatewayUrl = gatewayBase();
+  const cloud = cloudConfig();
+  const live = await liveConfig(storage);
   const config = live.config;
   // P2B-12: Supabase accounts when its public settings exist, else local.
-  const cloud = cloudConfig();
   const account = cloud
     ? createSupabaseBackend(cloud)
     : localAccountBackend({ storage, blobs: indexedBlobStore() });
-  const gatewayUrl = gatewayBase();
   const usageLog = storageUsageLog(storage);
   const ledgers = new Map<string, CreditLedger>();
   const ledger = (u: string) => {

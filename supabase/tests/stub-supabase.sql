@@ -19,8 +19,16 @@ as $$
     ''
   )::uuid
 $$;
-grant usage on schema auth to anon, authenticated;
-grant execute on function auth.uid() to anon, authenticated;
+-- Supabase's auth.jwt(): the request's claims.
+create function auth.jwt() returns jsonb
+language sql stable
+as $$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
+$$;
+grant usage on schema auth to anon, authenticated, service_role;
+grant execute on function auth.uid() to anon, authenticated, service_role;
+grant execute on function auth.jwt() to anon, authenticated, service_role;
+grant usage on schema public to service_role;
 
 create schema storage;
 create table storage.buckets (

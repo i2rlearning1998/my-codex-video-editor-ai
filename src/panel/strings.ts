@@ -270,6 +270,11 @@ const S = {
     'If this email has an account, a code was sent. (Local mode: the code is in this browser outbox: {code})',
     'अगर इस ईमेल का खाता है, तो कोड भेजा गया। (लोकल मोड: कोड इस ब्राउज़र के आउटबॉक्स में है: {code})',
   ],
+  'site.codeEmailed': [
+    'If this email has an account, a code was sent to it.',
+    'अगर इस ईमेल का खाता है, तो उस पर कोड भेजा गया।',
+  ],
+  'site.google': ['Continue with Google', 'Google से जारी रखें'],
   'site.haveAccount': [
     'Already have an account? Log in',
     'पहले से खाता है? लॉग इन करें',

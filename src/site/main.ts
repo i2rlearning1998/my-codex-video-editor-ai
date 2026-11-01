@@ -5,8 +5,13 @@ import '../ui/tokens.css';
 import '../panel/panel.css';
 import { localAccountBackend, indexedBlobStore } from '../cloud/local';
 import {
+  cloudConfig,
+  googleClientId,
+  type CloudBackend,
+} from '../cloud/backend';
+import { createSupabaseBackend } from '../cloud/supabase';
+import {
   enabledStyles,
-  localConfigSource,
   publicPlans,
   text as say,
   type PlatformConfig,
@@ -14,12 +19,15 @@ import {
 import { applyBrand, brandMark } from '../panel/app';
 import { h, clear, put } from '../panel/dom';
 import { setLocale, t } from '../panel/strings';
+import { liveConfig } from '../panel/live-config';
 
 const root = document.getElementById('site')!;
-const account = localAccountBackend({
-  storage: localStorage,
-  blobs: indexedBlobStore(),
-});
+// P2B-12: Supabase accounts when its public settings exist, else local.
+const cloud = cloudConfig();
+const account: CloudBackend & { lastResetCode?(email: string): string | null } =
+  cloud
+    ? createSupabaseBackend(cloud)
+    : localAccountBackend({ storage: localStorage, blobs: indexedBlobStore() });
 let config: PlatformConfig;
 let currency: 'INR' | 'USD' = 'INR';
 let signedIn = false;
@@ -216,9 +224,11 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
       else if (!codeSent) {
         await account.requestPasswordReset(email.value);
         codeSent = true;
-        note.textContent = t('site.codeSent', {
-          code: account.lastResetCode(email.value) ?? '—',
-        });
+        note.textContent = account.lastResetCode
+          ? t('site.codeSent', {
+              code: account.lastResetCode(email.value) ?? '—',
+            })
+          : t('site.codeEmailed');
         paint();
         return;
       } else
@@ -288,7 +298,25 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
             { href: `#/login?next=${encodeURIComponent(next())}` },
             t('site.haveAccount'),
           ),
-      h('p', { class: 'muted', text: t('site.localMode') }),
+      // Google sign-in only when its client id is set (and Supabase is used).
+      cloud && googleClientId() && mode !== 'reset'
+        ? h(
+            'button',
+            {
+              type: 'button',
+              class: 'button',
+              id: 'auth-google',
+              onclick: () =>
+                void account
+                  .signInWithProvider('google')
+                  .catch((err: Error) => {
+                    error.textContent = err.message;
+                  }),
+            },
+            t('site.google'),
+          )
+        : null,
+      cloud ? null : h('p', { class: 'muted', text: t('site.localMode') }),
     );
   paint();
   out.append(form);
@@ -304,7 +332,7 @@ function route() {
 }
 
 async function start() {
-  config = (await localConfigSource(localStorage).getLive()).config;
+  config = (await liveConfig(localStorage)).config;
   setLocale(config.brand.defaultLocale);
   applyBrand(config);
   signedIn = !!(await account.user());

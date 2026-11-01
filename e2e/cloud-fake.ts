@@ -35,6 +35,8 @@ export interface FakeCloud {
     created_at?: string;
   }[];
   files: Map<string, Buffer>;
+  /** P2-R2: sign-up asks for email confirmation first (no session). */
+  confirmEmail?: boolean;
   /** P1-31: training-data records, one per owner and project. */
   training?: {
     owner_id: string;
@@ -139,7 +141,33 @@ export async function fakeCloud(
         return json(route, 200, { error: 'exists' });
       const user = { id: crypto.randomUUID(), email, password };
       cloud.users.set(user.id, user);
+      // P2-R2: with email confirmation on, GoTrue answers the user, no session.
+      if (cloud.confirmEmail)
+        return json(route, 200, {
+          ...session(user).user,
+          confirmation_sent_at: new Date().toISOString(),
+        });
       return json(route, 200, session(user));
+    }
+    // P2-R2: password recovery (the emailed code is 123456 here).
+    if (url.pathname === '/auth/v1/recover') return json(route, 200, {});
+    if (url.pathname === '/auth/v1/verify') {
+      const { email, token } = body() as { email: string; token: string };
+      const user = [...cloud.users.values()].find(
+        (each) => each.email === email,
+      );
+      if (!user || token !== '123456')
+        return json(route, 200, {
+          error: 'otp_expired',
+          error_description: 'Token has expired or is invalid',
+        });
+      return json(route, 200, session(user));
+    }
+    if (url.pathname === '/auth/v1/user' && request.method() === 'PUT') {
+      const user = cloud.users.get(caller(route) ?? '');
+      if (user && typeof body().password === 'string')
+        user.password = String(body().password);
+      return json(route, 200, user ? session(user).user : {});
     }
     if (url.pathname === '/auth/v1/token') {
       const grant = url.searchParams.get('grant_type');
