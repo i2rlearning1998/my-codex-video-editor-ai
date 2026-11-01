@@ -90,6 +90,9 @@ export default defineConfig({
     },
   ],
   updateSnapshots: 'missing',
+  // P2-R1: the editor starts a moment after the page loads (login check and the
+  // first cold load of the dev server), so web-first waits get 15 s, not 5 s.
+  expect: { timeout: 15_000 },
   webServer: {
     command: `npm run dev -- --port ${port} --strictPort`,
     url: `http://127.0.0.1:${port}`,
