@@ -323,6 +323,8 @@ if (handoff) {
       { name, width, height, fps: 30, background: '#ffffff' },
       engine,
     );
+    // The panel lists it at once (Projects, Asset Library).
+    void mirrorNow();
   };
   if (handoff.kind === 'open') {
     if (handoff.projectId !== engine.state.id)

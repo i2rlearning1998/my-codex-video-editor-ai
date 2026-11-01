@@ -1270,3 +1270,48 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P20-006 | P0 | W10 | Verified | The Director interview skips answered questions and respects the owner's cap |
 | P20-007 | P0 | W10 | Verified | Config versions are saved, published and rolled back; a bad save changes nothing |
 | P20-008 | P0 | W10 | Verified | An unreadable saved config falls back to the built-in default |
+
+## P2R1: Phase 2 round 1 (user panel, Director, gateway, website; local stub)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| P2R1-001 | P0 | W10 | Verified | The Phase 1 Supabase code (src/cloud, the account slot, supabase/, cloud:start, cloud:stop, cloud:test, @supabase/supabase-js) is on this branch with FX10, FX11, the owner app and library-client kept, and `npm run check` passes |
+| P2R1-002 | P0 | W10 | Verified | The report says how the Phase 1 cloud was integrated and what of it really ran (SQL policy tests and a stand-in HTTP API only) |
+| P2R1-003 | P0 | W10 | Verified | CloudBackend is the only way the panel reaches accounts and storage; a local account backend with the same interface keeps people in this browser (sign up, log in, log out, reset, owner-only data) |
+| P2R1-004 | P0 | W10 | Verified | The config lists model providers (Anthropic, OpenAI, Google, xAI, OpenAI-compatible, mock) with the NAME of a server secret, never a key |
+| P2R1-005 | P0 | W10 | Verified | The config lists models with kind, tier, capabilities, context, USD prices, credit margin, roles, plan gating, enabled, recommended and tested, plus credits per USD; the prices are marked samples |
+| P2R1-006 | P0 | W10 | Verified | The config lists payment providers (countries, currencies) and top-ups; a mock payment works offline and real ones say not connected |
+| P2R1-007 | P0 | W10 | Verified | Studios and the Director rulebook point to model roles; the default seed covers Claude, OpenAI, Gemini, Grok and the mock |
+| P2R1-008 | P0 | W10 | Verified | Invalid configs are refused with a reason (a model with an unknown provider, a role no model serves, a method that is not a tool, a pasted key) |
+| P2R1-009 | P0 | W10 | Verified | The gateway's provider adapter interface and a deterministic mock adapter with latency and failure modes |
+| P2R1-010 | P0 | W10 | Verified | Anthropic, OpenAI, Gemini and Grok requests are built with secret names only and their documented answers parsed (fixture JSON only, models stay untested); without a server they say not connected |
+| P2R1-011 | P0 | W10 | Verified | The cost estimator gives min and max credits per scene and in total from the workload, model price, margin and credit rate |
+| P2R1-012 | P0 | W10 | Verified | An append-only credits ledger (grant, reserve, settle, refund, adjust) with idempotency keys and a derived balance |
+| P2R1-013 | P0 | W10 | Verified | Reserve at the maximum, settle at actual, refund the difference; a failure refunds in full; settling twice changes nothing |
+| P2R1-014 | P0 | W10 | Verified | Pre-call checks (model, plan, tool allow-list, plan limits, budget caps, rate limit) refuse with one plain sentence |
+| P2R1-015 | P0 | W10 | Verified | Every gateway call leaves a usage row (model, role, credits, time, outcome) |
+| P2R1-016 | P0 | W10 | Verified | Gateway runs refund on failure and on refused output, refuse a shortage and stop at a plan limit |
+| P2R1-017 | P0 | W10 | Verified | The user panel is its own page on the same design tokens: sidebar, top bar with the credits pill, routes, English and Hindi, empty, loading and error states |
+| P2R1-018 | P0 | W10 | Verified | No guest mode: logged-out visitors see only the website; sign up, log in, log out and reset work; the panel and editor open only after login |
+| P2R1-019 | P0 | W10 | Verified | The brand name, logo and colours come from the config |
+| P2R1-020 | P0 | W10 | Verified | The signed-in person's plan, credits and limits come from the config through the ledger |
+| P2R1-021 | P0 | W10 | Verified | The editor bundle contains no panel, website or gateway code; the panel and website contain no editor entry or shell |
+| P2R1-022 | P0 | W10 | Verified | Home: greeting, credits, a Director prompt box, Style cards, Continue projects and Learn |
+| P2R1-023 | P0 | W10 | Verified | Styles: filters, search, plan gating with Upgrade and the price hint |
+| P2R1-024 | P0 | W10 | Verified | Brief Room: the form from the Style's fields (every type, show-if, validation), brief strength, the estimate for the chosen model, drafts kept |
+| P2R1-025 | P0 | W10 | Verified | In a browser: pick a Style, fill the form, see validation and the estimate change when the model changes |
+| P2R1-026 | P0 | W10 | Verified | Director's interview from the Style's rules: answered fields skipped, capped, free text kept, one creative-upgrade line |
+| P2R1-027 | P0 | W10 | Verified | Out-of-scope and forbidden requests get the owner's refusal with an alternative, never model text |
+| P2R1-028 | P0 | W10 | Verified | A Planner interface and a deterministic mock planner make a valid Plan v3 whose methods follow methodOrder; an invalid plan is repaired once, then refused |
+| P2R1-029 | P0 | W10 | Verified | The Plan card: methods with cheaper and richer swaps, per-scene and total credits for the chosen model, balance, shortage options, the model picker, Approve and Cancel |
+| P2R1-030 | P0 | W10 | Verified | Live Build: steps, progress, preview, a refund on failure, and Open in editor builds editable scenes with the editor's own builder |
+| P2R1-031 | P0 | W10 | Verified | In a browser: the Circumference flow end to end (login to export) and a failed build that refunds |
+| P2R1-032 | P0 | W10 | Verified | Studio screens from config call the gateway (mock), show the cost first and save results to the project's Asset Library; Voice asks for clone consent |
+| P2R1-033 | P0 | W10 | Verified | The Asset Library per project, and copying an asset into another project |
+| P2R1-034 | P0 | W10 | Verified | In a browser: one Studio tool end to end, and a tool the plan lacks is locked with Upgrade |
+| P2R1-035 | P0 | W10 | Verified | Projects: list, search, filters, New with Director, New blank, open, duplicate, rename, trash with restore |
+| P2R1-036 | P0 | W10 | Verified | Credits and Plan: plan cards, what things cost, ledger history, a mock top up, INR and USD, usage against limits |
+| P2R1-037 | P0 | W10 | Verified | Brand Kit (used by the Brief Room), Settings (profile, language, theme) and Learn from config |
+| P2R1-038 | P0 | W10 | Verified | The website: landing, pricing and showcase from config, sign-up and log-in links, no live demo and no guest editor |
+| P2R1-039 | P0 | W10 | Verified | Ledger rows, docs/PANEL.md, docs/GATEWAY.md, decisions, status and changelog describe the round; every new panel string has Hindi |
+| P2R1-040 | P0 | W10 | Verified | The round's report lists every item with its state, what was not tested, the owner's try-it script and how to add real keys later |

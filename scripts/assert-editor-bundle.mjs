@@ -50,10 +50,66 @@ for (const file of files) {
           `${relative}: contains bundled library content (${marker})`,
         );
 }
+// P2-R1 (P2-21): three pages. What the editor page loads never contains the
+// panel, the website or the gateway; the panel and website never load the
+// editor's entry, its shell or its main module.
+export const PANEL_MARKERS = [
+  'aive.panel.',
+  'aive.credits.',
+  'anthropic-version',
+  'Start with Director',
+  'Brief Room',
+  'Test payment (no money moves)',
+];
+export const EDITOR_MARKERS = [
+  'Example project · All artwork is part of the canonical scene.',
+  'Local persistence paused to protect existing data.',
+];
+const manifestPath = path.join(dist, '.vite', 'manifest.json');
+let pages = '';
+if (existsSync(manifestPath)) {
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const reach = (key, seen = new Set()) => {
+    if (!manifest[key] || seen.has(key)) return seen;
+    seen.add(key);
+    for (const next of [
+      ...(manifest[key].imports ?? []),
+      ...(manifest[key].dynamicImports ?? []),
+    ])
+      reach(next, seen);
+    return seen;
+  };
+  const filesOf = (keys) => [...keys].map((key) => manifest[key].file);
+  const editor = reach('index.html');
+  for (const file of filesOf(editor)) {
+    const text = readFileSync(path.join(dist, file), 'utf8');
+    for (const marker of PANEL_MARKERS)
+      if (text.includes(marker))
+        problems.push(
+          `${file}: the editor page loads panel or gateway code (${marker})`,
+        );
+  }
+  for (const page of ['panel/index.html', 'site/index.html']) {
+    const keys = reach(page);
+    if (!manifest[page]) {
+      problems.push(`${page}: missing from the build`);
+      continue;
+    }
+    for (const key of ['index.html', 'src/main.ts', 'src/boot.ts'])
+      if (keys.has(key)) problems.push(`${page}: loads the editor (${key})`);
+    for (const file of filesOf(keys)) {
+      const text = readFileSync(path.join(dist, file), 'utf8');
+      for (const marker of EDITOR_MARKERS)
+        if (text.includes(marker))
+          problems.push(`${file}: ${page} loads editor code (${marker})`);
+    }
+  }
+  pages = ` Editor page ${editor.size} chunks without panel, website or gateway code; panel and website without the editor.`;
+}
 if (problems.length) {
   console.error(problems.join('\n'));
   process.exit(1);
 }
 console.log(
-  `Editor bundle: ${files.length} files, no owner app, no bundled library payloads.`,
+  `Editor bundle: ${files.length} files, no owner app, no bundled library payloads.${pages}`,
 );

@@ -42,6 +42,8 @@ type Fixtures = {
  */
 export function autoLogin() {
   try {
+    // Only the editor page: the website and panel tests sign in themselves.
+    if (location.pathname !== '/') return;
     if (localStorage.getItem('aive.e2e.noAutoLogin')) return;
     const key = 'aive.localCloud';
     const store = JSON.parse(localStorage.getItem(key) ?? 'null') as {
