@@ -100,7 +100,7 @@ describe('P2-R2 real adapters against fake servers', () => {
       messages: [],
       prompt: 'Namaste'.repeat(10),
     });
-    expect(voice.media?.mime).toBe('audio/mpeg');
+    expect(voice.media?.mime).toBe('audio/wav');
     expect(voice.usage.minutes).toBeGreaterThan(0);
     const video = await call('video-standard', {
       messages: [],

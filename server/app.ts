@@ -195,6 +195,7 @@ export function createServerApp(o: ServerOptions) {
       );
     return p;
   }
+  const locales = new Map<string, 'en' | 'hi'>();
   async function prepare(c: Caller) {
     const { config } = await cfg.get();
     const profile = await profileOf(c, config);
@@ -205,8 +206,10 @@ export function createServerApp(o: ServerOptions) {
       voiceClones: await o.store.counter(c.userId, 'voiceClones'),
       projects: await o.store.counter(c.userId, 'projects'),
     });
+    locales.set(c.userId, profile.locale);
     return { config, profile, plan: planFor(config, profile.plan) };
   }
+  const localeOf = (u: string) => locales.get(u) ?? 'en';
   const sweep = async () => {
     for (const [id, j] of jobs)
       if (now() - j.at > 30 * 60_000) {
@@ -404,6 +407,7 @@ export function createServerApp(o: ServerOptions) {
       // Reserve under the lock; the provider call runs outside it.
       const job = await people.withLedger(c.userId, () => {
         preCheck({
+          locale: localeOf(c.userId),
           config,
           plan,
           modelId,
@@ -453,6 +457,7 @@ export function createServerApp(o: ServerOptions) {
       if (!['export', 'store', 'voice-clone', 'project'].includes(action))
         throw bad('Unknown limit.');
       preCheck({
+        locale: localeOf(c.userId),
         config,
         plan,
         action,
@@ -472,6 +477,7 @@ export function createServerApp(o: ServerOptions) {
       const { config, plan } = await prepare(c);
       const kind = str(b.kind, 20);
       preCheck({
+        locale: localeOf(c.userId),
         config,
         plan,
         action: 'export',

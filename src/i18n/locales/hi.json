@@ -244,6 +244,7 @@
   "export.start.button": "एक्सपोर्ट",
   "export.preparing": "मीडिया और ऑडियो तैयार हो रहे हैं…",
   "export.progress": "{percent}% · फ़्रेम {done}/{total} · लगभग {left} बाकी",
+  "export.upgrade": "अपग्रेड करें",
   "export.cancelled": "एक्सपोर्ट रद्द किया गया",
   "export.done": "{name} एक्सपोर्ट हुआ",
   "export.failed": "एक्सपोर्ट विफल: {error}",

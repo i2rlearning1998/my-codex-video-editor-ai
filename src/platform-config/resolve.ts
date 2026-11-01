@@ -148,12 +148,18 @@ export function studioForm(s: Studio): Style {
     name: s.name,
     blurb: s.blurb ?? { en: '' },
     playbook: '',
+    playbookText: '',
     enabled: s.enabled,
     cardArt: '',
     formats: ['16:9'],
     requires: s.requires,
     brief: { fields: s.inputs as BriefField[] },
-    interview: { maxQuestions: 0, questions: [], creativeUpgrade: false },
+    interview: {
+      maxQuestions: 0,
+      questions: [],
+      creativeUpgrade: false,
+      followUps: [],
+    },
     order: s.order,
   };
 }

@@ -263,6 +263,8 @@ export const styleSchema = z.object({
   name: textSchema,
   blurb: textSchema,
   playbook: z.string().default(''),
+  /** P2-R2: the Style's rules for the planning model (config text). */
+  playbookText: z.string().max(8000).default(''),
   enabled: z.boolean().default(true),
   cardArt: z.string().default(''),
   formats: z.array(z.enum(['16:9', '9:16', '1:1', '4:5'])).min(1),
@@ -275,6 +277,8 @@ export const styleSchema = z.object({
     maxQuestions: z.number().int().min(0).max(20).default(5),
     questions: z.array(interviewQuestionSchema).default([]),
     creativeUpgrade: z.boolean().default(true),
+    /** P2-R2: the only follow-ups a model may ask. */
+    followUps: z.array(z.object({ id, ask: textSchema })).default([]),
   }),
   order: z.number().default(0),
 });
@@ -299,6 +303,25 @@ export const directorSchema = z.object({
   creativeUpgrade: z
     .object({ enabled: z.boolean().default(true), text: textSchema })
     .optional(),
+  /** P2-R2 (P2B-17): the model prompts, with {{variables}} filled by code. */
+  prompts: z
+    .object({
+      plan: z.string().min(20).max(20000),
+      repair: z.string().min(20).max(4000),
+      interview: z.string().min(20).max(4000),
+      upgradeOn: z.string().min(1).max(2000),
+      upgradeOff: z.string().min(1).max(2000),
+    })
+    .optional(),
+  /** P2-R2: what a plan may hold (checked before it is shown). */
+  limits: z
+    .object({
+      maxScenes: z.number().int().min(1).max(40).default(12),
+      maxSceneSeconds: z.number().min(1).max(600).default(30),
+      maxNarrationChars: z.number().int().min(20).max(4000).default(600),
+      planOutputTokens: z.number().int().min(500).max(64000).default(8000),
+    })
+    .default({}),
   /** P2-07: which model role plans, interviews and writes. */
   roles: z
     .object({
@@ -386,6 +409,15 @@ export const platformConfigSchema = z
     costs: z.array(costSchema),
     /** P2-05: credits per USD of provider cost. */
     creditRate: z.number().min(0),
+    /** P2-R2 (P2B-26): the owner's sentences when a plan limit is hit ({n} = the limit). */
+    limitMessages: z
+      .object({
+        exports: textSchema.optional(),
+        storage: textSchema.optional(),
+        voiceClones: textSchema.optional(),
+        projects: textSchema.optional(),
+      })
+      .default({}),
     providers: z.array(providerSchema),
     models: z.array(modelSchema),
     payments: z.array(paymentSchema),

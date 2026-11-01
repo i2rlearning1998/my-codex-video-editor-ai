@@ -35,6 +35,29 @@ export interface FakeProviders {
   close(): Promise<void>;
 }
 
+function wav(seconds: number): Buffer {
+  const rate = 8000;
+  const n = Math.round(rate * seconds);
+  const b = Buffer.alloc(44 + n * 2);
+  b.write('RIFF', 0);
+  b.writeUInt32LE(36 + n * 2, 4);
+  b.write('WAVEfmt ', 8);
+  b.writeUInt32LE(16, 16);
+  b.writeUInt16LE(1, 20);
+  b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(rate, 24);
+  b.writeUInt32LE(rate * 2, 28);
+  b.writeUInt16LE(2, 32);
+  b.writeUInt16LE(16, 34);
+  b.write('data', 36);
+  b.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++)
+    b.writeInt16LE(
+      Math.round(Math.sin((i / rate) * 2 * Math.PI * 440) * 2000),
+      44 + i * 2,
+    );
+  return b;
+}
 const read = async (req: IncomingMessage) => {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
@@ -168,8 +191,10 @@ export async function startFakeProviders(
         },
       });
     if (provider === 'elevenlabs' && url.includes('/v1/text-to-speech/')) {
-      res.writeHead(200, { 'content-type': 'audio/mpeg' });
-      return res.end(Buffer.from([0xff, 0xfb, 0x90, 0x00, 1, 2, 3, 4]));
+      // A real, decodable sound (0.5 s of a quiet 440 Hz tone, 8 kHz WAV), so
+      // the editor can import it like the provider's audio.
+      res.writeHead(200, { 'content-type': 'audio/wav' });
+      return res.end(wav(0.5));
     }
     if (
       provider === 'video' &&

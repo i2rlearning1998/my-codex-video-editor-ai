@@ -244,6 +244,7 @@
   "export.start.button": "Export",
   "export.preparing": "Preparing media and audio…",
   "export.progress": "{percent}% · frame {done} of {total} · about {left} left",
+  "export.upgrade": "Upgrade",
   "export.cancelled": "Export cancelled",
   "export.done": "Exported {name}",
   "export.failed": "Export failed: {error}",

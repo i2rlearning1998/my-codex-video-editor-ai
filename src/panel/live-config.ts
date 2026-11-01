@@ -9,16 +9,10 @@ import {
   type ConfigVersion,
 } from '../platform-config';
 
+import { gatewayBase } from '../usage-report';
+
 type KV = Pick<Storage, 'getItem' | 'setItem'>;
-/** VITE_GATEWAY_URL, or in dev and e2e builds a page-provided value. */
-export function gatewayBase(): string | null {
-  const env = import.meta.env as Record<string, string | undefined>;
-  const page = (globalThis as { __AIVE_GATEWAY_URL__?: string })
-    .__AIVE_GATEWAY_URL__;
-  return (
-    ((env.DEV || env.MODE === 'e2e') && page) || env.VITE_GATEWAY_URL || null
-  );
-}
+export { gatewayBase };
 export function liveConfig(storage: KV | null): Promise<ConfigVersion> {
   const gateway = gatewayBase();
   const cloud = cloudConfig();

@@ -104,6 +104,16 @@ const S = {
     'That is all I need. Make the plan when you are ready.',
     'मुझे बस इतना चाहिए था। जब तैयार हों, प्लान बनाएँ।',
   ],
+  'build.picture': [
+    'Making the picture for scene {i}',
+    'दृश्य {i} की तस्वीर बन रही है',
+  ],
+  'build.voice': ['Recording the voice', 'आवाज़ रिकॉर्ड हो रही है'],
+  'plan.upgrades': [
+    'Optional upgrades from Director',
+    'डायरेक्टर के वैकल्पिक सुधार',
+  ],
+  'plan.upgradeCost': ['{n} credits at most', 'अधिकतम {n} क्रेडिट'],
   'plan.title': ['The plan', 'प्लान'],
   'plan.scene': ['Scene {n}', 'सीन {n}'],
   'plan.cheaper': ['Cheaper', 'सस्ता'],

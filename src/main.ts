@@ -1,3 +1,5 @@
+import { takeHandoffFiles } from './handoff-store';
+import { gatewayBase, usageReporter } from './usage-report';
 import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 import {
   EditorEngine,
@@ -136,6 +138,8 @@ const shell = mountEditorShell(
           },
         }
       : {}),
+    // P2-R2: the plan's export limit; each finished export is reported.
+    usage: usageReporter(me, localStorage, gatewayBase()),
     exportProject: () => {
       const url = URL.createObjectURL(
         new Blob([serializeProject(engine.state)], {
@@ -375,7 +379,37 @@ if (handoff) {
         /* the importer reports a bad plan itself */
       }
       fresh(title, aspect);
-      shell.buildHandedPlan(text);
+      // P2-R2: the build's AI pictures and voice, then the plan finds them.
+      const plan = text;
+      const id = handoff.id;
+      void takeHandoffFiles(id)
+        .then(async (files) => {
+          if (files.length)
+            await shell.importHandedFiles(
+              files.map(
+                (f) =>
+                  new File([f.bytes as BlobPart], f.name, { type: f.type }),
+              ),
+            );
+          // The panel's Asset Library rows follow the new project.
+          const key = 'aive.panel.assets';
+          const rows = JSON.parse(localStorage.getItem(key) ?? '[]') as {
+            projectId?: string;
+          }[];
+          if (rows.some((r) => r.projectId === `handoff:${id}`))
+            localStorage.setItem(
+              key,
+              JSON.stringify(
+                rows.map((r) =>
+                  r.projectId === `handoff:${id}`
+                    ? { ...r, projectId: engine.state.id }
+                    : r,
+                ),
+              ),
+            );
+        })
+        .catch(() => undefined)
+        .finally(() => shell.buildHandedPlan(plan));
     }
   }
 }

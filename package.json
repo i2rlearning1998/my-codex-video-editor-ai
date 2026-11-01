@@ -28,6 +28,7 @@
     "freecode:gallery": "vite --config freecode-gallery/vite.config.ts",
     "models:pin": "node scripts/models-pin.mjs",
     "docs:plan-cheatsheet": "node scripts/plan-cheatsheet.mjs",
+    "docs:capability-sheet": "node scripts/capability-sheet.mjs",
     "cloud:start": "npx --yes supabase@2.122.0 start",
     "cloud:stop": "npx --yes supabase@2.122.0 stop",
     "cloud:test": "node scripts/cloud-sql-test.mjs",

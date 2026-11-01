@@ -12,17 +12,24 @@ import {
   type Style,
 } from '../../platform-config';
 import {
+  applyUpgrade,
   checkPlan,
-  methodOf,
   mockPlanner,
+  llmPlan,
+  methodOf,
+  modelReply,
   reply,
+  upgradeCredits,
+  mediaCredits,
   runBuild,
   startInterview,
   swapTarget,
   withMethod,
   type Interview,
+  type Upgrade,
 } from '../../director';
-import { estimateDirector, GatewayError } from '../../gateway';
+import { GatewayError } from '../../gateway';
+import { putHandoffFiles, fromBase64 } from '../../handoff-store';
 import type { VideoPlan } from '../../video-plan';
 import { HANDOFF_KEY } from '../../auth-gate';
 import { h, clear, put } from '../dom';
@@ -36,6 +43,12 @@ interface Flow {
   answers: Answers;
   notes: string[];
   plan?: VideoPlan;
+  /** P2B-19: the model's optional upgrades and which are switched on. */
+  upgrades?: Upgrade[];
+  on?: Record<
+    string,
+    { sceneId: string; original?: VideoPlan['scenes'][number] }
+  >;
 }
 const FLOW = (u: string) => `aive.panel.flow.${u}`;
 const readFlow = (ctx: Ctx): Flow | null => {
@@ -81,34 +94,36 @@ async function draftPlan(
   answers: Answers,
   notes: string[],
 ) {
-  const c = ctx.s.config;
   const kit = ctx.prefs().brandKit;
   const brand =
     kit.headingFont || kit.bodyFont
       ? [`Brand fonts: ${kit.headingFont || kit.bodyFont}.`]
       : [];
-  const raw = await mockPlanner().draft({
-    config: c,
+  // P2B-16: the chosen model plans (the mock plans for free offline).
+  return llmPlan({
+    gateway: ctx.s.gateway,
+    config: ctx.s.config,
     style,
     answers: withBrand(ctx, style, answers),
     notes: [...notes, ...brand],
     plan: ctx.s.planOf(ctx.user.id),
+    locale: ctx.prefs().locale,
+    userId: ctx.user.id,
+    modelId: currentModel(ctx),
+    key: `plan-${Date.now().toString(36)}`,
   });
-  return checkPlan(raw);
 }
-function estimate(
-  ctx: Ctx,
-  plan: VideoPlan,
-  modelId: string,
-  briefChars: number,
-) {
-  const c = ctx.s.config;
-  const model = c.models.find((m) => m.id === modelId);
-  if (!model) return null;
-  return estimateDirector(c, model, {
-    briefChars,
-    methods: plan.scenes.map(methodOf),
-  });
+/** The Brief room's estimate: the free planner's shape, never a model call. */
+async function previewPlan(ctx: Ctx, style: Style, answers: Answers) {
+  return checkPlan(
+    await mockPlanner().draft({
+      config: ctx.s.config,
+      style,
+      answers: withBrand(ctx, style, answers),
+      notes: [],
+      plan: ctx.s.planOf(ctx.user.id),
+    }),
+  );
 }
 const strength = (style: Style, a: Answers) => {
   const fields = style.brief.fields;
@@ -162,16 +177,18 @@ export const briefScreen: Screen = async (ctx, [styleId = ''], out) => {
     strengthEl.textContent = t('brief.strength', {
       label: strength(style, answers),
     });
-    const checked = await draftPlan(ctx, style, answers, []);
+    const checked = await previewPlan(ctx, style, answers);
     if (mine !== tick) return;
     const e = checked.ok
-      ? estimate(
-          ctx,
-          checked.plan,
-          model,
-          JSON.stringify(buildBrief(style, answers)).length,
-        )
+      ? await ctx.s
+          .estimate(
+            model,
+            checked.plan.scenes.map(methodOf),
+            JSON.stringify(buildBrief(style, answers)).length,
+          )
+          .catch(() => null)
       : null;
+    if (mine !== tick) return;
     estimateEl.textContent =
       e && c.director.reveal.credits
         ? t('brief.estimate', { min: e.min, max: e.max })
@@ -304,8 +321,43 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
       );
     log.lastElementChild?.scrollIntoView({ block: 'nearest' });
   };
-  const send = () => {
-    const r = reply(c, style, iv, input.value, locale);
+  // P2B-21: a connected text model helps read answers (never for refusals).
+  const plan = ctx.s.planOf(ctx.user.id);
+  const helper = bestModels(
+    ctx,
+    modelsForRole(c, c.director.roles.interview),
+  ).find(
+    (m) =>
+      m.providerId !== 'mock' &&
+      ctx.s.connected(m.id) &&
+      modelAvailability(c, plan, m.id).ok,
+  );
+  let busy = false;
+  const send = async () => {
+    if (busy) return;
+    busy = true;
+    const said = input.value;
+    const r = helper
+      ? await modelReply(c, style, iv, said, locale, async (system, user) => {
+          const out = await ctx.s.gateway.run({
+            userId: ctx.user.id,
+            plan,
+            role: c.director.roles.interview,
+            modelId: helper.id,
+            request: {
+              system,
+              messages: [{ role: 'user', content: user }],
+              json: true,
+              maxOutputTokens: 300,
+            },
+            maxCredits: 50,
+            key: `iv-${Date.now().toString(36)}`,
+          });
+          void ctx.s.sync(ctx.user.id).then(ctx.refreshTop, () => undefined);
+          return out.result.text ?? '';
+        }).catch(() => reply(c, style, iv, said, locale))
+      : reply(c, style, iv, said, locale);
+    busy = false;
     iv = r.interview;
     input.value = '';
     writeFlow(ctx, { ...flow, answers: iv.answers, notes: [...iv.notes] });
@@ -313,7 +365,7 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
     paint();
   };
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') send();
+    if (e.key === 'Enter') void send();
   });
   out.append(
     h('h1', { text: `${t('director.title')} · ${ctx.say(style.name)}` }),
@@ -324,7 +376,12 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
       input,
       h(
         'button',
-        { type: 'button', class: 'button', id: 'chat-send', onclick: send },
+        {
+          type: 'button',
+          class: 'button',
+          id: 'chat-send',
+          onclick: () => void send(),
+        },
         t('director.send'),
       ),
     ),
@@ -369,23 +426,55 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
     return;
   }
   let video = flow.plan;
+  let upgrades = flow.upgrades ?? [];
+  const on = { ...(flow.on ?? {}) };
+  const refused = (text: string) =>
+    out.append(
+      h('h1', { text: t('plan.title') }),
+      h('p', {
+        class: 'error-state',
+        role: 'alert',
+        id: 'plan-refused',
+        text,
+      }),
+      h(
+        'div',
+        { class: 'actions' },
+        h(
+          'a',
+          { class: 'button', href: `#/brief/${style.id}` },
+          t('common.back'),
+        ),
+      ),
+    );
   if (!video) {
-    const checked = await draftPlan(ctx, style, flow.answers, flow.notes);
-    if (!checked.ok) {
-      out.append(
-        h('h1', { text: t('plan.title') }),
-        h('p', {
-          class: 'error-state',
-          role: 'alert',
-          id: 'plan-refused',
-          text: `${t('plan.refused')} ${checked.message}`,
-        }),
+    let checked: Awaited<ReturnType<typeof draftPlan>>;
+    try {
+      checked = await draftPlan(ctx, style, flow.answers, flow.notes);
+    } catch (e) {
+      // A provider failure: the whole planning hold is given back.
+      await ctx.s.sync(ctx.user.id).catch(() => undefined);
+      refused(
+        e instanceof GatewayError && e.code === 'shortage'
+          ? t('gw.shortage', {
+              need: e.detail.need ?? '',
+              have: e.detail.have ?? '',
+            })
+          : t('gw.refused', { message: (e as Error).message }),
       );
       return;
     }
+    await ctx.s.sync(ctx.user.id).catch(() => undefined);
+    if (!checked.ok) {
+      refused(`${t('plan.refused')} ${checked.message}`);
+      return;
+    }
     video = checked.plan;
-    writeFlow(ctx, { ...flow, plan: video });
+    upgrades = checked.upgrades;
+    writeFlow(ctx, { ...flow, plan: video, upgrades, on: {} });
   }
+  const voice = flow.answers.voice === 'tts';
+  const save = () => writeFlow(ctx, { ...flow, plan: video!, upgrades, on });
   const userPlan = ctx.s.planOf(ctx.user.id);
   let model = currentModel(ctx);
   const briefChars = JSON.stringify(buildBrief(style, flow.answers)).length;
@@ -399,9 +488,21 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
     const tool = c.director.tools.find((x) => x.id === m);
     return !!tool && tool.enabled && canUse(userPlan, tool.requires);
   };
-  const paint = () => {
+  let seq = 0;
+  const paint = async () => {
+    const mine = ++seq;
     const v = video!;
-    const e = estimate(ctx, v, model, briefChars);
+    const base = await ctx.s
+      .estimate(model, v.scenes.map(methodOf), briefChars)
+      .catch(() => null);
+    if (mine !== seq) return;
+    // P2B-22: the AI pictures and the voice are part of the hold.
+    const extra = mediaCredits(c, userPlan, v, voice, (id) =>
+      ctx.s.connected(id),
+    );
+    const e = base
+      ? { ...base, min: base.min + extra, max: base.max + extra }
+      : null;
     const balance = ctx.s.ledger(ctx.user.id).balance();
     const short = !!e && e.max > balance;
     const rows = v.scenes.map((s, i) => {
@@ -438,8 +539,8 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
                   ? flow.answers.accent
                   : undefined,
               );
-              writeFlow(ctx, { ...flow, plan: video });
-              paint();
+              save();
+              void paint();
             },
           },
           t(`plan.${dir}`),
@@ -476,10 +577,67 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
     clear(
       body,
       h('ol', { class: 'scenes' }, rows),
+      upgrades.length
+        ? h(
+            'fieldset',
+            { class: 'upgrades', id: 'plan-upgrades' },
+            h('legend', { text: t('plan.upgrades') }),
+            upgrades.map((u) => {
+              const credits = upgradeCredits(c, v, u);
+              const box = h('input', {
+                type: 'checkbox',
+                id: `upgrade-${u.id}`,
+                'data-upgrade': u.id,
+              });
+              box.checked = !!on[u.id];
+              box.addEventListener('change', () => {
+                if (box.checked) {
+                  const before = new Set(v.scenes.map((x) => x.id));
+                  const original =
+                    u.replaceScene && v.scenes[u.replaceScene.index];
+                  video = applyUpgrade(v, u);
+                  const added = video.scenes.find((x) => !before.has(x.id));
+                  on[u.id] = {
+                    sceneId: added?.id ?? (original ? original.id : ''),
+                    ...(original ? { original } : {}),
+                  };
+                } else {
+                  const st = on[u.id];
+                  delete on[u.id];
+                  if (st)
+                    video = {
+                      ...v,
+                      scenes: st.original
+                        ? v.scenes.map((x) =>
+                            x.id === st.sceneId ? st.original! : x,
+                          )
+                        : v.scenes.filter((x) => x.id !== st.sceneId),
+                    };
+                }
+                save();
+                void paint();
+              });
+              return h(
+                'label',
+                { class: 'upgrade', for: `upgrade-${u.id}` },
+                box,
+                h('strong', { text: u.title }),
+                h('span', { class: 'muted', text: u.why }),
+                h('span', {
+                  class: 'chip',
+                  'data-credits': String(credits),
+                  text: t('plan.upgradeCost', {
+                    n: credits >= 0 ? `+${credits}` : String(credits),
+                  }),
+                }),
+              );
+            }),
+          )
+        : null,
       modelPicker(ctx, roleOf(c), model, (id) => {
         model = id;
         ctx.setPrefs({ model: id });
-        paint();
+        void paint();
       }),
       reveal.credits && e
         ? h('p', {
@@ -524,7 +682,7 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
                     );
                     if (fast) {
                       model = fast.id;
-                      paint();
+                      void paint();
                     }
                   },
                 },
@@ -548,8 +706,8 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
                       next = withMethod(next, i, m);
                     });
                     video = next;
-                    writeFlow(ctx, { ...flow, plan: video });
-                    paint();
+                    save();
+                    void paint();
                   },
                 },
                 t('plan.cheaperScenes'),
@@ -583,6 +741,7 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
                   plan: video,
                   model,
                   max: e!.max,
+                  voice,
                   key: `build-${Date.now().toString(36)}`,
                 }),
               );
@@ -598,7 +757,7 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
     h('h1', { text: `${t('plan.title')}: ${video.meta.title}` }),
     body,
   );
-  paint();
+  await paint();
 };
 
 /** P2-30 Live Build. */
@@ -609,6 +768,7 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
     plan: VideoPlan;
     model: string;
     max: number;
+    voice?: boolean;
     key: string;
   } | null = null;
   try {
@@ -703,6 +863,8 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
       video: j.plan,
       maxCredits: j.max,
       key: j.key,
+      voice: !!j.voice,
+      connected: (id) => ctx.s.connected(id),
       onEvent: (e) => {
         void ctx.s.sync(ctx.user.id).then(ctx.refreshTop, () => undefined);
         if (e.step === 'reserve') step(t('build.reserve', { n: e.credits }));
@@ -712,7 +874,13 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           const cards = preview.querySelectorAll<HTMLElement>('.preview-card');
           if (e.index > 0) cards[e.index - 1]!.dataset.state = 'done';
           cards[e.index]!.dataset.state = 'working';
-        } else if (e.step === 'check') step(t('build.check'));
+        } else if (e.step === 'media')
+          step(
+            e.kind === 'voice'
+              ? t('build.voice')
+              : t('build.picture', { i: e.index + 1 }),
+          );
+        else if (e.step === 'check') step(t('build.check'));
         else if (e.step === 'done') {
           bar.value = 100;
           for (const card of preview.querySelectorAll<HTMLElement>(
@@ -735,6 +903,39 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
     });
     sessionStorage.removeItem(`aive.panel.build.${ctx.user.id}`);
     const id = j.key;
+    // P2B-23: what the models made goes to Project Media (by name) and to
+    // the Asset Library; the editor moves the rows to the new project.
+    if (result.files.length) {
+      await putHandoffFiles(
+        id,
+        result.files.map((f) => ({
+          name: f.name,
+          type: f.type,
+          bytes: fromBase64(f.base64),
+        })),
+      ).catch(() => undefined);
+      for (const f of result.files)
+        try {
+          ctx.s.saveAsset({
+            id: `${id}-${f.name}`,
+            userId: ctx.user.id,
+            projectId: `handoff:${id}`,
+            kind: f.kind,
+            name: f.name,
+            studioId: 'director',
+            // Large files stay only in Project Media (browser storage is small).
+            ...(f.base64.length < 1_500_000
+              ? { dataUrl: `data:${f.type};base64,${f.base64}` }
+              : {}),
+            bytes: Math.round((f.base64.length * 3) / 4),
+            createdAt: new Date().toISOString(),
+          });
+        } catch {
+          /* the editor still gets the file */
+        }
+    }
+    for (const m of result.missing)
+      steps.append(h('li', { class: 'note', 'data-missing': '', text: m }));
     localStorage.setItem(HANDOFF_KEY(id), JSON.stringify(result.plan));
     sessionStorage.setItem(
       DONE,

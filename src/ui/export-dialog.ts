@@ -49,6 +49,10 @@ export interface ExportDialogOptions {
     progress: (done: number, total: number) => void,
     cancelled: () => boolean,
   ): Promise<void>;
+  /** P2-R2: null when the plan allows one more video export, else why not. */
+  allowExport?(): Promise<string | null>;
+  /** P2-R2: a finished video export (its container). */
+  exported?(kind: string): Promise<void>;
 }
 
 const field = (id: string, label: string, control: string) =>
@@ -331,9 +335,28 @@ export function openExportDialog(options: ExportDialogOptions) {
     cancelButton.hidden = !running;
     progress.hidden = !running;
   };
-  find<HTMLFormElement>('export-form').onsubmit = (event) => {
+  find<HTMLFormElement>('export-form').onsubmit = async (event) => {
     event.preventDefault();
-    if (run) return;
+    if (run || startButton.disabled) return;
+    if (options.allowExport) {
+      startButton.disabled = true;
+      const refused = await options.allowExport().catch(() => null);
+      startButton.disabled = false;
+      if (refused) {
+        // The owner's sentence and a way to upgrade; the project is saved.
+        status.replaceChildren(
+          refused,
+          ' ',
+          Object.assign(document.createElement('a'), {
+            href: '/panel/#/credits',
+            id: 'export-upgrade',
+            textContent: t('export.upgrade'),
+          }),
+        );
+        status.dataset.state = 'limit';
+        return;
+      }
+    }
     settings = read();
     setRunning(true);
     find<HTMLProgressElement>('export-bar').value = 0;
@@ -399,6 +422,9 @@ export function openExportDialog(options: ExportDialogOptions) {
           return;
         }
         download(result.file, result.fileName);
+        void options
+          .exported?.(result.fileName.split('.').pop() ?? 'video')
+          .catch(() => undefined);
         options.toast(t('export.done', { name: result.fileName }), 'success');
         modal.close();
       },
