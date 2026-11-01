@@ -112,7 +112,10 @@ describe('P2-0 platform config', () => {
     ).toEqual(['q-music', 'q-captions']);
     const capped = { ...s, interview: { ...s.interview, maxQuestions: 1 } };
     expect(nextQuestions(capped, {})).toHaveLength(1);
-    expect(enabledStyles(defaultConfig())).toHaveLength(1);
+    const c = defaultConfig();
+    const n = enabledStyles(c).length;
+    c.styles[0]!.enabled = false;
+    expect(enabledStyles(c)).toHaveLength(n - 1);
   });
   it('[P20-007] versions are saved, published and rolled back; bad saves change nothing', async () => {
     const src = localConfigSource(mem(), () => '2026-11-01T00:00:00Z');

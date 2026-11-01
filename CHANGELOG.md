@@ -1,5 +1,12 @@
 # Changelog
 
+## Phase 2 round 1 (P2-R1): user panel, Director, gateway, website (1 Nov, local test mode)
+
+- A website (`/site/`) with the landing page, Styles, showcase, pricing and FAQ from the Platform Config, plus sign up, log in and password reset. Nobody reaches the panel or the editor without logging in.
+- A user panel (`/panel/`): Home with a Director prompt, Styles, the Brief Room (form, brief strength, model choice, cost estimate, saved drafts), the Director chat (asks only what is missing, refuses what the owner forbids), the Plan card (cost per scene and in total before anything is made, cheaper or richer scenes, shortage options), Live Build (credits held, used, the rest back; a failure gives everything back) and Open in editor, which builds editable scenes with the editor's own builder.
+- Studio tools (Write, Voice with clone consent, Music & sound, Images, Video, Captions, Thumbnail, YouTube pack) with the cost shown first and results saved to the project's Asset Library; Projects (new, open, rename, duplicate, trash and restore); Credits & Plan (plans, costs, test top up, history, usage against limits); Brand Kit; Settings; Learn. English and Hindi.
+- Behind it: model providers, models and prices, payments and studio roles in the Platform Config (no keys anywhere: only the names of server secrets), and a gateway with an append-only credits ledger. Everything runs offline on a test model; real AI, Supabase and payments are not connected yet.
+
 ## Phase 1 library (26 Oct)
 
 - The shared library (shapes, backgrounds, text styles, font combinations, templates, transitions, themes, styles, sounds) now lives in the owner's signed catalog; the editor only reads it, keeps a copy in the browser and opens with a tiny basic pack when there is neither. The editor is about 106 KB smaller.

@@ -57,6 +57,18 @@ export default defineConfig(({ command }) => ({
   // FIX3 2.2: the captions worker loads transformers lazily (a split chunk),
   // which needs ES-module workers; every worker here is created as a module.
   worker: { format: 'es' },
+  // P2-R1: three pages. The editor (index.html) never imports the panel,
+  // the website or the gateway (scripts/assert-editor-bundle.mjs checks it).
+  build: {
+    manifest: true,
+    rollupOptions: {
+      input: {
+        editor: 'index.html',
+        panel: 'panel/index.html',
+        site: 'site/index.html',
+      },
+    },
+  },
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],

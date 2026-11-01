@@ -1,4 +1,4 @@
-import { menuAction, test, expect } from './fixtures';
+import { autoLogin, menuAction, test, expect } from './fixtures';
 
 test('[LOC-002][LOC-003][LOC-004] browser default, live language switch and persisted choice', async ({
   page,
@@ -20,6 +20,7 @@ test('[LOC-002][LOC-003][LOC-004] browser default, live language switch and pers
     ['fr-FR', 'en'],
   ]) {
     const context = await browser.newContext({ locale: locale! });
+    await context.addInitScript(autoLogin);
     const localized = await context.newPage();
     const errors: string[] = [];
     localized.on('pageerror', (error) => errors.push(error.message));

@@ -5,6 +5,10 @@ import { test, expect } from './fixtures';
 // the panel's bottom edge and takes most of the panel (the owner saw a short
 // scroll box with an empty area under it). Runs at 1920 x 940 and 1366 x 768.
 async function show(page: Page, name: string) {
+  // P2-R1: the editor starts after its login check; wait for its rail.
+  await expect(
+    page.locator('#rail-left [data-category]').first(),
+  ).toBeVisible();
   const button = page.locator(`#rail-left [data-category="${name}"]`);
   if (!(await button.isVisible())) {
     await page.locator('#rail-more').click();

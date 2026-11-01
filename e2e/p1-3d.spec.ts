@@ -47,9 +47,9 @@ test('[P13D-001] a .glb model becomes a Tier C animation whose thumbnail shows t
     let drawn = 0,
       orange = 0;
     for (let i = 0; i < d.length; i += 4) {
-      if (d[i + 3] > 200) {
+      if (d[i + 3]! > 200) {
         drawn++;
-        if (d[i] > d[i + 2] + 40) orange++;
+        if (d[i]! > d[i + 2]! + 40) orange++;
       }
     }
     return { drawn, orange, total: d.length / 4 };

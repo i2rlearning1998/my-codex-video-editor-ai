@@ -1,14 +1,27 @@
 // Built-in default config: sample values only. The owner replaces every one of
 // them from Admin. It is also the last fallback when no saved config can be read.
-import { CONFIG_SCHEMA_VERSION, type PlatformConfig } from './schema';
+import {
+  CONFIG_SCHEMA_VERSION,
+  platformConfigSchema,
+  type PlatformConfig,
+  type PlatformConfigInput,
+} from './schema';
 
 const L = (en: string, hi?: string) => (hi ? { en, hi } : { en });
 
 export function defaultConfig(): PlatformConfig {
+  return platformConfigSchema.parse(rawDefault());
+}
+
+function rawDefault(): PlatformConfigInput {
   return {
     schemaVersion: CONFIG_SCHEMA_VERSION,
     brand: {
       name: 'Platform',
+      tagline: L(
+        'Videos you can edit, planned by Director.',
+        'Director की योजना से बने, एडिट करने लायक़ वीडियो।',
+      ),
       logoUrl: '',
       defaultLocale: 'en',
       colors: { accent: '#7c5cff', accent2: '#22d3ee', gold: '#ffc247' },
@@ -27,8 +40,10 @@ export function defaultConfig(): PlatformConfig {
           storageMb: 2048,
           voiceClones: 1,
           projects: 10,
+          callsPerMinute: 20,
+          creditsPerDay: 60,
         },
-        features: ['director', 'studio-voice'],
+        features: ['director', 'studio-voice', 'studio-captions'],
         sortOrder: 0,
         public: true,
       },
@@ -46,7 +61,16 @@ export function defaultConfig(): PlatformConfig {
           voiceClones: 3,
           projects: null,
         },
-        features: ['director', 'studio-voice', 'studio-images', 'voice-clone'],
+        features: [
+          'director',
+          'studio-voice',
+          'studio-captions',
+          'studio-images',
+          'studio-audio',
+          'studio-thumbnail',
+          'studio-youtube-pack',
+          'voice-clone',
+        ],
         sortOrder: 1,
         public: true,
       },
@@ -67,10 +91,15 @@ export function defaultConfig(): PlatformConfig {
         features: [
           'director',
           'studio-voice',
+          'studio-captions',
           'studio-images',
+          'studio-audio',
+          'studio-thumbnail',
+          'studio-youtube-pack',
           'studio-video',
           'voice-clone',
           'brand-kit',
+          'model-best',
         ],
         sortOrder: 2,
         public: true,
@@ -117,38 +146,397 @@ export function defaultConfig(): PlatformConfig {
         max: 40,
         requires: ['studio-video'],
       },
+      cost('scene-library', L('Library scene'), 'scene', 1, 2),
+      cost('scene-stock', L('Stock scene'), 'scene', 2, 3),
+      cost('write', L('Writing'), 'each', 2, 4),
+      cost('music', L('Music'), 'minute', 8, 8, ['studio-audio']),
+      cost('captions', L('Captions'), 'minute', 2, 2),
+      cost('thumbnail', L('Thumbnail'), 'each', 8, 8, ['studio-thumbnail']),
+      cost('youtube-pack', L('YouTube pack'), 'each', 6, 6, [
+        'studio-youtube-pack',
+      ]),
     ],
-    studios: [
+    // P2-05: credits per USD of provider cost (sample).
+    creditRate: 100,
+    providers: [
       {
-        id: 'voice',
-        name: L('Voice'),
+        id: 'mock',
+        name: 'Mock (offline)',
+        kind: 'mock',
         enabled: true,
-        provider: '',
-        model: '',
-        costId: 'voice',
-        requires: [],
+        keyRef: 'MOCK_NO_KEY',
+      },
+      {
+        id: 'anthropic',
+        name: 'Anthropic',
+        kind: 'anthropic',
+        enabled: false,
+        keyRef: 'ANTHROPIC_API_KEY',
+      },
+      {
+        id: 'openai',
+        name: 'OpenAI',
+        kind: 'openai',
+        enabled: false,
+        keyRef: 'OPENAI_API_KEY',
+      },
+      {
+        id: 'google',
+        name: 'Google Gemini',
+        kind: 'google',
+        enabled: false,
+        keyRef: 'GEMINI_API_KEY',
+      },
+      {
+        id: 'xai',
+        name: 'xAI Grok',
+        kind: 'xai',
+        enabled: false,
+        keyRef: 'XAI_API_KEY',
+      },
+    ],
+    // Sample prices (USD): the owner replaces every one from Admin.
+    models: [
+      textModel(
+        'mock-fast',
+        'mock',
+        'mock-fast',
+        L('Fast', 'तेज़'),
+        'fast',
+        0.2,
+        1,
+        true,
+        false,
+      ),
+      textModel(
+        'mock-balanced',
+        'mock',
+        'mock-balanced',
+        L('Balanced', 'संतुलित'),
+        'balanced',
+        1,
+        5,
+        true,
+        true,
+      ),
+      textModel(
+        'mock-best',
+        'mock',
+        'mock-best',
+        L('Best', 'सबसे अच्छा'),
+        'best',
+        3,
+        15,
+        true,
+        false,
+        ['model-best'],
+      ),
+      textModel(
+        'claude-fast',
+        'anthropic',
+        'claude-haiku-5-5',
+        L('Claude Haiku'),
+        'fast',
+        1,
+        5,
+        false,
+        false,
+      ),
+      textModel(
+        'claude-balanced',
+        'anthropic',
+        'claude-sonnet-5-5',
+        L('Claude Sonnet'),
+        'balanced',
+        3,
+        15,
+        false,
+        false,
+      ),
+      textModel(
+        'claude-best',
+        'anthropic',
+        'claude-opus-5-5',
+        L('Claude Opus'),
+        'best',
+        5,
+        25,
+        false,
+        false,
+        ['model-best'],
+      ),
+      textModel(
+        'openai-balanced',
+        'openai',
+        'gpt-5-mini',
+        L('GPT mini'),
+        'balanced',
+        0.25,
+        2,
+        false,
+        false,
+      ),
+      textModel(
+        'gemini-fast',
+        'google',
+        'gemini-2.5-flash',
+        L('Gemini Flash'),
+        'fast',
+        0.3,
+        2.5,
+        false,
+        false,
+      ),
+      textModel(
+        'grok-balanced',
+        'xai',
+        'grok-4',
+        L('Grok'),
+        'balanced',
+        3,
+        15,
+        false,
+        false,
+      ),
+      mediaModel('mock-voice', 'voice', L('Mock voice'), { perMinute: 0.3 }, [
+        'studio-voice',
+      ]),
+      mediaModel('mock-music', 'music', L('Mock music'), { perMinute: 0.2 }, [
+        'studio-audio',
+      ]),
+      mediaModel('mock-image', 'image', L('Mock image'), { perImage: 0.04 }, [
+        'studio-images',
+        'studio-thumbnail',
+      ]),
+      mediaModel('mock-video', 'video', L('Mock video'), { perSecond: 0.1 }, [
+        'studio-video',
+      ]),
+      mediaModel('mock-stt', 'stt', L('Mock captions'), { perMinute: 0.006 }, [
+        'studio-captions',
+      ]),
+    ],
+    payments: [
+      {
+        id: 'mock-pay',
+        name: 'Test payment (no money moves)',
+        kind: 'mock',
+        enabled: true,
+        countries: ['IN', 'US'],
+        currencies: ['INR', 'USD'],
+      },
+      {
+        id: 'razorpay',
+        name: 'Razorpay',
+        kind: 'razorpay',
+        enabled: false,
+        countries: ['IN'],
+        currencies: ['INR'],
+      },
+      {
+        id: 'stripe',
+        name: 'Stripe',
+        kind: 'stripe',
+        enabled: false,
+        countries: ['US'],
+        currencies: ['USD'],
+      },
+    ],
+    topUps: [
+      { id: 'pack-200', credits: 200, price: { inr: 199, usd: 2.5 } },
+      { id: 'pack-1000', credits: 1000, price: { inr: 899, usd: 11 } },
+    ],
+    learn: [
+      {
+        id: 'first-video',
+        title: L(
+          'Your first video with Director',
+          'Director के साथ पहला वीडियो',
+        ),
+        body: L('Pick a Style, fill the brief, approve the plan.'),
+        url: '',
+        minutes: 4,
         order: 1,
       },
       {
-        id: 'images',
-        name: L('Images'),
-        enabled: true,
-        provider: '',
-        model: '',
-        costId: 'image',
-        requires: ['studio-images'],
+        id: 'credits',
+        title: L('How credits work', 'क्रेडिट कैसे काम करते हैं'),
+        body: L(
+          'You see the cost before anything is made; unused credits come back.',
+        ),
+        url: '',
+        minutes: 2,
         order: 2,
       },
       {
-        id: 'video',
-        name: L('Video'),
-        enabled: true,
-        provider: '',
-        model: '',
-        costId: 'video-scene',
-        requires: ['studio-video'],
+        id: 'editor',
+        title: L('Editing the result', 'नतीजे को एडिट करना'),
+        body: L('Every scene opens as layers you can change.'),
+        url: '',
+        minutes: 5,
         order: 3,
       },
+      {
+        id: 'studios',
+        title: L('Studio tools', 'स्टूडियो टूल'),
+        body: L('Voice, images, captions and more, saved to your project.'),
+        url: '',
+        minutes: 3,
+        order: 4,
+      },
+    ],
+    studios: [
+      studio(
+        'write',
+        L('Write', 'लिखें'),
+        'text',
+        'write',
+        [],
+        1,
+        [
+          field(
+            'topic',
+            'longtext',
+            L('What should it say?', 'क्या लिखना है?'),
+            true,
+          ),
+          field('length', 'choice', L('Length', 'लंबाई'), true, [
+            opt('short', L('Short')),
+            opt('medium', L('Medium')),
+            opt('long', L('Long')),
+          ]),
+        ],
+        { textField: 'topic' },
+      ),
+      studio(
+        'voice',
+        L('Voice', 'आवाज़'),
+        'audio',
+        'voice',
+        [],
+        2,
+        [
+          field(
+            'text',
+            'longtext',
+            L('Text to speak', 'बोलने वाला टेक्स्ट'),
+            true,
+          ),
+          field('mode', 'choice', L('Voice', 'आवाज़'), true, [
+            opt('tts', L('Text to speech')),
+            opt('clone', L('My cloned voice')),
+          ]),
+        ],
+        { textField: 'text' },
+        {
+          consent: L(
+            'I confirm this is my own voice, or I have written permission to clone it.',
+            'मैं पुष्टि करता/करती हूँ कि यह मेरी अपनी आवाज़ है, या मेरे पास इसे क्लोन करने की लिखित अनुमति है।',
+          ),
+          consentIf: { field: 'mode', in: ['clone'] },
+        },
+      ),
+      studio(
+        'audio',
+        L('Music & sound', 'संगीत और साउंड'),
+        'audio',
+        'music',
+        ['studio-audio'],
+        3,
+        [
+          field('mood', 'text', L('Mood', 'मूड'), true),
+          field('minutes', 'number', L('Minutes', 'मिनट'), true, [], 1, 5),
+        ],
+        { countField: 'minutes' },
+      ),
+      studio(
+        'images',
+        L('Images', 'तस्वीरें'),
+        'image',
+        'image',
+        ['studio-images'],
+        4,
+        [
+          field(
+            'prompt',
+            'longtext',
+            L('Describe the picture', 'तस्वीर बताइए'),
+            true,
+          ),
+          field('count', 'number', L('How many', 'कितनी'), true, [], 1, 4),
+        ],
+        { countField: 'count' },
+        { toolId: 'ai-image' },
+      ),
+      studio(
+        'video',
+        L('Video', 'वीडियो'),
+        'video',
+        'video-scene',
+        ['studio-video'],
+        5,
+        [
+          field(
+            'prompt',
+            'longtext',
+            L('Describe the shot', 'शॉट बताइए'),
+            true,
+          ),
+        ],
+        { units: 1 },
+        { toolId: 'ai-video' },
+      ),
+      studio(
+        'captions',
+        L('Captions', 'कैप्शन'),
+        'captions',
+        'captions',
+        [],
+        6,
+        [
+          field(
+            'minutes',
+            'number',
+            L('Length in minutes', 'मिनट में लंबाई'),
+            true,
+            [],
+            1,
+            30,
+          ),
+          field('language', 'choice', L('Language', 'भाषा'), true, [
+            opt('hi', L('Hindi')),
+            opt('en', L('English')),
+          ]),
+        ],
+        { countField: 'minutes' },
+      ),
+      studio(
+        'thumbnail',
+        L('Thumbnail', 'थंबनेल'),
+        'image',
+        'thumbnail',
+        ['studio-thumbnail'],
+        7,
+        [field('title', 'text', L('Video title', 'वीडियो का शीर्षक'), true)],
+        { units: 1 },
+      ),
+      studio(
+        'youtube-pack',
+        L('YouTube pack', 'YouTube पैक'),
+        'pack',
+        'youtube-pack',
+        ['studio-youtube-pack'],
+        8,
+        [
+          field('title', 'text', L('Video title', 'वीडियो का शीर्षक'), true),
+          field(
+            'summary',
+            'longtext',
+            L('What is the video about?', 'वीडियो किस बारे में है?'),
+            true,
+          ),
+        ],
+        { textField: 'summary' },
+      ),
     ],
     styles: [
       {
@@ -283,23 +671,231 @@ export function defaultConfig(): PlatformConfig {
         },
         order: 1,
       },
+      {
+        id: 'quick-short',
+        name: L('Quick Short', 'क्विक शॉर्ट'),
+        blurb: L(
+          'A punchy 30 to 60 second vertical video with bold captions.',
+          '30 से 60 सेकंड का दमदार वर्टिकल वीडियो, बड़े कैप्शन के साथ।',
+        ),
+        playbook: 'quick-short',
+        enabled: true,
+        formats: ['9:16', '1:1'],
+        priceHint: { min: 15, max: 35, per: 'video' },
+        brief: {
+          fields: [
+            field(
+              'hook',
+              'text',
+              L('Opening line (the hook)', 'शुरुआती लाइन (हुक)'),
+              true,
+            ),
+            field(
+              'points',
+              'multi',
+              L('What to cover', 'क्या बताना है'),
+              true,
+              [
+                opt('facts', L('Facts')),
+                opt('steps', L('Steps')),
+                opt('story', L('A story')),
+                opt('tips', L('Tips')),
+              ],
+            ),
+            field('scenes', 'slider', L('Scenes', 'सीन'), true, [], 3, 8, 5),
+            field(
+              'captions',
+              'toggle',
+              L('Big captions', 'बड़े कैप्शन'),
+              false,
+              [],
+              undefined,
+              undefined,
+              true,
+            ),
+            field(
+              'accent',
+              'color',
+              L('Accent colour', 'मुख्य रंग'),
+              false,
+              [],
+              undefined,
+              undefined,
+              '#7c5cff',
+            ),
+            field(
+              'voiceSample',
+              'voice',
+              L('Voice sample (optional)', 'आवाज़ का नमूना (वैकल्पिक)'),
+              false,
+            ),
+            field(
+              'similar',
+              'ref',
+              L('A video like this (link)', 'ऐसा वीडियो (लिंक)'),
+              false,
+            ),
+            field(
+              'cta',
+              'number',
+              L('Seconds for the call to action', 'कॉल टू एक्शन के सेकंड'),
+              false,
+              [],
+              0,
+              10,
+            ),
+          ],
+        },
+        interview: {
+          maxQuestions: 3,
+          questions: [
+            {
+              id: 'q-hook',
+              ask: L(
+                'What line should stop the scroll?',
+                'कौन सी लाइन स्क्रॉल रोकेगी?',
+              ),
+              fills: 'hook',
+              order: 1,
+            },
+            {
+              id: 'q-points',
+              ask: L(
+                'Facts, steps, a story or tips?',
+                'तथ्य, स्टेप, कहानी या टिप्स?',
+              ),
+              fills: 'points',
+              order: 2,
+            },
+          ],
+        },
+        order: 2,
+      },
+      {
+        id: 'cinematic-story',
+        name: L('Cinematic Story', 'सिनेमैटिक स्टोरी'),
+        blurb: L(
+          'AI video shots with a narrated story. Uses the most credits.',
+          'कहानी के साथ AI वीडियो शॉट। सबसे ज़्यादा क्रेडिट लगते हैं।',
+        ),
+        playbook: 'cinematic-story',
+        enabled: true,
+        formats: ['16:9'],
+        requires: ['studio-video'],
+        priceHint: { min: 120, max: 400, per: 'minute' },
+        brief: {
+          fields: [
+            field('idea', 'longtext', L('The story', 'कहानी'), true),
+            field('mood', 'choice', L('Mood', 'मूड'), true, [
+              opt('epic', L('Epic')),
+              opt('calm', L('Calm')),
+              opt('dark', L('Dark')),
+            ]),
+          ],
+        },
+        interview: {
+          maxQuestions: 2,
+          questions: [
+            {
+              id: 'q-mood',
+              ask: L('Epic, calm or dark?', 'एपिक, शांत या डार्क?'),
+              fills: 'mood',
+              order: 1,
+            },
+          ],
+        },
+        order: 3,
+      },
     ],
     director: {
       persona: L(
         'A calm, curious film director who asks only what changes the result.',
       ),
       scope: ['plan-video', 'build-in-editor', 'use-studio-tools'],
+      greeting: L(
+        'Tell me the video you want. I will ask only what changes the result.',
+        'बताइए कैसा वीडियो चाहिए। मैं सिर्फ़ वही पूछूँगा जो नतीजा बदलता है।',
+      ),
+      creativeUpgrade: {
+        enabled: true,
+        text: L(
+          'Idea: open on one surprising question and answer it in the last scene.',
+          'सुझाव: एक चौंकाने वाले सवाल से शुरू करें और आख़िरी सीन में उसका जवाब दें।',
+        ),
+      },
       refusals: [
+        {
+          id: 'harmful',
+          when: L('Violence, weapons, sexual or hateful content.'),
+          reply: L('I cannot make that video.', 'मैं वह वीडियो नहीं बना सकता।'),
+          alternative: L(
+            'I can make an educational video on a safe topic instead.',
+            'मैं किसी सुरक्षित विषय पर शिक्षा वाला वीडियो बना सकता हूँ।',
+          ),
+          keywords: [
+            'bomb',
+            'weapon',
+            'kill',
+            'nude',
+            'porn',
+            'hate speech',
+            'बम',
+          ],
+        },
+        {
+          id: 'impersonation',
+          when: L('Pretending to be a real person or spreading fake news.'),
+          reply: L(
+            'I do not make videos that pretend to be a real person or spread false news.',
+            'मैं ऐसे वीडियो नहीं बनाता जो किसी असली व्यक्ति की नकल करें या झूठी ख़बर फैलाएँ।',
+          ),
+          alternative: L(
+            'I can make a clearly labelled parody or an explainer instead.',
+            'मैं साफ़ लिखा हुआ पैरोडी या एक्सप्लेनर बना सकता हूँ।',
+          ),
+          keywords: [
+            'deepfake',
+            'fake news',
+            'pretend to be',
+            'impersonate',
+            "someone else's voice",
+          ],
+        },
         {
           id: 'out-of-scope',
           when: L('The request is outside what this platform makes.'),
-          reply: L('This platform makes edited videos. I cannot do that one.'),
-          alternative: L('I can make a short video about it instead.'),
+          reply: L(
+            'This platform makes edited videos. I cannot do that one.',
+            'यह प्लैटफ़ॉर्म एडिट किए हुए वीडियो बनाता है। वह काम मैं नहीं कर सकता।',
+          ),
+          alternative: L(
+            'I can make a short video about it instead.',
+            'मैं इसके बारे में एक छोटा वीडियो बना सकता हूँ।',
+          ),
+          keywords: [
+            'homework',
+            'essay',
+            'write code',
+            'build a website',
+            'hack',
+            'password',
+            'stock tips',
+            'होमवर्क',
+          ],
         },
       ],
+      roles: { plan: 'director-plan', interview: 'interview', write: 'write' },
+      estimate: {
+        systemTokens: 3000,
+        inputTokensPerScene: { min: 300, max: 600 },
+        outputTokensPerScene: { min: 500, max: 1200 },
+        secondsPerScene: 8,
+      },
       tools: [
         {
           id: 'motion-graphics',
+          name: L('Motion graphics', 'मोशन ग्राफ़िक्स'),
+          costId: 'scene-motion',
           enabled: true,
           needsApproval: false,
           maxCreditsPerRun: null,
@@ -307,6 +903,8 @@ export function defaultConfig(): PlatformConfig {
         },
         {
           id: 'library',
+          name: L('Library', 'लाइब्रेरी'),
+          costId: 'scene-library',
           enabled: true,
           needsApproval: false,
           maxCreditsPerRun: null,
@@ -314,6 +912,8 @@ export function defaultConfig(): PlatformConfig {
         },
         {
           id: 'stock',
+          name: L('Stock media', 'स्टॉक मीडिया'),
+          costId: 'scene-stock',
           enabled: true,
           needsApproval: false,
           maxCreditsPerRun: null,
@@ -321,6 +921,8 @@ export function defaultConfig(): PlatformConfig {
         },
         {
           id: 'ai-image',
+          name: L('AI image', 'AI तस्वीर'),
+          costId: 'image',
           enabled: true,
           needsApproval: true,
           maxCreditsPerRun: 50,
@@ -328,6 +930,8 @@ export function defaultConfig(): PlatformConfig {
         },
         {
           id: 'ai-video',
+          name: L('AI video', 'AI वीडियो'),
+          costId: 'video-scene',
           enabled: true,
           needsApproval: true,
           maxCreditsPerRun: 200,
@@ -351,15 +955,201 @@ export function defaultConfig(): PlatformConfig {
       },
     },
     site: {
-      sections: [{ id: 'hero', kind: 'hero', enabled: true, order: 1 }],
-      showcase: [],
+      sections: [
+        {
+          id: 'hero',
+          kind: 'hero',
+          enabled: true,
+          title: L(
+            'Tell it the video. Get an editable project.',
+            'वीडियो बताइए। एडिट करने लायक़ प्रोजेक्ट पाइए।',
+          ),
+          body: L(
+            'Director plans every scene, shows the cost first, and builds layers you can change.',
+            'Director हर सीन की योजना बनाता है, पहले ख़र्च दिखाता है, और ऐसी लेयर बनाता है जिन्हें आप बदल सकें।',
+          ),
+          order: 1,
+        },
+        {
+          id: 'styles',
+          kind: 'styles',
+          enabled: true,
+          title: L('Styles', 'स्टाइल'),
+          order: 2,
+        },
+        {
+          id: 'showcase',
+          kind: 'showcase',
+          enabled: true,
+          title: L('Made with it', 'इससे बने वीडियो'),
+          order: 3,
+        },
+        {
+          id: 'pricing',
+          kind: 'pricing',
+          enabled: true,
+          title: L('Pricing', 'क़ीमतें'),
+          order: 4,
+        },
+        {
+          id: 'faq',
+          kind: 'faq',
+          enabled: true,
+          title: L('Do I see the cost first?', 'क्या पहले ख़र्च दिखता है?'),
+          body: L(
+            'Yes. Every plan shows the credits per scene before anything is made, and unused credits come back.',
+            'हाँ। कुछ भी बनने से पहले हर सीन के क्रेडिट दिखते हैं, और बचे क्रेडिट वापस मिलते हैं।',
+          ),
+          order: 5,
+        },
+      ],
+      showcase: [
+        {
+          id: 'circumference',
+          title: L(
+            'How Eratosthenes measured the Earth',
+            'एराटोस्थनीज़ ने पृथ्वी कैसे नापी',
+          ),
+          videoUrl: '',
+          posterUrl: '',
+        },
+        {
+          id: 'chai',
+          title: L('The story of chai', 'चाय की कहानी'),
+          videoUrl: '',
+          posterUrl: '',
+        },
+      ],
     },
     backend: {
       auth: 'local',
       database: 'local',
       storage: 'local',
-      payments: [],
+      payments: ['mock-pay'],
       publicSettings: {},
     },
+  };
+}
+
+type In = PlatformConfigInput;
+type LT = { en: string; hi?: string };
+function cost(
+  id: string,
+  label: LT,
+  unit: 'each' | 'minute' | 'scene' | 'second',
+  min: number,
+  max: number,
+  requires: string[] = [],
+): In['costs'][number] {
+  return { id, label, unit, min, max, requires };
+}
+function textModel(
+  id: string,
+  providerId: string,
+  providerModel: string,
+  name: LT,
+  tier: 'fast' | 'balanced' | 'best',
+  inputPerMTok: number,
+  outputPerMTok: number,
+  enabled: boolean,
+  recommended: boolean,
+  requires: string[] = [],
+): In['models'][number] {
+  const mock = providerId === 'mock';
+  return {
+    id,
+    providerId,
+    providerModel,
+    kind: 'text',
+    name,
+    tier,
+    capabilities: { json: true, tools: true, vision: !mock },
+    contextTokens: 200000,
+    price: { inputPerMTok, outputPerMTok },
+    creditMargin: 1.5,
+    roles: [
+      'director-plan',
+      'interview',
+      'write',
+      'studio-write',
+      'studio-youtube-pack',
+    ],
+    requires,
+    enabled,
+    recommendedForDirector: recommended,
+    tested: mock,
+    samplePrice: true,
+    order: tier === 'fast' ? 1 : tier === 'balanced' ? 2 : 3,
+  };
+}
+function mediaModel(
+  id: string,
+  kind: 'image' | 'video' | 'voice' | 'music' | 'stt',
+  name: LT,
+  price: { perImage?: number; perSecond?: number; perMinute?: number },
+  roles: string[],
+): In['models'][number] {
+  return {
+    id,
+    providerId: 'mock',
+    providerModel: id,
+    kind,
+    name,
+    tier: 'balanced',
+    price,
+    creditMargin: 1.5,
+    roles,
+    enabled: true,
+    tested: true,
+    samplePrice: true,
+  };
+}
+type FieldIn = NonNullable<In['studios'][number]['inputs']>[number];
+function opt(value: string, label: LT) {
+  return { value, label };
+}
+function field(
+  id: string,
+  type: FieldIn['type'],
+  label: LT,
+  required: boolean,
+  options: { value: string; label: LT }[] = [],
+  min?: number,
+  max?: number,
+  def?: string | number | boolean,
+): FieldIn {
+  return {
+    id,
+    type,
+    label,
+    required,
+    options,
+    ...(min === undefined ? {} : { min }),
+    ...(max === undefined ? {} : { max }),
+    ...(def === undefined ? {} : { default: def }),
+  };
+}
+function studio(
+  id: string,
+  name: LT,
+  output: 'text' | 'audio' | 'image' | 'video' | 'captions' | 'pack',
+  costId: string,
+  requires: string[],
+  order: number,
+  inputs: FieldIn[],
+  workload: { textField?: string; countField?: string; units?: number },
+  extra: Partial<In['studios'][number]> = {},
+): In['studios'][number] {
+  return {
+    id,
+    name,
+    role: `studio-${id}`,
+    output,
+    costId,
+    requires,
+    order,
+    inputs: inputs.map((f, i) => ({ ...f, order: i + 1 })),
+    workload,
+    ...extra,
   };
 }

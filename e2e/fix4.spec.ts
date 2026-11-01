@@ -95,7 +95,6 @@ test('[FX4-004] AI composition card: Not built, then Built with scene count and 
     .locator('#ai-import-source')
     .fill(readFileSync('tests/fixtures/plans/honey-en.json', 'utf8'));
   await page.locator('[data-action="build-video"]').click();
-  const dialog = page.locator('.plan-build');
   await settleBuild(page);
   await page.keyboard.press('Escape');
   const card = page.locator('#library-ai .shelf-item').first();

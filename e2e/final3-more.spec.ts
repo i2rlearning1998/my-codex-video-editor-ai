@@ -39,9 +39,7 @@ async function addHeading(page: Page) {
   await showCategory(page, 'Text');
   const before = (await scene(page)).layers.length;
   await page
-    .locator(
-      '#library-text .library-card[data-item-id="text-1"]',
-    )
+    .locator('#library-text .library-card[data-item-id="text-1"]')
     .click();
   await expect
     .poll(async () => (await scene(page)).layers.length)

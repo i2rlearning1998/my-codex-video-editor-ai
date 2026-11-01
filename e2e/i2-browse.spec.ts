@@ -237,7 +237,7 @@ test('[SHP-026] Elements: Browse categories (Shapes and Graphics live, the rest 
     'Frames',
     'Grids',
   ]);
-  for (const [tile, id] of [
+  for (const [tile] of [
     ['charts', 'SHP-016'],
     ['frames', 'MSK-003'],
   ] as const) {
