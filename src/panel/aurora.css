@@ -72,6 +72,7 @@ body.site-page {
   --aurora-b: var(--brand-accent2, #22d3ee);
   --gold: var(--brand-gold, #ffc247);
   --on-aurora: #07070d;
+  --sparkle: #ffffff;
   --aurora: linear-gradient(135deg, var(--aurora-a), var(--aurora-b));
   --aurora-soft: color-mix(in srgb, var(--aurora-a) 16%, transparent);
   --r-sm: 12px;

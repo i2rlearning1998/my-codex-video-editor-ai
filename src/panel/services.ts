@@ -13,16 +13,11 @@ import { gatewayBase, liveConfig } from './live-config';
 import { remoteGateway, type PanelGateway, type RemoteGateway } from './remote';
 import {
   CreditLedger,
-  anthropicAdapter,
   createGateway,
-  googleAdapter,
   mockAdapter,
   mockRespond,
-  openaiAdapter,
-  openaiCompatibleAdapter,
   storageLedgerStore,
   storageUsageLog,
-  xaiAdapter,
   estimateDirector,
   type GatewayRequest,
   type MockFailure,
@@ -32,7 +27,7 @@ import {
 import { EXPORTS_KEY, LIMITS_KEY } from '../usage-report';
 import { planFor, type Plan, type PlatformConfig } from '../platform-config';
 import { IdbBackend, ProjectLibrary } from '../persistence/projects';
-import { claimLocalData } from '../auth-gate';
+import { claimLocalData, HANDOFF_KEY } from '../auth-gate';
 import type { Answers } from '../platform-config';
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -233,7 +228,16 @@ export async function createServices(
           `${plan.id} ${month}`,
         );
     },
-    assets: (u) => allAssets().filter((a) => a.userId === u),
+    // A build's files wait as `handoff:<id>` until the editor names the
+    // project it opened (P2B-23).
+    assets: (u) =>
+      allAssets()
+        .filter((a) => a.userId === u)
+        .map((a) => {
+          const m = /^handoff:(.+)$/.exec(a.projectId);
+          const pid = m && storage.getItem(`${HANDOFF_KEY(m[1]!)}.project`);
+          return pid ? { ...a, projectId: pid } : a;
+        }),
     saveAsset: (a) =>
       storage.setItem(ASSETS, JSON.stringify([...allAssets(), a])),
     now: () => new Date(),
@@ -247,12 +251,8 @@ export async function createServices(
         respond: mockRespond,
         ...(options.mockFailure ? { failure: options.mockFailure } : {}),
       }),
-      // Real adapters have no server transport this round: "not connected".
-      anthropic: anthropicAdapter(),
-      openai: openaiAdapter(),
-      google: googleAdapter(),
-      xai: xaiAdapter(),
-      'openai-compatible': openaiCompatibleAdapter(),
+      // Real providers are reached only through the gateway server
+      // (VITE_GATEWAY_URL); their adapters never ship to the browser.
     },
     ledger,
     usageLog,

@@ -115,7 +115,7 @@ describe('P2-R2 gateway server', () => {
     expect((await s.store.ledger(A)).length).toBe(4);
   });
 
-  it('[P2R2-002] no token, a bad signature, a tampered or expired token are refused with one sentence', async () => {
+  it('[P2R2-002] [P2R2-037] no token, a bad signature, a tampered or expired token are refused with one sentence', async () => {
     const plain = (await s.api('/v1/me')).body.error;
     expect(plain).toMatchObject({
       code: 'auth',
@@ -142,7 +142,7 @@ describe('P2-R2 gateway server', () => {
     );
   });
 
-  it('[P2R2-004] limits on the server: parallel reserves never overspend, a replayed key reserves once, plan, tools, rate', async () => {
+  it('[P2R2-004] [P2R2-037] limits on the server: parallel reserves never overspend, a replayed key reserves once, plan, tools, rate', async () => {
     const t = s.token(B);
     await s.api('/v1/me', { token: t });
     // Ten parallel holds of 25 credits on a 60-credit balance: exactly two win.
@@ -235,7 +235,7 @@ describe('P2-R2 gateway server', () => {
     expect((await s.api('/v1/balance', { token: t })).body.balance).toBe(35);
   });
 
-  it('[P2R2-007] a provider failure refunds in full, says one sentence, and the key appears nowhere', async () => {
+  it('[P2R2-007] [P2R2-037] a provider failure refunds in full, says one sentence, and the key appears nowhere', async () => {
     const t = s.token('cccccccc-0000-0000-0000-000000000003');
     for (const mode of ['401', '500', 'malformed'] as const) {
       fake.mode(mode);
@@ -259,7 +259,7 @@ describe('P2-R2 gateway server', () => {
     expect(s.logs.join('\n')).not.toContain(SECRET);
   });
 
-  it('[P2R2-036] security: oversized bodies, bad numbers, CORS only for set origins, security headers, admin-only config writes', async () => {
+  it('[P2R2-037] security: oversized bodies, bad numbers, CORS only for set origins, security headers, admin-only config writes', async () => {
     const t = s.token(A);
     const big = await s.api('/v1/estimate', {
       token: t,

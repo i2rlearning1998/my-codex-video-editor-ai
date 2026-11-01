@@ -1,4 +1,4 @@
-/* P2-17: the user panel and website, on the editor's design tokens. */
+/* P2-17: the user panel and website; P2-R2 Aurora Ink tokens (aurora.css). */
 * {
   box-sizing: border-box;
 }
@@ -117,9 +117,10 @@ button.chip {
   cursor: not-allowed;
 }
 .button.primary {
-  background: var(--accent-fill);
-  border-color: var(--accent-fill);
-  color: #fff;
+  background: var(--aurora);
+  border-color: transparent;
+  color: var(--on-aurora);
+  font-weight: 700;
 }
 .button.ghost {
   background: transparent;
@@ -371,8 +372,8 @@ select {
   border-left: 1px solid var(--color-border);
 }
 .seg.on {
-  background: var(--accent-fill);
-  color: #fff;
+  background: var(--aurora);
+  color: var(--on-aurora);
 }
 .seg:disabled {
   opacity: 0.5;
@@ -586,4 +587,390 @@ progress {
   .outlet {
     padding: var(--space-4);
   }
+}
+
+/* ---- P2-R2 Aurora Ink (P2B-28 to P2B-34) ---- */
+h1,
+h2,
+h3 {
+  letter-spacing: -0.01em;
+}
+.credits-pill {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  color: var(--ink-gold-text);
+  border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+}
+.card,
+.scene,
+.preview-card,
+.director-box {
+  border-radius: var(--r-md);
+}
+.card {
+  overflow: hidden;
+}
+/* Focus rings everywhere (keyboard). */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+  border-radius: var(--r-sm);
+}
+/* The aurora border: AI moments only (Director card, question card). */
+.aurora-card,
+.question-card {
+  position: relative;
+  border: 1px solid transparent;
+  background:
+    linear-gradient(var(--ink-panel), var(--ink-panel)) padding-box,
+    var(--aurora) border-box;
+}
+.director-box.aurora-card {
+  padding: var(--space-5);
+  border-radius: var(--r-lg);
+  box-shadow: 0 20px 60px -30px var(--aurora-a);
+}
+.director-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.orb {
+  display: inline-block;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    var(--sparkle) 0 6%,
+    var(--aurora-b) 30%,
+    var(--aurora-a) 75%
+  );
+  box-shadow: 0 0 18px var(--aurora-soft);
+  animation: orb-pulse 3.2s ease-in-out infinite;
+}
+.orb.sm {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  vertical-align: -3px;
+}
+@keyframes orb-pulse {
+  50% {
+    transform: scale(1.08);
+    filter: brightness(1.15);
+  }
+}
+.option-chips,
+.answer-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.chip[aria-pressed='true'] {
+  background: var(--aurora);
+  color: var(--on-aurora);
+  border-color: transparent;
+}
+/* Style cards with generated art. */
+.style-card .art,
+.style-card .art-box {
+  display: block;
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) var(--space-3);
+  aspect-ratio: 16 / 9;
+}
+.art-box svg,
+.style-card img.art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Brief room: sticky summary rail and grouped fields. */
+.brief-side {
+  position: sticky;
+  top: 76px;
+  align-self: start;
+}
+.field-group {
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-md);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  margin-bottom: var(--space-3);
+  background: var(--ink-panel);
+}
+.field-group > summary {
+  cursor: pointer;
+  font-weight: 700;
+  padding: var(--space-2) 0;
+}
+/* Director chat. */
+.msg {
+  border-radius: var(--r-md);
+}
+.msg.director {
+  border-top-left-radius: 6px;
+}
+.msg.user {
+  border-top-right-radius: 6px;
+}
+.msg.question-card {
+  max-width: 90%;
+  padding: var(--space-3) var(--space-4);
+}
+/* Plan card. */
+.scene {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 0 var(--space-3);
+}
+.scene > :not(.scene-thumb) {
+  grid-column: 2;
+}
+.scene-thumb {
+  grid-row: 1 / span 3;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.scene-thumb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.chip.method.cost-free {
+  border-color: var(--ink-success);
+  color: var(--ink-success);
+}
+.chip.method.cost-low {
+  border-color: var(--ink-accent-text);
+  color: var(--ink-accent-text);
+}
+.chip.method.cost-high {
+  border-color: var(--gold);
+  color: var(--ink-gold-text);
+}
+.upgrades {
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-md);
+  padding: var(--space-3) var(--space-4);
+  margin: var(--space-3) 0;
+}
+.upgrade {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.total {
+  color: var(--ink-gold-text);
+}
+/* Live Build: aurora progress and the read-only plan code. */
+progress {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--ink-raised);
+}
+progress::-webkit-progress-bar {
+  background: var(--ink-raised);
+}
+progress::-webkit-progress-value {
+  background: var(--aurora);
+  border-radius: 999px;
+}
+progress::-moz-progress-bar {
+  background: var(--aurora);
+}
+.code-view summary {
+  cursor: pointer;
+  margin: var(--space-3) 0;
+}
+.code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  max-height: 320px;
+  overflow: auto;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-md);
+  background: var(--ink-bg);
+  color: var(--ink-text);
+  white-space: pre;
+}
+/* Studio tool tabs and voice waves. */
+.tool-tabs {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--ink-border);
+}
+.tool-tab {
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.tool-tab[aria-current='page'] {
+  background: var(--aurora);
+  color: var(--on-aurora);
+  font-weight: 700;
+}
+.wave {
+  margin-left: auto;
+  fill: var(--aurora-b);
+  width: 96px;
+  height: 24px;
+}
+.choice:has(.wave) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.upgrade-link {
+  font-weight: 700;
+}
+/* Website: hero, story timeline, FAQ. */
+.site-section.hero {
+  padding: 72px 0 40px;
+}
+.site-section.hero h1 {
+  background: var(--aurora);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.story-line {
+  list-style: none;
+  padding: 0 0 0 28px;
+  margin: 0;
+  border-left: 2px solid var(--ink-border);
+  display: grid;
+  gap: var(--space-6);
+}
+.story-step {
+  position: relative;
+  opacity: 0.45;
+  transform: translateY(12px);
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s ease;
+}
+.story-step[data-seen='true'] {
+  opacity: 1;
+  transform: none;
+}
+.story-dot {
+  position: absolute;
+  left: -43px;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--aurora);
+  color: var(--on-aurora);
+  font-weight: 800;
+  font-size: 13px;
+}
+.faq {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 760px;
+}
+.faq-item {
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-md);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink-panel);
+}
+.faq-item summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+/* Reduced motion: no pulses, no slides (the Settings › Animations rule). */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion='on']) .orb {
+    animation: none;
+  }
+  :root:not([data-motion='on']) .story-step {
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+}
+:root[data-motion='off'] .orb {
+  animation: none;
+}
+:root[data-motion='off'] .story-step {
+  transition: none;
+  transform: none;
+  opacity: 1;
+}
+/* Phones down to 360 px. */
+@media (max-width: 720px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+  .side {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--ink-border);
+    position: static;
+  }
+  .top {
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+  }
+  .outlet {
+    padding: var(--space-4) var(--space-3);
+  }
+  .brief-layout {
+    grid-template-columns: 1fr;
+  }
+  .brief-side {
+    position: static;
+  }
+  .scene {
+    grid-template-columns: 1fr;
+  }
+  .scene > :not(.scene-thumb) {
+    grid-column: 1;
+  }
+  .scene-thumb {
+    grid-row: auto;
+    max-width: 240px;
+  }
+  .msg,
+  .msg.question-card {
+    max-width: 100%;
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+/* Long code and lines never widen the page. */
+.outlet,
+.page,
+.code-view {
+  min-width: 0;
+  max-width: 100%;
+}
+.code {
+  max-width: 100%;
 }

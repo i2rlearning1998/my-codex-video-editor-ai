@@ -1315,3 +1315,48 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P2R1-038 | P0 | W10 | Verified | The website: landing, pricing and showcase from config, sign-up and log-in links, no live demo and no guest editor |
 | P2R1-039 | P0 | W10 | Verified | Ledger rows, docs/PANEL.md, docs/GATEWAY.md, decisions, status and changelog describe the round; every new panel string has Hindi |
 | P2R1-040 | P0 | W10 | Verified | The round's report lists every item with its state, what was not tested, the owner's try-it script and how to add real keys later |
+
+## P2R2: Phase 2 round 2 (server gateway, Supabase wiring, real adapters, real Director, limits, Aurora Ink; no keys)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| P2R2-001 | P0 | W10 | Verified | The gateway server (`server/`, node:http, its own port) answers health, public config, estimate, reserve, call, settle, run, balance, ledger, usage, models and limits under /v1 |
+| P2R2-002 | P0 | W10 | Verified | Auth: Supabase access tokens (secret or JWKS) and local signed test tokens; expired, tampered or wrongly signed tokens are refused with one sentence; admins by app_metadata role |
+| P2R2-003 | P0 | W10 | Verified | One Store interface with Memory, File and Supabase (service role) implementations passing the same contract tests (Supabase skipped without a live project, with the reason) |
+| P2R2-004 | P0 | W10 | Verified | The server enforces plan, model gating, tool allow-list, limits, budgets, per-person and per-IP rate limits and idempotency; parallel holds on one balance never overspend |
+| P2R2-005 | P0 | W10 | Verified | Real adapters for Anthropic, OpenAI, Gemini, Grok, OpenAI-compatible text, OpenAI images, ElevenLabs voice and a generic async video job, with time-outs, retries on 429 and 5xx, error mapping and usage accounting |
+| P2R2-006 | P0 | W10 | Verified | Fake provider servers answer each documented HTTP shape (success, 401, 429, 5xx, malformed, slow, truncated); only proven shapes are marked tested |
+| P2R2-007 | P0 | W10 | Verified | A missing key means "not connected" with no request made; a key never appears in an answer, a log line, the config or an error |
+| P2R2-008 | P0 | W10 | Verified | With VITE_GATEWAY_URL the panel uses the server for credits, models and Studio runs; without it the in-browser mock still works |
+| P2R2-009 | P0 | W10 | Verified | Supabase migration: profiles, credit_ledger (append-only, one key per person), usage_log, exports_count, usage_counters, config_versions |
+| P2R2-010 | P0 | W10 | Verified | Row-level security: people read only their own rows; credits, usage and exports are written only by the server; the live config is readable by all and written only by admins |
+| P2R2-011 | P0 | W10 | Verified | SQL policy tests run on PostgreSQL with the stand-in Supabase schemas and fail when a policy is loosened; a new person gets a profile by trigger and monthly credits from the server |
+| P2R2-012 | P0 | W10 | Verified | Supabase accounts in the panel and website: sign up with email confirmation, log in, log out, reset with an emailed code, refreshing sessions; Google only with a client id |
+| P2R2-013 | P0 | W10 | Verified | Projects, media, libraries and the Asset Library belong to one person; earlier data goes to the first person who signs in; two people never see each other's projects |
+| P2R2-014 | P0 | W10 | Verified | The live config comes from the server or Supabase, cached by version, falling back to the last good copy and then the built-in default |
+| P2R2-015 | P0 | W10 | Verified | `.env.example` and docs/KEYS.md list every key by name with how to check it; `npm run keys:check` reports names only |
+| P2R2-016 | P0 | W10 | Verified | The model planner builds its prompt from config and the code-made capability sheet; a valid plan is used and charged at what it used; the mock plans for free offline |
+| P2R2-017 | P0 | W10 | Verified | Director's prompts (plan, repair, interview, upgrades) live in the config with variables; the seed follows the Circumference flow |
+| P2R2-018 | P0 | W10 | Verified | Broken JSON, wrong types, unknown blocks, over-long scenes and empty answers are repaired once with the exact errors, else refused with the owner's text and nothing charged |
+| P2R2-019 | P0 | W10 | Verified | Creative upgrades are validated optional toggles on the Plan card with their credit effect |
+| P2R2-020 | P0 | W10 | Verified | A provider failure while planning gives the whole hold back |
+| P2R2-021 | P0 | W10 | Verified | The model interview only fills config fields or asks allowed follow-ups; refusals (ten adversarial inputs) never reach a model |
+| P2R2-022 | P0 | W10 | Verified | Through fake providers: sign up, brief, model interview, model plan, upgrade toggle, approve, build |
+| P2R2-023 | P0 | W10 | Verified | The cost comes from the server's estimate plus the media models; the Plan card shows the hold and the ledger shows what was used |
+| P2R2-024 | P0 | W10 | Verified | AI picture and voice scenes are made through the server, saved to the Asset Library and imported into the editor so their frames fill; a 429 mid-build refunds everything; a refused key says "not connected" |
+| P2R2-025 | P0 | W10 | Verified | The editor reports each finished video export (count and kind) through one small interface |
+| P2R2-026 | P0 | W10 | Verified | Exports per month are counted per person and enforced: the Free plan's fourth export is stopped with the owner's sentence and Upgrade, the project saved first; after upgrading it exports |
+| P2R2-027 | P0 | W10 | Verified | Project, storage and voice-clone limits are checked on the server with real usage; nothing is made or charged when one is hit; upgrading allows it |
+| P2R2-028 | P0 | W10 | Verified | Aurora Ink tokens in the config's brand colours and one CSS token file; Plus Jakarta Sans, Noto Sans Devanagari and JetBrains Mono; Devanagari line height 1.6; light theme |
+| P2R2-029 | P0 | W10 | Verified | Home: the Director card with the aurora border, prompt and Style chips; Style cards with generated art; Continue projects |
+| P2R2-030 | P0 | W10 | Verified | Styles with art and filters; the Brief room's fields in collapsible sections from the config, with the sticky summary rail |
+| P2R2-031 | P0 | W10 | Verified | Director chat bubbles with the orb, the question card and answer chips; Plan card scene pictures and cost-coloured method chips; Live Build with steps, aurora progress and the read-only plan code |
+| P2R2-032 | P0 | W10 | Verified | Credits and Plan, Studio tool tabs, voice choices with waveforms, Projects, Asset Library, Brand Kit and Settings in the new look |
+| P2R2-033 | P0 | W10 | Verified | The website: landing with the scroll story, showcase, pricing and FAQ from config |
+| P2R2-034 | P0 | W10 | Verified | Down to 360 px without sideways scrolling, focus rings, reduced motion respected, AA contrast for every token pair; screenshots at 1440 and 390 px |
+| P2R2-035 | P0 | W10 | Verified | Ledger rows for the round and Hindi beside every new panel string |
+| P2R2-036 | P0 | W10 | Verified | docs/SERVER.md, docs/KEYS.md and docs/CAPABILITY-SHEET.md; docs/PANEL.md and docs/GATEWAY.md updated |
+| P2R2-037 | P0 | W10 | Verified | Security: tampered and expired tokens, idempotency replay, bad and huge numbers, oversized bodies, CORS, security headers, no key in logs |
+| P2R2-038 | P0 | W10 | Verified | The editor side of the build is not larger than on claude/phase2-r1; no server code, provider host or server-only secret name is in any browser bundle |
+| P2R2-039 | P0 | W10 | Verified | `npm run check` passes (format, types, unit tests, build with the bundle check) |
+| P2R2-040 | P0 | W10 | Verified | The round's report lists every item with its state, what was not tested, the known old failures and the owner's two try-it scripts |

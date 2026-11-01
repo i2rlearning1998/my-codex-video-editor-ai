@@ -55,7 +55,7 @@ export function artSvg(
     const t = document.createElementNS(NS, 'text');
     t.setAttribute('x', '16');
     t.setAttribute('y', String(hgt - 16));
-    t.setAttribute('fill', '#ffffff');
+    t.setAttribute('fill', hex(c.brand.colors.text, '#ecebf5'));
     t.setAttribute('font-size', '18');
     t.setAttribute('font-weight', '700');
     t.textContent = label;

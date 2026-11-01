@@ -299,6 +299,13 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
   });
   const paint = () => {
     const last = iv.messages.length - 1;
+    // The question's answers, else the options of the field it fills.
+    const chipsOf = (q: Style['interview']['questions'][number]) =>
+      q.answers.length
+        ? q.answers
+        : (style.brief.fields.find((f) => f.id === q.fills)?.options ?? []).map(
+            (o) => o.label,
+          );
     clear(
       log,
       ...iv.messages.map((m, i) => {
@@ -318,11 +325,11 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
             ? h('span', { class: 'orb sm', 'aria-hidden': 'true' })
             : null,
           h('span', { class: 'msg-text', text: m.text }),
-          q && q.answers.length
+          q && chipsOf(q).length
             ? h(
                 'div',
                 { class: 'answer-chips' },
-                q.answers.map((a) =>
+                chipsOf(q).map((a) =>
                   h(
                     'button',
                     {

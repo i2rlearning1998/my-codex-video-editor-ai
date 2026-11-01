@@ -391,22 +391,8 @@ if (handoff) {
                   new File([f.bytes as BlobPart], f.name, { type: f.type }),
               ),
             );
-          // The panel's Asset Library rows follow the new project.
-          const key = 'aive.panel.assets';
-          const rows = JSON.parse(localStorage.getItem(key) ?? '[]') as {
-            projectId?: string;
-          }[];
-          if (rows.some((r) => r.projectId === `handoff:${id}`))
-            localStorage.setItem(
-              key,
-              JSON.stringify(
-                rows.map((r) =>
-                  r.projectId === `handoff:${id}`
-                    ? { ...r, projectId: engine.state.id }
-                    : r,
-                ),
-              ),
-            );
+          // The panel moves this build's Asset Library rows to the project.
+          localStorage.setItem(`${HANDOFF_KEY(id)}.project`, engine.state.id);
         })
         .catch(() => undefined)
         .finally(() => shell.buildHandedPlan(plan));
