@@ -7,11 +7,7 @@ import {
   type Plan,
   type PlatformConfig,
 } from '../platform-config';
-import {
-  preCheck,
-  type LimitedAction,
-  type LimitUsage,
-} from './checks';
+import { preCheck, type LimitedAction, type LimitUsage } from './checks';
 import { creditsOf } from './cost';
 import type { CreditLedger } from './ledger';
 import {
