@@ -90,6 +90,8 @@ test('[P2R1-017] [P2R1-020] the panel shell: sidebar, credits pill, routes, Hind
   // Hindi.
   await page.goto('/panel/#/settings');
   await page.locator('#settings-language').selectOption('hi');
+  // A person moves the pointer off the rail before pressing Save.
+  await page.mouse.move(900, 500);
   await page.locator('#settings-save').click();
   await expect(page.locator('nav.side [data-route="home"]')).toHaveText(/होम/);
   await expect(page.locator('#credits-pill')).toContainText('क्रेडिट');

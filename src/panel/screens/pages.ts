@@ -4,6 +4,7 @@
 import {
   canUse,
   enabledStyles,
+  enabledStudios,
   learnItems,
   publicPlans,
   text as sayIn,
@@ -14,43 +15,56 @@ import { h, clear, put } from '../dom';
 import type { Ctx, Screen } from '../app';
 import { t, type Key } from '../strings';
 import { card, empty, limitAlert, when } from './common';
-import { styleArt } from '../art';
+import { posterArt } from '../art';
+import { icon, studioIcon } from '../icons';
+import { reel, tick } from '../motion';
 
 const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
   const plan = ctx.s.planOf(ctx.user.id);
   const ok = canUse(plan, s.requires);
   const hint = s.priceHint;
-  return card(
+  return h(
+    'article',
     {
+      class: 'poster style-card reveal',
       'data-style': s.id,
       'data-locked': String(!ok),
-      class: 'card style-card',
     },
-    styleArt(s, ctx.s.config),
-    h('h3', { text: ctx.say(s.name) }),
-    h('p', { class: 'muted', text: ctx.say(s.blurb) }),
-    h('p', { class: 'formats', text: s.formats.join(' · ') }),
-    hint && ctx.s.config.director.reveal.credits
-      ? h('p', {
-          class: 'price',
-          text: t('styles.price', {
-            min: hint.min,
-            max: hint.max,
-            per: hint.per,
-          }),
-        })
-      : null,
-    ok
-      ? h(
-          'a',
-          { class: 'button primary sm', href: `#/brief/${s.id}` },
-          t('styles.use'),
-        )
-      : h(
-          'a',
-          { class: 'button sm', href: '#/credits', 'data-upgrade': s.id },
-          `🔒 ${t('common.upgrade')}`,
-        ),
+    h(
+      'div',
+      { class: 'poster-in tilt glow' },
+      posterArt(s, ctx.s.config),
+      h('span', { class: 'poster-sheen', 'aria-hidden': 'true' }),
+      h(
+        'div',
+        { class: 'poster-cap' },
+        h('h3', { text: ctx.say(s.name) }),
+        h('p', { class: 'poster-blurb', text: ctx.say(s.blurb) }),
+        h('p', { class: 'formats', text: s.formats.join(' · ') }),
+        hint && ctx.s.config.director.reveal.credits
+          ? h('p', {
+              class: 'price',
+              text: t('styles.price', {
+                min: hint.min,
+                max: hint.max,
+                per: hint.per,
+              }),
+            })
+          : null,
+        ok
+          ? h(
+              'a',
+              { class: 'button primary sm', href: `#/brief/${s.id}` },
+              t('styles.use'),
+            )
+          : h(
+              'a',
+              { class: 'button sm', href: '#/credits', 'data-upgrade': s.id },
+              icon('lock', 14),
+              ` ${t('common.upgrade')}`,
+            ),
+      ),
+    ),
   );
 };
 
@@ -65,6 +79,15 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
   });
   const usable = enabledStyles(c).filter((s) => canUse(plan, s.requires));
   let first = usable[0];
+  const estimate = h('p', { class: 'estimate', id: 'home-estimate' });
+  const showEstimate = () => {
+    const hint = first?.priceHint;
+    estimate.textContent =
+      hint && c.director.reveal.credits
+        ? t('home.estimate', { min: hint.min, max: hint.max })
+        : '';
+  };
+  showEstimate();
   // P2B-29: option chips choose the Style Director starts with.
   const chips = h(
     'div',
@@ -79,8 +102,10 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
           'aria-pressed': String(st === first),
           onclick: (e: Event) => {
             first = st;
+            tick('select');
             for (const b of chips.querySelectorAll('[data-start-style]'))
               b.setAttribute('aria-pressed', String(b === e.currentTarget));
+            showEstimate();
           },
         },
         ctx.say(st.name),
@@ -96,99 +121,290 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
   } catch {
     projects = [];
   }
+
+  // The Styles reel: every Style as a poster you can drag.
+  const view = h('div', {
+    class: 'reel',
+    id: 'style-reel',
+    tabindex: '0',
+    role: 'list',
+    'aria-label': t('home.styles'),
+  });
+  put(view, ...enabledStyles(c).map((s) => styleCard(ctx, s)));
+  const thumb = h('div', { class: 'reel-thumb' });
+  const track = h('div', { class: 'reel-track' }, thumb);
+  const count = h('span', { class: 'reel-count' });
+  const rl = reel(view, { track, thumb, label: count });
+
+  // Studio tools from the config.
+  const tools = enabledStudios(c);
+  const toolTile = (st: ReturnType<typeof enabledStudios>[number]) =>
+    h(
+      'a',
+      {
+        class: 'tool glow reveal',
+        href: `#/studio/${st.id}`,
+        'data-studio': st.id,
+      },
+      h(
+        'span',
+        { class: `tool-ico out-${st.output}` },
+        icon(studioIcon(st.output)),
+      ),
+      h('span', { class: 'tool-name', text: ctx.say(st.name) }),
+      st.blurb
+        ? h('span', { class: 'tool-desc', text: ctx.say(st.blurb) })
+        : null,
+    );
+
+  // Asset, brand and credits summary.
+  const assets = ctx.s.assets(ctx.user.id).slice(-6).reverse();
+  const kit = ctx.prefs().brandKit;
+  const bal = ctx.s.ledger(ctx.user.id).balance();
+  const monthly = Math.max(1, plan.monthlyCredits);
+  const pct = Math.max(0, Math.min(100, Math.round((bal / monthly) * 100)));
+
   put(
     out,
-    h('h1', {
-      id: 'greeting',
-      text: t('home.hello', { name: ctx.prefs().name }),
-    }),
-    h('p', {
-      class: 'muted',
-      id: 'home-balance',
-      text: t('home.balance', {
-        n: ctx.s.ledger(ctx.user.id).balance(),
-        plan: ctx.say(plan.name),
-      }),
-    }),
     h(
       'section',
-      { class: 'director-box aurora-card', id: 'director-card' },
+      { class: 'home-hero' },
+      h('p', {
+        id: 'greeting',
+        class: 'eyebrow',
+        text: t('home.hello', { name: ctx.prefs().name }),
+      }),
       h(
-        'div',
-        { class: 'director-head' },
-        h('span', { class: 'orb', 'aria-hidden': 'true' }),
-        h('label', {
-          for: 'home-prompt',
-          class: 'field-label',
-          text: t('home.prompt'),
-        }),
+        'h1',
+        { class: 'hero-title' },
+        `${t('home.h1a')} `,
+        h('em', { text: t('home.h1b') }),
+        t('home.h1c') ? ` ${t('home.h1c')}` : '',
       ),
-      prompt,
-      chips,
+      h('p', {
+        class: 'hero-sub',
+        id: 'home-balance',
+        text: t('home.balance', {
+          n: bal,
+          plan: ctx.say(plan.name),
+        }),
+      }),
       h(
-        'button',
-        {
-          type: 'button',
-          class: 'button primary',
-          id: 'home-start',
-          disabled: !first,
-          onclick: () =>
-            first &&
-            ctx.go(
-              `brief/${first.id}?idea=${encodeURIComponent(prompt.value.trim())}`,
-            ),
-        },
-        t('home.start'),
+        'section',
+        { class: 'director-box aurora-card glow', id: 'director-card' },
+        h(
+          'div',
+          { class: 'director-head' },
+          h('span', { class: 'orb', 'aria-hidden': 'true' }),
+          h('label', {
+            for: 'home-prompt',
+            class: 'field-label',
+            text: t('home.prompt'),
+          }),
+        ),
+        prompt,
+        h(
+          'div',
+          { class: 'director-foot' },
+          chips,
+          estimate,
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'button primary',
+              id: 'home-start',
+              disabled: !first,
+              onclick: () => {
+                tick('select');
+                if (first)
+                  ctx.go(
+                    `brief/${first.id}?idea=${encodeURIComponent(prompt.value.trim())}`,
+                  );
+              },
+            },
+            t('home.start'),
+          ),
+        ),
       ),
     ),
     h(
       'section',
-      null,
+      { class: 'band' },
       h(
         'div',
         { class: 'section-head' },
-        h('h2', { text: t('home.styles') }),
-        h('a', { href: '#/styles', text: t('home.seeAll') }),
+        h(
+          'div',
+          null,
+          h('p', { class: 'eyebrow', text: t('home.drag') }),
+          h('h2', { text: t('home.styles') }),
+        ),
+        h('a', {
+          class: 'button sm',
+          href: '#/styles',
+          text: t('home.seeAll'),
+        }),
       ),
       h(
         'div',
-        { class: 'grid' },
-        enabledStyles(c)
-          .slice(0, 3)
-          .map((s) => styleCard(ctx, s)),
+        { class: 'reel-wrap' },
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'reel-arrow left',
+            'aria-label': '←',
+            onclick: () => rl.step(-1),
+          },
+          icon('arrowLeft'),
+        ),
+        view,
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'reel-arrow right',
+            'aria-label': '→',
+            onclick: () => rl.step(1),
+          },
+          icon('arrowRight'),
+        ),
+      ),
+      h('div', { class: 'reel-foot' }, track, count),
+    ),
+    h(
+      'section',
+      { class: 'band' },
+      h(
+        'div',
+        { class: 'section-head' },
+        h('h2', { text: t('home.continue') }),
+        h('a', {
+          class: 'button sm',
+          href: '#/projects',
+          text: t('home.seeAll'),
+        }),
+      ),
+      h(
+        'div',
+        { class: 'films' },
+        ...projects.map((p) =>
+          h(
+            'article',
+            { class: 'film glow reveal', 'data-project': p.id },
+            p.thumb
+              ? h('img', { src: p.thumb, alt: '', class: 'thumb' })
+              : h('div', { class: 'thumb' }),
+            h(
+              'div',
+              { class: 'film-body' },
+              h('h3', { text: p.name }),
+              h(
+                'a',
+                {
+                  class: 'button sm',
+                  href: `/?open=${encodeURIComponent(p.id)}`,
+                },
+                t('common.open'),
+              ),
+            ),
+          ),
+        ),
+        h(
+          'a',
+          { class: 'film new glow reveal', href: '#/styles' },
+          h('span', { class: 'plus' }, icon('plus', 24)),
+          h('span', { text: t('home.newFilm') }),
+        ),
+      ),
+      projects.length ? null : empty(t('home.noProjects')),
+    ),
+    tools.length
+      ? h(
+          'section',
+          { class: 'band' },
+          h(
+            'div',
+            { class: 'section-head' },
+            h(
+              'div',
+              null,
+              h('p', { class: 'eyebrow', text: t('home.studioSub') }),
+              h('h2', { text: t('home.studioTitle') }),
+            ),
+            h('a', {
+              class: 'button sm',
+              href: '#/studio',
+              text: t('home.seeAll'),
+            }),
+          ),
+          h('div', { class: 'tools' }, tools.map(toolTile)),
+        )
+      : null,
+    h(
+      'section',
+      { class: 'band trio' },
+      h(
+        'a',
+        { class: 'glass glow reveal', href: '#/assets' },
+        h('h3', { text: t('nav.assets') }),
+        h(
+          'div',
+          { class: 'asset-strip' },
+          ...(assets.length
+            ? assets.map((a) =>
+                a.kind === 'image' && a.dataUrl
+                  ? h('img', { src: a.dataUrl, alt: '' })
+                  : h('span', { class: 'asset-ico' }, icon(studioIcon(a.kind))),
+              )
+            : Array.from({ length: 6 }, () =>
+                h('span', { class: 'asset-ico ghost', 'aria-hidden': 'true' }),
+              )),
+        ),
+        h('p', { class: 'muted', text: t('home.assetsNote') }),
+      ),
+      h(
+        'a',
+        { class: 'glass glow reveal', href: '#/brand' },
+        h('h3', { text: t('nav.brand') }),
+        h(
+          'div',
+          { class: 'swatches' },
+          ...(kit.colors.length
+            ? kit.colors
+                .slice(0, 5)
+                .map((col) =>
+                  h('span', { class: 'swatch', style: `background:${col}` }),
+                )
+            : Array.from({ length: 4 }, () =>
+                h('span', { class: 'swatch ghost', 'aria-hidden': 'true' }),
+              )),
+        ),
+        h('p', { class: 'muted', text: t('home.brandNote') }),
+      ),
+      h(
+        'a',
+        { class: 'glass glow reveal gold', href: '#/credits' },
+        h('h3', { text: t('nav.credits') }),
+        h(
+          'div',
+          { class: 'ring-row' },
+          h(
+            'div',
+            { class: 'ring', style: `--pct:${pct}` },
+            h('span', { text: String(bal) }),
+          ),
+          h('p', {
+            class: 'muted',
+            text: t('home.renews', { n: plan.monthlyCredits }),
+          }),
+        ),
       ),
     ),
     h(
       'section',
-      null,
-      h('h2', { text: t('home.continue') }),
-      projects.length
-        ? h(
-            'div',
-            { class: 'grid' },
-            projects.map((p) =>
-              card(
-                { 'data-project': p.id },
-                p.thumb
-                  ? h('img', { src: p.thumb, alt: '', class: 'thumb' })
-                  : h('div', { class: 'thumb' }),
-                h('h3', { text: p.name }),
-                h(
-                  'a',
-                  {
-                    class: 'button sm',
-                    href: `/?open=${encodeURIComponent(p.id)}`,
-                  },
-                  t('common.open'),
-                ),
-              ),
-            ),
-          )
-        : empty(t('home.noProjects')),
-    ),
-    h(
-      'section',
-      null,
+      { class: 'band' },
       h('h2', { text: t('home.learn') }),
       h(
         'ul',
@@ -893,6 +1109,20 @@ export const settingsScreen: Screen = (ctx, _a, out) => {
       selected: p.theme === 'light',
     }),
   );
+  const sound = h(
+    'select',
+    { id: 'settings-sound' },
+    h('option', {
+      value: 'off',
+      text: t('settings.soundOff'),
+      selected: !p.sound,
+    }),
+    h('option', {
+      value: 'on',
+      text: t('settings.soundOn'),
+      selected: !!p.sound,
+    }),
+  );
   put(
     out,
     h('h1', { text: t('settings.title') }),
@@ -933,6 +1163,16 @@ export const settingsScreen: Screen = (ctx, _a, out) => {
       theme,
     ),
     h(
+      'div',
+      { class: 'field' },
+      h('label', {
+        for: 'settings-sound',
+        class: 'field-label',
+        text: t('settings.sound'),
+      }),
+      sound,
+    ),
+    h(
       'button',
       {
         type: 'button',
@@ -943,6 +1183,7 @@ export const settingsScreen: Screen = (ctx, _a, out) => {
             name: name.value.trim() || p.name,
             locale: lang.value as 'en' | 'hi',
             theme: theme.value as 'dark' | 'light',
+            sound: sound.value === 'on',
           });
           ctx.toast(t('common.saved'));
           ctx.go('settings');

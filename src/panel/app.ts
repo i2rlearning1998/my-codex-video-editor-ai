@@ -5,6 +5,9 @@ import { text as say, type LText } from '../platform-config';
 import { h, clear } from './dom';
 import type { Prefs, Services, CloudUser } from './services';
 import { setLocale, t, type Key } from './strings';
+import { icon, type IconName } from './icons';
+import { reveal, setSound, spotlight, tilt, tick } from './motion';
+import { openPalette } from './palette';
 
 export interface Ctx {
   readonly s: Services;
@@ -22,16 +25,16 @@ export type Screen = (
   out: HTMLElement,
 ) => void | Promise<void>;
 
-const NAV: { route: string; key: Key; icon: string }[] = [
-  { route: 'home', key: 'nav.home', icon: '⌂' },
-  { route: 'styles', key: 'nav.styles', icon: '◆' },
-  { route: 'projects', key: 'nav.projects', icon: '▤' },
-  { route: 'studio', key: 'nav.studio', icon: '✦' },
-  { route: 'assets', key: 'nav.assets', icon: '▦' },
-  { route: 'credits', key: 'nav.credits', icon: '◎' },
-  { route: 'brand', key: 'nav.brand', icon: '◐' },
-  { route: 'learn', key: 'nav.learn', icon: '?' },
-  { route: 'settings', key: 'nav.settings', icon: '⚙' },
+const NAV: { route: string; key: Key; icon: IconName; bottom?: boolean }[] = [
+  { route: 'home', key: 'nav.home', icon: 'home' },
+  { route: 'styles', key: 'nav.styles', icon: 'styles' },
+  { route: 'projects', key: 'nav.projects', icon: 'projects' },
+  { route: 'studio', key: 'nav.studio', icon: 'studio' },
+  { route: 'assets', key: 'nav.assets', icon: 'assets' },
+  { route: 'brand', key: 'nav.brand', icon: 'brand' },
+  { route: 'learn', key: 'nav.learn', icon: 'learn' },
+  { route: 'credits', key: 'nav.credits', icon: 'credits', bottom: true },
+  { route: 'settings', key: 'nav.settings', icon: 'settings', bottom: true },
 ];
 
 /** P2-19, P2B-28: the brand comes from the config (name, logo, colours). */
@@ -83,6 +86,7 @@ export function mountPanel(
       name: s.prefs(user.id).name || prefs.name,
     });
   setLocale(prefs.locale);
+  setSound(!!prefs.sound);
   document.documentElement.dataset.theme = prefs.theme;
   applyBrand(s.config);
   s.monthlyGrant(user.id);
@@ -98,11 +102,45 @@ export function mountPanel(
     'aria-live': 'polite',
   });
   const nav = h('nav', { class: 'side', 'aria-label': t('nav.label') });
+  // The rail opens only for a pointer that really moves over it, not for one
+  // parked there by the page loading.
+  let lx = -1;
+  let ly = -1;
+  nav.addEventListener('pointermove', (e) => {
+    if (lx >= 0 && Math.abs(e.clientX - lx) + Math.abs(e.clientY - ly) >= 2)
+      nav.classList.add('open');
+    lx = e.clientX;
+    ly = e.clientY;
+  });
+  nav.addEventListener('pointerleave', () => {
+    nav.classList.remove('open');
+    lx = -1;
+  });
+  // Any pointer movement outside the rail closes it (a missed "leave" must
+  // never leave the rail stuck open over the page).
+  document.addEventListener('pointermove', (e) => {
+    if (nav.classList.contains('open') && !nav.contains(e.target as Node)) {
+      nav.classList.remove('open');
+      lx = -1;
+    }
+  });
   const out = h('main', { class: 'outlet', id: 'outlet', tabindex: '-1' });
   const top = h(
     'header',
     { class: 'top' },
     brandMark(s.config),
+    h(
+      'button',
+      {
+        class: 'search-pill',
+        id: 'open-search',
+        type: 'button',
+        onclick: () => openPalette(ctx),
+      },
+      icon('search', 18),
+      h('span', { class: 'search-text', text: t('home.searchHint') }),
+      h('kbd', { text: 'Ctrl K' }),
+    ),
     h('div', { class: 'top-gap' }),
     credits,
     h('span', { class: 'plan-chip', id: 'plan-chip' }),
@@ -135,6 +173,7 @@ export function mountPanel(
       prefs = { ...fresh(), ...change };
       s.savePrefs(user.id, prefs);
       if (change.locale) setLocale(change.locale);
+      if (change.sound !== undefined) setSound(change.sound);
       if (change.theme) document.documentElement.dataset.theme = change.theme;
       ctx.refreshTop();
     },
@@ -150,20 +189,23 @@ export function mountPanel(
         s.planOf(user.id).name,
         prefs.locale,
       );
+      const item = (n: (typeof NAV)[number]) =>
+        h(
+          'a',
+          {
+            href: `#/${n.route}`,
+            class: 'nav-item',
+            'data-route': n.route,
+            onclick: () => tick('select'),
+          },
+          h('span', { class: 'nav-icon' }, icon(n.icon)),
+          h('span', { class: 'nav-label', text: t(n.key) }),
+        );
       clear(
         nav,
-        ...NAV.map((n) =>
-          h(
-            'a',
-            { href: `#/${n.route}`, class: 'nav-item', 'data-route': n.route },
-            h('span', {
-              class: 'nav-icon',
-              'aria-hidden': 'true',
-              text: n.icon,
-            }),
-            h('span', { text: t(n.key) }),
-          ),
-        ),
+        ...NAV.filter((n) => !n.bottom).map(item),
+        h('span', { class: 'nav-gap' }),
+        ...NAV.filter((n) => n.bottom).map(item),
       );
       markNav();
     },
@@ -204,7 +246,10 @@ export function mountPanel(
         'data-screen': name.split('?')[0],
       });
       await screen(ctx, args, page);
-      if (mine === seq) clear(out, page);
+      if (mine === seq) {
+        clear(out, page);
+        reveal(page);
+      }
     } catch (e) {
       console.debug('[panel] screen failed', e);
       if (mine === seq)
@@ -215,6 +260,14 @@ export function mountPanel(
     }
     ctx.refreshTop();
   }
+  spotlight(root);
+  tilt(root);
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openPalette(ctx);
+    }
+  });
   window.addEventListener('hashchange', () => void render());
   ctx.refreshTop();
   if (s.configFallback) ctx.toast(t('app.configFallback'), 'error');

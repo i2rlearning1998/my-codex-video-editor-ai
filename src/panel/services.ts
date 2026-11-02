@@ -48,6 +48,8 @@ export interface Prefs {
   drafts: Record<string, Answers>;
   model: string;
   trash: string[];
+  /** P2-R3: soft interface sounds (off unless the person turns them on). */
+  sound?: boolean;
 }
 export interface Asset {
   id: string;

@@ -38,6 +38,7 @@ import { h, clear, put } from '../dom';
 import type { Ctx, Screen } from '../app';
 import { renderForm } from '../form';
 import { t } from '../strings';
+import { tick } from '../motion';
 import { bestModels, modelPicker, empty } from './common';
 
 interface Flow {
@@ -879,26 +880,58 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
     return;
   }
   const steps = h('ol', {
-    class: 'steps',
+    class: 'steps notes',
     id: 'build-steps',
     'aria-live': 'polite',
   });
   const bar = h('progress', { id: 'build-progress', max: 100, value: 0 });
+  const pct = h('span', { class: 'meter-num', text: '0' });
+  const setPct = (n: number) => {
+    bar.value = n;
+    pct.textContent = String(n);
+  };
   const status = h('p', {
     class: 'build-status',
     id: 'build-status',
     role: 'status',
   });
   const actions = h('div', { class: 'actions' });
+  // P2-R3: each scene is a frame in a film strip; the big frame shows the one
+  // being made right now.
+  const frameArt = (i: number, w: number, hh: number) => {
+    const sc = job!.plan.scenes[i];
+    return artSvg(sc?.id ?? `scene-${i}`, c, '', w, hh);
+  };
+  const bigFrame = h('div', { class: 'build-frame', 'data-state': 'waiting' });
+  const bigCap = h('p', { class: 'build-cap' });
+  const showFrame = (i: number) => {
+    const sc = job!.plan.scenes[i];
+    bigFrame.classList.remove('swap');
+    void bigFrame.offsetWidth;
+    bigFrame.classList.add('swap');
+    clear(
+      bigFrame,
+      frameArt(i, 360, 640),
+      h('span', { class: 'build-scan', 'aria-hidden': 'true' }),
+      h('span', {
+        class: 'build-tag',
+        text: `${i + 1} / ${job!.plan.scenes.length}`,
+      }),
+    );
+    bigCap.textContent = sc?.narration ?? sc?.title ?? '';
+  };
+  showFrame(0);
   const preview = h(
     'ol',
-    { class: 'preview', id: 'build-preview' },
+    { class: 'preview strip', id: 'build-preview' },
     job.plan.scenes.map((s, i) =>
       h(
         'li',
         { class: 'preview-card', 'data-state': 'waiting' },
+        h('div', { class: 'frame-thumb' }, frameArt(i, 200, 112)),
         h('strong', { text: `${i + 1}. ${s.title ?? ''}` }),
-        h('span', { class: 'muted', text: s.narration ?? '' }),
+        h('span', { class: 'muted frame-text', text: s.narration ?? '' }),
+        h('span', { class: 'frame-badge', 'aria-hidden': 'true' }),
       ),
     ),
   );
@@ -915,9 +948,19 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
   );
   out.append(
     h('h1', { text: t('build.title') }),
-    bar,
-    steps,
-    status,
+    h(
+      'div',
+      { class: 'build-stage' },
+      h('div', { class: 'build-notes' }, steps),
+      h('div', { class: 'build-main' }, bigFrame, bigCap),
+      h(
+        'div',
+        { class: 'build-meter' },
+        h('span', { class: 'meter-pct' }, pct, h('small', { text: '%' })),
+        bar,
+        status,
+      ),
+    ),
     preview,
     code,
     actions,
@@ -942,7 +985,9 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
         if (e.step === 'reserve') step(t('build.reserve', { n: e.credits }));
         else if (e.step === 'scene') {
           step(t('build.scene', { i: e.index + 1, n: e.total }));
-          bar.value = Math.round((e.index / e.total) * 90);
+          setPct(Math.round((e.index / e.total) * 90));
+          showFrame(e.index);
+          tick('select');
           const cards = preview.querySelectorAll<HTMLElement>('.preview-card');
           if (e.index > 0) cards[e.index - 1]!.dataset.state = 'done';
           cards[e.index]!.dataset.state = 'working';
@@ -954,7 +999,9 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           );
         else if (e.step === 'check') step(t('build.check'));
         else if (e.step === 'done') {
-          bar.value = 100;
+          setPct(100);
+          tick('done');
+          bigFrame.dataset.state = 'done';
           for (const card of preview.querySelectorAll<HTMLElement>(
             '.preview-card',
           ))

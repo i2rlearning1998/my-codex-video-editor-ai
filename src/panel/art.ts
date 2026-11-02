@@ -72,6 +72,68 @@ export function styleArt(s: Style, c: PlatformConfig): HTMLElement {
   return box;
 }
 
+/**
+ * P2-R3: a film poster drawn from an id and the brand colours: a sky, a glowing
+ * sun or moon, layered hills or waves, a few stars. The same picture every
+ * time for the same id. (A Style's own `cardArt` always wins over this.)
+ */
+export function posterSvg(
+  id: string,
+  c: PlatformConfig,
+  w = 240,
+  hgt = 360,
+): SVGSVGElement {
+  const rnd = seeded(`poster-${id}`);
+  const a = hex(c.brand.colors.accent, '#7c5cff');
+  const b = hex(c.brand.colors.accent2, '#22d3ee');
+  const g = hex(c.brand.colors.gold, '#ffc247');
+  const bg = hex(c.brand.colors.bg, '#07070d');
+  const pick = [a, b, g, '#ff4fa3'];
+  const top = pick[Math.floor(rnd() * 3)]!;
+  const horizon = pick[Math.floor(rnd() * pick.length)]!;
+  const uid = `p-${id.replace(/[^a-z0-9-]/gi, '')}-${Math.floor(rnd() * 1e6)}`;
+  const sunX = Math.round(w * (0.25 + rnd() * 0.5));
+  const sunY = Math.round(hgt * (0.2 + rnd() * 0.22));
+  const sunR = Math.round(w * (0.1 + rnd() * 0.08));
+  const stars: string[] = [];
+  for (let i = 0; i < 22; i++)
+    stars.push(
+      `<circle cx="${Math.round(rnd() * w)}" cy="${Math.round(rnd() * hgt * 0.55)}" r="${(0.5 + rnd() * 1.1).toFixed(1)}" fill="#fff" opacity="${(0.25 + rnd() * 0.6).toFixed(2)}"/>`,
+    );
+  const ridge = (base: number, amp: number, fill: string, op: number) => {
+    let d = `M0 ${hgt} L0 ${base}`;
+    const steps = 6 + Math.floor(rnd() * 3);
+    for (let i = 1; i <= steps; i++)
+      d += ` L${Math.round((w / steps) * i)} ${Math.round(base - rnd() * amp)}`;
+    return `<path d="${d} L${w} ${hgt} Z" fill="${fill}" opacity="${op}"/>`;
+  };
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${hgt}`);
+  svg.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+  svg.setAttribute('class', 'art');
+  svg.setAttribute('aria-hidden', 'true');
+  // Numbers and validated colours only (no outside text).
+  svg.innerHTML =
+    `<defs><linearGradient id="${uid}s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bg}"/><stop offset=".45" stop-color="${top}" stop-opacity=".75"/><stop offset="1" stop-color="${horizon}"/></linearGradient>` +
+    `<radialGradient id="${uid}o"><stop offset="0" stop-color="#fff6e0"/><stop offset=".5" stop-color="${g}" stop-opacity=".7"/><stop offset="1" stop-color="${g}" stop-opacity="0"/></radialGradient></defs>` +
+    `<rect width="${w}" height="${hgt}" fill="url(#${uid}s)"/>${stars.join('')}` +
+    `<circle cx="${sunX}" cy="${sunY}" r="${sunR * 3}" fill="url(#${uid}o)" opacity=".55"/>` +
+    `<circle cx="${sunX}" cy="${sunY}" r="${sunR}" fill="#fff6e0"/>` +
+    ridge(Math.round(hgt * 0.66), hgt * 0.16, '#0a0716', 0.55) +
+    ridge(Math.round(hgt * 0.76), hgt * 0.12, bg, 0.8) +
+    ridge(Math.round(hgt * 0.88), hgt * 0.08, bg, 1);
+  return svg;
+}
+
+/** P2-R3: a tall film-poster picture for a Style (2:3). */
+export function posterArt(s: Style, c: PlatformConfig): HTMLElement {
+  if (s.cardArt && /^(https:\/\/|\/)/.test(s.cardArt))
+    return h('img', { class: 'art poster-art', src: s.cardArt, alt: '' });
+  const box = h('div', { class: 'art-box poster-art' });
+  box.append(posterSvg(s.id, c));
+  return box;
+}
+
 /** P2B-32: a small waveform for a voice option (drawn from its name). */
 export function waveSvg(id: string, w = 96, hgt = 24): SVGSVGElement {
   const rnd = seeded(id);

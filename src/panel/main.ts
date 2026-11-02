@@ -2,6 +2,7 @@
 import '../ui/tokens.css';
 import './aurora.css';
 import './panel.css';
+import './cinema.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';
