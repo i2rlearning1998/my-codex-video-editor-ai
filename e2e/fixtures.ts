@@ -146,7 +146,10 @@ export const test = base.extend<Fixtures>({
           (/\/__catalog\/|^http:\/\/127\.0\.0\.1:43\d\d\//.test(
             request.url(),
           ) ||
-            request.url().startsWith('blob:'))
+            request.url().startsWith('blob:') ||
+            // P2-R3: a page change cuts off a web font that is still
+            // loading (the panel's own vendored fonts); that is not a fault.
+            /\.woff2(\?|$)/.test(request.url()))
         )
           return;
         errors.push(

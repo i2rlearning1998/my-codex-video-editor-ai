@@ -4,6 +4,8 @@
 import '../ui/tokens.css';
 import '../panel/aurora.css';
 import '../panel/panel.css';
+import '../panel/cinema.css';
+import './site.css';
 import { localAccountBackend, indexedBlobStore } from '../cloud/local';
 import {
   cloudConfig,
@@ -19,7 +21,9 @@ import {
 } from '../platform-config';
 import { applyBrand, brandMark } from '../panel/app';
 import { h, clear, put } from '../panel/dom';
-import { styleArt } from '../panel/art';
+import { posterArt } from '../panel/art';
+import { icon } from '../panel/icons';
+import { reel, reveal, spotlight, tilt } from '../panel/motion';
 import { setLocale, t } from '../panel/strings';
 import { liveConfig } from '../panel/live-config';
 
@@ -83,6 +87,38 @@ function header() {
   );
 }
 
+/** A Style as a film poster (for the hero fan and the Styles reel). */
+const poster = (st: ReturnType<typeof enabledStyles>[number], full: boolean) =>
+  h(
+    'article',
+    {
+      class: `poster style-card${full ? ' reveal' : ''}`,
+      'data-style': st.id,
+    },
+    h(
+      'div',
+      { class: `poster-in${full ? ' tilt glow' : ''}` },
+      posterArt(st, config),
+      h('span', { class: 'poster-sheen', 'aria-hidden': 'true' }),
+      h(
+        'div',
+        { class: 'poster-cap' },
+        h('h3', { text: L(st.name) }),
+        full ? h('p', { class: 'poster-blurb', text: L(st.blurb) }) : null,
+        full
+          ? h(
+              'a',
+              {
+                class: 'button primary sm',
+                href: signedIn ? '/panel/' : '#/signup',
+              },
+              signedIn ? t('site.openPanel') : t('site.signup'),
+            )
+          : null,
+      ),
+    ),
+  );
+
 function landing(out: HTMLElement) {
   const sections = [...config.site.sections]
     .filter((s) => s.enabled)
@@ -91,7 +127,7 @@ function landing(out: HTMLElement) {
   queueMicrotask(revealOnScroll);
   for (const s of sections) {
     const sec = h('section', {
-      class: `site-section ${s.kind}`,
+      class: `site-section ${s.kind}${s.kind === 'hero' ? '' : ' reveal'}`,
       'data-section': s.id,
     });
     if (s.title)
@@ -108,6 +144,16 @@ function landing(out: HTMLElement) {
             t('site.signup'),
           ),
           h('a', { class: 'button', href: '#/login' }, t('site.login')),
+        ),
+      );
+    if (s.kind === 'hero')
+      sec.append(
+        h(
+          'div',
+          { class: 'hero-fan', 'aria-hidden': 'true' },
+          enabledStyles(config)
+            .slice(0, 3)
+            .map((st) => poster(st, false)),
         ),
       );
     // P2B-33: the story as a scroll timeline; the FAQ as open/close items.
@@ -146,22 +192,47 @@ function landing(out: HTMLElement) {
           ),
         ),
       );
-    if (s.kind === 'styles')
+    if (s.kind === 'styles') {
+      const view = h('div', {
+        class: 'reel',
+        id: 'site-reel',
+        tabindex: '0',
+        role: 'list',
+      });
+      view.append(...enabledStyles(config).map((st) => poster(st, true)));
+      const thumb = h('div', { class: 'reel-thumb' });
+      const track = h('div', { class: 'reel-track' }, thumb);
+      const count = h('span', { class: 'reel-count' });
+      const rl = reel(view, { track, thumb, label: count });
       sec.append(
         h(
           'div',
-          { class: 'grid' },
-          enabledStyles(config).map((st) =>
-            h(
-              'article',
-              { class: 'card style-card', 'data-style': st.id },
-              styleArt(st, config),
-              h('h3', { text: L(st.name) }),
-              h('p', { class: 'muted', text: L(st.blurb) }),
-            ),
+          { class: 'reel-wrap' },
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'reel-arrow left',
+              'aria-label': '←',
+              onclick: () => rl.step(-1),
+            },
+            icon('arrowLeft'),
+          ),
+          view,
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'reel-arrow right',
+              'aria-label': '→',
+              onclick: () => rl.step(1),
+            },
+            icon('arrowRight'),
           ),
         ),
+        h('div', { class: 'reel-foot' }, track, count),
       );
+    }
     if (s.kind === 'showcase')
       sec.append(
         h(
@@ -307,6 +378,7 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
   const paint = () =>
     clear(
       form,
+      h('span', { class: 'orb', 'aria-hidden': 'true' }),
       h('h1', {
         text:
           mode === 'login'
@@ -386,6 +458,9 @@ function route() {
     authForm(main, name);
   else landing(main);
   clear(root, header(), main);
+  reveal(main);
+  spotlight(main);
+  tilt(main);
 }
 
 async function start() {

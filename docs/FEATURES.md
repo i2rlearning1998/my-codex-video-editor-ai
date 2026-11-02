@@ -1360,3 +1360,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P2R2-038 | P0 | W10 | Verified | The editor side of the build is not larger than on claude/phase2-r1; no server code, provider host or server-only secret name is in any browser bundle |
 | P2R2-039 | P0 | W10 | Verified | `npm run check` passes (format, types, unit tests, build with the bundle check) |
 | P2R2-040 | P0 | W10 | Verified | The round's report lists every item with its state, what was not tested, the known old failures and the owner's two try-it scripts |
+| P2R3-001 | P0 | W10 | Verified | Director room: Director and "You" messages have different layouts; Enter sends, Shift+Enter makes a new line, the send button is off when empty |
+| P2R3-002 | P0 | W10 | Verified | The "Your film" card shows the Style, the Brief strength, what Director knows so far, the notes and the credit estimate, and has Make the plan |
+| P2R3-003 | P0 | W10 | Verified | The message box has a + menu (notes file, Asset Library text), a model picker from the config (locked and unconnected shown), voice typing where the browser has it |
+| P2R3-004 | P0 | W10 | Verified | Live Build draws each scene from the plan's own layers through the editor's layout code (a layout preview, not the editor's render); the film strip fills as scenes finish and the percent reaches 100 |

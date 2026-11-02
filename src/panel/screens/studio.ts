@@ -13,6 +13,7 @@ import {
   type Answers,
 } from '../../platform-config';
 import { estimateStudio, GatewayError, hash } from '../../gateway';
+import { icon, studioIcon } from '../icons';
 import { h, clear, put } from '../dom';
 import { waveSvg } from '../art';
 import type { Ctx, Screen } from '../app';
@@ -103,6 +104,11 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
           const ok = canUse(plan, s.requires);
           return card(
             { 'data-studio': s.id, 'data-locked': String(!ok) },
+            h(
+              'span',
+              { class: `tool-ico out-${s.output}` },
+              icon(studioIcon(s.output)),
+            ),
             h('h3', { text: ctx.say(s.name) }),
             s.blurb ? h('p', { class: 'muted', text: ctx.say(s.blurb) }) : null,
             ok
@@ -118,7 +124,8 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
                     href: '#/credits',
                     'data-upgrade': s.id,
                   },
-                  `🔒 ${t('common.upgrade')}`,
+                  icon('lock', 14),
+                  ` ${t('common.upgrade')}`,
                 ),
           );
         }),

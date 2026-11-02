@@ -971,7 +971,7 @@ export const brandScreen: Screen = (ctx, _a, out) => {
     put(
       out,
       h('h1', { text: t('brand.title') }),
-      h('p', { class: 'muted', text: t('common.locked') }),
+      h('p', { class: 'locked-state', text: t('common.locked') }),
       h(
         'a',
         { class: 'button primary', href: '#/credits', id: 'brand-upgrade' },

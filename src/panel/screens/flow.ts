@@ -31,14 +31,15 @@ import {
 } from '../../director';
 import { GatewayError } from '../../gateway';
 import { putHandoffFiles, fromBase64 } from '../../handoff-store';
-import { artSvg } from '../art';
+import { artSvg, posterArt } from '../art';
+import { composer, type Attachment } from '../composer';
 import type { VideoPlan } from '../../video-plan';
 import { HANDOFF_KEY } from '../../auth-gate';
 import { h, clear, put } from '../dom';
 import type { Ctx, Screen } from '../app';
 import { renderForm } from '../form';
 import { t } from '../strings';
-import { tick } from '../motion';
+import { motionOn, tick } from '../motion';
 import { bestModels, modelPicker, empty } from './common';
 
 interface Flow {
@@ -128,6 +129,20 @@ async function previewPlan(ctx: Ctx, style: Style, answers: Answers) {
     }),
   );
 }
+const strengthPct = (style: Style, a: Answers) => {
+  const fields = style.brief.fields;
+  const weight = (f: (typeof fields)[number]) => (f.required ? 2 : 1);
+  const total = fields.reduce((n, f) => n + weight(f), 0);
+  const got = fields
+    .filter(
+      (f) =>
+        a[f.id] !== undefined &&
+        a[f.id] !== '' &&
+        !(Array.isArray(a[f.id]) && !(a[f.id] as unknown[]).length),
+    )
+    .reduce((n, f) => n + weight(f), 0);
+  return total ? Math.round((got / total) * 100) : 0;
+};
 const strength = (style: Style, a: Answers) => {
   const fields = style.brief.fields;
   const weight = (f: (typeof fields)[number]) => (f.required ? 2 : 1);
@@ -280,7 +295,7 @@ export const briefScreen: Screen = async (ctx, [styleId = ''], out) => {
   await refresh();
 };
 
-/** P2-26, P2-27 Director chat. */
+/** P2-26, P2-27 Director chat (R3: a chat room with a live "Your film" card). */
 export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
   const c = ctx.s.config;
   const style = styleById(c, styleId);
@@ -292,12 +307,130 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
   const locale = ctx.prefs().locale;
   let iv: Interview = startInterview(c, style, flow.answers, locale);
   const log = h('ol', { class: 'chat', id: 'chat', 'aria-live': 'polite' });
-  const input = h('input', {
-    type: 'text',
-    id: 'chat-input',
-    placeholder: t('director.placeholder'),
-    'aria-label': t('director.placeholder'),
-  });
+  let thinking = false;
+  const side = h('aside', { class: 'dir-side', id: 'dir-side' });
+  const optionLabel = (f: Style['brief']['fields'][number], v: unknown) => {
+    const one = (x: string) =>
+      f.options.find((o) => o.value === x)?.label
+        ? ctx.say(f.options.find((o) => o.value === x)!.label)
+        : x;
+    if (Array.isArray(v)) return v.map((x) => one(String(x))).join(', ');
+    if (typeof v === 'boolean') return v ? '✓' : '–';
+    return one(String(v)).slice(0, 90);
+  };
+  let sideSeq = 0;
+  const paintSide = async () => {
+    const mine = ++sideSeq;
+    const known = style.brief.fields.filter(
+      (f) =>
+        iv.answers[f.id] !== undefined &&
+        iv.answers[f.id] !== '' &&
+        [
+          'text',
+          'longtext',
+          'choice',
+          'multi',
+          'number',
+          'toggle',
+          'color',
+        ].includes(f.type) &&
+        !(
+          Array.isArray(iv.answers[f.id]) &&
+          !(iv.answers[f.id] as unknown[]).length
+        ),
+    );
+    const pct = strengthPct(style, iv.answers);
+    const e = await previewPlan(ctx, style, iv.answers)
+      .then((chk) =>
+        chk.ok
+          ? ctx.s.estimate(
+              currentModel(ctx),
+              chk.plan.scenes.map(methodOf),
+              JSON.stringify(buildBrief(style, iv.answers)).length,
+            )
+          : null,
+      )
+      .catch(() => null);
+    if (mine !== sideSeq) return;
+    clear(
+      side,
+      h(
+        'div',
+        { class: 'dir-poster' },
+        posterArt(style, c),
+        h('span', { class: 'dir-poster-name', text: ctx.say(style.name) }),
+      ),
+      h('p', { class: 'dir-kicker', text: t('chat.film') }),
+      h(
+        'div',
+        {
+          class: 'dir-meter',
+          role: 'img',
+          'aria-label': t('chat.ready', { pct }),
+        },
+        h('i', { style: `width:${pct}%` }),
+      ),
+      h('p', {
+        class: 'dir-ready',
+        id: 'dir-ready',
+        text: t('chat.ready', { pct }),
+      }),
+      h('p', { class: 'dir-sub', text: t('chat.sofar') }),
+      known.length
+        ? h(
+            'dl',
+            { class: 'dir-facts', id: 'dir-facts' },
+            ...known.flatMap((f) => [
+              h('dt', { text: ctx.say(f.label) }),
+              h('dd', { text: optionLabel(f, iv.answers[f.id]) }),
+            ]),
+          )
+        : h('p', { class: 'dir-empty', text: t('chat.nothing') }),
+      iv.notes.length
+        ? h(
+            'div',
+            { class: 'dir-notes' },
+            h('p', { class: 'dir-sub', text: t('chat.notes') }),
+            ...iv.notes
+              .slice(-3)
+              .map((n) => h('p', { class: 'dir-note', text: n.slice(0, 120) })),
+          )
+        : null,
+      e && c.director.reveal.credits
+        ? h('p', {
+            class: 'dir-estimate',
+            id: 'dir-estimate',
+            text: t('brief.estimate', { min: e.min, max: e.max }),
+          })
+        : null,
+      h(
+        'div',
+        { class: 'dir-actions' },
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'button primary',
+            id: 'make-plan',
+            onclick: () => {
+              writeFlow(ctx, {
+                ...flow,
+                answers: iv.answers,
+                notes: [...iv.notes],
+              });
+              ctx.go(`plan/${style.id}`);
+            },
+          },
+          t('brief.plan'),
+        ),
+        h(
+          'a',
+          { class: 'button', href: `#/brief/${style.id}` },
+          t('common.back'),
+        ),
+      ),
+    );
+  };
   const paint = () => {
     const last = iv.messages.length - 1;
     // The question's answers, else the options of the field it fills.
@@ -307,6 +440,27 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
         : (style.brief.fields.find((f) => f.id === q.fills)?.options ?? []).map(
             (o) => o.label,
           );
+    const row = (
+      m: { from: 'director' | 'user'; kind: string },
+      body: (Node | null)[],
+      extra = '',
+    ) =>
+      h(
+        'li',
+        { class: `msg ${m.from} ${m.kind}${extra}`, 'data-kind': m.kind },
+        m.from === 'director'
+          ? h('span', { class: 'orb sm', 'aria-hidden': 'true' })
+          : null,
+        h(
+          'div',
+          { class: 'msg-body' },
+          h('span', {
+            class: 'msg-name',
+            text: m.from === 'director' ? t('chat.director') : t('chat.you'),
+          }),
+          ...body,
+        ),
+      );
     clear(
       log,
       ...iv.messages.map((m, i) => {
@@ -316,54 +470,61 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
           m.kind === 'question' && i === last
             ? style.interview.questions.find((x) => x.id === m.questionId)
             : undefined;
-        return h(
-          'li',
-          {
-            class: `msg ${m.from} ${m.kind}${q ? ' question-card' : ''}`,
-            'data-kind': m.kind,
-          },
-          m.from === 'director'
-            ? h('span', { class: 'orb sm', 'aria-hidden': 'true' })
-            : null,
-          h('span', { class: 'msg-text', text: m.text }),
-          q && chipsOf(q).length
-            ? h(
-                'div',
-                { class: 'answer-chips' },
-                chipsOf(q).map((a) =>
-                  h(
-                    'button',
-                    {
-                      type: 'button',
-                      class: 'chip',
-                      'data-answer': ctx.say(a),
-                      onclick: () => {
-                        input.value = ctx.say(a);
-                        void send();
+        return row(
+          m,
+          [
+            h('span', { class: 'msg-text', text: m.text }),
+            q && chipsOf(q).length
+              ? h(
+                  'div',
+                  { class: 'answer-chips' },
+                  chipsOf(q).map((a) =>
+                    h(
+                      'button',
+                      {
+                        type: 'button',
+                        class: 'chip',
+                        'data-answer': ctx.say(a),
+                        onclick: () => void doSend(ctx.say(a), []),
                       },
-                    },
-                    ctx.say(a),
+                      ctx.say(a),
+                    ),
                   ),
-                ),
-              )
-            : null,
+                )
+              : null,
+          ],
+          q ? ' question-card' : '',
         );
       }),
     );
     const open = iv.messages.at(-1);
     if (
+      !thinking &&
       open?.from === 'director' &&
       open.kind !== 'question' &&
       open.kind !== 'refusal'
     )
       log.append(
-        h('li', {
-          class: 'msg director done',
-          'data-kind': 'done',
-          text: t('director.ready'),
-        }),
+        row({ from: 'director', kind: 'done' }, [
+          h('span', { class: 'msg-text', text: t('director.ready') }),
+        ]),
       );
-    log.lastElementChild?.scrollIntoView({ block: 'nearest' });
+    if (thinking)
+      log.append(
+        row({ from: 'director', kind: 'thinking' }, [
+          h(
+            'span',
+            { class: 'msg-text' },
+            h('i', { class: 'thinking-dots' }),
+            t('chat.thinking'),
+          ),
+        ]),
+      );
+    log.lastElementChild?.scrollIntoView({
+      block: 'nearest',
+      behavior: 'smooth',
+    });
+    void paintSide();
   };
   // P2B-21: a connected text model helps read answers (never for refusals).
   const plan = ctx.s.planOf(ctx.user.id);
@@ -377,87 +538,92 @@ export const directorScreen: Screen = async (ctx, [styleId = ''], out) => {
       modelAvailability(c, plan, m.id).ok,
   );
   let busy = false;
-  const send = async () => {
+  const doSend = async (said: string, files: Attachment[]) => {
     if (busy) return;
     busy = true;
-    const said = input.value;
-    const r = helper
-      ? await modelReply(c, style, iv, said, locale, async (system, user) => {
-          const out = await ctx.s.gateway.run({
-            userId: ctx.user.id,
-            plan,
-            role: c.director.roles.interview,
-            modelId: helper.id,
-            request: {
-              system,
-              messages: [{ role: 'user', content: user }],
-              json: true,
-              maxOutputTokens: 300,
-            },
-            maxCredits: 50,
-            key: `iv-${Date.now().toString(36)}`,
-          });
-          void ctx.s.sync(ctx.user.id).then(ctx.refreshTop, () => undefined);
-          return out.result.text ?? '';
-        }).catch(() => reply(c, style, iv, said, locale))
-      : reply(c, style, iv, said, locale);
+    box.setBusy(true);
+    // What was attached becomes a note for the plan and a line in the chat.
+    for (const f of files)
+      iv = {
+        ...iv,
+        notes: [...iv.notes, `Attached ${f.name}: ${f.text}`],
+        messages: [
+          ...iv.messages,
+          {
+            from: 'user',
+            kind: 'answer',
+            text: t('chat.attached', { name: f.name }),
+          },
+        ],
+      };
+    if (said.trim()) {
+      thinking = !!helper;
+      if (thinking) paint();
+    }
+    const r = !said.trim()
+      ? { interview: iv }
+      : helper
+        ? await modelReply(c, style, iv, said, locale, async (system, user) => {
+            const out = await ctx.s.gateway.run({
+              userId: ctx.user.id,
+              plan,
+              role: c.director.roles.interview,
+              modelId: helper.id,
+              request: {
+                system,
+                messages: [{ role: 'user', content: user }],
+                json: true,
+                maxOutputTokens: 300,
+              },
+              maxCredits: 50,
+              key: `iv-${Date.now().toString(36)}`,
+            });
+            void ctx.s.sync(ctx.user.id).then(ctx.refreshTop, () => undefined);
+            return out.result.text ?? '';
+          }).catch(() => reply(c, style, iv, said, locale))
+        : reply(c, style, iv, said, locale);
+    thinking = false;
     busy = false;
     iv = r.interview;
-    input.value = '';
+    box.setBusy(false);
+    box.set('');
     writeFlow(ctx, { ...flow, answers: iv.answers, notes: [...iv.notes] });
     ctx.setPrefs({ drafts: { ...ctx.prefs().drafts, [style.id]: iv.answers } });
     paint();
+    box.input.focus();
   };
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') void send();
+  const box = composer({
+    ctx,
+    role: roleOf(c),
+    model: () => currentModel(ctx),
+    onModel: (id) => {
+      ctx.setPrefs({ model: id });
+      void paintSide();
+    },
+    placeholder: t('director.placeholder'),
+    onSend: (text, files) => doSend(text, files),
   });
   out.append(
-    h('h1', { text: `${t('director.title')} · ${ctx.say(style.name)}` }),
-    log,
     h(
       'div',
-      { class: 'chat-input' },
-      input,
+      { class: 'dir-stage' },
       h(
-        'button',
-        {
-          type: 'button',
-          class: 'button',
-          id: 'chat-send',
-          onclick: () => void send(),
-        },
-        t('director.send'),
+        'section',
+        { class: 'dir-main' },
+        h(
+          'header',
+          { class: 'dir-head' },
+          h('span', { class: 'orb', 'aria-hidden': 'true' }),
+          h('h1', { text: `${t('director.title')} · ${ctx.say(style.name)}` }),
+        ),
+        log,
+        box.el,
       ),
-    ),
-    h(
-      'div',
-      { class: 'actions' },
-      h(
-        'a',
-        { class: 'button', href: `#/brief/${style.id}` },
-        t('common.back'),
-      ),
-      h(
-        'button',
-        {
-          type: 'button',
-          class: 'button primary',
-          id: 'make-plan',
-          onclick: () => {
-            writeFlow(ctx, {
-              ...flow,
-              answers: iv.answers,
-              notes: [...iv.notes],
-            });
-            ctx.go(`plan/${style.id}`);
-          },
-        },
-        t('brief.plan'),
-      ),
+      side,
     ),
   );
   paint();
-  input.focus();
+  box.input.focus();
 };
 
 /** P2-29 Plan card. */
@@ -897,27 +1063,69 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
   });
   const actions = h('div', { class: 'actions' });
   // P2-R3: each scene is a frame in a film strip; the big frame shows the one
-  // being made right now.
-  const frameArt = (i: number, w: number, hh: number) => {
-    const sc = job!.plan.scenes[i];
-    return artSvg(sc?.id ?? `scene-${i}`, c, '', w, hh);
+  // being made right now. The pictures are the plan's real layers laid out by
+  // the editor's own layout code (a layout preview, see scene-frame.ts); if
+  // that cannot load, the seeded art is shown instead.
+  let sf: typeof import('../scene-frame') | null = null;
+  try {
+    sf = await import('../scene-frame');
+  } catch {
+    sf = null;
+  }
+  const arts = sf
+    ? job.plan.scenes.map((_, i) => sf!.sceneArt(job!.plan, i))
+    : [];
+  const aspect = job.plan.meta.aspect.replace(':', ' / ');
+  const wide = job.plan.meta.aspect === '16:9';
+  let raf = 0;
+  /** A canvas with scene i drawn at progress p (0 to 1). */
+  const sceneCanvas = (i: number, cssWidth: number, p: number) => {
+    const art = arts[i]!;
+    const cv = document.createElement('canvas');
+    cv.width = cssWidth * 2;
+    cv.height = sf!.frameHeight(art, cv.width);
+    cv.className = 'scene-canvas';
+    sf!.paintScene(cv, art, p);
+    return cv;
   };
-  const bigFrame = h('div', { class: 'build-frame', 'data-state': 'waiting' });
+  const play = (cv: HTMLCanvasElement, i: number) => {
+    cancelAnimationFrame(raf);
+    if (!motionOn()) {
+      sf!.paintScene(cv, arts[i]!, 1);
+      return;
+    }
+    const t0 = performance.now();
+    const frame = (now: number) => {
+      const p = Math.min(1, (now - t0) / 1500);
+      sf!.paintScene(cv, arts[i]!, p);
+      if (p < 1) raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+  };
+  const frameArt = (i: number, w: number, hh: number) =>
+    artSvg(job!.plan.scenes[i]?.id ?? `scene-${i}`, c, '', w, hh);
+  const bigFrame = h('div', {
+    class: 'build-frame',
+    'data-state': 'waiting',
+    style: `aspect-ratio:${aspect};--fw:${wide ? 'min(520px,86vw)' : 'min(300px,70vw)'}`,
+  });
   const bigCap = h('p', { class: 'build-cap' });
   const showFrame = (i: number) => {
     const sc = job!.plan.scenes[i];
     bigFrame.classList.remove('swap');
     void bigFrame.offsetWidth;
     bigFrame.classList.add('swap');
+    const cv = sf ? sceneCanvas(i, wide ? 520 : 300, 0) : null;
     clear(
       bigFrame,
-      frameArt(i, 360, 640),
+      cv ?? frameArt(i, 360, 640),
       h('span', { class: 'build-scan', 'aria-hidden': 'true' }),
       h('span', {
         class: 'build-tag',
         text: `${i + 1} / ${job!.plan.scenes.length}`,
       }),
     );
+    if (cv) play(cv, i);
     bigCap.textContent = sc?.narration ?? sc?.title ?? '';
   };
   showFrame(0);
@@ -928,13 +1136,23 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
       h(
         'li',
         { class: 'preview-card', 'data-state': 'waiting' },
-        h('div', { class: 'frame-thumb' }, frameArt(i, 200, 112)),
+        h(
+          'div',
+          { class: 'frame-thumb', style: `aspect-ratio:${aspect}` },
+          sf ? sceneCanvas(i, 200, 0) : frameArt(i, 200, 112),
+        ),
         h('strong', { text: `${i + 1}. ${s.title ?? ''}` }),
         h('span', { class: 'muted frame-text', text: s.narration ?? '' }),
         h('span', { class: 'frame-badge', 'aria-hidden': 'true' }),
       ),
     ),
   );
+  const fillThumb = (i: number) => {
+    const cv = preview.querySelectorAll<HTMLCanvasElement>(
+      '.frame-thumb canvas',
+    )[i];
+    if (cv && sf) sf.paintScene(cv, arts[i]!, 1);
+  };
   // P2B-31: the plan being built, read-only, in the mono face.
   const code = h(
     'details',
@@ -989,7 +1207,10 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           showFrame(e.index);
           tick('select');
           const cards = preview.querySelectorAll<HTMLElement>('.preview-card');
-          if (e.index > 0) cards[e.index - 1]!.dataset.state = 'done';
+          if (e.index > 0) {
+            cards[e.index - 1]!.dataset.state = 'done';
+            fillThumb(e.index - 1);
+          }
           cards[e.index]!.dataset.state = 'working';
         } else if (e.step === 'media')
           step(
@@ -1006,6 +1227,10 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
             '.preview-card',
           ))
             card.dataset.state = 'done';
+          arts.forEach((_, n) => fillThumb(n));
+          const big = bigFrame.querySelector('canvas');
+          cancelAnimationFrame(raf);
+          if (big && sf) sf.paintScene(big, arts[arts.length - 1]!, 1);
           status.textContent = t('build.done', {
             used: e.credits,
             back: e.refunded,

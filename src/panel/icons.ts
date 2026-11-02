@@ -38,6 +38,13 @@ const PATHS = {
   play: '<path d="M7 4l13 8-13 8z"/>',
   arrowLeft: '<path d="M15 5l-7 7 7 7"/>',
   arrowRight: '<path d="M9 5l7 7-7 7"/>',
+  mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2.5"/>',
+  send: '<path d="M12 19V5M5 12l7-7 7 7"/>',
+  clip: '<path d="M21 11.5l-8.6 8.6a5 5 0 0 1-7-7l9-9a3.3 3.3 0 0 1 4.7 4.7l-9 9a1.7 1.7 0 0 1-2.4-2.4l8.3-8.3"/>',
+  chevronDown: '<path d="M6 9l6 6 6-6"/>',
+  file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
 } as const;
 

@@ -29,8 +29,10 @@ test('[P2R1-018] no guest mode: logged out sees only the website; sign up, log o
   // Reset with the emailed code (local outbox).
   await page.goto('/site/#/login');
   await page.locator('#auth-forgot').click();
+  await expect(page.locator('#auth-reset')).toBeVisible();
   await page.locator('#auth-email').fill(email);
   await page.locator('#auth-submit').click();
+  await expect(page.locator('#auth-note')).toContainText(/\d{6}/);
   const note = await page.locator('#auth-note').textContent();
   const code = /(\d{6})/.exec(note ?? '')![1]!;
   await page.locator('#auth-code').fill(code);
