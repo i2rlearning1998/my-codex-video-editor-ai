@@ -183,6 +183,12 @@ export const briefScreen: Screen = async (ctx, [styleId = ''], out) => {
   let answers: Answers = { ...saved, ...(idea ? { idea } : {}) };
   let model = currentModel(ctx);
   const strengthEl = h('p', { class: 'strength', id: 'brief-strength' });
+  const meterFill = h('i');
+  const meterEl = h(
+    'div',
+    { class: 'meter', 'aria-hidden': 'true' },
+    meterFill,
+  );
   const estimateEl = h('p', {
     class: 'estimate',
     id: 'brief-estimate',
@@ -195,6 +201,9 @@ export const briefScreen: Screen = async (ctx, [styleId = ''], out) => {
     strengthEl.textContent = t('brief.strength', {
       label: strength(style, answers),
     });
+    const pct = strengthPct(style, answers);
+    meterFill.style.width = `${Math.max(4, pct)}%`;
+    meterEl.dataset.level = pct >= 75 ? 'high' : pct >= 45 ? 'mid' : 'low';
     const checked = await previewPlan(ctx, style, answers);
     if (mine !== tick) return;
     const e = checked.ok
@@ -262,6 +271,7 @@ export const briefScreen: Screen = async (ctx, [styleId = ''], out) => {
         'aside',
         { class: 'brief-side' },
         strengthEl,
+        meterEl,
         pickerHost,
         estimateEl,
         savedEl,

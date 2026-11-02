@@ -31,6 +31,7 @@ test('[P2R2-012] Supabase accounts: sign up, the editor opens for the session, l
   await expect(page).toHaveURL(/\/site\/#\/login/);
   // Reset with the emailed code.
   await page.locator('#auth-forgot').click();
+  await expect(page.locator('#auth-reset')).toBeVisible();
   await page.locator('#auth-email').fill(email);
   await page.locator('#auth-submit').click();
   await expect(page.locator('#auth-note')).toHaveText(

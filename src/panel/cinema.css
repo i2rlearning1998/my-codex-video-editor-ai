@@ -2394,3 +2394,226 @@ progress::-moz-progress-bar {
     min-width: 0;
   }
 }
+
+/* ---- R3: Brief Room and model picker ------------------------------------------ */
+.brief-layout {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 28px;
+}
+.brief-form {
+  counter-reset: grp;
+  gap: 18px;
+}
+.field-group {
+  counter-increment: grp;
+  padding: 6px 24px 10px;
+  border: 1px solid var(--glass-line);
+  border-radius: 22px;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--ink-text) 6%, transparent),
+    color-mix(in srgb, var(--ink-text) 2%, transparent)
+  );
+  backdrop-filter: blur(14px);
+  transition:
+    border-color var(--dur) var(--ease-soft),
+    box-shadow var(--dur) var(--ease);
+}
+.field-group:hover,
+.field-group:focus-within {
+  border-color: color-mix(in srgb, var(--gold) 38%, var(--glass-line));
+  box-shadow: 0 12px 40px -20px var(--projector);
+}
+.field-group > summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  cursor: pointer;
+  font-family: 'Instrument Serif', serif;
+  font-size: 24px;
+  letter-spacing: 0.01em;
+}
+.field-group > summary::-webkit-details-marker {
+  display: none;
+}
+.field-group > summary::before {
+  content: counter(grp);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font:
+    600 13px 'Plus Jakarta Sans',
+    sans-serif;
+  color: var(--gold);
+  border: 1px solid color-mix(in srgb, var(--gold) 50%, transparent);
+  background: color-mix(in srgb, var(--gold) 10%, transparent);
+}
+.field-group > summary::after {
+  content: '';
+  margin-inline-start: auto;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  opacity: 0.5;
+  transform: rotate(45deg);
+  transition: transform var(--dur) var(--ease);
+}
+.field-group[open] > summary::after {
+  transform: rotate(-135deg);
+}
+.field-group .field {
+  max-width: none;
+}
+.choice {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border-color: var(--glass-line);
+  background: var(--glass);
+}
+.choice:hover {
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--glass-line));
+  transform: translateY(-1px);
+}
+.choice input {
+  accent-color: var(--gold);
+}
+.choice:has(input:checked) {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  box-shadow: 0 0 22px -6px var(--projector);
+}
+.brief-side {
+  top: calc(var(--top-h) + 16px);
+  gap: 14px;
+  padding: 22px;
+  border-radius: 24px;
+  border: 1px solid var(--glass-line);
+  background: linear-gradient(
+    170deg,
+    color-mix(in srgb, var(--ink-text) 7%, transparent),
+    color-mix(in srgb, var(--ink-text) 2%, transparent)
+  );
+  backdrop-filter: blur(16px);
+}
+.brief-side .strength {
+  margin: 0;
+  font-weight: 600;
+}
+.meter {
+  height: 6px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--glass-line);
+}
+.meter i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--cta);
+  transition: width 0.5s var(--ease);
+}
+.meter[data-level='low'] i {
+  background: color-mix(in srgb, var(--ink-text) 45%, transparent);
+}
+.meter[data-level='high'] i {
+  background: linear-gradient(90deg, var(--ai), var(--gold));
+}
+.model-picker {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--glass-line);
+  border-radius: 999px;
+  background: var(--glass);
+  overflow: visible;
+}
+.model-picker .seg {
+  flex: 1;
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--ink-text) 72%, transparent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.model-picker .seg + .seg {
+  border-left: 0;
+}
+.model-picker .seg:hover:not(:disabled) {
+  color: var(--ink-text);
+  background: var(--glass-line);
+}
+.model-picker .seg.on {
+  background: var(--cta);
+  color: #1a1306;
+  box-shadow: 0 6px 20px -8px var(--projector);
+}
+.model-picker .seg:disabled {
+  opacity: 0.45;
+}
+.brief-side .actions {
+  display: grid;
+  gap: 10px;
+}
+.brief-side .actions .button {
+  justify-content: center;
+}
+@media (max-width: 900px) {
+  .brief-layout {
+    grid-template-columns: 1fr;
+  }
+  .brief-side {
+    position: static;
+  }
+  .field-group {
+    padding-inline: 16px;
+  }
+}
+
+/* ---- light theme: gold used as text needs the darker tone --------------------- */
+:root[data-theme='light'] .nav-item[aria-current],
+:root[data-theme='light'] .chip[aria-pressed='true'],
+:root[data-theme='light'] .hero-title em,
+:root[data-theme='light'] .tool-ico,
+:root[data-theme='light'] .dir-estimate,
+:root[data-theme='light'] .palette-row[aria-selected='true'],
+:root[data-theme='light'] .field-group > summary::before {
+  color: var(--ink-gold-text);
+}
+:root[data-theme='light'] .hero-title em {
+  text-shadow: none;
+}
+:root[data-theme='light'] .field-group textarea,
+:root[data-theme='light'] .field-group input[type='text'],
+:root[data-theme='light'] .field-group input:not([type]),
+:root[data-theme='light'] .field-group select {
+  background: #ffffff;
+  color: var(--ink-text);
+  border-color: var(--ink-border);
+}
+:root[data-theme='light'] .field-group {
+  background: #ffffffb3;
+}
+
+/* Cards sit on dark poster art in both themes: keep their text light. */
+:root[data-theme='light'] .style-card,
+:root[data-theme='light'] .poster-in {
+  --ink-text: #f4f3fb;
+  --ink-muted: #c9c7da;
+  --ink-gold-text: #ffd27a;
+  color: #f4f3fb;
+}
+:root[data-theme='light'] .style-card :is(h2, h3, p, span, .muted) {
+  color: inherit;
+}
+:root[data-theme='light'] .style-card .button:not(.primary) {
+  color: #f4f3fb;
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+}

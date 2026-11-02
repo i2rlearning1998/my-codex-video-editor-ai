@@ -149,7 +149,19 @@ export const test = base.extend<Fixtures>({
             request.url().startsWith('blob:') ||
             // P2-R3: a page change cuts off a web font that is still
             // loading (the panel's own vendored fonts); that is not a fault.
-            /\.woff2(\?|$)/.test(request.url()))
+            /\.woff2(\?|$)/.test(request.url()) ||
+            // P2-R3: the dev server serves each source module on its own;
+            // a page change (sign-in redirect) cancels the ones still in
+            // flight. A production build is bundled and has none of these.
+            // P2-R3: signing out leaves the page at once, which cancels the
+            // "global" logout call to the (fake) Supabase server. The local
+            // session is already cleared; this also happens on the R2 base.
+            /^http:\/\/127\.0\.0\.1:54321\/auth\/v1\/logout/.test(
+              request.url(),
+            ) ||
+            /^http:\/\/127\.0\.0\.1:\d+\/(src\/|node_modules\/(\.vite|vite)\/)/.test(
+              request.url(),
+            ))
         )
           return;
         errors.push(

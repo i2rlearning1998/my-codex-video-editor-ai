@@ -125,6 +125,8 @@ export function mountPanel(
     }
   });
   const out = h('main', { class: 'outlet', id: 'outlet', tabindex: '-1' });
+  const openEditorLabel = h('span', { text: t('top.openEditor') });
+  const signOutLabel = h('span', { text: t('top.signOut') });
   const top = h(
     'header',
     { class: 'top' },
@@ -144,11 +146,7 @@ export function mountPanel(
     h('div', { class: 'top-gap' }),
     credits,
     h('span', { class: 'plan-chip', id: 'plan-chip' }),
-    h(
-      'a',
-      { class: 'button', href: '/', id: 'open-editor' },
-      t('top.openEditor'),
-    ),
+    h('a', { class: 'button', href: '/', id: 'open-editor' }, openEditorLabel),
     h(
       'button',
       {
@@ -160,7 +158,7 @@ export function mountPanel(
           location.replace('/site/');
         },
       },
-      t('top.signOut'),
+      signOutLabel,
     ),
   );
   clear(root, top, h('div', { class: 'body' }, nav, out), toastHost);
@@ -182,6 +180,10 @@ export function mountPanel(
       else location.hash = `#/${r}`;
     },
     refreshTop: () => {
+      openEditorLabel.textContent = t('top.openEditor');
+      signOutLabel.textContent = t('top.signOut');
+      const st = document.querySelector('.search-text');
+      if (st) st.textContent = t('home.searchHint');
       credits.textContent = t('top.credits', {
         n: s.ledger(user.id).balance(),
       });

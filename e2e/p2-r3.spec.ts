@@ -99,3 +99,23 @@ test('[P2R3-004] Live Build draws each scene from the plan itself (real titles a
   expect(varied.every(Boolean)).toBe(true);
   await expect(page.locator('#open-in-editor')).toBeVisible();
 });
+
+test('[P2R3-005] the Brief Room has a strength meter that fills as the idea is typed, the model choice is a pill row, and changing the language in Settings changes the top bar at once', async ({
+  page,
+}) => {
+  await signUp(page, 'brief.room@example.com');
+  await page.goto('/panel/#/styles');
+  await page.locator('[data-style="story-explainer"] a.button').click();
+  const fill = page.locator('.brief-side .meter i');
+  const before = (await fill.boundingBox())!.width;
+  await page.locator('#f-idea').fill('How Eratosthenes measured the Earth.');
+  await expect
+    .poll(async () => (await fill.boundingBox())!.width)
+    .toBeGreaterThan(before);
+  await expect(page.locator('.model-picker .seg.on')).toHaveCount(1);
+  await page.goto('/panel/#/settings');
+  await page.locator('#settings-language').selectOption('hi');
+  await page.mouse.move(900, 500);
+  await page.locator('#settings-save').click();
+  await expect(page.locator('#sign-out')).toHaveText('साइन आउट');
+});
