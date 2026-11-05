@@ -2,6 +2,7 @@
 // them from Admin. It is also the last fallback when no saved config can be read.
 import {
   CHAT_PROMPT,
+  ENHANCE_PROMPT,
   INTERVIEW_PROMPT,
   PLAN_PROMPT,
   REPAIR_PROMPT,
@@ -1069,6 +1070,7 @@ function rawDefault(): PlatformConfigInput {
         upgradeOn: UPGRADE_RULE_ON,
         upgradeOff: UPGRADE_RULE_OFF,
         chat: CHAT_PROMPT,
+        enhance: ENHANCE_PROMPT,
       },
       limits: {
         maxScenes: 12,
@@ -1422,11 +1424,11 @@ const IMAGE_PARAMS: In['models'][number]['params'] = [
     label: L('Shape', 'आकार'),
     role: 'param',
     sends: 'size',
-    default: '16:9',
+    default: '1536x1024',
     options: [
-      { value: '16:9', label: L('Wide 16:9') },
-      { value: '9:16', label: L('Tall 9:16') },
-      { value: '1:1', label: L('Square 1:1') },
+      { value: '1536x1024', label: L('Wide 16:9') },
+      { value: '1024x1536', label: L('Tall 9:16') },
+      { value: '1024x1024', label: L('Square 1:1') },
     ],
   },
   {
