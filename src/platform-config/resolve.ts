@@ -1,6 +1,9 @@
 // Helpers every reader uses, so no screen re-implements a rule.
+import type { P3AdminSettings } from '../contracts/p3';
 import type {
   BriefField,
+  Campaign,
+  StyleCap,
   Cost,
   DirectorRules,
   LText,
@@ -165,3 +168,52 @@ export function studioForm(s: Studio): Style {
 }
 export const learnItems = (c: PlatformConfig) =>
   [...c.learn].sort((a, b) => a.order - b.order);
+
+// P3-WIRING (W1): the owner's P3 settings, as the other parts read them.
+export function p3Settings(c: PlatformConfig): P3AdminSettings {
+  const p = c.p3;
+  return {
+    chat: { ...p.chat },
+    vision: { ...p.vision },
+    memory: { ...p.memory },
+    entitlementTtlSeconds: p.entitlementTtlSeconds,
+    webhookReplayWindowSeconds: p.webhookReplayWindowSeconds,
+  };
+}
+/** Campaigns running at `now` (enabled, inside their window). */
+export const activeCampaigns = (
+  c: PlatformConfig,
+  now: Date = new Date(),
+  planId?: string,
+): Campaign[] =>
+  c.campaigns.filter(
+    (k) =>
+      k.enabled &&
+      Date.parse(k.startsAt) <= now.getTime() &&
+      now.getTime() < Date.parse(k.endsAt) &&
+      (planId === undefined ||
+        k.plans.length === 0 ||
+        k.plans.includes(planId)),
+  );
+const NO_CAP: StyleCap = {
+  maxStyles: null,
+  maxProjects: null,
+  maxChatsPerProject: null,
+};
+/** A plan's caps; a plan without an entry has none. */
+export const capFor = (c: PlatformConfig, planId: string): StyleCap =>
+  c.styleCaps[planId] ?? NO_CAP;
+/** A combo's role → model map (enabled models only); null for an unknown or disabled combo. */
+export function comboModels(
+  c: PlatformConfig,
+  comboId: string,
+): Record<string, Model> | null {
+  const combo = c.combos.find((x) => x.id === comboId && x.enabled);
+  if (!combo) return null;
+  const out: Record<string, Model> = {};
+  for (const [role, modelId] of Object.entries(combo.models)) {
+    const m = modelById(c, modelId);
+    if (m && m.enabled) out[role] = m;
+  }
+  return out;
+}

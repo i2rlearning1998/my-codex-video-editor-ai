@@ -3,6 +3,7 @@
 // person sees or the AI may do is fixed in code (docs/PLATFORM-CONFIG.md).
 // Secrets never live here: the config only names adapters.
 import { z } from 'zod';
+import { paramDeclSchema } from '../contracts/p3';
 
 export const CONFIG_SCHEMA_VERSION = 1;
 
@@ -219,6 +220,8 @@ export const modelSchema = z.object({
   tested: z.boolean().default(false),
   /** The price is a sample the owner must replace. */
   samplePrice: z.boolean().default(true),
+  /** P3-WIRING (W1): the parameters this model takes; the Studio form is built from them. */
+  params: z.array(paramDeclSchema).default([]),
   order: z.number().default(0),
 });
 export type Model = z.infer<typeof modelSchema>;
@@ -421,6 +424,102 @@ export const backendSchema = z.object({
   publicSettings: z.record(z.string(), z.string()).default({}),
 });
 
+/**
+ * P3-WIRING (W1): the owner's P3 settings (chat, vision, memory, login).
+ * Every default is a SAMPLE (`sample: true`) the owner replaces in Admin.
+ */
+const posInt = z.number().int().min(1);
+export const p3Schema = z
+  .object({
+    sample: z.boolean().default(true),
+    chat: z
+      .object({
+        enabled: z.boolean().default(true),
+        maxMessagesPerDay: posInt.default(200),
+        maxHistoryTokens: posInt.default(6000),
+      })
+      .default({}),
+    vision: z
+      .object({
+        enabled: z.boolean().default(true),
+        creditsPerImage: z.number().min(0).default(2),
+        maxImagesPerMessage: z.number().int().min(0).default(4),
+      })
+      .default({}),
+    memory: z
+      .object({
+        keepRecent: posInt.default(8),
+        summariseAboveTokens: posInt.default(4000),
+        maxFacts: posInt.default(60),
+        maxStyleRules: posInt.default(20),
+      })
+      .default({}),
+    /** What a person may attach to one chat message. */
+    attach: z
+      .object({
+        maxBytes: z
+          .object({
+            image: posInt.default(10 * 1024 * 1024),
+            audio: posInt.default(25 * 1024 * 1024),
+            video: posInt.default(200 * 1024 * 1024),
+            text: posInt.default(1024 * 1024),
+            pdf: posInt.default(20 * 1024 * 1024),
+          })
+          .default({}),
+        maxFilesPerMessage: posInt.default(6),
+        /** Characters of a text or PDF file read into the model's context. */
+        maxTextChars: posInt.default(20000),
+      })
+      .default({}),
+    /** W8: sign-in limits (samples until the owner sets them). */
+    login: z
+      .object({
+        maxFailuresPerEmail: posInt.default(5),
+        maxFailuresPerIp: posInt.default(20),
+        /** First lock; doubles with each further failure. */
+        lockSeconds: posInt.default(60),
+        maxLockSeconds: posInt.default(3600),
+        /** Failures older than this are forgotten. */
+        windowSeconds: posInt.default(900),
+        minPasswordLength: z.number().int().min(6).max(128).default(10),
+      })
+      .default({}),
+    entitlementTtlSeconds: posInt.default(600),
+    webhookReplayWindowSeconds: posInt.default(300),
+  })
+  .default({});
+export type P3Config = z.infer<typeof p3Schema>;
+
+/** W1: a time-limited bonus on top-ups. */
+export const campaignSchema = z.object({
+  id,
+  name: textSchema,
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime(),
+  /** Extra credits on a top-up, in percent of the pack's credits. */
+  bonusPercent: z.number().min(0).max(500),
+  /** Plans it applies to ([] means every plan). */
+  plans: z.array(id).default([]),
+  enabled: z.boolean().default(true),
+});
+export type Campaign = z.infer<typeof campaignSchema>;
+/** W1: what a plan may keep (null: no cap). */
+export const styleCapSchema = z.object({
+  maxStyles: z.number().int().min(0).nullable().default(null),
+  maxProjects: z.number().int().min(0).nullable().default(null),
+  maxChatsPerProject: z.number().int().min(0).nullable().default(null),
+});
+export type StyleCap = z.infer<typeof styleCapSchema>;
+/** W1: a named set of models, one per role. */
+export const comboSchema = z.object({
+  id,
+  name: textSchema,
+  models: z.record(roleId, id),
+  requires: z.array(id).default([]),
+  enabled: z.boolean().default(true),
+});
+export type Combo = z.infer<typeof comboSchema>;
+
 export const platformConfigSchema = z
   .object({
     schemaVersion: z.literal(CONFIG_SCHEMA_VERSION),
@@ -448,6 +547,11 @@ export const platformConfigSchema = z
     director: directorSchema,
     site: siteSchema,
     backend: backendSchema,
+    p3: p3Schema,
+    campaigns: z.array(campaignSchema).default([]),
+    /** Keyed by plan id; a plan without an entry has no caps. */
+    styleCaps: z.record(id, styleCapSchema).default({}),
+    combos: z.array(comboSchema).default([]),
   })
   .superRefine((c, ctx) => {
     const dup = (label: string, ids: string[]) => {
@@ -530,6 +634,54 @@ export const platformConfigSchema = z
           code: 'custom',
           message: `studio ${s.id}: unknown cost ${s.costId}`,
         });
+    // W1: combos, campaigns, caps.
+    dup(
+      'combo',
+      c.combos.map((x) => x.id),
+    );
+    dup(
+      'campaign',
+      c.campaigns.map((x) => x.id),
+    );
+    for (const combo of c.combos)
+      for (const [role, modelId] of Object.entries(combo.models)) {
+        const m = c.models.find((x) => x.id === modelId);
+        if (!m)
+          ctx.addIssue({
+            code: 'custom',
+            message: `Combo ${combo.id} names model ${modelId}, which is not in the model list.`,
+          });
+        else if (!m.roles.includes(role))
+          ctx.addIssue({
+            code: 'custom',
+            message: `Combo ${combo.id} uses model ${modelId} for ${role}, but that model does not do ${role}.`,
+          });
+      }
+    const planIds = new Set(c.plans.map((p) => p.id));
+    for (const k of c.campaigns) {
+      if (Date.parse(k.endsAt) <= Date.parse(k.startsAt))
+        ctx.addIssue({
+          code: 'custom',
+          message: `Campaign ${k.id} ends before it starts.`,
+        });
+      for (const p of k.plans)
+        if (!planIds.has(p))
+          ctx.addIssue({
+            code: 'custom',
+            message: `Campaign ${k.id} names plan ${p}, which does not exist.`,
+          });
+    }
+    for (const p of Object.keys(c.styleCaps))
+      if (!planIds.has(p))
+        ctx.addIssue({
+          code: 'custom',
+          message: `Style caps name plan ${p}, which does not exist.`,
+        });
+    for (const m of c.models)
+      dup(
+        `param in ${m.id}`,
+        m.params.map((x) => x.id),
+      );
     for (const st of c.styles) {
       dup(
         `field in ${st.id}`,
