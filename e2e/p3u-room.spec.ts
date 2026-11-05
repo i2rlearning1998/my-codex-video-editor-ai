@@ -114,3 +114,23 @@ test('[P3U-004] Settings > Animations Off turns the Orb into a still picture, On
   await page.evaluate(() => (document.documentElement.dataset.motion = 'on'));
   await expect(orb).toHaveAttribute('data-orb-animated', 'true');
 });
+
+test('[P3U-005] Home is the Director room: no separate Director menu item, the Styles and Continue strips sit below, and they hide once a chat starts', async ({
+  page,
+}) => {
+  await signUp(page);
+  await page.goto('/panel/#/home');
+  await expect(page.locator('.room.on-home .orb-live canvas')).toBeVisible();
+  await expect(page.locator('#greeting')).toBeVisible();
+  await expect(page.locator('#home-balance')).toContainText('credits');
+  await expect(page.locator('.side a[href="#/room"]')).toHaveCount(0);
+  await expect(page.locator('.home-below #style-reel')).toBeVisible();
+  await shot(page, 'home-room');
+  await page
+    .locator('#chat-input')
+    .fill('A 60 second explainer about rainbows');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.room')).toHaveAttribute('data-has-chat', 'true');
+  await expect(page.locator('.home-below')).toBeHidden();
+  await expect(page.locator('#greeting')).toBeHidden();
+});

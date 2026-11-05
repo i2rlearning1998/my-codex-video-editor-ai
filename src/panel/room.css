@@ -371,6 +371,10 @@
 .room-input,
 .room-memory {
   min-width: 0;
+}
+.room-hero,
+.room-input,
+.room-memory {
   max-width: 100%;
 }
 @media (max-width: 640px) {
