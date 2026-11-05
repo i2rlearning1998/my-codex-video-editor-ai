@@ -35,13 +35,16 @@ export interface SecretRecord {
 }
 /**
  * The Store's secret methods (Part 1 adds them to every Store, rev 1.2).
- * `listSecrets` is taken to return the stored names; the integrator
- * reconciles it with Part 1's final signature.
+ * `listSecrets` returns the stored names (the stand-in) or a name -> record
+ * map (Part 1's Stores); both are read (reconciled by the integrator).
  */
 export interface SecretStore {
   putSecret(name: string, record: SecretRecord): Promise<void>;
   getSecret(name: string): Promise<SecretRecord | null>;
-  listSecrets(): Promise<readonly string[]>;
+  /** Part 1's Stores return name -> record; the stand-in returns the names. */
+  listSecrets(): Promise<
+    readonly string[] | Readonly<Record<string, SecretRecord>>
+  >;
   deleteSecret(name: string): Promise<void>;
 }
 /** An in-memory stand-in with the same methods (tests, and a Store without them). */
@@ -164,7 +167,9 @@ export function createKeyVault(
   async function load() {
     sealed.clear();
     plain.clear();
-    for (const n of await store.listSecrets()) {
+    const listed = await store.listSecrets();
+    const names = Array.isArray(listed) ? listed : Object.keys(listed);
+    for (const n of names) {
       const r = await store.getSecret(n);
       if (r) sealed.set(n, r);
     }

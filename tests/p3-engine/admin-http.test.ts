@@ -127,7 +127,9 @@ it('[P3E-053] every admin route gates non-admin; atomic changes audit once, refu
       ).toBe(403);
     expect(await store.audit()).toHaveLength(routes.length);
     expect(ownsAdminPath('/v1/admin/keys')).toBe(false);
-    expect((await request('/v1/admin/keys')).status).toBe(404);
+    // The path falls through Part 1's routes. Since the merge (D-398) Part 2's
+    // key vault answers it, so it is no longer a 404 (the vault list is admin only).
+    expect((await request('/v1/admin/keys')).status).toBe(200);
     const checkout = {
       provider: 'stripe',
       kind: 'topup',

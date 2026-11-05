@@ -47,6 +47,9 @@ import { p3KeyRoutes, p3ReadBody, p3Setup } from './keys/mount';
 
 export const API_VERSION = 'v1';
 const MAX_BODY = 256 * 1024;
+// P3-INTEGRATION: a model request that carries pictures (vision) may be larger,
+// but only for a signed-in person (checked before the body is read).
+const MAX_RUN_BODY = 12 * 1024 * 1024;
 
 class HttpError extends Error {
   constructor(
@@ -174,7 +177,18 @@ export function createServerApp(o: ServerOptions) {
     }
   >();
   // P3-WIRING:begin
-  const p3 = p3Setup(o, () => cfg.current().config, log);
+  // P3-INTEGRATION: vault changes go to Part 1's chained audit log.
+  const p3 = p3Setup(
+    o,
+    () => cfg.current().config,
+    log,
+    async (row) => {
+      log(
+        `audit ${row.action} ${row.target} by ${row.actor.slice(0, 8)} ${JSON.stringify(row.detail)}`,
+      );
+      await o.store.appendAudit(row);
+    },
+  );
   o = p3.options;
   // P3-WIRING:end
   const gateway = createGateway({
@@ -282,6 +296,7 @@ export function createServerApp(o: ServerOptions) {
 
   async function readBody(
     req: IncomingMessage,
+    limit = MAX_BODY,
   ): Promise<Record<string, unknown>> {
     // P3-WIRING:begin
     if (req.method === 'PUT' || req.method === 'DELETE')
@@ -294,7 +309,7 @@ export function createServerApp(o: ServerOptions) {
     let size = 0;
     for await (const chunk of req) {
       size += (chunk as Buffer).length;
-      if (size > MAX_BODY)
+      if (size > limit)
         throw new HttpError(413, 'too-large', 'The request is too large.');
       chunks.push(chunk as Buffer);
     }
@@ -686,8 +701,61 @@ export function createServerApp(o: ServerOptions) {
       ...(typeof r.prompt === 'string'
         ? { prompt: r.prompt.slice(0, 20_000) }
         : {}),
+      // P3-INTEGRATION:begin
+      ...p3Extras(r),
+      // P3-INTEGRATION:end
     };
   }
+  // P3-INTEGRATION:begin
+  /** Pictures (vision) and a Studio form's provider parameters (Part 2). */
+  function p3Extras(r: Record<string, unknown>) {
+    let out: Record<string, unknown> = {};
+    if (r.images !== undefined) {
+      if (!Array.isArray(r.images) || r.images.length > 8)
+        throw bad('At most 8 pictures can be sent.');
+      const images = r.images.map((i) => {
+        const x = (i ?? {}) as { mime?: unknown; base64?: unknown };
+        if (
+          typeof x.mime !== 'string' ||
+          !/^image\/(png|jpeg|webp|gif)$/.test(x.mime) ||
+          typeof x.base64 !== 'string' ||
+          x.base64.length > 7 * 1024 * 1024 ||
+          !/^[A-Za-z0-9+/]+={0,2}$/.test(x.base64)
+        )
+          throw bad('A picture is not valid (PNG, JPEG, WebP or GIF).');
+        return { mime: x.mime, base64: x.base64 };
+      });
+      if (images.length) out = { ...out, images };
+    }
+    if (r.params !== undefined) {
+      const ps = r.params as Record<string, unknown>;
+      const keys = Object.keys(ps ?? {});
+      if (
+        !ps ||
+        typeof ps !== 'object' ||
+        Array.isArray(ps) ||
+        keys.length > 40
+      )
+        throw bad('The settings are not valid.');
+      const params: Record<string, string | number | boolean> = {};
+      for (const k of keys) {
+        const v = ps[k];
+        if (
+          !/^[A-Za-z][A-Za-z0-9_.-]{0,59}$/.test(k) ||
+          !(
+            typeof v === 'boolean' ||
+            (typeof v === 'number' && Number.isFinite(v)) ||
+            (typeof v === 'string' && v.length <= 2000)
+          )
+        )
+          throw bad('The settings are not valid.');
+        params[k] = v;
+      }
+      if (keys.length) out = { ...out, params };
+    }
+    return out;
+  }
+  // P3-INTEGRATION:end
 
   const headers = (res: ServerResponse, origin: string | undefined) => {
     res.setHeader('content-type', 'application/json; charset=utf-8');
@@ -770,7 +838,14 @@ export function createServerApp(o: ServerOptions) {
         return writeReply(res, result);
       }
       // P3-ENGINE:end
-      const body = await readBody(req);
+      // P3-INTEGRATION:begin
+      if (req.method === 'POST' && path === '/v1/run')
+        await o.authenticate(req.headers.authorization);
+      // P3-INTEGRATION:end
+      const body = await readBody(
+        req,
+        req.method === 'POST' && path === '/v1/run' ? MAX_RUN_BODY : MAX_BODY,
+      );
       if (req.method === 'GET' && path === '/v1/health')
         return send(res, 200, { ok: true, api: API_VERSION });
       if (req.method === 'GET' && path === '/v1/config') {

@@ -9,6 +9,7 @@ import path from 'node:path';
 import { createAuth } from './auth';
 import { createServerApp, listen } from './app';
 import { fileStore, type Store } from './store';
+import { p3Settings } from '../src/platform-config';
 
 export async function main(): Promise<number> {
   const env = process.env;
@@ -42,11 +43,17 @@ export async function main(): Promise<number> {
             : {}),
         }
       : { hsSecret: env.LOCAL_AUTH_SECRET! }),
+    // P3 integration: a paused person is refused on every call.
+    suspended: async (userId) =>
+      (await store.profile(userId))?.suspended ?? false,
   });
-  const app = createServerApp({
+  // P3 integration: the owner's chat, vision and memory settings and the
+  // payment replay window come from the live config (read when asked).
+  const app: ReturnType<typeof createServerApp> = createServerApp({
     store,
     env,
     authenticate,
+    p3Settings: () => p3Settings(app.config.current().config),
     log: (line) => console.log(line),
   });
   await app.config.refresh();
