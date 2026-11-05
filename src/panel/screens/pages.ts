@@ -948,7 +948,15 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
                     class: 'button sm',
                     'data-switch': p.id,
                     onclick: async () => {
-                      await ctx.s.switchPlan(ctx.user.id, p.id);
+                      try {
+                        await ctx.s.switchPlan(ctx.user.id, p.id);
+                      } catch (e) {
+                        // The server may require hosted checkout for a paid plan.
+                        return ctx.toast(
+                          e instanceof Error ? e.message : String(e),
+                          'error',
+                        );
+                      }
                       ctx.refreshTop();
                       ctx.toast(
                         t('credits.planChanged', { plan: ctx.say(p.name) }),

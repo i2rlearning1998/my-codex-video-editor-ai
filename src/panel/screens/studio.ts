@@ -413,11 +413,13 @@ export function assetView(a: Asset): HTMLElement {
   return h(
     'div',
     { class: 'asset-view', 'data-kind': a.kind },
-    a.kind === 'image' || a.kind === 'video'
-      ? h('img', { src: a.dataUrl, alt: a.name, class: 'thumb' })
-      : a.kind === 'audio'
-        ? h('audio', { src: a.dataUrl, controls: true })
-        : h('pre', { class: 'asset-text', text: a.text ?? '' }),
+    (a.kind === 'image' || a.kind === 'video') && !a.dataUrl
+      ? h('p', { class: 'muted asset-nofile', text: a.name })
+      : a.kind === 'image' || a.kind === 'video'
+        ? h('img', { src: a.dataUrl, alt: a.name, class: 'thumb' })
+        : a.kind === 'audio'
+          ? h('audio', { src: a.dataUrl, controls: true })
+          : h('pre', { class: 'asset-text', text: a.text ?? '' }),
   );
 }
 

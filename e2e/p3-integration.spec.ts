@@ -1,21 +1,17 @@
 // P3 integration: the panel's Director room, memory and Studio on the REAL
 // services (src/wiring over Part 1's engines), the real gateway server and the
 // FAKE provider servers. Nothing here is a live provider.
-import { createHash } from 'node:crypto';
 import { test, expect, allowError } from './fixtures';
 import { signUp } from './p2-helpers';
 import { signLocalToken } from '../server/auth';
-import { startStack, STACK_SECRET, type Stack } from './p2-stack';
+import {
+  setServerPlan,
+  startStack,
+  STACK_SECRET,
+  type Stack,
+} from './p2-stack';
 
 let stack: Stack | null = null;
-/** Sets a plan on the server's own profile, the way a payment webhook would. */
-async function setServerPlan(st: Stack, email: string, plan: string) {
-  const sub = createHash('sha256').update(email.toLowerCase()).digest('hex');
-  const id = `${sub.slice(0, 8)}-${sub.slice(8, 12)}-${sub.slice(12, 16)}-${sub.slice(16, 20)}-${sub.slice(20, 32)}`;
-  const profile = await st.store.profile(id);
-  expect(profile).toBeTruthy();
-  await st.store.saveProfile({ ...profile!, plan });
-}
 test.afterEach(async () => {
   await stack?.close();
   stack = null;
@@ -76,6 +72,9 @@ test('[P3I-009] with a gateway server a Studio run goes through the real Studio 
   await page.locator('#sf-prompt').fill('a red kite over a hill');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-saved')).toBeVisible({ timeout: 30_000 });
+  // The result is listed in the Asset Library (not only announced).
+  await page.goto('/panel/#/assets');
+  await expect(page.locator('#asset-list [data-asset]')).toHaveCount(1);
   const seen = stack.logs.join('\n');
   expect(seen).toMatch(/POST \/v1\/(run|reserve) 200/);
 });

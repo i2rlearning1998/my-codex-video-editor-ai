@@ -3,8 +3,8 @@
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { allowError, test, expect, hook, settleBuild } from './fixtures';
-import { balance, setPlan, signUp } from './p2-helpers';
-import { startStack, type Stack } from './p2-stack';
+import { balance, signUp } from './p2-helpers';
+import { setServerPlan, startStack, type Stack } from './p2-stack';
 
 let stack: Stack | null = null;
 test.afterEach(async () => {
@@ -155,8 +155,10 @@ test('[P2R2-022] [P2R2-023] [P2R2-024] Director through the server: model interv
   ]);
   answerAsDirector(stack);
   await stack.use(page);
-  await signUp(page);
-  await setPlan(page, 'pro');
+  const email = await signUp(page);
+  // Hosted checkout changes paid plans; set it as the payment webhook would.
+  await setServerPlan(stack, email, 'pro');
+  await page.reload();
   const start = await balance(page);
   await brief(page);
   // The refusal never reached a model: only the other answers did.
@@ -261,8 +263,10 @@ test('[P2R2-024] a provider 429 in the middle of a build gives every credit back
   ]);
   answerAsDirector(stack);
   await stack.use(page);
-  await signUp(page);
-  await setPlan(page, 'pro');
+  const email = await signUp(page);
+  // Hosted checkout changes paid plans; set it as the payment webhook would.
+  await setServerPlan(stack, email, 'pro');
+  await page.reload();
   await brief(page);
   await expect(page.locator('#plan-card .scene')).toHaveCount(4);
   const held = await balance(page);

@@ -159,7 +159,11 @@ export async function studioService(
   save: (run: MockSavedRun) => string,
 ): Promise<StudioService | null> {
   if (ctx.s.remote)
-    return (await realFor(ctx)).studio((a) => void ctx.s.saveAsset(a));
+    return (await realFor(ctx)).studio(
+      // A result with no project is "Not in a project yet" in the Asset Library.
+      (a) =>
+        void ctx.s.saveAsset({ ...a, projectId: a.projectId || 'unsorted' }),
+    );
   const w = window as { __AIVE_P3_STUDIO__?: boolean };
   if (!import.meta.env.DEV || !w.__AIVE_P3_STUDIO__) return null;
   return createMockStudioService({ save, stepMs: 40 });

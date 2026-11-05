@@ -2,7 +2,8 @@
 // the Playwright worker for one test. Real HTTP everywhere; the "keys" are
 // the fake server's, given to the gateway as environment variables (never
 // to the browser).
-import type { Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
+import { expect, type Page } from '@playwright/test';
 import { createAuth } from '../server/auth';
 import { createServerApp, listen } from '../server/app';
 import { memoryStore } from '../server/store';
@@ -98,4 +99,14 @@ export async function startStack(
       await fake.close();
     },
   };
+}
+
+/** Sets a person's plan on the server's own profile, the way a payment webhook
+ * would (hosted checkout refuses the in-panel test switch for paid plans). */
+export async function setServerPlan(st: Stack, email: string, plan: string) {
+  const sub = createHash('sha256').update(email.toLowerCase()).digest('hex');
+  const id = `${sub.slice(0, 8)}-${sub.slice(8, 12)}-${sub.slice(12, 16)}-${sub.slice(16, 20)}-${sub.slice(20, 32)}`;
+  const profile = await st.store.profile(id);
+  expect(profile).toBeTruthy();
+  await st.store.saveProfile({ ...profile!, plan });
 }

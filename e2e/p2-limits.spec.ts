@@ -2,8 +2,8 @@
 // the plan's limits; a limit hit loses nothing; upgrading allows it again.
 import type { Page } from '@playwright/test';
 import { allowError, test, expect } from './fixtures';
-import { setPlan, signUp } from './p2-helpers';
-import { startStack, type Stack } from './p2-stack';
+import { signUp } from './p2-helpers';
+import { setServerPlan, startStack, type Stack } from './p2-stack';
 
 let stack: Stack | null = null;
 test.afterEach(async () => {
@@ -80,7 +80,8 @@ test('[P2R2-025] [P2R2-026] the editor reports each export; the fourth on Free i
   // Upgrade (test-mode mock payment), then the export goes through.
   await dialog(page).locator('#export-upgrade').click();
   await expect(page).toHaveURL(/\/panel\/#\/credits/);
-  await setPlan(page, 'creator');
+  await setServerPlan(stack, email, 'creator');
+  await page.reload();
   await expect(usageRow(page, 'Exports')).toHaveText('3 / no limit');
   await page.goto('/');
   await openExport(page);
@@ -101,12 +102,17 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
     free.limits.voiceClones = 0;
   });
   await stack.use(page);
-  await signUp(page);
+  const email = await signUp(page);
   const gateway = stack.url;
   allowError(
     page,
     (m) => m.includes('403') && m.includes(gateway),
     'The gateway refuses over-limit actions on purpose.',
+  );
+  allowError(
+    page,
+    (m) => m.includes('ERR_ABORTED') && m.includes(gateway),
+    'A reload cancels a background gateway request that is still in flight.',
   );
   // Projects: the first is made, the second is stopped.
   await page.goto('/panel/#/projects');
@@ -144,32 +150,26 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
     );
   await page.goto('/panel/#/studio/voice');
   const start = await credits();
-  await page.locator('#f-text').fill('Namaste');
-  await page.locator('[data-field="mode"] input[value="tts"]').check();
+  await page.locator('#sf-prompt').fill('Namaste');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-error')).toContainText(
     'Your plan has 1 MB of storage.',
   );
   await expect(page.locator('#studio-error a')).toHaveText('Upgrade');
-  await page.locator('[data-field="mode"] input[value="clone"]').check();
-  await page.locator('#studio-consent').check();
-  await page.locator('#studio-run').click();
-  await expect(page.locator('#studio-error')).toContainText(
-    'Your plan allows 0 cloned voices.',
-  );
+  // (The clone limit has no control in the model-driven form; it is proven by
+  // the gateway and entitlement unit tests.)
   expect(await credits()).toBe(start);
   // Upgrade: the second project is allowed.
-  await setPlan(page, 'creator');
+  await setServerPlan(stack, email, 'creator');
+  await page.reload();
   await page.goto('/panel/#/projects');
   await page.locator('#new-blank').click();
   await page.locator('#blank-name').fill('Second');
   await page.locator('#blank-form [type="submit"]').click();
   await expect(page).not.toHaveURL(/\/panel\//);
-  // And the voice clone and its storage are allowed now.
+  // And the voice result's storage is allowed now.
   await page.goto('/panel/#/studio/voice');
-  await page.locator('#f-text').fill('Namaste');
-  await page.locator('[data-field="mode"] input[value="clone"]').check();
-  await page.locator('#studio-consent').check();
+  await page.locator('#sf-prompt').fill('Namaste');
   await page.locator('#studio-run').click();
-  await expect(page.locator('#studio-result audio')).toBeVisible();
+  await expect(page.locator('#studio-saved')).toBeVisible({ timeout: 30_000 });
 });

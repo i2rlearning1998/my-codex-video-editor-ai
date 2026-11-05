@@ -16,23 +16,25 @@ test('[P2R2-008] with VITE_GATEWAY_URL the panel uses the server: credits, model
   stack = await startStack(['ANTHROPIC_API_KEY']);
   await stack.use(page);
   const seen: string[] = [];
+  const gatewayUrl = stack.url;
   page.on('response', async (r) => {
-    if (r.url().startsWith(stack!.url))
+    if (r.url().startsWith(gatewayUrl))
       seen.push(await r.text().catch(() => ''));
   });
   await signUp(page);
   expect(await balance(page)).toBe(60);
   await page.goto('/panel/#/studio/write');
-  await page.locator('#f-topic').fill('Three facts about shadows');
-  await page.locator('[data-field="length"] input[value="short"]').check();
+  // With a server the Studio form is model-driven (P3U-006); a model with no
+  // fields of its own gets one prompt field.
+  await page.locator('#sf-prompt').fill('Three facts about shadows');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-saved')).toContainText(
     'Saved to the Asset Library',
   );
   // The text came from the fake Anthropic server, through the gateway.
-  await expect(page.locator('#studio-result .asset-text')).toContainText(
-    'echo:',
-  );
+  // The model-driven Studio saves and says where (P3U-008); read it there.
+  await page.goto('/panel/#/assets');
+  await expect(page.locator('.asset-text').first()).toContainText('echo:');
   expect(
     stack.fake.seen.some(
       (s) => s.provider === 'anthropic' && s.path === '/v1/messages',

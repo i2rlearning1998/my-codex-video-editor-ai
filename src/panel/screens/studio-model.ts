@@ -208,12 +208,24 @@ export async function modelStudio(a: ModelStudioArgs): Promise<void> {
             else if (ev.type === 'failure') {
               put(
                 result,
-                h('p', {
-                  class: 'error-state',
-                  role: 'alert',
-                  id: 'studio-error',
-                  text: say(ev.failure.message),
-                }),
+                h(
+                  'p',
+                  {
+                    class: 'error-state',
+                    role: 'alert',
+                    id: 'studio-error',
+                  },
+                  say(ev.failure.message),
+                  ev.failure.upgrade
+                    ? [
+                        ' ',
+                        h('a', {
+                          href: '#/credits',
+                          text: t('common.upgrade'),
+                        }),
+                      ]
+                    : [],
+                ),
               );
             } else {
               const pname =
@@ -232,6 +244,8 @@ export async function modelStudio(a: ModelStudioArgs): Promise<void> {
         } finally {
           progress.hidden = true;
           run.disabled = false;
+          // The server settled the run: read the new balance and history.
+          await ctx.s.sync(ctx.user.id).catch(() => undefined);
           ctx.refreshTop();
         }
       },

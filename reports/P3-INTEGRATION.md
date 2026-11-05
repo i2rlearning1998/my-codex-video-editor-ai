@@ -23,8 +23,9 @@ Part 1 (`codex/p3-engine`) and Part 2 (`claude/p3-wiring`) are merged into `clau
 
 ## 3. Checks
 - Unit and jsdom: 1,509 passed, 3 failed, 3 skipped in 209 files. The 3 failures are sandbox-only and were failing before this work: `tests/blocks/worker.test.ts` (2) and `tests/library/gate-browser.test.ts` (LIB-007; the headless gate sees extra seed files in this sandbox).
-- E2E: see section 10 for the final run (Chromium in the sandbox, `--project=desktop`).
-- Format, typecheck, build with the bundle check (all four pages) and `npm run ledger`: see section 10.
+- Unit/jsdom (vitest): 1,509 passed, 3 failed, 3 skipped. The 3 failures are sandbox-only and not from this work: `tests/blocks/worker.test.ts` (2) and LIB-007 `tests/library/gate-browser.test.ts` (headless Chromium worker limits).
+- E2E (Chromium, `--project=desktop`, one worker): the full 749-test suite was NOT run to the end (too slow in the sandbox). Targeted specs run serially and passing: `p2-server`, `p3-integration`, `p2-limits`, `p2-director` (9 tests), `p3u-studio` (5) and the Studio test of `p2-panel` (1). Runs with 3 workers showed load timeouts in editor-opening tests; they pass when run serially.
+- Prettier, `tsc --noEmit`, `npm run build` (bundle check on all four pages: OK) and `npm run ledger` (OK): all passed on the last run.
 - CI: checked once after the push (section 10).
 
 ## 4. Try-it script for the owner
@@ -70,7 +71,8 @@ D-397 to D-402 (appended to docs/DECISIONS.md).
 ## 10. Git
 - Branch: `claude/p3-ui`
 - Key commits: 8c40cb9, c355c6f, dece92f, 3ead774, d22e168, 977c54e, a20f11c, 4e4539a, plus the docs commit.
-- Final run results: appended below when the full e2e finishes.
+- Fixes found by the targeted e2e after review: a model with no declared fields now shows one required prompt field instead of a blank form; a Studio limit refusal shows an Upgrade link; a hosted-checkout refusal on plan switch is a toast, not an unhandled error; results with no project are saved to 'unsorted' so the Asset Library lists them; a real connected model is listed (and chosen) before the offline one; the balance is read from the server right after a Studio run; a `mock://` picture URL from the fake provider is not rendered as an image.
+- Not run: the full 749-test e2e, a live provider, Supabase, Razorpay or Stripe.
 
 ## Owner tick-list
 | ID | OK / BUG / MISSING / CHANGE | One sentence |

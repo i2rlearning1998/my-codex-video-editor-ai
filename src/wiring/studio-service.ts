@@ -121,9 +121,23 @@ export function createStudioService(d: StudioDeps): StudioService {
       );
     return real[0] ?? defaultModelFor(c, d.plan(), role) ?? null;
   };
+  // Until the owner defines a model's fields (Autodraft screenshots), the form
+  // is one required prompt, so a Studio run is never a blank page.
+  const FALLBACK: ParamDecl[] = [
+    {
+      id: 'prompt',
+      type: 'longtext',
+      role: 'prompt',
+      label: { en: 'What should it make?', hi: 'क्या बनाना है?' },
+      required: true,
+      default: '',
+      group: 'basic',
+      order: 1,
+    } as ParamDecl,
+  ];
   const formFor = (studio: Studio, model: Model, c: PlatformConfig) =>
     d.engine.buildForm(
-      model.params,
+      model.params.length ? model.params : FALLBACK,
       { modelId: model.id, studioId: studio.id },
       !!enhanceModel(c) && !!c.director.prompts?.enhance,
     );
@@ -176,7 +190,13 @@ export function createStudioService(d: StudioDeps): StudioService {
       const c = d.config();
       const studio = studioById(c, studioId);
       if (!studio) return [];
-      return modelsForRole(c, studio.role).map((m) => ({
+      // A real model is listed (and so chosen by default) before the offline one.
+      const ordered = [...modelsForRole(c, studio.role)].sort(
+        (a, b) =>
+          Number(b.providerId !== 'mock' && d.connected(b.id)) -
+          Number(a.providerId !== 'mock' && d.connected(a.id)),
+      );
+      return ordered.map((m) => ({
         id: m.id,
         name: p3t(m.name),
         tier: m.tier,
@@ -363,7 +383,11 @@ export function createStudioService(d: StudioDeps): StudioService {
           (a.prompt.split('\n')[0] ?? p.studio.id).slice(0, 80) || p.studio.id,
         studioId,
         ...(res.result.text ? { text: res.result.text } : {}),
-        ...(dataUrl ? { dataUrl } : media?.url ? { dataUrl: media.url } : {}),
+        ...(dataUrl
+          ? { dataUrl }
+          : media?.url && /^(https?:|data:)/.test(media.url)
+            ? { dataUrl: media.url }
+            : {}),
         bytes: media?.base64
           ? Math.floor((media.base64.length * 3) / 4)
           : (res.result.text?.length ?? 0),
