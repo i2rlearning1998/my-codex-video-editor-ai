@@ -217,3 +217,5 @@ export function comboModels(
   }
   return out;
 }
+/** W8: the sign-in limits and password length (samples until set in Admin). */
+export const loginLimits = (c: PlatformConfig) => ({ ...c.p3.login });

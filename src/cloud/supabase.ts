@@ -12,6 +12,13 @@ import {
   type CloudProjectSummary,
   type CloudUser,
 } from './backend';
+import type { LoginGuard } from '../contracts/p3';
+import {
+  LoginRefusedError,
+  MIN_PASSWORD,
+  passwordProblem,
+  SIGN_IN_FAILED,
+} from './login-guard';
 
 const BUCKET = 'media';
 const SUMMARY =
@@ -44,7 +51,21 @@ function check<R extends { error: { message: string } | null }>(
     : void;
 }
 
-export function createSupabaseBackend(config: CloudConfig): CloudBackend {
+/**
+ * P3-WIRING (W8): Supabase Auth checks passwords and rate-limits sign-ins on
+ * its own server; this guard is an extra, per-browser lock in front of it,
+ * and the password rule is checked before Supabase is asked (set the same
+ * minimum length in the Supabase project's Auth settings).
+ */
+export interface SupabaseAuthOptions {
+  readonly guard?: LoginGuard;
+  readonly ip?: () => string;
+  readonly minPassword?: () => number;
+}
+export function createSupabaseBackend(
+  config: CloudConfig,
+  auth: SupabaseAuthOptions = {},
+): CloudBackend {
   let client: Promise<SupabaseClient> | null = null;
   const supabase = () =>
     (client ??= import('@supabase/supabase-js').then(({ createClient }) =>
@@ -95,6 +116,12 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
       };
     },
     async signUp(email, password) {
+      const weak = passwordProblem(
+        password,
+        auth.minPassword?.() ?? MIN_PASSWORD,
+        email,
+      );
+      if (weak) throw new Error(weak);
       const data = check(
         await (
           await supabase()
@@ -113,11 +140,25 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
       return user;
     },
     async signIn(email, password) {
-      const data = check(
-        await (await supabase()).auth.signInWithPassword({ email, password }),
-      );
-      const user = userOf(data.user);
+      const address = email.trim().toLowerCase();
+      const ip = auth.ip?.() ?? 'browser';
+      if (auth.guard) {
+        const r = await auth.guard.beforeAttempt(address, ip);
+        if (!r.ok) throw new LoginRefusedError(r.failure);
+      }
+      const res = await (
+        await supabase()
+      ).auth.signInWithPassword({ email, password });
+      if (res.error) {
+        await auth.guard?.afterFailure(address, ip);
+        // One sentence for every wrong email or password.
+        if (res.error.status === 400 || res.error.status === 401)
+          throw new LoginRefusedError(SIGN_IN_FAILED);
+        throw new Error(res.error.message);
+      }
+      const user = userOf(res.data.user);
       if (!user) throw new Error('Log in failed');
+      await auth.guard?.afterSuccess(address, ip);
       return user;
     },
     async signInWithProvider(provider) {
@@ -147,7 +188,15 @@ export function createSupabaseBackend(config: CloudConfig): CloudBackend {
       const user = userOf(verified?.user);
       if (!user || !verified?.session)
         throw new Error('The code is wrong or has expired');
+      const weak = passwordProblem(
+        password,
+        auth.minPassword?.() ?? MIN_PASSWORD,
+        email,
+      );
+      if (weak) throw new Error(weak);
       check(await sb.auth.updateUser({ password }));
+      // A changed password ends every other session of this person.
+      check(await sb.auth.signOut({ scope: 'others' }));
       return user;
     },
     async signOut() {
