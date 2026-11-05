@@ -1,3 +1,14 @@
+import type {
+  PaymentRecord,
+  SecretRecord,
+  Operation,
+} from './payments/records';
+import { defaultEmergency } from './payments/records';
+import type {
+  AuditRow,
+  EmergencySwitches,
+  PaymentWebhookResult,
+} from '../src/contracts/p3';
 // P2-R2 (P2B-03): the Store on Supabase, through supabase-js with the
 // service-role key. That key lives only in the server's environment
 // (SUPABASE_SERVICE_ROLE_KEY); it is never sent to a browser. Tables and
@@ -28,6 +39,137 @@ export function supabaseStore(
     });
   return {
     kind: 'supabase',
+    async profiles() {
+      const { data, error } = await db.from('profiles').select('*');
+      fail('list profiles', error);
+      return (data ?? []).map((r) => ({
+        id: r.id,
+        email: r.email ?? '',
+        plan: r.plan,
+        locale: r.locale,
+        brandKit: r.brand_kit ?? {},
+        createdAt: r.created_at,
+        suspended: r.suspended ?? false,
+      }));
+    },
+    async payments(u) {
+      let q = db.from('payments').select('record');
+      if (u !== undefined) q = q.eq('user_id', u);
+      const { data, error } = await q;
+      fail('read payments', error);
+      return (data ?? []).map((r) => r.record as PaymentRecord);
+    },
+    async commitPayment(input) {
+      const { data, error } = await db.rpc('p3_commit_payment', { input });
+      fail('record payment', error);
+      return data as PaymentWebhookResult;
+    },
+    async appendAudit(input) {
+      const { data, error } = await db.rpc('p3_append_audit', { input });
+      fail('append audit', error);
+      return data as AuditRow;
+    },
+    async audit() {
+      const { data, error } = await db
+        .from('audit_log')
+        .select('record')
+        .order('seq');
+      fail('read audit', error);
+      return (data ?? []).map((r) => r.record as AuditRow);
+    },
+    async commitAdmin(input) {
+      const { data, error } = await db.rpc('p3_admin_change', { input });
+      fail('apply admin change', error);
+      return data === true;
+    },
+    async flags(u) {
+      const { data, error } = await db
+        .from('user_flags')
+        .select('flags')
+        .eq('user_id', u)
+        .maybeSingle();
+      fail('read flags', error);
+      return (data?.flags ?? []) as string[];
+    },
+    async emergency() {
+      const { data, error } = await db
+        .from('emergency_switches')
+        .select('value')
+        .eq('id', 1)
+        .maybeSingle();
+      fail('read emergency switches', error);
+      return (data?.value ?? defaultEmergency()) as EmergencySwitches;
+    },
+    async putSecret(name, record) {
+      const { error } = await db.from('secrets').upsert({ name, record });
+      fail('save encrypted secret', error);
+    },
+    async getSecret(name) {
+      const { data, error } = await db
+        .from('secrets')
+        .select('record')
+        .eq('name', name)
+        .maybeSingle();
+      fail('read encrypted secret', error);
+      return (data?.record ?? null) as SecretRecord | null;
+    },
+    async listSecrets() {
+      const { data, error } = await db.from('secrets').select('name,record');
+      fail('list encrypted secrets', error);
+      return Object.fromEntries(
+        (data ?? []).map((r) => [r.name, r.record as SecretRecord]),
+      );
+    },
+    async deleteSecret(name) {
+      const { error } = await db.from('secrets').delete().eq('name', name);
+      fail('delete encrypted secret', error);
+    },
+    async dailyCount(u, name, day) {
+      const { data, error } = await db
+        .from('daily_counters')
+        .select('value')
+        .eq('user_id', u)
+        .eq('name', name)
+        .eq('day', day)
+        .maybeSingle();
+      fail('read daily count', error);
+      return Number(data?.value ?? 0);
+    },
+    async bumpDaily(u, name, day, limit = 2147483647) {
+      const { data, error } = await db.rpc('p3_bump_daily', {
+        u,
+        n: name,
+        d: day,
+        cap: Math.min(limit, 2147483647),
+      });
+      fail('count daily use', error);
+      return Number(data);
+    },
+    async claimOperation(key, fingerprint) {
+      const { data, error } = await db.rpc('p3_claim', {
+        k: key,
+        f: fingerprint,
+      });
+      fail('claim operation', error);
+      return data as { claimed: boolean; operation: Operation };
+    },
+    async getOperation(key) {
+      const { data, error } = await db
+        .from('p3_operations')
+        .select('*')
+        .eq('key', key)
+        .maybeSingle();
+      fail('read operation', error);
+      return data as Operation | null;
+    },
+    async finishOperation(key, result, audit) {
+      const { error } = await db.rpc('p3_finish', {
+        k: key,
+        r: result,
+        a: audit ?? null,
+      });
+      fail('finish operation', error);
+    },
     async profile(u) {
       const { data, error } = await db
         .from('profiles')
@@ -40,6 +182,7 @@ export function supabaseStore(
             id: data.id,
             email: data.email ?? '',
             plan: data.plan,
+            suspended: data.suspended ?? false,
             locale: data.locale,
             brandKit: data.brand_kit ?? {},
             createdAt: data.created_at,
@@ -51,6 +194,7 @@ export function supabaseStore(
         id: p.id,
         email: p.email,
         plan: p.plan,
+        suspended: p.suspended ?? false,
         locale: p.locale,
         brand_kit: p.brandKit,
         created_at: p.createdAt,

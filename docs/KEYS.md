@@ -29,3 +29,18 @@ Platform Config holds only its NAME (`providers[].keyRef`).
 Until a key is set, its provider shows **Not connected yet** in the panel and
 `GET /v1/models` lists its models with `connected: false`. Nothing else
 changes: the offline mock keeps the panel working.
+
+## P3 server variables
+
+- `RAZORPAY_KEY_ID`: server environment only. Leave empty until configured; never put it in a browser build.
+- `RAZORPAY_KEY_SECRET`: server environment only. Leave empty until configured; never put it in a browser build.
+- `RAZORPAY_WEBHOOK_SECRET`: server environment only. Leave empty until configured; never put it in a browser build.
+- `STRIPE_SECRET_KEY`: server environment only. Leave empty until configured; never put it in a browser build.
+- `STRIPE_WEBHOOK_SECRET`: server environment only. Leave empty until configured; never put it in a browser build.
+- `PAYPAL_CLIENT_ID`: server environment only. Leave empty until configured; never put it in a browser build.
+- `PAYPAL_CLIENT_SECRET`: server environment only. Leave empty until configured; never put it in a browser build.
+- `PAYPAL_WEBHOOK_ID`: server environment only. Leave empty until configured; never put it in a browser build.
+- `ENTITLEMENT_SECRET`: server environment only. Leave empty until configured; never put it in a browser build.
+- `KEY_VAULT_SECRET`: server environment only. Leave empty until configured; never put it in a browser build.
+
+`KEY_VAULT_SECRET` is consumed by Part 2 encryption. Payment webhooks use their dedicated signing secret, not the API secret. PayPal verification fetches only a fixed PayPal certificate URL pattern; no secret appears in a URL.

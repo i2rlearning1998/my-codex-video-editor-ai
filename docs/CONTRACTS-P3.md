@@ -20,7 +20,9 @@ Order of merge: Part 1 and Part 2 are reviewed in full by the integrator (diff, 
 
 - `server/payments/**`, `server/entitlements/**`, `server/admin/**`
 - `src/studio-engine/**`, `src/memory/**`, `src/admin-client/**` (the thin HTTP `AdminClient`)
+- `server/store.ts`, `server/supabase-store.ts` and the shared Store contract test `tests/server/store.test.ts` (Part 1 owns the `Store` interface and all three implementations; Part 2 only calls it)
 - `supabase/migrations/20261105*_p3_engine.sql` and its policy tests
+- `.env.example`, `scripts/keys.json`, `docs/KEYS.md` (Part 1 adds EVERY new variable name of both parts: the payment names, `ENTITLEMENT_SECRET` and `KEY_VAULT_SECRET`; test P2R2-015 requires the three files to agree)
 - `tests/p3-engine/**`, `tests/fakes/payments.ts`, `docs/P3-ENGINE.md`, `reports/P3-ENGINE.md`
 
 **Part 2, Claude Code**
@@ -28,6 +30,7 @@ Order of merge: Part 1 and Part 2 are reviewed in full by the integrator (diff, 
 - `src/wiring/**` (Style > Project > Chat store, Director service, Studio service, attach and vision, per-scene source)
 - `src/director/**` (rulebook, prompts, scope gate, plan JSON; no visuals)
 - `src/platform-config/**` (adds `P3AdminSettings` and `model.params` using `paramDeclSchema`; schema version stays 1, additive with defaults)
+- `src/gateway/adapters/**` (vision input in the Anthropic, OpenAI and Gemini request builders; in `transport.ts` only an injected secret resolver, vault first then environment), `tests/gateway/**` and `tests/fakes/providers.ts` (additive changes only)
 - `server/keys/**` (key vault), `src/storage-backends/**`, `server/auth.ts` and `src/cloud/**` (login hardening)
 - `src/editor-chat/**` (select and edit engine; no dock UI)
 - `tests/p3-wiring/**`, `docs/P3-WIRING.md`, `reports/P3-WIRING.md`
@@ -118,3 +121,17 @@ Stop and report the exact change and why. The integrator edits `src/contracts/p3
 Contract revision: 1 (5 Nov 2026).
 
 Contract note (rev 1.1, 5 Nov 2026): `StudioEngine.validate` only reports errors; nothing in the engine clamps or corrects values. The earlier wording in the Part 1 brief that said "clamped by validate" was wrong and is replaced.
+
+Contract note (rev 1.2, 5 Nov 2026): the ownership table in section 2 forgot `server/store.ts` and `server/supabase-store.ts`, although Part 1 must add payment and audit methods to them. They now belong to Part 1, together with `tests/server/store.test.ts`. Part 1 also adds three generic secret methods to the `Store` interface and all three stores: `putSecret(name, record)`, `getSecret(name)`, `listSecrets()` and `deleteSecret(name)`, where a record is `{ciphertext, iv, tag, last4, updatedAt}` (opaque strings; the Store never sees a plain value). Part 2's key vault (`server/keys/**`) does the AES-256-GCM encryption and only calls these methods. Until they land on `codex/p3-engine`, Part 2 codes against this signature and tests with an in-test stand-in; the integrator reconciles at merge. Supabase needs a `secrets` table in the Part 1 migration (service role only; no policy for people or anon).
+
+Contract note (rev 1.3, 5 Nov 2026): a second read of both briefs found these gaps; each is now decided.
+
+1. **Base commit.** The contracts and briefs first exist at `a8f1e1f` on `claude/p3-ui`. Both parts start from `a8f1e1f` (not from `claude/phase2-r3-ui`) and then `git cherry-pick 01c7322` (this note). They never merge or rebase onto the rest of `claude/p3-ui` (screens, Part 3).
+2. **Gateway files.** Part 2 may change `src/gateway/adapters/**` as listed in section 2 (vision input, injected secret resolver). Nobody else touches `src/gateway/**`.
+3. **Env names.** Part 1 owns `.env.example`, `scripts/keys.json`, `docs/KEYS.md` for both parts. Part 2 does not edit them; it tells Part 1's report (its own report) which name it used: `KEY_VAULT_SECRET`.
+4. **Store additions (all Part 1, all three stores, in the shared Store test):** payments, audit (append-only chain), flags, emergency switches, secrets (rev 1.2), `suspended` on `Profile` (optional, default false) and a per-day counter `bumpDaily(userId, name, day) / dailyCount(userId, name, day)`.
+5. **Chat message counting.** `EntitlementService.check(userId, 'chat-message')` is check-and-count: when it returns ok it has already used one message of today's allowance, so the Director calls it exactly once per message. `attach`, `vision` and every other action are read-only.
+6. **Monthly credits never double.** A paid subscription renewal (webhook) grants the plan's monthly credits with the SAME ledger key the server already uses on a person's first call of the month, `grant:<plan>:<YYYY-MM>` (`server/app.ts`), where the month is the renewal period's start. Top-ups and one-off packs use `pay:<provider>:<eventId>`.
+7. **Admin routes.** Part 1's admin router answers only the paths it owns and lets every other `/v1/admin/*` path fall through (it must not return 404 itself), so Part 2's `/v1/admin/keys` routes in the later `P3-WIRING` block are reached. Order in `server/app.ts`: `P3-ENGINE` block first, then `P3-WIRING`. Both use the existing admin check on `Caller` and the same plain 403 sentence.
+8. **Suspended people and login.** Part 2's `LoginGuard` does not read the Store. It takes an injected `isSuspended(email): Promise<boolean>`; the integrator wires it to Part 1's profile flag. Supabase sign-in happens at Supabase; the guard covers only requests the server sees (as W8 already says).
+9. **Audit function for the vault.** Part 2 types the injected `audit(row)` as `Omit<AuditRow, 'seq' | 'hash' | 'prevHash'>`; Part 1's audit log fills the rest. The integrator connects them.

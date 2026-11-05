@@ -1,6 +1,6 @@
 # Brief P3-WIRING: data model, Director and Studio services, attach and vision, key vault, storage backends, login hardening, editor chat engine
 
-Part 2 of 3. Implementer: Claude Code. Branch: `claude/p3-wiring`, created from `claude/phase2-r3-ui`.
+Part 2 of 3. Implementer: Claude Code. Branch: `claude/p3-wiring`, created from `a8f1e1f` plus `git cherry-pick 01c7322` (see CONTRACTS-P3 rev 1.3, note 1).
 Authority: `AGENTS.md`, then this brief, then `docs/CONTRACTS-P3.md` and `src/contracts/p3.ts`. This brief overrides the end-of-session steps of AGENTS.md section 2 where `docs/CONTRACTS-P3.md` section 3 says so (no edits to STATUS, DECISIONS, FEATURES, CHANGELOG; no tag; no review patch). Read `docs/CONTRACTS-P3.md`, `src/contracts/p3.ts`, `docs/PLATFORM-CONFIG.md`, `docs/GATEWAY.md`, `docs/SERVER.md`, `docs/EDITOR-OWNERSHIP.md`, `src/director/**`, `src/panel/services.ts`, `src/cloud/backend.ts`, `server/auth.ts` fully first.
 
 **This part has no visuals.** Do not touch `src/panel/screens/**`, any `.css`, `src/panel/strings.ts`, `src/admin/**`, `src/site/**`, `src/ui/**`. The integrator builds every screen against the services you implement.
@@ -39,14 +39,14 @@ They may not exist when you start. Take them by **dependency injection** (constr
 **W3. Director service** (`src/wiring/director-service.ts`, `src/director/**`; contract: `DirectorService`, `DirectorEvent`, `StartPath`)
 
 - `send` streams events in this order: `state: thinking`, tokens/`question`/`plan`, `memory` (facts added), `done` with credits used. Refusals are matched by the owner's keywords **before any model is asked** and emit `state: refusing` then `refusal`. A building plan emits `state: building`. A gateway failure becomes one `failure` event with the owner's sentence; the held credits are refunded.
-- Prompts come from config (`director.prompts`); the memory context block (Style, project facts, chat summary, recent turns) is added by code. Summaries run when history passes `maxHistoryTokens`. Chat on/off, per-day limit and `aiOff` are checked through the injected entitlement service **before** the call.
+- Prompts come from config (`director.prompts`); the memory context block (Style, project facts, chat summary, recent turns) is added by code. Summaries run when history passes `maxHistoryTokens`. Chat on/off, per-day limit and `aiOff` are checked through the injected entitlement service **before** the call; call `check(userId, 'chat-message')` exactly once per message (it counts, rev 1.3 note 5).
 - Scope gate: the Director answers only about video work; an off-topic message gets the owner's scope refusal, not a model call.
 - Plan JSON keeps going through the editor's `validatePlan` with repair-once, as `llm-planner.ts` does today. Do not weaken it.
 - Per-scene source: each plan scene carries `source: 'ai' | 'stock' | 'library' | 'mine'` (extend the plan scene notes convention already used for `method:`; no change to the video plan schema). `mine` means the person's own file ("mera apna"): the build leaves a frame the editor shows as "needs your file".
 
 **W4. Attach and vision** (`src/wiring/attach.ts`)
 
-- `attach` accepts image, audio, video, text and PDF within the limits from settings; stores bytes in the media store, never in the chat record. Images go to a vision-capable model as the adapter's image input (extend the Anthropic, OpenAI and Gemini adapters' request builders, tested against the existing fake servers); a text/PDF file is read to text (PDF: use only what is already in the repo or a pure parser that adds no dependency; if none exists, report PDF as not done).
+- `attach` accepts image, audio, video, text and PDF within the limits from settings; stores bytes in the media store, never in the chat record. Images go to a vision-capable model as the adapter's image input (extend the Anthropic, OpenAI and Gemini adapters' request builders in `src/gateway/adapters/**`, tested against `tests/fakes/providers.ts`; additive only); a text/PDF file is read to text (PDF: use only what is already in the repo or a pure parser that adds no dependency; if none exists, report PDF as not done).
 - Cost: `Attachment.credits` = `creditsPerImage` from settings; `estimate` returns min and max including attachments; vision off or too many images → a plain refusal. A model without `capabilities.vision` is never sent an image; the person is told in one sentence which models can read pictures.
 
 **W5. Studio service** (`src/wiring/studio-service.ts`; contract: `StudioService`)
@@ -56,8 +56,8 @@ They may not exist when you start. Take them by **dependency injection** (constr
 
 **W6. Key vault** (`server/keys/**`; contract: `KeyVault`, `KeyInfo`)
 
-- Values encrypted at rest (AES-256-GCM, key from `KEY_VAULT_SECRET`, random IV per value) in the `Store`; `list` never returns a value (last four characters only); `set`/`remove` require admin, a reason, and write an audit row **through an injected `audit(row)` function** (Part 1 provides the real audit log; in your tests use a stand-in). `test` makes the provider's cheapest check via the existing adapters against the fake servers.
-- The server's secret resolution (`secret:<NAME>` headers) reads the vault first, then the environment; a missing name still means "not connected". Routes `/v1/admin/keys` (GET list, PUT set, DELETE remove, POST test) in the `P3-WIRING` block of `server/app.ts`.
+- Values encrypted at rest (AES-256-GCM, key from `KEY_VAULT_SECRET`, random IV per value) in the `Store` through `putSecret/getSecret/listSecrets/deleteSecret` (Part 1 adds them, CONTRACTS-P3 rev 1.2; until then code to that signature and use a stand-in in your tests; do not edit `server/store*.ts`); `list` never returns a value (last four characters only); `set`/`remove` require admin, a reason, and write an audit row **through an injected `audit(row: Omit<AuditRow, 'seq' | 'hash' | 'prevHash'>)` function** (Part 1 provides the real audit log; in your tests use a stand-in). `test` makes the provider's cheapest check via the existing adapters against the fake servers.
+- The server's secret resolution (`secret:<NAME>` headers, `src/gateway/adapters/transport.ts`: add only an injected resolver) reads the vault first, then the environment; a missing name still means "not connected". Routes `/v1/admin/keys` (GET list, PUT set, DELETE remove, POST test) in the `P3-WIRING` block of `server/app.ts`.
 - Test: no response, log or error contains a fake key; a wrong `KEY_VAULT_SECRET` cannot decrypt.
 
 **W7. Storage backends** (`src/storage-backends/**`; contract: `StorageBackend`)
@@ -66,7 +66,7 @@ They may not exist when you start. Take them by **dependency injection** (constr
 
 **W8. Login hardening** (`server/auth.ts`, `src/cloud/**`; contract: `LoginGuard`)
 
-- Per-email and per-IP attempt counters with an exponential lock (limits are constants only until the owner sets them; put them in `p3` config as samples), constant-time failure message (same sentence for unknown email and wrong password), password policy at sign-up (length from config), session revoke on password change, suspended people cannot sign in. Local backend and Supabase backend both go through the guard where the server sees the request; where Supabase does it itself, document that and do not claim more.
+- Per-email and per-IP attempt counters with an exponential lock (limits are constants only until the owner sets them; put them in `p3` config as samples), constant-time failure message (same sentence for unknown email and wrong password), password policy at sign-up (length from config), session revoke on password change, suspended people cannot sign in (through an injected `isSuspended(email)`, rev 1.3 note 8; the guard never reads the Store). Local backend and Supabase backend both go through the guard where the server sees the request; where Supabase does it itself, document that and do not claim more.
 
 **W9. Editor chat engine** (`src/editor-chat/**`; contract: `EditorChatEngine`, `EditEvent`, `SelectionRef`)
 

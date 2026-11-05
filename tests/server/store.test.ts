@@ -31,6 +31,61 @@ function contract(name: string, make: () => Store, skip?: string) {
   describe.skipIf(!!skip)(
     `Store contract: ${name}${skip ? ` (skipped: ${skip})` : ''}`,
     () => {
+      it(`[P3E-052] ${name}: secrets, suspension, flags, daily caps, operations and append-only audit`, async () => {
+        const s = make();
+        const id = '33333333-3333-3333-3333-333333333333';
+        await s.saveProfile({
+          id,
+          email: 'p3@example.test',
+          plan: 'free',
+          locale: 'en',
+          brandKit: {},
+          createdAt: '2026-11-05T00:00:00.000Z',
+        });
+        expect((await s.profile(id))?.suspended ?? false).toBe(false);
+        const secret = {
+          ciphertext: 'opaque',
+          iv: 'opaque',
+          tag: 'opaque',
+          last4: 'abcd',
+          updatedAt: '2026-11-05T00:00:00.000Z',
+        };
+        await s.putSecret('TEST', secret);
+        expect(await s.getSecret('TEST')).toEqual(secret);
+        expect((await s.listSecrets()).TEST).toEqual(secret);
+        await s.deleteSecret('TEST');
+        expect(await s.getSecret('TEST')).toBeNull();
+        const counts = await Promise.all(
+          Array.from({ length: 10 }, () =>
+            s.bumpDaily(id, 'chat', '2026-11-05', 2),
+          ),
+        );
+        expect(counts.filter((n) => n > 0)).toHaveLength(2);
+        expect(await s.dailyCount(id, 'chat', '2026-11-05')).toBe(2);
+        const change = {
+          key: 'admin-test',
+          userId: id,
+          suspended: true,
+          flag: { name: 'beta', on: true },
+          audit: {
+            at: '2026-11-05T00:00:00.000Z',
+            actor: 'admin',
+            action: 'test',
+            target: id,
+            detail: { reason: 'test' },
+          },
+        };
+        expect(await s.commitAdmin(change)).toBe(true);
+        expect(await s.commitAdmin(change)).toBe(false);
+        expect((await s.profile(id))?.suspended).toBe(true);
+        expect(await s.flags(id)).toEqual(['beta']);
+        const rows = await s.audit();
+        expect(rows).toHaveLength(1);
+        Object.assign(rows[0]!.detail, { changed: true });
+        expect((await s.audit())[0]!.detail['changed']).toBeUndefined();
+        await s.appendAudit({ ...change.audit, action: 'second' });
+        expect((await s.audit())[1]!.seq).toBe(2);
+      });
       it(`[P2R2-003] ${name}: profiles, ledger with unique keys, usage, exports, counters, config versions`, async () => {
         const s = make();
         expect(await s.profile(U)).toBeNull();
@@ -94,7 +149,10 @@ function contract(name: string, make: () => Store, skip?: string) {
 }
 contract('memory', memoryStore);
 const file = path.join(dir, 'store.json');
-contract('file', () => fileStore(file));
+let made = 0;
+contract('file', () =>
+  fileStore(made++ === 0 ? path.join(dir, 'p3.json') : file),
+);
 it('[P2R2-003] the file store keeps its data across a restart', async () => {
   const again = fileStore(file);
   expect((await again.ledger(U)).length).toBe(2);
