@@ -17,7 +17,8 @@ import { t, type Key } from '../strings';
 import { card, empty, limitAlert, when } from './common';
 import { posterArt } from '../art';
 import { icon, studioIcon } from '../icons';
-import { reel, tick } from '../motion';
+import { reel } from '../motion';
+import { directorRoomScreen } from './director-room';
 
 const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
   const plan = ctx.s.planOf(ctx.user.id);
@@ -71,47 +72,6 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
 export const homeScreen: Screen = async (ctx, _a, out) => {
   const c = ctx.s.config;
   const plan = ctx.s.planOf(ctx.user.id);
-  const prompt = h('textarea', {
-    id: 'home-prompt',
-    rows: 3,
-    placeholder: t('home.promptPlaceholder'),
-    'aria-label': t('home.prompt'),
-  });
-  const usable = enabledStyles(c).filter((s) => canUse(plan, s.requires));
-  let first = usable[0];
-  const estimate = h('p', { class: 'estimate', id: 'home-estimate' });
-  const showEstimate = () => {
-    const hint = first?.priceHint;
-    estimate.textContent =
-      hint && c.director.reveal.credits
-        ? t('home.estimate', { min: hint.min, max: hint.max })
-        : '';
-  };
-  showEstimate();
-  // P2B-29: option chips choose the Style Director starts with.
-  const chips = h(
-    'div',
-    { class: 'option-chips', role: 'group', 'aria-label': t('home.styles') },
-    usable.map((st) =>
-      h(
-        'button',
-        {
-          type: 'button',
-          class: 'chip',
-          'data-start-style': st.id,
-          'aria-pressed': String(st === first),
-          onclick: (e: Event) => {
-            first = st;
-            tick('select');
-            for (const b of chips.querySelectorAll('[data-start-style]'))
-              b.setAttribute('aria-pressed', String(b === e.currentTarget));
-            showEstimate();
-          },
-        },
-        ctx.say(st.name),
-      ),
-    ),
-  );
   let projects: Awaited<ReturnType<Ctx['s']['projects']['list']>> = [];
   try {
     const trash = new Set(ctx.prefs().trash);
@@ -164,70 +124,11 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
   const monthly = Math.max(1, plan.monthlyCredits);
   const pct = Math.max(0, Math.min(100, Math.round((bal / monthly) * 100)));
 
+  // Home is the Director room; everything below it is secondary and hides
+  // once a chat has started (room.css).
+  const below = h('div', { class: 'home-below' });
   put(
-    out,
-    h(
-      'section',
-      { class: 'home-hero' },
-      h('p', {
-        id: 'greeting',
-        class: 'eyebrow',
-        text: t('home.hello', { name: ctx.prefs().name }),
-      }),
-      h(
-        'h1',
-        { class: 'hero-title' },
-        `${t('home.h1a')} `,
-        h('em', { text: t('home.h1b') }),
-        t('home.h1c') ? ` ${t('home.h1c')}` : '',
-      ),
-      h('p', {
-        class: 'hero-sub',
-        id: 'home-balance',
-        text: t('home.balance', {
-          n: bal,
-          plan: ctx.say(plan.name),
-        }),
-      }),
-      h(
-        'section',
-        { class: 'director-box aurora-card glow', id: 'director-card' },
-        h(
-          'div',
-          { class: 'director-head' },
-          h('span', { class: 'orb', 'aria-hidden': 'true' }),
-          h('label', {
-            for: 'home-prompt',
-            class: 'field-label',
-            text: t('home.prompt'),
-          }),
-        ),
-        prompt,
-        h(
-          'div',
-          { class: 'director-foot' },
-          chips,
-          estimate,
-          h(
-            'button',
-            {
-              type: 'button',
-              class: 'button primary',
-              id: 'home-start',
-              disabled: !first,
-              onclick: () => {
-                tick('select');
-                if (first)
-                  ctx.go(
-                    `brief/${first.id}?idea=${encodeURIComponent(prompt.value.trim())}`,
-                  );
-              },
-            },
-            t('home.start'),
-          ),
-        ),
-      ),
-    ),
+    below,
     h(
       'section',
       { class: 'band' },
@@ -425,6 +326,13 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
       ),
     ),
   );
+  await directorRoomScreen(ctx, [], out, {
+    home: {
+      greeting: t('home.hello', { name: ctx.prefs().name }),
+      balance: t('home.balance', { n: bal, plan: ctx.say(plan.name) }),
+    },
+  });
+  out.append(below);
 };
 
 export const stylesScreen: Screen = (ctx, _a, out) => {

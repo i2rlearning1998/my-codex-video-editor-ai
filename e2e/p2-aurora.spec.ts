@@ -53,11 +53,8 @@ async function auroraScreens(page: Page, width: number) {
     () => getComputedStyle(document.body).fontFamily,
   );
   expect(font).toContain('Plus Jakarta Sans');
-  await expect(page.locator('#director-card.aurora-card .orb')).toBeVisible();
-  await expect(page.locator('[data-start-style]').first()).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(page.locator('.room.on-home .orb-live canvas')).toBeVisible();
+  await expect(page.locator('[data-start]')).toHaveCount(3);
   await shot(page, 'panel-home');
   await page.goto('/panel/#/styles');
   await expect(page.locator('#style-grid .style-card svg.art')).toHaveCount(3);
@@ -155,11 +152,10 @@ test('[P2R2-034] at 360 px no panel or website screen scrolls sideways; reduced 
   await page.goto('/site/');
   await shot(page, 'site-landing');
   await signUp(page);
-  expect(
-    await page
-      .locator('#director-card .orb')
-      .evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe('none');
+  await expect(page.locator('.orb-live')).toHaveAttribute(
+    'data-orb-animated',
+    'false',
+  );
   for (const route of ['home', 'styles', 'credits', 'studio', 'projects'])
     await page
       .goto(`/panel/#/${route}`)

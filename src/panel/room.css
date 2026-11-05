@@ -338,3 +338,29 @@
     transition: none;
   }
 }
+
+/* Home: the room sits above the strips; they hide once a chat starts. */
+.room.on-home {
+  min-height: 0;
+}
+.room.on-home .room-scroll {
+  flex: 0 1 auto;
+}
+.room-eyebrow {
+  margin: 6px 0 0;
+}
+.room-balance {
+  margin: 0;
+  font-size: 13px;
+  color: var(--gold);
+}
+.room.on-home[data-has-chat='true'] .room-eyebrow,
+.room.on-home[data-has-chat='true'] .room-balance {
+  display: none;
+}
+.room.on-home[data-has-chat='true'] ~ .home-below {
+  display: none;
+}
+.home-below {
+  margin-top: 28px;
+}

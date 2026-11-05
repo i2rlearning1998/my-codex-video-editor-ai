@@ -25,7 +25,17 @@ const say = (x: P3Text): string => (getLocale() === 'hi' && x.hi ? x.hi : x.en);
 /** Settings > Animations is read by the Orb; the owner's level comes from config. */
 const levelOf = (): OrbLevel => 'full';
 
-export const directorRoomScreen: Screen = async (ctx, args, out) => {
+export interface RoomOptions {
+  /** On Home: the person's name line and the credits line. */
+  readonly home?: { readonly greeting: string; readonly balance: string };
+}
+
+export const directorRoomScreen = async (
+  ctx: Parameters<Screen>[0],
+  args: string[],
+  out: HTMLElement,
+  opts: RoomOptions = {},
+): Promise<void> => {
   const svc = directorService();
   const c = ctx.s.config;
   const styleId = args[0] ?? c.styles[0]?.id ?? '';
@@ -50,7 +60,10 @@ export const directorRoomScreen: Screen = async (ctx, args, out) => {
   const log = h('ol', { class: 'room-log', 'aria-live': 'off' });
   const memStrip = h('div', { class: 'room-memory', hidden: true });
   const hero = h('div', { class: 'room-hero' });
-  const root = h('section', { class: 'room', 'data-has-chat': 'false' });
+  const root = h('section', {
+    class: opts.home ? 'room on-home' : 'room',
+    'data-has-chat': 'false',
+  });
 
   let chat: ChatRecord | null = null;
   let memory: ProjectMemory | null = null;
@@ -288,8 +301,12 @@ export const directorRoomScreen: Screen = async (ctx, args, out) => {
         class: 'room-start glow',
         'data-start': key,
         onclick: () => {
-          if (key === 'brief') ctx.go(`brief/${styleId}`);
-          else if (key === 'style') ctx.go('styles');
+          if (key === 'brief') {
+            const idea = box.input.value.trim();
+            ctx.go(
+              `brief/${styleId}${idea ? `?idea=${encodeURIComponent(idea)}` : ''}`,
+            );
+          } else if (key === 'style') ctx.go('styles');
           else box.input.focus();
         },
       },
@@ -299,8 +316,22 @@ export const directorRoomScreen: Screen = async (ctx, args, out) => {
   clear(
     hero,
     h('div', { class: 'room-orb' }, orb.el),
+    opts.home
+      ? h('p', {
+          id: 'greeting',
+          class: 'eyebrow room-eyebrow',
+          text: opts.home.greeting,
+        })
+      : null,
     h('h1', { class: 'room-greeting', text: t('room.greeting') }),
     h('p', { class: 'room-sub', text: t('room.sub') }),
+    opts.home
+      ? h('p', {
+          id: 'home-balance',
+          class: 'room-balance',
+          text: opts.home.balance,
+        })
+      : null,
     stateLabel,
     h(
       'div',

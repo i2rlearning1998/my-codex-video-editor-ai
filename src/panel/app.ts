@@ -26,7 +26,6 @@ export type Screen = (
 ) => void | Promise<void>;
 
 const NAV: { route: string; key: Key; icon: IconName; bottom?: boolean }[] = [
-  { route: 'room', key: 'room.title', icon: 'director' },
   { route: 'home', key: 'nav.home', icon: 'home' },
   { route: 'styles', key: 'nav.styles', icon: 'styles' },
   { route: 'projects', key: 'nav.projects', icon: 'projects' },

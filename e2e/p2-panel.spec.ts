@@ -140,10 +140,8 @@ test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director from the
   await expect(page.locator('#home-balance')).toContainText('60 credits');
   await expect(page.locator('.page [data-style]')).toHaveCount(3);
   await expect(page.locator('.page .list li')).toHaveCount(3); // Learn
-  await page
-    .locator('#home-prompt')
-    .fill('How Eratosthenes measured the Earth');
-  await page.locator('#home-start').click();
+  await page.locator('#chat-input').fill('How Eratosthenes measured the Earth');
+  await page.locator('[data-start="brief"]').click();
   await expect(page.locator('h1')).toContainText('Story Explainer');
   await expect(page.locator('#f-idea')).toHaveValue(
     'How Eratosthenes measured the Earth',
