@@ -385,7 +385,10 @@ export interface ShellActions {
   /** P2-R2: export limits and reports (the person's plan). */
   usage?: UsageReporter;
   /** P3U: the chat dock's engine; without one the dock does not appear. */
-  chat?: EditorChatEngine | Promise<EditorChatEngine | null>;
+  chat?:
+    | EditorChatEngine
+    | Promise<EditorChatEngine | null>
+    | ((sceneId: () => string) => Promise<EditorChatEngine | null>);
   /** P3U: the owner's chat settings, read each time the dock paints. */
   chatSettings?: () => { enabled: boolean; maxMessagesPerDay: number };
 }
@@ -8187,7 +8190,11 @@ export function mountEditorShell(
   if (actions.chat) {
     const chatButton = element<HTMLButtonElement>('#chat-toggle');
     void Promise.all([
-      Promise.resolve(actions.chat),
+      Promise.resolve(
+        typeof actions.chat === 'function'
+          ? actions.chat(() => session.source.composition.id)
+          : actions.chat,
+      ),
       import('./chat-dock'),
     ]).then(([chat, { mountChatDock }]) => {
       if (disposed || !chat) return;

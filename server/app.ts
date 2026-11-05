@@ -384,6 +384,8 @@ export function createServerApp(o: ServerOptions) {
             recommended: m.recommendedForDirector,
             connected: connected(config, m.id),
             tested: m.tested,
+            // P3-INTEGRATION: a client prefers a real model to the offline one.
+            mock: providerById(config, m.providerId)?.kind === 'mock',
           })),
       };
     },

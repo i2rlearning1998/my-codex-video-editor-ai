@@ -92,6 +92,8 @@ export async function startStack(
       }, url);
     },
     close: async () => {
+      // Keep-alive connections of a closed page would hold close() open.
+      server.closeAllConnections();
       await new Promise((r) => server.close(() => r(null)));
       await fake.close();
     },

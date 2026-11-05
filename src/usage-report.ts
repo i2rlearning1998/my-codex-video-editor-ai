@@ -63,9 +63,42 @@ export function usageReporter(
     };
   }
   const base = gateway.replace(/\/$/, '');
+  const token = gatewayToken(userId, storage, base);
+  const post = async (path: string, body: unknown) => {
+    const res = await fetch(`${base}/v1${path}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${await token()}`,
+      },
+      body: JSON.stringify(body),
+    });
+    const out = (await res.json().catch(() => ({}))) as {
+      error?: { message?: string };
+    };
+    return res.ok
+      ? null
+      : (out.error?.message ?? `The server answered ${res.status}.`);
+  };
+  return {
+    allowExport: () => post('/limits/check', { action: 'export' }),
+    async exported(kind) {
+      await post('/exports', { kind });
+    },
+  };
+}
+
+/**
+ * The signed-in person's access token for the gateway server: the Supabase
+ * session the panel keeps, else (dev and local mode) a local token.
+ */
+export function gatewayToken(
+  userId: string,
+  storage: KV,
+  base: string,
+): () => Promise<string> {
   let local: { token: string; exp: number } | null = null;
-  const token = async (): Promise<string> => {
-    // A Supabase session (the panel's), else the local dev token.
+  return async () => {
     const sb = read<{ access_token?: string } | null>(
       storage,
       'aive.cloud.session',
@@ -89,27 +122,5 @@ export function usageReporter(
     if (!t) throw new Error('Please log in first.');
     local = { token: t, exp: Date.now() / 1000 + 3000 };
     return t;
-  };
-  const post = async (path: string, body: unknown) => {
-    const res = await fetch(`${base}/v1${path}`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        authorization: `Bearer ${await token()}`,
-      },
-      body: JSON.stringify(body),
-    });
-    const out = (await res.json().catch(() => ({}))) as {
-      error?: { message?: string };
-    };
-    return res.ok
-      ? null
-      : (out.error?.message ?? `The server answered ${res.status}.`);
-  };
-  return {
-    allowExport: () => post('/limits/check', { action: 'export' }),
-    async exported(kind) {
-      await post('/exports', { kind });
-    },
   };
 }

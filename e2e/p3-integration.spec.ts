@@ -8,6 +8,14 @@ import { signLocalToken } from '../server/auth';
 import { startStack, STACK_SECRET, type Stack } from './p2-stack';
 
 let stack: Stack | null = null;
+/** Sets a plan on the server's own profile, the way a payment webhook would. */
+async function setServerPlan(st: Stack, email: string, plan: string) {
+  const sub = createHash('sha256').update(email.toLowerCase()).digest('hex');
+  const id = `${sub.slice(0, 8)}-${sub.slice(8, 12)}-${sub.slice(12, 16)}-${sub.slice(16, 20)}-${sub.slice(20, 32)}`;
+  const profile = await st.store.profile(id);
+  expect(profile).toBeTruthy();
+  await st.store.saveProfile({ ...profile!, plan });
+}
 test.afterEach(async () => {
   await stack?.close();
   stack = null;
@@ -59,11 +67,7 @@ test('[P3I-009] with a gateway server a Studio run goes through the real Studio 
   const email = await signUp(page);
   // Hosted checkout changes paid plans (Part 1); the test sets the plan the
   // way the payment webhook would: on the server's own profile.
-  const sub = createHash('sha256').update(email.toLowerCase()).digest('hex');
-  const id = `${sub.slice(0, 8)}-${sub.slice(8, 12)}-${sub.slice(12, 16)}-${sub.slice(16, 20)}-${sub.slice(20, 32)}`;
-  const profile = await stack.store.profile(id);
-  expect(profile).toBeTruthy();
-  await stack.store.saveProfile({ ...profile!, plan: 'pro' });
+  await setServerPlan(stack, email, 'pro');
   await page.goto('/panel/#/studio/images');
   await page.reload();
   await expect(
@@ -132,4 +136,62 @@ test('[P3I-010] the admin page on the real server: an admin token signs in, a se
   await expect(
     page.locator('#ad-audit tr', { hasText: 'config.save' }).first(),
   ).toBeVisible();
+});
+
+test('[P3I-011] with a gateway server the editor chat runs on the real engine: the server checks the limit and charges the call, the model proposes a command, Apply is one undo step', async ({
+  page,
+}) => {
+  stack = await startStack();
+  await stack.use(page);
+  const email = await signUp(page);
+  // A paid plan reaches the real model (set as the payment webhook would).
+  await setServerPlan(stack, email, 'pro');
+  await page.goto('/');
+  await expect(page.locator('#chat-toggle')).toBeVisible({ timeout: 20_000 });
+  const scene = await page.evaluate(
+    () =>
+      (
+        window as never as {
+          __AIVE__: { getProject(): { compositions: { id: string }[] } };
+        }
+      ).__AIVE__.getProject().compositions[0]!.id,
+  );
+  // The fake model answers an edit with one real command.
+  stack.fake.respond(() =>
+    JSON.stringify({
+      summary: 'Make the background red',
+      commands: [
+        {
+          type: 'SET_COMPOSITION_BACKGROUND',
+          compositionId: scene,
+          color: '#ff0000',
+        },
+      ],
+    }),
+  );
+  const background = () =>
+    page.evaluate(
+      () =>
+        (
+          window as never as {
+            __AIVE__: {
+              getProject(): { compositions: { backgroundColor: string }[] };
+            };
+          }
+        ).__AIVE__.getProject().compositions[0]!.backgroundColor,
+    );
+  const before = await background();
+  await page.locator('#chat-toggle').click();
+  await page.locator('#chat-input').fill('make the background red');
+  await page.locator('#chat-send').click();
+  const card = page.locator('.chat-proposal');
+  await expect(card).toContainText('Edits: 1', { timeout: 30_000 });
+  expect(await background()).toBe(before); // a proposal changes nothing
+  await card.locator('[data-act="apply"]').click();
+  await expect.poll(background).toBe('#ff0000');
+  const seen = stack.logs.join('\n');
+  expect(seen).toContain('POST /v1/entitlements/check 200');
+  expect(seen).toContain('POST /v1/run 200');
+  await page.keyboard.press('Control+z');
+  await expect.poll(background).toBe(before);
 });
