@@ -116,3 +116,5 @@ The owner has weekly usage limits. Therefore:
 Stop and report the exact change and why. The integrator edits `src/contracts/p3.ts`, bumps the note below, and tells the other parts. No part edits it alone.
 
 Contract revision: 1 (5 Nov 2026).
+
+Contract note (rev 1.1, 5 Nov 2026): `StudioEngine.validate` only reports errors; nothing in the engine clamps or corrects values. The earlier wording in the Part 1 brief that said "clamped by validate" was wrong and is replaced.
