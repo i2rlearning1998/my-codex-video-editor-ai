@@ -2,6 +2,7 @@
 // them from Admin. It is also the last fallback when no saved config can be read.
 import {
   CHAT_PROMPT,
+  EDIT_PROMPT,
   ENHANCE_PROMPT,
   INTERVIEW_PROMPT,
   PLAN_PROMPT,
@@ -1071,6 +1072,7 @@ function rawDefault(): PlatformConfigInput {
         upgradeOff: UPGRADE_RULE_OFF,
         chat: CHAT_PROMPT,
         enhance: ENHANCE_PROMPT,
+        edit: EDIT_PROMPT,
       },
       limits: {
         maxScenes: 12,
