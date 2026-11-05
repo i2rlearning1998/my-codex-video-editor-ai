@@ -25,6 +25,7 @@ import { posterArt } from '../panel/art';
 import { icon } from '../panel/icons';
 import { reel, reveal, spotlight, tilt } from '../panel/motion';
 import { setLocale, t } from '../panel/strings';
+import { planLines } from '../panel/plan-lines';
 import { liveConfig } from '../panel/live-config';
 
 const root = document.getElementById('site')!;
@@ -292,13 +293,48 @@ function landing(out: HTMLElement) {
                     ? t('credits.free')
                     : `${currency === 'INR' ? `₹${p.price.inr}` : `$${p.price.usd}`}${p.period === 'month' ? t('site.perMonth') : ''}`,
               }),
-              h('p', { text: t('site.creditsMonth', { n: p.monthlyCredits }) }),
+              h('p', {
+                class: 'plan-credits',
+                text: t('site.creditsMonth', { n: p.monthlyCredits }),
+              }),
+              h(
+                'ul',
+                { class: 'plan-features' },
+                planLines(p).map((line) => h('li', { text: line })),
+              ),
+              h(
+                'a',
+                {
+                  class: `button${p.id === 'pro' ? ' primary' : ''} sm`,
+                  href: signedIn ? '/panel/#/credits' : '#/signup',
+                  'data-plan-cta': p.id,
+                },
+                signedIn ? t('site.openPanel') : t('site.signup'),
+              ),
             ),
           ),
         ),
       );
     out.append(sec);
   }
+  out.append(
+    h(
+      'section',
+      { class: 'site-section site-cta reveal', 'data-section': 'cta' },
+      h('h2', { text: t('site.ctaTitle') }),
+      h('p', { class: 'lead', text: t('site.ctaBody') }),
+      h(
+        'a',
+        {
+          class: 'button primary',
+          href: signedIn ? '/panel/' : '#/signup',
+          'data-cta': 'bottom',
+        },
+        signedIn ? t('site.openPanel') : t('site.signup'),
+      ),
+    ),
+    h('footer', { class: 'site-footer' }, h('p', { text: t('site.footer') })),
+  );
 }
 
 function revealOnScroll() {

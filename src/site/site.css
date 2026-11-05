@@ -256,3 +256,58 @@
   text-align: center;
   font-size: 14px;
 }
+
+/* Pricing: what each plan includes, and a button. */
+.cine-site .card[data-plan] {
+  display: flex;
+  flex-direction: column;
+}
+.cine-site .card[data-plan] .plan-credits {
+  margin: 0 0 12px;
+  color: var(--ink-gold-text);
+  font-weight: 600;
+}
+.cine-site .card[data-plan] .plan-features {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 14px 0 0;
+  border-top: 1px solid var(--glass-line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+.cine-site .card[data-plan] .plan-features li::before {
+  content: '✓';
+  margin-inline-end: 10px;
+  color: var(--ink-gold-text);
+}
+.cine-site .card[data-plan] .button {
+  align-self: stretch;
+  justify-content: center;
+}
+/* Closing call to action and footer. */
+.cine-site .site-cta {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 24px;
+}
+.cine-site .site-cta h2 {
+  max-width: 18ch;
+}
+.cine-site .site-cta .button {
+  margin-top: 14px;
+}
+.cine-site .site-footer {
+  margin-top: 72px;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--glass-line);
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-muted);
+}

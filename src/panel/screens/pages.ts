@@ -14,6 +14,7 @@ import { ASPECT_SIZES } from '../../auth-gate';
 import { h, clear, put } from '../dom';
 import type { Ctx, Screen } from '../app';
 import { t, type Key } from '../strings';
+import { planLines } from '../plan-lines';
 import { card, empty, limitAlert, when } from './common';
 import { posterArt } from '../art';
 import { icon, studioIcon } from '../icons';
@@ -712,8 +713,6 @@ const ring = (frac: number) => {
   );
   return svg;
 };
-const humanise = (id: string) =>
-  id.charAt(0).toUpperCase() + id.slice(1).replaceAll('-', ' ');
 
 export const creditsScreen: Screen = (ctx, _a, out) => {
   const c = ctx.s.config;
@@ -938,23 +937,7 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
             h(
               'ul',
               { class: 'plan-features' },
-              [
-                p.limits.exportsPerMonth === null
-                  ? t('plan.exportsNo')
-                  : t('plan.exports', { n: p.limits.exportsPerMonth }),
-                p.limits.projects === null
-                  ? t('plan.projectsNo')
-                  : t('plan.projects', { n: p.limits.projects }),
-                t('plan.storage', {
-                  n: Math.round((p.limits.storageMb / 1024) * 10) / 10,
-                }),
-                t('plan.height', { n: p.limits.maxExportHeight }),
-                p.watermark ? t('plan.watermark') : t('plan.noWatermark'),
-                ...(p.limits.voiceClones
-                  ? [t('plan.clones', { n: p.limits.voiceClones })]
-                  : []),
-                ...p.features.map(humanise),
-              ].map((line) => h('li', { text: line })),
+              planLines(p).map((line) => h('li', { text: line })),
             ),
             p.id === plan.id
               ? h('p', { class: 'chip', text: t('credits.current') })

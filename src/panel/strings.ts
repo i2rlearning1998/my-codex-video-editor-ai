@@ -401,6 +401,18 @@ const S = {
   'gw.refused': ['This could not run: {message}', 'यह नहीं चल सका: {message}'],
   'site.login': ['Log in', 'लॉग इन'],
   'site.signup': ['Sign up', 'साइन अप'],
+  'site.ctaTitle': [
+    'Your next video starts with one line.',
+    'आपका अगला वीडियो एक लाइन से शुरू होता है।',
+  ],
+  'site.ctaBody': [
+    'Free to start. You see the cost before anything is made.',
+    'शुरू करना मुफ़्त है। कुछ भी बनने से पहले आप खर्च देखते हैं।',
+  ],
+  'site.footer': [
+    'Every video you make is a real project you can edit.',
+    'आप जो भी वीडियो बनाते हैं वह एक असली प्रोजेक्ट है जिसे आप एडिट कर सकते हैं।',
+  ],
   'site.openPanel': ['Open my panel', 'मेरा पैनल खोलें'],
   'site.email': ['Email', 'ईमेल'],
   'site.password': ['Password', 'पासवर्ड'],
