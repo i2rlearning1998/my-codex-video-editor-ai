@@ -677,6 +677,44 @@ export const projectsScreen: Screen = async (ctx, _a, out) => {
   await paint();
 };
 
+const meter = (used: number, max: number | null) =>
+  max === null || max <= 0
+    ? null
+    : h('span', {
+        class: 'meter',
+        role: 'presentation',
+        style: `--fill:${Math.min(100, Math.round((used / max) * 100))}%`,
+        'data-full': String(used >= max),
+      });
+const ring = (frac: number) => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const r = 52;
+  const c = 2 * Math.PI * r;
+  const mk = (tag: string, a: Record<string, string>) => {
+    const e = document.createElementNS(NS, tag);
+    for (const [k, v] of Object.entries(a)) e.setAttribute(k, v);
+    return e;
+  };
+  const svg = mk('svg', {
+    viewBox: '0 0 120 120',
+    class: 'credit-ring-svg',
+    'aria-hidden': 'true',
+  });
+  svg.append(
+    mk('circle', { cx: '60', cy: '60', r: String(r), class: 'ring-track' }),
+    mk('circle', {
+      cx: '60',
+      cy: '60',
+      r: String(r),
+      class: 'ring-fill',
+      'stroke-dasharray': `${(Math.max(0.03, Math.min(1, frac)) * c).toFixed(1)} ${c.toFixed(1)}`,
+    }),
+  );
+  return svg;
+};
+const humanise = (id: string) =>
+  id.charAt(0).toUpperCase() + id.slice(1).replaceAll('-', ' ');
+
 export const creditsScreen: Screen = (ctx, _a, out) => {
   const c = ctx.s.config;
   const paint = () => {
@@ -691,20 +729,59 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
     const lim = (v: number | null) =>
       v === null ? t('credits.unlimited') : String(v);
     const pay = async (pack: (typeof c.topUps)[number]) => {
-      const provider = paymentProviders(c, cur)[0];
-      if (!provider) {
+      const providers = paymentProviders(c, cur);
+      if (!providers.length) {
         ctx.toast(t('credits.noPayment'), 'error');
         return;
       }
+      let provider = providers[0]!;
       const price = money(pack.price);
+      const chosen = h('div', { class: 'pay-provider-note' });
+      const paintProvider = () =>
+        put(
+          chosen,
+          provider.kind === 'mock'
+            ? h('p', { class: 'muted', text: t('credits.payMock') })
+            : null,
+        );
+      const choices = h(
+        'div',
+        {
+          class: 'seg-group pay-providers',
+          role: 'radiogroup',
+          'aria-label': t('credits.choose'),
+        },
+        providers.map((p, i) =>
+          h('button', {
+            type: 'button',
+            class: `seg${i === 0 ? ' on' : ''}`,
+            role: 'radio',
+            'aria-checked': String(i === 0),
+            'data-provider': p.id,
+            text: p.name,
+            onclick: (e: Event) => {
+              provider = p;
+              for (const b of choices.querySelectorAll('button')) {
+                b.classList.toggle('on', b === e.currentTarget);
+                b.setAttribute('aria-checked', String(b === e.currentTarget));
+              }
+              clear(chosen);
+              paintProvider();
+            },
+          }),
+        ),
+      );
       const dialog = h(
         'dialog',
         { class: 'pay-dialog', id: 'pay-dialog' },
         h('h2', { text: t('credits.payTitle', { price }) }),
-        h('p', { text: provider.name }),
-        provider.kind === 'mock'
-          ? h('p', { class: 'muted', text: t('credits.payMock') })
-          : null,
+        h('p', {
+          class: 'pay-summary',
+          text: t('credits.summary', { n: pack.credits, price }),
+        }),
+        providers.length > 1 ? choices : h('p', { text: provider.name }),
+        chosen,
+        h('p', { class: 'muted pay-secure', text: t('credits.secure') }),
         h(
           'div',
           { class: 'actions' },
@@ -733,16 +810,96 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
           ),
         ),
       );
+      paintProvider();
       document.body.append(dialog);
       dialog.showModal();
     };
     clear(
       out,
       h('h1', { text: t('credits.title') }),
-      h('p', {
-        id: 'credits-balance',
-        text: `${t('credits.current')}: ${ctx.say(plan.name)} · ${t('common.credits', { n: ledger.balance() })}`,
-      }),
+      h(
+        'section',
+        { class: 'credit-hero', id: 'credit-hero' },
+        h(
+          'div',
+          { class: 'credit-ring' },
+          ring(
+            plan.monthlyCredits
+              ? ledger.balance() / plan.monthlyCredits
+              : ledger.balance()
+                ? 1
+                : 0,
+          ),
+          h(
+            'div',
+            { class: 'credit-ring-text' },
+            h('strong', {
+              class: 'credit-big',
+              text: String(ledger.balance()),
+            }),
+            h('span', { class: 'muted', text: t('credits.ring') }),
+          ),
+        ),
+        h(
+          'div',
+          { class: 'credit-hero-text' },
+          h('p', {
+            id: 'credits-balance',
+            text: `${t('credits.current')}: ${ctx.say(plan.name)} · ${t('common.credits', { n: ledger.balance() })}`,
+          }),
+          h('p', {
+            class: 'muted',
+            text: t('credits.heroSub', {
+              n: plan.monthlyCredits,
+              plan: ctx.say(plan.name),
+            }),
+          }),
+          h('p', {
+            class: 'muted',
+            text:
+              L.creditsPerDay === null
+                ? t('credits.todayNoCap', { used: use.creditsToday })
+                : t('credits.todayLine', {
+                    used: use.creditsToday,
+                    cap: L.creditsPerDay,
+                  }),
+          }),
+          h(
+            'div',
+            { class: 'actions' },
+            h(
+              'a',
+              {
+                class: 'button primary',
+                href: '#topups',
+                id: 'hero-topup',
+                onclick: (e: Event) => {
+                  e.preventDefault();
+                  document
+                    .getElementById('topups')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                },
+              },
+              t('credits.getMore'),
+            ),
+            h(
+              'a',
+              {
+                class: 'button',
+                href: '#plan-cards',
+                id: 'hero-plans',
+                onclick: (e: Event) => {
+                  e.preventDefault();
+                  document
+                    .getElementById('plan-cards')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                },
+              },
+              t('credits.seePlans'),
+            ),
+          ),
+        ),
+      ),
       h(
         'div',
         { class: 'seg-group', role: 'group' },
@@ -778,6 +935,27 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
                   : `${money(p.price)}${p.period === 'month' ? '/mo' : p.period === 'year' ? '/yr' : ''}`,
             }),
             h('p', { text: t('credits.perMonth', { n: p.monthlyCredits }) }),
+            h(
+              'ul',
+              { class: 'plan-features' },
+              [
+                p.limits.exportsPerMonth === null
+                  ? t('plan.exportsNo')
+                  : t('plan.exports', { n: p.limits.exportsPerMonth }),
+                p.limits.projects === null
+                  ? t('plan.projectsNo')
+                  : t('plan.projects', { n: p.limits.projects }),
+                t('plan.storage', {
+                  n: Math.round((p.limits.storageMb / 1024) * 10) / 10,
+                }),
+                t('plan.height', { n: p.limits.maxExportHeight }),
+                p.watermark ? t('plan.watermark') : t('plan.noWatermark'),
+                ...(p.limits.voiceClones
+                  ? [t('plan.clones', { n: p.limits.voiceClones })]
+                  : []),
+                ...p.features.map(humanise),
+              ].map((line) => h('li', { text: line })),
+            ),
             p.id === plan.id
               ? h('p', { class: 'chip', text: t('credits.current') })
               : h(
@@ -850,17 +1028,37 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
           'tbody',
           null,
           [
-            ['limit.exports', use.exportsThisMonth, lim(L.exportsPerMonth)],
-            ['limit.storage', use.storageMb, String(L.storageMb)],
-            ['limit.voiceClones', use.voiceClones, String(L.voiceClones)],
-            ['limit.projects', use.projects, lim(L.projects)],
-            ['limit.day', use.creditsToday, lim(L.creditsPerDay)],
-          ].map(([k, v, m]) =>
+            [
+              'limit.exports',
+              use.exportsThisMonth,
+              lim(L.exportsPerMonth),
+              L.exportsPerMonth,
+            ],
+            ['limit.storage', use.storageMb, String(L.storageMb), L.storageMb],
+            [
+              'limit.voiceClones',
+              use.voiceClones,
+              String(L.voiceClones),
+              L.voiceClones,
+            ],
+            ['limit.projects', use.projects, lim(L.projects), L.projects],
+            [
+              'limit.day',
+              use.creditsToday,
+              lim(L.creditsPerDay),
+              L.creditsPerDay,
+            ],
+          ].map(([k, v, m, max]) =>
             h(
               'tr',
               null,
               h('td', { text: t(k as Key) }),
-              h('td', { text: `${v} / ${m}` }),
+              h(
+                'td',
+                { class: 'usage-cell' },
+                h('span', { text: `${v} / ${m}` }),
+                meter(Number(v), max as number | null),
+              ),
             ),
           ),
         ),

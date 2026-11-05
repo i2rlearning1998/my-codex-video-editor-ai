@@ -6,6 +6,7 @@ import './cinema.css';
 import './room.css';
 import './studio.css';
 import './mine.css';
+import './credits.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';

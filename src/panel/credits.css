@@ -1,0 +1,165 @@
+/* P3U: Credits & Plan: the balance hero, plan features, usage meters and the
+   checkout choice. Tokens only. */
+.credit-hero {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin: 16px 0 28px;
+  padding: 24px 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in srgb, var(--brand-gold, #ffc247) 14%, transparent),
+      transparent 60%
+    ),
+    var(--color-bg-raised);
+}
+.credit-ring {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  flex: none;
+}
+.credit-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.credit-ring-svg circle {
+  fill: none;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+.ring-track {
+  stroke: var(--color-border);
+}
+.ring-fill {
+  stroke: var(--brand-gold, #ffc247);
+  transition: stroke-dasharray 600ms ease;
+}
+.credit-ring-text {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  text-align: center;
+}
+.credit-big {
+  font-size: 34px;
+  line-height: 1;
+  color: var(--brand-gold, #ffc247);
+}
+.credit-hero-text {
+  flex: 1 1 280px;
+  display: grid;
+  gap: 6px;
+}
+.credit-hero-text p {
+  margin: 0;
+}
+.credit-hero-text #credits-balance {
+  font-size: 18px;
+  font-weight: 600;
+}
+.plan-features {
+  list-style: none;
+  margin: 10px 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+.plan-features li::before {
+  content: '✓';
+  margin-inline-end: 8px;
+  color: var(--accent-text);
+}
+.usage-cell {
+  display: grid;
+  gap: 6px;
+}
+.meter {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+.meter::after {
+  content: '';
+  display: block;
+  height: 100%;
+  width: var(--fill, 0%);
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    var(--aurora-a),
+    var(--aurora-b, var(--aurora-a))
+  );
+  transition: width 500ms ease;
+}
+.meter[data-full='true']::after {
+  background: var(--danger-text, #ff6b6b);
+}
+.pay-dialog .pay-providers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.pay-dialog .pay-providers .seg {
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.pay-dialog .pay-providers .seg.on {
+  border-color: var(--aurora-a);
+  background: var(--aurora-soft);
+  color: var(--accent-text);
+}
+.pay-summary {
+  font-size: 18px;
+  font-weight: 600;
+}
+.pay-secure {
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  .credit-hero {
+    padding: 18px;
+    gap: 18px;
+  }
+  .credit-ring {
+    width: 132px;
+    height: 132px;
+  }
+}
+
+/* One column width for every block of the screen, so the cards fill it
+   instead of leaving empty grid tracks on wide windows. */
+.credit-hero,
+#plan-cards,
+#cost-table,
+#usage-table,
+#ledger-table {
+  max-width: 1180px;
+}
+#plan-cards {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+#topups {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  max-width: 600px;
+}
+#cost-table,
+#usage-table,
+#ledger-table {
+  width: 100%;
+}
