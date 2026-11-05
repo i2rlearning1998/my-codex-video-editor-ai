@@ -1400,3 +1400,78 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P3U-033 | P0 | W10 | Verified | Brand Kit shows a live preview of the colours and fonts, and a plan without it shows an upgrade teaser |
 | P3U-034 | P0 | W10 | Verified | Every panel, website and admin screen opens at 1440 and 390 px without sideways scrolling |
 | P3U-035 | P0 | W10 | Verified | On a phone the bottom navigation fits every item and Studio tools sit two to a row |
+
+
+## P3: Phase 3 (Part 1 engine, Part 2 wiring, Part 3 integration; mocks replaced by real services; no live keys)
+
+Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 (`claude/p3-wiring`, services, vault, storage, login guard, editor chat engine), P3I-* are the integration of the three parts. Provider calls in every test go to the fake provider servers only; live behaviour waits for the owner's keys.
+
+| ID | Pri | Wave | Status | Definition |
+| -- | --- | ---- | ------ | ---------- |
+| P3E-010 | P0 | W10 | Verified | Signs canonical entitlements, rejects tampering, expiry and wrong keys without leaking secrets |
+| P3E-011 | P0 | W10 | Verified | Suspension refuses every action and emergency refuses AI |
+| P3E-013 | P0 | W10 | Verified | Settings are read per call and vision charges/checks the configured price |
+| P3E-014 | P0 | W10 | Verified | Entitlement HTTP route authenticates and never returns or logs the signing secret |
+| P3E-015 | P0 | W10 | Verified | AI limits reuse persisted daily spending and per-minute usage |
+| P3E-016 | P0 | W10 | Verified | Concurrent chat checks consume exactly the configured daily allowance |
+| P3E-020 | P0 | W10 | Verified | Audit hash chain detects edited rows, gaps and reordered records |
+| P3E-021 | P0 | W10 | Verified | Admin client sends bearer in headers and request id with adjustments; errors never echo response secrets |
+| P3E-031 | P0 | W10 | Verified | Hidden fields and UI-only values never reach the assembled request; stable snapshot |
+| P3E-033 | P0 | W10 | Verified | Assemble does not clamp; conditions cascade and cycles are hidden; units can count characters |
+| P3E-040 | P0 | W10 | Verified | Summary includes older turns and previous summary, preserving keepRecent verbatim |
+| P3E-041 | P0 | W10 | Verified | Context puts the unchanged read-only style first and stays under the estimated token budget |
+| P3E-042 | P0 | W10 | Verified | Facts normalise duplicates, preserve pinned facts and cap unpinned additions |
+| P3E-043 | P0 | W10 | Verified | Distillation returns a deterministic draft and repairs malformed JSON once |
+| P3E-044 | P0 | W10 | Verified | Over-limit rules and invalid repair fail with one plain sentence and no third call |
+| P3E-051 | P0 | W10 | Verified | Atomic credits survive restart, ten concurrent replays, mismatch, unknown user, monthly grant and refund shortfall |
+| P3E-053 | P0 | W10 | Verified | Every admin route gates non-admin; atomic changes audit once, refund uses gateway, keys fall through and logs omit secrets |
+| P3E-054 | P0 | W10 | Verified | PayPal RSA/CRC32 verifies a cached certificate and rejects altered body, stale and untrusted certificate URLs |
+| P3E-055 | P0 | W10 | Verified | Migration declares append-only audit, owner-scoped payments and private secrets (static inspection only) |
+| P3E-057 | P0 | W10 | Verified | Gateway refresh sees payment credits and refuses spending after an external revocation |
+| P3I-001 | P0 | W10 | Verified | A key set in the vault is written to Part 1's chained audit log, with no value in it |
+| P3I-002 | P0 | W10 | Verified | /v1/run passes valid pictures on, refuses bad ones, and a big body needs a sign-in first |
+| P3I-003 | P0 | W10 | Verified | Partial refunds revoke credits in proportion, add up to the grant, and together cannot exceed the payment |
+| P3I-005 | P0 | W10 | Verified | A provider call records its USD cost, and the admin dashboard reports real cost and margin inputs |
+| P3I-006 | P0 | W10 | Verified | POST /v1/entitlements/check decides a limit on the server: signed in only, a valid action only, the daily chat cap holds |
+| P3I-007 | P0 | W10 | Verified | With a gateway server the Director room runs on the real service: a message gets a model answer |
+| P3I-008 | P0 | W10 | Verified | A refusal on the real service is decided before any model is asked |
+| P3I-009 | P0 | W10 | Verified | With a gateway server a Studio run goes through the real Studio service: the server checks the limit, reserves credits, calls the model and the result lands in the Asset Library |
+| P3I-010 | P0 | W10 | Verified | The admin page on the real server: an admin token signs in, a settings save is published and lands in the audit chain, a person is refused |
+| P3I-011 | P0 | W10 | Verified | With a gateway server the editor chat runs on the real engine: the server checks the limit and charges the call, the model proposes a command, Apply is one undo step |
+| P3W-001 | P0 | W10 | Verified | An old stored config still parses; the new fields get sample defaults |
+| P3W-002 | P0 | W10 | Verified | A combo naming an unknown model or a role the model does not serve is refused |
+| P3W-003 | P0 | W10 | Verified | A campaign ending before it starts is refused; active ones are read by date and plan |
+| P3W-004 | P0 | W10 | Verified | Style caps per plan; a plan without an entry has none |
+| P3W-005 | P0 | W10 | Verified | A person sees only their own Styles, projects and chats |
+| P3W-006 | P0 | W10 | Verified | The Style cap from config is enforced on create with a plain sentence and upgrade |
+| P3W-007 | P0 | W10 | Verified | The three start paths make the same chat; brief answers become the first facts |
+| P3W-008 | P0 | W10 | Verified | "Make this my Style" saves a draft; a draft is never read into a call; accept makes it active, version + 1 |
+| P3W-009 | P0 | W10 | Verified | A refusal (and the scope gate) happens before any model call: zero requests, zero credits |
+| P3W-010 | P0 | W10 | Verified | A message streams thinking, the reply, a question, memory and done; credits are charged from the hold |
+| P3W-011 | P0 | W10 | Verified | The context starts with the Style block; no chat writes a Style |
+| P3W-012 | P0 | W10 | Verified | Chat off, the daily limit, aiOff and a suspended person stop the message before any call or hold |
+| P3W-013 | P0 | W10 | Verified | A gateway failure is one failure event and the hold is refunded |
+| P3W-014 | P0 | W10 | Verified | A plan request builds a plan through validatePlan; each scene carries a source; mine leaves the frame for the person |
+| P3W-015 | P0 | W10 | Verified | A long history is summarised before the call |
+| P3W-016 | P0 | W10 | Verified | Attach checks type, size and vision from settings; bytes go to the media store, never the chat |
+| P3W-017 | P0 | W10 | Verified | The vision cost is in the estimate and in the ledger |
+| P3W-018 | P0 | W10 | Verified | A model without vision is never sent an image; the person is told which models can read pictures |
+| P3W-019 | P0 | W10 | Verified | The form comes from the chosen model params; preview and estimate use the assembled units |
+| P3W-020 | P0 | W10 | Verified | Run reserves, calls the model with the assembled prompt and params, settles, and saves the asset |
+| P3W-021 | P0 | W10 | Verified | A provider failure refunds the whole hold and saves nothing; an invalid form never calls |
+| P3W-022 | P0 | W10 | Verified | Enhance rewrites only the prompt text fields, costs credits, and leaves choices alone |
+| P3W-023 | P0 | W10 | Verified | Values are AES-256-GCM encrypted at rest; list shows only the last four characters |
+| P3W-024 | P0 | W10 | Verified | A wrong KEY_VAULT_SECRET cannot decrypt; resolution falls back to the environment |
+| P3W-025 | P0 | W10 | Verified | Test makes the provider's cheapest call against the fake server; a bad key fails without leaking it |
+| P3W-026 | P0 | W10 | Verified | /v1/admin/keys is admin only; a key set there connects the provider; no answer or log holds it |
+| P3W-027 | P0 | W10 | Verified | Put, get, list by prefix, replace, remove and usage behave the same on every backend |
+| P3W-028 | P0 | W10 | Verified | The plan's storage limit is respected on put on every backend |
+| P3W-029 | P0 | W10 | Verified | The choice is per person and kept in prefs; Drive without a token is not connected |
+| P3W-030 | P0 | W10 | Verified | Failures lock the email, each further failure doubles the lock, and the window forgets old ones |
+| P3W-031 | P0 | W10 | Verified | The local backend says one sentence for an unknown email and a wrong password, and goes through the guard |
+| P3W-032 | P0 | W10 | Verified | A suspended person cannot sign in (told only after the right password); the server refuses suspended people and revoked sessions |
+| P3W-033 | P0 | W10 | Verified | The password rule at sign-up and reset comes from config |
+| P3W-034 | P0 | W10 | Verified | A valid proposal is checked with the editor validators and applies as ONE undo step |
+| P3W-035 | P0 | W10 | Verified | An invalid proposal is repaired once with the exact errors, then reported as one plain failure |
+| P3W-036 | P0 | W10 | Verified | Discarding leaves the project byte-identical; an unknown selection or a blocked plan makes no call |
+| P3W-037 | P0 | W10 | Verified | RemoteAsk charges each call on the server like any call |

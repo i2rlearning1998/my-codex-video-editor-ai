@@ -1,5 +1,15 @@
 # Changelog
 
+## Phase 3 integration (P3-INTEGRATION): the UI on the real services (5 Nov)
+
+- Part 1 (`codex/p3-engine`: payments, entitlements, admin API, Studio engine, memory) and Part 2 (`claude/p3-wiring`: Director and Studio services, vault, storage, editor chat engine) are merged into `claude/p3-ui` and reviewed against docs/CONTRACTS-P3.md section 7 (D-397).
+- The panel uses the real services when a gateway is given and the in-memory mocks otherwise; every limit is asked of the server and an unreachable server never lets a limit pass (D-398).
+- The admin page signs in through the server (admin role only, token held in memory) and uses the real admin API; chat and memory settings are read from and published to the live Platform Config (D-399).
+- The editor chat runs on the real engine: owner prompt from config, a connected real model before the offline one, a limit check per message, a charge per call, Apply as one undo step (D-400).
+- Review fixes: vault changes and settings saves are audit rows; partial refunds cannot exceed the payment; provider cost is recorded for the dashboard; one `POST /v1/entitlements/check` decides limits for browsers.
+- Found by the first merged build: server code reached the browser bundle through a glob; fixed (D-401). Known gaps are listed in D-402 and reports/P3-INTEGRATION.md.
+- Schema 9 unchanged; no new npm dependencies.
+
 ## Phase 3 UI (P3-UI): Director room, Studio, admin and chat dock (5 Nov)
 
 - Home is the Director room: an Orb that thinks, speaks and rests, streamed answers with chips, refusals in the owner's words, and project memory the person can see and remove (D-390, D-392).
