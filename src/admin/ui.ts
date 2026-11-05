@@ -218,12 +218,16 @@ export function seriesChart(
     });
     r.textContent = `$${(maxU * (1 - g / 4)).toFixed(0)}`;
   }
-  const area =
-    path(yC, 'credits') +
-    ` L${x(series.length - 1)} ${H - pad.b} L${x(0)} ${H - pad.b} Z`;
-  el('path', { d: area, class: 'area' });
-  el('path', { d: path(yC, 'credits'), class: 'line c' });
-  el('path', { d: path(yU, 'costUsd'), class: 'line u' });
+  // A range with no days yet (a new platform) draws the grid only: an empty
+  // path is not valid SVG.
+  if (series.length) {
+    const area =
+      path(yC, 'credits') +
+      ` L${x(series.length - 1)} ${H - pad.b} L${x(0)} ${H - pad.b} Z`;
+    el('path', { d: area, class: 'area' });
+    el('path', { d: path(yC, 'credits'), class: 'line c' });
+    el('path', { d: path(yU, 'costUsd'), class: 'line u' });
+  }
   const step = Math.max(1, Math.ceil(series.length / 6));
   series.forEach((s, i) => {
     if (i % step) return;

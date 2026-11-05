@@ -17,7 +17,8 @@ import {
   type FakeProviders,
 } from '../tests/fakes/providers';
 
-const SECRET = 'e2e-gateway-secret-0123456789abcdef';
+export const STACK_SECRET = 'e2e-gateway-secret-0123456789abcdef';
+const SECRET = STACK_SECRET;
 export interface Stack {
   readonly url: string;
   readonly fake: FakeProviders;

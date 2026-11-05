@@ -2,9 +2,10 @@
 // services (src/wiring over Part 1's engines), the real gateway server and the
 // FAKE provider servers. Nothing here is a live provider.
 import { createHash } from 'node:crypto';
-import { test, expect } from './fixtures';
+import { test, expect, allowError } from './fixtures';
 import { signUp } from './p2-helpers';
-import { startStack, type Stack } from './p2-stack';
+import { signLocalToken } from '../server/auth';
+import { startStack, STACK_SECRET, type Stack } from './p2-stack';
 
 let stack: Stack | null = null;
 test.afterEach(async () => {
@@ -73,4 +74,62 @@ test('[P3I-009] with a gateway server a Studio run goes through the real Studio 
   await expect(page.locator('#studio-saved')).toBeVisible({ timeout: 30_000 });
   const seen = stack.logs.join('\n');
   expect(seen).toMatch(/POST \/v1\/(run|reserve) 200/);
+});
+
+test('[P3I-010] the admin page on the real server: an admin token signs in, a settings save is published and lands in the audit chain, a person is refused', async ({
+  page,
+}) => {
+  stack = await startStack();
+  const admin = signLocalToken(STACK_SECRET, {
+    sub: 'admin-0000',
+    email: 'admin@example.test',
+    app_metadata: { role: 'admin' },
+  });
+  const person = signLocalToken(STACK_SECRET, {
+    sub: 'person-0000',
+    email: 'person@example.test',
+  });
+  await stack.use(page);
+  const give = (t: string) =>
+    page.addInitScript((v) => {
+      (window as { __AIVE_ADMIN_TOKEN__?: string }).__AIVE_ADMIN_TOKEN__ = v;
+    }, t);
+  // A plain person's token is refused by the server: no admin screens.
+  await give(person);
+  // The refusal IS the behaviour under test: the server answers 403 once.
+  allowError(
+    page,
+    (m) => m.includes('/v1/admin/emergency'),
+    'a non-admin token is refused by the server with 403, as designed',
+  );
+  await page.goto('/admin/');
+  await expect(page.locator('.ad-demo')).toHaveCount(0); // no demo hint
+  await page.locator('#ad-email').fill('person@example.test');
+  await page.locator('#ad-password').fill('x');
+  await page.locator('#ad-signin').click();
+  await expect(page.locator('#ad-gate-error')).not.toBeEmpty();
+  await expect(page.locator('#ad-outlet')).toHaveCount(0);
+  // An admin token signs in; the dashboard is read from the server.
+  await give(admin);
+  await page.goto('/admin/');
+  await page.locator('#ad-email').fill('admin@example.test');
+  await page.locator('#ad-password').fill('x');
+  await page.locator('#ad-signin').click();
+  await expect(page.locator('#ad-outlet')).toBeVisible();
+  await expect(page.locator('.ad-kpi[data-kpi="revenue"]')).toBeVisible();
+  // Saving a setting publishes the config and is audited.
+  await page.locator('a.ad-nav-item[data-route="settings"]').click();
+  await page.locator('#ad-set-chatMax').fill('37');
+  await page.locator('#ad-set-save').click();
+  await page.locator('#ad-reason').fill('Raise the chat limit');
+  await page.locator('#ad-dlg-confirm').click();
+  await expect(page.locator('#ad-dialog')).toHaveCount(0);
+  await page.locator('a.ad-nav-item[data-route="users"]').click();
+  await page.locator('a.ad-nav-item[data-route="settings"]').click();
+  await expect(page.locator('#ad-set-chatMax')).toHaveValue('37');
+  await page.locator('a.ad-nav-item[data-route="audit"]').click();
+  await expect(page.locator('#ad-chain')).toHaveClass(/ok/);
+  await expect(
+    page.locator('#ad-audit tr', { hasText: 'config.save' }).first(),
+  ).toBeVisible();
 });

@@ -142,8 +142,12 @@ function showGate(message?: string) {
             id: 'ad-signin',
             text: at('ad.signinBtn'),
           }),
-          h('p', { class: 'ad-demo', text: at('ad.demo') }),
-          h('p', { class: 'ad-demo hint mono', text: at('ad.demoHint') }),
+          ...(services.demo
+            ? [
+                h('p', { class: 'ad-demo', text: at('ad.demo') }),
+                h('p', { class: 'ad-demo hint mono', text: at('ad.demoHint') }),
+              ]
+            : []),
         ]
       : h('p', {
           class: 'ad-note warn',

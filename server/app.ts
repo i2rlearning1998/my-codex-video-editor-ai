@@ -675,6 +675,17 @@ export function createServerApp(o: ServerOptions) {
         .catch((e: Error) => {
           throw bad(e.message);
         });
+      // P3-INTEGRATION: an owner's settings change is in the audit chain.
+      await o.store.appendAudit({
+        at: new Date(now()).toISOString(),
+        actor: c.userId,
+        action: 'config.save',
+        target: `config:${v.version}`,
+        detail: {
+          reason: (typeof b.note === 'string' ? b.note : '').slice(0, 300),
+          published: b.publish === true,
+        },
+      });
       return { version: v.version };
     },
     'POST /v1/config/publish': async (b, c) => {
@@ -685,6 +696,13 @@ export function createServerApp(o: ServerOptions) {
           'Only the owner can change the settings.',
         );
       const live = await cfg.publish(n(b.version, 0, 1_000_000));
+      await o.store.appendAudit({
+        at: new Date(now()).toISOString(),
+        actor: c.userId,
+        action: 'config.publish',
+        target: `config:${live.version}`,
+        detail: {},
+      });
       return { version: live.version };
     },
   };
