@@ -68,7 +68,9 @@ const studios = createStudioService({
 
 - `gateway` is anything with `startJob` (Director) and `run` (Studio): the in-browser gateway or the remote one.
 - `entitlements` is Part 1's `EntitlementService` (only `check` is used); on the server `loadEntitlements(deps)`.
-- On the server, wrap the adapters for images and Studio parameters: `visionAdapters(serverAdapters({ env }), (p) => fetchTransport({ env, provider: p.name }))`. This line is outside the `P3-WIRING` block of `server/app.ts`, so it is **not** done yet (see the report).
+- Images and Studio parameters are added by the real adapters (`src/gateway/adapters/extras.ts`), so `serverAdapters` already carries them. `/v1/run` in `server/app.ts` still drops `images` and `params` when it rebuilds the request; that line is outside the `P3-WIRING` block (see the report).
+- The key vault keeps its sealed values through the Store's `putSecret`, `getSecret`, `listSecrets` and `deleteSecret` (Part 1, rev 1.2); until they exist the server uses an in-memory stand-in. `fetchTransport` takes an optional `resolveSecret` (vault first, then env).
+- The login guard takes `isSuspended(email)` (rev 1.3 note 8); wire it to Part 1's profile flag.
 
 ## Rules the code keeps
 

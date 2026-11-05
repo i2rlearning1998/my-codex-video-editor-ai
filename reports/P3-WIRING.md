@@ -25,7 +25,7 @@ Every brief item W1 to W9 is built. Ledger IDs P3W-001 to P3W-037 each have a pa
 | W9 editor chat engine | P3W-034 to P3W-037 | Verified (unit, real EditorEngine; real server with the fake Anthropic for charging) | `tests/p3-wiring/editor-chat.test.ts` |
 
 - Not done, with reason:
-  - **Vision and Studio parameters on the gateway server.** The server's adapters must be wrapped with `visionAdapters(...)`, and `/v1/run` must pass `images` and `params` through. Both lines are outside the `P3-WIRING` block of `server/app.ts`, so they are left to the integrator. The browser-side gateway and the tests use the wrapped adapters.
+  - **Pictures and Studio parameters through `/v1/run`.** Since contract rev 1.3 the adapters add images and form parameters themselves (`src/gateway/adapters/extras.ts`), so the server's own adapters can carry them. But `/v1/run` in `server/app.ts` rebuilds the request from known fields and drops `images` and `params`. That line is outside the `P3-WIRING` block, so it is left to the integrator. Calls made in the same process as the gateway (the Director and Studio services with an in-process gateway, as in the tests) carry them.
   - **PDF.** Built without a dependency, but it reads only simple PDFs (standard-encoded text, uncompressed or Flate). PDFs with custom font encodings (common for Hindi), scanned or encrypted PDFs are refused with "No text could be read from this PDF. Paste the text instead."
 
 ### Ledger rows (ready to paste into `docs/FEATURES.md`, new section "P3-WIRING")
@@ -86,21 +86,29 @@ One full `npm run verify` ran at the end (1 h 30 min). It exited 1. Then only th
 - Ledger (`npm run ledger`, the last step of verify): refuses the 37 new IDs ("test references unknown ledger ID P3W-0xx"), because `docs/FEATURES.md` is the integrator's file. With the rows of section 2 pasted in (done locally, then reverted) it says **"Ledger OK"**. So the blocked step is the ledger, and pasting the rows unblocks it.
 - CI: not checked (LIMIT MODE: local verify is the gate; the branch is not pushed).
 
+**After the contract update (rev 1.2 and 1.3).** The full verify above ran before it. LIMIT MODE allows one full verify, so after the changes these ran:
+- `npm run check`: passed. Format, typecheck and build passed; 196 test files, 1,453 tests passed and 2 skipped (now including 48 P3-WIRING tests); the bundle check passed.
+- The e2e files that use the changed adapters (`p2-panel`, `p2-director`, `p2-limits`, `p2-server`): 16 passed, 1 failed. The failure is P2R2-008, which fails the same way on the base branch (above).
+- The full e2e suite was not re-run after the update.
+
 ## 4. Try-it script for the owner
 
 This part has no screens, so there is nothing to click yet. The integrator's Part 3 report will have the try-it script. What can be run now:
 
 | # | Do this | Expect | ID | Ran it | Screenshot |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `npx vitest run tests/p3-wiring` | 46 tests pass, all against local fakes | P3W-001 to P3W-037 | Y | none (no UI) |
+| 1 | `npx vitest run tests/p3-wiring` | 48 tests pass, all against local fakes | P3W-001 to P3W-037 | Y | none (no UI) |
 
 ## 5. Deviations from the brief
 
 - **`tests/panel/isolation.test.ts`** (not a Part 2 file): one line adds `src/wiring` to the list of panel-side folders. Without it, the existing import-boundary test counts the Director and Studio services as editor code, because they use the gateway and Director. The editor still imports none of them; `src/editor-chat` (editor side) imports no gateway, Director or panel code.
 - **`server/app.ts`**: besides mounting the routes, four small `P3-WIRING` blocks were needed: an import; the vault setup (it replaces the server's env with the vault-first view); a JSON body reader for PUT and DELETE (the server read POST bodies only); and PUT and DELETE in the CORS methods header. No existing line changed.
-- **Gateway adapters** (`src/gateway/**`, not a Part 2 file): the brief asks to extend the Anthropic, OpenAI and Gemini request builders. To stay inside Part 2's files this is done by wrapping them (`src/wiring/vision.ts`): the wrappers reuse each adapter's own request and parse code and add the images in the documented shapes. `src/gateway` is unchanged.
-- **Key vault store**: the brief says the sealed values go "in the Store". `server/store.ts` is not a Part 2 file, so the vault has its own small store: a `keys.json` file next to the server's data (mode 600), or memory when the server's store is in memory. A Supabase table for the vault is not built.
-- **Audit rows**: Part 1's chained audit log is not merged yet. Until it is, the vault's rows go to the server log (names, reasons and the last four characters only). `p3Setup` takes the real `audit` function as its last argument.
+- **Gateway adapters** (rev 1.3 note 2 gives `src/gateway/adapters/**` to Part 2, additive only): the request builders add images (Anthropic, OpenAI and OpenAI-shaped, Gemini) and Studio parameters through one new file, `extras.ts`, called from `httpAdapter`; a request without extras is built exactly as before. `transport.ts` gains only an optional `resolveSecret` (vault first, then env). Nothing else in `src/gateway` changed.
+- **Key vault store** (rev 1.2): the sealed values go through the Store's `putSecret`, `getSecret`, `listSecrets` and `deleteSecret`, which Part 1 adds. Until Part 1 is merged the server uses an in-memory stand-in with the same methods, so vault keys last only until a restart (the server logs this once). `listSecrets()` is taken to return the stored names; the integrator reconciles it with Part 1's final signature. The last key test result is kept in memory only (the Store record has no field for it). `server/store*.ts` and the env files are untouched.
+- **The server's env view**: `server/adapters.ts` (not a Part 2 file) builds its transports from an env object, so the vault is wired in by giving the server a vault-first env view. The new `resolveSecret` option in `transport.ts` does the same job directly and is tested; the integrator may switch `serverAdapters` to it.
+- **Audit rows** (rev 1.3 note 9): typed `Omit<AuditRow, 'seq' | 'hash' | 'prevHash'>`. Part 1's chained audit log is not merged yet; until it is, the vault's rows go to the server log (names, reasons and the last four characters only). `p3Setup` takes the real `audit` function as its last argument.
+- **Env names** (rev 1.3 note 3): Part 2 adds one variable, `KEY_VAULT_SECRET`. Part 1 owns `.env.example`, `scripts/keys.json` and `docs/KEYS.md` and adds it there.
+- **Base commit** (rev 1.3 note 1): the branch was rebased (my own unpushed commits only) from `claude/phase2-r3-ui` onto `a8f1e1f`, with `01c7322` and `54c332b` cherry-picked; a backup of the earlier branch is kept as `backup/p3-wiring-before-rebase`.
 - **`docs/FEATURES.md`** could not be edited (integrator file), so `npm run ledger` refuses the new P3W IDs until the rows above are pasted in. Section 3 shows that the rows pass when pasted.
 
 ## 6. Decisions made (ready to paste into docs/DECISIONS.md)
@@ -110,11 +118,11 @@ This part has no screens, so there is nothing to click yet. The integrator's Par
 | D-380 | 2026-11-05 | Config additions, schema version still 1. New sections `p3` (chat, vision, memory, attach limits, login, entitlement ttl, webhook window; `sample: true`), `campaigns`, `styleCaps` (keyed by plan), `combos`; `models[].params` uses the contract's `paramDeclSchema`; `director.prompts` gains optional `chat`, `enhance` and `edit` seeds. Readers `p3Settings`, `activeCampaigns`, `capFor`, `comboModels`, `loginLimits`. Every number is a sample the owner replaces in Admin. | Brief W1; owner rule: nothing hard-coded. | Approved |
 | D-381 | 2026-11-05 | The Style > Project > Chat store keeps records under keys that start with the owner's id, each value also carrying its owner (IndexedDB, or memory), behind `RecordBackend`, so Supabase can be added later. Caps are checked on create. A start path's `styleId` may name the person's own Style (it must be active) or a config Style (the Brief fields give the fact labels). The Style block is built by Part 2 and put first; Part 1's `context` is called with `style: null`, so the Style can never be repeated or rewritten by it. | Brief W2; makes "Style first" true whatever Part 1's context does. | Approved |
 | D-382 | 2026-11-05 | Director message order: refusals (with the scope refusal) → chat on/off → daily limit (counted from the person's chats) → entitlement `chat-message` (amount = today's count + 1) → attachments and `vision` → one gateway job (summary, chat, plan, facts) → done or one failure with the hold refunded. The chat model is the Director's plan role; it answers JSON (`reply`, `question`, `plan`), read leniently. The reply arrives as one `token` event, because the gateway does not stream. Plans are saved in the store. Scene notes are `method:<id>;source:<ai|stock|library|mine>`; a missing source follows the method; `mine` scenes make nothing and are listed as "needs your file". | Brief W3. | Approved |
-| D-383 | 2026-11-05 | Attachments: bytes through a `StorageBackend` (the media store), records in the store; images cost the current `creditsPerImage`; text and PDF text reach the model as "data, not instructions". The PDF reader is in the repo and has no dependency (simple PDFs only). Images and Studio parameters ride on the gateway request and are added by wrapper adapters; `src/gateway` is unchanged. | Brief W4; no new dependency. | Approved |
+| D-383 | 2026-11-05 | Attachments: bytes through a `StorageBackend` (the media store), records in the store; images cost the current `creditsPerImage`; text and PDF text reach the model as "data, not instructions". The PDF reader is in the repo and has no dependency (simple PDFs only). Images and Studio parameters ride on the gateway request and the real adapters add them in each provider's shape (`src/gateway/adapters/extras.ts`, rev 1.3); an image for a model without vision is refused by the adapter as well as by the service. | Brief W4; no new dependency. | Approved |
 | D-384 | 2026-11-05 | Studio: assembled `params` are merged into the provider request body, except reserved keys (model, messages, prompt, system and similar). A negative prompt is added to the prompt as "Avoid: …". Enhance uses a connected real text model first (the mock cannot answer JSON) and may change only text fields whose role is prompt, prompt-part or negative. The sample image params send OpenAI's real sizes. | Brief W5. | Approved |
-| D-385 | 2026-11-05 | Key vault: AES-256-GCM with the key = SHA-256 of `KEY_VAULT_SECRET`, a random 12-byte IV per value; sealed values in `keys.json` next to the server data; only names that are a provider `keyRef` can be set or resolved, so the vault can never replace `LOCAL_AUTH_SECRET` or another secret; the server env becomes a vault-first view; Test is one tiny request to the provider's cheapest model (a cut-off answer still counts as accepted). | Brief W6; `server/store.ts` is not a Part 2 file. | Approved |
+| D-385 | 2026-11-05 | Key vault: AES-256-GCM with the key = SHA-256 of `KEY_VAULT_SECRET`, a random 12-byte IV per value; sealed values (`{ciphertext, iv, tag, last4, updatedAt}`) through the Store's secret methods (rev 1.2; an in-memory stand-in until Part 1 is merged); only names that are a provider `keyRef` can be set or resolved, so the vault can never replace `LOCAL_AUTH_SECRET` or another secret; the server env becomes a vault-first view; Test is one tiny request to the provider's cheapest model (a cut-off answer still counts as accepted). | Brief W6; `server/store.ts` is not a Part 2 file. | Approved |
 | D-386 | 2026-11-05 | Storage backends: local keeps files as `stored/<base64url path>` in the media store; platform keeps them as cloud media with the fingerprint `p3-<sha256 of the path>` and the path as the name; Drive keeps them in one app folder (`drive.file` scope, token from the caller). Every put checks the plan's limit (usage minus the replaced file plus the new bytes). The default choice is platform, kept per person in prefs. | Brief W7. | Approved |
-| D-387 | 2026-11-05 | Sign-in guard: failures counted per email and per IP in a window; a lock begins at the limit and doubles with each further failure, up to a maximum; success clears the email, not the IP. Suspension is told only after the right password. The server refuses suspended people and tokens issued before a password change (hooks `suspended`, `sessionsValidFrom`). Supabase: Supabase Auth checks passwords and rate-limits on its own server; this guard is an extra lock in the browser, and a password change also signs out the person's other sessions (`signOut({ scope: 'others' })`). | Brief W8; does not claim more than the browser can enforce. | Approved |
+| D-387 | 2026-11-05 | Sign-in guard: failures counted per email and per IP in a window; a lock begins at the limit and doubles with each further failure, up to a maximum; success clears the email, not the IP. Suspension is told only after the right password. Suspension comes from an injected `isSuspended(email)` on the guard (rev 1.3 note 8; the guard never reads the Store). The server refuses suspended people and tokens issued before a password change (hooks `suspended`, `sessionsValidFrom`). Supabase: Supabase Auth checks passwords and rate-limits on its own server; this guard is an extra lock in the browser, and a password change also signs out the person's other sessions (`signOut({ scope: 'others' })`). | Brief W8; does not claim more than the browser can enforce. | Approved |
 | D-388 | 2026-11-05 | Editor chat engine: proposals may use only 17 command types (properties, names, timing, keyframes, clip settings, a scene's background, markers) and only the selected scenes; every proposal is checked with `EditorEngine.preview`; one repair with the exact errors; a proposal is checked again if the project changed before `apply`. The model call is injected (`remoteAsk` uses the server's `/v1/run`), so editor code imports no gateway or Director. | Brief W9; editor bundle rules. | Approved |
 | D-389 | 2026-11-05 | Process: `src/wiring` is panel and server code in the isolation test; the P3W ledger rows are in this report for the integrator; nothing in the editor imports `src/wiring` or `src/editor-chat` yet, so neither is in the editor's bundle (the build's bundle check passes). | CONTRACTS-P3 section 3. | Approved |
 
@@ -125,11 +133,12 @@ This part has no screens, so there is nothing to click yet. The integrator's Par
 - **Supabase:** the sign-in guard, the password rule and "sign out other sessions" in `src/cloud/supabase.ts` are built but not run, not even against the stand-in.
 - **IndexedDB store** (`indexedDbBackend`) is not run in tests (no IndexedDB in Node); the same store logic is tested on the memory backend.
 - **Built against stand-ins for Part 1:** the memory engine (`summarise`, `context`, `extractFacts`, `distillStyle`), the Studio engine (`buildForm`, `visible`, `defaults`, `validate`, `assemble`) and the entitlement service (`check`). When Part 1 merges, its own behaviour (for example how it assembles prompts) may change results; the wiring itself does not depend on those details.
-- **Server-side vision and Studio parameters** are not wired (section 2).
+- **Pictures and Studio parameters through `/v1/run`** are dropped by that route (section 2).
+- **Vault keys on the real server** last only until a restart, until Part 1's Store secret methods are merged.
 - **Streaming:** replies arrive as one `token` event, not word by word.
 - **Session revocation in the local backend:** it keeps one session per browser, so "other sessions" do not exist there; the server and Supabase paths carry the rule.
 - **PDF:** custom-encoded (common for Hindi), scanned and encrypted PDFs are refused.
-- **Concurrency:** chat daily counts and caps are checked per browser store, not across devices; the server's entitlement check (Part 1) is the authority.
+- **Concurrency:** caps are checked per browser store, not across devices. The daily chat limit is counted by Part 1's `check(userId, 'chat-message')`, called exactly once per message (rev 1.3 note 5); the local count only refuses early.
 - **Base-branch failures for the backlog:** P2R2-034 (panel home 14 px too wide at 360 px) and P2R2-008 (the server e2e) fail on `claude/phase2-r3-ui` too; they belong in the known list next to F2-012, LIB-024 and the FX4 ones.
 - **No e2e:** this part has no screens. Its behaviour in a real browser is tested when Part 3 switches the UI to these services.
 
@@ -138,7 +147,7 @@ This part has no screens, so there is nothing to click yet. The integrator's Par
 - Schema version change: none (project schema 9; config schema 1, additive).
 - New dependencies: none.
 - Files added: `src/wiring/**`, `src/editor-chat/index.ts`, `src/storage-backends/index.ts`, `src/cloud/login-guard.ts`, `server/keys/index.ts`, `server/keys/mount.ts`, `tests/p3-wiring/**`, `docs/P3-WIRING.md`, this report.
-- Files changed: `src/platform-config/{schema,defaults,prompts,resolve}.ts`, `src/director/{planner,llm-planner,build}.ts`, `src/cloud/{local,supabase}.ts`, `server/auth.ts`, the `P3-WIRING` blocks of `server/app.ts`, `tests/panel/isolation.test.ts` (one line, section 5).
+- Files changed: `src/gateway/adapters/{http,transport}.ts` (additive, rev 1.3; plus the new `extras.ts`), `src/platform-config/{schema,defaults,prompts,resolve}.ts`, `src/director/{planner,llm-planner,build}.ts`, `src/cloud/{local,supabase}.ts`, `server/auth.ts`, the `P3-WIRING` blocks of `server/app.ts`, `tests/panel/isolation.test.ts` (one line, section 5).
 - Contracts touched: none. `src/contracts/p3.ts` is unchanged, and the code compiles against it without `any`.
 
 ## 9. Ledger and backlog
@@ -149,17 +158,21 @@ This part has no screens, so there is nothing to click yet. The integrator's Par
 
 ## 10. Git
 
-- Branch: `claude/p3-wiring` (from `claude/phase2-r3-ui`). No tag, no review patch (CONTRACTS-P3 section 3). Not pushed: the brief says to push only if the owner asks.
-- Commits (oldest first):
-  - `e37144b feat(config): P3 settings, model params, campaigns, style caps, combos [P3W-001..004]`
-  - `688db13 feat(wiring): Style > Project > Chat store, caps, start paths, Style drafts [P3W-005..008]`
-  - `3d10e39 feat(director): Director service, scope gate, per-scene source, chat prompt in config [P3W-009..015]`
-  - `6377918 test(panel): src/wiring is panel and server code in the isolation check [P2R1-021]`
-  - `e7124db feat(wiring): attach and vision: limits, PDF text without a dependency, vision request shapes, vision cost [P3W-016..018]`
-  - `9e3e181 feat(wiring): Studio service: form from model params, estimate, run with settle and refund, Enhance [P3W-019..022]`
-  - `dcebd1f feat(server): key vault, AES-256-GCM at rest, vault-first key resolution, /v1/admin/keys [P3W-023..026]`
-  - `e828b9e feat(storage): platform, local and Drive storage backends with the plan's storage limit [P3W-027..029]`
-  - `d1f8e45 feat(auth): sign-in guard with growing locks, one failure sentence, suspended and revoked sessions refused, password rule from config [P3W-030..033]`
-  - `329f825 feat(editor-chat): select-and-edit engine: proposals checked by the editor validators, one repair, one undo step [P3W-034..037]`
-  - `1c2ed31 fix(auth): keep the sign-in failure sentence as it was; literal storage test titles [P2R1-018][P3W-027][P3W-028]`
-  - plus this report's commit
+- Branch: `claude/p3-wiring` (from `a8f1e1f` plus the cherry-picked `01c7322` and `54c332b`, CONTRACTS-P3 rev 1.3 note 1). No tag, no review patch (CONTRACTS-P3 section 3). Not pushed: the brief says to push only if the owner asks.
+- Commits on top of `a8f1e1f` (oldest first):
+  - `119526d feat(config): P3 settings, model params, campaigns, style caps, combos [P3W-001..004]`
+  - `6e9e009 feat(wiring): Style > Project > Chat store, caps, start paths, Style drafts [P3W-005..008]`
+  - `31faa70 feat(director): Director service, scope gate, per-scene source, chat prompt in config [P3W-009..015]`
+  - `70ecd1a test(panel): src/wiring is panel and server code in the isolation check [P2R1-021]`
+  - `ab6a867 feat(wiring): attach and vision: limits, PDF text without a dependency, vision request shapes, vision cost [P3W-016..018]`
+  - `0e53e34 feat(wiring): Studio service: form from model params, estimate, run with settle and refund, Enhance [P3W-019..022]`
+  - `ce3d5fa feat(server): key vault, AES-256-GCM at rest, vault-first key resolution, /v1/admin/keys [P3W-023..026]`
+  - `e0d65b6 feat(storage): platform, local and Drive storage backends with the plan's storage limit [P3W-027..029]`
+  - `2493a99 feat(auth): sign-in guard with growing locks, one failure sentence, suspended and revoked sessions refused, password rule from config [P3W-030..033]`
+  - `345c16e feat(editor-chat): select-and-edit engine: proposals checked by the editor validators, one repair, one undo step [P3W-034..037]`
+  - `086af55 fix(auth): keep the sign-in failure sentence as it was; literal storage test titles [P2R1-018][P3W-027][P3W-028]`
+  - `52322a6 docs(report): P3-WIRING report with decisions D-380 to D-389 and ledger rows P3W-001 to P3W-037`
+  - `67e2dd4 docs(p3): Part 1 owns server/store*.ts; contract rev 1.2 adds Store secret methods [P3U-005]`
+  - `35963be docs(p3): contract rev 1.3, second read of both briefs: base commit, gateway and env-name ownership, Store additions, chat counting, no double monthly grant, admin route fall-through`
+  - `ce74234 feat(wiring): follow contract rev 1.2 and 1.3: vision in the adapters, injected secret resolver, vault through Store secret methods, injected isSuspended, chat counted once [P3W-018][P3W-023..026][P3W-010][P3W-032]`
+  - plus this report's update
