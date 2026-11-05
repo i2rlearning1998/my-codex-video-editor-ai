@@ -184,9 +184,19 @@ export function createPaymentService(d: PaymentDeps) {
             'malformed',
             'The refunded payment was not found.',
           );
+        // P3-INTEGRATION: all refunds of one payment together may not exceed it.
+        const refundedBefore = previous
+          .filter(
+            (p) =>
+              p.event.provider === e.provider &&
+              p.event.paymentId === e.paymentId &&
+              p.event.type === 'refund.succeeded',
+          )
+          .reduce((s, p) => s + p.event.amount.amountMinor, 0);
         if (
           e.amount.currency !== original.event.amount.currency ||
-          e.amount.amountMinor > original.event.amount.amountMinor
+          refundedBefore + e.amount.amountMinor >
+            original.event.amount.amountMinor
         )
           throw new WebhookError(
             'amount-mismatch',

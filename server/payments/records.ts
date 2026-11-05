@@ -107,21 +107,40 @@ export function paymentRow(
       p.creditsDelta > 0,
   );
   const given = paid.reduce((s, p) => s + p.creditsDelta, 0);
-  const taken = previous
-    .filter(
-      (p) =>
-        p.event.provider === e.provider &&
-        p.event.paymentId === e.paymentId &&
-        p.creditsDelta < 0,
-    )
-    .reduce((s, p) => s - p.creditsDelta, 0);
   const available = Math.max(
     0,
     ledger.reduce((s, r) => s + r.delta, 0),
   );
+  // P3-INTEGRATION: revoke in proportion to the money refunded. The share of
+  // credits owed after this refund minus the share owed before it, so several
+  // partial refunds add up to the grant exactly and never take it twice.
+  const original = previous.find(
+    (p) =>
+      p.event.provider === e.provider &&
+      p.event.paymentId === e.paymentId &&
+      (p.event.type === 'payment.succeeded' ||
+        p.event.type === 'subscription.renewed'),
+  );
+  const paidMinor = original?.event.amount.amountMinor ?? 0;
+  const refundedBefore = previous
+    .filter(
+      (p) =>
+        p.event.provider === e.provider &&
+        p.event.paymentId === e.paymentId &&
+        p.event.type === 'refund.succeeded',
+    )
+    .reduce((s, p) => s + p.event.amount.amountMinor, 0);
+  const owedAt = (refundedMinor: number) =>
+    paidMinor > 0
+      ? Math.floor((given * Math.min(refundedMinor, paidMinor)) / paidMinor)
+      : given;
   const wanted =
     e.type === 'refund.succeeded' && input.revoke
-      ? Math.max(0, given - taken)
+      ? Math.max(
+          0,
+          owedAt(refundedBefore + e.amount.amountMinor) -
+            owedAt(refundedBefore),
+        )
       : 0;
   let delta =
     e.type === 'refund.succeeded'

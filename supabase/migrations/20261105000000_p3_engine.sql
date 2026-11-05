@@ -60,7 +60,7 @@ begin
  return jsonb_build_object('claimed',inserted,'operation',to_jsonb(op));
 end $$;
 create function public.p3_commit_payment(input jsonb) returns jsonb language plpgsql as $$
-declare e jsonb:=input->'event'; u uuid:=(e->>'userId')::uuid; p text:=e->>'provider'; eid text:=e->>'eventId'; lk text:=input->>'ledgerKey'; v_delta integer:=0; wanted integer:=0; available integer; given integer; taken integer; receipt jsonb;
+declare e jsonb:=input->'event'; u uuid:=(e->>'userId')::uuid; p text:=e->>'provider'; eid text:=e->>'eventId'; lk text:=input->>'ledgerKey'; v_delta integer:=0; wanted integer:=0; available integer; given integer; taken integer; paid bigint; refunded bigint; receipt jsonb;
 begin
  -- Same user lock for payment/adjust writes. Existing gateway inserts are additionally checked below.
  perform 1 from public.profiles where id=u for update;
@@ -68,7 +68,15 @@ begin
  if exists(select 1 from public.payments where provider=p and event_id=eid) then return jsonb_build_object('applied',false,'duplicate',true,'creditsDelta',0); end if;
  select coalesce(sum(greatest((record->>'creditsDelta')::integer,0)),0),coalesce(sum(greatest(-(record->>'creditsDelta')::integer,0)),0) into given,taken from public.payments where provider=p and record->'event'->>'paymentId'=e->>'paymentId';
  select greatest(coalesce(sum(delta),0),0) into available from public.credit_ledger where user_id=u;
- if e->>'type'='refund.succeeded' and (input->>'revoke')::boolean then wanted:=greatest(given-taken,0);v_delta:=-least(wanted,available);
+ if e->>'type'='refund.succeeded' and (input->>'revoke')::boolean then
+ -- Revoke in proportion to the money refunded (same rule as server/payments/records.ts).
+ select coalesce(max((record->'event'->'amount'->>'amountMinor')::bigint) filter (where record->'event'->>'type' in ('payment.succeeded','subscription.renewed')),0),
+  coalesce(sum((record->'event'->'amount'->>'amountMinor')::bigint) filter (where record->'event'->>'type'='refund.succeeded'),0)
+  into paid,refunded from public.payments where provider=p and record->'event'->>'paymentId'=e->>'paymentId';
+ if paid>0 then
+  wanted:=greatest(floor(given::numeric*least(refunded+(e->'amount'->>'amountMinor')::bigint,paid)/paid)-floor(given::numeric*least(refunded,paid)/paid),0)::integer;
+ else wanted:=given; end if;
+ v_delta:=-least(wanted,available);
  elsif e->>'type' in ('payment.succeeded','subscription.renewed') and given=0 then v_delta:=(input->>'credits')::integer; end if;
  if exists(select 1 from public.credit_ledger where user_id=u and key=lk) then v_delta:=0; end if;
  if v_delta<>0 then
