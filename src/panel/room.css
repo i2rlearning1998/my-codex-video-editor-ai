@@ -27,7 +27,7 @@
 .room::before {
   content: '';
   position: absolute;
-  inset: -80px -40px auto;
+  inset: -80px 0 auto;
   height: 520px;
   z-index: -1;
   pointer-events: none;
@@ -363,4 +363,24 @@
 }
 .home-below {
   margin-top: 28px;
+}
+
+/* Phones: one start card per row, nothing wider than the screen. */
+.room,
+.room-hero,
+.room-input,
+.room-memory {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 640px) {
+  .room-starts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .room-greeting {
+    font-size: clamp(26px, 8vw, 34px);
+  }
+  .room-msg {
+    max-width: 100%;
+  }
 }
