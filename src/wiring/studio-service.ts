@@ -41,12 +41,15 @@ import { failure, failureOf } from './errors';
 import { p3t } from './director-service';
 import { paramsRequest } from './vision';
 
+/** What a Studio run needs from the gateway's answer. */
+export type StudioRun = Pick<RunResult, 'result' | 'credits'>;
 export interface StudioDeps {
   readonly config: () => PlatformConfig;
   readonly userId: () => string | null;
   readonly plan: () => Plan;
   readonly engine: StudioEngine;
-  readonly gateway: { run(x: RunInput): Promise<RunResult> };
+  // P3-INTEGRATION: the panel's server gateway answers without a reservation id.
+  readonly gateway: { run(x: RunInput): Promise<StudioRun> };
   /** Whether a model can be called now (its provider's key is present). */
   readonly connected: (modelId: string) => boolean;
   readonly entitlements?: Pick<EntitlementService, 'check'>;
@@ -305,7 +308,7 @@ export function createStudioService(d: StudioDeps): StudioService {
       const a = d.engine.assemble(form, values);
       const r = range(p.c, p.studio, p.model, a);
       yield { type: 'progress', pct: 5 };
-      let res: RunResult;
+      let res: StudioRun;
       try {
         res = await d.gateway.run({
           userId,

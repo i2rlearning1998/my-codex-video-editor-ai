@@ -200,7 +200,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
       ctx.s.saveAsset(asset);
       return asset.id;
     };
-    const svc = studioService(save);
+    const svc = await studioService(ctx, save);
     const models = svc ? await svc.models(s.id) : [];
     if (svc && models.length) {
       await modelStudio({

@@ -6,7 +6,11 @@ import type { Page } from '@playwright/test';
 import { createAuth } from '../server/auth';
 import { createServerApp, listen } from '../server/app';
 import { memoryStore } from '../server/store';
-import { defaultConfig, type PlatformConfig } from '../src/platform-config';
+import {
+  defaultConfig,
+  p3Settings,
+  type PlatformConfig,
+} from '../src/platform-config';
 import {
   fakeBase,
   startFakeProviders,
@@ -42,6 +46,7 @@ export async function startStack(
     AUTH_MODE: 'local',
     LOCAL_AUTH_SECRET: SECRET,
     LOCAL_TOKENS: '1',
+    ENTITLEMENT_SECRET: 'e2e-entitlement-secret-0123456789abcdef',
     SERVER_ORIGINS: `http://127.0.0.1:${process.env.E2E_PORT ?? 4173}`,
   };
   for (const k of keys) env[k] = fake.key;
@@ -62,6 +67,7 @@ export async function startStack(
   const app = createServerApp({
     store,
     env,
+    p3Settings: () => p3Settings(app.config.current().config),
     authenticate: createAuth({ mode: 'local', hsSecret: SECRET }),
     log: (l) => logs.push(l),
     adapterOptions: {

@@ -8,7 +8,7 @@ import type { Screen } from '../app';
 import { empty, when } from './common';
 
 export const projectMemoryScreen: Screen = async (ctx, args, out) => {
-  const svc = directorService();
+  const svc = await directorService(ctx);
   const projectId = args[0] ?? '';
   let memory: ProjectMemory = await svc.memory(projectId);
 

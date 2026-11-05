@@ -36,7 +36,7 @@ export const directorRoomScreen = async (
   out: HTMLElement,
   opts: RoomOptions = {},
 ): Promise<void> => {
-  const svc = directorService();
+  const svc = await directorService(ctx);
   const c = ctx.s.config;
   const styleId = args[0] ?? c.styles[0]?.id ?? '';
 

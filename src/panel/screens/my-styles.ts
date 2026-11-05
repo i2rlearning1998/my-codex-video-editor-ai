@@ -55,7 +55,7 @@ export const styleBadge = (s: StyleRecord) =>
 
 /** The list shown on Styles and on its own route. */
 export async function mineList(ctx: Ctx, into: HTMLElement): Promise<number> {
-  const list = await directorService().listStyles();
+  const list = await (await directorService(ctx)).listStyles();
   clear(
     into,
     ...(list.length
@@ -102,8 +102,8 @@ export const myStylesScreen: Screen = async (ctx, _a, out) => {
   await mineList(ctx, grid);
 };
 
-export const styleReviewScreen: Screen = async (_ctx, args, out) => {
-  const svc = directorService();
+export const styleReviewScreen: Screen = async (ctx, args, out) => {
+  const svc = await directorService(ctx);
   const id = args[0] ?? '';
   const found = (await svc.listStyles()).find((s) => s.id === id);
   if (!found) {

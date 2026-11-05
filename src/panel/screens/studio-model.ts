@@ -29,7 +29,7 @@ export type ModelStudioArgs = {
 
 export async function modelStudio(a: ModelStudioArgs): Promise<void> {
   const { ctx, svc, studioId, models } = a;
-  const engine = studioEngine();
+  const engine = await studioEngine(ctx);
   const say = (x: Txt | undefined): string =>
     x ? ctx.say({ en: x.en, ...(x.hi ? { hi: x.hi } : {}) }) : '';
   let modelId = (models.find((m) => !m.locked && m.connected) ?? models[0]!).id;
