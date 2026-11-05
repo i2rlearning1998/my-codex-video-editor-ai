@@ -1,6 +1,7 @@
 // P3U: the admin page. Runs on the in-memory demo admin (dev pages only); the
 // real server client replaces it later. Every change needs a reason.
-import { test, expect, type Page } from './fixtures';
+import type { Page } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 const SHOTS = process.env.P3U_SHOTS ?? '';
 

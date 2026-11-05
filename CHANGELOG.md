@@ -1,5 +1,13 @@
 # Changelog
 
+## Phase 3 UI (P3-UI): Director room, Studio, admin and chat dock (5 Nov)
+
+- Home is the Director room: an Orb that thinks, speaks and rests, streamed answers with chips, refusals in the owner's words, and project memory the person can see and remove (D-390, D-392).
+- Studio forms follow the chosen model, check required fields before running and show the cost first (D-391). Credits & Plan, My Styles, Settings, Brand Kit preview, Learn and Asset Library are restyled (D-396).
+- A new `/admin/` page for the owner: dashboard, people, flags, audit log, emergency switches and chat settings; every change needs a reason (D-393). It runs on sample data until the server client is connected.
+- The editor has a chat dock with selection chips, proposals with Apply and Discard, and owner limits (D-395). Website pricing lists each plan's features (D-394).
+- On a phone the bottom navigation fits and Studio tools sit two to a row. Schema 9 unchanged; no new npm dependencies.
+
 ## Phase 2 round 2 (P2-R2): real connections, tested without keys (1 Nov)
 
 - A gateway server (`npm run server`) holds every provider key by name in its environment, checks the sign-in, keeps credits under a per-person lock and enforces the plan (D-355).

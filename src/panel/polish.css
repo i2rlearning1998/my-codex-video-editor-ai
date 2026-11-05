@@ -155,3 +155,22 @@
 .assets-empty p {
   margin: 0;
 }
+
+/* ---- phone: the bottom nav fits every item; Studio tools sit two to a row ---------------- */
+@media (max-width: 720px) {
+  .side {
+    overflow-x: hidden;
+  }
+  .nav-item {
+    flex: 1 1 0;
+    min-width: 36px;
+  }
+  .tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .tool {
+    min-height: 112px;
+    padding: 14px;
+  }
+}

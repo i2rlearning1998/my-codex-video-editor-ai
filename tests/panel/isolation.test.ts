@@ -18,6 +18,7 @@ const imports = (f: string) =>
     ),
   ].map((m) => path.normalize(path.join(path.dirname(f), m[1]!)));
 const PANEL_SIDE = [
+  'src/admin',
   'src/panel',
   'src/site',
   'src/gateway',
@@ -31,6 +32,7 @@ describe('P2-R1 page isolation', () => {
       if (PANEL_SIDE.some((d) => f.startsWith(d))) continue;
       for (const target of imports(f))
         for (const d of [
+          'src/admin',
           'src/panel',
           'src/site',
           'src/gateway',
@@ -40,6 +42,7 @@ describe('P2-R1 page isolation', () => {
           expect(target.startsWith(d), `${f} imports ${target}`).toBe(false);
     }
     for (const f of [
+      ...files('src/admin'),
       ...files('src/panel'),
       ...files('src/site'),
       ...files('src/gateway'),

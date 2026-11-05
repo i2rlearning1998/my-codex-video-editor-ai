@@ -1365,3 +1365,38 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P2R3-003 | P0 | W10 | Verified | The message box has a + menu (notes file, Asset Library text), a model picker from the config (locked and unconnected shown), voice typing where the browser has it |
 | P2R3-004 | P0 | W10 | Verified | Live Build draws each scene from the plan's own layers through the editor's layout code (a layout preview, not the editor's render); the film strip fills as scenes finish and the percent reaches 100 |
 | P2R3-005 | P0 | W10 | Verified | The Brief Room is restyled (numbered glass sections, pill choices, a strength meter that fills as the idea is typed, a pill model picker); the top bar changes language at once when Settings is saved; light theme keeps text readable on cards and fields |
+| P3U-001 | P0 | W10 | Verified | The Director room: the Orb thinks, speaks and rests; the answer streams, offers chips, and the memory can be seen and removed |
+| P3U-002 | P0 | W10 | Verified | A refusal never waits for a model: the Orb shows it, the owner words appear, and an alternative is offered |
+| P3U-003 | P0 | W10 | Verified | A failed answer says so in one sentence and Try again sends the same message |
+| P3U-004 | P0 | W10 | Verified | Settings > Animations Off turns the Orb into a still picture, On brings it back, and a hidden tab pauses it |
+| P3U-005 | P0 | W10 | Verified | Home is the Director room: no separate Director menu item, the Styles and Continue strips sit below, and they hide once a chat starts |
+| P3U-006 | P0 | W10 | Verified | The form follows the chosen model: Pro adds style cards and a hidden-until-opened More options; switching keeps what is shared |
+| P3U-007 | P0 | W10 | Verified | A missing required field is shown under the field and nothing runs; the cost range is shown before running |
+| P3U-008 | P0 | W10 | Verified | Run shows progress, then saves the result to the chosen project and says where |
+| P3U-009 | P0 | W10 | Verified | Improve with Director fills better text, can be undone, and Pro shows a number field clamped to its maximum |
+| P3U-010 | P0 | W10 | Verified | The form fits a phone: no sideways scroll, and tapping targets are at least 32 px |
+| P3U-011 | P0 | W10 | Verified | Project memory: the person adds, pins and forgets what Director remembers, and sees the chats |
+| P3U-012 | P0 | W10 | Verified | Make this my Style makes a draft that is reviewed, edited and accepted before it is used |
+| P3U-013 | P0 | W10 | Verified | My Styles says so when empty, and an unknown Style says it was not found |
+| P3U-014 | P0 | W10 | Verified | The memory page and the Style review fit a phone |
+| P3U-015 | P0 | W10 | Verified | Credits & Plan shows the balance hero, what each plan includes, usage meters and a checkout with a payment choice |
+| P3U-016 | P0 | W10 | Verified | Credits & Plan fits a phone |
+| P3U-017 | P0 | W10 | Verified | The admin page needs a sign-in and refuses wrong details |
+| P3U-018 | P0 | W10 | Verified | The dashboard shows revenue, credits, cost and margin and re-reads when the range changes |
+| P3U-019 | P0 | W10 | Verified | People search and filters narrow the list, and a person opens with their ledger |
+| P3U-020 | P0 | W10 | Verified | Adjusting credits, changing a plan, suspending and refunding all need a reason and are written to the audit log |
+| P3U-021 | P0 | W10 | Verified | Flags can be switched on a person (audited) and the flag list shows the flags |
+| P3U-022 | P0 | W10 | Verified | A broken audit chain is shown loudly |
+| P3U-023 | P0 | W10 | Verified | An emergency switch shows a banner on every screen and is audited |
+| P3U-024 | P0 | W10 | Verified | Chat and memory settings validate, need a reason and save |
+| P3U-025 | P0 | W10 | Verified | The admin page switches to Hindi and fits a phone |
+| P3U-026 | P0 | W10 | Verified | The website pricing cards list what each plan includes and lead to sign-up, and the page ends with a call to action and a footer |
+| P3U-027 | P0 | W10 | Verified | The website pricing and footer read in Hindi and the page does not scroll sideways on a phone |
+| P3U-028 | P0 | W10 | Verified | The chat dock lists the selection as chips, streams a reply and shows a proposal with its size and credits |
+| P3U-029 | P0 | W10 | Verified | Discard keeps the project, Stop ends a reply, and a refusal shows one plain sentence |
+| P3U-030 | P0 | W10 | Verified | The owner can switch chat off or cap it per day, and the dock reads in Hindi and closes with Escape |
+| P3U-031 | P0 | W10 | Verified | With chat switched off by the owner the dock says so and cannot send |
+| P3U-032 | P0 | W10 | Verified | Settings has Profile and Preferences cards, Learn cards are numbered, and an empty Asset Library leads to Studio |
+| P3U-033 | P0 | W10 | Verified | Brand Kit shows a live preview of the colours and fonts, and a plan without it shows an upgrade teaser |
+| P3U-034 | P0 | W10 | Verified | Every panel, website and admin screen opens at 1440 and 390 px without sideways scrolling |
+| P3U-035 | P0 | W10 | Verified | On a phone the bottom navigation fits every item and Studio tools sit two to a row |

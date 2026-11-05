@@ -1,6 +1,7 @@
 // P3U: project memory, My Styles and the Style review, in a real browser, on
 // the P3 mock director. Every test acts like a person.
-import { test, expect, type Page } from './fixtures';
+import type { Page } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { signUp } from './p2-helpers';
 
 const SHOTS = process.env.P3U_SHOTS ?? '';

@@ -1,3 +1,8 @@
+- **P3-UI (Phase 3 UI: Director room, Studio forms, admin, chat dock, polish; no keys, mock services behind the frozen contracts)** is on `claude/p3-ui`; see reports/P3-UI.md and docs/CONTRACTS-P3.md (D-390 to D-396).
+  - Home is the Director room with the Orb; Studio forms follow the model (Basic / Pro); project memory, My Styles and Style review; Credits & Plan hero, features, meters and checkout; Settings, Brand Kit preview, Learn and Asset Library polish (P3U-001 to P3U-016, 032, 033, 035).
+  - Admin is a fourth page, `/admin/` (dashboard, people, flags, audit, emergency, chat and memory settings), on a demo client that exists on dev and e2e pages only; the bundle check covers it (P3U-017 to P3U-025). Website pricing, CTA and footer (P3U-026, 027).
+  - Editor chat dock with selection chips, streaming, proposal card, Apply and Discard, owner limits, on a DEV-only mock engine (P3U-028 to P3U-031). Sweep of every screen at 1440 and 390 px (P3U-034).
+  - Waiting for Parts 1 and 2 (`codex/p3-engine`, `claude/p3-wiring`) to replace the mocks, and for the owner's Autodraft screenshots to replace Studio sample fields. Schema 9 unchanged; no new npm dependencies.
 - **P2-R2 (Phase 2 round 2: server gateway, Supabase wiring, real adapters, real Director, limits, Aurora Ink; no keys)** is on `claude/phase2-r2` (draft PR stacked on `claude/phase2-r1`); see reports/P2-R2.md, docs/SERVER.md, docs/KEYS.md, docs/CAPABILITY-SHEET.md (D-355 to D-359).
   - Everything that talks to a provider or Supabase is tested against local fakes; live behaviour needs the owner's keys (BLOCKED by owner rule 1).
   - Schema 9 unchanged; no new npm dependencies; the editor side is 3,361 bytes smaller than on claude/phase2-r1. Ledger P2R2-001 to P2R2-040.
