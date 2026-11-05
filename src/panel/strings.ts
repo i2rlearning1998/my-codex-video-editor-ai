@@ -380,6 +380,48 @@ const S = {
     'Local mode: accounts live in this browser only.',
     'लोकल मोड: खाते सिर्फ़ इस ब्राउज़र में रहते हैं।',
   ],
+  'room.title': ['Director', 'Director'],
+  'room.greeting': [
+    'Namaste. What video shall we make today?',
+    'नमस्ते। आज कौन सा वीडियो बनाएँ?',
+  ],
+  'room.sub': [
+    'Tell me in your own words. I ask only what I need, and I remember it.',
+    'अपने शब्दों में बताइए। मैं सिर्फ़ ज़रूरी बातें पूछता हूँ, और उन्हें याद रखता हूँ।',
+  ],
+  'room.start.style': ['Start from a Style', 'किसी Style से शुरू करें'],
+  'room.start.styleHelp': [
+    'Your saved look, voice and pacing.',
+    'आपका सेव किया हुआ लुक, आवाज़ और रफ़्तार।',
+  ],
+  'room.start.brief': ['Fill a short brief', 'छोटा ब्रीफ़ भरें'],
+  'room.start.briefHelp': [
+    'Answer a few questions first.',
+    'पहले कुछ सवालों के जवाब दें।',
+  ],
+  'room.start.blank': ['Just talk', 'बस बात करें'],
+  'room.start.blankHelp': [
+    'No setup. Describe your idea.',
+    'कोई सेटअप नहीं। अपना आइडिया बताइए।',
+  ],
+  'room.state.idle': ['Ready', 'तैयार'],
+  'room.state.listening': ['Listening', 'सुन रहा हूँ'],
+  'room.state.thinking': ['Thinking', 'सोच रहा हूँ'],
+  'room.state.speaking': ['Answering', 'जवाब दे रहा हूँ'],
+  'room.state.refusing': ['Cannot help with that', 'इसमें मदद नहीं कर सकता'],
+  'room.state.building': ['Building', 'बना रहा हूँ'],
+  'room.stop': ['Stop', 'रोकें'],
+  'room.retry': ['Try again', 'फिर कोशिश करें'],
+  'room.credits': ['{n} credits used', '{n} क्रेडिट लगे'],
+  'room.remember': ['Director will remember', 'Director याद रखेगा'],
+  'room.forget': ['Forget this', 'यह भूल जाएँ'],
+  'room.makeStyle': ['Make this my Style', 'इसे मेरा Style बनाएँ'],
+  'room.styleDraft': [
+    'Style draft “{name}” is ready. Review it before it is used.',
+    'Style का ड्राफ़्ट “{name}” तैयार है। इस्तेमाल से पहले देख लें।',
+  ],
+  'room.alt': ['You could ask', 'आप ये पूछ सकते हैं'],
+  'room.newChat': ['New chat', 'नई चैट'],
 } satisfies Record<string, readonly [string, string]>;
 export type Key = keyof typeof S;
 let locale: Locale = 'en';

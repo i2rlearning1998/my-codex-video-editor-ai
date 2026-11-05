@@ -3,6 +3,7 @@ import '../ui/tokens.css';
 import './aurora.css';
 import './panel.css';
 import './cinema.css';
+import './room.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';
@@ -23,6 +24,7 @@ import {
   stylesScreen,
 } from './screens/pages';
 import { assetsScreen, studioScreen } from './screens/studio';
+import { directorRoomScreen } from './screens/director-room';
 
 const root = document.getElementById('panel')!;
 const screens: Record<string, Screen> = {
@@ -30,6 +32,7 @@ const screens: Record<string, Screen> = {
   styles: stylesScreen,
   brief: briefScreen,
   director: directorScreen,
+  room: directorRoomScreen,
   plan: planScreen,
   build: buildScreen,
   studio: studioScreen,
