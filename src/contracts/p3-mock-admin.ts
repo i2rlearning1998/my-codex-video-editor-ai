@@ -364,7 +364,8 @@ export function createMockAdmin(opts: MockAdminOptions = {}): AdminClient & {
         return {
           day: d.toISOString().slice(0, 10),
           credits: Math.round(420 * wave),
-          costUsd: Math.round(4.2 * wave * 100) / 100,
+          costUsd:
+            Math.round(4.2 * (1 + Math.sin(i / 2.2 + 1.1) * 0.3) * 100) / 100,
         };
       });
       const creditsSpent = series.reduce((a, s) => a + s.credits, 0);

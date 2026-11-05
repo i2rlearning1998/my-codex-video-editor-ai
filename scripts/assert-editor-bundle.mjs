@@ -83,6 +83,13 @@ export const EDITOR_MARKERS = [
   'Example project · All artwork is part of the canonical scene.',
   'Local persistence paused to protect existing data.',
 ];
+// P3U: the admin page is a fourth page. No other page may carry its code, and
+// it carries neither the editor nor the user panel's screens.
+export const ADMIN_MARKERS = [
+  'aive.admin.session',
+  'Emergency switches',
+  'Audit log',
+];
 const manifestPath = path.join(dist, '.vite', 'manifest.json');
 let pages = '';
 if (existsSync(manifestPath)) {
@@ -106,8 +113,15 @@ if (existsSync(manifestPath)) {
         problems.push(
           `${file}: the editor page loads panel or gateway code (${marker})`,
         );
+    for (const marker of ADMIN_MARKERS)
+      if (text.includes(marker))
+        problems.push(`${file}: the editor page loads admin code (${marker})`);
   }
-  for (const page of ['panel/index.html', 'site/index.html']) {
+  for (const page of [
+    'panel/index.html',
+    'site/index.html',
+    'admin/index.html',
+  ]) {
     const keys = reach(page);
     if (!manifest[page]) {
       problems.push(`${page}: missing from the build`);
@@ -120,6 +134,15 @@ if (existsSync(manifestPath)) {
       for (const marker of EDITOR_MARKERS)
         if (text.includes(marker))
           problems.push(`${file}: ${page} loads editor code (${marker})`);
+      if (page === 'admin/index.html') {
+        for (const marker of PANEL_MARKERS)
+          if (text.includes(marker))
+            problems.push(`${file}: admin loads panel code (${marker})`);
+      } else {
+        for (const marker of ADMIN_MARKERS)
+          if (text.includes(marker))
+            problems.push(`${file}: ${page} loads admin code (${marker})`);
+      }
     }
   }
   pages = ` Editor page ${editor.size} chunks without panel, website or gateway code; panel and website without the editor.`;

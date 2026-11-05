@@ -66,6 +66,7 @@ export default defineConfig(({ command }) => ({
         editor: 'index.html',
         panel: 'panel/index.html',
         site: 'site/index.html',
+        admin: 'admin/index.html',
       },
     },
   },
