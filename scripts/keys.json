@@ -57,7 +57,7 @@
     "name": "OPENAI_API_KEY",
     "where": "server environment only",
     "unlocks": "GPT models and OpenAI images (Images, Thumbnail, AI image scenes)",
-    "check": "Studio › Images makes a picture"
+    "check": "Studio \u203a Images makes a picture"
   },
   {
     "name": "GEMINI_API_KEY",
@@ -74,8 +74,8 @@
   {
     "name": "ELEVENLABS_API_KEY",
     "where": "server environment only",
-    "unlocks": "ElevenLabs voices (Studio › Voice, voice-over scenes)",
-    "check": "Studio › Voice plays the result"
+    "unlocks": "ElevenLabs voices (Studio \u203a Voice, voice-over scenes)",
+    "check": "Studio \u203a Voice plays the result"
   },
   {
     "name": "VIDEO_JOBS_API_KEY",
@@ -100,5 +100,65 @@
     "where": "server environment",
     "unlocks": "Which sites may call the server",
     "check": "The panel's calls are not refused with 'This site may not use the server.'"
+  },
+  {
+    "name": "RAZORPAY_KEY_ID",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "RAZORPAY_KEY_SECRET",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "RAZORPAY_WEBHOOK_SECRET",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "STRIPE_SECRET_KEY",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "STRIPE_WEBHOOK_SECRET",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "PAYPAL_CLIENT_ID",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "PAYPAL_CLIENT_SECRET",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "PAYPAL_WEBHOOK_ID",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "ENTITLEMENT_SECRET",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
+  },
+  {
+    "name": "KEY_VAULT_SECRET",
+    "where": "server environment only",
+    "unlocks": "P3 payment, entitlement signing or encrypted key vault service",
+    "check": "Run the local P3 fake tests; live credentials are not tested automatically"
   }
 ]

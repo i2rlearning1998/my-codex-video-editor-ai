@@ -10,6 +10,19 @@ import {
   existsSync,
 } from 'node:fs';
 import path from 'node:path';
+import { nextAuditRow } from './admin/audit';
+import type { AuditInput } from './admin/audit';
+import type { AuditRow, EmergencySwitches } from '../src/contracts/p3';
+import {
+  defaultEmergency,
+  paymentRow,
+  type P3Store,
+  type SecretRecord,
+  type PaymentRecord,
+  type PaymentCommit,
+  type AdminChange,
+  type Operation,
+} from './payments/records';
 import type { ConfigVersion } from '../src/platform-config';
 import type { LedgerEntry, UsageRow } from '../src/gateway';
 
@@ -17,6 +30,7 @@ export interface Profile {
   readonly id: string;
   readonly email: string;
   plan: string;
+  suspended?: boolean;
   locale: 'en' | 'hi';
   brandKit: Record<string, unknown>;
   readonly createdAt: string;
@@ -31,7 +45,7 @@ export class DuplicateKeyError extends Error {
   }
 }
 
-export interface Store {
+export interface Store extends P3Store {
   readonly kind: 'memory' | 'file' | 'supabase';
   profile(userId: string): Promise<Profile | null>;
   saveProfile(p: Profile): Promise<void>;
@@ -52,6 +66,13 @@ export interface Store {
 }
 
 interface Data {
+  payments: PaymentRecord[];
+  audit: AuditRow[];
+  flags: Record<string, string[]>;
+  emergency: EmergencySwitches;
+  secrets: Record<string, SecretRecord>;
+  daily: Record<string, number>;
+  operations: Record<string, Operation>;
   profiles: Record<string, Profile>;
   ledger: Record<string, LedgerEntry[]>;
   usage: UsageRow[];
@@ -61,6 +82,13 @@ interface Data {
   live: number;
 }
 const empty = (): Data => ({
+  payments: [],
+  audit: [],
+  flags: {},
+  emergency: defaultEmergency(),
+  secrets: {},
+  daily: {},
+  operations: {},
   profiles: {},
   ledger: {},
   usage: [],
@@ -79,26 +107,191 @@ class JsonStore implements Store {
   private save() {
     this.persist(this.data);
   }
+  private atomic<T>(change: (draft: Data) => T): T {
+    const draft = structuredClone(this.data);
+    const result = change(draft);
+    this.persist(draft);
+    this.data = draft;
+    return structuredClone(result);
+  }
+  async profiles() {
+    return structuredClone(Object.values(this.data.profiles));
+  }
+  async payments(u?: string) {
+    return structuredClone(
+      this.data.payments.filter((p) => u === undefined || p.event.userId === u),
+    );
+  }
+  async commitPayment(input: PaymentCommit) {
+    return this.atomic((d) => {
+      if (!d.profiles[input.event.userId])
+        throw new Error('The payment user does not exist.');
+      const u = input.event.userId;
+      const out = paymentRow(input, d.payments, d.ledger[u] ?? []);
+      if (!out.result.duplicate) {
+        d.payments.push(out.record);
+        if (out.row) (d.ledger[u] ??= []).push(out.row);
+        if (input.event.type === 'subscription.renewed')
+          d.profiles[u]!.plan = input.event.itemId;
+      }
+      return out.result;
+    });
+  }
+  async appendAudit(input: AuditInput) {
+    return this.atomic((d) => {
+      const row = nextAuditRow(d.audit.at(-1) ?? null, input);
+      d.audit.push(row);
+      return row;
+    });
+  }
+  async audit() {
+    return structuredClone(this.data.audit);
+  }
+  async flags(u: string) {
+    return [...(this.data.flags[u] ?? [])];
+  }
+  async emergency() {
+    return structuredClone(this.data.emergency);
+  }
+  async commitAdmin(input: AdminChange) {
+    return this.atomic((d) => {
+      const fingerprint = JSON.stringify({
+        ...input,
+        audit: { ...input.audit, at: undefined },
+      });
+      const old = d.operations[input.key];
+      if (old) {
+        if (old.fingerprint !== fingerprint)
+          throw new Error(
+            'The request key was already used for a different change.',
+          );
+        return false;
+      }
+      const u = input.userId;
+      if (u) {
+        const p = d.profiles[u];
+        if (!p) throw new Error('The person was not found.');
+        if (input.plan !== undefined) p.plan = input.plan;
+        if (input.suspended !== undefined) p.suspended = input.suspended;
+        if (input.flag) {
+          const flags = new Set(d.flags[u] ?? []);
+          if (input.flag.on) flags.add(input.flag.name);
+          else flags.delete(input.flag.name);
+          d.flags[u] = [...flags].sort();
+        }
+        if (input.delta !== undefined) {
+          const rows = (d.ledger[u] ??= []);
+          if (rows.reduce((s, r) => s + r.delta, 0) + input.delta < 0)
+            throw new Error('That change would spend unavailable credits.');
+          rows.push({
+            id: input.key,
+            key: input.key,
+            type: 'adjust',
+            delta: input.delta,
+            note: input.audit.detail.reason as string,
+            at: input.audit.at,
+          });
+        }
+      }
+      if (input.emergency) d.emergency = input.emergency;
+      d.audit.push(nextAuditRow(d.audit.at(-1) ?? null, input.audit));
+      d.operations[input.key] = {
+        key: input.key,
+        fingerprint,
+        result: { ok: true },
+      };
+      return true;
+    });
+  }
+  async putSecret(name: string, record: SecretRecord) {
+    this.atomic((d) => {
+      d.secrets[name] = structuredClone(record);
+    });
+  }
+  async getSecret(name: string) {
+    return structuredClone(this.data.secrets[name] ?? null);
+  }
+  async listSecrets() {
+    return structuredClone(this.data.secrets);
+  }
+  async deleteSecret(name: string) {
+    this.atomic((d) => {
+      delete d.secrets[name];
+    });
+  }
+  async dailyCount(u: string, name: string, day: string) {
+    return this.data.daily[JSON.stringify([u, name, day])] ?? 0;
+  }
+  async bumpDaily(
+    u: string,
+    name: string,
+    day: string,
+    limit = Number.MAX_SAFE_INTEGER,
+  ) {
+    return this.atomic((d) => {
+      const k = JSON.stringify([u, name, day]),
+        n = d.daily[k] ?? 0;
+      if (n >= limit) return -1;
+      return (d.daily[k] = n + 1);
+    });
+  }
+  async claimOperation(key: string, fingerprint: string) {
+    return this.atomic((d) => {
+      const old = d.operations[key];
+      if (old) {
+        if (old.fingerprint !== fingerprint)
+          throw new Error(
+            'The request key was already used for a different operation.',
+          );
+        return { claimed: false, operation: old };
+      }
+      const operation = { key, fingerprint, result: null };
+      d.operations[key] = operation;
+      return { claimed: true, operation };
+    });
+  }
+  async getOperation(key: string) {
+    return structuredClone(this.data.operations[key] ?? null);
+  }
+  async finishOperation(
+    key: string,
+    result: Record<string, unknown>,
+    audit?: AuditInput,
+  ) {
+    this.atomic((d) => {
+      const op = d.operations[key];
+      if (!op) throw new Error('The operation was not found.');
+      if (op.result) return;
+      op.result = result;
+      if (audit) d.audit.push(nextAuditRow(d.audit.at(-1) ?? null, audit));
+    });
+  }
   async profile(u: string) {
     const p = this.data.profiles[u];
-    return p ? { ...p } : null;
+    return p ? structuredClone(p) : null;
   }
   async saveProfile(p: Profile) {
     this.data.profiles[p.id] = { ...p };
     this.save();
   }
   async ledger(u: string) {
-    return [...(this.data.ledger[u] ?? [])];
+    return structuredClone(this.data.ledger[u] ?? []);
   }
   async appendLedger(u: string, rows: readonly LedgerEntry[]) {
-    const have = this.data.ledger[u] ?? [];
-    const keys = new Set(have.map((r) => r.key));
-    for (const r of rows) {
-      if (keys.has(r.key)) throw new DuplicateKeyError(r.key);
-      keys.add(r.key);
-    }
-    this.data.ledger[u] = [...have, ...rows];
-    this.save();
+    this.atomic((d) => {
+      const have = d.ledger[u] ?? [],
+        keys = new Set(have.map((r) => r.key));
+      for (const row of rows) {
+        if (keys.has(row.key)) throw new DuplicateKeyError(row.key);
+        keys.add(row.key);
+      }
+      if (
+        rows.some((r) => r.delta < 0) &&
+        [...have, ...rows].reduce((sum, r) => sum + r.delta, 0) < 0
+      )
+        throw new Error('The available credits changed; try again.');
+      d.ledger[u] = [...have, ...structuredClone(rows)];
+    });
   }
   async usage(u: string, since: string) {
     return this.data.usage.filter((r) => r.userId === u && r.at >= since);

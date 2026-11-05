@@ -1,3 +1,11 @@
+// P3-ENGINE:begin
+import { createEntitlementService, type EntitlementDeps } from './entitlements';
+import { createPaymentGateways, type PaymentOptions } from './payments';
+import { createPaymentRoutes, rawBody, writeReply } from './payments/routes';
+import { PaymentAwarePeople } from './payments/people';
+import { createAdminRoutes, ownsAdminPath } from './admin/routes';
+import type { P3AdminSettings } from '../src/contracts/p3';
+// P3-ENGINE:end
 // P2-R2 (P2B-01, P2B-04, P2B-36): the gateway's HTTP API. JSON in and out,
 // versioned under /v1. Every call but the public config needs a signed-in
 // person; every rule of src/gateway runs here, on the server.
@@ -50,6 +58,18 @@ const bad = (message = 'The request is not valid.') =>
   new HttpError(400, 'bad-request', message);
 
 export interface ServerOptions {
+  // P3-ENGINE:begin
+  /** Trusted admin/config services; absence keeps the P3 endpoint unavailable. */
+  readonly p3Entitlements?: Omit<
+    EntitlementDeps,
+    'store' | 'config' | 'secret' | 'now'
+  >;
+  readonly p3Settings?: () => P3AdminSettings;
+  readonly paymentOptions?: Omit<
+    PaymentOptions,
+    'fetch' | 'now' | 'replayWindowSeconds'
+  >;
+  // P3-ENGINE:end
   readonly store: Store;
   readonly env: Env;
   readonly authenticate: (header: string | undefined) => Promise<Caller>;
@@ -107,7 +127,40 @@ export function createServerApp(o: ServerOptions) {
   const now = o.now ?? (() => Date.now());
   const log = o.log ?? (() => {});
   const cfg = storeConfig(o.store, now);
-  const people = new People(o.store, now);
+  // P3-ENGINE:begin
+  const people = o.p3Settings
+    ? new PaymentAwarePeople(o.store, now)
+    : new People(o.store, now);
+  const p3Payments = o.p3Settings
+    ? createPaymentRoutes(
+        {
+          store: o.store,
+          config: async () => (await cfg.get()).config,
+          settings: o.p3Settings,
+          gateways: createPaymentGateways(o.env, {
+            ...o.paymentOptions,
+            ...(o.fetch ? { fetch: o.fetch } : {}),
+            now,
+            replayWindowSeconds: () =>
+              o.p3Settings!().webhookReplayWindowSeconds,
+          }),
+          returnOrigins: (o.env.SERVER_ORIGINS ?? '')
+            .split(',')
+            .filter(Boolean),
+          now,
+        },
+        o.fetch,
+      )
+    : null;
+  const p3Admin = p3Payments
+    ? createAdminRoutes({
+        store: o.store,
+        config: async () => (await cfg.get()).config,
+        payments: p3Payments.service,
+        now,
+      })
+    : null;
+  // P3-ENGINE:end
   const limits = new Map<
     string,
     {
@@ -672,6 +725,28 @@ export function createServerApp(o: ServerOptions) {
           'rate-limit',
           'Too many requests. Wait a moment and try again.',
         );
+      // P3-ENGINE:begin
+      if (req.method === 'POST' && path.startsWith('/v1/payments/webhook/')) {
+        if (!p3Payments)
+          return send(res, 503, {
+            error: {
+              code: 'not-connected',
+              message: 'Payments are not configured.',
+            },
+          });
+        const headers = Object.fromEntries(
+          Object.entries(req.headers).filter(
+            (e): e is [string, string] => typeof e[1] === 'string',
+          ),
+        );
+        const result = await p3Payments.webhook(
+          path.slice('/v1/payments/webhook/'.length),
+          await rawBody(req),
+          headers,
+        );
+        return writeReply(res, result);
+      }
+      // P3-ENGINE:end
       const body = await readBody(req);
       if (req.method === 'GET' && path === '/v1/health')
         return send(res, 200, { ok: true, api: API_VERSION });
@@ -700,6 +775,79 @@ export function createServerApp(o: ServerOptions) {
           ),
         });
       }
+      // P3-ENGINE:begin
+      if (
+        p3Payments &&
+        req.method === 'POST' &&
+        (path === '/v1/topup' || path === '/v1/plan')
+      )
+        return send(res, 403, {
+          error: {
+            code: 'hosted-checkout',
+            message:
+              'Use hosted checkout to change a paid plan or buy credits.',
+          },
+        });
+      if (ownsAdminPath(path)) {
+        const caller = await o.authenticate(req.headers.authorization);
+        if (!p3Admin)
+          return send(res, 503, {
+            error: {
+              code: 'not-connected',
+              message: 'Admin services are not configured.',
+            },
+          });
+        const result = await p3Admin(
+          path,
+          req.method ?? '',
+          body,
+          caller,
+          new URL(req.url ?? '/', 'http://server.local').searchParams,
+        );
+        if (result) return writeReply(res, result);
+      }
+      if (path === '/v1/payments/checkout' || path === '/v1/payments/me') {
+        const caller = await o.authenticate(req.headers.authorization);
+        if (!p3Payments)
+          return send(res, 503, {
+            error: {
+              code: 'not-connected',
+              message: 'Payments are not configured.',
+            },
+          });
+        const result = await p3Payments.authenticated(
+          path,
+          req.method ?? '',
+          body,
+          caller,
+        );
+        if (result) return writeReply(res, result);
+      }
+      if (req.method === 'GET' && path === '/v1/entitlements') {
+        const caller = await o.authenticate(req.headers.authorization);
+        who = caller.userId.slice(0, 8);
+        if ((!o.p3Entitlements && !o.p3Settings) || !o.env.ENTITLEMENT_SECRET)
+          throw new HttpError(
+            503,
+            'not-connected',
+            'Entitlements are not configured.',
+          );
+        const service = createEntitlementService({
+          settings: o.p3Settings ?? o.p3Entitlements!.settings,
+          userState: async (userId) => ({
+            flags: await o.store.flags(userId),
+            suspended: (await o.store.profile(userId))?.suspended ?? false,
+          }),
+          emergency: () => o.store.emergency(),
+          ...o.p3Entitlements,
+          store: o.store,
+          config: async () => (await cfg.get()).config,
+          secret: () => o.env.ENTITLEMENT_SECRET,
+          now,
+        });
+        return send(res, 200, await service.resolve(caller.userId));
+      }
+      // P3-ENGINE:end
       const route = routes[`${req.method} ${path}`];
       if (!route) throw new HttpError(404, 'not-found', 'Not found.');
       const caller = await o.authenticate(req.headers.authorization);
@@ -707,6 +855,19 @@ export function createServerApp(o: ServerOptions) {
       const out = await route(body, caller);
       return send(res, 200, out);
     } catch (e) {
+      // P3-ENGINE:begin
+      if (p3Admin && ownsAdminPath(path)) {
+        await o.store
+          .appendAudit({
+            actor: 'unauthenticated',
+            action: 'admin.refused',
+            target: '',
+            at: new Date(now()).toISOString(),
+            detail: { code: e instanceof AuthError ? 'auth' : 'request' },
+          })
+          .catch(() => undefined);
+      }
+      // P3-ENGINE:end
       if (e instanceof HttpError) status = e.status;
       else if (e instanceof AuthError) status = 401;
       else if (e instanceof GatewayError) status = statusOf(e.code);
