@@ -24,6 +24,8 @@ const PANEL_SIDE = [
   'src/gateway',
   'src/director',
   'src/payments',
+  // P3-WIRING: the Director and Studio services the panel and server use.
+  'src/wiring',
 ];
 
 describe('P2-R1 page isolation', () => {

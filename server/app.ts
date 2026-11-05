@@ -41,6 +41,9 @@ import { providerConnected, serverAdapters, type Env } from './adapters';
 import { storeConfig } from './config';
 import { People } from './state';
 import type { Profile, Store } from './store';
+// P3-WIRING:begin
+import { p3KeyRoutes, p3ReadBody, p3Setup } from './keys/mount';
+// P3-WIRING:end
 
 export const API_VERSION = 'v1';
 const MAX_BODY = 256 * 1024;
@@ -170,6 +173,10 @@ export function createServerApp(o: ServerOptions) {
       projects: number;
     }
   >();
+  // P3-WIRING:begin
+  const p3 = p3Setup(o, () => cfg.current().config, log);
+  o = p3.options;
+  // P3-WIRING:end
   const gateway = createGateway({
     config: () => cfg.current().config,
     adapters: serverAdapters({
@@ -276,6 +283,12 @@ export function createServerApp(o: ServerOptions) {
   async function readBody(
     req: IncomingMessage,
   ): Promise<Record<string, unknown>> {
+    // P3-WIRING:begin
+    if (req.method === 'PUT' || req.method === 'DELETE')
+      return p3ReadBody(req, MAX_BODY, () =>
+        bad('The request is not valid JSON.'),
+      );
+    // P3-WIRING:end
     if (req.method !== 'POST') return {};
     const chunks: Buffer[] = [];
     let size = 0;
@@ -645,6 +658,10 @@ export function createServerApp(o: ServerOptions) {
     },
   };
 
+  // P3-WIRING:begin
+  Object.assign(routes, p3KeyRoutes(p3.vault, HttpError));
+  // P3-WIRING:end
+
   function request(v: unknown): GatewayRequest {
     if (!v || typeof v !== 'object') throw bad('The model request is missing.');
     const r = v as Record<string, unknown>;
@@ -693,6 +710,12 @@ export function createServerApp(o: ServerOptions) {
         'authorization, content-type',
       );
       res.setHeader('access-control-allow-methods', 'GET, POST, OPTIONS');
+      // P3-WIRING:begin
+      res.setHeader(
+        'access-control-allow-methods',
+        'GET, POST, PUT, DELETE, OPTIONS',
+      );
+      // P3-WIRING:end
       res.setHeader('access-control-max-age', '600');
     }
   };

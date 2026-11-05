@@ -12,6 +12,14 @@ import {
   type CloudTrainingRecord,
   type CloudUser,
 } from './backend';
+import type { LoginGuard } from '../contracts/p3';
+import {
+  LoginRefusedError,
+  MIN_PASSWORD,
+  passwordProblem,
+  SIGN_IN_FAILED,
+  SUSPENDED,
+} from './login-guard';
 
 type KV = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
 interface StoredUser {
@@ -118,7 +126,7 @@ function same(a: string, b: string): boolean {
   return diff === 0;
 }
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const MIN_PASSWORD = 8;
+export { MIN_PASSWORD };
 
 export interface LocalAccountOptions {
   readonly storage: KV | null;
@@ -126,6 +134,17 @@ export interface LocalAccountOptions {
   readonly now?: () => string;
   /** A random id or code (tests pass a fixed one). */
   readonly random?: () => string;
+  /**
+   * P3-WIRING (W8): the sign-in guard (locks after repeated failures); its
+   * `isSuspended` is asked only after the right password.
+   */
+  readonly guard?: LoginGuard & {
+    isSuspended?(email: string): Promise<boolean>;
+  };
+  /** Where the attempt comes from (a browser has no IP of its own). */
+  readonly ip?: () => string;
+  /** Password length at sign-up and reset (config p3.login). */
+  readonly minPassword?: () => number;
 }
 
 export function localAccountBackend(
@@ -138,6 +157,7 @@ export function localAccountBackend(
   const random =
     options.random ?? (() => hex(crypto.getRandomValues(new Uint8Array(16))));
   const blobs = options.blobs ?? indexedBlobStore();
+  const minPassword = () => options.minPassword?.() ?? MIN_PASSWORD;
   let memory: Store | null = null;
   const read = (): Store => {
     try {
@@ -195,10 +215,8 @@ export function localAccountBackend(
     async signUp(email, password) {
       const address = normal(email);
       if (!EMAIL.test(address)) throw new Error('Enter a valid email address');
-      if (password.length < MIN_PASSWORD)
-        throw new Error(
-          `Use at least ${MIN_PASSWORD} characters for the password`,
-        );
+      const weak = passwordProblem(password, minPassword(), address);
+      if (weak) throw new Error(weak);
       const store = read();
       if (store.users.some((u) => u.email === address))
         throw new Error('An account with this email already exists');
@@ -215,12 +233,25 @@ export function localAccountBackend(
       return userOf(user)!;
     },
     async signIn(email, password) {
+      const address = normal(email);
+      const ip = options.ip?.() ?? 'local';
+      if (options.guard) {
+        const r = await options.guard.beforeAttempt(address, ip);
+        if (!r.ok) throw new LoginRefusedError(r.failure);
+      }
       const store = read();
-      const user = store.users.find((u) => u.email === normal(email));
-      // The same answer for an unknown email and a wrong password.
+      const user = store.users.find((u) => u.email === address);
+      // The same answer for an unknown email and a wrong password; the hash
+      // runs either way, so the time does not tell them apart.
       const hash = await hashPassword(password, user?.salt ?? 'none');
-      if (!user || !same(hash, user.hash))
-        throw new Error('The email or password is wrong');
+      if (!user || !same(hash, user.hash)) {
+        await options.guard?.afterFailure(address, ip);
+        throw new LoginRefusedError(SIGN_IN_FAILED);
+      }
+      // Checked only after the password, so it reveals nothing to a guesser.
+      if (await options.guard?.isSuspended?.(address))
+        throw new LoginRefusedError(SUSPENDED);
+      await options.guard?.afterSuccess(address, ip);
       write({ ...store, session: user.id });
       announce();
       return userOf(user)!;
@@ -254,10 +285,8 @@ export function localAccountBackend(
       const user = store.users.find((u) => u.email === address);
       if (!mail || !user || mail.code !== code.trim())
         throw new Error('The code is wrong or has expired');
-      if (password.length < MIN_PASSWORD)
-        throw new Error(
-          `Use at least ${MIN_PASSWORD} characters for the password`,
-        );
+      const weak = passwordProblem(password, minPassword(), address);
+      if (weak) throw new Error(weak);
       const salt = random();
       const hash = await hashPassword(password, salt);
       write({

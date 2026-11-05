@@ -1,6 +1,9 @@
 // Built-in default config: sample values only. The owner replaces every one of
 // them from Admin. It is also the last fallback when no saved config can be read.
 import {
+  CHAT_PROMPT,
+  EDIT_PROMPT,
+  ENHANCE_PROMPT,
   INTERVIEW_PROMPT,
   PLAN_PROMPT,
   REPAIR_PROMPT,
@@ -355,10 +358,16 @@ function rawDefault(): PlatformConfigInput {
       mediaModel('mock-music', 'music', L('Mock music'), { perMinute: 0.2 }, [
         'studio-audio',
       ]),
-      mediaModel('mock-image', 'image', L('Mock image'), { perImage: 0.04 }, [
-        'studio-images',
-        'studio-thumbnail',
-      ]),
+      {
+        ...mediaModel(
+          'mock-image',
+          'image',
+          L('Mock image'),
+          { perImage: 0.04 },
+          ['studio-images', 'studio-thumbnail'],
+        ),
+        params: IMAGE_PARAMS,
+      },
       mediaModel('mock-video', 'video', L('Mock video'), { perSecond: 0.1 }, [
         'studio-video',
       ]),
@@ -374,6 +383,7 @@ function rawDefault(): PlatformConfigInput {
         { perImage: 0.04 },
         ['studio-images', 'studio-thumbnail'],
         true,
+        IMAGE_PARAMS,
       ),
       realMedia(
         'eleven-voice',
@@ -384,6 +394,7 @@ function rawDefault(): PlatformConfigInput {
         { perMinute: 0.3 },
         ['studio-voice'],
         true,
+        VOICE_PARAMS,
       ),
       realMedia(
         'video-standard',
@@ -1059,6 +1070,9 @@ function rawDefault(): PlatformConfigInput {
         interview: INTERVIEW_PROMPT,
         upgradeOn: UPGRADE_RULE_ON,
         upgradeOff: UPGRADE_RULE_OFF,
+        chat: CHAT_PROMPT,
+        enhance: ENHANCE_PROMPT,
+        edit: EDIT_PROMPT,
       },
       limits: {
         maxScenes: 12,
@@ -1271,6 +1285,25 @@ function rawDefault(): PlatformConfigInput {
       payments: ['mock-pay'],
       publicSettings: {},
     },
+    // P3-WIRING (W1): samples; the owner sets the real values in Admin.
+    p3: {},
+    campaigns: [],
+    styleCaps: {
+      free: { maxStyles: 1, maxProjects: 10, maxChatsPerProject: 3 },
+      creator: { maxStyles: 5, maxProjects: 100, maxChatsPerProject: 20 },
+      pro: { maxStyles: 25, maxProjects: null, maxChatsPerProject: null },
+    },
+    combos: [
+      {
+        id: 'offline',
+        name: L('Offline samples'),
+        models: {
+          'director-plan': 'mock-fast',
+          interview: 'mock-fast',
+          write: 'mock-fast',
+        },
+      },
+    ],
   };
 }
 
@@ -1358,6 +1391,7 @@ function realMedia(
   price: { perImage?: number; perSecond?: number; perMinute?: number },
   roles: string[],
   enabled: boolean,
+  params: In['models'][number]['params'] = [],
 ): In['models'][number] {
   return {
     id,
@@ -1373,8 +1407,68 @@ function realMedia(
     tested: true,
     samplePrice: true,
     order: 5,
+    params,
   };
 }
+// P3-WIRING (W1): sample model parameters the Studio form is built from. The
+// owner sets the real list per model in Admin.
+const IMAGE_PARAMS: In['models'][number]['params'] = [
+  {
+    id: 'prompt',
+    type: 'longtext',
+    label: L('Describe the picture', 'तस्वीर का वर्णन'),
+    role: 'prompt',
+    required: true,
+  },
+  {
+    id: 'aspect',
+    type: 'aspect',
+    label: L('Shape', 'आकार'),
+    role: 'param',
+    sends: 'size',
+    default: '1536x1024',
+    options: [
+      { value: '1536x1024', label: L('Wide 16:9') },
+      { value: '1024x1536', label: L('Tall 9:16') },
+      { value: '1024x1024', label: L('Square 1:1') },
+    ],
+  },
+  {
+    id: 'count',
+    type: 'number',
+    label: L('How many', 'कितनी'),
+    role: 'units',
+    sends: 'n',
+    min: 1,
+    max: 4,
+    default: 1,
+  },
+  {
+    id: 'avoid',
+    type: 'text',
+    label: L('Leave out', 'इनसे बचें'),
+    role: 'negative',
+    group: 'advanced',
+  },
+];
+const VOICE_PARAMS: In['models'][number]['params'] = [
+  {
+    id: 'script',
+    type: 'longtext',
+    label: L('What to say', 'क्या बोलना है'),
+    role: 'prompt',
+    required: true,
+  },
+  {
+    id: 'minutes',
+    type: 'number',
+    label: L('Minutes', 'मिनट'),
+    role: 'units',
+    min: 0.1,
+    max: 30,
+    default: 1,
+  },
+];
 type FieldIn = NonNullable<In['studios'][number]['inputs']>[number];
 function opt(value: string, label: LT) {
   return { value, label };

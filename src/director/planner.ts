@@ -25,10 +25,45 @@ export interface Planner {
 }
 
 const METHOD_NOTE = 'method:';
+const SOURCE_NOTE = 'source:';
+/** Scene notes are `method:<id>` with an optional `;source:<where>`. */
+const noteToken = (notes: string | undefined, key: string) =>
+  (notes ?? '')
+    .split(';')
+    .map((t) => t.trim())
+    .find((t) => t.startsWith(key))
+    ?.slice(key.length);
 export const methodOf = (scene: { notes?: string | undefined }): string =>
   scene.notes?.startsWith(METHOD_NOTE)
-    ? scene.notes.slice(METHOD_NOTE.length)
+    ? (noteToken(scene.notes, METHOD_NOTE) ?? 'motion-graphics')
     : 'motion-graphics';
+
+/** P3-WIRING (W3): where a scene's picture comes from. */
+export const SCENE_SOURCES = ['ai', 'stock', 'library', 'mine'] as const;
+export type SceneSource = (typeof SCENE_SOURCES)[number];
+/** The source a method implies when the notes do not name one. */
+export const sourceForMethod = (method: string): SceneSource =>
+  method.startsWith('ai-') ? 'ai' : method === 'stock' ? 'stock' : 'library';
+/** A scene's source: `source:` in its notes, else what its method implies. */
+export function sourceOf(scene: { notes?: string | undefined }): SceneSource {
+  const s = noteToken(scene.notes, SOURCE_NOTE);
+  return (SCENE_SOURCES as readonly string[]).includes(s ?? '')
+    ? (s as SceneSource)
+    : sourceForMethod(methodOf(scene));
+}
+/** The source token as written, or null (for the plan checks). */
+export const writtenSource = (scene: { notes?: string | undefined }) =>
+  noteToken(scene.notes, SOURCE_NOTE) ?? null;
+/** Sets a scene's source in its notes (the method is kept). */
+export function withSource<T extends { notes?: string | undefined }>(
+  scene: T,
+  source: SceneSource,
+): T {
+  return {
+    ...scene,
+    notes: `${METHOD_NOTE}${methodOf(scene)};${SOURCE_NOTE}${source}`,
+  };
+}
 const clip = (s: string, n: number) =>
   s.length > n ? `${s.slice(0, n - 1).trimEnd()}…` : s;
 const words = (s: string) =>

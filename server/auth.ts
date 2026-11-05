@@ -62,7 +62,27 @@ export interface AuthOptions {
   readonly issuer?: string;
   readonly fetch?: typeof fetch;
   readonly now?: () => number;
+  /**
+   * P3-WIRING (W8): a suspended person is refused on every call (Part 1's
+   * entitlement flags answer it).
+   */
+  readonly suspended?: (userId: string) => boolean | Promise<boolean>;
+  /**
+   * P3-WIRING (W8): tokens issued before this time (unix seconds) are
+   * refused, so a password change ends older sessions here too.
+   */
+  readonly sessionsValidFrom?: (
+    userId: string,
+  ) => number | null | Promise<number | null>;
 }
+// P3-WIRING (W8): sign-in is done by Supabase Auth (or the local backend in
+// the browser); the server never sees a password. Its guard
+// (createLoginGuard) is the same code the browser backends use.
+export {
+  createLoginGuard,
+  passwordProblem,
+  SIGN_IN_FAILED,
+} from '../src/cloud/login-guard';
 
 export function createAuth(o: AuthOptions) {
   const now = o.now ?? (() => Math.floor(Date.now() / 1000));
@@ -144,6 +164,11 @@ export function createAuth(o: AuthOptions) {
       throw new AuthError('Your sign-in is not valid. Please log in again.');
     if (claims.role === 'anon' || typeof claims.sub !== 'string' || !claims.sub)
       throw new AuthError('Please log in first.');
+    const from = await o.sessionsValidFrom?.(claims.sub);
+    if (from && (typeof claims.iat !== 'number' || claims.iat < from))
+      throw new AuthError('Your password was changed. Please log in again.');
+    if (await o.suspended?.(claims.sub))
+      throw new AuthError('This account is paused. Contact support.');
     const meta = (claims.app_metadata ?? {}) as { role?: unknown };
     return {
       userId: claims.sub,
