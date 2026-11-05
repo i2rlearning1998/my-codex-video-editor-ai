@@ -133,3 +133,13 @@
 .model-picker .lock {
   opacity: 0.8;
 }
+/* The shared segmented control draws its own frame; pills here are separate. */
+.studio-pills,
+.studio-aspects {
+  border: 0;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+}
+.studio-pills .seg + .seg,
+.studio-aspects .seg + .seg { border-left-width: 1px; margin: 0; }
