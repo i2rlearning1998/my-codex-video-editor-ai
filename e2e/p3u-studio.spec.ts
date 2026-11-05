@@ -1,7 +1,7 @@
 // P3U: model-driven Studio forms, on the P3 mock Studio service
 // (src/contracts/p3-mock-studio.ts). The reference fields are a sample.
 import { test, expect } from './fixtures';
-import { signUp } from './p2-helpers';
+import { setPlan, signUp } from './p2-helpers';
 
 const SHOTS = process.env.P3U_SHOTS ?? '';
 test.beforeEach(async ({ page }) => {
@@ -15,6 +15,7 @@ test('[P3U-006] the form follows the chosen model: Pro adds style cards and a hi
   page,
 }) => {
   await signUp(page);
+  await setPlan(page, 'pro');
   await page.goto('/panel/#/studio/images');
   await expect(page.locator('#studio-models [data-model]')).toHaveCount(3);
   await expect(page.locator('[data-field="style"]')).toHaveCount(0);
@@ -43,6 +44,7 @@ test('[P3U-007] a missing required field is shown under the field and nothing ru
   page,
 }) => {
   await signUp(page);
+  await setPlan(page, 'pro');
   await page.goto('/panel/#/studio/images');
   await expect(page.locator('#studio-cost')).toContainText(/\d/);
   await page.locator('#studio-run').click();
@@ -55,6 +57,7 @@ test('[P3U-008] Run shows progress, then saves the result to the chosen project 
   page,
 }) => {
   await signUp(page);
+  await setPlan(page, 'pro');
   await page.goto('/panel/#/studio/images');
   await page.locator('#sf-prompt').fill('a lighthouse at dusk');
   await page.locator('#studio-run').click();
@@ -69,6 +72,7 @@ test('[P3U-009] Improve with Director fills better text, can be undone, and Pro 
   page,
 }) => {
   await signUp(page);
+  await setPlan(page, 'pro');
   await page.goto('/panel/#/studio/images');
   await page.locator('#sf-prompt').fill('cat');
   await page.locator('#studio-enhance').click();
@@ -92,6 +96,7 @@ test('[P3U-010] the form fits a phone: no sideways scroll, and tapping targets a
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signUp(page);
+  await setPlan(page, 'pro');
   await page.goto('/panel/#/studio/images');
   await page.locator('[data-model="images-pro"]').click();
   const over = await page.evaluate(
