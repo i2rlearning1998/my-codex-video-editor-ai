@@ -150,8 +150,9 @@ export async function modelStudio(a: ModelStudioArgs): Promise<void> {
           note.textContent = say(r.failure.message);
           return;
         }
-        before = cur;
         view.setValues(r.value);
+        // After setValues: it fires onChange, which forgets the old values.
+        before = cur;
         note.textContent = t('studio.enhanced');
         undo.hidden = false;
       },
