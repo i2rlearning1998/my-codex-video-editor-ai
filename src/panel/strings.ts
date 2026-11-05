@@ -256,6 +256,26 @@ const S = {
     'Test mode: results are made offline by a mock model.',
     'टेस्ट मोड: नतीजे ऑफ़लाइन मॉक मॉडल से बनते हैं।',
   ],
+  'studio.more': ['More options', 'और विकल्प'],
+  'studio.preview': ['What will be sent', 'क्या भेजा जाएगा'],
+  'studio.random': ['Random', 'रैंडम'],
+  'studio.model': ['Model', 'मॉडल'],
+  'studio.enhance': ['Improve with Director', 'Director से बेहतर करें'],
+  'studio.enhanceWorking': ['Improving…', 'बेहतर हो रहा है…'],
+  'studio.enhanceUndo': ['Undo improve', 'बदलाव वापस लें'],
+  'studio.enhanced': [
+    'Director improved your text. Undo to go back.',
+    'Director ने आपका टेक्स्ट बेहतर किया। वापस जाने के लिए Undo दबाएँ।',
+  ],
+  'studio.range': [
+    'This costs {min} to {max} credits.',
+    'इसमें {min} से {max} क्रेडिट लगेंगे।',
+  ],
+  'studio.savedPlain': [
+    'Saved to the Asset Library ({project}).',
+    'एसेट लाइब्रेरी ({project}) में सेव हुआ।',
+  ],
+  'studio.progress': ['{pct}% done', '{pct}% हो गया'],
   'studio.consentNeeded': [
     'Tick the consent box first.',
     'पहले सहमति वाला बॉक्स टिक करें।',

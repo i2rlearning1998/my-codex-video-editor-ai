@@ -1,0 +1,135 @@
+/* P3U: model-driven Studio forms. Tokens only. */
+.studio-form {
+  display: grid;
+  gap: 16px;
+}
+.studio-form .field[hidden] {
+  display: none;
+}
+.studio-form .help {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+.studio-pills,
+.studio-aspects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.studio-pills .seg,
+.studio-aspects .seg {
+  min-height: 36px;
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  cursor: pointer;
+}
+.studio-pills .seg.on,
+.studio-aspects .seg.on {
+  border-color: var(--aurora-a);
+  background: var(--aurora-soft);
+  color: var(--accent-text);
+}
+.studio-aspect {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.aspect-shape {
+  display: inline-block;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+.studio-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 12px;
+}
+.studio-card {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  text-align: center;
+  cursor: pointer;
+}
+.studio-card.on {
+  border-color: var(--aurora-a);
+  box-shadow: var(--focus);
+}
+.studio-swatch {
+  display: block;
+  height: 64px;
+  border-radius: 8px;
+}
+.studio-seed {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+.more-options,
+.studio-preview {
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+  padding: 8px 14px;
+}
+.more-options > summary,
+.studio-preview > summary {
+  cursor: pointer;
+  min-height: 32px;
+}
+.more-options[open] > .field {
+  margin-top: 14px;
+}
+.studio-preview-text {
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+}
+.field.invalid input,
+.field.invalid textarea {
+  border-color: var(--danger-text);
+}
+.field-error {
+  margin: 4px 0 0;
+  min-height: 0;
+  color: var(--danger-text);
+  font-size: 13px;
+}
+.field-error:empty {
+  display: none;
+}
+.studio-progress {
+  height: 28px;
+  position: relative;
+  border-radius: 999px;
+  background: var(--color-bg-raised);
+  overflow: hidden;
+}
+.studio-progress[hidden] {
+  display: none;
+}
+.studio-progress .bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: var(--aurora);
+  transition: width var(--motion-fast, 120ms) ease;
+}
+.studio-progress .label {
+  position: relative;
+  display: block;
+  line-height: 28px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.model-picker .lock {
+  opacity: 0.8;
+}

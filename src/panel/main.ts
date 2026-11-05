@@ -4,6 +4,7 @@ import './aurora.css';
 import './panel.css';
 import './cinema.css';
 import './room.css';
+import './studio.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';

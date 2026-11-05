@@ -20,6 +20,8 @@ import type { Ctx, Screen } from '../app';
 import { renderForm } from '../form';
 import type { Asset } from '../services';
 import { t } from '../strings';
+import { studioService } from '../p3-services';
+import { modelStudio, type SaveRun } from './studio-model';
 import { bestModels, card, empty, limitAlert, when } from './common';
 
 const UNSORTED = 'unsorted';
@@ -36,7 +38,7 @@ async function projectOptions(ctx: Ctx) {
   return [{ id: UNSORTED, name: t('studio.unsorted') }, ...list];
 }
 /** A picture drawn offline (the mock image model's result). */
-function mockImage(seed: string, label: string): string {
+export function mockImage(seed: string, label: string): string {
   const c = document.createElement('canvas');
   c.width = 320;
   c.height = 180;
@@ -53,7 +55,7 @@ function mockImage(seed: string, label: string): string {
   return c.toDataURL('image/png');
 }
 /** A short tone (the mock voice or music model's result), as a WAV data URL. */
-function mockAudio(seed: string, seconds = 1): string {
+export function mockAudio(seed: string, seconds = 1): string {
   const rate = 8000;
   const n = rate * seconds;
   const buf = new ArrayBuffer(44 + n * 2);
@@ -88,6 +90,25 @@ function mockAudio(seed: string, seconds = 1): string {
   const bytes = new Uint8Array(buf);
   for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
   return `data:audio/wav;base64,${btoa(s)}`;
+}
+
+function studioTabs(ctx: Ctx, activeId: string): HTMLElement {
+  return h(
+    'nav',
+    { class: 'tool-tabs', 'aria-label': t('studio.title') },
+    enabledStudios(ctx.s.config).map((x) =>
+      h(
+        'a',
+        {
+          href: `#/studio/${x.id}`,
+          class: 'tool-tab',
+          'data-tab': x.id,
+          'aria-current': x.id === activeId ? 'page' : undefined,
+        },
+        ctx.say(x.name),
+      ),
+    ),
+  );
 }
 
 export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
@@ -154,6 +175,46 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
       ),
     );
     return;
+  }
+  // P3U: when the chosen studio's models declare their own parameters, the form
+  // is drawn from them (the config-driven form below is the fallback).
+  {
+    const save: SaveRun = (r) => {
+      const prompt = r.request.prompt;
+      const seed = `${prompt}:${Date.now()}`;
+      const asset: Asset = {
+        id: `asset-${Date.now().toString(36)}-${hash(seed).toString(36)}`,
+        userId: ctx.user.id,
+        projectId: r.projectId ?? UNSORTED,
+        kind: s.output,
+        name: `${ctx.say(s.name)}: ${prompt.split('\n')[0]!.slice(0, 40)}`,
+        studioId: s.id,
+        bytes: 0,
+        createdAt: new Date().toISOString(),
+      };
+      if (s.output === 'image' || s.output === 'video')
+        asset.dataUrl = mockImage(seed, prompt);
+      else if (s.output === 'audio') asset.dataUrl = mockAudio(seed);
+      else asset.text = prompt;
+      asset.bytes = (asset.dataUrl?.length ?? 0) + (asset.text?.length ?? 0);
+      ctx.s.saveAsset(asset);
+      return asset.id;
+    };
+    const svc = studioService(save);
+    const models = svc ? await svc.models(s.id) : [];
+    if (svc && models.length) {
+      await modelStudio({
+        ctx,
+        svc,
+        studioId: s.id,
+        title: ctx.say(s.name),
+        tabs: studioTabs(ctx, s.id),
+        projects: await projectOptions(ctx),
+        models,
+        out,
+      });
+      return;
+    }
   }
   // A connected model the plan allows, a real one before the offline mock.
   const model =
@@ -320,22 +381,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
     t('studio.run'),
   );
   // P2B-32: tool tabs, and a waveform beside each voice choice.
-  const tabs = h(
-    'nav',
-    { class: 'tool-tabs', 'aria-label': t('studio.title') },
-    enabledStudios(c).map((x) =>
-      h(
-        'a',
-        {
-          href: `#/studio/${x.id}`,
-          class: 'tool-tab',
-          'data-tab': x.id,
-          'aria-current': x.id === s.id ? 'page' : undefined,
-        },
-        ctx.say(x.name),
-      ),
-    ),
-  );
+  const tabs = studioTabs(ctx, s.id);
   if (s.output === 'audio')
     for (const choice of form.el.querySelectorAll<HTMLElement>('.choice'))
       choice.append(waveSvg(choice.textContent ?? ''));
