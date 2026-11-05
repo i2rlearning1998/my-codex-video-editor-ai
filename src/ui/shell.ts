@@ -1,4 +1,5 @@
 import type { UsageReporter } from '../usage-report';
+import type { EditorChatEngine } from '../contracts/p3';
 import {
   builtScenes,
   compositionCardStatus,
@@ -383,6 +384,10 @@ export interface ShellActions {
   mediaStore?: Promise<MediaStore | null>;
   /** P2-R2: export limits and reports (the person's plan). */
   usage?: UsageReporter;
+  /** P3U: the chat dock's engine; without one the dock does not appear. */
+  chat?: EditorChatEngine | Promise<EditorChatEngine | null>;
+  /** P3U: the owner's chat settings, read each time the dock paints. */
+  chatSettings?: () => { enabled: boolean; maxMessagesPerDay: number };
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -434,6 +439,7 @@ export function mountEditorShell(
           <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
           <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
           <span class="topbar-divider" aria-hidden="true"></span>
+          <button type="button" id="chat-toggle" class="icon-button" aria-pressed="false" hidden>${iconSvg('magic')}</button>
           <button type="button" id="cloud-sync" class="icon-button" data-state="off" aria-label="${t('cloud.label')}" title="${t('cloud.label')}">${iconSvg('upload')}<span class="cloud-dot" aria-hidden="true"></span></button>
           <button type="button" id="theme-toggle" class="icon-button" aria-label="${t('theme.label')}" title="${t('theme.label')}">${iconSvg('themeDark')}</button>
           <button type="button" id="export" class="primary">${iconSvg('export')}<span class="export-label">${t('action.export')}</span></button>
@@ -8176,6 +8182,27 @@ export function mountEditorShell(
       return { count: own.length, bytes: bytesOf(own) };
     },
   });
+  // P3U: the chat dock loads only when an engine is given.
+  let disposeChat: () => void = () => undefined;
+  if (actions.chat) {
+    const chatButton = element<HTMLButtonElement>('#chat-toggle');
+    void Promise.all([
+      Promise.resolve(actions.chat),
+      import('./chat-dock'),
+    ]).then(([chat, { mountChatDock }]) => {
+      if (disposed || !chat) return;
+      chatButton.hidden = false;
+      disposeChat = mountChatDock({
+        host: root,
+        toggle: chatButton,
+        engine: chat,
+        session,
+        settings:
+          actions.chatSettings ??
+          (() => ({ enabled: true, maxMessagesPerDay: 50 })),
+      });
+    });
+  }
   const cloudButton = element<HTMLButtonElement>('#cloud-sync');
   const paintCloud = () => {
     cloudButton.dataset.state = cloudSync.status();
@@ -8349,6 +8376,7 @@ export function mountEditorShell(
       disposed = true;
       window.removeEventListener('popstate', onPop);
       for (const off of offCloudWatch) off();
+      disposeChat();
       cloudSync.dispose();
       disposeShortcuts();
       sceneOutliner?.dispose();

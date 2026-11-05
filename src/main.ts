@@ -140,6 +140,25 @@ const shell = mountEditorShell(
       : {}),
     // P2-R2: the plan's export limit; each finished export is reported.
     usage: usageReporter(me, localStorage, gatewayBase()),
+    // P3U: the chat dock runs on the in-memory mock on dev and e2e pages
+    // only; the real engine arrives with Part 1 and Part 2.
+    ...(import.meta.env.DEV
+      ? {
+          chat: import('./contracts/p3-mocks').then((m) =>
+            m.createMockEditorChat({
+              tokenDelay: Number(
+                new URLSearchParams(location.search).get('chatDelay') ?? 24,
+              ),
+            }),
+          ),
+          chatSettings: () => {
+            const o = (window as unknown as Record<string, unknown>)
+              .__AIVE_CHAT_SETTINGS__ as
+              { enabled: boolean; maxMessagesPerDay: number } | undefined;
+            return o ?? { enabled: true, maxMessagesPerDay: 50 };
+          },
+        }
+      : {}),
     exportProject: () => {
       const url = URL.createObjectURL(
         new Blob([serializeProject(engine.state)], {

@@ -1,0 +1,47 @@
+// P3U: the editor chat dock's own words, kept out of the editor's locale
+// files so the dock stays a small, separate piece of the bundle.
+export const CHAT_DOCK_STRINGS: Record<string, readonly [string, string]> = {
+  'chat.toggle': ['Chat with Director', 'Director से चैट करें'],
+  'chat.title': ['Director', 'Director'],
+  'chat.close': ['Close chat', 'चैट बंद करें'],
+  'chat.empty': [
+    'Select something on the canvas or timeline, then tell me what to change.',
+    'कैनवास या टाइमलाइन पर कुछ चुनें, फिर बताएँ क्या बदलना है।',
+  ],
+  'chat.selection': ['Selected', 'चुना हुआ'],
+  'chat.selectionNone': [
+    'Nothing selected: changes apply to the open scene.',
+    'कुछ चुना नहीं है: बदलाव खुले सीन पर लगेंगे।',
+  ],
+  'chat.scene': ['This scene', 'यह सीन'],
+  'chat.input': ['Message to Director', 'Director को संदेश'],
+  'chat.placeholder': ['Describe the change…', 'बदलाव बताएँ…'],
+  'chat.send': ['Send', 'भेजें'],
+  'chat.stop': ['Stop', 'रोकें'],
+  'chat.you': ['You', 'आप'],
+  'chat.director': ['Director', 'Director'],
+  'chat.state.idle': ['Ready', 'तैयार'],
+  'chat.state.thinking': ['Thinking', 'सोच रहा है'],
+  'chat.state.speaking': ['Writing', 'लिख रहा है'],
+  'chat.state.refusing': ['Cannot do that', 'यह नहीं हो सकता'],
+  'chat.state.listening': ['Listening', 'सुन रहा है'],
+  'chat.state.building': ['Working', 'काम कर रहा है'],
+  'chat.proposal': ['Proposed change', 'सुझाया गया बदलाव'],
+  'chat.commands': ['Edits: {n}', 'बदलाव: {n}'],
+  'chat.credits': ['{n} credits', '{n} क्रेडिट'],
+  'chat.apply': ['Apply', 'लागू करें'],
+  'chat.discard': ['Discard', 'हटाएँ'],
+  'chat.applied': [
+    'Applied. Undo reverses it in one step.',
+    'लागू हुआ। Undo इसे एक ही बार में वापस करता है।',
+  ],
+  'chat.discarded': ['Discarded', 'हटा दिया'],
+  'chat.stopped': ['Stopped', 'रोक दिया'],
+  'chat.off': ['Chat is switched off for now.', 'चैट अभी बंद है।'],
+  'chat.limit': [
+    "You have used today's {n} messages. Try again tomorrow.",
+    'आज के {n} संदेश पूरे हो गए। कल फिर कोशिश करें।',
+  ],
+  'chat.left': ['{n} messages left today', 'आज {n} संदेश बाकी'],
+  'chat.failed': ['Something went wrong.', 'कुछ गड़बड़ हो गई।'],
+};

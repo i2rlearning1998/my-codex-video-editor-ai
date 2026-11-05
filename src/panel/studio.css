@@ -142,4 +142,7 @@
   box-shadow: none;
 }
 .studio-pills .seg + .seg,
-.studio-aspects .seg + .seg { border-left-width: 1px; margin: 0; }
+.studio-aspects .seg + .seg {
+  border-left-width: 1px;
+  margin: 0;
+}

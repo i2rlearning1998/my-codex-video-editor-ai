@@ -7,6 +7,7 @@ import type {
   ChatRecord,
   DirectorEvent,
   DirectorService,
+  EditorChatEngine,
   MemoryFact,
   ProjectMemory,
   Result,
@@ -280,6 +281,91 @@ export function createMockDirector(
       const m = { ...memoryOf(projectId), facts, updatedAt: now() };
       memories.set(projectId, m);
       return m;
+    },
+  };
+}
+
+/* --- editor chat dock: the mock engine (select and edit) --- */
+export interface MockEditorChatOptions {
+  /** ms between streamed tokens (tests set 0). */
+  readonly tokenDelay?: number;
+  /** Runs when a proposal is applied (a test or the dev page may edit). */
+  readonly onApply?: (proposalId: string) => Result<true>;
+}
+export function createMockEditorChat(
+  opts: MockEditorChatOptions = {},
+): EditorChatEngine {
+  const delay = opts.tokenDelay ?? 24;
+  const open = new Set<string>();
+  let n = 0;
+  return {
+    async *send(input) {
+      const { text, selection, signal } = input;
+      yield { type: 'state', state: 'thinking' };
+      try {
+        await wait(delay * 3, signal);
+      } catch {
+        return;
+      }
+      if (REFUSE.test(text)) {
+        yield { type: 'state', state: 'refusing' };
+        yield {
+          type: 'failure',
+          failure: {
+            code: 'refused',
+            message: {
+              en: 'I can only change this project. I cannot do that.',
+              hi: 'मैं सिर्फ़ इस प्रोजेक्ट में बदलाव कर सकता हूँ। यह मैं नहीं कर सकता।',
+            },
+          },
+        };
+        yield { type: 'done' };
+        return;
+      }
+      yield { type: 'state', state: 'speaking' };
+      const reply = selection.length
+        ? `I will change ${selection.length} selected item${selection.length === 1 ? '' : 's'}: ${text}`
+        : `I will change the scene: ${text}`;
+      for (const word of reply.split(' ')) {
+        try {
+          await wait(delay, signal);
+        } catch {
+          return;
+        }
+        yield { type: 'token', text: `${word} ` };
+      }
+      const id = `proposal-${++n}`;
+      open.add(id);
+      yield {
+        type: 'proposal',
+        id,
+        summary: {
+          en: `Edit ${selection.length || 1} item${selection.length === 1 ? '' : 's'}: ${text}`,
+          hi: `${selection.length || 1} चीज़ बदलें: ${text}`,
+        },
+        credits: 2,
+        commandCount: Math.max(1, selection.length),
+      };
+      yield { type: 'state', state: 'idle' };
+      yield { type: 'done' };
+    },
+    async apply(proposalId) {
+      if (!open.has(proposalId))
+        return {
+          ok: false,
+          failure: {
+            code: 'gone',
+            message: {
+              en: 'This change is no longer available.',
+              hi: 'यह बदलाव अब उपलब्ध नहीं है।',
+            },
+          },
+        };
+      open.delete(proposalId);
+      return opts.onApply?.(proposalId) ?? { ok: true, value: true };
+    },
+    discard(proposalId) {
+      open.delete(proposalId);
     },
   };
 }
