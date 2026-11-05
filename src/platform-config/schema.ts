@@ -322,6 +322,8 @@ export const directorSchema = z.object({
       interview: z.string().min(20).max(4000),
       upgradeOn: z.string().min(1).max(2000),
       upgradeOff: z.string().min(1).max(2000),
+      /** P3-WIRING (W3): the Director chat ({{persona}}, {{scope}}, {{context}}). */
+      chat: z.string().min(20).max(8000).optional(),
     })
     .optional(),
   /** P2-R2: what a plan may hold (checked before it is shown). */

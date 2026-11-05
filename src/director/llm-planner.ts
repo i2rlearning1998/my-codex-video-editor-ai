@@ -25,7 +25,13 @@ import {
 import { validatePlan, type VideoPlan } from '../video-plan';
 import { capabilitySheet } from './capabilities';
 import { allowedMethods } from './methods';
-import { methodOf, mockPlanner, sceneFor } from './planner';
+import {
+  methodOf,
+  mockPlanner,
+  SCENE_SOURCES,
+  sceneFor,
+  writtenSource,
+} from './planner';
 import type { JobInput, JobLike } from '../panel/remote';
 
 /** Fills {{name}} with the value; unknown names become empty. */
@@ -154,6 +160,11 @@ function ruleErrors(c: PlatformConfig, plan: Plan, v: VideoPlan): string[] {
     else if (!allowed.has(methodOf(s)))
       out.push(
         `${at} uses method "${methodOf(s)}", which is not one of: ${[...allowed].join(', ')}.`,
+      );
+    const src = writtenSource(s);
+    if (src !== null && !(SCENE_SOURCES as readonly string[]).includes(src))
+      out.push(
+        `${at} has source "${src}", which is not one of: ${SCENE_SOURCES.join(', ')}.`,
       );
   });
   return out;

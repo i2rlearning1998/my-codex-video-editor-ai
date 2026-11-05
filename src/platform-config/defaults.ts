@@ -1,6 +1,7 @@
 // Built-in default config: sample values only. The owner replaces every one of
 // them from Admin. It is also the last fallback when no saved config can be read.
 import {
+  CHAT_PROMPT,
   INTERVIEW_PROMPT,
   PLAN_PROMPT,
   REPAIR_PROMPT,
@@ -1067,6 +1068,7 @@ function rawDefault(): PlatformConfigInput {
         interview: INTERVIEW_PROMPT,
         upgradeOn: UPGRADE_RULE_ON,
         upgradeOff: UPGRADE_RULE_OFF,
+        chat: CHAT_PROMPT,
       },
       limits: {
         maxScenes: 12,

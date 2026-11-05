@@ -15,7 +15,7 @@ import { emptyUsage } from '../gateway/types';
 import type { JobInput, JobLike } from '../panel/remote';
 // (types only: the director stays free of panel code at run time)
 import type { VideoPlan } from '../video-plan';
-import { checkPlan, methodOf } from './planner';
+import { checkPlan, methodOf, sourceOf } from './planner';
 
 export type BuildEvent =
   | { step: 'reserve'; credits: number }
@@ -136,7 +136,14 @@ export async function runBuild(x: BuildInput): Promise<BuildResult> {
       });
       if (!written.text) throw new Error('empty');
       const m = methods[i]!;
-      if (m === 'ai-image' || m === 'ai-video') {
+      if (sourceOf(s) === 'mine') {
+        // P3-WIRING (W3): the person's own file ("mera apna"): nothing is
+        // made; the editor shows the scene's frame as needing their file.
+        const layer = s.layers.find((l) => l.kind === 'media' && l.mediaIntent);
+        missing.push(
+          `Scene ${i + 1}: needs your file${layer?.mediaIntent?.query ? ` ("${layer.mediaIntent.query}")` : ''}.`,
+        );
+      } else if (m === 'ai-image' || m === 'ai-video') {
         const kind = m === 'ai-image' ? 'image' : 'video';
         const role = kind === 'image' ? 'studio-images' : 'studio-video';
         const media = mediaModel(c, x.plan, role, reach);

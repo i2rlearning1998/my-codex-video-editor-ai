@@ -84,6 +84,7 @@ export function createWiringStore(d: StoreDeps) {
     chat: (o: string, p: string, id: string) =>
       `${enc(o)}/chat/${enc(p)}/${enc(id)}`,
     chatIndex: (o: string, id: string) => `${enc(o)}/chatof/${enc(id)}`,
+    plan: (o: string, id: string) => `${enc(o)}/plan/${enc(id)}`,
   };
   async function read<T>(key: string): Promise<T | null> {
     const o = me();
@@ -173,6 +174,23 @@ export function createWiringStore(d: StoreDeps) {
       await write(k.chatIndex(o, c.id), c.projectId);
       await write(k.chat(o, c.projectId, c.id), c);
       return c;
+    },
+    /** A plan the Director made (the video plan JSON, checked). */
+    async savePlan(id: string, plan: unknown, chatId: string): Promise<void> {
+      await write(k.plan(me(), id), { plan, chatId });
+    },
+    async plan(id: string): Promise<{ plan: unknown; chatId: string } | null> {
+      return read<{ plan: unknown; chatId: string }>(k.plan(me(), id));
+    },
+    /** User messages the person sent since `since` (the per-day limit). */
+    async userMessagesSince(since: string): Promise<number> {
+      const o = me();
+      let n = 0;
+      for (const c of await all<ChatRecord>(`${enc(o)}/chat/`))
+        n += c.messages.filter(
+          (m) => m.role === 'user' && m.at >= since,
+        ).length;
+      return n;
     },
   };
   return store;
