@@ -1093,6 +1093,18 @@ export const brandScreen: Screen = (ctx, _a, out) => {
         { class: 'button primary', href: '#/credits', id: 'brand-upgrade' },
         t('common.upgrade'),
       ),
+      h(
+        'div',
+        { class: 'brand-teaser', 'aria-hidden': 'true' },
+        h(
+          'div',
+          { class: 'brand-swatches' },
+          ['#7c5cff', '#22d3ee', '#ffc247'].map((c) =>
+            h('span', { style: `background:${c}` }),
+          ),
+        ),
+        h('strong', { class: 'brand-sample', text: 'Aa' }),
+      ),
     );
     return;
   }
@@ -1139,65 +1151,118 @@ export const brandScreen: Screen = (ctx, _a, out) => {
       r.readAsDataURL(f);
     },
   });
+  const prevHead = h('h2', { text: t('brand.previewHead') });
+  const prevBody = h('p', { text: t('brand.previewBody') });
+  const prevBar = h(
+    'div',
+    { class: 'brand-swatches wide' },
+    [0, 1, 2].map(() => h('span')),
+  );
+  const preview = h(
+    'aside',
+    {
+      class: 'set-card brand-preview',
+      id: 'brand-preview',
+      'aria-label': t('brand.preview'),
+    },
+    h('h3', { class: 'set-card-title', text: t('brand.preview') }),
+    h(
+      'div',
+      { class: 'brand-stage' },
+      logoPreview.cloneNode(false),
+      prevHead,
+      prevBody,
+      prevBar,
+    ),
+  );
+  const paintPreview = () => {
+    prevHead.style.fontFamily = heading.value
+      ? `'${heading.value}', sans-serif`
+      : '';
+    prevBody.style.fontFamily = body.value ? `'${body.value}', sans-serif` : '';
+    prevHead.style.color = colors[0]!.value;
+    [...prevBar.children].forEach((n, i) => {
+      (n as HTMLElement).style.background = colors[i]!.value;
+    });
+    const img = preview.querySelector('img');
+    if (img) {
+      (img as HTMLImageElement).src = kit.logo || '';
+      img.hidden = !kit.logo;
+    }
+  };
+  for (const c of colors) c.addEventListener('input', paintPreview);
+  heading.addEventListener('change', paintPreview);
+  body.addEventListener('change', paintPreview);
+  logo.addEventListener('change', () => setTimeout(paintPreview, 80));
+  paintPreview();
   put(
     out,
     h('h1', { text: t('brand.title') }),
     h(
       'div',
-      { class: 'field' },
-      h('span', { class: 'field-label', text: t('brand.colors') }),
-      h('div', { class: 'actions' }, colors),
-    ),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'brand-heading',
-        class: 'field-label',
-        text: t('brand.heading'),
-      }),
-      heading,
-    ),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'brand-body',
-        class: 'field-label',
-        text: t('brand.body'),
-      }),
-      body,
-    ),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'brand-logo',
-        class: 'field-label',
-        text: t('brand.logo'),
-      }),
-      logo,
-      logoPreview,
-    ),
-    h(
-      'button',
-      {
-        type: 'button',
-        class: 'button primary',
-        id: 'brand-save',
-        onclick: () => {
-          ctx.setPrefs({
-            brandKit: {
-              colors: colors.map((c) => c.value),
-              headingFont: heading.value,
-              bodyFont: body.value,
-              logo: kit.logo,
+      { class: 'set-grid' },
+      h(
+        'section',
+        { class: 'set-card' },
+        h(
+          'div',
+          { class: 'field' },
+          h('span', { class: 'field-label', text: t('brand.colors') }),
+          h('div', { class: 'actions' }, colors),
+        ),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', {
+            for: 'brand-heading',
+            class: 'field-label',
+            text: t('brand.heading'),
+          }),
+          heading,
+        ),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', {
+            for: 'brand-body',
+            class: 'field-label',
+            text: t('brand.body'),
+          }),
+          body,
+        ),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', {
+            for: 'brand-logo',
+            class: 'field-label',
+            text: t('brand.logo'),
+          }),
+          logo,
+          logoPreview,
+        ),
+        h(
+          'button',
+          {
+            type: 'button',
+            class: 'button primary',
+            id: 'brand-save',
+            onclick: () => {
+              ctx.setPrefs({
+                brandKit: {
+                  colors: colors.map((c) => c.value),
+                  headingFont: heading.value,
+                  bodyFont: body.value,
+                  logo: kit.logo,
+                },
+              });
+              ctx.toast(t('common.saved'));
             },
-          });
-          ctx.toast(t('common.saved'));
-        },
-      },
-      t('common.save'),
+          },
+          t('common.save'),
+        ),
+      ),
+      preview,
     ),
   );
 };
@@ -1239,54 +1304,78 @@ export const settingsScreen: Screen = (ctx, _a, out) => {
       selected: !!p.sound,
     }),
   );
+  const initial = (p.name || ctx.user.email || '?').trim()[0]!.toUpperCase();
   put(
     out,
     h('h1', { text: t('settings.title') }),
     h(
       'div',
-      { class: 'field' },
-      h('span', { class: 'field-label', text: t('settings.email') }),
-      h('p', { id: 'settings-email', text: ctx.user.email ?? '' }),
-    ),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'settings-name',
-        class: 'field-label',
-        text: t('settings.name'),
-      }),
-      name,
-    ),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'settings-language',
-        class: 'field-label',
-        text: t('settings.language'),
-      }),
-      lang,
-    ),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'settings-theme',
-        class: 'field-label',
-        text: t('settings.theme'),
-      }),
-      theme,
-    ),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'settings-sound',
-        class: 'field-label',
-        text: t('settings.sound'),
-      }),
-      sound,
+      { class: 'set-grid' },
+      h(
+        'section',
+        { class: 'set-card' },
+        h('h3', { class: 'set-card-title', text: t('settings.profile') }),
+        h(
+          'div',
+          { class: 'set-who' },
+          h('span', {
+            class: 'set-avatar',
+            'aria-hidden': 'true',
+            text: initial,
+          }),
+          h(
+            'div',
+            {},
+            h('span', { class: 'field-label', text: t('settings.email') }),
+            h('p', { id: 'settings-email', text: ctx.user.email ?? '' }),
+          ),
+        ),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', {
+            for: 'settings-name',
+            class: 'field-label',
+            text: t('settings.name'),
+          }),
+          name,
+        ),
+      ),
+      h(
+        'section',
+        { class: 'set-card' },
+        h('h3', { class: 'set-card-title', text: t('settings.preferences') }),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', {
+            for: 'settings-language',
+            class: 'field-label',
+            text: t('settings.language'),
+          }),
+          lang,
+        ),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', {
+            for: 'settings-theme',
+            class: 'field-label',
+            text: t('settings.theme'),
+          }),
+          theme,
+        ),
+        h(
+          'div',
+          { class: 'field' },
+          h('label', {
+            for: 'settings-sound',
+            class: 'field-label',
+            text: t('settings.sound'),
+          }),
+          sound,
+        ),
+      ),
     ),
     h(
       'button',
@@ -1319,9 +1408,14 @@ export const learnScreen: Screen = (ctx, _a, out) => {
       ? h(
           'div',
           { class: 'grid', id: 'learn-list' },
-          items.map((l) =>
+          items.map((l, i) =>
             card(
-              { 'data-learn': l.id },
+              { 'data-learn': l.id, class: 'card learn-card' },
+              h('span', {
+                class: 'learn-num',
+                'aria-hidden': 'true',
+                text: String(i + 1).padStart(2, '0'),
+              }),
               h('h3', { text: ctx.say(l.title) }),
               l.body
                 ? h('p', {

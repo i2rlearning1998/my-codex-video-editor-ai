@@ -486,7 +486,19 @@ export const assetsScreen: Screen = async (ctx, _a, out) => {
                 : null,
             );
           })
-        : [empty(t('assets.empty'))]),
+        : [
+            h(
+              'div',
+              { class: 'empty-state assets-empty' },
+              icon('assets', 28),
+              h('p', { text: t('assets.empty') }),
+              h('a', {
+                class: 'button primary sm',
+                href: '#/studio',
+                text: t('nav.studio'),
+              }),
+            ),
+          ]),
     );
   };
   put(

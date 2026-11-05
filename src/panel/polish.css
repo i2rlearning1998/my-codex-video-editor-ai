@@ -1,0 +1,157 @@
+/* P3U: Settings, Brand Kit, Asset Library and Learn in the Aurora Ink style. */
+.set-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  max-inline-size: 920px;
+  margin-block: 6px 18px;
+}
+.set-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 20px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--aurora-a, #7c5cff) 7%, transparent),
+    var(--glass, rgba(255, 255, 255, 0.03))
+  );
+}
+.set-card .field {
+  margin: 0;
+}
+.set-card .field select,
+.set-card .field input[type='text'] {
+  inline-size: 100%;
+  max-inline-size: none;
+}
+.set-card-title {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #a6abba);
+}
+.set-who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.set-who p {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+.set-avatar {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 52px;
+  block-size: 52px;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 20px;
+  color: #12131a;
+  background: linear-gradient(
+    135deg,
+    var(--aurora-a, #7c5cff),
+    var(--aurora-b, #22d3ee)
+  );
+}
+.brand-preview {
+  align-content: stretch;
+}
+.brand-stage {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  min-block-size: 220px;
+  padding: 22px;
+  border-radius: 16px;
+  background: #f3f1ec;
+  color: #2a2a33;
+}
+.brand-stage h2 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.15;
+}
+.brand-stage p {
+  margin: 0;
+  font-size: 15px;
+}
+.brand-stage img {
+  max-block-size: 40px;
+  max-inline-size: 140px;
+  object-fit: contain;
+  justify-self: start;
+}
+.brand-swatches {
+  display: flex;
+  gap: 8px;
+}
+.brand-swatches span {
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.brand-swatches.wide span {
+  flex: 1;
+  block-size: 10px;
+  border: 0;
+  border-radius: 99px;
+}
+.brand-teaser {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-inline-size: 620px;
+  margin-block-start: 18px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px dashed var(--border, rgba(255, 255, 255, 0.14));
+  opacity: 0.55;
+  filter: blur(0.6px);
+}
+.brand-sample {
+  font-size: 34px;
+  font-family: 'Instrument Serif', serif;
+}
+.learn-card {
+  position: relative;
+  padding-block-start: 44px;
+}
+.learn-num {
+  position: absolute;
+  inset-block-start: 16px;
+  inset-inline-start: 18px;
+  font:
+    600 12px/1 'JetBrains Mono',
+    monospace;
+  letter-spacing: 0.12em;
+  padding: 5px 9px;
+  border-radius: 99px;
+  color: #12131a;
+  background: linear-gradient(
+    90deg,
+    var(--aurora-a, #7c5cff),
+    var(--aurora-b, #22d3ee)
+  );
+}
+.assets-empty {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 36px 24px;
+  max-inline-size: 460px;
+  text-align: center;
+  border-radius: 20px;
+}
+.assets-empty .ico {
+  color: var(--gold, #ffc247);
+}
+.assets-empty p {
+  margin: 0;
+}
