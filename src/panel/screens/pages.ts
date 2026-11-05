@@ -19,6 +19,7 @@ import { posterArt } from '../art';
 import { icon, studioIcon } from '../icons';
 import { reel } from '../motion';
 import { directorRoomScreen } from './director-room';
+import { mineList } from './my-styles';
 
 const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
   const plan = ctx.s.planOf(ctx.user.id);
@@ -335,7 +336,8 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
   out.append(below);
 };
 
-export const stylesScreen: Screen = (ctx, _a, out) => {
+export const stylesScreen: Screen = async (ctx, _a, out) => {
+  const mineGrid = h('div', { class: 'grid', id: 'mine-strip' });
   const c = ctx.s.config;
   const plan = ctx.s.planOf(ctx.user.id);
   let q = '';
@@ -410,8 +412,24 @@ export const stylesScreen: Screen = (ctx, _a, out) => {
       ),
     ),
     grid,
+    h(
+      'section',
+      { class: 'mine-section', id: 'mine-section' },
+      h(
+        'div',
+        { class: 'mine-section-head' },
+        h('h2', { text: t('mine.section') }),
+        h(
+          'a',
+          { class: 'button sm', href: '#/my-styles', id: 'mine-manage' },
+          t('mine.seeAll'),
+        ),
+      ),
+      mineGrid,
+    ),
   );
   paint();
+  await mineList(ctx, mineGrid);
 };
 
 export const projectsScreen: Screen = async (ctx, _a, out) => {
@@ -571,6 +589,15 @@ export const projectsScreen: Screen = async (ctx, _a, out) => {
                           },
                         },
                         t('projects.rename'),
+                      ),
+                      h(
+                        'a',
+                        {
+                          class: 'button sm',
+                          href: `#/project/${encodeURIComponent(p.id)}`,
+                          'data-act': 'memory',
+                        },
+                        t('mem.open'),
                       ),
                       act('projects.duplicate', 'duplicate', async () => {
                         await ctx.s.projects.duplicate(p.id, 'copy');

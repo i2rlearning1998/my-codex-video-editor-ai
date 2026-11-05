@@ -5,6 +5,7 @@ import './panel.css';
 import './cinema.css';
 import './room.css';
 import './studio.css';
+import './mine.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';
@@ -26,11 +27,16 @@ import {
 } from './screens/pages';
 import { assetsScreen, studioScreen } from './screens/studio';
 import { directorRoomScreen } from './screens/director-room';
+import { myStylesScreen, styleReviewScreen } from './screens/my-styles';
+import { projectMemoryScreen } from './screens/project-memory';
 
 const root = document.getElementById('panel')!;
 const screens: Record<string, Screen> = {
   home: homeScreen,
   styles: stylesScreen,
+  'my-styles': (ctx, a, out) =>
+    a[0] ? styleReviewScreen(ctx, a, out) : myStylesScreen(ctx, a, out),
+  project: projectMemoryScreen,
   brief: briefScreen,
   director: directorScreen,
   room: directorRoomScreen,

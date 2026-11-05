@@ -108,6 +108,13 @@ export const directorRoomScreen = async (
           ),
         ),
       ),
+      memory
+        ? h('a', {
+            class: 'btn ghost room-open-memory',
+            href: `#/project/${encodeURIComponent(memory.projectId)}`,
+            text: t('room.openMemory'),
+          })
+        : null,
       h('button', {
         type: 'button',
         class: 'btn ghost room-make-style',
@@ -118,7 +125,10 @@ export const directorRoomScreen = async (
             memory.projectId,
             `Style ${new Date().getFullYear()}`,
           );
-          addNote(t('room.styleDraft', { name: s.name }));
+          addNote(t('room.styleDraft', { name: s.name }), {
+            href: `#/my-styles/${encodeURIComponent(s.id)}`,
+            label: t('room.reviewStyle'),
+          });
         },
       }),
     );
@@ -150,9 +160,14 @@ export const directorRoomScreen = async (
     scroll();
     return { li, body };
   };
-  const addNote = (text: string) => {
+  const addNote = (text: string, link?: { href: string; label: string }) => {
     const b = bubble('director', ' note');
     b.body.textContent = text;
+    if (link)
+      b.body.append(
+        ' ',
+        h('a', { class: 'room-note-link', href: link.href, text: link.label }),
+      );
   };
 
   const askChips = (q: DirectorQuestion) => {

@@ -228,7 +228,9 @@ export function mountPanel(
       a.toggleAttribute(
         'aria-current',
         a.dataset.route === name ||
-          (name.startsWith('brief') && a.dataset.route === 'styles'),
+          (name.startsWith('brief') && a.dataset.route === 'styles') ||
+          (name === 'my-styles' && a.dataset.route === 'styles') ||
+          (name === 'project' && a.dataset.route === 'projects'),
       );
   };
   let seq = 0;

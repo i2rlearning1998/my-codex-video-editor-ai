@@ -1,0 +1,193 @@
+/* P3U: My Styles, the Style review and project memory. Tokens only. */
+.back-link {
+  display: inline-block;
+  margin-bottom: 8px;
+  color: var(--accent-text);
+  text-decoration: none;
+  min-height: 32px;
+  line-height: 32px;
+}
+.back-link:hover {
+  text-decoration: underline;
+}
+.mine-section {
+  margin-top: 32px;
+}
+.mine-section-head,
+.mine-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.mine-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.mine-meta h3 {
+  margin: 0 0 6px;
+}
+.mine-meta .muted {
+  margin: 6px 0 0;
+}
+.mine-preview {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  align-content: end;
+  min-height: 120px;
+  padding: 14px;
+  border-radius: 14px;
+  color: #fff;
+  overflow: hidden;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 45%);
+}
+.mine-preview-title {
+  font-size: 22px;
+  line-height: 1.15;
+}
+.mine-preview-body {
+  font-size: 13px;
+  opacity: 0.92;
+}
+.mine-dots {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.mine-dots i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 80%);
+}
+.mine-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+}
+.mine-badge.draft {
+  color: var(--warning-text, var(--accent-text));
+  border-color: currentcolor;
+}
+.mine-badge.active {
+  color: var(--success-text, var(--accent-text));
+  border-color: currentcolor;
+}
+.mine-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 580px) 340px;
+  justify-content: start;
+  gap: 48px;
+  align-items: start;
+}
+.mine-form {
+  display: grid;
+  gap: 16px;
+}
+.mine-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.mine-side {
+  position: sticky;
+  top: 16px;
+}
+.mine-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.mine-swatch {
+  position: relative;
+  display: inline-flex;
+}
+.mine-swatch input[type='color'] {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-border);
+  background: none;
+  cursor: pointer;
+}
+.mine-swatch-x {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  min-height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+  color: var(--color-text);
+  cursor: pointer;
+  line-height: 1;
+}
+.mem-facts,
+.mem-chats {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.mem-fact,
+.mem-chat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-raised);
+}
+.mem-fact.pinned {
+  border-color: var(--aurora-a);
+}
+.mem-text {
+  flex: 1 1 240px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mem-source {
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+}
+.mem-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mem-add input {
+  flex: 1 1 240px;
+  min-height: 40px;
+}
+.mem-chat {
+  justify-content: space-between;
+}
+.room-open-memory {
+  text-decoration: none;
+}
+@media (max-width: 860px) {
+  .mine-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mine-side {
+    position: static;
+    order: -1;
+  }
+  .mine-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
