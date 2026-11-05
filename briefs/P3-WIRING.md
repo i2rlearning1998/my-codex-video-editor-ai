@@ -56,7 +56,7 @@ They may not exist when you start. Take them by **dependency injection** (constr
 
 **W6. Key vault** (`server/keys/**`; contract: `KeyVault`, `KeyInfo`)
 
-- Values encrypted at rest (AES-256-GCM, key from `KEY_VAULT_SECRET`, random IV per value) in the `Store`; `list` never returns a value (last four characters only); `set`/`remove` require admin, a reason, and write an audit row **through an injected `audit(row)` function** (Part 1 provides the real audit log; in your tests use a stand-in). `test` makes the provider's cheapest check via the existing adapters against the fake servers.
+- Values encrypted at rest (AES-256-GCM, key from `KEY_VAULT_SECRET`, random IV per value) in the `Store` through `putSecret/getSecret/listSecrets/deleteSecret` (Part 1 adds them, CONTRACTS-P3 rev 1.2; until then code to that signature and use a stand-in in your tests; do not edit `server/store*.ts`); `list` never returns a value (last four characters only); `set`/`remove` require admin, a reason, and write an audit row **through an injected `audit(row)` function** (Part 1 provides the real audit log; in your tests use a stand-in). `test` makes the provider's cheapest check via the existing adapters against the fake servers.
 - The server's secret resolution (`secret:<NAME>` headers) reads the vault first, then the environment; a missing name still means "not connected". Routes `/v1/admin/keys` (GET list, PUT set, DELETE remove, POST test) in the `P3-WIRING` block of `server/app.ts`.
 - Test: no response, log or error contains a fake key; a wrong `KEY_VAULT_SECRET` cannot decrypt.
 

@@ -20,6 +20,7 @@ Order of merge: Part 1 and Part 2 are reviewed in full by the integrator (diff, 
 
 - `server/payments/**`, `server/entitlements/**`, `server/admin/**`
 - `src/studio-engine/**`, `src/memory/**`, `src/admin-client/**` (the thin HTTP `AdminClient`)
+- `server/store.ts`, `server/supabase-store.ts` and the shared Store contract test `tests/server/store.test.ts` (Part 1 owns the `Store` interface and all three implementations; Part 2 only calls it)
 - `supabase/migrations/20261105*_p3_engine.sql` and its policy tests
 - `tests/p3-engine/**`, `tests/fakes/payments.ts`, `docs/P3-ENGINE.md`, `reports/P3-ENGINE.md`
 
@@ -118,3 +119,5 @@ Stop and report the exact change and why. The integrator edits `src/contracts/p3
 Contract revision: 1 (5 Nov 2026).
 
 Contract note (rev 1.1, 5 Nov 2026): `StudioEngine.validate` only reports errors; nothing in the engine clamps or corrects values. The earlier wording in the Part 1 brief that said "clamped by validate" was wrong and is replaced.
+
+Contract note (rev 1.2, 5 Nov 2026): the ownership table in section 2 forgot `server/store.ts` and `server/supabase-store.ts`, although Part 1 must add payment and audit methods to them. They now belong to Part 1, together with `tests/server/store.test.ts`. Part 1 also adds three generic secret methods to the `Store` interface and all three stores: `putSecret(name, record)`, `getSecret(name)`, `listSecrets()` and `deleteSecret(name)`, where a record is `{ciphertext, iv, tag, last4, updatedAt}` (opaque strings; the Store never sees a plain value). Part 2's key vault (`server/keys/**`) does the AES-256-GCM encryption and only calls these methods. Until they land on `codex/p3-engine`, Part 2 codes against this signature and tests with an in-test stand-in; the integrator reconciles at merge. Supabase needs a `secrets` table in the Part 1 migration (service role only; no policy for people or anon).
