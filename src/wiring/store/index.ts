@@ -3,6 +3,7 @@
 // records (the Projects library rule, D-356); each value also carries its
 // owner and is checked on read. Caps from config are enforced on create.
 import type {
+  Attachment,
   ChatRecord,
   ProjectMemory,
   StyleRecord,
@@ -16,6 +17,17 @@ import { failure, P3Error } from '../errors';
 import type { RecordBackend } from './backend';
 
 export * from './backend';
+
+/** An attachment as stored: metadata only; bytes are in the media store. */
+export interface AttachmentRecord extends Attachment {
+  readonly mime: string;
+  readonly chatId: string;
+  /** Where the bytes are in the media store. */
+  readonly path: string;
+  /** Text read from a text or PDF file. */
+  readonly text?: string;
+  readonly at: string;
+}
 
 interface Owned<T> {
   readonly owner: string;
@@ -85,6 +97,7 @@ export function createWiringStore(d: StoreDeps) {
       `${enc(o)}/chat/${enc(p)}/${enc(id)}`,
     chatIndex: (o: string, id: string) => `${enc(o)}/chatof/${enc(id)}`,
     plan: (o: string, id: string) => `${enc(o)}/plan/${enc(id)}`,
+    attachment: (o: string, id: string) => `${enc(o)}/attach/${enc(id)}`,
   };
   async function read<T>(key: string): Promise<T | null> {
     const o = me();
@@ -181,6 +194,13 @@ export function createWiringStore(d: StoreDeps) {
     },
     async plan(id: string): Promise<{ plan: unknown; chatId: string } | null> {
       return read<{ plan: unknown; chatId: string }>(k.plan(me(), id));
+    },
+    /** An attachment's record (its bytes live in the media store). */
+    async saveAttachment(a: AttachmentRecord): Promise<void> {
+      await write(k.attachment(me(), a.id), a);
+    },
+    attachment(id: string): Promise<AttachmentRecord | null> {
+      return read<AttachmentRecord>(k.attachment(me(), id));
     },
     /** User messages the person sent since `since` (the per-day limit). */
     async userMessagesSince(since: string): Promise<number> {
