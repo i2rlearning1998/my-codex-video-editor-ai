@@ -62,7 +62,7 @@ const text = (b: Uint8Array | null) => (b ? new TextDecoder().decode(b) : null);
 describe.each(['platform', 'local', 'drive'] as const)(
   'P3-WIRING storage backend: %s',
   (id) => {
-    it(`[P3W-027] put, get, list by prefix, replace, remove and usage behave the same (${id})`, async () => {
+    it('[P3W-027] put, get, list by prefix, replace, remove and usage behave the same on every backend', async () => {
       const s = await make(id, null);
       expect(s.id).toBe(id);
       expect(await s.connected()).toBe(true);
@@ -93,7 +93,7 @@ describe.each(['platform', 'local', 'drive'] as const)(
       expect(await s.get('projects/p1/b.bin')).toBeNull();
     });
 
-    it(`[P3W-028] the plan's storage limit is respected on put (${id})`, async () => {
+    it("[P3W-028] the plan's storage limit is respected on put on every backend", async () => {
       const s = await make(id, 10);
       await s.put('a', bytes('12345'), 'text/plain');
       await expect(

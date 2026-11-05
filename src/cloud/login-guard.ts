@@ -38,7 +38,7 @@ interface Counter {
 export const SIGN_IN_FAILED: P3Failure = {
   code: 'sign-in-failed',
   message: {
-    en: 'The email or password is wrong.',
+    en: 'The email or password is wrong',
     hi: 'ईमेल या पासवर्ड ग़लत है।',
   },
 };

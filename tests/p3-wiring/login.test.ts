@@ -88,7 +88,7 @@ describe('P3-WIRING login hardening', () => {
       );
     const unknown = await msg('nobody@example.com', 'whatever-1234');
     const wrong = await msg('meera@example.com', 'wrong-password-1');
-    expect(unknown).toBe('The email or password is wrong.');
+    expect(unknown).toBe('The email or password is wrong');
     expect(wrong).toBe(unknown);
     for (let i = 0; i < 4; i++)
       await msg('meera@example.com', 'wrong-password-1');
@@ -110,7 +110,7 @@ describe('P3-WIRING login hardening', () => {
     await b.signOut();
     await expect(
       b.signIn('paused@example.com', 'wrong-password-1'),
-    ).rejects.toThrow('The email or password is wrong.');
+    ).rejects.toThrow('The email or password is wrong');
     await expect(
       b.signIn('paused@example.com', 'a-long-password-1'),
     ).rejects.toThrow('This account is paused.');
