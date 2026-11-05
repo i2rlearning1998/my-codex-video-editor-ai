@@ -1,4 +1,5 @@
 // P3-ENGINE:begin
+import { z } from 'zod';
 import { createEntitlementService, type EntitlementDeps } from './entitlements';
 import { createPaymentGateways, type PaymentOptions } from './payments';
 import { createPaymentRoutes, rawBody, writeReply } from './payments/routes';
@@ -176,6 +177,21 @@ export function createServerApp(o: ServerOptions) {
       projects: number;
     }
   >();
+  // P3-INTEGRATION: one entitlement service for the signed read and the check.
+  const entitlementService = () =>
+    createEntitlementService({
+      settings: o.p3Settings ?? o.p3Entitlements!.settings,
+      userState: async (userId) => ({
+        flags: await o.store.flags(userId),
+        suspended: (await o.store.profile(userId))?.suspended ?? false,
+      }),
+      emergency: () => o.store.emergency(),
+      ...o.p3Entitlements,
+      store: o.store,
+      config: async () => (await cfg.get()).config,
+      secret: () => o.env.ENTITLEMENT_SECRET,
+      now,
+    });
   // P3-WIRING:begin
   // P3-INTEGRATION: vault changes go to Part 1's chained audit log.
   const p3 = p3Setup(
@@ -930,20 +946,49 @@ export function createServerApp(o: ServerOptions) {
             'not-connected',
             'Entitlements are not configured.',
           );
-        const service = createEntitlementService({
-          settings: o.p3Settings ?? o.p3Entitlements!.settings,
-          userState: async (userId) => ({
-            flags: await o.store.flags(userId),
-            suspended: (await o.store.profile(userId))?.suspended ?? false,
-          }),
-          emergency: () => o.store.emergency(),
-          ...o.p3Entitlements,
-          store: o.store,
-          config: async () => (await cfg.get()).config,
-          secret: () => o.env.ENTITLEMENT_SECRET,
-          now,
-        });
+        await prepare(caller); // a new person gets a profile first
+        const service = entitlementService();
         return send(res, 200, await service.resolve(caller.userId));
+      }
+      // P3-INTEGRATION: the browser asks the server to decide a limit (the
+      // ONLY place a limit is decided, EntitlementService.check).
+      if (req.method === 'POST' && path === '/v1/entitlements/check') {
+        const caller = await o.authenticate(req.headers.authorization);
+        who = caller.userId.slice(0, 8);
+        if ((!o.p3Entitlements && !o.p3Settings) || !o.env.ENTITLEMENT_SECRET)
+          throw new HttpError(
+            503,
+            'not-connected',
+            'Entitlements are not configured.',
+          );
+        const b = z
+          .object({
+            action: z.enum([
+              'export',
+              'store',
+              'voice-clone',
+              'project',
+              'ai-call',
+              'chat-message',
+              'attach',
+              'vision',
+            ]),
+            amount: z.number().finite().nonnegative().optional(),
+          })
+          .strict()
+          .safeParse(body);
+        if (!b.success)
+          throw new HttpError(400, 'bad-request', 'That check is not valid.');
+        await prepare(caller); // a new person gets a profile first
+        return send(
+          res,
+          200,
+          await entitlementService().check(
+            caller.userId,
+            b.data.action,
+            b.data.amount,
+          ),
+        );
       }
       // P3-ENGINE:end
       const route = routes[`${req.method} ${path}`];

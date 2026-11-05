@@ -29,9 +29,16 @@ let fake: FakeProviders;
 let s: Started;
 beforeAll(async () => {
   fake = await startFakeProviders();
-  s = await startServer({ KEY_VAULT_SECRET: SECRET }, undefined, {
-    p3Settings: () => p3Settings,
-  });
+  s = await startServer(
+    {
+      KEY_VAULT_SECRET: SECRET,
+      ENTITLEMENT_SECRET: 'entitlement-secret-0123456789abcdef',
+    },
+    undefined,
+    {
+      p3Settings: () => p3Settings,
+    },
+  );
   const c = defaultConfig();
   c.providers.find((p) => p.id === 'anthropic')!.baseUrl = fakeBase(
     fake.url,
@@ -135,5 +142,34 @@ describe('P3 integration: server', () => {
         )
       ).status,
     ).toBe(403);
+  });
+
+  it('[P3I-006] POST /v1/entitlements/check decides a limit on the server: signed in only, a valid action only, the daily chat cap holds', async () => {
+    const person = s.token('33333333-0000-0000-0000-000000000000');
+    const check = (token: string | undefined, body: unknown) =>
+      s.api('/v1/entitlements/check', {
+        ...(token ? { token } : {}),
+        body,
+      });
+    expect((await check(undefined, { action: 'chat-message' })).status).toBe(
+      401,
+    );
+    expect((await check(person, { action: 'launch-rocket' })).status).toBe(400);
+    expect(
+      (await check(person, { action: 'chat-message', extra: 1 })).status,
+    ).toBe(400);
+    const first = await check(person, { action: 'chat-message' });
+    expect(first.status).toBe(200);
+    expect(first.body.ok).toBe(true);
+    expect((await check(person, { action: 'chat-message' })).body.ok).toBe(
+      true,
+    );
+    const third = await check(person, { action: 'chat-message' });
+    expect(third.status).toBe(200);
+    expect(third.body.ok).toBe(false);
+    expect(third.body.failure.code).toBe('chat-limit');
+    // Another person has their own count.
+    const other = s.token('44444444-0000-0000-0000-000000000000');
+    expect((await check(other, { action: 'chat-message' })).body.ok).toBe(true);
   });
 });
