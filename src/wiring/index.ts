@@ -3,6 +3,6 @@ export { createDirectorService, type DirectorDeps } from './director-service';
 export { createStudioService, type StudioDeps } from './studio-service';
 export { createAttachments, type AttachDeps } from './attach';
 export { createWiringStore, indexedDbBackend, memoryBackend } from './store';
-export { loadEngines, loadEntitlements, EngineMissingError } from './engines';
+export { loadEngines, EngineMissingError } from './engines';
 export { paramsRequest, visionRequest } from './vision';
 export { P3Error } from './errors';

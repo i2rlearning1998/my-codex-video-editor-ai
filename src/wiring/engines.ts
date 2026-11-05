@@ -1,11 +1,9 @@
-// P3-WIRING: the ONE place Part 1's engines are wired in. They are loaded
+// P3-WIRING: the ONE place Part 1's browser engines (memory, Studio) are wired in.
+// P3-INTEGRATION: the entitlement service is server code (node:crypto) and is
+// imported by the server directly; it must never be reachable from here. They are loaded
 // lazily with import(), so this part compiles and runs its tests before Part 1
 // is merged; a missing module gives a clear error instead of a crash.
-import type {
-  EntitlementService,
-  MemoryEngine,
-  StudioEngine,
-} from '../contracts/p3';
+import type { MemoryEngine, StudioEngine } from '../contracts/p3';
 
 export interface Engines {
   readonly memory: MemoryEngine;
@@ -18,7 +16,6 @@ type Loader = (path: string) => Promise<Record<string, unknown>>;
 const PART1 = import.meta.glob([
   '../memory/index.ts',
   '../studio-engine/index.ts',
-  '../../server/entitlements/index.ts',
 ]);
 const load: Loader = async (path) => {
   const get = PART1[path];
@@ -57,21 +54,4 @@ export async function loadEngines(loader: Loader = load): Promise<Engines> {
     ),
   ]);
   return { memory, studio };
-}
-/** Part 1's entitlement service (server only; its deps are Part 1's). */
-export async function loadEntitlements(
-  deps: unknown,
-  loader: Loader = load,
-): Promise<EntitlementService> {
-  let mod: Record<string, unknown>;
-  const path = '../../server/entitlements/index.ts';
-  try {
-    mod = await loader(path);
-  } catch {
-    throw new EngineMissingError(path);
-  }
-  const f = mod.createEntitlementService;
-  if (typeof f !== 'function')
-    throw new EngineMissingError(`${path} (createEntitlementService)`);
-  return (f as (d: unknown) => EntitlementService)(deps);
 }
