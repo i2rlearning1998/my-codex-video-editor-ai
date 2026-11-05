@@ -8,7 +8,7 @@ import {
   type PlatformConfig,
 } from '../platform-config';
 import { preCheck, type LimitedAction, type LimitUsage } from './checks';
-import { creditsOf } from './cost';
+import { creditsOf, usdOf } from './cost';
 import type { CreditLedger } from './ledger';
 import {
   GatewayError,
@@ -74,6 +74,7 @@ export function createGateway(d: GatewayDeps) {
     outcome: 'ok' | 'failed' | 'refused',
     credits: number,
     code?: string,
+    costUsd?: number,
   ) =>
     d.usageLog.append({
       id: `${x.key}:${outcome}`,
@@ -85,6 +86,7 @@ export function createGateway(d: GatewayDeps) {
       ms: Math.max(0, now() - started),
       outcome,
       ...(code ? { code } : {}),
+      ...(costUsd !== undefined ? { costUsd } : {}),
     });
 
   async function run(x: RunInput): Promise<RunResult> {
@@ -138,7 +140,7 @@ export function createGateway(d: GatewayDeps) {
         (x.workCredits ?? 0) + creditsOf(c, model, result.usage),
       );
       ledger.settle(res.id, credits, `${x.key}:settle`);
-      log(x, started, 'ok', credits);
+      log(x, started, 'ok', credits, undefined, usdOf(model, result.usage));
       return { result, credits, reservationId: res.id };
     } catch (e) {
       ledger.refund(res.id, `${x.key}:refund`);
@@ -231,7 +233,7 @@ export function createGateway(d: GatewayDeps) {
           if (problem) throw new GatewayError('bad-output', problem);
           const credits = creditsOf(c, model, result.usage);
           modelCredits += credits;
-          log(row, t0, 'ok', credits);
+          log(row, t0, 'ok', credits, undefined, usdOf(model, result.usage));
           return result;
         } catch (e) {
           const code = e instanceof GatewayError ? e.code : 'provider-error';

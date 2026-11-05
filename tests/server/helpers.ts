@@ -24,6 +24,7 @@ export interface Started {
 export async function startServer(
   env: Record<string, string> = {},
   store: Store = memoryStore(),
+  extra: Partial<Parameters<typeof createServerApp>[0]> = {},
 ): Promise<Started> {
   const logs: string[] = [];
   const app = createServerApp({
@@ -37,6 +38,7 @@ export async function startServer(
       sleep: async () => {},
       pollMs: 0,
     },
+    ...extra,
   });
   const server: Server = await listen(app.handler, 0);
   const url = `http://127.0.0.1:${(server.address() as { port: number }).port}`;

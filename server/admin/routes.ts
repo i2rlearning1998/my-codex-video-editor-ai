@@ -258,10 +258,12 @@ export function createAdminRoutes(d: AdminDeps) {
             };
             m.calls++;
             m.credits += r.credits;
+            m.costUsd += r.costUsd ?? 0;
             byModel.set(r.modelId, m);
             const day = r.at.slice(0, 10),
               s = series.get(day) ?? { day, credits: 0, costUsd: 0 };
             s.credits += r.credits;
+            s.costUsd += r.costUsd ?? 0;
             series.set(day, s);
           }
           const metrics: AdminMetrics = {
@@ -274,7 +276,7 @@ export function createAdminRoutes(d: AdminDeps) {
               0,
             ),
             creditsSpent: usage.reduce((s, r) => s + r.credits, 0),
-            providerCostUsd: 0,
+            providerCostUsd: usage.reduce((s, r) => s + (r.costUsd ?? 0), 0),
             newUsers: profiles.filter(
               (p) => p.createdAt >= from && p.createdAt <= to,
             ).length,
@@ -284,6 +286,9 @@ export function createAdminRoutes(d: AdminDeps) {
               a.day.localeCompare(b.day),
             ),
           };
+          // Rows written before cost was recorded cannot give a true margin.
+          if (!usage.some((r) => r.outcome === 'ok' && r.costUsd === undefined))
+            return { status: 200, body: metrics };
           return {
             status: 503,
             body: {

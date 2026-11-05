@@ -261,7 +261,7 @@ it('[P3E-053] every admin route gates non-admin; atomic changes audit once, refu
           '/v1/admin/metrics?from=2026-11-01T00:00:00.000Z&to=2026-11-30T00:00:00.000Z',
         )
       ).status,
-    ).toBe(503);
+    ).toBe(200); // no usage yet: real zeros (cost is recorded per call, P3I-005)
     for (const value of [...logs, ...bodies])
       for (const secret of [token, userToken, fake.secret])
         expect(value).not.toContain(secret);

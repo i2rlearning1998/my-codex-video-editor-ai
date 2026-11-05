@@ -6,6 +6,8 @@ export interface UsageRow {
   readonly modelId: string;
   readonly role: string;
   readonly credits: number;
+  /** What the provider charged us for this call, in USD (ok calls only). */
+  readonly costUsd?: number;
   readonly ms: number;
   readonly outcome: 'ok' | 'failed' | 'refused';
   readonly code?: string;

@@ -255,6 +255,9 @@ export function supabaseStore(
         ms: r.ms,
         outcome: r.outcome,
         ...(r.code ? { code: r.code } : {}),
+        ...(r.cost_usd !== null && r.cost_usd !== undefined
+          ? { costUsd: Number(r.cost_usd) }
+          : {}),
       }));
     },
     async appendUsage(row) {
@@ -267,6 +270,7 @@ export function supabaseStore(
         ms: row.ms,
         outcome: row.outcome,
         code: row.code ?? null,
+        cost_usd: row.costUsd ?? null,
         created_at: row.at,
       });
       fail('write the usage', error);

@@ -10,6 +10,18 @@ import {
 } from '../fakes/providers';
 import { startServer, type Started } from '../server/helpers';
 
+const p3Settings = {
+  chat: { enabled: true, maxMessagesPerDay: 2, maxHistoryTokens: 100 },
+  vision: { enabled: true, creditsPerImage: 2, maxImagesPerMessage: 2 },
+  memory: {
+    keepRecent: 2,
+    summariseAboveTokens: 100,
+    maxFacts: 5,
+    maxStyleRules: 5,
+  },
+  entitlementTtlSeconds: 60,
+  webhookReplayWindowSeconds: 60,
+};
 const SECRET = 'vault-secret-for-tests-0123456789';
 const PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
@@ -17,7 +29,9 @@ let fake: FakeProviders;
 let s: Started;
 beforeAll(async () => {
   fake = await startFakeProviders();
-  s = await startServer({ KEY_VAULT_SECRET: SECRET });
+  s = await startServer({ KEY_VAULT_SECRET: SECRET }, undefined, {
+    p3Settings: () => p3Settings,
+  });
   const c = defaultConfig();
   c.providers.find((p) => p.id === 'anthropic')!.baseUrl = fakeBase(
     fake.url,
@@ -92,5 +106,34 @@ describe('P3 integration: server', () => {
       images: [{ mime: 'image/png', base64: 'A'.repeat(1024 * 1024) }],
     });
     expect(big.status).toBe(200);
+  });
+
+  it('[P3I-005] a provider call records its USD cost, and the admin dashboard reports real cost and margin inputs', async () => {
+    const person = s.token('22222222-0000-0000-0000-000000000000');
+    expect((await run(person, {})).status).toBe(200);
+    const admin = s.token('admin-0000', { app_metadata: { role: 'admin' } });
+    const m = await s.api(
+      '/v1/admin/metrics?from=2020-01-01T00:00:00.000Z&to=2099-01-01T00:00:00.000Z',
+      { token: admin },
+    );
+    expect(m.status).toBe(200);
+    expect(m.body.providerCostUsd).toBeGreaterThan(0);
+    const model = m.body.byModel.find(
+      (r: { modelId: string }) => r.modelId === 'claude-balanced',
+    );
+    expect(model.costUsd).toBeGreaterThan(0);
+    expect(model.calls).toBeGreaterThan(0);
+    expect(
+      m.body.series.every((r: { costUsd: number }) => r.costUsd >= 0),
+    ).toBe(true);
+    // A person cannot read it.
+    expect(
+      (
+        await s.api(
+          '/v1/admin/metrics?from=2020-01-01T00:00:00.000Z&to=2099-01-01T00:00:00.000Z',
+          { token: person },
+        )
+      ).status,
+    ).toBe(403);
   });
 });

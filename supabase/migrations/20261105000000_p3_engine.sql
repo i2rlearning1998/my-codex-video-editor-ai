@@ -1,6 +1,8 @@
 -- P3 engine: service-role writes; append-only payment receipts and audit chain.
 create extension if not exists pgcrypto;
 alter table public.profiles add column suspended boolean not null default false;
+-- P3-INTEGRATION: what the provider charged for each call (admin margin).
+alter table public.usage_log add column cost_usd numeric;
 create table public.payments (provider text not null, event_id text not null, user_id uuid not null references auth.users(id), record jsonb not null, primary key(provider,event_id));
 create table public.audit_log (seq bigint primary key, record jsonb not null);
 create table public.user_flags (user_id uuid primary key references auth.users(id), flags jsonb not null default '[]');
