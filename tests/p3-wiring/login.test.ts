@@ -101,10 +101,17 @@ describe('P3-WIRING login hardening', () => {
   });
 
   it('[P3W-032] a suspended person cannot sign in (told only after the right password); the server refuses suspended people and revoked sessions', async () => {
+    const { config } = guardAt();
+    const guard = createLoginGuard({
+      limits: () => loginLimits(config),
+      kv: memoryKV(),
+      // Injected (rev 1.3 note 8); the integrator wires Part 1's flag.
+      isSuspended: async (email) => email === 'paused@example.com',
+    });
     const b = localAccountBackend({
       storage: memoryKV() as unknown as Storage,
       blobs: memoryBlobStore(),
-      suspended: (email) => email === 'paused@example.com',
+      guard,
     });
     await b.signUp('paused@example.com', 'a-long-password-1');
     await b.signOut();
@@ -114,6 +121,8 @@ describe('P3-WIRING login hardening', () => {
     await expect(
       b.signIn('paused@example.com', 'a-long-password-1'),
     ).rejects.toThrow('This account is paused.');
+    expect(await guard.isSuspended('PAUSED@example.com ')).toBe(true);
+    expect(await guard.isSuspended('other@example.com')).toBe(false);
     expect(await b.user()).toBeNull();
     const secret = 'server-secret-0123456789abcdef0123';
     const now = 1_800_000_000;

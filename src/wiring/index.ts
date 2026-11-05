@@ -4,5 +4,5 @@ export { createStudioService, type StudioDeps } from './studio-service';
 export { createAttachments, type AttachDeps } from './attach';
 export { createWiringStore, indexedDbBackend, memoryBackend } from './store';
 export { loadEngines, loadEntitlements, EngineMissingError } from './engines';
-export { visionAdapters, paramsRequest, visionRequest } from './vision';
+export { paramsRequest, visionRequest } from './vision';
 export { P3Error } from './errors';

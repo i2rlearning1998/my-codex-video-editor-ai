@@ -133,7 +133,18 @@ describe('P3-WIRING Director service', () => {
     expect(s.ledger('u1').held()).toBe(0);
     const saved = (await s.store.chat(chat.id))!;
     expect(saved.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+    // Check-and-count (rev 1.3 note 5): once per message, no amount.
     expect(s.entitlements.checks).toEqual(['chat-message']);
+    expect(s.entitlements.amounts).toEqual([undefined]);
+    await collect(
+      s.svc.send({
+        chatId: chat.id,
+        text: 'And the moon?',
+        attachmentIds: [],
+        modelId: MODEL,
+      }),
+    );
+    expect(s.entitlements.checks).toEqual(['chat-message', 'chat-message']);
   });
 
   it('[P3W-011] the context starts with the Style block; no chat writes a Style', async () => {

@@ -10,61 +10,60 @@ import {
   createHash,
   randomBytes,
 } from 'node:crypto';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  writeFileSync,
-} from 'node:fs';
-import path from 'node:path';
 import type { AuditRow, KeyInfo, KeyVault } from '../../src/contracts/p3';
 import { hasSecret } from '../../src/gateway/adapters/transport';
 import type { GatewayRequest, ProviderAdapter } from '../../src/gateway/types';
 import type { PlatformConfig, Provider } from '../../src/platform-config';
 
-/** One audit row as the vault gives it; Part 1's log adds seq and hash. */
-export type VaultAudit = Omit<AuditRow, 'seq' | 'hash'>;
+/**
+ * One audit row as the vault gives it (CONTRACTS-P3 rev 1.3 note 9); Part 1's
+ * audit log fills seq, hash and prevHash.
+ */
+export type VaultAudit = Omit<AuditRow, 'seq' | 'hash' | 'prevHash'>;
 export type Env = Readonly<Record<string, string | undefined>>;
 
-interface Sealed {
+/**
+ * A sealed value as the Store keeps it (CONTRACTS-P3 rev 1.2): opaque
+ * strings; the Store never sees a plain value.
+ */
+export interface SecretRecord {
+  readonly ciphertext: string;
   readonly iv: string;
   readonly tag: string;
-  readonly data: string;
-  readonly hint: string;
+  readonly last4: string;
   readonly updatedAt: string;
 }
-export interface VaultData {
-  readonly keys: Record<string, Sealed>;
-  readonly tests: Record<string, NonNullable<KeyInfo['lastTest']>>;
+/**
+ * The Store's secret methods (Part 1 adds them to every Store, rev 1.2).
+ * `listSecrets` is taken to return the stored names; the integrator
+ * reconciles it with Part 1's final signature.
+ */
+export interface SecretStore {
+  putSecret(name: string, record: SecretRecord): Promise<void>;
+  getSecret(name: string): Promise<SecretRecord | null>;
+  listSecrets(): Promise<readonly string[]>;
+  deleteSecret(name: string): Promise<void>;
 }
-/** Where the sealed values live (a file next to the server's data, or memory). */
-export interface VaultStore {
-  read(): Promise<VaultData | null>;
-  write(d: VaultData): Promise<void>;
-}
-export function memoryVaultStore(): VaultStore & { raw(): string } {
-  let s = '';
+/** An in-memory stand-in with the same methods (tests, and a Store without them). */
+export function memorySecretStore(): SecretStore & {
+  /** Everything stored, as JSON (for tests that look for a plain value). */
+  raw(): string;
+} {
+  const m = new Map<string, SecretRecord>();
   return {
-    raw: () => s,
-    read: async () => (s ? (JSON.parse(s) as VaultData) : null),
-    write: async (d) => void (s = JSON.stringify(d)),
+    raw: () => JSON.stringify(Object.fromEntries(m)),
+    putSecret: async (n, r) => void m.set(n, { ...r }),
+    getSecret: async (n) => m.get(n) ?? null,
+    listSecrets: async () => [...m.keys()].sort(),
+    deleteSecret: async (n) => void m.delete(n),
   };
 }
-export function fileVaultStore(file: string): VaultStore {
-  return {
-    async read() {
-      return existsSync(file)
-        ? (JSON.parse(readFileSync(file, 'utf8')) as VaultData)
-        : null;
-    },
-    async write(d) {
-      mkdirSync(path.dirname(file), { recursive: true });
-      const tmp = `${file}.tmp`;
-      writeFileSync(tmp, JSON.stringify(d), { mode: 0o600 });
-      renameSync(tmp, file);
-    },
-  };
+/** Whether a Store already has the secret methods (Part 1). */
+export function hasSecretMethods(store: object): store is SecretStore {
+  const s = store as Record<string, unknown>;
+  return ['putSecret', 'getSecret', 'listSecrets', 'deleteSecret'].every(
+    (k) => typeof s[k] === 'function',
+  );
 }
 
 export class VaultError extends Error {
@@ -116,14 +115,16 @@ export interface Vault extends KeyVault {
  * fourth argument carries the config, env and adapters it also needs.
  */
 export function createKeyVault(
-  store: VaultStore,
+  store: SecretStore,
   secret: string,
   audit: (row: VaultAudit) => void | Promise<void>,
   o: VaultOptions,
 ): Vault {
   const now = () => (o.now ?? (() => new Date()))();
   const key = secret ? keyFrom(secret) : null;
-  let data: VaultData = { keys: {}, tests: {} };
+  const sealed = new Map<string, SecretRecord>();
+  // Test results are kept while the server runs (the Store record has no field for them).
+  const tests = new Map<string, NonNullable<KeyInfo['lastTest']>>();
   const plain = new Map<string, string>();
   let state: ReturnType<Vault['state']> = 'empty';
   let loaded: Promise<void> | null = null;
@@ -134,7 +135,7 @@ export function createKeyVault(
       if (p.kind !== 'mock' && !out.has(p.keyRef)) out.set(p.keyRef, p);
     return out;
   };
-  const seal = (value: string): Sealed => {
+  const seal = (value: string): SecretRecord => {
     if (!key)
       throw new VaultError(
         'no-secret',
@@ -144,27 +145,30 @@ export function createKeyVault(
     const c = createCipheriv('aes-256-gcm', key, iv);
     const enc = Buffer.concat([c.update(value, 'utf8'), c.final()]);
     return {
+      ciphertext: enc.toString('base64'),
       iv: iv.toString('base64'),
       tag: c.getAuthTag().toString('base64'),
-      data: enc.toString('base64'),
-      hint: hintOf(value) ?? '',
+      last4: hintOf(value) ?? '',
       updatedAt: now().toISOString(),
     };
   };
-  const open = (s: Sealed): string => {
+  const open = (s: SecretRecord): string => {
     if (!key) throw new VaultError('no-secret', 'no secret');
     const d = createDecipheriv('aes-256-gcm', key, Buffer.from(s.iv, 'base64'));
     d.setAuthTag(Buffer.from(s.tag, 'base64'));
     return Buffer.concat([
-      d.update(Buffer.from(s.data, 'base64')),
+      d.update(Buffer.from(s.ciphertext, 'base64')),
       d.final(),
     ]).toString('utf8');
   };
   async function load() {
-    data = (await store.read()) ?? { keys: {}, tests: {} };
+    sealed.clear();
     plain.clear();
-    const sealed = Object.entries(data.keys);
-    if (!sealed.length) {
+    for (const n of await store.listSecrets()) {
+      const r = await store.getSecret(n);
+      if (r) sealed.set(n, r);
+    }
+    if (!sealed.size) {
       state = 'empty';
       return;
     }
@@ -173,7 +177,7 @@ export function createKeyVault(
       return;
     }
     try {
-      for (const [n, s] of sealed) plain.set(n, open(s));
+      for (const [n, r] of sealed) plain.set(n, open(r));
       state = 'ready';
     } catch {
       plain.clear();
@@ -209,11 +213,11 @@ export function createKeyVault(
           provider: p.name,
           set: inVault || hasSecret(o.env, name),
           hint: inVault
-            ? data.keys[name]?.hint || null
+            ? sealed.get(name)?.last4 || null
             : env && hasSecret(o.env, name)
               ? hintOf(env.trim())
               : null,
-          lastTest: data.tests[name] ?? null,
+          lastTest: tests.get(name) ?? null,
         };
       });
     },
@@ -228,13 +232,9 @@ export function createKeyVault(
           'The vault cannot read its stored keys with this KEY_VAULT_SECRET.',
         );
       const s = seal(v);
-      data = {
-        keys: { ...data.keys, [name]: s },
-        tests: Object.fromEntries(
-          Object.entries(data.tests).filter(([n]) => n !== name),
-        ),
-      };
-      await store.write(data);
+      await store.putSecret(name, s);
+      sealed.set(name, s);
+      tests.delete(name);
       plain.set(name, v);
       state = 'ready';
       await audit({
@@ -242,16 +242,16 @@ export function createKeyVault(
         actor,
         action: 'key.set',
         target: name,
-        detail: { reason: reason.trim().slice(0, 300), hint: s.hint },
+        detail: { reason: reason.trim().slice(0, 300), hint: s.last4 },
       });
     },
     async remove(name, reason) {
       await ready();
       check(name, reason);
-      const { [name]: _gone, ...keys } = data.keys;
-      data = { keys, tests: data.tests };
-      await store.write(data);
+      await store.deleteSecret(name);
+      sealed.delete(name);
       plain.delete(name);
+      tests.delete(name);
       await audit({
         at: now().toISOString(),
         actor,
@@ -270,8 +270,7 @@ export function createKeyVault(
       if (!value?.trim())
         result = { ok: false, at, message: `${p.name} has no key yet.` };
       else result = await cheapest(p, value, at);
-      data = { ...data, tests: { ...data.tests, [name]: result } };
-      await store.write(data);
+      tests.set(name, result);
       await audit({
         at,
         actor,

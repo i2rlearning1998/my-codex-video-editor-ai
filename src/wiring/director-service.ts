@@ -293,7 +293,9 @@ export function createDirectorService(d: DirectorDeps): DirectorService {
       );
       return;
     }
-    const ent = await d.entitlements.check(userId, 'chat-message', today + 1);
+    const ent =
+      await // Check-and-count (rev 1.3 note 5): exactly once per message.
+      d.entitlements.check(userId, 'chat-message');
     if (!ent.ok) {
       yield fail(ent.failure);
       return;

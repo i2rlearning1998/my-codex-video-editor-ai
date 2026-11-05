@@ -18,6 +18,7 @@ import {
   MIN_PASSWORD,
   passwordProblem,
   SIGN_IN_FAILED,
+  SUSPENDED,
 } from './login-guard';
 
 type KV = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
@@ -133,14 +134,17 @@ export interface LocalAccountOptions {
   readonly now?: () => string;
   /** A random id or code (tests pass a fixed one). */
   readonly random?: () => string;
-  /** P3-WIRING (W8): the sign-in guard (locks after repeated failures). */
-  readonly guard?: LoginGuard;
+  /**
+   * P3-WIRING (W8): the sign-in guard (locks after repeated failures); its
+   * `isSuspended` is asked only after the right password.
+   */
+  readonly guard?: LoginGuard & {
+    isSuspended?(email: string): Promise<boolean>;
+  };
   /** Where the attempt comes from (a browser has no IP of its own). */
   readonly ip?: () => string;
   /** Password length at sign-up and reset (config p3.login). */
   readonly minPassword?: () => number;
-  /** A suspended person cannot sign in (the owner's flag). */
-  readonly suspended?: (email: string) => boolean | Promise<boolean>;
 }
 
 export function localAccountBackend(
@@ -245,14 +249,8 @@ export function localAccountBackend(
         throw new LoginRefusedError(SIGN_IN_FAILED);
       }
       // Checked only after the password, so it reveals nothing to a guesser.
-      if (await options.suspended?.(address))
-        throw new LoginRefusedError({
-          code: 'suspended',
-          message: {
-            en: 'This account is paused. Contact support.',
-            hi: 'यह खाता रोका गया है। सहायता से संपर्क करें।',
-          },
-        });
+      if (await options.guard?.isSuspended?.(address))
+        throw new LoginRefusedError(SUSPENDED);
       await options.guard?.afterSuccess(address, ip);
       write({ ...store, session: user.id });
       announce();

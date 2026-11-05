@@ -4,7 +4,6 @@
 import {
   CreditLedger,
   createGateway,
-  fetchTransport,
   memoryLedgerStore,
   memoryUsageLog,
 } from '../../src/gateway';
@@ -15,7 +14,6 @@ import {
 } from '../../src/platform-config';
 import { serverAdapters } from '../../server/adapters';
 import { createWiringStore, memoryBackend } from '../../src/wiring/store';
-import { visionAdapters } from '../../src/wiring/vision';
 import { fakeBase, type FakeProviders } from '../fakes/providers';
 
 export const ENV_NAMES = [
@@ -41,9 +39,8 @@ export function harness(
   const config = o.config ?? fakeConfig(fake);
   const env = Object.fromEntries(ENV_NAMES.map((k) => [k, fake.key]));
   const fast = { timeoutMs: 2000, retries: 0, sleep: async () => {} };
-  const adapters = visionAdapters(serverAdapters({ env, ...fast }), (p) =>
-    fetchTransport({ env, provider: p.name, ...fast }),
-  );
+  // The real server adapters; images and form params are added by them.
+  const adapters = serverAdapters({ env, ...fast });
   const ledgers = new Map<string, CreditLedger>();
   const ledger = (u: string) => {
     if (!ledgers.has(u)) {

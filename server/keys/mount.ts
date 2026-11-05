@@ -6,15 +6,14 @@
 //               admin only;
 //   p3ReadBody  JSON bodies for PUT and DELETE (the server read POST only).
 import type { IncomingMessage } from 'node:http';
-import path from 'node:path';
 import type { PlatformConfig } from '../../src/platform-config';
 import { serverAdapters } from '../adapters';
 import type { Caller } from '../auth';
 import type { ServerOptions } from '../app';
 import {
   createKeyVault,
-  fileVaultStore,
-  memoryVaultStore,
+  hasSecretMethods,
+  memorySecretStore,
   VaultError,
   type Vault,
   type VaultAudit,
@@ -31,12 +30,13 @@ export function p3Setup(
       `audit ${row.action} ${row.target} by ${row.actor.slice(0, 8)} ${JSON.stringify(row.detail)}`,
     ),
 ): { vault: Vault; options: ServerOptions } {
-  const store =
-    o.store.kind === 'memory'
-      ? memoryVaultStore()
-      : fileVaultStore(
-          path.resolve(o.env.SERVER_DATA ?? 'server-data', 'keys.json'),
-        );
+  // The Store's secret methods are Part 1's (rev 1.2). Until they are
+  // merged, sealed values live in memory and are lost on restart.
+  const store = hasSecretMethods(o.store) ? o.store : memorySecretStore();
+  if (store !== o.store)
+    log(
+      'key vault: the Store has no secret methods yet; keys last until restart',
+    );
   const vault = createKeyVault(store, o.env.KEY_VAULT_SECRET ?? '', audit, {
     config,
     env: o.env,

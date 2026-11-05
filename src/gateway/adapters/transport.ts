@@ -19,6 +19,11 @@ export interface TransportOptions {
   /** Extra tries after the first, for 429 and 5xx (default 2). */
   readonly retries?: number;
   readonly sleep?: (ms: number) => Promise<void>;
+  /**
+   * P3-WIRING (W6): an injected secret resolver, asked first (the key
+   * vault); a name it does not answer falls back to `env`.
+   */
+  readonly resolveSecret?: (name: string) => string | undefined;
 }
 
 const SECRET = /^(.*?)secret:([A-Z][A-Z0-9_]*)(.*)$/;
@@ -47,13 +52,20 @@ export function fetchTransport(o: TransportOptions): Transport {
         headers[k] = v;
         continue;
       }
-      if (!hasSecret(o.env, m[2]!))
+      const fromVault = o.resolveSecret?.(m[2]!);
+      const value =
+        typeof fromVault === 'string' && fromVault.trim()
+          ? fromVault
+          : hasSecret(o.env, m[2]!)
+            ? o.env[m[2]!]!
+            : null;
+      if (value === null)
         throw new GatewayError(
           'not-connected',
           `${o.provider} is not connected yet.`,
           { provider: o.provider },
         );
-      headers[k] = `${m[1]}${o.env[m[2]!]!.trim()}${m[3]}`;
+      headers[k] = `${m[1]}${value.trim()}${m[3]}`;
     }
     for (let attempt = 0; ; attempt++) {
       const ctrl = new AbortController();

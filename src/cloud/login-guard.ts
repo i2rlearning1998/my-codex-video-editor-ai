@@ -63,8 +63,26 @@ export interface GuardDeps {
   readonly limits: () => LoginLimits;
   readonly kv: GuardKV;
   readonly now?: () => number;
+  /**
+   * CONTRACTS-P3 rev 1.3 note 8: the owner's suspended flag, injected (the
+   * integrator wires it to Part 1's profile flag; the guard never reads the
+   * Store).
+   */
+  readonly isSuspended?: (email: string) => Promise<boolean>;
 }
-export function createLoginGuard(d: GuardDeps): LoginGuard {
+/** The guard, plus the suspended check a backend asks after the right password. */
+export interface SignInGuard extends LoginGuard {
+  isSuspended(email: string): Promise<boolean>;
+}
+/** The one sentence a suspended person sees. */
+export const SUSPENDED: P3Failure = {
+  code: 'suspended',
+  message: {
+    en: 'This account is paused. Contact support.',
+    hi: 'यह खाता रोका गया है। सहायता से संपर्क करें।',
+  },
+};
+export function createLoginGuard(d: GuardDeps): SignInGuard {
   const now = () => (d.now ?? Date.now)();
   const key = (kind: 'email' | 'ip', v: string) =>
     `aive.login.${kind}.${encodeURIComponent(v.trim().toLowerCase())}`;
@@ -94,6 +112,8 @@ export function createLoginGuard(d: GuardDeps): LoginGuard {
     d.kv.setItem(k, JSON.stringify(c));
   };
   return {
+    isSuspended: async (email) =>
+      (await d.isSuspended?.(email.trim().toLowerCase())) === true,
     async beforeAttempt(email, ip): Promise<Result<true>> {
       const t = now();
       const wait = Math.max(

@@ -3,7 +3,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createKeyVault,
-  memoryVaultStore,
+  memorySecretStore,
   type VaultAudit,
 } from '../../server/keys';
 import { serverAdapters } from '../../server/adapters';
@@ -26,7 +26,7 @@ function setup(env: Record<string, string> = {}, secret = SECRET) {
     const b = fakeBase(fake.url)[p.kind as keyof ReturnType<typeof fakeBase>];
     if (b) p.baseUrl = b;
   }
-  const store = memoryVaultStore();
+  const store = memorySecretStore();
   const rows: VaultAudit[] = [];
   const make = (s = secret) =>
     createKeyVault(store, s, (r) => void rows.push(r), {
@@ -51,14 +51,16 @@ describe('P3-WIRING key vault', () => {
     const raw = v.store.raw();
     expect(raw).not.toContain(fake.key);
     expect(raw).not.toContain(fake.key.slice(0, 12));
-    const sealed = JSON.parse(raw).keys.ANTHROPIC_API_KEY;
+    const sealed = JSON.parse(raw).ANTHROPIC_API_KEY;
+    expect(Object.keys(sealed).sort()).toEqual(
+      ['ciphertext', 'iv', 'last4', 'tag', 'updatedAt'].sort(),
+    );
+    expect(sealed.last4).toBe(fake.key.slice(-4));
     expect(Buffer.from(sealed.iv, 'base64')).toHaveLength(12);
     expect(Buffer.from(sealed.tag, 'base64')).toHaveLength(16);
     // A random IV per value: the same key sealed twice differs.
     await vault.set('ANTHROPIC_API_KEY', fake.key, 'again');
-    expect(JSON.parse(v.store.raw()).keys.ANTHROPIC_API_KEY.iv).not.toBe(
-      sealed.iv,
-    );
+    expect(JSON.parse(v.store.raw()).ANTHROPIC_API_KEY.iv).not.toBe(sealed.iv);
     const list = await vault.list();
     const a = list.find((k) => k.name === 'ANTHROPIC_API_KEY')!;
     expect(a).toMatchObject({

@@ -168,12 +168,18 @@ export function stubEntitlements(
     aiOff?: boolean;
     refuse?: Partial<Record<LimitAction, P3Failure>>;
   } = {},
-): Pick<EntitlementService, 'check'> & { checks: LimitAction[] } {
+): Pick<EntitlementService, 'check'> & {
+  checks: LimitAction[];
+  amounts: (number | undefined)[];
+} {
   const checks: LimitAction[] = [];
+  const amounts: (number | undefined)[] = [];
   return {
     checks,
-    async check(_userId, action) {
+    amounts,
+    async check(_userId, action, amount) {
       checks.push(action);
+      amounts.push(amount);
       if (opts.aiOff)
         return {
           ok: false,

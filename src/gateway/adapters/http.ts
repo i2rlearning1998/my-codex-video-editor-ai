@@ -10,6 +10,8 @@ import {
   type ProviderAdapter,
   type Transport,
 } from '../types';
+// P3-WIRING: images and Studio parameters on a request (additive).
+import { withExtras } from './extras';
 
 export interface HttpAdapterSpec {
   readonly kind: ProviderAdapter['kind'];
@@ -27,10 +29,15 @@ export function httpAdapter(
     kind: spec.kind,
     connected: () => !!transport,
     buildRequest: (req, ctx) =>
-      spec.build(
+      withExtras(
+        spec.kind,
         req,
         ctx,
-        (ctx.provider.baseUrl ?? spec.defaultBase).replace(/\/$/, ''),
+        spec.build(
+          req,
+          ctx,
+          (ctx.provider.baseUrl ?? spec.defaultBase).replace(/\/$/, ''),
+        ),
       ),
     parseResponse: (json, ctx) => spec.parse(json, ctx),
     async call(req, ctx) {
@@ -43,10 +50,15 @@ export function httpAdapter(
       let json: unknown;
       try {
         json = await transport(
-          spec.build(
+          withExtras(
+            spec.kind,
             req,
             ctx,
-            (ctx.provider.baseUrl ?? spec.defaultBase).replace(/\/$/, ''),
+            spec.build(
+              req,
+              ctx,
+              (ctx.provider.baseUrl ?? spec.defaultBase).replace(/\/$/, ''),
+            ),
           ),
         );
       } catch (e) {
