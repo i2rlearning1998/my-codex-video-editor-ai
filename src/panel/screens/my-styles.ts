@@ -55,7 +55,16 @@ export const styleBadge = (s: StyleRecord) =>
 
 /** The list shown on Styles and on its own route. */
 export async function mineList(ctx: Ctx, into: HTMLElement): Promise<number> {
-  const list = await (await directorService(ctx)).listStyles();
+  // P4: a rule set that already has a Style card is edited from that card.
+  const linked = new Set(
+    ctx.s
+      .ws(ctx.user.id)
+      .styles()
+      .map((x) => x.recordId),
+  );
+  const list = (await (await directorService(ctx)).listStyles()).filter(
+    (x) => !linked.has(x.id),
+  );
   clear(
     into,
     ...(list.length

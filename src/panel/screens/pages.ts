@@ -10,12 +10,18 @@ import {
   text as sayIn,
 } from '../../platform-config';
 import { paymentProviders } from '../../payments';
-import { ASPECT_SIZES } from '../../auth-gate';
 import { h, clear, put } from '../dom';
 import type { Ctx, Screen } from '../app';
 import { t, type Key } from '../strings';
 import { planLines } from '../plan-lines';
-import { card, empty, limitAlert, when } from './common';
+import { card, empty, when } from './common';
+import {
+  newProject,
+  newStyleForm,
+  styleCards,
+  syncWorkspace,
+  tag,
+} from './workspace';
 import { posterArt } from '../art';
 import { icon, studioIcon } from '../icons';
 import { reel } from '../motion';
@@ -24,6 +30,10 @@ import { mineList } from './my-styles';
 
 const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
   const plan = ctx.s.planOf(ctx.user.id);
+  // P4: asked for from inside a project, the Style is used in that project.
+  const project = new URLSearchParams(location.hash.split('?')[1] ?? '').get(
+    'project',
+  );
   const ok = canUse(plan, s.requires);
   const hint = s.priceHint;
   return h(
@@ -57,7 +67,10 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
         ok
           ? h(
               'a',
-              { class: 'button primary sm', href: `#/brief/${s.id}` },
+              {
+                class: 'button primary sm',
+                href: `#/brief/${s.id}${project ? `?project=${encodeURIComponent(project)}` : ''}`,
+              },
               t('styles.use'),
             )
           : h(
@@ -74,12 +87,24 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
 export const homeScreen: Screen = async (ctx, _a, out) => {
   const c = ctx.s.config;
   const plan = ctx.s.planOf(ctx.user.id);
-  let projects: Awaited<ReturnType<Ctx['s']['projects']['list']>> = [];
+  let projects: {
+    id: string;
+    name: string;
+    thumb: string;
+    origin: 'ai' | 'manual';
+    waiting: boolean;
+  }[] = [];
   try {
-    const trash = new Set(ctx.prefs().trash);
-    projects = (await ctx.s.projects.list())
-      .filter((p) => !trash.has(p.id))
-      .slice(0, 4);
+    projects = (await syncWorkspace(ctx))
+      .filter((j) => !j.meta.trashedAt)
+      .slice(0, 4)
+      .map((j) => ({
+        id: j.summary.id,
+        name: j.summary.name,
+        thumb: j.summary.thumb,
+        origin: j.meta.origin,
+        waiting: !!j.meta.pause,
+      }));
   } catch {
     projects = [];
   }
@@ -196,9 +221,14 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
           h(
             'article',
             { class: 'film glow reveal', 'data-project': p.id },
-            p.thumb
-              ? h('img', { src: p.thumb, alt: '', class: 'thumb' })
-              : h('div', { class: 'thumb' }),
+            h(
+              'div',
+              { class: 'ws-thumb' },
+              p.thumb
+                ? h('img', { src: p.thumb, alt: '', class: 'thumb' })
+                : h('div', { class: 'thumb' }),
+              tag(p.origin),
+            ),
             h(
               'div',
               { class: 'film-body' },
@@ -207,16 +237,26 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
                 'a',
                 {
                   class: 'button sm',
-                  href: `/?open=${encodeURIComponent(p.id)}`,
+                  href: p.waiting
+                    ? `#/assets-step/${encodeURIComponent(p.id)}`
+                    : `/?open=${encodeURIComponent(p.id)}`,
                 },
-                t('common.open'),
+                p.waiting ? t('ws.waiting') : t('common.open'),
               ),
             ),
           ),
         ),
         h(
-          'a',
-          { class: 'film new glow reveal', href: '#/styles' },
+          'button',
+          {
+            type: 'button',
+            class: 'film new glow reveal',
+            id: 'home-new-film',
+            onclick: async () => {
+              const id = await newProject(ctx, 'director');
+              if (id) ctx.go(`room/${id}`);
+            },
+          },
           h('span', { class: 'plus' }, icon('plus', 24)),
           h('span', { text: t('home.newFilm') }),
         ),
@@ -339,6 +379,9 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
 
 export const stylesScreen: Screen = async (ctx, _a, out) => {
   const mineGrid = h('div', { class: 'grid', id: 'mine-strip' });
+  const wsGrid = h('div', { class: 'grid', id: 'ws-styles' });
+  const wsHost = h('div', { class: 'ws-notices' });
+  const paintWs = () => styleCards(ctx, wsGrid, wsHost);
   const c = ctx.s.config;
   const plan = ctx.s.planOf(ctx.user.id);
   let q = '';
@@ -415,6 +458,19 @@ export const stylesScreen: Screen = async (ctx, _a, out) => {
     grid,
     h(
       'section',
+      { class: 'ws-styles-section', id: 'ws-styles-section' },
+      h(
+        'div',
+        { class: 'mine-section-head' },
+        h('h2', { text: t('ws.styles') }),
+      ),
+      h('p', { class: 'muted', text: t('ws.newStyleHelp') }),
+      newStyleForm(ctx, paintWs),
+      wsHost,
+      wsGrid,
+    ),
+    h(
+      'section',
       { class: 'mine-section', id: 'mine-section' },
       h(
         'div',
@@ -430,252 +486,8 @@ export const stylesScreen: Screen = async (ctx, _a, out) => {
     ),
   );
   paint();
+  paintWs();
   await mineList(ctx, mineGrid);
-};
-
-export const projectsScreen: Screen = async (ctx, _a, out) => {
-  let q = '';
-  let view: 'all' | 'recent' | 'trash' = 'all';
-  const list = h('div', { class: 'grid', id: 'project-list' });
-  const blank = h(
-    'form',
-    {
-      class: 'inline-form',
-      id: 'blank-form',
-      hidden: true,
-      onsubmit: async (e: Event) => {
-        e.preventDefault();
-        // P2B-27: the plan's project limit (nothing is made when it is hit).
-        blank.querySelector('#project-limit')?.remove();
-        const refused = await ctx.s.checkLimit(ctx.user.id, 'project');
-        if (refused) {
-          blank.append(limitAlert('project-limit', refused));
-          return;
-        }
-        const name =
-          (
-            blank.querySelector('#blank-name') as HTMLInputElement
-          ).value.trim() || 'Untitled';
-        const aspect = (
-          blank.querySelector('#blank-aspect') as HTMLSelectElement
-        ).value;
-        location.href = `/?new=${encodeURIComponent(name)}&aspect=${encodeURIComponent(aspect)}`;
-      },
-    },
-    h('label', { for: 'blank-name', text: t('projects.blankName') }),
-    h('input', { id: 'blank-name', type: 'text', required: true }),
-    h('label', { for: 'blank-aspect', text: t('projects.blankFormat') }),
-    h(
-      'select',
-      { id: 'blank-aspect' },
-      Object.keys(ASPECT_SIZES).map((a) => h('option', { value: a, text: a })),
-    ),
-    h(
-      'button',
-      { type: 'submit', class: 'button primary', id: 'blank-create' },
-      t('projects.create'),
-    ),
-  );
-  const paint = async () => {
-    let all: Awaited<ReturnType<Ctx['s']['projects']['list']>> = [];
-    try {
-      all = await ctx.s.projects.list();
-    } catch {
-      all = [];
-    }
-    const trash = new Set(ctx.prefs().trash);
-    const week = Date.now() - 7 * 864e5;
-    const shown = all.filter(
-      (p) =>
-        (view === 'trash' ? trash.has(p.id) : !trash.has(p.id)) &&
-        (view !== 'recent' || Date.parse(p.updated) >= week) &&
-        (!q || p.name.toLowerCase().includes(q)),
-    );
-    clear(
-      list,
-      ...(shown.length
-        ? shown.map((p) => {
-            const nameEl = h('h3', { text: p.name });
-            const act = (
-              key: Key,
-              id: string,
-              fn: () => void | Promise<void>,
-            ) =>
-              h(
-                'button',
-                {
-                  type: 'button',
-                  class: 'button sm',
-                  'data-act': id,
-                  onclick: async () => {
-                    await fn();
-                    await paint();
-                  },
-                },
-                t(key),
-              );
-            return card(
-              { 'data-project': p.id },
-              p.thumb
-                ? h('img', { src: p.thumb, alt: '', class: 'thumb' })
-                : h('div', { class: 'thumb' }),
-              nameEl,
-              h('p', {
-                class: 'muted',
-                text: t('projects.edited', {
-                  when: when(p.updated, ctx.prefs().locale),
-                }),
-              }),
-              h(
-                'div',
-                { class: 'actions' },
-                ...(view === 'trash'
-                  ? [
-                      act('projects.restore', 'restore', () =>
-                        ctx.setPrefs({
-                          trash: ctx.prefs().trash.filter((x) => x !== p.id),
-                        }),
-                      ),
-                      act('projects.deleteForever', 'delete', async () => {
-                        await ctx.s.projects.remove(p.id);
-                        ctx.setPrefs({
-                          trash: ctx.prefs().trash.filter((x) => x !== p.id),
-                        });
-                      }),
-                    ]
-                  : [
-                      h(
-                        'a',
-                        {
-                          class: 'button sm primary',
-                          href: `/?open=${encodeURIComponent(p.id)}`,
-                          'data-act': 'open',
-                        },
-                        t('common.open'),
-                      ),
-                      h(
-                        'button',
-                        {
-                          type: 'button',
-                          class: 'button sm',
-                          'data-act': 'rename',
-                          onclick: () => {
-                            // Inline: the name becomes a field; Enter or
-                            // leaving it saves, Escape cancels.
-                            const field = h('input', {
-                              type: 'text',
-                              value: p.name,
-                              class: 'rename-field',
-                              'aria-label': t('projects.rename'),
-                            });
-                            let done = false;
-                            const finish = async (save: boolean) => {
-                              if (done) return;
-                              done = true;
-                              const name = field.value.trim();
-                              if (save && name && name !== p.name)
-                                await ctx.s.projects.rename(p.id, name);
-                              await paint();
-                            };
-                            field.addEventListener('keydown', (e) => {
-                              if (e.key === 'Enter') void finish(true);
-                              if (e.key === 'Escape') void finish(false);
-                            });
-                            field.addEventListener(
-                              'blur',
-                              () => void finish(true),
-                            );
-                            nameEl.replaceWith(field);
-                            field.select();
-                          },
-                        },
-                        t('projects.rename'),
-                      ),
-                      h(
-                        'a',
-                        {
-                          class: 'button sm',
-                          href: `#/project/${encodeURIComponent(p.id)}`,
-                          'data-act': 'memory',
-                        },
-                        t('mem.open'),
-                      ),
-                      act('projects.duplicate', 'duplicate', async () => {
-                        await ctx.s.projects.duplicate(p.id, 'copy');
-                      }),
-                      act('projects.toTrash', 'trash', () =>
-                        ctx.setPrefs({ trash: [...ctx.prefs().trash, p.id] }),
-                      ),
-                    ]),
-              ),
-            );
-          })
-        : [empty(t('projects.empty'))]),
-    );
-  };
-  const tab = (key: Key, v: typeof view) =>
-    h(
-      'button',
-      {
-        type: 'button',
-        class: 'chip',
-        'data-view': v,
-        'aria-pressed': String(view === v),
-        onclick: (e: Event) => {
-          view = v;
-          for (const b of out.querySelectorAll('[data-view]'))
-            b.setAttribute('aria-pressed', String(b === e.currentTarget));
-          void paint();
-        },
-      },
-      t(key),
-    );
-  put(
-    out,
-    h('h1', { text: t('projects.title') }),
-    h(
-      'div',
-      { class: 'actions' },
-      h(
-        'a',
-        { class: 'button primary', href: '#/styles', id: 'new-director' },
-        t('projects.newDirector'),
-      ),
-      h(
-        'button',
-        {
-          type: 'button',
-          class: 'button',
-          id: 'new-blank',
-          onclick: () => {
-            blank.hidden = !blank.hidden;
-          },
-        },
-        t('projects.newBlank'),
-      ),
-    ),
-    blank,
-    h(
-      'div',
-      { class: 'filters' },
-      h('input', {
-        type: 'search',
-        id: 'project-search',
-        placeholder: t('common.search'),
-        'aria-label': t('common.search'),
-        oninput: (e: Event) => {
-          q = (e.target as HTMLInputElement).value.trim().toLowerCase();
-          void paint();
-        },
-      }),
-      tab('common.all', 'all'),
-      tab('projects.recent', 'recent'),
-      tab('projects.trash', 'trash'),
-    ),
-    list,
-    h('p', { class: 'muted', text: t('projects.fileMenu') }),
-  );
-  await paint();
 };
 
 const meter = (used: number, max: number | null) =>

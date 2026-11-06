@@ -19,6 +19,7 @@ import { directorService } from '../p3-services';
 import { t, getLocale, type Key } from '../strings';
 import type { Screen } from '../app';
 import { currentModel } from './flow';
+import { newProject } from './workspace';
 
 const say = (x: P3Text): string => (getLocale() === 'hi' && x.hi ? x.hi : x.en);
 
@@ -38,7 +39,14 @@ export const directorRoomScreen = async (
 ): Promise<void> => {
   const svc = await directorService(ctx);
   const c = ctx.s.config;
-  const styleId = args[0] ?? c.styles[0]?.id ?? '';
+  const ws = ctx.s.ws(ctx.user.id);
+  // P4: `#/room/<projectId>` is Director inside a project that already exists.
+  let projectId = args[0] && ws.project(args[0]) ? args[0] : '';
+  const inProject = (): ReturnType<typeof ws.project> =>
+    projectId ? ws.project(projectId) : undefined;
+  const styleId = projectId
+    ? (c.styles[0]?.id ?? '')
+    : (args[0] ?? c.styles[0]?.id ?? '');
 
   const orb = createOrb({
     size: 168,
@@ -208,7 +216,20 @@ export const directorRoomScreen = async (
 
   async function ensureChat(path: StartPath) {
     if (chat) return;
-    const started = await svc.start(path);
+    // P4: the project exists before the first message (Home starts one here).
+    if (!projectId) {
+      const made = await newProject(ctx, 'director');
+      if (!made) return;
+      projectId = made;
+    }
+    ws.markAi(projectId);
+    const styleRec = inProject()?.styleId
+      ? ws.style(inProject()!.styleId!)?.recordId
+      : null;
+    const started = await svc.start(
+      styleRec ? { kind: 'style', styleId: styleRec } : path,
+      projectId,
+    );
     chat = started.chat;
     memory = started.project;
     paintMemory();
@@ -217,7 +238,9 @@ export const directorRoomScreen = async (
   async function send(text: string) {
     const clean = text.trim();
     if (!clean) return;
-    await ensureChat(args[0] ? { kind: 'style', styleId } : { kind: 'blank' });
+    await ensureChat(
+      args[0] && !projectId ? { kind: 'style', styleId } : { kind: 'blank' },
+    );
     if (!chat) return;
     markChat();
     lastText = clean;
@@ -318,10 +341,19 @@ export const directorRoomScreen = async (
         onclick: () => {
           if (key === 'brief') {
             const idea = box.input.value.trim();
+            const q = [
+              projectId ? `project=${encodeURIComponent(projectId)}` : '',
+              idea ? `idea=${encodeURIComponent(idea)}` : '',
+            ]
+              .filter(Boolean)
+              .join('&');
+            ctx.go(`brief/${styleId}${q ? `?${q}` : ''}`);
+          } else if (key === 'style')
             ctx.go(
-              `brief/${styleId}${idea ? `?idea=${encodeURIComponent(idea)}` : ''}`,
+              projectId
+                ? `styles?project=${encodeURIComponent(projectId)}`
+                : 'styles',
             );
-          } else if (key === 'style') ctx.go('styles');
           else box.input.focus();
         },
       },
@@ -338,7 +370,10 @@ export const directorRoomScreen = async (
           text: opts.home.greeting,
         })
       : null,
-    h('h1', { class: 'room-greeting', text: t('room.greeting') }),
+    h('h1', {
+      class: 'room-greeting',
+      text: inProject() ? inProject()!.name : t('room.greeting'),
+    }),
     h('p', { class: 'room-sub', text: t('room.sub') }),
     opts.home
       ? h('p', {

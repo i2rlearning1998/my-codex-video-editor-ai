@@ -516,6 +516,28 @@ export const styleCapSchema = z.object({
   maxChatsPerProject: z.number().int().min(0).nullable().default(null),
 });
 export type StyleCap = z.infer<typeof styleCapSchema>;
+/** P4: how projects, Styles and the Trash behave. Every value is the owner's. */
+export const workspaceSchema = z.object({
+  /** Days a deleted project or asset waits in the Trash before it is gone. */
+  trashDays: z.number().int().min(0).max(365).default(30),
+  styleCreation: z
+    .object({
+      /** Plan features that allow saving a Style ([] means every plan). */
+      requires: z.array(id).default([]),
+      /** Credits one "Save to your styles" costs (0: free). */
+      credits: z.number().int().min(0).default(0),
+    })
+    .default({}),
+  /** Start options a plan may use; a plan without an entry has both. */
+  startOptions: z
+    .record(id, z.array(z.enum(['director', 'blank'])))
+    .default({}),
+  /** Projects one Style may hold, by plan (a plan without an entry: no cap). */
+  maxProjectsPerStyle: z.record(id, z.number().int().min(0)).default({}),
+  /** Whether the Style chat (talking to a Style's Director) is on. */
+  styleChat: z.boolean().default(true),
+});
+export type WorkspaceConfig = z.infer<typeof workspaceSchema>;
 /** W1: a named set of models, one per role. */
 export const comboSchema = z.object({
   id,
@@ -557,6 +579,7 @@ export const platformConfigSchema = z
     campaigns: z.array(campaignSchema).default([]),
     /** Keyed by plan id; a plan without an entry has no caps. */
     styleCaps: z.record(id, styleCapSchema).default({}),
+    workspace: workspaceSchema.default({}),
     combos: z.array(comboSchema).default([]),
   })
   .superRefine((c, ctx) => {

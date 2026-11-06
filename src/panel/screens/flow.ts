@@ -41,9 +41,15 @@ import { renderForm } from '../form';
 import { t } from '../strings';
 import { motionOn, tick } from '../motion';
 import { bestModels, modelPicker, empty } from './common';
+import { newProject } from './workspace';
+import { planSlots } from '../asset-slots';
+import { getSlotFile } from '../slot-files';
+import type { AssetSlot } from '../workspace';
 
 interface Flow {
   styleId: string;
+  /** P4: the project this video is made in (it exists from the start). */
+  projectId?: string;
   answers: Answers;
   notes: string[];
   plan?: VideoPlan;
@@ -240,16 +246,29 @@ export const briefScreen: Screen = async (ctx, [styleId = ''], out) => {
       }),
     );
   paintPicker();
-  const next = (route: 'director' | 'plan') => {
+  // P4: the project exists before Director starts. One named in the address
+  // (`?project=`) is used; otherwise one is made when the person goes on.
+  const wanted = new URLSearchParams(location.hash.split('?')[1] ?? '').get(
+    'project',
+  );
+  const next = async (route: 'director' | 'plan') => {
     form.showIssues();
     if (form.issues().length && route === 'plan') {
       ctx.toast(t('brief.fix'), 'error');
       return;
     }
+    const before = readFlow(ctx);
+    const projectId =
+      (wanted && ctx.s.ws(ctx.user.id).project(wanted) ? wanted : '') ||
+      (before?.styleId === style.id ? before.projectId : undefined) ||
+      (await newProject(ctx, 'director'));
+    if (!projectId) return;
+    ctx.s.ws(ctx.user.id).markAi(projectId);
     writeFlow(ctx, {
       styleId: style.id,
+      projectId,
       answers,
-      notes: readFlow(ctx)?.styleId === style.id ? readFlow(ctx)!.notes : [],
+      notes: before?.styleId === style.id ? before.notes : [],
     });
     ctx.go(`${route}/${style.id}`);
   };
@@ -970,19 +989,42 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
             class: 'button primary',
             id: 'plan-approve',
             disabled: short || !e,
-            onclick: () => {
-              sessionStorage.setItem(
-                `aive.panel.build.${ctx.user.id}`,
-                JSON.stringify({
-                  styleId: style.id,
-                  plan: video,
-                  model,
-                  max: e!.max,
-                  voice,
-                  key: `build-${Date.now().toString(36)}`,
-                }),
-              );
-              ctx.go('build');
+            onclick: async () => {
+              // P4: the project exists; the files the video needs are asked
+              // for on the next page, where Director waits.
+              const ws = ctx.s.ws(ctx.user.id);
+              const projectId =
+                (flow.projectId && ws.project(flow.projectId)
+                  ? flow.projectId
+                  : '') || (await newProject(ctx, 'director'));
+              if (!projectId) return;
+              ws.markAi(projectId);
+              writeFlow(ctx, { ...flow, projectId });
+              const slots = planSlots(video!, voice);
+              if (!slots.length) {
+                sessionStorage.setItem(
+                  `aive.panel.build.${ctx.user.id}`,
+                  JSON.stringify({
+                    styleId: style.id,
+                    plan: video,
+                    model,
+                    max: e!.max,
+                    voice,
+                    projectId,
+                    slots: [],
+                    key: `build-${Date.now().toString(36)}`,
+                  }),
+                );
+                ctx.go('build');
+                return;
+              }
+              ws.pause(projectId, {
+                step: 'assets',
+                templateId: style.id,
+                job: { plan: video, model, max: e!.max, voice },
+                slots,
+              });
+              ctx.go(`assets-step/${projectId}`);
             },
           },
           t('plan.approve'),
@@ -998,6 +1040,10 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
 };
 
 /** P2-30 Live Build. */
+/** The editor address that builds a finished plan (into the project when there is one). */
+const handoffHref = (id: string, projectId?: string) =>
+  `/?handoff=${encodeURIComponent(id)}${projectId ? `&project=${encodeURIComponent(projectId)}` : ''}`;
+
 export const buildScreen: Screen = async (ctx, _args, out) => {
   const c = ctx.s.config;
   let job: {
@@ -1007,6 +1053,8 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
     max: number;
     voice?: boolean;
     key: string;
+    projectId?: string;
+    slots?: AssetSlot[];
   } | null = null;
   try {
     job = JSON.parse(
@@ -1019,8 +1067,13 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
   if (!job) {
     // A finished build stays here until the next one (leaving and coming
     // back still offers Open in editor).
-    let done: { id: string; title: string; used: number; back: number } | null =
-      null;
+    let done: {
+      id: string;
+      title: string;
+      used: number;
+      back: number;
+      projectId?: string;
+    } | null = null;
     try {
       done = JSON.parse(sessionStorage.getItem(DONE) ?? 'null');
     } catch {
@@ -1047,7 +1100,7 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           {
             class: 'button primary',
             id: 'open-in-editor',
-            href: `/?handoff=${encodeURIComponent(done.id)}`,
+            href: handoffHref(done.id, done.projectId),
           },
           t('build.open'),
         ),
@@ -1258,25 +1311,43 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
     sessionStorage.removeItem(`aive.panel.build.${ctx.user.id}`);
     const id = j.key;
     // P2B-23: what the models made goes to Project Media (by name) and to
-    // the Asset Library; the editor moves the rows to the new project.
-    if (result.files.length) {
-      await putHandoffFiles(
-        id,
-        result.files.map((f) => ({
+    // the Asset Library. P4: the project exists, so the rows go straight to
+    // its libraries: AI-made files to AI Libraries, the person's own files
+    // to Media Libraries.
+    const owned = j.projectId ?? `handoff:${id}`;
+    const ws = ctx.s.ws(ctx.user.id);
+    const mine = [] as { name: string; type: string; bytes: Uint8Array }[];
+    for (const sl of j.slots ?? []) {
+      if (!sl.filled) continue;
+      const f = await getSlotFile(j.projectId ?? '', sl.name).catch(
+        () => undefined,
+      );
+      if (f)
+        mine.push({
+          name: f.name,
+          type: f.type,
+          bytes: new Uint8Array(await f.blob.arrayBuffer()),
+        });
+    }
+    if (result.files.length || mine.length) {
+      await putHandoffFiles(id, [
+        ...result.files.map((f) => ({
           name: f.name,
           type: f.type,
           bytes: fromBase64(f.base64),
         })),
-      ).catch(() => undefined);
+        ...mine,
+      ]).catch(() => undefined);
       for (const f of result.files)
         try {
           ctx.s.saveAsset({
             id: `${id}-${f.name}`,
             userId: ctx.user.id,
-            projectId: `handoff:${id}`,
+            projectId: owned,
             kind: f.kind,
             name: f.name,
             studioId: 'director',
+            library: 'ai',
             // Large files stay only in Project Media (browser storage is small).
             ...(f.base64.length < 1_500_000
               ? { dataUrl: `data:${f.type};base64,${f.base64}` }
@@ -1288,6 +1359,24 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           /* the editor still gets the file */
         }
     }
+    // The editor lists every file the video still waits for, by name.
+    const made = new Set(
+      result.files.map((f) => f.name.replace(/\.[a-z0-9]{2,5}$/i, '')),
+    );
+    const expected = (j.slots ?? []).map((sl) => ({
+      name: sl.name,
+      kind: sl.kind,
+      filled: sl.filled || made.has(sl.name),
+    }));
+    localStorage.setItem(`${HANDOFF_KEY(id)}.slots`, JSON.stringify(expected));
+    if (j.projectId) {
+      try {
+        ws.resume(j.projectId);
+      } catch {
+        /* the record is gone: nothing waits */
+      }
+      ws.markAi(j.projectId);
+    }
     for (const m of result.missing)
       steps.append(h('li', { class: 'note', 'data-missing': '', text: m }));
     localStorage.setItem(HANDOFF_KEY(id), JSON.stringify(result.plan));
@@ -1298,6 +1387,7 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
         title: result.plan.meta.title,
         used: result.credits,
         back: j.max - result.credits,
+        ...(j.projectId ? { projectId: j.projectId } : {}),
       }),
     );
     actions.append(
@@ -1306,7 +1396,7 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
         {
           class: 'button primary',
           id: 'open-in-editor',
-          href: `/?handoff=${encodeURIComponent(id)}`,
+          href: handoffHref(id, j.projectId),
         },
         t('build.open'),
       ),

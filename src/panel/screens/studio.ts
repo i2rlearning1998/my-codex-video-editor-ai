@@ -22,15 +22,15 @@ import type { Asset } from '../services';
 import { t } from '../strings';
 import { studioService } from '../p3-services';
 import { modelStudio, type SaveRun } from './studio-model';
-import { bestModels, card, empty, limitAlert, when } from './common';
+import { bestModels, card, empty, limitAlert } from './common';
 
 const UNSORTED = 'unsorted';
 async function projectOptions(ctx: Ctx) {
   let list: { id: string; name: string }[] = [];
   try {
-    const trash = new Set(ctx.prefs().trash);
+    const ws = ctx.s.ws(ctx.user.id);
     list = (await ctx.s.projects.list())
-      .filter((p) => !trash.has(p.id))
+      .filter((p) => !ws.project(p.id)?.trashedAt)
       .map((p) => ({ id: p.id, name: p.name }));
   } catch {
     list = [];
@@ -422,101 +422,3 @@ export function assetView(a: Asset): HTMLElement {
           : h('pre', { class: 'asset-text', text: a.text ?? '' }),
   );
 }
-
-export const assetsScreen: Screen = async (ctx, _a, out) => {
-  const projects = await projectOptions(ctx);
-  let current = projects[0]!.id;
-  const list = h('div', { class: 'grid', id: 'asset-list' });
-  const pick = h(
-    'select',
-    {
-      id: 'assets-project',
-      onchange: () => {
-        current = pick.value;
-        paint();
-      },
-    },
-    projects.map((p) => h('option', { value: p.id, text: p.name })),
-  );
-  const paint = () => {
-    const mine = ctx.s
-      .assets(ctx.user.id)
-      .filter((a) => a.projectId === current);
-    clear(
-      list,
-      ...(mine.length
-        ? mine.map((a) => {
-            const to = h(
-              'select',
-              { 'aria-label': t('assets.copyTo'), 'data-copy-target': a.id },
-              projects
-                .filter((p) => p.id !== current)
-                .map((p) => h('option', { value: p.id, text: p.name })),
-            );
-            return card(
-              { 'data-asset': a.id, 'data-kind': a.kind },
-              h('h3', { text: a.name }),
-              h('p', {
-                class: 'muted',
-                text: when(a.createdAt, ctx.prefs().locale),
-              }),
-              assetView(a),
-              projects.length > 1
-                ? h(
-                    'div',
-                    { class: 'actions' },
-                    to,
-                    h(
-                      'button',
-                      {
-                        type: 'button',
-                        class: 'button sm',
-                        'data-copy': a.id,
-                        onclick: () => {
-                          ctx.s.saveAsset({
-                            ...a,
-                            id: `${a.id}-c${Date.now().toString(36)}`,
-                            projectId: to.value,
-                            createdAt: new Date().toISOString(),
-                          });
-                          ctx.toast(t('assets.copied'));
-                        },
-                      },
-                      t('assets.copyTo'),
-                    ),
-                  )
-                : null,
-            );
-          })
-        : [
-            h(
-              'div',
-              { class: 'empty-state assets-empty' },
-              icon('assets', 28),
-              h('p', { text: t('assets.empty') }),
-              h('a', {
-                class: 'button primary sm',
-                href: '#/studio',
-                text: t('nav.studio'),
-              }),
-            ),
-          ]),
-    );
-  };
-  put(
-    out,
-    h('h1', { text: t('assets.title') }),
-    h(
-      'div',
-      { class: 'field' },
-      h('label', {
-        for: 'assets-project',
-        class: 'field-label',
-        text: t('assets.project'),
-      }),
-      pick,
-    ),
-    list,
-  );
-  paint();
-};

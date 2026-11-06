@@ -27,7 +27,9 @@ import {
 import { EXPORTS_KEY, LIMITS_KEY } from '../usage-report';
 import { planFor, type Plan, type PlatformConfig } from '../platform-config';
 import { IdbBackend, ProjectLibrary } from '../persistence/projects';
-import { claimLocalData, HANDOFF_KEY } from '../auth-gate';
+import { ASPECT_SIZES, claimLocalData, HANDOFF_KEY } from '../auth-gate';
+import { createComposition, createProject } from '../core';
+import { Workspace, type Origin, type LibraryKind } from './workspace';
 import type { Answers } from '../platform-config';
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -62,6 +64,12 @@ export interface Asset {
   dataUrl?: string;
   bytes: number;
   createdAt: string;
+  /** P4: which of the project's three libraries it is in (none: by studioId). */
+  library?: LibraryKind;
+  /** P4: set when it is in the Trash. */
+  trashedAt?: string | undefined;
+  /** P4: an older generation of the same thing this one replaced. */
+  replaces?: string;
 }
 
 export interface Services {
@@ -107,6 +115,23 @@ export interface Services {
   monthlyGrant(userId: string): void;
   assets(userId: string): Asset[];
   saveAsset(a: Asset): void;
+  /** P4: change fields of one asset (Trash, move). */
+  patchAsset(id: string, patch: Partial<Asset>): void;
+  deleteAsset(id: string): void;
+  /** P4: this person's Styles, projects and where Director waits. */
+  ws(userId: string): Workspace;
+  /** P4: the price of saving a Style (the server's ledger when it is used). */
+  chargeStyle(userId: string, credits: number): Promise<void>;
+  /** P4: a project exists at once (it is in the Projects library and the workspace). */
+  createProject(
+    userId: string,
+    input: {
+      name: string;
+      aspect?: string;
+      origin: Origin;
+      styleId?: string | null;
+    },
+  ): Promise<string>;
   now(): Date;
 }
 
@@ -142,6 +167,7 @@ export async function createServices(
     : localAccountBackend({ storage, blobs: indexedBlobStore() });
   const usageLog = storageUsageLog(storage);
   const ledgers = new Map<string, CreditLedger>();
+  const workspaces = new Map<string, Workspace>();
   const ledger = (u: string) => {
     if (!ledgers.has(u))
       ledgers.set(u, new CreditLedger(storageLedgerStore(storage, u)));
@@ -242,6 +268,48 @@ export async function createServices(
         }),
     saveAsset: (a) =>
       storage.setItem(ASSETS, JSON.stringify([...allAssets(), a])),
+    patchAsset: (id, patch) =>
+      storage.setItem(
+        ASSETS,
+        JSON.stringify(
+          allAssets().map((a) => (a.id === id ? { ...a, ...patch } : a)),
+        ),
+      ),
+    deleteAsset: (id) =>
+      storage.setItem(
+        ASSETS,
+        JSON.stringify(allAssets().filter((a) => a.id !== id)),
+      ),
+    chargeStyle: async (u, credits) => {
+      const key = `style-${Date.now().toString(36)}`;
+      const r = ledger(u).reserve(credits, key, 'style');
+      ledger(u).settle(r.id, credits, `${key}:settle`);
+    },
+    ws: (u) => {
+      let w = workspaces.get(u);
+      if (!w) workspaces.set(u, (w = new Workspace(storage, u)));
+      return w;
+    },
+    createProject: async (u, input) => {
+      const aspect = input.aspect ?? '16:9';
+      const [width, height] = ASPECT_SIZES[aspect] ?? ASPECT_SIZES['16:9']!;
+      const name = input.name.trim().slice(0, 80) || 'Untitled';
+      const project = createProject(name);
+      project.compositions = [
+        createComposition({ name, width, height, fps: 30 }),
+      ];
+      ownerId = u;
+      await projects.save(project);
+      projectCount += 1;
+      services.ws(u).addProject({
+        id: project.id,
+        name,
+        origin: input.origin,
+        styleId: input.styleId ?? null,
+        aspect,
+      });
+      return project.id;
+    },
     now: () => new Date(),
     gateway: undefined as unknown as PanelGateway,
   };
@@ -427,6 +495,14 @@ export async function createServices(
       }
     };
     w.ledger = () => remote.ledger();
+    // P4: the server's ledger takes the fee; the browser only asks.
+    w.chargeStyle = async (u: string, credits: number) => {
+      await remote.api('/workspace/style-fee', {
+        credits,
+        key: `style-${Date.now().toString(36)}`,
+      });
+      await services.sync(u);
+    };
     w.planOf = (u: string) =>
       planFor(config, remote.plan() ?? services.prefs(u).plan);
     w.monthlyGrant = () => {};

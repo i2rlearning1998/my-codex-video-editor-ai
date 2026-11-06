@@ -8,6 +8,7 @@ import './studio.css';
 import './mine.css';
 import './credits.css';
 import './polish.css';
+import './workspace.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';
@@ -23,11 +24,13 @@ import {
   creditsScreen,
   homeScreen,
   learnScreen,
-  projectsScreen,
   settingsScreen,
   stylesScreen,
 } from './screens/pages';
-import { assetsScreen, studioScreen } from './screens/studio';
+import { studioScreen } from './screens/studio';
+import { assetsScreen } from './screens/library';
+import { assetStepScreen } from './screens/asset-step';
+import { projectsScreen, startScreen, styleScreen } from './screens/workspace';
 import { directorRoomScreen } from './screens/director-room';
 import { myStylesScreen, styleReviewScreen } from './screens/my-styles';
 import { projectMemoryScreen } from './screens/project-memory';
@@ -47,6 +50,9 @@ const screens: Record<string, Screen> = {
   studio: studioScreen,
   assets: assetsScreen,
   projects: projectsScreen,
+  start: startScreen,
+  'assets-step': assetStepScreen,
+  style: styleScreen,
   credits: creditsScreen,
   brand: brandScreen,
   learn: learnScreen,

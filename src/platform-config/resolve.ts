@@ -219,3 +219,20 @@ export function comboModels(
 }
 /** W8: the sign-in limits and password length (samples until set in Admin). */
 export const loginLimits = (c: PlatformConfig) => ({ ...c.p3.login });
+
+/** P4: the workspace rules for one plan. */
+export function workspaceRules(c: PlatformConfig, planId: string) {
+  const w = c.workspace;
+  const cap = capFor(c, planId);
+  const plan = c.plans.find((p) => p.id === planId);
+  return {
+    trashDays: w.trashDays,
+    styleCredits: w.styleCreation.credits,
+    styleAllowed:
+      !plan || w.styleCreation.requires.every((f) => plan.features.includes(f)),
+    maxStyles: cap.maxStyles,
+    maxProjectsPerStyle: w.maxProjectsPerStyle[planId] ?? null,
+    startOptions: w.startOptions[planId] ?? (['director', 'blank'] as const),
+    styleChat: w.styleChat,
+  };
+}

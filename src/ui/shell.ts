@@ -1,4 +1,5 @@
 import type { UsageReporter } from '../usage-report';
+import { markAiProject } from '../project/ai-flag';
 import type { EditorChatEngine } from '../contracts/p3';
 import {
   builtScenes,
@@ -8207,6 +8208,7 @@ export function mountEditorShell(
         settings:
           actions.chatSettings ??
           (() => ({ enabled: true, maxMessagesPerDay: 50 })),
+        onUsed: () => markAiProject(engine.state.id),
       });
     });
   }

@@ -46,14 +46,23 @@ export const loginUrl = (back: string) =>
 export type Handoff =
   | { kind: 'open'; projectId: string }
   | { kind: 'new'; name: string; aspect: string }
-  | { kind: 'plan'; id: string };
+  | { kind: 'plan'; id: string; projectId?: string };
 export function readHandoff(search: string): Handoff | null {
   const q = new URLSearchParams(search);
   const open = q.get('open');
   if (open) return { kind: 'open', projectId: open };
   const plan = q.get('handoff');
-  if (plan && /^[a-z0-9-]{1,64}$/i.test(plan))
-    return { kind: 'plan', id: plan };
+  if (plan && /^[a-z0-9-]{1,64}$/i.test(plan)) {
+    // P4: the project the panel made first (its id is kept).
+    const project = q.get('project');
+    return {
+      kind: 'plan',
+      id: plan,
+      ...(project && /^[a-z0-9-]{1,64}$/i.test(project)
+        ? { projectId: project }
+        : {}),
+    };
+  }
   if (q.has('new'))
     return {
       kind: 'new',

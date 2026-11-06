@@ -1,4 +1,5 @@
 import { takeHandoffFiles } from './handoff-store';
+import { readExpected, showMissingAssets } from './ui/missing-assets';
 import { gatewayBase, gatewayToken, usageReporter } from './usage-report';
 import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 import {
@@ -379,12 +380,13 @@ if (recoveredProject) {
 const handoff = readHandoff(location.search);
 if (handoff) {
   history.replaceState(null, '', location.pathname);
-  const fresh = (name: string, aspect: string) => {
+  const fresh = (name: string, aspect: string, projectId?: string) => {
     const [width, height] = ASPECT_SIZES[aspect] ?? ASPECT_SIZES['16:9']!;
     autosave?.flush();
     createProjectFromSettings(
       { name, width, height, fps: 30, background: '#ffffff' },
       engine,
+      projectId,
     );
     // The panel lists it at once (Projects, Asset Library).
     void mirrorNow();
@@ -418,7 +420,7 @@ if (handoff) {
       } catch {
         /* the importer reports a bad plan itself */
       }
-      fresh(title, aspect);
+      fresh(title, aspect, handoff.projectId);
       // P2-R2: the build's AI pictures and voice, then the plan finds them.
       const plan = text;
       const id = handoff.id;
@@ -435,7 +437,19 @@ if (handoff) {
           localStorage.setItem(`${HANDOFF_KEY(id)}.project`, engine.state.id);
         })
         .catch(() => undefined)
-        .finally(() => shell.buildHandedPlan(plan));
+        .finally(() => {
+          shell.buildHandedPlan(plan);
+          // P4: files the video still waits for are listed by exact name.
+          const missing = readExpected(`${HANDOFF_KEY(id)}.slots`);
+          if (missing.length)
+            showMissingAssets({
+              missing,
+              importFiles: async (files) => {
+                await shell.importHandedFiles(files);
+              },
+              rebuild: () => shell.buildHandedPlan(plan),
+            });
+        });
     }
   }
 }

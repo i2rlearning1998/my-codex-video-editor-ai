@@ -40,6 +40,8 @@ export interface ChatDockOptions {
   readonly settings: () => ChatSettings;
   readonly storage?: Storage;
   readonly today?: () => string;
+  /** P4: called when a message is sent (the project becomes an AI project). */
+  readonly onUsed?: () => void;
 }
 
 type Item =
@@ -340,6 +342,7 @@ export function mountChatDock(options: ChatDockOptions): () => void {
     });
     input.value = '';
     bump();
+    options.onUsed?.();
     const controller = new AbortController();
     abort = controller;
     orb = 'thinking';

@@ -66,7 +66,7 @@ const EXT: Record<string, string> = {
   'video/mp4': 'mp4',
   'video/webm': 'webm',
 };
-const safeName = (q: string) =>
+export const safeName = (q: string) =>
   q
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')

@@ -102,11 +102,14 @@ export function validateNewProject(input: NewProjectInput): NewProjectResult {
 export function createProjectFromSettings(
   settings: NewProjectSettings,
   engine: EditorEngine,
+  /** P4: the id of a project the panel already made (kept, so it is one project). */
+  id?: string,
 ): void {
   const result = validateNewProject({ ...settings, aspect: 'custom' });
   if (!result.ok) throw new Error('project.error.invalid');
   const normalized = result.settings;
   const project = createProject(normalized.name);
+  if (id) project.id = id;
   project.settings.backgroundColor = normalized.background;
   project.compositions = [
     createComposition({
