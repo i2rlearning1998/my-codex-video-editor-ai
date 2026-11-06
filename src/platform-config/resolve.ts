@@ -105,7 +105,11 @@ export const modelsForRole = (c: PlatformConfig, role: string): Model[] =>
         m.roles.includes(role) &&
         providerById(c, m.providerId)?.enabled,
     )
-    .sort((a, b) => a.order - b.order);
+    .sort(
+      (a, b) =>
+        Number(c.assignments?.[role] === b.id) -
+          Number(c.assignments?.[role] === a.id) || a.order - b.order,
+    );
 /** The model to use for a role: the recommended one the plan allows, else the first allowed. */
 export function defaultModelFor(
   c: PlatformConfig,
@@ -115,7 +119,13 @@ export function defaultModelFor(
   const allowed = modelsForRole(c, role).filter((m) =>
     canUse(plan, m.requires),
   );
-  return allowed.find((m) => m.recommendedForDirector) ?? allowed[0];
+  // The owner's main model for the role comes first (it sorts first), then the recommended one.
+  const main = c.assignments?.[role];
+  return (
+    allowed.find((m) => m.id === main) ??
+    allowed.find((m) => m.recommendedForDirector) ??
+    allowed[0]
+  );
 }
 /** Director's model for each tier the person may pick (Fast, Balanced, Best). */
 export function tierModels(

@@ -111,8 +111,8 @@ export type BriefField = z.infer<typeof fieldSchema>;
 export const roleId = z
   .string()
   .regex(
-    /^(director-plan|interview|write|studio-[a-z0-9-]{1,40})$/,
-    'role: director-plan, interview, write or studio-…',
+    /^(director-plan|interview|write|editor-chat|studio-[a-z0-9-]{1,40})$/,
+    'role: director-plan, interview, write, editor-chat or studio-…',
   );
 
 export const studioSchema = z.object({
@@ -211,7 +211,8 @@ export const modelSchema = z.object({
     .default({}),
   /** Multiplies the provider cost before it becomes credits (1 = at cost). */
   creditMargin: z.number().min(1).default(1),
-  roles: z.array(roleId).min(1),
+  /** The roles this model may serve; empty means "not offered yet" (P4). */
+  roles: z.array(roleId).default([]),
   /** Plan features needed to pick this model ([] means every plan). */
   requires: z.array(id).default([]),
   enabled: z.boolean().default(true),
@@ -581,6 +582,8 @@ export const platformConfigSchema = z
     styleCaps: z.record(id, styleCapSchema).default({}),
     workspace: workspaceSchema.default({}),
     combos: z.array(comboSchema).default([]),
+    /** P4: the owner's main model for a role (a model id). Nothing is pre-assigned. */
+    assignments: z.record(roleId, id).default({}),
   })
   .superRefine((c, ctx) => {
     const dup = (label: string, ids: string[]) => {
@@ -637,6 +640,19 @@ export const platformConfigSchema = z
           code: 'custom',
           message: `studio ${s.id}: no model serves role ${s.role}`,
         });
+    for (const [role, modelId] of Object.entries(c.assignments)) {
+      const m = c.models.find((x) => x.id === modelId);
+      if (!m)
+        ctx.addIssue({
+          code: 'custom',
+          message: `assignment ${role}: unknown model ${modelId}`,
+        });
+      else if (!m.roles.includes(role))
+        ctx.addIssue({
+          code: 'custom',
+          message: `assignment ${role}: model ${modelId} does not serve that role`,
+        });
+    }
     for (const role of Object.values(c.director.roles))
       if (roleModels(role).length === 0)
         ctx.addIssue({

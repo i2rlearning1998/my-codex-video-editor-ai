@@ -1497,3 +1497,10 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4A-003 | P0 | W10 | Verified | The Owner App proxies /api/admin/* only after the owner's login, CSRF and Origin checks |
 | P4A-004 | P0 | W10 | Verified | Keys, config, refunds, emergency, credits, plan and suspension need a fresh re-login (5 min) and leave an audit row without values |
 | P4A-005 | P1 | W10 | Verified | The vault never returns a key value (last 4 only) and refuses a name that is not a provider key |
+| P4A-006 | P0 | W10 | Verified | In local mode the gateway server and the admin API share one data file: a change by one is seen by the other and never written away |
+| P4A-007 | P0 | W10 | Verified | In the Owner App the owner adds any provider (name, type, own address), and its key goes to the encrypted vault; the page shows the last 4 only |
+| P4A-008 | P0 | W10 | Verified | The owner adds models with capability tags and prices, and nothing is pre-assigned |
+| P4A-009 | P0 | W10 | Verified | Each job (Director plan, interview, chat, Editor chat, every Studio) offers only models that can do it, and the owner's choice stays after a reload |
+| P4A-010 | P1 | W10 | Verified | Plans & Credits are edited in the Owner App and saved after a fresh code |
+| P4A-011 | P1 | W10 | Verified | Projects & Styles rules (Trash days, Style fee) and Director rules are edited in the Owner App |
+| P4A-012 | P0 | W10 | Verified | The Emergency switch needs a reason and a fresh code, shows on the Dashboard, and the Admin audit chain is intact |

@@ -264,3 +264,83 @@ dialog::backdrop {
   font-weight: 600;
   outline: 2px solid currentColor;
 }
+
+/* P4 Admin screens: forms in a tidy grid, checkboxes beside their label. */
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2) var(--space-3);
+  align-items: end;
+}
+.row > strong,
+.row > p,
+.row > div,
+.row > details {
+  grid-column: 1 / -1;
+}
+.row > button {
+  justify-self: start;
+}
+.row.card {
+  margin-block-end: var(--space-3);
+}
+label.field input[type='checkbox'] {
+  inline-size: 20px;
+  min-height: 20px;
+  padding: 0;
+}
+label.field:has(> input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  align-self: end;
+}
+textarea {
+  font: inherit;
+  color: var(--text);
+  background: var(--color-bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+textarea#config-json {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-sm);
+}
+details.card > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+details.card[open] > summary {
+  margin-block-end: var(--space-3);
+}
+.muted {
+  color: var(--text-secondary);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--space-3);
+  margin-block: var(--space-3);
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-raised);
+}
+.stat strong {
+  font-size: var(--font-size-lg);
+}
+.stat span {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+#status:empty {
+  display: none;
+}

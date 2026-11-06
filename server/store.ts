@@ -8,6 +8,7 @@ import {
   renameSync,
   writeFileSync,
   existsSync,
+  statSync,
 } from 'node:fs';
 import path from 'node:path';
 import { nextAuditRow } from './admin/audit';
@@ -101,9 +102,19 @@ const empty = (): Data => ({
 class JsonStore implements Store {
   constructor(
     readonly kind: 'memory' | 'file',
-    private data: Data,
+    private cache: Data,
     private persist: (d: Data) => void,
+    /** A file store re-reads the file when another process (the Owner App) changed it. */
+    private readonly reload?: () => Data | null,
   ) {}
+  private get data(): Data {
+    const fresh = this.reload?.();
+    if (fresh) this.cache = fresh;
+    return this.cache;
+  }
+  private set data(d: Data) {
+    this.cache = d;
+  }
   private save() {
     this.persist(this.data);
   }
@@ -344,19 +355,41 @@ export const memoryStore = (): Store =>
 /** One JSON file, written atomically (a temporary file, then a rename). */
 export function fileStore(file: string): Store {
   mkdirSync(path.dirname(file), { recursive: true });
+  const read = (): Data => ({
+    ...empty(),
+    ...(JSON.parse(readFileSync(file, 'utf8')) as Partial<Data>),
+  });
+  const stamp = () => {
+    const s = statSync(file);
+    return `${s.mtimeMs}:${s.size}`;
+  };
   let data = empty();
+  let seen = '';
   if (existsSync(file))
     try {
-      data = {
-        ...empty(),
-        ...(JSON.parse(readFileSync(file, 'utf8')) as Partial<Data>),
-      };
+      data = read();
+      seen = stamp();
     } catch {
       throw new Error(`The server data file ${file} could not be read.`);
     }
-  return new JsonStore('file', data, (d) => {
-    const tmp = `${file}.tmp`;
-    writeFileSync(tmp, JSON.stringify(d));
-    renameSync(tmp, file);
-  });
+  return new JsonStore(
+    'file',
+    data,
+    (d) => {
+      const tmp = `${file}.tmp`;
+      writeFileSync(tmp, JSON.stringify(d));
+      renameSync(tmp, file);
+      seen = stamp();
+    },
+    () => {
+      // The gateway server and the Owner App's admin API share this file in
+      // local mode; pick up the other one's changes before every operation.
+      if (!existsSync(file)) return null;
+      const now = stamp();
+      if (now === seen) return null;
+      const fresh = read();
+      seen = now;
+      return fresh;
+    },
+  );
 }

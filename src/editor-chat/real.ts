@@ -28,6 +28,7 @@ interface ServerModel {
   readonly id: string;
   readonly roles: readonly string[];
   readonly recommended?: boolean;
+  readonly mainFor?: readonly string[];
   readonly connected: boolean;
   readonly mock?: boolean;
   readonly tier?: string;
@@ -62,13 +63,21 @@ export async function createRealEditorChat(o: {
   const live = await get<{ config: ServerConfig }>('/config', false);
   const models = await get<{ models: ServerModel[] }>('/models', true);
   if (!live || !models) return null;
-  const role = live.config.director?.roles?.write ?? 'write';
+  // P4: a model the owner assigned to "Editor chat" wins over the write role.
+  const own = models.models.filter(
+    (m) => m.connected && m.roles.includes('editor-chat'),
+  );
+  const role =
+    own.length > 0
+      ? 'editor-chat'
+      : (live.config.director?.roles?.write ?? 'write');
   const usable = models.models.filter(
     (m) => m.connected && m.roles.includes(role),
   );
-  // A real, connected model: the recommended one first.
+  // A real, connected model: the owner's main one, then the recommended one.
   const real = usable.filter((m) => !m.mock);
   const model =
+    real.find((m) => m.mainFor?.includes(role)) ??
     real.find((m) => m.recommended) ??
     real[0] ??
     usable.find((m) => m.recommended) ??

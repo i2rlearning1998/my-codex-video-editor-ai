@@ -97,7 +97,7 @@ export class Workspace {
     this.#doc = this.#read();
   }
   get #key() {
-    return `aive.panel.ws.${this.userId}`;
+    return `aive.ws.doc.${this.userId}`;
   }
   #read(): Doc {
     try {

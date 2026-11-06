@@ -382,6 +382,10 @@ export function createServerApp(o: ServerOptions) {
             tier: m.tier,
             roles: m.roles,
             recommended: m.recommendedForDirector,
+            // P4: the roles the owner chose this model as the main one for.
+            mainFor: Object.entries(config.assignments)
+              .filter(([, id]) => id === m.id)
+              .map(([role]) => role),
             connected: connected(config, m.id),
             tested: m.tested,
             // P3-INTEGRATION: a client prefers a real model to the offline one.

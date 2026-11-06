@@ -69,8 +69,8 @@ class HttpError extends Error {
 }
 
 /** The owner UI, transpiled from TypeScript once at start (no bundler). */
-function uiScript(): string {
-  const source = readFileSync(path.join(root, 'owner/ui/app.ts'), 'utf8');
+function uiScript(file = 'app.ts'): string {
+  const source = readFileSync(path.join(root, 'owner/ui', file), 'utf8');
   return ts.transpileModule(source, {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -135,6 +135,7 @@ export function createOwnerApp(config: OwnerAppConfig): {
   const library = new OwnerLibrary(config);
   const headers = securityHeaders(config.catalogUrl);
   const script = uiScript();
+  const adminScript = uiScript('admin.ts');
   const css = readFileSync(path.join(root, 'owner/ui/app.css'), 'utf8');
   const tokens = readFileSync(path.join(root, 'src/ui/tokens.css'), 'utf8');
   const page = readFileSync(
@@ -196,6 +197,8 @@ export function createOwnerApp(config: OwnerAppConfig): {
       return send(response, 200, page, 'text/html; charset=utf-8');
     if (method === 'GET' && url.pathname === '/app.js')
       return send(response, 200, script, 'text/javascript; charset=utf-8');
+    if (method === 'GET' && url.pathname === '/admin.js')
+      return send(response, 200, adminScript, 'text/javascript; charset=utf-8');
     if (method === 'GET' && url.pathname === '/app.css')
       return send(response, 200, css, 'text/css; charset=utf-8');
     if (method === 'GET' && url.pathname === '/tokens.css')

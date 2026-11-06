@@ -117,10 +117,26 @@ if (existsSync(manifestPath)) {
       if (text.includes(marker))
         problems.push(`${file}: the editor page loads admin code (${marker})`);
   }
+  // P4 Part 3: a normal build has no admin page at all; the admin lives in
+  // the Owner App. AIVE_DEMO_ADMIN=1 builds the old demo page for a test.
+  const demoAdmin = process.env.AIVE_DEMO_ADMIN === '1';
+  if (!demoAdmin) {
+    if (manifest['admin/index.html'] || existsSync(path.join(dist, 'admin')))
+      problems.push('the user build contains an admin page');
+    for (const file of readdirSync(path.join(dist, 'assets'))) {
+      if (!file.endsWith('.js')) continue;
+      const text = readFileSync(path.join(dist, 'assets', file), 'utf8');
+      for (const marker of ADMIN_MARKERS)
+        if (text.includes(marker))
+          problems.push(
+            `assets/${file}: the user build carries admin code (${marker})`,
+          );
+    }
+  }
   for (const page of [
     'panel/index.html',
     'site/index.html',
-    'admin/index.html',
+    ...(demoAdmin ? ['admin/index.html'] : []),
   ]) {
     const keys = reach(page);
     if (!manifest[page]) {

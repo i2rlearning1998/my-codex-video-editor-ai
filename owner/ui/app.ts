@@ -3,7 +3,10 @@
 // tags, licence and credit; thumbnails; versions; publish, unpublish,
 // rollback; featured, order, hidden; a publish schedule; the gate's
 // reasons in plain sentences. English and Hindi. Plain TypeScript with no
-// imports: the owner server transpiles this one file and serves it.
+// imports: the owner server transpiles this file and serves it; the Admin
+// screens are a second module (admin.ts) that loads when the owner opens them.
+
+import type { AdminTab } from './admin.js';
 
 type Lang = 'en' | 'hi';
 const STRINGS = {
@@ -214,7 +217,8 @@ interface TaxCategory {
 
 let lang: Lang = localStorage.getItem('owner.lang') === 'hi' ? 'hi' : 'en';
 let csrf = '';
-let tab: 'library' | 'controls' | 'upload' | 'versions' | 'audit' = 'library';
+type Tab = 'library' | 'controls' | 'upload' | 'versions' | 'audit' | AdminTab;
+let tab: Tab = 'library';
 const app = document.getElementById('app')!;
 const t = (key: Key, values: Record<string, string | number> = {}) =>
   STRINGS[lang][key].replace(/\{(\w+)\}/g, (_, name: string) =>
@@ -268,12 +272,19 @@ async function api<T>(
         ? { body: JSON.stringify(body) }
         : {}),
   });
-  const data = (await response.json()) as T & {
-    error?: string;
+  // The admin API answers 204 with no body, and its errors are {error: {message}}.
+  const text = await response.text();
+  const data = (text ? JSON.parse(text) : {}) as T & {
+    error?: string | { message?: string };
     reauth?: boolean;
   };
   if (!response.ok)
-    throw new ApiError(data.error ?? 'Error', response.status, !!data.reauth);
+    throw new ApiError(
+      (typeof data.error === 'string' ? data.error : data.error?.message) ??
+        'Error',
+      response.status,
+      !!data.reauth,
+    );
   return data;
 }
 /** Runs a dangerous action; asks for the password and code first if needed. */
@@ -358,6 +369,29 @@ function header() {
     csrf = '';
     void render();
   };
+  const adminTabs = el('div', {
+    class: 'bar tabs',
+    role: 'tablist',
+    'aria-label': 'Admin',
+    id: 'admin-tabs',
+  });
+  for (const name of admin?.ADMIN_TABS ?? []) {
+    const button = el(
+      'button',
+      {
+        type: 'button',
+        role: 'tab',
+        'data-tab': name,
+        'aria-selected': String(tab === name),
+      },
+      admin!.ADMIN_LABELS[name][lang],
+    );
+    button.onclick = () => {
+      tab = name;
+      void render();
+    };
+    adminTabs.append(button);
+  }
   const tabs = el('div', { class: 'bar tabs', role: 'tablist' });
   for (const name of [
     'library',
@@ -393,6 +427,7 @@ function header() {
       out,
     ),
     tabs,
+    adminTabs,
   );
 }
 
@@ -1312,6 +1347,8 @@ async function auditScreen() {
   );
 }
 
+/** The Admin screens load on demand (a second module). */
+let admin: typeof import('./admin.js') | null = null;
 let lastStatus: HTMLElement | null = null;
 async function render(keepStatus = false) {
   document.documentElement.lang = lang;
@@ -1323,6 +1360,7 @@ async function render(keepStatus = false) {
       return loginScreen();
     }
   }
+  admin ??= await import('./admin.js');
   const status =
     keepStatus && lastStatus
       ? lastStatus
@@ -1339,7 +1377,15 @@ async function render(keepStatus = false) {
             ? uploadScreen()
             : tab === 'versions'
               ? await versionsScreen(status)
-              : await auditScreen();
+              : tab === 'audit'
+                ? await auditScreen()
+                : await admin.adminScreen(tab, {
+                    el,
+                    api,
+                    guarded,
+                    status,
+                    refresh: () => void render(true),
+                  });
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       csrf = '';

@@ -66,7 +66,12 @@ export default defineConfig(({ command }) => ({
         editor: 'index.html',
         panel: 'panel/index.html',
         site: 'site/index.html',
-        admin: 'admin/index.html',
+        // P4 Part 3: the admin is the Owner App, not a page of the user
+        // website. This older demo page exists in dev and tests only; a build
+        // has it only when asked for (AIVE_DEMO_ADMIN=1).
+        ...(command === 'build' && process.env.AIVE_DEMO_ADMIN !== '1'
+          ? {}
+          : { admin: 'admin/index.html' }),
       },
     },
   },

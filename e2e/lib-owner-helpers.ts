@@ -37,6 +37,10 @@ export async function startOwnerStack(offset = 0): Promise<OwnerStack> {
     OWNER_TOTP_SECRET: TOTP_SECRET,
     // A short re-authentication window, so the test sees the dialog.
     OWNER_REAUTH_SECONDS: '1',
+    // P4: the admin API's own data and its key vault.
+    SERVER_DATA: path.join(root, 'server'),
+    KEY_VAULT_SECRET: 'e2e-vault-secret-that-is-long-enough-1234',
+    ENTITLEMENT_SECRET: 'e2e-entitlement-secret-long-enough-1234',
   };
   const created = spawnSync(
     process.execPath,
