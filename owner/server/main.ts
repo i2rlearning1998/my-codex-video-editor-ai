@@ -16,6 +16,7 @@ import { startCatalogServer } from '../catalog/serve';
 import { Accounts, newTotpSecret } from './auth';
 import { AuditLog } from './audit';
 import { createOwnerApp, listen } from './app';
+import { startAdminBridge } from './admin-bridge';
 
 const flag = (args: string[], name: string) => {
   const index = args.indexOf(name);
@@ -75,7 +76,9 @@ export async function main(args: string[]): Promise<number> {
     }
     const catalogUrl = `http://127.0.0.1:${catalogPort}/`;
     const catalog = await startCatalogServer(outDir, catalogPort);
+    const admin = await startAdminBridge();
     const { server, accounts } = createOwnerApp({
+      admin,
       dataDir,
       outDir,
       keysDir,
@@ -96,6 +99,7 @@ export async function main(args: string[]): Promise<number> {
       const stop = () => {
         server.close();
         catalog.close();
+        admin.close();
         resolve();
       };
       process.once('SIGINT', stop);

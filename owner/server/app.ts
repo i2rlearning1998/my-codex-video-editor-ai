@@ -17,6 +17,7 @@ import ts from 'typescript';
 import { AuditLog } from './audit';
 import { Accounts, Sessions, csrfOk, reauthFresh, type Session } from './auth';
 import { OwnerLibrary, type LibraryConfig } from './library';
+import type { AdminBridge } from './admin-bridge';
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -32,6 +33,20 @@ export const DANGEROUS = new Set([
   'rollback',
   'rotate-key',
 ]);
+/** Admin API calls that need a fresh password and code (money, keys, settings). */
+export function adminNeedsReauth(method: string, rest: string): boolean {
+  if (method === 'GET') return false;
+  return (
+    /^keys/.test(rest) ||
+    /^config/.test(rest) ||
+    /^refunds/.test(rest) ||
+    /^emergency/.test(rest) ||
+    /^users\/[^/]+\/(credits|plan|suspension)/.test(rest)
+  );
+}
+/** Which admin API path (after /api/admin/) is allowed through. */
+export const ADMIN_ALLOWED =
+  /^(?:users(?:\/[A-Za-z0-9._:-]{1,120}(?:\/(?:credits|plan|suspension|flags))?)?|refunds|flags|audit|emergency|metrics|keys|config|config\/publish)$/;
 
 export interface OwnerAppConfig extends LibraryConfig {
   readonly port: number;
@@ -39,6 +54,8 @@ export interface OwnerAppConfig extends LibraryConfig {
   readonly catalogUrl: string;
   readonly secureCookie?: boolean;
   readonly now?: () => number;
+  /** P4 Part 3: the Admin API (users, credits, config, keys, ...). */
+  readonly admin?: AdminBridge;
 }
 
 class HttpError extends Error {
@@ -446,6 +463,42 @@ export function createOwnerApp(config: OwnerAppConfig): {
         publicKey: rotated.publicKey,
         catalogVersion: rotated.build.catalogVersion,
       });
+    }
+    // ---- Admin API ---------------------------------------------------
+    if (url.pathname.startsWith('/api/admin/')) {
+      if (!config.admin)
+        throw new HttpError(503, 'The admin service is not running.');
+      const rest = url.pathname.slice('/api/admin/'.length);
+      if (!ADMIN_ALLOWED.test(rest)) throw new HttpError(404, 'Not found.');
+      if (adminNeedsReauth(method, rest)) fresh(`admin ${method}`, rest);
+      const text =
+        method === 'GET'
+          ? undefined
+          : (await readBody(request, JSON_LIMIT)).toString() || '{}';
+      // The gateway names config as /v1/config and the rest under /v1/admin.
+      const target = /^config/.test(rest) ? `/v1/${rest}` : `/v1/admin/${rest}`;
+      const reply = await config.admin.call(
+        method,
+        target + url.search,
+        text,
+        session.email,
+      );
+      if (method !== 'GET') {
+        // Never the body of a key or a secret: the action and the target only.
+        log(
+          session,
+          `admin ${method}`,
+          rest,
+          `status ${reply.status}`,
+          reply.status < 400,
+        );
+      }
+      return send(
+        response,
+        reply.status,
+        reply.body,
+        'application/json; charset=utf-8',
+      );
     }
     if (route === 'GET /api/audit')
       return json(response, 200, {

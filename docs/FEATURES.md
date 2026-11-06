@@ -1492,3 +1492,8 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4C-004 | P0 | W10 | Verified | Import Templates from your Cloud also lists items saved from another computer (marked "From your cloud") and imports the chosen ones |
 | P4C-005 | P1 | W10 | Verified | Settings in the editor has no "Your own keys" or "Offline voice & captions" tab for a person |
 | P4C-006 | P0 | W10 | Verified | A template saved in the editor shows in the panel Asset Library under its project, and the Projects list is fresh after leaving the editor |
+| P4A-001 | P0 | W10 | Verified | The user server answers 404 for every admin route (users, refunds, flags, audit, emergency, metrics, keys, config save and publish) |
+| P4A-002 | P0 | W10 | Verified | The admin bridge only answers with its per-start secret; no secret or a wrong one is refused |
+| P4A-003 | P0 | W10 | Verified | The Owner App proxies /api/admin/* only after the owner's login, CSRF and Origin checks |
+| P4A-004 | P0 | W10 | Verified | Keys, config, refunds, emergency, credits, plan and suspension need a fresh re-login (5 min) and leave an audit row without values |
+| P4A-005 | P1 | W10 | Verified | The vault never returns a key value (last 4 only) and refuses a name that is not a provider key |

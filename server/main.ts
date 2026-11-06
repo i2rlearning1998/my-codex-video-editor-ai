@@ -8,6 +8,7 @@
 import path from 'node:path';
 import { createAuth } from './auth';
 import { createServerApp, listen } from './app';
+import { userSurface } from './surfaces';
 import { fileStore, type Store } from './store';
 import { p3Settings } from '../src/platform-config';
 
@@ -57,7 +58,8 @@ export async function main(): Promise<number> {
     log: (line) => console.log(line),
   });
   await app.config.refresh();
-  await listen(app.handler, port, host);
+  // The user server has no admin route: the Owner App serves those.
+  await listen(userSurface(app.handler), port, host);
   console.log(
     `Gateway server on http://${host}:${port}/v1 (store: ${store.kind}, auth: ${mode})`,
   );
