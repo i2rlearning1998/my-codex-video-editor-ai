@@ -26,3 +26,14 @@ export async function setPlan(page: Page, plan: string) {
     page.locator(`[data-plan="${plan}"][data-current="true"]`),
   ).toBeVisible();
 }
+
+/** Approve the plan; when Director stops at the asset step, build with AI for every file. */
+export async function approvePlan(
+  page: import('@playwright/test').Page,
+): Promise<void> {
+  await page.locator('#plan-approve').click();
+  const step = page.locator('#step-ai');
+  const building = page.locator('#build-steps, #build-status');
+  await expect(step.or(building).first()).toBeVisible();
+  if (await step.isVisible()) await step.click();
+}

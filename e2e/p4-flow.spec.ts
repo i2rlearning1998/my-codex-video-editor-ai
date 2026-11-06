@@ -48,7 +48,10 @@ test('[P4F-001] [P4F-002] [P4F-003] Create with Director and Create with Blank b
   await card.locator('summary').click();
   await card.locator('[data-act="director"]').click();
   await expect(page).toHaveURL(new RegExp(`#/room/${id}`));
-  await page.locator('#chat-input, .composer textarea, textarea').first().fill('Make a short video about shadows');
+  await page
+    .locator('#chat-input, .composer textarea, textarea')
+    .first()
+    .fill('Make a short video about shadows');
   await page.keyboard.press('Enter');
   await expect(page.locator('.room-msg.director').first()).toBeVisible({
     timeout: 20_000,
@@ -84,9 +87,9 @@ test('[P4F-004] [P4F-005] [P4F-006] Save to your styles makes a Style card, the 
   await page.locator('#style-name').fill('Hindi physics explainer');
   await page.locator('#style-save').click();
   // The project left the plain Project cards.
-  await expect(page.locator(`#project-list [data-project="${id}"]`)).toHaveCount(
-    0,
-  );
+  await expect(
+    page.locator(`#project-list [data-project="${id}"]`),
+  ).toHaveCount(0);
   // A Style card exists on the Styles page and the Asset Library.
   await page.goto('/panel/#/styles');
   await expect(
@@ -169,4 +172,113 @@ test('[P4F-008] a deleted project waits in the Trash and can be restored; a dele
   await page.locator(`[data-project="${id}"] [data-act="restore"]`).click();
   await page.locator('[data-view="all"]').click();
   await expect(page.locator(`[data-project="${id}"]`)).toBeVisible();
+});
+
+async function briefToPlan(page: Page) {
+  await page.goto('/panel/#/styles');
+  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page
+    .locator('#f-idea')
+    .fill(
+      'How Eratosthenes measured the circumference of the Earth. He used shadows in two cities.',
+    );
+  await page.locator('#talk-director').click();
+  await expect(page.locator('.msg[data-kind="question"]').last()).toContainText(
+    'script',
+  );
+  for (const line of ['Write it for me', 'Text to speech', 'None', 'Hindi']) {
+    await page.locator('#chat-input').fill(line);
+    await page.locator('#chat-send').click();
+  }
+  await expect(page.locator('.msg[data-kind="upgrade"]')).toBeVisible();
+  await page.locator('#make-plan').click();
+  await expect(page.locator('#plan-card .scene')).toHaveCount(5);
+}
+
+test('[P4F-009] Director waits at the asset step: every file is listed by its exact name, each can be AI, uploaded, or given as a prompt; the choice and the added file survive a reload', async ({
+  page,
+}) => {
+  await signUp(page);
+  await briefToPlan(page);
+  await page.locator('#plan-approve').click();
+  await expect(page).toHaveURL(/#\/assets-step\/.+/);
+  const rows = page.locator('#step-list .step-row');
+  await expect(rows.first()).toBeVisible();
+  const n = await rows.count();
+  expect(n).toBeGreaterThan(0);
+  const first = rows.first();
+  const name = (await first.getAttribute('data-slot'))!;
+  await first.locator('[data-mode="prompt"]').click();
+  await expect(first.locator('[data-prompt]')).not.toBeEmpty();
+  await first.locator('[data-mode="upload"]').click();
+  await first.locator('[data-slot-file]').setInputFiles({
+    name: 'whatever-name.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64',
+    ),
+  });
+  await expect(first).toHaveAttribute('data-filled', 'true');
+  // Close the site and come back: same page, same choices.
+  await page.reload();
+  await expect(page).toHaveURL(/#\/assets-step\/.+/);
+  const again = page.locator(`#step-list [data-slot="${name}"]`);
+  await expect(again).toHaveAttribute('data-mode', 'upload');
+  await expect(again).toHaveAttribute('data-filled', 'true');
+  // The project card says Director is waiting.
+  await page.goto('/panel/#/projects');
+  await expect(page.locator('[data-waiting="true"]').first()).toBeVisible();
+});
+
+test('[P4F-010] Continue without assets builds the project with blank slots and the editor lists every expected asset name', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await signUp(page);
+  await briefToPlan(page);
+  await page.locator('#plan-approve').click();
+  await expect(page).toHaveURL(/#\/assets-step\/.+/);
+  const rows = page.locator('#step-list .step-row');
+  await expect(rows.first()).toBeVisible();
+  const count = await rows.count();
+  for (let i = 0; i < count; i++)
+    await rows.nth(i).locator('[data-mode="upload"]').click();
+  const names = await rows.evaluateAll((els) =>
+    els.map((e) => e.getAttribute('data-slot')),
+  );
+  await page.locator('#step-skip').click();
+  await expect(page.locator('#build-status')).toHaveAttribute(
+    'data-state',
+    'done',
+    { timeout: 60_000 },
+  );
+  await page.locator('#open-in-editor').click();
+  const dialog = page.locator('#missing-assets-list');
+  await expect(dialog).toBeVisible({ timeout: 60_000 });
+  for (const n of names) await expect(dialog).toContainText(n!);
+});
+
+test('[P4F-011] after a Director build "Save to your styles?" makes a Style card and the project moves inside it', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await signUp(page);
+  await briefToPlan(page);
+  await page.locator('#plan-approve').click();
+  await page.locator('#step-ai').click();
+  await expect(page.locator('#build-status')).toHaveAttribute(
+    'data-state',
+    'done',
+    { timeout: 60_000 },
+  );
+  await page.locator('#save-style-q').click();
+  await page.locator('#style-name').fill('Eratosthenes look');
+  await page.locator('#style-save').click();
+  await expect(page).toHaveURL(/#\/assets/);
+  await expect(page.locator('[data-lib-style]')).toContainText(
+    'Eratosthenes look',
+  );
+  await page.goto('/panel/#/projects');
+  await expect(page.locator('#project-list [data-project]')).toHaveCount(0);
 });

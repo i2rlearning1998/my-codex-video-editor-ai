@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { allowError, test, expect, hook, settleBuild } from './fixtures';
-import { balance, signUp } from './p2-helpers';
+import { balance, signUp, approvePlan } from './p2-helpers';
 import { setServerPlan, startStack, type Stack } from './p2-stack';
 
 let stack: Stack | null = null;
@@ -189,7 +189,7 @@ test('[P2R2-022] [P2R2-023] [P2R2-024] Director through the server: model interv
   await page.locator('#upgrade-hook-question').check();
   await expect(page.locator('#plan-card .scene')).toHaveCount(5);
   const max = Number(await total.getAttribute('data-max'));
-  await page.locator('#plan-approve').click();
+  await approvePlan(page);
   await expect(page.locator('#build-steps li').first()).toHaveText(
     `Held ${max} credits`,
   );
@@ -277,7 +277,7 @@ test('[P2R2-024] a provider 429 in the middle of a build gives every credit back
     'The test makes the fake providers answer 429 and 401 on purpose; the gateway answers 503 (busy or not connected).',
   );
   stack.fake.mode('429', 'openai');
-  await page.locator('#plan-approve').click();
+  await approvePlan(page);
   await expect(page.locator('#build-status')).toHaveAttribute(
     'data-state',
     'failed',

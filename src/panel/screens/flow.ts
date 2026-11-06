@@ -41,7 +41,7 @@ import { renderForm } from '../form';
 import { t } from '../strings';
 import { motionOn, tick } from '../motion';
 import { bestModels, modelPicker, empty } from './common';
-import { newProject } from './workspace';
+import { newProject, saveStyleDialog } from './workspace';
 import { planSlots } from '../asset-slots';
 import { getSlotFile } from '../slot-files';
 import type { AssetSlot } from '../workspace';
@@ -1041,6 +1041,22 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
 
 /** P2-30 Live Build. */
 /** The editor address that builds a finished plan (into the project when there is one). */
+/** "Save to your styles?" once Director has built: only for a project not yet in a Style. */
+function saveStyleButton(ctx: Ctx, projectId?: string): HTMLElement | null {
+  if (!projectId) return null;
+  const ws = ctx.s.ws(ctx.user.id);
+  ws.reload();
+  const p = ws.project(projectId);
+  if (!p || p.styleId) return null;
+  return h('button', {
+    type: 'button',
+    class: 'button',
+    id: 'save-style-q',
+    text: t('ws.saveStyleQ'),
+    onclick: () => saveStyleDialog(ctx, p, () => ctx.go('assets')),
+  });
+}
+
 const handoffHref = (id: string, projectId?: string) =>
   `/?handoff=${encodeURIComponent(id)}${projectId ? `&project=${encodeURIComponent(projectId)}` : ''}`;
 
@@ -1104,6 +1120,7 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           },
           t('build.open'),
         ),
+        saveStyleButton(ctx, done.projectId),
       ),
     );
     return;
@@ -1399,6 +1416,9 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           href: handoffHref(id, j.projectId),
         },
         t('build.open'),
+      ),
+      ...[saveStyleButton(ctx, j.projectId)].filter(
+        (x): x is HTMLElement => !!x,
       ),
     );
   } catch (e) {

@@ -2,7 +2,7 @@
 // (no keys, no third-party network). Every test acts like a person.
 import { readFileSync } from 'node:fs';
 import { test, expect, hook, settleBuild } from './fixtures';
-import { balance, PASSWORD, setPlan, signUp } from './p2-helpers';
+import { balance, PASSWORD, setPlan, signUp, approvePlan } from './p2-helpers';
 import { defaultConfig } from '../src/platform-config';
 
 test('[P2R1-018] no guest mode: logged out sees only the website; sign up, log out, log in and reset a password; the editor opens only after login', async ({
@@ -343,7 +343,7 @@ test('[P2R1-031] Circumference end to end: login, Story Explainer, brief, Direct
   const max = Number(
     await page.locator('#plan-total').getAttribute('data-max'),
   );
-  await page.locator('#plan-approve').click();
+  await approvePlan(page);
   await expect(page.locator('#build-steps li').first()).toHaveText(
     `Held ${max} credits`,
   );

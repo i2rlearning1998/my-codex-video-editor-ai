@@ -1475,3 +1475,14 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P3W-035 | P0 | W10 | Verified | An invalid proposal is repaired once with the exact errors, then reported as one plain failure |
 | P3W-036 | P0 | W10 | Verified | Discarding leaves the project byte-identical; an unknown selection or a blocked plan makes no call |
 | P3W-037 | P0 | W10 | Verified | RemoteAsk charges each call on the server like any call |
+| P4F-001 | P0 | W10 | Verified | Everything starts as a Project: "Create with Director" (Projects page, Home chat) and "Create with Blank project" make a project card at once |
+| P4F-002 | P0 | W10 | Verified | A blank project shows two cards, Create with Director and Open Editor; Open Editor opens that same project id |
+| P4F-003 | P0 | W10 | Verified | Project cards carry an AI or Manual tag; a Manual project becomes AI once Director is used |
+| P4F-004 | P0 | W10 | Verified | "Save to your styles" (project menu, Director end) makes a Style card; the project moves inside it and leaves the plain Project cards |
+| P4F-005 | P1 | W10 | Claimed | Style creation follows the plan's rules (allowed, credits, Style cap, projects per Style) from Platform Config |
+| P4F-006 | P0 | W10 | Verified | The Asset Library shows Style, then Project, then three libraries: AI, My Templates, Media |
+| P4F-007 | P0 | W10 | Verified | Library root cards are in creation order; the first Studio result makes one Studio Libraries card |
+| P4F-008 | P0 | W10 | Verified | A deleted project or asset waits in the Trash (days from config) and can be restored |
+| P4F-009 | P0 | W10 | Verified | Director waits at the asset step: each file listed by exact name with AI / I will upload / Give me prompts; choices and added files survive a reload |
+| P4F-010 | P0 | W10 | Verified | "Continue without assets" builds with blank slots; the editor lists every expected asset name |
+| P4F-011 | P1 | W10 | Verified | After a Director build "Save to your styles?" makes a Style card with the project inside |

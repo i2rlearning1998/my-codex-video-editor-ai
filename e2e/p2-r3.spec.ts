@@ -1,6 +1,6 @@
 // P2-R3: the cinematic panel: the rail, the Style reel and the Director room.
 import { test, expect } from './fixtures';
-import { signUp } from './p2-helpers';
+import { signUp, approvePlan } from './p2-helpers';
 
 test('[P2R3-001] [P2R3-002] [P2R3-003] the Director room: you and Director look different, Enter sends and Shift+Enter makes a new line, "Your film" fills as you answer, a model can be chosen, a notes file can be attached and the voice button is there', async ({
   page,
@@ -75,7 +75,7 @@ test('[P2R3-004] Live Build draws each scene from the plan itself (real titles a
   await page.getByText('Text to speech').first().click();
   await page.locator('#make-plan').click();
   await page.locator('#plan-card .scene').first().waitFor();
-  await page.locator('#plan-approve').click();
+  await approvePlan(page);
   await expect(page.locator('#build-status')).toHaveAttribute(
     'data-state',
     'done',

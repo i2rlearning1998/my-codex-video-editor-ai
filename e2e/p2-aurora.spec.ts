@@ -3,7 +3,7 @@
 import { mkdirSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
-import { signUp } from './p2-helpers';
+import { signUp, approvePlan } from './p2-helpers';
 
 const OUT = 'reports/p2-r2';
 mkdirSync(OUT, { recursive: true });
@@ -84,7 +84,7 @@ async function auroraScreens(page: Page, width: number) {
     page.locator('#plan-card .chip.method[data-cost]').first(),
   ).toHaveAttribute('data-cost', /free|low|high/);
   await shot(page, 'panel-plan');
-  await page.locator('#plan-approve').click();
+  await approvePlan(page);
   await expect(page.locator('#build-status')).toHaveAttribute(
     'data-state',
     'done',

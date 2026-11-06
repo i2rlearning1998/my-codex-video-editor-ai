@@ -361,7 +361,11 @@ export function projectCard(
       { class: 'ws-thumb' },
       p.thumb
         ? h('img', { src: p.thumb, alt: '', class: 'thumb' })
-        : h('div', { class: 'thumb ws-blank', 'aria-hidden': 'true' }, icon('projects', 30)),
+        : h(
+            'div',
+            { class: 'thumb ws-blank', 'aria-hidden': 'true' },
+            icon('projects', 30),
+          ),
       tag(m.origin),
       m.pause
         ? h('span', { class: 'ws-tag waiting', text: t('ws.waiting') })
