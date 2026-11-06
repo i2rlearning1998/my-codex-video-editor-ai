@@ -1486,3 +1486,9 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4F-009 | P0 | W10 | Verified | Director waits at the asset step: each file listed by exact name with AI / I will upload / Give me prompts; choices and added files survive a reload |
 | P4F-010 | P0 | W10 | Verified | "Continue without assets" builds with blank slots; the editor lists every expected asset name |
 | P4F-011 | P1 | W10 | Verified | After a Director build "Save to your styles?" makes a Style card with the project inside |
+| P4C-001 | P0 | W10 | Verified | The cloud backend keeps library items (AI compositions, My Templates) and a usage count per person; another person sees none of them |
+| P4C-002 | P0 | W10 | Verified | The editor's Cloud switch sends the project and My Templates to the person's cloud (not a size note), and a later template follows |
+| P4C-003 | P0 | W10 | Verified | When the plan has no cloud space left, Save to cloud sends nothing, says so in one sentence and the editor stays open |
+| P4C-004 | P0 | W10 | Verified | Import Templates from your Cloud also lists items saved from another computer (marked "From your cloud") and imports the chosen ones |
+| P4C-005 | P1 | W10 | Verified | Settings in the editor has no "Your own keys" or "Offline voice & captions" tab for a person |
+| P4C-006 | P0 | W10 | Verified | A template saved in the editor shows in the panel Asset Library under its project, and the Projects list is fresh after leaving the editor |

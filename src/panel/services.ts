@@ -149,6 +149,51 @@ const DEFAULT_PREFS = (c: PlatformConfig): Prefs => ({
 
 export { gatewayBase } from './live-config';
 
+/**
+ * Files, My Templates and AI compositions the editor holds per project (by
+ * name; the editor writes this index when it saves). They show in the Asset
+ * Library next to what the panel made. Read-only here (ids start with "ed:").
+ */
+export function editorAssets(storage: KV, userId: string): Asset[] {
+  type Row = { name: string; kind: string; size?: number };
+  let all: Record<
+    string,
+    { media?: Row[]; templates?: Row[]; ai?: Row[]; at?: string }
+  > = {};
+  try {
+    all = JSON.parse(storage.getItem(`aive.ws.editor.${userId}`) ?? '{}');
+  } catch {
+    return [];
+  }
+  const out: Asset[] = [];
+  const kinds = ['image', 'video', 'audio'] as const;
+  for (const [projectId, entry] of Object.entries(all ?? {})) {
+    const at = entry.at ?? new Date(0).toISOString();
+    const add = (library: LibraryKind, rows: Row[] | undefined) =>
+      (rows ?? []).forEach((row, i) =>
+        out.push({
+          id: `ed:${projectId}:${library}:${i}`,
+          userId,
+          projectId,
+          kind:
+            library === 'media' &&
+            (kinds as readonly string[]).includes(row.kind)
+              ? (row.kind as 'image' | 'video' | 'audio')
+              : 'pack',
+          name: row.name,
+          studioId: 'editor',
+          bytes: row.size ?? 0,
+          createdAt: at,
+          library,
+        }),
+      );
+    add('media', entry.media);
+    add('templates', entry.templates);
+    add('ai', entry.ai);
+  }
+  return out;
+}
+
 export async function createServices(
   storage: KV,
   options: {
@@ -258,14 +303,16 @@ export async function createServices(
     },
     // A build's files wait as `handoff:<id>` until the editor names the
     // project it opened (P2B-23).
-    assets: (u) =>
-      allAssets()
+    assets: (u) => [
+      ...allAssets()
         .filter((a) => a.userId === u)
         .map((a) => {
           const m = /^handoff:(.+)$/.exec(a.projectId);
           const pid = m && storage.getItem(`${HANDOFF_KEY(m[1]!)}.project`);
           return pid ? { ...a, projectId: pid } : a;
         }),
+      ...editorAssets(storage, u),
+    ],
     saveAsset: (a) =>
       storage.setItem(ASSETS, JSON.stringify([...allAssets(), a])),
     patchAsset: (id, patch) =>
@@ -355,6 +402,7 @@ export async function createServices(
       LIMITS_KEY(u),
       JSON.stringify({
         exportsPerMonth: n,
+        storageMb: plan.limits.storageMb,
         message: (
           (m && ((services.prefs(u).locale === 'hi' && m.hi) || m.en)) ||
           'Your plan allows {n} exports a month.'

@@ -7,6 +7,7 @@
 import {
   CloudConflictError,
   type CloudBackend,
+  type CloudLibraryRow,
   type CloudMediaRow,
   type CloudProjectSummary,
   type CloudTrainingRecord,
@@ -39,6 +40,7 @@ interface Store {
   projects: StoredProject[];
   media: (CloudMediaRow & { ownerId: string; mimeType: string })[];
   training: (CloudTrainingRecord & { ownerId: string })[];
+  library?: (CloudLibraryRow & { ownerId: string })[];
   /** The local "outbox": reset codes that an email would carry. */
   outbox: { email: string; code: string; at: string }[];
 }
@@ -434,6 +436,63 @@ export function localAccountBackend(
           (m) => !(m.ownerId === ownerId && m.fingerprint === fingerprint),
         ),
       });
+    },
+    async listLibrary() {
+      const ownerId = owner();
+      return (read().library ?? [])
+        .filter((r) => r.ownerId === ownerId)
+        .map(({ ownerId: _o, ...row }) => row);
+    },
+    async saveLibraryItem(input) {
+      const ownerId = owner();
+      const store = read();
+      const row: CloudLibraryRow & { ownerId: string } = {
+        ...input,
+        thumbnail: input.thumbnail ?? null,
+        bytes: input.document.length + (input.thumbnail?.length ?? 0),
+        updatedAt: now(),
+        ownerId,
+      };
+      write({
+        ...store,
+        library: [
+          ...(store.library ?? []).filter(
+            (r) => !(r.ownerId === ownerId && r.id === input.id),
+          ),
+          row,
+        ],
+      });
+    },
+    async deleteLibraryItem(id) {
+      const ownerId = owner();
+      const store = read();
+      write({
+        ...store,
+        library: (store.library ?? []).filter(
+          (r) => !(r.ownerId === ownerId && r.id === id),
+        ),
+      });
+    },
+    async usage() {
+      const ownerId = owner();
+      const store = read();
+      const mine = store.projects.filter((p) => p.ownerId === ownerId);
+      const media = store.media.filter((m) => m.ownerId === ownerId);
+      const library = (store.library ?? []).filter(
+        (r) => r.ownerId === ownerId,
+      );
+      return {
+        bytes:
+          mine.reduce(
+            (n, p) => n + p.document.length + (p.thumbnail?.length ?? 0),
+            0,
+          ) +
+          media.reduce((n, m) => n + m.size, 0) +
+          library.reduce((n, r) => n + r.bytes, 0),
+        projects: mine.length,
+        media: media.length,
+        library: library.length,
+      };
     },
     async saveTrainingRecord(record) {
       const ownerId = owner();

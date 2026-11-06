@@ -598,6 +598,10 @@ const S = {
   'ws.tagManual': ['Manual', 'Manual'],
   'ws.waiting': ['Director is waiting', 'Director इंतज़ार कर रहा है'],
   'ws.useDirector': ['Use Director', 'Director इस्तेमाल करें'],
+  'lib.fromEditor': [
+    'Made in the editor. Manage it there.',
+    'एडिटर में बना है। वहीं से मैनेज करें।',
+  ],
   'ws.saveStyle': ['Save to your styles', 'अपने Styles में सेव करें'],
   'ws.saveStyleQ': ['Save to your styles?', 'अपने Styles में सेव करें?'],
   'ws.saveStyleName': ['Style name', 'Style का नाम'],

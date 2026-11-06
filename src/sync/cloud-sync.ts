@@ -22,7 +22,7 @@ export interface CloudBackend {
   /** Sends (or, for the local backend, records) one group of one project. */
   push(projectId: string, group: SyncGroup, size: GroupSize): Promise<void>;
 }
-export type SyncStatus = 'off' | 'syncing' | 'synced' | 'waiting';
+export type SyncStatus = 'off' | 'syncing' | 'synced' | 'waiting' | 'error';
 
 type Storage = Pick<globalThis.Storage, 'getItem' | 'setItem'>;
 const SETTINGS_KEY = 'aive.cloudSync';
@@ -87,6 +87,7 @@ export function createCloudSync(deps: SyncDeps) {
   let status: SyncStatus = settings.on ? 'waiting' : 'off';
   let timer: ReturnType<typeof setTimeout> | undefined;
   let running: Promise<void> | null = null;
+  let failure: unknown = null;
   let dirty = settings.on;
   const listeners = new Set<() => void>();
   const emit = () => {
@@ -103,6 +104,7 @@ export function createCloudSync(deps: SyncDeps) {
     if (running) return running;
     running = (async () => {
       try {
+        failure = null;
         while (dirty && settings.on) {
           dirty = false;
           status = 'syncing';
@@ -121,6 +123,13 @@ export function createCloudSync(deps: SyncDeps) {
           : deps.backend.connected
             ? 'synced'
             : 'waiting';
+      } catch (error) {
+        // The send stopped (no room, a conflict, no network): say so, keep the
+        // switch as chosen, and try again on the next change.
+        failure = error;
+        status = 'error';
+        dirty = settings.on;
+        throw error;
       } finally {
         running = null;
         emit();
@@ -134,6 +143,8 @@ export function createCloudSync(deps: SyncDeps) {
       groups: { ...settings.groups },
     }),
     status: (): SyncStatus => status,
+    /** Why the last send stopped (null when it did not). */
+    lastError: (): unknown => failure,
     /** False until an account is connected: "on" then means "waiting". */
     connected: () => deps.backend.connected,
     onChange(listener: () => void) {
@@ -146,7 +157,7 @@ export function createCloudSync(deps: SyncDeps) {
       dirty = on;
       if (!on) status = 'off';
       emit();
-      if (on) await run();
+      if (on) await run().catch(() => undefined);
     },
     async setGroup(group: SyncGroup, value: boolean) {
       settings = {
@@ -157,14 +168,17 @@ export function createCloudSync(deps: SyncDeps) {
       // A group switched on sends what it holds; the others are unchanged.
       dirty = settings.on;
       emit();
-      if (settings.on) await run();
+      if (settings.on) await run().catch(() => undefined);
     },
     /** Something in the open project changed: send it soon (when ON). */
     changed() {
       if (!settings.on) return;
       dirty = true;
       clearTimeout(timer);
-      timer = setTimeout(() => void run(), deps.debounceMs ?? 1500);
+      timer = setTimeout(
+        () => void run().catch(() => undefined),
+        deps.debounceMs ?? 1500,
+      );
     },
     /** Send everything now (the exit dialog's Save). */
     async syncNow() {

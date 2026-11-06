@@ -41,12 +41,12 @@ import {
   speechRegistry,
   KEYS_CHANGED,
 } from './services';
-import { developerMode } from './developer-mode';
+import { engineTabsVisible } from './developer-mode';
 import { localEngines, type LocalEngineView } from './local-engines';
 
 export type SettingsTab = 'general' | 'appearance' | 'keys' | 'offline';
 // FIX7: the editor never asks for third-party keys; that tab is Developer mode.
-const TABS: SettingsTab[] = developerMode()
+const TABS: SettingsTab[] = engineTabsVisible()
   ? ['general', 'appearance', 'keys', 'offline']
   : // FIX9: engines, keys and the offline model are the owner's, not theirs.
     ['general', 'appearance'];

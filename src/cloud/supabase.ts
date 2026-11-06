@@ -6,6 +6,7 @@ import {
   CloudConflictError,
   type CloudBackend,
   type CloudConfig,
+  type CloudLibraryRow,
   type CloudMediaInfo,
   type CloudMediaRow,
   type CloudProjectInput,
@@ -336,6 +337,72 @@ export function createSupabaseBackend(
       const sb = await supabase();
       check(await sb.storage.from(BUCKET).remove([await path(fingerprint)]));
       check(await sb.from('media').delete().eq('fingerprint', fingerprint));
+    },
+    async listLibrary() {
+      const rows = check(
+        await (
+          await supabase()
+        )
+          .from('library_items')
+          .select(
+            'id, project_id, kind, name, document, thumbnail, bytes, updated_at',
+          )
+          .order('updated_at', { ascending: false }),
+      ) as {
+        id: string;
+        project_id: string | null;
+        kind: 'ai' | 'templates';
+        name: string;
+        document: string;
+        thumbnail: string | null;
+        bytes: number;
+        updated_at: string;
+      }[];
+      return rows.map((row): CloudLibraryRow => ({
+        id: row.id,
+        projectId: row.project_id,
+        kind: row.kind,
+        name: row.name,
+        document: row.document,
+        thumbnail: row.thumbnail,
+        bytes: Number(row.bytes),
+        updatedAt: row.updated_at,
+      }));
+    },
+    async saveLibraryItem(input) {
+      check(
+        await (await supabase()).from('library_items').upsert(
+          {
+            id: input.id,
+            project_id: input.projectId,
+            kind: input.kind,
+            name: input.name,
+            document: input.document,
+            thumbnail: input.thumbnail ?? null,
+          },
+          { onConflict: 'owner_id,id' },
+        ),
+      );
+    },
+    async deleteLibraryItem(id) {
+      check(
+        await (await supabase()).from('library_items').delete().eq('id', id),
+      );
+    },
+    async usage() {
+      const rows = check(await (await supabase()).rpc('my_usage')) as {
+        bytes: number;
+        projects: number;
+        media: number;
+        library: number;
+      }[];
+      const row = rows[0] ?? { bytes: 0, projects: 0, media: 0, library: 0 };
+      return {
+        bytes: Number(row.bytes),
+        projects: Number(row.projects),
+        media: Number(row.media),
+        library: Number(row.library),
+      };
     },
     async saveTrainingRecord(record) {
       check(

@@ -273,6 +273,11 @@ export function mountPanel(
     }
   });
   window.addEventListener('hashchange', () => void render());
+  // Coming back from the editor with Back restores this page from memory:
+  // read the workspace again so the list is never stale.
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) void render();
+  });
   ctx.refreshTop();
   if (s.configFallback) ctx.toast(t('app.configFallback'), 'error');
   void render();

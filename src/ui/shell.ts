@@ -69,6 +69,12 @@ import {
   type GroupSize,
 } from '../sync/cloud-sync';
 import { openCloudDialog, openExitDialog } from './cloud-dialog';
+import type {
+  CloudBackend as CloudAccount,
+  CloudLibraryRow,
+} from '../cloud/backend';
+import { realSyncBackend, syncFailure } from '../sync/real-backend';
+import { assetFingerprint, mediaKey } from '../media/import';
 import { applyMotion, readMotion, reducedNow } from './motion';
 import { presetControls } from '../creator-pack/preset';
 import { blocks } from '../blocks/starters';
@@ -105,7 +111,12 @@ import {
 import type { CodeClipStatus } from './timeline';
 import type { FrameProvider } from '../render/adapter';
 import type { Composition, DeepReadonly, Layer as CoreLayer } from '../core';
-import { IN_OUT_PRESETS, LOOP_PRESETS, retimeClip } from '../core';
+import {
+  IN_OUT_PRESETS,
+  LOOP_PRESETS,
+  retimeClip,
+  serializeProject,
+} from '../core';
 import { SCENE_TRANSITION_EVENT, transitionFocus } from './transition-focus';
 import { assetDrag } from './drag-state';
 import { openElementTiming } from './element-timing';
@@ -392,6 +403,23 @@ export interface ShellActions {
     | ((sceneId: () => string) => Promise<EditorChatEngine | null>);
   /** P3U: the owner's chat settings, read each time the dock paints. */
   chatSettings?: () => { enabled: boolean; maxMessagesPerDay: number };
+  /**
+   * P4 Part 2: the person's cloud. With it, the Cloud switch and the leave
+   * dialog send the project, AI compositions and My Templates (and, when the
+   * person saves to cloud, media) to the real cloud within the plan's space;
+   * the import dialogs also list what the cloud holds from every project.
+   */
+  cloud?: ShellCloud;
+  /** Called before the editor hands over to the panel (saves the project's copy in the Projects library). */
+  beforeLeave?: () => Promise<void>;
+}
+export interface ShellCloud {
+  backend(): Promise<CloudAccount>;
+  signedIn(): boolean;
+  /** The plan's cloud space in bytes (null: no limit). */
+  limitBytes(): number | null;
+  /** The name a project's group shows in the import dialogs (Style › Project). */
+  label?(projectId: string): string | undefined;
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -4599,28 +4627,57 @@ export function mountEditorShell(
     shelf.openDetail(view.element);
   };
   // FX10: Import Templates / AI templates from the user's other projects.
+  // P4 Part 2: and from the person's cloud (every project, any computer).
+  const cloudRowsById = new Map<string, CloudLibraryRow>();
   const importGroups = async <T extends { projectId?: string | undefined }>(
     all: readonly T[],
     toItem: (entry: T) => ImportGroup['items'][number],
+    kind: 'ai' | 'templates',
+    composeId: (entry: T) => string,
   ): Promise<ImportGroup[]> => {
     const names = new Map(
       (
         await (actions.projects?.list() ?? Promise.resolve([])).catch(() => [])
       ).map((project) => [project.id, project.name] as const),
     );
+    const label = (id: string) =>
+      actions.cloud?.label?.(id) ??
+      names.get(id) ??
+      t('importLib.otherProject');
     const byProject = new Map<string, ImportGroup['items'][number][]>();
+    const add = (projectId: string, item: ImportGroup['items'][number]) => {
+      const list = byProject.get(projectId) ?? [];
+      list.push(item);
+      byProject.set(projectId, list);
+    };
     for (const entry of all) {
       if (entry.projectId === engine.state.id) continue;
-      const key = entry.projectId ?? '';
-      const list = byProject.get(key) ?? [];
-      list.push(toItem(entry));
-      byProject.set(key, list);
+      add(entry.projectId ?? '', toItem(entry));
     }
+    cloudRowsById.clear();
+    if (actions.cloud?.signedIn())
+      try {
+        const have = new Set(
+          all.map((e) => `${e.projectId ?? ''}:${kind}:${composeId(e)}`),
+        );
+        const account = await actions.cloud.backend();
+        for (const row of await account.listLibrary()) {
+          if (row.kind !== kind || row.projectId === engine.state.id) continue;
+          if (have.has(row.id)) continue;
+          cloudRowsById.set(`cloud:${row.id}`, row);
+          add(row.projectId ?? '', {
+            id: `cloud:${row.id}`,
+            name: row.name,
+            ...(row.thumbnail ? { thumb: row.thumbnail } : {}),
+            detail: t('importLib.fromCloud'),
+          });
+        }
+      } catch {
+        // The cloud cannot be reached: this computer's items are still listed.
+      }
     return [...byProject].map(([id, items]) => ({
       id: id || 'earlier',
-      name: id
-        ? (names.get(id) ?? t('importLib.otherProject'))
-        : t('importLib.earlier'),
+      name: id ? label(id) : t('importLib.earlier'),
       items,
     }));
   };
@@ -4657,11 +4714,21 @@ export function mountEditorShell(
             })),
           ],
           (entry) => entry.row,
+          'templates',
+          (entry) => entry.row.id,
         );
       },
       importItems: async (ids) => {
         let count = 0;
         for (const id of ids) {
+          const cloudRow = cloudRowsById.get(id);
+          if (cloudRow) {
+            await myLibrary.importCopy(
+              JSON.parse(cloudRow.document) as MineItem,
+            );
+            count++;
+            continue;
+          }
           if (id.startsWith('theme:')) {
             const library = await themeLibrary;
             if (!library) continue;
@@ -4688,15 +4755,28 @@ export function mountEditorShell(
       title: t('importLib.ai.title'),
       intro: t('importLib.ai.intro'),
       groups: () =>
-        importGroups(creatorLibrary.listAll(), (entry) => ({
-          id: `${entry.projectId ?? ''}|${entry.key}`,
-          name: entry.name,
-          ...(entry.thumbnail ? { thumb: entry.thumbnail } : {}),
-          detail: entry.item.type,
-        })),
+        importGroups(
+          creatorLibrary.listAll(),
+          (entry) => ({
+            id: `${entry.projectId ?? ''}|${entry.key}`,
+            name: entry.name,
+            ...(entry.thumbnail ? { thumb: entry.thumbnail } : {}),
+            detail: entry.item.type,
+          }),
+          'ai',
+          (entry) => entry.key,
+        ),
       importItems: async (ids) => {
         let count = 0;
         for (const id of ids) {
+          const cloudRow = cloudRowsById.get(id);
+          if (cloudRow) {
+            await creatorLibrary.importCopy(
+              JSON.parse(cloudRow.document) as CreatorEntry,
+            );
+            count++;
+            continue;
+          }
           const entry = creatorLibrary
             .listAll()
             .find((item) => `${item.projectId ?? ''}|${item.key}` === id);
@@ -8149,7 +8229,80 @@ export function mountEditorShell(
   const cloudStorage = storageOrNull();
   const cloudSync = createCloudSync({
     storage: cloudStorage,
-    backend: localBackend(cloudStorage),
+    backend: actions.cloud
+      ? realSyncBackend({
+          cloud: () => actions.cloud!.backend(),
+          limitBytes: () => actions.cloud!.limitBytes(),
+          signedIn: () => actions.cloud!.signedIn(),
+          storage: cloudStorage,
+          collect: {
+            project: () => ({
+              name: realEngine.state.metadata.name,
+              schemaVersion: realEngine.state.schemaVersion,
+              document: serializeProject(realEngine.state),
+              thumbnail: null,
+            }),
+            library: (group) =>
+              group === 'templates'
+                ? myLibrary.list().map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    document: JSON.stringify(item),
+                    thumbnail: item.poster ?? null,
+                  }))
+                : creatorLibrary
+                    .list()
+                    .filter((entry) => !creatorLibrary.isBuiltIn(entry.key))
+                    .map((entry) => ({
+                      id: entry.key,
+                      name: entry.name,
+                      document: JSON.stringify(entry),
+                      thumbnail: entry.thumbnail ?? null,
+                    })),
+            media: async () => {
+              const store = await mediaStore;
+              const out: {
+                fingerprint: string;
+                blob: Blob;
+                info: { name: string; mimeType: string; size: number };
+              }[] = [];
+              const seen = new Set<string>();
+              for (const asset of engine.state.assets as unknown as readonly {
+                name: string;
+                source: { kind: string; reference: string };
+                metadata: Readonly<Record<string, unknown>>;
+              }[]) {
+                const fingerprint = assetFingerprint(asset);
+                if (
+                  !fingerprint ||
+                  seen.has(fingerprint) ||
+                  asset.metadata.removed === true
+                )
+                  continue;
+                seen.add(fingerprint);
+                const blob = await store?.read(mediaKey(fingerprint));
+                if (!blob) continue;
+                out.push({
+                  fingerprint,
+                  blob,
+                  info: {
+                    name:
+                      typeof asset.metadata.fileName === 'string'
+                        ? asset.metadata.fileName
+                        : asset.name,
+                    mimeType:
+                      typeof asset.metadata.mimeType === 'string'
+                        ? asset.metadata.mimeType
+                        : blob.type,
+                    size: blob.size,
+                  },
+                });
+              }
+              return out;
+            },
+          },
+        })
+      : localBackend(cloudStorage),
     projectId: () => engine.state.id,
     measure: (group): GroupSize => {
       const bytesOf = (value: unknown) => JSON.stringify(value)?.length ?? 0;
@@ -8243,19 +8396,35 @@ export function mountEditorShell(
     if (leaving || exitOpen) return;
     // Stay on the page until the person has chosen.
     history.pushState({ aive: 'editor' }, '');
-    const settings = cloudSync.settings();
-    if (settings.on && cloudSync.status() !== 'syncing') {
+    // The project (and its picture) must be in this browser's Projects library
+    // before the panel opens, so its list is never stale.
+    const leave = async () => {
+      await actions.beforeLeave?.().catch(() => undefined);
       leaving = true;
       history.go(-2);
+    };
+    const sendThenLeave = async () => {
+      try {
+        await cloudSync.syncNow();
+      } catch (error) {
+        // Nothing is lost: the work stays here. Say why and stay.
+        const why = syncFailure(error);
+        showToast(t(why.key, why.params), 'error', 12_000);
+        return;
+      }
+      await leave();
+    };
+    const settings = cloudSync.settings();
+    if (settings.on && cloudSync.status() !== 'syncing') {
+      void sendThenLeave();
       return;
     }
     exitOpen = true;
     void openExitDialog(cloudSync).then(async (choice) => {
       exitOpen = false;
       if (choice === 'stay') return;
-      if (choice === 'save') await cloudSync.syncNow().catch(reportError);
-      leaving = true;
-      history.go(-2);
+      if (choice === 'save') await sendThenLeave();
+      else await leave();
     });
   };
   armBack();
@@ -8274,6 +8443,44 @@ export function mountEditorShell(
   refresh();
   return {
     session,
+    /**
+     * P4 Part 2: what this project holds, by name, for the panel's Asset
+     * Library (media files, My Templates, AI compositions). No bytes.
+     */
+    onLibraryChange: (listener: () => void) => {
+      const a = myLibrary.onChange(listener);
+      const b = creatorLibrary.onChange(listener);
+      return () => {
+        a();
+        b();
+      };
+    },
+    libraryIndex: () => ({
+      media: (engine.state.assets as unknown as readonly Asset[])
+        .filter(
+          (asset) =>
+            asset.type !== 'font' &&
+            asset.source.kind === 'local' &&
+            asset.metadata.removed !== true,
+        )
+        .map((asset) => ({
+          name:
+            typeof asset.metadata.fileName === 'string'
+              ? asset.metadata.fileName
+              : asset.name,
+          kind: asset.type,
+          size:
+            typeof asset.metadata.size === 'number' ? asset.metadata.size : 0,
+        })),
+      templates: myLibrary.list().map((item) => ({
+        name: item.name,
+        kind: item.kind,
+      })),
+      ai: creatorLibrary
+        .list()
+        .filter((entry) => !creatorLibrary.isBuiltIn(entry.key))
+        .map((entry) => ({ name: entry.name, kind: entry.item.type })),
+    }),
     /** Dev/test-only read-only snapshot (the test hook's getMedia). */
     mediaDebug: () => ({
       // X1: each code layer's bake (state, frames stored and total).

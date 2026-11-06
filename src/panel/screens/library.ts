@@ -73,25 +73,27 @@ function assetGrid(ctx: Ctx, items: Asset[], again: () => void): HTMLElement {
             text: when(a.createdAt, ctx.prefs().locale),
           }),
           assetView(a),
-          h(
-            'div',
-            { class: 'actions' },
-            h(
-              'button',
-              {
-                type: 'button',
-                class: 'button sm',
-                'data-trash': a.id,
-                onclick: () => {
-                  ctx.s.patchAsset(a.id, {
-                    trashedAt: new Date().toISOString(),
-                  });
-                  again();
-                },
-              },
-              t('lib.toTrash'),
-            ),
-          ),
+          a.id.startsWith('ed:')
+            ? h('p', { class: 'muted', text: t('lib.fromEditor') })
+            : h(
+                'div',
+                { class: 'actions' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    class: 'button sm',
+                    'data-trash': a.id,
+                    onclick: () => {
+                      ctx.s.patchAsset(a.id, {
+                        trashedAt: new Date().toISOString(),
+                      });
+                      again();
+                    },
+                  },
+                  t('lib.toTrash'),
+                ),
+              ),
         ),
       ),
   );

@@ -233,6 +233,12 @@ textarea {
 textarea {
   padding: var(--space-2) var(--space-3);
 }
+/* The open list of a dropdown follows the theme (it used to open white-on-white). */
+select option,
+select optgroup {
+  color: var(--text);
+  background-color: var(--panel, var(--input));
+}
 select:hover,
 input[type='text']:hover,
 input[type='number']:hover,

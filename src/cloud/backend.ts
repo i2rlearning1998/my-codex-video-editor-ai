@@ -99,6 +99,57 @@ export interface CloudBackend {
   deleteMedia(fingerprint: string): Promise<void>;
   /** P1-31: stores (or replaces) one training-data record. */
   saveTrainingRecord(record: CloudTrainingRecord): Promise<void>;
+  /** P4 Part 2: AI compositions and My Templates of every project the person has. */
+  listLibrary(): Promise<CloudLibraryRow[]>;
+  /** Stores (or replaces) one library item; the id is the editor's own. */
+  saveLibraryItem(row: CloudLibraryInput): Promise<void>;
+  deleteLibraryItem(id: string): Promise<void>;
+  /** What the person's cloud holds now (projects, media, library items). */
+  usage(): Promise<CloudUsage>;
+}
+export type CloudLibraryKind = 'ai' | 'templates';
+export interface CloudLibraryInput {
+  readonly id: string;
+  /** The editor project the item was made in (null: an older item). */
+  readonly projectId: string | null;
+  readonly kind: CloudLibraryKind;
+  readonly name: string;
+  /** The item as JSON text (never media bytes, D-004). */
+  readonly document: string;
+  readonly thumbnail?: string | null;
+}
+export interface CloudLibraryRow extends CloudLibraryInput {
+  readonly thumbnail: string | null;
+  readonly bytes: number;
+  readonly updatedAt: string;
+}
+export interface CloudUsage {
+  readonly bytes: number;
+  readonly projects: number;
+  readonly media: number;
+  readonly library: number;
+}
+/** The plan's cloud space is full; nothing was sent. */
+export class CloudQuotaError extends Error {
+  constructor(
+    readonly used: number,
+    readonly limit: number,
+    readonly need: number,
+  ) {
+    super('Your plan has no room for this in the cloud');
+    this.name = 'CloudQuotaError';
+  }
+}
+/** Throws `CloudQuotaError` when `need` more bytes would pass the plan's limit. */
+export async function assertRoom(
+  backend: Pick<CloudBackend, 'usage'>,
+  limitBytes: number | null,
+  need: number,
+): Promise<void> {
+  if (limitBytes === null) return;
+  const { bytes } = await backend.usage();
+  if (bytes + need > limitBytes)
+    throw new CloudQuotaError(bytes, limitBytes, need);
 }
 export interface CloudMediaRow {
   readonly fingerprint: string;

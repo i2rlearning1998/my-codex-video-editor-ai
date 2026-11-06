@@ -1,6 +1,13 @@
 import { takeHandoffFiles } from './handoff-store';
 import { readExpected, showMissingAssets } from './ui/missing-assets';
-import { gatewayBase, gatewayToken, usageReporter } from './usage-report';
+import {
+  LIMITS_KEY,
+  gatewayBase,
+  gatewayToken,
+  usageReporter,
+} from './usage-report';
+import { makeCloudBackend } from './cloud/factory';
+import { Workspace } from './panel/workspace';
 import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 import {
   EditorEngine,
@@ -118,6 +125,21 @@ const mirrorNow = async () => {
   } catch {
     /* The library is a convenience copy; the main save already happened. */
   }
+  // P4 Part 2: the panel's Asset Library lists what this project holds.
+  try {
+    const key = `aive.ws.editor.${me}`;
+    const all = JSON.parse(localStorage.getItem(key) ?? '{}') as Record<
+      string,
+      unknown
+    >;
+    all[engine.state.id] = {
+      ...shell.libraryIndex(),
+      at: new Date().toISOString(),
+    };
+    localStorage.setItem(key, JSON.stringify(all));
+  } catch {
+    /* A full or blocked storage only leaves the panel's list shorter. */
+  }
 };
 // FX10: ask the browser to keep this site's data (projects and media) when
 // the disk runs low; a refusal changes nothing.
@@ -143,6 +165,39 @@ const shell = mountEditorShell(
           },
         }
       : {}),
+    // P4 Part 2: the Cloud switch and the leave dialog use the person's real
+    // cloud (Supabase, or the local account the panel signs in to) and the
+    // plan's space; the import dialogs list what it holds.
+    beforeLeave: async () => {
+      autosave?.flush();
+      await mirrorNow();
+    },
+    cloud: (() => {
+      let backend: ReturnType<typeof makeCloudBackend> | undefined;
+      return {
+        backend: () => (backend ??= makeCloudBackend(localStorage)),
+        signedIn: () => signedInUserId(localStorage) !== null,
+        limitBytes: () => {
+          try {
+            const mb = (
+              JSON.parse(localStorage.getItem(LIMITS_KEY(me)) ?? 'null') as {
+                storageMb?: number | null;
+              } | null
+            )?.storageMb;
+            return typeof mb === 'number' ? mb * 1_048_576 : null;
+          } catch {
+            return null;
+          }
+        },
+        label: (projectId: string) => {
+          const ws = new Workspace(localStorage, me);
+          const p = ws.project(projectId);
+          if (!p) return undefined;
+          const style = p.styleId ? ws.style(p.styleId) : undefined;
+          return style ? `${style.name} › ${p.name}` : p.name;
+        },
+      };
+    })(),
     // P2-R2: the plan's export limit; each finished export is reported.
     usage: usageReporter(me, localStorage, gatewayBase()),
     // P3U: with a gateway server the chat dock runs on the real engine
@@ -260,6 +315,8 @@ const shell = mountEditorShell(
   },
 );
 shell.message(initialMessage);
+// The panel's Asset Library follows My Templates and AI items.
+shell.onLibraryChange(mirrorSoon);
 shell.setSaveStatus(
   store ? 'saved' : 'error',
   store ? undefined : t('status.localUnavailable'),

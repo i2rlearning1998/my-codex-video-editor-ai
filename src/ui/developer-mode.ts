@@ -15,3 +15,18 @@ export function developerMode(): boolean {
   if (import.meta.env.DEV || import.meta.env.MODE === 'e2e') return true;
   return saved === '1';
 }
+
+// P4 Part 2: "Your own keys" and "Offline voice & captions" are gone from the
+// editor's Settings. Stock and offline engines belong to the owner (Admin) and
+// captions to Studio. Only automated tests (e2e build) and the explicit flag
+// `aive.developer` = "1" still open those two tabs; a plain dev server does not.
+export function engineTabsVisible(): boolean {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem('aive.developer');
+  } catch {
+    /* Storage blocked: the build's default. */
+  }
+  if (saved === '0') return false;
+  return import.meta.env.MODE === 'e2e' || saved === '1';
+}

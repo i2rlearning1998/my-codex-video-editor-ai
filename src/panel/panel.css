@@ -236,6 +236,13 @@ select {
   width: 100%;
   max-width: 560px;
 }
+/* The open list of a dropdown is dark with light text in the dark themes (it
+   used to open white-on-white). */
+select option,
+select optgroup {
+  color: var(--color-text);
+  background: var(--color-bg-panel, var(--color-bg-raised));
+}
 .filters input[type='search'] {
   max-width: 280px;
 }

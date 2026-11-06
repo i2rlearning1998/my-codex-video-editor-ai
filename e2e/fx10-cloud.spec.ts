@@ -31,13 +31,13 @@ test('[FX10-008] the Cloud button opens a panel with a master switch and a switc
     'aria-checked',
     'true',
   );
-  // No account yet: the panel says the choice waits.
+  // P4: the person is signed in, so the choice sends to the real cloud.
   await expect(panel.locator('[data-role="cloud-status"]')).toContainText(
-    'No cloud account',
+    'in your cloud',
   );
   await expect(page.locator('#cloud-sync')).toHaveAttribute(
     'data-state',
-    'waiting',
+    'synced',
   );
   await page.keyboard.press('Escape');
   await page.reload();
@@ -61,7 +61,8 @@ test('[FX10-009] the browser Back button asks "Save to your cloud?" first; Stay 
     hasText: 'Save to your cloud?',
   });
   await expect(dialog).toBeVisible();
-  await expect(dialog).toContainText('No cloud account is connected yet');
+  // P4: signed in, so there is no "no account" note.
+  await expect(dialog).not.toContainText('No cloud account is connected yet');
   await dialog.locator('[data-role="cloud-exit-stay"]').click();
   await expect(dialog).toHaveCount(0);
   // Still in the editor, and Back asks again.
@@ -81,23 +82,22 @@ test('[FX10-009] Save to cloud in the exit dialog sends once and leaves; Leave w
   await dialog.locator('[data-role="cloud-exit-save"]').click();
   await expect.poll(() => page.url()).toBe('about:blank');
   await page.goto('/');
-  const stub = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('aive.cloudStub') ?? '{}'),
-  );
-  const projects = Object.values(stub) as Record<string, unknown>[];
-  expect(projects.length).toBe(1);
-  expect(Object.keys(projects[0]!).sort()).toEqual([
-    'ai',
-    'media',
-    'project',
-    'templates',
-  ]);
+  // P4: the project is now a row in the person's cloud (not a size note).
+  const cloudRows = () =>
+    page.evaluate(() => {
+      const store = JSON.parse(localStorage.getItem('aive.localCloud') ?? '{}');
+      return {
+        projects: (store.projects ?? []).filter(
+          (p: { ownerId: string }) => p.ownerId === 'e2e-user',
+        ).length,
+      };
+    });
+  expect((await cloudRows()).projects).toBe(1);
   // The switch itself stayed off: Save from this dialog is a single send.
   expect(
     await page.evaluate(() => localStorage.getItem('aive.cloudSync')),
   ).toBeNull();
 
-  await page.evaluate(() => localStorage.removeItem('aive.cloudStub'));
   const second = await page.context().newPage();
   await second.setViewportSize({ width: 1600, height: 900 });
   await second.goto('/');
@@ -108,9 +108,15 @@ test('[FX10-009] Save to cloud in the exit dialog sends once and leaves; Leave w
   await second.locator('.modal-dialog [data-role="cloud-exit-leave"]').click();
   await expect.poll(() => second.url()).toBe('about:blank');
   await second.goto('/');
+  // Leave without saving sent nothing: still one project, same revision.
   expect(
-    await second.evaluate(() => localStorage.getItem('aive.cloudStub')),
-  ).toBeNull();
+    await second.evaluate(() => {
+      const store = JSON.parse(localStorage.getItem('aive.localCloud') ?? '{}');
+      return (store.projects ?? []).map(
+        (p: { revision: number }) => p.revision,
+      );
+    }),
+  ).toEqual([1]);
 });
 
 test('[FX10-011] loaders keep turning when the system asks for reduced motion, so a build or import never looks frozen', async ({

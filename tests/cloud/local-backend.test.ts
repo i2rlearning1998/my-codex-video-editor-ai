@@ -115,3 +115,28 @@ describe('local account backend', () => {
     await expect(cloud.listProjects()).rejects.toThrow('Log in first');
   });
 });
+
+describe('P4 library rows', () => {
+  it('[P4C-001] library items and usage belong to the person who saved them', async () => {
+    const kv = storage();
+    const cloud = make(kv);
+    await cloud.signUp('asha@example.com', 'correct horse');
+    await cloud.saveLibraryItem({
+      id: 'p1:ai:x',
+      projectId: 'p1',
+      kind: 'ai',
+      name: 'Earth',
+      document: '{"a":1}',
+    });
+    expect((await cloud.listLibrary()).map((r) => r.id)).toEqual(['p1:ai:x']);
+    expect((await cloud.usage()).bytes).toBe(7);
+    await cloud.signOut();
+    await cloud.signUp('ravi@example.com', 'correct horse');
+    expect(await cloud.listLibrary()).toEqual([]);
+    expect((await cloud.usage()).bytes).toBe(0);
+    await cloud.signOut();
+    await cloud.signIn('asha@example.com', 'correct horse');
+    await cloud.deleteLibraryItem('p1:ai:x');
+    expect(await cloud.listLibrary()).toEqual([]);
+  });
+});
