@@ -390,6 +390,10 @@ test('[P2R1-031] Circumference end to end: login, Story Explainer, brief, Direct
   // Export: a PNG frame from the editor's own export dialog.
   await page.locator('.plan-build #plan-cancel').click();
   await expect(page.locator('.plan-build')).toHaveCount(0);
+  // The build leaves an "Upload your AI assets" box for the narration slot; close it.
+  const assetsBox = page.locator('[data-missing-assets]');
+  if (await assetsBox.isVisible())
+    await page.getByRole('button', { name: 'Later', exact: true }).click();
   await page.locator('#export').click();
   const saving = page.waitForEvent('download');
   await page.locator('.modal-dialog #export-png').click();
@@ -407,7 +411,7 @@ test('[P2R1-032] [P2R1-033] [P2R1-034] a Studio tool shows its cost, runs on the
 }) => {
   await signUp(page);
   await page.goto('/panel/#/studio');
-  await expect(page.locator('#studio-list [data-studio]')).toHaveCount(8);
+  await expect(page.locator('#studio-list [data-studio]')).toHaveCount(9);
   await expect(page.locator('[data-studio="images"]')).toHaveAttribute(
     'data-locked',
     'true',
@@ -450,33 +454,16 @@ test('[P2R1-032] [P2R1-033] [P2R1-034] a Studio tool shows its cost, runs on the
   await expect(page.locator('#studio-error')).toContainText(
     'Your plan allows 1 cloned voices.',
   );
-  // Asset Library: two assets in "Not in a project yet"; copy one to a project.
-  await page.goto('/?new=Shadows&aspect=16:9');
-  await expect(page.locator('#composition-canvas')).toBeVisible();
-  await expect
-    .poll(async () => (await hook(page)).project.metadata.name)
-    .toBe('Shadows');
-  await page.waitForTimeout(0);
-  // The editor writes the new project to this browser's Projects library.
+  // Asset Library: the two Studio results (no project) sit in one Studio Libraries card.
   await page.goto('/panel/#/assets');
-  await expect
-    .poll(async () => {
-      await page.reload();
-      await page.locator('#assets-project').waitFor();
-      return page.locator('#assets-project option').count();
-    })
-    .toBeGreaterThan(1);
-  await expect(page.locator('#asset-list [data-asset]')).toHaveCount(2);
-  const first = page.locator('#asset-list [data-asset]').first();
-  await first.locator('select').selectOption({ label: 'Shadows' });
-  await first.locator('[data-copy]').click();
-  await expect(
-    page.locator('.toast', { hasText: 'The original stays here.' }),
-  ).toBeVisible();
-  await page.locator('#assets-project').selectOption({ label: 'Shadows' });
-  await expect(page.locator('#asset-list [data-asset]')).toHaveCount(1);
-  await page.locator('#assets-project').selectOption({ index: 0 });
-  await expect(page.locator('#asset-list [data-asset]')).toHaveCount(2);
+  await expect(page.locator('[data-lib-studio]')).toBeVisible();
+  await expect(page.locator('[data-lib-studio]')).toContainText(
+    'Studio Libraries',
+  );
+  await page.locator('[data-lib-studio]').click();
+  await expect(page.locator('[data-studio-feature]')).toHaveCount(2);
+  await page.locator('[data-studio-feature="write"]').click();
+  await expect(page.locator('[data-asset]')).toHaveCount(1);
 });
 
 test('[P2R1-035] Projects: new blank, open, search, rename, duplicate, trash and restore', async ({
@@ -485,9 +472,10 @@ test('[P2R1-035] Projects: new blank, open, search, rename, duplicate, trash and
   await signUp(page);
   await page.goto('/panel/#/projects');
   await page.locator('#new-blank').click();
-  await page.locator('#blank-name').fill('Monsoon lesson');
-  await page.locator('#blank-aspect').selectOption('9:16');
-  await page.locator('#blank-create').click();
+  await expect(page).toHaveURL(/#\/start\//);
+  await page.locator('#start-name').fill('Monsoon lesson');
+  await page.locator('#start-aspect').selectOption('9:16');
+  await page.locator('[data-start="editor"]').click();
   await expect(page.locator('#composition-canvas')).toBeVisible();
   await expect
     .poll(async () => (await hook(page)).project.compositions[0]!.height)
@@ -507,6 +495,7 @@ test('[P2R1-035] Projects: new blank, open, search, rename, duplicate, trash and
   await expect(card).toBeVisible();
   await page.locator('#project-search').fill('monsoon');
   await expect(page.locator('#project-list [data-project]')).toHaveCount(1);
+  await card.locator('summary').click();
   await card.locator('[data-act="rename"]').click();
   await page.locator('.rename-field').fill('Monsoon lesson v2');
   await page.keyboard.press('Enter');
@@ -517,18 +506,19 @@ test('[P2R1-035] Projects: new blank, open, search, rename, duplicate, trash and
   ).toBeVisible();
   await page.locator('#project-search').fill('');
   const count = await page.locator('#project-list [data-project]').count();
-  await page
+  const named = page
     .locator('#project-list [data-project]', { hasText: 'Monsoon lesson v2' })
-    .locator('[data-act="duplicate"]')
-    .click();
+    .first();
+  await named.locator('summary').click();
+  await named.locator('[data-act="duplicate"]').click();
   await expect(page.locator('#project-list [data-project]')).toHaveCount(
     count + 1,
   );
-  await page
+  const toTrash = page
     .locator('#project-list [data-project]', { hasText: 'Monsoon lesson v2' })
-    .first()
-    .locator('[data-act="trash"]')
-    .click();
+    .first();
+  await toTrash.locator('summary').click();
+  await toTrash.locator('[data-act="trash"]').click();
   await expect(page.locator('#project-list [data-project]')).toHaveCount(count);
   await page.locator('[data-view="trash"]').click();
   await expect(page.locator('#project-list [data-project]')).toHaveCount(1);

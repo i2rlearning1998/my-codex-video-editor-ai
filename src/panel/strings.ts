@@ -241,6 +241,12 @@ const S = {
   'build.retry': ['Try again', 'फिर कोशिश करें'],
   'build.open': ['Open in editor', 'एडिटर में खोलें'],
   'studio.title': ['Studio', 'स्टूडियो'],
+  'studio.library': ['Made with this tool', 'इस टूल से बना'],
+  'studio.libraryEmpty': [
+    'Nothing yet. Results you save appear here and in the Asset Library.',
+    'अभी कुछ नहीं। सेव किए गए नतीजे यहाँ और एसेट लाइब्रेरी में दिखेंगे।',
+  ],
+  'studio.libraryOpen': ['Open Asset Library', 'एसेट लाइब्रेरी खोलें'],
   'studio.cost': [
     'This costs up to {n} credits.',
     'इसमें ज़्यादा से ज़्यादा {n} क्रेडिट लगेंगे।',

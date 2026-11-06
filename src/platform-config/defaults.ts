@@ -170,6 +170,12 @@ function rawDefault(): PlatformConfigInput {
       cost('scene-library', L('Library scene'), 'scene', 1, 2),
       cost('scene-stock', L('Stock scene'), 'scene', 2, 3),
       cost('write', L('Writing'), 'each', 2, 4),
+      // P4 Part 5: sample prices the owner sets in Admin (Autodraft's story, SEO
+      // and effects prices are the reference: 1, 5 and a few credits).
+      cost('story', L('Story'), 'each', 1, 2),
+      cost('seo', L('SEO'), 'each', 4, 6),
+      cost('voice-change', L('Voice changer'), 'minute', 6, 6),
+      cost('sfx', L('Sound effect'), 'each', 3, 3, ['studio-audio']),
       cost('music', L('Music'), 'minute', 8, 8, ['studio-audio']),
       cost('captions', L('Captions'), 'minute', 2, 2),
       cost('thumbnail', L('Thumbnail'), 'each', 8, 8, ['studio-thumbnail']),
@@ -354,9 +360,11 @@ function rawDefault(): PlatformConfigInput {
       ),
       mediaModel('mock-voice', 'voice', L('Mock voice'), { perMinute: 0.3 }, [
         'studio-voice',
+        'studio-voice-change',
       ]),
       mediaModel('mock-music', 'music', L('Mock music'), { perMinute: 0.2 }, [
         'studio-audio',
+        'studio-sfx',
       ]),
       {
         ...mediaModel(
@@ -500,6 +508,84 @@ function rawDefault(): PlatformConfigInput {
         { textField: 'topic' },
       ),
       studio(
+        'story',
+        L('Story', 'कहानी'),
+        'text',
+        'story',
+        [],
+        1.1,
+        [
+          field(
+            'premise',
+            'longtext',
+            L('What is the story about?', 'कहानी किस बारे में है?'),
+            true,
+          ),
+          field('genre', 'choice', L('Genre', 'शैली'), true, [
+            opt('adventure', L('Adventure')),
+            opt('mystery', L('Mystery')),
+            opt('comedy', L('Comedy')),
+            opt('moral', L('Moral story')),
+            opt('explainer', L('Explainer')),
+          ]),
+          field('tone', 'choice', L('Tone', 'लहजा'), true, [
+            opt('warm', L('Warm')),
+            opt('exciting', L('Exciting')),
+            opt('serious', L('Serious')),
+            opt('funny', L('Funny')),
+          ]),
+          field('length', 'choice', L('Length', 'लंबाई'), true, [
+            opt('short', L('Short')),
+            opt('medium', L('Medium')),
+            opt('long', L('Long')),
+          ]),
+          field('language', 'choice', L('Language', 'भाषा'), true, [
+            opt('en', L('English')),
+            opt('hi', L('Hindi')),
+          ]),
+          field(
+            'characters',
+            'text',
+            L('Characters (optional)', 'पात्र'),
+            false,
+          ),
+        ],
+        { textField: 'premise' },
+      ),
+      studio(
+        'seo',
+        L('SEO', 'SEO'),
+        'text',
+        'seo',
+        [],
+        1.2,
+        [
+          field(
+            'topic',
+            'text',
+            L('Video topic or title', 'वीडियो का विषय'),
+            true,
+          ),
+          field('keywords', 'text', L('Keywords (optional)', 'कीवर्ड'), false),
+          field('platform', 'choice', L('For', 'किसके लिए'), true, [
+            opt('youtube', L('YouTube')),
+            opt('shorts', L('Shorts and Reels')),
+            opt('blog', L('Blog')),
+          ]),
+          field('make', 'multi', L('Make', 'बनाएँ'), true, [
+            opt('titles', L('Titles')),
+            opt('description', L('Description')),
+            opt('tags', L('Tags')),
+            opt('hashtags', L('Hashtags')),
+          ]),
+          field('language', 'choice', L('Language', 'भाषा'), true, [
+            opt('en', L('English')),
+            opt('hi', L('Hindi')),
+          ]),
+        ],
+        { textField: 'topic' },
+      ),
+      studio(
         'voice',
         L('Voice', 'आवाज़'),
         'audio',
@@ -520,6 +606,8 @@ function rawDefault(): PlatformConfigInput {
         ],
         { textField: 'text' },
         {
+          family: 'voice',
+          familyName: L('Voice', 'आवाज़'),
           consent: L(
             'I confirm this is my own voice, or I have written permission to clone it.',
             'मैं पुष्टि करता/करती हूँ कि यह मेरी अपनी आवाज़ है, या मेरे पास इसे क्लोन करने की लिखित अनुमति है।',
@@ -539,6 +627,47 @@ function rawDefault(): PlatformConfigInput {
           field('minutes', 'number', L('Minutes', 'मिनट'), true, [], 1, 5),
         ],
         { countField: 'minutes' },
+        { family: 'voice', familyName: L('Voice', 'आवाज़') },
+      ),
+      studio(
+        'voice-change',
+        L('Voice changer', 'आवाज़ बदलें'),
+        'audio',
+        'voice-change',
+        [],
+        2.1,
+        [
+          field('source', 'file', L('Your recording', 'आपकी रिकॉर्डिंग'), true),
+          field('target', 'choice', L('Change it to', 'इसमें बदलें'), true, [
+            opt('warm', L('Warm')),
+            opt('deep', L('Deep')),
+            opt('bright', L('Bright')),
+            opt('child', L('Young')),
+          ]),
+          field('minutes', 'number', L('Minutes', 'मिनट'), true, [], 1, 10, 1),
+        ],
+        { countField: 'minutes' },
+        { family: 'voice', familyName: L('Voice', 'आवाज़') },
+      ),
+      studio(
+        'sfx',
+        L('Sound effects', 'साउंड इफ़ेक्ट'),
+        'audio',
+        'sfx',
+        ['studio-audio'],
+        2.2,
+        [
+          field(
+            'prompt',
+            'longtext',
+            L('Describe the sound', 'आवाज़ बताइए'),
+            true,
+          ),
+          field('seconds', 'number', L('Seconds', 'सेकंड'), true, [], 1, 20, 4),
+          field('loop', 'toggle', L('Make it loop', 'दोहराएँ'), false),
+        ],
+        { units: 1 },
+        { family: 'voice', familyName: L('Voice', 'आवाज़') },
       ),
       studio(
         'images',
@@ -1348,6 +1477,8 @@ function textModel(
       'interview',
       'write',
       'studio-write',
+      'studio-story',
+      'studio-seo',
       'studio-youtube-pack',
     ],
     requires,

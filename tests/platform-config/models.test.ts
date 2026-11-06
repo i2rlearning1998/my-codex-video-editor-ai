@@ -101,7 +101,11 @@ describe('P2-R1 config: providers, models, payments', () => {
     const c = defaultConfig();
     expect(enabledStudios(c).map((s) => s.id)).toEqual([
       'write',
+      'story',
+      'seo',
       'voice',
+      'voice-change',
+      'sfx',
       'audio',
       'images',
       'video',

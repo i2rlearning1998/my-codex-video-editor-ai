@@ -5,7 +5,9 @@
 // The screens read and write the same Platform Config the gateway serves, so
 // nothing here is a second source of truth.
 import type {
+  BriefField,
   Model,
+  Studio,
   Plan,
   PlatformConfig,
   Provider,
@@ -18,6 +20,7 @@ export type AdminTab =
   | 'plans'
   | 'flags'
   | 'director'
+  | 'studios'
   | 'workspace'
   | 'engines'
   | 'gateway'
@@ -31,6 +34,7 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   'plans',
   'flags',
   'director',
+  'studios',
   'workspace',
   'engines',
   'gateway',
@@ -44,6 +48,7 @@ export const ADMIN_LABELS: Record<AdminTab, { en: string; hi: string }> = {
   plans: { en: 'Plans & Credits', hi: 'प्लान और क्रेडिट' },
   flags: { en: 'Feature flags', hi: 'फीचर फ्लैग' },
   director: { en: 'Director rules', hi: 'डायरेक्टर नियम' },
+  studios: { en: 'Studio tools & forms', hi: 'स्टूडियो टूल और फ़ॉर्म' },
   workspace: { en: 'Projects & Styles', hi: 'प्रोजेक्ट और स्टाइल' },
   engines: { en: 'Stock & offline engines', hi: 'स्टॉक और ऑफलाइन इंजन' },
   gateway: { en: 'Admin audit', hi: 'एडमिन ऑडिट' },
@@ -117,6 +122,8 @@ export async function adminScreen(
       return flags(ctx);
     case 'director':
       return director(ctx);
+    case 'studios':
+      return studios(ctx);
     case 'workspace':
       return workspace(ctx);
     case 'engines':
@@ -1595,4 +1602,347 @@ async function rawConfig(ctx: AdminCtx) {
       'config-save',
     ),
   );
+}
+
+// ----------------------------------------------------- studio tools & forms
+
+const FIELD_TYPE_LIST = [
+  'text',
+  'longtext',
+  'choice',
+  'multi',
+  'toggle',
+  'number',
+  'slider',
+  'color',
+  'file',
+  'voice',
+] as const;
+/** A field as the screen edits it: a Studio input (brief field) or a model parameter. */
+interface EditableField {
+  id: string;
+  type: string;
+  label: { en: string; hi?: string };
+  required?: boolean;
+  options?: { value: string; label: { en: string; hi?: string } }[];
+  default?: string | number | boolean | string[];
+  group?: string;
+  order?: number;
+}
+const optionsText = (f: EditableField) =>
+  (f.options ?? []).map((o) => `${o.value}=${o.label.en}`).join(', ');
+function parseOptions(
+  value: string,
+  before: EditableField['options'] = [],
+): NonNullable<EditableField['options']> {
+  return value
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((x) => {
+      const [v, ...rest] = x.split('=');
+      const value = (v ?? '').trim();
+      const label = rest.join('=').trim() || value;
+      const old = before.find((o) => o.value === value);
+      return {
+        ...(old ?? {}),
+        value,
+        label: { ...(old?.label ?? {}), en: label },
+      };
+    });
+}
+const defaultText = (f: EditableField) =>
+  f.default === undefined
+    ? ''
+    : Array.isArray(f.default)
+      ? f.default.join(',')
+      : String(f.default);
+function typedDefault(f: EditableField, v: string): EditableField['default'] {
+  if (v.trim() === '') return undefined;
+  if (f.type === 'number' || f.type === 'slider') return Number(v);
+  if (f.type === 'toggle') return v === 'true';
+  if (f.type === 'multi')
+    return v
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean);
+  return v;
+}
+/**
+ * A table of fields the owner can edit (label, kind, required, default,
+ * options, where it sits) and, for Studio inputs, add to or remove. `read()`
+ * returns the edited list; an id never changes (saved work refers to it).
+ */
+function fieldEditor(
+  ctx: AdminCtx,
+  fields: readonly EditableField[],
+  opts: { canAdd: boolean; params: boolean; idPrefix: string },
+) {
+  type Row = {
+    f: EditableField;
+    label: HTMLInputElement;
+    type: HTMLSelectElement;
+    required: HTMLInputElement;
+    def: HTMLInputElement;
+    options: HTMLInputElement;
+    group: HTMLSelectElement | null;
+    removed: boolean;
+    tr: HTMLTableRowElement;
+  };
+  const rows: Row[] = [];
+  const body = ctx.el('tbody', {});
+  const draw = (f: EditableField, isNew = false) => {
+    const label = text(ctx, f.label.en);
+    const type = pick(
+      ctx,
+      FIELD_TYPE_LIST.concat(
+        opts.params ? (['aspect', 'style-card', 'seed'] as never) : [],
+      ).map((x) => [x, x] as const),
+      f.type,
+    );
+    if (!isNew && opts.params) type.disabled = true;
+    const required = tick(ctx, !!f.required);
+    const def = text(ctx, defaultText(f));
+    const options = text(ctx, optionsText(f));
+    const group = opts.params
+      ? pick(
+          ctx,
+          [
+            ['basic', 'Always shown'],
+            ['advanced', 'Under More options'],
+          ],
+          f.group ?? 'basic',
+        )
+      : null;
+    const remove = ctx.el(
+      'button',
+      { type: 'button', 'data-act': 'remove-field' },
+      'Remove',
+    );
+    const tr = ctx.el(
+      'tr',
+      { 'data-field-id': f.id },
+      ctx.el('td', {}, ctx.el('code', {}, f.id)),
+      ctx.el('td', {}, label),
+      ctx.el('td', {}, type),
+      ctx.el('td', {}, required),
+      ctx.el('td', {}, def),
+      ctx.el('td', {}, options),
+      ...(group ? [ctx.el('td', {}, group)] : []),
+      ctx.el('td', {}, opts.canAdd || isNew ? remove : ''),
+    );
+    const row: Row = {
+      f,
+      label,
+      type,
+      required,
+      def,
+      options,
+      group,
+      removed: false,
+      tr,
+    };
+    remove.onclick = () => {
+      row.removed = true;
+      tr.hidden = true;
+    };
+    rows.push(row);
+    body.append(tr);
+  };
+  for (const f of fields) draw(f);
+  const head = [
+    'Field',
+    'Label',
+    'Kind',
+    'Needed',
+    'Starts as',
+    'Choices (value=Label, …)',
+  ]
+    .concat(opts.params ? ['Shown'] : [])
+    .concat(['']);
+  const addLabel = text(ctx, '', `${opts.idPrefix}-new-label`);
+  const addType = pick(
+    ctx,
+    FIELD_TYPE_LIST.map((x) => [x, x] as const),
+    'text',
+  );
+  const add = opts.canAdd
+    ? ctx.el(
+        'div',
+        { class: 'bar' },
+        addLabel,
+        addType,
+        ctx.el(
+          'button',
+          {
+            type: 'button',
+            'data-act': 'add-field',
+            id: `${opts.idPrefix}-add`,
+          },
+          'Add a field',
+        ),
+      )
+    : null;
+  if (add) {
+    (add.lastElementChild as HTMLButtonElement).onclick = () => {
+      const name = addLabel.value.trim();
+      if (!name) return say(ctx, 'Name the new field first.', false);
+      let id = slug(name).replace(/-/g, '_') || 'field';
+      while (rows.some((r) => r.f.id === id)) id += '_2';
+      const f: EditableField = {
+        id,
+        type: addType.value,
+        label: { en: name },
+        required: false,
+        options: [],
+      };
+      draw(f, true);
+      addLabel.value = '';
+    };
+  }
+  return {
+    el: ctx.el(
+      'div',
+      {},
+      ctx.el(
+        'table',
+        {},
+        ctx.el(
+          'thead',
+          {},
+          ctx.el('tr', {}, ...head.map((x) => ctx.el('th', {}, x))),
+        ),
+        body,
+      ),
+      add ?? '',
+    ),
+    read(): EditableField[] {
+      const out: EditableField[] = [];
+      let order = 0;
+      for (const r of rows) {
+        if (r.removed) continue;
+        const next: EditableField = {
+          ...r.f,
+          type: r.type.value,
+          label: { ...r.f.label, en: r.label.value.trim() || r.f.id },
+          required: r.required.checked,
+          options: parseOptions(r.options.value, r.f.options),
+          order: ++order,
+        };
+        if (r.group) next.group = r.group.value;
+        const d = typedDefault(next, r.def.value);
+        if (d === undefined) delete next.default;
+        else next.default = d;
+        out.push(next);
+      }
+      return out;
+    },
+  };
+}
+
+async function studios(ctx: AdminCtx) {
+  const live = await loadConfig(ctx);
+  const c = live.config;
+  const root = ctx.el('div', { id: 'studios' });
+  root.append(
+    note(
+      ctx,
+      'What each Studio tool asks the person. The starting fields are samples; edit them here and the panel shows the change at once. Tools in one family (such as Voice) are tabs of one tool.',
+    ),
+  );
+  const editors: {
+    studio: Studio;
+    on: HTMLInputElement;
+    name: HTMLInputElement;
+    requires: HTMLInputElement;
+    fields: ReturnType<typeof fieldEditor>;
+  }[] = [];
+  for (const s of c.studios) {
+    const on = tick(ctx, s.enabled);
+    const name = text(ctx, s.name.en);
+    const requires = text(ctx, s.requires.join(', '));
+    const fields = fieldEditor(ctx, s.inputs as EditableField[], {
+      canAdd: true,
+      params: false,
+      idPrefix: `studio-${s.id}`,
+    });
+    editors.push({ studio: s, on, name, requires, fields });
+    root.append(
+      ctx.el(
+        'details',
+        { class: 'card', 'data-studio': s.id },
+        ctx.el(
+          'summary',
+          {},
+          `${s.name.en}${s.family ? ` (tab of ${s.familyName?.en ?? s.family})` : ''}${s.enabled ? '' : ' (off)'} — makes ${s.output}`,
+        ),
+        ctx.el(
+          'div',
+          { class: 'row' },
+          field(ctx, 'On', on),
+          field(ctx, 'Name', name),
+          field(ctx, 'Plan features needed (comma separated)', requires),
+        ),
+        fields.el,
+      ),
+    );
+  }
+  // The parameters a model declares (they decide the Studio form when a
+  // model is chosen). Existing ones can be edited; the provider decides which
+  // exist.
+  const modelEditors: { id: string; fields: ReturnType<typeof fieldEditor> }[] =
+    [];
+  const modelBox = ctx.el('div', { id: 'model-forms' });
+  for (const m of c.models.filter((x) => x.params.length > 0)) {
+    const fields = fieldEditor(ctx, m.params as unknown as EditableField[], {
+      canAdd: false,
+      params: true,
+      idPrefix: `model-${m.id}`,
+    });
+    modelEditors.push({ id: m.id, fields });
+    modelBox.append(
+      ctx.el(
+        'details',
+        { class: 'card', 'data-model-form': m.id },
+        ctx.el('summary', {}, `${m.name.en}: ${m.params.length} fields`),
+        fields.el,
+      ),
+    );
+  }
+  root.append(
+    card(
+      ctx,
+      'Model forms',
+      note(
+        ctx,
+        'When the chosen model declares its own fields, the person sees those (Basic and Pro).',
+      ),
+      modelBox,
+    ),
+    saveButton(
+      ctx,
+      'Save Studio forms',
+      () => {
+        const next = clone(c);
+        for (const e of editors) {
+          const t = next.studios.find((x) => x.id === e.studio.id)!;
+          t.enabled = e.on.checked;
+          t.name = { ...t.name, en: e.name.value.trim() || t.name.en };
+          t.requires = e.requires.value
+            .split(',')
+            .map((x) => x.trim())
+            .filter(Boolean);
+          t.inputs = e.fields.read() as unknown as BriefField[];
+        }
+        for (const e of modelEditors) {
+          const m = next.models.find((x) => x.id === e.id)!;
+          m.params = e.fields.read() as unknown as typeof m.params;
+        }
+        return next;
+      },
+      'studio forms',
+      'studios-save',
+    ),
+  );
+  return card(ctx, ADMIN_LABELS.studios.en, root);
 }

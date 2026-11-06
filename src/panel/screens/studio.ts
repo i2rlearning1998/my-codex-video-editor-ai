@@ -11,6 +11,8 @@ import {
   studioById,
   studioForm,
   type Answers,
+  type PlatformConfig,
+  type Studio,
 } from '../../platform-config';
 import { estimateStudio, GatewayError, hash } from '../../gateway';
 import { icon, studioIcon } from '../icons';
@@ -92,22 +94,108 @@ export function mockAudio(seed: string, seconds = 1): string {
   return `data:audio/wav;base64,${btoa(s)}`;
 }
 
+/** P4: studios of one family are one tool with tabs (Voice: speech, changer, effects, music). */
+function familyOf(c: PlatformConfig, studioId: string): Studio[] {
+  const s = studioById(c, studioId);
+  if (!s?.family) return [];
+  return enabledStudios(c).filter((x) => x.family === s.family);
+}
+/** The studios shown at the top level: one entry per family (its first tab). */
+function topLevel(c: PlatformConfig): Studio[] {
+  const seen = new Set<string>();
+  return enabledStudios(c).filter((x) => {
+    if (!x.family) return true;
+    if (seen.has(x.family)) return false;
+    seen.add(x.family);
+    return true;
+  });
+}
 function studioTabs(ctx: Ctx, activeId: string): HTMLElement {
-  return h(
+  const c = ctx.s.config;
+  const family = familyOf(c, activeId);
+  const active = studioById(c, activeId);
+  const tab = (x: Studio, label: string, on: boolean, cls = 'tool-tab') =>
+    h(
+      'a',
+      {
+        href: `#/studio/${x.id}`,
+        class: cls,
+        'data-tab': x.id,
+        'aria-current': on ? 'page' : undefined,
+      },
+      label,
+    );
+  const main = h(
     'nav',
     { class: 'tool-tabs', 'aria-label': t('studio.title') },
-    enabledStudios(ctx.s.config).map((x) =>
-      h(
-        'a',
-        {
-          href: `#/studio/${x.id}`,
-          class: 'tool-tab',
-          'data-tab': x.id,
-          'aria-current': x.id === activeId ? 'page' : undefined,
-        },
-        ctx.say(x.name),
+    topLevel(c).map((x) =>
+      tab(
+        x,
+        ctx.say(x.family && x.familyName ? x.familyName : x.name),
+        x.id === activeId || (!!x.family && x.family === active?.family),
       ),
     ),
+  );
+  if (family.length < 2) return main;
+  return h(
+    'div',
+    { class: 'tool-tabs-wrap' },
+    main,
+    h(
+      'nav',
+      {
+        class: 'tool-tabs sub-tabs',
+        id: 'studio-family-tabs',
+        'aria-label': ctx.say(active?.familyName ?? active?.name ?? { en: '' }),
+      },
+      family.map((x) =>
+        tab(x, ctx.say(x.name), x.id === activeId, 'tool-tab sub'),
+      ),
+    ),
+  );
+}
+/** P4: what this tool made before: the person's saved results, newest first. */
+function studioLibrary(ctx: Ctx, studioId: string): HTMLElement | null {
+  const c = ctx.s.config;
+  const ids = new Set(
+    (familyOf(c, studioId).length
+      ? familyOf(c, studioId)
+      : [studioById(c, studioId)!]
+    ).map((x) => x.id),
+  );
+  const mine = ctx.s
+    .assets(ctx.user.id)
+    .filter((a) => a.studioId && ids.has(a.studioId))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 8);
+  return h(
+    'section',
+    { class: 'studio-library', id: 'studio-library' },
+    h('h2', { text: t('studio.library') }),
+    mine.length
+      ? h(
+          'ul',
+          { class: 'studio-library-list' },
+          mine.map((a) =>
+            h(
+              'li',
+              { 'data-asset': a.id },
+              h('span', { class: 'muted', text: a.kind }),
+              ' ',
+              h('span', { text: a.name }),
+            ),
+          ),
+        )
+      : h('p', {
+          class: 'muted',
+          id: 'studio-library-empty',
+          text: t('studio.libraryEmpty'),
+        }),
+    h('a', {
+      href: '#/assets',
+      class: 'button sm',
+      text: t('studio.libraryOpen'),
+    }),
   );
 }
 
@@ -121,7 +209,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
       h(
         'div',
         { class: 'grid', id: 'studio-list' },
-        enabledStudios(c).map((s) => {
+        topLevel(c).map((s) => {
           const ok = canUse(plan, s.requires);
           return card(
             { 'data-studio': s.id, 'data-locked': String(!ok) },
@@ -130,7 +218,9 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
               { class: `tool-ico out-${s.output}` },
               icon(studioIcon(s.output)),
             ),
-            h('h3', { text: ctx.say(s.name) }),
+            h('h3', {
+              text: ctx.say(s.family && s.familyName ? s.familyName : s.name),
+            }),
             s.blurb ? h('p', { class: 'muted', text: ctx.say(s.blurb) }) : null,
             ok
               ? h(
@@ -162,6 +252,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
   if (!canUse(plan, s.requires)) {
     put(
       out,
+      studioTabs(ctx, s.id),
       h('h1', { text: ctx.say(s.name) }),
       h('p', {
         class: 'locked-state',
@@ -213,6 +304,8 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
         models,
         out,
       });
+      const lib = studioLibrary(ctx, s.id);
+      if (lib) out.append(lib);
       return;
     }
   }
@@ -347,6 +440,9 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
             assetView(asset),
           );
           await ctx.s.sync(ctx.user.id).catch(() => undefined);
+          // The tool's own list shows the new result at once.
+          const fresh = studioLibrary(ctx, s.id);
+          if (fresh) out.querySelector('#studio-library')?.replaceWith(fresh);
           ctx.refreshTop();
         } catch (e) {
           if (e instanceof GatewayError && e.code.startsWith('limit-')) {
@@ -405,6 +501,7 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
     cost,
     run,
     result,
+    studioLibrary(ctx, s.id),
   );
   update();
 };

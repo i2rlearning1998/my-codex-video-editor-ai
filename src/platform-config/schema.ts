@@ -124,6 +124,9 @@ export const studioSchema = z.object({
   role: roleId,
   /** Which Director tool this studio is (its allow-list entry), if any. */
   toolId: id.optional(),
+  /** P4: studios of one family are tabs of one tool (Voice: speech, changer, effects, music). */
+  family: id.optional(),
+  familyName: textSchema.optional(),
   /** What it makes: drives the result view and the Asset Library kind. */
   output: z.enum(STUDIO_OUTPUTS).default('text'),
   /** The form the person fills (same field types as the Brief). */

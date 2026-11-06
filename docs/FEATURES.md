@@ -1514,3 +1514,8 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4S-008 | P0 | W10 | Verified | Too many requests, or too many failed sign-ins, from one address get 429; a site that is not allowed gets 403 and no CORS header; every answer has the security headers |
 | P4S-009 | P0 | W10 | Verified | A payment message with no valid signature is refused and no credit appears |
 | P4S-010 | P0 | W10 | Claimed | The database refuses a save that passes the plan's cloud space, and the gateway counts storage from the database (SQL migration written; not run against a real Supabase) |
+| P4U-001 | P0 | W10 | Verified | The Studio lists Story and SEO next to the other tools, with their cost and plan lock |
+| P4U-002 | P0 | W10 | Verified | Voice is one Studio card with four tabs: speech, voice changer, sound effects and music |
+| P4U-003 | P0 | W10 | Verified | Story runs on the mock model, shows its cost first and charges credits |
+| P4U-004 | P0 | W10 | Verified | A Studio result is saved to the Asset Library (Studio Libraries card) and the tool lists what it made |
+| P4U-005 | P1 | W10 | Verified | SEO asks what to make, with Titles, Description, Tags and Hashtags as choices (sample fields until the owner's Autodraft screenshots arrive) |
