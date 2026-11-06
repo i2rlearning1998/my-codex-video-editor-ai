@@ -9,7 +9,7 @@ import {
   type PlatformConfig,
 } from './slot-deps';
 import type { VideoPlan } from '../video-plan';
-import type { AssetSlot, SlotKind } from './workspace';
+import type { AssetSlot, SlotKind } from '../project/workspace';
 
 const kindOf = (type: string): SlotKind =>
   type === 'video' ? 'video' : type === 'audio' ? 'audio' : 'image';

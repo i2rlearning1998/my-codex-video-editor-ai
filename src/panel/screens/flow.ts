@@ -44,7 +44,7 @@ import { bestModels, modelPicker, empty } from './common';
 import { newProject, saveStyleDialog } from './workspace';
 import { planSlots } from '../asset-slots';
 import { getSlotFile } from '../slot-files';
-import type { AssetSlot } from '../workspace';
+import type { AssetSlot } from '../../project/workspace';
 
 interface Flow {
   styleId: string;

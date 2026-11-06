@@ -1504,3 +1504,13 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4A-010 | P1 | W10 | Verified | Plans & Credits are edited in the Owner App and saved after a fresh code |
 | P4A-011 | P1 | W10 | Verified | Projects & Styles rules (Trash days, Style fee) and Director rules are edited in the Owner App |
 | P4A-012 | P0 | W10 | Verified | The Emergency switch needs a reason and a fresh code, shows on the Dashboard, and the Admin audit chain is intact |
+| P4S-001 | P0 | W10 | Verified | Every signed-in route of the gateway server refuses a caller with no token (and admin routes do not exist on the user server) |
+| P4S-002 | P0 | W10 | Verified | Forged, tampered, expired, wrong-secret, "alg none" and anonymous tokens are refused; a person cannot make themselves admin with their own claims |
+| P4S-003 | P0 | W10 | Verified | A body naming another person changes nothing of theirs; another person's job is not found |
+| P4S-004 | P0 | W10 | Verified | Negative, fractional, huge, text, null, array, object and 1e999 numbers, oversized, non-JSON and array bodies, and `__proto__` bodies are refused or have no effect |
+| P4S-005 | P0 | W10 | Verified | "Save to your styles" is charged by the server at the owner's price (the browser's amount is ignored), once per key, and refused when credits run short |
+| P4S-006 | P0 | W10 | Verified | The public settings hide a provider's address and key name; only the owner sees them |
+| P4S-007 | P0 | W10 | Verified | The offline test payment (plan switch, top-up) is refused on a live (Supabase) server |
+| P4S-008 | P0 | W10 | Verified | Too many requests, or too many failed sign-ins, from one address get 429; a site that is not allowed gets 403 and no CORS header; every answer has the security headers |
+| P4S-009 | P0 | W10 | Verified | A payment message with no valid signature is refused and no credit appears |
+| P4S-010 | P0 | W10 | Claimed | The database refuses a save that passes the plan's cloud space, and the gateway counts storage from the database (SQL migration written; not run against a real Supabase) |

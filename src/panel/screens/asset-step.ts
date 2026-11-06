@@ -7,7 +7,11 @@ import { t, type Key } from '../strings';
 import type { Screen } from '../app';
 import { aiPossible, applyModes } from '../asset-slots';
 import { deleteSlotFile, extOf, getSlotFile, putSlotFile } from '../slot-files';
-import type { AssetSlot, DirectorPause, SlotMode } from '../workspace';
+import type {
+  AssetSlot,
+  DirectorPause,
+  SlotMode,
+} from '../../project/workspace';
 import type { VideoPlan } from '../../video-plan';
 import { empty } from './common';
 

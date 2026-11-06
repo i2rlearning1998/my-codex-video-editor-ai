@@ -11,7 +11,7 @@ const root = mkdtempSync(path.join(tmpdir(), 'aive-shared-'));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 describe('[P4A-006] one data file, two processes', () => {
-  it("sees the other process's change and keeps its own", async () => {
+  it("[P4A-006] sees the other process's change and keeps its own", async () => {
     const file = path.join(root, 'store.json');
     const gateway = fileStore(file);
     const admin = fileStore(file);

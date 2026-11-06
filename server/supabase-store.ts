@@ -301,6 +301,18 @@ export function supabaseStore(
       fail('read a counter', error);
       return Number(data?.value ?? 0);
     },
+    async measureUsage(u) {
+      const { data, error } = await db.rpc('usage_of', { uid: u });
+      fail('measure the storage', error);
+      const row = (Array.isArray(data) ? data[0] : data) as
+        | { bytes?: number | string; projects?: number | string }
+        | null
+        | undefined;
+      return {
+        storageMb: Math.ceil(Number(row?.bytes ?? 0) / 1_048_576),
+        projects: Number(row?.projects ?? 0),
+      };
+    },
     async setCounter(u, name: CounterName, value) {
       const { error } = await db
         .from('usage_counters')

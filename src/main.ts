@@ -7,7 +7,7 @@ import {
   usageReporter,
 } from './usage-report';
 import { makeCloudBackend } from './cloud/factory';
-import { Workspace } from './panel/workspace';
+import { Workspace } from './project/workspace';
 import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 import {
   EditorEngine,

@@ -16,6 +16,7 @@ describe('[FIX7-014] keys are developer-only', () => {
     const source = await import('node:fs').then((fs) =>
       fs.readFileSync('src/ui/settings-dialog.ts', 'utf8'),
     );
-    expect(source).toContain('developerMode()');
+    // P4: the tabs follow engineTabsVisible() (the developer flag or the e2e build).
+    expect(source).toContain('engineTabsVisible()');
   });
 });

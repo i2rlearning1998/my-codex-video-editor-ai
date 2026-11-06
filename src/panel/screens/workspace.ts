@@ -10,7 +10,7 @@ import { t, type Key } from '../strings';
 import type { Ctx, Screen } from '../app';
 import type { ProjectSummary } from '../../persistence/projects';
 import { readAiProjects } from '../../project/ai-flag';
-import { WorkspaceError, type WsProject } from '../workspace';
+import { WorkspaceError, type WsProject } from '../../project/workspace';
 import { card, empty, limitAlert, when } from './common';
 
 /** Everything the screens below need about the person's projects. */

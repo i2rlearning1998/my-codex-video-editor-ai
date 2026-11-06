@@ -4,6 +4,7 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import {
   CloudConflictError,
+  CloudQuotaError,
   type CloudBackend,
   type CloudConfig,
   type CloudLibraryRow,
@@ -46,6 +47,10 @@ const userOf = (user: User | null | undefined): CloudUser | null =>
 function check<R extends { error: { message: string } | null }>(
   result: R,
 ): R extends { data: infer D } ? D : void {
+  // P4 security: the database refuses a save that passes the plan's space
+  // (migration 20261108000000); the person sees the same quota message.
+  if (result.error?.message.includes('storage_limit_exceeded'))
+    throw new CloudQuotaError(0, 0, 0);
   if (result.error) throw new Error(result.error.message);
   return (result as { data?: unknown }).data as R extends { data: infer D }
     ? D

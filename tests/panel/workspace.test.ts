@@ -5,7 +5,7 @@ import {
   assetKey,
   sameAsset,
   type KV,
-} from '../../src/panel/workspace';
+} from '../../src/project/workspace';
 
 const mem = (): KV & { data: Map<string, string> } => {
   const data = new Map<string, string>();

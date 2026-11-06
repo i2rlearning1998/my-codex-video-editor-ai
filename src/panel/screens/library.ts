@@ -8,7 +8,7 @@ import { icon } from '../icons';
 import { t, type Key } from '../strings';
 import type { Ctx, Screen } from '../app';
 import type { Asset } from '../services';
-import { libraryOf, type LibraryKind } from '../workspace';
+import { libraryOf, type LibraryKind } from '../../project/workspace';
 import { empty, when } from './common';
 import { assetView } from './studio';
 import { syncWorkspace } from './workspace';

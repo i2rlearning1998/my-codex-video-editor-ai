@@ -29,7 +29,7 @@ import { planFor, type Plan, type PlatformConfig } from '../platform-config';
 import { IdbBackend, ProjectLibrary } from '../persistence/projects';
 import { ASPECT_SIZES, claimLocalData, HANDOFF_KEY } from '../auth-gate';
 import { createComposition, createProject } from '../core';
-import { Workspace, type Origin, type LibraryKind } from './workspace';
+import { Workspace, type Origin, type LibraryKind } from '../project/workspace';
 import type { Answers } from '../platform-config';
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

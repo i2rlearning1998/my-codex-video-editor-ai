@@ -64,6 +64,10 @@ export interface Store extends P3Store {
   liveConfigVersion(): Promise<number>;
   saveConfigVersion(v: ConfigVersion): Promise<void>;
   setLiveConfig(version: number): Promise<void>;
+  /** P4 security: what a person really stores, counted by the database (not the browser). */
+  measureUsage?(
+    userId: string,
+  ): Promise<{ storageMb: number; projects: number }>;
 }
 
 interface Data {

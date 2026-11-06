@@ -34,6 +34,7 @@ import {
   planFor,
   providerById,
   studioById,
+  workspaceRules,
   type PlatformConfig,
 } from '../src/platform-config';
 import { mockPayment } from '../src/payments';
@@ -129,6 +130,17 @@ const key = (v: unknown) => {
   if (!ID.test(k)) throw bad('The request key is not valid.');
   return k;
 };
+
+/** The settings a browser may see: no provider address, no secret name. */
+export function publicConfig(c: PlatformConfig): PlatformConfig {
+  return {
+    ...c,
+    providers: c.providers.map(({ baseUrl: _baseUrl, ...p }) => ({
+      ...p,
+      keyRef: 'SERVER_SECRET',
+    })),
+  };
+}
 
 export function createServerApp(o: ServerOptions) {
   const now = o.now ?? (() => Date.now());
@@ -231,6 +243,40 @@ export function createServerApp(o: ServerOptions) {
   >();
   const ipHits = new Map<string, { at: number; n: number }>();
   const ipPerMinute = Number(o.env.SERVER_IP_PER_MINUTE ?? 600) || 600;
+  // P4 security: sign-in failures per address are limited more tightly, and
+  // behind a proxy the real address is read from X-Forwarded-For (only when
+  // the owner says the proxy is trusted).
+  const badAuth = new Map<string, { at: number; n: number }>();
+  const badAuthPerMinute = Number(o.env.SERVER_BAD_AUTH_PER_MINUTE ?? 30) || 30;
+  const trustProxy = o.env.TRUST_PROXY === '1';
+  const clientIp = (req: IncomingMessage) => {
+    const forwarded = trustProxy
+      ? String(req.headers['x-forwarded-for'] ?? '')
+          .split(',')
+          .at(-1)
+          ?.trim()
+      : '';
+    return (forwarded || (req.socket.remoteAddress ?? '?')).replace(
+      /^::ffff:/,
+      '',
+    );
+  };
+  /** Counts a hit in a one-minute window; old windows are dropped so the maps stay small. */
+  const hitWindow = (
+    map: Map<string, { at: number; n: number }>,
+    id: string,
+    max: number,
+  ) => {
+    const t = now();
+    if (map.size > 5000)
+      for (const [k, v] of map) if (t - v.at > 60_000) map.delete(k);
+    const hit = map.get(id);
+    if (!hit || t - hit.at > 60_000) {
+      map.set(id, { at: t, n: 1 });
+      return false;
+    }
+    return ++hit.n > max;
+  };
   const origins = new Set(
     (
       o.env.SERVER_ORIGINS ??
@@ -598,6 +644,14 @@ export function createServerApp(o: ServerOptions) {
     },
     'POST /v1/usage/report': async (b, c) => {
       await prepare(c);
+      // P4 security: where the server can measure what a person stores (the
+      // database), the browser's numbers are ignored: it cannot hide usage.
+      if (o.store.measureUsage) {
+        const m = await o.store.measureUsage(c.userId);
+        await o.store.setCounter(c.userId, 'projects', m.projects);
+        await o.store.setCounter(c.userId, 'storageMb', m.storageMb);
+        return { ok: true };
+      }
       if (b.projects !== undefined)
         await o.store.setCounter(
           c.userId,
@@ -612,7 +666,31 @@ export function createServerApp(o: ServerOptions) {
         );
       return { ok: true };
     },
+    // P4: "Save to your styles" costs what the owner set (Admin › Projects &
+    // Styles). The price and the plan check are the server's; the browser's
+    // `credits` is ignored. The same key never charges twice.
+    'POST /v1/workspace/style-fee': async (b, c) => {
+      const { config, plan } = await prepare(c);
+      const rules = workspaceRules(config, plan.id);
+      if (!rules.styleAllowed)
+        throw new GatewayError('model-plan', 'Your plan cannot save Styles.');
+      const k = key(b.key);
+      const fee = rules.styleCredits;
+      if (fee > 0)
+        await people.withLedger(c.userId, (l) => {
+          const r = l.reserve(fee, `style-fee:${k}`, 'Save to your styles');
+          l.settle(r.id, fee, `style-fee:${k}:settle`);
+        });
+      return { charged: fee, balance: people.ledgerNow(c.userId).balance() };
+    },
     'POST /v1/plan': async (b, c) => {
+      // P4 security: the offline test payment never runs on a live server.
+      if (o.env.AUTH_MODE === 'supabase')
+        throw new HttpError(
+          403,
+          'hosted-checkout',
+          'Use hosted checkout to change a paid plan or buy credits.',
+        );
       const { config, profile } = await prepare(c);
       const target = config.plans.find(
         (p) => p.id === str(b.plan, 60) && p.public,
@@ -636,6 +714,12 @@ export function createServerApp(o: ServerOptions) {
       return { plan: target.id, balance: people.ledgerNow(c.userId).balance() };
     },
     'POST /v1/topup': async (b, c) => {
+      if (o.env.AUTH_MODE === 'supabase')
+        throw new HttpError(
+          403,
+          'hosted-checkout',
+          'Use hosted checkout to change a paid plan or buy credits.',
+        );
       const { config } = await prepare(c);
       const pack = config.topUps.find((t) => t.id === str(b.packId, 60));
       if (!pack) throw bad('That credit pack does not exist.');
@@ -847,14 +931,21 @@ export function createServerApp(o: ServerOptions) {
       }
       if (origin && !origins.has(origin))
         throw new HttpError(403, 'origin', 'This site may not use the server.');
-      const ip = (req.socket.remoteAddress ?? '?').replace(/^::ffff:/, '');
-      const hit = ipHits.get(ip);
-      if (!hit || now() - hit.at > 60_000) ipHits.set(ip, { at: now(), n: 1 });
-      else if (++hit.n > ipPerMinute)
+      const ip = clientIp(req);
+      if (hitWindow(ipHits, ip, ipPerMinute))
         throw new HttpError(
           429,
           'rate-limit',
           'Too many requests. Wait a moment and try again.',
+        );
+      if (
+        (badAuth.get(ip)?.n ?? 0) > badAuthPerMinute &&
+        now() - badAuth.get(ip)!.at <= 60_000
+      )
+        throw new HttpError(
+          429,
+          'rate-limit',
+          'Too many failed sign-ins. Wait a minute and try again.',
         );
       // P3-ENGINE:begin
       if (req.method === 'POST' && path.startsWith('/v1/payments/webhook/')) {
@@ -890,7 +981,18 @@ export function createServerApp(o: ServerOptions) {
         return send(res, 200, { ok: true, api: API_VERSION });
       if (req.method === 'GET' && path === '/v1/config') {
         const live = await cfg.get();
-        return send(res, 200, { version: live.version, config: live.config });
+        // P4 security: everyone may read the live settings, but a provider's
+        // address and key name are for the owner only.
+        let owner = false;
+        if (req.headers.authorization)
+          owner = await o
+            .authenticate(req.headers.authorization)
+            .then((c) => c.admin === true)
+            .catch(() => false);
+        return send(res, 200, {
+          version: live.version,
+          config: owner ? live.config : publicConfig(live.config),
+        });
       }
       if (req.method === 'POST' && path === '/v1/local/token') {
         if (
@@ -1035,6 +1137,8 @@ export function createServerApp(o: ServerOptions) {
           .catch(() => undefined);
       }
       // P3-ENGINE:end
+      if (e instanceof AuthError)
+        hitWindow(badAuth, clientIp(req), badAuthPerMinute);
       if (e instanceof HttpError) status = e.status;
       else if (e instanceof AuthError) status = 401;
       else if (e instanceof GatewayError) status = statusOf(e.code);
@@ -1074,6 +1178,10 @@ export function listen(
   host = '127.0.0.1',
 ): Promise<Server> {
   const server = createServer((req, res) => void handler(req, res));
+  // P4 security: a slow or stalled client cannot hold a connection open.
+  server.headersTimeout = 15_000;
+  server.requestTimeout = 60_000;
+  server.keepAliveTimeout = 10_000;
   return new Promise((resolve) =>
     server.listen(port, host, () => resolve(server)),
   );
