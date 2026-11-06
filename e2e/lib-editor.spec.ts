@@ -322,7 +322,11 @@ async function timeInsert(page: Page, act: () => Promise<void>) {
   };
   const critical = requests
     .filter((request) => request.at >= from && request.at <= drawnAt)
-    .map((request) => request.url);
+    .map((request) => request.url)
+    // The editor's own web fonts (a text layer draws with them) are the app's
+    // static files, not library or network media; the frame does not wait for
+    // them (the frames assertion below proves it).
+    .filter((url) => !/\/fonts\/[^?]+\.woff2(\?|$)/.test(url));
   return { ms, frames, critical };
 }
 async function throttle(page: Page): Promise<CDPSession> {
@@ -477,7 +481,10 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
     ),
   );
   // Elements: a video (heavy media): the poster is drawn at once.
-  await showCategory(page, 'Elements');
+  await openElementsKind(page, 'videos');
+  await expect(
+    elements.locator('[data-catalog-id="video-test-clip"]'),
+  ).toBeVisible();
   const centrePixel = () =>
     page
       .locator('#composition-canvas')

@@ -1,5 +1,14 @@
 # Changelog
 
+## P4: project-first flow, cloud sync, Admin app, security, Studio (7 Nov)
+
+- Create with Director or Blank makes a project at once; Styles, Projects and the Asset Library (Style, Project, three libraries, Studio Libraries); Director pause and resume (D-404).
+- Project, AI and My Templates sync to the cloud within the plan's space (D-405).
+- Admin screens in the Owner App behind its login: providers, key vault, models, one model per job, plans, workspace rules, Director rules, emergency switch, audit (D-406).
+- Security round: server-side style fee, measured storage, rate limits, redacted public settings, hosted-only payments (D-407).
+- Studio rebuilt: Story, SEO, Voice with four tabs; fields editable by the owner; results in Studio Libraries (D-408).
+- Test fixes found by CI (D-409). Schema 9 unchanged; no new npm dependencies.
+
 ## Phase 3 integration (P3-INTEGRATION): the UI on the real services (5 Nov)
 
 - Part 1 (`codex/p3-engine`: payments, entitlements, admin API, Studio engine, memory) and Part 2 (`claude/p3-wiring`: Director and Studio services, vault, storage, editor chat engine) are merged into `claude/p3-ui` and reviewed against docs/CONTRACTS-P3.md section 7 (D-397).

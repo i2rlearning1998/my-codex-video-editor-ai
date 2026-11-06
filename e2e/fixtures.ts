@@ -285,8 +285,17 @@ export async function rulerBox(page: Page) {
  */
 export async function showCategory(page: Page, name: string) {
   const button = page.locator(`#rail-left [data-category="${name}"]`);
-  if ((await button.getAttribute('aria-pressed')) !== 'true')
-    await button.click();
+  if ((await button.getAttribute('aria-pressed')) !== 'true') {
+    // H2: on a short window the rail shows six categories and the rest are
+    // in More; a user opens More and picks the category.
+    if (await button.isVisible()) await button.click();
+    else {
+      await page.locator('#rail-more').click();
+      await page
+        .locator(`.rail-more-menu [data-more-category="${name}"]`)
+        .click();
+    }
+  }
   await expect(button).toHaveAttribute('aria-pressed', 'true');
 }
 /**

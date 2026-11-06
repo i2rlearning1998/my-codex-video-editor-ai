@@ -22,6 +22,13 @@ test.fail(
   '[DEV-006] guard fails a test that logs console.error',
   async ({ page }) => {
     await page.setContent('<p>Intentional guard probe</p>');
+    // Wait until the browser has reported the error, so the guard has seen it
+    // before the test ends (on a slow machine the event can arrive late).
+    const reported = page.waitForEvent(
+      'console',
+      (message) => message.type() === 'error',
+    );
     await page.evaluate(() => console.error('Intentional DEV-006 guard probe'));
+    await reported;
   },
 );

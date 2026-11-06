@@ -13,6 +13,12 @@ test.setTimeout(90_000);
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     (window as { __AIVE_E2E_SPEECH__?: boolean }).__AIVE_E2E_SPEECH__ = true;
+    // The test browser (Chromium for testing) can record MP4 but cannot
+    // import it back (no H.264 decoder), so takes are recorded as WebM here.
+    // Chrome and Edge keep MP4; this only fixes the test browser's choice.
+    const supported = MediaRecorder.isTypeSupported.bind(MediaRecorder);
+    MediaRecorder.isTypeSupported = (mime: string) =>
+      !mime.includes('mp4') && supported(mime);
     let refuse = false;
     (
       window as unknown as { __refuseScreen: (v: boolean) => void }
