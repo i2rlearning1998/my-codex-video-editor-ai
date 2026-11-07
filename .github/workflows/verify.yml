@@ -8,7 +8,10 @@ permissions:
   contents: read
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    # Pinned: `ubuntu-latest` moved to Ubuntu 26.04 (different fonts), which
+    # changed the screenshot baselines (DEV-012) and tight top-bar layouts
+    # (LAY-013/014) without any change in the editor.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
