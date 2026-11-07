@@ -117,8 +117,8 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
   // Projects: the first is made, the second is stopped.
   await page.goto('/panel/#/projects');
   await page.locator('#new-blank').click();
-  await page.locator('#blank-name').fill('First');
-  await page.locator('#blank-form [type="submit"]').click();
+  await page.locator('#start-name').fill('First');
+  await page.locator('[data-start="editor"]').click();
   await expect(page).toHaveURL(/\/\?|\/$/);
   await expect
     .poll(() =>
@@ -132,8 +132,6 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
     page.locator('#project-list [data-project]').first(),
   ).toBeVisible();
   await page.locator('#new-blank').click();
-  await page.locator('#blank-name').fill('Second');
-  await page.locator('#blank-form [type="submit"]').click();
   await expect(page.locator('#project-limit')).toContainText(
     'Your plan allows 1 projects.',
   );
@@ -164,8 +162,8 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
   await page.reload();
   await page.goto('/panel/#/projects');
   await page.locator('#new-blank').click();
-  await page.locator('#blank-name').fill('Second');
-  await page.locator('#blank-form [type="submit"]').click();
+  await page.locator('#start-name').fill('Second');
+  await page.locator('[data-start="editor"]').click();
   await expect(page).not.toHaveURL(/\/panel\//);
   // And the voice result's storage is allowed now.
   await page.goto('/panel/#/studio/voice');

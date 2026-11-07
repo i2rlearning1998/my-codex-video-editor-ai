@@ -1,7 +1,7 @@
 // P3U: model-driven Studio forms, on the P3 mock Studio service
 // (src/contracts/p3-mock-studio.ts). The reference fields are a sample.
 import { test, expect } from './fixtures';
-import { setPlan, signUp } from './p2-helpers';
+import { openStudioResults, setPlan, signUp } from './p2-helpers';
 
 const SHOTS = process.env.P3U_SHOTS ?? '';
 test.beforeEach(async ({ page }) => {
@@ -64,7 +64,7 @@ test('[P3U-008] Run shows progress, then saves the result to the chosen project 
   await expect(page.locator('#studio-progress')).toBeVisible();
   await expect(page.locator('#studio-saved')).toBeVisible();
   await expect(page.locator('#studio-progress')).toBeHidden();
-  await page.goto('/panel/#/assets');
+  await openStudioResults(page, 'images');
   await expect(page.getByText('a lighthouse at dusk').first()).toBeVisible();
 });
 

@@ -2,7 +2,7 @@
 // services (src/wiring over Part 1's engines), the real gateway server and the
 // FAKE provider servers. Nothing here is a live provider.
 import { test, expect, allowError } from './fixtures';
-import { signUp } from './p2-helpers';
+import { openStudioResults, signUp } from './p2-helpers';
 import { signLocalToken } from '../server/auth';
 import {
   setServerPlan,
@@ -73,7 +73,7 @@ test('[P3I-009] with a gateway server a Studio run goes through the real Studio 
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-saved')).toBeVisible({ timeout: 30_000 });
   // The result is listed in the Asset Library (not only announced).
-  await page.goto('/panel/#/assets');
+  await openStudioResults(page, 'images');
   await expect(page.locator('#asset-list [data-asset]')).toHaveCount(1);
   const seen = stack.logs.join('\n');
   expect(seen).toMatch(/POST \/v1\/(run|reserve) 200/);

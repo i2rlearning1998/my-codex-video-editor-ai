@@ -1,7 +1,7 @@
 // P2-R2: the panel against the real gateway server (in the test process),
 // which calls the fake provider servers over real HTTP. No real keys.
 import { test, expect } from './fixtures';
-import { balance, signUp } from './p2-helpers';
+import { balance, openStudioResults, signUp } from './p2-helpers';
 import { startStack, type Stack } from './p2-stack';
 
 let stack: Stack | null = null;
@@ -33,7 +33,7 @@ test('[P2R2-008] with VITE_GATEWAY_URL the panel uses the server: credits, model
   );
   // The text came from the fake Anthropic server, through the gateway.
   // The model-driven Studio saves and says where (P3U-008); read it there.
-  await page.goto('/panel/#/assets');
+  await openStudioResults(page, 'write');
   await expect(page.locator('.asset-text').first()).toContainText('echo:');
   expect(
     stack.fake.seen.some(

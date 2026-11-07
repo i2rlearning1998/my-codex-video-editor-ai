@@ -37,3 +37,13 @@ export async function approvePlan(
   await expect(step.or(building).first()).toBeVisible();
   if (await step.isVisible()) await step.click();
 }
+
+/** Asset Library: opens the Studio Libraries card and then one Studio tool's results. */
+export async function openStudioResults(
+  page: import('@playwright/test').Page,
+  feature: string,
+): Promise<void> {
+  await page.goto('/panel/#/assets');
+  await page.locator('[data-lib-studio]').click();
+  await page.locator(`[data-studio-feature="${feature}"]`).click();
+}

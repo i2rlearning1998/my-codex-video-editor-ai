@@ -69,7 +69,19 @@ test.describe('X5 hostile and heavy free code', () => {
     page,
   }) => {
     const requests = outside(page);
-    const storage = await page.evaluate(() => JSON.stringify(localStorage));
+    // The editor itself mirrors a project's library into `aive.ws.*` after it
+    // opens; that is not the hostile code's doing, so it is left out.
+    const own = () =>
+      page.evaluate(() =>
+        JSON.stringify(
+          Object.fromEntries(
+            Object.entries(localStorage).filter(
+              ([k]) => !k.startsWith('aive.ws.'),
+            ),
+          ),
+        ),
+      );
+    const storage = await own();
     const project = (await hook(page)).project;
     await openImport(page);
     for (const body of [
@@ -87,9 +99,8 @@ test.describe('X5 hostile and heavy free code', () => {
     }
     await dialog(page).locator('#ai-import-cancel').click();
     expect(requests).toEqual([]);
-    expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(
-      storage,
-    );
+    expect(await own()).toBe(storage);
+    expect(await own()).not.toContain('owned');
     expect((await hook(page)).project).toEqual(project);
     await expect(page.locator('#composition-canvas')).toBeVisible();
   });

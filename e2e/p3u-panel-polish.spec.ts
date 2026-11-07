@@ -2,7 +2,7 @@
 import { test, expect } from './fixtures';
 import { signUp, setPlan } from './p2-helpers';
 
-test('[P3U-032] Settings has Profile and Preferences cards, Learn cards are numbered, and an empty Asset Library leads to Studio', async ({
+test('[P3U-032] Settings has Profile and Preferences cards, Learn cards are numbered, and an empty Asset Library leads to Projects', async ({
   page,
 }) => {
   await signUp(page);
@@ -12,8 +12,8 @@ test('[P3U-032] Settings has Profile and Preferences cards, Learn cards are numb
   await page.goto('/panel/#/learn');
   await expect(page.locator('.learn-card .learn-num').first()).toHaveText('01');
   await page.goto('/panel/#/assets');
-  await page.locator('.assets-empty a[href="#/studio"]').click();
-  await expect(page).toHaveURL(/#\/studio/);
+  await page.locator('.assets-empty a[href="#/projects"]').click();
+  await expect(page).toHaveURL(/#\/projects/);
 });
 
 test('[P3U-033] Brand Kit shows a live preview of the colours and fonts, and a plan without it shows an upgrade teaser', async ({

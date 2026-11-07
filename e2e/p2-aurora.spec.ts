@@ -111,9 +111,9 @@ async function auroraScreens(page: Page, width: number) {
     await shot(page, name);
   }
   await page.goto('/panel/#/studio/voice');
-  await expect(page.locator('.tool-tab[aria-current="page"]')).toHaveText(
-    'Voice',
-  );
+  await expect(
+    page.locator('.tool-tabs:not(.sub-tabs) .tool-tab[aria-current="page"]'),
+  ).toHaveText('Voice');
   await expect(page.locator('.choice svg.wave').first()).toBeVisible();
   await shot(page, 'panel-studio-voice');
   // Keyboard focus shows a ring.
