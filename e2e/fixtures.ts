@@ -115,6 +115,18 @@ export const test = base.extend<Fixtures>({
             body: '',
           }),
       );
+      // P4: the editor's Settings shows "Your own keys" and "Offline voice &
+      // captions" only with the developer flag (a plain build hides them).
+      // Tests that exercise those tabs need it; a test that checks the plain
+      // view sets `aive.developer` to "0" itself, which this does not touch.
+      await page.addInitScript(() => {
+        try {
+          if (localStorage.getItem('aive.developer') === null)
+            localStorage.setItem('aive.developer', '1');
+        } catch {
+          /* Storage blocked: nothing to set. */
+        }
+      });
       const errors: string[] = [];
       const allowed: ((message: string) => boolean)[] = [];
       // Shared per-test registry; exceptions must be declared explicitly in the test.
