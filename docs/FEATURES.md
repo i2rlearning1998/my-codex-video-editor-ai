@@ -1519,3 +1519,9 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4U-003 | P0 | W10 | Verified | Story runs on the mock model, shows its cost first and charges credits |
 | P4U-004 | P0 | W10 | Verified | A Studio result is saved to the Asset Library (Studio Libraries card) and the tool lists what it made |
 | P4U-005 | P1 | W10 | Verified | SEO asks what to make, with Titles, Description, Tags and Hashtags as choices (sample fields until the owner's Autodraft screenshots arrive) |
+
+## RDA: Round A (panel rebuilt around Project = container, Video inside; briefs/ROUND-A.md)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| RDA-001 | P0 | W10 | Verified | A production build with no catalog still lists the 12 sound effects, the Text panel's styles and font combinations, and the 8 themes (a baseline pack shipped next to the editor); a reachable catalog adds to it or overrides it by id |

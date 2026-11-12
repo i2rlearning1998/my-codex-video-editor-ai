@@ -60,6 +60,13 @@ interface CachedIndex {
 export interface LibraryClientOptions {
   /** The catalog folder's address (ends with /), or null for none. */
   readonly url: string | null;
+  /**
+   * ROUND-A A0.2: the editor's own baseline pack (sounds, text styles and
+   * combinations, themes), a folder on the editor's origin with an
+   * `index.json`. Used when there is no catalog; a catalog adds to it or
+   * overrides it entry by entry. Null: none.
+   */
+  readonly baselineUrl?: string | null;
   readonly publicKey: string;
   readonly cache: Promise<CacheStore>;
   readonly media: Promise<MediaStore | null>;
@@ -82,6 +89,9 @@ export class LibraryClient {
     problem: null,
   };
   #refreshing: Promise<RefreshResult> | null = null;
+  /** ROUND-A A0.2: the baseline pack's indexes and the files it carries. */
+  #baseline = new Map<CatalogCategory, CategoryIndex>();
+  readonly #baselineFiles = new Set<string>();
   readonly #listeners = new Set<() => void>();
   readonly #posters = new Map<string, ImageBitmap | HTMLImageElement>();
   readonly #pending = new Map<string, Promise<Blob | null>>();
@@ -107,7 +117,45 @@ export class LibraryClient {
     return new URL(path, this.options.url ?? location.href).href;
   }
 
+  /** ROUND-A A0.2: reads the baseline pack (a missing or bad one is ignored). */
+  async #loadBaseline(): Promise<void> {
+    const base = this.options.baselineUrl;
+    if (!base) return;
+    try {
+      const response = await this.#fetch(new URL('index.json', base).href);
+      if (!response.ok) return;
+      const body = (await response.json()) as {
+        format?: string;
+        categories?: Record<string, unknown>;
+      };
+      if (body.format !== 'aive-library-baseline') return;
+      for (const category of CATALOG_CATEGORIES) {
+        const raw = body.categories?.[category];
+        if (!raw) continue;
+        const parsed = categoryIndexSchema.safeParse(raw);
+        if (!parsed.success) continue;
+        this.#baseline.set(category, parsed.data);
+        for (const entry of parsed.data.entries)
+          for (const url of [
+            entry.thumbUrl,
+            'file' in entry.payload ? entry.payload.file.url : null,
+            entry.media?.full.url,
+            entry.media?.poster?.url,
+            entry.media?.proxy?.url,
+          ])
+            if (url) this.#baselineFiles.add(url);
+      }
+    } catch {
+      /* No baseline: the tiny fallback pack only. */
+    }
+  }
+  /** Whether a file path is served by the baseline pack. */
+  isBaselineFile(url: string): boolean {
+    return this.#baselineFiles.has(url);
+  }
+
   async #start(): Promise<void> {
+    await this.#loadBaseline();
     const cache = await this.options.cache;
     try {
       const cached = await cache.get<CachedManifest>(MANIFEST_KEY);
@@ -163,7 +211,10 @@ export class LibraryClient {
     if (!this.options.url) {
       this.#status = {
         ...this.#status,
-        problem: 'No library catalog is set up for this editor.',
+        // ROUND-A A0.2: with the baseline pack there is nothing to explain.
+        problem: this.#baseline.size
+          ? null
+          : 'No library catalog is set up for this editor.',
       };
       this.#emit();
       return 'offline';
@@ -316,15 +367,31 @@ export class LibraryClient {
   config(): CatalogConfig | null {
     return this.#config;
   }
-  /** Entries listed now in a category (hidden and scheduled ones left out). */
+  /**
+   * Entries listed now in a category (hidden and scheduled ones left out).
+   * ROUND-A A0.2: the baseline pack's entries come first in the list the
+   * catalog does not already hold; an entry with the same id in the catalog
+   * replaces the baseline's (the catalog adds to it or overrides it).
+   */
   entries(category: CatalogCategory): CatalogEntry[] {
     const index = this.#indexes.get(category);
-    if (!index) return [];
+    const baseline = this.#baseline.get(category);
+    if (!index && !baseline) return [];
     const now = (this.options.now ?? Date.now)();
-    return orderEntries(index.entries.filter((entry) => isListed(entry, now)));
+    const own = index?.entries ?? [];
+    const ids = new Set(own.map((entry) => entry.id));
+    const merged = [
+      ...(baseline?.entries ?? []).filter((entry) => !ids.has(entry.id)),
+      ...own,
+    ];
+    return orderEntries(merged.filter((entry) => isListed(entry, now)));
   }
   entry(id: string): CatalogEntry | undefined {
     for (const index of this.#indexes.values()) {
+      const found = index.entries.find((entry) => entry.id === id);
+      if (found) return found;
+    }
+    for (const index of this.#baseline.values()) {
       const found = index.entries.find((entry) => entry.id === id);
       if (found) return found;
     }
@@ -332,13 +399,20 @@ export class LibraryClient {
   }
   /** The library manifest the panels read (the loader's shape, P1-22). */
   manifest(): LibraryManifest {
-    if (!this.#manifest)
+    if (!this.#manifest) {
+      // ROUND-A A0.2: the fallback shapes plus the baseline's text items.
+      const extra: LibraryItem[] = [];
+      for (const entry of this.entries('text')) {
+        const record = this.#record(entry);
+        if (record) extra.push(record);
+      }
       return {
         version: 1,
         pack: { id: 'fallback', name: { en: 'Basics', hi: 'बुनियादी' } },
         templates: [],
-        items: [...FALLBACK_ITEMS],
+        items: [...FALLBACK_ITEMS, ...extra],
       };
+    }
     const items: LibraryItem[] = [];
     for (const category of ['elements', 'draw', 'text', 'templates'] as const)
       for (const entry of this.entries(category)) {
@@ -384,7 +458,9 @@ export class LibraryClient {
     });
   }
   url(path: string): string {
-    return this.#href(path);
+    return this.#baselineFiles.has(path) && this.options.baselineUrl
+      ? new URL(path, this.options.baselineUrl).href
+      : this.#href(path);
   }
 
   // --- Files (payloads, thumbnails, media) ----------------------------------
@@ -397,8 +473,10 @@ export class LibraryClient {
       const cached = await store?.read(key).catch(() => null);
       if (cached)
         return cached.type ? cached : cached.slice(0, cached.size, ref.mime);
-      if (!this.options.url) return null;
-      const response = await this.#fetch(this.#href(ref.url));
+      const fromBaseline =
+        this.#baselineFiles.has(ref.url) && !!this.options.baselineUrl;
+      if (!this.options.url && !fromBaseline) return null;
+      const response = await this.#fetch(this.url(ref.url));
       if (!response.ok) throw new Error(`answered ${response.status}`);
       const bytes = await response.arrayBuffer();
       if ((await sha256(bytes)) !== ref.sha256)

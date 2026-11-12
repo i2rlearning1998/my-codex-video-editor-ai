@@ -48,6 +48,12 @@ export const SERVER_MARKERS = [
   'generateContent',
   'is not connected: its key was refused',
 ];
+/** ROUND-A A0.2: the theme markers the baseline pack may carry. */
+export const BASELINE_ALLOWED = [
+  '"dark-neon"',
+  'Corporate Blue',
+  'Cinematic Teal',
+];
 const problems = [];
 for (const file of files) {
   const relative = path.relative(dist, file);
@@ -61,9 +67,17 @@ for (const file of files) {
   for (const marker of OWNER_MARKERS)
     if (text.includes(marker))
       problems.push(`${relative}: contains the owner app (${marker})`);
+  // ROUND-A A0.2 (D-411): the baseline pack (sounds, text styles and
+  // combinations, themes) is a static folder next to the editor, never in
+  // its JavaScript. Only there may theme names appear; shapes and templates
+  // (the Starter Pack) are never bundled anywhere.
+  const baseline = relative.split(path.sep)[0] === 'library-baseline';
   if (/\.(js|json)$/.test(file))
     for (const marker of PAYLOAD_MARKERS)
-      if (text.includes(marker))
+      if (
+        text.includes(marker) &&
+        !(baseline && BASELINE_ALLOWED.includes(marker))
+      )
         problems.push(
           `${relative}: contains bundled library content (${marker})`,
         );

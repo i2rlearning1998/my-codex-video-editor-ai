@@ -46,6 +46,11 @@ export function libraryClient(): LibraryClient {
     client = new LibraryClient({
       url: config.url,
       publicKey: config.publicKey,
+      // ROUND-A A0.2: the baseline pack ships with the editor (public/).
+      baselineUrl: new URL(
+        `${import.meta.env.BASE_URL ?? '/'}library-baseline/`,
+        location.href,
+      ).href,
       cache: openCache(),
       media: openMediaStore(),
     });
