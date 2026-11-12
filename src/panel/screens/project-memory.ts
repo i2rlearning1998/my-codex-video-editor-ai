@@ -1,25 +1,23 @@
-// P3U: one project's memory and chats. The facts are what Director remembers;
-// the person can add, pin and forget them. Talks only to DirectorService.
+// P3U, ROUND-A: a Project's memory and chats (the Project page's Memory tab).
+// The facts are what Director remembers for every Video in the Project; the
+// person can add, pin and forget them. Talks only to DirectorService.
 import type { MemoryFact, ProjectMemory } from '../../contracts/p3';
 import { clear, h, put } from '../dom';
 import { directorService } from '../p3-services';
 import { t, type Key } from '../strings';
-import type { Screen } from '../app';
+import type { Ctx } from '../app';
 import { empty, when } from './common';
 
-export const projectMemoryScreen: Screen = async (ctx, args, out) => {
+export async function memoryPanel(
+  ctx: Ctx,
+  projectId: string,
+  out: HTMLElement,
+): Promise<void> {
   const svc = await directorService(ctx);
-  const projectId = args[0] ?? '';
   let memory: ProjectMemory = await svc.memory(projectId);
 
   const factsBox = h('ul', { class: 'mem-facts', id: 'mem-facts' });
   const chatsBox = h('ul', { class: 'mem-chats', id: 'mem-chats' });
-  const styleLine = h('p', { class: 'muted', id: 'mem-style' });
-  const makeNote = h('p', {
-    class: 'ok-state',
-    role: 'status',
-    id: 'mem-note',
-  });
 
   const save = async (facts: readonly MemoryFact[]) => {
     memory = await svc.setMemory(projectId, facts);
@@ -123,17 +121,10 @@ export const projectMemoryScreen: Screen = async (ctx, args, out) => {
       : [h('li', {}, empty(t('mem.noChats')))]),
   );
 
-  const style = memory.styleId
-    ? (await svc.listStyles()).find((s) => s.id === memory.styleId)
-    : undefined;
-  styleLine.textContent = `${t('mem.style')}: ${style ? style.name : (memory.styleId ?? t('mem.noStyle'))}`;
-
   put(
     out,
-    h('a', { class: 'back-link', href: '#/projects', text: t('mem.back') }),
-    h('h1', { text: t('mem.title') }),
-    h('p', { class: 'muted', text: t('mem.sub') }),
-    styleLine,
+    h('h2', { text: t('mem.title') }),
+    h('p', { class: 'muted', text: t('rda.memorySub') }),
     h(
       'section',
       { class: 'mem-section' },
@@ -151,36 +142,8 @@ export const projectMemoryScreen: Screen = async (ctx, args, out) => {
         }),
       ),
     ),
-    h(
-      'div',
-      { class: 'actions' },
-      h('button', {
-        type: 'button',
-        class: 'button',
-        id: 'mem-make-style',
-        text: t('mem.makeStyle'),
-        onclick: async () => {
-          const s = await svc.makeStyle(
-            projectId,
-            `Style ${memory.facts.length}`,
-          );
-          clear(
-            makeNote,
-            document.createTextNode(
-              `${t('room.styleDraft', { name: s.name })} `,
-            ),
-            h('a', {
-              href: `#/my-styles/${encodeURIComponent(s.id)}`,
-              text: t('room.reviewStyle'),
-            }),
-          );
-        },
-      }),
-      h('a', { class: 'button', href: '#/home', text: t('mem.newChat') }),
-    ),
-    makeNote,
     h('h2', { text: t('mem.chats') }),
     chatsBox,
   );
   paintFacts();
-};
+}

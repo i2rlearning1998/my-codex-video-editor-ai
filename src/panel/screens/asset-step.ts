@@ -29,7 +29,7 @@ const ACCEPT = {
 export const assetStepScreen: Screen = async (ctx, [id = ''], out) => {
   const ws = ctx.s.ws(ctx.user.id);
   ws.reload();
-  const project = ws.project(id);
+  const project = ws.video(id);
   if (!project || !project.pause) {
     put(
       out,
@@ -47,7 +47,7 @@ export const assetStepScreen: Screen = async (ctx, [id = ''], out) => {
   for (const sl of pause.slots)
     if (sl.filled && !(await getSlotFile(id, sl.name).catch(() => undefined)))
       ws.fillSlot(id, sl.name, false);
-  pause = ws.project(id)!.pause!;
+  pause = ws.video(id)!.pause!;
 
   const save = () => ws.pause(id, { ...pause, slots: pause.slots });
   const list = h('div', { class: 'step-list', id: 'step-list' });
@@ -122,7 +122,7 @@ export const assetStepScreen: Screen = async (ctx, [id = ''], out) => {
         await putSlotFile(id, sl.name, { name, type: file.type, blob: file });
         await saveMediaAsset(sl, file, name);
         ws.fillSlot(id, sl.name, true);
-        pause = ws.project(id)!.pause!;
+        pause = ws.video(id)!.pause!;
         paint();
       },
     });
@@ -167,7 +167,7 @@ export const assetStepScreen: Screen = async (ctx, [id = ''], out) => {
                 await deleteSlotFile(id, sl.name).catch(() => undefined);
                 ctx.s.deleteAsset(`slot-${id}-${sl.name}`);
                 ws.fillSlot(id, sl.name, false);
-                pause = ws.project(id)!.pause!;
+                pause = ws.video(id)!.pause!;
                 paint();
               },
             },

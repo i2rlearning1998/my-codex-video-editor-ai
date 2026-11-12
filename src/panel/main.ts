@@ -9,6 +9,7 @@ import './mine.css';
 import './credits.css';
 import './polish.css';
 import './workspace.css';
+import './projects.css';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';
@@ -30,18 +31,14 @@ import {
 import { studioScreen } from './screens/studio';
 import { assetsScreen } from './screens/library';
 import { assetStepScreen } from './screens/asset-step';
-import { projectsScreen, startScreen, styleScreen } from './screens/workspace';
+import { projectScreen, projectsScreen } from './screens/workspace';
 import { directorRoomScreen } from './screens/director-room';
-import { myStylesScreen, styleReviewScreen } from './screens/my-styles';
-import { projectMemoryScreen } from './screens/project-memory';
 
 const root = document.getElementById('panel')!;
 const screens: Record<string, Screen> = {
   home: homeScreen,
   styles: stylesScreen,
-  'my-styles': (ctx, a, out) =>
-    a[0] ? styleReviewScreen(ctx, a, out) : myStylesScreen(ctx, a, out),
-  project: projectMemoryScreen,
+  project: projectScreen,
   brief: briefScreen,
   director: directorScreen,
   room: directorRoomScreen,
@@ -50,9 +47,7 @@ const screens: Record<string, Screen> = {
   studio: studioScreen,
   assets: assetsScreen,
   projects: projectsScreen,
-  start: startScreen,
   'assets-step': assetStepScreen,
-  style: styleScreen,
   credits: creditsScreen,
   brand: brandScreen,
   learn: learnScreen,

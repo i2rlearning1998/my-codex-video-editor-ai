@@ -41,7 +41,8 @@ import { renderForm } from '../form';
 import { t } from '../strings';
 import { motionOn, tick } from '../motion';
 import { bestModels, modelPicker, empty } from './common';
-import { newProject, saveStyleDialog } from './workspace';
+import { newDirectorVideo } from './workspace';
+import { styleFromPlan } from '../../project/style-from';
 import { planSlots } from '../asset-slots';
 import { getSlotFile } from '../slot-files';
 import type { AssetSlot } from '../../project/workspace';
@@ -122,6 +123,28 @@ async function draftPlan(
     modelId: currentModel(ctx),
     key: `plan-${Date.now().toString(36)}`,
   });
+}
+/**
+ * ROUND-A: a Video follows its Project's style (with its own changes on
+ * top); the planner reads it as notes.
+ */
+function projectStyleNotes(ctx: Ctx, videoId?: string): string[] {
+  const f = videoId ? ctx.s.ws(ctx.user.id).effectiveStyle(videoId) : null;
+  if (!f) return [];
+  const lines = [
+    f.look.palette.length
+      ? `Project colours: ${f.look.palette.join(', ')}.`
+      : '',
+    f.look.headingFont || f.look.bodyFont
+      ? `Project fonts: ${[f.look.headingFont, f.look.bodyFont].filter(Boolean).join(' / ')}.`
+      : '',
+    f.look.captionStyle ? `Caption style: ${f.look.captionStyle}.` : '',
+    f.graphics ? `Graphics and animation: ${f.graphics}` : '',
+    f.voice ? `Voice: ${f.voice}.` : '',
+    f.music ? `Music: ${f.music}.` : '',
+    f.scriptRules ? `Script rules: ${f.scriptRules}` : '',
+  ];
+  return lines.filter(Boolean).map((l) => l.slice(0, 600));
 }
 /** The Brief room's estimate: the free planner's shape, never a model call. */
 async function previewPlan(ctx: Ctx, style: Style, answers: Answers) {
@@ -258,12 +281,19 @@ export const briefScreen: Screen = async (ctx, [styleId = ''], out) => {
       return;
     }
     const before = readFlow(ctx);
+    // ROUND-B SEAM: the brief is bound to a Video (`?project=<videoId>`).
+    const ws = ctx.s.ws(ctx.user.id);
     const projectId =
-      (wanted && ctx.s.ws(ctx.user.id).project(wanted) ? wanted : '') ||
-      (before?.styleId === style.id ? before.projectId : undefined) ||
-      (await newProject(ctx, 'director'));
+      (wanted && ws.video(wanted) ? wanted : '') ||
+      (before?.styleId === style.id &&
+      before.projectId &&
+      ws.video(before.projectId)
+        ? before.projectId
+        : undefined) ||
+      (await newDirectorVideo(ctx));
     if (!projectId) return;
-    ctx.s.ws(ctx.user.id).markAi(projectId);
+    ws.markAi(projectId);
+    ws.setStage(projectId, route === 'plan' ? 'plan' : 'brief');
     writeFlow(ctx, {
       styleId: style.id,
       projectId,
@@ -689,7 +719,10 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
   if (!video) {
     let checked: Awaited<ReturnType<typeof draftPlan>>;
     try {
-      checked = await draftPlan(ctx, style, flow.answers, flow.notes);
+      checked = await draftPlan(ctx, style, flow.answers, [
+        ...flow.notes,
+        ...projectStyleNotes(ctx, flow.projectId),
+      ]);
     } catch (e) {
       // A provider failure: the whole planning hold is given back.
       await ctx.s.sync(ctx.user.id).catch(() => undefined);
@@ -994,9 +1027,9 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
               // for on the next page, where Director waits.
               const ws = ctx.s.ws(ctx.user.id);
               const projectId =
-                (flow.projectId && ws.project(flow.projectId)
+                (flow.projectId && ws.video(flow.projectId)
                   ? flow.projectId
-                  : '') || (await newProject(ctx, 'director'));
+                  : '') || (await newDirectorVideo(ctx));
               if (!projectId) return;
               ws.markAi(projectId);
               writeFlow(ctx, { ...flow, projectId });
@@ -1041,22 +1074,6 @@ export const planScreen: Screen = async (ctx, [styleId = ''], out) => {
 
 /** P2-30 Live Build. */
 /** The editor address that builds a finished plan (into the project when there is one). */
-/** "Save to your styles?" once Director has built: only for a project not yet in a Style. */
-function saveStyleButton(ctx: Ctx, projectId?: string): HTMLElement | null {
-  if (!projectId) return null;
-  const ws = ctx.s.ws(ctx.user.id);
-  ws.reload();
-  const p = ws.project(projectId);
-  if (!p || p.styleId) return null;
-  return h('button', {
-    type: 'button',
-    class: 'button',
-    id: 'save-style-q',
-    text: t('ws.saveStyleQ'),
-    onclick: () => saveStyleDialog(ctx, p, () => ctx.go('assets')),
-  });
-}
-
 const handoffHref = (id: string, projectId?: string) =>
   `/?handoff=${encodeURIComponent(id)}${projectId ? `&project=${encodeURIComponent(projectId)}` : ''}`;
 
@@ -1120,7 +1137,6 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           },
           t('build.open'),
         ),
-        saveStyleButton(ctx, done.projectId),
       ),
     );
     return;
@@ -1386,13 +1402,12 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
       filled: sl.filled || made.has(sl.name),
     }));
     localStorage.setItem(`${HANDOFF_KEY(id)}.slots`, JSON.stringify(expected));
-    if (j.projectId) {
-      try {
-        ws.resume(j.projectId);
-      } catch {
-        /* the record is gone: nothing waits */
-      }
+    if (j.projectId && ws.video(j.projectId)) {
+      ws.resume(j.projectId);
       ws.markAi(j.projectId);
+      ws.setStage(j.projectId, 'built');
+      // ROUND-A A1: the first built Video gives an empty Project its style.
+      ws.fillStyleFromVideo(j.projectId, styleFromPlan(result.plan));
     }
     for (const m of result.missing)
       steps.append(h('li', { class: 'note', 'data-missing': '', text: m }));
@@ -1416,9 +1431,6 @@ export const buildScreen: Screen = async (ctx, _args, out) => {
           href: handoffHref(id, j.projectId),
         },
         t('build.open'),
-      ),
-      ...[saveStyleButton(ctx, j.projectId)].filter(
-        (x): x is HTMLElement => !!x,
       ),
     );
   } catch (e) {

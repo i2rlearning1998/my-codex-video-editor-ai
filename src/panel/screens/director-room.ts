@@ -19,7 +19,7 @@ import { directorService } from '../p3-services';
 import { t, getLocale, type Key } from '../strings';
 import type { Screen } from '../app';
 import { currentModel } from './flow';
-import { newProject } from './workspace';
+import { newDirectorVideo } from './workspace';
 
 const say = (x: P3Text): string => (getLocale() === 'hi' && x.hi ? x.hi : x.en);
 
@@ -40,10 +40,11 @@ export const directorRoomScreen = async (
   const svc = await directorService(ctx);
   const c = ctx.s.config;
   const ws = ctx.s.ws(ctx.user.id);
-  // P4: `#/room/<projectId>` is Director inside a project that already exists.
-  let projectId = args[0] && ws.project(args[0]) ? args[0] : '';
-  const inProject = (): ReturnType<typeof ws.project> =>
-    projectId ? ws.project(projectId) : undefined;
+  // ROUND-A: `#/room/<videoId>` is Director on a Video that already exists
+  // (ROUND-B SEAM: Round B moves this chat into the editor's AI mode).
+  let projectId = args[0] && ws.video(args[0]) ? args[0] : '';
+  const inProject = (): ReturnType<typeof ws.video> =>
+    projectId ? ws.video(projectId) : undefined;
   const styleId = projectId
     ? (c.styles[0]?.id ?? '')
     : (args[0] ?? c.styles[0]?.id ?? '');
@@ -119,26 +120,11 @@ export const directorRoomScreen = async (
       memory
         ? h('a', {
             class: 'btn ghost room-open-memory',
-            href: `#/project/${encodeURIComponent(memory.projectId)}`,
+            // ROUND-A: the Video's Project page (its Memory tab).
+            href: `#/project/${encodeURIComponent(memory.projectId)}/memory`,
             text: t('room.openMemory'),
           })
         : null,
-      h('button', {
-        type: 'button',
-        class: 'btn ghost room-make-style',
-        text: t('room.makeStyle'),
-        onclick: async () => {
-          if (!memory) return;
-          const s = await svc.makeStyle(
-            memory.projectId,
-            `Style ${new Date().getFullYear()}`,
-          );
-          addNote(t('room.styleDraft', { name: s.name }), {
-            href: `#/my-styles/${encodeURIComponent(s.id)}`,
-            label: t('room.reviewStyle'),
-          });
-        },
-      }),
     );
   };
 
@@ -168,16 +154,6 @@ export const directorRoomScreen = async (
     scroll();
     return { li, body };
   };
-  const addNote = (text: string, link?: { href: string; label: string }) => {
-    const b = bubble('director', ' note');
-    b.body.textContent = text;
-    if (link)
-      b.body.append(
-        ' ',
-        h('a', { class: 'room-note-link', href: link.href, text: link.label }),
-      );
-  };
-
   const askChips = (q: DirectorQuestion) => {
     const wrap = h('div', {
       class: 'answer-chips room-chips',
@@ -218,14 +194,14 @@ export const directorRoomScreen = async (
     if (chat) return;
     // P4: the project exists before the first message (Home starts one here).
     if (!projectId) {
-      const made = await newProject(ctx, 'director');
+      const made = await newDirectorVideo(ctx);
       if (!made) return;
       projectId = made;
     }
     ws.markAi(projectId);
-    const styleRec = inProject()?.styleId
-      ? ws.style(inProject()!.styleId!)?.recordId
-      : null;
+    // A Project migrated from a P4 Style keeps the style Director learned.
+    const container = ws.project(inProject()?.projectId ?? '');
+    const styleRec = container?.legacyRecordId ?? null;
     const started = await svc.start(
       styleRec ? { kind: 'style', styleId: styleRec } : path,
       projectId,
@@ -386,7 +362,8 @@ export const directorRoomScreen = async (
     h(
       'div',
       { class: 'room-starts' },
-      startCard('style'),
+      // In a Video the Project's style is used: no other Style to pick.
+      inProject() ? null : startCard('style'),
       startCard('brief'),
       startCard('blank'),
     ),

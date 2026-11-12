@@ -229,7 +229,6 @@ export function mountPanel(
         'aria-current',
         a.dataset.route === name ||
           (name.startsWith('brief') && a.dataset.route === 'styles') ||
-          (name === 'my-styles' && a.dataset.route === 'styles') ||
           (name === 'project' && a.dataset.route === 'projects'),
       );
   };

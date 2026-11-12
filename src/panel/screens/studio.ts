@@ -28,15 +28,16 @@ import { bestModels, card, empty, limitAlert } from './common';
 
 const UNSORTED = 'unsorted';
 async function projectOptions(ctx: Ctx) {
-  let list: { id: string; name: string }[] = [];
-  try {
-    const ws = ctx.s.ws(ctx.user.id);
-    list = (await ctx.s.projects.list())
-      .filter((p) => !ws.project(p.id)?.trashedAt)
-      .map((p) => ({ id: p.id, name: p.name }));
-  } catch {
-    list = [];
-  }
+  // ROUND-A: a result can go to Studio Libraries or a chosen Video.
+  const ws = ctx.s.ws(ctx.user.id);
+  ws.reload();
+  const list = ws
+    .videos()
+    .filter((v) => !ws.project(v.projectId)?.trashedAt)
+    .map((v) => ({
+      id: v.id,
+      name: `${ws.project(v.projectId)?.name ?? ''} › ${v.name}`,
+    }));
   return [{ id: UNSORTED, name: t('studio.unsorted') }, ...list];
 }
 /** A picture drawn offline (the mock image model's result). */
