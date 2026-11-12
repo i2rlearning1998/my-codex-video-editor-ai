@@ -33,7 +33,12 @@ beforeAll(async () => {
   await publish(s, (c) => {
     c.providers.find((p) => p.id === 'anthropic')!.baseUrl =
       'http://10.0.0.5:9000/private';
-    c.workspace.styleCreation.credits = 5;
+    // ROUND-A: small caps so the registry's refusals are reached quickly.
+    for (const plan of c.plans) {
+      plan.limits.projects = 2;
+      plan.limits.videosPerProject = 2;
+    }
+    c.limitMessages.videos = { en: 'Owner: {n} videos per project.' };
   });
 });
 afterAll(() => s.close());
@@ -55,7 +60,9 @@ describe('[P4S-001] every signed-in route refuses a caller with no token', () =>
     ['POST', '/v1/entitlements/check'],
     ['POST', '/v1/exports'],
     ['POST', '/v1/usage/report'],
-    ['POST', '/v1/workspace/style-fee'],
+    ['POST', '/v1/workspace/claim'],
+    ['POST', '/v1/workspace/change'],
+    ['POST', '/v1/workspace/sync'],
     ['POST', '/v1/plan'],
     ['POST', '/v1/topup'],
     ['POST', '/v1/config'],
@@ -221,38 +228,55 @@ describe('[P4S-004] numbers and bodies that are not valid are refused', () => {
   });
 });
 
-describe("[P4S-005] the style fee is the server's price, charged once", () => {
-  it("[P4S-005] ignores the browser's amount, is idempotent, refuses when credits run short", async () => {
+describe('[RDA-002] the server decides the project and video limits', () => {
+  it('[RDA-002] refuses one project or video more than the plan, ignores the browser, and re-checks a Restore', async () => {
     const t = s.token('cccccccc-0000-4000-8000-000000000003');
-    const start = (await s.api('/v1/balance', { token: t })).body as {
-      balance: number;
-    };
-    const first = await s.api('/v1/workspace/style-fee', {
+    const claim = (body: Record<string, unknown>) =>
+      s.api('/v1/workspace/claim', { token: t, body });
+    expect((await claim({ kind: 'project', id: 'pr-a' })).status).toBe(200);
+    expect((await claim({ kind: 'project', id: 'pr-b' })).status).toBe(200);
+    // The same id again is not a new project.
+    expect((await claim({ kind: 'project', id: 'pr-a' })).status).toBe(200);
+    const third = await claim({ kind: 'project', id: 'pr-c' });
+    expect(third.status).toBe(403);
+    expect((third.body as { error: { code: string } }).error.code).toBe(
+      'limit-projects',
+    );
+    // A video of an unknown project cannot sneak a third project in.
+    expect(
+      (await claim({ kind: 'video', id: 'v-x', projectId: 'pr-z' })).status,
+    ).toBe(403);
+    expect(
+      (await claim({ kind: 'video', id: 'v-1', projectId: 'pr-a' })).status,
+    ).toBe(200);
+    expect(
+      (await claim({ kind: 'video', id: 'v-2', projectId: 'pr-a' })).status,
+    ).toBe(200);
+    const v3 = await claim({ kind: 'video', id: 'v-3', projectId: 'pr-a' });
+    expect(v3.status).toBe(403);
+    expect((v3.body as { error: { message: string } }).error.message).toBe(
+      'Owner: 2 videos per project.',
+    );
+    // The browser's own count and a sync cannot lower what the server holds.
+    await s.api('/v1/usage/report', { token: t, body: { projects: 0 } });
+    await s.api('/v1/workspace/sync', {
       token: t,
-      body: { credits: 0, key: 'save-1' },
+      body: { projects: [{ id: 'pr-a', trashed: true, videos: [] }] },
     });
-    expect(first.status).toBe(200);
-    expect(first.body.charged).toBe(5);
-    expect(first.body.balance).toBe(start.balance - 5);
-    const again = await s.api('/v1/workspace/style-fee', {
-      token: t,
-      body: { credits: 0, key: 'save-1' },
-    });
-    expect(again.body.balance).toBe(start.balance - 5);
-    // A different key charges again until the balance cannot cover it.
-    let refused: number | null = null;
-    for (let i = 0; i < start.balance && refused === null; i++) {
-      const r = await s.api('/v1/workspace/style-fee', {
-        token: t,
-        body: { key: `more-${i}` },
-      });
-      if (r.status !== 200) refused = r.status;
-    }
-    expect(refused).not.toBeNull();
-    const end = (await s.api('/v1/balance', { token: t })).body as {
-      balance: number;
-    };
-    expect(end.balance).toBeGreaterThanOrEqual(0);
+    expect((await claim({ kind: 'project', id: 'pr-c' })).status).toBe(403);
+    // Trash frees a place; a Restore past the plan is refused.
+    const change = (body: Record<string, unknown>) =>
+      s.api('/v1/workspace/change', { token: t, body });
+    expect(
+      (await change({ kind: 'project', id: 'pr-b', to: 'trash' })).status,
+    ).toBe(200);
+    expect((await claim({ kind: 'project', id: 'pr-c' })).status).toBe(200);
+    expect(
+      (await change({ kind: 'project', id: 'pr-b', to: 'restore' })).status,
+    ).toBe(403);
+    // Bad input is refused plainly.
+    expect((await claim({ kind: 'thing', id: 'x' })).status).toBe(400);
+    expect((await claim({ kind: 'project', id: '../x' })).status).toBe(400);
   });
 });
 

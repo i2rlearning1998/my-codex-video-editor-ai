@@ -40,6 +40,8 @@ export const planSchema = z.object({
       storageMb: z.number().int().min(0).default(2048),
       voiceClones: z.number().int().min(0).default(0),
       projects: z.number().int().min(0).nullable().default(null),
+      /** ROUND-A: Videos one Project may hold (null: no cap). */
+      videosPerProject: z.number().int().min(0).nullable().default(null),
       /** Gateway calls a person may make per minute. */
       callsPerMinute: z.number().int().min(1).default(30),
       /** Credits a person may spend in one day (null: no cap). */
@@ -296,6 +298,26 @@ export const styleSchema = z.object({
     followUps: z.array(z.object({ id, ask: textSchema })).default([]),
   }),
   order: z.number().default(0),
+  /**
+   * ROUND-A: the style record a Project gets when it starts from this
+   * ready-made Style (every field optional; the blurb and the playbook text
+   * fill graphics notes and script rules when these are empty).
+   */
+  projectStyle: z
+    .object({
+      palette: z
+        .array(z.string().regex(/^#[0-9a-fA-F]{6}$/))
+        .max(8)
+        .default([]),
+      headingFont: z.string().max(60).default(''),
+      bodyFont: z.string().max(60).default(''),
+      captionStyle: z.string().max(60).default(''),
+      graphics: textSchema.optional(),
+      voice: textSchema.optional(),
+      music: textSchema.optional(),
+      scriptRules: textSchema.optional(),
+    })
+    .optional(),
 });
 export type Style = z.infer<typeof styleSchema>;
 
@@ -520,6 +542,14 @@ export const styleCapSchema = z.object({
   maxChatsPerProject: z.number().int().min(0).nullable().default(null),
 });
 export type StyleCap = z.infer<typeof styleCapSchema>;
+/** ROUND-A: the ways a New project can start. */
+export const NEW_PROJECT_OPTIONS = [
+  'style',
+  'director',
+  'editor',
+  'claude',
+] as const;
+export type NewProjectOption = (typeof NEW_PROJECT_OPTIONS)[number];
 /** P4: how projects, Styles and the Trash behave. Every value is the owner's. */
 export const workspaceSchema = z.object({
   /** Days a deleted project or asset waits in the Trash before it is gone. */
@@ -532,12 +562,26 @@ export const workspaceSchema = z.object({
       credits: z.number().int().min(0).default(0),
     })
     .default({}),
-  /** Start options a plan may use; a plan without an entry has both. */
+  /**
+   * P4 start options a plan may use (the Owner App edits these). ROUND-A
+   * reads them as limits on the New project options: without "director"
+   * a plan has neither Director nor a ready-made Style (both start in
+   * Director until Round B); without "blank" it has no "Start with editor".
+   */
   startOptions: z
     .record(id, z.array(z.enum(['director', 'blank'])))
     .default({}),
-  /** Projects one Style may hold, by plan (a plan without an entry: no cap). */
+  /** P4: Projects one Style held; ROUND-A reads it as Videos per Project when a plan sets no `videosPerProject`. */
   maxProjectsPerStyle: z.record(id, z.number().int().min(0)).default({}),
+  /**
+   * ROUND-A: the New project options a plan offers, in order (a plan
+   * without an entry: ready-made Style, Director, Start with editor).
+   */
+  newProjectOptions: z
+    .record(id, z.array(z.enum(NEW_PROJECT_OPTIONS)))
+    .default({}),
+  /** ROUND-A: "Your own Claude" (the connector is Round C). Off: never shown. */
+  claudeConnector: z.boolean().default(false),
   /** Whether the Style chat (talking to a Style's Director) is on. */
   styleChat: z.boolean().default(true),
 });
@@ -567,6 +611,10 @@ export const platformConfigSchema = z
         storage: textSchema.optional(),
         voiceClones: textSchema.optional(),
         projects: textSchema.optional(),
+        /** ROUND-A: one more Video than a Project may hold ({n}). */
+        videos: textSchema.optional(),
+        /** ROUND-A: the server could not be reached for a limit check. */
+        offline: textSchema.optional(),
       })
       .default({}),
     providers: z.array(providerSchema),

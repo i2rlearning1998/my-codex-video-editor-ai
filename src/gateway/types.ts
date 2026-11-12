@@ -107,6 +107,7 @@ export type GatewayErrorCode =
   | 'limit-storage'
   | 'limit-voice-clones'
   | 'limit-projects'
+  | 'limit-videos'
   | 'budget-video'
   | 'budget-day'
   | 'rate-limit'

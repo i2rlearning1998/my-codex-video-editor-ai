@@ -22,6 +22,7 @@ import {
   type Profile,
   type Store,
 } from './store';
+import { emptyRegistry, type Registry } from './workspace-registry';
 
 const fail = (what: string, e: { message?: string } | null) => {
   if (e) throw new Error(`The database could not ${what}.`);
@@ -300,6 +301,25 @@ export function supabaseStore(
         .maybeSingle();
       fail('read a counter', error);
       return Number(data?.value ?? 0);
+    },
+    // ROUND-A: one row per person (supabase/migrations/20261112000000_round_a_workspace.sql).
+    async workspaceRegistry(u) {
+      const { data, error } = await db
+        .from('workspace_registry')
+        .select('doc')
+        .eq('user_id', u)
+        .maybeSingle();
+      fail('read the projects', error);
+      const doc = data?.doc as Registry | undefined;
+      return doc && typeof doc === 'object' && doc.projects
+        ? doc
+        : emptyRegistry();
+    },
+    async saveWorkspaceRegistry(u, r) {
+      const { error } = await db
+        .from('workspace_registry')
+        .upsert({ user_id: u, doc: r, updated_at: new Date().toISOString() });
+      fail('save the projects', error);
     },
     async measureUsage(u) {
       const { data, error } = await db.rpc('usage_of', { uid: u });

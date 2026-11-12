@@ -190,11 +190,12 @@ const shell = mountEditorShell(
           }
         },
         label: (projectId: string) => {
+          // ROUND-A: "Project › Video" (the editor file is the Video).
           const ws = new Workspace(localStorage, me);
-          const p = ws.project(projectId);
-          if (!p) return undefined;
-          const style = p.styleId ? ws.style(p.styleId) : undefined;
-          return style ? `${style.name} › ${p.name}` : p.name;
+          const v = ws.video(projectId);
+          if (!v) return undefined;
+          const p = ws.project(v.projectId);
+          return p ? `${p.name} › ${v.name}` : v.name;
         },
       };
     })(),

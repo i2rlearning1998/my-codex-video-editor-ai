@@ -29,7 +29,17 @@ import { planFor, type Plan, type PlatformConfig } from '../platform-config';
 import { IdbBackend, ProjectLibrary } from '../persistence/projects';
 import { ASPECT_SIZES, claimLocalData, HANDOFF_KEY } from '../auth-gate';
 import { createComposition, createProject } from '../core';
-import { Workspace, type Origin, type LibraryKind } from '../project/workspace';
+import {
+  Workspace,
+  type Origin,
+  type LibraryKind,
+  type VideoStage,
+} from '../project/workspace';
+import {
+  change as changeRegistry,
+  claim as claimRegistry,
+  fromWorkspace,
+} from '../project/registry';
 import type { Answers } from '../platform-config';
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -118,18 +128,37 @@ export interface Services {
   /** P4: change fields of one asset (Trash, move). */
   patchAsset(id: string, patch: Partial<Asset>): void;
   deleteAsset(id: string): void;
-  /** P4: this person's Styles, projects and where Director waits. */
+  /** ROUND-A: this person's Projects, Videos and where Director waits. */
   ws(userId: string): Workspace;
-  /** P4: the price of saving a Style (the server's ledger when it is used). */
-  chargeStyle(userId: string, credits: number): Promise<void>;
-  /** P4: a project exists at once (it is in the Projects library and the workspace). */
-  createProject(
+  /**
+   * ROUND-A: one more Project or Video under the plan (the server decides
+   * when a gateway is used). Null: allowed and registered; else the owner's
+   * sentence (or why the server could not be asked) and nothing is made.
+   */
+  claim(
+    userId: string,
+    x: { kind: 'project' | 'video'; id: string; projectId?: string },
+  ): Promise<string | null>;
+  /** ROUND-A: Trash, Restore (checked again) or Delete for good, told to the server. */
+  changeWs(
+    userId: string,
+    x: {
+      kind: 'project' | 'video';
+      id: string;
+      projectId?: string;
+      to: 'trash' | 'restore' | 'forget';
+    },
+  ): Promise<string | null>;
+  /** ROUND-A: a Video's editor file exists at once (Projects library + workspace). */
+  createVideo(
     userId: string,
     input: {
+      projectId: string;
       name: string;
       aspect?: string;
       origin: Origin;
-      styleId?: string | null;
+      stage?: VideoStage;
+      id?: string;
     },
   ): Promise<string>;
   now(): Date;
@@ -327,33 +356,64 @@ export async function createServices(
         ASSETS,
         JSON.stringify(allAssets().filter((a) => a.id !== id)),
       ),
-    chargeStyle: async (u, credits) => {
-      const key = `style-${Date.now().toString(36)}`;
-      const r = ledger(u).reserve(credits, key, 'style');
-      ledger(u).settle(r.id, credits, `${key}:settle`);
-    },
     ws: (u) => {
       let w = workspaces.get(u);
       if (!w) workspaces.set(u, (w = new Workspace(storage, u)));
       return w;
     },
-    createProject: async (u, input) => {
+    // ROUND-A: no gateway: the same rules as the server, on this browser's
+    // own workspace.
+    claim: async (u, x) => {
+      const ws = services.ws(u);
+      ws.reload();
+      try {
+        claimRegistry(
+          fromWorkspace(ws.doc()),
+          x,
+          config,
+          services.planOf(u),
+          services.prefs(u).locale,
+        );
+        return null;
+      } catch (e) {
+        return (e as Error).message;
+      }
+    },
+    changeWs: async (u, x) => {
+      const ws = services.ws(u);
+      ws.reload();
+      try {
+        changeRegistry(
+          fromWorkspace(ws.doc()),
+          x,
+          config,
+          services.planOf(u),
+          services.prefs(u).locale,
+        );
+        return null;
+      } catch (e) {
+        return (e as Error).message;
+      }
+    },
+    createVideo: async (u, input) => {
       const aspect = input.aspect ?? '16:9';
       const [width, height] = ASPECT_SIZES[aspect] ?? ASPECT_SIZES['16:9']!;
-      const name = input.name.trim().slice(0, 80) || 'Untitled';
+      const name = [...input.name.trim()].slice(0, 80).join('') || 'Untitled';
       const project = createProject(name);
+      if (input.id) project.id = input.id;
       project.compositions = [
         createComposition({ name, width, height, fps: 30 }),
       ];
       ownerId = u;
       await projects.save(project);
       projectCount += 1;
-      services.ws(u).addProject({
+      services.ws(u).addVideo({
         id: project.id,
+        projectId: input.projectId,
         name,
         origin: input.origin,
-        styleId: input.styleId ?? null,
         aspect,
+        ...(input.stage ? { stage: input.stage } : {}),
       });
       return project.id;
     },
@@ -381,7 +441,8 @@ export async function createServices(
         voiceClones: mine.filter(
           (a) => a.studioId === 'voice' && a.name.includes('clone'),
         ).length,
-        projects: projectCount,
+        // ROUND-A: Projects (containers), not editor files.
+        projects: services.ws(u).projects().length,
       };
     },
   });
@@ -543,14 +604,39 @@ export async function createServices(
       }
     };
     w.ledger = () => remote.ledger();
-    // P4: the server's ledger takes the fee; the browser only asks.
-    w.chargeStyle = async (u: string, credits: number) => {
-      await remote.api('/workspace/style-fee', {
-        credits,
-        key: `style-${Date.now().toString(36)}`,
-      });
-      await services.sync(u);
+    // ROUND-A: the server decides; a failure to reach it never lets a new
+    // Project or Video through.
+    const ask = async (path: string, body: unknown) => {
+      try {
+        await remote.api(path, body);
+        return null;
+      } catch (e) {
+        return (e as Error).message || 'The server could not be reached.';
+      }
     };
+    let synced = '';
+    const syncWs = async (u: string) => {
+      const ws = services.ws(u);
+      ws.reload();
+      const doc = ws.doc();
+      const known = doc.projects.map((p) => ({
+        id: p.id,
+        trashed: !!p.trashedAt,
+        videos: doc.videos
+          .filter((v) => v.projectId === p.id)
+          .map((v) => ({ id: v.id, trashed: !!v.trashedAt })),
+      }));
+      const sig = JSON.stringify(known);
+      if (sig === synced) return;
+      await remote.api('/workspace/sync', { projects: known });
+      synced = sig;
+    };
+    w.claim = async (u: string, x: unknown) => {
+      // What this browser already holds is known to the server first.
+      await syncWs(u).catch(() => undefined);
+      return ask('/workspace/claim', x);
+    };
+    w.changeWs = async (_u: string, x: unknown) => ask('/workspace/change', x);
     w.planOf = (u: string) =>
       planFor(config, remote.plan() ?? services.prefs(u).plan);
     w.monthlyGrant = () => {};

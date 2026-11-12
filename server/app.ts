@@ -34,7 +34,6 @@ import {
   planFor,
   providerById,
   studioById,
-  workspaceRules,
   type PlatformConfig,
 } from '../src/platform-config';
 import { mockPayment } from '../src/payments';
@@ -43,6 +42,17 @@ import { providerConnected, serverAdapters, type Env } from './adapters';
 import { storeConfig } from './config';
 import { People } from './state';
 import type { Profile, Store } from './store';
+import {
+  change,
+  claim,
+  merge,
+  validId,
+  type Registry,
+} from './workspace-registry';
+
+/** ROUND-A: Projects not in the Trash. */
+const liveProjects = (r: Registry) =>
+  Object.values(r.projects).filter((p) => !p.trashed).length;
 // P3-WIRING:begin
 import { p3KeyRoutes, p3ReadBody, p3Setup } from './keys/mount';
 // P3-WIRING:end
@@ -648,11 +658,23 @@ export function createServerApp(o: ServerOptions) {
       // database), the browser's numbers are ignored: it cannot hide usage.
       if (o.store.measureUsage) {
         const m = await o.store.measureUsage(c.userId);
-        await o.store.setCounter(c.userId, 'projects', m.projects);
+        // ROUND-A: projects are the registry's (a Project holds many
+        // editor files, which the database counts).
+        const reg = await o.store.workspaceRegistry(c.userId);
+        await o.store.setCounter(
+          c.userId,
+          'projects',
+          Object.keys(reg.projects).length ? liveProjects(reg) : m.projects,
+        );
         await o.store.setCounter(c.userId, 'storageMb', m.storageMb);
         return { ok: true };
       }
-      if (b.projects !== undefined)
+      // ROUND-A: once the server holds the person's Projects, the browser's
+      // number is ignored.
+      const reg = await o.store.workspaceRegistry(c.userId);
+      if (Object.keys(reg.projects).length)
+        await o.store.setCounter(c.userId, 'projects', liveProjects(reg));
+      else if (b.projects !== undefined)
         await o.store.setCounter(
           c.userId,
           'projects',
@@ -666,22 +688,83 @@ export function createServerApp(o: ServerOptions) {
         );
       return { ok: true };
     },
-    // P4: "Save to your styles" costs what the owner set (Admin › Projects &
-    // Styles). The price and the plan check are the server's; the browser's
-    // `credits` is ignored. The same key never charges twice.
-    'POST /v1/workspace/style-fee': async (b, c) => {
+    // ROUND-A: Projects and Videos. The server keeps their ids and Trash
+    // state and decides the plan's limits (projects, videos per project); a
+    // browser only asks. A refusal is the owner's sentence and nothing is
+    // registered. The `projects` counter (the entitlement check) follows the
+    // registry.
+    'POST /v1/workspace/claim': async (b, c) => {
       const { config, plan } = await prepare(c);
-      const rules = workspaceRules(config, plan.id);
-      if (!rules.styleAllowed)
-        throw new GatewayError('model-plan', 'Your plan cannot save Styles.');
-      const k = key(b.key);
-      const fee = rules.styleCredits;
-      if (fee > 0)
-        await people.withLedger(c.userId, (l) => {
-          const r = l.reserve(fee, `style-fee:${k}`, 'Save to your styles');
-          l.settle(r.id, fee, `style-fee:${k}:settle`);
-        });
-      return { charged: fee, balance: people.ledgerNow(c.userId).balance() };
+      const kind = str(b.kind, 10);
+      if (kind !== 'project' && kind !== 'video') throw bad('Unknown kind.');
+      if (!validId(b.id) || (kind === 'video' && !validId(b.projectId)))
+        throw bad('A project or video id is missing.');
+      const next = claim(
+        await o.store.workspaceRegistry(c.userId),
+        {
+          kind,
+          id: b.id,
+          ...(kind === 'video' ? { projectId: b.projectId as string } : {}),
+        },
+        config,
+        plan,
+        localeOf(c.userId),
+      );
+      await o.store.saveWorkspaceRegistry(c.userId, next);
+      await o.store.setCounter(c.userId, 'projects', liveProjects(next));
+      return { ok: true };
+    },
+    'POST /v1/workspace/change': async (b, c) => {
+      const { config, plan } = await prepare(c);
+      const kind = str(b.kind, 10);
+      const to = str(b.to, 10);
+      if (kind !== 'project' && kind !== 'video') throw bad('Unknown kind.');
+      if (to !== 'trash' && to !== 'restore' && to !== 'forget')
+        throw bad('Unknown change.');
+      if (!validId(b.id) || (kind === 'video' && !validId(b.projectId)))
+        throw bad('A project or video id is missing.');
+      const next = change(
+        await o.store.workspaceRegistry(c.userId),
+        {
+          kind,
+          id: b.id,
+          to,
+          ...(kind === 'video' ? { projectId: b.projectId as string } : {}),
+        },
+        config,
+        plan,
+        localeOf(c.userId),
+      );
+      await o.store.saveWorkspaceRegistry(c.userId, next);
+      await o.store.setCounter(c.userId, 'projects', liveProjects(next));
+      return { ok: true };
+    },
+    // What this browser already holds (made before Round A or offline). It
+    // only adds; a new Project or Video always goes through /claim.
+    'POST /v1/workspace/sync': async (b, c) => {
+      await prepare(c);
+      if (!Array.isArray(b.projects))
+        throw bad('A list of projects is missing.');
+      const known = (b.projects as unknown[]).flatMap((x) => {
+        const p = x as { id?: unknown; trashed?: unknown; videos?: unknown };
+        if (!validId(p.id) || !Array.isArray(p.videos)) return [];
+        return [
+          {
+            id: p.id,
+            trashed: p.trashed === true,
+            videos: (p.videos as { id?: unknown; trashed?: unknown }[])
+              .filter((v) => validId(v?.id))
+              .map((v) => ({
+                id: v.id as string,
+                trashed: v.trashed === true,
+              })),
+          },
+        ];
+      });
+      const next = merge(await o.store.workspaceRegistry(c.userId), known);
+      await o.store.saveWorkspaceRegistry(c.userId, next);
+      await o.store.setCounter(c.userId, 'projects', liveProjects(next));
+      return { ok: true, projects: liveProjects(next) };
     },
     'POST /v1/plan': async (b, c) => {
       // P4 security: the offline test payment never runs on a live server.
