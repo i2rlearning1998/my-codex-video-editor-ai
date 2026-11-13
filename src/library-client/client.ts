@@ -369,9 +369,8 @@ export class LibraryClient {
   }
   /**
    * Entries listed now in a category (hidden and scheduled ones left out).
-   * ROUND-A A0.2: the baseline pack's entries come first in the list the
-   * catalog does not already hold; an entry with the same id in the catalog
-   * replaces the baseline's (the catalog adds to it or overrides it).
+   * ROUND-A A0.2: a category the catalog holds is the catalog's alone; the
+   * baseline pack lists a category the catalog has none of (D-411).
    */
   entries(category: CatalogCategory): CatalogEntry[] {
     const index = this.#indexes.get(category);
@@ -379,11 +378,10 @@ export class LibraryClient {
     if (!index && !baseline) return [];
     const now = (this.options.now ?? Date.now)();
     const own = index?.entries ?? [];
-    const ids = new Set(own.map((entry) => entry.id));
-    const merged = [
-      ...(baseline?.entries ?? []).filter((entry) => !ids.has(entry.id)),
-      ...own,
-    ];
+    // A catalog that has this category decides it alone (what the owner
+    // hid or unpublished stays away); the baseline fills a category the
+    // catalog lacks and stands in while no catalog has loaded.
+    const merged = own.length ? own : (baseline?.entries ?? []);
     return orderEntries(merged.filter((entry) => isListed(entry, now)));
   }
   entry(id: string): CatalogEntry | undefined {

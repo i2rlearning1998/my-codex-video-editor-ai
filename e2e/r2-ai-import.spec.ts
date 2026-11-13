@@ -139,7 +139,13 @@ test('[RA-006] the Media Import menu has only media entries', async ({
   await expect(menu.locator('#import-media-item')).toBeVisible();
   for (const id of ['#import-code', '#import-creator', '#import-index'])
     await expect(menu.locator(id)).toHaveCount(0);
-  await expect(menu).not.toContainText(/code|creator|AI/i);
+  // ROUND-A A3: "Import from your Library" (media from the Asset Library) is
+  // the one other entry. Each entry is checked on its own: the menu's joined
+  // text would read "…mediaImport…".
+  await expect(menu.locator('#import-library-item')).toBeVisible();
+  await expect(menu.locator('button')).toHaveCount(2);
+  for (const text of await menu.locator('button').allTextContents())
+    expect(text).not.toMatch(/code|creator|\bAI\b/i);
 });
 
 test('[RA-007] code animations saved in Templates before move to AI › Motion; Templates lists no code animations', async ({

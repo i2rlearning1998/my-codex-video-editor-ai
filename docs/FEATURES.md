@@ -1524,7 +1524,7 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 
 | ID | Priority | Wave | Status | Requirement |
 | --- | --- | --- | --- | --- |
-| RDA-001 | P0 | W10 | Verified | A production build with no catalog still lists the 12 sound effects, the Text panel's styles and font combinations, and the 8 themes (a baseline pack shipped next to the editor); a reachable catalog adds to it or overrides it by id |
+| RDA-001 | P0 | W10 | Verified | A production build with no catalog still lists the 12 sound effects, the Text panel's styles and font combinations, and the 8 themes (a baseline pack shipped next to the editor); a reachable catalog overrides it per category (what the owner hides or unpublishes stays hidden) and it fills categories the catalog lacks |
 | RDA-002 | P0 | W10 | Verified | The server decides the project and video limits when a gateway is set (its own record of Projects and Videos); the browser's numbers never lower them, a Restore past the plan is refused |
 | RDA-003 | P0 | W10 | Verified | Data from before Round A is migrated once and idempotently: a user Style becomes a Project with its projects as Videos, a lone or Manual project a Project with one Video; assets, Trash and Director pauses follow their Video; the old document is kept |
 | RDA-004 | P0 | W10 | Verified | Deleting a Video deletes only that Video; deleting a Project sends it and all its Videos to the Trash (days from config); Restore brings them back |
