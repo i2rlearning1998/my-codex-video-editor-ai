@@ -336,12 +336,29 @@ input[type='number'],
   position: relative;
   z-index: var(--z-toolbar);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* ROUND-B B0.1: the actions on the right never shrink under their own
+     width (they used to slide over the mode switch at 820 px with wider
+     fonts); the left side gives way instead, and clips its long name. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--panel);
+}
+.topbar-start {
+  overflow: clip;
+}
+.topbar .mode-switch button {
+  white-space: nowrap;
+}
+@media (max-width: 899px) {
+  .topbar .save-status {
+    display: none;
+  }
+  .topbar {
+    gap: var(--space-2);
+  }
 }
 .topbar-start,
 .topbar-end {

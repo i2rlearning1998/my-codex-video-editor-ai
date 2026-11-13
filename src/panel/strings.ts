@@ -254,6 +254,10 @@ const S = {
   'studio.run': ['Make it', 'बनाएँ'],
   'studio.project': ['Save to project', 'प्रोजेक्ट में सेव करें'],
   'studio.unsorted': ['Not in a project yet', 'अभी किसी प्रोजेक्ट में नहीं'],
+  'studio.savedHere': [
+    'Saved to the Asset Library ({project}).',
+    'एसेट लाइब्रेरी ({project}) में सेव हुआ।',
+  ],
   'studio.savedTo': [
     'Saved to the Asset Library ({project}). {n} credits used.',
     'एसेट लाइब्रेरी ({project}) में सेव हुआ। {n} क्रेडिट लगे।',

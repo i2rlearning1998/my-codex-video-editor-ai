@@ -24,6 +24,8 @@ import type { Ctx } from './app';
 import type { Asset } from './services';
 import { t, type Key } from './strings';
 import { bestModels, limitAlert, when } from './screens/common';
+import type { StudioService } from '../contracts/p3';
+import { acceptsField, mapValues, primaryField } from './studio-params';
 
 export const STUDIO_LIBRARY = 'unsorted';
 type Value = string | number | boolean | string[];
@@ -41,6 +43,11 @@ export interface StudioFormOptions {
   };
   /** Renders a saved result. */
   readonly view: (a: Asset) => HTMLElement;
+  /**
+   * ROUND-B B0.3: the Studio service of a gateway server. A model with
+   * declared parameters runs through it (the engine assembles the request).
+   */
+  readonly service?: StudioService | null;
 }
 export interface StudioFormView {
   readonly el: HTMLElement;
@@ -158,9 +165,13 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
   // ---- fields ---------------------------------------------------------------
   const errors = new Map<string, string>();
   let tried = false;
+  // ROUND-B B0.3: a model's declared parameters only hide the fields it
+  // does not accept and rename the values that are sent.
+  const primary = primaryField(s.inputs);
   const shown = (f: StudioField) =>
     isVisible(f as never, answers as never) &&
-    (!f.onlyModels?.length || (!!model && f.onlyModels.includes(model.id)));
+    (!f.onlyModels?.length || (!!model && f.onlyModels.includes(model.id))) &&
+    acceptsField(model?.params ?? [], f, primary);
   const optionOk = (opt: { requires?: string[] | undefined }) =>
     canUse(plan, opt.requires ?? []);
   const check = (): boolean => {
@@ -760,6 +771,75 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
         const units = estimateStudio(c, s, model, answers).units;
         const work = c.costs.find((x) => x.id === s.costId);
         const target = o.target ?? dest?.value ?? STUDIO_LIBRARY;
+        const where = () =>
+          dests.find((d) => d.id === target)?.name ?? t('lib.studioCard');
+        if (o.service && model.params.length) {
+          // The model's own parameters: the Studio service assembles and
+          // runs the request (the server checks the limit and charges).
+          const mapped = mapValues(
+            model.params,
+            s.inputs.filter(shown),
+            answers,
+          );
+          try {
+            for await (const ev of o.service.run(
+              s.id,
+              model.id,
+              mapped.values,
+              target === STUDIO_LIBRARY ? null : target,
+            )) {
+              if (ev.type === 'failure') {
+                clear(
+                  result,
+                  ev.failure.upgrade
+                    ? limitAlert(
+                        'studio-error',
+                        ctx.say({ ...ev.failure.message }),
+                      )
+                    : h('p', {
+                        class: 'error-state',
+                        role: 'alert',
+                        id: 'studio-error',
+                        text: ctx.say({ ...ev.failure.message }),
+                      }),
+                );
+              } else if (ev.type === 'result') {
+                const made = ctx.s
+                  .assets(ctx.user.id)
+                  .find((a) => a.id === ev.assetId);
+                clear(
+                  result,
+                  h('p', {
+                    class: 'ok-state',
+                    id: 'studio-saved',
+                    text: t('studio.savedHere', { project: where() }),
+                  }),
+                  made ? o.view(made) : null,
+                );
+                if (made) o.onSaved?.(made);
+              }
+            }
+          } catch {
+            clear(
+              result,
+              h('p', {
+                class: 'error-state',
+                role: 'alert',
+                id: 'studio-error',
+                text: t('app.error'),
+              }),
+            );
+          } finally {
+            await ctx.s.sync(ctx.user.id).catch(() => undefined);
+            el.querySelector('#studio-library')?.replaceWith(
+              studioHistory(ctx, s, o.view),
+            );
+            ctx.refreshTop();
+            run.disabled = false;
+            progress.hidden = true;
+          }
+          return;
+        }
         try {
           const r = await ctx.s.gateway.run({
             userId: ctx.user.id,
@@ -822,14 +902,12 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
           asset.bytes =
             (asset.dataUrl?.length ?? 0) + (asset.text?.length ?? 0);
           ctx.s.saveAsset(asset);
-          const where =
-            dests.find((d) => d.id === target)?.name ?? t('lib.studioCard');
           clear(
             result,
             h('p', {
               class: 'ok-state',
               id: 'studio-saved',
-              text: t('studio.savedTo', { project: where, n: r.credits }),
+              text: t('studio.savedTo', { project: where(), n: r.credits }),
             }),
             o.view(asset),
           );

@@ -770,14 +770,39 @@ export function mountEditorShell(
       ]);
     }
     // After the placing step (P1-24: nothing on the critical path waits on
-    // the network).
-    // Two frames later: the placed item is drawn first.
-    const later = () => void fetchCatalogFull(entry, asset.id);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => setTimeout(later, 0)),
-    );
+    // the network). ROUND-B B0.4: a press prepares the asset before the
+    // item is placed, so the full file is asked for only once a layer uses
+    // the asset (see below), never from a timer started at the press.
+    awaitingFull.set(asset.id, entry);
+    scheduleFull();
     return asset.id;
   };
+  /** Catalog assets prepared but whose full file is not asked for yet. */
+  const awaitingFull = new Map<string, CatalogEntry>();
+  const usesAsset = (assetId: string): boolean =>
+    JSON.stringify(engine.state.compositions).includes(
+      `"assetId":${JSON.stringify(assetId)}`,
+    );
+  let fullScheduled = false;
+  const scheduleFull = () => {
+    if (fullScheduled || !awaitingFull.size) return;
+    if (![...awaitingFull.keys()].some(usesAsset)) return;
+    fullScheduled = true;
+    // Two frames later: the placed item is drawn first.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        setTimeout(() => {
+          fullScheduled = false;
+          for (const [id, item] of [...awaitingFull])
+            if (usesAsset(id)) {
+              awaitingFull.delete(id);
+              void fetchCatalogFull(item, id);
+            }
+        }, 0),
+      ),
+    );
+  };
+  engine.on('state:changed', () => scheduleFull());
   engine.on('state:changed', (event) => {
     if (event.reason === 'load') setTimeout(() => void mediaRelink.check(), 0);
   });

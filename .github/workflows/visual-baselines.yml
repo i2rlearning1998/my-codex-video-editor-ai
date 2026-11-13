@@ -1,0 +1,32 @@
+name: Visual baselines
+# ROUND-B B0.2: makes the DEV-012 screenshot baselines on the CI image, so
+# they match what the Verify job compares against. Started by hand from the
+# Actions tab, or by changing .github/visual-baselines.trigger on a branch.
+# The baselines are uploaded as the artifact "visual-baselines"; unzip it
+# into e2e/visual.spec.ts-snapshots/ and commit.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/visual-baselines.trigger'
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run visual:update
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-baselines
+          path: e2e/visual.spec.ts-snapshots/
