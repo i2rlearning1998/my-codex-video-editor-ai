@@ -216,8 +216,12 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
     // Enhance (improve the prompt) or Generate (write one from the frames),
     // through the gateway on the owner's writing model.
     const role = c.director.roles.write;
-    const m = defaultModelFor(c, plan, role);
-    if (!m) return;
+    // A connected model the plan allows (a real one before the offline mock).
+    const m = bestModels(ctx, modelsForRole(c, role)).find(usable);
+    if (!m) {
+      errors.set(f.id, t('studio.noModel'));
+      return paint();
+    }
     const input =
       f.action === 'generate'
         ? [files.get('first')?.name, files.get('last')?.name, answers.look]
@@ -344,7 +348,12 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
             counter.textContent = `${[...input.value].length} / ${f.maxLength}`;
           update();
         });
-        input.addEventListener('change', () => set(f.id, input.value));
+        // No repaint on leaving the field: a repaint would replace the button
+        // the pointer is about to click (Enhance, Run).
+        input.addEventListener('change', () => {
+          answers[f.id] = input.value;
+          update();
+        });
         return h(
           'div',
           { class: 'sf-text' },

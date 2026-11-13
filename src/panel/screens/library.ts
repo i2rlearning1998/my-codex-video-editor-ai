@@ -172,7 +172,7 @@ export const assetsScreen: Screen = async (ctx, args, out) => {
                 const s = ctx.s.config.studios.find((x) => x.id === sid);
                 return tile({
                   href: `${root}/studio/${enc(sid)}`,
-                  title: s ? ctx.say(s.familyName ?? s.name) : sid,
+                  title: s ? ctx.say(s.name) : sid,
                   sub: count(list.length),
                   attrs: { 'data-studio-feature': sid },
                 });

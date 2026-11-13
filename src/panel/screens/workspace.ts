@@ -1158,6 +1158,9 @@ function styleTab(ctx: Ctx, p: WsProject, again: () => void): HTMLElement {
       } else {
         ws.setProjectStyle(p.id, next);
         note.textContent = t('rda.styleSaved');
+        // The summary under the title follows at once.
+        const line = document.getElementById('project-style-line');
+        if (line) line.textContent = styleSummary(ctx, ws.project(p.id)!);
       }
       paint();
       note.textContent = target ? t('rda.overrideSaved') : t('rda.styleSaved');
