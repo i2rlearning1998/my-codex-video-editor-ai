@@ -76,6 +76,7 @@ export async function purgeVideo(ctx: Ctx, id: string): Promise<void> {
   for (const a of ctx.s.assets(ctx.user.id))
     if (a.projectId === id && !a.id.startsWith('ed:')) ctx.s.deleteAsset(a.id);
   ws.forgetVideo(id);
+  ctx.s.mem(ctx.user.id).forgetVideo(id);
   if (v)
     await ctx.s.changeWs(ctx.user.id, {
       kind: 'video',
@@ -92,7 +93,9 @@ export async function purgeProject(ctx: Ctx, id: string): Promise<void> {
     for (const a of ctx.s.assets(ctx.user.id))
       if (a.projectId === v.id && !a.id.startsWith('ed:'))
         ctx.s.deleteAsset(a.id);
+    ctx.s.mem(ctx.user.id).forgetVideo(v.id);
   }
+  ctx.s.mem(ctx.user.id).forgetProject(id);
   ws.forgetProject(id);
   await ctx.s.changeWs(ctx.user.id, { kind: 'project', id, to: 'forget' });
 }
@@ -962,6 +965,8 @@ function videoCard(
               aspect: v.aspect,
               stage: v.stage === 'assets' ? 'brief' : v.stage,
             });
+            // ROUND-B B1: the copy starts with the same sheet (no chats).
+            ctx.s.mem(ctx.user.id).copyVideo(v.id, id);
             again();
           }),
           menuButton('rda.exports', 'exports', showExports),

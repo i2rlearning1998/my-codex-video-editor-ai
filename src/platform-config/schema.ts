@@ -2,6 +2,7 @@
 // panel and the editor all read; Admin (Phase 3) only edits it. Nothing the
 // person sees or the AI may do is fixed in code (docs/PLATFORM-CONFIG.md).
 // Secrets never live here: the config only names adapters.
+import { defaultFieldLibrary } from './director-defaults';
 import { z } from 'zod';
 import { paramDeclSchema } from '../contracts/p3';
 
@@ -381,6 +382,36 @@ export const styleSchema = z.object({
 });
 export type Style = z.infer<typeof styleSchema>;
 
+/** ROUND-B B3: one named block of the Brief card. */
+export const fieldBlockSchema = z.object({
+  id,
+  label: textSchema,
+  help: textSchema.optional(),
+  type: z.enum(['text', 'longtext', 'choice', 'file', 'link']),
+  options: z
+    .array(z.object({ value: z.string(), label: textSchema }))
+    .default([]),
+  /** Words in a message that fill this block: value to its words (lower case). */
+  hints: z.record(z.string(), z.array(z.string().min(1))).default({}),
+  /** The Project style field that prefills this block. */
+  styleField: z
+    .enum(['voice', 'music', 'look', 'captions', 'script'])
+    .optional(),
+  /** Whether the card offers "You decide" for it. */
+  youDecide: z.boolean().default(true),
+});
+export type FieldBlock = z.infer<typeof fieldBlockSchema>;
+export const videoTypeSchema = z.object({
+  id,
+  name: textSchema,
+  /** Words that mark a first message as this type (lower case). */
+  keywords: z.array(z.string().min(2)).default([]),
+  blocks: z
+    .array(z.object({ id, required: z.boolean().default(false) }))
+    .min(1),
+});
+export type VideoType = z.infer<typeof videoTypeSchema>;
+
 export const directorSchema = z.object({
   persona: textSchema,
   /** What Director may do. Anything else gets one of `refusals`. */
@@ -471,6 +502,44 @@ export const directorSchema = z.object({
     code: z.boolean().default(false),
     modelNames: z.boolean().default(false),
   }),
+  /**
+   * ROUND-B B1: memory caps and the size of what a model call may read.
+   * The context pack drops the least needed parts first (see
+   * src/director/context-pack.ts) until it fits `budgetTokens`.
+   */
+  context: z
+    .object({
+      budgetTokens: z.number().int().min(300).max(200000).default(6000),
+      /** Chat turns read word for word in a call. */
+      lastTurns: z.number().int().min(1).max(60).default(8),
+      /** Turns a chat keeps before old ones go into its summary. */
+      keepTurns: z.number().int().min(2).max(200).default(16),
+      maxSummaryChars: z.number().int().min(100).max(8000).default(1200),
+      maxProjectFacts: z.number().int().min(1).max(500).default(40),
+      maxSheetEntries: z.number().int().min(5).max(500).default(60),
+      maxFileNotes: z.number().int().min(1).max(100).default(12),
+      maxNoteChars: z.number().int().min(40).max(4000).default(400),
+      maxChatsPerVideo: z.number().int().min(1).max(200).default(20),
+      /** The largest file a person may attach to a message. */
+      maxAttachmentMb: z.number().min(0.1).max(500).default(20),
+    })
+    .default({}),
+  /** ROUND-B B3: plan rewrites (Cheaper, Richer, a new plan) one Video may use. */
+  rewritesPerVideo: z.number().int().min(0).max(50).default(3),
+  /**
+   * ROUND-B B3: the field library. Named field blocks, and video types that
+   * list their blocks and which are required. Director sorts the first
+   * message into a type and asks only for what is still missing.
+   */
+  fieldLibrary: z
+    .object({
+      blocks: z.array(fieldBlockSchema),
+      types: z.array(videoTypeSchema).min(1),
+      fallbackType: id.default('general'),
+    })
+    .default(() => defaultFieldLibrary()),
+  /** ROUND-B: Director's fixed lines by key (missing keys use the built-in sample). */
+  lines: z.record(z.string().max(60), textSchema).default({}),
 });
 export type DirectorRules = z.infer<typeof directorSchema>;
 

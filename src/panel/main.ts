@@ -33,6 +33,7 @@ import { assetsScreen } from './screens/library';
 import { assetStepScreen } from './screens/asset-step';
 import { projectScreen, projectsScreen } from './screens/workspace';
 import { directorRoomScreen } from './screens/director-room';
+import { migrateP3Memory } from './p3-services';
 
 const root = document.getElementById('panel')!;
 const screens: Record<string, Screen> = {
@@ -87,6 +88,8 @@ async function start() {
     // Plan, credits and usage (the server's, when it is used).
     await services.sync(user.id);
     mountPanel(root, services, user, screens);
+    // ROUND-B B1: old Project chats move to their first Video (once).
+    void migrateP3Memory({ s: services, user } as never);
   } catch (e) {
     console.debug('[panel] start failed', e);
     root.textContent = t('app.error');

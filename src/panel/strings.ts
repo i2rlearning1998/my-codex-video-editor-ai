@@ -510,6 +510,16 @@ const S = {
     'For example: always end with a call to action',
     'जैसे: हर वीडियो का अंत कॉल-टू-एक्शन से हो',
   ],
+  'mem.edit': ['Edit', 'बदलें'],
+  'mem.videos': ['Videos in this project', 'इस प्रोजेक्ट के वीडियो'],
+  'mem.videosSub': [
+    'Each video keeps its own chats and sheet. Open a video in AI mode to read them.',
+    'हर वीडियो की अपनी चैट और शीट है। पढ़ने के लिए वीडियो को AI मोड में खोलें।',
+  ],
+  'mem.videoLine': [
+    'Chats: {chats} · Sheet lines: {lines}',
+    'चैट: {chats} · शीट लाइनें: {lines}',
+  ],
   'mem.pin': ['Pin', 'पिन करें'],
   'mem.unpin': ['Unpin', 'पिन हटाएँ'],
   'mem.pinned': ['Pinned', 'पिन'],
