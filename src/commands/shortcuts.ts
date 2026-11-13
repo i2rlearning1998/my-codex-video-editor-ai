@@ -82,6 +82,7 @@ export function insideOpenMenu(target: EventTarget | null): boolean {
     ? menu.checkVisibility()
     : true;
 }
+const AI_MODE_COMMANDS = new Set(['play', 'palette', 'save', 'ai-mode']);
 export function bindShortcuts(
   context: CommandContext,
   options: {
@@ -145,6 +146,12 @@ export function bindShortcuts(
       const command = commands.find(
         (item) => !item.scope && matches(event, item.shortcut),
       );
+      // ROUND-B: AI mode is select-only. Edit shortcuts are off there;
+      // play, the palette, save and the mode switch stay (Undo, Redo and
+      // Escape are handled above).
+      if (context.session.layout === 'ai') {
+        if (!command || !AI_MODE_COMMANDS.has(command.id)) return;
+      }
       if (command) {
         event.preventDefault();
         event.stopImmediatePropagation();

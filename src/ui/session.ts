@@ -35,6 +35,7 @@ export const MAX_CANVAS_ZOOM = 16;
 
 /** H4: the editor's modes; 3D Animation is planned (ADV-002). */
 export type EditorMode = 'editor' | 'animation2d';
+export type EditorLayout = 'editor' | 'ai';
 
 function readFlag(key: string, fallback: boolean): boolean {
   try {
@@ -78,6 +79,7 @@ export class EditorSession {
   #loop = readFlag('aive.player.loop', false);
   /** H4: Editor or 2D Animation (transient UI state, like selection). */
   #mode: EditorMode = 'editor';
+  #layout: EditorLayout = 'editor';
   /** ANI-004: selected timeline keyframes (a layer and a time); transient. */
   #keyframes: readonly SelectedKeyframe[] = Object.freeze([]);
   /** SHP-018 draw mode: the active brush or eraser, or null when not drawing. */
@@ -326,6 +328,19 @@ export class EditorSession {
   }
   get mode(): EditorMode {
     return this.#mode;
+  }
+  /**
+   * ROUND-B: the editor's layout. 'ai' is AI mode (the Director's home): the
+   * same project, selection, playhead and open scene, another layout.
+   * Transient like the mode: never saved, never history.
+   */
+  get layout(): EditorLayout {
+    return this.#layout;
+  }
+  setLayout(layout: EditorLayout): void {
+    if (layout === this.#layout) return;
+    this.#layout = layout;
+    this.#notify();
   }
   setMode(mode: EditorMode): void {
     if (mode === this.#mode) return;

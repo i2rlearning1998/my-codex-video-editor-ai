@@ -352,6 +352,26 @@ input[type='number'],
 .topbar .mode-switch button {
   white-space: nowrap;
 }
+/* ROUND-B: the AI side of the Editor | AI switch. */
+.mode-switch .mode-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--weight-semibold);
+}
+.mode-switch .mode-ai svg {
+  inline-size: 16px;
+  block-size: 16px;
+}
+.mode-switch .mode-ai[aria-checked='true'] {
+  background: linear-gradient(120deg, #8b5cf6, #38bdf8);
+  color: #fff;
+}
+@media (max-width: 767px) {
+  #ask-director {
+    display: none;
+  }
+}
 @media (max-width: 899px) {
   .topbar .save-status {
     display: none;

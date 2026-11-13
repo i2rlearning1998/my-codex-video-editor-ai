@@ -152,6 +152,7 @@ import {
   Canvas2DRenderer,
   fitViewport,
   EDITOR_FIT,
+  pickLayer,
   type CompositionRenderer,
 } from '../render/canvas';
 import { renderInspector } from './inspector';
@@ -184,7 +185,8 @@ import {
   type MediaStore,
   type PreviewAsset,
 } from '../media';
-import { bindCanvasInteraction } from './canvas-interaction';
+import { bindCanvasInteraction, resolvePick } from './canvas-interaction';
+import { fitCommands } from './fit-mode';
 import {
   cancelEyedropper,
   createEffectsCanvasTool,
@@ -349,7 +351,8 @@ import {
 } from '../video-plan';
 import { kitPreviewUrl } from '../video-plan/kit-preview';
 import type { FeelExtras } from '../themes/library';
-import { openPlanBuild, planServices } from './plan-build-dialog';
+import { openPlanBuild, planServices, runPlanBuild } from './plan-build-dialog';
+import type { AiHost, AiMode } from '../ai-mode/host';
 import { planReviewPanel, type PlanReviewDeps } from './plan-review';
 import {
   allSceneIds,
@@ -404,6 +407,8 @@ export interface ShellActions {
     | ((sceneId: () => string) => Promise<EditorChatEngine | null>);
   /** P3U: the owner's chat settings, read each time the dock paints. */
   chatSettings?: () => { enabled: boolean; maxMessagesPerDay: number };
+  /** ROUND-B: the signed-in person (AI mode keeps its memory per person). */
+  userId?: string;
   /**
    * P4 Part 2: the person's cloud. With it, the Cloud switch and the leave
    * dialog send the project, AI compositions and My Templates (and, when the
@@ -473,12 +478,13 @@ export function mountEditorShell(
           <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
           <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
           <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
+          <button type="button" role="radio" data-layout="ai" id="mode-ai" class="mode-ai" aria-checked="false" title="${t('mode.aiTitle')}">${iconSvg('magic', 16)}<span>${t('mode.ai')}</span></button>
         </div>
         <div class="topbar-end top-actions">
           <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
           <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
           <span class="topbar-divider" aria-hidden="true"></span>
-          <button type="button" id="chat-toggle" class="icon-button" aria-pressed="false" hidden>${iconSvg('magic')}</button>
+          <button type="button" id="ask-director" class="icon-button" aria-label="${t('command.askDirector')}" title="${t('command.askDirector')}">${iconSvg('magic')}</button>
           <button type="button" id="cloud-sync" class="icon-button" data-state="off" aria-label="${t('cloud.label')}" title="${t('cloud.label')}">${iconSvg('upload')}<span class="cloud-dot" aria-hidden="true"></span></button>
           <button type="button" id="theme-toggle" class="icon-button" aria-label="${t('theme.label')}" title="${t('theme.label')}">${iconSvg('themeDark')}</button>
           <button type="button" id="export" class="primary">${iconSvg('export')}<span class="export-label">${t('action.export')}</span></button>
@@ -1382,7 +1388,8 @@ export function mountEditorShell(
       canvas,
       drawn,
       viewport(),
-      session.selectedId,
+      // ROUND-B: AI mode is select-only: no handles (it draws its own outline).
+      session.layout === 'ai' ? null : session.selectedId,
     );
     if (session.playing) drawSceneCut(drawn);
     else effectsTool.draw(viewport().matrix);
@@ -2414,9 +2421,76 @@ export function mountEditorShell(
   for (const button of modeButtons)
     button.onclick = () => {
       if (button.getAttribute('aria-disabled') === 'true') return;
+      // ROUND-B: from AI mode, a mode button returns to the editor layout.
+      session.setLayout('editor');
       session.setMode(button.dataset.mode as 'editor' | 'animation2d');
     };
   session.onChange(syncMode);
+  // ROUND-B: Editor | AI. AI mode is another layout of this same editor
+  // (same engine, selection, playhead and open scene); its Director UI is a
+  // separate chunk loaded the first time AI mode opens.
+  const aiButton = element<HTMLButtonElement>('#mode-ai');
+  let shownLayout: 'editor' | 'ai' = 'editor';
+  let aiMode: AiMode | null = null;
+  let aiLoading = false;
+  let aiHost: AiHost | null = null;
+  const LAYOUT_KEY = 'aive.layout.ai';
+  const syncLayout = () => {
+    const ai = session.layout === 'ai';
+    aiButton.setAttribute('aria-checked', String(ai));
+    if (ai)
+      for (const button of modeButtons)
+        button.setAttribute('aria-checked', 'false');
+    if (session.layout === shownLayout) return;
+    shownLayout = session.layout;
+    shellRoot.classList.toggle('ai-layout', ai);
+    shellRoot.dataset.layout = session.layout;
+    try {
+      // A reload comes back to the same layout of the same video.
+      if (ai) sessionStorage.setItem(LAYOUT_KEY, engine.state.id);
+      else sessionStorage.removeItem(LAYOUT_KEY);
+    } catch {
+      /* a convenience only */
+    }
+    if (ai) {
+      // Manual tools end: AI mode is select-only.
+      session.setDrawBrush(null);
+      if (cropTool.active) cropTool.cancel();
+      message(t('mode.nowAi'));
+      if (aiMode) aiMode.show();
+      else if (!aiLoading && aiHost) {
+        aiLoading = true;
+        const host = aiHost;
+        void import('../ai-mode')
+          .then((module) => {
+            if (disposed) return;
+            aiMode = module.mountAiMode(host);
+            if (session.layout === 'ai') aiMode.show();
+            else aiMode.hide();
+          })
+          .catch((error: unknown) => {
+            console.debug('[ai-mode] could not load', error);
+            showToast(t('mode.aiFailed'), 'error');
+            session.setLayout('editor');
+          })
+          .finally(() => {
+            aiLoading = false;
+          });
+      }
+    } else {
+      aiMode?.hide();
+      session.setPreview(null);
+      message(t('mode.nowEditor'));
+    }
+    requestAnimationFrame(() => {
+      canvasView.fit();
+      safely(draw);
+    });
+  };
+  aiButton.onclick = () => session.setLayout('ai');
+  element<HTMLButtonElement>('#ask-director').onclick = () =>
+    session.setLayout('ai');
+  session.onChange(syncLayout);
   // FINAL3 C3 (Blender's focus picker): with "Pick on canvas" on, the next
   // layer selected becomes the camera's Focus Object (depth of field on),
   // and the shot is selected again.
@@ -2775,6 +2849,12 @@ export function mountEditorShell(
   const addBuiltScenes = (
     project: Project,
     toast = t('composition.added', { count: project.compositions.length }),
+    /** ROUND-B: AI mode adds quietly, in place, replacing an earlier build. */
+    options: {
+      quiet?: boolean;
+      after?: string;
+      replace?: readonly string[];
+    } = {},
   ): string[] => {
     const missing = project.assets.filter(
       (asset) => !engine.state.assets.some((have) => have.id === asset.id),
@@ -2829,11 +2909,31 @@ export function mountEditorShell(
         type: 'CREATE_COMPOSITION' as const,
         composition,
       })),
+      ...(() => {
+        // ROUND-B: new scenes go right after a named scene.
+        const at = options.after
+          ? scenes.findIndex((scene) => scene.id === options.after)
+          : -1;
+        return at < 0
+          ? []
+          : fresh.map((composition, index) => ({
+              type: 'MOVE_COMPOSITION' as const,
+              compositionId: composition.id,
+              index: at + 1 + index,
+            }));
+      })(),
       ...(blank && fresh.length
         ? [{ type: 'DELETE_COMPOSITION' as const, compositionId: blank }]
         : []),
+      ...(options.replace ?? [])
+        .filter((id) => id !== blank && scenes.some((scene) => scene.id === id))
+        .map((compositionId) => ({
+          type: 'DELETE_COMPOSITION' as const,
+          compositionId,
+        })),
     ]);
     if (fresh[0]) session.selectComposition(fresh[0].id);
+    if (options.quiet) return fresh.map((composition) => composition.id);
     // The new scenes show at once in the strip, and the note stays long
     // enough to read, with a way to the scenes board.
     if (!stripShown) stripButton.click();
@@ -6968,7 +7068,8 @@ export function mountEditorShell(
     dropOverlay.hidden = true;
   };
   window.addEventListener('dragenter', (event) => {
-    if (!isFileDrag(event)) return;
+    // ROUND-B: in AI mode a dropped file goes to Director (its own targets).
+    if (!isFileDrag(event) || session.layout === 'ai') return;
     dragDepth++;
     dropOverlay.hidden = false;
   });
@@ -6989,6 +7090,11 @@ export function mountEditorShell(
     // Any drop ends the overlay, whatever handles it.
     hideOverlay();
     if (!isFileDrag(event)) return;
+    if (session.layout === 'ai') {
+      // AI mode's own drop targets take it; nothing is imported here.
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     const dropped = [...(event.dataTransfer?.files ?? [])];
@@ -8457,31 +8563,161 @@ export function mountEditorShell(
       return { count: own.length, bytes: bytesOf(own) };
     },
   });
-  // P3U: the chat dock loads only when an engine is given.
-  let disposeChat: () => void = () => undefined;
-  if (actions.chat) {
-    const chatButton = element<HTMLButtonElement>('#chat-toggle');
-    void Promise.all([
-      Promise.resolve(
+  // ROUND-B: what AI mode gets from this shell (src/ai-mode/host.ts). The
+  // editor chat dock is gone; AI mode reuses its engine (proposals, one
+  // transaction per Apply, the owner's limits).
+  let chatEngine: Promise<EditorChatEngine | null> | null = null;
+  aiHost = {
+    engine,
+    session,
+    shell: shellRoot,
+    stage,
+    canvas,
+    userId: actions.userId ?? 'local',
+    toast: (text, kind = 'info') => showToast(text, kind),
+    viewMatrix: () => viewport().matrix,
+    pick: (point) =>
+      resolvePick(
+        session.source,
+        pickLayer(session.source, viewport(), [point.x, point.y]),
+        session.enteredGroupId,
+      ).id,
+    redraw: () => safely(draw),
+    fit: () => {
+      canvasView.fit();
+      safely(draw);
+    },
+    poster: (sceneId, width) =>
+      scenePosterUrl(engine, session, sceneId, frames, width, 1),
+    togglePlayback: () => commandContext.togglePlayback(),
+    openExport: () => safely(openExport),
+    back: () => history.back(),
+    runCommand: (id) => {
+      safely(() => void runCommand(id, commandContext));
+    },
+    importFiles: (files) => mediaPanel.importFiles(files, { quiet: true }),
+    discardAssets: async (ids) => {
+      await mediaPanel.discard(ids);
+    },
+    buildPlan: async (input, options) => {
+      session.setPlaying(false);
+      const themeId = input.meta.themeId ?? currentThemeId();
+      const plan = withFeelDefaults(
+        input,
+        themeById(themeId),
+        themeId ? (feelExtras.get(themeId) ?? null) : null,
+      );
+      const before = new Set(session.source.assets.map((asset) => asset.id));
+      try {
+        const result = await runPlanBuild(
+          plan,
+          {
+            assets: () => session.source.assets as unknown as readonly Asset[],
+            importFile: importQuiet,
+            sfx: catalogSfx,
+            theme: planThemeById,
+          },
+          (progress) =>
+            options.progress(progress.step, progress.state, progress.detail),
+          options.signal,
+        );
+        const stop = () => {
+          if (options.signal.aborted)
+            throw new DOMException('Cancelled', 'AbortError');
+        };
+        stop();
+        if (!result.project)
+          throw new Error(result.errors[0] ?? t('status.failed'));
+        options.progress('prepare', 'running', '0%');
+        await prepareBuilt(result.project as never, options.signal, (part) =>
+          options.progress('prepare', 'running', `${Math.round(part * 100)}%`),
+        );
+        stop();
+        options.progress('prepare', 'done');
+        const sceneIds = addBuiltScenes(result.project, '', {
+          quiet: true,
+          ...(options.after ? { after: options.after } : {}),
+          ...(options.replace ? { replace: options.replace } : {}),
+        });
+        return {
+          sceneIds,
+          silent: result.silent,
+          missing: result.flags.map((flag) => flag.name ?? flag.key),
+        };
+      } catch (error) {
+        // All or nothing: what the build imported is taken away again.
+        const added = session.source.assets
+          .map((asset) => asset.id)
+          .filter((id) => !before.has(id));
+        if (added.length)
+          await Promise.resolve(mediaPanel.discard(added)).catch(
+            () => undefined,
+          );
+        throw error;
+      }
+    },
+    controls: () => codeBody(),
+    placeAssetCommands: (assetId) =>
+      engine.commands.capture(() =>
+        addPayload({ kind: 'asset', id: assetId, name: assetId }, {}),
+      ),
+    fitCommands: (layerId, mode) => {
+      const layer = locateLayer(
+        session.source.composition.layers,
+        layerId,
+      )?.layer;
+      return layer
+        ? fitCommands(
+            session.source.composition.id,
+            layer,
+            mode,
+            session.source.assets,
+            session.source.composition,
+          )
+        : [];
+    },
+    preview: (commands) => {
+      try {
+        session.setPreview(commands ? engine.preview(commands) : null);
+      } catch (error) {
+        session.setPreview(null);
+        throw error;
+      }
+    },
+    chat: () =>
+      (chatEngine ??= Promise.resolve(
         typeof actions.chat === 'function'
           ? actions.chat(() => session.source.composition.id)
-          : actions.chat,
-      ),
-      import('./chat-dock'),
-    ]).then(([chat, { mountChatDock }]) => {
-      if (disposed || !chat) return;
-      chatButton.hidden = false;
-      disposeChat = mountChatDock({
-        host: root,
-        toggle: chatButton,
-        engine: chat,
-        session,
-        settings:
-          actions.chatSettings ??
-          (() => ({ enabled: true, maxMessagesPerDay: 50 })),
-        onUsed: () => markAiProject(engine.state.id),
-      });
-    });
+          : (actions.chat ?? null),
+      ).catch(() => null)),
+    chatSettings:
+      actions.chatSettings ??
+      (() => ({ enabled: true, maxMessagesPerDay: 50 })),
+    themes: () => {
+      const lists = themeLists();
+      return [...lists.builtIn, ...lists.saved, ...lists.library];
+    },
+    themeCommands: (theme) => [
+      {
+        type: 'SET_PROJECT_BACKGROUND',
+        color: theme.palette.background,
+      } as Command,
+      ...(applyThemeCommands(
+        engine.state.compositions as unknown as ThemeScene[],
+        theme,
+        { override: false },
+      ) as unknown as Command[]),
+    ],
+    currentThemeId,
+    markAi: () => markAiProject(engine.state.id),
+  };
+  // A reload in AI mode comes back to AI mode (the same video only); the
+  // panel opens a Video in AI mode with ?ai=1 (read by main.ts).
+  try {
+    if (sessionStorage.getItem(LAYOUT_KEY) === engine.state.id)
+      session.setLayout('ai');
+  } catch {
+    /* a convenience only */
   }
   const cloudButton = element<HTMLButtonElement>('#cloud-sync');
   const paintCloud = () => {
@@ -8710,7 +8946,7 @@ export function mountEditorShell(
       disposed = true;
       window.removeEventListener('popstate', onPop);
       for (const off of offCloudWatch) off();
-      disposeChat();
+      aiMode?.dispose();
       cloudSync.dispose();
       disposeShortcuts();
       sceneOutliner?.dispose();

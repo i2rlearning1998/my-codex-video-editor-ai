@@ -2856,5 +2856,12 @@
   "importLib.studio": "स्टूडियो लाइब्रेरी",
   "importLib.kind.image": "इमेज",
   "importLib.kind.video": "वीडियो",
-  "importLib.kind.audio": "ऑडियो"
+  "importLib.kind.audio": "ऑडियो",
+  "command.aiMode": "एडिटर और AI मोड के बीच बदलें",
+  "command.askDirector": "Director से पूछें",
+  "mode.ai": "AI",
+  "mode.aiTitle": "AI मोड: Director के साथ वीडियो बनाएँ और बदलें",
+  "mode.nowAi": "AI मोड: Director यहाँ है",
+  "mode.aiFailed": "AI मोड नहीं खुल सका। कनेक्शन देखें और फिर कोशिश करें।",
+  "status.failed": "बनाना विफल रहा।"
 }

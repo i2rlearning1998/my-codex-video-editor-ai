@@ -48,6 +48,8 @@ export interface StudioFormOptions {
    * declared parameters runs through it (the engine assembles the request).
    */
   readonly service?: StudioService | null;
+  /** ROUND-B: values Director fills in first (the person may change them). */
+  readonly initial?: Readonly<Record<string, string | number | boolean>>;
 }
 export interface StudioFormView {
   readonly el: HTMLElement;
@@ -131,6 +133,10 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
   const files = new Map<string, File>();
   for (const f of s.inputs)
     if (f.default !== undefined) answers[f.id] = f.default as Value;
+  for (const f of s.inputs) {
+    const given = o.initial?.[f.id];
+    if (given !== undefined) answers[f.id] = given;
+  }
   // ---- the model ------------------------------------------------------------
   const models = bestModels(ctx, modelsForRole(c, s.role));
   const usable = (m: Model) =>

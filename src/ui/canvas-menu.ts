@@ -491,6 +491,14 @@ export function canvasMenuEntries(
     icon: 'more',
     submenu: () => more,
   });
+  // ROUND-B: AI mode with this selection carried over.
+  entries.push({
+    id: 'ask-director',
+    label: t('command.askDirector'),
+    icon: 'magic',
+    divider: true,
+    run: () => session.setLayout('ai'),
+  });
   // FIX7: what the owner switched off for this kind of selection.
   return filterMenu(entries, kindOf(session));
 }

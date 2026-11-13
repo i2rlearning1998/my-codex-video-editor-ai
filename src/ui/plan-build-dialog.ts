@@ -182,6 +182,68 @@ export function planServices(
   return { resolve, importCandidate };
 }
 
+type SpokenCache = Map<string, { asset: Asset; duration: number } | null>;
+/**
+ * The build itself, with no dialog (ROUND-B: AI mode builds on the canvas
+ * with the same code): media, voice, layout, captions, camera and sound.
+ */
+export async function runPlanBuild(
+  plan: VideoPlan,
+  deps: Pick<PlanBuildDeps, 'assets' | 'importFile' | 'sfx' | 'theme'>,
+  show: (progress: BuildProgress) => void,
+  signal: AbortSignal,
+  spokenBefore: SpokenCache = new Map(),
+): Promise<PlanBuildResult> {
+  const services = planServices(deps);
+  const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
+  const theme = plan.meta.themeId ? await deps.theme(plan.meta.themeId) : null;
+  return buildVideoFromPlan(
+    plan,
+    {
+      ...services,
+      theme,
+      ...(voice
+        ? {
+            voice: async (text, lang, sig) => {
+              const known = `${lang}|${text}`;
+              if (spokenBefore.has(known)) return spokenBefore.get(known)!;
+              const made = await synthesizeToMedia(text, {
+                provider: voice.provider,
+                voiceId: voice.voiceId,
+                lang,
+                ...(sig ? { signal: sig } : {}),
+              });
+              const asset = await deps.importFile(
+                new File([made.blob], `Narration.wav`, { type: made.mime }),
+              );
+              const spoken = asset
+                ? { asset, duration: made.durationSec }
+                : null;
+              spokenBefore.set(known, spoken);
+              return spoken;
+            },
+          }
+        : { voiceUnavailable: t('plan.noVoice') }),
+      sound: async (query, kind) => {
+        // A sound effect from our own library catalog when its name fits.
+        if (kind === 'sfx') return deps.sfx?.(words(query)) ?? null;
+        // FIX7: music is the person's own file (by name), never stock.
+        const own = deps
+          .assets()
+          .find(
+            (asset) =>
+              asset.type === 'audio' &&
+              !(asset.metadata as { removed?: boolean }).removed &&
+              namesMatch(asset.name, query),
+          );
+        return own ? { asset: own, duration: own.duration ?? 0 } : null;
+      },
+    },
+    show,
+    signal,
+  );
+}
+
 export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
   const controller = new AbortController();
   let finished = false;
@@ -256,62 +318,9 @@ export function openPlanBuild(plan: VideoPlan, deps: PlanBuildDeps) {
     summary.textContent = text;
   };
   /** The voice is made once, however often the build runs again. */
-  const spokenBefore = new Map<
-    string,
-    { asset: Asset; duration: number } | null
-  >();
-  const build = async () => {
-    const services = planServices(deps);
-    const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
-    const theme = plan.meta.themeId
-      ? await deps.theme(plan.meta.themeId)
-      : null;
-    return buildVideoFromPlan(
-      plan,
-      {
-        ...services,
-        theme,
-        ...(voice
-          ? {
-              voice: async (text, lang, signal) => {
-                const known = `${lang}|${text}`;
-                if (spokenBefore.has(known)) return spokenBefore.get(known)!;
-                const made = await synthesizeToMedia(text, {
-                  provider: voice.provider,
-                  voiceId: voice.voiceId,
-                  lang,
-                  ...(signal ? { signal } : {}),
-                });
-                const asset = await deps.importFile(
-                  new File([made.blob], `Narration.wav`, { type: made.mime }),
-                );
-                const spoken = asset
-                  ? { asset, duration: made.durationSec }
-                  : null;
-                spokenBefore.set(known, spoken);
-                return spoken;
-              },
-            }
-          : { voiceUnavailable: t('plan.noVoice') }),
-        sound: async (query, kind) => {
-          // A sound effect from our own library catalog when its name fits.
-          if (kind === 'sfx') return deps.sfx?.(words(query)) ?? null;
-          // FIX7: music is the person's own file (by name), never stock.
-          const own = deps
-            .assets()
-            .find(
-              (asset) =>
-                asset.type === 'audio' &&
-                !(asset.metadata as { removed?: boolean }).removed &&
-                namesMatch(asset.name, query),
-            );
-          return own ? { asset: own, duration: own.duration ?? 0 } : null;
-        },
-      },
-      show,
-      controller.signal,
-    );
-  };
+  const spokenBefore: SpokenCache = new Map();
+  const build = () =>
+    runPlanBuild(plan, deps, show, controller.signal, spokenBefore);
   /** Keeps the video: scenes, the AI card, then the summary. */
   const commit = async (result: PlanBuildResult) => {
     $('plan-missing').hidden = true;

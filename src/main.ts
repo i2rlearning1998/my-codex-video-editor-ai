@@ -209,6 +209,7 @@ const shell = mountEditorShell(
         userAssets: () => readUserAssets(localStorage, me),
       };
     })(),
+    userId: me,
     // P2-R2: the plan's export limit; each finished export is reported.
     usage: usageReporter(
       me,
@@ -451,6 +452,14 @@ if (recoveredProject) {
 // P2-R1: the user panel opens the editor on a project, a new blank project,
 // or a plan Director approved (built by the AI importer's own Build video).
 const handoff = readHandoff(location.search);
+// ROUND-B: the panel opens a Video in AI mode with ?ai=1 (and, from the
+// Home box, the first message in session storage).
+const wantsAi = new URLSearchParams(location.search).get('ai') === '1';
+if (wantsAi && !handoff) history.replaceState(null, '', location.pathname);
+const openAi = () => {
+  if (wantsAi) shell.session.setLayout('ai');
+};
+if (!handoff) openAi();
 if (handoff) {
   history.replaceState(null, '', location.pathname);
   const fresh = (name: string, aspect: string, projectId?: string) => {
@@ -465,11 +474,13 @@ if (handoff) {
     void mirrorNow();
   };
   if (handoff.kind === 'open') {
-    if (handoff.projectId !== engine.state.id)
+    if (handoff.projectId === engine.state.id) openAi();
+    else
       void library
         .open(handoff.projectId)
         .then((project) => {
           if (project) engine.load(openable(project).project);
+          openAi();
         })
         .catch(() => shell.message(t('projects.openFailed')));
   } else if (handoff.kind === 'new') fresh(handoff.name, handoff.aspect);

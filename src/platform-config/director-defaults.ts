@@ -462,6 +462,47 @@ export const DIRECTOR_LINES: Record<string, LT> = {
     'I see you undid: {what}. I removed it from my notes.',
     'आपने यह बदलाव वापस लिया: {what}। मैंने इसे अपने नोट्स से हटाया।',
   ),
+  'answer.scenes': L(
+    'This video has {scenes} scenes and runs about {seconds} seconds.',
+    'इस वीडियो में {scenes} सीन हैं और यह लगभग {seconds} सेकंड का है।',
+  ),
+  'answer.credits': L(
+    'You have {credits} credits. Talking to me is free; I ask before anything costs credits.',
+    'आपके पास {credits} क्रेडिट हैं। मुझसे बात करना मुफ़्त है; क्रेडिट लगने से पहले मैं पूछता हूँ।',
+  ),
+  'answer.can': L(
+    'Select something and tell me what to change: text, colour, size, a picture. I can also add a scene, change the look, music or captions, or start a new video in this project.',
+    'कुछ चुनें और बताएँ क्या बदलना है: टेक्स्ट, रंग, आकार, तस्वीर। मैं नया सीन जोड़ सकता हूँ, लुक, संगीत या कैप्शन बदल सकता हूँ, या इस प्रोजेक्ट में नया वीडियो शुरू कर सकता हूँ।',
+  ),
+  'answer.know': L(
+    'Here is what I know about this video. {brief} It has {scenes} scenes on the canvas now.',
+    'इस वीडियो के बारे में मुझे यह पता है। {brief} अभी कैनवस पर {scenes} सीन हैं।',
+  ),
+  'answer.selected': L('You have selected {what}.', 'आपने {what} चुना है।'),
+  'chat.resume': L(
+    'A new chat for the same video. I still have its sheet: {brief}',
+    'उसी वीडियो की नई चैट। इसकी शीट मेरे पास है: {brief}',
+  ),
+  'assets.hint': L(
+    'Choose how to get each file on the card above, then press Build the video.',
+    'ऊपर के कार्ड में हर फ़ाइल का तरीका चुनें, फिर वीडियो बनाएँ दबाएँ।',
+  ),
+  'plan.hint': L(
+    'Approve the plan above, or tell me what to change in it.',
+    'ऊपर का प्लान मंज़ूर करें, या बताएँ उसमें क्या बदलना है।',
+  ),
+  'build.interrupted': L(
+    'The build was interrupted before it finished. Nothing was kept. You can build again.',
+    'बनाना बीच में रुक गया। कुछ नहीं रखा गया। आप फिर बना सकते हैं।',
+  ),
+  'drop.use': L(
+    'I have "{name}". Use it in this scene?',
+    'मेरे पास "{name}" है। इसे इस सीन में लगाएँ?',
+  ),
+  'paid.ask': L(
+    'This needs a model call. It can cost up to {credits} credits.',
+    'इसके लिए मॉडल को बुलाना होगा। इसमें अधिकतम {credits} क्रेडिट लग सकते हैं।',
+  ),
   'attach.tooBig': L(
     'That file is too big. The most is {n} MB.',
     'फ़ाइल बहुत बड़ी है। सीमा {n} MB है।',
