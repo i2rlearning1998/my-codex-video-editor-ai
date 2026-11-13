@@ -19,7 +19,14 @@ import { setLocale } from '../panel/strings';
 import type { Ctx } from '../panel/app';
 import type { AiHost, AiMode } from './host';
 import { Director, type DirectorUi, type DrawerTab } from './director';
-import { findLayer, isLocked, kindOf, seconds, stringOf } from './canvas-read';
+import {
+  findLayer,
+  hashLayer,
+  isLocked,
+  kindOf,
+  seconds,
+  stringOf,
+} from './canvas-read';
 import { suggestionsFor } from './propose';
 import {
   CAPTION_STYLE_LIST,
@@ -312,7 +319,7 @@ export function mountAiMode(host: AiHost): AiMode {
   const closePop = () => {
     pop?.remove();
     pop = null;
-    for (const b of shell.querySelectorAll('[aria-expanded="true"].ai-chip'))
+    for (const b of shell.querySelectorAll('[aria-expanded="true"].aim-chip'))
       b.setAttribute('aria-expanded', 'false');
   };
   const openPop = (anchor: HTMLElement, build: (el: HTMLElement) => void) => {
@@ -756,7 +763,7 @@ export function mountAiMode(host: AiHost): AiMode {
         row.append(
           h('button', {
             type: 'button',
-            class: 'ai-chip',
+            class: 'aim-chip',
             'data-suggest': key,
             text: t(`sug.${key}` as AiKey),
             onclick: () => {
@@ -830,14 +837,34 @@ export function mountAiMode(host: AiHost): AiMode {
     const xs = pts.map((p) => p[0]);
     const ys = pts.map((p) => p[1]);
     const mine = bubble.getBoundingClientRect();
-    const left = c.left - s.left + Math.max(...xs) + 10;
-    const top = c.top - s.top + Math.min(...ys);
-    const fitsRight = left + mine.width < s.width - 8;
-    const x = fitsRight
-      ? left
-      : Math.max(8, c.left - s.left + Math.min(...xs) - mine.width - 10);
+    const ox = c.left - s.left;
+    const oy = c.top - s.top;
+    const box = {
+      left: ox + Math.min(...xs),
+      right: ox + Math.max(...xs),
+      top: oy + Math.min(...ys),
+      bottom: oy + Math.max(...ys),
+    };
+    const gap = 10;
+    // Beside the layer when there is room, else under or over it: the
+    // bubble never sits on what it is about.
+    const spots: [number, number][] = [
+      [box.right + gap, box.top],
+      [box.left - mine.width - gap, box.top],
+      [box.left, box.bottom + gap],
+      [box.left, box.top - mine.height - gap],
+    ];
+    const fits = ([x, y]: [number, number]) =>
+      x >= 8 &&
+      y >= 8 &&
+      x + mine.width <= s.width - 8 &&
+      y + mine.height <= s.height - 8;
+    const [x, y] = spots.find(fits) ?? [
+      s.width - mine.width - 8,
+      s.height - mine.height - 8,
+    ];
     bubble.style.left = `${Math.max(8, Math.min(x, s.width - mine.width - 8))}px`;
-    bubble.style.top = `${Math.max(8, Math.min(top, s.height - mine.height - 8))}px`;
+    bubble.style.top = `${Math.max(8, Math.min(y, s.height - mine.height - 8))}px`;
   };
 
   // ---- drag and drop ------------------------------------------------------
@@ -952,7 +979,7 @@ export function mountAiMode(host: AiHost): AiMode {
           (['stage.try1', 'stage.try2', 'stage.try3'] as AiKey[]).map((key) =>
             h('button', {
               type: 'button',
-              class: 'ai-chip',
+              class: 'aim-chip',
               'data-try': key,
               text: t(key),
               onclick: () => {
@@ -1265,7 +1292,7 @@ export function mountAiMode(host: AiHost): AiMode {
       'button',
       {
         type: 'button',
-        class: 'ai-chip',
+        class: 'aim-chip',
         id,
         'aria-haspopup': 'menu',
         'aria-expanded': 'false',
@@ -1430,15 +1457,27 @@ export function mountAiMode(host: AiHost): AiMode {
   const paintControls = () => {
     const id = session.selectedIds.length === 1 ? session.selectedIds[0]! : '';
     const found = id ? findLayer(engine.state, id) : null;
-    // A control that has focus is not rebuilt under the person's fingers.
+    // Rebuilt only when the layer itself changed, and never under the
+    // person's fingers (a focused control keeps its element).
+    const clipNow = found
+      ? found.scene.tracks
+          .flatMap((lane) => lane.clips)
+          .find((item) => item.layerId === id)
+      : null;
+    const key = found
+      ? `${id}|${hashLayer(found.layer)}|${clipNow?.enabled ?? ''}`
+      : '';
     if (
       found &&
-      controlsFor === id &&
-      drawerBody.contains(document.activeElement) &&
-      document.activeElement !== document.body
+      controlsFor.startsWith(`${id}|`) &&
+      drawerBody.dataset.painted === 'controls' &&
+      (controlsFor === key ||
+        (drawerBody.contains(document.activeElement) &&
+          document.activeElement !== document.body))
     )
       return;
-    controlsFor = id;
+    controlsFor = key;
+    drawerBody.dataset.painted = 'controls';
     clear(drawerBody);
     if (!found) {
       drawerBody.append(
@@ -1749,8 +1788,13 @@ export function mountAiMode(host: AiHost): AiMode {
       b.setAttribute('aria-selected', String(b.dataset.aiTab === tab));
     drawerBody.dataset.tab = tab;
     if (!drawerOpen) return;
-    if (tab === 'controls') paintControls();
-    else if (tab === 'assets') paintAssets();
+    if (tab === 'controls') {
+      paintControls();
+      return;
+    }
+    drawerBody.dataset.painted = tab;
+    controlsFor = '';
+    if (tab === 'assets') paintAssets();
     else if (tab === 'plan' && director) director.renderPlan(drawerBody);
     else if (tab === 'memory' && director) director.renderMemory(drawerBody);
     else clear(drawerBody);
@@ -1789,8 +1833,15 @@ export function mountAiMode(host: AiHost): AiMode {
       if (visible && (tab === 'plan' || tab === 'memory')) paintDrawer();
     }),
   );
+  let wide = window.innerWidth >= 1280;
   const onResize = () => {
-    if (visible) refit();
+    if (!visible) return;
+    // Narrow: the drawer is an overlay, so it closes instead of covering
+    // the stage unasked.
+    const now = window.innerWidth >= 1280;
+    if (wide && !now && drawerOpen) setDrawer(false);
+    wide = now;
+    refit();
   };
   window.addEventListener('resize', onResize);
   offs.push(() => window.removeEventListener('resize', onResize));
@@ -1820,8 +1871,9 @@ export function mountAiMode(host: AiHost): AiMode {
       event.preventDefault();
     }
   };
-  document.addEventListener('keydown', onKey, true);
-  offs.push(() => document.removeEventListener('keydown', onKey, true));
+  // On the window, so it runs before the shell's own Escape (deselect).
+  window.addEventListener('keydown', onKey, true);
+  offs.push(() => window.removeEventListener('keydown', onKey, true));
 
   // ---- Director: its services load here, in this chunk ----------------------
   const ui: DirectorUi = {

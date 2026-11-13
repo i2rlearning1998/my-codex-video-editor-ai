@@ -296,7 +296,7 @@
 }
 .ai-icon-btn:focus-visible,
 .ai-btn:focus-visible,
-.ai-chip:focus-visible,
+.aim-chip:focus-visible,
 .ai-scene:focus-visible,
 .ai-input:focus-visible {
   outline: 2px solid var(--ai-b);
@@ -357,7 +357,7 @@
   border-radius: 9px;
   font-size: var(--font-caption);
 }
-.ai-chip {
+.aim-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -374,12 +374,12 @@
     background-color var(--motion-fast) var(--ease-enter),
     border-color var(--motion-fast) var(--ease-enter);
 }
-.ai-chip:hover {
+.aim-chip:hover {
   background: rgba(148, 160, 255, 0.14);
 }
 /* The one selected style of AI mode: accent ring and tint. */
-.ai-chip[aria-pressed='true'],
-.ai-chip[aria-checked='true'],
+.aim-chip[aria-pressed='true'],
+.aim-chip[aria-checked='true'],
 .ai-tab[aria-selected='true'],
 .ai-scene[aria-current='true'],
 .ai-seg[aria-checked='true'] {
@@ -986,7 +986,7 @@ textarea.ai-input {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-#ai-bubble .ai-row .ai-chip {
+#ai-bubble .ai-row .aim-chip {
   min-block-size: 26px;
   padding: 0 10px;
   font-size: var(--font-caption);
@@ -1090,7 +1090,7 @@ textarea.ai-input {
 }
 .ai-scene {
   flex: none;
-  inline-size: 132px;
+  inline-size: 156px;
   border-radius: 12px;
   border: 1.5px solid var(--ai-line);
   background: rgba(10, 12, 26, 0.55);
@@ -1285,13 +1285,18 @@ textarea.ai-input {
 /* ---- drawer -------------------------------------------------------------------- */
 .ai-tabs {
   display: flex;
-  gap: 4px;
-  padding: 10px 10px 8px;
+  gap: 2px;
+  padding: 10px 8px 8px;
   border-block-end: 1px solid var(--ai-line);
   align-items: center;
 }
 .ai-tab {
-  flex: 1;
+  flex: 1 1 0;
+  min-inline-size: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   min-block-size: 30px;
   border-radius: 10px;
   border: 1px solid transparent;
@@ -1431,4 +1436,21 @@ textarea.ai-input {
     animation: none !important;
     transition-duration: 1ms !important;
   }
+}
+
+#ai-drawer-close {
+  flex: none;
+  inline-size: 28px;
+  block-size: 28px;
+}
+
+/* The editor's global minimum button height does not apply to these. */
+.ai-clip,
+.ai-switch,
+.ai-swatch,
+.ai-sel-chip button,
+.ai-file-chip button,
+.ai-scene-menu {
+  min-block-size: 0;
+  min-inline-size: 0;
 }

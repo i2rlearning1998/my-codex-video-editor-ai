@@ -751,13 +751,13 @@ export class Director {
       const chip = (value: string, label: string) => {
         const b = h('button', {
           type: 'button',
-          class: 'ai-chip',
+          class: 'aim-chip',
           role: 'radio',
           'data-value': value,
           'aria-checked': 'false',
           text: label,
           onclick: () => {
-            for (const x of chips.querySelectorAll('.ai-chip'))
+            for (const x of chips.querySelectorAll('.aim-chip'))
               x.setAttribute('aria-checked', String(x === b));
             const input = field.querySelector<HTMLInputElement>('.ai-input');
             if (input) input.value = '';
@@ -795,7 +795,7 @@ export class Director {
           'aria-label': this.#say(block.label),
           ...(block.type === 'longtext' ? { rows: 2 } : { type: 'text' }),
           oninput: (e: Event) => {
-            for (const x of chips.querySelectorAll('.ai-chip'))
+            for (const x of chips.querySelectorAll('.aim-chip'))
               x.setAttribute('aria-checked', 'false');
             set(
               block.id,
@@ -1118,7 +1118,7 @@ export class Director {
           for (const m of allowedMethods(c, userPlan)) {
             const b = h('button', {
               type: 'button',
-              class: 'ai-chip',
+              class: 'aim-chip',
               role: 'radio',
               'data-method-choice': m,
               'aria-checked': String(m === method),
@@ -1393,11 +1393,7 @@ export class Director {
             : 'image/*',
       );
     if (slot.choice === 'upload')
-      body.append(
-        Object.assign(this.#button('assets.upload', upload, 'sm'), {
-          dataset: {},
-        }),
-      );
+      body.append(this.#button('assets.upload', upload, 'sm'));
     else if (slot.choice === 'prompt') {
       const area = h('textarea', {
         class: 'ai-input',
@@ -1545,7 +1541,7 @@ export class Director {
         for (const [value, key] of choices) {
           const b = h('button', {
             type: 'button',
-            class: 'ai-chip',
+            class: 'aim-chip',
             role: 'radio',
             'data-choice': value,
             'aria-checked': String(slot.choice === value),
@@ -2144,14 +2140,8 @@ export class Director {
       h(
         'div',
         { class: 'ai-row' },
-        Object.assign(
-          this.#button('prop.apply', () => this.apply(proposal.id), 'primary'),
-          { dataset: { act: 'apply' } },
-        ),
-        Object.assign(
-          this.#button('prop.discard', () => this.discard(proposal.id)),
-          { dataset: { act: 'discard' } },
-        ),
+        this.#button('prop.apply', () => this.apply(proposal.id), 'primary'),
+        this.#button('prop.discard', () => this.discard(proposal.id)),
       ),
     );
     for (const b of el.querySelectorAll<HTMLElement>('.ai-btn'))
@@ -2282,7 +2272,7 @@ export class Director {
         choices.map((key) =>
           h('button', {
             type: 'button',
-            class: 'ai-chip',
+            class: 'aim-chip',
             'data-choice': key,
             text: t(`sug.${key}` as AiKey),
             onclick: () => {
