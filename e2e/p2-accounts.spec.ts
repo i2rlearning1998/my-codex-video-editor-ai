@@ -89,7 +89,7 @@ test("[P2R2-013] two people on one browser never see each other's projects; the 
     .poll(async () => {
       await page.reload();
       await page.locator('#project-list').waitFor();
-      return page.locator(`[data-project="${firstId}"]`).count();
+      return page.locator(`[data-ws-project="pr-${firstId}"]`).count();
     })
     .toBe(1);
   await page.locator('#sign-out').click();
@@ -97,7 +97,9 @@ test("[P2R2-013] two people on one browser never see each other's projects; the 
   await signUp(page, 'second.person@example.com');
   await page.goto('/panel/#/projects');
   await page.locator('#project-list').waitFor();
-  await expect(page.locator(`[data-project="${firstId}"]`)).toHaveCount(0);
+  await expect(page.locator(`[data-ws-project="pr-${firstId}"]`)).toHaveCount(
+    0,
+  );
   // Their editor opens their own work, not the first person's.
   await page.goto('/');
   await expect
@@ -122,5 +124,7 @@ test("[P2R2-013] two people on one browser never see each other's projects; the 
   await page.locator('#auth-submit').click();
   await expect(page).toHaveURL(/\/panel\//);
   await page.goto('/panel/#/projects');
-  await expect(page.locator(`[data-project="${firstId}"]`)).toHaveCount(1);
+  await expect(page.locator(`[data-ws-project="pr-${firstId}"]`)).toHaveCount(
+    1,
+  );
 });

@@ -36,7 +36,27 @@ export function usageReporter(
   userId: string,
   storage: KV,
   gateway: string | null,
+  /** ROUND-A: the open editor project (the Video), kept with each export. */
+  projectId: () => string = () => '',
 ): UsageReporter {
+  // ROUND-A: every export is also kept in this browser with its Video, so
+  // the panel's Video card can list the Video's exports.
+  const remember = (kind: string) => {
+    const log = read<{ at: string; kind: string; projectId?: string }[]>(
+      storage,
+      EXPORTS_KEY(userId),
+      [],
+    );
+    storage.setItem(
+      EXPORTS_KEY(userId),
+      JSON.stringify(
+        [
+          ...log,
+          { at: new Date().toISOString(), kind, projectId: projectId() },
+        ].slice(-500),
+      ),
+    );
+  };
   if (!gateway) {
     const log = () =>
       read<{ at: string; kind: string }[]>(storage, EXPORTS_KEY(userId), []);
@@ -53,12 +73,7 @@ export function usageReporter(
           : null;
       },
       async exported(kind) {
-        storage.setItem(
-          EXPORTS_KEY(userId),
-          JSON.stringify(
-            [...log(), { at: new Date().toISOString(), kind }].slice(-500),
-          ),
-        );
+        remember(kind);
       },
     };
   }
@@ -83,6 +98,7 @@ export function usageReporter(
   return {
     allowExport: () => post('/limits/check', { action: 'export' }),
     async exported(kind) {
+      remember(kind);
       await post('/exports', { kind });
     },
   };

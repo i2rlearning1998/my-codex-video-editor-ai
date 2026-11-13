@@ -2849,5 +2849,12 @@
   "plan.rebuildKeep": "Keep both",
   "plan.rebuildCancel": "Cancel",
   "cloud.save": "Save to cloud",
-  "projects.openFailed": "This project could not be opened."
+  "projects.openFailed": "This project could not be opened.",
+  "importLib.lib.button": "Import from your Library",
+  "importLib.lib.title": "Import from your Library",
+  "importLib.lib.intro": "Choose pictures, videos and sounds from your Asset Library: Studio results and files Director made in your other videos. Only the ones you choose are copied into this video's Media.",
+  "importLib.studio": "Studio Libraries",
+  "importLib.kind.image": "Image",
+  "importLib.kind.video": "Video",
+  "importLib.kind.audio": "Audio"
 }

@@ -19,6 +19,8 @@ export interface ImportGroup {
   readonly id: string;
   readonly name: string;
   readonly items: readonly ImportItem[];
+  /** ROUND-A: the Project the group (a Video) belongs to; listed under it. */
+  readonly project?: { readonly id: string; readonly name: string };
 }
 export interface ImportDialogOptions {
   /** Prefix of the `data-role` names (`mine` or `ai`). */
@@ -66,6 +68,24 @@ export function openLibraryImportDialog(options: ImportDialogOptions) {
     const needle = search.value.trim().toLowerCase();
     host.replaceChildren();
     let shown = 0;
+    // ROUND-A: Project, then its Videos, then their items.
+    const projects = new Map<string, HTMLElement>();
+    const holder = (group: ImportGroup): HTMLElement => {
+      if (!group.project) return host;
+      let box = projects.get(group.project.id);
+      if (!box) {
+        box = document.createElement('section');
+        box.className = 'import-project';
+        box.dataset.project = group.project.id;
+        const head = document.createElement('h3');
+        head.className = 'import-project-head';
+        head.textContent = group.project.name;
+        box.append(head);
+        host.append(box);
+        projects.set(group.project.id, box);
+      }
+      return box;
+    };
     for (const group of groups) {
       const items = group.items.filter(
         (item) => !needle || item.name.toLowerCase().includes(needle),
@@ -130,7 +150,7 @@ export function openLibraryImportDialog(options: ImportDialogOptions) {
         list.append(row);
       }
       section.append(head, list);
-      host.append(section);
+      holder(group).append(section);
     }
     if (!shown) {
       const empty = document.createElement('p');

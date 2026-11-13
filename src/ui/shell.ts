@@ -244,6 +244,7 @@ import {
   type ImportGroup,
 } from './library-import-dialog';
 import { buildAssetView } from './asset-view';
+import { fileNameFor, type UserAsset } from '../project/user-assets';
 import type { Shelf } from './library-shelf';
 import { hasReview, openSceneView, partCards } from './scene-breakdown';
 import { partItem, sceneParts } from './scene-parts';
@@ -418,8 +419,14 @@ export interface ShellCloud {
   signedIn(): boolean;
   /** The plan's cloud space in bytes (null: no limit). */
   limitBytes(): number | null;
-  /** The name a project's group shows in the import dialogs (Style › Project). */
+  /** The name a project's group shows in the import dialogs (Project › Video). */
   label?(projectId: string): string | undefined;
+  /** ROUND-A: the Project and Video an editor project is (panel metadata). */
+  where?(
+    editorProjectId: string,
+  ): { projectId: string; project: string; video: string } | undefined;
+  /** ROUND-A: the person's Asset Library media (Studio results, Director files). */
+  userAssets?(): readonly UserAsset[];
 }
 export function mountEditorShell(
   root: HTMLElement,
@@ -4675,12 +4682,93 @@ export function mountEditorShell(
       } catch {
         // The cloud cannot be reached: this computer's items are still listed.
       }
-    return [...byProject].map(([id, items]) => ({
-      id: id || 'earlier',
-      name: id ? label(id) : t('importLib.earlier'),
-      items,
-    }));
+    return orderGroups(
+      [...byProject].map(([id, items]) => {
+        // ROUND-A: grouped as Project, then Video.
+        const at = id ? actions.cloud?.where?.(id) : undefined;
+        return {
+          id: id || 'earlier',
+          name: at ? at.video : id ? label(id) : t('importLib.earlier'),
+          items,
+          ...(at ? { project: { id: at.projectId, name: at.project } } : {}),
+        };
+      }),
+    );
   };
+  /** Groups of one Project together (Projects by name), others after. */
+  const orderGroups = (groups: ImportGroup[]): ImportGroup[] =>
+    groups
+      .map((g, i) => ({ g, i }))
+      .sort(
+        (a, b) =>
+          Number(!a.g.project) - Number(!b.g.project) ||
+          (a.g.project?.name ?? '').localeCompare(b.g.project?.name ?? '') ||
+          (a.g.project?.id ?? '').localeCompare(b.g.project?.id ?? '') ||
+          a.i - b.i,
+      )
+      .map(({ g }) => g);
+  /**
+   * ROUND-A A3: "Import from your Library" (Media): Studio results and
+   * Director files from the Asset Library, as Project › Video › items and
+   * Studio Libraries › tool › items. Chosen ones are copied into this
+   * project's Media; the same file twice is one media item (fingerprint).
+   */
+  const openImportUserLibrary = () =>
+    openLibraryImportDialog({
+      role: 'lib',
+      title: t('importLib.lib.title'),
+      intro: t('importLib.lib.intro'),
+      groups: () => {
+        const rows = actions.cloud?.userAssets?.() ?? [];
+        const groups = new Map<string, ImportGroup>();
+        for (const a of rows) {
+          if (a.projectId === engine.state.id) continue;
+          const studio = !a.projectId || a.projectId === 'unsorted';
+          const at = studio ? undefined : actions.cloud?.where?.(a.projectId);
+          if (!studio && !at) continue;
+          const key = studio ? `studio:${a.studioId}` : a.projectId;
+          const group = groups.get(key) ?? {
+            id: key,
+            name: studio
+              ? a.studioName ||
+                a.studioId.charAt(0).toUpperCase() + a.studioId.slice(1)
+              : at!.video,
+            items: [],
+            project: studio
+              ? { id: 'studio', name: t('importLib.studio') }
+              : { id: at!.projectId, name: at!.project },
+          };
+          groups.set(key, {
+            ...group,
+            items: [
+              ...group.items,
+              {
+                id: a.id,
+                name: a.name,
+                ...(a.kind === 'image' ? { thumb: a.dataUrl } : {}),
+                detail: t(`importLib.kind.${a.kind}`),
+              },
+            ],
+          });
+        }
+        return orderGroups([...groups.values()]);
+      },
+      importItems: async (ids) => {
+        const rows = actions.cloud?.userAssets?.() ?? [];
+        const files: File[] = [];
+        for (const id of ids) {
+          const a = rows.find((r) => r.id === id);
+          if (!a) continue;
+          const blob = await (await fetch(a.dataUrl)).blob();
+          files.push(new File([blob], fileNameFor(a), { type: blob.type }));
+        }
+        if (files.length) await mediaPanel.importFiles(files, { quiet: true });
+        return files.length;
+      },
+      done: (count) =>
+        showToast(t('importLib.done', { count: String(count) }), 'success'),
+      report: reportError,
+    });
   const openImportMine = () =>
     openLibraryImportDialog({
       role: 'mine',
@@ -6366,6 +6454,11 @@ export function mountEditorShell(
     entry('import-media-item', t('code.importMedia'), 'media', () =>
       mediaInput.click(),
     );
+    // ROUND-A A3: Studio results and Director files from the Asset Library.
+    if (actions.cloud?.userAssets)
+      entry('import-library-item', t('importLib.lib.button'), 'download', () =>
+        openImportUserLibrary(),
+      );
     importMenuButton.setAttribute('aria-expanded', 'true');
     const popover = openPopover(importMenuButton, menu, {
       label: t('code.importMenu'),

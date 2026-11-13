@@ -8,6 +8,7 @@ import type {
   DirectorRules,
   LText,
   Model,
+  NewProjectOption,
   Plan,
   PlatformConfig,
   Provider,
@@ -230,19 +231,34 @@ export function comboModels(
 /** W8: the sign-in limits and password length (samples until set in Admin). */
 export const loginLimits = (c: PlatformConfig) => ({ ...c.p3.login });
 
-/** P4: the workspace rules for one plan. */
+/** P4, ROUND-A: the workspace rules for one plan. */
 export function workspaceRules(c: PlatformConfig, planId: string) {
   const w = c.workspace;
-  const cap = capFor(c, planId);
   const plan = c.plans.find((p) => p.id === planId);
+  const old = w.startOptions[planId];
+  const wanted: readonly NewProjectOption[] = w.newProjectOptions[planId] ?? [
+    'style',
+    'director',
+    'editor',
+    'claude',
+  ];
+  const options = wanted.filter(
+    (o) =>
+      (o !== 'claude' || w.claudeConnector) &&
+      (!old ||
+        ((o === 'editor' ? old.includes('blank') : true) &&
+          (o === 'style' || o === 'director'
+            ? old.includes('director')
+            : true))),
+  );
   return {
     trashDays: w.trashDays,
-    styleCredits: w.styleCreation.credits,
-    styleAllowed:
-      !plan || w.styleCreation.requires.every((f) => plan.features.includes(f)),
-    maxStyles: cap.maxStyles,
-    maxProjectsPerStyle: w.maxProjectsPerStyle[planId] ?? null,
-    startOptions: w.startOptions[planId] ?? (['director', 'blank'] as const),
-    styleChat: w.styleChat,
+    /** Projects the plan may keep (null: no cap). */
+    maxProjects: plan?.limits.projects ?? null,
+    /** Videos one Project may hold (null: no cap). */
+    videosPerProject:
+      plan?.limits.videosPerProject ?? w.maxProjectsPerStyle[planId] ?? null,
+    /** The New project options, in order. */
+    newProjectOptions: options,
   };
 }

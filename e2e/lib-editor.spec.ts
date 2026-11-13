@@ -78,7 +78,10 @@ test.afterAll(() => stack?.stop());
 async function openElementsKind(page: Page, tile: string) {
   await showCategory(page, 'Elements');
   const back = page.locator('#library-elements [data-action="browse-back"]');
-  while (await back.isVisible()) await back.click();
+  // The Back button can hide between the check and the click (the page
+  // re-renders when the catalog refreshes): check again rather than wait.
+  while (await back.isVisible())
+    await back.click({ timeout: 2000 }).catch(() => undefined);
   await page.locator(`#library-elements [data-tile="${tile}"]`).click();
 }
 async function openEditor(page: Page) {

@@ -7,7 +7,7 @@ test('[P2R3-001] [P2R3-002] [P2R3-003] the Director room: you and Director look 
 }) => {
   await signUp(page);
   await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
   await page.locator('#f-idea').fill('How Eratosthenes measured the Earth.');
   await page.locator('#talk-director').click();
 
@@ -67,7 +67,7 @@ test('[P2R3-004] Live Build draws each scene from the plan itself (real titles a
 }) => {
   await signUp(page);
   await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
   await page
     .locator('#f-idea')
     .fill('How Eratosthenes measured the circumference of the Earth.');
@@ -105,7 +105,7 @@ test('[P2R3-005] the Brief Room has a strength meter that fills as the idea is t
 }) => {
   await signUp(page, 'brief.room@example.com');
   await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
   const fill = page.locator('.brief-side .meter i');
   const before = (await fill.boundingBox())!.width;
   await page.locator('#f-idea').fill('How Eratosthenes measured the Earth.');

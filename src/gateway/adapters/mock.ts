@@ -117,6 +117,11 @@ export function mockRespond(req: GatewayRequest): string {
   switch (req.system) {
     case 'studio:write':
       return `${input}\n\n${input.split(/\s+/).slice(0, 12).join(' ')}: a short draft written by the test model.`;
+    // ROUND-A: Studio's Enhance prompt and Generate prompt.
+    case 'studio:enhance':
+      return `${input}, detailed, soft cinematic light, sharp focus, rich colour`;
+    case 'studio:generate-prompt':
+      return `A smooth camera move from the first frame to the last (${input}), natural motion, steady light`;
     case 'studio:youtube-pack':
       return `Title: ${input.split('\n')[0]}\nDescription: ${input}\nTags: video, explainer, learning`;
     default:

@@ -128,7 +128,7 @@ async function say(page: Page, text: string) {
 }
 async function brief(page: Page) {
   await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
   await page
     .locator('#f-idea')
     .fill('How Eratosthenes measured the circumference of the Earth.');

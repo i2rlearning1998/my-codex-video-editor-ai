@@ -115,10 +115,9 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
     'A reload cancels a background gateway request that is still in flight.',
   );
   // Projects: the first is made, the second is stopped.
-  await page.goto('/panel/#/projects');
-  await page.locator('#new-blank').click();
-  await page.locator('#start-name').fill('First');
-  await page.locator('[data-start="editor"]').click();
+  await page.goto('/panel/#/projects?new=1');
+  await page.locator('#np-name').fill('First');
+  await page.locator('[data-option="editor"]').click();
   await expect(page).toHaveURL(/\/\?|\/$/);
   await expect
     .poll(() =>
@@ -129,9 +128,11 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
     .toBe(true);
   await page.goto('/panel/#/projects');
   await expect(
-    page.locator('#project-list [data-project]').first(),
+    page.locator('#project-list [data-ws-project]').first(),
   ).toBeVisible();
-  await page.locator('#new-blank').click();
+  await page.locator('#new-project').click();
+  await page.locator('#np-name').fill('Second');
+  await page.locator('[data-option="editor"]').click();
   await expect(page.locator('#project-limit')).toContainText(
     'Your plan allows 1 projects.',
   );
@@ -160,10 +161,9 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
   // Upgrade: the second project is allowed.
   await setServerPlan(stack, email, 'creator');
   await page.reload();
-  await page.goto('/panel/#/projects');
-  await page.locator('#new-blank').click();
-  await page.locator('#start-name').fill('Second');
-  await page.locator('[data-start="editor"]').click();
+  await page.goto('/panel/#/projects?new=1');
+  await page.locator('#np-name').fill('Second');
+  await page.locator('[data-option="editor"]').click();
   await expect(page).not.toHaveURL(/\/panel\//);
   // And the voice result's storage is allowed now.
   await page.goto('/panel/#/studio/voice');

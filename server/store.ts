@@ -26,6 +26,7 @@ import {
 } from './payments/records';
 import type { ConfigVersion } from '../src/platform-config';
 import type { LedgerEntry, UsageRow } from '../src/gateway';
+import { emptyRegistry, type Registry } from './workspace-registry';
 
 export interface Profile {
   readonly id: string;
@@ -64,6 +65,9 @@ export interface Store extends P3Store {
   liveConfigVersion(): Promise<number>;
   saveConfigVersion(v: ConfigVersion): Promise<void>;
   setLiveConfig(version: number): Promise<void>;
+  /** ROUND-A: the person's Projects and Videos (ids and Trash only), for the plan's limits. */
+  workspaceRegistry(userId: string): Promise<Registry>;
+  saveWorkspaceRegistry(userId: string, r: Registry): Promise<void>;
   /** P4 security: what a person really stores, counted by the database (not the browser). */
   measureUsage?(
     userId: string,
@@ -83,6 +87,7 @@ interface Data {
   usage: UsageRow[];
   exports: Record<string, { month: string; kind: string }[]>;
   counters: Record<string, Partial<Record<CounterName, number>>>;
+  workspaces?: Record<string, Registry>;
   configs: ConfigVersion[];
   live: number;
 }
@@ -325,6 +330,13 @@ class JsonStore implements Store {
     (this.data.exports[u] ??= []).push({ month, kind });
     this.save();
     return this.exportsCount(u, month);
+  }
+  async workspaceRegistry(u: string) {
+    return structuredClone(this.data.workspaces?.[u] ?? emptyRegistry());
+  }
+  async saveWorkspaceRegistry(u: string, r: Registry) {
+    (this.data.workspaces ??= {})[u] = structuredClone(r);
+    this.save();
   }
   async counter(u: string, name: CounterName) {
     return this.data.counters[u]?.[name] ?? 0;

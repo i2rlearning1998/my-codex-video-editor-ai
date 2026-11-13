@@ -1378,7 +1378,9 @@ export function mountLibraryPanels(
     // shows, and the panels say why.
     const client = libraryClient().status;
     status =
-      client.source === 'fallback'
+      // ROUND-A A0.2: no catalog set up but the baseline pack loaded: no
+      // problem to report (problem is null then).
+      client.source === 'fallback' && client.problem
         ? {
             kind: 'error',
             keep: true,

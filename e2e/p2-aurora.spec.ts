@@ -59,7 +59,7 @@ async function auroraScreens(page: Page, width: number) {
   await page.goto('/panel/#/styles');
   await expect(page.locator('#style-grid .style-card svg.art')).toHaveCount(3);
   await shot(page, 'panel-styles');
-  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
   await expect(page.locator('details.field-group')).toHaveCount(3);
   await page
     .locator('#f-idea')
@@ -114,7 +114,7 @@ async function auroraScreens(page: Page, width: number) {
   await expect(
     page.locator('.tool-tabs:not(.sub-tabs) .tool-tab[aria-current="page"]'),
   ).toHaveText('Voice');
-  await expect(page.locator('.choice svg.wave').first()).toBeVisible();
+  await expect(page.locator('.sf-voices svg.wave').first()).toBeVisible();
   await shot(page, 'panel-studio-voice');
   // Keyboard focus shows a ring.
   await page.keyboard.press('Tab');

@@ -40,6 +40,8 @@ export const planSchema = z.object({
       storageMb: z.number().int().min(0).default(2048),
       voiceClones: z.number().int().min(0).default(0),
       projects: z.number().int().min(0).nullable().default(null),
+      /** ROUND-A: Videos one Project may hold (null: no cap). */
+      videosPerProject: z.number().int().min(0).nullable().default(null),
       /** Gateway calls a person may make per minute. */
       callsPerMinute: z.number().int().min(1).default(30),
       /** Credits a person may spend in one day (null: no cap). */
@@ -107,6 +109,53 @@ export const fieldSchema = z.object({
 });
 export type BriefField = z.infer<typeof fieldSchema>;
 
+/**
+ * ROUND-A A4: a Studio field. The Brief's field plus how it is drawn and
+ * checked: chips, picture cards, a two-way toggle or a list; character and
+ * file limits; a swap button between two uploads; story ideas per category;
+ * an Enhance or Generate button under a prompt; fields only some models
+ * accept; options a plan must unlock. Every value is the owner's.
+ */
+export const STUDIO_FIELD_TYPES = [...FIELD_TYPES, 'ideas', 'info'] as const;
+export const studioFieldSchema = fieldSchema.extend({
+  type: z.enum(STUDIO_FIELD_TYPES),
+  options: z
+    .array(
+      z.object({
+        value: z.string(),
+        label: textSchema,
+        /** Plan features that unlock this option ([] = every plan). */
+        requires: z.array(id).optional(),
+        /** A picture for a card option: a URL, or a seed the panel draws from. */
+        art: z.string().max(300).optional(),
+        /** A sample to play (a voice), an https or same-site URL. */
+        preview: z.string().max(300).optional(),
+      }),
+    )
+    .default([]),
+  display: z.enum(['chips', 'cards', 'toggle', 'select', 'radio']).optional(),
+  /** Characters a text may have. */
+  maxLength: z.number().int().min(1).max(20000).optional(),
+  /** Files: the types (MIME) accepted and the largest size in bytes. */
+  accept: z.array(z.string().max(60)).max(12).optional(),
+  maxBytes: z.number().int().min(1).optional(),
+  /** Another file field this one swaps with (Video: first and last frame). */
+  swapWith: id.optional(),
+  /** Only these models accept the field ([] or none: every model). */
+  onlyModels: z.array(id).optional(),
+  /** A button under a prompt: improve it, or write one from the frames. */
+  action: z.enum(['enhance', 'generate']).optional(),
+  /** `ideas`: the field whose value picks the list, and the field it fills. */
+  ideasFor: id.optional(),
+  fills: id.optional(),
+  ideas: z.record(z.string(), z.array(textSchema)).optional(),
+  /** `ideas`: how many show before "View more". */
+  ideasShown: z.number().int().min(1).max(50).optional(),
+  /** `info`: lines (tips, how it works). */
+  lines: z.array(textSchema).optional(),
+});
+export type StudioField = z.infer<typeof studioFieldSchema>;
+
 /** P2-05: the roles a model can serve (Director, interview, Studio tools). */
 export const roleId = z
   .string()
@@ -129,8 +178,21 @@ export const studioSchema = z.object({
   familyName: textSchema.optional(),
   /** What it makes: drives the result view and the Asset Library kind. */
   output: z.enum(STUDIO_OUTPUTS).default('text'),
-  /** The form the person fills (same field types as the Brief). */
-  inputs: z.array(fieldSchema).default([]),
+  /** The form the person fills (the Brief's field types plus ROUND-A's). */
+  inputs: z.array(studioFieldSchema).default([]),
+  /** ROUND-A: collapsible sections of the form (a field's `group`), e.g. Advanced. */
+  groups: z
+    .array(
+      z.object({ id, label: textSchema, open: z.boolean().default(false) }),
+    )
+    .default([]),
+  /**
+   * ROUND-A: shown only when the owner assigned a model to this tool's role
+   * (Platform Config `assignments`), e.g. Image › Upscale.
+   */
+  needsAssignment: z.boolean().default(false),
+  /** ROUND-A: the heading of this tool's history (My generations, Cloned voices…). */
+  historyLabel: textSchema.optional(),
   /** A tick the person must give before it runs (a voice clone's consent). */
   consent: textSchema.optional(),
   /** Ask for the consent only when an input has one of these values. */
@@ -296,6 +358,26 @@ export const styleSchema = z.object({
     followUps: z.array(z.object({ id, ask: textSchema })).default([]),
   }),
   order: z.number().default(0),
+  /**
+   * ROUND-A: the style record a Project gets when it starts from this
+   * ready-made Style (every field optional; the blurb and the playbook text
+   * fill graphics notes and script rules when these are empty).
+   */
+  projectStyle: z
+    .object({
+      palette: z
+        .array(z.string().regex(/^#[0-9a-fA-F]{6}$/))
+        .max(8)
+        .default([]),
+      headingFont: z.string().max(60).default(''),
+      bodyFont: z.string().max(60).default(''),
+      captionStyle: z.string().max(60).default(''),
+      graphics: textSchema.optional(),
+      voice: textSchema.optional(),
+      music: textSchema.optional(),
+      scriptRules: textSchema.optional(),
+    })
+    .optional(),
 });
 export type Style = z.infer<typeof styleSchema>;
 
@@ -520,6 +602,14 @@ export const styleCapSchema = z.object({
   maxChatsPerProject: z.number().int().min(0).nullable().default(null),
 });
 export type StyleCap = z.infer<typeof styleCapSchema>;
+/** ROUND-A: the ways a New project can start. */
+export const NEW_PROJECT_OPTIONS = [
+  'style',
+  'director',
+  'editor',
+  'claude',
+] as const;
+export type NewProjectOption = (typeof NEW_PROJECT_OPTIONS)[number];
 /** P4: how projects, Styles and the Trash behave. Every value is the owner's. */
 export const workspaceSchema = z.object({
   /** Days a deleted project or asset waits in the Trash before it is gone. */
@@ -532,12 +622,26 @@ export const workspaceSchema = z.object({
       credits: z.number().int().min(0).default(0),
     })
     .default({}),
-  /** Start options a plan may use; a plan without an entry has both. */
+  /**
+   * P4 start options a plan may use (the Owner App edits these). ROUND-A
+   * reads them as limits on the New project options: without "director"
+   * a plan has neither Director nor a ready-made Style (both start in
+   * Director until Round B); without "blank" it has no "Start with editor".
+   */
   startOptions: z
     .record(id, z.array(z.enum(['director', 'blank'])))
     .default({}),
-  /** Projects one Style may hold, by plan (a plan without an entry: no cap). */
+  /** P4: Projects one Style held; ROUND-A reads it as Videos per Project when a plan sets no `videosPerProject`. */
   maxProjectsPerStyle: z.record(id, z.number().int().min(0)).default({}),
+  /**
+   * ROUND-A: the New project options a plan offers, in order (a plan
+   * without an entry: ready-made Style, Director, Start with editor).
+   */
+  newProjectOptions: z
+    .record(id, z.array(z.enum(NEW_PROJECT_OPTIONS)))
+    .default({}),
+  /** ROUND-A: "Your own Claude" (the connector is Round C). Off: never shown. */
+  claudeConnector: z.boolean().default(false),
   /** Whether the Style chat (talking to a Style's Director) is on. */
   styleChat: z.boolean().default(true),
 });
@@ -567,6 +671,10 @@ export const platformConfigSchema = z
         storage: textSchema.optional(),
         voiceClones: textSchema.optional(),
         projects: textSchema.optional(),
+        /** ROUND-A: one more Video than a Project may hold ({n}). */
+        videos: textSchema.optional(),
+        /** ROUND-A: the server could not be reached for a limit check. */
+        offline: textSchema.optional(),
       })
       .default({}),
     providers: z.array(providerSchema),
@@ -638,7 +746,7 @@ export const platformConfigSchema = z
     const roleModels = (role: string) =>
       c.models.filter((m) => m.roles.includes(role as never));
     for (const s of c.studios)
-      if (s.enabled && roleModels(s.role).length === 0)
+      if (s.enabled && !s.needsAssignment && roleModels(s.role).length === 0)
         ctx.addIssue({
           code: 'custom',
           message: `studio ${s.id}: no model serves role ${s.role}`,

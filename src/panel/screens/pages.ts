@@ -16,25 +16,25 @@ import { t, type Key } from '../strings';
 import { planLines } from '../plan-lines';
 import { card, empty, when } from './common';
 import {
-  newProject,
-  newStyleForm,
-  styleCards,
+  NEW_PROJECT_ROUTE,
+  openVideo,
+  startProject,
   syncWorkspace,
-  tag,
+  videoHref,
 } from './workspace';
 import { posterArt } from '../art';
 import { icon, studioIcon } from '../icons';
 import { reel } from '../motion';
 import { directorRoomScreen } from './director-room';
-import { mineList } from './my-styles';
 
+/**
+ * ROUND-A: a ready-made Style. Choosing it makes a new Project (its style
+ * from this Style) with its first Video, and Director starts on that Video.
+ */
 const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
   const plan = ctx.s.planOf(ctx.user.id);
-  // P4: asked for from inside a project, the Style is used in that project.
-  const project = new URLSearchParams(location.hash.split('?')[1] ?? '').get(
-    'project',
-  );
   const ok = canUse(plan, s.requires);
+  const notes = h('div', { class: 'ws-notices' });
   const hint = s.priceHint;
   return h(
     'article',
@@ -66,10 +66,23 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
           : null,
         ok
           ? h(
-              'a',
+              'button',
               {
+                type: 'button',
                 class: 'button primary sm',
-                href: `#/brief/${s.id}${project ? `?project=${encodeURIComponent(project)}` : ''}`,
+                'data-use-style': s.id,
+                onclick: async (e: Event) => {
+                  const b = e.currentTarget as HTMLButtonElement;
+                  b.disabled = true;
+                  const made = await startProject(ctx, 'style', {
+                    template: s,
+                    host: notes,
+                  });
+                  b.disabled = false;
+                  if (!made) return;
+                  const v = ctx.s.ws(ctx.user.id).video(made.videoId);
+                  if (v) openVideo(ctx, v);
+                },
               },
               t('styles.use'),
             )
@@ -79,6 +92,7 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
               icon('lock', 14),
               ` ${t('common.upgrade')}`,
             ),
+        notes,
       ),
     ),
   );
@@ -87,27 +101,15 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
 export const homeScreen: Screen = async (ctx, _a, out) => {
   const c = ctx.s.config;
   const plan = ctx.s.planOf(ctx.user.id);
-  let projects: {
-    id: string;
-    name: string;
-    thumb: string;
-    origin: 'ai' | 'manual';
-    waiting: boolean;
-  }[] = [];
+  // ROUND-A: Continue lists Videos Director has not finished, newest first.
+  let thumbs = new Map<string, { thumb: string }>();
   try {
-    projects = (await syncWorkspace(ctx))
-      .filter((j) => !j.meta.trashedAt)
-      .slice(0, 4)
-      .map((j) => ({
-        id: j.summary.id,
-        name: j.summary.name,
-        thumb: j.summary.thumb,
-        origin: j.meta.origin,
-        waiting: !!j.meta.pause,
-      }));
+    thumbs = await syncWorkspace(ctx);
   } catch {
-    projects = [];
+    thumbs = new Map();
   }
+  const ws = ctx.s.ws(ctx.user.id);
+  const unfinished = ws.unfinished().slice(0, 6);
 
   // The Styles reel: every Style as a poster you can drag.
   const view = h('div', {
@@ -207,7 +209,7 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
       h(
         'div',
         { class: 'section-head' },
-        h('h2', { text: t('home.continue') }),
+        h('h2', { text: t('rda.continue') }),
         h('a', {
           class: 'button sm',
           href: '#/projects',
@@ -216,52 +218,62 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
       ),
       h(
         'div',
-        { class: 'films' },
-        ...projects.map((p) =>
+        { class: 'films', id: 'home-continue' },
+        ...unfinished.map((v) =>
           h(
             'article',
-            { class: 'film glow reveal', 'data-project': p.id },
+            {
+              class: 'film glow reveal',
+              'data-video': v.id,
+              'data-stage': v.stage,
+            },
             h(
               'div',
               { class: 'ws-thumb' },
-              p.thumb
-                ? h('img', { src: p.thumb, alt: '', class: 'thumb' })
+              thumbs.get(v.id)?.thumb
+                ? h('img', {
+                    src: thumbs.get(v.id)!.thumb,
+                    alt: '',
+                    class: 'thumb',
+                  })
                 : h('div', { class: 'thumb' }),
-              tag(p.origin),
+              h('span', {
+                class: `rda-stage stage-${v.stage}`,
+                text: t(`rda.stage.${v.stage}` as Key),
+              }),
             ),
             h(
               'div',
               { class: 'film-body' },
-              h('h3', { text: p.name }),
+              h('p', {
+                class: 'eyebrow',
+                text: ws.project(v.projectId)?.name ?? '',
+              }),
+              h('h3', { text: v.name }),
               h(
                 'a',
                 {
                   class: 'button sm',
-                  href: p.waiting
-                    ? `#/assets-step/${encodeURIComponent(p.id)}`
-                    : `/?open=${encodeURIComponent(p.id)}`,
+                  href: videoHref(ctx, v),
+                  'data-act': 'continue',
                 },
-                p.waiting ? t('ws.waiting') : t('common.open'),
+                t('rda.continue'),
               ),
             ),
           ),
         ),
         h(
-          'button',
+          'a',
           {
-            type: 'button',
             class: 'film new glow reveal',
             id: 'home-new-film',
-            onclick: async () => {
-              const id = await newProject(ctx, 'director');
-              if (id) ctx.go(`room/${id}`);
-            },
+            href: `#/${NEW_PROJECT_ROUTE}`,
           },
           h('span', { class: 'plus' }, icon('plus', 24)),
-          h('span', { text: t('home.newFilm') }),
+          h('span', { text: t('rda.newProject') }),
         ),
       ),
-      projects.length ? null : empty(t('home.noProjects')),
+      unfinished.length ? null : empty(t('rda.continueEmpty')),
     ),
     tools.length
       ? h(
@@ -378,10 +390,6 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
 };
 
 export const stylesScreen: Screen = async (ctx, _a, out) => {
-  const mineGrid = h('div', { class: 'grid', id: 'mine-strip' });
-  const wsGrid = h('div', { class: 'grid', id: 'ws-styles' });
-  const wsHost = h('div', { class: 'ws-notices' });
-  const paintWs = () => styleCards(ctx, wsGrid, wsHost);
   const c = ctx.s.config;
   const plan = ctx.s.planOf(ctx.user.id);
   let q = '';
@@ -425,7 +433,8 @@ export const stylesScreen: Screen = async (ctx, _a, out) => {
     );
   put(
     out,
-    h('h1', { text: t('styles.title') }),
+    h('h1', { text: t('rda.readyStyles') }),
+    h('p', { class: 'muted', text: t('rda.stylesSub') }),
     h(
       'div',
       { class: 'filters' },
@@ -456,38 +465,8 @@ export const stylesScreen: Screen = async (ctx, _a, out) => {
       ),
     ),
     grid,
-    h(
-      'section',
-      { class: 'ws-styles-section', id: 'ws-styles-section' },
-      h(
-        'div',
-        { class: 'mine-section-head' },
-        h('h2', { text: t('ws.styles') }),
-      ),
-      h('p', { class: 'muted', text: t('ws.newStyleHelp') }),
-      newStyleForm(ctx, paintWs),
-      wsHost,
-      wsGrid,
-    ),
-    h(
-      'section',
-      { class: 'mine-section', id: 'mine-section' },
-      h(
-        'div',
-        { class: 'mine-section-head' },
-        h('h2', { text: t('mine.section') }),
-        h(
-          'a',
-          { class: 'button sm', href: '#/my-styles', id: 'mine-manage' },
-          t('mine.seeAll'),
-        ),
-      ),
-      mineGrid,
-    ),
   );
   paint();
-  paintWs();
-  await mineList(ctx, mineGrid);
 };
 
 const meter = (used: number, max: number | null) =>

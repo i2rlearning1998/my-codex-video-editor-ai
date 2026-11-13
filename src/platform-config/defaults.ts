@@ -1,5 +1,6 @@
 // Built-in default config: sample values only. The owner replaces every one of
 // them from Admin. It is also the last fallback when no saved config can be read.
+import { withRoundAStudios } from './studio-defaults';
 import {
   CHAT_PROMPT,
   EDIT_PROMPT,
@@ -118,6 +119,7 @@ function rawDefault(): PlatformConfigInput {
           'studio-thumbnail',
           'studio-youtube-pack',
           'studio-video',
+          'video-1080',
           'voice-clone',
           'brand-kit',
           'model-best',
@@ -178,6 +180,8 @@ function rawDefault(): PlatformConfigInput {
       cost('sfx', L('Sound effect'), 'each', 3, 3, ['studio-audio']),
       cost('music', L('Music'), 'minute', 8, 8, ['studio-audio']),
       cost('captions', L('Captions'), 'minute', 2, 2),
+      // ROUND-A: "Enhance prompt" and "Generate prompt" in Studio forms.
+      cost('prompt-help', L('Prompt help'), 'each', 0, 1),
       cost('thumbnail', L('Thumbnail'), 'each', 8, 8, ['studio-thumbnail']),
       cost('youtube-pack', L('YouTube pack'), 'each', 6, 6, [
         'studio-youtube-pack',
@@ -201,6 +205,15 @@ function rawDefault(): PlatformConfigInput {
       projects: L(
         'Your plan allows {n} projects. Upgrade for more, or delete one you no longer need.',
         'आपके प्लान में {n} प्रोजेक्ट हैं। और के लिए अपग्रेड करें, या कोई पुराना हटाएँ।',
+      ),
+      // ROUND-A: videos in one project, and an unreachable server.
+      videos: L(
+        'Your plan allows {n} videos in one project. Upgrade for more, or start a new project.',
+        'आपके प्लान में एक प्रोजेक्ट में {n} वीडियो हैं। और के लिए अपग्रेड करें, या नया प्रोजेक्ट शुरू करें।',
+      ),
+      offline: L(
+        'The server could not be reached to check your plan. Nothing was created; try again.',
+        'प्लान जाँचने के लिए सर्वर तक नहीं पहुँच सके। कुछ नहीं बना; फिर से कोशिश करें।',
       ),
     },
     providers: [
@@ -484,7 +497,8 @@ function rawDefault(): PlatformConfigInput {
         order: 4,
       },
     ],
-    studios: [
+    // ROUND-A A4: the Autodraft forms first; the older tools stay, switched off.
+    studios: withRoundAStudios([
       studio(
         'write',
         L('Write', 'लिखें'),
@@ -758,7 +772,7 @@ function rawDefault(): PlatformConfigInput {
         ],
         { textField: 'summary' },
       ),
-    ],
+    ]),
     styles: [
       {
         id: 'story-explainer',
@@ -1600,7 +1614,8 @@ const VOICE_PARAMS: In['models'][number]['params'] = [
     default: 1,
   },
 ];
-type FieldIn = NonNullable<In['studios'][number]['inputs']>[number];
+type FieldIn = In['styles'][number]['brief']['fields'][number];
+type StudioFieldIn = NonNullable<In['studios'][number]['inputs']>[number];
 function opt(value: string, label: LT) {
   return { value, label };
 }
@@ -1632,7 +1647,7 @@ function studio(
   costId: string,
   requires: string[],
   order: number,
-  inputs: FieldIn[],
+  inputs: StudioFieldIn[],
   workload: { textField?: string; countField?: string; units?: number },
   extra: Partial<In['studios'][number]> = {},
 ): In['studios'][number] {
