@@ -1,5 +1,14 @@
 # Changelog
 
+## Round A: the panel rebuilt around Project and Video (13 Nov)
+
+- A Project is a container and one style; a Video is one editor project inside it. P4 data is migrated once, idempotently, with nothing lost (D-412).
+- Limits on projects and videos per project are decided by the server when a gateway is used; plan options, the Claude flag and the owner's sentences are config (D-413).
+- New Projects page, New project dialog (Ready-made Style, Director, Start with editor), Project page (Videos, Style, Assets, Memory), Video cards, Trash with Restore; Styles is the ready-made gallery only; My Styles, Save to your styles and the Start screen are removed (D-414).
+- Asset Library by Project and Video with search, a type filter and Studio Libraries per tool; the editor's import dialogs list Project, then Video; Import from your Library brings Studio results into the editor (D-415).
+- Studio forms follow the owner's Autodraft field lists from config (Image, Video, Story, SEO, Voice with four tabs, Captions), drawn by one reusable form (D-416).
+- The editor shows sound effects, text styles and themes with no catalog set up (a baseline pack, D-411). Schema 9 unchanged; no new npm dependencies.
+
 ## P4: project-first flow, cloud sync, Admin app, security, Studio (7 Nov)
 
 - Create with Director or Blank makes a project at once; Styles, Projects and the Asset Library (Style, Project, three libraries, Studio Libraries); Director pause and resume (D-404).

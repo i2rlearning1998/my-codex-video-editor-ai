@@ -1376,9 +1376,9 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P3U-009 | P0 | W10 | Verified | Improve with Director fills better text, can be undone, and Pro shows a number field clamped to its maximum |
 | P3U-010 | P0 | W10 | Verified | The form fits a phone: no sideways scroll, and tapping targets are at least 32 px |
 | P3U-011 | P0 | W10 | Verified | Project memory: the person adds, pins and forgets what Director remembers, and sees the chats |
-| P3U-012 | P0 | W10 | Verified | Make this my Style makes a draft that is reviewed, edited and accepted before it is used |
-| P3U-013 | P0 | W10 | Verified | My Styles says so when empty, and an unknown Style says it was not found |
-| P3U-014 | P0 | W10 | Verified | The memory page and the Style review fit a phone |
+| P3U-012 | P0 | W10 | Dropped | Make this my Style makes a draft that is reviewed, edited and accepted before it is used |
+| P3U-013 | P0 | W10 | Dropped | My Styles says so when empty, and an unknown Style says it was not found |
+| P3U-014 | P0 | W10 | Verified | The memory page fits a phone (Round A: the Style review is removed, D-414) |
 | P3U-015 | P0 | W10 | Verified | Credits & Plan shows the balance hero, what each plan includes, usage meters and a checkout with a payment choice |
 | P3U-016 | P0 | W10 | Verified | Credits & Plan fits a phone |
 | P3U-017 | P0 | W10 | Verified | The admin page needs a sign-in and refuses wrong details |
@@ -1475,17 +1475,17 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P3W-035 | P0 | W10 | Verified | An invalid proposal is repaired once with the exact errors, then reported as one plain failure |
 | P3W-036 | P0 | W10 | Verified | Discarding leaves the project byte-identical; an unknown selection or a blocked plan makes no call |
 | P3W-037 | P0 | W10 | Verified | RemoteAsk charges each call on the server like any call |
-| P4F-001 | P0 | W10 | Verified | Everything starts as a Project: "Create with Director" (Projects page, Home chat) and "Create with Blank project" make a project card at once |
-| P4F-002 | P0 | W10 | Verified | A blank project shows two cards, Create with Director and Open Editor; Open Editor opens that same project id |
-| P4F-003 | P0 | W10 | Verified | Project cards carry an AI or Manual tag; a Manual project becomes AI once Director is used |
-| P4F-004 | P0 | W10 | Verified | "Save to your styles" (project menu, Director end) makes a Style card; the project moves inside it and leaves the plain Project cards |
-| P4F-005 | P1 | W10 | Verified | Style creation follows the plan's rules (allowed, credits, Style cap, projects per Style) from Platform Config |
-| P4F-006 | P0 | W10 | Verified | The Asset Library shows Style, then Project, then three libraries: AI, My Templates, Media |
+| P4F-001 | P0 | W10 | Dropped | Everything starts as a Project: "Create with Director" (Projects page, Home chat) and "Create with Blank project" make a project card at once |
+| P4F-002 | P0 | W10 | Dropped | A blank project shows two cards, Create with Director and Open Editor; Open Editor opens that same project id |
+| P4F-003 | P0 | W10 | Dropped | Project cards carry an AI or Manual tag; a Manual project becomes AI once Director is used |
+| P4F-004 | P0 | W10 | Dropped | "Save to your styles" (project menu, Director end) makes a Style card; the project moves inside it and leaves the plain Project cards |
+| P4F-005 | P1 | W10 | Dropped | Style creation follows the plan's rules (allowed, credits, Style cap, projects per Style) from Platform Config |
+| P4F-006 | P0 | W10 | Dropped | The Asset Library shows Style, then Project, then three libraries: AI, My Templates, Media |
 | P4F-007 | P0 | W10 | Verified | Library root cards are in creation order; the first Studio result makes one Studio Libraries card |
 | P4F-008 | P0 | W10 | Verified | A deleted project or asset waits in the Trash (days from config) and can be restored |
 | P4F-009 | P0 | W10 | Verified | Director waits at the asset step: each file listed by exact name with AI / I will upload / Give me prompts; choices and added files survive a reload |
 | P4F-010 | P0 | W10 | Verified | "Continue without assets" builds with blank slots; the editor lists every expected asset name |
-| P4F-011 | P1 | W10 | Verified | After a Director build "Save to your styles?" makes a Style card with the project inside |
+| P4F-011 | P1 | W10 | Dropped | After a Director build "Save to your styles?" makes a Style card with the project inside |
 | P4C-001 | P0 | W10 | Verified | The cloud backend keeps library items (AI compositions, My Templates) and a usage count per person; another person sees none of them |
 | P4C-002 | P0 | W10 | Verified | The editor's Cloud switch sends the project and My Templates to the person's cloud (not a size note), and a later template follows |
 | P4C-003 | P0 | W10 | Verified | When the plan has no cloud space left, Save to cloud sends nothing, says so in one sentence and the editor stays open |
@@ -1508,20 +1508,39 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4S-002 | P0 | W10 | Verified | Forged, tampered, expired, wrong-secret, "alg none" and anonymous tokens are refused; a person cannot make themselves admin with their own claims |
 | P4S-003 | P0 | W10 | Verified | A body naming another person changes nothing of theirs; another person's job is not found |
 | P4S-004 | P0 | W10 | Verified | Negative, fractional, huge, text, null, array, object and 1e999 numbers, oversized, non-JSON and array bodies, and `__proto__` bodies are refused or have no effect |
-| P4S-005 | P0 | W10 | Verified | "Save to your styles" is charged by the server at the owner's price (the browser's amount is ignored), once per key, and refused when credits run short |
+| P4S-005 | P0 | W10 | Dropped | "Save to your styles" is charged by the server at the owner's price (the browser's amount is ignored), once per key, and refused when credits run short |
 | P4S-006 | P0 | W10 | Verified | The public settings hide a provider's address and key name; only the owner sees them |
 | P4S-007 | P0 | W10 | Verified | The offline test payment (plan switch, top-up) is refused on a live (Supabase) server |
 | P4S-008 | P0 | W10 | Verified | Too many requests, or too many failed sign-ins, from one address get 429; a site that is not allowed gets 403 and no CORS header; every answer has the security headers |
 | P4S-009 | P0 | W10 | Verified | A payment message with no valid signature is refused and no credit appears |
 | P4S-010 | P0 | W10 | Claimed | The database refuses a save that passes the plan's cloud space, and the gateway counts storage from the database (SQL migration written; not run against a real Supabase) |
 | P4U-001 | P0 | W10 | Verified | The Studio lists Story and SEO next to the other tools, with their cost and plan lock |
-| P4U-002 | P0 | W10 | Verified | Voice is one Studio card with four tabs: speech, voice changer, sound effects and music |
+| P4U-002 | P0 | W10 | Dropped | Voice is one Studio card with four tabs: speech, voice changer, sound effects and music |
 | P4U-003 | P0 | W10 | Verified | Story runs on the mock model, shows its cost first and charges credits |
 | P4U-004 | P0 | W10 | Verified | A Studio result is saved to the Asset Library (Studio Libraries card) and the tool lists what it made |
-| P4U-005 | P1 | W10 | Verified | SEO asks what to make, with Titles, Description, Tags and Hashtags as choices (sample fields until the owner's Autodraft screenshots arrive) |
+| P4U-005 | P1 | W10 | Verified | SEO asks what to make, with Titles, Description, Tags and Hashtags as choices (Round A: the Autodraft fields, RDA-019) |
 
 ## RDA: Round A (panel rebuilt around Project = container, Video inside; briefs/ROUND-A.md)
 
 | ID | Priority | Wave | Status | Requirement |
 | --- | --- | --- | --- | --- |
 | RDA-001 | P0 | W10 | Verified | A production build with no catalog still lists the 12 sound effects, the Text panel's styles and font combinations, and the 8 themes (a baseline pack shipped next to the editor); a reachable catalog adds to it or overrides it by id |
+| RDA-002 | P0 | W10 | Verified | The server decides the project and video limits when a gateway is set (its own record of Projects and Videos); the browser's numbers never lower them, a Restore past the plan is refused |
+| RDA-003 | P0 | W10 | Verified | Data from before Round A is migrated once and idempotently: a user Style becomes a Project with its projects as Videos, a lone or Manual project a Project with one Video; assets, Trash and Director pauses follow their Video; the old document is kept |
+| RDA-004 | P0 | W10 | Verified | Deleting a Video deletes only that Video; deleting a Project sends it and all its Videos to the Trash (days from config); Restore brings them back |
+| RDA-005 | P0 | W10 | Verified | A Project's style record (look, graphics, voice, music, script rules, examples) comes from a ready-made Style, else from the first built Video's plan, and is editable; a change for one Video stays in it until "Update project style from this video" |
+| RDA-006 | P0 | W10 | Verified | New project offers the plan's start options from config: Ready-made Style (gallery in the dialog), Director, Start with editor; Your own Claude only when its config flag is on (off by default) |
+| RDA-007 | P0 | W10 | Verified | Projects page: a card per Project with a cover from its newest Video, name, video count and origin tag (Style name, Director, Manual, Claude), + New project and Trash |
+| RDA-008 | P0 | W10 | Verified | Project page: name, one-line style summary, + New video (in this style or empty editor), Videos as a numbered series with their state, and the Videos, Style, Assets and Memory tabs |
+| RDA-009 | P0 | W10 | Verified | Video card: thumbnail, name, state and a menu with Open, Open in editor, Rename (long and Hindi names), Duplicate, Delete and Exports; deleting the last Video keeps the Project with an empty state |
+| RDA-010 | P0 | W10 | Verified | Trash lists Projects and Videos with Restore and Delete forever; the link of a trashed Project or Video says it is in the Trash |
+| RDA-011 | P0 | W10 | Verified | The Styles page is the gallery of ready-made Styles only; choosing one makes a Project with its first Video and starts Director on it; no Save to your styles, My Styles or Style review remains |
+| RDA-012 | P0 | W10 | Verified | Home: the Director box with the Orb, a row of ready-made Styles and Continue with unfinished Videos, newest first |
+| RDA-013 | P0 | W10 | Verified | Reaching the projects or videos-per-project limit shows the owner's sentence with Upgrade and creates nothing |
+| RDA-014 | P0 | W10 | Verified | A reload in the middle of New project keeps the dialog and the typed name; browser Back closes the dialog and steps back through the pages; nothing half-made is left |
+| RDA-015 | P0 | W10 | Verified | Two tabs on the same Project: a Video made in one shows in the other when it is opened again |
+| RDA-016 | P0 | W10 | Verified | Migration in the browser: a P4 workspace is shown as Projects and Videos on first open, the old text is kept, and opening again changes nothing |
+| RDA-017 | P0 | W10 | Verified | Asset Library: Project cards and one Studio Libraries card in creation order, search and a type filter; Project, its Video cards, three libraries per Video; one card per Studio tool; Trash with Restore; regenerating keeps the old result |
+| RDA-018 | P0 | W10 | Verified | Editor import dialogs group items as Project, then Video; Media's Import menu has Import from your Library, which copies Studio results and Director files into the open Video's Media; the same item twice is one media item |
+| RDA-019 | P0 | W10 | Verified | Studio forms follow the Autodraft field lists from config: Image (aspect, model, style cards, prompt with reference and Enhance, count, Advanced; Upscale and Remove Background only when assigned), Story, Video (frames with swap, Generate prompt, plan-gated 1080p), Voice (four tabs, no Music), SEO, Captions; cost before Run, errors under the field, history per tool |
+| RDA-020 | P0 | W10 | Verified | With a gateway, a server that cannot be reached never lets a new Project through; the refusal is one sentence and the typed name stays |

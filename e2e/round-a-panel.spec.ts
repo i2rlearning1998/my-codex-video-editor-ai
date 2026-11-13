@@ -133,7 +133,7 @@ test('[RDA-007] [RDA-008] the Projects page shows a card per Project with its vi
   ).toHaveAttribute('aria-pressed', 'true');
 });
 
-test('[RDA-008] the Style tab edits the project style; a change for one Video stays in it until "Update project style from this video"', async ({
+test('[RDA-008] [RDA-005] the Style tab edits the project style; a change for one Video stays in it until "Update project style from this video"', async ({
   page,
 }) => {
   await signUp(page);
@@ -213,7 +213,7 @@ test('[RDA-009] the Video card menu renames (long and Hindi names), duplicates, 
   await expect(videos(page)).toHaveCount(1);
 });
 
-test('[RDA-010] deleting a Project sends it and its Videos to the Trash and Restore brings everything back; a trashed Project or Video link says so', async ({
+test('[RDA-010] [RDA-004] deleting a Project sends it and its Videos to the Trash and Restore brings everything back; a trashed Project or Video link says so', async ({
   page,
 }) => {
   await signUp(page);
@@ -366,7 +366,7 @@ test('[RDA-015] two tabs on the same Project: a Video made in one shows in the o
   await other.close();
 });
 
-test('[RDA-016] data from before Round A is migrated once on first open: a Style becomes a Project with its projects as Videos, a lone project its own Project; opening again changes nothing', async ({
+test('[RDA-016] [RDA-003] data from before Round A is migrated once on first open: a Style becomes a Project with its projects as Videos, a lone project its own Project; opening again changes nothing', async ({
   page,
 }) => {
   const email = await signUp(page);

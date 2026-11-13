@@ -234,7 +234,7 @@ test('[P2R1-024] [P2R1-025] Brief Room: fields from config with show-if and vali
 
 async function circumferenceBrief(page: import('@playwright/test').Page) {
   await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
   await page
     .locator('#f-idea')
     .fill(
@@ -411,7 +411,8 @@ test('[P2R1-032] [P2R1-033] [P2R1-034] a Studio tool shows its cost, runs on the
 }) => {
   await signUp(page);
   await page.goto('/panel/#/studio');
-  await expect(page.locator('#studio-list [data-studio]')).toHaveCount(9);
+  // Round A: Image, Video, Story, SEO, Voice and Captions (the config's defaults).
+  await expect(page.locator('#studio-list [data-studio]')).toHaveCount(6);
   await expect(page.locator('[data-studio="images"]')).toHaveAttribute(
     'data-locked',
     'true',
@@ -421,10 +422,10 @@ test('[P2R1-032] [P2R1-033] [P2R1-034] a Studio tool shows its cost, runs on the
   await page.goto('/panel/#/studio/images');
   await expect(page.locator('#studio-locked')).toBeVisible();
   await expect(page.locator('#studio-upgrade')).toBeVisible();
-  // Write: cost first, then the result lands in the Asset Library.
-  await page.goto('/panel/#/studio/write');
-  await page.locator('#f-topic').fill('Three facts about shadows');
-  await page.locator('[data-field="length"] input[value="short"]').check();
+  // Story: cost first, then the result lands in the Asset Library.
+  await page.goto('/panel/#/studio/story');
+  await page.locator('#sf-plot').fill('Three facts about shadows');
+  await page.locator('[data-field="duration"] [data-value="10"]').click();
   await expect(page.locator('#studio-cost')).toHaveText(
     /This costs up to \d+ credits\./,
   );
@@ -437,23 +438,27 @@ test('[P2R1-032] [P2R1-033] [P2R1-034] a Studio tool shows its cost, runs on the
     'Three facts about shadows',
   );
   expect(await balance(page)).toBeLessThan(before);
-  // Voice clone: consent first.
-  await page.goto('/panel/#/studio/voice');
-  await page.locator('#f-text').fill('Namaste');
-  await page.locator('[data-field="mode"] input[value="clone"]').check();
+  // Voice clone is a paid feature: locked with Upgrade on Free; on Pro it
+  // needs the consent tick before it runs. (The clone count limit is proven
+  // by the gateway and entitlement unit tests.)
+  await page.goto('/panel/#/studio/voice-clone');
+  await expect(page.locator('#studio-locked')).toBeVisible();
+  await setPlan(page, 'pro');
+  await page.goto('/panel/#/studio/voice-clone');
+  await page.locator('#sf-sample').setInputFiles({
+    name: 'me.mp3',
+    mimeType: 'audio/mpeg',
+    buffer: Buffer.from('ID3'),
+  });
+  await page.locator('#sf-name').fill('Namaste voice');
   await expect(page.locator('#studio-consent-row')).toBeVisible();
   await page.locator('#studio-run').click();
-  await expect(page.locator('.toast.error')).toContainText(
+  await expect(page.locator('#consent-error')).toContainText(
     'Tick the consent box first.',
   );
   await page.locator('#studio-consent').check();
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-result audio')).toBeVisible();
-  // A second clone hits the Free limit (1 cloned voice).
-  await page.locator('#studio-run').click();
-  await expect(page.locator('#studio-error')).toContainText(
-    'Your plan allows 1 cloned voices.',
-  );
   // Asset Library: the two Studio results (no project) sit in one Studio Libraries card.
   await page.goto('/panel/#/assets');
   await expect(page.locator('[data-lib-studio]')).toBeVisible();
@@ -462,83 +467,68 @@ test('[P2R1-032] [P2R1-033] [P2R1-034] a Studio tool shows its cost, runs on the
   );
   await page.locator('[data-lib-studio]').click();
   await expect(page.locator('[data-studio-feature]')).toHaveCount(2);
-  await page.locator('[data-studio-feature="write"]').click();
+  await page.locator('[data-studio-feature="story"]').click();
   await expect(page.locator('[data-asset]')).toHaveCount(1);
 });
 
-test('[P2R1-035] Projects: new blank, open, search, rename, duplicate, trash and restore', async ({
+test('[P2R1-035] Projects: new project, open, search, rename, duplicate, trash and restore', async ({
   page,
 }) => {
   await signUp(page);
+  // Round A: New project › Start with editor, with a name and a format.
   await page.goto('/panel/#/projects');
-  await page.locator('#new-blank').click();
-  await expect(page).toHaveURL(/#\/start\//);
-  await page.locator('#start-name').fill('Monsoon lesson');
-  await page.locator('#start-aspect').selectOption('9:16');
-  await page.locator('[data-start="editor"]').click();
+  await page.locator('#new-project').click();
+  await page.locator('#np-name').fill('Monsoon lesson');
+  await page.locator('#np-aspect').selectOption('9:16');
+  await page.locator('[data-option="editor"]').click();
   await expect(page.locator('#composition-canvas')).toBeVisible();
   await expect
     .poll(async () => (await hook(page)).project.compositions[0]!.height)
     .toBe(1920);
   expect((await hook(page)).project.metadata.name).toBe('Monsoon lesson');
+  const videoId = (await hook(page)).project.id;
   await page.goto('/panel/#/projects');
-  const card = page.locator('#project-list [data-project]', {
+  const card = page.locator('#project-list [data-ws-project]', {
     hasText: 'Monsoon lesson',
   });
-  await expect
-    .poll(async () => {
-      await page.reload();
-      await page.locator('#project-list').waitFor();
-      return card.count();
-    })
-    .toBe(1);
   await expect(card).toBeVisible();
   await page.locator('#project-search').fill('monsoon');
-  await expect(page.locator('#project-list [data-project]')).toHaveCount(1);
+  await expect(page.locator('#project-list [data-ws-project]')).toHaveCount(1);
   await card.locator('summary').click();
   await card.locator('[data-act="rename"]').click();
   await page.locator('.rename-field').fill('Monsoon lesson v2');
   await page.keyboard.press('Enter');
-  await expect(
-    page.locator('#project-list [data-project]', {
-      hasText: 'Monsoon lesson v2',
-    }),
-  ).toBeVisible();
+  const named = page.locator('#project-list [data-ws-project]', {
+    hasText: 'Monsoon lesson v2',
+  });
+  await expect(named).toBeVisible();
   await page.locator('#project-search').fill('');
-  const count = await page.locator('#project-list [data-project]').count();
-  const named = page
-    .locator('#project-list [data-project]', { hasText: 'Monsoon lesson v2' })
-    .first();
+  const projectId = (await named.getAttribute('data-ws-project'))!;
+  // Duplicate is a Video's action now: a copy inside the same Project.
+  await named.locator('[data-act="open"]').click();
+  const video = page.locator(`[data-video="${videoId}"]`);
+  await video.locator('summary').click();
+  await video.locator('[data-act="duplicate"]').click();
+  await expect(page.locator('#video-list [data-video]')).toHaveCount(2);
+  // Trash and Restore.
+  await page.goto('/panel/#/projects');
   await named.locator('summary').click();
-  await named.locator('[data-act="duplicate"]').click();
-  await expect(page.locator('#project-list [data-project]')).toHaveCount(
-    count + 1,
-  );
-  const toTrash = page
-    .locator('#project-list [data-project]', { hasText: 'Monsoon lesson v2' })
-    .first();
-  await toTrash.locator('summary').click();
-  await toTrash.locator('[data-act="trash"]').click();
-  await expect(page.locator('#project-list [data-project]')).toHaveCount(count);
+  await named.locator('[data-act="delete"]').click();
+  await expect(page.locator('#project-list [data-ws-project]')).toHaveCount(0);
   await page.locator('[data-view="trash"]').click();
-  await expect(page.locator('#project-list [data-project]')).toHaveCount(1);
+  await expect(page.locator('[data-trash-project]')).toHaveCount(1);
   await page.locator('[data-act="restore"]').click();
-  await expect(page.locator('#project-list .empty-state')).toBeVisible();
+  await expect(page.locator('#rda-trash .empty-state')).toBeVisible();
   await page.locator('[data-view="all"]').click();
-  await expect(page.locator('#project-list [data-project]')).toHaveCount(
-    count + 1,
-  );
-  // Open goes to the editor on that project.
-  const id = await page
-    .locator('#project-list [data-project]', { hasText: 'Monsoon lesson v2' })
-    .first()
-    .getAttribute('data-project');
-  await page.locator(`[data-project="${id}"] [data-act="open"]`).click();
+  await expect(page.locator('#project-list [data-ws-project]')).toHaveCount(1);
+  // Open goes to the editor on that video.
+  await page.goto(`/panel/#/project/${projectId}`);
+  await page.locator(`[data-video="${videoId}"] [data-act="open"]`).click();
   await expect(page.locator('#composition-canvas')).toBeVisible();
   await expect
     .poll(async () => page.evaluate(() => '__AIVE__' in window))
     .toBe(true);
-  await expect.poll(async () => (await hook(page)).project.id).toBe(id);
+  await expect.poll(async () => (await hook(page)).project.id).toBe(videoId);
 });
 
 test('[P2R1-036] Credits and Plan: plan cards, costs, INR/USD, a mock top up adds credits, history and usage against limits', async ({

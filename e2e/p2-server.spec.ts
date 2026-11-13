@@ -23,17 +23,21 @@ test('[P2R2-008] with VITE_GATEWAY_URL the panel uses the server: credits, model
   });
   await signUp(page);
   expect(await balance(page)).toBe(60);
-  await page.goto('/panel/#/studio/write');
-  // With a server the Studio form is model-driven (P3U-006); a model with no
-  // fields of its own gets one prompt field.
-  await page.locator('#sf-prompt').fill('Three facts about shadows');
+  // Round A: Write is off by default; Story is a text tool on the same
+  // models. With a server a model with declared fields draws the form
+  // (P3U-006, one prompt field), else the config's Story form (its plot).
+  await page.goto('/panel/#/studio/story');
+  await page
+    .locator('#sf-prompt, #sf-plot')
+    .first()
+    .fill('Three facts about shadows');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-saved')).toContainText(
     'Saved to the Asset Library',
   );
   // The text came from the fake Anthropic server, through the gateway.
   // The model-driven Studio saves and says where (P3U-008); read it there.
-  await openStudioResults(page, 'write');
+  await openStudioResults(page, 'story');
   await expect(page.locator('.asset-text').first()).toContainText('echo:');
   expect(
     stack.fake.seen.some(

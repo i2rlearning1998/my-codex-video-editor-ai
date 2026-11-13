@@ -442,7 +442,9 @@ export async function createServices(
         exportsThisMonth: exportsThisMonth(u),
         storageMb: Math.ceil(mine.reduce((s, a) => s + a.bytes, 0) / 1_048_576),
         voiceClones: mine.filter(
-          (a) => a.studioId === 'voice' && a.name.includes('clone'),
+          (a) =>
+            a.studioId === 'voice-clone' ||
+            (a.studioId === 'voice' && a.name.includes('clone')),
         ).length,
         // ROUND-A: Projects (containers), not editor files.
         projects: services.ws(u).projects().length,

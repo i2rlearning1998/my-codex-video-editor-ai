@@ -599,6 +599,7 @@ export function roundAStudios(): Studio[] {
     ],
     {
       ...voiceFamily,
+      // Like its cost (voice-clone): a plan feature; the plan's voiceClones limit counts them.
       requires: ['voice-clone'],
       historyLabel: L('Cloned voices', 'क्लोन की गई आवाज़ें'),
       consent: L(

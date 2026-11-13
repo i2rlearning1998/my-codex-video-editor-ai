@@ -37,6 +37,11 @@ test('[RDA-017] the Asset Library shows Project cards and one Studio Libraries c
   const { projectId, videoId } = await newEditorProject(page, 'Library one');
   await voiceover(page, 'Hello from the project', videoId);
   await voiceover(page, 'Hello from the Studio');
+  // The Project page's Assets tab groups this Project's assets by Video.
+  await page.goto(`/panel/#/project/${projectId}/assets`);
+  await expect(
+    page.locator(`[data-asset-video="${videoId}"] [data-asset]`),
+  ).toHaveCount(1);
   await page.goto('/panel/#/assets');
   const grid = page.locator('#lib-grid > *');
   await expect(grid).toHaveCount(2);
@@ -325,7 +330,7 @@ test.afterEach(async () => {
   stack = null;
 });
 
-test('[RDA-020] with a gateway the server decides the limits; when the server is down a New project is refused in one sentence, nothing is made and the typed name stays', async ({
+test('[RDA-020] [RDA-002] with a gateway the server decides the limits; when the server is down a New project is refused in one sentence, nothing is made and the typed name stays', async ({
   page,
 }) => {
   test.setTimeout(180_000);

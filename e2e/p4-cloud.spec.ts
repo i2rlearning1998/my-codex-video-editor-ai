@@ -152,10 +152,10 @@ test('[P4C-006] a template saved in the editor shows in the panel Asset Library 
   await page.goBack().catch(() => undefined);
   await page.locator('.modal-dialog [data-role="cloud-exit-leave"]').click();
   await expect.poll(() => page.url()).toBe('about:blank');
-  await page.goto(`/panel/#/assets/p/${id}/templates`);
+  await page.goto(`/panel/#/assets/v/${id}/templates`);
   await expect(page.locator('#asset-list [data-asset^="ed:"]')).toHaveCount(1);
   await page.goto('/panel/#/projects');
   await expect(
-    page.locator(`#project-list [data-project="${id}"]`),
+    page.locator(`#project-list [data-ws-project="pr-${id}"]`),
   ).toBeVisible();
 });

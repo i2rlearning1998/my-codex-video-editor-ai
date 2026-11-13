@@ -1,118 +1,22 @@
-// P4 Part 1: projects first, Styles made from projects, the Asset Library and
-// Director's asset step. Every test acts like a person, on the offline mock.
-import { test, expect, hook, settleBuild } from './fixtures';
-import { balance, signUp } from './p2-helpers';
+// P4 Part 1, as Round A states it: the Asset Library order, the Trash and
+// Director's asset step. (P4F-001 to P4F-006 and P4F-011, Styles made from
+// projects, are Dropped by Round A: e2e/round-a-panel.spec.ts states the
+// Project and Video flow.) Every test acts like a person, on the offline mock.
+import { test, expect, hook } from './fixtures';
+import { signUp } from './p2-helpers';
 import type { Page } from '@playwright/test';
 
-const tags = (page: Page) => page.locator('#project-list [data-project]');
-/** Create with Blank project; returns the new project's id. */
+/** New project › Start with editor; back on the Project page. Returns the Project id. */
 async function newBlank(page: Page) {
-  await page.goto('/panel/#/projects');
-  await page.locator('#new-blank').click();
-  await expect(page).toHaveURL(/#\/start\/[^/?]+/);
-  return /#\/start\/([^/?]+)/.exec(page.url())![1]!;
-}
-
-test('[P4F-001] [P4F-002] [P4F-003] Create with Director and Create with Blank both make a project at once; blank asks Director or Editor; Open Editor opens that same project; Manual becomes AI once Director is used', async ({
-  page,
-}) => {
-  await signUp(page);
-  await page.goto('/panel/#/projects');
-  await expect(page.locator('#new-director')).toHaveText(
-    'Create with Director',
-  );
-  await expect(page.locator('#new-blank')).toHaveText(
-    'Create with Blank project',
-  );
-  await expect(page.locator('#project-list')).toContainText('No projects yet');
-  // Blank: the project exists, two cards ask how to go on.
-  await page.locator('#new-blank').click();
-  await expect(page).toHaveURL(/#\/start\//);
-  await expect(page.locator('[data-start="director"]')).toBeVisible();
-  await expect(page.locator('[data-start="editor"]')).toBeVisible();
-  const id = /#\/start\/([^/?]+)/.exec(page.url())![1]!;
-  await page.locator('#start-name').fill('Shadows lesson');
-  await page.locator('[data-start="editor"]').click();
+  await page.goto('/panel/#/projects?new=1');
+  await page.locator('[data-option="editor"]').click();
   await expect(page.locator('#composition-canvas')).toBeVisible();
-  // The editor opened the very project the panel made.
-  const state = await hook(page);
-  expect(state.project.id).toBe(id);
-  expect(state.project.metadata.name).toBe('Shadows lesson');
-  // Back in the panel it is a Manual project.
-  await page.goto('/panel/#/projects');
-  const card = page.locator(`[data-project="${id}"]`);
-  await expect(card).toBeVisible();
-  await expect(card).toHaveAttribute('data-origin', 'manual');
-  await expect(card.locator('.ws-tag')).toHaveText('Manual');
-  // Director is used on it: it becomes AI.
-  await card.locator('summary').click();
-  await card.locator('[data-act="director"]').click();
-  await expect(page).toHaveURL(new RegExp(`#/room/${id}`));
-  await page
-    .locator('#chat-input, .composer textarea, textarea')
-    .first()
-    .fill('Make a short video about shadows');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-msg.director').first()).toBeVisible({
-    timeout: 20_000,
-  });
-  await page.goto('/panel/#/projects');
-  await expect(page.locator(`[data-project="${id}"]`)).toHaveAttribute(
-    'data-origin',
-    'ai',
-  );
-  // Create with Director: a project at once, AI from the start.
-  await page.locator('#new-director').click();
-  await expect(page).toHaveURL(/#\/room\//);
-  await page.goto('/panel/#/projects');
-  await expect(tags(page)).toHaveCount(2);
-  await expect(
-    page.locator('#project-list [data-project][data-origin="ai"]'),
-  ).toHaveCount(2);
-});
-
-test('[P4F-004] [P4F-005] [P4F-006] Save to your styles makes a Style card, the project moves inside it, and the Asset Library shows Style then Project then the three libraries', async ({
-  page,
-}) => {
-  await signUp(page);
-  await page.goto('/panel/#/assets');
-  // No Style yet: no Style card, and an empty library says so.
-  await expect(page.locator('[data-lib-style]')).toHaveCount(0);
-  const id = await newBlank(page);
-  await page.goto('/panel/#/projects');
-  const card = page.locator(`[data-project="${id}"]`);
-  await card.locator('summary').click();
-  await card.locator('[data-act="save-style"]').click();
-  await expect(page.locator('.ws-dialog')).toBeVisible();
-  await page.locator('#style-name').fill('Hindi physics explainer');
-  await page.locator('#style-save').click();
-  // The project left the plain Project cards.
-  await expect(
-    page.locator(`#project-list [data-project="${id}"]`),
-  ).toHaveCount(0);
-  // A Style card exists on the Styles page and the Asset Library.
-  await page.goto('/panel/#/styles');
-  await expect(
-    page.locator('#ws-styles [data-ws-style]').first(),
-  ).toContainText('Hindi physics explainer');
-  await page.goto('/panel/#/assets');
-  const style = page.locator('[data-lib-style]');
-  await expect(style).toHaveCount(1);
-  await expect(page.locator('[data-lib-project]')).toHaveCount(0);
-  await style.click();
-  await expect(page.locator(`[data-lib-project="${id}"]`)).toBeVisible();
-  await page.locator(`[data-lib-project="${id}"]`).click();
-  await expect(page.locator('[data-library]')).toHaveCount(3);
-  await expect(page.locator('[data-library="ai"]')).toContainText(
-    'AI Libraries',
-  );
-  await expect(page.locator('[data-library="templates"]')).toContainText(
-    'My Templates Libraries',
-  );
-  await expect(page.locator('[data-library="media"]')).toContainText(
-    'Media Libraries',
-  );
-});
+  await hook(page);
+  await page.goBack();
+  await page.getByRole('button', { name: 'Leave without saving' }).click();
+  await expect(page).toHaveURL(/#\/project\//);
+  return /#\/project\/([^/?]+)/.exec(page.url())![1]!;
+}
 
 test('[P4F-007] the Asset Library lists cards in the order they were made, and a Studio result without a project fills one Studio Libraries card', async ({
   page,
@@ -152,8 +56,6 @@ test('[P4F-007] the Asset Library lists cards in the order they were made, and a
   await expect(page.locator('[data-studio-feature="story"]')).toBeVisible();
   await page.locator('[data-studio-feature="story"]').click();
   await expect(page.locator('#asset-list [data-asset]')).toHaveCount(1);
-  void balance;
-  void settleBuild;
 });
 
 test('[P4F-008] a deleted project waits in the Trash and can be restored; a deleted asset too', async ({
@@ -162,21 +64,23 @@ test('[P4F-008] a deleted project waits in the Trash and can be restored; a dele
   await signUp(page);
   const id = await newBlank(page);
   await page.goto('/panel/#/projects');
-  const card = page.locator(`[data-project="${id}"]`);
+  const card = page.locator(`[data-ws-project="${id}"]`);
   await card.locator('summary').click();
-  await card.locator('[data-act="trash"]').click();
+  await card.locator('[data-act="delete"]').click();
   await expect(card).toHaveCount(0);
   await page.locator('[data-view="trash"]').click();
   await expect(page.locator('#trash-note')).toContainText('30 days');
-  await expect(page.locator(`[data-project="${id}"]`)).toBeVisible();
-  await page.locator(`[data-project="${id}"] [data-act="restore"]`).click();
+  await expect(page.locator(`[data-trash-project="${id}"]`)).toBeVisible();
+  await page
+    .locator(`[data-trash-project="${id}"] [data-act="restore"]`)
+    .click();
   await page.locator('[data-view="all"]').click();
-  await expect(page.locator(`[data-project="${id}"]`)).toBeVisible();
+  await expect(page.locator(`[data-ws-project="${id}"]`)).toBeVisible();
 });
 
 async function briefToPlan(page: Page) {
   await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] a.button').click();
+  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
   await page
     .locator('#f-idea')
     .fill(
@@ -226,9 +130,11 @@ test('[P4F-009] Director waits at the asset step: every file is listed by its ex
   const again = page.locator(`#step-list [data-slot="${name}"]`);
   await expect(again).toHaveAttribute('data-mode', 'upload');
   await expect(again).toHaveAttribute('data-filled', 'true');
-  // The project card says Director is waiting.
-  await page.goto('/panel/#/projects');
-  await expect(page.locator('[data-waiting="true"]').first()).toBeVisible();
+  // Home's Continue says Director is waiting at the assets.
+  await page.goto('/panel/#/home');
+  await expect(
+    page.locator('#home-continue [data-stage="assets"]').first(),
+  ).toBeVisible();
 });
 
 test('[P4F-010] Continue without assets builds the project with blank slots and the editor lists every expected asset name', async ({
@@ -257,28 +163,4 @@ test('[P4F-010] Continue without assets builds the project with blank slots and 
   const dialog = page.locator('#missing-assets-list');
   await expect(dialog).toBeVisible({ timeout: 60_000 });
   for (const n of names) await expect(dialog).toContainText(n!);
-});
-
-test('[P4F-011] after a Director build "Save to your styles?" makes a Style card and the project moves inside it', async ({
-  page,
-}) => {
-  test.setTimeout(180_000);
-  await signUp(page);
-  await briefToPlan(page);
-  await page.locator('#plan-approve').click();
-  await page.locator('#step-ai').click();
-  await expect(page.locator('#build-status')).toHaveAttribute(
-    'data-state',
-    'done',
-    { timeout: 60_000 },
-  );
-  await page.locator('#save-style-q').click();
-  await page.locator('#style-name').fill('Eratosthenes look');
-  await page.locator('#style-save').click();
-  await expect(page).toHaveURL(/#\/assets/);
-  await expect(page.locator('[data-lib-style]')).toContainText(
-    'Eratosthenes look',
-  );
-  await page.goto('/panel/#/projects');
-  await expect(page.locator('#project-list [data-project]')).toHaveCount(0);
 });

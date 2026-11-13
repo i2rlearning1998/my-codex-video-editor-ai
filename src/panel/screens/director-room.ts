@@ -202,9 +202,11 @@ export const directorRoomScreen = async (
     // A Project migrated from a P4 Style keeps the style Director learned.
     const container = ws.project(inProject()?.projectId ?? '');
     const styleRec = container?.legacyRecordId ?? null;
+    // ROUND-A: memory belongs to the Project, so the room keeps it (and the
+    // chat list the Memory tab shows) under the Video's Project id.
     const started = await svc.start(
       styleRec ? { kind: 'style', styleId: styleRec } : path,
-      projectId,
+      container?.id ?? projectId,
     );
     chat = started.chat;
     memory = started.project;
