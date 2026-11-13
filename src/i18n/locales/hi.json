@@ -2849,5 +2849,12 @@
   "plan.rebuildKeep": "दोनों रखें",
   "plan.rebuildCancel": "रद्द करें",
   "cloud.save": "क्लाउड में सेव करें",
-  "projects.openFailed": "यह प्रोजेक्ट नहीं खुल सका।"
+  "projects.openFailed": "यह प्रोजेक्ट नहीं खुल सका।",
+  "importLib.lib.button": "अपनी लाइब्रेरी से इम्पोर्ट करें",
+  "importLib.lib.title": "अपनी लाइब्रेरी से इम्पोर्ट करें",
+  "importLib.lib.intro": "अपनी एसेट लाइब्रेरी से तस्वीरें, वीडियो और आवाज़ें चुनें: स्टूडियो के नतीजे और आपके दूसरे वीडियो में Director की बनाई फ़ाइलें। सिर्फ़ चुनी हुई फ़ाइलें इस वीडियो के मीडिया में कॉपी होंगी।",
+  "importLib.studio": "स्टूडियो लाइब्रेरी",
+  "importLib.kind.image": "इमेज",
+  "importLib.kind.video": "वीडियो",
+  "importLib.kind.audio": "ऑडियो"
 }

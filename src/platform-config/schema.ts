@@ -109,6 +109,53 @@ export const fieldSchema = z.object({
 });
 export type BriefField = z.infer<typeof fieldSchema>;
 
+/**
+ * ROUND-A A4: a Studio field. The Brief's field plus how it is drawn and
+ * checked: chips, picture cards, a two-way toggle or a list; character and
+ * file limits; a swap button between two uploads; story ideas per category;
+ * an Enhance or Generate button under a prompt; fields only some models
+ * accept; options a plan must unlock. Every value is the owner's.
+ */
+export const STUDIO_FIELD_TYPES = [...FIELD_TYPES, 'ideas', 'info'] as const;
+export const studioFieldSchema = fieldSchema.extend({
+  type: z.enum(STUDIO_FIELD_TYPES),
+  options: z
+    .array(
+      z.object({
+        value: z.string(),
+        label: textSchema,
+        /** Plan features that unlock this option ([] = every plan). */
+        requires: z.array(id).optional(),
+        /** A picture for a card option: a URL, or a seed the panel draws from. */
+        art: z.string().max(300).optional(),
+        /** A sample to play (a voice), an https or same-site URL. */
+        preview: z.string().max(300).optional(),
+      }),
+    )
+    .default([]),
+  display: z.enum(['chips', 'cards', 'toggle', 'select', 'radio']).optional(),
+  /** Characters a text may have. */
+  maxLength: z.number().int().min(1).max(20000).optional(),
+  /** Files: the types (MIME) accepted and the largest size in bytes. */
+  accept: z.array(z.string().max(60)).max(12).optional(),
+  maxBytes: z.number().int().min(1).optional(),
+  /** Another file field this one swaps with (Video: first and last frame). */
+  swapWith: id.optional(),
+  /** Only these models accept the field ([] or none: every model). */
+  onlyModels: z.array(id).optional(),
+  /** A button under a prompt: improve it, or write one from the frames. */
+  action: z.enum(['enhance', 'generate']).optional(),
+  /** `ideas`: the field whose value picks the list, and the field it fills. */
+  ideasFor: id.optional(),
+  fills: id.optional(),
+  ideas: z.record(z.string(), z.array(textSchema)).optional(),
+  /** `ideas`: how many show before "View more". */
+  ideasShown: z.number().int().min(1).max(50).optional(),
+  /** `info`: lines (tips, how it works). */
+  lines: z.array(textSchema).optional(),
+});
+export type StudioField = z.infer<typeof studioFieldSchema>;
+
 /** P2-05: the roles a model can serve (Director, interview, Studio tools). */
 export const roleId = z
   .string()
@@ -131,8 +178,21 @@ export const studioSchema = z.object({
   familyName: textSchema.optional(),
   /** What it makes: drives the result view and the Asset Library kind. */
   output: z.enum(STUDIO_OUTPUTS).default('text'),
-  /** The form the person fills (same field types as the Brief). */
-  inputs: z.array(fieldSchema).default([]),
+  /** The form the person fills (the Brief's field types plus ROUND-A's). */
+  inputs: z.array(studioFieldSchema).default([]),
+  /** ROUND-A: collapsible sections of the form (a field's `group`), e.g. Advanced. */
+  groups: z
+    .array(
+      z.object({ id, label: textSchema, open: z.boolean().default(false) }),
+    )
+    .default([]),
+  /**
+   * ROUND-A: shown only when the owner assigned a model to this tool's role
+   * (Platform Config `assignments`), e.g. Image › Upscale.
+   */
+  needsAssignment: z.boolean().default(false),
+  /** ROUND-A: the heading of this tool's history (My generations, Cloned voices…). */
+  historyLabel: textSchema.optional(),
   /** A tick the person must give before it runs (a voice clone's consent). */
   consent: textSchema.optional(),
   /** Ask for the consent only when an input has one of these values. */
@@ -686,7 +746,7 @@ export const platformConfigSchema = z
     const roleModels = (role: string) =>
       c.models.filter((m) => m.roles.includes(role as never));
     for (const s of c.studios)
-      if (s.enabled && roleModels(s.role).length === 0)
+      if (s.enabled && !s.needsAssignment && roleModels(s.role).length === 0)
         ctx.addIssue({
           code: 'custom',
           message: `studio ${s.id}: no model serves role ${s.role}`,

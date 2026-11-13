@@ -953,6 +953,31 @@ const S = {
   'lib.type.audio': ['Audio', 'ऑडियो'],
   'lib.type.graphics': ['Graphics', 'ग्राफ़िक्स'],
   'lib.type.templates': ['Templates', 'टेम्पलेट'],
+  'studio.tooLong': [
+    'At most {n} characters.',
+    'ज़्यादा से ज़्यादा {n} अक्षर।',
+  ],
+  'studio.optionLocked': [
+    'Your plan does not include this option. Upgrade to use it.',
+    'आपके प्लान में यह विकल्प नहीं है। इसके लिए अपग्रेड करें।',
+  ],
+  'studio.fileType': [
+    'This type of file is not accepted here.',
+    'यहाँ इस तरह की फ़ाइल नहीं चलती।',
+  ],
+  'studio.fileSize': ['The file is larger than {n}.', 'फ़ाइल {n} से बड़ी है।'],
+  'studio.viewMore': ['View more', 'और देखें'],
+  'studio.enhancePrompt': ['Enhance prompt', 'प्रॉम्प्ट बेहतर करें'],
+  'studio.generatePrompt': ['Generate prompt', 'प्रॉम्प्ट बनाएँ'],
+  'studio.playSample': ['Play a sample', 'नमूना सुनें'],
+  'studio.chooseFile': ['Choose a file', 'फ़ाइल चुनें'],
+  'studio.removeFile': ['Remove', 'हटाएँ'],
+  'studio.swap': ['Swap first and last', 'पहला और आख़िरी बदलें'],
+  'studio.saveTo': ['Save to', 'कहाँ सेव करें'],
+  'studio.noModel': [
+    'No model is set up for this tool yet.',
+    'इस टूल के लिए अभी कोई मॉडल सेट नहीं है।',
+  ],
 } satisfies Record<string, readonly [string, string]>;
 export type Key = keyof typeof S;
 let locale: Locale = 'en';

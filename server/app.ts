@@ -45,11 +45,22 @@ import type { Profile, Store } from './store';
 import {
   change,
   claim,
+  LimitError,
   merge,
   validId,
   type Registry,
 } from './workspace-registry';
 
+/** ROUND-A: a registry limit becomes the gateway's refusal (403). */
+function asGateway<T>(fn: () => T): T {
+  try {
+    return fn();
+  } catch (e) {
+    if (e instanceof LimitError)
+      throw new GatewayError(e.code, e.message, e.detail);
+    throw e;
+  }
+}
 /** ROUND-A: Projects not in the Trash. */
 const liveProjects = (r: Registry) =>
   Object.values(r.projects).filter((p) => !p.trashed).length;
@@ -699,16 +710,19 @@ export function createServerApp(o: ServerOptions) {
       if (kind !== 'project' && kind !== 'video') throw bad('Unknown kind.');
       if (!validId(b.id) || (kind === 'video' && !validId(b.projectId)))
         throw bad('A project or video id is missing.');
-      const next = claim(
-        await o.store.workspaceRegistry(c.userId),
-        {
-          kind,
-          id: b.id,
-          ...(kind === 'video' ? { projectId: b.projectId as string } : {}),
-        },
-        config,
-        plan,
-        localeOf(c.userId),
+      const reg = await o.store.workspaceRegistry(c.userId);
+      const next = asGateway(() =>
+        claim(
+          reg,
+          {
+            kind,
+            id: b.id as string,
+            ...(kind === 'video' ? { projectId: b.projectId as string } : {}),
+          },
+          config,
+          plan,
+          localeOf(c.userId),
+        ),
       );
       await o.store.saveWorkspaceRegistry(c.userId, next);
       await o.store.setCounter(c.userId, 'projects', liveProjects(next));
@@ -723,17 +737,20 @@ export function createServerApp(o: ServerOptions) {
         throw bad('Unknown change.');
       if (!validId(b.id) || (kind === 'video' && !validId(b.projectId)))
         throw bad('A project or video id is missing.');
-      const next = change(
-        await o.store.workspaceRegistry(c.userId),
-        {
-          kind,
-          id: b.id,
-          to,
-          ...(kind === 'video' ? { projectId: b.projectId as string } : {}),
-        },
-        config,
-        plan,
-        localeOf(c.userId),
+      const reg = await o.store.workspaceRegistry(c.userId);
+      const next = asGateway(() =>
+        change(
+          reg,
+          {
+            kind,
+            id: b.id as string,
+            to,
+            ...(kind === 'video' ? { projectId: b.projectId as string } : {}),
+          },
+          config,
+          plan,
+          localeOf(c.userId),
+        ),
       );
       await o.store.saveWorkspaceRegistry(c.userId, next);
       await o.store.setCounter(c.userId, 'projects', liveProjects(next));

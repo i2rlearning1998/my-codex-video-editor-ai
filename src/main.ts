@@ -8,6 +8,7 @@ import {
 } from './usage-report';
 import { makeCloudBackend } from './cloud/factory';
 import { Workspace } from './project/workspace';
+import { readUserAssets } from './project/user-assets';
 import { observeDiagnostics, installDebugReport } from './dev/debug-report';
 import {
   EditorEngine,
@@ -197,10 +198,24 @@ const shell = mountEditorShell(
           const p = ws.project(v.projectId);
           return p ? `${p.name} › ${v.name}` : v.name;
         },
+        where: (projectId: string) => {
+          const ws = new Workspace(localStorage, me);
+          const v = ws.video(projectId);
+          const p = v && ws.project(v.projectId);
+          if (!v || !p || v.trashedAt || p.trashedAt) return undefined;
+          return { projectId: p.id, project: p.name, video: v.name };
+        },
+        // ROUND-A A3: the Asset Library's media rows (Import from your Library).
+        userAssets: () => readUserAssets(localStorage, me),
       };
     })(),
     // P2-R2: the plan's export limit; each finished export is reported.
-    usage: usageReporter(me, localStorage, gatewayBase()),
+    usage: usageReporter(
+      me,
+      localStorage,
+      gatewayBase(),
+      () => engine.state.id,
+    ),
     // P3U: with a gateway server the chat dock runs on the real engine
     // (the server decides the limits and charges every call); otherwise on
     // dev and e2e pages it runs on the in-memory mock.

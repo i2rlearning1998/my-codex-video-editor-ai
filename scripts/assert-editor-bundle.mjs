@@ -123,7 +123,14 @@ if (existsSync(manifestPath)) {
   for (const file of filesOf(editor)) {
     const text = readFileSync(path.join(dist, file), 'utf8');
     for (const marker of PANEL_MARKERS)
-      if (text.includes(marker))
+      if (
+        marker === 'aive.panel.'
+          ? // ROUND-A A3 (D-413): the editor reads the Asset Library's rows
+            // by their storage key (src/project/user-assets.ts); any other
+            // panel key still means panel code.
+            /aive\.panel\.(?!assets['"`])/.test(text)
+          : text.includes(marker)
+      )
         problems.push(
           `${file}: the editor page loads panel or gateway code (${marker})`,
         );

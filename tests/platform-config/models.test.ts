@@ -99,26 +99,29 @@ describe('P2-R1 config: providers, models, payments', () => {
   });
   it('[P2R1-007] studios and Director point to model roles; consent only when cloning', () => {
     const c = defaultConfig();
+    // ROUND-A A4: the Autodraft tools are on by default (Upscale and Remove
+    // Background only once the owner assigns them a model); the older tools
+    // stay in the config, switched off.
     expect(enabledStudios(c).map((s) => s.id)).toEqual([
-      'write',
+      'images',
+      'image-upscale',
+      'image-remove-bg',
+      'video',
       'story',
       'seo',
       'voice',
-      'voice-change',
       'sfx',
-      'audio',
-      'images',
-      'video',
+      'voice-change',
+      'voice-clone',
       'captions',
-      'thumbnail',
-      'youtube-pack',
     ]);
-    for (const s of enabledStudios(c))
+    for (const s of enabledStudios(c).filter((x) => !x.needsAssignment))
       expect(modelsForRole(c, s.role).length).toBeGreaterThan(0);
+    for (const id of ['write', 'audio', 'thumbnail', 'youtube-pack'])
+      expect(studioById(c, id)!.enabled).toBe(false);
     expect(c.director.roles.plan).toBe('director-plan');
-    const voice = studioById(c, 'voice')!;
-    expect(needsConsent(voice, { mode: 'tts' })).toBe(false);
-    expect(needsConsent(voice, { mode: 'clone' })).toBe(true);
+    expect(needsConsent(studioById(c, 'voice')!, {})).toBe(false);
+    expect(needsConsent(studioById(c, 'voice-clone')!, {})).toBe(true);
     expect(c.director.tools.every((t) => t.costId)).toBe(true);
   });
   it('[P2R1-008] invalid configs are refused with a reason: unknown provider, role without a model, bad method', () => {
@@ -131,12 +134,12 @@ describe('P2-R1 config: providers, models, payments', () => {
         /model mock-fast: unknown provider ghost/,
       );
     const d = defaultConfig();
-    d.models = d.models.filter((m) => !m.roles.includes('studio-thumbnail'));
+    d.models = d.models.filter((m) => !m.roles.includes('studio-images'));
     d.director.methodOrder.push('teleport');
     r = parseConfig(d);
     expect(r.ok).toBe(false);
     if (!r.ok) {
-      expect(r.errors.join(' ')).toMatch(/studio thumbnail: no model serves/);
+      expect(r.errors.join(' ')).toMatch(/studio images: no model serves/);
       expect(r.errors.join(' ')).toMatch(/method teleport is not a tool/);
     }
   });

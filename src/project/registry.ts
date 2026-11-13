@@ -4,8 +4,19 @@
 // same rules to its own workspace. Only ids and Trash state are kept; names, styles and the
 // editor files stay where they were. Pure functions over the stored record;
 // server/app.ts reads and writes it through the Store.
-import { GatewayError } from '../gateway/types';
 import type { Plan, PlatformConfig } from '../platform-config';
+
+/** A plan limit was reached: the owner's sentence (the server answers 403). */
+export class LimitError extends Error {
+  constructor(
+    readonly code: 'limit-projects' | 'limit-videos',
+    message: string,
+    readonly detail: Record<string, number>,
+  ) {
+    super(message);
+    this.name = 'LimitError';
+  }
+}
 import { workspaceRules } from '../platform-config';
 
 export interface Registry {
@@ -47,7 +58,7 @@ export function checkProject(
 ) {
   const max = plan.limits.projects;
   if (max !== null && live(r) >= max)
-    throw new GatewayError(
+    throw new LimitError(
       'limit-projects',
       said(c, 'projects', max, locale, `Your plan allows ${max} projects.`),
       { limit: max, upgrade: 1 },
@@ -63,7 +74,7 @@ export function checkVideo(
 ) {
   const max = workspaceRules(c, plan.id).videosPerProject;
   if (max !== null && liveVideos(r, projectId) >= max)
-    throw new GatewayError(
+    throw new LimitError(
       'limit-videos',
       said(
         c,

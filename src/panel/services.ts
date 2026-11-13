@@ -35,6 +35,7 @@ import {
   type LibraryKind,
   type VideoStage,
 } from '../project/workspace';
+import { USER_ASSETS_KEY } from '../project/user-assets';
 import {
   change as changeRegistry,
   claim as claimRegistry,
@@ -80,6 +81,8 @@ export interface Asset {
   trashedAt?: string | undefined;
   /** P4: an older generation of the same thing this one replaced. */
   replaces?: string;
+  /** ROUND-A: the Studio tool's name when it was made (the editor shows it). */
+  studioName?: string;
 }
 
 export interface Services {
@@ -260,7 +263,7 @@ export async function createServices(
   };
   const savePrefs = (u: string, p: Prefs) =>
     storage.setItem(prefsKey(u), JSON.stringify(p));
-  const ASSETS = 'aive.panel.assets';
+  const ASSETS = USER_ASSETS_KEY;
   const allAssets = (): Asset[] => {
     try {
       const v = JSON.parse(storage.getItem(ASSETS) ?? '[]') as unknown;
