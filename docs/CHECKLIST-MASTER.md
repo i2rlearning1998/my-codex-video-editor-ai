@@ -116,127 +116,127 @@ Same rule: DONE (with proof) or BLOCKED (with an outside reason). reports/ROUND-
 
 ## Limit mode and model
 
-| #   | Item                                                                                                                                                          | Status | Proof |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ----- |
-| L1  | One editor, two layouts: same engine, Scene Graph, Command Bus, history; one Apply = one transaction = one undo step; src/core and frozen contracts unchanged |        |       |
-| L2  | Anything that costs credits shows a card with the cost and waits for Approve; Director's conversation is free                                                 |        |       |
-| L3  | Director reads the canvas fresh on every message; never overwrites a hand-edited layer without asking                                                         |        |       |
-| L4  | Config-first: rulebook, prompts, refusals, field library, limits, memory caps, rewrite counts from Platform Config                                            |        |       |
-| L5  | Server-side limits when a gateway is set                                                                                                                      |        |       |
-| L6  | Runs offline on the mock model; no key or provider host in any browser file                                                                                   |        |       |
-| L7  | Bundle rule: Director is a lazy chunk; assert-editor-bundle states it; sizes measured                                                                         |        |       |
-| L8  | No admin route outside owner/; owner/ untouched; no new npm dependency; no schema change                                                                      |        |       |
-| L9  | English and Hindi for every string; plain sentences for errors                                                                                                |        |       |
-| L10 | The plan JSON or code is never shown to a normal user                                                                                                         |        |       |
+| #   | Item                                                                                                                                                          | Status | Proof                                                                                                                                                  |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| L1  | One editor, two layouts: same engine, Scene Graph, Command Bus, history; one Apply = one transaction = one undo step; src/core and frozen contracts unchanged | DONE   | RDB-006 (no history from the switch), RDB-019 and RDB-037 (one Apply = one undo step); src/core untouched (git diff), D-417                            |
+| L2  | Anything that costs credits shows a card with the cost and waits for Approve; Director's conversation is free                                                 | DONE   | RDB-017 (nothing spent before Approve), RDB-018 (Studio form cost), RDB-019 (questions free), RDB-039                                                  |
+| L3  | Director reads the canvas fresh on every message; never overwrites a hand-edited layer without asking                                                         | DONE   | RDB-033, RDB-035 (asks before changing a hand-edited layer), RDB-037, RDB-042                                                                          |
+| L4  | Config-first: rulebook, prompts, refusals, field library, limits, memory caps, rewrite counts from Platform Config                                            | DONE   | director.fieldLibrary, lines, styleChat, context caps, rewritesPerVideo in src/platform-config/schema.ts; RDB-041 changes the attachment cap by config |
+| L5  | Server-side limits when a gateway is set                                                                                                                      | DONE   | P3I-011 and P2R2-027 (server checks and charges with a gateway); RDB-040 (no gateway answer: nothing passes)                                           |
+| L6  | Runs offline on the mock model; no key or provider host in any browser file                                                                                   | DONE   | every RDB e2e runs on the offline mock; P2B-38 bundle check (no key or provider host in browser files) passes in npm run build                         |
+| L7  | Bundle rule: Director is a lazy chunk; assert-editor-bundle states it; sizes measured                                                                         | DONE   | scripts/assert-editor-bundle.mjs first-load rule; sizes in D-424 and reports/ROUND-B.md                                                                |
+| L8  | No admin route outside owner/; owner/ untouched; no new npm dependency; no schema change                                                                      | DONE   | no admin route added; owner/ unchanged; package.json dependencies unchanged; schema 9 (git diff)                                                       |
+| L9  | English and Hindi for every string; plain sentences for errors                                                                                                | DONE   | every new string in src/ai-mode/strings.ts, src/panel/strings.ts and director lines has en and hi; RDB-043 (Hindi)                                     |
+| L10 | The plan JSON or code is never shown to a normal user                                                                                                         | DONE   | RDB-017 (no plan JSON on the Plan card)                                                                                                                |
 
 ## Part B0
 
-| #    | Item                                                                                                      | Status                              | Proof |
-| ---- | --------------------------------------------------------------------------------------------------------- | ----------------------------------- | ----- |
-| B0.1 | Top bar at 820 px: no overlap; the Editor                                                                 | AI switch fits at every tested size |       |     |
-| B0.2 | Visual baselines: manually dispatched workflow, artifact fetched and committed (or BLOCKED with commands) |                                     |       |
-| B0.3 | Studio form with a real model's declared parameters: config form stays; parameters only hide and map      |                                     |       |
-| B0.4 | LIB-024 reliable after LIB-020 to LIB-023                                                                 |                                     |       |
+| #    | Item                                                                                                      | Status  | Proof                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---- | --------------------------------------------------------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| B0.1 | Top bar at 820 px: no overlap; the Editor / AI switch fits at every tested size                           | DONE    | LAY-013, LAY-014 (top bar at 820 px); RDB-006 (the switch)                                                                                                                                                                                                                                                                                                                                            |
+| B0.2 | Visual baselines: manually dispatched workflow, artifact fetched and committed (or BLOCKED with commands) | BLOCKED | .github/workflows/visual-baselines.yml exists (workflow_dispatch). This sandbox cannot download Actions artifacts (no gh CLI or GitHub API, and the GitHub tools have no artifact download), so the baselines are not committed. Owner: Actions › Visual baselines › Run workflow on claude/round-b-ai-mode, download the "visual-baselines" artifact and copy it into e2e/visual.spec.ts-snapshots/. |
+| B0.3 | Studio form with a real model's declared parameters: config form stays; parameters only hide and map      | DONE    | RDB-003 (unit), RDA-019, P3I-009, P2R2-027                                                                                                                                                                                                                                                                                                                                                            |
+| B0.4 | LIB-024 reliable after LIB-020 to LIB-023                                                                 | DONE    | LIB-024 (CDP wall-time check), D-424 note in reports/ROUND-B.md                                                                                                                                                                                                                                                                                                                                       |
 
 ## Part B1
 
-| #    | Item                                                                                                     | Status | Proof |
-| ---- | -------------------------------------------------------------------------------------------------------- | ------ | ----- |
-| B1.1 | Memory levels: account, Project memory, Video sheet, file notes, chats with rolling summary, live canvas |        |       |
-| B1.2 | Director chats belong to the Video; existing ones migrated to the Project's first Video                  |        |       |
-| B1.3 | One context-pack function with a config token budget; unit tests of budget and drop order                |        |       |
-| B1.4 | Video sheet auto-updates; Memory tab reads, edits, pins, forgets; a new chat starts with the same sheet  |        |       |
+| #    | Item                                                                                                     | Status | Proof                                                        |
+| ---- | -------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------ |
+| B1.1 | Memory levels: account, Project memory, Video sheet, file notes, chats with rolling summary, live canvas | DONE   | RDB-004 (unit), RDB-036                                      |
+| B1.2 | Director chats belong to the Video; existing ones migrated to the Project's first Video                  | DONE   | RDB-004 (migration unit test), migrateP3Memory               |
+| B1.3 | One context-pack function with a config token budget; unit tests of budget and drop order                | DONE   | RDB-005 (unit: order and drop)                               |
+| B1.4 | Video sheet auto-updates; Memory tab reads, edits, pins, forgets; a new chat starts with the same sheet  | DONE   | RDB-020 (sheet follows the build), RDB-033, RDB-036, P3U-011 |
 
 ## Part B2
 
-| #    | Item                                                                                              | Status                                               | Proof |
-| ---- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------- | ----- |
-| B2.1 | Editor                                                                                            | AI switch in the top bar and as a registered command |       |     |
-| B2.2 | AI mode layout: Director column, stage, scene ribbon, slim timeline, right drawer, top bar        |                                                      |       |
-| B2.3 | Select-only canvas; manual gestures and edit shortcuts off                                        |                                                      |       |
-| B2.4 | Controls tab with live preview, one undo step on release                                          |                                                      |       |
-| B2.5 | Scene ribbon: open, drag reorder, menu Duplicate, Delete (confirm), Ask Director about this scene |                                                      |       |
-| B2.6 | Quick strip: Look, Voice, Music, Captions, Format as proposals                                    |                                                      |       |
-| B2.7 | Export from AI mode                                                                               |                                                      |       |
-| B2.8 | Editor chat dock removed; its engine reused                                                       |                                                      |       |
-| B2.9 | Ask Director in Editor mode (top bar and canvas menu) carries the selection                       |                                                      |       |
+| #    | Item                                                                                              | Status | Proof                                |
+| ---- | ------------------------------------------------------------------------------------------------- | ------ | ------------------------------------ |
+| B2.1 | Editor / AI switch in the top bar and as a registered command                                     | DONE   | RDB-006                              |
+| B2.2 | AI mode layout: Director column, stage, scene ribbon, slim timeline, right drawer, top bar        | DONE   | RDB-007                              |
+| B2.3 | Select-only canvas; manual gestures and edit shortcuts off                                        | DONE   | RDB-008                              |
+| B2.4 | Controls tab with live preview, one undo step on release                                          | DONE   | RDB-009                              |
+| B2.5 | Scene ribbon: open, drag reorder, menu Duplicate, Delete (confirm), Ask Director about this scene | DONE   | RDB-010                              |
+| B2.6 | Quick strip: Look, Voice, Music, Captions, Format as proposals                                    | DONE   | RDB-011                              |
+| B2.7 | Export from AI mode                                                                               | DONE   | RDB-012                              |
+| B2.8 | Editor chat dock removed; its engine reused                                                       | DONE   | RDB-012; P3I-011 (the engine reused) |
+| B2.9 | Ask Director in Editor mode (top bar and canvas menu) carries the selection                       | DONE   | RDB-012                              |
 
 ## Part B3
 
-| #     | Item                                                                                                                    | Status | Proof |
-| ----- | ----------------------------------------------------------------------------------------------------------------------- | ------ | ----- |
-| B3.1  | Entries open AI mode on the Video; panel Director room, brief, plan and live-build screens removed; Video card menu     |        |       |
-| B3.2  | Field library and video types in config; classification; ONE Brief card; style prefill; Use my brand                    |        |       |
-| B3.3  | Attachments with file notes; Brief card says what was understood                                                        |        |       |
-| B3.4  | Plan card: scenes, credits, Approve, Cheaper, Richer, per-scene edit, rewrites from config                              |        |       |
-| B3.5  | Assets card: Make it here (Studio form), Upload, Give me a prompt, Choose from Library, Later; regenerate keeps the old |        |       |
-| B3.6  | Build on the canvas; cancel or failure leaves nothing half-built and refunds fully                                      |        |       |
-| B3.7  | Five message kinds after the build; several asks become a list of cards                                                 |        |       |
-| B3.8  | New scene: one-scene plan card, built in place                                                                          |        |       |
-| B3.9  | New video: creates the next Video in the Project                                                                        |        |       |
-| B3.10 | First Video fills the Project's style record and says so once                                                           |        |       |
-| B3.11 | Restate before cost; ONE question when unsure; alternatives; refusal with no model call                                 |        |       |
+| #     | Item                                                                                                                    | Status | Proof                                                                       |
+| ----- | ----------------------------------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------- |
+| B3.1  | Entries open AI mode on the Video; panel Director room, brief, plan and live-build screens removed; Video card menu     | DONE   | RDB-015, RDA-011, RDA-012, P3U-005                                          |
+| B3.2  | Field library and video types in config; classification; ONE Brief card; style prefill; Use my brand                    | DONE   | RDB-014, P2R1-037 (Use my brand)                                            |
+| B3.3  | Attachments with file notes; Brief card says what was understood                                                        | DONE   | RDB-016, RDB-041                                                            |
+| B3.4  | Plan card: scenes, credits, Approve, Cheaper, Richer, per-scene edit, rewrites from config                              | DONE   | RDB-017                                                                     |
+| B3.5  | Assets card: Make it here (Studio form), Upload, Give me a prompt, Choose from Library, Later; regenerate keeps the old | DONE   | RDB-018                                                                     |
+| B3.6  | Build on the canvas; cancel or failure leaves nothing half-built and refunds fully                                      | DONE   | RDB-020, RDB-021, RDB-032                                                   |
+| B3.7  | Five message kinds after the build; several asks become a list of cards                                                 | DONE   | RDB-019, RDB-023                                                            |
+| B3.8  | New scene: one-scene plan card, built in place                                                                          | DONE   | RDB-022                                                                     |
+| B3.9  | New video: creates the next Video in the Project                                                                        | DONE   | RDB-022                                                                     |
+| B3.10 | First Video fills the Project's style record and says so once                                                           | DONE   | RDB-020                                                                     |
+| B3.11 | Restate before cost; ONE question when unsure; alternatives; refusal with no model call                                 | DONE   | RDB-017 (restate), RDB-024 (one question), RDB-023 (refusal, no model call) |
 
 ## Part B4
 
-| #    | Item                                                                       | Status | Proof |
-| ---- | -------------------------------------------------------------------------- | ------ | ----- |
-| B4.1 | Style chat on the Project page Style tab: before/after, applied on confirm |        |       |
-| B4.2 | Apply the project's new style to an existing Video in AI mode (a proposal) |        |       |
+| #    | Item                                                                       | Status | Proof   |
+| ---- | -------------------------------------------------------------------------- | ------ | ------- |
+| B4.1 | Style chat on the Project page Style tab: before/after, applied on confirm | DONE   | RDB-024 |
+| B4.2 | Apply the project's new style to an existing Video in AI mode (a proposal) | DONE   | RDB-025 |
 
 ## AI mode UI
 
-| #   | Item                                                                                 | Status | Proof |
-| --- | ------------------------------------------------------------------------------------ | ------ | ----- |
-| U1  | Point-and-say bubble on the selected layer                                           |        |       |
-| U2  | Drag and drop of assets and files onto layers, slots and the stage                   |        |       |
-| U3  | Live proposal preview on the real canvas; Apply, Discard; changed layers highlighted |        |       |
-| U4  | Orb states and the stage glow                                                        |        |       |
-| U5  | 1920, 1440, 1280 and 1024 px; dark and light; empty, loading, error states           |        |       |
-| U6  | Animations Off makes everything still; nothing animates in a hidden tab              |        |       |
+| #   | Item                                                                                 | Status | Proof                                                                                    |
+| --- | ------------------------------------------------------------------------------------ | ------ | ---------------------------------------------------------------------------------------- |
+| U1  | Point-and-say bubble on the selected layer                                           | DONE   | RDB-045                                                                                  |
+| U2  | Drag and drop of assets and files onto layers, slots and the stage                   | DONE   | RDB-045 (file on the stage), RDB-016 (message box)                                       |
+| U3  | Live proposal preview on the real canvas; Apply, Discard; changed layers highlighted | DONE   | RDB-011, RDB-019 (preview, Apply, flash)                                                 |
+| U4  | Orb states and the stage glow                                                        | DONE   | RDB-020 (building), RDB-045 (refusing, idle)                                             |
+| U5  | 1920, 1440, 1280 and 1024 px; dark and light; empty, loading, error states           | DONE   | RDB-007 (1024 overlay); reports/round-b/ai-mode (1920, 1440, 1280, 1024, dark and light) |
+| U6  | Animations Off makes everything still; nothing animates in a hidden tab              | DONE   | RDB-044, RDB-045 (hidden tab)                                                            |
 
 ## Part B5
 
-| #    | Item                                                                                          | Status | Proof |
-| ---- | --------------------------------------------------------------------------------------------- | ------ | ----- |
-| B5.1 | Layouts use the width; Studio tools follow the reference layout; stacks at 390 px             |        |       |
-| B5.2 | One colour system written in the tokens file; one selected style; a test of computed colours  |        |       |
-| B5.3 | Style cards from config thumb only; neutral tile without a picture; default Image style names |        |       |
-| B5.4 | Field-by-field match tables for 8 tools                                                       |        |       |
-| B5.5 | No native select, checkbox, radio or file input styling in the panel or AI mode               |        |       |
-| B5.6 | Panel screenshots: dark, light, 1440, 390                                                     |        |       |
+| #    | Item                                                                                          | Status | Proof                                                                    |
+| ---- | --------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------ |
+| B5.1 | Layouts use the width; Studio tools follow the reference layout; stacks at 390 px             | DONE   | RDB-026, RDB-029                                                         |
+| B5.2 | One colour system written in the tokens file; one selected style; a test of computed colours  | DONE   | RDB-027                                                                  |
+| B5.3 | Style cards from config thumb only; neutral tile without a picture; default Image style names | DONE   | RDB-028                                                                  |
+| B5.4 | Field-by-field match tables for 8 tools                                                       | DONE   | reports/ROUND-B.md section "Studio: reference field to our field"        |
+| B5.5 | No native select, checkbox, radio or file input styling in the panel or AI mode               | DONE   | RDB-030                                                                  |
+| B5.6 | Panel screenshots: dark, light, 1440, 390                                                     | DONE   | reports/round-b/panel (23 pages and tools, dark and light, 1440 and 390) |
 
 ## Rough use (Round B)
 
-| #    | Item                                                                        | Status | Proof |
-| ---- | --------------------------------------------------------------------------- | ------ | ----- |
-| RB1  | Message sent while a build runs                                             |        |       |
-| RB2  | Switch to Editor mode mid-build and back                                    |        |       |
-| RB3  | Undo an AI change in Editor mode, return to AI mode: sheet and canvas agree |        |       |
-| RB4  | Delete a scene by hand, then ask Director about it                          |        |       |
-| RB5  | Hand-edit a layer, then ask Director to change the scene: it asks first     |        |       |
-| RB6  | Reload at every step (brief, plan, assets, build) resumes there             |        |       |
-| RB7  | Two chats in one Video share the sheet                                      |        |       |
-| RB8  | A very long chat still knows the brief                                      |        |       |
-| RB9  | Selected layer deleted before Apply: proposal cancelled with one sentence   |        |       |
-| RB10 | Proposal applied twice                                                      |        |       |
-| RB11 | A control dragged while a proposal is previewing                            |        |       |
-| RB12 | Reorder scenes during playback                                              |        |       |
-| RB13 | Not enough credits                                                          |        |       |
-| RB14 | Server unreachable: nothing spent, nothing lost, input kept                 |        |       |
-| RB15 | A huge or unsupported attachment                                            |        |       |
-| RB16 | Three asks in one message                                                   |        |       |
-| RB17 | A locked layer                                                              |        |       |
-| RB18 | Off-topic and prompt-injection messages                                     |        |       |
-| RB19 | Hindi input                                                                 |        |       |
-| RB20 | Mode switch with Animations Off                                             |        |       |
+| #    | Item                                                                        | Status | Proof                     |
+| ---- | --------------------------------------------------------------------------- | ------ | ------------------------- |
+| RB1  | Message sent while a build runs                                             | DONE   | RDB-031                   |
+| RB2  | Switch to Editor mode mid-build and back                                    | DONE   | RDB-031                   |
+| RB3  | Undo an AI change in Editor mode, return to AI mode: sheet and canvas agree | DONE   | RDB-033                   |
+| RB4  | Delete a scene by hand, then ask Director about it                          | DONE   | RDB-034                   |
+| RB5  | Hand-edit a layer, then ask Director to change the scene: it asks first     | DONE   | RDB-035                   |
+| RB6  | Reload at every step (brief, plan, assets, build) resumes there             | DONE   | RDB-032                   |
+| RB7  | Two chats in one Video share the sheet                                      | DONE   | RDB-036                   |
+| RB8  | A very long chat still knows the brief                                      | DONE   | RDB-036                   |
+| RB9  | Selected layer deleted before Apply: proposal cancelled with one sentence   | DONE   | RDB-037                   |
+| RB10 | Proposal applied twice                                                      | DONE   | RDB-037                   |
+| RB11 | A control dragged while a proposal is previewing                            | DONE   | RDB-037                   |
+| RB12 | Reorder scenes during playback                                              | DONE   | RDB-038                   |
+| RB13 | Not enough credits                                                          | DONE   | RDB-039                   |
+| RB14 | Server unreachable: nothing spent, nothing lost, input kept                 | DONE   | RDB-040                   |
+| RB15 | A huge or unsupported attachment                                            | DONE   | RDB-041                   |
+| RB16 | Three asks in one message                                                   | DONE   | RDB-023                   |
+| RB17 | A locked layer                                                              | DONE   | RDB-042                   |
+| RB18 | Off-topic and prompt-injection messages                                     | DONE   | RDB-023, RDB-024, RDB-045 |
+| RB19 | Hindi input                                                                 | DONE   | RDB-043                   |
+| RB20 | Mode switch with Animations Off                                             | DONE   | RDB-044                   |
 
 ## Finish (Round B)
 
-| #   | Item                                                                                                      | Status | Proof |
-| --- | --------------------------------------------------------------------------------------------------------- | ------ | ----- |
-| FB1 | Ledger rows RDB-, each with an e2e test; older tests updated, none weakened; DECISIONS, STATUS, CHANGELOG |        |       |
-| FB2 | reports/ROUND-B.md from the template with bundle sizes, reference tables, try-it script                   |        |       |
-| FB3 | AI mode screenshots: dark, light, each width                                                              |        |       |
-| FB4 | One full npm run verify; failed specs re-run                                                              |        |       |
-| FB5 | Pushed; CI checked once                                                                                   |        |       |
+| #   | Item                                                                                                      | Status | Proof                                                                                                |
+| --- | --------------------------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| FB1 | Ledger rows RDB-, each with an e2e test; older tests updated, none weakened; DECISIONS, STATUS, CHANGELOG | DONE   | docs/FEATURES.md RDB-003 to RDB-045; npm run ledger OK; D-417 to D-424; docs/STATUS.md; CHANGELOG.md |
+| FB2 | reports/ROUND-B.md from the template with bundle sizes, reference tables, try-it script                   | DONE   | reports/ROUND-B.md                                                                                   |
+| FB3 | AI mode screenshots: dark, light, each width                                                              | DONE   | reports/round-b/ai-mode                                                                              |
+| FB4 | One full npm run verify; failed specs re-run                                                              | DONE   | reports/ROUND-B.md section 3                                                                         |
+| FB5 | Pushed; CI checked once                                                                                   | DONE   | reports/ROUND-B.md section 3                                                                         |

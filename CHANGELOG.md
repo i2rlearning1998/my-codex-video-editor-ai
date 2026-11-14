@@ -1,5 +1,14 @@
 # Changelog
 
+## Round B: AI mode in the editor, Style chat, panel UI pass (14 Nov)
+
+- AI mode: a second layout of the same editor and the Director's only home (Director column, stage, scene ribbon, drawer, quick strip); the panel's Director room and the editor chat dock are gone (D-417, D-419).
+- Memory by level, chats per Video, one context pack with a budget (D-418).
+- Brief card from the field library, Plan card with rewrites, Assets card with the Studio form inside, build on the canvas with cancel and full refund, proposals with live preview and one undo step (D-420, D-421).
+- Style chat on the Project page; existing Videos take a new style as a proposal (D-422).
+- Panel UI pass: width-using layouts, one gold selection colour, Studio tools in the reference layout with the cost on the button, style cards from the owner's pictures only, shared controls (D-423).
+- The editor's first load carries no Director code (D-424). Schema 9 unchanged; no new npm dependencies.
+
 ## Round A: the panel rebuilt around Project and Video (13 Nov)
 
 - A Project is a container and one style; a Video is one editor project inside it. P4 data is migrated once, idempotently, with nothing lost (D-412).
