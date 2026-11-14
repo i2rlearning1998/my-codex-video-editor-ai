@@ -508,3 +508,89 @@
     background-position: 200% 0;
   }
 }
+
+/* ROUND-B B4: Style chat */
+.rda-style-side {
+  display: grid;
+  gap: 24px;
+  align-content: start;
+}
+.sc {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+}
+.sc h3 {
+  margin: 0;
+}
+.sc-thread {
+  display: grid;
+  gap: 10px;
+  max-block-size: 420px;
+  overflow-y: auto;
+  align-content: start;
+}
+.sc-msg {
+  max-inline-size: 92%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--surface-2, rgb(127 127 127 / 12%));
+}
+.sc-msg p,
+.sc-card p {
+  margin: 0;
+}
+.sc-msg.you {
+  justify-self: end;
+  background: var(--surface-3, rgb(127 127 127 / 22%));
+}
+.sc-msg.refusal {
+  border: 1px solid var(--warning-text, currentColor);
+}
+.sc-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border, rgb(127 127 127 / 30%));
+}
+.sc-card.done {
+  opacity: 0.7;
+}
+.sc-diff {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.sc-diff th,
+.sc-diff td {
+  text-align: start;
+  padding: 4px 6px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.sc-diff td.before {
+  opacity: 0.7;
+}
+.sc-swatches {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.sc-swatch {
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 50%;
+  border: 1px solid rgb(127 127 127 / 45%);
+}
+.sc-box {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: end;
+}
+.sc-box textarea {
+  inline-size: 100%;
+  resize: vertical;
+}

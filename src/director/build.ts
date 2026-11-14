@@ -40,6 +40,16 @@ export interface BuildInput {
   readonly connected?: (modelId: string) => boolean;
   /** P2B-23: speak the whole narration with the voice model. */
   readonly voice?: boolean;
+  /** ROUND-B: Cancel. Checked between calls; a cancel refunds the whole hold. */
+  readonly signal?: AbortSignal;
+  /**
+   * ROUND-B: runs after the plan is checked and BEFORE any credit is
+   * settled (AI mode puts the scenes on the canvas here). If it throws or
+   * the build is cancelled, the whole hold is given back and nothing stays.
+   */
+  readonly beforeSettle?: (
+    result: Omit<BuildResult, 'credits'>,
+  ) => Promise<void>;
 }
 /** A file the build made, for Project Media (found by the plan by name). */
 export interface MadeFile {
@@ -126,7 +136,11 @@ export async function runBuild(x: BuildInput): Promise<BuildResult> {
     const files: MadeFile[] = [];
     const missing: string[] = [];
     const reach = (id: string) => (x.connected ? x.connected(id) : true);
+    const stop = () => {
+      if (x.signal?.aborted) throw new Error('cancelled');
+    };
     for (let i = 0; i < scenes.length; i++) {
+      stop();
       const s = scenes[i]!;
       x.onEvent({ step: 'scene', index: i, total: scenes.length });
       const written = await job.call(c.director.roles.write, x.modelId, {
@@ -223,6 +237,9 @@ export async function runBuild(x: BuildInput): Promise<BuildResult> {
     x.onEvent({ step: 'check' });
     const checked = checkPlan(video);
     if (!checked.ok) throw new Error(checked.message);
+    stop();
+    await x.beforeSettle?.({ plan: checked.plan, files, missing });
+    stop();
     const credits = await job.finish(work);
     x.onEvent({ step: 'done', credits, refunded: job.reserved - credits });
     return { plan: checked.plan, credits, files, missing };

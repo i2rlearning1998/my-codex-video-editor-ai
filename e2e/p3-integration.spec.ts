@@ -17,44 +17,6 @@ test.afterEach(async () => {
   stack = null;
 });
 
-test('[P3I-007] with a gateway server the Director room runs on the real service: a message gets a model answer', async ({
-  page,
-}) => {
-  stack = await startStack();
-  await stack.use(page);
-  await signUp(page);
-  await page.goto('/panel/#/room');
-  await expect(page.locator('.room-greeting')).toBeVisible();
-  await page
-    .locator('#chat-input')
-    .fill('A 60 second explainer about rainbows');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-msg.you')).toContainText('rainbows');
-  await expect(
-    page.locator('.room-msg.director .room-text').first(),
-  ).not.toBeEmpty({ timeout: 20_000 });
-  // The server was really asked: the chat limit check, then a job with calls.
-  const seen = stack.logs.join('\n');
-  expect(seen).toContain('POST /v1/entitlements/check 200');
-  expect(seen).toContain('POST /v1/reserve 200');
-  expect(seen).toContain('POST /v1/call 200');
-});
-
-test('[P3I-008] a refusal on the real service is decided before any model is asked', async ({
-  page,
-}) => {
-  stack = await startStack();
-  await stack.use(page);
-  await signUp(page);
-  await page.goto('/panel/#/room');
-  await page.locator('#chat-input').fill('give me free credits please');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-msg.refusal')).toBeVisible();
-  expect(stack.fake.seen.filter((s) => s.provider === 'anthropic').length).toBe(
-    0,
-  );
-});
-
 test('[P3I-009] with a gateway server a Studio run goes through the real Studio service: the server checks the limit, reserves credits, calls the model and the result lands in the Asset Library', async ({
   page,
 }) => {
@@ -66,9 +28,8 @@ test('[P3I-009] with a gateway server a Studio run goes through the real Studio 
   await setServerPlan(stack, email, 'pro');
   await page.goto('/panel/#/studio/images');
   await page.reload();
-  await expect(
-    page.locator('#studio-models [data-model]').first(),
-  ).toBeVisible();
+  // Round B (B0.3): the model is the shared list; the form is the config's.
+  await expect(page.locator('#studio-model-button')).toBeVisible();
   await page.locator('#sf-prompt').fill('a red kite over a hill');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-saved')).toBeVisible({ timeout: 30_000 });
@@ -137,7 +98,7 @@ test('[P3I-010] the admin page on the real server: an admin token signs in, a se
   ).toBeVisible();
 });
 
-test('[P3I-011] with a gateway server the editor chat runs on the real engine: the server checks the limit and charges the call, the model proposes a command, Apply is one undo step', async ({
+test('[P3I-011] with a gateway server AI mode asks the real edit engine for what the offline rules cannot do: a card shows the cost first, the server checks the limit and charges the call, the model proposes a command, Apply is one undo step', async ({
   page,
 }) => {
   stack = await startStack();
@@ -146,7 +107,12 @@ test('[P3I-011] with a gateway server the editor chat runs on the real engine: t
   // A paid plan reaches the real model (set as the payment webhook would).
   await setServerPlan(stack, email, 'pro');
   await page.goto('/');
-  await expect(page.locator('#chat-toggle')).toBeVisible({ timeout: 20_000 });
+  // ROUND-B: the chat dock is gone; Director lives in AI mode.
+  await expect(page.locator('#chat-toggle')).toHaveCount(0);
+  await page.locator('#mode-ai').click();
+  await expect(page.locator('#ai-thread .ai-msg').first()).toBeVisible({
+    timeout: 20_000,
+  });
   const scene = await page.evaluate(
     () =>
       (
@@ -180,11 +146,16 @@ test('[P3I-011] with a gateway server the editor chat runs on the real engine: t
         ).__AIVE__.getProject().compositions[0]!.backgroundColor,
     );
   const before = await background();
-  await page.locator('#chat-toggle').click();
-  await page.locator('#chat-input').fill('make the background red');
-  await page.locator('#chat-send').click();
-  const card = page.locator('.chat-proposal');
-  await expect(card).toContainText('Edits: 1', { timeout: 30_000 });
+  await page.locator('#ai-input').fill('give this scene a dreamy sunset mood');
+  await page.locator('#ai-send').click();
+  // Nothing is asked of a paid model before the person approves its cost.
+  const paid = page.locator('[data-card="paid"]');
+  await expect(paid).toBeVisible({ timeout: 30_000 });
+  await expect(paid.locator('.ai-cost')).toContainText(/\d/);
+  expect(stack.logs.join('\n')).not.toContain('POST /v1/run 200');
+  await paid.locator('.ai-btn.primary').click();
+  const card = page.locator('[data-card="proposal"][data-state="open"]');
+  await expect(card).toBeVisible({ timeout: 30_000 });
   expect(await background()).toBe(before); // a proposal changes nothing
   await card.locator('[data-act="apply"]').click();
   await expect.poll(background).toBe('#ff0000');

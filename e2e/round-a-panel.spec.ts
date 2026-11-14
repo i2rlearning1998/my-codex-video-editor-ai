@@ -261,8 +261,12 @@ test('[RDA-011] the Styles page is the ready-made gallery only; choosing a Style
   const first = page.locator('#style-grid [data-use-style]').first();
   const styleId = await first.getAttribute('data-use-style');
   await first.click();
-  // Round B seam: the existing Director brief, bound to the new Video.
-  await expect(page).toHaveURL(new RegExp(`#/brief/${styleId}\\?project=`));
+  // Round B: Director starts on the new Video in the editor's AI mode.
+  await expect(page).toHaveURL(/\/\?open=[^&]+&ai=1/);
+  await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/, {
+    timeout: 30_000,
+  });
+  expect(styleId).toBeTruthy();
   await page.goto('/panel/#/projects');
   await expect(cards(page)).toHaveCount(1);
   await expect(cards(page).first().locator('.ws-tag')).toHaveText(
@@ -275,7 +279,7 @@ test('[RDA-011] the Styles page is the ready-made gallery only; choosing a Style
   );
   // The old My Styles address no longer has a screen: it shows Home.
   await page.goto('/panel/#/my-styles');
-  await expect(page.locator('.room-orb canvas')).toBeVisible();
+  await expect(page.locator('#director-start .start-orb canvas')).toBeVisible();
   await expect(page.locator('#mine-strip, .mine-section')).toHaveCount(0);
 });
 
@@ -284,17 +288,21 @@ test('[RDA-012] Home has the Director box with the Orb, a row of ready-made Styl
 }) => {
   await signUp(page);
   await page.goto('/panel/#/home');
-  await expect(page.locator('.room-orb canvas')).toBeVisible();
+  await expect(page.locator('#director-start .start-orb canvas')).toBeVisible();
   await expect(page.locator('#style-reel [data-style]').first()).toBeVisible();
   await expect(page.locator('#home-continue [data-video]')).toHaveCount(0);
   await page.locator('#style-reel [data-use-style]').first().click();
-  await expect(page).toHaveURL(/#\/brief\//);
+  // Round B: the Style's first Video opens in AI mode.
+  await expect(page).toHaveURL(/ai=1/);
+  await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/, {
+    timeout: 30_000,
+  });
   await page.goto('/panel/#/home');
   const cont = page.locator('#home-continue [data-video]');
   await expect(cont).toHaveCount(1);
   await expect(cont.first()).toHaveAttribute('data-stage', 'brief');
   await cont.first().locator('[data-act="continue"]').click();
-  await expect(page).toHaveURL(/#\/brief\//);
+  await expect(page).toHaveURL(/ai=1/);
 });
 
 test('[RDA-013] reaching the projects limit or the videos-per-project limit shows the owner sentence with Upgrade and makes nothing', async ({

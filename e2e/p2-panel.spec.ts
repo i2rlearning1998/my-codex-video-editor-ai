@@ -1,8 +1,7 @@
 // P2-R1: the user panel and website in a real browser, on the offline mock
 // (no keys, no third-party network). Every test acts like a person.
-import { readFileSync } from 'node:fs';
-import { test, expect, hook, settleBuild } from './fixtures';
-import { balance, PASSWORD, setPlan, signUp, approvePlan } from './p2-helpers';
+import { test, expect, hook } from './fixtures';
+import { balance, PASSWORD, setPlan, signUp } from './p2-helpers';
 import { defaultConfig } from '../src/platform-config';
 
 test('[P2R1-018] no guest mode: logged out sees only the website; sign up, log out, log in and reset a password; the editor opens only after login', async ({
@@ -132,7 +131,7 @@ test('[P2R1-019] the brand name and accent come from the Platform Config', async
   ).toBe('#e4572e');
 });
 
-test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director from the prompt; Styles filter, search, show prices and lock what the plan lacks', async ({
+test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director (AI mode) from the prompt; Styles filter, search, show prices and lock what the plan lacks', async ({
   page,
 }) => {
   await signUp(page, 'meera.home@example.com');
@@ -140,10 +139,11 @@ test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director from the
   await expect(page.locator('#home-balance')).toContainText('60 credits');
   await expect(page.locator('.page [data-style]')).toHaveCount(3);
   await expect(page.locator('.page .list li')).toHaveCount(3); // Learn
-  await page.locator('#chat-input').fill('How Eratosthenes measured the Earth');
-  await page.locator('[data-start="brief"]').click();
-  await expect(page.locator('h1')).toContainText('Story Explainer');
-  await expect(page.locator('#f-idea')).toHaveValue(
+  // Round B: the Home box opens AI mode on a new Video with the idea read.
+  await page.locator('#home-input').fill('How Eratosthenes measured the Earth');
+  await page.locator('#home-send').click();
+  await expect(page.locator('#ai-brief-card')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#ai-thread')).toContainText(
     'How Eratosthenes measured the Earth',
   );
   await page.goto('/panel/#/styles');
@@ -165,245 +165,6 @@ test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director from the
   await page.locator('#style-mine').check();
   await expect(page.locator('#style-grid [data-style]')).toHaveCount(2);
   await page.locator('[data-upgrade]').first().waitFor({ state: 'detached' });
-});
-
-test('[P2R1-024] [P2R1-025] Brief Room: fields from config with show-if and validation, brief strength, and an estimate that changes with the model; drafts are kept', async ({
-  page,
-}) => {
-  await signUp(page);
-  await setPlan(page, 'pro');
-  await page.goto('/panel/#/brief/quick-short');
-  // Every field type from config.
-  for (const type of [
-    'text',
-    'multi',
-    'slider',
-    'toggle',
-    'color',
-    'voice',
-    'ref',
-    'number',
-  ])
-    await expect(
-      page.locator(`.field[data-type="${type}"]`).first(),
-    ).toBeVisible();
-  await page.locator('#make-plan').click();
-  await expect(page.locator('[data-field="hook"] .field-error')).toHaveText(
-    'This is needed.',
-  );
-  await expect(page.locator('[data-field="points"] .field-error')).toHaveText(
-    'This is needed.',
-  );
-  await page.locator('#f-cta').fill('25');
-  await expect(page.locator('[data-field="cta"] .field-error')).toHaveText(
-    'Use a number from 0 to 10.',
-  );
-  await page.locator('#f-cta').fill('5');
-  await page.locator('#f-hook').fill('Why is the sky blue?');
-  await page.locator('[data-field="points"] input[value="facts"]').check();
-  await expect(page.locator('#brief-strength')).toContainText(/Good|Strong/);
-  // The estimate follows the model.
-  const est = page.locator('#brief-estimate');
-  await page.locator('[data-model="mock-fast"]').click();
-  await expect(est).toHaveText(/Estimated cost: \d+–\d+ credits/);
-  const fast = Number(await est.getAttribute('data-max'));
-  await page.locator('[data-model="mock-best"]').click();
-  await expect
-    .poll(async () => Number(await est.getAttribute('data-max')))
-    .toBeGreaterThan(fast);
-  // More scenes cost more.
-  const best = Number(await est.getAttribute('data-max'));
-  await page.locator('#f-scenes').fill('8');
-  await expect
-    .poll(async () => Number(await est.getAttribute('data-max')))
-    .toBeGreaterThan(best);
-  await expect(page.locator('#draft-saved')).toHaveText('Draft saved');
-  // Show-if: Story Explainer's caption style appears only with a language.
-  await page.goto('/panel/#/brief/story-explainer');
-  await expect(page.locator('[data-field="captionStyle"]')).toBeHidden();
-  await page.locator('[data-field="captionLang"] input[value="hi"]').check();
-  await expect(page.locator('[data-field="captionStyle"]')).toBeVisible();
-  // Drafts survive a reload.
-  await page.goto('/panel/#/brief/quick-short');
-  await expect(page.locator('#f-hook')).toHaveValue('Why is the sky blue?');
-  // Free plan: Best is locked.
-  await setPlan(page, 'free');
-  await page.goto('/panel/#/brief/quick-short');
-  await expect(page.locator('[data-model="mock-best"]')).toBeDisabled();
-});
-
-async function circumferenceBrief(page: import('@playwright/test').Page) {
-  await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
-  await page
-    .locator('#f-idea')
-    .fill(
-      'How Eratosthenes measured the circumference of the Earth. He used shadows in two cities.',
-    );
-  await page.locator('#talk-director').click();
-  // Director asks only what the brief does not answer.
-  await expect(page.locator('.msg[data-kind="question"]').last()).toContainText(
-    'script',
-  );
-  await page.locator('#chat-input').fill('Write it for me');
-  await page.locator('#chat-send').click();
-  await page.locator('#chat-input').fill('Text to speech');
-  await page.locator('#chat-send').click();
-  // A forbidden request gets the owner's reply.
-  await page
-    .locator('#chat-input')
-    .fill('also make a deepfake of a famous scientist');
-  await page.locator('#chat-send').click();
-  await expect(page.locator('.msg[data-kind="refusal"]')).toContainText(
-    'I do not make videos that pretend to be a real person',
-  );
-  await page.locator('#chat-input').fill('None');
-  await page.locator('#chat-send').click();
-  await page.locator('#chat-input').fill('Hindi');
-  await page.locator('#chat-send').click();
-  await expect(page.locator('.msg[data-kind="upgrade"]')).toBeVisible();
-  await page.locator('#make-plan').click();
-  await expect(page.locator('#plan-card .scene')).toHaveCount(5);
-}
-
-test('[P2R1-029] the Plan card: methods with cheaper and richer swaps, per-scene and total credits for the chosen model, balance, a shortage with options, and Cancel', async ({
-  page,
-}) => {
-  await signUp(page);
-  await circumferenceBrief(page);
-  const total = page.locator('#plan-total');
-  await expect(total).toHaveText(/Total: \d+–\d+ credits/);
-  await expect(page.locator('#plan-balance')).toHaveText(
-    'Your balance: 60 credits',
-  );
-  await expect(page.locator('.scene').first()).toHaveAttribute(
-    'data-method',
-    'library',
-  );
-  await expect(page.locator('.scene').nth(1)).toHaveAttribute(
-    'data-method',
-    'motion-graphics',
-  );
-  await expect(page.locator('.scene').nth(1).locator('.scene-cost')).toHaveText(
-    /\d+–\d+ credits/,
-  );
-  const before = Number(await total.getAttribute('data-max'));
-  await page.locator('.scene').nth(1).locator('[data-swap="cheaper"]').click();
-  await expect(page.locator('.scene').nth(1)).toHaveAttribute(
-    'data-method',
-    'stock',
-  );
-  await expect
-    .poll(async () => Number(await total.getAttribute('data-max')))
-    .toBeLessThan(before);
-  // Richer than motion graphics is an AI image: not on Free, so it offers Upgrade.
-  await page.locator('.scene').nth(2).locator('[data-swap="richer"]').click();
-  await expect(page).toHaveURL(/#\/credits/);
-  await page.goBack();
-  // Spend most credits elsewhere to see the shortage.
-  await page.evaluate(() => {
-    const key = Object.keys(localStorage).find((k) =>
-      k.startsWith('aive.credits.'),
-    )!;
-    const rows = JSON.parse(localStorage.getItem(key)!);
-    rows.push({
-      id: 'adjust-x',
-      at: new Date().toISOString(),
-      type: 'adjust',
-      delta: -50,
-      key: 'test-spend',
-      note: 'test',
-    });
-    localStorage.setItem(key, JSON.stringify(rows));
-  });
-  await page.reload();
-  await expect(page.locator('#plan-shortage')).toContainText('you have 10');
-  await expect(page.locator('#plan-approve')).toBeDisabled();
-  await expect(page.locator('#shortage-topup')).toBeVisible();
-  await page.locator('#shortage-scenes').click();
-  await page.locator('#plan-cancel').click();
-  await expect(page.locator('h1')).toContainText('Brief Room');
-});
-
-test('[P2R1-031] Circumference end to end: login, Story Explainer, brief, Director, plan with credits, approve, build, the editor opens with editable scenes, export; a failed build refunds', async ({
-  page,
-}, testInfo) => {
-  test.setTimeout(180_000);
-  await signUp(page);
-  // First a failed build: the mock model fails on its third call.
-  await page.addInitScript(() => {
-    if (!sessionStorage.getItem('aive.e2e.failedOnce'))
-      (
-        window as { __AIVE_E2E_MOCK_FAIL_AT__?: number }
-      ).__AIVE_E2E_MOCK_FAIL_AT__ = 3;
-  });
-  await page.goto('/panel/#/home');
-  await page.reload();
-  await circumferenceBrief(page);
-  const max = Number(
-    await page.locator('#plan-total').getAttribute('data-max'),
-  );
-  await approvePlan(page);
-  await expect(page.locator('#build-steps li').first()).toHaveText(
-    `Held ${max} credits`,
-  );
-  await expect(page.locator('#build-status')).toHaveAttribute(
-    'data-state',
-    'failed',
-  );
-  await expect(page.locator('#build-status')).toContainText(
-    `All ${max} credits came back.`,
-  );
-  expect(await balance(page)).toBe(60);
-  // Try again works.
-  await page.evaluate(() => sessionStorage.setItem('aive.e2e.failedOnce', '1'));
-  await page.locator('#build-retry').click();
-  await expect(page.locator('#build-status')).toHaveAttribute(
-    'data-state',
-    'done',
-    { timeout: 30_000 },
-  );
-  const done = (await page.locator('#build-status').textContent())!;
-  const used = Number(/(\d+) credits used/.exec(done)![1]);
-  expect(used).toBeLessThanOrEqual(max);
-  expect(await balance(page)).toBe(60 - used);
-  await page.goto('/panel/#/credits');
-  await expect(
-    page.locator('#ledger-table tr[data-type="reserve"]'),
-  ).toHaveCount(2);
-  await expect(
-    page.locator('#ledger-table tr[data-type="refund"]'),
-  ).toHaveCount(2);
-  await page.goBack();
-  // Open in editor: the editor's own Build video makes editable scenes.
-  await page.locator('#open-in-editor').click();
-  await expect(page.locator('.plan-build')).toBeVisible({ timeout: 30_000 });
-  await settleBuild(page);
-  const state = await hook(page);
-  expect(state.project.compositions).toHaveLength(5);
-  expect(state.project.metadata.name).toContain('Eratosthenes');
-  expect(state.project.compositions.every((c) => c.layers.length > 0)).toBe(
-    true,
-  );
-  expect(state.history.labels.at(-1)).toBe('Build video');
-  expect(state.project.compositions[0]!.width).toBe(1080); // 9:16 Story Explainer
-  // Export: a PNG frame from the editor's own export dialog.
-  await page.locator('.plan-build #plan-cancel').click();
-  await expect(page.locator('.plan-build')).toHaveCount(0);
-  // The build leaves an "Upload your AI assets" box for the narration slot; close it.
-  const assetsBox = page.locator('[data-missing-assets]');
-  if (await assetsBox.isVisible())
-    await page.getByRole('button', { name: 'Later', exact: true }).click();
-  await page.locator('#export').click();
-  const saving = page.waitForEvent('download');
-  await page.locator('.modal-dialog #export-png').click();
-  const png = await saving;
-  const file = testInfo.outputPath('frame.png');
-  await png.saveAs(file);
-  const bytes = readFileSync(file);
-  expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual([
-    1080, 1920,
-  ]);
 });
 
 test('[P2R1-032] [P2R1-033] [P2R1-034] a Studio tool shows its cost, runs on the mock and saves to the project-wise Asset Library; copying to another project keeps the original; a tool the plan lacks is locked with Upgrade; a voice clone needs consent', async ({
@@ -563,7 +324,7 @@ test('[P2R1-036] Credits and Plan: plan cards, costs, INR/USD, a mock top up add
   await expect(page.locator('#usage-table')).toContainText('no limit');
 });
 
-test('[P2R1-037] Brand Kit (Pro), Settings and Learn; the Brief Room uses the Brand Kit', async ({
+test('[P2R1-037] Brand Kit (Pro), Settings and Learn; the Brief card in AI mode offers the Brand Kit', async ({
   page,
 }) => {
   await signUp(page);
@@ -578,8 +339,13 @@ test('[P2R1-037] Brand Kit (Pro), Settings and Learn; the Brief Room uses the Br
   await page.locator('#brand-heading').selectOption('Poppins');
   await page.locator('#brand-save').click();
   await expect(page.locator('.toast', { hasText: 'Saved' })).toBeVisible();
-  await page.goto('/panel/#/brief/quick-short');
-  await expect(page.locator('#brand-kit-on')).toBeVisible();
+  // Round B: the AI mode Brief card offers the saved Brand Kit.
+  await page.goto('/panel/#/home');
+  await page.locator('#home-input').fill('A product video for my steel bottle');
+  await page.locator('#home-send').click();
+  await expect(
+    page.locator('#ai-brief-card [data-brief-field="brand"]'),
+  ).toContainText('Use my brand', { timeout: 30_000 });
   await page.goto('/panel/#/settings');
   await page.locator('#settings-name').fill('Asha');
   await page.locator('#settings-theme').selectOption('light');

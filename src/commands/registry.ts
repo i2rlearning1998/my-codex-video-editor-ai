@@ -527,6 +527,23 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
     run: ({ planReview }) => planReview?.(),
   },
   {
+    // ROUND-B: Editor | AI, the same editor in its other layout.
+    id: 'ai-mode',
+    labelKey: 'command.aiMode',
+    shortcut: '',
+    isEnabled: () => true,
+    run: ({ session }) =>
+      session.setLayout(session.layout === 'ai' ? 'editor' : 'ai'),
+  },
+  {
+    // ROUND-B: AI mode with the selection carried over.
+    id: 'ask-director',
+    labelKey: 'command.askDirector',
+    shortcut: '',
+    isEnabled: ({ session }) => session.layout !== 'ai',
+    run: ({ session }) => session.setLayout('ai'),
+  },
+  {
     id: 'stop',
     labelKey: 'command.stop',
     shortcut: '',

@@ -336,12 +336,49 @@ input[type='number'],
   position: relative;
   z-index: var(--z-toolbar);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* ROUND-B B0.1: the actions on the right never shrink under their own
+     width (they used to slide over the mode switch at 820 px with wider
+     fonts); the left side gives way instead, and clips its long name. */
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--panel);
+}
+.topbar-start {
+  overflow: clip;
+}
+.topbar .mode-switch button {
+  white-space: nowrap;
+}
+/* ROUND-B: the AI side of the Editor | AI switch. */
+.mode-switch .mode-ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--weight-semibold);
+}
+.mode-switch .mode-ai svg {
+  inline-size: var(--icon-size, 20px);
+  block-size: var(--icon-size, 20px);
+}
+.mode-switch .mode-ai[aria-checked='true'] {
+  background: linear-gradient(120deg, #8b5cf6, #38bdf8);
+  color: #fff;
+}
+@media (max-width: 767px) {
+  #ask-director {
+    display: none;
+  }
+}
+@media (max-width: 899px) {
+  .topbar .save-status {
+    display: none;
+  }
+  .topbar {
+    gap: var(--space-2);
+  }
 }
 .topbar-start,
 .topbar-end {

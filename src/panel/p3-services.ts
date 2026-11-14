@@ -168,3 +168,37 @@ export async function studioService(
   if (!import.meta.env.DEV || !w.__AIVE_P3_STUDIO__) return null;
   return createMockStudioService({ save, stepMs: 40 });
 }
+
+/**
+ * ROUND-B B1: P3 kept Director chats and facts per Project (in this
+ * browser's IndexedDB). They move once to the Project's first Video and to
+ * Project memory. Nothing is removed from the old store.
+ */
+export async function migrateP3Memory(ctx: Ctx): Promise<void> {
+  const mem = ctx.s.mem(ctx.user.id);
+  if (mem.doc().migrated) return;
+  try {
+    const w = (await import('../wiring')) as Wiring;
+    const store = w.createWiringStore({
+      backend: w.indexedDbBackend(),
+      owner: () => ctx.user.id,
+      config: () => ctx.s.config,
+      planId: () => ctx.s.planOf(ctx.user.id).id,
+    });
+    const projects = await store.projects();
+    const chats = (
+      await Promise.all(projects.map((p) => store.chats(p.projectId)))
+    ).flat();
+    const ws = ctx.s.ws(ctx.user.id);
+    mem.migrateOld(
+      {
+        chats,
+        facts: Object.fromEntries(projects.map((p) => [p.projectId, p.facts])),
+      },
+      (projectId) => ws.videosOf(projectId)[0]?.id,
+    );
+  } catch (e) {
+    // The old store could not be read: tried again next time.
+    console.debug('[memory] migration skipped', e);
+  }
+}

@@ -19,11 +19,12 @@ import {
 import { estimateStudio, GatewayError, hash } from '../gateway';
 import { clear, h } from './dom';
 import { icon } from './icons';
-import { posterSvg, waveSvg } from './art';
 import type { Ctx } from './app';
 import type { Asset } from './services';
 import { t, type Key } from './strings';
 import { bestModels, limitAlert, when } from './screens/common';
+import type { StudioService } from '../contracts/p3';
+import { acceptsField, mapValues, primaryField } from './studio-params';
 
 export const STUDIO_LIBRARY = 'unsorted';
 type Value = string | number | boolean | string[];
@@ -41,6 +42,13 @@ export interface StudioFormOptions {
   };
   /** Renders a saved result. */
   readonly view: (a: Asset) => HTMLElement;
+  /**
+   * ROUND-B B0.3: the Studio service of a gateway server. A model with
+   * declared parameters runs through it (the engine assembles the request).
+   */
+  readonly service?: StudioService | null;
+  /** ROUND-B: values Director fills in first (the person may change them). */
+  readonly initial?: Readonly<Record<string, string | number | boolean>>;
 }
 export interface StudioFormView {
   readonly el: HTMLElement;
@@ -124,6 +132,10 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
   const files = new Map<string, File>();
   for (const f of s.inputs)
     if (f.default !== undefined) answers[f.id] = f.default as Value;
+  for (const f of s.inputs) {
+    const given = o.initial?.[f.id];
+    if (given !== undefined) answers[f.id] = given;
+  }
   // ---- the model ------------------------------------------------------------
   const models = bestModels(ctx, modelsForRole(c, s.role));
   const usable = (m: Model) =>
@@ -158,9 +170,22 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
   // ---- fields ---------------------------------------------------------------
   const errors = new Map<string, string>();
   let tried = false;
+  // ROUND-B B0.3: a model's declared parameters only hide the fields it
+  // does not accept and rename the values that are sent.
+  const primary = primaryField(s.inputs);
+  /** Whether the chosen model takes this field (ROUND-B B0.3). */
+  const modelTakes = (f: StudioField) =>
+    // The offline mock stands in for any model: it hides nothing.
+    model?.providerId === 'mock' ||
+    // A style card (it goes into the prompt) and a file (uploaded with the
+    // request, never a model parameter) are the tool's own.
+    f.display === 'cards' ||
+    f.type === 'file' ||
+    acceptsField(model?.params ?? [], f, primary);
   const shown = (f: StudioField) =>
     isVisible(f as never, answers as never) &&
-    (!f.onlyModels?.length || (!!model && f.onlyModels.includes(model.id)));
+    (!f.onlyModels?.length || (!!model && f.onlyModels.includes(model.id))) &&
+    modelTakes(f);
   const optionOk = (opt: { requires?: string[] | undefined }) =>
     canUse(plan, opt.requires ?? []);
   const check = (): boolean => {
@@ -405,21 +430,24 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
                 'button',
                 {
                   type: 'button',
-                  class: 'sf-card glow',
+                  class: `sf-card${opt.thumb ? ' has-thumb' : ' tile'}`,
                   role: 'radio',
                   'data-value': opt.value,
+                  'data-thumb': opt.thumb ? 'picture' : 'none',
                   'aria-checked': String(v === opt.value),
                   disabled: !optionOk(opt),
                   onclick: () => set(f.id, opt.value),
                 },
-                h(
-                  'span',
-                  { class: 'sf-card-art', 'aria-hidden': 'true' },
-                  opt.art && /^(https:\/\/|\/)/.test(opt.art)
-                    ? h('img', { src: opt.art, alt: '' })
-                    : posterSvg(`${s.id}-${opt.art ?? opt.value}`, c),
-                ),
-                h('span', { text: say(ctx, opt.label) }),
+                // ROUND-B B5.3: a picture only from the owner's `thumb`;
+                // with none, a neutral tile that carries the name.
+                opt.thumb && /^(https:\/\/|\/|data:image\/)/.test(opt.thumb)
+                  ? h(
+                      'span',
+                      { class: 'sf-card-art', 'aria-hidden': 'true' },
+                      h('img', { src: opt.thumb, alt: '', loading: 'lazy' }),
+                    )
+                  : null,
+                h('span', { class: 'sf-card-name', text: say(ctx, opt.label) }),
               ),
             ),
           );
@@ -498,6 +526,18 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
                 'data-value': opt.value,
                 'aria-checked': String(v === opt.value),
               },
+              // ROUND-B B5.3: an avatar only from the owner's `thumb`.
+              h(
+                'span',
+                {
+                  class: 'sf-avatar',
+                  'aria-hidden': 'true',
+                  'data-thumb': opt.thumb ? 'picture' : 'none',
+                },
+                opt.thumb && /^(https:\/\/|\/|data:image\/)/.test(opt.thumb)
+                  ? h('img', { src: opt.thumb, alt: '', loading: 'lazy' })
+                  : icon('mic', 16),
+              ),
               h(
                 'label',
                 { class: 'choice' },
@@ -510,7 +550,6 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
                 }),
                 h('span', { text: say(ctx, opt.label) }),
               ),
-              waveSvg(opt.value),
               h(
                 'button',
                 {
@@ -626,6 +665,9 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
     );
   // ---- the rest -------------------------------------------------------------
   const fieldsBox = h('div', { class: 'sf-fields' });
+  // ROUND-B B5.1: the workspace's own fields (the main input, tips).
+  const mainBox = h('div', { class: 'sf-fields sf-main' });
+  const isMain = (f: StudioField) => f.place === 'main';
   const cost = h('p', {
     class: 'estimate',
     id: 'studio-cost',
@@ -664,6 +706,7 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
     'aria-live': 'polite',
   });
   let max = 0;
+  let runCost!: HTMLElement;
   const update = () => {
     if (!model) {
       cost.textContent = t('studio.noModel');
@@ -672,11 +715,15 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
     const e = estimateStudio(c, s, model, answers);
     max = e.max;
     cost.textContent = t('studio.cost', { n: e.max });
+    runCost.textContent = String(e.max);
+    runCost.parentElement!.hidden = false;
     if (consent) consent.hidden = !needsConsent(s, answers as never);
   };
   function paint() {
     const active = document.activeElement?.id;
-    const loose = s.inputs.filter((f) => !f.group && shown(f));
+    const all = s.inputs.filter((f) => !f.group && shown(f));
+    const loose = all.filter((f) => !isMain(f));
+    clear(mainBox, ...all.filter(isMain).map(row));
     clear(
       fieldsBox,
       h(
@@ -760,6 +807,84 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
         const units = estimateStudio(c, s, model, answers).units;
         const work = c.costs.find((x) => x.id === s.costId);
         const target = o.target ?? dest?.value ?? STUDIO_LIBRARY;
+        const where = () =>
+          dests.find((d) => d.id === target)?.name ?? t('lib.studioCard');
+        if (o.service && model.params.length) {
+          // The model's own parameters: the Studio service assembles and
+          // runs the request (the server checks the limit and charges).
+          const mapped = mapValues(
+            model.params,
+            s.inputs.filter(shown),
+            answers,
+          );
+          // A chosen style card goes into the prompt, in words.
+          const promptParam = model.params.find((x) => x.role === 'prompt');
+          for (const f of s.inputs.filter(shown)) {
+            if (f.display !== 'cards' || !promptParam) continue;
+            const opt = f.options.find((x) => x.value === answers[f.id]);
+            const text = mapped.values[promptParam.id];
+            if (opt && opt.value !== 'none' && typeof text === 'string')
+              mapped.values[promptParam.id] = `${text}. Style: ${opt.label.en}`;
+          }
+          try {
+            for await (const ev of o.service.run(
+              s.id,
+              model.id,
+              mapped.values,
+              target === STUDIO_LIBRARY ? null : target,
+            )) {
+              if (ev.type === 'failure') {
+                clear(
+                  result,
+                  ev.failure.upgrade
+                    ? limitAlert(
+                        'studio-error',
+                        ctx.say({ ...ev.failure.message }),
+                      )
+                    : h('p', {
+                        class: 'error-state',
+                        role: 'alert',
+                        id: 'studio-error',
+                        text: ctx.say({ ...ev.failure.message }),
+                      }),
+                );
+              } else if (ev.type === 'result') {
+                const made = ctx.s
+                  .assets(ctx.user.id)
+                  .find((a) => a.id === ev.assetId);
+                clear(
+                  result,
+                  h('p', {
+                    class: 'ok-state',
+                    id: 'studio-saved',
+                    text: t('studio.savedHere', { project: where() }),
+                  }),
+                  made ? o.view(made) : null,
+                );
+                if (made) o.onSaved?.(made);
+              }
+            }
+          } catch {
+            clear(
+              result,
+              h('p', {
+                class: 'error-state',
+                role: 'alert',
+                id: 'studio-error',
+                text: t('app.error'),
+              }),
+            );
+          } finally {
+            await ctx.s.sync(ctx.user.id).catch(() => undefined);
+            el.querySelector('#studio-library')?.replaceWith(
+              studioHistory(ctx, s, o.view),
+            );
+            ctx.refreshTop();
+            run.disabled = false;
+            progress.hidden = true;
+          }
+          return;
+        }
         try {
           const r = await ctx.s.gateway.run({
             userId: ctx.user.id,
@@ -822,14 +947,12 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
           asset.bytes =
             (asset.dataUrl?.length ?? 0) + (asset.text?.length ?? 0);
           ctx.s.saveAsset(asset);
-          const where =
-            dests.find((d) => d.id === target)?.name ?? t('lib.studioCard');
           clear(
             result,
             h('p', {
               class: 'ok-state',
               id: 'studio-saved',
-              text: t('studio.savedTo', { project: where, n: r.credits }),
+              text: t('studio.savedTo', { project: where(), n: r.credits }),
             }),
             o.view(asset),
           );
@@ -870,30 +993,84 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
         }
       },
     },
-    t('studio.run'),
+    h('span', { text: t('studio.run') }),
+    // ROUND-B B5.4: the credit cost sits on the action button.
+    h(
+      'span',
+      {
+        class: 'sf-run-cost',
+        hidden: true,
+        'aria-label': t('studio.costOn'),
+      },
+      h('span', { class: 'coin', 'aria-hidden': 'true' }),
+      (runCost = h('span', { id: 'studio-run-cost' })),
+    ),
   );
-  const el = h(
-    'div',
-    { class: 'studio-form', 'data-studio-form': s.id },
-    fieldsBox,
-    dest
-      ? h(
-          'div',
-          { class: 'field' },
-          h('label', {
-            for: 'studio-project',
-            class: 'field-label',
-            text: t('studio.saveTo'),
-          }),
-          dest,
-        )
-      : null,
+  const actionRow = [
     consent,
     consentError,
     h('div', { class: 'sf-run' }, cost, run),
-    progress,
-    result,
-    studioHistory(ctx, s, o.view),
+  ];
+  const inControls = s.actionPlace === 'controls';
+  const emptyState = s.emptyState
+    ? h(
+        'div',
+        { class: 'sf-empty', id: 'studio-empty' },
+        h(
+          'span',
+          { class: 'sf-empty-ico', 'aria-hidden': 'true' },
+          icon(
+            s.output === 'text'
+              ? 'text'
+              : s.output === 'audio'
+                ? 'audio'
+                : s.output === 'video'
+                  ? 'video'
+                  : 'image',
+            28,
+          ),
+        ),
+        h('h3', { text: say(ctx, s.emptyState.title) }),
+        s.emptyState.text
+          ? h('p', { class: 'muted', text: say(ctx, s.emptyState.text) })
+          : null,
+      )
+    : null;
+  const el = h(
+    'div',
+    {
+      class: `studio-form${o.target ? ' compact' : ''}`,
+      'data-studio-form': s.id,
+      'data-action': inControls ? 'controls' : 'main',
+    },
+    h(
+      'div',
+      { class: 'sf-controls', id: 'studio-controls' },
+      fieldsBox,
+      dest
+        ? h(
+            'div',
+            { class: 'field' },
+            h('label', {
+              for: 'studio-project',
+              class: 'field-label',
+              text: t('studio.saveTo'),
+            }),
+            dest,
+          )
+        : null,
+      ...(inControls ? actionRow : []),
+    ),
+    h(
+      'div',
+      { class: 'sf-work', id: 'studio-work' },
+      mainBox,
+      ...(inControls ? [] : actionRow),
+      progress,
+      result,
+      emptyState,
+      studioHistory(ctx, s, o.view),
+    ),
   );
   paint();
   return { el, answers: () => ({ ...answers }) };

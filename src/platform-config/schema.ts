@@ -2,6 +2,7 @@
 // panel and the editor all read; Admin (Phase 3) only edits it. Nothing the
 // person sees or the AI may do is fixed in code (docs/PLATFORM-CONFIG.md).
 // Secrets never live here: the config only names adapters.
+import { defaultFieldLibrary, defaultStyleChat } from './director-defaults';
 import { z } from 'zod';
 import { paramDeclSchema } from '../contracts/p3';
 
@@ -126,14 +127,21 @@ export const studioFieldSchema = fieldSchema.extend({
         label: textSchema,
         /** Plan features that unlock this option ([] = every plan). */
         requires: z.array(id).optional(),
-        /** A picture for a card option: a URL, or a seed the panel draws from. */
+        /** Earlier seed for generated art; no longer drawn (ROUND-B B5). */
         art: z.string().max(300).optional(),
+        /**
+         * ROUND-B B5: the card's picture (https or same-site URL, or a data
+         * image the owner uploads). With none the card is a neutral tile.
+         */
+        thumb: z.string().max(400000).optional(),
         /** A sample to play (a voice), an https or same-site URL. */
         preview: z.string().max(300).optional(),
       }),
     )
     .default([]),
   display: z.enum(['chips', 'cards', 'toggle', 'select', 'radio']).optional(),
+  /** ROUND-B B5: the controls column (default) or the wide workspace. */
+  place: z.enum(['controls', 'main']).optional(),
   /** Characters a text may have. */
   maxLength: z.number().int().min(1).max(20000).optional(),
   /** Files: the types (MIME) accepted and the largest size in bytes. */
@@ -193,6 +201,12 @@ export const studioSchema = z.object({
   needsAssignment: z.boolean().default(false),
   /** ROUND-A: the heading of this tool's history (My generations, Cloned voices…). */
   historyLabel: textSchema.optional(),
+  /** ROUND-B B5: where the action button sits (default: the workspace). */
+  actionPlace: z.enum(['controls', 'main']).optional(),
+  /** ROUND-B B5: the workspace before the first result. */
+  emptyState: z
+    .object({ title: textSchema, text: textSchema.optional() })
+    .optional(),
   /** A tick the person must give before it runs (a voice clone's consent). */
   consent: textSchema.optional(),
   /** Ask for the consent only when an input has one of these values. */
@@ -381,6 +395,36 @@ export const styleSchema = z.object({
 });
 export type Style = z.infer<typeof styleSchema>;
 
+/** ROUND-B B3: one named block of the Brief card. */
+export const fieldBlockSchema = z.object({
+  id,
+  label: textSchema,
+  help: textSchema.optional(),
+  type: z.enum(['text', 'longtext', 'choice', 'file', 'link']),
+  options: z
+    .array(z.object({ value: z.string(), label: textSchema }))
+    .default([]),
+  /** Words in a message that fill this block: value to its words (lower case). */
+  hints: z.record(z.string(), z.array(z.string().min(1))).default({}),
+  /** The Project style field that prefills this block. */
+  styleField: z
+    .enum(['voice', 'music', 'look', 'captions', 'script'])
+    .optional(),
+  /** Whether the card offers "You decide" for it. */
+  youDecide: z.boolean().default(true),
+});
+export type FieldBlock = z.infer<typeof fieldBlockSchema>;
+export const videoTypeSchema = z.object({
+  id,
+  name: textSchema,
+  /** Words that mark a first message as this type (lower case). */
+  keywords: z.array(z.string().min(2)).default([]),
+  blocks: z
+    .array(z.object({ id, required: z.boolean().default(false) }))
+    .min(1),
+});
+export type VideoType = z.infer<typeof videoTypeSchema>;
+
 export const directorSchema = z.object({
   persona: textSchema,
   /** What Director may do. Anything else gets one of `refusals`. */
@@ -471,6 +515,62 @@ export const directorSchema = z.object({
     code: z.boolean().default(false),
     modelNames: z.boolean().default(false),
   }),
+  /**
+   * ROUND-B B1: memory caps and the size of what a model call may read.
+   * The context pack drops the least needed parts first (see
+   * src/director/context-pack.ts) until it fits `budgetTokens`.
+   */
+  context: z
+    .object({
+      budgetTokens: z.number().int().min(300).max(200000).default(6000),
+      /** Chat turns read word for word in a call. */
+      lastTurns: z.number().int().min(1).max(60).default(8),
+      /** Turns a chat keeps before old ones go into its summary. */
+      keepTurns: z.number().int().min(2).max(200).default(16),
+      maxSummaryChars: z.number().int().min(100).max(8000).default(1200),
+      maxProjectFacts: z.number().int().min(1).max(500).default(40),
+      maxSheetEntries: z.number().int().min(5).max(500).default(60),
+      maxFileNotes: z.number().int().min(1).max(100).default(12),
+      maxNoteChars: z.number().int().min(40).max(4000).default(400),
+      maxChatsPerVideo: z.number().int().min(1).max(200).default(20),
+      /** The largest file a person may attach to a message. */
+      maxAttachmentMb: z.number().min(0.1).max(500).default(20),
+    })
+    .default({}),
+  /** ROUND-B B3: plan rewrites (Cheaper, Richer, a new plan) one Video may use. */
+  rewritesPerVideo: z.number().int().min(0).max(50).default(3),
+  /**
+   * ROUND-B B3: the field library. Named field blocks, and video types that
+   * list their blocks and which are required. Director sorts the first
+   * message into a type and asks only for what is still missing.
+   */
+  fieldLibrary: z
+    .object({
+      blocks: z.array(fieldBlockSchema),
+      types: z.array(videoTypeSchema).min(1),
+      fallbackType: id.default('general'),
+    })
+    .default(() => defaultFieldLibrary()),
+  /** ROUND-B B4: the Style chat: mood words with their palettes, and the fonts it may name. */
+  styleChat: z
+    .object({
+      moods: z
+        .array(
+          z.object({
+            id,
+            words: z.array(z.string().min(1).max(40)).min(1).max(30),
+            palette: z
+              .array(z.string().regex(/^#[0-9a-fA-F]{6}$/))
+              .min(2)
+              .max(8),
+          }),
+        )
+        .max(40),
+      fonts: z.array(z.string().min(1).max(60)).max(200),
+    })
+    .default(() => defaultStyleChat()),
+  /** ROUND-B: Director's fixed lines by key (missing keys use the built-in sample). */
+  lines: z.record(z.string().max(60), textSchema).default({}),
 });
 export type DirectorRules = z.infer<typeof directorSchema>;
 

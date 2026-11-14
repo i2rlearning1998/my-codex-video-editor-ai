@@ -3,23 +3,18 @@ import '../ui/tokens.css';
 import './aurora.css';
 import './panel.css';
 import './cinema.css';
-import './room.css';
 import './studio.css';
 import './mine.css';
 import './credits.css';
 import './polish.css';
 import './workspace.css';
 import './projects.css';
+import './round-b.css';
+import { startControls } from './controls';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';
 import type { MockFailure } from '../gateway';
-import {
-  briefScreen,
-  buildScreen,
-  directorScreen,
-  planScreen,
-} from './screens/flow';
 import {
   brandScreen,
   creditsScreen,
@@ -30,24 +25,17 @@ import {
 } from './screens/pages';
 import { studioScreen } from './screens/studio';
 import { assetsScreen } from './screens/library';
-import { assetStepScreen } from './screens/asset-step';
 import { projectScreen, projectsScreen } from './screens/workspace';
-import { directorRoomScreen } from './screens/director-room';
+import { migrateP3Memory } from './p3-services';
 
 const root = document.getElementById('panel')!;
 const screens: Record<string, Screen> = {
   home: homeScreen,
   styles: stylesScreen,
   project: projectScreen,
-  brief: briefScreen,
-  director: directorScreen,
-  room: directorRoomScreen,
-  plan: planScreen,
-  build: buildScreen,
   studio: studioScreen,
   assets: assetsScreen,
   projects: projectsScreen,
-  'assets-step': assetStepScreen,
   credits: creditsScreen,
   brand: brandScreen,
   learn: learnScreen,
@@ -86,7 +74,10 @@ async function start() {
     }
     // Plan, credits and usage (the server's, when it is used).
     await services.sync(user.id);
+    startControls();
     mountPanel(root, services, user, screens);
+    // ROUND-B B1: old Project chats move to their first Video (once).
+    void migrateP3Memory({ s: services, user } as never);
   } catch (e) {
     console.debug('[panel] start failed', e);
     root.textContent = t('app.error');

@@ -36,6 +36,7 @@ import {
   type VideoStage,
 } from '../project/workspace';
 import { USER_ASSETS_KEY } from '../project/user-assets';
+import { MemoryStore, type MemoryCaps } from '../project/video-memory';
 import {
   change as changeRegistry,
   claim as claimRegistry,
@@ -133,6 +134,8 @@ export interface Services {
   deleteAsset(id: string): void;
   /** ROUND-A: this person's Projects, Videos and where Director waits. */
   ws(userId: string): Workspace;
+  /** ROUND-B B1: what Director remembers (Project memory, Video sheets, chats). */
+  mem(userId: string): MemoryStore;
   /**
    * ROUND-A: one more Project or Video under the plan (the server decides
    * when a gateway is used). Null: allowed and registered; else the owner's
@@ -166,6 +169,20 @@ export interface Services {
   ): Promise<string>;
   now(): Date;
 }
+
+/** ROUND-B B1: the owner's memory caps (Platform Config, director.context). */
+export const memoryCaps = (c: PlatformConfig): MemoryCaps => {
+  const x = c.director.context;
+  return {
+    maxProjectFacts: x.maxProjectFacts,
+    maxSheetEntries: x.maxSheetEntries,
+    maxFileNotes: x.maxFileNotes,
+    maxNoteChars: x.maxNoteChars,
+    maxChatsPerVideo: x.maxChatsPerVideo,
+    keepTurns: x.keepTurns,
+    maxSummaryChars: x.maxSummaryChars,
+  };
+};
 
 const DEFAULT_PREFS = (c: PlatformConfig): Prefs => ({
   plan: planFor(c, undefined).id,
@@ -245,6 +262,7 @@ export async function createServices(
   const usageLog = storageUsageLog(storage);
   const ledgers = new Map<string, CreditLedger>();
   const workspaces = new Map<string, Workspace>();
+  const memories = new Map<string, MemoryStore>();
   const ledger = (u: string) => {
     if (!ledgers.has(u))
       ledgers.set(u, new CreditLedger(storageLedgerStore(storage, u)));
@@ -363,6 +381,15 @@ export async function createServices(
       let w = workspaces.get(u);
       if (!w) workspaces.set(u, (w = new Workspace(storage, u)));
       return w;
+    },
+    mem: (u) => {
+      let m = memories.get(u);
+      if (!m)
+        memories.set(
+          u,
+          (m = new MemoryStore(storage, u, () => memoryCaps(config))),
+        );
+      return m;
     },
     // ROUND-A: no gateway: the same rules as the server, on this browser's
     // own workspace.

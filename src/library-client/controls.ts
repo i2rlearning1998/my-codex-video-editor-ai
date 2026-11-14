@@ -157,6 +157,8 @@ export const CONTROL_REGISTRY: ControlDef[] = [
   MN('code-menu', 'Code animation submenu', 'कोड एनिमेशन सबमेन्यू', ['video']),
   MN('save-to-mine', 'Save to My Templates', 'मेरे टेम्पलेट में सेव'),
   MN('more-menu', 'More submenu', 'और सबमेन्यू'),
+  // ROUND-B: opens AI mode with the selection.
+  MN('ask-director', 'Ask Director', 'Director से पूछें'),
   MN('hide', 'Hide', 'छुपाएँ'),
   MN('show-timing', 'Show element timing', 'एलिमेंट टाइमिंग'),
   MN('alt-text', 'Alternative text', 'ऑल्ट टेक्स्ट'),

@@ -2856,5 +2856,12 @@
   "importLib.studio": "Studio Libraries",
   "importLib.kind.image": "Image",
   "importLib.kind.video": "Video",
-  "importLib.kind.audio": "Audio"
+  "importLib.kind.audio": "Audio",
+  "command.aiMode": "Switch between Editor and AI mode",
+  "command.askDirector": "Ask Director",
+  "mode.ai": "AI",
+  "mode.aiTitle": "AI mode: make and change the video with Director",
+  "mode.nowAi": "AI mode: Director is here",
+  "mode.aiFailed": "AI mode could not open. Check your connection and try again.",
+  "status.failed": "The build failed."
 }

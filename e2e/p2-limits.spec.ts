@@ -149,7 +149,7 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
     );
   await page.goto('/panel/#/studio/voice');
   const start = await credits();
-  await page.locator('#sf-prompt').fill('Namaste');
+  await page.locator('#sf-script').fill('Namaste');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-error')).toContainText(
     'Your plan has 1 MB of storage.',
@@ -167,7 +167,7 @@ test('[P2R2-027] project, storage and voice-clone limits are checked on the serv
   await expect(page).not.toHaveURL(/\/panel\//);
   // And the voice result's storage is allowed now.
   await page.goto('/panel/#/studio/voice');
-  await page.locator('#sf-prompt').fill('Namaste');
+  await page.locator('#sf-script').fill('Namaste');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-saved')).toBeVisible({ timeout: 30_000 });
 });

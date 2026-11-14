@@ -15,24 +15,9 @@ import type { Ctx, Screen } from '../app';
 import type { Asset } from '../services';
 import { t } from '../strings';
 import { studioService } from '../p3-services';
-import { modelStudio, type SaveRun } from './studio-model';
-import { mountStudioForm, studioHistory } from '../studio-form';
+import { mountStudioForm } from '../studio-form';
 import { card, empty } from './common';
 
-const UNSORTED = 'unsorted';
-async function projectOptions(ctx: Ctx) {
-  // ROUND-A: a result can go to Studio Libraries or a chosen Video.
-  const ws = ctx.s.ws(ctx.user.id);
-  ws.reload();
-  const list = ws
-    .videos()
-    .filter((v) => !ws.project(v.projectId)?.trashedAt)
-    .map((v) => ({
-      id: v.id,
-      name: `${ws.project(v.projectId)?.name ?? ''} › ${v.name}`,
-    }));
-  return [{ id: UNSORTED, name: t('studio.unsorted') }, ...list];
-}
 /** A picture drawn offline (the mock image model's result). */
 export function mockImage(seed: string, label: string): string {
   const c = document.createElement('canvas');
@@ -221,53 +206,19 @@ export const studioScreen: Screen = async (ctx, [studioId = ''], out) => {
     );
     return;
   }
-  // P3U: when the chosen studio's models declare their own parameters, the form
-  // is drawn from them (the config-driven form below is the fallback).
-  {
-    const save: SaveRun = (r) => {
-      const prompt = r.request.prompt;
-      const seed = `${prompt}:${Date.now()}`;
-      const asset: Asset = {
-        id: `asset-${Date.now().toString(36)}-${hash(seed).toString(36)}`,
-        userId: ctx.user.id,
-        projectId: r.projectId ?? UNSORTED,
-        kind: s.output,
-        name: `${ctx.say(s.name)}: ${prompt.split('\n')[0]!.slice(0, 40)}`,
-        studioId: s.id,
-        bytes: 0,
-        createdAt: new Date().toISOString(),
-      };
-      if (s.output === 'image' || s.output === 'video')
-        asset.dataUrl = mockImage(seed, prompt);
-      else if (s.output === 'audio') asset.dataUrl = mockAudio(seed);
-      else asset.text = prompt;
-      asset.bytes = (asset.dataUrl?.length ?? 0) + (asset.text?.length ?? 0);
-      ctx.s.saveAsset(asset);
-      return asset.id;
-    };
-    const svc = await studioService(ctx, save);
-    const models = svc ? await svc.models(s.id) : [];
-    if (svc && models.length) {
-      await modelStudio({
-        ctx,
-        svc,
-        studioId: s.id,
-        title: ctx.say(s.name),
-        tabs: studioTabs(ctx, s.id),
-        projects: await projectOptions(ctx),
-        models,
-        out,
-      });
-      out.append(studioHistory(ctx, s, assetView));
-      return;
-    }
-  }
+  // ROUND-B B0.3: the form is always the config's field form. A model's own
+  // declared parameters only hide fields and name the values (studio-form);
+  // with a gateway server such a model runs through the Studio service.
+  const service = ctx.s.remote
+    ? await studioService(ctx, () => '').catch(() => null)
+    : null;
   // ROUND-A A4: the config form (one reusable component).
   const view = mountStudioForm({
     ctx,
     studio: s,
     mock: { image: mockImage, audio: mockAudio },
     view: assetView,
+    service,
   });
   put(
     out,

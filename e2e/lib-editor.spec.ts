@@ -246,12 +246,17 @@ test('[LIB-021][LIB-006] a catalog with a wrong signature is rejected and the sa
 
 let released = 0;
 /** Times one insert in the page: from the release to the first frame drawn with the new layer. */
-async function timeInsert(page: Page, act: () => Promise<void>) {
+async function timeInsert(
+  page: Page,
+  cdp: CDPSession,
+  act: () => Promise<void>,
+) {
   await page.evaluate(() => {
     const w = window as unknown as {
       __lib?: {
         t0: number;
         t1: number;
+        set: number;
         layers: number;
         draws: number;
         frames: number;
@@ -268,6 +273,7 @@ async function timeInsert(page: Page, act: () => Promise<void>) {
     const state = {
       t0: 0,
       t1: 0,
+      set: performance.now(),
       layers: count(),
       draws: w.__AIVE__.getCanvas().draws,
       frames: 0,
@@ -293,38 +299,48 @@ async function timeInsert(page: Page, act: () => Promise<void>) {
     };
     requestAnimationFrame(watch);
   });
+  // ROUND-B B0.4: request times come from the browser (CDP wall time), the
+  // same clock as the frame times; the test runner's own clock arrived late
+  // and made a request sent after the first frame look like one before it.
   const requests: { url: string; at: number }[] = [];
-  const onRequest = (request: { url(): string }) => {
-    if (!/^(data|blob):/.test(request.url()))
-      requests.push({ url: request.url(), at: Date.now() });
+  const onRequest = (event: { request: { url: string }; wallTime: number }) => {
+    if (!/^(data|blob):/.test(event.request.url))
+      requests.push({ url: event.request.url, at: event.wallTime * 1000 });
   };
-  page.on('request', onRequest);
-  const started = Date.now();
+  cdp.on('Network.requestWillBeSent', onRequest);
   released = 0;
   await act();
   const done = await page.waitForFunction(() => {
     const state = (
-      window as unknown as { __lib: { t0: number; t1: number; frames: number } }
+      window as unknown as {
+        __lib: { t0: number; t1: number; frames: number; set: number };
+      }
     ).__lib;
     return state.t1
       ? {
           ms: state.t1 - state.t0,
           frames: state.frames,
+          from: performance.timeOrigin + state.set,
+          releasedAt: performance.timeOrigin + state.t0,
           drawnAt: performance.timeOrigin + state.t1,
         }
       : null;
   });
+  cdp.off('Network.requestWillBeSent', onRequest);
+  const { ms, frames, drawnAt, from, releasedAt } =
+    (await done.jsonValue()) as {
+      ms: number;
+      frames: number;
+      drawnAt: number;
+      from: number;
+      releasedAt: number;
+    };
   // Requests made after the release and before the layer was drawn (the
-  // critical path); a drag's own early work happens before the release.
-  const from = released || started;
-  page.off('request', onRequest);
-  const { ms, frames, drawnAt } = (await done.jsonValue()) as {
-    ms: number;
-    frames: number;
-    drawnAt: number;
-  };
+  // critical path); a drag's own early work happens before the release. A
+  // click is watched from before the press.
+  const start = released ? releasedAt : from;
   const critical = requests
-    .filter((request) => request.at >= from && request.at <= drawnAt)
+    .filter((request) => request.at >= start && request.at <= drawnAt)
     .map((request) => request.url)
     // The editor's own web fonts (a text layer draws with them) are the app's
     // static files, not library or network media; the frame does not wait for
@@ -418,12 +434,12 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
     )
     .toBe(true);
   await page.waitForLoadState('networkidle');
-  await throttle(page);
+  const cdp = await throttle(page);
   const results: Record<string, { ms: number; frames: number }> = {};
   // The new layer is in the first frame the editor draws after the release
   // (nothing waits on the network or a decode); the time is recorded.
   const check = async (name: string, act: () => Promise<void>) => {
-    const { ms, frames, critical } = await timeInsert(page, act);
+    const { ms, frames, critical } = await timeInsert(page, cdp, act);
     results[name] = { ms: Math.round(ms * 10) / 10, frames };
     expect(critical, `${name}: requests on the critical path`).toEqual([]);
     expect(
@@ -436,7 +452,9 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
   // Elements: a shape, by click and by drag (found by search from the top).
   await showCategory(page, 'Elements');
   const top = page.locator('#library-elements [data-action="browse-back"]');
-  while (await top.isVisible()) await top.click();
+  // The Back button can hide between the check and the click.
+  while (await top.isVisible())
+    await top.click({ timeout: 2000 }).catch(() => undefined);
   await elements.locator('.browse-search-input').fill('star');
   await check('elements click', () =>
     elements.locator('[data-item-id="shape-star-5"]').first().click(),
@@ -560,6 +578,40 @@ test('[LIB-024][LIB-025] on a throttled network every category places at once, b
     drag(page, '#library-elements [data-catalog-id="video-test-clip"]', center),
   );
   await openElementsKind(page, 'photos');
+  // ROUND-B B0.4: the card has just come into view; P1-24's promise starts
+  // once a shown card has made its poster local (as for the video above).
+  // Without this wait the click raced the card's own poster request.
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const mod = (await import(
+          '/src/library-client/index.ts' as string
+        )) as {
+          libraryClient(): {
+            entry(id: string): {
+              media?: {
+                proxy?: { sha256: string };
+                poster?: { sha256: string };
+              };
+            };
+            has(ref: unknown, key?: string): Promise<boolean>;
+            poster(sha: string): unknown;
+          };
+          catalogMediaKey(sha: string): string;
+        };
+        const client = mod.libraryClient();
+        const media = client.entry('photo-test').media!;
+        return (
+          (!media.poster || !!client.poster(media.poster.sha256)) &&
+          (!media.proxy ||
+            (await client.has(
+              media.proxy,
+              mod.catalogMediaKey(media.proxy.sha256),
+            )))
+        );
+      }),
+    )
+    .toBe(true);
   await check('photo click', () =>
     elements.locator('[data-catalog-id="photo-test"]').click(),
   );

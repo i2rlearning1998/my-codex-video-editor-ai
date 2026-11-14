@@ -24,6 +24,7 @@ import {
   type WsVideo,
 } from '../../project/workspace';
 import { styleFromTemplate } from '../../project/style-from';
+import { styleChat } from './style-chat';
 import { EXPORTS_KEY } from '../../usage-report';
 import { empty, limitAlert, when } from './common';
 import { assetView } from './studio';
@@ -76,6 +77,7 @@ export async function purgeVideo(ctx: Ctx, id: string): Promise<void> {
   for (const a of ctx.s.assets(ctx.user.id))
     if (a.projectId === id && !a.id.startsWith('ed:')) ctx.s.deleteAsset(a.id);
   ws.forgetVideo(id);
+  ctx.s.mem(ctx.user.id).forgetVideo(id);
   if (v)
     await ctx.s.changeWs(ctx.user.id, {
       kind: 'video',
@@ -92,7 +94,9 @@ export async function purgeProject(ctx: Ctx, id: string): Promise<void> {
     for (const a of ctx.s.assets(ctx.user.id))
       if (a.projectId === v.id && !a.id.startsWith('ed:'))
         ctx.s.deleteAsset(a.id);
+    ctx.s.mem(ctx.user.id).forgetVideo(v.id);
   }
+  ctx.s.mem(ctx.user.id).forgetProject(id);
   ws.forgetProject(id);
   await ctx.s.changeWs(ctx.user.id, { kind: 'project', id, to: 'forget' });
 }
@@ -214,24 +218,15 @@ export async function startVideo(
 }
 
 /**
- * Where a Video opens: Director when it is AI-made and not finished, else
- * the editor.
- *
- * ROUND-B SEAM: until the editor's AI mode exists (Round B), a Video made
- * from a ready-made Style or by Director opens the existing Director flow in
- * the panel, bound to this Video (brief, plan, asset step). Round B replaces
- * these three addresses with the editor's AI mode.
+ * Where a Video opens. ROUND-B: a Video Director made (or is making) opens
+ * the editor in AI mode, the single home of Director; a Video made by hand
+ * opens the editor.
  */
-export function videoHref(ctx: Ctx, v: WsVideo): string {
-  if (v.origin === 'ai' && v.stage !== 'built' && v.stage !== 'editor') {
-    if (v.stage === 'assets' && v.pause) return `#/assets-step/${enc(v.id)}`;
-    const p = ctx.s.ws(ctx.user.id).project(v.projectId);
-    if (p?.templateId)
-      return `#/brief/${enc(p.templateId)}?project=${enc(v.id)}`;
-    return `#/room/${enc(v.id)}`;
-  }
-  return editorHref(v.id);
+export function videoHref(_ctx: Ctx, v: WsVideo): string {
+  return v.origin === 'ai' ? aiHref(v.id) : editorHref(v.id);
 }
+/** The editor in AI mode on a Video. */
+export const aiHref = (id: string) => `/?open=${enc(id)}&ai=1`;
 export const editorHref = (id: string) => `/?open=${enc(id)}`;
 /**
  * Leaves for the editor so that its Back button returns to the Project page:
@@ -243,10 +238,6 @@ export function leaveForEditor(v: { id: string; projectId: string }) {
 /** Goes to a Video (Director flow or editor) from anywhere in the panel. */
 export function openVideo(ctx: Ctx, v: WsVideo) {
   const href = videoHref(ctx, v);
-  if (href.startsWith('#/')) {
-    location.hash = href.slice(1);
-    return;
-  }
   leaveForEditor(v);
   location.assign(href);
 }
@@ -921,9 +912,17 @@ function videoCard(
           href,
           'data-act': 'open',
           text: t('rda.open'),
-          onclick: href.startsWith('/') ? toEditor : undefined,
+          onclick: toEditor,
         }),
         menu(t('rda.more'), [
+          h('a', {
+            class: 'button sm',
+            role: 'menuitem',
+            href: aiHref(v.id),
+            'data-act': 'ai',
+            text: t('rdb.openAi'),
+            onclick: toEditor,
+          }),
           h('a', {
             class: 'button sm',
             role: 'menuitem',
@@ -962,6 +961,8 @@ function videoCard(
               aspect: v.aspect,
               stage: v.stage === 'assets' ? 'brief' : v.stage,
             });
+            // ROUND-B B1: the copy starts with the same sheet (no chats).
+            ctx.s.mem(ctx.user.id).copyVideo(v.id, id);
             again();
           }),
           menuButton('rda.exports', 'exports', showExports),
@@ -1203,7 +1204,19 @@ function styleTab(ctx: Ctx, p: WsProject, again: () => void): HTMLElement {
         )
       : empty(t('rda.noVideos')),
   );
-  return h('div', { class: 'rda-style' }, form, examples);
+  const chat = styleChat(ctx, p, () => {
+    // Fresh from the store: the form and the line under the title follow.
+    p = ws.project(p.id)!;
+    if (!target) paint();
+    const line = document.getElementById('project-style-line');
+    if (line) line.textContent = styleSummary(ctx, p);
+  });
+  return h(
+    'div',
+    { class: 'rda-style' },
+    form,
+    h('div', { class: 'rda-style-side' }, chat, examples),
+  );
 }
 
 function assetsTab(ctx: Ctx, p: WsProject): HTMLElement {
@@ -1441,9 +1454,95 @@ export const projectScreen: Screen = async (
         }),
       ),
     ),
-    body,
+    // ROUND-B B5.1: a real second column (the Style and Memory tabs have
+    // their own).
+    tab === 'videos' || tab === 'assets'
+      ? h('div', { class: 'rda-layout' }, body, projectAside(ctx, p))
+      : body,
   );
 };
+
+/** The Project at a glance: its style, its numbers, how it works. */
+function projectAside(ctx: Ctx, p: WsProject): HTMLElement {
+  const ws = ctx.s.ws(ctx.user.id);
+  const vids = ws.videosOf(p.id);
+  const ids = new Set(vids.map((v) => v.id));
+  const assets = ctx.s
+    .assets(ctx.user.id)
+    .filter((a) => ids.has(a.projectId) && !a.trashedAt).length;
+  const look = p.style.look;
+  const row = (label: string, value: string) =>
+    value
+      ? h(
+          'div',
+          { class: 'rda-fact' },
+          h('dt', { text: label }),
+          h('dd', { text: value }),
+        )
+      : null;
+  return h(
+    'aside',
+    { class: 'rda-aside', id: 'project-aside', 'aria-label': t('rdb.aside') },
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-style' },
+      h('h3', { text: t('rdb.aside.style') }),
+      p.style.source === 'empty'
+        ? h('p', { class: 'muted', text: t('rda.styleEmpty') })
+        : h(
+            'div',
+            null,
+            look.palette.length
+              ? h(
+                  'div',
+                  { class: 'sc-swatches', 'aria-hidden': 'true' },
+                  look.palette.map((c) =>
+                    h('span', { class: 'sc-swatch', style: `background:${c}` }),
+                  ),
+                )
+              : null,
+            h(
+              'dl',
+              { class: 'rda-facts' },
+              row(t('rda.headingFont'), look.headingFont),
+              row(t('rda.bodyFont'), look.bodyFont),
+              row(t('rda.voice'), p.style.voice),
+              row(t('rda.music'), p.style.music),
+            ),
+          ),
+      h('a', {
+        class: 'button sm',
+        href: `#/project/${enc(p.id)}/style`,
+        id: 'aside-style-open',
+        text: t('rdb.aside.change'),
+      }),
+    ),
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-numbers' },
+      h('h3', { text: t('rdb.aside.numbers') }),
+      h(
+        'dl',
+        { class: 'rda-facts' },
+        row(t('rda.tab.videos'), String(vids.length)),
+        row(t('rda.tab.assets'), String(assets)),
+        row(t('rdb.aside.updated'), when(p.updatedAt, ctx.prefs().locale)),
+      ),
+    ),
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-help' },
+      h('h3', { text: t('rdb.aside.how') }),
+      h(
+        'ol',
+        { class: 'rda-how' },
+        (['rdb.aside.how1', 'rdb.aside.how2', 'rdb.aside.how3'] as const).map(
+          (k) => h('li', { text: t(k) }),
+        ),
+      ),
+    ),
+  );
+}
 
 /** For the Director flow and the Home Director box: a new Project + Video. */
 export async function newDirectorVideo(

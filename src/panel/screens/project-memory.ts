@@ -1,72 +1,95 @@
-// P3U, ROUND-A: a Project's memory and chats (the Project page's Memory tab).
-// The facts are what Director remembers for every Video in the Project; the
-// person can add, pin and forget them. Talks only to DirectorService.
-import type { MemoryFact, ProjectMemory } from '../../contracts/p3';
+// ROUND-B B1: a Project's memory (the Project page's Memory tab). The facts
+// are what Director remembers for EVERY Video of the Project; the person can
+// add, edit, pin and forget them. Chats and the Video sheet belong to each
+// Video (AI mode shows them); this tab lists the Videos that have them.
+import type { Entry } from '../../project/video-memory';
 import { clear, h, put } from '../dom';
-import { directorService } from '../p3-services';
 import { t, type Key } from '../strings';
 import type { Ctx } from '../app';
-import { empty, when } from './common';
+import { empty } from './common';
 
 export async function memoryPanel(
   ctx: Ctx,
   projectId: string,
   out: HTMLElement,
 ): Promise<void> {
-  const svc = await directorService(ctx);
-  let memory: ProjectMemory = await svc.memory(projectId);
-
+  const mem = ctx.s.mem(ctx.user.id);
+  mem.reload();
   const factsBox = h('ul', { class: 'mem-facts', id: 'mem-facts' });
-  const chatsBox = h('ul', { class: 'mem-chats', id: 'mem-chats' });
-
-  const save = async (facts: readonly MemoryFact[]) => {
-    memory = await svc.setMemory(projectId, facts);
-    paintFacts();
-  };
 
   function paintFacts() {
-    const sorted = [...memory.facts].sort(
+    const sorted = [...mem.facts(projectId)].sort(
       (a, b) => Number(b.pinned) - Number(a.pinned),
     );
+    const row = (f: Entry) => {
+      const text = h('span', { class: 'mem-text', text: f.text });
+      const edit = () => {
+        const field = h('input', {
+          type: 'text',
+          class: 'mem-edit',
+          value: f.text,
+          'aria-label': t('mem.edit'),
+        });
+        const done = (save: boolean) => {
+          const v = field.value.trim();
+          if (save && v && v !== f.text)
+            mem.patchFact(projectId, f.id, { text: v, source: 'user' });
+          paintFacts();
+        };
+        field.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') done(true);
+          if (e.key === 'Escape') done(false);
+        });
+        field.addEventListener('blur', () => done(true));
+        text.replaceWith(field);
+        field.focus();
+      };
+      return h(
+        'li',
+        {
+          class: `mem-fact${f.pinned ? ' pinned' : ''}`,
+          'data-fact': f.id,
+        },
+        text,
+        h('span', {
+          class: 'badge mem-source',
+          text: t(`mem.from.${f.source}` as Key),
+        }),
+        h('button', {
+          type: 'button',
+          class: 'button sm',
+          'data-act': 'edit',
+          text: t('mem.edit'),
+          onclick: edit,
+        }),
+        h('button', {
+          type: 'button',
+          class: 'button sm',
+          'data-act': 'pin',
+          'aria-pressed': String(f.pinned),
+          text: t(f.pinned ? 'mem.unpin' : 'mem.pin'),
+          onclick: () => {
+            mem.patchFact(projectId, f.id, { pinned: !f.pinned });
+            paintFacts();
+          },
+        }),
+        h('button', {
+          type: 'button',
+          class: 'button sm',
+          'data-act': 'forget',
+          'aria-label': `${t('mem.forget')}: ${f.text}`,
+          text: t('mem.forget'),
+          onclick: () => {
+            mem.forgetFact(projectId, f.id);
+            paintFacts();
+          },
+        }),
+      );
+    };
     clear(
       factsBox,
       ...(sorted.length
-        ? sorted.map((f) =>
-            h(
-              'li',
-              {
-                class: `mem-fact${f.pinned ? ' pinned' : ''}`,
-                'data-fact': f.id,
-              },
-              h('span', { class: 'mem-text', text: f.text }),
-              h('span', {
-                class: 'badge mem-source',
-                text: t(`mem.from.${f.source}` as Key),
-              }),
-              h('button', {
-                type: 'button',
-                class: 'button sm',
-                'data-act': 'pin',
-                'aria-pressed': String(f.pinned),
-                text: t(f.pinned ? 'mem.unpin' : 'mem.pin'),
-                onclick: () =>
-                  void save(
-                    memory.facts.map((x) =>
-                      x.id === f.id ? { ...x, pinned: !x.pinned } : x,
-                    ),
-                  ),
-              }),
-              h('button', {
-                type: 'button',
-                class: 'button sm',
-                'data-act': 'forget',
-                'aria-label': `${t('mem.forget')}: ${f.text}`,
-                text: t('mem.forget'),
-                onclick: () =>
-                  void save(memory.facts.filter((x) => x.id !== f.id)),
-              }),
-            ),
-          )
+        ? sorted.map(row)
         : [h('li', {}, empty(t('mem.empty')))]),
     );
   }
@@ -77,73 +100,80 @@ export async function memoryPanel(
     placeholder: t('mem.addPlaceholder'),
     'aria-label': t('mem.add'),
   });
-  const add = async () => {
+  const add = () => {
     const text = field.value.trim();
-    if (!text) return;
-    if (memory.facts.some((f) => f.text.toLowerCase() === text.toLowerCase())) {
-      field.value = '';
-      return;
-    }
     field.value = '';
-    await save([
-      ...memory.facts,
-      {
-        id: `fact-${Date.now().toString(36)}`,
-        text,
-        source: 'user',
-        pinned: false,
-        createdAt: new Date().toISOString(),
-      },
-    ]);
+    if (!text) return;
+    mem.addFact(projectId, text, 'user');
+    paintFacts();
   };
   field.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      void add();
+      add();
     }
   });
 
-  const chats = await svc.listChats(projectId);
-  clear(
-    chatsBox,
-    ...(chats.length
-      ? chats.map((c) =>
-          h(
-            'li',
-            { class: 'mem-chat', 'data-chat': c.id },
-            h('strong', { text: c.title }),
-            h('span', {
-              class: 'muted',
-              text: `${t('mem.messages', { n: c.messages.length })} · ${when(c.updatedAt, ctx.prefs().locale)}`,
-            }),
-          ),
-        )
-      : [h('li', {}, empty(t('mem.noChats')))]),
-  );
+  // The Videos of this Project and what Director keeps for each.
+  const ws = ctx.s.ws(ctx.user.id);
+  const videos = ws.videosOf(projectId).filter((v) => !v.trashedAt);
+  const videoRows = videos.map((v) => {
+    const m = mem.has(v.id) ? mem.video(v.id) : null;
+    const lines = m
+      ? m.sheet.brief.length +
+        m.sheet.scenes.length +
+        m.sheet.assets.length +
+        m.sheet.decisions.length
+      : 0;
+    return h(
+      'li',
+      { class: 'mem-chat', 'data-video-memory': v.id },
+      h('strong', { text: v.name }),
+      h('span', {
+        class: 'muted',
+        text: t('mem.videoLine', { chats: m?.chats.length ?? 0, lines }),
+      }),
+    );
+  });
 
   put(
     out,
-    h('h2', { text: t('mem.title') }),
-    h('p', { class: 'muted', text: t('rda.memorySub') }),
     h(
-      'section',
-      { class: 'mem-section' },
-      factsBox,
+      'div',
+      { class: 'two-col' },
       h(
-        'div',
-        { class: 'mem-add' },
-        field,
-        h('button', {
-          type: 'button',
-          class: 'button primary',
-          id: 'mem-add',
-          text: t('mem.add'),
-          onclick: () => void add(),
-        }),
+        'section',
+        { class: 'mem-section col-main' },
+        h('h2', { text: t('mem.title') }),
+        h('p', { class: 'muted', text: t('rda.memorySub') }),
+        factsBox,
+        h(
+          'div',
+          { class: 'mem-add' },
+          field,
+          h('button', {
+            type: 'button',
+            class: 'button primary',
+            id: 'mem-add',
+            text: t('mem.add'),
+            onclick: add,
+          }),
+        ),
+      ),
+      h(
+        'aside',
+        { class: 'col-side card', id: 'mem-videos' },
+        h('h3', { text: t('mem.videos') }),
+        h('p', { class: 'muted', text: t('mem.videosSub') }),
+        h(
+          'ul',
+          { class: 'mem-chats', id: 'mem-chats' },
+          ...(videoRows.length
+            ? videoRows
+            : [h('li', {}, empty(t('mem.noChats')))]),
+        ),
       ),
     ),
-    h('h2', { text: t('mem.chats') }),
-    chatsBox,
   );
   paintFacts();
 }

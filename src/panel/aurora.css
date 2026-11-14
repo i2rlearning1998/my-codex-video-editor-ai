@@ -1,3 +1,13 @@
+/* ROUND-B B5.2: THE COLOUR SYSTEM of the panel (one rule, used everywhere).
+   - GOLD is the current selection, the primary action and credits.
+     Selected things (menu item, tab, chip, segmented button, selectable
+     card, radio row, list option) all use the same three tokens:
+       --sel-bg (fill)   --sel-line (border)   --sel-text (text and icon)
+   - The AURORA gradient (--aurora) is for Director and AI moments only:
+     the Orb, Director cards and chat, build progress, the AI badge.
+   - Everything else is neutral: --ink-* surfaces, borders and text.
+   A test (e2e/round-b-panel.spec.ts) reads the computed selected colours of
+   each kind and expects the same values. */
 /* P2-R2 (P2B-28): Aurora Ink, the one token file of the panel and website.
    Colours come from src/panel/aurora-tokens.ts (the contrast test reads both);
    the config's brand.colors override the dark ones (applyBrand). Components
@@ -72,6 +82,9 @@ body.site-page {
   --aurora-b: var(--brand-accent2, #22d3ee);
   --gold: var(--brand-gold, #ffc247);
   --on-aurora: #07070d;
+  --sel-bg: color-mix(in srgb, var(--gold) 14%, var(--ink-panel));
+  --sel-line: var(--gold);
+  --sel-text: var(--ink-gold-text);
   --sparkle: #ffffff;
   --aurora: linear-gradient(135deg, var(--aurora-a), var(--aurora-b));
   --aurora-soft: color-mix(in srgb, var(--aurora-a) 16%, transparent);

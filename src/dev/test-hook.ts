@@ -29,6 +29,8 @@ export function createTestHook(
         drawBrush: session.drawBrush,
         /** FINAL2 U9: the entered group (or nested clip), null at the top. */
         enteredGroupId: session.enteredGroupId,
+        /** ROUND-B: 'editor' or 'ai' (AI mode). */
+        layout: session.layout,
       }),
     getHistory: () =>
       snapshot({

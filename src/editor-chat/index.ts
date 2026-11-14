@@ -362,7 +362,14 @@ export function createEditorChatEngine(d: EditorChatDeps): EditorChatEngine {
     discard(proposalId) {
       proposals.delete(proposalId);
     },
-  };
+    /**
+     * ROUND-B: the commands of an open proposal, so AI mode can preview
+     * them on the canvas before Apply (not part of the frozen contract).
+     */
+    commandsOf(proposalId: string): readonly EditorCommand[] | null {
+      return proposals.get(proposalId)?.commands ?? null;
+    },
+  } as EditorChatEngine;
 }
 
 /**

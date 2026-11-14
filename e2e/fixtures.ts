@@ -22,6 +22,7 @@ export interface HookSnapshot {
     selectedKeyframes: { layerId: string; time: number }[];
     drawBrush: string | null;
     enteredGroupId?: string | null;
+    layout?: 'editor' | 'ai';
   };
   getHistory(): { canUndo: boolean; canRedo: boolean; labels: string[] };
   getConsoleErrors(): readonly unknown[];
@@ -237,34 +238,36 @@ export async function hook(page: Page) {
   });
 }
 export async function artboard(page: Page) {
-  return page.locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
-    const context = canvas.getContext('2d')!;
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let left = canvas.width,
-      right = -1,
-      top = canvas.height;
-    for (let y = 0; y < canvas.height; y++)
-      for (let x = 0; x < canvas.width; x++) {
-        const i = (y * canvas.width + x) * 4;
-        if (
-          Math.abs(data[i]! - 240) < 5 &&
-          Math.abs(data[i + 1]! - 238) < 5 &&
-          Math.abs(data[i + 2]! - 231) < 5
-        ) {
-          left = Math.min(left, x);
-          right = Math.max(right, x);
-          top = Math.min(top, y);
+  return page
+    .locator('#composition-canvas')
+    .evaluate((canvas: HTMLCanvasElement) => {
+      const context = canvas.getContext('2d')!;
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let left = canvas.width,
+        right = -1,
+        top = canvas.height;
+      for (let y = 0; y < canvas.height; y++)
+        for (let x = 0; x < canvas.width; x++) {
+          const i = (y * canvas.width + x) * 4;
+          if (
+            Math.abs(data[i]! - 240) < 5 &&
+            Math.abs(data[i + 1]! - 238) < 5 &&
+            Math.abs(data[i + 2]! - 231) < 5
+          ) {
+            left = Math.min(left, x);
+            right = Math.max(right, x);
+            top = Math.min(top, y);
+          }
         }
-      }
-    if (right < left) throw new Error('Artboard background not found');
-    const box = canvas.getBoundingClientRect();
-    const ratio = box.width / canvas.width;
-    return {
-      x: box.x + left * ratio,
-      y: box.y + top * ratio,
-      scale: ((right - left + 1) * ratio) / 1280,
-    };
-  });
+      if (right < left) throw new Error('Artboard background not found');
+      const box = canvas.getBoundingClientRect();
+      const ratio = box.width / canvas.width;
+      return {
+        x: box.x + left * ratio,
+        y: box.y + top * ratio,
+        scale: ((right - left + 1) * ratio) / 1280,
+      };
+    });
 }
 export async function toScreen(page: Page, x: number, y: number) {
   const board = await artboard(page);

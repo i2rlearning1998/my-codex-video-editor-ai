@@ -2,7 +2,7 @@
 // moved it into the Project page's Memory tab and removed My Styles and the
 // Style review (P3U-012 and P3U-013 are Dropped). Every test acts like a person.
 import type { Page } from '@playwright/test';
-import { test, expect } from './fixtures';
+import { test, expect, hook } from './fixtures';
 import { signUp } from './p2-helpers';
 
 const SHOTS = process.env.P3U_SHOTS ?? '';
@@ -21,14 +21,19 @@ const shot = async (page: Page, name: string) => {
   await page.screenshot({ path: `${SHOTS}/${name}.png` });
 };
 
-/** Starts a chat so Director has something to remember. */
+/**
+ * Starts a Video with Director (Round B: AI mode in the editor) and opens its
+ * Project's Memory tab. A Video id in the address opens its Project.
+ */
 async function talk(page: Page) {
-  await page.goto('/panel/#/room');
+  await page.goto('/panel/#/home');
   await page
-    .locator('#chat-input')
+    .locator('#home-input')
     .fill('A 60 second explainer about rainbows');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-fact')).toHaveCount(1);
+  await page.locator('#home-send').click();
+  await expect(page.locator('#ai-brief-card')).toBeVisible({ timeout: 30_000 });
+  const videoId = (await hook(page)).project.id;
+  await page.goto(`/panel/#/project/${videoId}/memory`);
 }
 
 test('[P3U-011] project memory: the person adds, pins and forgets what Director remembers, and sees the chats', async ({
@@ -36,20 +41,21 @@ test('[P3U-011] project memory: the person adds, pins and forgets what Director 
 }) => {
   await signUp(page);
   await talk(page);
-  await page.locator('.room-open-memory').click();
   await expect(page).toHaveURL(/#\/project\/[^/]+\/memory/);
   await expect(page.locator('#tab-memory h2').first()).toContainText(
     'Project memory',
   );
-  await expect(page.locator('.mem-fact')).toHaveCount(1);
+  // The Video and its chat are listed beside the facts.
   await expect(page.locator('.mem-chat')).toHaveCount(1);
+  await expect(page.locator('.mem-chat')).toContainText('1');
+  const start = await page.locator('.mem-fact').count();
   await page.locator('#mem-new').fill('Always end with a call to action');
   await page.locator('#mem-add').click();
-  await expect(page.locator('.mem-fact')).toHaveCount(2);
+  await expect(page.locator('.mem-fact')).toHaveCount(start + 1);
   // The same fact twice is kept once.
   await page.locator('#mem-new').fill('always end with a call to action');
   await page.keyboard.press('Enter');
-  await expect(page.locator('.mem-fact')).toHaveCount(2);
+  await expect(page.locator('.mem-fact')).toHaveCount(start + 1);
   // Pinned facts go first and say so.
   const added = page.locator('.mem-fact', {
     hasText: 'call to action',
@@ -67,14 +73,13 @@ test('[P3U-011] project memory: the person adds, pins and forgets what Director 
     .locator('.mem-fact', { hasText: 'call to action' })
     .locator('[data-act=forget]')
     .click();
-  await expect(page.locator('.mem-fact')).toHaveCount(1);
+  await expect(page.locator('.mem-fact')).toHaveCount(start);
 });
 
 test('[P3U-014] the memory page fits a phone', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signUp(page);
   await talk(page);
-  await page.locator('.room-open-memory').click();
   await expect(page.locator('#tab-memory h2').first()).toContainText(
     'Project memory',
   );
