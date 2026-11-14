@@ -125,18 +125,35 @@ export const VOICE_ORDER = [
   'deepgram',
 ];
 
+/**
+ * ROUND-C1: the Platform Config's provider registry (loaded lazily by
+ * registry-providers.ts): REST providers the owner added, and the built-ins
+ * the owner switched off.
+ */
+let registryExtra: Provider[] = [];
+let builtinsOff = new Set<string>();
+export function setRegistryProviders(
+  extra: Provider[],
+  off: readonly string[],
+) {
+  registryExtra = extra;
+  builtinsOff = new Set(off);
+}
 export function stockProviders(): Provider[] {
   ensure();
-  return STOCK_ORDER.map((id) => registry.get(id)).filter((p): p is Provider =>
-    Boolean(p),
-  );
+  return [
+    ...STOCK_ORDER.filter((id) => !builtinsOff.has(id))
+      .map((id) => registry.get(id))
+      .filter((p): p is Provider => Boolean(p)),
+    ...registryExtra,
+  ];
 }
 export function stockProvidersFor(kind: StockKind): Provider[] {
   return stockProviders().filter((p) => p.kinds.includes(kind));
 }
 export function stockProvider(id: string): Provider | undefined {
   ensure();
-  return registry.get(id);
+  return registry.get(id) ?? registryExtra.find((p) => p.id === id);
 }
 export function speechRegistry() {
   return ensure();

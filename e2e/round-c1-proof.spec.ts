@@ -181,6 +181,28 @@ test('[RDC1-050] proof 1, explainer: two NEW code graphics (Tier B and Tier C) r
     .toBe(h.project.compositions[1]!.id);
   await selectLayer(page, /Erosion bars/);
   await dragController(page, 'bars', 'proof1-explainer');
+  // Offline: redrawing a graphic needs the real model, said in one sentence;
+  // a change of its own settings still works as one proposal and one step.
+  const { say, lastDirector, openProposal } = await import('./round-b-helpers');
+  await say(page, 'make a new graphic here');
+  await expect(lastDirector(page)).toContainText(
+    'needs the real Director model',
+  );
+  const steps = (await hook(page)).history.labels.length;
+  await say(page, 'make it faster');
+  await expect(openProposal(page)).toBeVisible();
+  await openProposal(page).locator('button.primary').first().click();
+  await expect
+    .poll(async () => (await hook(page)).history.labels.length)
+    .toBe(steps + 1);
+  await page.keyboard.press('Control+z');
+  await expect
+    .poll(async () => (await hook(page)).history.labels.length)
+    .toBe(steps);
+  await page.keyboard.press('Control+y');
+  await expect
+    .poll(async () => (await hook(page)).history.labels.length)
+    .toBe(steps + 1);
 });
 
 const clipOf = async (page: import('@playwright/test').Page, layerId: string) =>

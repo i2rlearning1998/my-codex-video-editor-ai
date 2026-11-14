@@ -69,6 +69,7 @@ import {
 } from './canvas-read';
 import { propose, stillValid, suggestionsFor, type Proposal } from './propose';
 import { lang, t, type AiKey } from './strings';
+import { GRAPHIC_ASK } from './graphic-edit';
 
 export type DrawerTab = 'controls' | 'plan' | 'assets' | 'memory';
 export interface DirectorUi {
@@ -2193,6 +2194,11 @@ export class Director {
     }
     this.#reconcile();
     const sceneId = this.#host.session.source.composition.id;
+    // ROUND-C1 C1.5: writing or rewriting a graphic needs the model.
+    if (GRAPHIC_ASK.test(text)) {
+      this.#graphicAsk(text, selectedIds, o.allowed ?? []);
+      return;
+    }
     const result = propose({
       project: this.#state,
       sceneId,
@@ -2226,6 +2232,124 @@ export class Director {
     else if (result.kind === 'gone')
       this.#director(this.#line('proposal.gone'), { tone: 'note' });
     else void this.#cannot(text, selectedIds, result.alternatives);
+  }
+  /** ROUND-C1 C1.5: "change this graphic" / "make a new one here". */
+  #graphicAsk(
+    text: string,
+    selectedIds: readonly string[],
+    allowed: readonly string[],
+  ) {
+    const scene = this.#host.session.source.composition;
+    const layer =
+      scene.layers.find((l) => selectedIds.includes(l.id) && l.code) ?? null;
+    // A graphic the person changed by hand is never overwritten without asking.
+    const touched = this.#mem.touched(this.#videoId);
+    if (
+      layer &&
+      touched[layer.id] !== undefined &&
+      touched[layer.id] !== hashLayer(layer as never) &&
+      !allowed.includes(layer.id)
+    ) {
+      this.#card(
+        'ask',
+        {
+          layers: [{ id: layer.id, name: layer.name }],
+          text,
+          selectedIds: [...selectedIds],
+          state: 'open',
+        },
+        this.#line('handEdited.ask', { layer: layer.name }),
+      );
+      return;
+    }
+    const role = this.#c.director.roles.write;
+    const model = modelsForRole(this.#c, role).find(
+      (m) => this.#env.s.connected(m.id) && m.providerId !== 'mock',
+    );
+    if (!this.#env.s.remote || !model) {
+      this.#director(this.#line('graphic.needsModel'), { tone: 'note' });
+      return;
+    }
+    const max = Math.max(
+      1,
+      Math.ceil(
+        costOf(this.#c, this.#c.director.authoring.newGraphicCostId, 1, 'max'),
+      ),
+    );
+    this.#card(
+      'paid',
+      {
+        text,
+        selectedIds: [...selectedIds],
+        max,
+        model: model.id,
+        graphic: true,
+        state: 'open',
+      },
+      this.#line('paid.ask', { credits: max }),
+    );
+  }
+  /** The model writes the graphic; it becomes one proposal (one undo step). */
+  async #graphicModel(
+    text: string,
+    selectedIds: readonly string[],
+    modelId: string,
+    max: number,
+  ) {
+    const { s, user } = this.#env;
+    const role = this.#c.director.roles.write;
+    const scene = this.#host.session.source.composition;
+    const layer =
+      scene.layers.find((l) => selectedIds.includes(l.id) && l.code) ?? null;
+    this.#ui.orb('thinking');
+    const job = await s.gateway.startJob({
+      userId: user.id,
+      plan: s.planOf(user.id),
+      role,
+      modelId,
+      maxCredits: max,
+      key: `graphic-${Date.now().toString(36)}`,
+    });
+    try {
+      const { graphicEdit } = await import('./graphic-edit');
+      const r = await graphicEdit({
+        config: this.#c,
+        scene: scene as never,
+        layer: layer as never,
+        text,
+        time: this.#host.session.currentTime,
+        ask: async (system, content) =>
+          (
+            await job.call(role, modelId, {
+              system,
+              messages: [{ role: 'user', content }],
+              json: true,
+            })
+          ).text ?? '',
+      });
+      if (!r.ok) {
+        await job.fail();
+        this.#director(this.#line('graphic.failed'), { tone: 'error' });
+        return;
+      }
+      const credits = await job.finish(0);
+      this.offer({
+        id: `p-graphic-${Date.now().toString(36)}`,
+        summary: this.#line('graphic.ready', { name: r.name }),
+        label: r.label,
+        commands: r.commands,
+        layerIds: [r.layerId],
+        sceneId: scene.id,
+        credits,
+      });
+    } catch (e) {
+      await job.fail();
+      throw e;
+    } finally {
+      await s.sync(user.id).catch(() => undefined);
+      this.#ui.credits();
+      this.#ui.orb('idle');
+    }
   }
   /** Not something the offline rules can do: a real model may (with its cost), else alternatives. */
   async #cannot(
@@ -2575,10 +2699,18 @@ export class Director {
           'plan.approve',
           async () => {
             close('asked');
-            await this.#askModel(
-              String(state.text),
-              (state.selectedIds as string[]) ?? [],
-            );
+            if (state.graphic)
+              await this.#graphicModel(
+                String(state.text),
+                (state.selectedIds as string[]) ?? [],
+                String(state.model),
+                Number(state.max),
+              );
+            else
+              await this.#askModel(
+                String(state.text),
+                (state.selectedIds as string[]) ?? [],
+              );
           },
           'primary',
         ),

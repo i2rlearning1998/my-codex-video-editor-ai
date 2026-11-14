@@ -477,6 +477,18 @@ export const DIRECTOR_LINES: Record<string, LT> = {
     'I cannot make that here. I can do one of these instead.',
     'यह मैं यहाँ नहीं बना सकता। इसकी जगह इनमें से कुछ कर सकता हूँ।',
   ),
+  'graphic.needsModel': L(
+    'Writing or redrawing a graphic needs the real Director model, which is not connected here; I can still change its colours, speed and settings.',
+    'ग्राफ़िक लिखने या दोबारा बनाने के लिए असली Director मॉडल चाहिए, जो यहाँ जुड़ा नहीं है; मैं फिर भी इसके रंग, गति और सेटिंग बदल सकता हूँ।',
+  ),
+  'graphic.ready': L(
+    'Here is "{name}". Apply puts it on the canvas as one step.',
+    'यह रहा "{name}"। Apply इसे एक ही कदम में कैनवास पर रख देगा।',
+  ),
+  'graphic.failed': L(
+    'I could not make a graphic that passes the checks, so nothing was charged.',
+    'मैं जाँच में पास होने वाला ग्राफ़िक नहीं बना सका, इसलिए कुछ नहीं कटा।',
+  ),
   'handEdited.ask': L(
     'You changed "{layer}" by hand. May I change it too?',
     'आपने "{layer}" को हाथ से बदला है। क्या मैं भी इसे बदलूँ?',
