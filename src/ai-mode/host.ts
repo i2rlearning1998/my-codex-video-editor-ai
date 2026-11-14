@@ -14,6 +14,10 @@ export interface AiBuildResult {
   readonly silent: string | null;
   /** Files the plan expected and did not find, by name. */
   readonly missing: readonly string[];
+  /** ROUND-C1: media layers the build filled on its own (picked by AI). */
+  readonly picked?: number;
+  /** ROUND-C1: credit lines of the stock media used. */
+  readonly credits?: readonly string[];
 }
 export interface AiHost {
   readonly engine: EditorEngine;
@@ -56,8 +60,27 @@ export interface AiHost {
       replace?: readonly string[];
       /** Where the new scenes go (after this scene); the end when absent. */
       after?: string;
+      /** ROUND-C1: a v4 plan finds media through the provider registry. */
+      media?: import('../ui/plan-media').RegistryMediaOptions;
     },
   ): Promise<AiBuildResult>;
+  /** ROUND-C1: saves the plan's accepted new graphics to the AI library (the Project kit). */
+  saveGraphics(
+    items: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly summary?: string | undefined;
+      readonly item: unknown;
+    }[],
+  ): Promise<void>;
+  /** ROUND-C1: the Project's graphics kit (saved new graphics). */
+  graphicsKit(): readonly {
+    id: string;
+    name: string;
+    tier: 'A' | 'B' | 'C';
+    params: string[];
+    summary?: string;
+  }[];
   /** The existing Controls of the selected layer (code or preset), or []. */
   controls(): HTMLElement[];
   /** The commands that would add a media file to the open scene (not run). */

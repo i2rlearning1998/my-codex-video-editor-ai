@@ -45,12 +45,11 @@ import { KIT_BACKGROUNDS } from './kit-ids';
 import {
   mayUse,
   resolveMedia,
-  resolveMediaV4,
-  type AssetRule,
   type MediaCandidate,
   type ResolveServices,
 } from './resolve';
-import { v4Commands, type V4Context } from './build-v4';
+import type { AssetRule } from './resolve-v4';
+import type { V4Context } from './build-v4';
 import type { DefResult } from './defs';
 import { sceneDuration } from './timing';
 
@@ -413,6 +412,15 @@ export async function buildVideoFromPlan(
   let found = 0,
     wanted = 0;
   const v4 = plan.version === 4;
+  // V4 code is a lazy chunk: v2 and v3 builds never load it.
+  const v4mod = v4
+    ? await Promise.all([import('./build-v4'), import('./resolve-v4')]).then(
+        ([b, r]) => ({
+          v4Commands: b.v4Commands,
+          resolveMediaV4: r.resolveMediaV4,
+        }),
+      )
+    : null;
   const rule: AssetRule = {
     order: plan.meta.assets?.order ??
       deps.assetRule?.order ?? ['mine', 'library', 'stock', 'ai'],
@@ -440,7 +448,7 @@ export async function buildVideoFromPlan(
     stop();
     wanted++;
     const preferredKey = plan.resolved?.[key];
-    const choice = await resolveMediaV4(
+    const choice = await v4mod!.resolveMediaV4(
       layer,
       deps.resolve,
       rule,
@@ -1187,7 +1195,7 @@ export async function buildVideoFromPlan(
       const asset = assets.get(place.key);
       runEach(
         'Plan layer v4',
-        v4Commands({
+        v4mod!.v4Commands({
           engine,
           compositionId: composition.id,
           width,

@@ -189,12 +189,29 @@ type SpokenCache = Map<string, { asset: Asset; duration: number } | null>;
  */
 export async function runPlanBuild(
   plan: VideoPlan,
-  deps: Pick<PlanBuildDeps, 'assets' | 'importFile' | 'sfx' | 'theme'>,
+  deps: Pick<PlanBuildDeps, 'assets' | 'importFile' | 'sfx' | 'theme'> & {
+    /** ROUND-C1: a v4 plan finds media through the provider registry. */
+    readonly media?: import('./plan-media').RegistryMediaOptions | undefined;
+  },
   show: (progress: BuildProgress) => void,
   signal: AbortSignal,
   spokenBefore: SpokenCache = new Map(),
 ): Promise<PlanBuildResult> {
   const services = planServices(deps);
+  // ROUND-C1 C1.3: v4 plans pick media on their own (by kind, every enabled
+  // provider); v2 and v3 plans keep the FIX7 rule and build as before.
+  const registry =
+    plan.version === 4 && deps.media
+      ? (await import('./plan-media')).registryMedia(deps.media)
+      : null;
+  if (registry) {
+    const own = services.importCandidate;
+    services.resolve = { ...services.resolve, stock: registry.stock };
+    services.importCandidate = (candidate, sig) =>
+      candidate.source === 'stock'
+        ? registry.importPick(candidate, deps.importFile, sig)
+        : own(candidate, sig);
+  }
   const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
   const theme = plan.meta.themeId ? await deps.theme(plan.meta.themeId) : null;
   return buildVideoFromPlan(
@@ -202,6 +219,14 @@ export async function runPlanBuild(
     {
       ...services,
       theme,
+      ...(deps.media
+        ? {
+            assetRule: {
+              licences: deps.media.config.director.assets.licences,
+              order: deps.media.config.director.assets.order,
+            },
+          }
+        : {}),
       ...(voice
         ? {
             voice: async (text, lang, sig) => {
@@ -236,7 +261,13 @@ export async function runPlanBuild(
               !(asset.metadata as { removed?: boolean }).removed &&
               namesMatch(asset.name, query),
           );
-        return own ? { asset: own, duration: own.duration ?? 0 } : null;
+        if (own || !registry)
+          return own ? { asset: own, duration: own.duration ?? 0 } : null;
+        // ROUND-C1: a v4 plan's music bed comes from a music provider.
+        const pick = await registry.sound(query, 'music');
+        if (!pick) return null;
+        const asset = await registry.importPick(pick, deps.importFile, signal);
+        return { asset, duration: asset.duration ?? pick.duration ?? 0 };
       },
     },
     show,

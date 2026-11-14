@@ -84,6 +84,16 @@ const S = {
   'plan.credits': ['{n} credits', '{n} क्रेडिट'],
   'plan.upTo': ['up to {n} credits', 'अधिकतम {n} क्रेडिट'],
   'plan.total': ['Total: up to {n} credits', 'कुल: अधिकतम {n} क्रेडिट'],
+  'graphic.new': ['New graphic', 'नया ग्राफ़िक'],
+  'graphic.cost': ['{n} credits', '{n} क्रेडिट'],
+  'graphic.serverOnly': [
+    'Reading the web needs the server; it is not connected.',
+    'वेब पढ़ने के लिए सर्वर चाहिए; वह जुड़ा नहीं है।',
+  ],
+  'build.picked': [
+    '{n} pictures and clips were picked by Director; swap any in Review.',
+    '{n} तस्वीरें और क्लिप Director ने चुनीं; Review में कोई भी बदलें।',
+  ],
   'plan.approve': ['Approve', 'मंज़ूर'],
   'plan.cheaper': ['Cheaper', 'सस्ता'],
   'plan.richer': ['Richer', 'बेहतर'],

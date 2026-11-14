@@ -9,6 +9,7 @@ import type { OrbState } from '../contracts/p3';
 import {
   canUse,
   costById,
+  costOf,
   modelsForRole,
   styleById,
   text as sayText,
@@ -1001,6 +1002,12 @@ export class Director {
         userId: user.id,
         modelId: this.#model(),
         key: `plan-${this.#videoId}-${Date.now().toString(36)}`,
+        // ROUND-C1: the brief's video type, the Project kit, the research
+        // tools and (tests only) the offline model's scripted answers.
+        videoType: this.#flow.typeId || undefined,
+        kit: this.#host.graphicsKit(),
+        research: (tool, input) => this.#research(tool, input),
+        ...(e2eScript() ? { script: e2eScript()! } : {}),
       });
       await s.sync(user.id).catch(() => undefined);
       this.#ui.credits();
@@ -1041,6 +1048,69 @@ export class Director {
       wait.remove();
     }
   }
+  /** ROUND-C1: one research request through the shared tools (server or offline). */
+  async #research(
+    tool: string,
+    input: unknown,
+  ): Promise<{ ok: boolean; text: string }> {
+    const { s, user } = this.#env;
+    try {
+      if (s.gateway.tools) {
+        const out = (await s.gateway.tools(tool, input, this.#videoId)) as {
+          ok: boolean;
+          error?: string;
+          output?: unknown;
+        };
+        if (!out.ok) return { ok: false, text: out.error ?? 'failed' };
+        const o = out.output as {
+          wrapped?: string;
+          items?: { title: string; provider: string }[];
+        };
+        return {
+          ok: true,
+          text:
+            o.wrapped ??
+            JSON.stringify(
+              o.items
+                ? o.items
+                    .slice(0, 12)
+                    .map((i) => ({ title: i.title, provider: i.provider }))
+                : o,
+            ).slice(0, 6000),
+        };
+      }
+      if (tool === 'searchMedia') {
+        const { searchMedia } = await import('../tools/media');
+        const { fixtureRunner } = await import('../tools/media');
+        const r = await searchMedia(input as never, {
+          providers: this.#c.mediaProviders,
+          planId: s.planOf(user.id).id,
+          runtime: { builtin: {}, rest: fixtureRunner(e2eMedia() ?? {}) },
+        });
+        return {
+          ok: true,
+          text: JSON.stringify(
+            r.items
+              .slice(0, 12)
+              .map((i) => ({ title: i.title, provider: i.provider })),
+          ),
+        };
+      }
+      return { ok: false, text: t('graphic.serverOnly') };
+    } catch (e) {
+      return { ok: false, text: (e as Error).message };
+    }
+  }
+  /** ROUND-C1: credits of the plan's new graphics (the owner's cost each). */
+  #graphicsCredits(plan: VideoPlan) {
+    const each = costOf(
+      this.#c,
+      this.#c.director.authoring.newGraphicCostId,
+      1,
+      'max',
+    );
+    return (plan.defs?.blocks.length ?? 0) * each;
+  }
   async #setPlan(plan: VideoPlan) {
     const { s, user } = this.#env;
     const c = this.#c;
@@ -1052,7 +1122,9 @@ export class Director {
       s.connected(id),
     );
     this.#flow.plan = plan;
-    this.#flow.max = Math.ceil((base?.max ?? 0) + extra);
+    this.#flow.max = Math.ceil(
+      (base?.max ?? 0) + extra + this.#graphicsCredits(plan),
+    );
     this.#flow.sceneCosts = plan.scenes.map((_, i) =>
       Math.ceil(base?.scenes[i]?.max ?? 0),
     );
@@ -1277,6 +1349,7 @@ export class Director {
         }),
       ),
       this.#planScenes(true, turn),
+      this.#planGraphics(plan),
       h('p', {
         class: 'ai-muted',
         id: 'ai-plan-rewrites',
@@ -1318,6 +1391,35 @@ export class Director {
           },
         ),
       ),
+    );
+  }
+  /** ROUND-C1 C1.5: each new graphic: name, one line of what it shows, its cost (never its code). */
+  #planGraphics(plan: VideoPlan) {
+    const defs = plan.defs?.blocks ?? [];
+    if (!defs.length) return null;
+    const each = costOf(
+      this.#c,
+      this.#c.director.authoring.newGraphicCostId,
+      1,
+      'max',
+    );
+    return h(
+      'ul',
+      { class: 'ai-plan-graphics', id: 'ai-plan-graphics' },
+      ...defs.map((d) => {
+        const name =
+          (typeof d.meta?.name === 'string' ? d.meta.name : undefined) ??
+          /name:\s*['"]([^'"]{1,80})['"]/.exec(d.source)?.[1] ??
+          d.id;
+        return h(
+          'li',
+          { class: 'ai-plan-graphic', 'data-def': d.id },
+          h('span', { class: 'ai-badge', text: t('graphic.new') }),
+          h('strong', { text: clip(name, 60) }),
+          h('span', { class: 'ai-muted', text: clip(d.summary ?? '', 120) }),
+          h('span', { class: 'ai-cost', text: t('graphic.cost', { n: each }) }),
+        );
+      }),
     );
   }
   #approvePlan(turn: Turn) {
@@ -1852,6 +1954,14 @@ export class Director {
           const built = await this.#host.buildPlan(r.plan, {
             signal,
             progress: (step, state) => show(step, state),
+            media: {
+              config: this.#c,
+              planId: s.planOf(user.id).id,
+              videoId: this.#videoId,
+              ...(s.gateway.tools
+                ? { tools: s.gateway.tools.bind(s.gateway) }
+                : {}),
+            },
             ...(one
               ? { after: one.after }
               : this.#flow.sceneIds?.length
@@ -3243,4 +3353,22 @@ export class Director {
   get openProposals() {
     return this.#open.size;
   }
+}
+
+/** DEV and e2e pages only: the offline model's scripted answers (tests). */
+function e2eScript(): string[] | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  const w = window as { __AIVE_E2E_PLAN_SCRIPT__?: unknown };
+  return Array.isArray(w.__AIVE_E2E_PLAN_SCRIPT__) &&
+    w.__AIVE_E2E_PLAN_SCRIPT__.length
+    ? (w.__AIVE_E2E_PLAN_SCRIPT__ as string[])
+    : null;
+}
+/** DEV and e2e pages only: fixtures for REST providers without a gateway. */
+function e2eMedia(): Record<string, never[]> | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  return (
+    (window as { __AIVE_E2E_MEDIA__?: Record<string, never[]> })
+      .__AIVE_E2E_MEDIA__ ?? null
+  );
 }

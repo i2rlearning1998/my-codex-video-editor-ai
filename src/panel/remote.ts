@@ -58,6 +58,11 @@ export interface PanelGateway {
   run(x: RunInput): Promise<{ result: AdapterResult; credits: number }>;
   startJob(x: JobInput): Promise<JobLike>;
   counts(userId: string): LimitUsage;
+  /**
+   * ROUND-C1: runs a shared tool on the server (keys, fetching and limits
+   * live there). Absent without a gateway: the offline fixtures run instead.
+   */
+  tools?(tool: string, input: unknown, videoId: string): Promise<unknown>;
 }
 
 interface ApiError {
@@ -138,6 +143,8 @@ export function remoteGateway(base: string, token: () => Promise<string>) {
           )),
       };
     },
+    tools: (tool, input, videoId) =>
+      api('/tools/run', { tool, input, videoId }),
     counts: () =>
       usage ?? {
         exportsThisMonth: 0,
