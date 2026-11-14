@@ -4,6 +4,7 @@ import { compositionAt, type EditorEngine } from '../core';
 import type { FrameProvider, RenderSource } from '../render/adapter';
 import { drawComposition, fitViewport } from '../render/canvas';
 import type { EditorSession } from './session';
+import { firstContentTime } from '../render/first-content';
 
 export function drawScenePoster(
   canvas: HTMLCanvasElement,
@@ -11,12 +12,16 @@ export function drawScenePoster(
   session: EditorSession,
   sceneId: string,
   frames?: FrameProvider,
-  /** The second to draw (default the start). */
-  at = 0,
+  /**
+   * The second to draw. ROUND-C1: by default the first moment with content
+   * (never the blank frame of a fade-in from 0:00).
+   */
+  when?: number,
 ) {
   const scene = engine.state.compositions.find((item) => item.id === sceneId);
   const context = canvas.getContext('2d');
   if (!scene || !context) return false;
+  const at = when ?? firstContentTime(scene as never);
   const source: RenderSource = {
     composition: compositionAt(scene, at),
     assets: engine.state.assets,
@@ -44,8 +49,8 @@ export function scenePosterUrl(
   sceneId: string,
   frames?: FrameProvider,
   width = 256,
-  /** A built video's card shows a moment when its text is in, not the blank start. */
-  at = 0,
+  /** ROUND-C1: the first moment with content unless a time is given. */
+  at?: number,
 ) {
   const scene = engine.state.compositions.find((item) => item.id === sceneId);
   if (!scene) return undefined;

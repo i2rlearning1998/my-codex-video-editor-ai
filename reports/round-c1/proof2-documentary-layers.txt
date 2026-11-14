@@ -1,0 +1,15 @@
+Scene 1: The river
+  - Scene background (shape)
+  - River footage (video)
+  - Lower third role (text)
+  - Lower third name (text)
+  - Lower third bar (shape)
+  - Music (audio)
+  - Caption s1-caption_1 (group)
+Scene 2: The walls
+  - Scene background (shape)
+  - fort (image)
+  - map pin (image)
+  - Dust in the light (code, tier B)
+  - Music (audio)
+  - Caption s2-caption_1 (group)

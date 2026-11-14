@@ -113,6 +113,10 @@ const library = new ProjectLibrary(
   () => ({ id: me, legacy }),
 );
 const thumbNow = () => {
+  // ROUND-C1: a real frame of the Video (its first scene at the first moment
+  // with content), never a black frame of a fade-in from 0:00.
+  const cover = shell.coverThumb?.();
+  if (cover) return cover;
   const canvas = document.querySelector<HTMLCanvasElement>(
     '#composition-canvas',
   );

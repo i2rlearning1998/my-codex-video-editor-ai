@@ -400,9 +400,8 @@ export async function llmPlan(x: LlmPlanInput): Promise<LlmPlanResult> {
     const answers = [...x.script!];
     const r = await loop(async () => {
       const next = answers.shift();
-      if (next === undefined)
-        throw new Error('The offline model has no more answers.');
-      return next;
+      // Out of answers: an empty answer, refused like any failed plan.
+      return next ?? '';
     });
     return r.ok
       ? {

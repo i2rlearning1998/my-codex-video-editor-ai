@@ -1,0 +1,9 @@
+Scene 1: The talk
+  - Scene background (shape)
+  - My recording (video)
+  - Map overlay (image)
+  - Lower third role (text)
+  - Lower third name (text)
+  - Lower third line (shape)
+  - Ink circle (code, tier B)
+  - Caption s1-caption_1 (group)

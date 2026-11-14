@@ -1,0 +1,10 @@
+Scene 1: Hook
+  - Scene background (shape)
+  - city night (video)
+  - Kinetic title (code, tier B)
+  - Music (audio)
+Scene 2: Star
+  - Scene background (shape)
+  - star (image)
+  - Tonight. (text)
+  - Music (audio)

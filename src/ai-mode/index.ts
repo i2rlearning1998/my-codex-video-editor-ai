@@ -17,6 +17,7 @@ import { createOrb, type OrbHandle } from '../panel/orb/orb';
 import { h, clear } from '../panel/dom';
 import { setLocale } from '../panel/strings';
 import type { Ctx } from '../panel/app';
+import { firstContentTime } from '../render/first-content';
 import type { AiHost, AiMode } from './host';
 import { Director, type DirectorUi, type DrawerTab } from './director';
 import {
@@ -1114,7 +1115,7 @@ export function mountAiMode(host: AiHost): AiMode {
           card.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              session.selectComposition(scene.id);
+              openScene(scene.id);
             }
           });
           card.addEventListener('pointerdown', (e) => dragScene(e, card));
@@ -1165,7 +1166,7 @@ export function mountAiMode(host: AiHost): AiMode {
       card.classList.remove('dragging');
       for (const c of cards()) c.classList.remove('before', 'after');
       if (!dragging) {
-        if (e.type === 'pointerup') session.selectComposition(id);
+        if (e.type === 'pointerup') openScene(id);
         return;
       }
       if (e.type !== 'pointerup' || target < 0) return;
@@ -1244,6 +1245,15 @@ export function mountAiMode(host: AiHost): AiMode {
     playButton.dataset.playing = String(session.playing);
   };
   playButton.onclick = () => host.togglePlayback();
+  /**
+   * ROUND-C1 C1.6: a scene opened from the ribbon shows its first moment
+   * with content (a fade-in from 0:00 would show a blank stage).
+   */
+  function openScene(id: string) {
+    session.selectComposition(id);
+    const scene = engine.state.compositions.find((c) => c.id === id);
+    if (scene) session.setCurrentTime(firstContentTime(scene as never));
+  }
   const seek = (event: PointerEvent) => {
     const box = track.getBoundingClientRect();
     const scene = session.source.composition;

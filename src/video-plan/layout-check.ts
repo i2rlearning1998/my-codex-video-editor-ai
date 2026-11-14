@@ -229,6 +229,26 @@ export function checkLayout(
           });
       }
     }
+    // Captions sit in the lower part of the frame: a lower third or bottom
+    // text under narration is covered by them.
+    const captioned =
+      plan.captions?.enabled !== false &&
+      owner.name !== 'Overlays' &&
+      plan.scenes.some((sc) => sc.narration?.trim());
+    if (captioned)
+      for (const layer of owner.layers)
+        if (
+          (layer.kind === 'kit' && /^lower-third/.test(layer.kit ?? '')) ||
+          ((layer.kind === 'text' || layer.kind === 'title') &&
+            (layer.anchor === 'bottom' || layer.anchor === 'lower-third') &&
+            !layer.at)
+        )
+          out.push({
+            level: 'warning',
+            where: `${owner.name}, layer "${layer.id}"`,
+            text: `${owner.name}, layer "${layer.id}" sits where the captions go.`,
+            fix: 'Move it to the top, or give the captions another style.',
+          });
     for (let i = 0; i < texts.length; i++)
       for (let j = i + 1; j < texts.length; j++) {
         const a = texts[i]!,

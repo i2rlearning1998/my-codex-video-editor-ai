@@ -350,6 +350,7 @@ import {
   type VideoPlan,
 } from '../video-plan';
 import { kitPreviewUrl } from '../video-plan/kit-preview';
+import { firstContentTime } from '../render/first-content';
 import type { FeelExtras } from '../themes/library';
 // ROUND-C1: the plan build (dialog, services, v4 media) is a lazy chunk, so
 // the editor's first load does not grow with the Video Plan v4 code.
@@ -3104,8 +3105,7 @@ export function mountEditorShell(
   /** FINAL3 V3: Review & swap, a left side panel. */
   const planReviewDeps = (title?: string): PlanReviewDeps => ({
     ...(title !== undefined ? { title } : {}),
-    poster: (sceneId) =>
-      scenePosterUrl(engine, session, sceneId, frames, 160, 1),
+    poster: (sceneId) => scenePosterUrl(engine, session, sceneId, frames, 160),
     project: () => engine.state,
     run: (label, commands) =>
       safely(() => {
@@ -5144,7 +5144,12 @@ export function mountEditorShell(
         ids[0]!,
         frames,
         256,
-        first ? Math.min(first.duration * 0.4, 2.5) : 0,
+        first
+          ? Math.max(
+              firstContentTime(first as never),
+              Math.min(first.duration * 0.4, 2.5),
+            )
+          : 0,
       );
       return {
         status,
@@ -8666,7 +8671,7 @@ export function mountEditorShell(
       safely(draw);
     },
     poster: (sceneId, width) =>
-      scenePosterUrl(engine, session, sceneId, frames, width, 1),
+      scenePosterUrl(engine, session, sceneId, frames, width),
     togglePlayback: () => commandContext.togglePlayback(),
     openExport: () => safely(openExport),
     back: () => history.back(),
@@ -8719,6 +8724,13 @@ export function mountEditorShell(
           ...(options.after ? { after: options.after } : {}),
           ...(options.replace ? { replace: options.replace } : {}),
         });
+        // ROUND-C1 C1.6: the stage shows the first moment with content, not
+        // the blank frame of a fade-in from 0:00.
+        const opened = engine.state.compositions.find(
+          (c) => c.id === session.source.composition.id,
+        );
+        if (opened && sceneIds.includes(opened.id))
+          session.setCurrentTime(firstContentTime(opened as never));
         // ROUND-C1: the plan's new graphics go to the AI library (Project kit).
         if (result.defs?.length)
           await saveGraphics(
@@ -8922,6 +8934,13 @@ export function mountEditorShell(
         a();
         b();
       };
+    },
+    /** ROUND-C1: the Video's cover: its first scene at the first moment with content. */
+    coverThumb: (width = 192) => {
+      const first = engine.state.compositions[0];
+      return first
+        ? (scenePosterUrl(engine, session, first.id, frames, width) ?? '')
+        : '';
     },
     libraryIndex: () => ({
       media: (engine.state.assets as unknown as readonly Asset[])

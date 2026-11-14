@@ -38,11 +38,16 @@ export function planSlots(video: VideoPlan, voice: boolean): AssetSlot[] {
     for (const l of s.layers) {
       if (l.kind !== 'media' || !l.mediaIntent) continue;
       const type = l.mediaIntent.type;
-      if (type === 'icon' || type === 'emoji') continue;
+      if (type === 'icon' || type === 'emoji' || type === 'sticker') continue;
       const name = safeName(l.mediaIntent.query);
       if (seen.has(name)) continue;
-      seen.add(name);
       const m = methodOf(s);
+      // ROUND-C1 C1.3: a v4 build finds media on its own (the person's files
+      // by name, the library, then stock by kind); only a picture to be made
+      // by AI (a paid step with its own card) is asked for here. What is
+      // still missing after the build is listed by the build.
+      if (video.version === 4 && m !== 'ai-image' && m !== 'ai-video') continue;
+      seen.add(name);
       out.push({
         name,
         sceneId: s.id,
