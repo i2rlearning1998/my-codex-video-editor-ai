@@ -156,6 +156,8 @@ export class Director {
   #busy = false;
   /** The gateway server could not be reached at the last check. */
   #unreachable = false;
+  /** The last turn was refused or failed: the Orb keeps showing it. */
+  #refused = false;
   /** Open proposals by id (the newest previews on the canvas). */
   readonly #open = new Map<
     string,
@@ -479,6 +481,7 @@ export class Director {
       return;
     }
     this.#busy = true;
+    this.#refused = false;
     this.#ui.orb('thinking');
     try {
       await this.#handle({ ...input, text });
@@ -486,7 +489,8 @@ export class Director {
       this.#fail(error, text);
     } finally {
       this.#busy = false;
-      if (!this.building) this.#ui.orb('idle');
+      // A refusal stays on the Orb until the next message.
+      if (!this.building && !this.#refused) this.#ui.orb('idle');
       this.#ui.refresh();
       const next = this.#queue.shift();
       if (next && !this.building) void this.#replay(next);
@@ -495,6 +499,7 @@ export class Director {
   /** A queued message is handled without being written to the thread again. */
   async #replay(input: Send) {
     this.#busy = true;
+    this.#refused = false;
     this.#ui.orb('thinking');
     try {
       await this.#handle({ ...input, text: input.text.trim() });
@@ -502,7 +507,8 @@ export class Director {
       this.#fail(error, input.text);
     } finally {
       this.#busy = false;
-      if (!this.building) this.#ui.orb('idle');
+      // A refusal stays on the Orb until the next message.
+      if (!this.building && !this.#refused) this.#ui.orb('idle');
       this.#ui.refresh();
       const next = this.#queue.shift();
       if (next && !this.building) void this.#replay(next);
@@ -527,6 +533,7 @@ export class Director {
     this.#director(message, { tone: 'error' });
     // Nothing is lost: the typed message goes back into the box.
     if (unreachable && text) this.#ui.setInput(text);
+    this.#refused = true;
     this.#ui.orb('refusing');
     void this.#env.s
       .sync(this.#env.user.id)
@@ -540,6 +547,7 @@ export class Director {
     // The owner's refusals are matched first; no model is asked.
     const refusal = text ? refusalFor(this.#c.director, text) : null;
     if (refusal) {
+      this.#refused = true;
       this.#ui.orb('refusing');
       this.#director(
         [
@@ -955,6 +963,7 @@ export class Director {
   }
   async #makePlan(extraNotes: string[], rewrite = false) {
     const { s, user, ctx } = this.#env;
+    this.#refused = false;
     this.#ui.orb('thinking');
     const wait = h('div', {
       class: 'ai-msg',
@@ -1735,6 +1744,7 @@ export class Director {
       } catch {
         this.#unreachable = true;
         this.#director(t('dir.unreachable'), { tone: 'error' });
+        this.#refused = true;
         this.#ui.orb('refusing');
         const a = this.#lastCard('plan');
         if (a) this.#repaint(a.id);
@@ -2474,6 +2484,7 @@ export class Director {
         })
       | null;
     if (!chat?.commandsOf) return;
+    this.#refused = false;
     this.#ui.orb('thinking');
     const sceneId = this.#host.session.source.composition.id;
     try {

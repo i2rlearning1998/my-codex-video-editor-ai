@@ -1586,3 +1586,4 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDB-042 | P0 | W10 | Verified | A locked layer: Director says it is locked and proposes nothing |
 | RDB-043 | P0 | W10 | Verified | Hindi input is understood; Director answers in Hindi when the panel is in Hindi |
 | RDB-044 | P0 | W10 | Verified | With Animations Off, switching layouts moves nothing and the Orb is still |
+| RDB-045 | P0 | W10 | Verified | On the stage: the point-and-say bubble on the selected layer turns words into a proposal; a file dropped on the stage is offered for the scene; the Orb's state lights the stage and a refusal stays shown; a hidden tab stops the Orb |
