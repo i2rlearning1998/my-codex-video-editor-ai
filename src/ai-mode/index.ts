@@ -479,7 +479,10 @@ export function mountAiMode(host: AiHost): AiMode {
   sendButton.onclick = send;
   const filePicker = h('input', { type: 'file', multiple: true, hidden: true });
   filePicker.onchange = () => {
-    pending = [...pending, ...(filePicker.files ?? [])].slice(0, 6);
+    pending = [
+      ...pending,
+      ...[...(filePicker.files ?? [])].filter((f) => !director?.refuseFile(f)),
+    ].slice(0, 6);
     filePicker.value = '';
     paintChips();
   };
@@ -562,7 +565,10 @@ export function mountAiMode(host: AiHost): AiMode {
     if (!files.length) return;
     event.preventDefault();
     event.stopPropagation();
-    pending = [...pending, ...files].slice(0, 6);
+    pending = [
+      ...pending,
+      ...files.filter((f) => !director?.refuseFile(f)),
+    ].slice(0, 6);
     paintChips();
   });
 
@@ -1929,7 +1935,10 @@ export function mountAiMode(host: AiHost): AiMode {
       const s = await createServices(localStorage);
       const user = await s.account.user();
       if (!user) throw new Error('signed out');
-      await s.sync(user.id).catch(() => undefined);
+      const unreachable = await s.sync(user.id).then(
+        () => false,
+        () => !!s.remote,
+      );
       // This month's plan credits (given once), as the panel does.
       s.monthlyGrant(user.id);
       if (disposed) return;
@@ -1950,7 +1959,7 @@ export function mountAiMode(host: AiHost): AiMode {
       };
       balance = () => s.ledger(user.id).balance();
       clear(thread);
-      director = new Director(ui, { s, user, ctx });
+      director = new Director(ui, { s, user, ctx, unreachable });
       paintCredits();
       refresh();
       paintDrawer();

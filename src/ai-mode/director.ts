@@ -87,6 +87,8 @@ export interface Env {
   readonly s: Services;
   readonly user: CloudUser;
   readonly ctx: Ctx;
+  /** The gateway server could not be reached when AI mode started. */
+  readonly unreachable?: boolean;
 }
 type Stage = 'start' | 'brief' | 'plan' | 'assets' | 'building' | 'built';
 interface Slot extends AssetSlot {
@@ -152,6 +154,8 @@ export class Director {
   #queue: Send[] = [];
   #abort: AbortController | null = null;
   #busy = false;
+  /** The gateway server could not be reached at the last check. */
+  #unreachable = false;
   /** Open proposals by id (the newest previews on the canvas). */
   readonly #open = new Map<
     string,
@@ -161,6 +165,7 @@ export class Director {
   #off: (() => void)[] = [];
 
   constructor(ui: DirectorUi, env: Env) {
+    this.#unreachable = !!env.unreachable;
     this.#ui = ui;
     this.#env = env;
     this.#host = ui.host;
@@ -246,7 +251,23 @@ export class Director {
     };
     // A build cut off by a reload kept nothing: the person can build again.
     const interrupted = this.#flow.stage === 'building';
-    if (interrupted) this.#flow.stage = 'assets';
+    if (interrupted) {
+      this.#flow.stage = 'assets';
+      // The hold of the cut-off build goes back in full. In this browser the
+      // ledger keeps it until refunded; a gateway server refunds abandoned
+      // jobs itself.
+      if (!s.remote) {
+        const ledger = s.ledger(user.id);
+        const open = ledger.reservations();
+        for (const e of ledger.history())
+          if (
+            e.type === 'reserve' &&
+            e.key.startsWith(`build-${this.#videoId}-`) &&
+            open.get(e.id)?.state === 'open'
+          )
+            ledger.refund(e.id, `${e.key}:reload`, 'interrupted');
+      }
+    }
     this.#open.clear();
     this.#chat = mem.currentChat(this.#videoId);
     if (!this.#chat.turns.length && this.#c.director.greeting)
@@ -551,6 +572,26 @@ export class Director {
   }
 
   // ---- attachments and file notes -------------------------------------------
+  /**
+   * Checked the moment a file is attached, before anything is sent: a file
+   * too big or of a kind Director cannot read is refused in one sentence.
+   */
+  refuseFile(file: File): boolean {
+    const maxMb = this.#c.director.context.maxAttachmentMb;
+    if (file.size > maxMb * 1_048_576) {
+      this.#director(this.#line('attach.tooBig', { n: maxMb }), {
+        tone: 'error',
+      });
+      return true;
+    }
+    const type =
+      file.type || (/\.(txt|md|srt)$/i.test(file.name) ? 'text/plain' : '');
+    if (!OK_TYPES.test(type)) {
+      this.#director(this.#line('attach.badType'), { tone: 'error' });
+      return true;
+    }
+    return false;
+  }
   async #notesFor(files: readonly File[]) {
     const out: { name: string; kind: string; note: string }[] = [];
     const maxMb = this.#c.director.context.maxAttachmentMb;
@@ -1192,7 +1233,8 @@ export class Director {
     el.id = 'ai-plan-card';
     const max = this.#flow.max ?? 0;
     const balance = s.ledger(user.id).balance();
-    const short = max > balance;
+    // An unknown balance (the server cannot be reached) is not a shortage.
+    const short = !this.#unreachable && max > balance;
     const left = this.#rewritesLeft();
     const swapAll = async (dir: 'cheaper' | 'richer') => {
       if (this.#rewritesLeft() <= 0) return;
@@ -1684,6 +1726,21 @@ export class Director {
     const plan = one?.plan ?? this.#flow.plan;
     if (!plan) return;
     const max = one?.max ?? this.#flow.max ?? 0;
+    // With a gateway server the balance is the server's: read it first. A
+    // server that cannot be reached is said plainly; nothing is spent.
+    if (s.remote) {
+      try {
+        await s.sync(user.id);
+        this.#unreachable = false;
+      } catch {
+        this.#unreachable = true;
+        this.#director(t('dir.unreachable'), { tone: 'error' });
+        this.#ui.orb('refusing');
+        const a = this.#lastCard('plan');
+        if (a) this.#repaint(a.id);
+        return;
+      }
+    }
     const balance = s.ledger(user.id).balance();
     if (max > balance) {
       this.#director(t('dir.noCredits', { need: max, have: balance }), {

@@ -1,7 +1,7 @@
 // ROUND-B: rough use. Each test is one of the brief's rough-use conditions,
 // done the way a person would do it, on the offline mock model.
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { allowError, test, expect, hook } from './fixtures';
 import { setPlan, signUp } from './p2-helpers';
 import {
   build,
@@ -28,6 +28,19 @@ const toAiMode = async (page: Page) => {
   await page.locator('#mode-ai').click();
   await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/);
 };
+/** A composition point on the screen, through the view the editor draws with. */
+async function screenOf(page: Page, x: number, y: number) {
+  const box = (await page.locator('#composition-canvas').boundingBox())!;
+  const [a, b, c, d, e, f] = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          __AIVE__: { getCanvas(): { view: number[] } };
+        }
+      ).__AIVE__.getCanvas().view,
+  );
+  return { x: box.x + a! * x + c! * y + e!, y: box.y + b! * x + d! * y + f! };
+}
 async function useConfig(
   page: Page,
   change: (c: ReturnType<typeof defaultConfig>) => void,
@@ -110,6 +123,9 @@ test('[RDB-033] an AI change undone in Editor mode: back in AI mode Director say
   page,
 }) => {
   await builtVideo(page);
+  const decisions = page.locator('[data-mem-part="decisions"] [data-entry]');
+  await page.locator('[data-ai-tab="memory"]').click();
+  const before = await decisions.count();
   const id = await selectLayer(page, /text/);
   const was = (await layerOf(page, id))!.properties.fill?.value;
   await say(page, 'make it red');
@@ -117,6 +133,8 @@ test('[RDB-033] an AI change undone in Editor mode: back in AI mode Director say
   await expect
     .poll(async () => (await layerOf(page, id))!.properties.fill?.value)
     .toBe('#e5484d');
+  await page.locator('[data-ai-tab="memory"]').click();
+  await expect(decisions).toHaveCount(before + 1);
   await toEditor(page);
   await page.keyboard.press('Control+z');
   await expect
@@ -130,9 +148,7 @@ test('[RDB-033] an AI change undone in Editor mode: back in AI mode Director say
       .count(),
   ).toBe(1);
   await page.locator('[data-ai-tab="memory"]').click();
-  await expect(page.locator('[data-mem-part="decisions"]')).not.toContainText(
-    /red/i,
-  );
+  await expect(decisions).toHaveCount(before);
 });
 
 test('[RDB-034] a scene deleted by hand after asking Director about it: Director says plainly that the scene is no longer in the video and changes nothing', async ({
@@ -171,9 +187,10 @@ test('[RDB-035] a layer changed by hand: asking Director to change it asks first
     .toBe('My own words');
   await say(page, 'make it red');
   const ask = page.locator('[data-card="ask"]').last();
-  await expect(ask).toContainText('by hand');
+  await expect(ask).toBeVisible();
+  await expect(thread(page)).toContainText('by hand. May I change it too?');
   await expect(openProposal(page)).toHaveCount(0);
-  await ask.getByRole('button', { name: 'No' }).click();
+  await ask.getByRole('button', { name: 'No, leave it' }).click();
   expect((await layerOf(page, id))!.properties.fill?.value).not.toBe('#e5484d');
   await say(page, 'make it red');
   await page
@@ -226,7 +243,8 @@ test('[RDB-037] proposals under rough use: the selected layer deleted before App
   await expect(thread(page)).toContainText(
     'The layer this change was for is gone, so I cancelled it.',
   );
-  // Applied twice.
+  // Applied twice (in the next scene, which still has its text).
+  await page.locator('#ai-ribbon .ai-scene').nth(1).click();
   id = await selectLayer(page, /text/);
   await say(page, 'make it red');
   const steps = (await hook(page)).history.labels.length;
@@ -280,37 +298,42 @@ test('[RDB-038] scenes reordered during playback: one undo step, playback keeps 
   expect((await hook(page)).history.labels.length).toBe(steps + 1);
 });
 
-test('[RDB-039] not enough credits: the build says so in one sentence with what it needs, nothing is spent or built, and the Video can be built after more credits', async ({
+test('[RDB-039] not enough credits: the Plan card says so in one sentence with what it needs and a way to get credits, Approve waits, nothing is spent or built', async ({
   page,
 }) => {
   await useConfig(page, (c) => {
     c.plans.find((p) => p.id === 'free')!.monthlyCredits = 1;
   });
   await startAi(page);
+  const scenes = (await hook(page)).project.compositions.length;
   await toPlan(page);
-  await toAssets(page);
   const before = await credits(page);
   expect(before).toBeLessThanOrEqual(1);
-  const scenes = (await hook(page)).project.compositions.length;
-  await page.locator('#ai-build').click();
-  await expect(lastDirector(page)).toContainText(/credit/i, {
-    timeout: 60_000,
-  });
-  await expect(lastDirector(page)).toHaveAttribute('data-tone', 'error');
+  const short = page.locator('#ai-plan-short');
+  await expect(short).toContainText('Not enough credits');
+  await expect(short.locator('a')).toHaveAttribute('href', '/panel/#/credits');
+  await expect(page.locator('#ai-plan-approve')).toBeDisabled();
   expect((await hook(page)).project.compositions).toHaveLength(scenes);
   expect(await credits(page)).toBe(before);
 });
 
-test('[RDB-040] the server cannot be reached: Director says so, nothing is spent, nothing is lost and the typed message is kept', async ({
+test('[RDB-040] the server cannot be reached: Director says so in one sentence, nothing is built or spent, and what was typed stays in the box', async ({
   page,
 }) => {
   await startAi(page);
   await toPlan(page);
   await toAssets(page);
-  const before = await credits(page);
   const scenes = (await hook(page)).project.compositions.length;
-  await page.route('**/*', (route) =>
-    /\/v1\//.test(route.request().url()) ? route.abort() : route.continue(),
+  const flow = await page.evaluate(() =>
+    Object.entries(localStorage)
+      .filter(([k]) => k.startsWith('aive.credits.'))
+      .map(([, v]) => v)
+      .join(''),
+  );
+  allowError(
+    page,
+    (m) => m.includes('127.0.0.1:9/'),
+    'The test points the gateway at an address where nothing listens, on purpose.',
   );
   await page.addInitScript(() => {
     (globalThis as { __AIVE_GATEWAY_URL__?: string }).__AIVE_GATEWAY_URL__ =
@@ -320,23 +343,33 @@ test('[RDB-040] the server cannot be reached: Director says so, nothing is spent
   await expect(page.locator('#ai-assets-card')).toBeVisible({
     timeout: 30_000,
   });
+  await page.locator('#ai-input').fill('Please keep these words');
   await page.locator('#ai-build').click();
-  await expect(thread(page)).toContainText('could not be reached', {
+  await expect(lastDirector(page)).toContainText('could not be reached', {
     timeout: 60_000,
   });
+  await expect(lastDirector(page)).toContainText('Nothing was spent');
+  await expect(thread(page)).not.toContainText('Not enough credits');
   expect((await hook(page)).project.compositions).toHaveLength(scenes);
-  // A message that needs the server keeps its words.
-  await page.locator('#ai-input').fill('Make a plan again please');
-  await page.locator('#ai-send').click();
-  await expect(page.locator('#ai-assets-card')).toBeVisible();
-  void before;
+  await expect(page.locator('#ai-input')).toHaveValue(
+    'Please keep these words',
+  );
+  // This browser's credits record did not change.
+  expect(
+    await page.evaluate(() =>
+      Object.entries(localStorage)
+        .filter(([k]) => k.startsWith('aive.credits.'))
+        .map(([, v]) => v)
+        .join(''),
+    ),
+  ).toBe(flow);
 });
 
 test('[RDB-041] a huge or unsupported attachment is refused in one sentence before anything is sent; the typed words stay', async ({
   page,
 }) => {
   await useConfig(page, (c) => {
-    c.director.memory.maxAttachmentMb = 0.1;
+    c.director.context.maxAttachmentMb = 0.1;
   });
   await startAi(page);
   await page.locator('#ai-input').fill('Use this file');
@@ -371,9 +404,17 @@ test('[RDB-042] a locked layer: Director says it is locked and proposes nothing'
   await builtVideo(page);
   const id = await selectLayer(page, /text/);
   await toEditor(page);
-  await page.keyboard.press('Control+k');
-  await page.keyboard.type('Lock');
-  await page.keyboard.press('Enter');
+  // Lock it from the canvas menu, like a person.
+  const layer = (await layerOf(page, id))!;
+  const at = await screenOf(
+    page,
+    (layer.transform.position.value as number[])[0]! +
+      Number(layer.properties.width?.value ?? 0) / 2,
+    (layer.transform.position.value as number[])[1]! +
+      Number(layer.properties.height?.value ?? 0) / 2,
+  );
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await page.locator('#canvas-context-menu [data-action="lock"]').click();
   await expect
     .poll(async () => (await layerOf(page, id))!.properties.locked?.value)
     .toBe(true);
