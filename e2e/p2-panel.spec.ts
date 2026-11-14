@@ -1,8 +1,7 @@
 // P2-R1: the user panel and website in a real browser, on the offline mock
 // (no keys, no third-party network). Every test acts like a person.
-import { readFileSync } from 'node:fs';
-import { test, expect, hook, settleBuild } from './fixtures';
-import { balance, PASSWORD, setPlan, signUp, approvePlan } from './p2-helpers';
+import { test, expect, hook } from './fixtures';
+import { balance, PASSWORD, setPlan, signUp } from './p2-helpers';
 import { defaultConfig } from '../src/platform-config';
 
 test('[P2R1-018] no guest mode: logged out sees only the website; sign up, log out, log in and reset a password; the editor opens only after login', async ({

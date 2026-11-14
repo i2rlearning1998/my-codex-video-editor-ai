@@ -77,24 +77,3 @@ test('[P4F-008] a deleted project waits in the Trash and can be restored; a dele
   await page.locator('[data-view="all"]').click();
   await expect(page.locator(`[data-ws-project="${id}"]`)).toBeVisible();
 });
-
-async function briefToPlan(page: Page) {
-  await page.goto('/panel/#/styles');
-  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
-  await page
-    .locator('#f-idea')
-    .fill(
-      'How Eratosthenes measured the circumference of the Earth. He used shadows in two cities.',
-    );
-  await page.locator('#talk-director').click();
-  await expect(page.locator('.msg[data-kind="question"]').last()).toContainText(
-    'script',
-  );
-  for (const line of ['Write it for me', 'Text to speech', 'None', 'Hindi']) {
-    await page.locator('#chat-input').fill(line);
-    await page.locator('#chat-send').click();
-  }
-  await expect(page.locator('.msg[data-kind="upgrade"]')).toBeVisible();
-  await page.locator('#make-plan').click();
-  await expect(page.locator('#plan-card .scene')).toHaveCount(5);
-}

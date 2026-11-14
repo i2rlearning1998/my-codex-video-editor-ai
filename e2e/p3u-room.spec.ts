@@ -19,20 +19,6 @@ const shot = async (page: import('@playwright/test').Page, name: string) => {
   );
   await page.screenshot({ path: `${SHOTS}/${name}.png` });
 };
-/** Records every Orb state the room goes through. */
-const watchOrb = (page: import('@playwright/test').Page) =>
-  page.evaluate(() => {
-    const w = window as unknown as { __orbSeq: string[] };
-    w.__orbSeq = [];
-    const el = document.querySelector('.orb-live') as HTMLElement;
-    w.__orbSeq.push(el.dataset.orbState ?? '');
-    new MutationObserver(() =>
-      w.__orbSeq.push(el.dataset.orbState ?? ''),
-    ).observe(el, { attributes: true, attributeFilter: ['data-orb-state'] });
-  });
-const seq = (page: import('@playwright/test').Page) =>
-  page.evaluate(() => (window as unknown as { __orbSeq: string[] }).__orbSeq);
-
 test('[P3U-004] Settings > Animations Off turns the Orb into a still picture, On brings it back, and a hidden tab pauses it', async ({
   page,
 }) => {
