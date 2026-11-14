@@ -113,7 +113,7 @@ Not copied on purpose: the YouTube "Connect" banner (no YouTube connection exist
 - `npm run ledger`: Ledger OK (3 old warnings: PRJ-015, MED-003, FX-014).
 - E2E browser: Chromium 153.0.8010.12 (Playwright 1.63.0), the sandbox's Chromium, not Chrome or Edge.
 - Layers: unit and jsdom (Vitest) 1592 passed; e2e 791 passed in the full run plus the 9 re-run (800 of 800 passing at the end).
-- CI: CI_PLACEHOLDER
+- CI: checked once after the final push of the code (commit f82c294): jobs "verify" and "export-mp4" were still running (run 43612951355). Not watched further, per the one-check rule; the result is on PR #53.
 
 ### Bundle (L7, D-424)
 
