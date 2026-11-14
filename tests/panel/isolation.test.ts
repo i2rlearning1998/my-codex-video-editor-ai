@@ -26,10 +26,15 @@ const PANEL_SIDE = [
   'src/payments',
   // P3-WIRING: the Director and Studio services the panel and server use.
   'src/wiring',
+  // ROUND-B (D-417, D-424): AI mode is the Director's home inside the editor.
+  // It is a lazy chunk; the rest of the editor reaches it only by a dynamic
+  // import or a type-only import (checked below), and the bundle check
+  // proves it is not in the editor's first load.
+  'src/ai-mode',
 ];
 
 describe('P2-R1 page isolation', () => {
-  it('[P2R1-021] the editor imports no panel, website, gateway, Director or payment code; the panel and website import no editor entry or shell', () => {
+  it('[P2R1-021] the editor imports no panel, website, gateway, Director or payment code (AI mode, the Director inside the editor, only lazily); the panel and website import no editor entry or shell', () => {
     for (const f of files('src')) {
       if (PANEL_SIDE.some((d) => f.startsWith(d))) continue;
       for (const target of imports(f))
@@ -61,12 +66,27 @@ describe('P2-R1 page isolation', () => {
             expect(target.startsWith(banned), `${f} imports ${target}`).toBe(
               false,
             );
+    // ROUND-B: no editor file outside AI mode imports it statically.
+    for (const f of files('src')) {
+      if (PANEL_SIDE.some((d) => f.startsWith(d))) continue;
+      for (const line of readFileSync(f, 'utf8').split('\n')) {
+        const m = /^\s*import\s+(?!type\b)[^(]*from\s+['"]([^'"]+)['"]/.exec(
+          line,
+        );
+        if (!m) continue;
+        const target = path.normalize(path.join(path.dirname(f), m[1]!));
+        expect(
+          target.startsWith('src/ai-mode'),
+          `${f} imports AI mode statically: ${target}`,
+        ).toBe(false);
+      }
+    }
     expect(readFileSync('index.html', 'utf8')).toContain('/src/boot.ts');
     if (existsSync('dist/.vite/manifest.json'))
       expect(
         execFileSync('node', ['scripts/assert-editor-bundle.mjs'], {
           encoding: 'utf8',
         }),
-      ).toMatch(/panel and website without the editor/);
+      ).toMatch(/[Pp]anel and website without the editor/);
   });
 });
