@@ -1930,6 +1930,8 @@ export function mountAiMode(host: AiHost): AiMode {
       const user = await s.account.user();
       if (!user) throw new Error('signed out');
       await s.sync(user.id).catch(() => undefined);
+      // This month's plan credits (given once), as the panel does.
+      s.monthlyGrant(user.id);
       if (disposed) return;
       setLocale(lang());
       const ctx: Ctx = {

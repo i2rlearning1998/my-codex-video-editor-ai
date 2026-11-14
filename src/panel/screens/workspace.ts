@@ -217,24 +217,15 @@ export async function startVideo(
 }
 
 /**
- * Where a Video opens: Director when it is AI-made and not finished, else
- * the editor.
- *
- * ROUND-B SEAM: until the editor's AI mode exists (Round B), a Video made
- * from a ready-made Style or by Director opens the existing Director flow in
- * the panel, bound to this Video (brief, plan, asset step). Round B replaces
- * these three addresses with the editor's AI mode.
+ * Where a Video opens. ROUND-B: a Video Director made (or is making) opens
+ * the editor in AI mode, the single home of Director; a Video made by hand
+ * opens the editor.
  */
-export function videoHref(ctx: Ctx, v: WsVideo): string {
-  if (v.origin === 'ai' && v.stage !== 'built' && v.stage !== 'editor') {
-    if (v.stage === 'assets' && v.pause) return `#/assets-step/${enc(v.id)}`;
-    const p = ctx.s.ws(ctx.user.id).project(v.projectId);
-    if (p?.templateId)
-      return `#/brief/${enc(p.templateId)}?project=${enc(v.id)}`;
-    return `#/room/${enc(v.id)}`;
-  }
-  return editorHref(v.id);
+export function videoHref(_ctx: Ctx, v: WsVideo): string {
+  return v.origin === 'ai' ? aiHref(v.id) : editorHref(v.id);
 }
+/** The editor in AI mode on a Video. */
+export const aiHref = (id: string) => `/?open=${enc(id)}&ai=1`;
 export const editorHref = (id: string) => `/?open=${enc(id)}`;
 /**
  * Leaves for the editor so that its Back button returns to the Project page:
@@ -246,10 +237,6 @@ export function leaveForEditor(v: { id: string; projectId: string }) {
 /** Goes to a Video (Director flow or editor) from anywhere in the panel. */
 export function openVideo(ctx: Ctx, v: WsVideo) {
   const href = videoHref(ctx, v);
-  if (href.startsWith('#/')) {
-    location.hash = href.slice(1);
-    return;
-  }
   leaveForEditor(v);
   location.assign(href);
 }
@@ -924,9 +911,17 @@ function videoCard(
           href,
           'data-act': 'open',
           text: t('rda.open'),
-          onclick: href.startsWith('/') ? toEditor : undefined,
+          onclick: toEditor,
         }),
         menu(t('rda.more'), [
+          h('a', {
+            class: 'button sm',
+            role: 'menuitem',
+            href: aiHref(v.id),
+            'data-act': 'ai',
+            text: t('rdb.openAi'),
+            onclick: toEditor,
+          }),
           h('a', {
             class: 'button sm',
             role: 'menuitem',

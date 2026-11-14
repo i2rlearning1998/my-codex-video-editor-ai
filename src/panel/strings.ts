@@ -510,6 +510,29 @@ const S = {
     'For example: always end with a call to action',
     'जैसे: हर वीडियो का अंत कॉल-टू-एक्शन से हो',
   ],
+  'rdb.openAi': ['Open in AI mode', 'AI मोड में खोलें'],
+  'rdb.startTitle': [
+    'What video shall we make today?',
+    'आज कौन सा वीडियो बनाएँ?',
+  ],
+  'rdb.startSub': [
+    'Say it in your own words. Director opens in AI mode, asks only what is missing, and shows the plan and its cost before anything is spent.',
+    'अपने शब्दों में बताएँ। Director AI मोड में खुलेगा, सिर्फ़ बची हुई बातें पूछेगा, और कुछ भी ख़र्च होने से पहले प्लान और उसकी लागत दिखाएगा।',
+  ],
+  'rdb.startPlaceholder': [
+    'For example: explain how rain forms, in Hindi, 1 minute',
+    'जैसे: समझाओ बारिश कैसे बनती है, हिंदी में, 1 मिनट',
+  ],
+  'rdb.start': ['Start with Director', 'Director के साथ शुरू करें'],
+  'rdb.idea1': [
+    'Explain how rain forms, in Hindi, 1 minute',
+    'समझाओ बारिश कैसे बनती है, हिंदी में, 1 मिनट',
+  ],
+  'rdb.idea2': ['A short story of a clever crow', 'चतुर कौवे की छोटी कहानी'],
+  'rdb.idea3': [
+    'A product video for my steel bottle',
+    'मेरी स्टील बोतल का प्रोडक्ट वीडियो',
+  ],
   'mem.edit': ['Edit', 'बदलें'],
   'mem.videos': ['Videos in this project', 'इस प्रोजेक्ट के वीडियो'],
   'mem.videosSub': [

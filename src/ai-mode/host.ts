@@ -72,6 +72,8 @@ export interface AiHost {
   themes(): readonly Theme[];
   themeCommands(theme: Theme): EditorCommand[];
   currentThemeId(): string | null;
+  /** Opens another Video of the person in place (no page change). */
+  openVideo(videoId: string): Promise<void>;
   /** Marks this Video as AI-made for the panel. */
   markAi(): void;
 }

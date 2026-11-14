@@ -25,7 +25,7 @@ import {
 import { posterArt } from '../art';
 import { icon, studioIcon } from '../icons';
 import { reel } from '../motion';
-import { directorRoomScreen } from './director-room';
+import { directorStart } from './director-start';
 
 /**
  * ROUND-A: a ready-made Style. Choosing it makes a new Project (its style
@@ -380,12 +380,16 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
       ),
     ),
   );
-  await directorRoomScreen(ctx, [], out, {
-    home: {
-      greeting: t('home.hello', { name: ctx.prefs().name }),
-      balance: t('home.balance', { n: bal, plan: ctx.say(plan.name) }),
-    },
-  });
+  // ROUND-B: Home keeps only the start box. The first message makes a
+  // Project and its first Video and opens the editor in AI mode, where
+  // Director takes it from there.
+  out.append(
+    directorStart(
+      ctx,
+      t('home.hello', { name: ctx.prefs().name }),
+      t('home.balance', { n: bal, plan: ctx.say(plan.name) }),
+    ),
+  );
   out.append(below);
 };
 

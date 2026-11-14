@@ -503,6 +503,10 @@ export const DIRECTOR_LINES: Record<string, LT> = {
     'This needs a model call. It can cost up to {credits} credits.',
     'इसके लिए मॉडल को बुलाना होगा। इसमें अधिकतम {credits} क्रेडिट लग सकते हैं।',
   ),
+  'newScene.narration': L(
+    'This scene is about {idea}. Here is what matters most about it.',
+    'यह सीन {idea} के बारे में है। इसमें सबसे ज़रूरी बात यह है।',
+  ),
   'attach.tooBig': L(
     'That file is too big. The most is {n} MB.',
     'फ़ाइल बहुत बड़ी है। सीमा {n} MB है।',

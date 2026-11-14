@@ -8709,8 +8709,21 @@ export function mountEditorShell(
       ) as unknown as Command[]),
     ],
     currentThemeId,
+    openVideo: async (videoId) => {
+      if (!actions.projects) throw new Error(t('projects.openFailed'));
+      await actions.projects.open(videoId);
+    },
     markAi: () => markAiProject(engine.state.id),
   };
+  // Another Video opened in AI mode: a reload comes back to that one.
+  engine.on('state:changed', (event) => {
+    if (event.reason !== 'load' || session.layout !== 'ai') return;
+    try {
+      sessionStorage.setItem(LAYOUT_KEY, engine.state.id);
+    } catch {
+      /* a convenience only */
+    }
+  });
   // A reload in AI mode comes back to AI mode (the same video only); the
   // panel opens a Video in AI mode with ?ai=1 (read by main.ts).
   try {

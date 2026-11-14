@@ -1466,6 +1466,17 @@ export class Director {
       });
       if (!studio)
         host.append(h('p', { class: 'ai-muted', text: t('assets.none') }));
+      else if (!canUse(this.#env.s.planOf(this.#env.user.id), studio.requires))
+        // The plan does not include this tool: said plainly, with the way out.
+        put(
+          host,
+          h(
+            'p',
+            { class: 'ai-error', 'data-slot-locked': slot.name },
+            `${t('assets.locked')} `,
+            h('a', { href: '/panel/#/credits', text: t('dir.getCredits') }),
+          ),
+        );
       else {
         // The reusable Studio form, prefilled by Director, with its cost.
         const main =
@@ -1494,7 +1505,13 @@ export class Director {
     const slots = this.#flow.slots ?? [];
     el.dataset.done = String(!active);
     el.id = active ? 'ai-assets-card' : '';
-    put(el, h('h4', {}, h('span', { text: t('assets.title') })));
+    put(
+      el,
+      h('h4', {}, h('span', { text: t('assets.title') })),
+      slots.length
+        ? null
+        : h('p', { class: 'ai-muted', text: t('assets.nothing') }),
+    );
     const choices: [Slot['choice'], AiKey][] = [
       ['make', 'assets.make'],
       ['upload', 'assets.upload'],
@@ -1609,33 +1626,54 @@ export class Director {
 
   // ---- build ----------------------------------------------------------------
   #buildCard(el: HTMLElement, state: CardState) {
-    const running = state.state === 'running';
+    const status = String(state.state);
+    const running = status === 'running';
     el.dataset.done = String(!running);
-    el.dataset.state = String(state.state);
-    put(
-      el,
-      h(
-        'h4',
-        {},
-        h('span', { text: t('build.title') }),
-        h('span', { class: 'ai-cost', 'data-build-credits': '' }),
-      ),
-      h('div', { class: 'ai-progress' }, h('span', { 'data-build-bar': '' })),
-      h('ul', { class: 'ai-steps', 'data-build-steps': '' }),
-    );
-    if (running)
+    el.dataset.state = status;
+    if (!running) {
       put(
         el,
         h(
-          'div',
-          { class: 'ai-row' },
-          Object.assign(
-            this.#button('build.cancel', () => this.cancelBuild()),
-            { id: 'ai-build-cancel' },
-          ),
+          'h4',
+          {},
+          h('span', {
+            text: t(
+              status === 'done'
+                ? 'build.doneTitle'
+                : status === 'cancelled'
+                  ? 'build.cancelledTitle'
+                  : 'build.failedTitle',
+            ),
+          }),
+          status === 'done'
+            ? h('span', {
+                class: 'ai-cost',
+                'data-build-credits': String(state.credits ?? 0),
+                text: t('build.summary', {
+                  scenes: Number(state.scenes ?? 0),
+                  credits: Number(state.credits ?? 0),
+                }),
+              })
+            : null,
         ),
       );
-    if (running) el.id = 'ai-build-card';
+      return;
+    }
+    el.id = 'ai-build-card';
+    put(
+      el,
+      h('h4', {}, h('span', { text: t('build.title') })),
+      h('div', { class: 'ai-progress' }, h('span', { 'data-build-bar': '' })),
+      h('ul', { class: 'ai-steps', 'data-build-steps': '' }),
+      h(
+        'div',
+        { class: 'ai-row' },
+        Object.assign(
+          this.#button('build.cancel', () => this.cancelBuild()),
+          { id: 'ai-build-cancel' },
+        ),
+      ),
+    );
   }
   cancelBuild() {
     this.#abort?.abort();
@@ -1777,6 +1815,7 @@ export class Director {
       // and was then cancelled takes them back; the hold is refunded whole.
       if (added) this.#host.engine.undo();
       const cancelled = signal.aborted;
+      if (!cancelled) console.debug('[director] build failed', error);
       this.#saveCard(turn.id, 'build', {
         state: cancelled ? 'cancelled' : 'failed',
       });
@@ -2440,7 +2479,8 @@ export class Director {
       ...sceneFor(methods.includes(method) ? method : methods[0]!, {
         id: `n${Date.now().toString(36)}`,
         title,
-        narration: idea || text,
+        // A full sentence, so its captions and timing can be laid out.
+        narration: this.#line('newScene.narration', { idea: idea || text }),
         index: 1,
         last: false,
         accent:
@@ -2568,12 +2608,24 @@ export class Director {
         h(
           'div',
           { class: 'ai-row' },
-          h('a', {
-            class: 'ai-btn primary',
-            id: 'ai-new-video-open',
-            href: `/?open=${encodeURIComponent(String(state.videoId))}&ai=1`,
-            text: t('new.videoOpen'),
-          }),
+          Object.assign(
+            this.#button(
+              'new.videoOpen',
+              async () => {
+                try {
+                  // In place: the same page, so Back still leads to the Project.
+                  await this.#host.openVideo(String(state.videoId));
+                } catch (error) {
+                  this.#director(
+                    error instanceof Error ? error.message : t('dir.error'),
+                    { tone: 'error' },
+                  );
+                }
+              },
+              'primary',
+            ),
+            { id: 'ai-new-video-open' },
+          ),
         ),
       );
       return;

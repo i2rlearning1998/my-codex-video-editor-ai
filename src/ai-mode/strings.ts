@@ -144,6 +144,18 @@ const S = {
     'कोई आवाज़ इंजन सेट नहीं है, इसलिए यह वीडियो अभी बिना आवाज़ है।',
   ],
   'build.missing': ['Still waiting for: {names}', 'अभी चाहिए: {names}'],
+  'build.doneTitle': ['Built', 'बन गया'],
+  'build.cancelledTitle': ['Build cancelled', 'बनाना रोका गया'],
+  'build.failedTitle': ['Build failed', 'बनाना विफल'],
+  'build.summary': [
+    '{scenes} scenes · {credits} credits',
+    '{scenes} सीन · {credits} क्रेडिट',
+  ],
+  'assets.locked': [
+    'Your plan does not include this tool. Upload a file, or upgrade.',
+    'आपके प्लान में यह टूल नहीं है। फ़ाइल अपलोड करें, या अपग्रेड करें।',
+  ],
+  'assets.nothing': ['Nothing is needed from you.', 'आपसे कुछ नहीं चाहिए।'],
   'prop.title': ['Proposed change', 'प्रस्तावित बदलाव'],
   'prop.apply': ['Apply', 'लागू करें'],
   'prop.discard': ['Discard', 'हटाएँ'],

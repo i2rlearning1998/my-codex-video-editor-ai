@@ -3,7 +3,6 @@ import '../ui/tokens.css';
 import './aurora.css';
 import './panel.css';
 import './cinema.css';
-import './room.css';
 import './studio.css';
 import './mine.css';
 import './credits.css';
@@ -15,12 +14,6 @@ import { mountPanel, type Screen } from './app';
 import { t } from './strings';
 import type { MockFailure } from '../gateway';
 import {
-  briefScreen,
-  buildScreen,
-  directorScreen,
-  planScreen,
-} from './screens/flow';
-import {
   brandScreen,
   creditsScreen,
   homeScreen,
@@ -30,9 +23,7 @@ import {
 } from './screens/pages';
 import { studioScreen } from './screens/studio';
 import { assetsScreen } from './screens/library';
-import { assetStepScreen } from './screens/asset-step';
 import { projectScreen, projectsScreen } from './screens/workspace';
-import { directorRoomScreen } from './screens/director-room';
 import { migrateP3Memory } from './p3-services';
 
 const root = document.getElementById('panel')!;
@@ -40,15 +31,9 @@ const screens: Record<string, Screen> = {
   home: homeScreen,
   styles: stylesScreen,
   project: projectScreen,
-  brief: briefScreen,
-  director: directorScreen,
-  room: directorRoomScreen,
-  plan: planScreen,
-  build: buildScreen,
   studio: studioScreen,
   assets: assetsScreen,
   projects: projectsScreen,
-  'assets-step': assetStepScreen,
   credits: creditsScreen,
   brand: brandScreen,
   learn: learnScreen,

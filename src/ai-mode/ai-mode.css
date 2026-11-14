@@ -1003,11 +1003,13 @@ textarea.ai-input {
   place-items: center;
   padding: 24px;
   text-align: center;
-  background: radial-gradient(
-    60% 60% at 50% 45%,
-    rgba(139, 92, 246, 0.2),
-    transparent 70%
-  );
+  background:
+    radial-gradient(
+      60% 60% at 50% 45%,
+      rgba(139, 92, 246, 0.22),
+      transparent 70%
+    ),
+    var(--ai-page);
 }
 .ai-empty-card {
   max-inline-size: 520px;
@@ -1097,7 +1099,9 @@ textarea.ai-input {
   color: inherit;
   padding: 4px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
+  overflow: hidden;
   cursor: grab;
   position: relative;
   text-align: start;
@@ -1167,6 +1171,7 @@ textarea.ai-input {
   align-items: center;
 }
 .ai-scene-meta span:first-child {
+  min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
