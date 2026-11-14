@@ -97,6 +97,12 @@ export const EDITOR_MARKERS = [
   'Example project · All artwork is part of the canonical scene.',
   'Local persistence paused to protect existing data.',
 ];
+// ROUND-B: AI mode (the Director's home in the editor) and the code it pulls
+// in (Director, panel services) are lazy chunks. The editor's FIRST LOAD,
+// index.html with its static imports only, never carries them, so the
+// Director never makes the editor's first load bigger. The markers are
+// text only AI mode's own files hold.
+export const AI_MODE_MARKERS = ['Your video will appear here', 'aim-chip'];
 // P3U: the admin page is a fourth page. No other page may carry its code, and
 // it carries neither the editor nor the user panel's screens.
 export const ADMIN_MARKERS = [
@@ -106,6 +112,8 @@ export const ADMIN_MARKERS = [
 ];
 const manifestPath = path.join(dist, '.vite', 'manifest.json');
 let pages = '';
+let firstBytes = 0;
+let allBytes = 0;
 if (existsSync(manifestPath)) {
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const reach = (key, seen = new Set()) => {
@@ -119,21 +127,50 @@ if (existsSync(manifestPath)) {
     return seen;
   };
   const filesOf = (keys) => [...keys].map((key) => manifest[key].file);
+  /** Static imports only: what the browser must load to show the editor. */
+  const firstLoad = (key, seen = new Set()) => {
+    if (!manifest[key] || seen.has(key)) return seen;
+    seen.add(key);
+    for (const next of manifest[key].imports ?? []) firstLoad(next, seen);
+    return seen;
+  };
   const editor = reach('index.html');
+  // index.html loads the login gate (src/boot.ts), which loads the editor
+  // (src/main.ts) for a signed-in person: both static closures are the first load.
+  const editorFirst = firstLoad('index.html');
+  const gate = manifest['index.html']?.dynamicImports ?? [];
+  if (gate.length !== 1)
+    problems.push(
+      `index.html should load exactly one editor module after login, found ${gate.length}`,
+    );
+  for (const key of gate) firstLoad(key, editorFirst);
+  const sizeOf = (keys) => {
+    let n = 0;
+    for (const key of keys) {
+      const m = manifest[key];
+      for (const f of [m.file, ...(m.css ?? [])])
+        n += statSync(path.join(dist, f)).size;
+    }
+    return n;
+  };
+  let aiLazy = false;
   for (const file of filesOf(editor)) {
     const text = readFileSync(path.join(dist, file), 'utf8');
-    for (const marker of PANEL_MARKERS)
-      if (
-        marker === 'aive.panel.'
-          ? // ROUND-A A3 (D-413): the editor reads the Asset Library's rows
-            // by their storage key (src/project/user-assets.ts); any other
-            // panel key still means panel code.
-            /aive\.panel\.(?!assets['"`])/.test(text)
-          : text.includes(marker)
-      )
+    if (AI_MODE_MARKERS.some((m) => text.includes(m))) aiLazy = true;
+  }
+  if (!aiLazy) problems.push('the editor page has no AI mode chunk');
+  for (const file of filesOf(editorFirst)) {
+    const text = readFileSync(path.join(dist, file), 'utf8');
+    for (const marker of AI_MODE_MARKERS)
+      if (text.includes(marker))
         problems.push(
-          `${file}: the editor page loads panel or gateway code (${marker})`,
+          `${file}: the editor's first load carries AI mode code (${marker}); it must be a lazy chunk`,
         );
+  }
+  firstBytes = sizeOf(editorFirst);
+  allBytes = sizeOf(editor);
+  for (const file of filesOf(editorFirst)) {
+    const text = readFileSync(path.join(dist, file), 'utf8');
     for (const marker of ADMIN_MARKERS)
       if (text.includes(marker))
         problems.push(`${file}: the editor page loads admin code (${marker})`);
@@ -182,7 +219,7 @@ if (existsSync(manifestPath)) {
       }
     }
   }
-  pages = ` Editor page ${editor.size} chunks without panel, website or gateway code; panel and website without the editor.`;
+  pages = ` Editor first load ${editorFirst.size} chunks, ${firstBytes} bytes (JS and CSS), no AI mode, panel, website or gateway code; with its lazy chunks ${editor.size} chunks, ${allBytes} bytes. Panel and website without the editor.`;
 }
 if (problems.length) {
   console.error(problems.join('\n'));
