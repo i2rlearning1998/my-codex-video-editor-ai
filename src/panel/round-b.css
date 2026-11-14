@@ -1,0 +1,639 @@
+/* ROUND-B B5: the panel UI pass. Loaded last. The colour system is stated at
+   the top of aurora.css; this file applies it and lays every page out to
+   use the width it has. */
+
+/* ---- 2. one selected style ------------------------------------------- */
+body.panel-page .nav-item[aria-current],
+body.panel-page .tool-tab[aria-current='page'],
+body.panel-page .rda-tabs .tab[aria-selected='true'],
+body.panel-page .chip[aria-pressed='true'],
+body.panel-page .chip[aria-checked='true'],
+body.panel-page .seg.on,
+body.panel-page .sf-card[aria-checked='true'],
+body.panel-page .sf-voice[aria-checked='true'],
+body.panel-page .ctl-option[aria-selected='true'],
+body.panel-page .palette-row[aria-selected='true'],
+body.panel-page .cmp-item.on,
+body.panel-page .studio-card.on,
+body.panel-page #plan-cards .card[data-current='true'] {
+  background: var(--sel-bg);
+  border-color: var(--sel-line);
+  color: var(--sel-text);
+  box-shadow: none;
+  font-weight: 600;
+}
+body.panel-page .rda-tabs .tab,
+body.panel-page .tool-tab {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+body.panel-page .nav-item {
+  border: 1px solid transparent;
+}
+body.panel-page .nav-item[aria-current]::before {
+  box-shadow: none;
+}
+body.panel-page .sf-card[aria-checked='true'] .sf-card-name,
+body.panel-page .sf-voice[aria-checked='true'] .choice {
+  color: inherit;
+}
+/* Neutral cards: no coloured glow borders outside Director moments. */
+body.panel-page .card.glow,
+body.panel-page .card {
+  border-color: var(--ink-border);
+}
+body.panel-page .card.glow:hover {
+  border-color: color-mix(in srgb, var(--ink-text) 28%, transparent);
+  box-shadow: 0 10px 30px -18px rgb(0 0 0 / 60%);
+}
+body.panel-page .outlet .page > h1::after {
+  background: var(--gold);
+}
+body.panel-page .tool-ico {
+  background: var(--ink-raised);
+  color: var(--ink-muted);
+}
+
+/* ---- 5. shared controls ------------------------------------------------ */
+.ctl-select {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+}
+.ctl-native {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-end: 0;
+  inline-size: 1px !important;
+  block-size: 1px !important;
+  min-block-size: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+}
+.ctl-select-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  inline-size: 100%;
+  min-block-size: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-sm);
+  background: var(--ink-raised);
+  color: var(--ink-text);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.ctl-select-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ink-text) 32%, transparent);
+}
+.ctl-select-button[aria-expanded='true'] {
+  border-color: var(--sel-line);
+}
+.ctl-select-button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+.ctl-select-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.ctl-select-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ctl-select-button svg {
+  flex: none;
+  color: var(--ink-muted);
+}
+.ctl-list {
+  position: absolute;
+  z-index: 60;
+  inset-inline: 0;
+  inset-block-start: calc(100% + 4px);
+  max-block-size: 280px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-sm);
+  background: var(--ink-panel);
+  box-shadow: 0 18px 40px -18px rgb(0 0 0 / 70%);
+}
+.ctl-list.up {
+  inset-block-start: auto;
+  inset-block-end: calc(100% + 4px);
+}
+.ctl-option {
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.ctl-option.active,
+.ctl-option:hover {
+  background: var(--color-bg-hover);
+}
+.ctl-option[aria-disabled='true'] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.ctl-file {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ctl-file-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+/* Checkboxes, radios and colour inputs: drawn here, never the browser's. */
+body.panel-page input[type='checkbox'],
+body.panel-page input[type='radio'],
+body.site-page input[type='checkbox'],
+body.site-page input[type='radio'] {
+  appearance: none;
+  flex: none;
+  inline-size: 18px;
+  block-size: 18px;
+  min-block-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--ink-text) 45%, transparent);
+  border-radius: 5px;
+  background: var(--ink-raised);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+  vertical-align: middle;
+}
+body.panel-page input[type='radio'],
+body.site-page input[type='radio'] {
+  border-radius: 50%;
+}
+body.panel-page input[type='checkbox']::after,
+body.site-page input[type='checkbox']::after {
+  content: '';
+  inline-size: 10px;
+  block-size: 6px;
+  border: solid var(--on-aurora);
+  border-width: 0 0 2px 2px;
+  transform: rotate(-45deg) translate(1px, -1px) scale(0);
+}
+body.panel-page input[type='radio']::after,
+body.site-page input[type='radio']::after {
+  content: '';
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--on-aurora);
+  transform: scale(0);
+}
+body.panel-page input[type='checkbox']:checked,
+body.panel-page input[type='radio']:checked,
+body.site-page input[type='checkbox']:checked,
+body.site-page input[type='radio']:checked {
+  background: var(--gold);
+  border-color: var(--gold);
+}
+body.panel-page input[type='checkbox']:checked::after {
+  transform: rotate(-45deg) translate(1px, -1px) scale(1);
+}
+body.site-page input[type='checkbox']:checked::after {
+  transform: rotate(-45deg) translate(1px, -1px) scale(1);
+}
+body.panel-page input[type='radio']:checked::after,
+body.site-page input[type='radio']:checked::after {
+  transform: scale(1);
+}
+body.panel-page input[type='checkbox']:focus-visible,
+body.panel-page input[type='radio']:focus-visible {
+  outline: none;
+  box-shadow: var(--focus);
+}
+body.panel-page input[type='color'] {
+  appearance: none;
+  inline-size: 40px;
+  block-size: 40px;
+  min-block-size: 0;
+  padding: 0;
+  border: 1px solid var(--ink-border);
+  border-radius: 50%;
+  background: none;
+  overflow: hidden;
+  cursor: pointer;
+}
+body.panel-page input[type='color']::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+body.panel-page input[type='color']::-webkit-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+/* ---- 1. layout: every page uses its width ------------------------------- */
+body.panel-page .outlet .page {
+  max-inline-size: 1400px;
+  margin-inline: auto;
+}
+body.panel-page .table,
+body.panel-page #ledger-table {
+  max-width: none;
+}
+/* Home: a centred Director start, then full-width bands. */
+body.panel-page .start-hero {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  max-inline-size: 920px;
+  margin-inline: auto;
+}
+body.panel-page .start-hero .start-box {
+  inline-size: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+body.panel-page .start-hero .start-input {
+  inline-size: 100%;
+  max-width: none;
+}
+body.panel-page .start-ideas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+/* Card grids fill the row. */
+body.panel-page #project-list,
+body.panel-page #studio-list,
+body.panel-page #video-list,
+body.panel-page .studio-history.grid,
+body.panel-page .page[data-screen='assets'] .grid,
+body.panel-page .page[data-screen='learn'] .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 18px;
+  max-width: none;
+}
+body.panel-page .empty-state,
+body.panel-page .locked-state,
+body.panel-page .assets-empty,
+body.panel-page .brand-teaser {
+  max-width: none;
+  max-inline-size: none;
+  inline-size: 100%;
+}
+body.panel-page #style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+/* Project page: content and a summary column. */
+.rda-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 28px;
+  align-items: start;
+}
+.rda-aside {
+  display: grid;
+  gap: 16px;
+  position: sticky;
+  inset-block-start: 88px;
+}
+.rda-aside-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+.rda-aside-card h3 {
+  margin: 0;
+}
+.rda-facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.rda-fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rda-fact dt {
+  color: var(--ink-muted);
+}
+.rda-fact dd {
+  margin: 0;
+  text-align: end;
+  overflow-wrap: anywhere;
+}
+.rda-how {
+  margin: 0;
+  padding-inline-start: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--ink-muted);
+}
+.rda-style {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+}
+body.panel-page .rda-style-form .field,
+body.panel-page .rda-style-form input[type='text'],
+body.panel-page .rda-style-form textarea {
+  max-width: none;
+}
+/* Settings and Brand Kit: two real columns. */
+body.panel-page .set-grid {
+  max-inline-size: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+body.panel-page .brand-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+body.panel-page #topups {
+  max-width: none;
+}
+
+/* ---- Studio tool: controls column + workspace --------------------------- */
+body.panel-page .studio-form {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  max-width: none;
+}
+body.panel-page .studio-form.compact {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sf-controls,
+.sf-work {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-inline-size: 0;
+}
+.sf-controls {
+  padding: 16px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-md);
+  background: var(--ink-panel);
+}
+.studio-form.compact .sf-controls {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.sf-work .sf-main:empty {
+  display: none;
+}
+.sf-work .sf-main {
+  padding: 16px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-md);
+  background: var(--ink-panel);
+}
+body.panel-page .studio-form .field,
+body.panel-page .studio-form textarea,
+body.panel-page .studio-form input[type='text'] {
+  max-width: none;
+  inline-size: 100%;
+}
+.sf-work .sf-main textarea {
+  min-block-size: 160px;
+}
+.sf-run {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.studio-form[data-action='controls'] .sf-run .button {
+  inline-size: 100%;
+  justify-content: center;
+}
+#studio-run {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.sf-run-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--on-aurora) 16%, transparent);
+  font-variant-numeric: tabular-nums;
+}
+.sf-run-cost[hidden] {
+  display: none;
+}
+.sf-run-cost .coin {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sf-empty {
+  display: none;
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 56px 24px;
+  border: 1px dashed var(--ink-border);
+  border-radius: var(--r-md);
+}
+.result:empty + .sf-empty {
+  display: grid;
+}
+.sf-empty h3 {
+  margin: 0;
+}
+.sf-empty-ico {
+  display: grid;
+  place-items: center;
+  inline-size: 56px;
+  block-size: 56px;
+  border-radius: 50%;
+  background: var(--ink-raised);
+  color: var(--ink-muted);
+}
+.sf-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+body.panel-page .sf-card {
+  display: grid;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-sm);
+  background: var(--ink-raised);
+  color: var(--ink-text);
+  text-align: center;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.sf-card.tile {
+  place-items: center;
+  min-block-size: 64px;
+}
+.sf-card .sf-card-art {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sf-card .sf-card-art img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+.sf-card-name {
+  overflow-wrap: anywhere;
+}
+.sf-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 32px;
+  block-size: 32px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--ink-panel);
+  border: 1px solid var(--ink-border);
+  color: var(--ink-muted);
+}
+.sf-avatar img {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+body.panel-page .sf-voice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ink-raised);
+}
+body.panel-page .sf-voice .choice {
+  flex: 1;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+.studio-library {
+  margin-block-start: 8px;
+}
+.sf-info {
+  padding: 14px;
+  border: 1px solid var(--ink-border);
+  border-radius: var(--r-sm);
+  background: var(--ink-raised);
+}
+
+/* ---- narrow: everything stacks ------------------------------------------ */
+@media (max-width: 900px) {
+  .rda-layout,
+  .rda-style,
+  body.panel-page .studio-form,
+  body.panel-page .set-grid,
+  body.panel-page .brand-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rda-aside {
+    position: static;
+  }
+}
+@media (max-width: 520px) {
+  body.panel-page #project-list,
+  body.panel-page #studio-list,
+  body.panel-page #style-grid,
+  body.panel-page #video-list,
+  body.panel-page .studio-history.grid,
+  body.panel-page .page[data-screen='assets'] .grid,
+  body.panel-page .page[data-screen='learn'] .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  body.panel-page .start-hero .start-box {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sf-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- 2b. neutral everywhere else; the aurora only for Director ---------- */
+body.panel-page .np-option-ico,
+body.panel-page .rda-num,
+body.panel-page .set-avatar,
+body.panel-page .lib-art,
+body.panel-page .learn-num,
+body.panel-page .tool-ico.out-captions,
+body.panel-page .tool-ico.out-image,
+body.panel-page .tool-ico.out-video,
+body.panel-page .tool:hover .tool-ico {
+  background: var(--ink-raised);
+  color: var(--ink-text);
+  border: 1px solid var(--ink-border);
+  box-shadow: none;
+}
+body.panel-page [data-option='director'] .np-option-ico,
+body.panel-page [data-option='style'] .np-option-ico,
+body.panel-page [data-new-video='style'] .np-option-ico {
+  background: var(--aurora);
+  color: var(--on-aurora);
+  border-color: transparent;
+}
+body.panel-page .eyebrow {
+  color: var(--ink-muted);
+}
+body.panel-page input:focus,
+body.panel-page textarea:focus {
+  border-color: var(--sel-line);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 18%, transparent);
+}
+body.panel-page .search-pill:hover {
+  border-color: color-mix(in srgb, var(--ink-text) 30%, transparent);
+  box-shadow: none;
+}
+body.panel-page .meter i,
+body.panel-page .meter::after {
+  background: var(--gold);
+}
+body.panel-page .mem-fact.pinned {
+  border-color: var(--sel-line);
+}
+body.panel-page .card[data-project],
+body.panel-page .film {
+  border-color: var(--ink-border);
+}
+/* The Director moments keep the gradient. */
+body.panel-page .start-hero .eyebrow,
+body.panel-page .sc h3 {
+  background: var(--aurora);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+body.panel-page .sc.director-card {
+  border: 1px solid color-mix(in srgb, var(--aurora-a) 45%, var(--ink-border));
+  background: var(--ink-panel);
+}

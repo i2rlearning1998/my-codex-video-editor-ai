@@ -551,7 +551,58 @@ export const assetsScreen: Screen = async (ctx, args, out) => {
         }),
       ),
     ),
-    body,
+    // ROUND-B B5.1: the library and a summary column beside it.
+    h('div', { class: 'rda-layout' }, body, libraryAside(ctx)),
   );
   paint();
 };
+
+/** What the library holds, by type, and where new things come from. */
+function libraryAside(ctx: Ctx): HTMLElement {
+  const all = ctx.s.assets(ctx.user.id).filter((a) => !a.trashedAt);
+  const bytes = all.reduce((n, a) => n + (a.bytes ?? 0), 0);
+  const mb = bytes / 1_048_576;
+  const limit = ctx.s.planOf(ctx.user.id).limits.storageMb;
+  return h(
+    'aside',
+    {
+      class: 'rda-aside',
+      id: 'library-aside',
+      'aria-label': t('rdb.lib.summary'),
+    },
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-library-counts' },
+      h('h3', { text: t('rdb.lib.summary') }),
+      h(
+        'dl',
+        { class: 'rda-facts' },
+        TYPE_FILTERS.map((f) =>
+          h(
+            'div',
+            { class: 'rda-fact', 'data-count': f },
+            h('dt', { text: t(`lib.type.${f}` as Key) }),
+            h('dd', {
+              text: String(all.filter((a) => matchesType(a, f)).length),
+            }),
+          ),
+        ),
+        h(
+          'div',
+          { class: 'rda-fact' },
+          h('dt', { text: t('rdb.lib.space') }),
+          h('dd', {
+            text: `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB${limit ? ` / ${limit >= 1024 ? `${Math.round(limit / 1024)} GB` : `${limit} MB`}` : ''}`,
+          }),
+        ),
+      ),
+    ),
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-library-make' },
+      h('h3', { text: t('rdb.lib.make') }),
+      h('p', { class: 'muted', text: t('rdb.lib.makeHelp') }),
+      h('a', { class: 'button sm', href: '#/studio', text: t('nav.studio') }),
+    ),
+  );
+}

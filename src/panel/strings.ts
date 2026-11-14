@@ -254,6 +254,7 @@ const S = {
     'इसमें ज़्यादा से ज़्यादा {n} क्रेडिट लगेंगे।',
   ],
   'studio.run': ['Make it', 'बनाएँ'],
+  'studio.costOn': ['Credits, at most', 'क्रेडिट, अधिकतम'],
   'studio.project': ['Save to project', 'प्रोजेक्ट में सेव करें'],
   'studio.unsorted': ['Not in a project yet', 'अभी किसी प्रोजेक्ट में नहीं'],
   'studio.savedHere': [
@@ -789,6 +790,31 @@ const S = {
   'rda.music': ['Music', 'संगीत'],
   'rda.scriptRules': ['Script rules', 'स्क्रिप्ट के नियम'],
   'rda.examples': ['Example videos', 'उदाहरण वीडियो'],
+  'rdb.aside': ['Project summary', 'प्रोजेक्ट का सार'],
+  'rdb.aside.style': ['Style', 'स्टाइल'],
+  'rdb.aside.change': ['Change the style', 'स्टाइल बदलें'],
+  'rdb.aside.numbers': ['In this project', 'इस प्रोजेक्ट में'],
+  'rdb.aside.updated': ['Last change', 'आख़िरी बदलाव'],
+  'rdb.aside.how': ['How a project works', 'प्रोजेक्ट कैसे चलता है'],
+  'rdb.aside.how1': [
+    'A project is one style. Every video in it follows that style.',
+    'एक प्रोजेक्ट एक स्टाइल है। उसका हर वीडियो उसी स्टाइल पर चलता है।',
+  ],
+  'rdb.aside.how2': [
+    'The first video sets the style. You can change it on the Style tab.',
+    'पहला वीडियो स्टाइल तय करता है। आप उसे स्टाइल टैब में बदल सकते हैं।',
+  ],
+  'rdb.aside.how3': [
+    'Open a video in AI mode to work with Director, or in the editor to work by hand.',
+    'Director के साथ काम करने के लिए वीडियो AI मोड में खोलें, हाथ से काम करने के लिए एडिटर में।',
+  ],
+  'rdb.lib.summary': ['In your library', 'आपकी लाइब्रेरी में'],
+  'rdb.lib.space': ['Space used', 'इस्तेमाल हुई जगह'],
+  'rdb.lib.make': ['Make something new', 'कुछ नया बनाएँ'],
+  'rdb.lib.makeHelp': [
+    'Pictures, voices, sounds and stories you make in Studio are saved here.',
+    'Studio में बनी तस्वीरें, आवाज़ें, ध्वनियाँ और कहानियाँ यहाँ सेव होती हैं।',
+  ],
   'rdb.style.title': [
     'Change the style with Director',
     'Director से स्टाइल बदलें',

@@ -1454,9 +1454,95 @@ export const projectScreen: Screen = async (
         }),
       ),
     ),
-    body,
+    // ROUND-B B5.1: a real second column (the Style and Memory tabs have
+    // their own).
+    tab === 'videos' || tab === 'assets'
+      ? h('div', { class: 'rda-layout' }, body, projectAside(ctx, p))
+      : body,
   );
 };
+
+/** The Project at a glance: its style, its numbers, how it works. */
+function projectAside(ctx: Ctx, p: WsProject): HTMLElement {
+  const ws = ctx.s.ws(ctx.user.id);
+  const vids = ws.videosOf(p.id);
+  const ids = new Set(vids.map((v) => v.id));
+  const assets = ctx.s
+    .assets(ctx.user.id)
+    .filter((a) => ids.has(a.projectId) && !a.trashedAt).length;
+  const look = p.style.look;
+  const row = (label: string, value: string) =>
+    value
+      ? h(
+          'div',
+          { class: 'rda-fact' },
+          h('dt', { text: label }),
+          h('dd', { text: value }),
+        )
+      : null;
+  return h(
+    'aside',
+    { class: 'rda-aside', id: 'project-aside', 'aria-label': t('rdb.aside') },
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-style' },
+      h('h3', { text: t('rdb.aside.style') }),
+      p.style.source === 'empty'
+        ? h('p', { class: 'muted', text: t('rda.styleEmpty') })
+        : h(
+            'div',
+            null,
+            look.palette.length
+              ? h(
+                  'div',
+                  { class: 'sc-swatches', 'aria-hidden': 'true' },
+                  look.palette.map((c) =>
+                    h('span', { class: 'sc-swatch', style: `background:${c}` }),
+                  ),
+                )
+              : null,
+            h(
+              'dl',
+              { class: 'rda-facts' },
+              row(t('rda.headingFont'), look.headingFont),
+              row(t('rda.bodyFont'), look.bodyFont),
+              row(t('rda.voice'), p.style.voice),
+              row(t('rda.music'), p.style.music),
+            ),
+          ),
+      h('a', {
+        class: 'button sm',
+        href: `#/project/${enc(p.id)}/style`,
+        id: 'aside-style-open',
+        text: t('rdb.aside.change'),
+      }),
+    ),
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-numbers' },
+      h('h3', { text: t('rdb.aside.numbers') }),
+      h(
+        'dl',
+        { class: 'rda-facts' },
+        row(t('rda.tab.videos'), String(vids.length)),
+        row(t('rda.tab.assets'), String(assets)),
+        row(t('rdb.aside.updated'), when(p.updatedAt, ctx.prefs().locale)),
+      ),
+    ),
+    h(
+      'section',
+      { class: 'card rda-aside-card', id: 'aside-help' },
+      h('h3', { text: t('rdb.aside.how') }),
+      h(
+        'ol',
+        { class: 'rda-how' },
+        (['rdb.aside.how1', 'rdb.aside.how2', 'rdb.aside.how3'] as const).map(
+          (k) => h('li', { text: t(k) }),
+        ),
+      ),
+    ),
+  );
+}
 
 /** For the Director flow and the Home Director box: a new Project + Video. */
 export async function newDirectorVideo(
