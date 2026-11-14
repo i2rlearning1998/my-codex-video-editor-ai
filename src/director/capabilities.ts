@@ -11,6 +11,8 @@ import {
   KIT_CAPTION_STYLES,
   KIT_ITEMS,
   KIT_TRANSITIONS,
+} from '../video-plan/kit-ids';
+import {
   PLAN_ANCHORS,
   PLAN_ASPECTS,
   PLAN_DASHES,
@@ -27,7 +29,7 @@ import {
   PLAN_KEYFRAME_PROPS,
   PLAN_EASINGS,
   PLAN_DEF_LIMITS,
-} from '../video-plan';
+} from '../video-plan/schema';
 import {
   BLEND_IDS,
   CLIP_TRANSITION_IDS,

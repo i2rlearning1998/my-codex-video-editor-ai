@@ -9,7 +9,6 @@ import type { PlatformConfig } from '../platform-config/schema';
 import type { UsageLog } from '../gateway/usage';
 import { validatePlan as validatePlanV } from '../video-plan/validate';
 import { checkLayout, type LayoutFinding } from '../video-plan/layout-check';
-import type { PlanBuildDeps, PlanBuildResult } from '../video-plan/build';
 import { liveCapabilitySheet, type KitEntry } from './capabilities';
 import {
   searchMedia as searchMediaRun,
@@ -67,7 +66,12 @@ export interface ToolContext {
   readonly spend?: ((source: string, credits: number) => void) | undefined;
   readonly kit?: KitStore | undefined;
   readonly library?: ((query: string) => readonly LibraryEntry[]) | undefined;
-  readonly build?: PlanBuildDeps | undefined;
+  /**
+   * Builds a plan headlessly (the editor supplies buildVideoFromPlan with
+   * its services; kept as an interface so a server needs no editor code).
+   */
+  readonly build?:
+    ((plan: unknown, signal?: AbortSignal) => Promise<unknown>) | undefined;
   readonly renderFrames?: RenderFrames | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly locale?: 'en' | 'hi' | undefined;
@@ -270,14 +274,13 @@ export const TOOLS = {
     description: 'Builds a plan into a project (headless, deterministic).',
     input: z.object({ plan: z.unknown() }).strict(),
     cost: () => 0,
-    run: async (i, c): Promise<PlanBuildResult> => {
+    run: async (i, c): Promise<unknown> => {
       if (!c.build)
         throw new ToolError(
           'not-available',
           'Building needs the editor services.',
         );
-      const { buildVideoFromPlan } = await import('../video-plan/build');
-      return buildVideoFromPlan(i.plan, c.build, undefined, c.signal);
+      return c.build(i.plan, c.signal);
     },
   }),
   renderFrames: def({
