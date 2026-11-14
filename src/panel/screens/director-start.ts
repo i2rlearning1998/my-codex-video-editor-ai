@@ -90,7 +90,7 @@ export function directorStart(
     'section',
     { class: 'start-hero ai-moment', id: 'director-start' },
     h('div', { class: 'start-orb' }, orb.el),
-    h('p', { class: 'eyebrow', text: greeting }),
+    h('p', { class: 'eyebrow', id: 'greeting', text: greeting }),
     h('h1', { class: 'start-title', text: t('rdb.startTitle') }),
     h('p', { class: 'muted', text: t('rdb.startSub') }),
     h('div', { class: 'start-box' }, input, send),

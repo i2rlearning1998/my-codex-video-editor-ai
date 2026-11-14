@@ -66,9 +66,8 @@ test('[P3I-009] with a gateway server a Studio run goes through the real Studio 
   await setServerPlan(stack, email, 'pro');
   await page.goto('/panel/#/studio/images');
   await page.reload();
-  await expect(
-    page.locator('#studio-models [data-model]').first(),
-  ).toBeVisible();
+  // Round B (B0.3): the model is the shared list; the form is the config's.
+  await expect(page.locator('#studio-model-button')).toBeVisible();
   await page.locator('#sf-prompt').fill('a red kite over a hill');
   await page.locator('#studio-run').click();
   await expect(page.locator('#studio-saved')).toBeVisible({ timeout: 30_000 });

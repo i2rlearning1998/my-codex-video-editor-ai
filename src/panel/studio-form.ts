@@ -173,12 +173,19 @@ export function mountStudioForm(o: StudioFormOptions): StudioFormView {
   // ROUND-B B0.3: a model's declared parameters only hide the fields it
   // does not accept and rename the values that are sent.
   const primary = primaryField(s.inputs);
+  /** Whether the chosen model takes this field (ROUND-B B0.3). */
+  const modelTakes = (f: StudioField) =>
+    // The offline mock stands in for any model: it hides nothing.
+    model?.providerId === 'mock' ||
+    // A style card (it goes into the prompt) and a file (uploaded with the
+    // request, never a model parameter) are the tool's own.
+    f.display === 'cards' ||
+    f.type === 'file' ||
+    acceptsField(model?.params ?? [], f, primary);
   const shown = (f: StudioField) =>
     isVisible(f as never, answers as never) &&
     (!f.onlyModels?.length || (!!model && f.onlyModels.includes(model.id))) &&
-    // A style card is the tool's own (it goes into the prompt), so it shows
-    // whatever parameters the model declares.
-    (f.display === 'cards' || acceptsField(model?.params ?? [], f, primary));
+    modelTakes(f);
   const optionOk = (opt: { requires?: string[] | undefined }) =>
     canUse(plan, opt.requires ?? []);
   const check = (): boolean => {

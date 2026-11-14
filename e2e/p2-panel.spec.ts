@@ -132,7 +132,7 @@ test('[P2R1-019] the brand name and accent come from the Platform Config', async
   ).toBe('#e4572e');
 });
 
-test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director from the prompt; Styles filter, search, show prices and lock what the plan lacks', async ({
+test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director (AI mode) from the prompt; Styles filter, search, show prices and lock what the plan lacks', async ({
   page,
 }) => {
   await signUp(page, 'meera.home@example.com');
@@ -140,10 +140,11 @@ test('[P2R1-022] [P2R1-023] Home greets with credits and opens Director from the
   await expect(page.locator('#home-balance')).toContainText('60 credits');
   await expect(page.locator('.page [data-style]')).toHaveCount(3);
   await expect(page.locator('.page .list li')).toHaveCount(3); // Learn
-  await page.locator('#chat-input').fill('How Eratosthenes measured the Earth');
-  await page.locator('[data-start="brief"]').click();
-  await expect(page.locator('h1')).toContainText('Story Explainer');
-  await expect(page.locator('#f-idea')).toHaveValue(
+  // Round B: the Home box opens AI mode on a new Video with the idea read.
+  await page.locator('#home-input').fill('How Eratosthenes measured the Earth');
+  await page.locator('#home-send').click();
+  await expect(page.locator('#ai-brief-card')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('#ai-thread')).toContainText(
     'How Eratosthenes measured the Earth',
   );
   await page.goto('/panel/#/styles');
@@ -563,7 +564,7 @@ test('[P2R1-036] Credits and Plan: plan cards, costs, INR/USD, a mock top up add
   await expect(page.locator('#usage-table')).toContainText('no limit');
 });
 
-test('[P2R1-037] Brand Kit (Pro), Settings and Learn; the Brief Room uses the Brand Kit', async ({
+test('[P2R1-037] Brand Kit (Pro), Settings and Learn; the Brief card in AI mode offers the Brand Kit', async ({
   page,
 }) => {
   await signUp(page);
@@ -578,8 +579,13 @@ test('[P2R1-037] Brand Kit (Pro), Settings and Learn; the Brief Room uses the Br
   await page.locator('#brand-heading').selectOption('Poppins');
   await page.locator('#brand-save').click();
   await expect(page.locator('.toast', { hasText: 'Saved' })).toBeVisible();
-  await page.goto('/panel/#/brief/quick-short');
-  await expect(page.locator('#brand-kit-on')).toBeVisible();
+  // Round B: the AI mode Brief card offers the saved Brand Kit.
+  await page.goto('/panel/#/home');
+  await page.locator('#home-input').fill('A product video for my steel bottle');
+  await page.locator('#home-send').click();
+  await expect(
+    page.locator('#ai-brief-card [data-brief-field="brand"]'),
+  ).toContainText('Use my brand', { timeout: 30_000 });
   await page.goto('/panel/#/settings');
   await page.locator('#settings-name').fill('Asha');
   await page.locator('#settings-theme').selectOption('light');

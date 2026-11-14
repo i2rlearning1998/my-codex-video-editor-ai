@@ -57,4 +57,9 @@ describe('[RDB-003] a real model with declared parameters keeps the config form'
     expect(r.values).toEqual({ text: 'x' });
     expect(r.dropped).toEqual(['aspect']);
   });
+  it('turns a chip text number into a number for a number parameter', () => {
+    const r = mapValues(params, fields, { count: '2', prompt: 'x' });
+    expect(r.values.count).toBe(2);
+    expect(mapValues(params, fields, { count: '9' }).values.count).toBe(2);
+  });
 });

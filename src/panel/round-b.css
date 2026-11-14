@@ -637,3 +637,9 @@ body.panel-page .sc.director-card {
   border: 1px solid color-mix(in srgb, var(--aurora-a) 45%, var(--ink-border));
   background: var(--ink-panel);
 }
+/* Tap targets in Studio forms are at least 32 px. */
+body.panel-page .studio-form .chip,
+body.panel-page .studio-form .sf-card,
+body.panel-page .studio-form .button {
+  min-block-size: 32px;
+}

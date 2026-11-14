@@ -63,8 +63,15 @@ export function mapValues(
     if (v === undefined || v === '') continue;
     const p = paramFor(params, f, primary);
     if (!p) continue;
-    if (typeof v === 'number') {
-      values[p.id] = Math.min(p.max ?? v, Math.max(p.min ?? v, v));
+    // A chip's value is text ("2"); a number parameter gets the number.
+    const n =
+      typeof v === 'number'
+        ? v
+        : p.type === 'number' && typeof v === 'string' && v.trim() !== ''
+          ? Number(v)
+          : NaN;
+    if (Number.isFinite(n)) {
+      values[p.id] = Math.min(p.max ?? n, Math.max(p.min ?? n, n));
       continue;
     }
     if (typeof v === 'string' && p.options.length) {
