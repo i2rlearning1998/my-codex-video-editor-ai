@@ -17,13 +17,17 @@ import {
   type Style,
 } from '../platform-config';
 import { creditsOf } from '../gateway/cost';
-import {
-  emptyUsage,
-  type AdapterResult,
-  type GatewayRequest,
-} from '../gateway/types';
+import { emptyUsage, type GatewayRequest } from '../gateway/types';
 import { validatePlan, type VideoPlan } from '../video-plan';
-import { capabilitySheet } from './capabilities';
+import { liveCapabilitySheet, type KitEntry } from '../tools/capabilities';
+import {
+  fitTextsInFrame,
+  layoutErrors,
+  planLoop,
+  powerVars,
+  type ResearchRunner,
+  type SampleFrames,
+} from './plan-loop';
 import { allowedMethods } from './methods';
 import {
   methodOf,
@@ -55,6 +59,9 @@ export interface PlanContext {
   readonly notes: readonly string[];
   readonly plan: Plan;
   readonly locale: Locale;
+  /** ROUND-C1: the brief's video type (its playbook) and the Project's graphics kit. */
+  readonly videoType?: string | undefined;
+  readonly kit?: readonly KitEntry[] | undefined;
 }
 
 /** The plan prompt (system) and the brief (user message). */
@@ -62,7 +69,8 @@ export function planPrompt(x: PlanContext): { system: string; user: string } {
   const c = x.config;
   const p = c.director.prompts;
   if (!p) throw new Error('The Director has no prompts in the config.');
-  const sheet = capabilitySheet();
+  const sheet = liveCapabilitySheet(c, { planId: x.plan.id, kit: x.kit });
+  const power = powerVars(c, x.videoType, x.locale);
   const lim = c.director.limits;
   const up =
     x.style.interview.creativeUpgrade && c.director.creativeUpgrade?.enabled;
@@ -84,13 +92,24 @@ export function planPrompt(x: PlanContext): { system: string; user: string } {
     }),
     sheetVersion: sheet.version,
     capabilities: sheet.text,
+    ...power,
   });
+  // A prompt saved before Round C1 has no place for these: they are added.
+  const extra = [
+    ['rulebook', 'RULEBOOK', power.rulebook],
+    ['typePlaybook', 'VIDEO TYPE PLAYBOOK', power.typePlaybook],
+    ['authoring', 'WRITING NEW GRAPHICS', power.authoring],
+    ['research', 'RESEARCH', power.research],
+  ]
+    .filter(([key]) => !p.plan.includes(`{{${key}}}`))
+    .map(([, title, text]) => `\n${title}\n${text}`)
+    .join('\n');
   const brief = buildBrief(x.style, x.answers);
   const user = JSON.stringify({
     brief,
     notes: x.notes,
   });
-  return { system, user };
+  return { system: system + extra, user };
 }
 
 /** The first JSON object in a model's text (fences and prose ignored). */
@@ -275,6 +294,33 @@ export interface LlmPlanInput extends PlanContext {
   readonly userId: string;
   readonly modelId: string;
   readonly key: string;
+  /** ROUND-C1: runs a research request (the shared tools). */
+  readonly research?: ResearchRunner | undefined;
+  /** ROUND-C1: draws sample frames of the plan's new graphics (the editor). */
+  readonly frames?: SampleFrames | undefined;
+  /** Test only (DEV/e2e): the offline model's scripted answers, in order. */
+  readonly script?: readonly string[] | undefined;
+  readonly onStep?: ((step: string) => void) | undefined;
+}
+/** ROUND-C1: the plan check: validator, rulebook, new graphics, layout. */
+export async function checkPlanFully(
+  c: PlatformConfig,
+  plan: Plan,
+  raw: unknown,
+): Promise<ModelPlanCheck> {
+  const checked = checkModelPlan(c, plan, raw);
+  if (!checked.ok) return checked;
+  const errors: string[] = [...layoutErrors(c, checked.plan)];
+  const defs = checked.plan.defs?.blocks ?? [];
+  if (defs.length > c.director.authoring.maxDefs)
+    errors.push(
+      `A plan may define ${c.director.authoring.maxDefs} new graphics.`,
+    );
+  if (defs.length) {
+    const { checkDefs } = await import('../video-plan/defs');
+    errors.push(...checkDefs(defs).errors);
+  }
+  return errors.length ? { ok: false, errors } : checked;
 }
 
 /** The owner's refusal text for a plan that could not be made. */
@@ -291,7 +337,9 @@ export function badPlanText(c: PlatformConfig, locale: Locale): string {
 export async function llmPlan(x: LlmPlanInput): Promise<LlmPlanResult> {
   const c = x.config;
   const model = c.models.find((m) => m.id === x.modelId);
-  if (!model || model.providerId === 'mock') {
+  const scripted =
+    !!x.script?.length && (!model || model.providerId === 'mock');
+  if (!scripted && (!model || model.providerId === 'mock')) {
     // Offline fallback: the free deterministic planner.
     const raw = (await mockPlanner().draft(x)) as VideoPlan;
     const n = c.director.limits.maxNarrationChars;
@@ -308,7 +356,8 @@ export async function llmPlan(x: LlmPlanInput): Promise<LlmPlanResult> {
     const up =
       x.style.interview.creativeUpgrade && c.director.creativeUpgrade?.enabled;
     const checked = checkModelPlan(c, x.plan, {
-      plan: fitted,
+      // ROUND-C1 C1.6: every text inside the frame (the layout validator).
+      plan: fitTextsInFrame(c, fitted as VideoPlan),
       upgrades: up ? mockUpgrades(c, x.plan, fitted) : [],
     });
     return checked.ok
@@ -321,71 +370,86 @@ export async function llmPlan(x: LlmPlanInput): Promise<LlmPlanResult> {
         };
   }
   const prompt = planPrompt(x);
-  const role = c.director.roles.plan;
-  const max = planningMax(c, model, prompt.system.length + prompt.user.length);
-  const job = await x.gateway.startJob({
-    userId: x.userId,
-    plan: x.plan,
-    role,
-    modelId: model.id,
-    maxCredits: max,
-    key: x.key,
-  });
-  const ask = (req: GatewayRequest): Promise<AdapterResult> =>
-    job.call(role, model.id, req);
   const base: GatewayRequest = {
     system: prompt.system,
     messages: [{ role: 'user', content: prompt.user }],
     json: true,
     maxOutputTokens: c.director.limits.planOutputTokens,
   };
-  let errors: string[] = [];
-  let answer = '';
+  const loop = (ask: (req: GatewayRequest) => Promise<string>) =>
+    planLoop({
+      config: c,
+      plan: x.plan,
+      base,
+      ask,
+      check: async (raw) => {
+        const r = await checkPlanFully(c, x.plan, raw);
+        return r.ok ? { ok: true, value: r } : { ok: false, errors: r.errors };
+      },
+      extract: extractJson,
+      repairText: (errors) =>
+        fill(c.director.prompts!.repair, {
+          errors: errors.map((e) => `- ${e}`).join('\n'),
+        }),
+      research: x.research,
+      frames: x.frames,
+      onStep: x.onStep,
+    });
+  if (scripted) {
+    // Offline with scripted answers (tests): the same loop, nothing charged.
+    const answers = [...x.script!];
+    const r = await loop(async () => {
+      const next = answers.shift();
+      if (next === undefined)
+        throw new Error('The offline model has no more answers.');
+      return next;
+    });
+    return r.ok
+      ? {
+          ...(r.value as Extract<ModelPlanCheck, { ok: true }>),
+          repaired: r.repaired,
+          credits: 0,
+        }
+      : {
+          ok: false,
+          message: badPlanText(c, x.locale),
+          errors: [...r.errors],
+          credits: 0,
+        };
+  }
+  const role = c.director.roles.plan;
+  const max = planningMax(c, model!, prompt.system.length + prompt.user.length);
+  const job = await x.gateway.startJob({
+    userId: x.userId,
+    plan: x.plan,
+    role,
+    modelId: model!.id,
+    maxCredits: max,
+    key: x.key,
+  });
+  let r: Awaited<ReturnType<typeof loop>>;
   try {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const req: GatewayRequest =
-        attempt === 0
-          ? base
-          : {
-              ...base,
-              messages: [
-                ...base.messages,
-                { role: 'assistant', content: answer.slice(0, 40000) },
-                {
-                  role: 'user',
-                  content: fill(c.director.prompts!.repair, {
-                    errors: errors.map((e) => `- ${e}`).join('\n'),
-                  }),
-                },
-              ],
-            };
-      let raw: unknown;
-      try {
-        const r = await ask(req);
-        answer = r.text ?? '';
-        raw = extractJson(answer);
-      } catch (e) {
-        // A provider failure is not repairable: give everything back.
-        if ((e as { code?: string }).code) throw e;
-        errors = [(e as Error).message];
-        continue;
-      }
-      const checked = checkModelPlan(c, x.plan, raw);
-      if (checked.ok) {
-        const credits = await job.finish(0);
-        return { ...checked, repaired: attempt > 0, credits };
-      }
-      errors = checked.errors.slice(0, 20);
-    }
+    r = await loop(
+      async (req) => (await job.call(role, model!.id, req)).text ?? '',
+    );
   } catch (e) {
+    // A provider failure is not repairable: give everything back.
     await job.fail();
     throw e;
+  }
+  if (r.ok) {
+    const credits = await job.finish(0);
+    return {
+      ...(r.value as Extract<ModelPlanCheck, { ok: true }>),
+      repaired: r.repaired,
+      credits,
+    };
   }
   await job.fail();
   return {
     ok: false,
     message: badPlanText(c, x.locale),
-    errors,
+    errors: [...r.errors],
     credits: 0,
   };
 }
