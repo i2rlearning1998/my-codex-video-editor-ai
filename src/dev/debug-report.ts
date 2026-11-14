@@ -97,6 +97,7 @@ export async function createDebugReport(
       selectedKeyframes: session.selectedKeyframes.map((item) => ({ ...item })),
       drawBrush: session.drawBrush,
       enteredGroupId: session.enteredGroupId,
+      layout: session.layout,
     },
     recentCommands: diagnostics.getCommands().slice(-30),
     recentErrors: diagnostics

@@ -478,7 +478,7 @@ export function mountEditorShell(
           <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
           <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
           <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
-          <button type="button" role="radio" data-layout="ai" id="mode-ai" class="mode-ai" aria-checked="false" title="${t('mode.aiTitle')}">${iconSvg('magic', 16)}<span>${t('mode.ai')}</span></button>
+          <button type="button" role="radio" data-layout="ai" id="mode-ai" class="mode-ai" aria-checked="false" title="${t('mode.aiTitle')}">${iconSvg('magic', 20)}<span>${t('mode.ai')}</span></button>
         </div>
         <div class="topbar-end top-actions">
           <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>

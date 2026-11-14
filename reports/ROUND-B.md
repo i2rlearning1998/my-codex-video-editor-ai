@@ -104,14 +104,23 @@ Not copied on purpose: the YouTube "Connect" banner (no YouTube connection exist
 
 ## 3. Checks
 
-VERIFY_PLACEHOLDER
+`npm run verify` was run at the end, as the brief asks, and the chain stopped twice before reaching the browser tests; each stop was fixed and only the failed part was run again:
+
+1. **First run** stopped at the typecheck: 6 names left unused in older test files after the removed-room tests were cut (`p2-panel`, `p3u-room`, `p4-flow`). Fixed; `npm run typecheck` passes.
+2. **Second run**: format check OK, typecheck OK; unit tests **1592 passed, 3 failed, 3 skipped in 220 files** (Vitest 4.1.11). Failures: `tests/blocks/worker.test.ts` 2 tests (`WebAssembly` is undefined in this sandbox's test worker; nothing in that area changed this round, the same failure as in earlier rounds) and `tests/panel/isolation.test.ts` (P2R1-021 still said "the editor never imports Director code"; restated for AI mode as a lazy chunk, see D-424, and now passes). The chain stopped there.
+3. **The rest of the chain run by hand**: `npm run build` OK with the bundle check (output: "Editor first load 8 chunks, 6025992 bytes (JS and CSS), no AI mode, panel, website or gateway code; with its lazy chunks 35 chunks, 8295268 bytes. Panel and website without the editor."); **e2e 791 passed, 9 failed** in 1.7 h; hook assertion OK; ledger reported the 9 failures.
+4. **The 9 failed specs re-run alone, after fixes, all pass**: DEV-007 (the debug report now includes the layout), FIX7-031 (the new Ask Director menu entry is an owner switch), LAY-052 dark and light (the AI button's icon is 20 px), RDA-018 (passed unchanged; it failed only in the long run), S1-001 (failed twice, then 3 of 3 passes after the icon fix; recorded as a possible timing flake), DEV-012 ×3 (screenshot baselines refreshed: the top bar now has the AI switch, an intended change).
+- `npm run ledger`: Ledger OK (3 old warnings: PRJ-015, MED-003, FX-014).
+- E2E browser: Chromium 153.0.8010.12 (Playwright 1.63.0), the sandbox's Chromium, not Chrome or Edge.
+- Layers: unit and jsdom (Vitest) 1592 passed; e2e 791 passed in the full run plus the 9 re-run (800 of 800 passing at the end).
+- CI: CI_PLACEHOLDER
 
 ### Bundle (L7, D-424)
 
 | | claude/round-a-panel | this branch |
 | --- | --- | --- |
 | Editor first load (login gate + editor module, static imports, JS and CSS) | 6,023,149 bytes, 8 chunks | 6,025,992 bytes, 8 chunks (+2,843: the Editor / AI switch and Ask Director in the shell) |
-| Editor page with its lazy chunks | 7,867,002 bytes, 23 chunks | 8,293,900 bytes, 35 chunks (AI mode, Director, the panel services it reads) |
+| Editor page with its lazy chunks | 7,867,002 bytes, 23 chunks | 8,295,268 bytes, 35 chunks (AI mode, Director, the panel services it reads) |
 
 `scripts/assert-editor-bundle.mjs` now fails the build if the first load carries AI mode, Director or panel code, or if there is no lazy AI mode chunk.
 
@@ -136,7 +145,7 @@ VERIFY_PLACEHOLDER
 
 ## 5. Deviations from the brief
 
-- B0.2: the baseline workflow exists but its artifact could not be fetched and committed here (see section 7).
+- B0.2: the baseline workflow exists but its artifact could not be fetched and committed here (see section 7). The sandbox baselines (DEV-012) were refreshed for the new top bar, the same way they were first made.
 - The editor's first load is 2,843 bytes larger (the switch and Ask Director live in the shell); the Director and AI mode are lazy. Recorded in D-424.
 - The offline mock model has parameter declarations from Phase 3; the Studio form treats the mock as hiding nothing, so the offline form is your full field list (D-423).
 
@@ -172,7 +181,7 @@ D-417 (AI mode as a layout), D-418 (memory levels, context pack), D-419 (field l
 ## 10. Git
 
 - Branch: `claude/round-b-ai-mode`, draft PR #53 to `claude/round-a-panel`. No tag (the owner tags after review).
-- Commits since `claude/round-a-panel`: GITLOG_PLACEHOLDER
+- Commits since `claude/round-a-panel`: 19 (see `git log --oneline claude/round-a-panel..claude/round-b-ai-mode`)
 
 ## Owner tick-list
 

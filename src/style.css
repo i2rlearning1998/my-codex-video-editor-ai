@@ -360,8 +360,8 @@ input[type='number'],
   font-weight: var(--weight-semibold);
 }
 .mode-switch .mode-ai svg {
-  inline-size: 16px;
-  block-size: 16px;
+  inline-size: var(--icon-size, 20px);
+  block-size: var(--icon-size, 20px);
 }
 .mode-switch .mode-ai[aria-checked='true'] {
   background: linear-gradient(120deg, #8b5cf6, #38bdf8);
