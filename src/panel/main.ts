@@ -9,6 +9,8 @@ import './credits.css';
 import './polish.css';
 import './workspace.css';
 import './projects.css';
+import './round-b.css';
+import { startControls } from './controls';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { t } from './strings';
@@ -72,6 +74,7 @@ async function start() {
     }
     // Plan, credits and usage (the server's, when it is used).
     await services.sync(user.id);
+    startControls();
     mountPanel(root, services, user, screens);
     // ROUND-B B1: old Project chats move to their first Video (once).
     void migrateP3Memory({ s: services, user } as never);

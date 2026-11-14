@@ -503,6 +503,31 @@ export const DIRECTOR_LINES: Record<string, LT> = {
     'This needs a model call. It can cost up to {credits} credits.',
     'इसके लिए मॉडल को बुलाना होगा। इसमें अधिकतम {credits} क्रेडिट लग सकते हैं।',
   ),
+  'style.hello': L(
+    "Tell me what to change in this project's style: colours, fonts, voice, music, captions or a script rule. I only change the style, and only after you confirm.",
+    'बताइए इस प्रोजेक्ट के स्टाइल में क्या बदलना है: रंग, फ़ॉन्ट, आवाज़, संगीत, कैप्शन या स्क्रिप्ट का नियम। मैं सिर्फ़ स्टाइल बदलता हूँ, और आपकी हाँ के बाद ही।',
+  ),
+  'style.restate': L(
+    'Here is what would change. Nothing is saved until you apply it.',
+    'यह बदलेगा। आपके लागू करने तक कुछ सेव नहीं होगा।',
+  ),
+  'style.unsure': L(
+    'Which part of the style should change: colours, fonts, voice, music, captions or a script rule?',
+    'स्टाइल का कौन-सा हिस्सा बदलना है: रंग, फ़ॉन्ट, आवाज़, संगीत, कैप्शन या स्क्रिप्ट का नियम?',
+  ),
+  'style.same': L(
+    'The style already says that. Nothing to change.',
+    'स्टाइल में यह पहले से है। बदलने को कुछ नहीं।',
+  ),
+  'style.applied': L(
+    'Done. The project style is updated. Videos already made can take it in AI mode.',
+    'हो गया। प्रोजेक्ट का स्टाइल बदल गया। बने हुए वीडियो इसे AI मोड में ले सकते हैं।',
+  ),
+  'style.discarded': L('Left as it was.', 'जैसा था वैसा रहने दिया।'),
+  'style.only': L(
+    'Here I only change the project style. To change a video, open it in AI mode.',
+    'यहाँ मैं सिर्फ़ प्रोजेक्ट का स्टाइल बदलता हूँ। वीडियो बदलने के लिए उसे AI मोड में खोलें।',
+  ),
   'newScene.narration': L(
     'This scene is about {idea}. Here is what matters most about it.',
     'यह सीन {idea} के बारे में है। इसमें सबसे ज़रूरी बात यह है।',
@@ -520,3 +545,55 @@ export const DIRECTOR_LINES: Record<string, LT> = {
     'प्रोजेक्ट का स्टाइल बदला है। क्या इसे इस वीडियो पर लगाएँ?',
   ),
 };
+
+/** ROUND-B B4: the Style chat's word lists (the owner's; samples here). */
+export function defaultStyleChat(): {
+  moods: { id: string; words: string[]; palette: string[] }[];
+  fonts: string[];
+} {
+  return {
+    moods: [
+      {
+        id: 'dark',
+        words: ['dark', 'darker', 'night', 'गहरा', 'डार्क'],
+        palette: ['#0f1220', '#f4f5fb', '#7c5cff', '#ffc857'],
+      },
+      {
+        id: 'light',
+        words: ['light', 'lighter', 'bright', 'white', 'हल्का', 'लाइट', 'उजला'],
+        palette: ['#ffffff', '#1a1c23', '#5b37f0', '#ff8a3d'],
+      },
+      {
+        id: 'warm',
+        words: ['warm', 'warmer', 'sunset', 'गर्म'],
+        palette: ['#fff4e6', '#3b1f0b', '#e8590c', '#f59f00'],
+      },
+      {
+        id: 'cool',
+        words: ['cool', 'cooler', 'ocean', 'ठंडा'],
+        palette: ['#eef6ff', '#0b2545', '#1971c2', '#22b8cf'],
+      },
+      {
+        id: 'pastel',
+        words: ['pastel', 'soft', 'पेस्टल', 'नरम'],
+        palette: ['#fdf6fb', '#40354a', '#b197fc', '#ffa8a8'],
+      },
+      {
+        id: 'bold',
+        words: ['bold', 'vivid', 'punchy', 'बोल्ड', 'चटक'],
+        palette: ['#111111', '#ffffff', '#ff0054', '#ffbd00'],
+      },
+    ],
+    fonts: [
+      'Inter',
+      'Poppins',
+      'Noto Sans Devanagari',
+      'Georgia',
+      'Arial',
+      'Times New Roman',
+      'Trebuchet MS',
+      'Verdana',
+      'Courier New',
+    ],
+  };
+}

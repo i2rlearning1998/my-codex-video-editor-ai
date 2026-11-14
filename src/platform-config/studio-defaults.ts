@@ -16,7 +16,7 @@ const L = (en: string, hi?: string): LT => (hi ? { en, hi } : { en });
 const o = (
   value: string,
   label: LT,
-  extra: { requires?: string[]; art?: string; preview?: string } = {},
+  extra: { requires?: string[]; thumb?: string; preview?: string } = {},
 ) => ({ value, label, ...extra });
 let order = 0;
 const f = (
@@ -37,26 +37,27 @@ const f = (
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const TEN_MB = 10 * 1024 * 1024;
 
+// ROUND-B B5: each language is written in its own script, in every UI language.
 const LANGS_STORY = [
-  o('en', L('English', 'अंग्रेज़ी')),
-  o('hi', L('Hindi', 'हिंदी')),
-  o('mr', L('Marathi', 'मराठी')),
-  o('te', L('Telugu', 'तेलुगु')),
-  o('bn', L('Bengali', 'बंगाली')),
-  o('gu', L('Gujarati', 'गुजराती')),
-  o('ta', L('Tamil', 'तमिल')),
-  o('kn', L('Kannada', 'कन्नड़')),
+  o('en', L('English')),
+  o('hi', L('हिन्दी')),
+  o('mr', L('मराठी')),
+  o('te', L('తెలుగు')),
+  o('bn', L('বাংলা')),
+  o('gu', L('ગુજરાતી')),
+  o('ta', L('தமிழ்')),
+  o('kn', L('ಕನ್ನಡ')),
 ];
 const LANGS_SEO = [
-  o('hi', L('Hindi', 'हिंदी')),
-  o('bn', L('Bengali', 'बंगाली')),
-  o('mr', L('Marathi', 'मराठी')),
-  o('or', L('Odia', 'ओड़िया')),
-  o('te', L('Telugu', 'तेलुगु')),
-  o('en', L('English', 'अंग्रेज़ी')),
-  o('kn', L('Kannada', 'कन्नड़')),
-  o('ml', L('Malayalam', 'मलयालम')),
-  o('ta', L('Tamil', 'तमिल')),
+  o('hi', L('हिन्दी')),
+  o('bn', L('বাংলা')),
+  o('mr', L('मराठी')),
+  o('or', L('ଓଡ଼ିଆ')),
+  o('te', L('తెలుగు')),
+  o('en', L('English')),
+  o('kn', L('ಕನ್ನಡ')),
+  o('ml', L('മലയാളം')),
+  o('ta', L('தமிழ்')),
 ];
 
 /** Story ideas per category (the "template story ideas"). */
@@ -211,12 +212,18 @@ export function roundAStudios(): Studio[] {
         display: 'cards',
         default: 'none',
         options: [
-          o('none', L('None', 'कोई नहीं'), { art: 'none' }),
-          o('realistic', L('Realistic', 'असली जैसा'), { art: 'realistic' }),
-          o('anime', L('Anime', 'एनीमे'), { art: 'anime' }),
-          o('3d', L('3D', '3D'), { art: '3d' }),
-          o('cartoon', L('Cartoon', 'कार्टून'), { art: 'cartoon' }),
-          o('watercolor', L('Watercolour', 'वॉटरकलर'), { art: 'watercolor' }),
+          o('none', L('None', 'कोई नहीं')),
+          o('dream', L('Dream Style', 'ड्रीम स्टाइल')),
+          o('rural', L('Rural', 'ग्रामीण')),
+          o('horror-2', L('Horror 2', 'हॉरर 2')),
+          o('anime', L('Anime', 'एनीमे')),
+          o('realistic', L('Realistic', 'असली जैसा')),
+          o('3d', L('3D', '3D')),
+          o('village-2', L('Village Style 2', 'गाँव स्टाइल 2')),
+          o('3d-kids', L('3D Kids Animation Style', '3D किड्स एनिमेशन स्टाइल')),
+          o('cartoon', L('Cartoon Style', 'कार्टून स्टाइल')),
+          o('kids', L('Kids Animation Style', 'किड्स एनिमेशन स्टाइल')),
+          o('village', L('Village Style', 'गाँव स्टाइल')),
         ],
       }),
       f('prompt', 'longtext', L('Prompt', 'प्रॉम्प्ट'), {
@@ -403,7 +410,7 @@ export function roundAStudios(): Studio[] {
         action: 'generate',
       }),
       f('look', 'choice', L('Video style', 'वीडियो स्टाइल'), {
-        display: 'chips',
+        display: 'cards',
         default: 'none',
         options: [
           o('none', L('None', 'कोई नहीं')),
@@ -668,7 +675,72 @@ export function roundAStudios(): Studio[] {
     sound,
     a2a,
     clone,
-  ].map((s, i) => ({ ...s, order: i + 1 }));
+  ].map((s, i) => layout({ ...s, order: i + 1 }));
+}
+
+/**
+ * ROUND-B B5: where each field sits, after the reference screens: a controls
+ * column on the left, a wide workspace on the right (the main input, the
+ * action button with its cost, results and history, tips or an empty state).
+ */
+const LAYOUT: Record<
+  string,
+  { main: string[]; action: 'controls' | 'main'; empty?: [LT, LT] }
+> = {
+  images: { main: ['prompt', 'reference'], action: 'main' },
+  'image-upscale': { main: ['image'], action: 'main' },
+  'image-remove-bg': { main: ['image'], action: 'main' },
+  video: {
+    main: [],
+    action: 'controls',
+    empty: [
+      L('Start creating now', 'अभी बनाना शुरू करें'),
+      L(
+        'Your video shows here when it is ready.',
+        'तैयार होने पर आपका वीडियो यहाँ दिखेगा।',
+      ),
+    ],
+  },
+  story: {
+    main: ['ideas'],
+    action: 'controls',
+    empty: [
+      L('Craft a story in seconds', 'कुछ ही पल में कहानी बनाएँ'),
+      L(
+        'Pick an idea below or write your own plot on the left.',
+        'नीचे से कोई आइडिया चुनें या बाईं ओर अपना प्लॉट लिखें।',
+      ),
+    ],
+  },
+  seo: {
+    main: [],
+    action: 'controls',
+    empty: [
+      L('Your SEO output awaits', 'आपका SEO नतीजा यहाँ आएगा'),
+      L(
+        'Add a title, description and category, then generate.',
+        'शीर्षक, विवरण और श्रेणी भरें, फिर बनाएँ।',
+      ),
+    ],
+  },
+  voice: { main: ['script', 'voice', 'quality', 'emotion'], action: 'main' },
+  sfx: { main: ['prompt', 'seconds'], action: 'main' },
+  'voice-change': { main: ['sample', 'tips'], action: 'main' },
+  'voice-clone': { main: ['sample', 'how'], action: 'main' },
+};
+function layout(s: Studio): Studio {
+  const rule = LAYOUT[s.id];
+  if (!rule) return s;
+  return {
+    ...s,
+    actionPlace: rule.action,
+    ...(rule.empty
+      ? { emptyState: { title: rule.empty[0], text: rule.empty[1] } }
+      : {}),
+    inputs: s.inputs.map((x) =>
+      rule.main.includes(x.id) ? { ...x, place: 'main' as const } : x,
+    ),
+  };
 }
 
 /**

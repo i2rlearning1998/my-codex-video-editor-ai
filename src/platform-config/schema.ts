@@ -2,7 +2,7 @@
 // panel and the editor all read; Admin (Phase 3) only edits it. Nothing the
 // person sees or the AI may do is fixed in code (docs/PLATFORM-CONFIG.md).
 // Secrets never live here: the config only names adapters.
-import { defaultFieldLibrary } from './director-defaults';
+import { defaultFieldLibrary, defaultStyleChat } from './director-defaults';
 import { z } from 'zod';
 import { paramDeclSchema } from '../contracts/p3';
 
@@ -127,14 +127,21 @@ export const studioFieldSchema = fieldSchema.extend({
         label: textSchema,
         /** Plan features that unlock this option ([] = every plan). */
         requires: z.array(id).optional(),
-        /** A picture for a card option: a URL, or a seed the panel draws from. */
+        /** Earlier seed for generated art; no longer drawn (ROUND-B B5). */
         art: z.string().max(300).optional(),
+        /**
+         * ROUND-B B5: the card's picture (https or same-site URL, or a data
+         * image the owner uploads). With none the card is a neutral tile.
+         */
+        thumb: z.string().max(400000).optional(),
         /** A sample to play (a voice), an https or same-site URL. */
         preview: z.string().max(300).optional(),
       }),
     )
     .default([]),
   display: z.enum(['chips', 'cards', 'toggle', 'select', 'radio']).optional(),
+  /** ROUND-B B5: the controls column (default) or the wide workspace. */
+  place: z.enum(['controls', 'main']).optional(),
   /** Characters a text may have. */
   maxLength: z.number().int().min(1).max(20000).optional(),
   /** Files: the types (MIME) accepted and the largest size in bytes. */
@@ -194,6 +201,12 @@ export const studioSchema = z.object({
   needsAssignment: z.boolean().default(false),
   /** ROUND-A: the heading of this tool's history (My generations, Cloned voices…). */
   historyLabel: textSchema.optional(),
+  /** ROUND-B B5: where the action button sits (default: the workspace). */
+  actionPlace: z.enum(['controls', 'main']).optional(),
+  /** ROUND-B B5: the workspace before the first result. */
+  emptyState: z
+    .object({ title: textSchema, text: textSchema.optional() })
+    .optional(),
   /** A tick the person must give before it runs (a voice clone's consent). */
   consent: textSchema.optional(),
   /** Ask for the consent only when an input has one of these values. */
@@ -538,6 +551,24 @@ export const directorSchema = z.object({
       fallbackType: id.default('general'),
     })
     .default(() => defaultFieldLibrary()),
+  /** ROUND-B B4: the Style chat: mood words with their palettes, and the fonts it may name. */
+  styleChat: z
+    .object({
+      moods: z
+        .array(
+          z.object({
+            id,
+            words: z.array(z.string().min(1).max(40)).min(1).max(30),
+            palette: z
+              .array(z.string().regex(/^#[0-9a-fA-F]{6}$/))
+              .min(2)
+              .max(8),
+          }),
+        )
+        .max(40),
+      fonts: z.array(z.string().min(1).max(60)).max(200),
+    })
+    .default(() => defaultStyleChat()),
   /** ROUND-B: Director's fixed lines by key (missing keys use the built-in sample). */
   lines: z.record(z.string().max(60), textSchema).default({}),
 });

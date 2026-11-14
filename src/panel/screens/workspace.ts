@@ -24,6 +24,7 @@ import {
   type WsVideo,
 } from '../../project/workspace';
 import { styleFromTemplate } from '../../project/style-from';
+import { styleChat } from './style-chat';
 import { EXPORTS_KEY } from '../../usage-report';
 import { empty, limitAlert, when } from './common';
 import { assetView } from './studio';
@@ -1203,7 +1204,19 @@ function styleTab(ctx: Ctx, p: WsProject, again: () => void): HTMLElement {
         )
       : empty(t('rda.noVideos')),
   );
-  return h('div', { class: 'rda-style' }, form, examples);
+  const chat = styleChat(ctx, p, () => {
+    // Fresh from the store: the form and the line under the title follow.
+    p = ws.project(p.id)!;
+    if (!target) paint();
+    const line = document.getElementById('project-style-line');
+    if (line) line.textContent = styleSummary(ctx, p);
+  });
+  return h(
+    'div',
+    { class: 'rda-style' },
+    form,
+    h('div', { class: 'rda-style-side' }, chat, examples),
+  );
 }
 
 function assetsTab(ctx: Ctx, p: WsProject): HTMLElement {
