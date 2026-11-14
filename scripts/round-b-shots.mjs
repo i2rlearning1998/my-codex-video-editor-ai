@@ -12,7 +12,7 @@ mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
 const ctx = await browser.newContext({
   viewport: { width: 1440, height: 900 },
-  deviceScaleFactor: quick ? 1 : 2,
+  deviceScaleFactor: 1,
 });
 const page = await ctx.newPage();
 page.on('dialog', (d) => d.accept());
