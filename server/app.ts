@@ -38,6 +38,7 @@ import {
 } from '../src/platform-config';
 import { mockPayment } from '../src/payments';
 import { AuthError, signLocalToken, type Caller } from './auth';
+import { createServerTools } from './tools';
 import { providerConnected, serverAdapters, type Env } from './adapters';
 import { storeConfig } from './config';
 import { People } from './state';
@@ -105,6 +106,11 @@ export interface ServerOptions {
   readonly fetch?: typeof fetch;
   readonly now?: () => number;
   readonly log?: (line: string) => void;
+  /** ROUND-C1: the tools' fetch and DNS (tests point them at local fakes). */
+  readonly toolRuntime?: {
+    readonly fetch?: import('../src/tools/net-guard').HttpFetch;
+    readonly resolve?: import('../src/tools/net-guard').Resolver;
+  };
   /** Adapter tuning for tests (fast retries, polling). */
   readonly adapterOptions?: {
     timeoutMs?: number;
@@ -240,6 +246,13 @@ export function createServerApp(o: ServerOptions) {
   );
   o = p3.options;
   // P3-WIRING:end
+  const serverTools = createServerTools({
+    env: () => o.env,
+    fetch: o.toolRuntime?.fetch,
+    resolve: o.toolRuntime?.resolve,
+    usage: people.usageLog(),
+    now,
+  });
   const gateway = createGateway({
     config: () => cfg.current().config,
     adapters: serverAdapters({
@@ -623,6 +636,32 @@ export function createServerApp(o: ServerOptions) {
       } finally {
         await people.flushUsage(c.userId);
       }
+    },
+    // ROUND-C1: the shared tools (search media and the web, check plans and
+    // graphics) with keys from the vault and credits from the ledger.
+    'POST /v1/tools/run': async (b, c) => {
+      const { config, plan } = await prepare(c);
+      const tool = str(b.tool, 40);
+      const out = await serverTools.run({
+        tool,
+        input: b.input ?? {},
+        videoId: typeof b.videoId === 'string' ? b.videoId.slice(0, 80) : '',
+        userId: c.userId,
+        config,
+        plan,
+        balance: people.ledgerNow(c.userId).balance(),
+        charge: (credits, note) => {
+          const l = people.ledgerNow(c.userId);
+          const r = l.reserve(
+            credits,
+            `${c.userId}:tool:${randomUUID()}`,
+            note,
+          );
+          l.settle(r.id, credits, `${c.userId}:tool:${r.id}`);
+        },
+      });
+      await people.flushUsage(c.userId);
+      return out;
     },
     'POST /v1/limits/check': async (b, c) => {
       const { config, plan } = await prepare(c);
