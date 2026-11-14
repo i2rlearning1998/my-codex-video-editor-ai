@@ -365,7 +365,7 @@ describe('[RDC1-004] capability sheet v2 from the live config', () => {
     if (!a.ok || !b.ok) throw new Error('tool failed');
     expect(a.output.text).not.toMatch(/fakestock/);
     expect(b.output.text).toMatch(
-      /stock-video: fakestock \(Documentary footage and photos\./,
+      /stock-video: fakestock \(Documentary footage and photos; 60\/min\)/,
     );
     expect(b.output.text).toMatch(/VERSION 4 LAYER FIELDS/);
     expect(b.output.version).not.toBe(a.output.version);
