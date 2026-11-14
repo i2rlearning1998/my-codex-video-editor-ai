@@ -19,7 +19,7 @@ const store = (s = kv(), caps = DEFAULT_CAPS) =>
   new MemoryStore(s, 'u1', () => caps, now);
 
 describe('[RDB-004] memory levels', () => {
-  it('keeps account, Project memory, Video sheet, file notes and chats apart, and survives a reload', () => {
+  it('[RDB-004] keeps account, Project memory, Video sheet, file notes and chats apart, and survives a reload', () => {
     const s = kv();
     const a = store(s);
     a.setVoice('warm female');
@@ -38,7 +38,7 @@ describe('[RDB-004] memory levels', () => {
     expect(b.video('v1').notes).toHaveLength(1);
     expect(b.video('v2').notes).toHaveLength(0);
   });
-  it('a file is noted once: the same file again returns the first note', () => {
+  it('[RDB-004] a file is noted once: the same file again returns the first note', () => {
     const a = store();
     const file = { name: 'a.png', kind: 'image', bytes: 5 };
     const one = a.fileNote('v1', file, 'a kite');
@@ -46,7 +46,7 @@ describe('[RDB-004] memory levels', () => {
     expect(two.id).toBe(one.id);
     expect(a.noteFor('v1', { name: 'a.png', bytes: 5 })?.note).toBe('a kite');
   });
-  it('two chats in one Video share the sheet; a new chat starts with it', () => {
+  it('[RDB-004] two chats in one Video share the sheet; a new chat starts with it', () => {
     const a = store();
     const c1 = a.newChat('v1');
     a.addTurn('v1', c1.id, { role: 'user', text: 'make it blue' });
@@ -60,7 +60,7 @@ describe('[RDB-004] memory levels', () => {
     // Chats of another Video are separate.
     expect(a.chats('v2')).toHaveLength(0);
   });
-  it('a long chat rolls old turns into its summary and keeps the newest', () => {
+  it('[RDB-004] a long chat rolls old turns into its summary and keeps the newest', () => {
     const a = store(kv(), { ...DEFAULT_CAPS, keepTurns: 4 });
     const c = a.newChat('v1');
     for (let i = 1; i <= 30; i++)
@@ -79,7 +79,7 @@ describe('[RDB-004] memory levels', () => {
     expect(chat.summary).toContain('Director: line 26');
     expect(chat.title).toBe('line 1');
   });
-  it('caps: pinned lines stay when the sheet is full', () => {
+  it('[RDB-004] caps: pinned lines stay when the sheet is full', () => {
     const a = store(kv(), { ...DEFAULT_CAPS, maxSheetEntries: 5 });
     const first = a.note('v1', 'decisions', 'keep me')!;
     a.patchEntry('v1', 'decisions', first.id, { pinned: true });
@@ -90,7 +90,7 @@ describe('[RDB-004] memory levels', () => {
     expect(texts).toContain('d8');
     expect(texts).not.toContain('d0');
   });
-  it('setPart replaces a part but keeps what the person pinned or wrote', () => {
+  it('[RDB-004] setPart replaces a part but keeps what the person pinned or wrote', () => {
     const a = store();
     a.setPart('v1', 'scenes', ['Scene 1: a', 'Scene 2: b']);
     const mine = a.note('v1', 'scenes', 'Scene 2 must be slow', 'user')!;
@@ -103,7 +103,7 @@ describe('[RDB-004] memory levels', () => {
     a.forgetEntry('v1', 'scenes', mine.id);
     expect(a.sheet('v1').scenes).toHaveLength(2);
   });
-  it('reconcile: a change undone in the editor leaves the sheet', () => {
+  it('[RDB-004] reconcile: a change undone in the editor leaves the sheet', () => {
     const a = store();
     a.note('v1', 'decisions', 'Title bigger', 'director', {
       before: { l1: 'h0' },
@@ -144,7 +144,7 @@ describe('[RDB-004] P3 chats move from the Project to its first Video', () => {
     facts: { 'pr-a': [{ text: 'likes blue', pinned: true, source: 'chat' }] },
   };
   const first = (p: string) => (p === 'pr-a' ? 'video-1' : undefined);
-  it('moves chats and facts once; a second run changes nothing', () => {
+  it('[RDB-004] moves chats and facts once; a second run changes nothing', () => {
     const s = kv();
     const a = store(s);
     expect(a.migrateOld(old, first)).toEqual({ chats: 3, facts: 1 });

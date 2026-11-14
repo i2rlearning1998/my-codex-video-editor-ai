@@ -3,7 +3,7 @@
 import { mkdirSync } from 'node:fs';
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures';
-import { signUp, approvePlan } from './p2-helpers';
+import { signUp } from './p2-helpers';
 
 const OUT = 'reports/p2-r2';
 mkdirSync(OUT, { recursive: true });
@@ -20,11 +20,6 @@ const shot = async (page: Page, name: string) => {
     fullPage: true,
   });
 };
-async function say(page: Page, text: string) {
-  await page.locator('#chat-input').fill(text);
-  await page.locator('#chat-send').click();
-  await expect(page.locator('#chat-input')).toHaveValue('');
-}
 
 async function auroraScreens(page: Page, width: number) {
   test.setTimeout(240_000);
@@ -53,51 +48,15 @@ async function auroraScreens(page: Page, width: number) {
     () => getComputedStyle(document.body).fontFamily,
   );
   expect(font).toContain('Plus Jakarta Sans');
-  await expect(page.locator('.room.on-home .orb-live canvas')).toBeVisible();
-  await expect(page.locator('[data-start]')).toHaveCount(3);
+  // Round B: Home is the Director start box (the Orb and three ideas);
+  // the brief, chat, plan and build happen in the editor's AI mode
+  // (RDB-014 to RDB-020).
+  await expect(page.locator('#director-start .start-orb canvas')).toBeVisible();
+  await expect(page.locator('[data-idea]')).toHaveCount(3);
   await shot(page, 'panel-home');
   await page.goto('/panel/#/styles');
   await expect(page.locator('#style-grid .style-card svg.art')).toHaveCount(3);
   await shot(page, 'panel-styles');
-  await page.locator('[data-style="story-explainer"] [data-use-style]').click();
-  await expect(page.locator('details.field-group')).toHaveCount(3);
-  await page
-    .locator('#f-idea')
-    .fill('How Eratosthenes measured the circumference of the Earth.');
-  await shot(page, 'panel-brief');
-  await page.locator('#talk-director').click();
-  await expect(page.locator('.msg.director .orb').first()).toBeVisible();
-  const card = page.locator('.msg.question-card');
-  await expect(card).toHaveCount(1);
-  await shot(page, 'panel-director');
-  // An answer chip answers the question.
-  await card.locator('.answer-chips .chip').first().click();
-  await expect(page.locator('.msg.user')).toHaveCount(1);
-  await say(page, 'Text to speech');
-  await say(page, 'None');
-  await say(page, 'Hindi');
-  await page.locator('#make-plan').click();
-  await expect(page.locator('#plan-card .scene .scene-thumb svg')).toHaveCount(
-    5,
-  );
-  await expect(
-    page.locator('#plan-card .chip.method[data-cost]').first(),
-  ).toHaveAttribute('data-cost', /free|low|high/);
-  await shot(page, 'panel-plan');
-  await approvePlan(page);
-  await expect(page.locator('#build-status')).toHaveAttribute(
-    'data-state',
-    'done',
-    { timeout: 60_000 },
-  );
-  await page.locator('.code-view summary').click();
-  await expect(page.locator('#build-code')).toContainText('"video-plan"');
-  expect(
-    await page
-      .locator('#build-code')
-      .evaluate((el) => getComputedStyle(el).fontFamily),
-  ).toContain('JetBrains Mono');
-  await shot(page, 'panel-build');
   for (const [route, name] of [
     ['credits', 'panel-credits'],
     ['projects', 'panel-projects'],
@@ -114,7 +73,8 @@ async function auroraScreens(page: Page, width: number) {
   await expect(
     page.locator('.tool-tabs:not(.sub-tabs) .tool-tab[aria-current="page"]'),
   ).toHaveText('Voice');
-  await expect(page.locator('.sf-voices svg.wave').first()).toBeVisible();
+  // Round B (B5.3): a voice shows the owner's picture or a neutral avatar.
+  await expect(page.locator('.sf-voices .sf-avatar').first()).toBeVisible();
   await shot(page, 'panel-studio-voice');
   // Keyboard focus shows a ring.
   await page.keyboard.press('Tab');
@@ -132,13 +92,13 @@ async function auroraScreens(page: Page, width: number) {
   await shot(page, 'panel-settings-light');
 }
 
-test('[P2R2-029] [P2R2-030] [P2R2-031] [P2R2-032] [P2R2-033] [P2R2-034] Aurora Ink screens at 1440 px: Director card, Styles with art, grouped Brief, chat with orb and answer chips, Plan card thumbnails and cost chips, Live Build code, Studio tabs and waves, website story and FAQ', async ({
+test('[P2R2-029] [P2R2-032] [P2R2-033] [P2R2-034] Aurora Ink screens at 1440 px: the Director start box, Styles with art, Studio tabs and voices, website story and FAQ', async ({
   page,
 }) => {
   await auroraScreens(page, 1440);
 });
 
-test('[P2R2-029] [P2R2-030] [P2R2-031] [P2R2-032] [P2R2-033] [P2R2-034] Aurora Ink screens at 390 px: Director card, Styles with art, grouped Brief, chat with orb and answer chips, Plan card thumbnails and cost chips, Live Build code, Studio tabs and waves, website story and FAQ', async ({
+test('[P2R2-029] [P2R2-032] [P2R2-033] [P2R2-034] Aurora Ink screens at 390 px: the Director start box, Styles with art, Studio tabs and voices, website story and FAQ', async ({
   page,
 }) => {
   await auroraScreens(page, 390);

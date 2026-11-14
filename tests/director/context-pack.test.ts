@@ -59,7 +59,7 @@ const input = (over: Partial<PackInput> = {}): PackInput => ({
 });
 
 describe('[RDB-005] the context pack', () => {
-  it('keeps the stated order and reads only the last N turns', () => {
+  it('[RDB-005] keeps the stated order and reads only the last N turns', () => {
     const p = buildContextPack(input());
     const order = [
       'RULEBOOK',
@@ -86,7 +86,7 @@ describe('[RDB-005] the context pack', () => {
     expect(p.tokens).toBe(tokensOf(p.text));
   });
 
-  it('fits the budget by dropping in the stated order, one item at a time', () => {
+  it('[RDB-005] fits the budget by dropping in the stated order, one item at a time', () => {
     const full = buildContextPack(input()).tokens;
     // A little under the full size: only the oldest turns leave.
     const a = buildContextPack(input({ budgetTokens: full - 10 }));
@@ -112,7 +112,7 @@ describe('[RDB-005] the context pack', () => {
     expect(b.over).toBe(true);
   });
 
-  it('never drops the rulebook, the brief, the scene lines, pinned decisions, the scene list, the selection or the two newest turns', () => {
+  it('[RDB-005] never drops the rulebook, the brief, the scene lines, pinned decisions, the scene list, the selection or the two newest turns', () => {
     const p = buildContextPack(input({ budgetTokens: 1 }));
     for (const must of [
       'You are the Director.',
@@ -136,7 +136,7 @@ describe('[RDB-005] the context pack', () => {
       expect(p.text).not.toContain(gone);
   });
 
-  it('a very long chat still reads the brief: pinned facts outlast loose ones', () => {
+  it('[RDB-005] a very long chat still reads the brief: pinned facts outlast loose ones', () => {
     const base = input({
       turns: Array.from({ length: 400 }, (_, i) => turn(i + 1)),
     });

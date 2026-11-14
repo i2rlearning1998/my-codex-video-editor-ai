@@ -33,75 +33,6 @@ const watchOrb = (page: import('@playwright/test').Page) =>
 const seq = (page: import('@playwright/test').Page) =>
   page.evaluate(() => (window as unknown as { __orbSeq: string[] }).__orbSeq);
 
-test('[P3U-001] the Director room: the Orb thinks, speaks and rests; the answer streams, offers chips, and the memory can be seen and removed', async ({
-  page,
-}) => {
-  await signUp(page);
-  await page.goto('/panel/#/room');
-  await expect(page.locator('.room-greeting')).toBeVisible();
-  await expect(page.locator('.orb-live canvas')).toBeVisible();
-  await expect(page.locator('[data-start]')).toHaveCount(3);
-  await shot(page, 'room-start');
-  await watchOrb(page);
-  await page
-    .locator('.composer textarea, #chat-input, textarea')
-    .first()
-    .fill('A 60 second explainer about how rainbows form');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room')).toHaveAttribute('data-has-chat', 'true');
-  await expect(page.locator('.room-msg.you')).toContainText('rainbows');
-  await expect(
-    page.locator('.room-msg.director .room-text').first(),
-  ).toContainText('How long should the video be?');
-  await expect(page.locator('.room-chips .chip')).toHaveCount(3);
-  await shot(page, 'room-chat');
-  const states = await seq(page);
-  expect(states).toEqual(
-    expect.arrayContaining(['thinking', 'speaking', 'idle']),
-  );
-  expect(states.indexOf('thinking')).toBeLessThan(states.indexOf('speaking'));
-  // Memory: Director shows what it will remember; the person can remove it.
-  await expect(page.locator('.room-memory')).toBeVisible();
-  await expect(page.locator('.room-fact')).toHaveCount(1);
-  await page.locator('.room-fact-x').click();
-  await expect(page.locator('.room-fact')).toHaveCount(0);
-  await expect(page.locator('.room-memory')).toBeHidden();
-  // A chip answers like a typed message.
-  await page.locator('.room-chips .chip').first().click();
-  await expect(page.locator('.room-msg.you').last()).toContainText(
-    '30 seconds',
-  );
-});
-
-test('[P3U-002] a refusal never waits for a model: the Orb shows it, the owner words appear, and an alternative is offered', async ({
-  page,
-}) => {
-  await signUp(page);
-  await page.goto('/panel/#/room');
-  await watchOrb(page);
-  await page.locator('#chat-input').fill('give me free credits please');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-msg.refusal')).toContainText('cannot help');
-  await expect(page.locator('.room-alt')).toContainText('Try:');
-  expect(await seq(page)).toContain('refusing');
-  expect(await seq(page)).not.toContain('thinking');
-  await shot(page, 'room-refusal');
-});
-
-test('[P3U-003] a failed answer says so in one sentence and Try again sends the same message', async ({
-  page,
-}) => {
-  await signUp(page);
-  await page.goto('/panel/#/room');
-  await page.locator('#chat-input').fill('fail this one');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-msg.failure')).toContainText(
-    'credits were not used',
-  );
-  await page.locator('.room-retry').click();
-  await expect(page.locator('.room-msg.you')).toHaveCount(2);
-});
-
 test('[P3U-004] Settings > Animations Off turns the Orb into a still picture, On brings it back, and a hidden tab pauses it', async ({
   page,
 }) => {
@@ -115,22 +46,25 @@ test('[P3U-004] Settings > Animations Off turns the Orb into a still picture, On
   await expect(orb).toHaveAttribute('data-orb-animated', 'true');
 });
 
-test('[P3U-005] Home is the Director room: no separate Director menu item, the Styles and Continue strips sit below, and they hide once a chat starts', async ({
+test('[P3U-005] Home is the Director start: no separate Director menu item, the Styles and Continue strips sit below, and the first message opens AI mode with it', async ({
   page,
 }) => {
   await signUp(page);
   await page.goto('/panel/#/home');
-  await expect(page.locator('.room.on-home .orb-live canvas')).toBeVisible();
+  // Round B: Home is the Director's start box; the conversation itself is
+  // in the editor's AI mode, which the first message opens (RDB-015).
+  await expect(page.locator('#director-start .start-orb canvas')).toBeVisible();
   await expect(page.locator('#greeting')).toBeVisible();
   await expect(page.locator('#home-balance')).toContainText('credits');
   await expect(page.locator('.side a[href="#/room"]')).toHaveCount(0);
   await expect(page.locator('.home-below #style-reel')).toBeVisible();
   await shot(page, 'home-room');
   await page
-    .locator('#chat-input')
+    .locator('#home-input')
     .fill('A 60 second explainer about rainbows');
   await page.keyboard.press('Enter');
-  await expect(page.locator('.room')).toHaveAttribute('data-has-chat', 'true');
-  await expect(page.locator('.home-below')).toBeHidden();
-  await expect(page.locator('#greeting')).toBeHidden();
+  await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/, {
+    timeout: 30_000,
+  });
+  await expect(page.locator('#ai-thread')).toContainText('rainbows');
 });

@@ -1298,14 +1298,14 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P2R1-021 | P0 | W10 | Verified | The editor bundle contains no panel, website or gateway code; the panel and website contain no editor entry or shell |
 | P2R1-022 | P0 | W10 | Verified | Home: greeting, credits, a Director prompt box, Style cards, Continue projects and Learn |
 | P2R1-023 | P0 | W10 | Verified | Styles: filters, search, plan gating with Upgrade and the price hint |
-| P2R1-024 | P0 | W10 | Verified | Brief Room: the form from the Style's fields (every type, show-if, validation), brief strength, the estimate for the chosen model, drafts kept |
-| P2R1-025 | P0 | W10 | Verified | In a browser: pick a Style, fill the form, see validation and the estimate change when the model changes |
+| P2R1-024 | P0 | W10 | Dropped | Brief Room: the form from the Style's fields (every type, show-if, validation), brief strength, the estimate for the chosen model, drafts kept |
+| P2R1-025 | P0 | W10 | Dropped | In a browser: pick a Style, fill the form, see validation and the estimate change when the model changes |
 | P2R1-026 | P0 | W10 | Verified | Director's interview from the Style's rules: answered fields skipped, capped, free text kept, one creative-upgrade line |
 | P2R1-027 | P0 | W10 | Verified | Out-of-scope and forbidden requests get the owner's refusal with an alternative, never model text |
 | P2R1-028 | P0 | W10 | Verified | A Planner interface and a deterministic mock planner make a valid Plan v3 whose methods follow methodOrder; an invalid plan is repaired once, then refused |
-| P2R1-029 | P0 | W10 | Verified | The Plan card: methods with cheaper and richer swaps, per-scene and total credits for the chosen model, balance, shortage options, the model picker, Approve and Cancel |
+| P2R1-029 | P0 | W10 | Dropped | The Plan card: methods with cheaper and richer swaps, per-scene and total credits for the chosen model, balance, shortage options, the model picker, Approve and Cancel |
 | P2R1-030 | P0 | W10 | Verified | Live Build: steps, progress, preview, a refund on failure, and Open in editor builds editable scenes with the editor's own builder |
-| P2R1-031 | P0 | W10 | Verified | In a browser: the Circumference flow end to end (login to export) and a failed build that refunds |
+| P2R1-031 | P0 | W10 | Dropped | In a browser: the Circumference flow end to end (login to export) and a failed build that refunds |
 | P2R1-032 | P0 | W10 | Verified | Studio screens from config call the gateway (mock), show the cost first and save results to the project's Asset Library; Voice asks for clone consent |
 | P2R1-033 | P0 | W10 | Verified | The Asset Library per project, and copying an asset into another project |
 | P2R1-034 | P0 | W10 | Verified | In a browser: one Studio tool end to end, and a tool the plan lacks is locked with Upgrade |
@@ -1341,16 +1341,16 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P2R2-019 | P0 | W10 | Verified | Creative upgrades are validated optional toggles on the Plan card with their credit effect |
 | P2R2-020 | P0 | W10 | Verified | A provider failure while planning gives the whole hold back |
 | P2R2-021 | P0 | W10 | Verified | The model interview only fills config fields or asks allowed follow-ups; refusals (ten adversarial inputs) never reach a model |
-| P2R2-022 | P0 | W10 | Verified | Through fake providers: sign up, brief, model interview, model plan, upgrade toggle, approve, build |
-| P2R2-023 | P0 | W10 | Verified | The cost comes from the server's estimate plus the media models; the Plan card shows the hold and the ledger shows what was used |
-| P2R2-024 | P0 | W10 | Verified | AI picture and voice scenes are made through the server, saved to the Asset Library and imported into the editor so their frames fill; a 429 mid-build refunds everything; a refused key says "not connected" |
+| P2R2-022 | P0 | W10 | Dropped | Through fake providers: sign up, brief, model interview, model plan, upgrade toggle, approve, build |
+| P2R2-023 | P0 | W10 | Dropped | The cost comes from the server's estimate plus the media models; the Plan card shows the hold and the ledger shows what was used |
+| P2R2-024 | P0 | W10 | Dropped | AI picture and voice scenes are made through the server, saved to the Asset Library and imported into the editor so their frames fill; a 429 mid-build refunds everything; a refused key says "not connected" |
 | P2R2-025 | P0 | W10 | Verified | The editor reports each finished video export (count and kind) through one small interface |
 | P2R2-026 | P0 | W10 | Verified | Exports per month are counted per person and enforced: the Free plan's fourth export is stopped with the owner's sentence and Upgrade, the project saved first; after upgrading it exports |
 | P2R2-027 | P0 | W10 | Verified | Project, storage and voice-clone limits are checked on the server with real usage; nothing is made or charged when one is hit; upgrading allows it |
 | P2R2-028 | P0 | W10 | Verified | Aurora Ink tokens in the config's brand colours and one CSS token file; Plus Jakarta Sans, Noto Sans Devanagari and JetBrains Mono; Devanagari line height 1.6; light theme |
 | P2R2-029 | P0 | W10 | Verified | Home: the Director card with the aurora border, prompt and Style chips; Style cards with generated art; Continue projects |
-| P2R2-030 | P0 | W10 | Verified | Styles with art and filters; the Brief room's fields in collapsible sections from the config, with the sticky summary rail |
-| P2R2-031 | P0 | W10 | Verified | Director chat bubbles with the orb, the question card and answer chips; Plan card scene pictures and cost-coloured method chips; Live Build with steps, aurora progress and the read-only plan code |
+| P2R2-030 | P0 | W10 | Dropped | Styles with art and filters; the Brief room's fields in collapsible sections from the config, with the sticky summary rail |
+| P2R2-031 | P0 | W10 | Dropped | Director chat bubbles with the orb, the question card and answer chips; Plan card scene pictures and cost-coloured method chips; Live Build with steps, aurora progress and the read-only plan code |
 | P2R2-032 | P0 | W10 | Verified | Credits and Plan, Studio tool tabs, voice choices with waveforms, Projects, Asset Library, Brand Kit and Settings in the new look |
 | P2R2-033 | P0 | W10 | Verified | The website: landing with the scroll story, showcase, pricing and FAQ from config |
 | P2R2-034 | P0 | W10 | Verified | Down to 360 px without sideways scrolling, focus rings, reduced motion respected, AA contrast for every token pair; screenshots at 1440 and 390 px |
@@ -1360,20 +1360,20 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P2R2-038 | P0 | W10 | Verified | The editor side of the build is not larger than on claude/phase2-r1; no server code, provider host or server-only secret name is in any browser bundle |
 | P2R2-039 | P0 | W10 | Verified | `npm run check` passes (format, types, unit tests, build with the bundle check) |
 | P2R2-040 | P0 | W10 | Verified | The round's report lists every item with its state, what was not tested, the known old failures and the owner's two try-it scripts |
-| P2R3-001 | P0 | W10 | Verified | Director room: Director and "You" messages have different layouts; Enter sends, Shift+Enter makes a new line, the send button is off when empty |
-| P2R3-002 | P0 | W10 | Verified | The "Your film" card shows the Style, the Brief strength, what Director knows so far, the notes and the credit estimate, and has Make the plan |
-| P2R3-003 | P0 | W10 | Verified | The message box has a + menu (notes file, Asset Library text), a model picker from the config (locked and unconnected shown), voice typing where the browser has it |
-| P2R3-004 | P0 | W10 | Verified | Live Build draws each scene from the plan's own layers through the editor's layout code (a layout preview, not the editor's render); the film strip fills as scenes finish and the percent reaches 100 |
-| P2R3-005 | P0 | W10 | Verified | The Brief Room is restyled (numbered glass sections, pill choices, a strength meter that fills as the idea is typed, a pill model picker); the top bar changes language at once when Settings is saved; light theme keeps text readable on cards and fields |
-| P3U-001 | P0 | W10 | Verified | The Director room: the Orb thinks, speaks and rests; the answer streams, offers chips, and the memory can be seen and removed |
-| P3U-002 | P0 | W10 | Verified | A refusal never waits for a model: the Orb shows it, the owner words appear, and an alternative is offered |
-| P3U-003 | P0 | W10 | Verified | A failed answer says so in one sentence and Try again sends the same message |
+| P2R3-001 | P0 | W10 | Dropped | Director room: Director and "You" messages have different layouts; Enter sends, Shift+Enter makes a new line, the send button is off when empty |
+| P2R3-002 | P0 | W10 | Dropped | The "Your film" card shows the Style, the Brief strength, what Director knows so far, the notes and the credit estimate, and has Make the plan |
+| P2R3-003 | P0 | W10 | Dropped | The message box has a + menu (notes file, Asset Library text), a model picker from the config (locked and unconnected shown), voice typing where the browser has it |
+| P2R3-004 | P0 | W10 | Dropped | Live Build draws each scene from the plan's own layers through the editor's layout code (a layout preview, not the editor's render); the film strip fills as scenes finish and the percent reaches 100 |
+| P2R3-005 | P0 | W10 | Dropped | The Brief Room is restyled (numbered glass sections, pill choices, a strength meter that fills as the idea is typed, a pill model picker); the top bar changes language at once when Settings is saved; light theme keeps text readable on cards and fields |
+| P3U-001 | P0 | W10 | Dropped | The Director room: the Orb thinks, speaks and rests; the answer streams, offers chips, and the memory can be seen and removed |
+| P3U-002 | P0 | W10 | Dropped | A refusal never waits for a model: the Orb shows it, the owner words appear, and an alternative is offered |
+| P3U-003 | P0 | W10 | Dropped | A failed answer says so in one sentence and Try again sends the same message |
 | P3U-004 | P0 | W10 | Verified | Settings > Animations Off turns the Orb into a still picture, On brings it back, and a hidden tab pauses it |
 | P3U-005 | P0 | W10 | Verified | Home is the Director room: no separate Director menu item, the Styles and Continue strips sit below, and they hide once a chat starts |
-| P3U-006 | P0 | W10 | Verified | The form follows the chosen model: Pro adds style cards and a hidden-until-opened More options; switching keeps what is shared |
+| P3U-006 | P0 | W10 | Dropped | The form follows the chosen model: Pro adds style cards and a hidden-until-opened More options; switching keeps what is shared |
 | P3U-007 | P0 | W10 | Verified | A missing required field is shown under the field and nothing runs; the cost range is shown before running |
 | P3U-008 | P0 | W10 | Verified | Run shows progress, then saves the result to the chosen project and says where |
-| P3U-009 | P0 | W10 | Verified | Improve with Director fills better text, can be undone, and Pro shows a number field clamped to its maximum |
+| P3U-009 | P0 | W10 | Dropped | Improve with Director fills better text, can be undone, and Pro shows a number field clamped to its maximum |
 | P3U-010 | P0 | W10 | Verified | The form fits a phone: no sideways scroll, and tapping targets are at least 32 px |
 | P3U-011 | P0 | W10 | Verified | Project memory: the person adds, pins and forgets what Director remembers, and sees the chats |
 | P3U-012 | P0 | W10 | Dropped | Make this my Style makes a draft that is reviewed, edited and accepted before it is used |
@@ -1392,10 +1392,10 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | P3U-025 | P0 | W10 | Verified | The admin page switches to Hindi and fits a phone |
 | P3U-026 | P0 | W10 | Verified | The website pricing cards list what each plan includes and lead to sign-up, and the page ends with a call to action and a footer |
 | P3U-027 | P0 | W10 | Verified | The website pricing and footer read in Hindi and the page does not scroll sideways on a phone |
-| P3U-028 | P0 | W10 | Verified | The chat dock lists the selection as chips, streams a reply and shows a proposal with its size and credits |
-| P3U-029 | P0 | W10 | Verified | Discard keeps the project, Stop ends a reply, and a refusal shows one plain sentence |
-| P3U-030 | P0 | W10 | Verified | The owner can switch chat off or cap it per day, and the dock reads in Hindi and closes with Escape |
-| P3U-031 | P0 | W10 | Verified | With chat switched off by the owner the dock says so and cannot send |
+| P3U-028 | P0 | W10 | Dropped | The chat dock lists the selection as chips, streams a reply and shows a proposal with its size and credits |
+| P3U-029 | P0 | W10 | Dropped | Discard keeps the project, Stop ends a reply, and a refusal shows one plain sentence |
+| P3U-030 | P0 | W10 | Dropped | The owner can switch chat off or cap it per day, and the dock reads in Hindi and closes with Escape |
+| P3U-031 | P0 | W10 | Dropped | With chat switched off by the owner the dock says so and cannot send |
 | P3U-032 | P0 | W10 | Verified | Settings has Profile and Preferences cards, Learn cards are numbered, and an empty Asset Library leads to Studio |
 | P3U-033 | P0 | W10 | Verified | Brand Kit shows a live preview of the colours and fonts, and a plan without it shows an upgrade teaser |
 | P3U-034 | P0 | W10 | Verified | Every panel, website and admin screen opens at 1440 and 390 px without sideways scrolling |
@@ -1433,8 +1433,8 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P3I-003 | P0 | W10 | Verified | Partial refunds revoke credits in proportion, add up to the grant, and together cannot exceed the payment |
 | P3I-005 | P0 | W10 | Verified | A provider call records its USD cost, and the admin dashboard reports real cost and margin inputs |
 | P3I-006 | P0 | W10 | Verified | POST /v1/entitlements/check decides a limit on the server: signed in only, a valid action only, the daily chat cap holds |
-| P3I-007 | P0 | W10 | Verified | With a gateway server the Director room runs on the real service: a message gets a model answer |
-| P3I-008 | P0 | W10 | Verified | A refusal on the real service is decided before any model is asked |
+| P3I-007 | P0 | W10 | Dropped | With a gateway server the Director room runs on the real service: a message gets a model answer |
+| P3I-008 | P0 | W10 | Dropped | A refusal on the real service is decided before any model is asked |
 | P3I-009 | P0 | W10 | Verified | With a gateway server a Studio run goes through the real Studio service: the server checks the limit, reserves credits, calls the model and the result lands in the Asset Library |
 | P3I-010 | P0 | W10 | Verified | The admin page on the real server: an admin token signs in, a settings save is published and lands in the audit chain, a person is refused |
 | P3I-011 | P0 | W10 | Verified | With a gateway server the editor chat runs on the real engine: the server checks the limit and charges the call, the model proposes a command, Apply is one undo step |
@@ -1483,8 +1483,8 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | P4F-006 | P0 | W10 | Dropped | The Asset Library shows Style, then Project, then three libraries: AI, My Templates, Media |
 | P4F-007 | P0 | W10 | Verified | Library root cards are in creation order; the first Studio result makes one Studio Libraries card |
 | P4F-008 | P0 | W10 | Verified | A deleted project or asset waits in the Trash (days from config) and can be restored |
-| P4F-009 | P0 | W10 | Verified | Director waits at the asset step: each file listed by exact name with AI / I will upload / Give me prompts; choices and added files survive a reload |
-| P4F-010 | P0 | W10 | Verified | "Continue without assets" builds with blank slots; the editor lists every expected asset name |
+| P4F-009 | P0 | W10 | Dropped | Director waits at the asset step: each file listed by exact name with AI / I will upload / Give me prompts; choices and added files survive a reload |
+| P4F-010 | P0 | W10 | Dropped | "Continue without assets" builds with blank slots; the editor lists every expected asset name |
 | P4F-011 | P1 | W10 | Dropped | After a Director build "Save to your styles?" makes a Style card with the project inside |
 | P4C-001 | P0 | W10 | Verified | The cloud backend keeps library items (AI compositions, My Templates) and a usage count per person; another person sees none of them |
 | P4C-002 | P0 | W10 | Verified | The editor's Cloud switch sends the project and My Templates to the person's cloud (not a size note), and a later template follows |
@@ -1544,3 +1544,45 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDA-018 | P0 | W10 | Verified | Editor import dialogs group items as Project, then Video; Media's Import menu has Import from your Library, which copies Studio results and Director files into the open Video's Media; the same item twice is one media item |
 | RDA-019 | P0 | W10 | Verified | Studio forms follow the Autodraft field lists from config: Image (aspect, model, style cards, prompt with reference and Enhance, count, Advanced; Upscale and Remove Background only when assigned), Story, Video (frames with swap, Generate prompt, plan-gated 1080p), Voice (four tabs, no Music), SEO, Captions; cost before Run, errors under the field, history per tool |
 | RDA-020 | P0 | W10 | Verified | With a gateway, a server that cannot be reached never lets a new Project through; the refusal is one sentence and the typed name stays |
+| RDB-003 | P0 | W10 | Verified | A real model that declares its own parameters keeps the config Studio form: parameters only hide the fields the model does not take and name the values sent; style cards and files always show; the offline mock hides nothing |
+| RDB-004 | P0 | W10 | Verified | Memory levels: account, Project facts, Video sheet (brief, scenes, assets, decisions), file notes and chats with a rolling summary; chats belong to the Video and older Project chats move to the Project's first Video once |
+| RDB-005 | P0 | W10 | Verified | One context-pack function builds what Director reads within the owner's token budget, in a fixed order, dropping the oldest and least important parts first (unit-tested) |
+| RDB-006 | P0 | W10 | Verified | Editor | AI switch in the top bar and as a palette command: the same editor in another layout; selection, playhead and open scene stay; nothing goes into history; a reload stays in AI mode |
+| RDB-007 | P0 | W10 | Verified | AI mode layout: Director column, stage, scene ribbon with a slim timeline, a closable right drawer (Controls, Plan, Assets, Memory), top bar with the quick strip, credits, Undo, Redo, Export and Back; the drawer is an overlay at 1024 px |
+| RDB-008 | P0 | W10 | Verified | In AI mode the canvas is select-only: no move, resize or rotate, no edit shortcuts; Undo, Redo, Space and Escape still work |
+| RDB-009 | P0 | W10 | Verified | Controls tab: text content, colours, show or hide and a code animation's own controls preview live and commit once (one undo step); a locked layer shows no controls |
+| RDB-010 | P0 | W10 | Verified | Scene ribbon: open a scene, drag to reorder (one undo step), Duplicate, Delete after a confirmation, Ask Director about this scene |
+| RDB-011 | P0 | W10 | Verified | Quick strip: Look, Voice, Music, Captions and Format are Director proposals that preview on the canvas and change nothing until Apply |
+| RDB-012 | P0 | W10 | Verified | Export from AI mode; the editor chat dock is gone; Ask Director in Editor mode carries the selection into AI mode |
+| RDB-013 | P0 | W10 | Verified | The slim timeline is read-only: a clip click selects its layer, empty time seeks, Play plays; no history |
+| RDB-014 | P0 | W10 | Verified | Director sorts the first message into a video type from the owner's field library and shows ONE Brief card with only what is missing, choices and "You decide"; a project with a style asks less |
+| RDB-015 | P0 | W10 | Verified | Entries: the Home box, a ready-made Style, + New video in this style and an AI-made Video card open AI mode on that Video; the panel has no Director room, brief, plan or build screen |
+| RDB-016 | P0 | W10 | Verified | Attachments in the message box get one file note each; the Brief card says what was understood; the same file is not noted twice |
+| RDB-017 | P0 | W10 | Verified | Plan card: scenes with narration, what is seen, method and credits and a total, no plan JSON; Cheaper and Richer count against the owner's rewrite number; per-scene edit; Approve is the only approval |
+| RDB-018 | P0 | W10 | Verified | Assets card: only the files the plan needs; Make it here (the Studio form with its cost), Upload, Give me a prompt, Choose from Library or Later; making it again keeps the old one |
+| RDB-019 | P0 | W10 | Verified | After the build each message is one of five kinds and Director says which; questions are free; changes are proposals previewed on the canvas, one undo step on Apply, changed layers flash |
+| RDB-020 | P0 | W10 | Verified | The build happens on the canvas: scenes arrive in the ribbon, credits are settled once within the card's total, the sheet updates, and the first Video fills the Project's style and says so once |
+| RDB-021 | P0 | W10 | Verified | A cancelled build keeps nothing half-built and gives every credit back; the Video can be built again |
+| RDB-022 | P0 | W10 | Verified | A new scene is a one-scene plan card built in place in the same Video; a new Video is asked first and added to the Project |
+| RDB-023 | P0 | W10 | Verified | Three asks in one message become a list of cards; off-topic and prompt-injection messages get the owner's refusal with no model call and no credits |
+| RDB-024 | P0 | W10 | Verified | Style chat on the Project page Style tab edits only the Project's style record: before and after shown, saved only on Apply; ONE question when unsure; the owner's refusals |
+| RDB-025 | P0 | W10 | Verified | An existing Video gets "Apply the project's new style" in AI mode as a proposal (one undo step), offered once per style change |
+| RDB-026 | P0 | W10 | Verified | Panel pages use their width (two columns or a centred composition, Project and Library summary columns) and stack at 390 px without sideways scroll |
+| RDB-027 | P0 | W10 | Verified | One colour system: every selected kind (menu, tab, chip, segmented, card, radio row, list option) computes the same gold selection tokens in dark and light; the aurora is for Director only |
+| RDB-028 | P0 | W10 | Verified | Studio style cards show a picture only from the config thumb; the default Image style names; Video styles and voice avatars follow the same rule; no generated art |
+| RDB-029 | P0 | W10 | Verified | Every Studio tool follows the reference layout: controls column, wide workspace with the main input, the cost on the action button, history, tips or an empty state; language chips in their own script |
+| RDB-030 | P0 | W10 | Verified | No native-looking select, checkbox, radio, colour or file input in the panel: one shared list (mouse and keyboard), drawn checkboxes and radios, a file button with the file name |
+| RDB-031 | P0 | W10 | Verified | A message sent while the build runs waits and is answered after it; Editor mode in the middle of the build and back leaves the build whole |
+| RDB-032 | P0 | W10 | Verified | A reload at the brief, plan and assets steps comes back there; a reload during the build keeps nothing half-built and refunds |
+| RDB-033 | P0 | W10 | Verified | An AI change undone in Editor mode: back in AI mode Director says so once and the sheet drops it |
+| RDB-034 | P0 | W10 | Verified | A scene deleted by hand after asking Director about it: Director says it is no longer in the video and changes nothing |
+| RDB-035 | P0 | W10 | Verified | A layer changed by hand: Director asks before changing it; Yes proposes, No leaves it |
+| RDB-036 | P0 | W10 | Verified | Two chats in one Video share the sheet; a very long chat still knows the brief |
+| RDB-037 | P0 | W10 | Verified | Proposals under rough use: the layer deleted before Apply cancels it with one sentence; Apply twice is one step; a control changed while previewing keeps both changes |
+| RDB-038 | P0 | W10 | Verified | Scenes reordered during playback: one undo step, nothing breaks |
+| RDB-039 | P0 | W10 | Verified | Not enough credits: one sentence, nothing spent or built |
+| RDB-040 | P0 | W10 | Verified | The server cannot be reached: one sentence, nothing spent or lost |
+| RDB-041 | P0 | W10 | Verified | A huge or unsupported attachment is refused in one sentence; the typed words stay |
+| RDB-042 | P0 | W10 | Verified | A locked layer: Director says it is locked and proposes nothing |
+| RDB-043 | P0 | W10 | Verified | Hindi input is understood; Director answers in Hindi when the panel is in Hindi |
+| RDB-044 | P0 | W10 | Verified | With Animations Off, switching layouts moves nothing and the Orb is still |

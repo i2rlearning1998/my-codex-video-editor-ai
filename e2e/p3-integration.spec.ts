@@ -17,44 +17,6 @@ test.afterEach(async () => {
   stack = null;
 });
 
-test('[P3I-007] with a gateway server the Director room runs on the real service: a message gets a model answer', async ({
-  page,
-}) => {
-  stack = await startStack();
-  await stack.use(page);
-  await signUp(page);
-  await page.goto('/panel/#/room');
-  await expect(page.locator('.room-greeting')).toBeVisible();
-  await page
-    .locator('#chat-input')
-    .fill('A 60 second explainer about rainbows');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-msg.you')).toContainText('rainbows');
-  await expect(
-    page.locator('.room-msg.director .room-text').first(),
-  ).not.toBeEmpty({ timeout: 20_000 });
-  // The server was really asked: the chat limit check, then a job with calls.
-  const seen = stack.logs.join('\n');
-  expect(seen).toContain('POST /v1/entitlements/check 200');
-  expect(seen).toContain('POST /v1/reserve 200');
-  expect(seen).toContain('POST /v1/call 200');
-});
-
-test('[P3I-008] a refusal on the real service is decided before any model is asked', async ({
-  page,
-}) => {
-  stack = await startStack();
-  await stack.use(page);
-  await signUp(page);
-  await page.goto('/panel/#/room');
-  await page.locator('#chat-input').fill('give me free credits please');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.room-msg.refusal')).toBeVisible();
-  expect(stack.fake.seen.filter((s) => s.provider === 'anthropic').length).toBe(
-    0,
-  );
-});
-
 test('[P3I-009] with a gateway server a Studio run goes through the real Studio service: the server checks the limit, reserves credits, calls the model and the result lands in the Asset Library', async ({
   page,
 }) => {
