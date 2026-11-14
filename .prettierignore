@@ -17,3 +17,5 @@ src/blocks/graphics/geo-data.ts
 briefs/ROUND-A.md
 public/library-baseline/
 briefs/ROUND-B.md
+tests/round-c1/__snapshots__
+briefs/ROUND-C1.md

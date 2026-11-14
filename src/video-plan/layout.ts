@@ -72,9 +72,7 @@ export interface LayoutEnv {
   /** A (shared) media slot for an asset; the item points at it. */
   slotFor(asset: Asset, hint: string): string;
   /** V4: a checked new graphic of the plan, by id. */
-  defOf?(
-    id: string,
-  ):
+  defOf?(id: string):
     | {
         readonly name: string;
         readonly params: readonly ParamSpec[];
@@ -133,7 +131,7 @@ type Layer = Pick<
   'anchor' | 'size' | 'at' | 'width' | 'height' | 'rotation' | 'opacity'
 >;
 /** The top-left of a box: at the layer's `at` centre, else by its anchor. */
-function place(
+export function place(
   layer: Layer,
   env: LayoutEnv,
   w: number,
