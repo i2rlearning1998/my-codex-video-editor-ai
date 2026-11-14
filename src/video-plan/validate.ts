@@ -14,6 +14,7 @@ import { isKitId } from './kit';
 import { estimateSceneDuration } from './timing';
 import { getBlock } from '../blocks/starters';
 import { validateParams } from '../blocks/params';
+import { checkLayerV4, checkPlanV4 } from './validate-v4';
 
 export interface PlanCheck {
   readonly ok: boolean;
@@ -93,7 +94,9 @@ function checkLayer(
   at: string,
   errors: string[],
   warnings: string[],
+  defIds: ReadonlySet<string> = new Set(),
 ) {
+  checkLayerV4(layer, at, errors, warnings, defIds);
   if (
     (layer.kind === 'title' ||
       layer.kind === 'text' ||
@@ -109,6 +112,8 @@ function checkLayer(
     const info = layer.block ? getBlock(layer.block) : undefined;
     if (!layer.block)
       errors.push(`${at} is a block layer without "block" (which block).`);
+    // V4: a new graphic of this plan (its params are checked when it compiles).
+    else if (defIds.has(layer.block)) void 0;
     else if (!info)
       errors.push(`${at}: there is no graphics block "${layer.block}".`);
     else {
@@ -183,6 +188,7 @@ export function validatePlan(input: unknown): PlanCheck {
         );
   const plan = loose.data;
   const errors: string[] = [];
+  const defIds = checkPlanV4(plan, errors, warnings);
   const sceneIds = new Set<string>();
   let total = 0;
   plan.scenes.forEach((scene, index) => {
@@ -198,7 +204,7 @@ export function validatePlan(input: unknown): PlanCheck {
       if (layerIds.has(layer.id))
         errors.push(`${at}: another layer has this id.`);
       layerIds.add(layer.id);
-      checkLayer(layer, at, errors, warnings);
+      checkLayer(layer, at, errors, warnings, defIds);
     }
     for (const shot of [scene.camera, ...(scene.cameras ?? [])])
       if (shot?.target && !layerIds.has(shot.target))
@@ -225,7 +231,7 @@ export function validatePlan(input: unknown): PlanCheck {
     if (overlayIds.has(layer.id))
       errors.push(`${at}: another overlay has this id.`);
     overlayIds.add(layer.id);
-    checkLayer(layer, at, errors, warnings);
+    checkLayer(layer, at, errors, warnings, defIds);
   }
   if (plan.narrationTrack && !plan.narrationTrack.query.trim())
     errors.push('"narrationTrack" needs a "query" (the narration file name).');

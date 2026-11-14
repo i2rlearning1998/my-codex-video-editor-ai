@@ -383,7 +383,9 @@ export function kitItems(id: string, ctx: KitContext): SpecItem[] | null {
 }
 
 /** A kit transition as the editor's scene transition id (null: a cut). */
-export function transitionId(kit: KitTransition): string | null {
+export function transitionId(kit: KitTransition | string): string | null {
+  // V4: a pixel transition of the FX library is used as it is.
+  if (kit.startsWith('transition.')) return kit;
   return kit === 'cut'
     ? null
     : kit === 'dip-to-black'

@@ -10,6 +10,8 @@
 import {
   EditorEngine,
   findClipByLayer,
+  maxSceneTransition,
+  sceneTransitionLabel,
   type Asset,
   type Command,
   type Project,
@@ -43,9 +45,13 @@ import { KIT_BACKGROUNDS } from './kit-ids';
 import {
   mayUse,
   resolveMedia,
+  resolveMediaV4,
+  type AssetRule,
   type MediaCandidate,
   type ResolveServices,
 } from './resolve';
+import { v4Commands, type V4Context } from './build-v4';
+import type { DefResult } from './defs';
 import { sceneDuration } from './timing';
 
 export { anchorBox } from './layout';
@@ -96,13 +102,27 @@ export interface PlanBuildDeps {
   readonly theme?: Theme | null;
   /** Why the voice is off (shown as a banner), when it is known up front. */
   readonly voiceUnavailable?: string;
+  /** V4: licences a pick may carry ([] = any) and the default source order. */
+  readonly assetRule?: Partial<Pick<AssetRule, 'licences' | 'order'>>;
+  /** V4: Creator presets of the Project (plan `preset`), when there are any. */
+  readonly preset?: V4Context['preset'];
+  readonly presetCommands?: V4Context['presetCommands'];
+}
+/** V4: how a media layer was filled. */
+export interface PlanPick {
+  readonly by: 'ai' | 'person' | 'name';
+  readonly title: string;
+  readonly provider?: string;
+  readonly licence?: string;
+  readonly attribution?: string;
+  readonly query?: string;
 }
 export interface PlanFlag {
   readonly key: string;
   readonly reason: string;
   /** FIX7: the file the plan expects (its query) and what kind it is. */
   readonly name?: string;
-  readonly type?: 'photo' | 'video' | 'audio' | 'icon' | 'emoji';
+  readonly type?: NonNullable<PlanLayer['mediaIntent']>['type'];
 }
 export interface PlanBuildResult {
   readonly project: Project | null;
@@ -117,6 +137,18 @@ export interface PlanBuildResult {
   readonly durations: readonly number[];
   /** The plan with `resolved` written in (for export and rebuilds). */
   readonly plan: VideoPlan | null;
+  /** V4: how each media layer was filled (Review & swap shows "picked by AI"). */
+  readonly picks?: Readonly<Record<string, PlanPick>>;
+  /** V4: the accepted new graphics (saved to the AI library). */
+  readonly defs?: readonly DefResult[];
+  /** V4: credit lines of the stock media used (listed with the export). */
+  readonly credits?: readonly {
+    key: string;
+    title: string;
+    provider: string;
+    licence: string;
+    attribution: string;
+  }[];
 }
 
 const ASPECTS = {
@@ -294,6 +326,49 @@ export async function buildVideoFromPlan(
   const plan = check.plan;
   const timeline = plan.meta.build === 'timeline';
   const warnings = [...check.warnings];
+  // V4: the plan's new graphics are compiled and checked first.
+  const defResults = new Map<string, DefResult>();
+  if (plan.defs?.blocks.length) {
+    const { checkDefs } = await import('./defs');
+    const checked = checkDefs(plan.defs.blocks);
+    const errors = [...checked.errors];
+    for (const r of checked.results) if (r.ok) defResults.set(r.id, r);
+    const { validateParams } = await import('../blocks/params');
+    for (const owner of [
+      ...plan.scenes,
+      { id: 'overlay', layers: plan.overlays },
+    ])
+      for (const layer of owner.layers)
+        if (
+          layer.kind === 'block' &&
+          layer.block &&
+          defResults.has(layer.block)
+        )
+          try {
+            validateParams(
+              defResults.get(layer.block)!.params ?? [],
+              (layer.params ?? {}) as never,
+            );
+          } catch (e) {
+            errors.push(
+              `Layer "${layer.id}": settings of "${layer.block}": ${(e as Error).message}.`,
+            );
+          }
+    if (errors.length) {
+      onProgress({ step: 'check', state: 'failed', detail: errors[0] });
+      return {
+        project: null,
+        errors,
+        warnings,
+        flags: [],
+        resolved: {},
+        alternatives: {},
+        silent: null,
+        durations: [],
+        plan: null,
+      };
+    }
+  }
   onProgress({ step: 'check', state: 'done' });
   const [width, height] = ASPECTS[plan.meta.aspect];
   const theme = deps.theme ?? null;
@@ -337,7 +412,110 @@ export async function buildVideoFromPlan(
   const importedBy = new Map<string, Asset>();
   let found = 0,
     wanted = 0;
-  const findMedia = async (key: string, layer: PlanLayer) => {
+  const v4 = plan.version === 4;
+  const rule: AssetRule = {
+    order: plan.meta.assets?.order ??
+      deps.assetRule?.order ?? ['mine', 'library', 'stock', 'ai'],
+    onlyMine: plan.meta.assets?.onlyMine ?? false,
+    licences: deps.assetRule?.licences ?? [],
+    aiImagesMax: plan.meta.assets?.aiImagesMax ?? 0,
+    aiVideosMax: plan.meta.assets?.aiVideosMax ?? 0,
+  };
+  const used = new Set<string>();
+  const picks: Record<string, PlanPick> = {};
+  const creditLines: {
+    key: string;
+    title: string;
+    provider: string;
+    licence: string;
+    attribution: string;
+  }[] = [];
+  const seconds = (layer: PlanLayer, owner?: PlanScene) =>
+    layer.duration ?? owner?.durationHint ?? 5;
+  const findMediaV4 = async (
+    key: string,
+    layer: PlanLayer,
+    owner?: PlanScene,
+  ) => {
+    stop();
+    wanted++;
+    const preferredKey = plan.resolved?.[key];
+    const choice = await resolveMediaV4(
+      layer,
+      deps.resolve,
+      rule,
+      { seconds: seconds(layer, owner), used },
+      preferredKey,
+    );
+    alternatives[key] = choice.alternatives;
+    let asset: Asset | null = null;
+    let picked: MediaCandidate | null = null;
+    for (const candidate of choice.chosen
+      ? [
+          choice.chosen,
+          ...choice.alternatives.filter((c) => c !== choice.chosen),
+        ]
+      : []) {
+      try {
+        const known = importedBy.get(candidate.key);
+        asset = known ?? (await deps.importCandidate(candidate, signal));
+        importedBy.set(candidate.key, asset);
+        resolved[key] = candidate.key;
+        picked = candidate;
+        break;
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') throw error;
+        warnings.push(
+          `${key}: "${candidate.title}" could not be added (${(error as Error).message}); trying the next one.`,
+        );
+      }
+    }
+    if (asset && picked) {
+      assets.set(key, asset);
+      used.add(picked.key);
+      found++;
+      picks[key] = {
+        by:
+          picked.key === preferredKey
+            ? 'person'
+            : picked.source === 'asset'
+              ? 'name'
+              : 'ai',
+        title: picked.title,
+        ...(picked.provider ? { provider: picked.provider } : {}),
+        ...(picked.licence ? { licence: picked.licence } : {}),
+        ...(picked.attribution ? { attribution: picked.attribution } : {}),
+        ...(choice.query ? { query: choice.query } : {}),
+      };
+      if (picked.source === 'stock')
+        creditLines.push({
+          key,
+          title: picked.title,
+          provider: picked.provider ?? picked.key.split(':')[0]!,
+          licence: picked.licence ?? '',
+          attribution: picked.attribution ?? '',
+        });
+    } else
+      flags.push({
+        key,
+        reason:
+          choice.reason ?? `Nothing usable for "${layer.mediaIntent?.query}".`,
+        ...(layer.mediaIntent
+          ? { name: layer.mediaIntent.query, type: layer.mediaIntent.type }
+          : {}),
+      });
+    onProgress({
+      step: 'media',
+      state: 'running',
+      detail: `${found}/${wanted}`,
+    });
+  };
+  const findMedia = async (
+    key: string,
+    layer: PlanLayer,
+    owner?: PlanScene,
+  ) => {
+    if (v4) return findMediaV4(key, layer, owner);
     stop();
     wanted++;
     const choice = await resolveMedia(
@@ -403,7 +581,7 @@ export async function buildVideoFromPlan(
     );
   for (const scene of plan.scenes)
     for (const entry of mediaLayers(scene, scene.layers))
-      await findMedia(entry.key, entry.layer);
+      await findMedia(entry.key, entry.layer, scene);
   for (const entry of mediaLayers(OVERLAY, plan.overlays))
     await findMedia(entry.key, entry.layer);
   if (plan.narrationTrack)
@@ -555,6 +733,16 @@ export async function buildVideoFromPlan(
     palette,
     assetOf: (key: string) => assets.get(key),
     slotFor,
+    defOf: (defId: string) => {
+      const d = defResults.get(defId);
+      return d?.ok
+        ? {
+            name: d.name ?? defId,
+            params: d.params ?? [],
+            duration: d.duration ?? 5,
+          }
+        : undefined;
+    },
   };
   // A timeline is ONE scene; otherwise each plan scene is its own scene.
   const groups = timeline
@@ -574,6 +762,7 @@ export async function buildVideoFromPlan(
     }
     videoOffset += within;
   });
+  const pixelTransitions: { gi: number; type: string; duration: number }[] = [];
   const scenes = groups.map((members, gi) => {
     const groupDuration = members.reduce((sum, si) => sum + durations[si]!, 0);
     const items: SpecItem[] = [];
@@ -614,7 +803,16 @@ export async function buildVideoFromPlan(
       span: number,
       prefixOf: (layer: PlanLayer) => string,
     ) => {
-      const order = [...layers].sort((a, b) => rank(a) - rank(b));
+      // V4: `order` sorts layers inside their rank (higher is on top).
+      const order = layers
+        .map((layer, index) => ({ layer, index }))
+        .sort(
+          (a, b) =>
+            rank(a.layer) - rank(b.layer) ||
+            (a.layer.order ?? 0) - (b.layer.order ?? 0) ||
+            a.index - b.index,
+        )
+        .map((entry) => entry.layer);
       for (const layer of [...order].reverse()) {
         const start = Math.min(layer.start ?? 0, Math.max(0, span - 0.2));
         const when = {
@@ -758,8 +956,21 @@ export async function buildVideoFromPlan(
     const scene = plan.scenes[lastScene]!;
     const kitTransition =
       scene.transitionOut?.type ?? plan.feel?.transition ?? 'crossfade';
-    const transition =
+    let transition =
       !timeline && gi < groups.length - 1 ? transitionId(kitTransition) : null;
+    // V4: a pixel transition of the FX library is set after the build (the
+    // Composition Spec names only the basic ones).
+    if (transition?.startsWith('transition.')) {
+      pixelTransitions.push({
+        gi,
+        type: transition,
+        duration: Math.min(
+          scene.transitionOut?.duration ?? 0.6,
+          groupDuration / 2,
+        ),
+      });
+      transition = null;
+    }
     return {
       id: `S${gi}`,
       name: (timeline
@@ -873,6 +1084,16 @@ export async function buildVideoFromPlan(
       warnings.push(`${label}: ${(error as Error).message}`);
     }
   };
+  // V4: one transaction per layer; when it fails, each field alone, so one
+  // bad field is a warning and the others still apply.
+  const runEach = (label: string, commands: Command[]) => {
+    if (!commands.length) return;
+    try {
+      engine.commands.transaction(label, commands);
+    } catch {
+      for (const command of commands) run(label, [command]);
+    }
+  };
   const sceneLayers = (gi: number) => {
     const composition = engine.state.compositions[gi];
     return composition ? { composition, prefix: `ais_${id}_s${gi}_i` } : null;
@@ -893,6 +1114,17 @@ export async function buildVideoFromPlan(
         : post.type === 'boolean'
           ? booleanProperty(post.value as boolean)
           : plain(post.value as string);
+  // V4: each plan layer by its key, the groups to make, and the timing of media.
+  const planLayers = new Map<string, PlanLayer>();
+  for (const scene of plan.scenes)
+    for (const layer of scene.layers)
+      planLayers.set(layerKey(scene, layer), layer);
+  for (const layer of plan.overlays)
+    planLayers.set(layerKey(OVERLAY, layer), layer);
+  const groupsToMake = new Map<
+    string,
+    { compositionId: string; ids: string[]; name: string }
+  >();
   for (const place of placed) {
     const hit = layerOf(place);
     if (!hit) continue;
@@ -949,6 +1181,39 @@ export async function buildVideoFromPlan(
         },
       } as unknown as Command);
     run('Plan layer', commands);
+    const planLayer = v4 ? planLayers.get(place.key) : undefined;
+    if (planLayer) {
+      const clipNow = findClipByLayer(composition, layer.id)?.clip ?? null;
+      const asset = assets.get(place.key);
+      runEach(
+        'Plan layer v4',
+        v4Commands({
+          engine,
+          compositionId: composition.id,
+          width,
+          height,
+          layer: layer as never,
+          clip: clipNow as never,
+          plan: planLayer,
+          sourceSeconds: asset?.duration,
+          def: place.post?.def ? defResults.get(place.post.def.id) : undefined,
+          defParams: place.post?.def?.params,
+          preset: deps.preset,
+          presetCommands: deps.presetCommands,
+          warn: (text) => warnings.push(text),
+        }),
+      );
+      if (planLayer.group) {
+        const k = `${place.sceneIndex}/${planLayer.group}`;
+        const g = groupsToMake.get(k) ?? {
+          compositionId: composition.id,
+          ids: [],
+          name: planLayer.group,
+        };
+        g.ids.push(layer.id);
+        groupsToMake.set(k, g);
+      }
+    }
     const feather = place.post?.feather;
     if (feather) {
       const f = feather.px;
@@ -1064,6 +1329,41 @@ export async function buildVideoFromPlan(
       ]);
     }
   }
+  // V4: pixel transitions between scenes (the same marker the adapter writes).
+  for (const pt of pixelTransitions) {
+    const a = engine.state.compositions[pt.gi];
+    const b = engine.state.compositions[pt.gi + 1];
+    if (!a || !b) continue;
+    const limit = maxSceneTransition(
+      { id: '', markers: [], duration: durationsOut[pt.gi]! },
+      { id: '', markers: [], duration: durationsOut[pt.gi + 1]! },
+    );
+    run('Plan scene transition', [
+      {
+        type: 'ADD_MARKER',
+        compositionId: b.id,
+        marker: {
+          id: `scene-transition-${pt.gi + 1}`,
+          time: 0,
+          label: sceneTransitionLabel({
+            type: pt.type,
+            duration: Math.min(pt.duration, limit),
+          } as never),
+        },
+      } as unknown as Command,
+    ]);
+  }
+  // V4: layers sharing a `group` become one group (one per scene).
+  for (const [k, g] of groupsToMake)
+    run('Plan group', [
+      {
+        type: 'GROUP',
+        compositionId: g.compositionId,
+        layerIds: g.ids,
+        groupId: `grp-${id}-${k.replace(/[^a-z0-9]/gi, '-')}`.slice(0, 120),
+        name: g.name,
+      } as unknown as Command,
+    ]);
   // Camera: each scene's shots (default: the feel's tendency), at the scene's
   // place in its composition.
   const shots: CameraShotPlan[] = [];
@@ -1150,5 +1450,12 @@ export async function buildVideoFromPlan(
     silent,
     durations: durationsOut,
     plan: { ...plan, resolved },
+    ...(v4
+      ? {
+          picks,
+          defs: [...defResults.values()],
+          credits: creditLines,
+        }
+      : {}),
   };
 }

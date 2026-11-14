@@ -345,6 +345,41 @@ export function defaultFieldLibrary(): {
         ],
       },
       {
+        // ROUND-C1 C1.7: video types for later Styles are data.
+        id: 'documentary',
+        name: L('Documentary', 'डॉक्यूमेंट्री'),
+        keywords: [
+          'documentary',
+          'history of',
+          'the story of',
+          'डॉक्यूमेंट्री',
+          'इतिहास',
+        ],
+        blocks: [
+          { id: 'topic', required: true },
+          { id: 'language', required: true },
+          { id: 'length', required: true },
+          { id: 'script' },
+          { id: 'voice' },
+          { id: 'music' },
+          { id: 'captions' },
+          { id: 'aspect' },
+          { id: 'reference' },
+        ],
+      },
+      {
+        id: 'logo-intro',
+        name: L('Logo reveal and intro', 'लोगो रिवील और इंट्रो'),
+        keywords: ['logo reveal', 'intro', 'logo animation', 'लोगो'],
+        blocks: [
+          { id: 'brand', required: true },
+          { id: 'length' },
+          { id: 'music' },
+          { id: 'aspect' },
+          { id: 'look' },
+        ],
+      },
+      {
         id: 'general',
         name: L('General', 'सामान्य'),
         keywords: [],

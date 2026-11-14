@@ -1,2797 +1,2677 @@
 {
- "project": {
-  "schemaVersion": 9,
-  "id": "composition-plan-how-big-is-an-angle",
-  "metadata": {
-   "name": "How big is an angle?",
-   "createdAt": "<time>",
-   "updatedAt": "<time>"
-  },
-  "settings": {
-   "backgroundColor": "#000000",
-   "audioSampleRate": 48000
-  },
-  "compositions": [
-   {
-    "id": "ais_plan-how-big-is-an-angle_s0_c",
-    "name": "How big is an angle?",
-    "width": 1920,
-    "height": 1080,
-    "fps": 30,
-    "duration": 16,
-    "backgroundColor": "#000000",
-    "layers": [
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_bg_c",
-      "name": "Scene background",
-      "type": "shape",
-      "startTime": 0,
-      "duration": 16,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         0,
-         0
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1920,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1080,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "rectangle",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#f1ede4"
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i17_layer_c",
-      "name": "Background",
-      "type": "shape",
-      "startTime": 0,
-      "duration": 10,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         0,
-         0
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1920,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1080,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "rectangle",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#f1ede4"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/bg",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i16_layer_c",
-      "name": "180°",
-      "type": "text",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1208.196,
-         861.5499999999998
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 111,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 48.1,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "180°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 37,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool#180",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i15_layer_c",
-      "name": "150°",
-      "type": "text",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1167.5084510277188,
-         709.7019999999998
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 111,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 48.1,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "150°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 37,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool#150",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i14_layer_c",
-      "name": "120°",
-      "type": "text",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1056.348,
-         598.5415489722811
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 111,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 48.1,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "120°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 37,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool#120",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i13_layer_c",
-      "name": "90°",
-      "type": "text",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         904.5,
-         557.854
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 111,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 48.1,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "90°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 37,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool#90",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i12_layer_c",
-      "name": "60°",
-      "type": "text",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         752.6519999999998,
-         598.5415489722811
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 111,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 48.1,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "60°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 37,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool#60",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i11_layer_c",
-      "name": "30°",
-      "type": "text",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         641.4915489722812,
-         709.702
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 111,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 48.1,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "30°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 37,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool#30",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i10_layer_c",
-      "name": "0°",
-      "type": "text",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         600.8040000000001,
-         861.55
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 111,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 48.1,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "0°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 37,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool#0",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i9_layer_c",
-      "name": "protractor tool",
-      "type": "shape",
-      "startTime": 0,
-      "duration": 9,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         539.34,
-         470.06999999999994
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 841.32,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 420.65999999999997,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "path",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b6cb0"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/tool",
-        "keyframes": []
-       },
-       "polygon": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "[[[[5.13,415.53],[5.7,393.78],[7.41,372.1],[10.25,350.53],[14.21,329.14],[19.29,307.98],[25.47,287.12],[32.73,266.62],[41.05,246.52],[50.42,226.88],[60.8,207.76],[72.17,189.22],[84.49,171.29],[97.73,154.03],[111.86,137.49],[126.84,121.71],[142.62,106.73],[159.16,92.6],[176.42,79.36],[194.35,67.04],[212.89,55.67],[232.01,45.29],[251.65,35.92],[271.75,27.6],[292.25,20.34],[313.11,14.16],[334.27,9.08],[355.66,5.12],[377.23,2.28],[398.91,0.57],[420.66,0],[442.41,0.57],[464.09,2.28],[485.66,5.12],[507.05,9.08],[528.21,14.16],[549.07,20.34],[569.57,27.6],[589.67,35.92],[609.31,45.29],[628.43,55.67],[646.97,67.04],[664.9,79.36],[682.16,92.6],[698.7,106.73],[714.48,121.71],[729.46,137.49],[743.59,154.03],[756.83,171.29],[769.15,189.22],[780.52,207.76],[790.9,226.88],[800.27,246.52],[808.59,266.62],[815.85,287.12],[822.03,307.98],[827.11,329.14],[831.07,350.53],[833.91,372.1],[835.62,393.78],[836.19,415.53],[825.93,415.53],[825.37,394.32],[823.71,373.17],[820.94,352.13],[817.07,331.27],[812.12,310.64],[806.09,290.29],[799.01,270.29],[790.89,250.69],[781.76,231.54],[771.63,212.89],[760.55,194.8],[748.53,177.32],[735.61,160.49],[721.83,144.35],[707.23,128.96],[691.84,114.36],[675.7,100.58],[658.87,87.66],[641.39,75.64],[623.29,64.56],[604.65,54.43],[585.5,45.3],[565.9,37.18],[545.9,30.1],[525.55,24.07],[504.92,19.12],[484.06,15.25],[463.02,12.48],[441.87,10.82],[420.66,10.26],[399.45,10.82],[378.3,12.48],[357.26,15.25],[336.4,19.12],[315.77,24.07],[295.42,30.1],[275.42,37.18],[255.82,45.3],[236.67,54.43],[218.02,64.56],[199.93,75.64],[182.45,87.66],[165.62,100.58],[149.48,114.36],[134.09,128.96],[119.49,144.35],[105.71,160.49],[92.79,177.32],[80.77,194.8],[69.69,212.9],[59.56,231.54],[50.43,250.69],[42.31,270.29],[35.23,290.29],[29.2,310.64],[24.25,331.27],[20.38,352.13],[17.61,373.17],[15.95,394.32],[15.39,415.53]]],[[[0,420.66],[841.32,420.66],[841.32,410.4],[0,410.4]]],[[[67.72,410.91],[10.26,410.91],[10.26,420.15],[67.72,420.15]]],[[[45.32,346.22],[17.03,341.23],[15.96,347.3],[44.25,352.28]]],[[[63.06,282.1],[36.06,272.27],[33.96,278.06],[60.95,287.88]]],[[[117.31,235.06],[67.55,206.33],[62.93,214.33],[112.69,243.06]]],[[[130.26,167.84],[108.25,149.37],[104.3,154.09],[126.3,172.55]]],[[[177.68,121.17],[159.22,99.17],[154.5,103.12],[172.97,125.13]]],[[[248.19,107.56],[219.46,57.8],[211.46,62.42],[240.19,112.18]]],[[[293.01,55.82],[283.19,28.83],[277.4,30.93],[287.23,57.93]]],[[[357.41,39.12],[352.43,10.83],[346.36,11.9],[351.35,40.19]]],[[[425.28,62.59],[425.28,5.13],[416.04,5.13],[416.04,62.59]]],[[[489.97,40.19],[494.96,11.9],[488.89,10.83],[483.91,39.12]]],[[[554.09,57.93],[563.92,30.93],[558.13,28.83],[548.31,55.82]]],[[[601.13,112.18],[629.86,62.42],[621.86,57.8],[593.13,107.56]]],[[[668.35,125.13],[686.82,103.12],[682.1,99.17],[663.64,121.17]]],[[[715.02,172.55],[737.02,154.09],[733.07,149.37],[711.06,167.84]]],[[[728.63,243.06],[778.39,214.33],[773.77,206.33],[724.01,235.06]]],[[[780.37,287.88],[807.36,278.06],[805.26,272.27],[778.26,282.1]]],[[[797.07,352.28],[825.36,347.3],[824.29,341.23],[796,346.22]]],[[[773.6,420.15],[831.06,420.15],[831.06,410.91],[773.6,410.91]]]]",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i8_layer_c",
-      "name": "arrow ray",
-      "type": "shape",
-      "startTime": 2,
-      "duration": 8,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         948.551503677975,
-         875.9081512617777
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": -49.75,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 594.3138564765253,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 30,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "arrow",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#f0a03c"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/ray",
-        "keyframes": []
-       },
-       "manualColor_stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#f0a03c"
-       },
-       "strokeWidth": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 10,
-        "keyframes": []
-       },
-       "strokeDash": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "solid",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i7_layer_c",
-      "name": "arc angle",
-      "type": "shape",
-      "startTime": 3,
-      "duration": 7,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1022.209408128231,
-         744.9410314519118
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 92.99059187176908,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 140.65896854808807,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "path",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b2b2b"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/angle",
-        "keyframes": []
-       },
-       "polygon": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "[[[[3.38,0],[10.54,3.57],[17.51,7.5],[24.27,11.79],[30.8,16.41],[37.08,21.37],[43.1,26.65],[48.83,32.23],[54.27,38.1],[59.4,44.24],[64.21,50.63],[68.68,57.27],[72.81,64.13],[76.57,71.19],[79.97,78.43],[82.99,85.85],[85.62,93.4],[87.86,101.09],[89.7,108.87],[91.14,116.75],[92.17,124.68],[92.78,132.66],[92.99,140.66],[84.99,140.66],[84.79,133.07],[84.21,125.5],[83.23,117.98],[81.87,110.51],[80.12,103.13],[78,95.84],[75.5,88.67],[72.64,81.64],[69.42,74.77],[65.85,68.07],[61.94,61.57],[57.7,55.27],[53.14,49.21],[48.27,43.38],[43.11,37.82],[37.67,32.53],[31.96,27.52],[26,22.82],[19.81,18.43],[13.4,14.36],[6.79,10.63],[0,7.25]]]]",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i6_layer_c",
-      "name": "65°",
-      "type": "text",
-      "startTime": 4,
-      "duration": 6,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         460.8,
-         727.6
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1536,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 100,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "65°",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 80,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b2b2b"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "protractor/value",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       },
-       "fontWeight": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 800,
-        "keyframes": []
-       },
-       "textEffect": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "{\"type\":\"background\",\"color\":\"#ffffff\",\"roundness\":40,\"spread\":45,\"intensity\":50,\"transparency\":0}",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i5_layer_c",
-      "name": "Background",
-      "type": "shape",
-      "startTime": 10,
-      "duration": 6,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         0,
-         0
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1920,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1080,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "rectangle",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#f1ede4"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "think/bg",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i4_layer_c",
-      "name": "Thought dot",
-      "type": "shape",
-      "startTime": 10,
-      "duration": 6,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         691.1999999999999,
-         635.1305000000001
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 38.4,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 38.4,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "ellipse",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#ffffff"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "think/q#dot1",
-        "keyframes": []
-       },
-       "manualColor_stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b2b2b"
-       },
-       "strokeWidth": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 4,
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i3_layer_c",
-      "name": "Thought dot",
-      "type": "shape",
-      "startTime": 10,
-      "duration": 6,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         715.1999999999999,
-         603.2732000000001
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 67.2,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 67.2,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "ellipse",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#ffffff"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "think/q#dot0",
-        "keyframes": []
-       },
-       "manualColor_stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b2b2b"
-       },
-       "strokeWidth": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 4,
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i2_layer_c",
-      "name": "Bubble",
-      "type": "shape",
-      "startTime": 10,
-      "duration": 6,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         480,
-         409.05
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 960,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 153.9,
-        "keyframes": []
-       },
-       "shapeKind": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "ellipse",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#ffffff"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "think/q#body",
-        "keyframes": []
-       },
-       "manualColor_stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "stroke": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b2b2b"
-       },
-       "strokeWidth": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 4,
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i1_layer_c",
-      "name": "What if the angle is 7.2°?",
-      "type": "text",
-      "startTime": 10,
-      "duration": 6,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         556.8,
-         452.25
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 806.4,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 67.5,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "What if the angle is 7.2°?",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 54,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#2b2b2b"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "think/q",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i0_layer_c",
-      "name": "Angles in 20 seconds",
-      "type": "text",
-      "startTime": 0,
-      "duration": 16,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         96,
-         53.1
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 576,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 45,
-        "keyframes": []
-       },
-       "text": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Angles in 20 seconds",
-        "keyframes": []
-       },
-       "fontSize": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 36,
-        "keyframes": []
-       },
-       "fontFamily": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "Poppins",
-        "keyframes": []
-       },
-       "manualColor_fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "boolean",
-        "value": true,
-        "keyframes": []
-       },
-       "fill": {
-        "animated": false,
-        "constraints": [],
-        "type": "color",
-        "keyframes": [],
-        "value": "#3b1f00"
-       },
-       "planRef": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "overlay/tag",
-        "keyframes": []
-       },
-       "textAlign": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "center",
-        "keyframes": []
-       },
-       "fontWeight": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 700,
-        "keyframes": []
-       },
-       "textEffect": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "{\"type\":\"background\",\"color\":\"#f0a03c\",\"roundness\":40,\"spread\":45,\"intensity\":50,\"transparency\":0}",
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     },
-     {
-      "id": "shot-plan-how-big-is-an-angle-2",
-      "name": "Camera 1 · push-in",
-      "type": "shape",
-      "startTime": 0,
-      "duration": 10,
-      "transform": {
-       "position": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         0,
-         0
-        ],
-        "keyframes": []
-       },
-       "rotation": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 0,
-        "keyframes": []
-       },
-       "scale": {
-        "animated": false,
-        "constraints": [],
-        "type": "vector2",
-        "value": [
-         1,
-         1
-        ],
-        "keyframes": []
-       },
-       "opacity": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "properties": {
-       "role": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "camera",
-        "keyframes": []
-       },
-       "cameraSpec": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "{\"id\":\"camera-plan-how-big-is-an-angle-1\",\"name\":\"Camera 1\",\"type\":\"persp\",\"lensUnit\":\"mm\",\"focal\":50,\"orthoScale\":1,\"sensorFit\":\"auto\",\"sensor\":36,\"shiftX\":0,\"shiftY\":0,\"clipStart\":0.1,\"clipEnd\":100000,\"showLimits\":false,\"dof\":{\"enabled\":false,\"focusLayer\":null,\"distance\":0,\"fStop\":2.8,\"blades\":0,\"rotation\":0,\"ratio\":1},\"safeAreas\":{\"show\":false,\"title\":[0.1,0.05],\"action\":[0.035,0.035],\"centerCut\":false,\"centerTitle\":[0.175,0.05],\"centerAction\":[0.15,0.05]},\"passepartout\":{\"show\":true,\"alpha\":0.5},\"guides\":{\"center\":false,\"centerDiagonal\":false,\"thirds\":false,\"golden\":false,\"goldenTriangleA\":false,\"goldenTriangleB\":false,\"harmoniousTriangleA\":false,\"harmoniousTriangleB\":false},\"display\":{\"size\":1,\"showName\":true,\"showSensor\":false},\"background\":null,\"trackTo\":{\"layerId\":null,\"up\":\"Y\"}}",
-        "keyframes": []
-       },
-       "cameraShot": {
-        "animated": false,
-        "constraints": [],
-        "type": "string",
-        "value": "{\"cameraId\":\"camera-plan-how-big-is-an-angle-1\",\"controller\":\"push-in\",\"easing\":\"smooth\",\"strength\":0.2,\"amount\":6,\"speed\":1.2,\"seed\":1,\"direction\":1,\"target\":null}",
-        "keyframes": []
-       },
-       "width": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       },
-       "height": {
-        "animated": false,
-        "constraints": [],
-        "type": "number",
-        "value": 1,
-        "keyframes": []
-       }
-      },
-      "effects": [],
-      "masks": [],
-      "assetId": null,
-      "children": []
-     }
-    ],
-    "tracks": [
-     {
-      "id": "camera-track-ais_plan-how-big-is-an-angle_s0_c",
-      "name": "Camera",
-      "type": "object",
-      "order": 0,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "shot-plan-how-big-is-an-angle-2-clip",
-        "name": "Camera 1 · push-in",
-        "layerId": "shot-plan-how-big-is-an-angle-2",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 10,
-        "sourceIn": 0,
-        "sourceOut": 10,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {}
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i0_track_c",
-      "name": "Angles in 20 seconds",
-      "type": "text",
-      "order": 1,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i0_clip_c",
-        "name": "Angles in 20 seconds",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i0_layer_c",
-        "assetId": null,
-        "startTime": 0,
+  "project": {
+    "schemaVersion": 9,
+    "id": "composition-plan-how-big-is-an-angle",
+    "metadata": {
+      "name": "How big is an angle?",
+      "createdAt": "<time>",
+      "updatedAt": "<time>"
+    },
+    "settings": {
+      "backgroundColor": "#000000",
+      "audioSampleRate": 48000
+    },
+    "compositions": [
+      {
+        "id": "ais_plan-how-big-is-an-angle_s0_c",
+        "name": "How big is an angle?",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
         "duration": 16,
-        "sourceIn": 0,
-        "sourceOut": 16,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {}
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i1_track_c",
-      "name": "What if the angle is 7.2°?",
-      "type": "text",
-      "order": 2,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i1_clip_c",
-        "name": "What if the angle is 7.2°?",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i1_layer_c",
-        "assetId": null,
-        "startTime": 10,
-        "duration": 6,
-        "sourceIn": 0,
-        "sourceOut": 6,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "pop",
-           "duration": 0.6
+        "backgroundColor": "#000000",
+        "layers": [
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_bg_c",
+            "name": "Scene background",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 16,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#f1ede4"
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i17_layer_c",
+            "name": "Background",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 10,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#f1ede4"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/bg",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i16_layer_c",
+            "name": "180°",
+            "type": "text",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1208.196, 861.5499999999998],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 111,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48.1,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "180°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 37,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool#180",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i15_layer_c",
+            "name": "150°",
+            "type": "text",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1167.5084510277188, 709.7019999999998],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 111,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48.1,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "150°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 37,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool#150",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i14_layer_c",
+            "name": "120°",
+            "type": "text",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1056.348, 598.5415489722811],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 111,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48.1,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "120°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 37,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool#120",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i13_layer_c",
+            "name": "90°",
+            "type": "text",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [904.5, 557.854],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 111,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48.1,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "90°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 37,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool#90",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i12_layer_c",
+            "name": "60°",
+            "type": "text",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [752.6519999999998, 598.5415489722811],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 111,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48.1,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "60°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 37,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool#60",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i11_layer_c",
+            "name": "30°",
+            "type": "text",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [641.4915489722812, 709.702],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 111,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48.1,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "30°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 37,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool#30",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i10_layer_c",
+            "name": "0°",
+            "type": "text",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [600.8040000000001, 861.55],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 111,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 48.1,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "0°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 37,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool#0",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i9_layer_c",
+            "name": "protractor tool",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 9,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [539.34, 470.06999999999994],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 841.32,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 420.65999999999997,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "path",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b6cb0"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/tool",
+                "keyframes": []
+              },
+              "polygon": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "[[[[5.13,415.53],[5.7,393.78],[7.41,372.1],[10.25,350.53],[14.21,329.14],[19.29,307.98],[25.47,287.12],[32.73,266.62],[41.05,246.52],[50.42,226.88],[60.8,207.76],[72.17,189.22],[84.49,171.29],[97.73,154.03],[111.86,137.49],[126.84,121.71],[142.62,106.73],[159.16,92.6],[176.42,79.36],[194.35,67.04],[212.89,55.67],[232.01,45.29],[251.65,35.92],[271.75,27.6],[292.25,20.34],[313.11,14.16],[334.27,9.08],[355.66,5.12],[377.23,2.28],[398.91,0.57],[420.66,0],[442.41,0.57],[464.09,2.28],[485.66,5.12],[507.05,9.08],[528.21,14.16],[549.07,20.34],[569.57,27.6],[589.67,35.92],[609.31,45.29],[628.43,55.67],[646.97,67.04],[664.9,79.36],[682.16,92.6],[698.7,106.73],[714.48,121.71],[729.46,137.49],[743.59,154.03],[756.83,171.29],[769.15,189.22],[780.52,207.76],[790.9,226.88],[800.27,246.52],[808.59,266.62],[815.85,287.12],[822.03,307.98],[827.11,329.14],[831.07,350.53],[833.91,372.1],[835.62,393.78],[836.19,415.53],[825.93,415.53],[825.37,394.32],[823.71,373.17],[820.94,352.13],[817.07,331.27],[812.12,310.64],[806.09,290.29],[799.01,270.29],[790.89,250.69],[781.76,231.54],[771.63,212.89],[760.55,194.8],[748.53,177.32],[735.61,160.49],[721.83,144.35],[707.23,128.96],[691.84,114.36],[675.7,100.58],[658.87,87.66],[641.39,75.64],[623.29,64.56],[604.65,54.43],[585.5,45.3],[565.9,37.18],[545.9,30.1],[525.55,24.07],[504.92,19.12],[484.06,15.25],[463.02,12.48],[441.87,10.82],[420.66,10.26],[399.45,10.82],[378.3,12.48],[357.26,15.25],[336.4,19.12],[315.77,24.07],[295.42,30.1],[275.42,37.18],[255.82,45.3],[236.67,54.43],[218.02,64.56],[199.93,75.64],[182.45,87.66],[165.62,100.58],[149.48,114.36],[134.09,128.96],[119.49,144.35],[105.71,160.49],[92.79,177.32],[80.77,194.8],[69.69,212.9],[59.56,231.54],[50.43,250.69],[42.31,270.29],[35.23,290.29],[29.2,310.64],[24.25,331.27],[20.38,352.13],[17.61,373.17],[15.95,394.32],[15.39,415.53]]],[[[0,420.66],[841.32,420.66],[841.32,410.4],[0,410.4]]],[[[67.72,410.91],[10.26,410.91],[10.26,420.15],[67.72,420.15]]],[[[45.32,346.22],[17.03,341.23],[15.96,347.3],[44.25,352.28]]],[[[63.06,282.1],[36.06,272.27],[33.96,278.06],[60.95,287.88]]],[[[117.31,235.06],[67.55,206.33],[62.93,214.33],[112.69,243.06]]],[[[130.26,167.84],[108.25,149.37],[104.3,154.09],[126.3,172.55]]],[[[177.68,121.17],[159.22,99.17],[154.5,103.12],[172.97,125.13]]],[[[248.19,107.56],[219.46,57.8],[211.46,62.42],[240.19,112.18]]],[[[293.01,55.82],[283.19,28.83],[277.4,30.93],[287.23,57.93]]],[[[357.41,39.12],[352.43,10.83],[346.36,11.9],[351.35,40.19]]],[[[425.28,62.59],[425.28,5.13],[416.04,5.13],[416.04,62.59]]],[[[489.97,40.19],[494.96,11.9],[488.89,10.83],[483.91,39.12]]],[[[554.09,57.93],[563.92,30.93],[558.13,28.83],[548.31,55.82]]],[[[601.13,112.18],[629.86,62.42],[621.86,57.8],[593.13,107.56]]],[[[668.35,125.13],[686.82,103.12],[682.1,99.17],[663.64,121.17]]],[[[715.02,172.55],[737.02,154.09],[733.07,149.37],[711.06,167.84]]],[[[728.63,243.06],[778.39,214.33],[773.77,206.33],[724.01,235.06]]],[[[780.37,287.88],[807.36,278.06],[805.26,272.27],[778.26,282.1]]],[[[797.07,352.28],[825.36,347.3],[824.29,341.23],[796,346.22]]],[[[773.6,420.15],[831.06,420.15],[831.06,410.91],[773.6,410.91]]]]",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i8_layer_c",
+            "name": "arrow ray",
+            "type": "shape",
+            "startTime": 2,
+            "duration": 8,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [948.551503677975, 875.9081512617777],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": -49.75,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 594.3138564765253,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 30,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "arrow",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#f0a03c"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/ray",
+                "keyframes": []
+              },
+              "manualColor_stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#f0a03c"
+              },
+              "strokeWidth": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 10,
+                "keyframes": []
+              },
+              "strokeDash": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "solid",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i7_layer_c",
+            "name": "arc angle",
+            "type": "shape",
+            "startTime": 3,
+            "duration": 7,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1022.209408128231, 744.9410314519118],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 92.99059187176908,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 140.65896854808807,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "path",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b2b2b"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/angle",
+                "keyframes": []
+              },
+              "polygon": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "[[[[3.38,0],[10.54,3.57],[17.51,7.5],[24.27,11.79],[30.8,16.41],[37.08,21.37],[43.1,26.65],[48.83,32.23],[54.27,38.1],[59.4,44.24],[64.21,50.63],[68.68,57.27],[72.81,64.13],[76.57,71.19],[79.97,78.43],[82.99,85.85],[85.62,93.4],[87.86,101.09],[89.7,108.87],[91.14,116.75],[92.17,124.68],[92.78,132.66],[92.99,140.66],[84.99,140.66],[84.79,133.07],[84.21,125.5],[83.23,117.98],[81.87,110.51],[80.12,103.13],[78,95.84],[75.5,88.67],[72.64,81.64],[69.42,74.77],[65.85,68.07],[61.94,61.57],[57.7,55.27],[53.14,49.21],[48.27,43.38],[43.11,37.82],[37.67,32.53],[31.96,27.52],[26,22.82],[19.81,18.43],[13.4,14.36],[6.79,10.63],[0,7.25]]]]",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i6_layer_c",
+            "name": "65°",
+            "type": "text",
+            "startTime": 4,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [460.8, 727.6],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1536,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 100,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "65°",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 80,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b2b2b"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "protractor/value",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              },
+              "fontWeight": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 800,
+                "keyframes": []
+              },
+              "textEffect": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "{\"type\":\"background\",\"color\":\"#ffffff\",\"roundness\":40,\"spread\":45,\"intensity\":50,\"transparency\":0}",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i5_layer_c",
+            "name": "Background",
+            "type": "shape",
+            "startTime": 10,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1920,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1080,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "rectangle",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#f1ede4"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "think/bg",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i4_layer_c",
+            "name": "Thought dot",
+            "type": "shape",
+            "startTime": 10,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [691.1999999999999, 635.1305000000001],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 38.4,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 38.4,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "ellipse",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#ffffff"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "think/q#dot1",
+                "keyframes": []
+              },
+              "manualColor_stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b2b2b"
+              },
+              "strokeWidth": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 4,
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i3_layer_c",
+            "name": "Thought dot",
+            "type": "shape",
+            "startTime": 10,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [715.1999999999999, 603.2732000000001],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 67.2,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 67.2,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "ellipse",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#ffffff"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "think/q#dot0",
+                "keyframes": []
+              },
+              "manualColor_stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b2b2b"
+              },
+              "strokeWidth": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 4,
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i2_layer_c",
+            "name": "Bubble",
+            "type": "shape",
+            "startTime": 10,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [480, 409.05],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 960,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 153.9,
+                "keyframes": []
+              },
+              "shapeKind": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "ellipse",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#ffffff"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "think/q#body",
+                "keyframes": []
+              },
+              "manualColor_stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "stroke": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b2b2b"
+              },
+              "strokeWidth": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 4,
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i1_layer_c",
+            "name": "What if the angle is 7.2°?",
+            "type": "text",
+            "startTime": 10,
+            "duration": 6,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [556.8, 452.25],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 806.4,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 67.5,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "What if the angle is 7.2°?",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 54,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#2b2b2b"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "think/q",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i0_layer_c",
+            "name": "Angles in 20 seconds",
+            "type": "text",
+            "startTime": 0,
+            "duration": 16,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [96, 53.1],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 576,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 45,
+                "keyframes": []
+              },
+              "text": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Angles in 20 seconds",
+                "keyframes": []
+              },
+              "fontSize": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 36,
+                "keyframes": []
+              },
+              "fontFamily": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "Poppins",
+                "keyframes": []
+              },
+              "manualColor_fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "boolean",
+                "value": true,
+                "keyframes": []
+              },
+              "fill": {
+                "animated": false,
+                "constraints": [],
+                "type": "color",
+                "keyframes": [],
+                "value": "#3b1f00"
+              },
+              "planRef": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "overlay/tag",
+                "keyframes": []
+              },
+              "textAlign": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "center",
+                "keyframes": []
+              },
+              "fontWeight": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 700,
+                "keyframes": []
+              },
+              "textEffect": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "{\"type\":\"background\",\"color\":\"#f0a03c\",\"roundness\":40,\"spread\":45,\"intensity\":50,\"transparency\":0}",
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
+          },
+          {
+            "id": "shot-plan-how-big-is-an-angle-2",
+            "name": "Camera 1 · push-in",
+            "type": "shape",
+            "startTime": 0,
+            "duration": 10,
+            "transform": {
+              "position": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [0, 0],
+                "keyframes": []
+              },
+              "rotation": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 0,
+                "keyframes": []
+              },
+              "scale": {
+                "animated": false,
+                "constraints": [],
+                "type": "vector2",
+                "value": [1, 1],
+                "keyframes": []
+              },
+              "opacity": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "properties": {
+              "role": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "camera",
+                "keyframes": []
+              },
+              "cameraSpec": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "{\"id\":\"camera-plan-how-big-is-an-angle-1\",\"name\":\"Camera 1\",\"type\":\"persp\",\"lensUnit\":\"mm\",\"focal\":50,\"orthoScale\":1,\"sensorFit\":\"auto\",\"sensor\":36,\"shiftX\":0,\"shiftY\":0,\"clipStart\":0.1,\"clipEnd\":100000,\"showLimits\":false,\"dof\":{\"enabled\":false,\"focusLayer\":null,\"distance\":0,\"fStop\":2.8,\"blades\":0,\"rotation\":0,\"ratio\":1},\"safeAreas\":{\"show\":false,\"title\":[0.1,0.05],\"action\":[0.035,0.035],\"centerCut\":false,\"centerTitle\":[0.175,0.05],\"centerAction\":[0.15,0.05]},\"passepartout\":{\"show\":true,\"alpha\":0.5},\"guides\":{\"center\":false,\"centerDiagonal\":false,\"thirds\":false,\"golden\":false,\"goldenTriangleA\":false,\"goldenTriangleB\":false,\"harmoniousTriangleA\":false,\"harmoniousTriangleB\":false},\"display\":{\"size\":1,\"showName\":true,\"showSensor\":false},\"background\":null,\"trackTo\":{\"layerId\":null,\"up\":\"Y\"}}",
+                "keyframes": []
+              },
+              "cameraShot": {
+                "animated": false,
+                "constraints": [],
+                "type": "string",
+                "value": "{\"cameraId\":\"camera-plan-how-big-is-an-angle-1\",\"controller\":\"push-in\",\"easing\":\"smooth\",\"strength\":0.2,\"amount\":6,\"speed\":1.2,\"seed\":1,\"direction\":1,\"target\":null}",
+                "keyframes": []
+              },
+              "width": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              },
+              "height": {
+                "animated": false,
+                "constraints": [],
+                "type": "number",
+                "value": 1,
+                "keyframes": []
+              }
+            },
+            "effects": [],
+            "masks": [],
+            "assetId": null,
+            "children": []
           }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i2_track_c",
-      "name": "Bubble",
-      "type": "object",
-      "order": 3,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i2_clip_c",
-        "name": "Bubble",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i2_layer_c",
-        "assetId": null,
-        "startTime": 10,
-        "duration": 6,
-        "sourceIn": 0,
-        "sourceOut": 6,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "pop",
-           "duration": 0.6
+        ],
+        "tracks": [
+          {
+            "id": "camera-track-ais_plan-how-big-is-an-angle_s0_c",
+            "name": "Camera",
+            "type": "object",
+            "order": 0,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "shot-plan-how-big-is-an-angle-2-clip",
+                "name": "Camera 1 · push-in",
+                "layerId": "shot-plan-how-big-is-an-angle-2",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 10,
+                "sourceIn": 0,
+                "sourceOut": 10,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {}
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i0_track_c",
+            "name": "Angles in 20 seconds",
+            "type": "text",
+            "order": 1,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i0_clip_c",
+                "name": "Angles in 20 seconds",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i0_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 16,
+                "sourceIn": 0,
+                "sourceOut": 16,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {}
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i1_track_c",
+            "name": "What if the angle is 7.2°?",
+            "type": "text",
+            "order": 2,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i1_clip_c",
+                "name": "What if the angle is 7.2°?",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i1_layer_c",
+                "assetId": null,
+                "startTime": 10,
+                "duration": 6,
+                "sourceIn": 0,
+                "sourceOut": 6,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "pop",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i2_track_c",
+            "name": "Bubble",
+            "type": "object",
+            "order": 3,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i2_clip_c",
+                "name": "Bubble",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i2_layer_c",
+                "assetId": null,
+                "startTime": 10,
+                "duration": 6,
+                "sourceIn": 0,
+                "sourceOut": 6,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "pop",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i3_track_c",
+            "name": "Thought dot",
+            "type": "object",
+            "order": 4,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i3_clip_c",
+                "name": "Thought dot",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i3_layer_c",
+                "assetId": null,
+                "startTime": 10,
+                "duration": 6,
+                "sourceIn": 0,
+                "sourceOut": 6,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "pop",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i4_track_c",
+            "name": "Thought dot",
+            "type": "object",
+            "order": 5,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i4_clip_c",
+                "name": "Thought dot",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i4_layer_c",
+                "assetId": null,
+                "startTime": 10,
+                "duration": 6,
+                "sourceIn": 0,
+                "sourceOut": 6,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "pop",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i5_track_c",
+            "name": "Background",
+            "type": "object",
+            "order": 6,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i5_clip_c",
+                "name": "Background",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i5_layer_c",
+                "assetId": null,
+                "startTime": 10,
+                "duration": 6,
+                "sourceIn": 0,
+                "sourceOut": 6,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "fade",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i6_track_c",
+            "name": "65°",
+            "type": "text",
+            "order": 7,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i6_clip_c",
+                "name": "65°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i6_layer_c",
+                "assetId": null,
+                "startTime": 4,
+                "duration": 6,
+                "sourceIn": 0,
+                "sourceOut": 6,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "pop",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i7_track_c",
+            "name": "arc angle",
+            "type": "object",
+            "order": 8,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i7_clip_c",
+                "name": "arc angle",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i7_layer_c",
+                "assetId": null,
+                "startTime": 3,
+                "duration": 7,
+                "sourceIn": 0,
+                "sourceOut": 7,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i8_track_c",
+            "name": "arrow ray",
+            "type": "object",
+            "order": 9,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i8_clip_c",
+                "name": "arrow ray",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i8_layer_c",
+                "assetId": null,
+                "startTime": 2,
+                "duration": 8,
+                "sourceIn": 0,
+                "sourceOut": 8,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i9_track_c",
+            "name": "protractor tool",
+            "type": "object",
+            "order": 10,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i9_clip_c",
+                "name": "protractor tool",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i9_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i10_track_c",
+            "name": "0°",
+            "type": "text",
+            "order": 11,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i10_clip_c",
+                "name": "0°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i10_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i11_track_c",
+            "name": "30°",
+            "type": "text",
+            "order": 12,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i11_clip_c",
+                "name": "30°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i11_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i12_track_c",
+            "name": "60°",
+            "type": "text",
+            "order": 13,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i12_clip_c",
+                "name": "60°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i12_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i13_track_c",
+            "name": "90°",
+            "type": "text",
+            "order": 14,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i13_clip_c",
+                "name": "90°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i13_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i14_track_c",
+            "name": "120°",
+            "type": "text",
+            "order": 15,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i14_clip_c",
+                "name": "120°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i14_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i15_track_c",
+            "name": "150°",
+            "type": "text",
+            "order": 16,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i15_clip_c",
+                "name": "150°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i15_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i16_track_c",
+            "name": "180°",
+            "type": "text",
+            "order": 17,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i16_clip_c",
+                "name": "180°",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i16_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 9,
+                "sourceIn": 0,
+                "sourceOut": 9,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "wipe",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "id": "ais_plan-how-big-is-an-angle_s0_i17_track_c",
+            "name": "Background",
+            "type": "object",
+            "order": 18,
+            "enabled": true,
+            "locked": false,
+            "muted": false,
+            "clips": [
+              {
+                "id": "ais_plan-how-big-is-an-angle_s0_i17_clip_c",
+                "name": "Background",
+                "layerId": "ais_plan-how-big-is-an-angle_s0_i17_layer_c",
+                "assetId": null,
+                "startTime": 0,
+                "duration": 10,
+                "sourceIn": 0,
+                "sourceOut": 10,
+                "enabled": true,
+                "speed": 1,
+                "transitionMetadata": {},
+                "effectMetadata": {},
+                "metadata": {
+                  "animation": {
+                    "in": {
+                      "preset": "fade",
+                      "duration": 0.6
+                    }
+                  }
+                }
+              }
+            ]
           }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i3_track_c",
-      "name": "Thought dot",
-      "type": "object",
-      "order": 4,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i3_clip_c",
-        "name": "Thought dot",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i3_layer_c",
-        "assetId": null,
-        "startTime": 10,
-        "duration": 6,
-        "sourceIn": 0,
-        "sourceOut": 6,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "pop",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i4_track_c",
-      "name": "Thought dot",
-      "type": "object",
-      "order": 5,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i4_clip_c",
-        "name": "Thought dot",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i4_layer_c",
-        "assetId": null,
-        "startTime": 10,
-        "duration": 6,
-        "sourceIn": 0,
-        "sourceOut": 6,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "pop",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i5_track_c",
-      "name": "Background",
-      "type": "object",
-      "order": 6,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i5_clip_c",
-        "name": "Background",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i5_layer_c",
-        "assetId": null,
-        "startTime": 10,
-        "duration": 6,
-        "sourceIn": 0,
-        "sourceOut": 6,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "fade",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i6_track_c",
-      "name": "65°",
-      "type": "text",
-      "order": 7,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i6_clip_c",
-        "name": "65°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i6_layer_c",
-        "assetId": null,
-        "startTime": 4,
-        "duration": 6,
-        "sourceIn": 0,
-        "sourceOut": 6,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "pop",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i7_track_c",
-      "name": "arc angle",
-      "type": "object",
-      "order": 8,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i7_clip_c",
-        "name": "arc angle",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i7_layer_c",
-        "assetId": null,
-        "startTime": 3,
-        "duration": 7,
-        "sourceIn": 0,
-        "sourceOut": 7,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i8_track_c",
-      "name": "arrow ray",
-      "type": "object",
-      "order": 9,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i8_clip_c",
-        "name": "arrow ray",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i8_layer_c",
-        "assetId": null,
-        "startTime": 2,
-        "duration": 8,
-        "sourceIn": 0,
-        "sourceOut": 8,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i9_track_c",
-      "name": "protractor tool",
-      "type": "object",
-      "order": 10,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i9_clip_c",
-        "name": "protractor tool",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i9_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i10_track_c",
-      "name": "0°",
-      "type": "text",
-      "order": 11,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i10_clip_c",
-        "name": "0°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i10_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i11_track_c",
-      "name": "30°",
-      "type": "text",
-      "order": 12,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i11_clip_c",
-        "name": "30°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i11_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i12_track_c",
-      "name": "60°",
-      "type": "text",
-      "order": 13,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i12_clip_c",
-        "name": "60°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i12_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i13_track_c",
-      "name": "90°",
-      "type": "text",
-      "order": 14,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i13_clip_c",
-        "name": "90°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i13_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i14_track_c",
-      "name": "120°",
-      "type": "text",
-      "order": 15,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i14_clip_c",
-        "name": "120°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i14_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i15_track_c",
-      "name": "150°",
-      "type": "text",
-      "order": 16,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i15_clip_c",
-        "name": "150°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i15_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i16_track_c",
-      "name": "180°",
-      "type": "text",
-      "order": 17,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i16_clip_c",
-        "name": "180°",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i16_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 9,
-        "sourceIn": 0,
-        "sourceOut": 9,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "wipe",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     },
-     {
-      "id": "ais_plan-how-big-is-an-angle_s0_i17_track_c",
-      "name": "Background",
-      "type": "object",
-      "order": 18,
-      "enabled": true,
-      "locked": false,
-      "muted": false,
-      "clips": [
-       {
-        "id": "ais_plan-how-big-is-an-angle_s0_i17_clip_c",
-        "name": "Background",
-        "layerId": "ais_plan-how-big-is-an-angle_s0_i17_layer_c",
-        "assetId": null,
-        "startTime": 0,
-        "duration": 10,
-        "sourceIn": 0,
-        "sourceOut": 10,
-        "enabled": true,
-        "speed": 1,
-        "transitionMetadata": {},
-        "effectMetadata": {},
-        "metadata": {
-         "animation": {
-          "in": {
-           "preset": "fade",
-           "duration": 0.6
-          }
-         }
-        }
-       }
-      ]
-     }
+        ],
+        "markers": [],
+        "audioTracks": []
+      }
     ],
-    "markers": [],
-    "audioTracks": []
-   }
-  ],
-  "assets": []
- },
- "flags": [],
- "resolved": {}
+    "assets": []
+  },
+  "flags": [],
+  "resolved": {}
 }

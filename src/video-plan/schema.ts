@@ -8,9 +8,9 @@ import { CAMERA_EASINGS, CONTROLLERS } from '../ai-spec/camera-names';
 import { KIT_CAPTION_STYLES, KIT_TRANSITIONS } from './kit-ids';
 
 export const PLAN_FORMAT = 'video-plan';
-export const PLAN_VERSION = 3;
-/** v2 plans still read: v3 only adds optional fields and higher limits. */
-export const PLAN_VERSIONS = [2, 3] as const;
+export const PLAN_VERSION = 4;
+/** v2 and v3 plans still read: v3 and v4 only add optional fields. */
+export const PLAN_VERSIONS = [2, 3, 4] as const;
 export const PLAN_BUILDS = ['scenes', 'timeline'] as const;
 export const PLAN_ASPECTS = ['16:9', '9:16', '1:1', '4:5'] as const;
 export const PLAN_ANCHORS = [
@@ -66,7 +66,32 @@ export const PLAN_MEDIA_TYPES = [
   'icon',
   'emoji',
   'audio',
+  // V4: a sticker by kind (the registry's `sticker` providers).
+  'sticker',
 ] as const;
+/** V4: how a picture or video fills its box. */
+export const PLAN_FITS = ['fit', 'fill', 'stretch'] as const;
+/** V4: properties a plan keyframe may animate. */
+export const PLAN_KEYFRAME_PROPS = [
+  'x',
+  'y',
+  'scale',
+  'rotation',
+  'opacity',
+] as const;
+export const PLAN_EASINGS = [
+  'linear',
+  'ease-in',
+  'ease-out',
+  'ease-in-out',
+  'hold',
+] as const;
+export const PLAN_ASSET_SOURCES = ['mine', 'library', 'stock', 'ai'] as const;
+export const PLAN_DEF_LIMITS = Object.freeze({
+  defs: 40,
+  source: 32768,
+  params: 32,
+});
 export const PLAN_TENDENCIES = ['still', 'gentle', 'dynamic'] as const;
 export const PLAN_PACING = ['slow', 'medium', 'fast'] as const;
 export const PLAN_LIMITS = Object.freeze({
@@ -77,6 +102,9 @@ export const PLAN_LIMITS = Object.freeze({
   narration: 4000,
   text: 280,
   duration: 1800,
+  fx: 16,
+  keyframes: 64,
+  queries: 4,
 });
 
 const id = z
@@ -166,6 +194,92 @@ function make(strict: boolean) {
     endAngle: z.number().finite().min(-720).max(720).optional(),
     bubble: z.enum(PLAN_BUBBLES).optional(),
     tail: z.enum(PLAN_TAILS).optional(),
+    // --- V4 (docs/video-plan.md "Version 4"): what the editor can do -------
+    /** The layer's name in the editor. */
+    name: z.string().min(1).max(100).optional(),
+    /** Effects, filters and adjustments of the FX library, in order. */
+    fx: z
+      .array(
+        obj({
+          id: z.string().regex(/^(adjust|filter|effect)\.[a-z0-9-]+$/),
+          params: z
+            .record(z.union([z.number(), z.boolean(), z.string().max(64)]))
+            .optional(),
+        }),
+      )
+      .max(PLAN_LIMITS.fx)
+      .optional(),
+    /** Colour grade: each value -100..100 (0 = unchanged). */
+    grade: obj({
+      exposure: z.number().finite().min(-100).max(100).optional(),
+      contrast: z.number().finite().min(-100).max(100).optional(),
+      saturation: z.number().finite().min(-100).max(100).optional(),
+      temperature: z.number().finite().min(-100).max(100).optional(),
+    }).optional(),
+    /** A blend mode id of the FX library ("multiply" or "blend.multiply"). */
+    blend: z.string().max(40).optional(),
+    chromaKey: obj({
+      color: color,
+      similarity: z.number().finite().min(0).max(1).optional(),
+      smoothness: z.number().finite().min(0).max(1).optional(),
+      spill: z.number().finite().min(0).max(1).optional(),
+    }).optional(),
+    /** A mask in percent of the layer's own box. */
+    mask: obj({
+      shape: z.enum(['rect', 'ellipse']),
+      x: z.number().finite().min(-100).max(200).default(0),
+      y: z.number().finite().min(-100).max(200).default(0),
+      width: z.number().finite().min(1).max(300).default(100),
+      height: z.number().finite().min(1).max(300).default(100),
+      feather: z.number().finite().min(0).max(300).optional(),
+      invert: z.boolean().optional(),
+    }).optional(),
+    /** A transition into this clip from the clip before it on its lane. */
+    transitionIn: obj({
+      type: z.string().max(48),
+      duration: z.number().finite().min(0.1).max(5).optional(),
+    }).optional(),
+    /** Keyframes in seconds from the layer's start; x, y in percent of the canvas. */
+    keyframes: z
+      .array(
+        obj({
+          property: z.enum(PLAN_KEYFRAME_PROPS),
+          at: z.number().finite().min(0).max(PLAN_LIMITS.duration),
+          value: z.number().finite().min(-10000).max(10000),
+          easing: z.enum(PLAN_EASINGS).optional(),
+        }),
+      )
+      .max(PLAN_LIMITS.keyframes)
+      .optional(),
+    /** A Creator preset from the Project's library, with control values. */
+    preset: obj({
+      id: z.string().min(1).max(64),
+      controls: z
+        .record(z.union([z.number(), z.boolean(), z.string().max(64)]))
+        .optional(),
+    }).optional(),
+    /** Playback speed (0.1 to 8); `speedRamp` changes it at times. */
+    speed: z.number().finite().min(0.1).max(8).optional(),
+    reverse: z.boolean().optional(),
+    /** Seconds into the source where the clip starts (footage, music). */
+    sourceIn: z.number().finite().min(0).max(86400).optional(),
+    /** Sound of this layer: volume 0..2, fades in seconds. */
+    volume: z.number().finite().min(0).max(2).optional(),
+    fadeIn: z.number().finite().min(0).max(30).optional(),
+    fadeOut: z.number().finite().min(0).max(30).optional(),
+    /** Text font family and letter spacing. */
+    font: z.string().min(1).max(60).optional(),
+    letterSpacing: z.number().finite().min(-20).max(100).optional(),
+    fit: z.enum(PLAN_FITS).optional(),
+    /** Layers sharing a group id become one group (nested). */
+    group: id.optional(),
+    /** Stacking within its scene: higher is on top (default by position). */
+    order: z.number().int().min(-1000).max(1000).optional(),
+    locked: z.boolean().optional(),
+    /** Several searches for media, tried in order (instead of one query). */
+    queries: z.array(text(120)).max(PLAN_LIMITS.queries).optional(),
+    /** Footage must last at least this many seconds. */
+    minDuration: z.number().finite().min(0).max(600).optional(),
     /** A media layer that changes picture: each pose shows from its time. */
     poses: z
       .array(
@@ -202,7 +316,11 @@ function make(strict: boolean) {
     /** V3: more shots in one scene. */
     cameras: z.array(camera).max(32).optional(),
     transitionOut: obj({
-      type: z.enum(KIT_TRANSITIONS),
+      // V4: also a pixel transition of the FX library ("transition.<id>").
+      type: z.union([
+        z.enum(KIT_TRANSITIONS),
+        z.string().regex(/^transition\.[a-z0-9-]+$/),
+      ]),
       duration: z.number().finite().min(0.1).max(3).optional(),
     }).optional(),
     sfx: z
@@ -228,7 +346,7 @@ function make(strict: boolean) {
   });
   return obj({
     format: z.literal(PLAN_FORMAT),
-    version: z.union([z.literal(2), z.literal(3)]),
+    version: z.union([z.literal(2), z.literal(3), z.literal(4)]),
     meta: obj({
       /** V3: 'timeline' builds the whole video as ONE scene with layers. */
       build: z.enum(PLAN_BUILDS).default('scenes'),
@@ -239,7 +357,40 @@ function make(strict: boolean) {
         .union([z.literal(24), z.literal(25), z.literal(30), z.literal(60)])
         .default(30),
       themeId: z.string().min(1).max(64).optional(),
+      /** V4: the video type of the Platform Config (documentary, reel, ...). */
+      videoType: z.string().max(48).optional(),
+      /** V4: where media may come from, in order, and the AI caps. */
+      assets: obj({
+        order: z
+          .array(z.enum(PLAN_ASSET_SOURCES))
+          .min(1)
+          .max(4)
+          .default(['mine', 'library', 'stock', 'ai']),
+        aiImagesMax: z.number().int().min(0).max(100).default(0),
+        aiVideosMax: z.number().int().min(0).max(20).default(0),
+        /** "Use only my files": nothing from the library, stock or AI. */
+        onlyMine: z.boolean().default(false),
+      }).optional(),
     }),
+    /** V4: custom graphics written for this plan (code layers). */
+    defs: obj({
+      blocks: z
+        .array(
+          obj({
+            id: z
+              .string()
+              .regex(/^[a-z][a-z0-9-]{1,47}$/, 'use a-z, 0-9 and "-"'),
+            tier: z.enum(['B', 'C']),
+            source: z.string().min(1).max(PLAN_DEF_LIMITS.source),
+            /** Tier C: name, duration and params; Tier B reads its own. */
+            meta: z.record(z.unknown()).optional(),
+            /** One line of what it shows (the Plan card). */
+            summary: z.string().max(200).optional(),
+          }),
+        )
+        .max(PLAN_DEF_LIMITS.defs)
+        .default([]),
+    }).optional(),
     feel: feel.optional(),
     scenes: z.array(scene).min(1).max(PLAN_LIMITS.scenes),
     /** V3: layers shown over the whole video (a logo, a title tag). */
@@ -256,6 +407,8 @@ function make(strict: boolean) {
     }).optional(),
     music: obj({
       query: text(80),
+      /** V4: start this many seconds into the track. */
+      sourceIn: z.number().finite().min(0).max(3600).optional(),
       volume: z.number().finite().min(0).max(1).default(0.35),
       ducking: z.boolean().default(true),
     }).optional(),
@@ -277,6 +430,7 @@ export type PlanFeel = NonNullable<VideoPlan['feel']>;
 /** A layer's key in `resolved` and on built layers. */
 export const layerKey = (scene: { id: string }, layer: { id: string }) =>
   `${scene.id}/${layer.id}`;
+export type PlanDef = NonNullable<VideoPlan['defs']>['blocks'][number];
 /** Whether some JSON looks like a v2 plan (else a v1 composition). */
 export const isPlanV2 = (value: unknown): boolean =>
   !!value &&

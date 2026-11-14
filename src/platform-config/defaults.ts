@@ -130,6 +130,15 @@ function rawDefault(): PlatformConfigInput {
     ],
     costs: [
       {
+        // ROUND-C1 C1.5: one new code graphic written for a plan.
+        id: 'new-graphic',
+        label: L('New graphic', 'नया ग्राफ़िक'),
+        unit: 'each',
+        min: 2,
+        max: 4,
+        requires: [],
+      },
+      {
         id: 'scene-motion',
         label: L('Motion graphics scene'),
         unit: 'scene',

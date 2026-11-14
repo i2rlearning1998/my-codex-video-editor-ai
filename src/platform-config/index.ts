@@ -5,3 +5,4 @@ export * from './resolve';
 export * from './source';
 export * from './form';
 export * from './remote-source';
+export * from './media-providers';

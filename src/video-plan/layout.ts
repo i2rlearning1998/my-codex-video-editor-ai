@@ -9,6 +9,7 @@ import type { PlanLayer } from './schema';
 import { isKitId, kitItems, type SpecItem } from './kit';
 import { getBlock } from '../blocks/starters';
 import { validateParams } from '../blocks/params';
+import type { ParamSpec } from '../blocks/types';
 
 export type PlacedRole =
   | 'title'
@@ -38,6 +39,11 @@ export interface Post {
     readonly height: number;
   };
   readonly loop?: 'pulse' | 'float' | 'spin' | 'wiggle';
+  /** V4: a new graphic of the plan: its def id and the layer's settings. */
+  readonly def?: {
+    readonly id: string;
+    readonly params: Readonly<Record<string, unknown>>;
+  };
   /** The box's top-left moves from -> to between two video times. */
   readonly move?: {
     readonly from: readonly [number, number];
@@ -65,7 +71,19 @@ export interface LayoutEnv {
   assetOf(key: string): Asset | undefined;
   /** A (shared) media slot for an asset; the item points at it. */
   slotFor(asset: Asset, hint: string): string;
+  /** V4: a checked new graphic of the plan, by id. */
+  defOf?(
+    id: string,
+  ):
+    | {
+        readonly name: string;
+        readonly params: readonly ParamSpec[];
+        readonly duration: number;
+      }
+    | undefined;
 }
+/** V4: the built-in block that holds a new graphic's place until its code is set. */
+export const DEF_CARRIER = 'soft-panel';
 
 export const SIZE = { small: 0.3, medium: 0.5, large: 0.75, full: 1 } as const;
 
@@ -296,6 +314,41 @@ export function layoutLayer(
   }
 
   if (layer.kind === 'block') {
+    // V4: a new graphic of this plan. It is placed like a block (a
+    // canvas-sized code layer); its own code is set right after the build.
+    const def = layer.block ? env.defOf?.(layer.block) : undefined;
+    const carrier = def ? getBlock(DEF_CARRIER) : undefined;
+    if (def && carrier) {
+      let params: Record<string, unknown> = {};
+      try {
+        params = { ...validateParams(def.params, layer.params ?? {}) };
+      } catch {
+        params = { ...validateParams(def.params, {}) };
+      }
+      emit({
+        item: {
+          id: `${prefix}b`,
+          name: `${def.name} ${layer.id}`.slice(0, 100),
+          ...when,
+          kind: 'code-block',
+          blockId: carrier.id,
+          blockVersion: carrier.version,
+          params: {},
+          seed: 1,
+          transform: {
+            x: 0,
+            y: 0,
+            ...(layer.opacity !== undefined ? { opacity: layer.opacity } : {}),
+          },
+        },
+        role: 'block',
+        key,
+        enter: layer.enter,
+        exit: layer.exit,
+        post: { def: { id: layer.block!, params } },
+      });
+      return out;
+    }
     const info = layer.block ? getBlock(layer.block) : undefined;
     if (!info) return out;
     // A block draws on a canvas-sized transparent frame; its own settings

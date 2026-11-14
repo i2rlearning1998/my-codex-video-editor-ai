@@ -5,6 +5,17 @@
 import { defaultFieldLibrary, defaultStyleChat } from './director-defaults';
 import { z } from 'zod';
 import { paramDeclSchema } from '../contracts/p3';
+import {
+  assetRulesSchema,
+  authoringSchema,
+  defaultMediaProviders,
+  layoutRulesSchema,
+  mediaProviderSchema,
+  playbooksSchema,
+  researchSchema,
+  rulebookSchema,
+  webRulesSchema,
+} from './media-providers';
 
 export const CONFIG_SCHEMA_VERSION = 1;
 
@@ -571,6 +582,20 @@ export const directorSchema = z.object({
     .default(() => defaultStyleChat()),
   /** ROUND-B: Director's fixed lines by key (missing keys use the built-in sample). */
   lines: z.record(z.string().max(60), textSchema).default({}),
+  /** ROUND-C1 C1.4: web search and page fetching (server side only). */
+  web: webRulesSchema,
+  /** ROUND-C1 C1.7: rulebook v2 (English and Hindi), read by every planner call. */
+  rulebook: rulebookSchema,
+  /** ROUND-C1 C1.7: playbook text per video type id (owner-written). */
+  playbooks: playbooksSchema,
+  /** ROUND-C1 C1.5: code authoring guide and new-graphic limits. */
+  authoring: authoringSchema,
+  /** ROUND-C1 C1.4: the short research step before a plan. */
+  research: researchSchema,
+  /** ROUND-C1 C1.6: the layout check's safe area and contrast. */
+  layout: layoutRulesSchema,
+  /** ROUND-C1 C1.3: the default asset rule (order, AI caps, licences). */
+  assets: assetRulesSchema,
 });
 export type DirectorRules = z.infer<typeof directorSchema>;
 
@@ -778,6 +803,11 @@ export const platformConfigSchema = z
       })
       .default({}),
     providers: z.array(providerSchema),
+    /** ROUND-C1 C1.1: media providers by kind (stock, icons, sounds, ...). */
+    mediaProviders: z
+      .array(mediaProviderSchema)
+      .max(100)
+      .default(() => defaultMediaProviders()),
     models: z.array(modelSchema),
     payments: z.array(paymentSchema),
     topUps: z.array(topUpSchema).default([]),
@@ -827,6 +857,10 @@ export const platformConfigSchema = z
     dup(
       'provider',
       c.providers.map((x) => x.id),
+    );
+    dup(
+      'media provider',
+      c.mediaProviders.map((x) => x.id),
     );
     dup(
       'model',
