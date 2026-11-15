@@ -4,6 +4,7 @@
 // who is calling, applies the owner's switches (Platform Config `mcp`, the
 // emergency switch `mcpOff`, a suspended person), and answers.
 import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { PlatformConfig } from '../../src/platform-config';
@@ -153,8 +154,25 @@ export function createMcpMount(d: McpMountDeps) {
     p.startsWith('/.well-known/oauth-') ||
     p.startsWith('/v1/mcp/');
 
+  /** The Claude skill and plugin zips (npm run mcp:bundle), for Door 4. */
+  const bundleDir = d.env.MCP_BUNDLE_DIR ?? path.resolve('dist/claude-bundle');
   async function handle(req: IncomingMessage, res: ServerResponse, p: string) {
     if (await card.serve(req, res, p)) return;
+    const zip = /^\/mcp\/bundle\/([a-z0-9-]{1,60}\.zip)$/.exec(p);
+    if (zip && req.method === 'GET') {
+      const file = path.join(bundleDir, zip[1]!);
+      if (!existsSync(file))
+        throw new McpHttpError(
+          404,
+          'not-found',
+          'The Claude skill is not built on this server (npm run mcp:bundle).',
+        );
+      res.statusCode = 200;
+      res.setHeader('content-type', 'application/zip');
+      res.setHeader('content-disposition', `attachment; filename="${zip[1]}"`);
+      res.setHeader('access-control-allow-origin', '*');
+      return void res.end(readFileSync(file));
+    }
     const o = origin(req);
     const method = req.method ?? 'GET';
     try {

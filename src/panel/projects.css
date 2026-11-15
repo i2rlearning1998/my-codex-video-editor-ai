@@ -620,3 +620,19 @@
   gap: 8px;
   flex-wrap: wrap;
 }
+.claude-door {
+  display: grid;
+  gap: 8px;
+  margin-block-start: 12px;
+}
+.claude-door .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.claude-starters {
+  margin: 0;
+  padding-inline-start: 20px;
+  color: var(--ink-text);
+}

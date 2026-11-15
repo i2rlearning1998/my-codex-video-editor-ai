@@ -1010,6 +1010,7 @@ const S = {
     '... की शैली में एक और बनाओ',
   ],
   'claude.activity': ['From Claude', 'Claude से'],
+  'claude.retry': ['Try again', 'फिर कोशिश करें'],
 } satisfies Record<string, readonly [string, string]>;
 export type Key = keyof typeof S;
 let locale: Locale = 'en';
