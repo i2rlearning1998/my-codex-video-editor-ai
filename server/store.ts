@@ -424,6 +424,14 @@ class JsonStore implements Store {
   async mediaBytes(u: string, fp: string) {
     return this.blobs.get(`${u}/${fp}`);
   }
+  async mcpUsage(limit: number) {
+    return structuredClone(
+      this.data.usage
+        .filter((r) => r.source === 'mcp')
+        .slice(-limit)
+        .reverse(),
+    );
+  }
   async counter(u: string, name: CounterName) {
     return this.data.counters[u]?.[name] ?? 0;
   }

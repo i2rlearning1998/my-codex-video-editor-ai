@@ -1305,6 +1305,11 @@ export function createServerApp(o: ServerOptions) {
               'Use hosted checkout to change a paid plan or buy credits.',
           },
         });
+      // ROUND-C2 (5.2): the owner's connector routes (admin surface).
+      if (path.startsWith('/v1/admin/mcp/')) {
+        const caller = await o.authenticate(req.headers.authorization);
+        return await mcp.admin(req, res, path, caller, body);
+      }
       if (ownsAdminPath(path)) {
         const caller = await o.authenticate(req.headers.authorization);
         if (!p3Admin)

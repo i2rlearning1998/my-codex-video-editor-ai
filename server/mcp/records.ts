@@ -119,4 +119,6 @@ export interface McpStore {
   mediaRecord(userId: string, fingerprint: string): Promise<MediaRecord | null>;
   putMedia(userId: string, rec: MediaRecord, bytes: Uint8Array): Promise<void>;
   mediaBytes(userId: string, fingerprint: string): Promise<Uint8Array | null>;
+  /** Admin: the latest connector calls of everyone (usage rows, source mcp). */
+  mcpUsage(limit: number): Promise<import('../../src/gateway').UsageRow[]>;
 }

@@ -482,6 +482,27 @@ export function supabaseStore(
       });
       fail('record a media file', error);
     },
+    async mcpUsage(limit) {
+      const { data, error } = await db
+        .from('usage_log')
+        .select('*')
+        .eq('source', 'mcp')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      fail('read the connector calls', error);
+      return (data ?? []).map((r) => ({
+        id: r.id as string,
+        at: r.created_at as string,
+        userId: r.user_id as string,
+        modelId: r.model_id as string,
+        role: r.role as string,
+        credits: Number(r.credits),
+        ms: Number(r.ms),
+        outcome: r.outcome as 'ok' | 'failed' | 'refused',
+        ...(r.code ? { code: r.code as string } : {}),
+        source: 'mcp' as const,
+      }));
+    },
     async mediaBytes(u, fp) {
       const { data, error } = await db.storage
         .from('media')

@@ -14,6 +14,8 @@ import { createFrameStore } from './frames';
 import { buildServer, handleMcp } from './index';
 import { createOAuth, OAuthError } from './oauth';
 import { createMcpTools, type McpServices } from './tools';
+import { buildManual } from '../../src/director-rules/manual';
+import { platformConfigSchema } from '../../src/platform-config';
 
 /** Bodies of /mcp may carry plans and sample frames. */
 export const MCP_MAX_BODY = 8 * 1024 * 1024;
@@ -304,12 +306,103 @@ export function createMcpMount(d: McpMountDeps) {
     await handleMcp(server, req, res, body);
   }
 
+  /**
+   * ROUND-C2 (5.2): the owner's connector routes (admin surface only,
+   * /v1/admin/mcp/*): connections, revoke, the last calls, the manual preview.
+   */
+  async function admin(
+    req: IncomingMessage,
+    res: ServerResponse,
+    p: string,
+    caller: Caller,
+    /** The JSON body server/app.ts already read. */
+    body: Record<string, unknown>,
+  ) {
+    if (!caller.admin)
+      throw new McpHttpError(403, 'admin', 'Only the owner can do this.');
+    const method = req.method ?? 'GET';
+    const people = new Map<string, string>();
+    const email = async (u: string) => {
+      if (!people.has(u))
+        people.set(u, (await d.store.profile(u))?.email || u.slice(0, 8));
+      return people.get(u)!;
+    };
+    if (method === 'GET' && p === '/v1/admin/mcp/connections') {
+      const rows = await d.store.mcpConnections();
+      return reply(res, 200, {
+        address: `${origin(req)}/mcp`,
+        connections: await Promise.all(
+          rows
+            .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+            .map(async (c) => ({
+              id: c.id,
+              person: await email(c.userId),
+              client: c.clientName,
+              createdAt: c.createdAt,
+              lastUsedAt: c.lastUsedAt,
+              revoked: !!c.revokedAt,
+            })),
+        ),
+      });
+    }
+    if (method === 'POST' && p === '/v1/admin/mcp/revoke') {
+      const id = typeof body.id === 'string' ? body.id : null;
+      if (!id && body.all !== true)
+        throw new McpHttpError(400, 'bad-request', 'Say which connection.');
+      const n = await oauth.revokeConnection(id, null);
+      await d.store.appendAudit({
+        at: new Date(d.now()).toISOString(),
+        actor: caller.userId,
+        action: 'mcp.revoke',
+        target: id ?? 'all',
+        detail: { count: n },
+      });
+      return reply(res, 200, { revoked: n });
+    }
+    if (method === 'GET' && p === '/v1/admin/mcp/calls') {
+      const rows = await d.store.mcpUsage(50);
+      return reply(res, 200, {
+        calls: await Promise.all(
+          rows.map(async (r) => ({
+            at: r.at,
+            person: await email(r.userId),
+            tool: r.modelId.replace(/^mcp:/, ''),
+            outcome: r.outcome,
+            credits: r.credits,
+            ms: r.ms,
+            code: r.code ?? null,
+          })),
+        ),
+      });
+    }
+    if (method === 'POST' && p === '/v1/admin/mcp/manual') {
+      // The exact text both Directors read, for the draft being edited.
+      const parsed = platformConfigSchema.safeParse(
+        body.config ?? (await d.config()),
+      );
+      if (!parsed.success)
+        throw new McpHttpError(
+          400,
+          'bad-request',
+          `The settings are not valid: ${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message.toLowerCase()}.`,
+        );
+      return reply(res, 200, {
+        text: buildManual(parsed.data, {
+          videoType:
+            typeof body.videoType === 'string' ? body.videoType : undefined,
+        }),
+      });
+    }
+    throw new McpHttpError(404, 'not-found', 'Not found.');
+  }
+
   return {
     card,
     frames,
     oauth,
     owns,
     handle,
+    admin,
     tools,
     resourceMetadataUrl: (req: IncomingMessage) =>
       `${origin(req)}/.well-known/oauth-protected-resource/mcp`,
