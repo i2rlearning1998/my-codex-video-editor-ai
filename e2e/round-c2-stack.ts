@@ -8,18 +8,15 @@ import { execFileSync } from 'node:child_process';
 import type { AddressInfo } from 'node:net';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { createAuth } from '../server/auth';
-import { createServerApp, listen } from '../server/app';
-import { memoryStore } from '../server/store';
-import {
-  defaultConfig,
-  p3Settings,
-  type PlatformConfig,
-} from '../src/platform-config';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { fileStore, type Store } from '../server/store';
+import { defaultConfig, type PlatformConfig } from '../src/platform-config';
 
 export const C2_SECRET = 'e2e-c2-secret-0123456789abcdef0123';
 export const DEV_TOKEN = 'e2e-mcp-dev-token-0123456789';
-const port = () => Number(process.env.E2E_PORT ?? 4173);
 
 /** Builds the card engine once when it is missing (npm run build does it in CI). */
 export function ensureCardBuild() {
@@ -53,7 +50,8 @@ export function hostCsp(csp: {
 export interface C2Stack {
   readonly url: string;
   readonly sandboxUrl: string;
-  readonly store: ReturnType<typeof memoryStore>;
+  /** The server's file store (read here; the server process writes it). */
+  readonly store: Store;
   readonly logs: string[];
   /** An MCP client that calls tools as Claude would. */
   claude(token?: string): Promise<Client>;
@@ -62,11 +60,25 @@ export interface C2Stack {
   close(): Promise<void>;
 }
 
+const freePort = () =>
+  new Promise<number>((resolve) => {
+    const probe = createServer();
+    probe.listen(0, '127.0.0.1', () => {
+      const p = (probe.address() as AddressInfo).port;
+      probe.close(() => resolve(p));
+    });
+  });
+
+/**
+ * The real server process (`server/run.mjs /server/main.ts`, the way the
+ * owner runs it) with a file store seeded with the given config.
+ */
 export async function startC2Stack(
   edit: (c: PlatformConfig) => void = () => {},
   env: Record<string, string> = {},
 ): Promise<C2Stack> {
-  const store = memoryStore();
+  const dir = mkdtempSync(path.join(tmpdir(), 'aive-c2-'));
+  const store = fileStore(path.join(dir, 'store.json'));
   const logs: string[] = [];
   const c = defaultConfig();
   edit(c);
@@ -91,24 +103,48 @@ export async function startC2Stack(
   });
   await new Promise<void>((r) => sandbox.listen(0, '127.0.0.1', r));
   const sandboxUrl = `http://127.0.0.1:${(sandbox.address() as AddressInfo).port}`;
-  const app = createServerApp({
-    store,
-    env: {
-      AUTH_MODE: 'local',
-      LOCAL_AUTH_SECRET: C2_SECRET,
-      LOCAL_TOKENS: '1',
-      ENTITLEMENT_SECRET: 'e2e-entitlement-secret-0123456789abcdef',
-      MCP_DEV_TOKEN: DEV_TOKEN,
-      SERVER_ORIGINS: `http://127.0.0.1:${port()}`,
-      ...env,
+  const port = await freePort();
+  const child: ChildProcess = spawn(
+    process.execPath,
+    ['server/run.mjs', '/server/main.ts'],
+    {
+      env: {
+        ...process.env,
+        SERVER_PORT: String(port),
+        SERVER_DATA: dir,
+        AUTH_MODE: 'local',
+        LOCAL_AUTH_SECRET: C2_SECRET,
+        LOCAL_TOKENS: '1',
+        ENTITLEMENT_SECRET: 'e2e-entitlement-secret-0123456789abcdef',
+        MCP_DEV_TOKEN: DEV_TOKEN,
+        SERVER_ORIGINS: `http://127.0.0.1:${process.env.E2E_PORT ?? 4173}`,
+        ...env,
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
     },
-    p3Settings: () => p3Settings(app.config.current().config),
-    authenticate: createAuth({ mode: 'local', hsSecret: C2_SECRET }),
-    log: (l) => logs.push(l),
+  );
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`server did not start: ${logs.join('\n')}`)),
+      60_000,
+    );
+    const read = (b: Buffer) => {
+      for (const line of b.toString().split('\n').filter(Boolean)) {
+        logs.push(line);
+        if (line.startsWith('Gateway server on')) {
+          clearTimeout(timer);
+          resolve();
+        }
+      }
+    };
+    child.stdout!.on('data', read);
+    child.stderr!.on('data', read);
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`server exited ${code}: ${logs.join('\n')}`));
+    });
   });
-  await app.config.refresh();
-  const server = await listen(app.handler, 0);
-  const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const url = `http://127.0.0.1:${port}`;
   const clients: Client[] = [];
   return {
     url,
@@ -132,8 +168,54 @@ export async function startC2Stack(
     },
     async close() {
       for (const cl of clients) await cl.close().catch(() => undefined);
-      await new Promise((r) => server.close(r));
+      child.kill();
       await new Promise((r) => sandbox.close(r));
+      rmSync(dir, { recursive: true, force: true });
     },
   };
+}
+
+/**
+ * Shows a tool's card in the harness host page the way a chat host does
+ * (another origin, the host CSP, the ext-apps bridge). Returns the frame.
+ */
+export async function mountCard(
+  page: import('@playwright/test').Page,
+  stack: C2Stack,
+  claude: Client,
+  toolResult: unknown,
+  o: { sandbox?: string; downloadFile?: boolean; exposed?: boolean } = {},
+) {
+  const resource = await claude.readResource({
+    uri: 'ui://aive/export-card.html',
+  });
+  const content = resource.contents[0] as unknown as {
+    text: string;
+    _meta: {
+      ui: { csp: { connectDomains: string[]; resourceDomains: string[] } };
+    };
+  };
+  const src = stack.serveCard(content.text, hostCsp(content._meta.ui.csp));
+  if (!o.exposed)
+    await page.exposeFunction('__callTool', (params: unknown) =>
+      claude.callTool(params as never),
+    );
+  if (!page.url().includes('/e2e/mcp-host/host.html')) {
+    await page.goto('/e2e/mcp-host/host.html');
+    await page.waitForFunction(() => typeof window.startCard === 'function');
+  }
+  await page.evaluate((a) => window.startCard(a), {
+    src,
+    sandbox: o.sandbox ?? 'allow-scripts allow-same-origin',
+    toolResult,
+    downloadFile: o.downloadFile ?? true,
+    updateModelContext: false,
+  });
+  let frame: import('@playwright/test').Frame | undefined;
+  await (
+    await import('@playwright/test')
+  ).expect
+    .poll(() => (frame = page.frames().find((f) => f.url() === src)))
+    .toBeTruthy();
+  return frame!;
 }

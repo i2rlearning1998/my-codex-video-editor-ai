@@ -575,3 +575,55 @@ describe('[RDC2-020] out of order and twice', () => {
     ).resolves.toMatchObject({ isError: true });
   });
 });
+
+describe('[RDC2-023] export refusals before the card', () => {
+  it('[RDC2-023] a video with a code graphic, or one whose file would pass 100 MB, is refused with a plain sentence and the options; nothing is counted', async () => {
+    const { client, token } = await person('p-export');
+    const { videoId } = await newVideo(client);
+    await s.call(client, 'submit_plan', { video_id: videoId, plan: plan() });
+    await s.call(client, 'get_plan_cost', { video_id: videoId });
+    await s.call(client, 'approve_plan', { video_id: videoId });
+    // The person adds a code graphic by hand (a layer with code).
+    const row = (await s.store.cloudProject('p-export', videoId))!;
+    const doc = JSON.parse(row.document);
+    doc.compositions[0].layers[0].code = { tier: 'C', bakeKey: 'x', meta: {} };
+    await s.api('/v1/mcp/video', {
+      token,
+      body: {
+        id: videoId,
+        document: JSON.stringify(doc),
+        revision: row.revision,
+      },
+    });
+    const code = await s.call(client, 'export_video', { video_id: videoId });
+    expect(code.text).toMatch(
+      /^This video has new code graphics, and the chat export cannot draw those yet\./,
+    );
+    // A long video at 600 s: past the 100 MB cap at the standard preset.
+    await s.publish((c) => {
+      c.mcp.exportMaxSeconds = 600;
+    });
+    delete doc.compositions[0].layers[0].code;
+    doc.compositions[0].duration = 300;
+    const r2 = (await s.store.cloudProject('p-export', videoId))!;
+    await s.api('/v1/mcp/video', {
+      token,
+      body: {
+        id: videoId,
+        document: JSON.stringify(doc),
+        revision: r2.revision,
+      },
+    });
+    const big = await s.call(client, 'export_video', { video_id: videoId });
+    expect(big.text).toMatch(
+      /^At this quality the file would be about \d+ MB; the chat can take up to 100 MB\. Try preset "small", or shorten the video\.$/,
+    );
+    expect(
+      await s.store.exportsCount(
+        'p-export',
+        new Date().toISOString().slice(0, 7),
+      ),
+    ).toBe(0);
+    await s.publish(() => {});
+  });
+});

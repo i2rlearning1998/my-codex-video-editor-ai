@@ -3,9 +3,9 @@
   "sandbox": "allow-scripts",
   "card": {
     "progress": 300,
-    "startedAt": 127.80000000004657,
+    "startedAt": 122.5,
     "workerBlob": "error: refused",
-    "workerOrigin": "refused: SecurityError: Failed to construct 'Worker': Script at 'http://127.0.0.1:35371/mcp/card/probe-worker.js' cannot be accessed from origin 'null'.",
+    "workerOrigin": "refused: SecurityError: Failed to construct 'Worker': Script at 'http://127.0.0.1:40317/mcp/card/probe-worker.js' cannot be accessed from origin 'null'.",
     "opfs": "unavailable: SecurityError",
     "indexedDb": "unavailable: SecurityError",
     "webcodecs": true,
@@ -13,18 +13,18 @@
     "encodeAac": false,
     "encodeVp9": true,
     "encodeOpus": true,
-    "heapBefore": 8596923,
-    "phase:preparing": 13,
-    "phase:encoding": 61,
-    "renderMs": 4866,
+    "heapBefore": 8597191,
+    "phase:preparing": 15,
+    "phase:encoding": 62,
+    "renderMs": 4752,
     "bytes": 6339580,
     "container": "webm",
     "videoCodec": "vp9",
     "audioCodec": "opus",
-    "heapAfter": 32063525,
+    "heapAfter": 32337596,
     "player": "data",
     "downloadCapability": true,
-    "exportDone": false,
+    "exportDone": true,
     "frames": 6,
     "submitFrames": true,
     "updateModelContext": "accepted",
@@ -37,7 +37,7 @@
       {
         "name": "/mcp/card/chunks/card.js",
         "bytes": 624264,
-        "ms": 7
+        "ms": 8
       },
       {
         "name": "/mcp/card/chunks/render-job.js",
@@ -59,30 +59,30 @@
     {
       "mb": 1,
       "ok": true,
-      "ms": 23,
+      "ms": 21,
       "base64Chars": 1398104,
       "heapDelta": 0
     },
     {
       "mb": 10,
       "ok": true,
-      "ms": 130,
+      "ms": 116,
       "base64Chars": 13981016,
-      "heapDelta": 22862226
+      "heapDelta": 21801500
     },
     {
       "mb": 50,
       "ok": true,
-      "ms": 649,
+      "ms": 758,
       "base64Chars": 69905068,
-      "heapDelta": 110799049
+      "heapDelta": 111850913
     },
     {
       "mb": 100,
       "ok": true,
-      "ms": 1779,
+      "ms": 1627,
       "base64Chars": 139810136,
-      "heapDelta": 192245277
+      "heapDelta": 192246413
     }
   ],
   "framesForClaude": 6
