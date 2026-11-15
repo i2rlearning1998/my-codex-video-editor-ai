@@ -1,4 +1,4 @@
-# Video Plan v2 and v3 (FINAL3 Part D, FIX4 V3)
+# Video Plan v2, v3 and v4 (FINAL3 Part D, FIX4 V3, ROUND-C1)
 
 A **Video Plan** describes a whole video by what it says and shows; the editor's auto-builder turns it into scenes in one step. It never names media slots: each media layer says what to look for (`mediaIntent`), and the builder finds it in the project's media, then stock. Version 1 compositions (Composition Spec plus slots, docs/COMPOSITION-ADAPTER.md) still import and still use the slot dialog.
 
@@ -46,6 +46,43 @@ A video is **one timeline with layers**, not a row of scenes. `meta.build: "time
 | `enter` / `exit`               | also `wipe` and `words`                                                                                                                                                                             |
 
 Rules the builder follows: the later layer of a scene covers the earlier one (kit backgrounds are always underneath, overlays on top); a rotated layer turns about its centre; arcs and the protractor are drawn as shapes (editable like any shape); a thought or speech bubble is a body shape, a tail and a text. `mediaIntent.type: "audio"` finds an audio file in the project's Media (audio is never searched online). A sample is in docs/samples/plan-v3-diagram.json.
+
+## Version 4: the plan can say what the editor can do (ROUND-C1)
+
+`"version": 4`. Versions 2 and 3 still read and build exactly the same project as before (snapshot tests in tests/round-c1/old-plans-same.test.ts). Every v4 field maps to a command or capability the editor already has; nothing in src/core or schema 9 changed. Every id is checked against the real catalog; an unknown id is a plain error that names the nearest valid ids (`there is no blend mode "multiplie". Nearest: blend.multiply, ...`).
+
+| Field (layer)                  | What                                                                               | Existing command or API                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `name`                         | the layer's name                                                                   | `SET_LAYER_NAME`                                         |
+| `fx[]`                         | effects, filters, adjustments `{id, params}` (ids of the FX library)               | `SET_CLIP_FX` (src/core/fx.ts, src/fx)                   |
+| `grade`                        | `exposure`, `contrast`, `saturation`, `temperature` (-100..100)                    | `adjust.*` entries in the same `SET_CLIP_FX` stack       |
+| `blend`                        | a blend mode (`multiply` or `blend.multiply`)                                      | `plugin:layer-blend:SET` (src/blend)                     |
+| `chromaKey`                    | `color`, `similarity`, `smoothness`, `spill`                                       | `plugin:chroma-key:SET` (src/chroma)                     |
+| `mask`                         | `rect` or `ellipse` in percent of the layer, `feather`, `invert`                   | `plugin:layer-masks:SET` (src/masks)                     |
+| `transitionIn`                 | a clip transition (basic or `transition.*`)                                        | `SET_CLIP_TRANSITION`                                    |
+| `keyframes[]`                  | `x`, `y` (percent), `scale`, `rotation`, `opacity` at seconds from the layer start | `SET_PROPERTY` with keyframes                            |
+| `preset`                       | a Creator preset of the Project (`id`, `controls`)                                 | `presetCommands` (src/ui/creator-presets.ts)             |
+| `speed`, `reverse`, `sourceIn` | playback speed, reverse, where the source starts                                   | `SET_CLIP_SPEED`, `SET_CLIP_REVERSED`, `SET_CLIP_TIMING` |
+| `volume`, `fadeIn`, `fadeOut`  | sound of a video or sound layer                                                    | `plugin:audio:SET` (src/audio/settings.ts)               |
+| `font`, `letterSpacing`        | text font family and spacing                                                       | text properties via `SET_PROPERTY`                       |
+| `fit`                          | `fit`, `fill`, `stretch` for a picture or video                                    | scale and position (VID-004 rule)                        |
+| `group`                        | layers with the same group id become one group                                     | `GROUP`                                                  |
+| `order`                        | stacking inside the scene (higher on top)                                          | build order                                              |
+| `locked`                       | locked layer                                                                       | the `locked` property (D-126)                            |
+| `queries[]`, `minDuration`     | several searches tried in order; footage at least this long                        | the v4 media rule below                                  |
+| `mediaIntent.type: "sticker"`  | a sticker by kind                                                                  | the provider registry                                    |
+
+Scene: `transitionOut.type` may also be a pixel transition `transition.<id>` (set as the scene transition marker). Plan: `meta.videoType` (a type of the Platform Config), `meta.assets` `{order, aiImagesMax, aiVideosMax, onlyMine}` (default order mine, library, stock, ai), `music.sourceIn`.
+
+**Not expressible (BLOCKED):** a speed ramp (the editor has one speed per clip, `SET_CLIP_SPEED`; there is no time-remap command, and src/core may not change); lanes other than the build's own (each built layer gets its own lane; `order` sets the stacking); hide (there is no hide command, LYR-006 is not built).
+
+### New graphics: `defs.blocks[]`
+
+`{"id", "tier": "B" | "C", "source", "meta"?, "summary"?}`, at most 40 per plan, 32 settings each, source up to 32768 characters. A layer `{"kind": "block", "block": "<def id>", "params"}` uses it, in as many scenes as wanted. Tier B is checked by the block compiler (literal metadata, the drawing policy); Tier C by the Creator Pack checks and policy (init, renderFrame, a duration). A def may not take a built-in block's id, and two settings may not share a name. The settings become the layer's controllers (the code layer's own Controls). Every accepted def is also saved as a Creator Pack motion item (pack `plan-graphics`) in the Project's AI library: the Project's graphics kit, listed in the capability sheet and the AI panel, reusable by id.
+
+### Media on its own (replaces the FIX7 rule for v4)
+
+For each media layer the builder searches by KIND (`photo` → `stock-photo`, `video` → `stock-video`, `icon`, `sticker`/`emoji` → `sticker`, `audio` → `music`) through every enabled provider of the Platform Config's registry (src/tools searchMedia), in the asset rule's order: the person's own files (by name), the library, then stock. A pick must pass the checks: allowed licence (`director.assets.licences`), the right kind, long enough footage, big enough to fill the screen, not used by another layer. The pick is recorded with up to four alternatives and marked "picked by AI" (`picks`); footage is cut with `sourceIn` and the layer's length. Nothing usable: the layer becomes the named empty slot with the "needs asset" flag, and the reason offers rewording the search or a code graphic (or an AI picture when the rule allows). "Use only my files" searches nothing else. The credit lines of the stock used are returned with the build (`credits`). v2 and v3 plans keep the FIX7 rule unchanged.
 
 ## How it is built
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## Round C1: the AI's power (15 Nov)
+
+- Media providers are data in Platform Config: built-ins plus REST providers the owner adds, by kind, run on the gateway behind a network guard; the Stock panels list them too (D-426).
+- Shared DOM-free tools (search media and the web, read a page, check plans and graphics, build, register a graphic) and capability sheet v2 from the live config (D-425).
+- Video Plan v4: effects, grade, blend, chroma, masks, transitions, keyframes, presets, speed, trim, sound, fonts, fit, groups, lock, names, stickers, new graphics (Tier B and C) saved to the Project's AI library; v4 media are found on their own with alternatives; older plans build exactly as before (D-427, D-428).
+- Director: research step, untrusted web text, rulebook v2, playbook slots, authoring guide, graphics repair and frame fix, "change this graphic" (D-429).
+- Layout validator and first-content posters and covers; editor first load smaller than Round B (D-430). Schema 9 unchanged; no new npm dependencies.
+
 ## Round B: AI mode in the editor, Style chat, panel UI pass (14 Nov)
 
 - AI mode: a second layout of the same editor and the Director's only home (Director column, stage, scene ribbon, drawer, quick strip); the panel's Director room and the editor chat dock are gone (D-417, D-419).

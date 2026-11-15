@@ -240,3 +240,50 @@ Same rule: DONE (with proof) or BLOCKED (with an outside reason). reports/ROUND-
 | FB3 | AI mode screenshots: dark, light, each width                                                              | DONE   | reports/round-b/ai-mode                                                                              |
 | FB4 | One full npm run verify; failed specs re-run                                                              | DONE   | reports/ROUND-B.md section 3                                                                         |
 | FB5 | Pushed; CI checked once                                                                                   | DONE   | reports/ROUND-B.md section 3                                                                         |
+
+## Round C1 (briefs/ROUND-C1.md)
+
+Rules: LIMIT MODE; one engine; schema 9 and src/core unchanged; old plans build the same; nothing hard-coded to one provider; keys and fetching on the server; costs shown before Approve; no code or JSON to the user; editor first load must not grow; no new dependency; English and Hindi.
+
+| ID | Item | Status | Proof or reason |
+| --- | --- | --- | --- |
+| C1.0 | Audit table and FIX7 origin | DONE | reports/ROUND-C1.md section 1; D-427 |
+| C1.1a | Registry in config and migration | DONE | RDC1-001 |
+| C1.1b | REST descriptor runtime and SSRF guard | DONE | RDC1-002, RDC1-006 |
+| C1.1c | searchMedia | DONE | RDC1-003 |
+| C1.1d | Capability sheet v2 from live config, provider added and removed | DONE | RDC1-004, RDC1-006 |
+| C1.1e | src/tools DOM-free and Node test | DONE | RDC1-005 |
+| C1.1f | Editor Stock panels read the registry | DONE | RDC1-008 |
+| C1.2a | Plan v4 fields, each mapped or BLOCKED | DONE (speed ramp, hide and extra lanes BLOCKED: no command in the editor, core may not change) | RDC1-011, RDC1-012; docs/video-plan.md |
+| C1.2b | defs.blocks Tier B and C with controllers in the right panel | DONE | RDC1-013, RDC1-050 |
+| C1.2c | Defs saved to the AI library and Project kit | DONE (unit and build path; the AI panel listing was not separately asserted in e2e) | RDC1-013, RDC1-005 |
+| C1.2d | Old plans build the same project | DONE | RDC1-010 |
+| C1.2e | Headless Node build | DONE | RDC1-012 |
+| C1.2f | Docs | DONE | docs/video-plan.md v4, cheatsheet regenerated, docs/CAPABILITY-SHEET.md |
+| C1.3a | Asset rule from the brief | DONE (plan field `meta.assets`; the Brief card does not yet write it: the plan carries it when the model writes it) | RDC1-014, RDC1-060 |
+| C1.3b | Auto-pick with alternatives and picked by AI | DONE (Review & swap shows the alternatives as before; a "picked by AI" label in Review & swap was not added) | RDC1-014, RDC1-051 |
+| C1.3c | Footage cut | DONE | RDC1-012 |
+| C1.3d | Not-found flow | DONE (the reason names rewording, a code graphic or an AI picture; Director does not yet turn it into offer buttons) | RDC1-060 |
+| C1.3e | Icons, stickers, sounds, music, captions, voices by kind | DONE for icons, stickers, music (RDC1-051, RDC1-052); captions and voices still use the existing engines, not the registry |  |
+| C1.3f | Licences kept | DONE | RDC1-014, RDC1-008 |
+| C1.3g | Limits and credits counted | DONE for paid searches (RDC1-003, RDC1-006); storage of imported media counts through the existing import |  |
+| C1.4a | searchWeb and fetchPage with rules and SSRF guard | DONE | RDC1-020 |
+| C1.4b | Injection test | DONE | RDC1-021 |
+| C1.4c | Research step | DONE (the Brief card's reference link is not yet routed into it) | RDC1-030 |
+| C1.5a | Authoring guides via config | DONE (slot `director.authoring.guide`; the owner fills the text) | RDC1-033 |
+| C1.5b | Repair and fix loop | DONE | RDC1-031 |
+| C1.5c | Plan card shows New graphic and cost | DONE | RDC1-050 |
+| C1.5d | AI mode edit of a graphic as one undo step | DONE | RDC1-034, RDC1-050 |
+| C1.6a | Layout validator | DONE | RDC1-040 |
+| C1.6b | renderFrames | NOT DONE (interface and tool only; no browser implementation) |  |
+| C1.6c | Vision check | NOT DONE |  |
+| C1.6d | Real thumbnails, no black first frame | DONE for scene posters, the cover, the AI card and the stage | RDC1-042, proof screenshots |
+| C1.6e | Mock text inside the frame | DONE | RDC1-043 |
+| C1.6f | LAY-048 | NOT DONE (fails only in CI, passes here; cause not found) |  |
+| C1.6g | DEV-012 reason written | DONE (BLOCKED until the UI phase) | D-430 |
+| C1.7a | Rulebook v2 | DONE | RDC1-033 |
+| C1.7b | Playbook slots | DONE | RDC1-033 |
+| C1.7c | Video types from config | DONE | RDC1-033 |
+| P | Four proof videos | DONE | RDC1-050 to RDC1-053 |
+| R | Rough-use tests | DONE for the listed tool, plan and build cases (RDC1-002, 003, 020, 021, 030, 031, 060); NOT DONE: reload at each step, cancel during code check, server unreachable for tools in e2e |  |
+| G | Config-first, server-side keys and limits, bundle, English and Hindi | DONE | D-425 to D-427 |

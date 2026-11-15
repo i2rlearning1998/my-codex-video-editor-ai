@@ -6,8 +6,8 @@ import { buildVideoFromPlan } from '../../src/video-plan';
 import { OLD_PLANS, oldDeps, stable } from './old-plans';
 
 describe('[RDC1-010] old plans build the same project', () => {
-  for (const [name, plan] of Object.entries(OLD_PLANS))
-    it(`[RDC1-010] ${name}`, async () => {
+  it('[RDC1-010] each existing plan builds twice to its snapshot', async () => {
+    for (const [name, plan] of Object.entries(OLD_PLANS)) {
       const a = await buildVideoFromPlan(plan, oldDeps());
       expect(a.errors).toEqual([]);
       const b = await buildVideoFromPlan(plan, oldDeps());
@@ -19,5 +19,6 @@ describe('[RDC1-010] old plans build the same project', () => {
           1,
         ),
       ).toMatchFileSnapshot(`./__snapshots__/old-${name}.json`);
-    });
+    }
+  }, 60_000);
 });
