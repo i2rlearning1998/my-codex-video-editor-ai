@@ -76,7 +76,9 @@ describe('[RDC1-001] provider registry in Platform Config', () => {
     ).toBe(true);
     expect(parsed.director.web.enabled).toBe(false);
     expect(parsed.director.rulebook.length).toBeGreaterThan(5);
-    expect(parsed.director.rulebook.every((r) => r.en && r.hi)).toBe(true);
+    // ROUND-C2 (D-438): T1's items have no Hindi line yet (optional); every
+    // item has English.
+    expect(parsed.director.rulebook.every((r) => r.en)).toBe(true);
   });
   it('[RDC1-001] a REST provider is data: http, a key in the config, code in a path and a duplicate id are refused', () => {
     expect(() => config()).not.toThrow();

@@ -220,17 +220,29 @@ describe('[RDC1-031] new graphics: check, one repair, frames, refuse', () => {
 
 describe('[RDC1-033] power rules come from the config', () => {
   it("[RDC1-033] rulebook v2 (English and Hindi in config), the video type's playbook slot and the authoring guide reach the prompt", () => {
-    expect(c.director.rulebook.map((r) => r.id)).toEqual([
+    // ROUND-C2 (D-438, D-439): the defaults are now the architect's TEXTS:
+    // T1's items first, then the Round C1 items T1 does not name (which keep
+    // their Hindi lines); playbooks for eight video types.
+    expect(c.director.rulebook.map((r) => r.id).slice(-4)).toEqual([
       'never-refuse-makeable',
       'design-new',
       'check-layout',
       'providers-by-kind',
-      'no-code-to-user',
-      'what-to-say',
-      'tier-order',
     ]);
-    expect(c.director.rulebook.every((r) => r.hi && r.hi !== r.en)).toBe(true);
-    expect(c.director.playbooks).toEqual({}); // the owner writes them
+    expect(c.director.rulebook[0]!.id).toBe('scope');
+    expect(
+      c.director.rulebook.slice(-4).every((r) => r.hi && r.hi !== r.en),
+    ).toBe(true);
+    expect(Object.keys(c.director.playbooks).sort()).toEqual([
+      'documentary',
+      'explainer',
+      'lesson',
+      'logo-intro',
+      'product',
+      'recording',
+      'short',
+      'story',
+    ]);
     const cfg = structuredClone(c);
     cfg.director.playbooks.documentary =
       'SAMPLE PLAYBOOK: archive photos first.';

@@ -112,6 +112,8 @@ export interface WsVideo {
   withProject?: boolean;
   /** A style change made for this Video only. */
   override: StyleOverride | null;
+  /** ROUND-C2: made through the Claude connector ("Made with Claude"). */
+  claude?: true;
 }
 
 export interface WorkspaceDoc {
@@ -369,6 +371,8 @@ export class Workspace {
     origin: Origin;
     aspect?: string;
     stage?: VideoStage;
+    /** ROUND-C2: made through the Claude connector. */
+    claude?: boolean;
   }): WsVideo {
     const p = this.#needProject(input.projectId);
     const name = cleanName(input.name);
@@ -386,6 +390,7 @@ export class Workspace {
       pause: null,
       trashedAt: null,
       override: null,
+      ...(input.claude ? { claude: true as const } : {}),
     };
     this.#doc.videos = this.#doc.videos.filter((x) => x.id !== v.id);
     this.#doc.videos.push(v);

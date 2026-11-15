@@ -20,6 +20,8 @@ const emergencySchema = z.object({
   aiOff: z.boolean(),
   signupsOff: z.boolean(),
   paymentsOff: z.boolean(),
+  /** ROUND-C2 (5.3): the Claude connector's emergency switch. */
+  mcpOff: z.boolean().optional(),
   message: z.object({
     en: z.string().min(1).max(1000),
     hi: z.string().max(1000).optional(),
@@ -339,6 +341,7 @@ export function createAdminRoutes(d: AdminDeps) {
             aiOff: v.aiOff,
             signupsOff: v.signupsOff,
             paymentsOff: v.paymentsOff,
+            ...(v.mcpOff === undefined ? {} : { mcpOff: v.mcpOff }),
             message: {
               en: v.message.en,
               ...(v.message.hi === undefined ? {} : { hi: v.message.hi }),

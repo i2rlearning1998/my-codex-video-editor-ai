@@ -25,6 +25,8 @@ export type AdminTab =
   | 'engines'
   | 'gateway'
   | 'emergency'
+  | 'rules'
+  | 'mcp'
   | 'config';
 
 export const ADMIN_TABS: readonly AdminTab[] = [
@@ -39,6 +41,8 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   'engines',
   'gateway',
   'emergency',
+  'rules',
+  'mcp',
   'config',
 ];
 export const ADMIN_LABELS: Record<AdminTab, { en: string; hi: string }> = {
@@ -53,6 +57,8 @@ export const ADMIN_LABELS: Record<AdminTab, { en: string; hi: string }> = {
   engines: { en: 'Stock & offline engines', hi: 'स्टॉक और ऑफलाइन इंजन' },
   gateway: { en: 'Admin audit', hi: 'एडमिन ऑडिट' },
   emergency: { en: 'Emergency switch', hi: 'इमरजेंसी स्विच' },
+  rules: { en: 'Rules & Playbooks', hi: 'नियम और प्लेबुक' },
+  mcp: { en: 'MCP', hi: 'MCP' },
   config: { en: 'Platform Config', hi: 'प्लेटफॉर्म कॉन्फ़िग' },
 };
 
@@ -102,6 +108,8 @@ interface Emergency {
   aiOff: boolean;
   signupsOff: boolean;
   paymentsOff: boolean;
+  /** ROUND-C2: the Claude connector's switch (kept when this tab saves). */
+  mcpOff?: boolean;
   message: { en: string; hi?: string };
 }
 
@@ -132,6 +140,10 @@ export async function adminScreen(
       return gatewayAudit(ctx);
     case 'emergency':
       return emergency(ctx);
+    case 'rules':
+      return rulesTab(ctx);
+    case 'mcp':
+      return mcpTab(ctx);
     case 'config':
       return rawConfig(ctx);
   }
@@ -1554,6 +1566,7 @@ async function emergency(ctx: AdminCtx) {
             aiOff: ai.checked,
             signupsOff: signups.checked,
             paymentsOff: payments.checked,
+            mcpOff: e.mcpOff ?? false,
             message: {
               en: msg.value || 'The service is paused for a short time.',
             },
@@ -1945,4 +1958,577 @@ async function studios(ctx: AdminCtx) {
     ),
   );
   return card(ctx, ADMIN_LABELS.studios.en, root);
+}
+
+// ------------------------------------------------- ROUND-C2: Claude (MCP)
+// The two tabs below: "Rules & Playbooks" (the texts both Directors read,
+// through buildManual on the server) and "MCP" (the connector). Every word
+// is a key with English and Hindi.
+
+const C2: Record<string, [string, string]> = {
+  rulesIntro: [
+    "The texts the in-panel Director and the person's own Claude both read. A change applies to both at once.",
+    'वे लेख जिन्हें पैनल का Director और व्यक्ति का Claude दोनों पढ़ते हैं। बदलाव दोनों पर एक साथ लागू होता है।',
+  ],
+  rulebook: ['Rulebook', 'नियम पुस्तिका'],
+  ruleId: ['Id', 'आईडी'],
+  english: ['English', 'अंग्रेज़ी'],
+  hindi: ['Hindi (optional)', 'हिन्दी (वैकल्पिक)'],
+  up: ['Up', 'ऊपर'],
+  down: ['Down', 'नीचे'],
+  remove: ['Delete', 'हटाएँ'],
+  addRule: ['Add a rule', 'नियम जोड़ें'],
+  chapters: ['Creator playbook', 'क्रिएटर प्लेबुक'],
+  typePlaybooks: ['Video-type playbooks', 'वीडियो-प्रकार प्लेबुक'],
+  guide: ['Authoring guide', 'ऑथरिंग गाइड'],
+  research: ['Research', 'रिसर्च'],
+  researchOn: ['Research before a plan', 'प्लान से पहले रिसर्च'],
+  researchSteps: ['Most research steps', 'अधिकतम रिसर्च कदम'],
+  researchTools: ['Research tools', 'रिसर्च टूल'],
+  chars: ['{n} of {max} characters', '{max} में से {n} अक्षर'],
+  save: ['Save and publish', 'सेव और प्रकाशित करें'],
+  preview: [
+    'Preview what Claude and the Director read',
+    'देखें कि Claude और Director क्या पढ़ते हैं',
+  ],
+  previewType: ['Video type for the preview', 'झलक के लिए वीडियो प्रकार'],
+  rollback: ['Roll back to the previous version', 'पिछले संस्करण पर लौटें'],
+  rolledBack: ['Version {n} is live again.', 'संस्करण {n} फिर से लाइव है।'],
+  noPrevious: ['There is no earlier version.', 'कोई पुराना संस्करण नहीं है।'],
+  noManualSlot: [
+    "The Director's plan prompt has no {{manual}} place, so the Director reads only the rulebook, the video-type playbook and the guide. Add {{manual}} in Platform Config to give it the whole manual.",
+    'Director के प्लान प्रॉम्प्ट में {{manual}} की जगह नहीं है, इसलिए Director सिर्फ़ नियम, वीडियो-प्रकार प्लेबुक और गाइड पढ़ता है। पूरा मैनुअल देने के लिए Platform Config में {{manual}} जोड़ें।',
+  ],
+  tooMany: [
+    'A rulebook holds at most 60 rules.',
+    'नियम पुस्तिका में अधिकतम 60 नियम हो सकते हैं।',
+  ],
+  badId: [
+    'Rule {n}: the id must start with a letter and use only letters, digits and dashes.',
+    'नियम {n}: आईडी अक्षर से शुरू हो और सिर्फ़ अक्षर, अंक और डैश हों।',
+  ],
+  dupId: ['Two rules have the id "{id}".', 'दो नियमों की आईडी "{id}" है।'],
+  emptyRule: [
+    'Rule {n} has no English text.',
+    'नियम {n} में अंग्रेज़ी लेख नहीं है।',
+  ],
+  ruleLong: [
+    'Rule {n} is longer than 600 characters.',
+    'नियम {n} 600 अक्षरों से लंबा है।',
+  ],
+  textLong: [
+    '"{name}" is longer than {max} characters.',
+    '"{name}" {max} अक्षरों से लंबा है।',
+  ],
+  mcpIntro: [
+    "The Claude connector: people's own Claude makes videos through it, under these switches.",
+    'Claude कनेक्टर: लोगों का अपना Claude इसके ज़रिए इन स्विच के तहत वीडियो बनाता है।',
+  ],
+  master: [
+    'Master switch: the connector is on (off refuses every call at once)',
+    'मुख्य स्विच: कनेक्टर चालू है (बंद करने पर हर कॉल तुरंत रुकती है)',
+  ],
+  applySwitch: ['Apply the switch', 'स्विच लागू करें'],
+  switchOn: ['The connector is on.', 'कनेक्टर चालू है।'],
+  switchOff: ['The connector is off for everyone.', 'कनेक्टर सबके लिए बंद है।'],
+  proof: ['Developer proof tools', 'डेवलपर प्रूफ़ टूल'],
+  rate: ['Calls per person per minute', 'प्रति व्यक्ति प्रति मिनट कॉल'],
+  maxExport: [
+    'Longest chat export (seconds)',
+    'सबसे लंबा चैट एक्सपोर्ट (सेकंड)',
+  ],
+  tools: ['Tools', 'टूल'],
+  tool: ['Tool', 'टूल'],
+  enabled: ['On', 'चालू'],
+  price: ['Price', 'कीमत'],
+  free: ['Free', 'मुफ़्त'],
+  saveMcp: ['Save the connector settings', 'कनेक्टर सेटिंग सेव करें'],
+  address: ['Connector address', 'कनेक्टर का पता'],
+  copy: ['Copy', 'कॉपी'],
+  copied: ['Copied.', 'कॉपी हो गया।'],
+  connections: ['Connections', 'कनेक्शन'],
+  person: ['Person', 'व्यक्ति'],
+  client: ['Client', 'क्लाइंट'],
+  lastUsed: ['Last used', 'आख़िरी बार'],
+  revoke: ['Revoke', 'रद्द करें'],
+  revokeAll: ['Revoke all', 'सब रद्द करें'],
+  revoked: ['{n} connections ended.', '{n} कनेक्शन खत्म हुए।'],
+  ended: ['Ended', 'खत्म'],
+  noConnections: [
+    'No one has connected Claude yet.',
+    'अभी किसी ने Claude नहीं जोड़ा।',
+  ],
+  calls: ['Last 50 MCP calls', 'आख़िरी 50 MCP कॉल'],
+  when: ['When', 'कब'],
+  outcome: ['Outcome', 'नतीजा'],
+  credits: ['Credits', 'क्रेडिट'],
+  noCalls: ['No calls yet.', 'अभी कोई कॉल नहीं।'],
+  loadFailed: [
+    'This part could not be loaded: {why}',
+    'यह हिस्सा लोड नहीं हुआ: {why}',
+  ],
+};
+/** A ROUND-C2 Admin string in the Owner App's language. */
+function tr(key: keyof typeof C2, vars: Record<string, string | number> = {}) {
+  const pair = C2[key]!;
+  const t = document.documentElement.lang === 'hi' ? pair[1] : pair[0];
+  return t.replace(/\{(\w+)\}/g, (_, k: string) => String(vars[k] ?? `{${k}}`));
+}
+/** A textarea with a live character counter. */
+function counted(ctx: AdminCtx, value: string, max: number, id: string) {
+  const area = ctx.el('textarea', { id, rows: '6' });
+  area.value = value;
+  const count = ctx.el('span', { class: 'muted', 'data-counter': id });
+  const show = () => {
+    count.textContent = tr('chars', { n: area.value.length, max });
+    count.className = area.value.length > max ? 'error' : 'muted';
+  };
+  area.addEventListener('input', show);
+  show();
+  return { area, box: ctx.el('div', { class: 'counted' }, area, count) };
+}
+const RULE_ID = /^[a-zA-Z][a-zA-Z0-9-]{0,47}$/;
+
+async function rulesTab(ctx: AdminCtx) {
+  const live = await loadConfig(ctx);
+  const c = live.config;
+  const d = c.director;
+  const rules = d.rulebook.map((r) => ({ ...r }));
+  const list = ctx.el('div', { id: 'rules-list' });
+  const draw = () => {
+    list.replaceChildren(
+      ...rules.map((r, i) => {
+        const id = text(ctx, r.id, `rule-id-${i}`);
+        id.oninput = () => (r.id = id.value.trim());
+        const en = ctx.el('textarea', { id: `rule-en-${i}`, rows: '2' });
+        en.value = r.en;
+        en.oninput = () => (r.en = en.value);
+        const hi = ctx.el('textarea', { id: `rule-hi-${i}`, rows: '2' });
+        hi.value = r.hi ?? '';
+        hi.oninput = () => (r.hi = hi.value);
+        const move = (by: number) => () => {
+          const j = i + by;
+          if (j < 0 || j >= rules.length) return;
+          [rules[i], rules[j]] = [rules[j]!, rules[i]!];
+          draw();
+        };
+        const b = (label: string, run: () => void, bid: string) => {
+          const x = ctx.el('button', { type: 'button', id: bid }, label);
+          x.onclick = run;
+          return x;
+        };
+        return ctx.el(
+          'div',
+          { class: 'rule-row', 'data-rule': String(i) },
+          field(ctx, tr('ruleId'), id),
+          field(ctx, tr('english'), en),
+          field(ctx, tr('hindi'), hi),
+          ctx.el(
+            'div',
+            { class: 'row' },
+            b(tr('up'), move(-1), `rule-up-${i}`),
+            b(tr('down'), move(1), `rule-down-${i}`),
+            b(
+              tr('remove'),
+              () => {
+                rules.splice(i, 1);
+                draw();
+              },
+              `rule-del-${i}`,
+            ),
+          ),
+        );
+      }),
+    );
+  };
+  draw();
+  const add = ctx.el(
+    'button',
+    { type: 'button', id: 'rule-add' },
+    tr('addRule'),
+  );
+  add.onclick = () => {
+    rules.push({ id: `rule-${rules.length + 1}`, en: '' });
+    draw();
+  };
+  const chapters = Object.entries(d.creatorPlaybook)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([id, value]) => ({
+      id,
+      ...counted(ctx, value, 20000, `chapter-${id}`),
+    }));
+  const types = d.fieldLibrary.types.map((t) => ({
+    id: t.id,
+    name: t.name.en,
+    ...counted(ctx, d.playbooks[t.id] ?? '', 20000, `playbook-${t.id}`),
+  }));
+  const guide = counted(ctx, d.authoring.guide, 20000, 'authoring-guide');
+  const rOn = tick(ctx, d.research.enabled, 'research-on');
+  const rSteps = num(ctx, d.research.maxSteps, 'research-steps');
+  const RTOOLS = [
+    'searchMedia',
+    'searchWeb',
+    'fetchPage',
+    'listLibrary',
+  ] as const;
+  const rTools = RTOOLS.map((t) => ({
+    t,
+    box: tick(ctx, d.research.tools.includes(t), `research-tool-${t}`),
+  }));
+  const draft = (): PlatformConfig => {
+    const problems: string[] = [];
+    if (rules.length > 60) problems.push(tr('tooMany'));
+    const seen = new Set<string>();
+    rules.forEach((r, i) => {
+      if (!RULE_ID.test(r.id)) problems.push(tr('badId', { n: i + 1 }));
+      else if (seen.has(r.id)) problems.push(tr('dupId', { id: r.id }));
+      seen.add(r.id);
+      if (!r.en.trim()) problems.push(tr('emptyRule', { n: i + 1 }));
+      if (r.en.length > 600 || (r.hi ?? '').length > 600)
+        problems.push(tr('ruleLong', { n: i + 1 }));
+    });
+    for (const x of [
+      ...chapters,
+      ...types.map((t) => ({ ...t, id: t.name })),
+      { id: tr('guide'), area: guide.area },
+    ])
+      if (x.area.value.length > 20000)
+        problems.push(tr('textLong', { name: x.id, max: 20000 }));
+    if (problems.length) throw new Error(problems.join(' '));
+    const next = clone(c);
+    next.director.rulebook = rules.map((r) => ({
+      id: r.id,
+      en: r.en.trim(),
+      ...(r.hi && r.hi.trim() ? { hi: r.hi.trim() } : {}),
+    }));
+    for (const ch of chapters)
+      next.director.creatorPlaybook[ch.id] = ch.area.value;
+    for (const t of types)
+      if (t.area.value.trim()) next.director.playbooks[t.id] = t.area.value;
+      else delete next.director.playbooks[t.id];
+    next.director.authoring.guide = guide.area.value;
+    next.director.research.enabled = rOn.checked;
+    next.director.research.maxSteps = Math.max(
+      0,
+      Math.min(12, Math.round(Number(rSteps.value) || 0)),
+    );
+    next.director.research.tools = rTools
+      .filter((x) => x.box.checked)
+      .map((x) => x.t);
+    return next;
+  };
+  const previewType = pick(
+    ctx,
+    d.fieldLibrary.types.map((t) => [t.id, t.name.en] as const),
+    d.fieldLibrary.types[0]?.id ?? '',
+    'preview-type',
+  );
+  const preview = ctx.el('pre', {
+    id: 'manual-preview',
+    class: 'manual-preview',
+  });
+  return ctx.el(
+    'div',
+    { id: 'rules-tab' },
+    card(
+      ctx,
+      ADMIN_LABELS.rules.en,
+      note(ctx, tr('rulesIntro')),
+      ...(d.prompts && !d.prompts.plan.includes('{{manual}}')
+        ? [
+            ctx.el(
+              'p',
+              { class: 'error', id: 'no-manual-slot' },
+              tr('noManualSlot'),
+            ),
+          ]
+        : []),
+      ctx.el('h3', {}, tr('rulebook')),
+      list,
+      add,
+      ctx.el('h3', {}, tr('chapters')),
+      ...chapters.map((ch) => field(ctx, ch.id, ch.box)),
+      ctx.el('h3', {}, tr('typePlaybooks')),
+      ...types.map((t) => field(ctx, `${t.name} (${t.id})`, t.box)),
+      ctx.el('h3', {}, tr('guide')),
+      guide.box,
+      ctx.el('h3', {}, tr('research')),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(ctx, tr('researchOn'), rOn),
+        field(ctx, tr('researchSteps'), rSteps),
+        ...rTools.map((x) => field(ctx, x.t, x.box)),
+      ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        saveButton(ctx, tr('save'), draft, 'Rules & Playbooks', 'rules-save'),
+        field(ctx, tr('previewType'), previewType),
+        action(
+          ctx,
+          tr('preview'),
+          async () => {
+            const r = await ctx.api<{ text: string }>(
+              'POST',
+              '/api/admin/mcp/manual',
+              {
+                config: draft(),
+                videoType: previewType.value,
+              },
+            );
+            preview.textContent = r.text;
+          },
+          { id: 'rules-preview' },
+        ),
+        action(
+          ctx,
+          tr('rollback'),
+          async () => {
+            const now = (await loadConfig(ctx)).version;
+            if (now <= 0) throw new Error(tr('noPrevious'));
+            const out = await ctx.guarded(() =>
+              ctx.api<{ version: number }>(
+                'POST',
+                '/api/admin/config/publish',
+                {
+                  version: now - 1,
+                },
+              ),
+            );
+            if (!out) return 'Cancelled.';
+            ctx.refresh();
+            return tr('rolledBack', { n: out.version });
+          },
+          { id: 'rules-rollback' },
+        ),
+      ),
+      preview,
+    ),
+  );
+}
+
+/** The connector's tools by name (the server's list; free unless priced). */
+const MCP_TOOL_IDS = [
+  'get_reference',
+  'get_credits',
+  'list_projects',
+  'create_project',
+  'list_videos',
+  'create_video',
+  'get_brief_fields',
+  'save_brief',
+  'search_media',
+  'search_web',
+  'fetch_page',
+  'list_library',
+  'import_media',
+  'validate_plan',
+  'submit_plan',
+  'get_plan_cost',
+  'approve_plan',
+  'edit_video',
+  'read_video',
+  'check_video',
+  'read_memory',
+  'update_video_sheet',
+  'export_video',
+  'get_frames',
+] as const;
+
+async function mcpTab(ctx: AdminCtx) {
+  const live = await loadConfig(ctx);
+  const c = live.config;
+  const m = c.mcp;
+  const em = await ctx.api<Emergency>('GET', '/api/admin/emergency');
+  const master = tick(ctx, !em.mcpOff, 'mcp-master');
+  const proof = tick(ctx, m.proofTools, 'mcp-proof');
+  const rate = num(ctx, m.ratePerMinute, 'mcp-rate');
+  const maxExport = num(ctx, m.exportMaxSeconds, 'mcp-max-export');
+  const prices: (readonly [string, string])[] = [
+    ['free', tr('free')],
+    ...c.costs.map((x) => [x.id, `${x.label.en} (${x.min}–${x.max})`] as const),
+  ];
+  const rows = MCP_TOOL_IDS.map((t) => ({
+    t,
+    on: tick(ctx, m.tools[t]?.enabled ?? true, `mcp-tool-${t}`),
+    cost: pick(ctx, prices, m.tools[t]?.cost ?? 'free', `mcp-cost-${t}`),
+  }));
+  const parts: HTMLElement[] = [];
+  const failed = (e: unknown) =>
+    note(ctx, tr('loadFailed', { why: message(e) }));
+  let address = '';
+  let conns: HTMLElement;
+  try {
+    const r = await ctx.api<{
+      address: string;
+      connections: {
+        id: string;
+        person: string;
+        client: string;
+        lastUsedAt: string | null;
+        revoked: boolean;
+      }[];
+    }>('GET', '/api/admin/mcp/connections');
+    address = r.address;
+    const revoke = (id: string | null) =>
+      action(
+        ctx,
+        id ? tr('revoke') : tr('revokeAll'),
+        async () => {
+          const out = await ctx.guarded(() =>
+            ctx.api<{ revoked: number }>(
+              'POST',
+              '/api/admin/mcp/revoke',
+              id ? { id } : { all: true },
+            ),
+          );
+          if (!out) return 'Cancelled.';
+          ctx.refresh();
+          return tr('revoked', { n: out.revoked });
+        },
+        { id: id ? `mcp-revoke-${id}` : 'mcp-revoke-all' },
+      );
+    conns = r.connections.length
+      ? ctx.el(
+          'div',
+          {},
+          table(
+            ctx,
+            [tr('person'), tr('client'), tr('lastUsed'), ''],
+            r.connections.map((x) => [
+              x.person,
+              x.client,
+              when(x.lastUsedAt),
+              x.revoked ? tr('ended') : revoke(x.id),
+            ]),
+            'mcp-connections',
+          ),
+          revoke(null),
+        )
+      : note(ctx, tr('noConnections'));
+  } catch (e) {
+    conns = failed(e);
+  }
+  let calls: HTMLElement;
+  try {
+    const r = await ctx.api<{
+      calls: {
+        at: string;
+        person: string;
+        tool: string;
+        outcome: string;
+        credits: number;
+      }[];
+    }>('GET', '/api/admin/mcp/calls');
+    calls = r.calls.length
+      ? table(
+          ctx,
+          [tr('when'), tr('person'), tr('tool'), tr('outcome'), tr('credits')],
+          r.calls.map((x) => [
+            when(x.at),
+            x.person,
+            x.tool,
+            x.outcome,
+            String(x.credits),
+          ]),
+          'mcp-calls',
+        )
+      : note(ctx, tr('noCalls'));
+  } catch (e) {
+    calls = failed(e);
+  }
+  const addressBox = text(ctx, address, 'mcp-address');
+  addressBox.readOnly = true;
+  parts.push(
+    card(
+      ctx,
+      ADMIN_LABELS.mcp.en,
+      note(ctx, tr('mcpIntro')),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(ctx, tr('master'), master),
+        action(
+          ctx,
+          tr('applySwitch'),
+          async () => {
+            const out = await ctx.guarded(() =>
+              ctx.api('POST', '/api/admin/emergency', {
+                aiOff: em.aiOff,
+                signupsOff: em.signupsOff,
+                paymentsOff: em.paymentsOff,
+                mcpOff: !master.checked,
+                message: em.message,
+                reason: master.checked
+                  ? 'Claude connector on'
+                  : 'Claude connector off',
+                requestId: crypto.randomUUID(),
+              }),
+            );
+            if (out === null) return 'Cancelled.';
+            ctx.refresh();
+            return master.checked ? tr('switchOn') : tr('switchOff');
+          },
+          { id: 'mcp-master-apply' },
+        ),
+      ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(ctx, tr('address'), addressBox),
+        action(
+          ctx,
+          tr('copy'),
+          async () => {
+            await navigator.clipboard.writeText(addressBox.value);
+            return tr('copied');
+          },
+          { id: 'mcp-copy' },
+        ),
+      ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(ctx, tr('proof'), proof),
+        field(ctx, tr('rate'), rate),
+        field(ctx, tr('maxExport'), maxExport),
+      ),
+      ctx.el('h3', {}, tr('tools')),
+      table(
+        ctx,
+        [tr('tool'), tr('enabled'), tr('price')],
+        rows.map((r) => [r.t, r.on, r.cost]),
+        'mcp-tools',
+      ),
+      saveButton(
+        ctx,
+        tr('saveMcp'),
+        () => {
+          const next = clone(c);
+          next.mcp.proofTools = proof.checked;
+          next.mcp.ratePerMinute = Math.max(
+            1,
+            Math.min(600, Math.round(Number(rate.value) || 60)),
+          );
+          next.mcp.exportMaxSeconds = Math.max(
+            5,
+            Math.min(600, Math.round(Number(maxExport.value) || 120)),
+          );
+          next.mcp.tools = Object.fromEntries(
+            rows.map((r) => [
+              r.t,
+              { enabled: r.on.checked, cost: r.cost.value },
+            ]),
+          );
+          return next;
+        },
+        'MCP settings',
+        'mcp-save',
+      ),
+    ),
+    card(ctx, tr('connections'), conns),
+    card(ctx, tr('calls'), calls),
+  );
+  return ctx.el('div', { id: 'mcp-tab' }, ...parts);
 }

@@ -1457,3 +1457,16 @@ textarea.ai-input {
   min-block-size: 0;
   min-inline-size: 0;
 }
+
+/* ROUND-C2: Claude's steps in the chat list (read-only). */
+.ai-claude-step {
+  display: grid;
+  gap: 2px;
+  padding: 6px 10px;
+  font-size: var(--font-size-sm, 12px);
+  color: var(--color-text-secondary, inherit);
+}
+.ai-claude-step time {
+  font-size: 11px;
+  opacity: 0.8;
+}

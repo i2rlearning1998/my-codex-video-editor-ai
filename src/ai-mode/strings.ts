@@ -10,6 +10,8 @@ const S = {
   'dir.title': ['Director', 'Director'],
   'dir.newChat': ['New chat', 'नई चैट'],
   'dir.chats': ['Chats', 'चैट'],
+  // ROUND-C2: what Claude did through the connector (read-only).
+  'dir.claude': ['From Claude', 'Claude से'],
   'dir.placeholder': [
     'Tell Director what you want…',
     'Director को बताएँ क्या चाहिए…',

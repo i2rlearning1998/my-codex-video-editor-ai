@@ -1,0 +1,89 @@
+{
+  "browser": "153.0.8010.12",
+  "sandbox": "allow-scripts allow-same-origin",
+  "card": {
+    "progress": 300,
+    "startedAt": 112.39999999990687,
+    "workerBlob": "error: refused",
+    "workerOrigin": "refused: SecurityError: Failed to construct 'Worker': Script at 'http://127.0.0.1:37569/mcp/card/probe-worker.js' cannot be accessed from origin 'http://127.0.0.1:38247'.",
+    "opfs": "available",
+    "indexedDb": "available",
+    "webcodecs": true,
+    "encodeH264": true,
+    "encodeAac": false,
+    "encodeVp9": true,
+    "encodeOpus": true,
+    "heapBefore": 17460300,
+    "phase:preparing": 22,
+    "phase:encoding": 81,
+    "renderMs": 5514,
+    "bytes": 6339580,
+    "container": "webm",
+    "videoCodec": "vp9",
+    "audioCodec": "opus",
+    "heapAfter": 37703198,
+    "player": "data",
+    "downloadCapability": true,
+    "exportDone": false,
+    "frames": 6,
+    "submitFrames": true,
+    "updateModelContext": "accepted",
+    "engine": [
+      {
+        "name": "/mcp/card/card.js",
+        "bytes": 36,
+        "ms": 6
+      },
+      {
+        "name": "/mcp/card/chunks/card.js",
+        "bytes": 624264,
+        "ms": 4
+      },
+      {
+        "name": "/mcp/card/chunks/render-job.js",
+        "bytes": 563918,
+        "ms": 6
+      }
+    ],
+    "finished": true
+  },
+  "host": {
+    "calls": [
+      "export_done",
+      "submit_frames"
+    ],
+    "contextUpdates": 1,
+    "downloads": 0
+  },
+  "downloads": [
+    {
+      "mb": 1,
+      "ok": true,
+      "ms": 20,
+      "base64Chars": 1398104,
+      "heapDelta": 0
+    },
+    {
+      "mb": 10,
+      "ok": true,
+      "ms": 126,
+      "base64Chars": 13981016,
+      "heapDelta": 52964606
+    },
+    {
+      "mb": 50,
+      "ok": true,
+      "ms": 618,
+      "base64Chars": 69905068,
+      "heapDelta": 221402249
+    },
+    {
+      "mb": 100,
+      "ok": true,
+      "ms": 1484,
+      "base64Chars": 139810136,
+      "heapDelta": 489367301
+    }
+  ],
+  "framesForClaude": 6
+}

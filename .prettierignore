@@ -22,3 +22,4 @@ briefs/ROUND-C1.md
 # ROUND-C1 Part G: kept byte for byte as recorded on Round A.
 e2e/editor-guard.golden.json
 briefs/ROUND-C1-LAYOUT-FIX.md
+src/director-rules/references.gen.ts

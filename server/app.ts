@@ -38,7 +38,9 @@ import {
 } from '../src/platform-config';
 import { mockPayment } from '../src/payments';
 import { AuthError, signLocalToken, type Caller } from './auth';
-import { createServerTools } from './tools';
+import { createServerTools, realResolve } from './tools';
+import { safeFetch } from '../src/tools/net-guard';
+import { createMcpMount, McpHttpError } from './mcp/mount';
 import { providerConnected, serverAdapters, type Env } from './adapters';
 import { storeConfig } from './config';
 import { People } from './state';
@@ -252,6 +254,134 @@ export function createServerApp(o: ServerOptions) {
     resolve: o.toolRuntime?.resolve,
     usage: people.usageLog(),
     now,
+  });
+  // ROUND-C2: the Claude connector (/mcp, OAuth, the export card).
+  const mcp = createMcpMount({
+    env: o.env,
+    now,
+    store: o.store,
+    config: async () => (await cfg.get()).config,
+    authenticate: (h) => o.authenticate(h),
+    log,
+    services: {
+      // The person as the rest of the server sees them (profile, grant).
+      person: async (userId) => {
+        const email = (await o.store.profile(userId))?.email ?? '';
+        const { config, plan, profile } = await prepare({
+          userId,
+          email,
+          admin: false,
+        });
+        return { config, plan, locale: profile.locale };
+      },
+      balance: (u) => people.ledgerNow(u).balance(),
+      charge: (u, credits, note, key) => {
+        const l = people.ledgerNow(u);
+        const r = l.reserve(credits, key, note);
+        l.settle(r.id, credits, `${key}:settle`);
+        return true;
+      },
+      usage: people.usageLog(),
+      flushUsage: (u) => people.flushUsage(u),
+      // The shared tools (src/tools) exactly as /v1/tools/run runs them.
+      serverTool: async (userId, videoId, tool, input) => {
+        const { config, plan } = await prepare({
+          userId,
+          email: '',
+          admin: false,
+        });
+        return serverTools.run({
+          tool,
+          input,
+          videoId: videoId.slice(0, 80),
+          userId,
+          config,
+          plan,
+          balance: people.ledgerNow(userId).balance(),
+          charge: (credits, note) => {
+            const l = people.ledgerNow(userId);
+            const r = l.reserve(
+              credits,
+              `${userId}:tool:${randomUUID()}`,
+              note,
+            );
+            l.settle(r.id, credits, `${userId}:tool:${r.id}`);
+          },
+        });
+      },
+      claim: async (userId, kind, id, projectId) => {
+        const { config, plan } = await prepare({
+          userId,
+          email: '',
+          admin: false,
+        });
+        const reg = await o.store.workspaceRegistry(userId);
+        const next = asGateway(() =>
+          claim(
+            reg,
+            {
+              kind,
+              id,
+              ...(projectId ? { projectId } : {}),
+              origin: 'claude',
+            },
+            config,
+            plan,
+            localeOf(userId),
+          ),
+        );
+        await o.store.saveWorkspaceRegistry(userId, next);
+        await o.store.setCounter(userId, 'projects', liveProjects(next));
+      },
+      checkExport: async (userId) => {
+        const { config, plan } = await prepare({
+          userId,
+          email: '',
+          admin: false,
+        });
+        preCheck({
+          locale: localeOf(userId),
+          config,
+          plan,
+          action: 'export',
+          maxCredits: 0,
+          usage: {
+            ...gateway.counts(userId),
+            callsLastMinute: 0,
+            creditsToday: 0,
+          },
+        });
+      },
+      countExport: async (userId) => {
+        await o.store.addExport(userId, month(now()), 'claude');
+        limits.set(userId, {
+          ...(limits.get(userId) ?? {
+            storageMb: 0,
+            voiceClones: 0,
+            projects: 0,
+          }),
+          exportsThisMonth: await o.store.exportsCount(userId, month(now())),
+        });
+      },
+      // import_media: the network guard, the server's DNS, a size cap.
+      download: async (url, maxBytes) => {
+        const r = await safeFetch(url, {
+          fetch:
+            o.toolRuntime?.fetch ??
+            ((u, init) => fetch(u, init as RequestInit)),
+          resolve: o.toolRuntime?.resolve ?? realResolve,
+          timeoutMs: 60_000,
+          maxBytes,
+        });
+        if (r.status < 200 || r.status >= 300)
+          throw new Error(`the site answered ${r.status}`);
+        if (r.bytes.length >= maxBytes)
+          throw new Error(
+            'the file is larger than the 200 MB the server takes',
+          );
+        return { bytes: r.bytes, contentType: r.contentType };
+      },
+    },
   });
   const gateway = createGateway({
     config: () => cfg.current().config,
@@ -1068,7 +1198,10 @@ export function createServerApp(o: ServerOptions) {
         res.statusCode = status;
         return void res.end();
       }
-      if (origin && !origins.has(origin))
+      // ROUND-C2: the export card's files are read from a sandboxed frame
+      // (origin "null" or the host's sandbox origin) with a signed ticket and
+      // no cookies; they are open to any origin (server/mcp/card.ts).
+      if (origin && !origins.has(origin) && !path.startsWith('/mcp/card/'))
         throw new HttpError(403, 'origin', 'This site may not use the server.');
       const ip = clientIp(req);
       if (hitWindow(ipHits, ip, ipPerMinute))
@@ -1108,6 +1241,11 @@ export function createServerApp(o: ServerOptions) {
         return writeReply(res, result);
       }
       // P3-ENGINE:end
+      // ROUND-C2: the connector reads its own body (larger, JSON-RPC).
+      if (mcp.owns(path)) {
+        await mcp.handle(req, res, path);
+        return;
+      }
       // P3-INTEGRATION:begin
       if (req.method === 'POST' && path === '/v1/run')
         await o.authenticate(req.headers.authorization);
@@ -1167,6 +1305,11 @@ export function createServerApp(o: ServerOptions) {
               'Use hosted checkout to change a paid plan or buy credits.',
           },
         });
+      // ROUND-C2 (5.2): the owner's connector routes (admin surface).
+      if (path.startsWith('/v1/admin/mcp/')) {
+        const caller = await o.authenticate(req.headers.authorization);
+        return await mcp.admin(req, res, path, caller, body);
+      }
       if (ownsAdminPath(path)) {
         const caller = await o.authenticate(req.headers.authorization);
         if (!p3Admin)
@@ -1278,12 +1421,20 @@ export function createServerApp(o: ServerOptions) {
       // P3-ENGINE:end
       if (e instanceof AuthError)
         hitWindow(badAuth, clientIp(req), badAuthPerMinute);
-      if (e instanceof HttpError) status = e.status;
+      if (e instanceof McpHttpError) {
+        status = e.status;
+        // ROUND-C2 (2.2): a refused connector call names where to sign in.
+        if (status === 401 && !res.headersSent)
+          res.setHeader(
+            'www-authenticate',
+            `Bearer resource_metadata="${mcp.resourceMetadataUrl(req)}"`,
+          );
+      } else if (e instanceof HttpError) status = e.status;
       else if (e instanceof AuthError) status = 401;
       else if (e instanceof GatewayError) status = statusOf(e.code);
       else status = 500;
       const code =
-        e instanceof HttpError
+        e instanceof HttpError || e instanceof McpHttpError
           ? e.code
           : e instanceof GatewayError
             ? e.code

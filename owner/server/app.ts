@@ -41,12 +41,14 @@ export function adminNeedsReauth(method: string, rest: string): boolean {
     /^config/.test(rest) ||
     /^refunds/.test(rest) ||
     /^emergency/.test(rest) ||
+    // ROUND-C2: ending connections asks for a fresh code too.
+    /^mcp\/revoke/.test(rest) ||
     /^users\/[^/]+\/(credits|plan|suspension)/.test(rest)
   );
 }
 /** Which admin API path (after /api/admin/) is allowed through. */
 export const ADMIN_ALLOWED =
-  /^(?:users(?:\/[A-Za-z0-9._:-]{1,120}(?:\/(?:credits|plan|suspension|flags))?)?|refunds|flags|audit|emergency|metrics|keys|config|config\/publish)$/;
+  /^(?:users(?:\/[A-Za-z0-9._:-]{1,120}(?:\/(?:credits|plan|suspension|flags))?)?|refunds|flags|audit|emergency|metrics|keys|config|config\/publish|mcp\/(?:connections|revoke|calls|manual))$/;
 
 export interface OwnerAppConfig extends LibraryConfig {
   readonly port: number;

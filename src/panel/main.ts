@@ -26,6 +26,7 @@ import {
 import { studioScreen } from './screens/studio';
 import { assetsScreen } from './screens/library';
 import { projectScreen, projectsScreen } from './screens/workspace';
+import { connectClaudeScreen } from './screens/claude';
 import { migrateP3Memory } from './p3-services';
 
 const root = document.getElementById('panel')!;
@@ -40,6 +41,8 @@ const screens: Record<string, Screen> = {
   brand: brandScreen,
   learn: learnScreen,
   settings: settingsScreen,
+  // ROUND-C2: the consent page the Claude connector's sign-in opens.
+  'connect-claude': connectClaudeScreen,
 };
 
 // Dev and e2e only: make the offline mock model fail on its Nth call, to

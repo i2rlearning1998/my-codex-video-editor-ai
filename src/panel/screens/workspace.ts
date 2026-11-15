@@ -30,6 +30,8 @@ import { empty, limitAlert, when } from './common';
 import { assetView } from './studio';
 import { memoryPanel } from './project-memory';
 import { posterArt } from '../art';
+import { claudeDoor, madeWithClaude } from './claude';
+import { gatewayBase } from '../live-config';
 
 const enc = encodeURIComponent;
 const rules = (ctx: Ctx) =>
@@ -412,6 +414,7 @@ export function newProjectDialog(ctx: Ctx, onClose: () => void): HTMLElement {
     id: 'np-gallery',
     hidden: true,
   });
+  const door = h('div', { class: 'np-door', id: 'np-door', hidden: true });
   const options = rules(ctx).newProjectOptions;
   let busy = false;
   const run = async (how: NewProjectOption, template?: Style) => {
@@ -478,6 +481,12 @@ export function newProjectDialog(ctx: Ctx, onClose: () => void): HTMLElement {
             if (!gallery.hidden) paintGallery();
             return;
           }
+          // ROUND-C2 (Part 6): Door 4 shows how to connect your own Claude.
+          if (how === 'claude') {
+            door.hidden = !door.hidden;
+            if (!door.hidden) clear(door, claudeDoor(ctx, gatewayBase() ?? ''));
+            return;
+          }
           void run(how);
         },
       },
@@ -519,6 +528,7 @@ export function newProjectDialog(ctx: Ctx, onClose: () => void): HTMLElement {
       ? h('div', { class: 'np-options', id: 'np-options' }, options.map(choice))
       : limitAlert('np-none', t('rda.noOptions')),
     gallery,
+    door,
     notes,
   );
   const dlg = h(
@@ -578,6 +588,8 @@ function projectCard(
       'div',
       { class: 'film-body' },
       nameEl,
+      // ROUND-C2: made through the Claude connector.
+      p.origin === 'claude' ? madeWithClaude() : null,
       h('p', {
         class: 'muted',
         'data-count': String(vids.length),
@@ -904,6 +916,7 @@ function videoCard(
       { class: 'film-body' },
       h('p', { class: 'eyebrow', text: t('rda.number', { n }) }),
       nameEl,
+      v.claude ? madeWithClaude() : null,
       h(
         'div',
         { class: 'actions' },
@@ -1330,12 +1343,19 @@ export const projectScreen: Screen = async (
     void projectScreen(ctx, [id, tab], out);
   };
   const title = h('h1', { id: 'project-title', text: p.name });
+  // ROUND-C2: the Project page shows the tag next to the name.
+  const claudeTag = p.origin === 'claude' ? madeWithClaude() : null;
   const notes = h('div', { class: 'ws-notices', id: 'video-notices' });
   const newVideo = async (how: 'style' | 'editor') => {
     const vid = await startVideo(ctx, p.id, how, notes);
     if (vid) go(ctx, vid);
   };
   const vids = ws.videosOf(p.id);
+  const videoDoor = h('div', {
+    class: 'np-door',
+    id: 'video-door',
+    hidden: true,
+  });
   const body = h('div', { class: 'rda-tab-body', id: `tab-${tab}` });
   if (tab === 'videos')
     put(
@@ -1371,7 +1391,25 @@ export const projectScreen: Screen = async (
             h('strong', { text: t('rda.newVideoEditor') }),
             h('span', { class: 'muted', text: t('rda.newVideoEditorHelp') }),
           ),
+          // ROUND-C2 (Part 6): Door 4 for a new Video too.
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'np-option glow',
+              'data-new-video': 'claude',
+              onclick: () => {
+                videoDoor.hidden = !videoDoor.hidden;
+                if (!videoDoor.hidden)
+                  clear(videoDoor, claudeDoor(ctx, gatewayBase() ?? ''));
+              },
+            },
+            h('span', { class: 'np-option-ico' }, icon('director', 22)),
+            h('strong', { text: t('rda.opt.claude') }),
+            h('span', { class: 'muted', text: t('claude.doorBody') }),
+          ),
         ),
+        videoDoor,
         notes,
       ),
       vids.length
@@ -1404,6 +1442,7 @@ export const projectScreen: Screen = async (
           { class: 'rda-title-row' },
           title,
           originTag(ctx, p),
+          claudeTag,
           h('button', {
             type: 'button',
             class: 'button sm ghost',

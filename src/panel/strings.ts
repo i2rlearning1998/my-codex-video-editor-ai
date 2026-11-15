@@ -930,6 +930,87 @@ const S = {
     'No model is set up for this tool yet.',
     'इस टूल के लिए अभी कोई मॉडल सेट नहीं है।',
   ],
+  // ROUND-C2: Claude connector (consent page, Door 4, Made with Claude).
+  'claude.consentTitle': [
+    'Allow Claude to make videos in your account',
+    'Claude को आपके खाते में वीडियो बनाने की अनुमति दें',
+  ],
+  'claude.consentBody': [
+    '{client} will be able to make, change and export videos in your projects. It spends credits only after you say yes in the chat.',
+    '{client} आपके प्रोजेक्ट में वीडियो बना, बदल और एक्सपोर्ट कर सकेगा। क्रेडिट तभी खर्च होंगे जब आप चैट में हाँ कहेंगे।',
+  ],
+  'claude.consentBack': [
+    'After this you go back to {host}.',
+    'इसके बाद आप {host} पर वापस जाएँगे।',
+  ],
+  'claude.allow': ['Allow', 'अनुमति दें'],
+  'claude.cancel': ['Cancel', 'रद्द करें'],
+  'claude.consentExpired': [
+    'This request has expired. Go back to Claude and connect again.',
+    'यह अनुरोध खत्म हो गया। Claude पर वापस जाकर फिर से जोड़ें।',
+  ],
+  'claude.needsServer': [
+    'Connecting Claude needs the online service, which this panel is not using.',
+    'Claude को जोड़ने के लिए ऑनलाइन सेवा चाहिए, जो यह पैनल अभी इस्तेमाल नहीं कर रहा।',
+  ],
+  'claude.sending': ['Going back to Claude…', 'Claude पर वापस जा रहे हैं…'],
+  'claude.madeWith': ['Made with Claude', 'Claude से बना'],
+  'claude.doorTitle': ['Create with your own Claude', 'अपने Claude से बनाएँ'],
+  'claude.doorBody': [
+    'Talk to Claude in your own chat; it makes the video here, and you can open it in the editor any time.',
+    'अपनी Claude चैट में बात करें; वीडियो यहीं बनता है, और आप उसे कभी भी एडिटर में खोल सकते हैं।',
+  ],
+  'claude.step1': ['Step 1: Add to Claude', 'चरण 1: Claude में जोड़ें'],
+  'claude.step1Body': [
+    'Copy the address, then add it in Claude as a custom connector.',
+    'पता कॉपी करें, फिर Claude में कस्टम कनेक्टर के रूप में जोड़ें।',
+  ],
+  'claude.copy': ['Copy address', 'पता कॉपी करें'],
+  'claude.copied': ['Copied', 'कॉपी हो गया'],
+  'claude.openSettings': [
+    "Open Claude's connector settings",
+    'Claude की कनेक्टर सेटिंग खोलें',
+  ],
+  'claude.step2': ['Step 2: Allow', 'चरण 2: अनुमति दें'],
+  'claude.step2Body': [
+    'When Claude connects, a page opens here by itself. Press Allow.',
+    'जब Claude जुड़ेगा, यहाँ अपने आप एक पेज खुलेगा। अनुमति दें दबाएँ।',
+  ],
+  'claude.connected': ['Connected', 'जुड़ा हुआ'],
+  'claude.notConnected': ['Not connected', 'नहीं जुड़ा'],
+  'claude.lastUsed': ['Last used {when}', 'आख़िरी बार {when}'],
+  'claude.neverUsed': ['Not used yet', 'अभी इस्तेमाल नहीं हुआ'],
+  'claude.disconnect': ['Disconnect', 'डिस्कनेक्ट करें'],
+  'claude.disconnected': [
+    'Disconnected. Claude can no longer reach your account.',
+    'डिस्कनेक्ट हो गया। Claude अब आपके खाते तक नहीं पहुँच सकता।',
+  ],
+  'claude.statusError': [
+    'The connection status could not be read. Try again.',
+    'कनेक्शन की स्थिति पढ़ी नहीं जा सकी। फिर कोशिश करें।',
+  ],
+  'claude.bundle': [
+    'Download the Claude skill and plugin',
+    'Claude स्किल और प्लगइन डाउनलोड करें',
+  ],
+  'claude.bundleSkill': ['Video director skill', 'वीडियो डायरेक्टर स्किल'],
+  'claude.bundleSetup': ['Setup skill', 'सेटअप स्किल'],
+  'claude.bundlePlugin': ['Plugin', 'प्लगइन'],
+  'claude.starters': [
+    'Paste one of these into Claude:',
+    'इनमें से एक Claude में चिपकाएँ:',
+  ],
+  'claude.starter1': [
+    'Make a video about ...',
+    '... के बारे में एक वीडियो बनाओ',
+  ],
+  'claude.starter2': ['Continue my video ...', 'मेरा वीडियो ... आगे बढ़ाओ'],
+  'claude.starter3': [
+    'Make another in the style of ...',
+    '... की शैली में एक और बनाओ',
+  ],
+  'claude.activity': ['From Claude', 'Claude से'],
+  'claude.retry': ['Try again', 'फिर कोशिश करें'],
 } satisfies Record<string, readonly [string, string]>;
 export type Key = keyof typeof S;
 let locale: Locale = 'en';

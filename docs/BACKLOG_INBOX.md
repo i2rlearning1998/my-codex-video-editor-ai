@@ -82,3 +82,8 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - code-layer-poc ANI-003 (blocks gallery scrub 3→1→3) times out at 30 s in this sandbox, also on claude/x-series; the test serializes the whole preview canvas (backlog: compare a hash in the page).
 - P2-R1 found these e2e tests already failing on claude/p2-0-config (same failure there): F2-012 (recorder card count), FX4-001, FX4-002, FX4-004, FX4-010 at 1366 px (the category click times out), LIB-024 (font files on the critical path when text is placed), LIB-026, FIX7-018, LIB-027 (lib-editor.spec.ts).
 - FIX7-024 (Bug): a sound the owner places under Text › plain is not listed in the Text panel (the photo is); `test.fail` in e2e/lib-editor.spec.ts reproduces it. It was hidden in CI because LIB-024 failed first in that serial file.
+- Editor guard (RDC1-100, RDC1-101): the 390 px cases are skipped by the owner's Round C2 rule (phone layout is not needed now, 2026-11-15); bring them back when the phone layout is worked on.
+- Round C2: code graphics in a chat export wait for the owner's decision (D-447).
+- Round C2: OAuth codes and open consents are kept in one server's memory; several server processes would need them in the store.
+- Round C2: the rest of the Owner App's Admin tabs are English-only (only the two new tabs have keyed strings).
+- Round C2: Claude Code's loopback redirects are allowed only in test mode (MCP_TEST_MODE=1); the connector docs say Claude Code needs them.

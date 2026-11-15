@@ -616,6 +616,31 @@ export async function createServices(
         .catch(() => undefined);
       await remote.sync();
       bridge(u);
+      // ROUND-C2: what Claude made through the connector (and back).
+      await syncClaudeNow(u).catch((e) =>
+        console.debug('[panel] Claude sync skipped', e),
+      );
+    };
+    const syncClaudeNow = async (u: string) => {
+      const { syncClaude } = await import('./claude-sync');
+      const { openMediaStore } = await import('../media/store');
+      const media = await openMediaStore().catch(() => null);
+      await syncClaude({
+        remote,
+        ws: services.ws(u),
+        saveProject: (doc) => projects.save(doc as never),
+        hasProject: async (id) =>
+          (await projects.list()).some((p) => p.id === id),
+        media,
+        kv: localStorage,
+        fetchMedia: async (fp) => {
+          const res = await fetch(
+            `${gatewayUrl.replace(/\/$/, '')}/v1/mcp/media/${fp}`,
+            { headers: { authorization: `Bearer ${await token()}` } },
+          ).catch(() => null);
+          return res?.ok ? res.blob() : null;
+        },
+      });
     };
     w.checkLimit = async (
       _u: string,

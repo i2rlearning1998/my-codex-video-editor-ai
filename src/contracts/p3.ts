@@ -199,6 +199,8 @@ export interface EmergencySwitches {
   readonly signupsOff: boolean;
   /** Stops payments and top-ups. */
   readonly paymentsOff: boolean;
+  /** ROUND-C2 (5.3): refuses every Claude connector call. */
+  readonly mcpOff?: boolean;
   /** Shown to the person while a switch is on. */
   readonly message: P3Text;
 }

@@ -594,3 +594,45 @@
   inline-size: 100%;
   resize: vertical;
 }
+
+/* ROUND-C2: the "Made with Claude" tag (Projects page, Project page, videos). */
+.claude-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ink-text);
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--ink-bg));
+  border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+  inline-size: fit-content;
+}
+.claude-consent {
+  max-inline-size: 560px;
+  margin: 48px auto;
+  display: grid;
+  gap: 12px;
+}
+.claude-consent .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.claude-door {
+  display: grid;
+  gap: 8px;
+  margin-block-start: 12px;
+}
+.claude-door .row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.claude-starters {
+  margin: 0;
+  padding-inline-start: 20px;
+  color: var(--ink-text);
+}

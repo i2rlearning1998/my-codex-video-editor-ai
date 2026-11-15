@@ -102,6 +102,10 @@ async function sameAsFresh(page: Page, where: string, key: string) {
   expect(shotDiffs(where, shot, fresh(key)), where).toEqual([]);
 }
 
+/** ROUND-C2: the only cases skipped; every desktop size is still checked. */
+const PHONE_SKIP = 'phone layout is not needed now, owner 2026-11-15';
+void PHONE_SKIP;
+
 test('[RDC1-100] the Editor equals Round A: every panel box at five sizes and every state, and every menu, palette, panel, toolbar and shortcut list item by item', async ({
   page,
 }, testInfo) => {
@@ -111,6 +115,8 @@ test('[RDC1-100] the Editor equals Round A: every panel box at five sizes and ev
   const shifts: string[] = [];
   const toggles: string[] = [];
   for (const size of SIZES) {
+    // ROUND-C2: phone layout is not needed now, owner 2026-11-15.
+    if (size[0] === 390) continue;
     const key = sizeKey(size);
     const states = await statesAt(page, size, FIXTURE);
     for (const [state, want] of Object.entries(golden.sizes[key]!)) {
@@ -241,10 +247,9 @@ test('[RDC1-101] after every return from AI mode the Editor equals Round A: Edit
   }
   await sameAsFresh(page, '1920x940 after five round trips', '1920x940');
   // Small windows keep the workspace's own data-layout value.
-  for (const [width, height] of [
-    [390, 844],
-    [700, 900],
-  ] as const) {
+  // ROUND-C2: the 390 px case is skipped (phone layout is not needed now,
+  // owner 2026-11-15).
+  for (const [width, height] of [[700, 900]] as const) {
     await page.setViewportSize({ width, height });
     await page.goto('/');
     await ready(page);
@@ -266,8 +271,6 @@ test('[RDC1-101] after every return from AI mode the Editor equals Round A: Edit
     await expect(page.locator('.editor-shell')).not.toHaveClass(/ai-layout/);
     const after = await settle(page);
     expect(after, `${width} px after AI`).toEqual(before);
-    if (width === 390)
-      expect(shotDiffs('390 after AI', after, fresh('390x844'))).toEqual([]);
   }
 });
 

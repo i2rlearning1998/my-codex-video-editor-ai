@@ -1,0 +1,89 @@
+{
+  "browser": "153.0.8010.12",
+  "sandbox": "allow-scripts",
+  "card": {
+    "progress": 300,
+    "startedAt": 122.5,
+    "workerBlob": "error: refused",
+    "workerOrigin": "refused: SecurityError: Failed to construct 'Worker': Script at 'http://127.0.0.1:40317/mcp/card/probe-worker.js' cannot be accessed from origin 'null'.",
+    "opfs": "unavailable: SecurityError",
+    "indexedDb": "unavailable: SecurityError",
+    "webcodecs": true,
+    "encodeH264": true,
+    "encodeAac": false,
+    "encodeVp9": true,
+    "encodeOpus": true,
+    "heapBefore": 8597191,
+    "phase:preparing": 15,
+    "phase:encoding": 62,
+    "renderMs": 4752,
+    "bytes": 6339580,
+    "container": "webm",
+    "videoCodec": "vp9",
+    "audioCodec": "opus",
+    "heapAfter": 32337596,
+    "player": "data",
+    "downloadCapability": true,
+    "exportDone": true,
+    "frames": 6,
+    "submitFrames": true,
+    "updateModelContext": "accepted",
+    "engine": [
+      {
+        "name": "/mcp/card/card.js",
+        "bytes": 36,
+        "ms": 6
+      },
+      {
+        "name": "/mcp/card/chunks/card.js",
+        "bytes": 624264,
+        "ms": 8
+      },
+      {
+        "name": "/mcp/card/chunks/render-job.js",
+        "bytes": 563918,
+        "ms": 5
+      }
+    ],
+    "finished": true
+  },
+  "host": {
+    "calls": [
+      "export_done",
+      "submit_frames"
+    ],
+    "contextUpdates": 1,
+    "downloads": 0
+  },
+  "downloads": [
+    {
+      "mb": 1,
+      "ok": true,
+      "ms": 21,
+      "base64Chars": 1398104,
+      "heapDelta": 0
+    },
+    {
+      "mb": 10,
+      "ok": true,
+      "ms": 116,
+      "base64Chars": 13981016,
+      "heapDelta": 21801500
+    },
+    {
+      "mb": 50,
+      "ok": true,
+      "ms": 758,
+      "base64Chars": 69905068,
+      "heapDelta": 111850913
+    },
+    {
+      "mb": 100,
+      "ok": true,
+      "ms": 1627,
+      "base64Chars": 139810136,
+      "heapDelta": 192246413
+    }
+  ],
+  "framesForClaude": 6
+}

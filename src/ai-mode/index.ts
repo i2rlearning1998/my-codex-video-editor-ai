@@ -29,6 +29,7 @@ import {
   stringOf,
 } from './canvas-read';
 import { suggestionsFor } from './propose';
+import { claudeActivity } from '../panel/claude-sync';
 import {
   CAPTION_STYLE_LIST,
   FORMATS,
@@ -586,6 +587,28 @@ export function mountAiMode(host: AiHost): AiMode {
             chat.id === director?.chatId,
           ),
         );
+      // ROUND-C2: Claude's steps on this Video, read-only (the conversation
+      // itself stays in Claude); the in-panel Director continues from the
+      // same Video sheet.
+      const steps = claudeActivity(director?.videoId ?? '');
+      if (steps.length) {
+        el.append(h('div', { class: 'ai-label', text: t('dir.claude') }));
+        for (const step of [...steps].reverse().slice(0, 20))
+          el.append(
+            h(
+              'div',
+              { class: 'ai-claude-step', 'data-claude-activity': '' },
+              h('span', { text: step.text }),
+              h('time', {
+                datetime: step.at,
+                text: new Date(step.at).toLocaleString(lang(), {
+                  dateStyle: 'short',
+                  timeStyle: 'short',
+                }),
+              }),
+            ),
+          );
+      }
     });
   };
 

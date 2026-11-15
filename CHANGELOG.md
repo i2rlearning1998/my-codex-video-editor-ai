@@ -1,5 +1,12 @@
 # Changelog
 
+## Round C2: Claude as Director (15 Nov)
+
+- The person's own Claude connects through an MCP connector (OAuth 2.1 in two clicks, consent page in the panel) and uses the same tools as the Director on the same Projects and Videos; every call is checked, priced, rate-limited and logged (D-441 to D-444).
+- One manual for both Directors (`buildManual`); the architect's TEXTS are the config defaults; docs are generated from them (D-438 to D-440).
+- Export inside the chat: an MCP App card renders on the person's device, plays and downloads; measured in a host harness (D-437, D-445).
+- Admin: Rules & Playbooks and MCP tabs (D-446). Door 4 and the skill and plugin bundle (D-448).
+
 ## Round C1: the AI's power (15 Nov)
 
 - Media providers are data in Platform Config: built-ins plus REST providers the owner adds, by kind, run on the gateway behind a network guard; the Stock panels list them too (D-426).

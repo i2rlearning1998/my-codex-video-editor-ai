@@ -12,6 +12,8 @@ import {
   layoutRulesSchema,
   mediaProviderSchema,
   playbooksSchema,
+  creatorPlaybookSchema,
+  mcpSchema,
   researchSchema,
   rulebookSchema,
   webRulesSchema,
@@ -588,6 +590,8 @@ export const directorSchema = z.object({
   rulebook: rulebookSchema,
   /** ROUND-C1 C1.7: playbook text per video type id (owner-written). */
   playbooks: playbooksSchema,
+  /** ROUND-C2: creator playbook chapters (T3), read by buildManual. */
+  creatorPlaybook: creatorPlaybookSchema,
   /** ROUND-C1 C1.5: code authoring guide and new-graphic limits. */
   authoring: authoringSchema,
   /** ROUND-C1 C1.4: the short research step before a plan. */
@@ -825,6 +829,8 @@ export const platformConfigSchema = z
     combos: z.array(comboSchema).default([]),
     /** P4: the owner's main model for a role (a model id). Nothing is pre-assigned. */
     assignments: z.record(roleId, id).default({}),
+    /** ROUND-C2: the Claude connector (MCP) switches and limits. */
+    mcp: mcpSchema,
   })
   .superRefine((c, ctx) => {
     const dup = (label: string, ids: string[]) => {

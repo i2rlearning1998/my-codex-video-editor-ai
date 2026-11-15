@@ -27,6 +27,16 @@ import {
 import type { ConfigVersion } from '../src/platform-config';
 import type { LedgerEntry, UsageRow } from '../src/gateway';
 import { emptyRegistry, type Registry } from './workspace-registry';
+import {
+  emptyClaudeDoc,
+  RevisionConflict,
+  type ClaudeDoc,
+  type CloudProjectRow,
+  type McpClient,
+  type McpConnection,
+  type McpStore,
+  type MediaRecord,
+} from './mcp/records';
 
 export interface Profile {
   readonly id: string;
@@ -47,7 +57,7 @@ export class DuplicateKeyError extends Error {
   }
 }
 
-export interface Store extends P3Store {
+export interface Store extends P3Store, McpStore {
   readonly kind: 'memory' | 'file' | 'supabase';
   profile(userId: string): Promise<Profile | null>;
   saveProfile(p: Profile): Promise<void>;
@@ -90,7 +100,22 @@ interface Data {
   workspaces?: Record<string, Registry>;
   configs: ConfigVersion[];
   live: number;
+  /** ROUND-C2: the Claude connector (server/mcp/records.ts). */
+  mcpClients?: Record<string, McpClient>;
+  mcpConnections?: Record<string, McpConnection>;
+  claude?: Record<string, ClaudeDoc>;
+  cloudProjects?: Record<string, Record<string, CloudProjectRow>>;
+  media?: Record<string, Record<string, MediaRecord>>;
 }
+/** Media bytes of the memory and file stores (kept outside the JSON). */
+export interface BlobBox {
+  get(key: string): Uint8Array | null;
+  put(key: string, bytes: Uint8Array): void;
+}
+const memoryBlobs = (): BlobBox => {
+  const m = new Map<string, Uint8Array>();
+  return { get: (k) => m.get(k) ?? null, put: (k, b) => void m.set(k, b) };
+};
 const empty = (): Data => ({
   payments: [],
   audit: [],
@@ -115,6 +140,7 @@ class JsonStore implements Store {
     private persist: (d: Data) => void,
     /** A file store re-reads the file when another process (the Owner App) changed it. */
     private readonly reload?: () => Data | null,
+    private readonly blobs: BlobBox = memoryBlobs(),
   ) {}
   private get data(): Data {
     const fresh = this.reload?.();
@@ -338,6 +364,74 @@ class JsonStore implements Store {
     (this.data.workspaces ??= {})[u] = structuredClone(r);
     this.save();
   }
+  // ROUND-C2: the Claude connector.
+  async mcpClient(id: string) {
+    return structuredClone(this.data.mcpClients?.[id] ?? null);
+  }
+  async saveMcpClient(c: McpClient) {
+    (this.data.mcpClients ??= {})[c.id] = structuredClone(c);
+    this.save();
+  }
+  async mcpConnections(u?: string) {
+    return structuredClone(
+      Object.values(this.data.mcpConnections ?? {}).filter(
+        (c) => !u || c.userId === u,
+      ),
+    );
+  }
+  async saveMcpConnection(c: McpConnection) {
+    (this.data.mcpConnections ??= {})[c.id] = structuredClone(c);
+    this.save();
+  }
+  async claudeDoc(u: string) {
+    return structuredClone(this.data.claude?.[u] ?? emptyClaudeDoc());
+  }
+  async saveClaudeDoc(u: string, doc: ClaudeDoc) {
+    (this.data.claude ??= {})[u] = structuredClone(doc);
+    this.save();
+  }
+  async cloudProject(u: string, id: string) {
+    return structuredClone(this.data.cloudProjects?.[u]?.[id] ?? null);
+  }
+  async saveCloudProject(
+    u: string,
+    row: Omit<CloudProjectRow, 'revision' | 'updatedAt'>,
+    expected: number | null,
+  ) {
+    return this.atomic((d) => {
+      const mine = ((d.cloudProjects ??= {})[u] ??= {});
+      const old = mine[row.id];
+      if ((old?.revision ?? null) !== expected)
+        throw new RevisionConflict(old?.revision ?? 0);
+      const next: CloudProjectRow = {
+        ...row,
+        revision: (old?.revision ?? 0) + 1,
+        updatedAt: new Date().toISOString(),
+      };
+      mine[row.id] = next;
+      return next;
+    });
+  }
+  async mediaRecord(u: string, fp: string) {
+    return structuredClone(this.data.media?.[u]?.[fp] ?? null);
+  }
+  async putMedia(u: string, rec: MediaRecord, bytes: Uint8Array) {
+    this.blobs.put(`${u}/${rec.fingerprint}`, bytes);
+    ((this.data.media ??= {})[u] ??= {})[rec.fingerprint] =
+      structuredClone(rec);
+    this.save();
+  }
+  async mediaBytes(u: string, fp: string) {
+    return this.blobs.get(`${u}/${fp}`);
+  }
+  async mcpUsage(limit: number) {
+    return structuredClone(
+      this.data.usage
+        .filter((r) => r.source === 'mcp')
+        .slice(-limit)
+        .reverse(),
+    );
+  }
   async counter(u: string, name: CounterName) {
     return this.data.counters[u]?.[name] ?? 0;
   }
@@ -406,6 +500,18 @@ export function fileStore(file: string): Store {
       const fresh = read();
       seen = now;
       return fresh;
+    },
+    // ROUND-C2: media bytes next to the file, one file per person and fingerprint.
+    {
+      get: (key) => {
+        const f = path.join(path.dirname(file), 'media', key);
+        return existsSync(f) ? new Uint8Array(readFileSync(f)) : null;
+      },
+      put: (key, bytes) => {
+        const f = path.join(path.dirname(file), 'media', key);
+        mkdirSync(path.dirname(f), { recursive: true });
+        writeFileSync(f, bytes);
+      },
     },
   );
 }
