@@ -10,6 +10,7 @@ import {
   openInspector,
   seekKeep,
   revealEntry,
+  menuAction,
 } from './fixtures';
 
 // W4-B: decoded video and images on the canvas and in playback.
@@ -577,4 +578,40 @@ test('[TL-046] video clips show a filmstrip and image clips their thumbnail', as
   expect(await imageTiles.count()).toBeGreaterThan(5);
   expect(await imageTiles.first().getAttribute('data-frame')).toBeNull();
   await page.screenshot({ path: testInfo.outputPath('filmstrip.png') });
+});
+
+test('[RDC1-091] paused on an exact frame, an edit and its autosave (which draws the project cover) leave the paused frame exact', async ({
+  page,
+}) => {
+  await seek(page, 1);
+  await expect.poll(() => readCode(page)).toBe(expected(30));
+  // A project edit (a marker at the playhead) is saved half a second later,
+  // and the save draws the project cover.
+  const markers = async () =>
+    (await hook(page)).project.compositions[0]!.markers.length;
+  const had = await markers();
+  await page.getByRole('button', { name: '+ Marker' }).click();
+  await expect.poll(markers).toBe(had + 1);
+  await expect(page.locator('#save-status-dot')).not.toHaveClass(/unsaved/);
+  await expect(page.locator('#save-status-text')).toHaveText(/Saved/);
+  // Right after the save: still the exact frame (the cover never seeks it).
+  expect(await readCode(page)).toBe(expected(30));
+  await page.getByRole('button', { name: '+ Marker' }).click();
+  await expect(page.locator('#save-status-text')).toHaveText(/Saved/);
+  expect(await readCode(page)).toBe(expected(30));
+});
+
+test('[RDC1-091] a project whose first scene shows video gets the stage picture as its cover in Projects, not an empty card', async ({
+  page,
+}) => {
+  await seek(page, 1);
+  await page.getByRole('button', { name: '+ Marker' }).click();
+  await expect(page.locator('#save-status-text')).toHaveText(/Saved/);
+  await menuAction(page, '#open-projects');
+  const thumb = page.locator('.projects-dialog .project-thumb').first();
+  await expect(thumb).toHaveJSProperty('tagName', 'IMG');
+  await expect
+    .poll(() => thumb.evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .toBeGreaterThan(0);
+  expect(await readCode(page)).toBe(expected(30));
 });

@@ -53,6 +53,7 @@ import { mountStudioForm } from '../panel/studio-form';
 import { assetView, mockAudio, mockImage } from '../panel/screens/studio';
 import { bestModels } from '../panel/screens/common';
 import { h, clear, put } from '../panel/dom';
+import { assetRuleFromBrief, referenceUrl } from '../director/brief-media';
 import { styleFromPlan } from '../project/style-from';
 import type { AssetSlot } from '../project/workspace';
 import type { Chat, SheetPart, Turn } from '../project/video-memory';
@@ -1031,8 +1032,8 @@ export class Director {
       // fetchPage tool (wrapped as untrusted data); a page that cannot be
       // read is said in one sentence and planning goes on without it.
       let reference: string | undefined;
-      const link = (this.#flow.brief.reference ?? '').trim();
-      if (/^https?:\/\//i.test(link)) {
+      const link = referenceUrl(this.#flow.brief.reference);
+      if (link) {
         status.textContent = this.#line('plan.readingLink');
         const read = await this.#research('fetchPage', { url: link });
         if (read.ok) reference = read.text;
@@ -1128,24 +1129,17 @@ export class Director {
         plan = { ...plan, meta: { ...plan.meta, aspect: aspect as never } };
       // ROUND-C1 F3 (C1.3): the Brief card's "Pictures and footage" choice
       // is the plan's asset rule (the owner's rules in director.assets).
-      const media = this.#flow.brief.media;
-      const rule =
-        media && media !== YOU_DECIDE
-          ? this.#c.director.assets.briefChoices[media]
-          : undefined;
+      const rule = assetRuleFromBrief(
+        this.#c,
+        this.#flow.brief.media === YOU_DECIDE
+          ? undefined
+          : this.#flow.brief.media,
+      );
       if (rule)
         plan = {
           ...plan,
           version: 4,
-          meta: {
-            ...plan.meta,
-            assets: {
-              order: [...rule.order],
-              aiImagesMax: rule.aiImagesMax,
-              aiVideosMax: rule.aiVideosMax,
-              onlyMine: rule.onlyMine,
-            },
-          },
+          meta: { ...plan.meta, assets: rule },
         } as VideoPlan;
       const checked = checkPlan(plan);
       if (checked.ok) plan = checked.plan;

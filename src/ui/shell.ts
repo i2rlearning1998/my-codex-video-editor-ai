@@ -8976,6 +8976,20 @@ export function mountEditorShell(
     coverThumb: (width = 192) => {
       const first = engine.state.compositions[0];
       if (!first) return '';
+      // ROUND-C1 F1: never extra drawing while playing (the stage's picture
+      // is the thumbnail then, as before), and a scene with video uses the
+      // stage's picture too (its frames belong to the stage's decoders).
+      const hasVideo = (layers: readonly unknown[]): boolean =>
+        (
+          layers as readonly {
+            type: string;
+            assetId?: string | null;
+            children: readonly unknown[];
+          }[]
+        ).some(
+          (l) => (l.type === 'video' && !!l.assetId) || hasVideo(l.children),
+        );
+      if (session.playing || hasVideo(first.layers)) return '';
       // ROUND-C1 F1 (PB-009, PB-010): the cover is drawn on every autosave.
       // Video frames come from the stage's own decoders (one element per
       // layer), so asking them for another time re-seeks the playing or

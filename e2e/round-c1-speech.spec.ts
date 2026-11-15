@@ -176,3 +176,25 @@ test('[RDC1-073] disabled, a plan that names them is refused in plain words; wit
   expect(narration).toBeTruthy();
   expect(JSON.stringify(narration!.metadata)).not.toMatch(/Fake Voice/);
 });
+
+test('[RDC1-097] the named voice provider fails during the build: the video is still built, silent, with one plain reason; the captions keep the narration text', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await stage(page, plan(true), withSpeech(true));
+  // The captions provider answers; the voice provider does not.
+  await page.addInitScript((a) => {
+    (window as { __AIVE_E2E_SPEECH__?: unknown }).__AIVE_E2E_SPEECH__ = {
+      fakestt: a,
+    };
+  }, answers.fakestt);
+  await startAi(page, MESSAGE);
+  await toPlan(page);
+  await toAssets(page);
+  await build(page);
+  const h = await hook(page);
+  expect(h.project.assets.some((a) => /Narration/.test(a.name))).toBe(false);
+  const words = (await cues(page)).flatMap((c) => c.words);
+  expect(words.map((w) => w.text)).toEqual(['Water', 'moves', 'fast.']);
+  await expect(page.locator('#ai-thread')).toContainText(/silent/i);
+});

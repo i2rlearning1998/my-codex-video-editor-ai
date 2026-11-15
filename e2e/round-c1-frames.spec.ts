@@ -173,3 +173,115 @@ test('[RDC1-065] a reload during the frame check comes back to the brief, nothin
   await toPlan(page);
   expect((await graphicNames(page)).join(' ')).toMatch(/Centred box/);
 });
+
+const tierC = (name: string, init: string) => `export default {
+  meta: {
+    id: 'ring-g', name: '${name}', version: '1.0.0', category: 'Motion',
+    duration: 3, seekable: true, keepFrame: false, thumbnailTime: 1, libs: [],
+    params: [{ name: 'color', label: 'Colour', type: 'color', default: '#22cc88' }],
+  },
+  init({ ctx, params, size }) { ${init} this.ctx = ctx; this.params = params; this.size = size; },
+  renderFrame({ t }) {
+    const { ctx, params, size } = this;
+    ctx.fillStyle = params.color;
+    ctx.beginPath();
+    ctx.arc(size.width / 2, size.height / 2, size.height * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  },
+};`;
+const ringPlan = (source: string) => ({
+  ...plan(''),
+  defs: {
+    blocks: [
+      {
+        id: 'ring-g',
+        tier: 'C',
+        source,
+        meta: {
+          id: 'ring-g',
+          name: 'Ring',
+          version: '1.0.0',
+          category: 'Motion',
+          duration: 3,
+          params: [
+            {
+              name: 'color',
+              label: 'Colour',
+              type: 'color',
+              default: '#22cc88',
+            },
+          ],
+        },
+      },
+    ],
+  },
+  scenes: [
+    {
+      ...plan('').scenes[0]!,
+      layers: [
+        { id: 't', kind: 'title', text: 'Boxes', anchor: 'top' },
+        { id: 'g', kind: 'block', block: 'ring-g' },
+      ],
+    },
+  ],
+});
+
+test('[RDC1-093] a Tier C graphic that throws as it starts gets one fix call; the fixed one reaches the Plan card', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await stage(page, null, undefined, [
+    {
+      plan: ringPlan(
+        tierC('Broken ring', "throw new Error('no canvas for me');"),
+      ),
+      upgrades: [],
+    },
+    { plan: ringPlan(tierC('Calm ring', '')), upgrades: [] },
+  ]);
+  await page.addInitScript(() => {
+    (window as { __AIVE_E2E_PLAN_SEEN__?: unknown[] }).__AIVE_E2E_PLAN_SEEN__ =
+      [];
+  });
+  await startAi(page, MESSAGE);
+  await toPlan(page);
+  expect((await graphicNames(page)).join(' ')).toMatch(/Ring/);
+  // The second request is the one fix call, with the reason.
+  const seen = await page.evaluate(
+    () =>
+      (
+        window as {
+          __AIVE_E2E_PLAN_SEEN__?: { messages: { content: string }[] }[];
+        }
+      ).__AIVE_E2E_PLAN_SEEN__!,
+  );
+  expect(seen).toHaveLength(2);
+  expect(seen[1]!.messages.at(-1)!.content).toMatch(
+    /New graphic "ring-g" did not draw.*no canvas for me/,
+  );
+});
+
+test('[RDC1-093] Stop pressed twice, fast: one "stopped" line, nothing charged, and the Brief card is ready again', async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  await stage(page, null, undefined, [answer(LOOPS), answer(GOOD)]);
+  await startAi(page, MESSAGE);
+  const before = await credits(page);
+  await page.locator('#ai-brief-card .ai-btn.primary').click();
+  const stop = page.locator('#ai-plan-stop');
+  await expect(page.locator('#ai-plan-working')).toContainText(
+    'Drawing sample frames',
+    { timeout: 30_000 },
+  );
+  await stop.click();
+  await stop.click({ timeout: 500 }).catch(() => undefined);
+  await expect(page.locator('#ai-plan-working')).toHaveCount(0);
+  await expect(
+    page.locator('#ai-thread .ai-msg', {
+      hasText: 'I stopped making the plan',
+    }),
+  ).toHaveCount(1);
+  expect(await credits(page)).toBe(before);
+  await expect(page.locator('#ai-brief-card .ai-btn.primary')).toBeEnabled();
+});

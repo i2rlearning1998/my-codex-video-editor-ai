@@ -156,7 +156,11 @@ const sttProvider = (over: Partial<MediaProvider> = {}): MediaProvider => ({
   adapter: {
     type: 'rest',
     descriptor: {
-      ...(voiceProvider().adapter as { descriptor: never }).descriptor,
+      ...(
+        voiceProvider().adapter as unknown as {
+          descriptor: Record<string, unknown>;
+        }
+      ).descriptor,
       baseUrl: `https://${STT_HOST}`,
       auth: { style: 'none', name: '', prefix: '' },
       speech: {
@@ -178,7 +182,7 @@ const sttProvider = (over: Partial<MediaProvider> = {}): MediaProvider => ({
         defaultMime: 'audio/wav',
       },
     },
-  },
+  } as unknown as MediaProvider['adapter'],
   ...over,
 });
 const config = (providers: MediaProvider[]) => {

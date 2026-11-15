@@ -210,3 +210,62 @@ test('[RDC1-068] a reference link in the Brief card is read by fetchPage and rea
   );
   await expect(lastDirector(page)).toBeVisible();
 });
+
+test('[RDC1-095] swap, Undo, Redo: Redo brings the chosen file back; swapping to the file already used changes nothing', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await stage(page, plan);
+  await startAi(page, MESSAGE);
+  await toPlan(page);
+  await toAssets(page);
+  await build(page);
+  await page.locator('#ai-build-review').click();
+  const row = reviewRow(page);
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  const asset = async () =>
+    (await hook(page)).project.compositions
+      .flatMap((s) => s.layers)
+      .find((l) => l.properties.planRef?.value === 'fort/photo')!.assetId;
+  const first = await asset();
+  const steps = (await hook(page)).history.labels.length;
+  // The current pick again: no step.
+  await row.locator('[data-action="plan-swap"]').click();
+  await page.locator('.plan-alternatives > *').first().click();
+  await expect(reviewRow(page)).toBeVisible();
+  expect((await hook(page)).history.labels.length).toBe(steps);
+  expect(await asset()).toBe(first);
+  // Another file: one step; Undo and Redo move between them.
+  await reviewRow(page).locator('[data-action="plan-swap"]').click();
+  await page.locator('.plan-alternatives > *').nth(1).click();
+  await expect.poll(asset).not.toBe(first);
+  const second = await asset();
+  await page.keyboard.press('Control+z');
+  await expect.poll(asset).toBe(first);
+  await page.keyboard.press('Control+Shift+z');
+  await expect.poll(asset).toBe(second);
+});
+
+test('[RDC1-095] a link to a blocked site is not read: one sentence, the plan is still made', async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+  const config = proofConfig((c) => {
+    c.director.web.enabled = true;
+    c.director.web.blockedDomains = ['blocked.example.com'];
+  });
+  await stage(page, plan, config);
+  await page.addInitScript(() => {
+    (
+      window as { __AIVE_E2E_PAGES__?: Record<string, string> }
+    ).__AIVE_E2E_PAGES__ = { 'https://blocked.example.com/x': '<p>secret</p>' };
+  });
+  await startAi(page, MESSAGE);
+  await page
+    .locator('#ai-brief-card [data-brief-field="reference"] input')
+    .fill('https://blocked.example.com/x');
+  await toPlan(page);
+  await expect(page.locator('#ai-thread')).toContainText(
+    'I could not read the page you linked (The site blocked.example.com is blocked.), so I planned without it.',
+  );
+});

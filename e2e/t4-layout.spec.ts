@@ -184,3 +184,54 @@ test('[LAY-050] the status row under the canvas has 20 px icons, 13 px text and 
   for (const size of sizes.text) expect(size).toBeGreaterThanOrEqual(13);
   for (const size of sizes.buttons) expect(size).toBeGreaterThanOrEqual(32);
 });
+
+test('[RDC1-091] Collapse and Expand pressed fast twice end expanded; the bar then resizes at once', async ({
+  page,
+}) => {
+  const toggle = page.locator(
+    '#timeline-foundation [data-action="collapse-timeline"]',
+  );
+  await toggle.click();
+  await toggle.click();
+  await toggle.click();
+  await toggle.click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-collapsed/,
+  );
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
+  const before = await height(page);
+  const spot = await emptySpot(page);
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.down();
+  await page.mouse.move(spot.x, spot.y - 50, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(() => height(page)).toBeCloseTo(before + 50, 0);
+});
+
+test('[RDC1-091] a press on the bar while the Expand animation still runs, aimed where the bar is now, resizes', async ({
+  page,
+}) => {
+  const toggle = page.locator(
+    '#timeline-foundation [data-action="collapse-timeline"]',
+  );
+  await toggle.click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
+  await toggle.click();
+  // Measured and pressed in one step, during the animation.
+  const spot = await emptySpot(page);
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.down();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
+  await page.mouse.move(spot.x, 2, { steps: 8 });
+  await page.mouse.up();
+  const window = page.viewportSize()!.height;
+  await expect
+    .poll(() => height(page))
+    .toBeCloseTo(Math.min(window * 0.6, window - 400), 0);
+});
