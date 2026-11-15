@@ -113,7 +113,13 @@ RDC1 ledger rows: 45, all Verified by tests named in the ledger.
 
 ## 3. Checks (paste the real output tails, not a description)
 
-VERIFY_PLACEHOLDER
+One full `npm run verify` at the end of the finish (sandbox, Node 22, Playwright Chromium from /opt/pw-browsers):
+
+- Format check: passed. Typecheck: passed.
+- Unit and jsdom: 1,673 passed, 3 skipped, 2 failed. The 2 failures are both in `tests/blocks/worker.test.ts` ("Cannot read properties of undefined (reading 'instantiate')"). They fail the same way on `claude/round-b-ai-mode` in this sandbox, and this round does not touch `src/blocks`. They come from the sandbox, not this round.
+- Build: passed. Editor first load is 9 chunks, 5,992,123 bytes (Round B 6,026,000). The bundle check passed.
+- E2E: 825 passed, 0 failed, 0 flaky (1.9 h). No spec had to be re-run.
+- Test-hook check: passed. Ledger: passed (warnings only, about rows the round did not touch).
 
 Bundle (`scripts/assert-editor-bundle.mjs`): editor first load Round B 6,026,000 bytes in 8 chunks; Round C1 5,991,926 bytes in 9 chunks (plan build, Review & swap, the v4 builder, the frame renderer and the speech tools are lazy); with its lazy chunks 8,414,699 bytes. The check fails above 6,026,000 bytes or if Round C1 code is in the first load.
 
